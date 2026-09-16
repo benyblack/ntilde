@@ -1132,7 +1132,16 @@ public sealed class CommandAssistLayoutTests
         pane.Arrange(new Rect(0, 0, 420, 420));
         await AtAnIntegratedPromptAsync(pane, "Get-ChildItem");
         pane.OpenCommandAssistHelp();
-        await Task.Delay(50);
+
+        // Waited on the surface rather than on the clock (#424, same fix as the empty-state Help
+        // test above): Help awaits its content providers before posting, the first query in a
+        // process also loads the bundled catalogue, and a fixed 50 ms was a bet on that round trip.
+        // The ubuntu lane lost it three runs out of three on PR #466.
+        await AssistWait.UntilAsync(
+            () => (pane.FindControl<CommandAssistPopupView>("CommandAssistPopup")?.DataContext
+                       as CommandAssistPopupViewModel) is { IsVisible: true } posted
+                  && (posted.HasSuggestions || posted.ShowEmptyState),
+            "the Help result reached the popup");
         pane.Measure(new Size(420, 420));
         pane.Arrange(new Rect(0, 0, 420, 420));
 
@@ -1142,7 +1151,9 @@ public sealed class CommandAssistLayoutTests
         Assert.Null(popupView.FindControl<Border>("PopupDetailPanel"));
         Assert.Null(popupView.FindControl<Border>("PopupCompactPanel"));
         Assert.NotNull(popupView.FindControl<ItemsControl>("PopupSuggestionsList"));
-        Assert.True(vm.HasSuggestions, "A popup with no rows would make the layout assertion vacuous.");
+        Assert.True(
+            vm.HasSuggestions,
+            $"A popup with no rows would make the layout assertion vacuous (empty state: '{vm.EmptyStateText}').");
     }
 
     [AvaloniaFact]
