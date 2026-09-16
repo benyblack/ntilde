@@ -70,12 +70,12 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           workspaces: |
-            src/NovaTerminal.App/native
-            src/NovaTerminal.App/native/rusty_ssh
+            src/Ntilde.App/native
+            src/Ntilde.App/native/rusty_ssh
       - name: rusty_ssh FFI tests (registry, abuse suite, alloc balance)
-        run: cargo test --manifest-path src/NovaTerminal.App/native/rusty_ssh/Cargo.toml
+        run: cargo test --manifest-path src/Ntilde.App/native/rusty_ssh/Cargo.toml
       - name: rusty_pty FFI tests
-        run: cargo test --manifest-path src/NovaTerminal.App/native/Cargo.toml
+        run: cargo test --manifest-path src/Ntilde.App/native/Cargo.toml
 
   # Single build job per OS: Rust native + .NET in one step.
   # Eliminates the artifact round-trip that the old build_native → build_dotnet split required.
@@ -86,7 +86,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest"]' || '["windows-latest","ubuntu-latest"]') }}
+        # MUST STAY IDENTICAL to build_and_unit_tests' matrix below, which explains why
+        # each platform is in which trigger. It is not stylistic: that job downloads
+        # `dotnet-build-${{ matrix.os }}` from this one, so a platform present there and
+        # absent here fails at artifact download rather than anywhere informative.
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -118,8 +122,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            src/NovaTerminal.App/native/target/release
-            src/NovaTerminal.App/native/target_linux/release
+            src/Ntilde.App/native/target/release
+            src/Ntilde.App/native/target_linux/release
           # Key version bumped to v3 for the rusty_pty input-hash stamp
           # (native/target/release/.nova-rust-inputs.sha256). A v2 payload predates the stamp,
           # so restoring one would make BuildRustNative call the binary stale and invoke cargo -
@@ -127,7 +131,7 @@ jobs:
           # registry cache. Worse, actions/cache does not re-save on an exact key hit, so the
           # stamp would never enter the v2 payload and every hit would pay that rebuild forever.
           # Bumping forces one miss, whose save captures the stamp.
-          key: native-bin-v3-${{ matrix.os }}-${{ hashFiles('src/NovaTerminal.App/native/src/**', 'src/NovaTerminal.App/native/Cargo.toml', 'src/NovaTerminal.App/native/Cargo.lock') }}
+          key: native-bin-v3-${{ matrix.os }}-${{ hashFiles('src/Ntilde.App/native/src/**', 'src/Ntilde.App/native/Cargo.toml', 'src/Ntilde.App/native/Cargo.lock') }}
 
       - name: Install Rust
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
@@ -140,33 +144,43 @@ jobs:
         if: steps.native-bin-cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
-          workspaces: src/NovaTerminal.App/native
+          workspaces: src/Ntilde.App/native
 
       - name: Build Rust (Windows)
-        if: matrix.os == 'windows-latest' && steps.native-bin-cache.outputs.cache-hit != 'true'
-        run: cd src/NovaTerminal.App/native && cargo build --release --locked
+        if: runner.os == 'Windows' && steps.native-bin-cache.outputs.cache-hit != 'true'
+        run: cd src/Ntilde.App/native && cargo build --release --locked
 
       # Linux build also stages the .so into target_linux/release so the
       # cached payload is complete and no separate stage step is needed.
       - name: Build Rust (Linux)
-        if: matrix.os == 'ubuntu-latest' && steps.native-bin-cache.outputs.cache-hit != 'true'
+        # runner.os, not `matrix.os == 'ubuntu-latest'`. Selecting on an exact runner
+        # LABEL means every new Linux label is silently not-Linux: ubuntu-24.04-arm
+        # matched no Build Rust step at all, so the job sailed past with no native
+        # library and would have failed later, somewhere unrelated.
+        if: runner.os == 'Linux' && steps.native-bin-cache.outputs.cache-hit != 'true'
         run: |
-          cd src/NovaTerminal.App/native
+          cd src/Ntilde.App/native
           cargo build --release --locked
           mkdir -p target_linux/release
           cp target/release/librusty_pty.so target_linux/release/
 
       - name: Build Rust (macOS)
-        if: matrix.os == 'macos-latest' && steps.native-bin-cache.outputs.cache-hit != 'true'
-        run: cd src/NovaTerminal.App/native && cargo build --release --locked
+        if: runner.os == 'macOS' && steps.native-bin-cache.outputs.cache-hit != 'true'
+        run: cd src/Ntilde.App/native && cargo build --release --locked
 
       # ── .NET ───────────────────────────────────────────────────────────────────
       - name: Cache .NET SDK
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -184,9 +198,9 @@ jobs:
         run: dotnet build -c ${{ env.CONFIGURATION }} --no-restore
 
       # Upload only the test output directories. src/*/bin/ is 100% duplicated inside
-      # tests/NovaTerminal.App.Tests/bin/ (MSBuild copies all referenced DLLs + executables),
+      # tests/Ntilde.App.Tests/bin/ (MSBuild copies all referenced DLLs + executables),
       # so including it would double the artifact size for no benefit.
-      # VtReportCliTests needs src/NovaTerminal.App/bin/ at runtime — the unit test
+      # VtReportCliTests needs src/Ntilde.App/bin/ at runtime — the unit test
       # job restores it from the test output via a symlink/junction (see below).
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -197,12 +211,12 @@ jobs:
           # "tests/" is stripped from both entries here. All download-artifact steps
           # compensate by specifying path: tests to restore the prefix.
           path: |
-            tests/NovaTerminal.App.Tests/bin/${{ env.CONFIGURATION }}
-            tests/NovaTerminal.Platform.Tests/bin/${{ env.CONFIGURATION }}
-            tests/NovaTerminal.Architecture.Tests/bin/${{ env.CONFIGURATION }}
-            tests/NovaTerminal.VT.Tests/bin/${{ env.CONFIGURATION }}
-            tests/NovaTerminal.Rendering.Tests/bin/${{ env.CONFIGURATION }}
-            tests/NovaTerminal.McpServer.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.App.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.Platform.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.Architecture.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.VT.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.Rendering.Tests/bin/${{ env.CONFIGURATION }}
+            tests/Ntilde.McpServer.Tests/bin/${{ env.CONFIGURATION }}
 
   build_and_unit_tests:
     name: Unit Tests (${{ matrix.os }})
@@ -219,7 +233,23 @@ jobs:
         # macOS-only defect could surface exactly once, at release time, where it blocks the
         # release. That is how #325's port-forward backpressure test went three months
         # unverified on macOS and then failed the first release that ran it.
-        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest"]' || '["windows-latest","ubuntu-latest"]') }}
+        #
+        # ubuntu-24.04-arm is here for EXACTLY that reason, having cost exactly that way
+        # a second time. Linux arm64 had no test coverage outside release.yml's
+        # release_tests, so KittyFrameRetirementTests' millisecond-boundary race (#458)
+        # sat on main for five days, unreachable by any pull request, and surfaced only
+        # because a scratch release was dispatched to test something unrelated. Same
+        # shape as #325, same cost: a platform-only defect that can only be discovered
+        # at the moment it blocks a release.
+        #
+        # ON SCHEDULE AS WELL AS DISPATCH, and that is the difference from macOS above.
+        # Dispatch-only makes a platform *reachable*; it does not make it *checked*,
+        # because it still waits for someone to think of running it - which for arm64
+        # nobody did. The nightly cron already exists, so the same defect would now be
+        # caught within a day instead of at the next release. Still not on pull requests:
+        # a PR-blocking leg on every push is a different cost decision, and this one is
+        # already the cheap 95% of the value.
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["windows-latest","ubuntu-latest","macos-latest","ubuntu-24.04-arm"]' || github.event_name == 'schedule' && '["windows-latest","ubuntu-latest","ubuntu-24.04-arm"]' || '["windows-latest","ubuntu-latest"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -228,8 +258,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -250,7 +286,7 @@ jobs:
           path: tests
 
       # zip artifacts don't preserve Unix execute bits; restore them so the test host and
-      # any app/CLI binaries referenced by tests (NovaTerminal.App, NovaTerminal.Cli) can run.
+      # any app/CLI binaries referenced by tests (Ntilde.App, Ntilde.Cli) can run.
       #
       # Every POSIX runner needs this, not just Linux. While this job was windows+ubuntu only,
       # "Linux" and "not Windows" were the same set; adding macOS separated them, and macOS
@@ -273,17 +309,17 @@ jobs:
       - name: Reconstruct src bin dirs from test output (POSIX)
         if: runner.os != 'Windows'
         run: |
-          mkdir -p src/NovaTerminal.App/bin/Release src/NovaTerminal.Cli/bin/Release
-          cp -rl tests/NovaTerminal.App.Tests/bin/Release/net10.0 src/NovaTerminal.App/bin/Release/net10.0
-          cp -rl tests/NovaTerminal.App.Tests/bin/Release/net10.0 src/NovaTerminal.Cli/bin/Release/net10.0
+          mkdir -p src/Ntilde.App/bin/Release src/Ntilde.Cli/bin/Release
+          cp -rl tests/Ntilde.App.Tests/bin/Release/net10.0 src/Ntilde.App/bin/Release/net10.0
+          cp -rl tests/Ntilde.App.Tests/bin/Release/net10.0 src/Ntilde.Cli/bin/Release/net10.0
 
       - name: Reconstruct src bin dirs from test output (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $src = "tests\NovaTerminal.App.Tests\bin\Release\net10.0"
+          $src = "tests\Ntilde.App.Tests\bin\Release\net10.0"
           # robocopy exits 0 (nothing to copy) or 1 (files copied) on success; >=8 is an error
-          foreach ($dst in @("src\NovaTerminal.App\bin\Release\net10.0", "src\NovaTerminal.Cli\bin\Release\net10.0")) {
+          foreach ($dst in @("src\Ntilde.App\bin\Release\net10.0", "src\Ntilde.Cli\bin\Release\net10.0")) {
             robocopy $src $dst /E /NJH /NJS /NFL /NDL /NC /NS | Out-Null
             if ($LASTEXITCODE -ge 8) { exit $LASTEXITCODE }
           }
@@ -292,7 +328,7 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      # The shell-integration tests under tests/NovaTerminal.App.Tests/CommandAssist/ShellIntegration/Integration
+      # The shell-integration tests under tests/Ntilde.App.Tests/CommandAssist/ShellIntegration/Integration
       # spawn real bash/zsh/fish via the production PTY path. bash is
       # preinstalled on ubuntu-latest; zsh and fish are not on ubuntu-24.04,
       # so install them here -- otherwise ZshShellIntegrationTests and
@@ -312,13 +348,13 @@ jobs:
           set -e
           filter="Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng"
           for proj in VT Rendering Architecture Platform McpServer; do
-            echo "::group::NovaTerminal.$proj.Tests"
-            dotnet test "tests/NovaTerminal.$proj.Tests" -c "$CONFIGURATION" --no-build --no-restore \
+            echo "::group::Ntilde.$proj.Tests"
+            dotnet test "tests/Ntilde.$proj.Tests" -c "$CONFIGURATION" --no-build --no-restore \
               --filter "$filter" --logger "trx;LogFileName=unit_${proj}.trx"
             echo "::endgroup::"
           done
 
-      # The Avalonia-headless suite (NovaTerminal.App.Tests). continue-on-error here tolerates
+      # The Avalonia-headless suite (Ntilde.App.Tests). continue-on-error here tolerates
       # the HANG only; test failures are blocking, via the allowlist gate below.
       #
       # The hang was long recorded here as an upstream framework deadlock — AvaloniaUI/Avalonia#21467,
@@ -348,17 +384,17 @@ jobs:
           SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
         run: |
-          mkdir -p tests/NovaTerminal.App.Tests/TestResults/main
+          mkdir -p tests/Ntilde.App.Tests/TestResults/main
           # tee, because xUnit's "Catastrophic failure" aborts exist only in this output: they
           # kill a whole collection without writing a result, so the trx cannot report them and
           # the gate has to read the log to see them at all.
           set -o pipefail
-          dotnet test tests/NovaTerminal.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
+          dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
             --filter "Category!=Replay&Category!=RenderMetrics&Category!=PtySmoke&Category!=Stress&Category!=GoldenSharedPng&Lane!=PlatformBoot" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
-            --results-directory tests/NovaTerminal.App.Tests/TestResults/main \
+            --results-directory tests/Ntilde.App.Tests/TestResults/main \
             --logger "trx;LogFileName=unit_app.trx" \
-            2>&1 | tee tests/NovaTerminal.App.Tests/TestResults/main/console.log
+            2>&1 | tee tests/Ntilde.App.Tests/TestResults/main/console.log
 
       # Lane!=PlatformBoot above, Lane=PlatformBoot here: these run in a SEPARATE PROCESS on
       # purpose, and the split is the fix for a real bug rather than tidiness.
@@ -379,14 +415,14 @@ jobs:
           SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
         run: |
-          mkdir -p tests/NovaTerminal.App.Tests/TestResults/platformboot
+          mkdir -p tests/Ntilde.App.Tests/TestResults/platformboot
           set -o pipefail
-          dotnet test tests/NovaTerminal.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
+          dotnet test tests/Ntilde.App.Tests -c "$CONFIGURATION" --no-build --no-restore \
             --filter "Lane=PlatformBoot&Category!=GoldenSharedPng" \
             --blame-hang-timeout 5m --blame-hang-dump-type mini \
-            --results-directory tests/NovaTerminal.App.Tests/TestResults/platformboot \
+            --results-directory tests/Ntilde.App.Tests/TestResults/platformboot \
             --logger "trx;LogFileName=unit_app_platformboot.trx" \
-            2>&1 | tee tests/NovaTerminal.App.Tests/TestResults/platformboot/console.log
+            2>&1 | tee tests/Ntilde.App.Tests/TestResults/platformboot/console.log
 
       # Gates the lane above on its own results: any failing test not named in
       # tests/app-tests-known-flaky.txt fails this job, as does a runner-level abort in the
@@ -432,10 +468,10 @@ jobs:
             floor="${rest##*:}"
             echo "::group::$trx"
             "$py" scripts/check-app-tests-baseline.py \
-              "tests/NovaTerminal.App.Tests/TestResults/$dir/$trx.trx" \
+              "tests/Ntilde.App.Tests/TestResults/$dir/$trx.trx" \
               tests/app-tests-known-flaky.txt \
               "$floor" \
-              "tests/NovaTerminal.App.Tests/TestResults/$dir/console.log" || status=1
+              "tests/Ntilde.App.Tests/TestResults/$dir/console.log" || status=1
             echo "::endgroup::"
           done
           exit $status
@@ -444,7 +480,21 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-tests-${{ runner.os }}
+          # runner.arch too, now that two legs of this matrix are Linux. Both would
+          # otherwise upload "unit-tests-Linux".
+          #
+          # Measured rather than assumed, because the documented behaviour and the observed
+          # behaviour disagree: upload-artifact v4's README says names must be unique and a
+          # second upload fails, but the dispatch that verified this PR produced TWO
+          # artifacts both named unit-tests-Linux (1215997 and 1216570 bytes), and both legs
+          # went green. So this is not fixing a red build.
+          #
+          # It is fixing an ambiguous one. These artifacts exist solely so a human can read
+          # the trx, the blame-hang minidump and the tee'd console log after a failure - and
+          # two same-named artifacts mean whoever downloads "unit-tests-Linux" gets one of
+          # the two architectures with no way to tell which. Evidence you cannot attribute
+          # is barely evidence.
+          name: unit-tests-${{ runner.os }}-${{ runner.arch }}
           retention-days: 5
           # *.dmp captures the blame-hang minidump on a teardown hang (#81). console.log is
           # the tee'd App.Tests output, and it is here because it is the only place a
@@ -458,7 +508,7 @@ jobs:
   # Native SSH end-to-end against a real sshd in a container.
   #
   # These tests existed before this job did, and never ran anywhere: every one is a
-  # [DockerFact], which self-skips unless NOVATERM_ENABLE_DOCKER_E2E=1, and nothing in CI set
+  # [DockerFact], which self-skips unless NTILDE_ENABLE_DOCKER_E2E=1, and nothing in CI set
   # it. The suite was written, committed, skipped, and counted as coverage — which is why the
   # test matrix still listed auth, host-key and forwarding as "pending manual" while a
   # Dockerized suite sat next to it. This job is what makes the difference between the two
@@ -486,8 +536,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -525,11 +581,11 @@ jobs:
       # with the docker output attached.
       - name: Test (native SSH Docker E2E)
         env:
-          NOVATERM_ENABLE_DOCKER_E2E: '1'
+          NTILDE_ENABLE_DOCKER_E2E: '1'
           SKIP_RUST_NATIVE_BUILD: '1'
         shell: bash
         run: |
-          dotnet test tests/NovaTerminal.Platform.Tests -c "$CONFIGURATION" --no-build --no-restore \
+          dotnet test tests/Ntilde.Platform.Tests -c "$CONFIGURATION" --no-build --no-restore \
             --filter "Category=DockerE2E" \
             --logger "trx;LogFileName=native_ssh_docker_e2e.trx"
 
@@ -595,7 +651,7 @@ jobs:
         run: dotnet format whitespace --verify-no-changes --no-restore
 
   coverage:
-    name: Coverage (NovaTerminal.VT floor)
+    name: Coverage (Ntilde.VT floor)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [build]
@@ -607,8 +663,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -668,8 +730,8 @@ jobs:
           # exercises a lot of VT (the buffer and reflow scenario suites live there) - so
           # its absence is the main reason the VT figure below understates true coverage.
           for proj in VT Rendering Platform McpServer; do
-            echo "::group::NovaTerminal.$proj.Tests"
-            dotnet test "tests/NovaTerminal.$proj.Tests" -c "$CONFIGURATION" --no-restore \
+            echo "::group::Ntilde.$proj.Tests"
+            dotnet test "tests/Ntilde.$proj.Tests" -c "$CONFIGURATION" --no-restore \
               --filter "$filter" \
               --settings tests/coverage.runsettings \
               --results-directory "coverage/$proj"
@@ -684,13 +746,13 @@ jobs:
       # rather than set aspirationally now. VT gets the only floor because it is the
       # conformance-critical assembly; the other four upload their reports so their numbers
       # are visible before anyone commits to a floor for them.
-      - name: Check coverage floor (NovaTerminal.VT)
+      - name: Check coverage floor (Ntilde.VT)
         shell: pwsh
         run: >-
           ./scripts/check-coverage.ps1
           -ReportDirectory coverage/VT
           -MinimumLinePercent 50
-          -Label NovaTerminal.VT
+          -Label Ntilde.VT
 
       - name: Upload coverage reports
         if: always()
@@ -714,8 +776,14 @@ jobs:
         continue-on-error: true
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -738,8 +806,8 @@ jobs:
         if: steps.download_golden_build_artifact.outcome == 'failure'
         shell: pwsh
         run: |
-          Remove-Item tests\NovaTerminal.App.Tests\bin -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item tests\NovaTerminal.Platform.Tests\bin -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item tests\Ntilde.App.Tests\bin -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item tests\Ntilde.Platform.Tests\bin -Recurse -Force -ErrorAction SilentlyContinue
 
       - name: Download build artifact (retry)
         if: steps.download_golden_build_artifact.outcome == 'failure'
@@ -780,8 +848,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -853,8 +927,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -945,8 +1025,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -1004,8 +1090,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -1062,8 +1154,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -1139,8 +1237,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -1161,7 +1265,7 @@ jobs:
         run: dotnet restore
 
       # -p:SkipCliShim=true matches release.yml's Publish AOT step, and is required rather than
-      # tidy. BuildCliShim invokes NovaTerminal.Cli out of band with -p:BuildProjectReferences=false
+      # tidy. BuildCliShim invokes Ntilde.Cli out of band with -p:BuildProjectReferences=false
       # (that is what breaks the cycle - this project's build is what places the CLI beside it), and
       # the nested invocation carries no RuntimeIdentifier, so it looks for this project's reference
       # assembly at the RID-less obj/Release/net10.0/ref/. A self-contained RID publish writes its
@@ -1172,12 +1276,12 @@ jobs:
       # and would be the wrong thing to embed here anyway - the AOT binary dispatches the CLI modes
       # itself (see Program.cs), which is why released bundles skip it too.
       - name: Publish AOT
-        run: dotnet publish src/NovaTerminal.App/NovaTerminal.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true -o artifacts/publish/${{ matrix.rid }}
+        run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true -o artifacts/publish/${{ matrix.rid }}
 
       # ---- macOS packaging dry run (osx-arm64 only): the same vpk pack invocation
       # ---- release.yml runs, minus the download/upload-release steps. None of this is
       # ---- runnable from a Windows or Linux dev box, so this dispatch lane is the only
-      # ---- way to verify the NovaTerminal.app bundle, the .pkg installer and the osx
+      # ---- way to verify the Ntilde.app bundle, the .pkg installer and the osx
       # ---- feed asset names BEFORE a real tag ships them. The vpk version is pinned to
       # ---- the same 1.2.0 as release.yml and Directory.Packages.props — the three must
       # ---- stay in lockstep.
@@ -1187,7 +1291,7 @@ jobs:
 
       - name: Generate macOS app icon (.icns)
         if: matrix.rid == 'osx-arm64'
-        run: packaging/macos/make-icns.sh src/NovaTerminal.App/Assets/nova_icon.png artifacts/icon/nova_icon.icns
+        run: packaging/macos/make-icns.sh src/Ntilde.App/Assets/ntilde_icon.png artifacts/icon/ntilde_icon.icns
 
       # Same secret-gated signing setup as release.yml's osx-arm64 lane (same action,
       # same gate), so this dispatch lane is also the pre-tag validation of the whole
@@ -1226,13 +1330,13 @@ jobs:
           MAC_NOTARY_PROFILE: ${{ secrets.MAC_NOTARY_PROFILE }}
         run: |
           set -euo pipefail
-          # StripSymbols=true leaves a ~94 MB NovaTerminal.dSYM beside the binary (3x the
+          # StripSymbols=true leaves a ~94 MB Ntilde.dSYM beside the binary (3x the
           # binary's own size). Delete it at the source AND exclude it in vpk: deletion
           # keeps empty dSYM directory skeletons out of the bundle entirely, --exclude
           # (vpk's built-in default covers only .pdb) is defense-in-depth. Nothing else
           # consumes the symbols - the raw publish-dir zip this dSYM used to ship in no
           # longer exists for macOS.
-          rm -rf artifacts/publish/osx-arm64/NovaTerminal.dSYM
+          rm -rf artifacts/publish/osx-arm64/Ntilde.dSYM
           # Same secret-gated signing flags as release.yml (see its comments there);
           # the +guard keeps an empty array valid under set -u on bash 3.2.
           sign_args=()
@@ -1245,15 +1349,15 @@ jobs:
             )
           fi
           vpk pack \
-            --packId NovaTerminalApp \
+            --packId NtildeApp \
             --packVersion 0.0.1-ci \
             --packDir artifacts/publish/osx-arm64 \
-            --mainExe NovaTerminal \
-            --packTitle NovaTerminal \
+            --mainExe Ntilde \
+            --packTitle Ntilde \
             --packAuthors benyblack \
-            --bundleId com.benyblack.NovaTerminal \
-            --icon artifacts/icon/nova_icon.icns \
-            --exclude 'NovaTerminal\.dSYM' \
+            --bundleId com.benyblack.Ntilde \
+            --icon artifacts/icon/ntilde_icon.icns \
+            --exclude 'Ntilde\.dSYM' \
             --outputDir artifacts/velopack-dryrun \
             ${sign_args[@]+"${sign_args[@]}"}
 
@@ -1262,7 +1366,7 @@ jobs:
 
           test -n "$(ls artifacts/velopack-dryrun/*-osx-Setup.pkg 2>/dev/null || true)" || { echo "vpk pack produced no -osx-Setup.pkg" >&2; exit 1; }
           test -n "$(ls artifacts/velopack-dryrun/*-osx-Portable.zip 2>/dev/null || true)" || { echo "vpk pack produced no -osx-Portable.zip" >&2; exit 1; }
-          test -f artifacts/velopack-dryrun/NovaTerminalApp-0.0.1-ci-osx-full.nupkg || { echo "vpk pack produced no full nupkg" >&2; exit 1; }
+          test -f artifacts/velopack-dryrun/NtildeApp-0.0.1-ci-osx-full.nupkg || { echo "vpk pack produced no full nupkg" >&2; exit 1; }
           test -f artifacts/velopack-dryrun/releases.osx.json || { echo "vpk pack produced no releases.osx.json" >&2; exit 1; }
           # StripSymbols leaves the dSYM beside the binary; the rm + --exclude above keep
           # it out of the bundle users download. Pin that: no dSYM entry may appear in
@@ -1286,11 +1390,11 @@ jobs:
           # this one (verified against the macos-packaging-dryrun artifact), and if that ever
           # changes this must fail loudly rather than quietly inspect nothing. The sibling
           # glob assertion above would still pass on a renamed zip, so it cannot cover this.
-          portable_zip=artifacts/velopack-dryrun/NovaTerminalApp-osx-Portable.zip
+          portable_zip=artifacts/velopack-dryrun/NtildeApp-osx-Portable.zip
           test -f "$portable_zip"             || { echo "$portable_zip is missing, so the dSYM leak assertion cannot run - vpk's output naming has changed." >&2; exit 1; }
           portable_listing="$(unzip -l "$portable_zip")"
           if grep -q "dSYM" <<<"$portable_listing"; then
-            echo "NovaTerminal.dSYM leaked into the Portable bundle" >&2
+            echo "Ntilde.dSYM leaked into the Portable bundle" >&2
             exit 1
           fi
 
@@ -1333,7 +1437,7 @@ jobs:
   # slice worth paying for on a PR: one RID, no packaging, no signing.
   #
   # WHAT ACTUALLY FAILS THE BUILD. Not a log scan - `<WarningsAsErrors>IL2026;IL3050</>`
-  # in NovaTerminal.App.csproj, which ILC's own targets forward as `--warnaserr`. The
+  # in Ntilde.App.csproj, which ILC's own targets forward as `--warnaserr`. The
   # publish step below therefore fails on a reintroduced reflection binding without this
   # workflow knowing anything about it, and so does release.yml's publish. This job's
   # contribution is *when*: on the PR, instead of on the tag.
@@ -1424,8 +1528,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-${{ runner.os }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-${{ runner.os }}-
+          # runner.arch, not just runner.os. `runner.os` is "Linux" for BOTH
+          # ubuntu-latest (x64) and ubuntu-24.04-arm, so without the arch an arm64
+          # runner restores the x64 SDK the x64 runner saved and dies on the first
+          # exec with `/home/runner/.dotnet/dotnet: 1: ELF: not found` - a message
+          # that names neither the cache nor the architecture. Found the moment the
+          # arm64 leg first ran.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -1445,12 +1555,12 @@ jobs:
       # not tidy; the long comment on `aot_publish`'s Publish AOT step explains why.
       #
       # -p:TrimmerSingleWarn=false so ILC reports every offending call site instead of
-      # one line per assembly. With the warning promotion in NovaTerminal.App.csproj, a
+      # one line per assembly. With the warning promotion in Ntilde.App.csproj, a
       # reintroduced reflection binding fails HERE, naming the .axaml line.
       - name: Publish AOT (win-x64)
-        run: dotnet publish src/NovaTerminal.App/NovaTerminal.App.csproj -c ${{ env.CONFIGURATION }} -r win-x64 --self-contained true -p:PublishAot=true -p:SkipCliShim=true -p:TrimmerSingleWarn=false -o artifacts/publish/win-x64
+        run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r win-x64 --self-contained true -p:PublishAot=true -p:SkipCliShim=true -p:TrimmerSingleWarn=false -o artifacts/publish/win-x64
 
-      # Start the bundle CI has never started. NOVATERM_APPDATA_ROOT points the app at an
+      # Start the bundle CI has never started. NTILDE_APPDATA_ROOT points the app at an
       # empty directory, so this runs from a pristine profile - no settings.json, no
       # themes, no session to restore. That is deliberately the condition #443 was
       # reported from ("installed the latest release on a new windows machine"), and it is
@@ -1467,14 +1577,14 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $root = Join-Path $env:RUNNER_TEMP 'nova-smoke-profile'
+          $root = Join-Path $env:RUNNER_TEMP 'ntilde-smoke-profile'
           New-Item -ItemType Directory -Force -Path $root | Out-Null
-          $env:NOVATERM_APPDATA_ROOT = $root
+          $env:NTILDE_APPDATA_ROOT = $root
           $errorFile = Join-Path $root 'logs/startup_error.txt'
           $debugLog  = Join-Path $root 'logs/debug.log'
 
-          $exe = Join-Path $PWD 'artifacts/publish/win-x64/NovaTerminal.exe'
-          if (-not (Test-Path $exe)) { throw "The publish produced no NovaTerminal.exe at $exe." }
+          $exe = Join-Path $PWD 'artifacts/publish/win-x64/Ntilde.exe'
+          if (-not (Test-Path $exe)) { throw "The publish produced no Ntilde.exe at $exe." }
 
           $proc = Start-Process -FilePath $exe -PassThru
           Write-Output "Started pid $($proc.Id); watching for 45s."
@@ -1507,7 +1617,7 @@ jobs:
           }
 
           # Program.cs logs three lines at startup, and this asserts on the THIRD, not the
-          # first. The first ("NovaTerminal started with args: ...") never reaches the file -
+          # first. The first ("Ntilde started with args: ...") never reaches the file -
           # not in CI and not in a local install either - so the obvious assertion is a
           # guaranteed false failure. That is its own bug, worth fixing separately; it is not
           # this gate's job to depend on it.
@@ -1515,10 +1625,10 @@ jobs:
           # Build: is the better anchor anyway. It proves managed Main got through its startup
           # sequence, and it proves DescribeBuild resolved the executable path - the one
           # remaining IL3000 in the tree is Assembly.Location in that very method, and
-          # `path=...NovaTerminal.exe` appearing here is the standing proof that
+          # `path=...Ntilde.exe` appearing here is the standing proof that
           # Environment.ProcessPath carries it and the warned fallback never runs.
-          if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*NovaTerminal\.exe' -Quiet)) {
-            throw "$debugLog carries no 'Build: ... path=...NovaTerminal.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
+          if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
+            throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
           }
 
           # One assertion beyond "Main ran": the window and a terminal view actually came up.
@@ -1554,7 +1664,7 @@ jobs:
         with:
           name: aot-gate-smoke-logs
           retention-days: 7
-          path: ${{ runner.temp }}/nova-smoke-profile/logs
+          path: ${{ runner.temp }}/ntilde-smoke-profile/logs
           if-no-files-found: ignore
 
   # ===========================================================================
@@ -1594,7 +1704,7 @@ jobs:
   #
   # Artifact permissions are not preserved by upload/download-artifact. That is
   # harmless here: the .deb carries its own internal modes in its data tarball, and
-  # smoke-test.sh already does `cp "$img" /tmp/nova.AppImage && chmod +x` before
+  # smoke-test.sh already does `cp "$img" /tmp/ntilde.AppImage && chmod +x` before
   # launching an AppImage.
   #
   # x64 only: this lane exists to catch asset-naming and layout mistakes, which are
@@ -1639,10 +1749,16 @@ jobs:
       # Dependency-free path filter (no third-party action - this repo uses none
       # for path filtering elsewhere). workflow_dispatch and push always run the
       # full job; pull_request only runs it when the diff against the PR's merge
-      # base touches packaging/linux/**, a workflow file, or one of the two other
-      # inputs build-deb.sh reads directly (LICENSE, the app icon) - a change to
-      # either would otherwise land invisibly, since neither lives under
+      # base touches packaging/linux/** or packaging/arch/**, a workflow file, or one
+      # of the two other inputs build-deb.sh reads directly (LICENSE, the app icon) -
+      # a change to either would otherwise land invisibly, since neither lives under
       # packaging/linux/.
+      #
+      # ONE detect job gates BOTH packaging lanes, deliberately. build-arch.sh reads
+      # build-deb.sh's dlopen table (that is the mechanism keeping the two dependency
+      # lists from drifting), so a change to either lane can break the other and both
+      # must run. A second, arch-only detect job would have to re-state that coupling
+      # and could then disagree with this one.
       - name: Detect packaging changes
         id: detect
         # Both values reach the script through env, never through `${{ }}` inside the
@@ -1671,7 +1787,7 @@ jobs:
           # pipeline non-zero, this `if` false, and the job skip itself SILENTLY -
           # the exact failure class this gate exists to prevent. smoke-test.sh and
           # build-deb.sh both avoid the same construct for the same reason.
-          if grep -qE '^(packaging/linux/|\.github/workflows/[^/]+\.ya?ml$|LICENSE$|src/NovaTerminal\.App/Assets/nova_icon\.png$)' <<<"$changed"; then
+          if grep -qE '^(packaging/(linux|arch)/|\.github/workflows/[^/]+\.ya?ml$|LICENSE$|src/Ntilde\.App/Assets/ntilde_icon\.png$)' <<<"$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             echo "Packaging or workflow files changed - running the full job."
           else
@@ -1685,7 +1801,7 @@ jobs:
     if: needs.linux_packaging_detect.outputs.run == 'true'
     runs-on: ubuntu-latest
     # The glibc floor. See the block comment above - this tag, not the runner
-    # image, is what defines the minimum distro NovaTerminal's Linux build
+    # image, is what defines the minimum distro Ntilde's Linux build
     # supports. Do not bump it without deciding to drop a distro.
     container:
       image: ubuntu:22.04
@@ -1926,11 +2042,11 @@ jobs:
       - name: Rust incremental build cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
-          workspaces: src/NovaTerminal.App/native
+          workspaces: src/Ntilde.App/native
 
       - name: Build Rust native
         run: |
-          cd src/NovaTerminal.App/native
+          cd src/Ntilde.App/native
           cargo build --release --locked
           mkdir -p target_linux/release
           cp target/release/librusty_pty.so target_linux/release/
@@ -1946,7 +2062,7 @@ jobs:
         env:
           SKIP_RUST_NATIVE_BUILD: "1"
         run: >-
-          dotnet publish src/NovaTerminal.App/NovaTerminal.App.csproj
+          dotnet publish src/Ntilde.App/Ntilde.App.csproj
           -c ${{ env.CONFIGURATION }} -r linux-x64 --self-contained true
           -p:PublishAot=true -p:SkipCliShim=true
           -p:Version=0.0.1-ci -p:InformationalVersion=0.0.1-ci
@@ -1962,7 +2078,7 @@ jobs:
       # note on fontconfig), so printing it makes an image-driven change visible
       # in the log instead of only showing up as a smoke-test failure.
       - name: Show derived Depends
-        run: dpkg-deb -f artifacts/linux/novaterminal_0.0.1~ci-1_amd64.deb Depends
+        run: dpkg-deb -f artifacts/linux/ntilde_0.0.1~ci-1_amd64.deb Depends
 
       # vpk pinned to 1.2.0, in lockstep with Directory.Packages.props and the two
       # other install sites in these workflows.
@@ -1977,7 +2093,7 @@ jobs:
       # 0.0.1-ci because vpk rejects anything below 0.0.1. No --delta concerns here:
       # there is no prior release in this scratch output directory, so a full-only
       # pack is expected and correct for a dry run.
-      # StripSymbols=true (NovaTerminal.App.csproj) emits a ~79 MB NovaTerminal.dbg
+      # StripSymbols=true (Ntilde.App.csproj) emits a ~79 MB Ntilde.dbg
       # beside the AOT binary on Linux - the same class of leak the macOS lane
       # already guards against for its dSYM (delete at the source AND --exclude in
       # the pack, see that job's comments). build-deb.sh already deletes *.dbg
@@ -1997,15 +2113,15 @@ jobs:
         run: |
           rm -f artifacts/publish/linux-x64/*.pdb artifacts/publish/linux-x64/*.dbg
           vpk pack \
-            --packId NovaTerminalApp \
+            --packId NtildeApp \
             --packVersion 0.0.1-ci \
             --packDir artifacts/publish/linux-x64 \
-            --mainExe NovaTerminal \
-            --packTitle NovaTerminal \
+            --mainExe Ntilde \
+            --packTitle Ntilde \
             --packAuthors benyblack \
             --channel linux-x64 \
-            --icon src/NovaTerminal.App/Assets/nova_icon.png \
-            --exclude '.*\.pdb|NovaTerminal\.dbg' \
+            --icon src/Ntilde.App/Assets/ntilde_icon.png \
+            --exclude '.*\.pdb|Ntilde\.dbg' \
             --outputDir artifacts/linux
 
       # Mirrors release.yml's post-pack assertions, so a silent vpk behaviour change
@@ -2021,11 +2137,11 @@ jobs:
           cd artifacts/linux
           ls -la
           test -n "$(ls ./*.AppImage 2>/dev/null)" || { echo "vpk pack produced no .AppImage" >&2; exit 1; }
-          test -f novaterminal_0.0.1~ci-1_amd64.deb || { echo "no .deb (or wrong prerelease version mapping)" >&2; exit 1; }
-          test -f NovaTerminalApp-0.0.1-ci-linux-x64-full.nupkg || { echo "no linux-x64 full nupkg" >&2; exit 1; }
+          test -f ntilde_0.0.1~ci-1_amd64.deb || { echo "no .deb (or wrong prerelease version mapping)" >&2; exit 1; }
+          test -f NtildeApp-0.0.1-ci-linux-x64-full.nupkg || { echo "no linux-x64 full nupkg" >&2; exit 1; }
           test -f releases.linux-x64.json || { echo "no releases.linux-x64.json" >&2; exit 1; }
-          dpkg-deb --contents novaterminal_0.0.1~ci-1_amd64.deb
-          # StripSymbols leaves NovaTerminal.dbg beside the binary; the rm + --exclude
+          dpkg-deb --contents ntilde_0.0.1~ci-1_amd64.deb
+          # StripSymbols leaves Ntilde.dbg beside the binary; the rm + --exclude
           # in the Pack step above keep it out of what users/updaters download. Pin
           # that here too: no .dbg entry may appear in the full nupkg at all - a
           # .nupkg is a plain zip, so this mirrors the macOS lane's dSYM leak
@@ -2048,9 +2164,9 @@ jobs:
           #      linux_packaging_detect).
           command -v unzip >/dev/null \
             || { echo "unzip is not installed, so the .dbg leak assertion cannot run. Add it back to the container toolchain step - do not let this check silently no-op." >&2; exit 1; }
-          nupkg_listing="$(unzip -l NovaTerminalApp-0.0.1-ci-linux-x64-full.nupkg)"
+          nupkg_listing="$(unzip -l NtildeApp-0.0.1-ci-linux-x64-full.nupkg)"
           if grep -q '\.dbg' <<<"$nupkg_listing"; then
-            echo "NovaTerminal.dbg leaked into the linux-x64 full nupkg" >&2
+            echo "Ntilde.dbg leaked into the linux-x64 full nupkg" >&2
             exit 1
           fi
 
@@ -2118,3 +2234,179 @@ jobs:
         run: |
           chmod +x packaging/linux/*.sh
           packaging/linux/smoke-test.sh artifacts/linux
+
+  # ===========================================================================
+  # The Arch / AUR lane. Mirrors linux_packaging_smoke's shape - runner, no
+  # `container:`, because smoke-test.sh starts its own containers as its entire
+  # test premise and a `container:` job has no docker daemon to do that with.
+  #
+  # WHY IT TESTS A PUBLISHED RELEASE RATHER THAN THE DRY-RUN BUILD, unlike every
+  # other job in this lane: the AUR package does not build Ntilde, it
+  # repackages a published release tarball. That tarball IS its input. The
+  # linux-packaging dry run produces a 0.0.1-ci .deb and AppImage but no tarball,
+  # and a PKGBUILD generated at 0.0.1-ci would point at release URLs that do not
+  # exist - so pointing this at the dry-run artifact would mean faking the one
+  # thing the package actually consumes. Testing the newest stable release instead
+  # exercises exactly what a user would install.
+  #
+  # The cost, stated plainly: this job depends on an external, moving input, so it
+  # can fail for reasons outside the PR (a yanked release, a GitHub outage). That
+  # is the trade - the alternative is a lane that never touches a real release
+  # until the day it publishes one to the AUR.
+  arch_packaging:
+    name: Arch Packaging (AUR dry run)
+    needs: [linux_packaging_detect]
+    if: needs.linux_packaging_detect.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    # Three Arch containers that each pacman-install their own tooling, plus a
+    # ~28 MB release download. Nothing is compiled.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tags, not just the branch: --source-ref resolves the release tag's blobs
+          # via `git show`, and the default shallow checkout fetches no tags at all -
+          # the generator would fail with "does not resolve in ...".
+          fetch-depth: 0
+
+      # In archlinux:base because of ONE tool: vercmp. Without it test-build-arch.sh
+      # SKIPS its prerelease-ordering assertions - and those are precisely the ones
+      # justifying why the Arch version mapping differs from the Debian lane's '~'.
+      # Running these on the bare runner would pass while asserting nothing about the
+      # thing most likely to be got wrong.
+      - name: Generator tests
+        run: |
+          set -euo pipefail
+          chmod +x packaging/arch/*.sh packaging/linux/*.sh
+          docker run --rm -v "$PWD:/w:ro" -w /w archlinux:base bash -euo pipefail -c '
+            pacman -Syu --noconfirm --needed python git >/dev/null
+            command -v vercmp >/dev/null || { echo "vercmp missing - the ordering assertions would silently skip" >&2; exit 1; }
+            packaging/arch/test-build-arch.sh
+          '
+
+      - name: Resolve the newest published stable release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Prereleases excluded on purpose: the AUR package tracks stable. The
+          # generator maps a prerelease correctly (0.8.0-rc.1 -> 0.8.0rc1, ordered
+          # below 0.8.0 - asserted in test-build-arch.sh), but publishing rcs to the
+          # AUR would churn users, so this lane gates what actually ships.
+          tag="$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName -q '.[0].tagName')"
+          [[ -n "$tag" ]] \
+            || { echo "::error::no published stable release to build an AUR package from" >&2; exit 1; }
+          echo "Testing against $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          # TRANSITIONAL (remove after the first Ntilde stable release ships): the rebrand
+          # renamed the release assets and the packaging source files, so an end-to-end dry
+          # run against a pre-rebrand release cannot pass. Skip with a warning instead of
+          # failing the PR lane; test-build-arch.sh above still covers the generator.
+          if gh release view "$tag" --json assets -q '.assets[].name' | grep -q '^ntilde-linux-x64-'; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Newest stable release $tag predates the Ntilde rebrand (its assets are NovaTerminal-*, and its tree still has packaging/linux/nova.desktop). Skipping the end-to-end AUR dry run until the first Ntilde stable release; the generator unit tests above still ran."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download the release tarball
+        if: steps.rel.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --pattern "ntilde-linux-x64-*.tar.gz" --dir artifacts/arch
+          ls -la artifacts/arch
+          test -f "artifacts/arch/ntilde-linux-x64-$TAG.tar.gz" \
+            || { echo "::error::the x64 tarball is not named as expected for $TAG" >&2; exit 1; }
+
+      # Generated INSIDE an Arch container rather than on the runner, for one
+      # reason: makepkg. Off-Arch, build-arch.sh emits the PKGBUILD and skips
+      # .SRCINFO with a note - and .SRCINFO is the file the AUR rejects a push
+      # without, so generating it anywhere the real publish would not is how it
+      # comes to be untested.
+      #
+      # AS AN UNPRIVILEGED USER, because makepkg refuses to run as root and a
+      # container is root by default. The first CI run of this lane failed exactly
+      # there. Same `useradd builder` shape smoke-test.sh uses for its makepkg phase.
+      - name: Generate AUR sources
+        if: steps.rel.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.rel.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # QUOTED heredoc, with the tag reaching the container as DATA via a file read
+          # with `read -r` - never interpolated into script text. The exposure here is
+          # smaller than release.yml's (this tag comes from `gh release list` on this
+          # repository, not from a dispatch input), but the rule is the same one this
+          # repo already states for `run:` blocks: a tag is data, and generating shell
+          # source from it is how it stops being data. Kept identical to release.yml so
+          # neither becomes the exception someone later cites as precedent.
+          printf '%s\n' "$TAG" > /tmp/gen-aur.args
+          cat > /tmp/gen-aur.sh <<'EOF'
+          set -euo pipefail
+          IFS= read -r TAG < /gen.args
+          [[ -n "$TAG" ]] || { echo "no tag passed into the container" >&2; exit 1; }
+          # The checkout carries the runner user's uid, which builder is not; without
+          # this, every git command refuses with "detected dubious ownership" and
+          # --source-ref fails in a way that reads like a missing tag.
+          git config --global --add safe.directory /w
+          packaging/arch/build-arch.sh "$TAG" artifacts/aur --tarball "artifacts/arch/ntilde-linux-x64-$TAG.tar.gz" --source-ref "$TAG"
+          EOF
+          cat /tmp/gen-aur.sh
+          # HOST_UID mapped for the same reason smoke-test.sh maps it: /w is a bind
+          # mount, so what the container writes is owned by that uid on the host. This
+          # lane only reads the result back, so a mismatch would not fail here - which
+          # is exactly why it is worth matching release.yml, where the runner must
+          # write into this directory and a stranger uid locks it out.
+          docker run --rm -v "$PWD:/w" -v /tmp/gen-aur.sh:/gen.sh:ro -v /tmp/gen-aur.args:/gen.args:ro -w /w \
+            -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+            archlinux:base-devel bash -euo pipefail -c '
+            pacman -Syu --noconfirm --needed git >/dev/null
+            uid="${HOST_UID:-1000}"
+            gid="${HOST_GID:-1000}"
+            if [ "$uid" = "0" ]; then uid=1000; gid=1000; fi
+            groupadd -g "$gid" builder 2>/dev/null || true
+            useradd -m -u "$uid" -g "$gid" builder 2>/dev/null || useradd -m -u "$uid" builder
+            mkdir -p /w/artifacts/aur
+            chown -R "$uid":"$gid" /w/artifacts/aur
+            su builder -c "bash /gen.sh"
+          '
+          # -s, not -f. A failed `makepkg --printsrcinfo > .SRCINFO` leaves a
+          # ZERO-BYTE .SRCINFO behind, because the redirection creates the file
+          # before makepkg ever runs - so `test -f` would pass on metadata that says
+          # nothing. build-arch.sh now removes it on failure; this asserts that
+          # outcome rather than trusting it.
+          test -s artifacts/aur/PKGBUILD || { echo "::error::no PKGBUILD generated" >&2; exit 1; }
+          test -s artifacts/aur/.SRCINFO || { echo "::error::no .SRCINFO generated (makepkg absent, or ran as root)" >&2; exit 1; }
+          grep -q '^pkgbase = ntilde-bin$' artifacts/aur/.SRCINFO \
+            || { echo "::error::.SRCINFO is not a ntilde-bin srcinfo" >&2; exit 1; }
+          echo "--- PKGBUILD ---"; cat artifacts/aur/PKGBUILD
+          echo "--- .SRCINFO ---"; cat artifacts/aur/.SRCINFO
+
+      # The real gate: makepkg, then a pristine archlinux:base that installs the
+      # package and nothing else, then an Xvfb launch. See packaging/arch/smoke-test.sh.
+      - name: Smoke test (Arch containers)
+        if: steps.rel.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          chmod +x packaging/arch/*.sh packaging/linux/*.sh
+          packaging/arch/smoke-test.sh artifacts/aur
+
+      # if: always() so a failure above still leaves the generated sources
+      # downloadable for triage - they are small and are the first thing anyone
+      # investigating this lane wants to read.
+      - name: Upload generated AUR sources
+        if: always() && steps.rel.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-dryrun
+          retention-days: 5
+          path: |
+            artifacts/aur/PKGBUILD
+            artifacts/aur/.SRCINFO
