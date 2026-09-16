@@ -3732,7 +3732,7 @@ namespace Ntilde.Controls
                 return null;
             }
         }
-        private TerminalSettings BuildEffectiveSettings(TerminalSettings settings)
+        internal TerminalSettings BuildEffectiveSettings(TerminalSettings settings)
         {
             // We create a "copy" for the view to use, but we only override specific visual fields
             return new TerminalSettings
@@ -3746,6 +3746,7 @@ namespace Ntilde.Controls
                 // Inherit everything else from global
                 MaxHistory = settings.MaxHistory,
                 WindowOpacity = settings.WindowOpacity,
+                UiScale = settings.UiScale,
                 BlurEffect = settings.BlurEffect,
                 BackgroundImagePath = settings.BackgroundImagePath,
                 BackgroundImageOpacity = settings.BackgroundImageOpacity,

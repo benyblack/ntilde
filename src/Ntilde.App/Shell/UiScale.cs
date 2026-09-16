@@ -111,35 +111,60 @@ public static class UiScale
     /// Grows a fixed-size window's requested size and minimums by <see cref="Current"/> so the
     /// logical room its XAML was designed for survives the layout transform: an 880-DIP-wide
     /// window under 200% would otherwise offer 440 DIPs and clip its own content (the Interface
-    /// scale slider included). Clamped to the primary screen's working area when that is known.
-    /// Call it once from the window's constructor, after InitializeComponent; a NaN dimension
-    /// (SizeToContent) is left alone. A no-op at 100%.
+    /// scale slider included). When the primary screen's working area cannot hold the scaled
+    /// window, the scale is reduced to what fits (never below 100%) and the window is pinned at
+    /// that reduced scale via <see cref="PinScale"/> - capping only the outer size would bring the
+    /// clipping straight back. Returns the scale the window ended up with. Call it once from the
+    /// window's constructor, after InitializeComponent; a NaN dimension (SizeToContent) is left
+    /// alone. A no-op at 100%.
     /// </summary>
-    public static void FitWindow(Window window) => FitWindow(window, TryGetWorkingAreaDips(window));
+    public static double FitWindow(Window window) => FitWindow(window, TryGetWorkingAreaDips(window));
 
-    internal static void FitWindow(Window window, Size? workingArea)
+    internal static double FitWindow(Window window, Size? workingArea)
     {
         ArgumentNullException.ThrowIfNull(window);
         double scale = Current;
+
+        if (workingArea is { } area && scale > Default)
+        {
+            double fit = scale;
+            if (IsFixed(window.Width)) fit = Math.Min(fit, area.Width / window.Width);
+            if (IsFixed(window.Height)) fit = Math.Min(fit, area.Height / window.Height);
+            fit = Math.Max(fit, Default);
+
+            if (fit < scale - 0.0001)
+            {
+                scale = fit;
+                PinScale(window, scale);
+            }
+        }
+
         if (Math.Abs(scale - Default) < 0.0001)
         {
-            return;
+            return scale;
         }
 
         window.Width = Scaled(window.Width, scale);
         window.Height = Scaled(window.Height, scale);
         window.MinWidth = Scaled(window.MinWidth, scale);
         window.MinHeight = Scaled(window.MinHeight, scale);
-
-        if (workingArea is { } area)
-        {
-            if (!double.IsNaN(window.Width)) window.Width = Math.Min(window.Width, area.Width);
-            if (!double.IsNaN(window.Height)) window.Height = Math.Min(window.Height, area.Height);
-            // Minimums shrink with the cap, or the platform refuses the smaller size.
-            window.MinWidth = Math.Min(window.MinWidth, area.Width);
-            window.MinHeight = Math.Min(window.MinHeight, area.Height);
-        }
+        return scale;
     }
+
+    /// <summary>
+    /// Holds <paramref name="window"/> at <paramref name="scale"/> regardless of later
+    /// <see cref="Apply"/> calls: a window-level resource of the same key shadows the application
+    /// one the Window theme binds to. Used by the Settings window (so the slider does not run away
+    /// from the pointer) and by <see cref="FitWindow"/> when the screen forces a smaller scale.
+    /// </summary>
+    public static void PinScale(Window window, double scale)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        double clamped = Clamp(scale);
+        window.Resources[TransformResourceKey] = new ScaleTransform(clamped, clamped);
+    }
+
+    private static bool IsFixed(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value > 0;
 
     private static double Scaled(double value, double scale)
         => double.IsNaN(value) || double.IsInfinity(value) || value <= 0 ? value : value * scale;

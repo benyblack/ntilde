@@ -2,6 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Ntilde.Shell;
 
@@ -160,23 +161,73 @@ public sealed class UiScaleTests
     }
 
     /// <summary>
-    /// A window must never be asked to be larger than the screen it opens on; the minimums shrink
-    /// with it, or the platform would refuse the smaller size.
+    /// A window must never be asked to be larger than the screen it opens on. Capping the outer
+    /// size alone would bring the clipping back (Codex on PR #466: a 1920px display at 200% OS
+    /// scaling is ~960 DIPs, so Settings at 200% would get 480 logical DIPs and lose the slider),
+    /// so the scale itself is reduced to what fits and the window is pinned at that reduced
+    /// scale: full logical room, smaller than the rest of the app, and the slider stays reachable.
     /// </summary>
     [AvaloniaFact]
-    public void FitWindow_ClampsToTheWorkingArea_IncludingMinimums()
+    public void FitWindow_ReducesTheScaleAndPinsTheWindow_WhenTheScreenCannotFitIt()
     {
         UiScale.Apply(2.0);
         try
         {
             var window = new Window { Width = 880, Height = 620, MinWidth = 780, MinHeight = 520 };
 
-            UiScale.FitWindow(window, workingArea: new Size(1600, 1000));
+            double applied = UiScale.FitWindow(window, workingArea: new Size(1000, 1000));
 
-            Assert.Equal(1600, window.Width, precision: 6);
-            Assert.Equal(1000, window.Height, precision: 6);
-            Assert.Equal(1560, window.MinWidth, precision: 6);
-            Assert.Equal(1000, window.MinHeight, precision: 6);
+            double expected = 1000.0 / 880.0;
+            Assert.Equal(expected, applied, precision: 4);
+            Assert.Equal(1000, window.Width, precision: 3);
+            Assert.Equal(620 * expected, window.Height, precision: 3);
+            Assert.Equal(780 * expected, window.MinWidth, precision: 3);
+            Assert.Equal(520 * expected, window.MinHeight, precision: 3);
+
+            Assert.True(window.Resources.TryGetResource(UiScale.TransformResourceKey, null, out object? pinned));
+            var transform = Assert.IsType<ScaleTransform>(pinned);
+            Assert.Equal(expected, transform.ScaleX, precision: 4);
+            Assert.Equal(expected, transform.ScaleY, precision: 4);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
+    [AvaloniaFact]
+    public void FitWindow_ReturnsTheCurrentScale_AndLeavesTheWindowUnpinned_WhenItFits()
+    {
+        UiScale.Apply(1.5);
+        try
+        {
+            var window = new Window { Width = 880, Height = 620 };
+
+            double applied = UiScale.FitWindow(window, workingArea: new Size(2000, 1500));
+
+            Assert.Equal(1.5, applied, precision: 6);
+            Assert.Equal(1320, window.Width, precision: 3);
+            Assert.False(window.Resources.ContainsKey(UiScale.TransformResourceKey), "a window that fits previews live and must not be pinned");
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
+    /// <summary>The reduction never goes below 100%: a window too big for the screen at 100% is not this feature's problem.</summary>
+    [AvaloniaFact]
+    public void FitWindow_NeverReducesBelowOneHundredPercent()
+    {
+        UiScale.Apply(1.5);
+        try
+        {
+            var window = new Window { Width = 880, Height = 620 };
+
+            double applied = UiScale.FitWindow(window, workingArea: new Size(600, 400));
+
+            Assert.Equal(1.0, applied, precision: 6);
+            Assert.Equal(880, window.Width, precision: 3);
         }
         finally
         {
