@@ -1153,12 +1153,12 @@ jobs:
           fi
           # A workflow_dispatch re-run can target a revision older than the lane; on
           # such a ref the template does not exist and skipping is correct.
-          template="packaging/homebrew/Casks/novaterminal.rb"
+          template="packaging/homebrew/Casks/ntilde.rb"
           if [[ ! -f "$template" ]]; then
             echo "No $template at this ref; skipping the tap update."
             exit 0
           fi
-          zip="artifacts/velopack/NovaTerminal-osx-arm64-$RELEASE_TAG.zip"
+          zip="artifacts/velopack/ntilde-osx-arm64-$RELEASE_TAG.zip"
           if [[ ! -f "$zip" ]]; then
             echo "The pack step produced no $zip; refusing to guess a hash." >&2
             exit 1
@@ -1170,22 +1170,22 @@ jobs:
           git clone "https://x-access-token:$TAP_TOKEN@github.com/$TAP_REPO.git" "$work/tap"
           mkdir -p "$work/tap/Casks"
           sed -e "s/__VERSION__/$RELEASE_VERSION/" -e "s/__SHA256__/$sha/" \
-            "$template" > "$work/tap/Casks/novaterminal.rb"
+            "$template" > "$work/tap/Casks/ntilde.rb"
           # A template that stops being valid Ruby must fail this release lane, not
           # every tap user's `brew install`.
-          ruby -c "$work/tap/Casks/novaterminal.rb" >/dev/null
+          ruby -c "$work/tap/Casks/ntilde.rb" >/dev/null
 
           cd "$work/tap"
-          git add Casks/novaterminal.rb
+          git add Casks/ntilde.rb
           # --cached, not plain diff: a first-ever cask is untracked until the add,
           # and a fresh clone plus rewrite of an unchanged cask must push nothing.
           if git diff --cached --quiet; then
             echo "The tap cask already points at $RELEASE_VERSION; nothing to push."
             exit 0
           fi
-          git config user.name "novaterminal-release-bot"
+          git config user.name "ntilde-release-bot"
           git config user.email "actions@users.noreply.github.com"
-          git commit -m "novaterminal $RELEASE_VERSION"
+          git commit -m "ntilde $RELEASE_VERSION"
           git push origin HEAD
 
   # ===========================================================================

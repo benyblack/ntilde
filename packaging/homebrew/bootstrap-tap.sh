@@ -29,16 +29,16 @@ if [[ "$version" == *-* ]]; then
 fi
 
 here="$(cd "$(dirname "$0")" && pwd)"
-template="$here/Casks/novaterminal.rb"
+template="$here/Casks/ntilde.rb"
 
-asset="NovaTerminal-osx-arm64-$tag.zip"
-url="https://github.com/benyblack/NovaTerminal/releases/download/$tag/$asset"
+asset="ntilde-osx-arm64-$tag.zip"
+url="https://github.com/benyblack/ntilde/releases/download/$tag/$asset"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 echo "Downloading $url"
-gh release download "$tag" --repo benyblack/NovaTerminal --pattern "$asset" --dir "$tmp" --clobber
+gh release download "$tag" --repo benyblack/ntilde --pattern "$asset" --dir "$tmp" --clobber
 if [[ ! -f "$tmp/$asset" ]]; then
   echo "release $tag carries no $asset - is this a tag with published macOS assets?" >&2
   exit 1
@@ -52,14 +52,14 @@ fi
 echo "sha256($asset) = $sha"
 
 echo "Creating $tap (continues if it already exists)"
-gh repo create "$tap" --public --description "Homebrew tap for NovaTerminal" || true
+gh repo create "$tap" --public --description "Homebrew tap for Ntilde" || true
 
 git clone "https://github.com/$tap.git" "$tmp/tap"
 mkdir -p "$tmp/tap/Casks"
-sed -e "s/__VERSION__/$version/" -e "s/__SHA256__/$sha/" "$template" > "$tmp/tap/Casks/novaterminal.rb"
+sed -e "s/__VERSION__/$version/" -e "s/__SHA256__/$sha/" "$template" > "$tmp/tap/Casks/ntilde.rb"
 # Same guard as the release lane: a broken template must fail here, not at brew install.
 if command -v ruby >/dev/null 2>&1; then
-  ruby -c "$tmp/tap/Casks/novaterminal.rb"
+  ruby -c "$tmp/tap/Casks/ntilde.rb"
 fi
 
 cd "$tmp/tap"
@@ -69,8 +69,8 @@ if git diff --quiet; then
 fi
 git config user.name "$(gh api user --jq .login)"
 git config user.email "$(gh api user --jq .id)+$(gh api user --jq .login)@users.noreply.github.com"
-git add Casks/novaterminal.rb
-git commit -m "novaterminal $version"
+git add Casks/ntilde.rb
+git commit -m "ntilde $version"
 git push origin HEAD
 
 # brew strips the homebrew- prefix from the repo name to form the tap identifier:
@@ -83,4 +83,4 @@ fi
 tap_id="${tap%%/*}/$repo_part"
 echo
 echo "Done. Install with:"
-echo "  brew install --cask $tap_id/novaterminal"
+echo "  brew install --cask $tap_id/ntilde"
