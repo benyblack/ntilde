@@ -20,9 +20,11 @@ The **Command Palette** is the central hub for accessing all features and comman
   size. You can also customize your preferred font family in Settings.
 - **Interface scale:** The terminal font size leaves the rest of the app alone. To
   make tabs, sidebars, dialogs and Settings itself larger on a dense display, use
-  Settings → Appearance → Window → *Interface scale* (80%–200%). It previews live
-  and applies to every window; the terminal grows with it, on top of its font size.
-  Context menus and tooltips currently stay at 100%.
+  Settings → Appearance → Window → *Interface scale* (80%–200%). The main window
+  previews it live while you drag; the Settings window itself picks it up the next
+  time it opens. The terminal grows with it, on top of its font size, and re-renders
+  its glyphs at the new density so text stays sharp. Context menus and tooltips
+  currently stay at 100%.
 - **Shortcuts:** Every shortcut in this manual is the default. Settings → Shortcuts
   lists them all and lets you rebind them.
 

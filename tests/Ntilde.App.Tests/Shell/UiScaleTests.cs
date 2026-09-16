@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -30,6 +31,31 @@ public sealed class UiScaleTests
     public void Settings_DefaultToAnUnscaledInterface()
     {
         Assert.Equal(1.0, new TerminalSettings().UiScale);
+    }
+
+    /// <summary>
+    /// Consumers that rasterize at device density (the terminal's glyph atlas) need to hear about
+    /// a change; the value they get is the clamped one that was actually applied. AvaloniaFact,
+    /// not Fact: Apply touches Application.Resources and must run on the UI thread - as a plain
+    /// Fact this test ran on an xunit worker thread and poisoned the media context for 29 later
+    /// window tests.
+    /// </summary>
+    [AvaloniaFact]
+    public void Apply_RaisesChanged_WithTheClampedScale()
+    {
+        double? observed = null;
+        EventHandler<double> handler = (_, scale) => observed = scale;
+        UiScale.Changed += handler;
+        try
+        {
+            UiScale.Apply(10.0);
+            Assert.Equal(UiScale.Maximum, observed);
+        }
+        finally
+        {
+            UiScale.Changed -= handler;
+            UiScale.Apply(1.0);
+        }
     }
 
     [AvaloniaFact]

@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Threading;
 
 namespace Ntilde.Shell;
 
@@ -21,9 +22,12 @@ namespace Ntilde.Shell;
 /// </para>
 /// <para>
 /// A layout transform scales the terminal pane too - a terminal at font size 14 under 125% renders
-/// like 17.5 - which is how display scaling behaves and keeps one mental model. Popups (context
-/// menus, flyouts, tooltips) live in their own top-levels and are NOT reached by the transform;
-/// they render at 100% for now.
+/// like 17.5 - which is how display scaling behaves and keeps one mental model. The terminal
+/// multiplies <see cref="Current"/> into its render scale (see <c>TerminalView</c>) so its glyph
+/// atlas is rasterized at true device density rather than upscaled. Popups (context menus,
+/// flyouts, tooltips) live in their own top-levels and are NOT reached by the transform; they
+/// render at 100% for now. The Settings window pins the scale it opened with, so the slider that
+/// drives this does not run away from the pointer.
 /// </para>
 /// </remarks>
 public static class UiScale
@@ -37,6 +41,14 @@ public static class UiScale
 
     /// <summary>The scale currently applied to the application, always within range.</summary>
     public static double Current { get; private set; } = Default;
+
+    /// <summary>
+    /// Raised by <see cref="Apply"/> with the clamped scale. The Window theme does not need it (it
+    /// binds the resource), but anything that rasterizes at device density does: the terminal
+    /// bakes glyph sprites at its render scale, and under a layout transform those bitmaps would
+    /// otherwise be upscaled into blur. Subscribers must unsubscribe when they leave the tree.
+    /// </summary>
+    public static event EventHandler<double>? Changed;
 
     /// <summary>
     /// NaN falls back to the default (a corrupt or hand-edited settings value must not blank the
@@ -63,9 +75,17 @@ public static class UiScale
 
         if (Application.Current is { } app)
         {
+            // Resource replacement fans out to every window's layout transform, and the
+            // subscribers below touch controls. Off the UI thread that does not fail here - it
+            // poisons Avalonia's media context for every window that lays out afterwards (the
+            // headless suite saw 29 unrelated tests die that way). Fail fast instead.
+            Dispatcher.UIThread.VerifyAccess();
+
             // Replacing the resource (rather than mutating the existing transform) is what makes
             // the DynamicResource consumers re-evaluate.
             app.Resources[TransformResourceKey] = new ScaleTransform(clamped, clamped);
         }
+
+        Changed?.Invoke(null, clamped);
     }
 }

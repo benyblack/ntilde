@@ -123,6 +123,12 @@ namespace Ntilde
         public SettingsWindow(int initialTab = 0, Guid? initialProfileId = null, SettingsSection section = SettingsSection.None)
         {
             InitializeComponent();
+            // Pin this window at the interface scale it opened with. The Window theme binds its
+            // layout transform to the application-level resource, and a window-level resource of
+            // the same key shadows it. Without this the Interface scale slider rescaled the very
+            // window it lives in, and the thumb ran away from the pointer mid-drag. Every other
+            // window still previews live; this one adopts the new scale the next time it opens.
+            Resources[UiScale.TransformResourceKey] = new Avalonia.Media.ScaleTransform(UiScale.Current, UiScale.Current);
             _settings = TerminalSettings.Load();
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))

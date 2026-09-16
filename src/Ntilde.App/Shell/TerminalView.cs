@@ -1070,9 +1070,12 @@ namespace Ntilde.Shell
             _cachedTopLevel = TopLevel.GetTopLevel(this);
             if (_cachedTopLevel != null)
             {
-                _cachedRenderScaling = _cachedTopLevel.RenderScaling;
                 _cachedTopLevel.ScalingChanged += OnTopLevelScalingChanged;
             }
+            _uiScaleOwnerApplication = Application.Current;
+            _uiScaleOwnerDispatcher = Dispatcher.UIThread;
+            UiScale.Changed += OnUiScaleChanged;
+            _cachedRenderScaling = ComputeEffectiveRenderScaling();
 
             // Ensure char metrics are available immediately upon attachment
             MeasureCharSize();
@@ -1105,11 +1108,54 @@ namespace Ntilde.Shell
                 _cachedTopLevel.ScalingChanged -= OnTopLevelScalingChanged;
                 _cachedTopLevel = null;
             }
+            UiScale.Changed -= OnUiScaleChanged;
+            _uiScaleOwnerApplication = null;
+            _uiScaleOwnerDispatcher = null;
         }
+
+        // The application and dispatcher this view was attached under. UiScale.Changed is a static
+        // event, and the headless test host isolates every [AvaloniaFact] behind a fresh
+        // dispatcher (and application) while leaving earlier tests' windows - and their attached
+        // views - alive. A change raised by a later test must not run this view's handler on a
+        // thread and media context it does not belong to; that is the "poisoned root" failure
+        // mode (#81/#395), and it takes every later window test down with it. In production
+        // there is one application and one UI thread, so the guard is always satisfied.
+        private Application? _uiScaleOwnerApplication;
+        private Dispatcher? _uiScaleOwnerDispatcher;
+
+        private bool OwnsCurrentUiThread()
+            => _uiScaleOwnerDispatcher != null
+               && ReferenceEquals(_uiScaleOwnerApplication, Application.Current)
+               && ReferenceEquals(_uiScaleOwnerDispatcher, Dispatcher.UIThread)
+               && _uiScaleOwnerDispatcher.CheckAccess();
+
+        /// <summary>
+        /// Device pixels per DIP of THIS control: the monitor's render scale times the interface
+        /// scale (<see cref="UiScale"/>). The glyph atlas, the pixel grid and the row cache all key
+        /// off this number, so it has to describe the density the sprites actually land at - the
+        /// Window theme's layout transform sits between this control and the surface, and a sprite
+        /// rasterized at the monitor scale alone comes out upscaled and blurry under 150%.
+        /// </summary>
+        private double ComputeEffectiveRenderScaling()
+            => (_cachedTopLevel?.RenderScaling ?? 1.0) * UiScale.Current;
+
+        /// <summary>Test seam: the render scale the glyph atlas is currently built for.</summary>
+        internal double EffectiveRenderScalingForTest => _cachedRenderScaling;
 
         private void OnTopLevelScalingChanged(object? sender, EventArgs e)
         {
-            _cachedRenderScaling = _cachedTopLevel?.RenderScaling ?? 1.0;
+            _cachedRenderScaling = ComputeEffectiveRenderScaling();
+            MeasureCharSize();
+        }
+
+        private void OnUiScaleChanged(object? sender, double scale)
+        {
+            if (!OwnsCurrentUiThread())
+            {
+                return;
+            }
+
+            _cachedRenderScaling = ComputeEffectiveRenderScaling();
             MeasureCharSize();
         }
 
