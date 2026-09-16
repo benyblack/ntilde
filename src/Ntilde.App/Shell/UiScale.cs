@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 
@@ -87,5 +88,62 @@ public static class UiScale
         }
 
         Changed?.Invoke(null, clamped);
+    }
+
+    /// <summary>
+    /// Grows a fixed-size window's requested size and minimums by <see cref="Current"/> so the
+    /// logical room its XAML was designed for survives the layout transform: an 880-DIP-wide
+    /// window under 200% would otherwise offer 440 DIPs and clip its own content (the Interface
+    /// scale slider included). Clamped to the primary screen's working area when that is known.
+    /// Call it once from the window's constructor, after InitializeComponent; a NaN dimension
+    /// (SizeToContent) is left alone. A no-op at 100%.
+    /// </summary>
+    public static void FitWindow(Window window) => FitWindow(window, TryGetWorkingAreaDips(window));
+
+    internal static void FitWindow(Window window, Size? workingArea)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        double scale = Current;
+        if (Math.Abs(scale - Default) < 0.0001)
+        {
+            return;
+        }
+
+        window.Width = Scaled(window.Width, scale);
+        window.Height = Scaled(window.Height, scale);
+        window.MinWidth = Scaled(window.MinWidth, scale);
+        window.MinHeight = Scaled(window.MinHeight, scale);
+
+        if (workingArea is { } area)
+        {
+            if (!double.IsNaN(window.Width)) window.Width = Math.Min(window.Width, area.Width);
+            if (!double.IsNaN(window.Height)) window.Height = Math.Min(window.Height, area.Height);
+            // Minimums shrink with the cap, or the platform refuses the smaller size.
+            window.MinWidth = Math.Min(window.MinWidth, area.Width);
+            window.MinHeight = Math.Min(window.MinHeight, area.Height);
+        }
+    }
+
+    private static double Scaled(double value, double scale)
+        => double.IsNaN(value) || double.IsInfinity(value) || value <= 0 ? value : value * scale;
+
+    private static Size? TryGetWorkingAreaDips(Window window)
+    {
+        try
+        {
+            var screen = window.Screens?.Primary;
+            if (screen == null || screen.Scaling <= 0)
+            {
+                return null;
+            }
+
+            var area = screen.WorkingArea;
+            return new Size(area.Width / screen.Scaling, area.Height / screen.Scaling);
+        }
+        catch (Exception)
+        {
+            // No platform screens (headless, or a window not yet attached to one): skip the clamp.
+            return null;
+        }
     }
 }

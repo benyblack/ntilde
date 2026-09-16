@@ -28,6 +28,7 @@ namespace Ntilde.UI.Replay
         public ReplayWindow()
         {
             InitializeComponent();
+            Ntilde.Shell.UiScale.FitWindow(this);
 #if DEBUG
             TryAttachDeveloperTools(() => Application.Current?.AttachDeveloperTools());
 #endif

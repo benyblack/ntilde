@@ -27,7 +27,7 @@ public sealed class TerminalViewUiScaleTests
             window.Show();
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(1.5, view.EffectiveRenderScalingForTest, precision: 6);
+            Assert.Equal(1.5, view.EffectiveRenderScaling, precision: 6);
         }
         finally
         {
@@ -46,12 +46,12 @@ public sealed class TerminalViewUiScaleTests
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
-            Assert.Equal(1.0, view.EffectiveRenderScalingForTest, precision: 6);
+            Assert.Equal(1.0, view.EffectiveRenderScaling, precision: 6);
 
             UiScale.Apply(2.0);
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(2.0, view.EffectiveRenderScalingForTest, precision: 6);
+            Assert.Equal(2.0, view.EffectiveRenderScaling, precision: 6);
         }
         finally
         {
@@ -78,7 +78,7 @@ public sealed class TerminalViewUiScaleTests
 
             // A detached view must not keep a live subscription (that is a leak of every closed
             // pane), so it keeps whatever it last knew.
-            Assert.Equal(1.0, view.EffectiveRenderScalingForTest, precision: 6);
+            Assert.Equal(1.0, view.EffectiveRenderScaling, precision: 6);
         }
         finally
         {

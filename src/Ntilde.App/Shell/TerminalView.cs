@@ -1139,8 +1139,12 @@ namespace Ntilde.Shell
         private double ComputeEffectiveRenderScaling()
             => (_cachedTopLevel?.RenderScaling ?? 1.0) * UiScale.Current;
 
-        /// <summary>Test seam: the render scale the glyph atlas is currently built for.</summary>
-        internal double EffectiveRenderScalingForTest => _cachedRenderScaling;
+        /// <summary>
+        /// Device pixels per DIP this view currently renders at: monitor scale times interface
+        /// scale. Anything that reports the terminal's size in pixels (the kitty mode-2048 in-band
+        /// resize report) must multiply by this, not by the monitor scale alone.
+        /// </summary>
+        internal double EffectiveRenderScaling => _cachedRenderScaling;
 
         private void OnTopLevelScalingChanged(object? sender, EventArgs e)
         {

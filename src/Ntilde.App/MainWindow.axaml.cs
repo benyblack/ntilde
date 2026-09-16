@@ -2633,6 +2633,7 @@ namespace Ntilde
                 CanResize = canResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
+            UiScale.FitWindow(dialog);
 
             ApplyThemeToDialogWindow(dialog);
             return dialog;

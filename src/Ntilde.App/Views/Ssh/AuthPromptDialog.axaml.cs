@@ -12,6 +12,7 @@ public partial class AuthPromptDialog : Window
     public AuthPromptDialog()
     {
         InitializeComponent();
+        Ntilde.Shell.UiScale.FitWindow(this);
     }
 
     public AuthPromptDialog(AuthPromptViewModel viewModel) : this()

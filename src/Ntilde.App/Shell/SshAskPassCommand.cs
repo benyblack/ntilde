@@ -180,6 +180,7 @@ internal static class SshAskPassCommand
             Title = "Ntilde SSH Authentication";
             Width = 520;
             Height = 240;
+            UiScale.FitWindow(this);
             CanResize = false;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
 

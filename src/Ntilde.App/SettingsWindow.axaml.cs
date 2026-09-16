@@ -129,6 +129,9 @@ namespace Ntilde
             // window it lives in, and the thumb ran away from the pointer mid-drag. Every other
             // window still previews live; this one adopts the new scale the next time it opens.
             Resources[UiScale.TransformResourceKey] = new Avalonia.Media.ScaleTransform(UiScale.Current, UiScale.Current);
+            // ...and size the window for that scale, so its 880x620 layout keeps 880x620 of
+            // logical room. Pinning alone shrank it (440 DIPs at 200%) and clipped the slider.
+            UiScale.FitWindow(this);
             _settings = TerminalSettings.Load();
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))
@@ -1470,6 +1473,7 @@ namespace Ntilde
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 CanResize = false
             };
+            UiScale.FitWindow(dialog);
 
             var restoreButton = new Button { Content = "Restore", Classes = { "Pill" } };
             var cancelButton = new Button { Content = "Cancel", Classes = { "Pill" } };
@@ -1566,6 +1570,7 @@ namespace Ntilde
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 CanResize = false
             };
+            UiScale.FitWindow(dialog);
 
             var mergeButton = new Button { Content = "Merge", Classes = { "Pill" } };
             var replaceButton = new Button { Content = "Replace", Classes = { "Pill" } };

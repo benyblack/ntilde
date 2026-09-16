@@ -3536,6 +3536,19 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
+        /// Pixel size the kitty mode-2048 in-band resize report carries. Cell metrics are in DIPs;
+        /// the terminal actually occupies DIPs times the view's effective render scale (monitor
+        /// scale times interface scale) in device pixels. Multiplying by the DIP size alone was
+        /// only right at 100% on a 96-dpi monitor. A non-positive or NaN scale means "unknown" and
+        /// falls back to unscaled, never to zero.
+        /// </summary>
+        internal static (int Width, int Height) InBandPixelDimensions(int cols, int rows, float cellWidthDips, float cellHeightDips, double scale)
+        {
+            double s = double.IsNaN(scale) || scale <= 0 ? 1.0 : scale;
+            return ((int)Math.Round(cols * cellWidthDips * s), (int)Math.Round(rows * cellHeightDips * s));
+        }
+
+        /// <summary>
         /// Subscribes the two <see cref="TermView"/> handlers that belong to session setup, in a way
         /// that is safe to call repeatedly.
         /// </summary>
@@ -3575,7 +3588,8 @@ namespace Ntilde.Controls
                     float chReport = TermView.Metrics.CellHeight;
                     if (cwReport > 0 && chReport > 0)
                     {
-                        Parser.SendInBandResize(r, c, (int)Math.Round(c * cwReport), (int)Math.Round(r * chReport));
+                        var (pxW, pxH) = InBandPixelDimensions(c, r, cwReport, chReport, TermView.EffectiveRenderScaling);
+                        Parser.SendInBandResize(r, c, pxW, pxH);
                     }
                 }
             };
@@ -3600,7 +3614,8 @@ namespace Ntilde.Controls
                 // rendering at the stale pixel dimensions until it is told.
                 if (Parser is { InBandResizeReportsEnabled: true } && Buffer != null && cwMetric > 0 && chMetric > 0)
                 {
-                    Parser.SendInBandResize(Buffer.Rows, Buffer.Cols, (int)Math.Round(Buffer.Cols * cwMetric), (int)Math.Round(Buffer.Rows * chMetric));
+                    var (pxW, pxH) = InBandPixelDimensions(Buffer.Cols, Buffer.Rows, cwMetric, chMetric, TermView.EffectiveRenderScaling);
+                    Parser.SendInBandResize(Buffer.Rows, Buffer.Cols, pxW, pxH);
                 }
             };
             TermView.MetricsChanged -= _onTermViewMetricsChanged;

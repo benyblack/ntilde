@@ -11,6 +11,7 @@ public partial class HostKeyPromptDialog : Window
     public HostKeyPromptDialog()
     {
         InitializeComponent();
+        Ntilde.Shell.UiScale.FitWindow(this);
     }
 
     public HostKeyPromptDialog(HostKeyPromptViewModel viewModel) : this()

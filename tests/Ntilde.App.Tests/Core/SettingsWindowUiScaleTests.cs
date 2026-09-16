@@ -71,6 +71,33 @@ public sealed class SettingsWindowUiScaleTests
         }
     }
 
+    /// <summary>
+    /// Pinning alone shrinks the logical room (Codex P2 on PR #466: at 200% the scale slider
+    /// itself was clipped off the right edge). The window is also sized for its pinned scale, so
+    /// the 880x620 layout keeps its 880x620 of logical room. Headless screens are large enough
+    /// that no clamping applies at 150%.
+    /// </summary>
+    [AvaloniaFact]
+    public void SettingsWindow_IsSizedForItsPinnedScale()
+    {
+        using var tree = BackupTestTree.CreateEmpty();
+        using var _ = OverrideAppDataRoot(tree.Root);
+        UiScale.Apply(1.5);
+        try
+        {
+            var settings = new Ntilde.SettingsWindow();
+
+            Assert.Equal(880 * 1.5, settings.Width, precision: 3);
+            Assert.Equal(620 * 1.5, settings.Height, precision: 3);
+            Assert.Equal(780 * 1.5, settings.MinWidth, precision: 3);
+            Assert.Equal(520 * 1.5, settings.MinHeight, precision: 3);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
     /// <summary>Visible width in window coordinates divided by the control's own layout width.</summary>
     private static double MeasureScale(Control control, Window window)
     {

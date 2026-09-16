@@ -112,6 +112,93 @@ public sealed class UiScaleTests
     }
 
     /// <summary>
+    /// A fixed-size window (dialogs, Settings) lays out in unscaled DIPs inside the transform, so
+    /// at 200% an 880-DIP-wide window offers only 440 DIPs of room and clips its own content
+    /// (Codex on PR #466: the Interface scale slider itself became unreachable). FitWindow grows
+    /// the window's requested size and minimums by the current scale so the logical room stays
+    /// what the XAML was designed for. NaN (SizeToContent) dimensions are left alone.
+    /// </summary>
+    [AvaloniaFact]
+    public void FitWindow_GrowsRequestedSizeAndMinimumsByTheCurrentScale()
+    {
+        UiScale.Apply(1.5);
+        try
+        {
+            var window = new Window { Width = 800, Height = 600, MinWidth = 700, MinHeight = 500 };
+
+            UiScale.FitWindow(window, workingArea: null);
+
+            Assert.Equal(1200, window.Width, precision: 6);
+            Assert.Equal(900, window.Height, precision: 6);
+            Assert.Equal(1050, window.MinWidth, precision: 6);
+            Assert.Equal(750, window.MinHeight, precision: 6);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
+    [AvaloniaFact]
+    public void FitWindow_LeavesSizeToContentDimensionsAlone()
+    {
+        UiScale.Apply(2.0);
+        try
+        {
+            var window = new Window { Width = 460, SizeToContent = SizeToContent.Height };
+
+            UiScale.FitWindow(window, workingArea: null);
+
+            Assert.Equal(920, window.Width, precision: 6);
+            Assert.True(double.IsNaN(window.Height));
+            Assert.Equal(0, window.MinWidth);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
+    /// <summary>
+    /// A window must never be asked to be larger than the screen it opens on; the minimums shrink
+    /// with it, or the platform would refuse the smaller size.
+    /// </summary>
+    [AvaloniaFact]
+    public void FitWindow_ClampsToTheWorkingArea_IncludingMinimums()
+    {
+        UiScale.Apply(2.0);
+        try
+        {
+            var window = new Window { Width = 880, Height = 620, MinWidth = 780, MinHeight = 520 };
+
+            UiScale.FitWindow(window, workingArea: new Size(1600, 1000));
+
+            Assert.Equal(1600, window.Width, precision: 6);
+            Assert.Equal(1000, window.Height, precision: 6);
+            Assert.Equal(1560, window.MinWidth, precision: 6);
+            Assert.Equal(1000, window.MinHeight, precision: 6);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
+    [AvaloniaFact]
+    public void FitWindow_IsANoOpAtOneHundredPercent()
+    {
+        UiScale.Apply(1.0);
+        var window = new Window { Width = 800, Height = 600, MinWidth = 700, MinHeight = 500 };
+
+        UiScale.FitWindow(window, workingArea: null);
+
+        Assert.Equal(800, window.Width);
+        Assert.Equal(600, window.Height);
+        Assert.Equal(700, window.MinWidth);
+        Assert.Equal(500, window.MinHeight);
+    }
+
+    /// <summary>
     /// The probe's own Bounds stay 100x80 (layout runs in unscaled units); what changes is how big
     /// it is in window coordinates, which is what the user sees. TranslatePoint composes the layout
     /// transform's render scale, so the far corner lands at origin + (w*scale, h*scale).

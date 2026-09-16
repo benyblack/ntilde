@@ -17,6 +17,7 @@ namespace Ntilde
         public ConnectionManagerWindow()
         {
             InitializeComponent();
+            Ntilde.Shell.UiScale.FitWindow(this);
         }
 
         /// <summary>
