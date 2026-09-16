@@ -1072,9 +1072,12 @@ namespace Ntilde.Shell
             {
                 _cachedTopLevel.ScalingChanged += OnTopLevelScalingChanged;
             }
-            _uiScaleOwnerApplication = Application.Current;
-            _uiScaleOwnerDispatcher = Dispatcher.UIThread;
-            UiScale.Changed += OnUiScaleChanged;
+            // The interface scale in effect for THIS view comes from the resource chain (a window
+            // may hold or be reduced to a scale other than the app's), and every change to it -
+            // UiScale.Apply swapping the app resource, a window pinning or releasing its own -
+            // arrives as ResourcesChanged on this control. No static event, so nothing can reach a
+            // view that a previous headless test's application left behind.
+            ResourcesChanged += OnScaleResourcesChanged;
             _cachedRenderScaling = ComputeEffectiveRenderScaling();
 
             // Ensure char metrics are available immediately upon attachment
@@ -1108,36 +1111,32 @@ namespace Ntilde.Shell
                 _cachedTopLevel.ScalingChanged -= OnTopLevelScalingChanged;
                 _cachedTopLevel = null;
             }
-            UiScale.Changed -= OnUiScaleChanged;
-            _uiScaleOwnerApplication = null;
-            _uiScaleOwnerDispatcher = null;
+            ResourcesChanged -= OnScaleResourcesChanged;
         }
-
-        // The application and dispatcher this view was attached under. UiScale.Changed is a static
-        // event, and the headless test host isolates every [AvaloniaFact] behind a fresh
-        // dispatcher (and application) while leaving earlier tests' windows - and their attached
-        // views - alive. A change raised by a later test must not run this view's handler on a
-        // thread and media context it does not belong to; that is the "poisoned root" failure
-        // mode (#81/#395), and it takes every later window test down with it. In production
-        // there is one application and one UI thread, so the guard is always satisfied.
-        private Application? _uiScaleOwnerApplication;
-        private Dispatcher? _uiScaleOwnerDispatcher;
-
-        private bool OwnsCurrentUiThread()
-            => _uiScaleOwnerDispatcher != null
-               && ReferenceEquals(_uiScaleOwnerApplication, Application.Current)
-               && ReferenceEquals(_uiScaleOwnerDispatcher, Dispatcher.UIThread)
-               && _uiScaleOwnerDispatcher.CheckAccess();
 
         /// <summary>
         /// Device pixels per DIP of THIS control: the monitor's render scale times the interface
-        /// scale (<see cref="UiScale"/>). The glyph atlas, the pixel grid and the row cache all key
+        /// scale in effect for this view. The glyph atlas, the pixel grid and the row cache all key
         /// off this number, so it has to describe the density the sprites actually land at - the
         /// Window theme's layout transform sits between this control and the surface, and a sprite
-        /// rasterized at the monitor scale alone comes out upscaled and blurry under 150%.
+        /// rasterized at the monitor scale alone comes out upscaled and blurry under 150%. The
+        /// scale is the transform resource the theme binds (<see cref="UiScale.TransformResourceKey"/>)
+        /// resolved from this view's own position in the tree, so a window that holds or was
+        /// reduced to another scale (Settings, a Replay window the screen could not fit) gets an
+        /// atlas for the scale it really renders at rather than for <see cref="UiScale.Current"/>.
         /// </summary>
         private double ComputeEffectiveRenderScaling()
-            => (_cachedTopLevel?.RenderScaling ?? 1.0) * UiScale.Current;
+        {
+            double interfaceScale = UiScale.Current;
+            if (this.TryFindResource(UiScale.TransformResourceKey, out object? resource)
+                && resource is ScaleTransform transform
+                && transform.ScaleX > 0)
+            {
+                interfaceScale = transform.ScaleX;
+            }
+
+            return (_cachedTopLevel?.RenderScaling ?? 1.0) * interfaceScale;
+        }
 
         /// <summary>
         /// Device pixels per DIP this view currently renders at: monitor scale times interface
@@ -1152,14 +1151,15 @@ namespace Ntilde.Shell
             MeasureCharSize();
         }
 
-        private void OnUiScaleChanged(object? sender, double scale)
+        private void OnScaleResourcesChanged(object? sender, ResourcesChangedEventArgs e)
         {
-            if (!OwnsCurrentUiThread())
+            double next = ComputeEffectiveRenderScaling();
+            if (Math.Abs(next - _cachedRenderScaling) < 0.0001)
             {
                 return;
             }
 
-            _cachedRenderScaling = ComputeEffectiveRenderScaling();
+            _cachedRenderScaling = next;
             MeasureCharSize();
         }
 

@@ -251,6 +251,75 @@ public sealed class UiScaleTests
         }
     }
 
+    /// <summary>
+    /// A refit scales the window's CURRENT size, so a user who dragged the Connection Manager wider
+    /// keeps that choice across a scale change (Codex on PR #466); only the minimums come from the
+    /// design. The initial fit is the same formula with the design size as the current one.
+    /// </summary>
+    [AvaloniaFact]
+    public void Apply_RefitsAUserResizedWindow_FromItsCurrentSize()
+    {
+        UiScale.Apply(1.0);
+        var window = new Window { Width = 800, Height = 600, MinWidth = 700, MinHeight = 500 };
+        try
+        {
+            UiScale.FitWindow(window, workingArea: null);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            window.Width = 1000; // the user dragged it wider
+
+            UiScale.Apply(1.5);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(1500, window.Width, precision: 3);
+            Assert.Equal(900, window.Height, precision: 3);
+            Assert.Equal(1050, window.MinWidth, precision: 3);
+        }
+        finally
+        {
+            window.Close();
+            UiScale.Apply(1.0);
+        }
+    }
+
+    /// <summary>
+    /// A maximized window's Width/Height are its restore bounds, and Avalonia coerces Width up to
+    /// MinWidth, so a refit must not touch any of them while maximized; it is applied when the
+    /// window returns to normal.
+    /// </summary>
+    [AvaloniaFact]
+    public void Apply_DefersTheRefitOfAMaximizedWindow_UntilItIsNormalAgain()
+    {
+        UiScale.Apply(1.0);
+        var window = new Window { Width = 800, Height = 600, MinWidth = 700, MinHeight = 500 };
+        try
+        {
+            UiScale.FitWindow(window, workingArea: null);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            window.WindowState = WindowState.Maximized;
+
+            UiScale.Apply(1.5);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(800, window.Width, precision: 3);
+            Assert.Equal(600, window.Height, precision: 3);
+            Assert.Equal(700, window.MinWidth, precision: 3);
+
+            window.WindowState = WindowState.Normal;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(1200, window.Width, precision: 3);
+            Assert.Equal(900, window.Height, precision: 3);
+            Assert.Equal(1050, window.MinWidth, precision: 3);
+        }
+        finally
+        {
+            window.Close();
+            UiScale.Apply(1.0);
+        }
+    }
+
     /// <summary>A pinned window (Settings, or one the screen forced smaller) holds its size as well as its scale.</summary>
     [AvaloniaFact]
     public void Apply_LeavesPinnedWindowsAlone()

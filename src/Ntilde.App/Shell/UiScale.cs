@@ -179,14 +179,51 @@ public static class UiScale
             fitted.ScreenReduced = false;
         }
 
-        // Always from the design size, never from the current one: fitting is idempotent, so a
-        // refit on open or on a scale change does not compound the previous fit.
-        window.Width = Scaled(fitted.DesignWidth, scale);
-        window.Height = Scaled(fitted.DesignHeight, scale);
+        // A maximized (or minimized / fullscreen) window's Width/Height are its restore bounds, and
+        // Avalonia coerces Width up to MinWidth, so even the minimums would move them. Defer the
+        // sizing until the window is normal again; the transform above has already been applied,
+        // so its content is at the right scale meanwhile.
+        if (window.WindowState != WindowState.Normal)
+        {
+            fitted.PendingScale = scale;
+            if (!fitted.StateHooked)
+            {
+                fitted.StateHooked = true;
+                window.PropertyChanged += OnFittedWindowPropertyChanged;
+            }
+
+            return scale;
+        }
+
+        fitted.PendingScale = null;
+
+        // Width/Height scale from what they are now by the ratio of the new scale to the one they
+        // were last sized for: the first fit therefore multiplies the design size, and a later one
+        // (screen re-check on open, a scale change) preserves a size the user dragged to instead of
+        // snapping back to the design. Minimums always come from the design.
         window.MinWidth = Scaled(fitted.DesignMinWidth, scale);
         window.MinHeight = Scaled(fitted.DesignMinHeight, scale);
+        double ratio = scale / fitted.AppliedScale;
+        window.Width = Scaled(window.Width, ratio);
+        window.Height = Scaled(window.Height, ratio);
         fitted.AppliedScale = scale;
+
         return scale;
+    }
+
+    private static void OnFittedWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != Window.WindowStateProperty || sender is not Window window)
+        {
+            return;
+        }
+
+        if (window.WindowState == WindowState.Normal
+            && Registry.TryGetValue(window, out var fitted)
+            && fitted.PendingScale is not null)
+        {
+            FitWindow(window, TryGetWorkingAreaDips(window));
+        }
     }
 
     /// <summary>
@@ -204,8 +241,9 @@ public static class UiScale
         fitted.HeldScale = clamped;
         if (!fitted.ScreenReduced)
         {
+            // Only the transform: sizing is FitWindow's job, and AppliedScale records what the
+            // window's Width/Height were last sized for, which a pin does not change.
             SetWindowTransform(window, clamped);
-            fitted.AppliedScale = clamped;
         }
     }
 
@@ -234,12 +272,16 @@ public static class UiScale
         public double DesignMinWidth { get; }
         public double DesignMinHeight { get; }
         public Application? OwnerApplication { get; }
+        /// <summary>The scale the window's Width/Height were last sized for; the design size is at 1.0.</summary>
         public double AppliedScale { get; set; } = Default;
         /// <summary>Set by <see cref="PinScale"/>: the caller's hold, and the ceiling for fits.</summary>
         public double? HeldScale { get; set; }
         /// <summary>Set by <see cref="FitWindow"/> when the screen forced a scale below the ceiling.</summary>
         public bool ScreenReduced { get; set; }
+        /// <summary>A fit that arrived while the window was not in its normal state, to apply when it is.</summary>
+        public double? PendingScale { get; set; }
         public bool OpenedHooked { get; set; }
+        public bool StateHooked { get; set; }
     }
 
     private static readonly ConditionalWeakTable<Window, FittedWindow> Registry = new();

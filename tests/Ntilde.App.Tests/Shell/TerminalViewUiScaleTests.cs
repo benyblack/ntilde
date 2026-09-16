@@ -60,6 +60,39 @@ public sealed class TerminalViewUiScaleTests
         }
     }
 
+    /// <summary>
+    /// A window can render at a scale other than the app's: Settings holds its opening scale, and
+    /// FitWindow reduces a window the screen cannot fit (the Replay window has a terminal in it).
+    /// The atlas must be built for the scale that window actually renders at - the transform
+    /// resource in effect for this view - not for UiScale.Current (Codex on PR #466).
+    /// </summary>
+    [AvaloniaFact]
+    public void EffectiveRenderScaling_UsesTheOwningWindowsScale_WhenItIsPinned()
+    {
+        UiScale.Apply(2.0);
+        var view = new TerminalView();
+        var window = new Window { Width = 400, Height = 300, Content = view };
+        try
+        {
+            UiScale.PinScale(window, 1.25);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(1.25, view.EffectiveRenderScaling, precision: 6);
+
+            // Releasing the pin while attached is a resource change too, and must be followed.
+            window.Resources.Remove(UiScale.TransformResourceKey);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(2.0, view.EffectiveRenderScaling, precision: 6);
+        }
+        finally
+        {
+            window.Close();
+            UiScale.Apply(1.0);
+        }
+    }
+
     [AvaloniaFact]
     public void EffectiveRenderScaling_StopsFollowing_AfterDetach()
     {
