@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -88,6 +89,7 @@ public static class UiScale
             // Replacing the resource (rather than mutating the existing transform) is what makes
             // the DynamicResource consumers re-evaluate.
             app.Resources[TransformResourceKey] = new ScaleTransform(clamped, clamped);
+            RefitOpenWindows();
         }
 
         Changed?.Invoke(null, clamped);
@@ -118,18 +120,45 @@ public static class UiScale
     /// window's constructor, after InitializeComponent; a NaN dimension (SizeToContent) is left
     /// alone. A no-op at 100%.
     /// </summary>
-    public static double FitWindow(Window window) => FitWindow(window, TryGetWorkingAreaDips(window));
+    public static double FitWindow(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        double applied = FitWindow(window, TryGetWorkingAreaDips(window));
+
+        // The constructor only knows the primary screen; a CenterOwner dialog may land on a smaller
+        // (or larger) monitor. Once it opens the real screen is known: refit from the design size.
+        var fitted = Registry.GetValue(window, _ => new FittedWindow(window));
+        if (!fitted.OpenedHooked)
+        {
+            fitted.OpenedHooked = true;
+            window.Opened += static (sender, _) =>
+            {
+                if (sender is Window opened)
+                {
+                    FitWindow(opened, TryGetWorkingAreaDips(opened));
+                }
+            };
+        }
+
+        return applied;
+    }
 
     internal static double FitWindow(Window window, Size? workingArea)
     {
         ArgumentNullException.ThrowIfNull(window);
+        var fitted = Registry.GetValue(window, _ => new FittedWindow(window));
+        if (fitted.Pinned)
+        {
+            return fitted.AppliedScale;
+        }
+
         double scale = Current;
 
         if (workingArea is { } area && scale > Default)
         {
             double fit = scale;
-            if (IsFixed(window.Width)) fit = Math.Min(fit, area.Width / window.Width);
-            if (IsFixed(window.Height)) fit = Math.Min(fit, area.Height / window.Height);
+            if (IsFixed(fitted.DesignWidth)) fit = Math.Min(fit, area.Width / fitted.DesignWidth);
+            if (IsFixed(fitted.DesignHeight)) fit = Math.Min(fit, area.Height / fitted.DesignHeight);
             fit = Math.Max(fit, Default);
 
             if (fit < scale - 0.0001)
@@ -139,29 +168,78 @@ public static class UiScale
             }
         }
 
-        if (Math.Abs(scale - Default) < 0.0001)
-        {
-            return scale;
-        }
-
-        window.Width = Scaled(window.Width, scale);
-        window.Height = Scaled(window.Height, scale);
-        window.MinWidth = Scaled(window.MinWidth, scale);
-        window.MinHeight = Scaled(window.MinHeight, scale);
+        // Always from the design size, never from the current one: fitting is idempotent, so a
+        // refit on open or on a scale change does not compound the previous fit.
+        window.Width = Scaled(fitted.DesignWidth, scale);
+        window.Height = Scaled(fitted.DesignHeight, scale);
+        window.MinWidth = Scaled(fitted.DesignMinWidth, scale);
+        window.MinHeight = Scaled(fitted.DesignMinHeight, scale);
+        fitted.AppliedScale = scale;
         return scale;
     }
 
     /// <summary>
     /// Holds <paramref name="window"/> at <paramref name="scale"/> regardless of later
     /// <see cref="Apply"/> calls: a window-level resource of the same key shadows the application
-    /// one the Window theme binds to. Used by the Settings window (so the slider does not run away
-    /// from the pointer) and by <see cref="FitWindow"/> when the screen forces a smaller scale.
+    /// one the Window theme binds to, and a pinned window is skipped by the refit in
+    /// <see cref="Apply"/>. Used by the Settings window (so the slider does not run away from the
+    /// pointer) and by <see cref="FitWindow"/> when the screen forces a smaller scale.
     /// </summary>
     public static void PinScale(Window window, double scale)
     {
         ArgumentNullException.ThrowIfNull(window);
         double clamped = Clamp(scale);
         window.Resources[TransformResourceKey] = new ScaleTransform(clamped, clamped);
+        var fitted = Registry.GetValue(window, _ => new FittedWindow(window));
+        fitted.Pinned = true;
+        fitted.AppliedScale = clamped;
+    }
+
+    /// <summary>
+    /// Every window that went through <see cref="FitWindow"/>, with the size its XAML asked for
+    /// (captured on first fit) so later fits start from the design, not from the last result.
+    /// Weakly keyed: a closed window is collected with its entry. The owner application is kept so
+    /// a refit never touches a window from a previous headless test's isolated application.
+    /// </summary>
+    private sealed class FittedWindow
+    {
+        public FittedWindow(Window window)
+        {
+            DesignWidth = window.Width;
+            DesignHeight = window.Height;
+            DesignMinWidth = window.MinWidth;
+            DesignMinHeight = window.MinHeight;
+            OwnerApplication = Application.Current;
+        }
+
+        public double DesignWidth { get; }
+        public double DesignHeight { get; }
+        public double DesignMinWidth { get; }
+        public double DesignMinHeight { get; }
+        public Application? OwnerApplication { get; }
+        public double AppliedScale { get; set; } = Default;
+        public bool Pinned { get; set; }
+        public bool OpenedHooked { get; set; }
+    }
+
+    private static readonly ConditionalWeakTable<Window, FittedWindow> Registry = new();
+
+    /// <summary>
+    /// Re-fits every open, unpinned fitted window after <see cref="Apply"/>: their content is
+    /// rescaled by the theme, and without this their frames kept the old size, so an open Connection
+    /// Manager taken from 100% to 200% offered half the room it was designed for.
+    /// </summary>
+    private static void RefitOpenWindows()
+    {
+        foreach ((Window window, FittedWindow fitted) in Registry)
+        {
+            if (fitted.Pinned || !ReferenceEquals(fitted.OwnerApplication, Application.Current) || !window.IsVisible)
+            {
+                continue;
+            }
+
+            FitWindow(window, TryGetWorkingAreaDips(window));
+        }
     }
 
     private static bool IsFixed(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value > 0;
@@ -169,11 +247,22 @@ public static class UiScale
     private static double Scaled(double value, double scale)
         => double.IsNaN(value) || double.IsInfinity(value) || value <= 0 ? value : value * scale;
 
+    /// <summary>
+    /// The working area of the screen the window is on, in DIPs. Before the window is shown only
+    /// the primary screen is knowable; once open, the screen under the window wins (a CenterOwner
+    /// dialog can land on a smaller or larger secondary monitor).
+    /// </summary>
     private static Size? TryGetWorkingAreaDips(Window window)
     {
         try
         {
-            var screen = window.Screens?.Primary;
+            var screens = window.Screens;
+            if (screens == null)
+            {
+                return null;
+            }
+
+            var screen = (window.IsVisible ? screens.ScreenFromWindow(window) : null) ?? screens.Primary;
             if (screen == null || screen.Scaling <= 0)
             {
                 return null;

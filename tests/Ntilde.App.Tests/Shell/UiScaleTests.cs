@@ -215,6 +215,94 @@ public sealed class UiScaleTests
         }
     }
 
+    /// <summary>
+    /// A fixed-size window that is already open when the scale changes (Codex on PR #466: the
+    /// Connection Manager sitting next to Settings while the slider moves) used to get its content
+    /// rescaled but keep its frame, so at 200% it offered half the room it was designed for.
+    /// FitWindow remembers the design size and Apply refits every open, unpinned window from it.
+    /// </summary>
+    [AvaloniaFact]
+    public void Apply_RefitsOpenFixedWindows_FromTheirDesignSize()
+    {
+        UiScale.Apply(1.0);
+        var window = new Window { Width = 800, Height = 600, MinWidth = 700, MinHeight = 500 };
+        try
+        {
+            UiScale.FitWindow(window, workingArea: null);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            UiScale.Apply(1.5);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1200, window.Width, precision: 3);
+            Assert.Equal(900, window.Height, precision: 3);
+            Assert.Equal(1050, window.MinWidth, precision: 3);
+            Assert.Equal(750, window.MinHeight, precision: 3);
+
+            UiScale.Apply(1.0);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(800, window.Width, precision: 3);
+            Assert.Equal(600, window.Height, precision: 3);
+        }
+        finally
+        {
+            window.Close();
+            UiScale.Apply(1.0);
+        }
+    }
+
+    /// <summary>A pinned window (Settings, or one the screen forced smaller) holds its size as well as its scale.</summary>
+    [AvaloniaFact]
+    public void Apply_LeavesPinnedWindowsAlone()
+    {
+        UiScale.Apply(1.0);
+        var window = new Window { Width = 800, Height = 600 };
+        try
+        {
+            UiScale.PinScale(window, UiScale.FitWindow(window, workingArea: null));
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            UiScale.Apply(1.5);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(800, window.Width, precision: 3);
+            Assert.Equal(600, window.Height, precision: 3);
+        }
+        finally
+        {
+            window.Close();
+            UiScale.Apply(1.0);
+        }
+    }
+
+    /// <summary>
+    /// Fitting is idempotent from the remembered design size, so a second fit against the real
+    /// screen (known only once the window opens, Codex on PR #466) does not compound the first.
+    /// </summary>
+    [AvaloniaFact]
+    public void FitWindow_RefitsFromTheDesignSize_NotTheCurrentSize()
+    {
+        UiScale.Apply(2.0);
+        try
+        {
+            var window = new Window { Width = 880, Height = 620, MinWidth = 780, MinHeight = 520 };
+
+            UiScale.FitWindow(window, workingArea: null);
+            Assert.Equal(1760, window.Width, precision: 3);
+
+            double applied = UiScale.FitWindow(window, workingArea: new Size(1000, 1000));
+
+            Assert.Equal(1000.0 / 880.0, applied, precision: 4);
+            Assert.Equal(1000, window.Width, precision: 3);
+            Assert.Equal(620 * applied, window.Height, precision: 3);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
     /// <summary>The reduction never goes below 100%: a window too big for the screen at 100% is not this feature's problem.</summary>
     [AvaloniaFact]
     public void FitWindow_NeverReducesBelowOneHundredPercent()
