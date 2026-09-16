@@ -3682,6 +3682,9 @@ namespace Ntilde
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
+            // Before anything is shown: the Window theme reads this through a DynamicResource, so
+            // every window opened from here on - this one included - lays out at the saved scale.
+            UiScale.Apply(_settings.UiScale);
             _startup.Checkpoint("MainWindow.AfterSettingsLoad");
             _commandPaletteUsageStore = new CommandPaletteUsageStore(AppPaths.CommandPaletteUsageFilePath);
             _commandPaletteUsage = new Dictionary<string, CommandPaletteUsageEntry>(_commandPaletteUsageStore.Load(), StringComparer.OrdinalIgnoreCase);
@@ -7597,7 +7600,8 @@ namespace Ntilde
                 _settings.BackgroundImageStretch,
                 _settings.FontFamily,
                 _settings.FontSize,
-                _settings.ThemeName);
+                _settings.ThemeName,
+                _settings.UiScale);
 
             // Wire up live preview events
             sw.OnOpacityChanged += (val) => { _settings.WindowOpacity = val; ApplyThemeToUI(); ApplySettingsToAllTabs(); };
@@ -7612,6 +7616,7 @@ namespace Ntilde
             };
             sw.OnFontChanged += (font) => { _settings.FontFamily = font; ApplySettingsToAllTabs(); };
             sw.OnFontSizeChanged += (size) => { _settings.FontSize = size; ApplySettingsToAllTabs(); };
+            sw.OnUiScaleChanged += (scale) => { _settings.UiScale = scale; UiScale.Apply(scale); };
             sw.OnThemeChanged += (theme) =>
         {
             _settings.ThemeName = theme;
@@ -7674,6 +7679,7 @@ namespace Ntilde
                 RefreshProfileUIs();
                 ApplyThemeToUI();
                 ApplySettingsToAllTabs();
+                UiScale.Apply(_settings.UiScale);
                 RebuildTitleBar();
                 ApplyTabLayout();
                 UpdateTransparencyHints();
@@ -7693,7 +7699,9 @@ namespace Ntilde
                 _settings.FontFamily = previewSnapshot.FontFamily;
                 _settings.FontSize = previewSnapshot.FontSize;
                 _settings.ThemeName = previewSnapshot.ThemeName;
+                _settings.UiScale = previewSnapshot.UiScale;
                 _settings.RefreshActiveTheme();
+                UiScale.Apply(_settings.UiScale);
 
                 ApplyThemeToUI();
                 ApplySettingsToAllTabs();
@@ -7717,7 +7725,8 @@ namespace Ntilde
             string BackgroundImageStretch,
             string FontFamily,
             double FontSize,
-            string ThemeName);
+            string ThemeName,
+            double UiScale);
 
         // Dialogs raised from the Connection Manager window take that window as their owner
         // (optional `owner`, falling back to MainWindow everywhere else) so they stack on the

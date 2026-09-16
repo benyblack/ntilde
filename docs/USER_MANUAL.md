@@ -16,7 +16,13 @@ The **Command Palette** is the central hub for accessing all features and comman
   Tokyo Night, Catppuccin Mocha, Solarized Dark/Light, GitHub Dark/Light, Monokai,
   OneHalf Dark/Light and Cobalt2. Switch with `Theme: <name>` in the palette or from
   Settings → Appearance, and import your own theme JSON there too.
-- **Font & Sizing:** Increase (`Ctrl++`) or decrease (`Ctrl+-`) font sizes. You can also customize your preferred font family in Settings.
+- **Font & Sizing:** Increase (`Ctrl++`) or decrease (`Ctrl+-`) the terminal font
+  size. You can also customize your preferred font family in Settings.
+- **Interface scale:** The terminal font size leaves the rest of the app alone. To
+  make tabs, sidebars, dialogs and Settings itself larger on a dense display, use
+  Settings → Appearance → Window → *Interface scale* (80%–200%). It previews live
+  and applies to every window; the terminal grows with it, on top of its font size.
+  Context menus and tooltips currently stay at 100%.
 - **Shortcuts:** Every shortcut in this manual is the default. Settings → Shortcuts
   lists them all and lets you rebind them.
 

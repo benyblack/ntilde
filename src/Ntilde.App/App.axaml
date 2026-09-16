@@ -13,6 +13,44 @@
         <x:Double x:Key="NtildeCaptionButtonWidth">45</x:Double>
         <x:Double x:Key="NtildeCaptionButtonHeight">30</x:Double>
 
+        <!-- Interface scale (Settings > Appearance > Window). Ntilde.Shell.UiScale.Apply replaces
+             this resource; the Window theme below binds to it dynamically so every open window
+             re-lays out. Keep the key in sync with UiScale.TransformResourceKey. -->
+        <ScaleTransform x:Key="NtUiScaleTransform" ScaleX="1" ScaleY="1"/>
+
+        <!-- The Fluent Window theme (Avalonia 12.0.4, Avalonia.Themes.Fluent/Controls/Window.xaml)
+             with one addition: a LayoutTransformControl around the content presenter that carries
+             the interface scale. Application.Resources win over FluentTheme's own resources, so
+             this replaces the default for every Window the app opens, XAML or code-built. -->
+        <ControlTheme x:Key="{x:Type Window}" TargetType="Window">
+            <Setter Property="Background" Value="{DynamicResource SystemRegionBrush}"/>
+            <Setter Property="TransparencyBackgroundFallback" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+            <Setter Property="TopLevel.SystemBarColor" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel>
+                        <Border Name="PART_TransparencyFallback" IsHitTestVisible="False"/>
+                        <Border Background="{TemplateBinding Background}" IsHitTestVisible="False"/>
+                        <Panel Background="Transparent" Margin="{TemplateBinding WindowDecorationMargin}"/>
+                        <VisualLayerManager Name="PART_VisualLayerManager">
+                            <LayoutTransformControl Name="PART_UiScaleHost"
+                                                    LayoutTransform="{DynamicResource NtUiScaleTransform}">
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  Content="{TemplateBinding Content}"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            </LayoutTransformControl>
+                        </VisualLayerManager>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+
         <ControlTheme x:Key="NtildeDrawnCaptionButton" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource CaptionButtonBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource CaptionButtonBorderBrush}" />

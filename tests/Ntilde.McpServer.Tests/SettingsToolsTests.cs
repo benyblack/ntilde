@@ -103,6 +103,24 @@ public class SettingsToolsTests
         Assert.Contains("'MaxHistory'", result);
     }
 
+    [Theory]
+    [InlineData("0.1")]
+    [InlineData("4")]
+    [InlineData("\"big\"")]
+    public void UiScaleOutOfRangeOrNonNumber_IsError(string value)
+    {
+        var result = SettingsTools.ValidateSettingsJson($$"""{ "UiScale": {{value}} }""");
+        Assert.StartsWith("INVALID", result);
+        Assert.Contains("'UiScale'", result);
+    }
+
+    [Fact]
+    public void UiScaleInRange_IsValid()
+    {
+        var result = SettingsTools.ValidateSettingsJson("""{ "UiScale": 1.25 }""");
+        Assert.StartsWith("VALID", result);
+    }
+
     [Fact]
     public void FontSizeZero_IsError()
     {

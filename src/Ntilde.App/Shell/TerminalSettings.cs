@@ -19,6 +19,14 @@ namespace Ntilde.Shell
         public string BlurEffect { get; set; } = "Acrylic";
 
         /// <summary>
+        /// Interface scale: zoom for the app chrome (tabs, sidebars, dialogs, settings), applied on
+        /// top of OS display scaling. 1.0 = 100%. Independent of <see cref="FontSize"/>, which only
+        /// sizes terminal text; the terminal pane is inside the scaled window, so it grows with this
+        /// too. Clamped to <see cref="UiScale.Minimum"/>–<see cref="UiScale.Maximum"/> at apply time.
+        /// </summary>
+        public double UiScale { get; set; } = Ntilde.Shell.UiScale.Default;
+
+        /// <summary>
         /// Where the tab strip lives: "Horizontal" (title-bar strip, the default) or
         /// "Vertical" (left sidebar with per-tab agent status and output preview).
         /// Parsed case-insensitively; unrecognized values behave as "Horizontal".

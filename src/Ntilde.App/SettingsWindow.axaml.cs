@@ -58,6 +58,8 @@ namespace Ntilde
         public event Action<string, double, string>? OnBgImageChanged;
         public event Action<string>? OnFontChanged;
         public event Action<double>? OnFontSizeChanged;
+        /// <summary>Live preview for Appearance > Window > Interface scale; the value is already clamped.</summary>
+        public event Action<double>? OnUiScaleChanged;
         public event Action<string>? OnThemeChanged;
 
         private DispatcherTimer? _statusTimer;
@@ -866,6 +868,22 @@ namespace Ntilde
                     {
                         opacityDisplay.Text = $"{(int)(opacitySlider.Value * 100)}%";
                         OnOpacityChanged?.Invoke(opacitySlider.Value);
+                    }
+                };
+            }
+
+            var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
+            var uiScaleDisplay = this.FindControl<TextBlock>("UiScaleValueDisplay");
+            if (uiScaleSlider != null && uiScaleDisplay != null)
+            {
+                uiScaleDisplay.Text = FormatUiScale(uiScaleSlider.Value);
+                uiScaleSlider.PropertyChanged += (s, e) =>
+                {
+                    if (e.Property == Avalonia.Controls.Primitives.RangeBase.ValueProperty)
+                    {
+                        double scale = UiScale.Clamp(uiScaleSlider.Value);
+                        uiScaleDisplay.Text = FormatUiScale(scale);
+                        OnUiScaleChanged?.Invoke(scale);
                     }
                 };
             }
@@ -2987,6 +3005,14 @@ namespace Ntilde
                 if (opacityDisplay != null)
                     opacityDisplay.Text = $"{(int)(_settings.WindowOpacity * 100)}%";
             }
+            var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
+            if (uiScaleSlider != null)
+            {
+                uiScaleSlider.Value = UiScale.Clamp(_settings.UiScale);
+                var uiScaleDisplay = this.FindControl<TextBlock>("UiScaleValueDisplay");
+                if (uiScaleDisplay != null)
+                    uiScaleDisplay.Text = FormatUiScale(uiScaleSlider.Value);
+            }
 
             if (ligatureToggle != null) ligatureToggle.IsChecked = _settings.EnableLigatures;
             if (complexShapingToggle != null) complexShapingToggle.IsChecked = _settings.EnableComplexShaping;
@@ -3215,6 +3241,8 @@ namespace Ntilde
             ThemePaletteResources.Apply(Resources, theme);
         }
 
+        private static string FormatUiScale(double scale) => $"{(int)Math.Round(scale * 100)}%";
+
         private void SaveAndClose()
         {
             var fontList = this.FindControl<ComboBox>("FontList");
@@ -3235,6 +3263,8 @@ namespace Ntilde
             if (fontSizeInput != null) _settings.FontSize = (double)(fontSizeInput.Value ?? 14);
             if (scrollbackInput != null) _settings.MaxHistory = (int)(scrollbackInput.Value ?? 10000);
             if (opacitySlider != null) _settings.WindowOpacity = opacitySlider.Value;
+            var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
+            if (uiScaleSlider != null) _settings.UiScale = UiScale.Clamp(uiScaleSlider.Value);
             if (ligatureToggle != null) _settings.EnableLigatures = ligatureToggle.IsChecked == true;
             if (complexShapingToggle != null) _settings.EnableComplexShaping = complexShapingToggle.IsChecked == true;
             if (commandAssistToggle != null) _settings.CommandAssistEnabled = commandAssistToggle.IsChecked == true;
