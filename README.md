@@ -68,7 +68,8 @@ existing install:
   under the new name. Re-enter SSH passwords once; the profiles themselves are already there.
 - **The old app will not update itself into Ntilde.** Install Ntilde from the links below, then
   uninstall NovaTerminal. Debian and Arch packages supersede `novaterminal` automatically.
-- **Package names changed:** `winget install benyblack.ntilde`, `ntilde-bin` on the AUR, `.deb`
+- **Package names changed:** `winget install benyblack.ntilde`, `brew install --cask
+  benyblack/tap/ntilde`, `ntilde-bin` on the AUR, `.deb`
   package `ntilde`. The command is now `ntilde` (was `nova`).
 - **Old files still open.** `.novabackup` bundles, `.novaws.json` workspace exports and `.rec`
   recordings from NovaTerminal import and replay unchanged.
@@ -99,6 +100,9 @@ so SmartScreen will warn on first run. Choose *More info → Run anyway*.
   it installs into `/Applications` (or `~/Applications`) as a proper `Ntilde.app`
   bundle. Alternatively grab `ntilde-osx-arm64-<tag>.zip`, open it, and drag
   `Ntilde.app` to `/Applications`.
+
+- **Homebrew** — `brew install --cask benyblack/tap/ntilde` (Apple Silicon;
+  installs the same `Ntilde.app`, see [packaging/homebrew](packaging/homebrew/README.md)).
 
 macOS builds installed via the `.pkg` check for updates in the background and apply them
 on restart, same as Windows. If the app lives in `/Applications`, macOS will ask for your
