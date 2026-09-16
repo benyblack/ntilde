@@ -235,6 +235,59 @@ public sealed class AppPathsTests
     }
 
     [Fact]
+    public void MigrateLegacyRoot_DoesNotWriteMarker_WhenACopyFails_AndRetriesNextTime()
+    {
+        string temp = CreateTempDirectory();
+        try
+        {
+            string legacy = Path.Combine(temp, "NovaTerminal");
+            string fresh = Path.Combine(temp, "ntilde");
+            Directory.CreateDirectory(Path.Combine(legacy, "themes"));
+            File.WriteAllText(Path.Combine(legacy, "settings.json"), "{}");
+            File.WriteAllText(Path.Combine(legacy, "themes", "dark.json"), "{}");
+            // A directory parked on the destination path makes File.Copy throw on every OS.
+            Directory.CreateDirectory(Path.Combine(fresh, "settings.json"));
+
+            bool first = AppPaths.MigrateLegacyRoot(legacy, fresh);
+
+            Assert.False(first);
+            Assert.False(File.Exists(Path.Combine(fresh, AppPaths.MigrationMarkerFileName)));
+            Assert.True(File.Exists(Path.Combine(fresh, "themes", "dark.json"))); // the rest still copied
+
+            Directory.Delete(Path.Combine(fresh, "settings.json"));
+            bool second = AppPaths.MigrateLegacyRoot(legacy, fresh);
+
+            Assert.True(second);
+            Assert.Equal("{}", File.ReadAllText(Path.Combine(fresh, "settings.json")));
+            Assert.True(File.Exists(Path.Combine(fresh, AppPaths.MigrationMarkerFileName)));
+        }
+        finally
+        {
+            Directory.Delete(temp, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void MigrateFileIfNeeded_ReturnsFalse_WhenTheCopyFails()
+    {
+        string temp = CreateTempDirectory();
+        try
+        {
+            string source = Path.Combine(temp, "source.txt");
+            string destination = Path.Combine(temp, "dest.txt");
+            File.WriteAllText(source, "x");
+            Directory.CreateDirectory(destination); // directory parked on the destination path
+
+            Assert.False(AppPaths.MigrateFileIfNeeded(source, destination));
+            Assert.True(AppPaths.MigrateFileIfNeeded(Path.Combine(temp, "missing.txt"), Path.Combine(temp, "other.txt")));
+        }
+        finally
+        {
+            Directory.Delete(temp, recursive: true);
+        }
+    }
+
+    [Fact]
     public void RootDirectory_FolderNameIsLowercaseNtilde()
     {
         string? previous = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");

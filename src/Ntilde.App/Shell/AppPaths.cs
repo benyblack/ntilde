@@ -127,15 +127,19 @@ namespace Ntilde.Shell
             }
         }
 
-        public static void MigrateFileIfNeeded(string sourcePath, string destinationPath)
+        /// <returns>
+        /// <c>true</c> when the destination is up to date afterwards (copied, already newer/identical,
+        /// or the source does not exist); <c>false</c> when a copy was attempted and threw.
+        /// </returns>
+        public static bool MigrateFileIfNeeded(string sourcePath, string destinationPath)
         {
             try
             {
-                if (!File.Exists(sourcePath)) return;
+                if (!File.Exists(sourcePath)) return true;
 
                 string sourceFullPath = Path.GetFullPath(sourcePath);
                 string destinationFullPath = Path.GetFullPath(destinationPath);
-                if (PathsEqual(sourceFullPath, destinationFullPath)) return;
+                if (PathsEqual(sourceFullPath, destinationFullPath)) return true;
 
                 string? destinationDirectory = Path.GetDirectoryName(destinationFullPath);
                 if (!string.IsNullOrEmpty(destinationDirectory))
@@ -147,48 +151,62 @@ namespace Ntilde.Shell
                 {
                     DateTime sourceWrite = File.GetLastWriteTimeUtc(sourceFullPath);
                     DateTime destinationWrite = File.GetLastWriteTimeUtc(destinationFullPath);
-                    if (destinationWrite >= sourceWrite) return;
+                    if (destinationWrite >= sourceWrite) return true;
                 }
 
                 File.Copy(sourceFullPath, destinationFullPath, overwrite: true);
+                return true;
             }
             catch
             {
                 // Best-effort migration only.
+                return false;
             }
         }
 
-        public static void MigrateDirectoryIfNeeded(string sourceDirectory, string destinationDirectory)
+        /// <returns>
+        /// <c>true</c> when every file in the directory ended up up to date; <c>false</c> when any
+        /// file copy was attempted and threw, or the directory walk itself threw. Every file is still
+        /// attempted, even after one fails.
+        /// </returns>
+        public static bool MigrateDirectoryIfNeeded(string sourceDirectory, string destinationDirectory)
         {
             try
             {
-                if (!Directory.Exists(sourceDirectory)) return;
+                if (!Directory.Exists(sourceDirectory)) return true;
 
                 string sourceFullPath = Path.GetFullPath(sourceDirectory);
                 string destinationFullPath = Path.GetFullPath(destinationDirectory);
-                if (PathsEqual(sourceFullPath, destinationFullPath)) return;
+                if (PathsEqual(sourceFullPath, destinationFullPath)) return true;
 
                 Directory.CreateDirectory(destinationFullPath);
 
+                bool allCopied = true;
                 foreach (string sourceFile in Directory.GetFiles(sourceFullPath, "*", SearchOption.AllDirectories))
                 {
                     string relativePath = Path.GetRelativePath(sourceFullPath, sourceFile);
                     string destinationFile = Path.Combine(destinationFullPath, relativePath);
-                    MigrateFileIfNeeded(sourceFile, destinationFile);
+                    allCopied &= MigrateFileIfNeeded(sourceFile, destinationFile);
                 }
+
+                return allCopied;
             }
             catch
             {
                 // Best-effort migration only.
+                return false;
             }
         }
 
         /// <summary>
         /// One-time copy of a pre-rebrand data folder into the new root. Copies every top-level
         /// file and every subdirectory except <c>logs</c>, newer-file-wins per file, never deletes
-        /// the source, and writes <see cref="MigrationMarkerFileName"/> so it runs once.
+        /// the source, and writes <see cref="MigrationMarkerFileName"/> only once every copy
+        /// succeeded, so it runs once. If any copy fails, no marker is written and the next launch
+        /// retries; newer-file-wins makes that retry idempotent.
         /// </summary>
-        /// <returns><c>true</c> when a copy ran; <c>false</c> when there was nothing to do.</returns>
+        /// <returns><c>true</c> when the marker was written (everything copied); <c>false</c> when
+        /// there was nothing to do, or when any copy failed and the marker was withheld.</returns>
         public static bool MigrateLegacyRoot(string legacyRoot, string newRoot)
         {
             try
@@ -204,21 +222,27 @@ namespace Ntilde.Shell
 
                 Directory.CreateDirectory(newFull);
 
+                bool allCopied = true;
+
                 foreach (string file in Directory.GetFiles(legacyFull))
                 {
                     // Skip the agent-host discovery file: it is written by the running app, and a
                     // stale copy would point the MCP server at a dead NovaTerminal process.
                     if (string.Equals(Path.GetFileName(file), Ntilde.AgentHost.Contracts.AgentHostProtocol.DiscoveryFileName, StringComparison.OrdinalIgnoreCase)) continue;
 
-                    MigrateFileIfNeeded(file, Path.Combine(newFull, Path.GetFileName(file)));
+                    allCopied &= MigrateFileIfNeeded(file, Path.Combine(newFull, Path.GetFileName(file)));
                 }
 
                 foreach (string directory in Directory.GetDirectories(legacyFull))
                 {
                     string name = Path.GetFileName(directory);
                     if (string.Equals(name, "logs", StringComparison.OrdinalIgnoreCase)) continue;
-                    MigrateDirectoryIfNeeded(directory, Path.Combine(newFull, name));
+                    allCopied &= MigrateDirectoryIfNeeded(directory, Path.Combine(newFull, name));
                 }
+
+                // Only mark migration complete when every copy succeeded; a partial failure must
+                // not permanently suppress a retry of the files that failed.
+                if (!allCopied) return false;
 
                 File.WriteAllText(
                     marker,
