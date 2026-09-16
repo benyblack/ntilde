@@ -17,6 +17,7 @@ public partial class NewSshConnectionView : Window
     public NewSshConnectionView()
     {
         InitializeComponent();
+        Ntilde.Shell.UiScale.FitWindow(this);
         ConfigureAuthModeCombo();
         ConfigureBackendKindCombo();
         ConfigureRemoteShellKindCombo();

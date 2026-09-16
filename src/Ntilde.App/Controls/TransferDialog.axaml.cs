@@ -39,6 +39,7 @@ public partial class TransferDialog : Window
 
         _request = request;
         InitializeComponent();
+        Ntilde.Shell.UiScale.FitWindow(this);
 
         _remotePathInput = this.FindControl<RemotePathTextBox>("RemotePathInput")
             ?? throw new InvalidOperationException("RemotePathInput was not found.");

@@ -214,7 +214,8 @@ public sealed class MainWindowBackupPaletteTests : IDisposable, IClassFixture<Te
                 BackgroundImageStretch: "UniformToFill",
                 FontFamily: "Consolas",
                 FontSize: 14,
-                ThemeName: "Changed");
+                ThemeName: "Changed",
+                UiScale: 1.0);
 
             // saved: false - the dialog closed via Cancel or the window's X, not Save.
             window.ApplySettingsWindowResult(settingsWindow, saved: false, previewSnapshot);

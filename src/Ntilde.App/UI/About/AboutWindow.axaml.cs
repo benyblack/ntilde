@@ -26,6 +26,7 @@ public partial class AboutWindow : Window, IUpdateCheckFeedback
     public AboutWindow()
     {
         InitializeComponent();
+        Ntilde.Shell.UiScale.FitWindow(this);
 
         try
         {

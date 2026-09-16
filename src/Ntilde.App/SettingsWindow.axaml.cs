@@ -58,6 +58,8 @@ namespace Ntilde
         public event Action<string, double, string>? OnBgImageChanged;
         public event Action<string>? OnFontChanged;
         public event Action<double>? OnFontSizeChanged;
+        /// <summary>Live preview for Appearance > Window > Interface scale; the value is already clamped.</summary>
+        public event Action<double>? OnUiScaleChanged;
         public event Action<string>? OnThemeChanged;
 
         private DispatcherTimer? _statusTimer;
@@ -121,6 +123,16 @@ namespace Ntilde
         public SettingsWindow(int initialTab = 0, Guid? initialProfileId = null, SettingsSection section = SettingsSection.None)
         {
             InitializeComponent();
+            // Hold this window at the interface scale it opened with, then size it for that scale
+            // (its 880x620 layout keeps 880x620 of logical room - pinning alone shrank it to 440
+            // DIPs at 200% and clipped the slider). A held window ignores later UiScale.Apply
+            // calls: without that the Interface scale slider rescaled the very window it lives in
+            // and the thumb ran away from the pointer. Every other window previews live; this one
+            // adopts the new scale the next time it opens. The hold is the ceiling: a screen that
+            // cannot fit the window still reduces below it, and FitWindow re-checks on Opened
+            // against the screen the window actually landed on.
+            UiScale.PinScale(this, UiScale.Current);
+            UiScale.FitWindow(this);
             _settings = TerminalSettings.Load();
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))
@@ -870,6 +882,22 @@ namespace Ntilde
                 };
             }
 
+            var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
+            var uiScaleDisplay = this.FindControl<TextBlock>("UiScaleValueDisplay");
+            if (uiScaleSlider != null && uiScaleDisplay != null)
+            {
+                uiScaleDisplay.Text = FormatUiScale(uiScaleSlider.Value);
+                uiScaleSlider.PropertyChanged += (s, e) =>
+                {
+                    if (e.Property == Avalonia.Controls.Primitives.RangeBase.ValueProperty)
+                    {
+                        double scale = UiScale.Clamp(uiScaleSlider.Value);
+                        uiScaleDisplay.Text = FormatUiScale(scale);
+                        OnUiScaleChanged?.Invoke(scale);
+                    }
+                };
+            }
+
             if (blurList != null)
             {
                 blurList.SelectionChanged += (s, e) =>
@@ -1446,6 +1474,7 @@ namespace Ntilde
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 CanResize = false
             };
+            UiScale.FitWindow(dialog);
 
             var restoreButton = new Button { Content = "Restore", Classes = { "Pill" } };
             var cancelButton = new Button { Content = "Cancel", Classes = { "Pill" } };
@@ -1542,6 +1571,7 @@ namespace Ntilde
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 CanResize = false
             };
+            UiScale.FitWindow(dialog);
 
             var mergeButton = new Button { Content = "Merge", Classes = { "Pill" } };
             var replaceButton = new Button { Content = "Replace", Classes = { "Pill" } };
@@ -2987,6 +3017,14 @@ namespace Ntilde
                 if (opacityDisplay != null)
                     opacityDisplay.Text = $"{(int)(_settings.WindowOpacity * 100)}%";
             }
+            var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
+            if (uiScaleSlider != null)
+            {
+                uiScaleSlider.Value = UiScale.Clamp(_settings.UiScale);
+                var uiScaleDisplay = this.FindControl<TextBlock>("UiScaleValueDisplay");
+                if (uiScaleDisplay != null)
+                    uiScaleDisplay.Text = FormatUiScale(uiScaleSlider.Value);
+            }
 
             if (ligatureToggle != null) ligatureToggle.IsChecked = _settings.EnableLigatures;
             if (complexShapingToggle != null) complexShapingToggle.IsChecked = _settings.EnableComplexShaping;
@@ -3215,6 +3253,8 @@ namespace Ntilde
             ThemePaletteResources.Apply(Resources, theme);
         }
 
+        private static string FormatUiScale(double scale) => $"{(int)Math.Round(scale * 100)}%";
+
         private void SaveAndClose()
         {
             var fontList = this.FindControl<ComboBox>("FontList");
@@ -3235,6 +3275,8 @@ namespace Ntilde
             if (fontSizeInput != null) _settings.FontSize = (double)(fontSizeInput.Value ?? 14);
             if (scrollbackInput != null) _settings.MaxHistory = (int)(scrollbackInput.Value ?? 10000);
             if (opacitySlider != null) _settings.WindowOpacity = opacitySlider.Value;
+            var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
+            if (uiScaleSlider != null) _settings.UiScale = UiScale.Clamp(uiScaleSlider.Value);
             if (ligatureToggle != null) _settings.EnableLigatures = ligatureToggle.IsChecked == true;
             if (complexShapingToggle != null) _settings.EnableComplexShaping = complexShapingToggle.IsChecked == true;
             if (commandAssistToggle != null) _settings.CommandAssistEnabled = commandAssistToggle.IsChecked == true;

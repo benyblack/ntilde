@@ -538,6 +538,29 @@
 
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Interface scale"/>
+                                    <TextBlock Classes="RowDesc"  TextWrapping="Wrap" Text="Zooms tabs, sidebars, dialogs and settings. The terminal grows with it, on top of its font size."/>
+                                </StackPanel>
+                                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                    <Slider Name="UiScaleSlider"
+                                            Grid.Column="0"
+                                            Minimum="0.8" Maximum="2.0" Value="1.0"
+                                            TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Name="UiScaleValueDisplay"
+                                               Grid.Column="1"
+                                               Text="100%"
+                                               Width="48" TextAlignment="Right"
+                                               VerticalAlignment="Center"
+                                               FontFamily="{StaticResource NtMono}"
+                                               FontSize="12"
+                                               Foreground="{StaticResource NtFg2}"
+                                               Margin="10,0,0,0"/>
+                                </Grid>
+                            </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Blur effect"/>
                                     <TextBlock Classes="RowDesc"  Text="Acrylic / Mica where supported by the OS."/>
                                 </StackPanel>
