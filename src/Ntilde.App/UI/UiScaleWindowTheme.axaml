@@ -1,0 +1,48 @@
+<!-- Interface scale (Settings > Appearance > Window).
+
+     Ntilde.Shell.UiScale.Apply replaces the NtUiScaleTransform resource in the application's own
+     dictionary (which shadows this merged one); the Window theme below binds to it dynamically so
+     every open window re-lays out. Keep the key in sync with UiScale.TransformResourceKey.
+
+     Shared by App.axaml and the standalone askpass helper (SshAskPassCommand.AskPassApplication),
+     which is a separate process with its own Application and would otherwise stay at 100%.
+
+     The Window ControlTheme is the Fluent one (Avalonia 12.0.4,
+     Avalonia.Themes.Fluent/Controls/Window.xaml) with one addition: a LayoutTransformControl around
+     the content presenter that carries the interface scale. Application resources win over
+     FluentTheme's own, so this replaces the default for every Window, XAML or code-built. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:Class="Ntilde.UI.UiScaleWindowTheme">
+
+    <ScaleTransform x:Key="NtUiScaleTransform" ScaleX="1" ScaleY="1"/>
+
+    <ControlTheme x:Key="{x:Type Window}" TargetType="Window">
+        <Setter Property="Background" Value="{DynamicResource SystemRegionBrush}"/>
+        <Setter Property="TransparencyBackgroundFallback" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+        <Setter Property="TopLevel.SystemBarColor" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <Border Name="PART_TransparencyFallback" IsHitTestVisible="False"/>
+                    <Border Background="{TemplateBinding Background}" IsHitTestVisible="False"/>
+                    <Panel Background="Transparent" Margin="{TemplateBinding WindowDecorationMargin}"/>
+                    <VisualLayerManager Name="PART_VisualLayerManager">
+                        <LayoutTransformControl Name="PART_UiScaleHost"
+                                                LayoutTransform="{DynamicResource NtUiScaleTransform}">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Content="{TemplateBinding Content}"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </LayoutTransformControl>
+                    </VisualLayerManager>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>

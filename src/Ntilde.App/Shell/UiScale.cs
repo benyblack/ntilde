@@ -15,11 +15,14 @@ namespace Ntilde.Shell;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Mechanism: the Window control theme in <c>App.axaml</c> wraps every window's content presenter
-/// in a <c>LayoutTransformControl</c> whose transform is the application resource
+/// Mechanism: the Window control theme in <c>UI/UiScaleWindowTheme.axaml</c> (merged by
+/// <c>App.axaml</c>, installed into the askpass helper's Application by
+/// <see cref="InstallWindowTheme"/>) wraps every window's content presenter in a
+/// <c>LayoutTransformControl</c> whose transform is the application resource
 /// <see cref="TransformResourceKey"/>. <see cref="Apply"/> replaces that resource, and the
 /// <c>DynamicResource</c> binding re-lays out every open window. One place, no per-window wiring,
-/// and code-built dialogs get it for free.
+/// and code-built dialogs get it for free. Fixed-size windows also call <see cref="FitWindow"/>
+/// so their logical room survives the transform.
 /// </para>
 /// <para>
 /// A layout transform scales the terminal pane too - a terminal at font size 14 under 125% renders
@@ -88,6 +91,20 @@ public static class UiScale
         }
 
         Changed?.Invoke(null, clamped);
+    }
+
+    /// <summary>
+    /// The shared resource dictionary carrying the scale transform and the Window control theme
+    /// that applies it (<c>UI/UiScaleWindowTheme.axaml</c>). <c>App.axaml</c> merges it in XAML;
+    /// a secondary <see cref="Application"/> such as the standalone askpass helper calls this in
+    /// its <c>Initialize</c>, or its windows never scale.
+    /// </summary>
+    public static void InstallWindowTheme(Application app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        // Compiled XAML via the dictionary's x:Class, not ResourceInclude(Uri): the latter is the
+        // runtime loader and trips IL2026 under the NativeAOT release build.
+        app.Resources.MergedDictionaries.Add(new Ntilde.UI.UiScaleWindowTheme());
     }
 
     /// <summary>

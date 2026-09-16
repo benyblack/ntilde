@@ -125,7 +125,26 @@ internal static class SshAskPassCommand
                prompt.Contains("passphrase", StringComparison.OrdinalIgnoreCase);
     }
 
-    private sealed class AskPassState
+    /// <summary>
+    /// The interface scale the user saved, read from settings.json the way the main app does.
+    /// The helper is a separate process, so <see cref="UiScale.Current"/> starts at its default
+    /// here; without this the authentication dialog stayed at 100% for a user on 150%. Any
+    /// failure to read settings falls back to the default - authentication must never be blocked
+    /// by a settings problem.
+    /// </summary>
+    internal static double ResolveSavedUiScale()
+    {
+        try
+        {
+            return UiScale.Clamp(TerminalSettings.Load().UiScale);
+        }
+        catch (Exception)
+        {
+            return UiScale.Default;
+        }
+    }
+
+    internal sealed class AskPassState
     {
         public AskPassState(string prompt, TerminalProfile profile)
         {
@@ -138,7 +157,7 @@ internal static class SshAskPassCommand
         public string? Response { get; set; }
     }
 
-    private sealed class AskPassApplication : Application
+    internal sealed class AskPassApplication : Application
     {
         private readonly AskPassState _state;
 
@@ -150,12 +169,16 @@ internal static class SshAskPassCommand
         public override void Initialize()
         {
             Styles.Add(new FluentTheme());
+            // Same Window theme as App.axaml, so the interface scale reaches this process too.
+            UiScale.InstallWindowTheme(this);
         }
 
         public override void OnFrameworkInitializationCompleted()
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
+                // Before the window exists: FitWindow in its constructor reads UiScale.Current.
+                UiScale.Apply(ResolveSavedUiScale());
                 var window = new AskPassWindow(_state, () => desktop.Shutdown());
                 desktop.MainWindow = window;
                 window.Show();
@@ -165,7 +188,7 @@ internal static class SshAskPassCommand
         }
     }
 
-    private sealed class AskPassWindow : Window
+    internal sealed class AskPassWindow : Window
     {
         private readonly AskPassState _state;
         private readonly Action _shutdown;
