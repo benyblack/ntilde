@@ -303,6 +303,61 @@ public sealed class UiScaleTests
         }
     }
 
+    /// <summary>
+    /// A screen-forced reduction is not a hold: when a later fit (the real screen once the window
+    /// opens, or a lower app scale) has room again, the window grows back and its pin comes off,
+    /// so it previews live like any other window.
+    /// </summary>
+    [AvaloniaFact]
+    public void FitWindow_ReleasesAScreenReduction_WhenALaterFitHasRoom()
+    {
+        UiScale.Apply(2.0);
+        try
+        {
+            var window = new Window { Width = 880, Height = 620 };
+            UiScale.FitWindow(window, workingArea: new Size(1000, 1000));
+            Assert.True(window.Resources.ContainsKey(UiScale.TransformResourceKey));
+
+            double applied = UiScale.FitWindow(window, workingArea: new Size(3000, 3000));
+
+            Assert.Equal(2.0, applied, precision: 6);
+            Assert.Equal(1760, window.Width, precision: 3);
+            Assert.False(window.Resources.ContainsKey(UiScale.TransformResourceKey), "the reduction pin must come off once the window fits");
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
+    /// <summary>
+    /// A caller's hold (Settings pins the app scale it opened with) is the ceiling for every later
+    /// fit: the screen may still reduce below it, and a fit with room comes back up to the held
+    /// scale, never to a Current that moved on in the meantime.
+    /// </summary>
+    [AvaloniaFact]
+    public void FitWindow_UnderAHold_UsesTheHeldScaleAsTheCeiling()
+    {
+        UiScale.Apply(1.5);
+        try
+        {
+            var window = new Window { Width = 880, Height = 620 };
+            UiScale.PinScale(window, 1.5);
+
+            UiScale.Apply(2.0);
+            double applied = UiScale.FitWindow(window, workingArea: new Size(3000, 3000));
+
+            Assert.Equal(1.5, applied, precision: 6);
+            Assert.Equal(1320, window.Width, precision: 3);
+            var transform = Assert.IsType<ScaleTransform>(window.Resources[UiScale.TransformResourceKey]);
+            Assert.Equal(1.5, transform.ScaleX, precision: 6);
+        }
+        finally
+        {
+            UiScale.Apply(1.0);
+        }
+    }
+
     /// <summary>The reduction never goes below 100%: a window too big for the screen at 100% is not this feature's problem.</summary>
     [AvaloniaFact]
     public void FitWindow_NeverReducesBelowOneHundredPercent()

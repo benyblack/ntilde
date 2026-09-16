@@ -147,25 +147,36 @@ public static class UiScale
     {
         ArgumentNullException.ThrowIfNull(window);
         var fitted = Registry.GetValue(window, _ => new FittedWindow(window));
-        if (fitted.Pinned)
-        {
-            return fitted.AppliedScale;
-        }
 
-        double scale = Current;
+        // A caller's hold is the ceiling; otherwise the app scale is.
+        double ceiling = fitted.HeldScale ?? Current;
+        double scale = ceiling;
 
         if (workingArea is { } area && scale > Default)
         {
             double fit = scale;
             if (IsFixed(fitted.DesignWidth)) fit = Math.Min(fit, area.Width / fitted.DesignWidth);
             if (IsFixed(fitted.DesignHeight)) fit = Math.Min(fit, area.Height / fitted.DesignHeight);
-            fit = Math.Max(fit, Default);
+            scale = Math.Max(fit, Default);
+        }
 
-            if (fit < scale - 0.0001)
-            {
-                scale = fit;
-                PinScale(window, scale);
-            }
+        bool reduced = scale < ceiling - 0.0001;
+        if (reduced)
+        {
+            // Screen-forced: shadow the app resource so the content renders at what fits. Not a
+            // hold - the next fit with room (the real screen on open, a lower app scale) releases it.
+            SetWindowTransform(window, scale);
+            fitted.ScreenReduced = true;
+        }
+        else if (fitted.HeldScale is { } held)
+        {
+            SetWindowTransform(window, held);
+            fitted.ScreenReduced = false;
+        }
+        else if (fitted.ScreenReduced)
+        {
+            window.Resources.Remove(TransformResourceKey);
+            fitted.ScreenReduced = false;
         }
 
         // Always from the design size, never from the current one: fitting is idempotent, so a
@@ -181,19 +192,25 @@ public static class UiScale
     /// <summary>
     /// Holds <paramref name="window"/> at <paramref name="scale"/> regardless of later
     /// <see cref="Apply"/> calls: a window-level resource of the same key shadows the application
-    /// one the Window theme binds to, and a pinned window is skipped by the refit in
-    /// <see cref="Apply"/>. Used by the Settings window (so the slider does not run away from the
-    /// pointer) and by <see cref="FitWindow"/> when the screen forces a smaller scale.
+    /// one the Window theme binds to, the refit in <see cref="Apply"/> skips held windows, and the
+    /// held scale becomes the ceiling for <see cref="FitWindow"/> (the screen may still reduce
+    /// below it). Used by the Settings window so the slider does not run away from the pointer.
     /// </summary>
     public static void PinScale(Window window, double scale)
     {
         ArgumentNullException.ThrowIfNull(window);
         double clamped = Clamp(scale);
-        window.Resources[TransformResourceKey] = new ScaleTransform(clamped, clamped);
         var fitted = Registry.GetValue(window, _ => new FittedWindow(window));
-        fitted.Pinned = true;
-        fitted.AppliedScale = clamped;
+        fitted.HeldScale = clamped;
+        if (!fitted.ScreenReduced)
+        {
+            SetWindowTransform(window, clamped);
+            fitted.AppliedScale = clamped;
+        }
     }
+
+    private static void SetWindowTransform(Window window, double scale)
+        => window.Resources[TransformResourceKey] = new ScaleTransform(scale, scale);
 
     /// <summary>
     /// Every window that went through <see cref="FitWindow"/>, with the size its XAML asked for
@@ -218,7 +235,10 @@ public static class UiScale
         public double DesignMinHeight { get; }
         public Application? OwnerApplication { get; }
         public double AppliedScale { get; set; } = Default;
-        public bool Pinned { get; set; }
+        /// <summary>Set by <see cref="PinScale"/>: the caller's hold, and the ceiling for fits.</summary>
+        public double? HeldScale { get; set; }
+        /// <summary>Set by <see cref="FitWindow"/> when the screen forced a scale below the ceiling.</summary>
+        public bool ScreenReduced { get; set; }
         public bool OpenedHooked { get; set; }
     }
 
@@ -233,7 +253,7 @@ public static class UiScale
     {
         foreach ((Window window, FittedWindow fitted) in Registry)
         {
-            if (fitted.Pinned || !ReferenceEquals(fitted.OwnerApplication, Application.Current) || !window.IsVisible)
+            if (fitted.HeldScale != null || !ReferenceEquals(fitted.OwnerApplication, Application.Current) || !window.IsVisible)
             {
                 continue;
             }

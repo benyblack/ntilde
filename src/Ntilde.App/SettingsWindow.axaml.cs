@@ -123,13 +123,16 @@ namespace Ntilde
         public SettingsWindow(int initialTab = 0, Guid? initialProfileId = null, SettingsSection section = SettingsSection.None)
         {
             InitializeComponent();
-            // Size this window for the interface scale (so its 880x620 layout keeps 880x620 of
-            // logical room - pinning alone shrank it to 440 DIPs at 200% and clipped the slider),
-            // then pin it at the scale FitWindow could actually honour on this screen. A pinned
-            // window ignores later UiScale.Apply calls: without that the Interface scale slider
-            // rescaled the very window it lives in and the thumb ran away from the pointer. Every
-            // other window previews live; this one adopts the new scale the next time it opens.
-            UiScale.PinScale(this, UiScale.FitWindow(this));
+            // Hold this window at the interface scale it opened with, then size it for that scale
+            // (its 880x620 layout keeps 880x620 of logical room - pinning alone shrank it to 440
+            // DIPs at 200% and clipped the slider). A held window ignores later UiScale.Apply
+            // calls: without that the Interface scale slider rescaled the very window it lives in
+            // and the thumb ran away from the pointer. Every other window previews live; this one
+            // adopts the new scale the next time it opens. The hold is the ceiling: a screen that
+            // cannot fit the window still reduces below it, and FitWindow re-checks on Opened
+            // against the screen the window actually landed on.
+            UiScale.PinScale(this, UiScale.Current);
+            UiScale.FitWindow(this);
             _settings = TerminalSettings.Load();
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))
