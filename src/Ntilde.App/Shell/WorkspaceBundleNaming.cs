@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 namespace Ntilde.Shell
 {
@@ -13,8 +14,13 @@ namespace Ntilde.Shell
         public const string Extension = ".ntildews.json";
         public const string LegacyExtension = ".novaws.json";
 
+        /// <summary>File-picker filter label shown next to <see cref="PickerPatterns"/>.</summary>
+        public const string PickerDisplayName = "Ntilde Workspace Bundle";
+
         /// <summary>File-picker patterns, new suffix first so it is the default filter.</summary>
         public static readonly string[] PickerPatterns = { "*" + Extension, "*" + LegacyExtension, "*.json" };
+
+        private static readonly string[] BundleMarkers = { ".ntildews", ".novaws" };
 
         public static string SuggestedFileName(string workspaceName) => $"{workspaceName.Trim()}{Extension}";
 
@@ -22,15 +28,8 @@ namespace Ntilde.Shell
         public static string SuggestedWorkspaceName(string bundlePath)
         {
             string name = Path.GetFileNameWithoutExtension(bundlePath); // drops ".json"
-            foreach (string marker in new[] { ".ntildews", ".novaws" })
-            {
-                if (name.EndsWith(marker, StringComparison.OrdinalIgnoreCase))
-                {
-                    return name[..^marker.Length];
-                }
-            }
-
-            return name;
+            string? marker = BundleMarkers.FirstOrDefault(m => name.EndsWith(m, StringComparison.OrdinalIgnoreCase));
+            return marker is null ? name : name[..^marker.Length];
         }
     }
 }

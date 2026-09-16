@@ -3028,7 +3028,7 @@ namespace Ntilde
                 SuggestedFileName = suggestedFileName,
                 FileTypeChoices = new[]
                 {
-                    new FilePickerFileType("Ntilde Workspace Bundle") { Patterns = WorkspaceBundleNaming.PickerPatterns }
+                    new FilePickerFileType(WorkspaceBundleNaming.PickerDisplayName) { Patterns = WorkspaceBundleNaming.PickerPatterns }
                 }
             });
 
@@ -3066,7 +3066,7 @@ namespace Ntilde
                 SuggestedFileName = suggestedFileName,
                 FileTypeChoices = new[]
                 {
-                    new FilePickerFileType("Ntilde Workspace Bundle") { Patterns = WorkspaceBundleNaming.PickerPatterns }
+                    new FilePickerFileType(WorkspaceBundleNaming.PickerDisplayName) { Patterns = WorkspaceBundleNaming.PickerPatterns }
                 }
             });
 
@@ -3097,7 +3097,7 @@ namespace Ntilde
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Ntilde Workspace Bundle") { Patterns = WorkspaceBundleNaming.PickerPatterns }
+                    new FilePickerFileType(WorkspaceBundleNaming.PickerDisplayName) { Patterns = WorkspaceBundleNaming.PickerPatterns }
                 }
             });
 
@@ -3139,7 +3139,7 @@ namespace Ntilde
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Ntilde Workspace Bundle") { Patterns = WorkspaceBundleNaming.PickerPatterns }
+                    new FilePickerFileType(WorkspaceBundleNaming.PickerDisplayName) { Patterns = WorkspaceBundleNaming.PickerPatterns }
                 }
             });
 
