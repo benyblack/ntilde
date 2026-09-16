@@ -1,6 +1,6 @@
 # Ntilde
 
-<img width="100" alt="ico" src="https://github.com/user-attachments/assets/cffc2a9b-4c2b-4ee9-b03d-1d4c3c793d85" />
+<img width="100" alt="Ntilde icon" src="src/Ntilde.App/Assets/ntilde_icon.png" />
 
 **Ntilde** is a modern, cross-platform terminal emulator focused on
 
