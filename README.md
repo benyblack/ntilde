@@ -52,13 +52,13 @@ replay parity prevents silent behavioral drift.
 ## Install
 
 GitHub release assets are produced as Native AOT bundles for `win-x64`,
-`linux-x64`, and `osx-arm64`. Every release runs the gating unit-test lane on
-all three OSes before any bundle is published.
+`linux-x64`, `linux-arm64` and `osx-arm64`. Every release runs the gating unit-test
+lane on all three OSes before any bundle is published.
 
 ### Coming from NovaTerminal
 
-Ntilde is NovaTerminal renamed; nothing else changed in this release. What that means for an
-existing install:
+Ntilde is NovaTerminal renamed. 0.10.0 is the first release under the new name. What that
+means for an existing install:
 
 - **Settings carry over.** On first launch Ntilde copies settings, themes, connection profiles,
   workspaces, snippets, backups and history from `NovaTerminal` into its own data folder
@@ -72,9 +72,9 @@ existing install:
   comes back as Ntilde with your settings migrated. The portable zip has no updater: download
   Ntilde from the links below and delete the old copy. Debian and Arch packages supersede
   `novaterminal` automatically.
-- **Package names changed:** `winget install benyblack.ntilde`, `brew install --cask
-  benyblack/tap/ntilde`, `ntilde-bin` on the AUR, `.deb`
-  package `ntilde`. The command is now `ntilde` (was `nova`).
+- **Package names changed:** the `.deb` package is `ntilde` and the Arch package is
+  `ntilde-bin`; both supersede the `novaterminal` names. The command is now `ntilde`
+  (was `nova`).
 - **Old files still open.** `.novabackup` bundles, `.novaws.json` workspace exports and `.rec`
   recordings from NovaTerminal import and replay unchanged.
 - **Remote shell integration:** re-run the installer from Settings on each host; it writes
@@ -92,7 +92,9 @@ existing install:
   background — a new version downloads quietly and is applied when you accept the prompt and
   restart. Never a surprise restart. Automatic checks can be turned off in Settings.
 - **Portable** — download `ntilde-win-x64-<tag>.zip` and extract it anywhere. No updater.
-- **winget** — `winget install benyblack.ntilde` (portable package).
+
+There is no winget package yet; the manifests live in [packaging/winget](packaging/winget/README.md)
+for when there is.
 
 The installer and the executables are **not code-signed yet** ([#91](https://github.com/benyblack/ntilde/issues/91)),
 so SmartScreen will warn on first run. Choose *More info → Run anyway*.
@@ -105,8 +107,8 @@ so SmartScreen will warn on first run. Choose *More info → Run anyway*.
   bundle. Alternatively grab `ntilde-osx-arm64-<tag>.zip`, open it, and drag
   `Ntilde.app` to `/Applications`.
 
-- **Homebrew** — `brew install --cask benyblack/tap/ntilde` (Apple Silicon;
-  installs the same `Ntilde.app`, see [packaging/homebrew](packaging/homebrew/README.md)).
+There is no Homebrew tap yet; the cask lives in [packaging/homebrew](packaging/homebrew/README.md)
+for when there is.
 
 macOS builds installed via the `.pkg` check for updates in the background and apply them
 on restart, same as Windows. If the app lives in `/Applications`, macOS will ask for your
@@ -220,6 +222,8 @@ For build steps, jump to [Build & test](#build--test) below.
   Cascadia Mono PL alongside it, and a symbols-only Nerd Font loaded as a fallback so prompt icons work under
   whichever face you pick
 - Live settings (no restart)
+- Interface scale (Settings → Appearance → Window, 80%–200%): one zoom for the whole window,
+  separate from the terminal font size, with terminal text rasterized sharp at the scale
 
 ### Command Assist
 
@@ -506,7 +510,7 @@ CI-style sequence. Both scripts assume the .NET and Rust toolchains are already 
 
 Ntilde is configured for **Native AOT** publish in
 [`src/Ntilde.App/Ntilde.App.csproj`](src/Ntilde.App/Ntilde.App.csproj).
-The project supports `win-x64`, `linux-x64`, and `osx-arm64` publish targets.
+The project supports `win-x64`, `linux-x64`, `linux-arm64` and `osx-arm64` publish targets.
 The release workflow publishes Native AOT bundles for those targets to the
 corresponding GitHub Release.
 
@@ -516,7 +520,7 @@ Example publish command:
 dotnet publish src/Ntilde.App/Ntilde.App.csproj -c Release -r win-x64 --self-contained true -p:PublishAot=true -o artifacts/publish/win-x64
 ```
 
-Swap `win-x64` for `linux-x64` or `osx-arm64` as needed.
+Swap `win-x64` for `linux-x64`, `linux-arm64` or `osx-arm64` as needed.
 
 ---
 
