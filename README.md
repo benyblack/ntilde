@@ -66,8 +66,12 @@ existing install:
   left untouched; delete it when you are happy.
 - **Saved passwords do not.** Keychain, Credential Manager and Secret Service entries are stored
   under the new name. Re-enter SSH passwords once; the profiles themselves are already there.
-- **The old app will not update itself into Ntilde.** Install Ntilde from the links below, then
-  uninstall NovaTerminal. Debian and Arch packages supersede `novaterminal` automatically.
+- **An installed NovaTerminal updates itself into Ntilde.** The Windows installer and the macOS
+  `.pkg` keep checking the same update feed, and the next update they find is Ntilde. It is applied
+  in place: the install folder stays where it was, the shortcuts are renamed to Ntilde, and the app
+  comes back as Ntilde with your settings migrated. The portable zip has no updater: download
+  Ntilde from the links below and delete the old copy. Debian and Arch packages supersede
+  `novaterminal` automatically.
 - **Package names changed:** `winget install benyblack.ntilde`, `brew install --cask
   benyblack/tap/ntilde`, `ntilde-bin` on the AUR, `.deb`
   package `ntilde`. The command is now `ntilde` (was `nova`).
