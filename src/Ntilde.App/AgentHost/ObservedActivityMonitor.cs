@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ntilde.CommandAssist.Domain;
@@ -119,10 +120,28 @@ namespace Ntilde.AgentHost
                 _disabledUnauthorized = false;
                 _currentBackoff = TimeSpan.Zero;
                 _backoffUntil = DateTimeOffset.MinValue;
-                _timer = new Timer(_ => { try { _ = TickAsync(); } catch { } }, null, TickInterval, TickInterval);
+                _timer = new Timer(OnTimerTick, null, TickInterval, TickInterval);
             }
             RaiseStateChanged();
             return true;
+        }
+
+        private void OnTimerTick(object? state)
+        {
+            try
+            {
+                // TickAsync never throws synchronously (its body is guarded), but a faulted
+                // send task must still be observed so the pool never sees an unobserved exception.
+                TickAsync().ContinueWith(
+                    t => SafeLog($"[ScreenInference] send faulted: {t.Exception?.GetBaseException().GetType().Name}: {t.Exception?.GetBaseException().Message}"),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
+            catch (Exception ex)
+            {
+                SafeLog($"[ScreenInference] timer tick failed: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         public void Stop()
@@ -175,8 +194,7 @@ namespace Ntilde.AgentHost
                 {
                     try
                     {
-                        var send = TryObserve(registration, now);
-                        if (send != null) sends.Add(send);
+                        sends.Add(TryObserve(registration, now));
                     }
                     catch (Exception ex)
                     {
@@ -200,9 +218,9 @@ namespace Ntilde.AgentHost
             }
         }
 
-        private Task? TryObserve(AgentSessionRegistration registration, DateTimeOffset now)
+        private Task TryObserve(AgentSessionRegistration registration, DateTimeOffset now)
         {
-            if (!IsEligible(registration)) return null;
+            if (!IsEligible(registration)) return Task.CompletedTask;
 
             var snapshot = registration.StatusMachine.Snapshot();
             // Read the sequence BEFORE capturing: output that lands between the two makes the
@@ -212,22 +230,23 @@ namespace Ntilde.AgentHost
             PaneState state;
             lock (_gate)
             {
-                if (!_panes.TryGetValue(registration, out state!))
+                if (!_panes.TryGetValue(registration, out var existing))
                 {
-                    state = new PaneState();
-                    _panes[registration] = state;
+                    existing = new PaneState();
+                    _panes[registration] = existing;
                 }
-                if (state.InFlight) return null;
-                if (sequence == state.LastSequenceSent) return null;
-                if (now - snapshot.LastOutputAt < QuietWindow) return null;
-                if (now - state.LastRequestAt < MinInterval) return null;
+                state = existing;
+                if (state.InFlight) return Task.CompletedTask;
+                if (sequence == state.LastSequenceSent) return Task.CompletedTask;
+                if (now - snapshot.LastOutputAt < QuietWindow) return Task.CompletedTask;
+                if (now - state.LastRequestAt < MinInterval) return Task.CompletedTask;
             }
 
             var sample = _capture(registration);
             if (sample == null || string.IsNullOrWhiteSpace(sample.Text))
             {
                 lock (_gate) { state.LastSequenceSent = sequence; }
-                return null;
+                return Task.CompletedTask;
             }
 
             // Captured before the commit below so a failed send (anything but Answered) can put
@@ -242,7 +261,7 @@ namespace Ntilde.AgentHost
                 {
                     state.LastSequenceSent = sequence;
                     state.LastRequestAt = now;
-                    return null;
+                    return Task.CompletedTask;
                 }
                 previousSequence = state.LastSequenceSent;
                 previousText = state.LastTextSent;
@@ -307,8 +326,7 @@ namespace Ntilde.AgentHost
             string note = string.Empty;
             switch (result.Outcome)
             {
-                case ScreenClassificationOutcome.Answered:
-                    var a = result.Answer!;
+                case ScreenClassificationOutcome.Answered when result.Answer is { } a:
                     // A throwing EventEmitted subscriber on the status machine must not propagate
                     // out of the send path: treat it the same as a stale/dropped answer and record
                     // the failure in the log note instead.
@@ -380,11 +398,7 @@ namespace Ntilde.AgentHost
             {
                 if (_panes.Count == 0) return;
                 var liveSet = new HashSet<AgentSessionRegistration>(live, ReferenceEqualityComparer.Instance);
-                var dead = new List<AgentSessionRegistration>();
-                foreach (var key in _panes.Keys)
-                {
-                    if (!liveSet.Contains(key)) dead.Add(key);
-                }
+                var dead = _panes.Keys.Where(k => !liveSet.Contains(k)).ToList();
                 foreach (var key in dead) _panes.Remove(key);
             }
         }

@@ -338,29 +338,44 @@ namespace Ntilde.AgentHost
             if (_altScreenActive) return (AgentSessionStatusKind.Running, baseConfidence);
 
             var fresh = FreshObservation();
-            bool confident = fresh != null && fresh.Confidence >= ObservedOverrideThreshold;
 
             if (_precise)
             {
                 if (!_commandInFlight) return (PromptKind(now), AgentSessionStatusConfidence.Precise);
                 // The one precise override: a program inside the running command is waiting on the user.
-                if (confident && fresh!.Activity == ScreenActivity.WaitingForUser)
+                if (fresh is { } f && f.Confidence >= ObservedOverrideThreshold && f.Activity == ScreenActivity.WaitingForUser)
                 {
                     return (PromptKind(now), AgentSessionStatusConfidence.Observed);
                 }
                 return (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Precise);
             }
 
-            if (confident && fresh!.Activity != ScreenActivity.UnknownBlank)
+            if (ObservedHeuristicKind(fresh, now) is { } observed)
             {
-                return fresh.Activity is ScreenActivity.CommandRunning or ScreenActivity.AgentWorking
-                    ? (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Observed)
-                    : (PromptKind(now), AgentSessionStatusConfidence.Observed);
+                return observed;
             }
 
             return _hasActiveChildren
                 ? (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Heuristic)
                 : (PromptKind(now), AgentSessionStatusConfidence.Heuristic);
+        }
+
+        /// <summary>
+        /// The heuristic tier's screen-observation override: a confident, non-blank fresh
+        /// observation picks the status outright. Returns null when no such observation applies,
+        /// so the caller falls back to the active-children heuristic.
+        /// </summary>
+        private (AgentSessionStatusKind Kind, AgentSessionStatusConfidence Confidence)? ObservedHeuristicKind(
+            ScreenObservation? fresh, DateTimeOffset now)
+        {
+            if (fresh is not { } f || f.Confidence < ObservedOverrideThreshold || f.Activity == ScreenActivity.UnknownBlank)
+            {
+                return null;
+            }
+
+            return f.Activity is ScreenActivity.CommandRunning or ScreenActivity.AgentWorking
+                ? (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Observed)
+                : (PromptKind(now), AgentSessionStatusConfidence.Observed);
         }
 
         private AgentSessionStatusKind PromptKind(DateTimeOffset now)

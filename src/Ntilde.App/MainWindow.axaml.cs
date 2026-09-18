@@ -635,6 +635,45 @@ namespace Ntilde
             // tab id). Snapshot() is thread-safe; GetRegistrations() hands back a point-in-time
             // array, so no registry lock is held. 1 Hz over at most dozens of registrations:
             // one HashSet per tick is the whole allocation cost.
+            var (runningTabIds, attentionByTab) = CollectTabAgentStatus();
+
+            var now = DateTime.UtcNow;
+            foreach (TabItem tab in tabs.Items.Cast<TabItem>())
+            {
+                var state = GetOrCreateTabState(tab);
+                ApplyObservedAttention(tab, state, attentionByTab);
+
+                var status = state.Status.Evaluate(now, isSelected: tab.IsSelected);
+                if (status != state.RenderedStatus)
+                {
+                    state.RenderedStatus = status;
+                    QueueTabVisualRefresh(tab);
+                }
+
+                // Same change-driven queueing as RenderedStatus: the flag feeds
+                // ResolveTabDot via UpdateVerticalTabExtras, which only runs in vertical
+                // mode (horizontal headers never read it - stale-but-unread there, cost
+                // zero, which is why this whole method is vertical-only). One benign
+                // transient: flipping horizontal→vertical re-enters with up to 1s of
+                // stale dot state until the first tick resyncs - self-correcting and
+                // cosmetic, so it needs no mode-flip hook here.
+                bool running = runningTabIds.Contains(GetPersistentTabId(tab));
+                if (running != state.HasRunningCommand)
+                {
+                    state.HasRunningCommand = running;
+                    QueueTabVisualRefresh(tab);
+                }
+            }
+        }
+
+        /// <summary>
+        /// One pass over the agent-session registry snapshot, mapping each registration's tab to
+        /// whether it has a command running and, separately, the newest observation timestamp
+        /// that still needs attention (see <see cref="RefreshTabStatuses"/> for why this precedes
+        /// the per-tab loop).
+        /// </summary>
+        private static (HashSet<Guid> RunningTabIds, Dictionary<Guid, DateTimeOffset> AttentionByTab) CollectTabAgentStatus()
+        {
             var runningTabIds = new HashSet<Guid>();
             var attentionByTab = new Dictionary<Guid, DateTimeOffset>();
             foreach (var registration in AgentHost.AgentSessionRegistry.Instance.GetRegistrations())
@@ -657,38 +696,20 @@ namespace Ntilde
                         : observation.ObservedAt;
                 }
             }
+            return (runningTabIds, attentionByTab);
+        }
 
-            var now = DateTime.UtcNow;
-            foreach (TabItem tab in tabs.Items.Cast<TabItem>())
+        /// <summary>Once-per-observation attention note: a newly-arrived, still-attention-worthy
+        /// observation on a tab that is not the selected one marks its tracker exactly once
+        /// (guarded by <see cref="TabRuntimeState.LastObservedAttentionAt"/>).</summary>
+        private void ApplyObservedAttention(TabItem tab, TabRuntimeState state, Dictionary<Guid, DateTimeOffset> attentionByTab)
+        {
+            if (!tab.IsSelected
+                && attentionByTab.TryGetValue(GetPersistentTabId(tab), out var observedAt)
+                && state.LastObservedAttentionAt != observedAt)
             {
-                var state = GetOrCreateTabState(tab);
-                if (!tab.IsSelected
-                    && attentionByTab.TryGetValue(GetPersistentTabId(tab), out var observedAt)
-                    && state.LastObservedAttentionAt != observedAt)
-                {
-                    state.LastObservedAttentionAt = observedAt;
-                    state.Status.NoteObservedAttention();
-                }
-                var status = state.Status.Evaluate(now, isSelected: tab.IsSelected);
-                if (status != state.RenderedStatus)
-                {
-                    state.RenderedStatus = status;
-                    QueueTabVisualRefresh(tab);
-                }
-
-                // Same change-driven queueing as RenderedStatus: the flag feeds
-                // ResolveTabDot via UpdateVerticalTabExtras, which only runs in vertical
-                // mode (horizontal headers never read it - stale-but-unread there, cost
-                // zero, which is why this whole method is vertical-only). One benign
-                // transient: flipping horizontal→vertical re-enters with up to 1s of
-                // stale dot state until the first tick resyncs - self-correcting and
-                // cosmetic, so it needs no mode-flip hook here.
-                bool running = runningTabIds.Contains(GetPersistentTabId(tab));
-                if (running != state.HasRunningCommand)
-                {
-                    state.HasRunningCommand = running;
-                    QueueTabVisualRefresh(tab);
-                }
+                state.LastObservedAttentionAt = observedAt;
+                state.Status.NoteObservedAttention();
             }
         }
 

@@ -114,6 +114,9 @@ namespace Ntilde
         /// <summary>The Appearance tab's index in <c>MainTabs</c> - where every <see cref="SettingsSection"/> currently lives.</summary>
         private const int AppearanceTabIndex = 0;
 
+        /// <summary>The name of the settings window's main <see cref="TabControl"/>, as given in the XAML.</summary>
+        private const string MainTabsName = "MainTabs";
+
         /// <summary>
         /// The section this window was asked to bring into view once opened (PR #342 Codex round 6),
         /// in addition to whatever tab it selects. Recorded even when it is <see cref="SettingsSection.None"/>
@@ -146,7 +149,7 @@ namespace Ntilde
 
             _targetSection = section;
 
-            var tabs = this.FindControl<TabControl>("MainTabs");
+            var tabs = this.FindControl<TabControl>(MainTabsName);
             // Every SettingsSection currently lives on Appearance, so a section target overrides
             // whatever tab index the caller passed - a caller asking for the TITLE BAR section
             // with the wrong tab index is a bug, not something this window should surface as "the
@@ -1020,7 +1023,7 @@ namespace Ntilde
         /// </summary>
         public void SelectBackupPage()
         {
-            var tabs = this.FindControl<TabControl>("MainTabs");
+            var tabs = this.FindControl<TabControl>(MainTabsName);
             if (tabs is null) return;
 
             var backupTab = tabs.Items.OfType<TabItem>().FirstOrDefault(t => (string?)t.Header == "Backup");
@@ -3334,7 +3337,7 @@ namespace Ntilde
             if (!shortcutResolution.IsValid)
             {
                 ShowShortcutValidationMessage("Resolve duplicate shortcuts before saving.");
-                var tabs = this.FindControl<TabControl>("MainTabs");
+                var tabs = this.FindControl<TabControl>(MainTabsName);
                 if (tabs != null)
                 {
                     tabs.SelectedIndex = 2;
@@ -3382,51 +3385,57 @@ namespace Ntilde
             var clear = this.FindControl<Button>("InferenceApiKeyClearButton");
             if (box == null || set == null || clear == null) return;
 
-            set.Click += (_, _) =>
-            {
-                try
-                {
-                    _inferenceVault.Value.SetInferenceApiKey(box.Text);
-                    box.Text = string.Empty;
-                    RefreshInferenceApiKeyStatus();
-                    // The monitor's key source caches the vault read for up to 30 s (F3): without
-                    // invalidating first, a re-saved key would not take effect until that cache
-                    // expires. A re-saved key also re-enables a monitor that 401'd: Apply(true)
-                    // restarts it.
-                    AgentHost.ObservedActivityMonitorComposition.InvalidateApiKeyCache();
-                    AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
-                }
-                catch (Exception ex)
-                {
-                    var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
-                    if (status != null) status.Text = "Could not access the secret store: " + ex.Message;
-                    AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
-                }
-            };
-            clear.Click += (_, _) =>
-            {
-                try
-                {
-                    _inferenceVault.Value.SetInferenceApiKey(null);
-                    RefreshInferenceApiKeyStatus();
-                }
-                catch (Exception ex)
-                {
-                    var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
-                    if (status != null) status.Text = "Could not access the secret store: " + ex.Message;
-                    AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
-                }
-            };
+            set.Click += (_, _) => OnInferenceApiKeySet(box);
+            clear.Click += (_, _) => OnInferenceApiKeyClear();
 
-            var tabs = this.FindControl<TabControl>("MainTabs");
-            if (tabs != null)
+            var tabs = this.FindControl<TabControl>(MainTabsName);
+            if (tabs != null) HookAgentAccessTabRefresh(tabs);
+        }
+
+        private void OnInferenceApiKeySet(TextBox box)
+        {
+            try
             {
-                tabs.SelectionChanged += (_, _) =>
-                {
-                    if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
-                };
-                if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
+                _inferenceVault.Value.SetInferenceApiKey(box.Text);
+                box.Text = string.Empty;
+                RefreshInferenceApiKeyStatus();
+                // The monitor's key source caches the vault read for up to 30 s (F3): without
+                // invalidating first, a re-saved key would not take effect until that cache
+                // expires. A re-saved key also re-enables a monitor that 401'd: Apply(true)
+                // restarts it.
+                AgentHost.ObservedActivityMonitorComposition.InvalidateApiKeyCache();
+                AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
             }
+            catch (Exception ex)
+            {
+                var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
+                if (status != null) status.Text = "Could not access the secret store: " + ex.Message;
+                AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        private void OnInferenceApiKeyClear()
+        {
+            try
+            {
+                _inferenceVault.Value.SetInferenceApiKey(null);
+                RefreshInferenceApiKeyStatus();
+            }
+            catch (Exception ex)
+            {
+                var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
+                if (status != null) status.Text = "Could not access the secret store: " + ex.Message;
+                AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        private void HookAgentAccessTabRefresh(TabControl tabs)
+        {
+            tabs.SelectionChanged += (_, _) =>
+            {
+                if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
+            };
+            if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
         }
 
         private void RefreshInferenceApiKeyStatus()
