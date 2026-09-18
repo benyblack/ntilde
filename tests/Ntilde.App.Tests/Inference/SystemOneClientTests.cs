@@ -19,12 +19,14 @@ public class SystemOneClientTests
         public Func<HttpRequestMessage, HttpResponseMessage> Respond { get; set; } =
             _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(OkBody, Encoding.UTF8, "application/json") };
         public Exception? Throw { get; set; }
+        public Func<CancellationToken, Task>? Delay { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
             LastBody = request.Content == null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             if (Throw != null) throw Throw;
+            if (Delay != null) await Delay(cancellationToken);
             return Respond(request);
         }
     }
@@ -158,5 +160,29 @@ public class SystemOneClientTests
         var result = await client.EvaluateAsync(SampleRequest(), CancellationToken.None);
 
         Assert.Equal(SystemOneOutcome.Malformed, result.Outcome);
+    }
+
+    [Fact]
+    public void Constructor_does_not_touch_the_http_client_timeout()
+    {
+        var handler = new FakeHandler();
+        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(100) };
+        var originalTimeout = http.Timeout;
+
+        var client = new SystemOneClient(http, new FixedKey("k-test"));
+
+        Assert.Equal(originalTimeout, http.Timeout);
+    }
+
+    [Fact]
+    public async Task Per_call_timeout_is_a_transport_failure()
+    {
+        var handler = new FakeHandler();
+        handler.Delay = async (ct) => await Task.Delay(Timeout.Infinite, ct);
+        var clientWithShortTimeout = new SystemOneClient(new HttpClient(handler), new FixedKey("k-test"), timeout: TimeSpan.FromMilliseconds(50));
+
+        var result = await clientWithShortTimeout.EvaluateAsync(SampleRequest(), CancellationToken.None);
+
+        Assert.Equal(SystemOneOutcome.TransportFailure, result.Outcome);
     }
 }

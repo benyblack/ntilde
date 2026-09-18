@@ -19,16 +19,14 @@ public sealed class SystemOneClient
     private readonly HttpClient _http;
     private readonly IApiKeySource _keySource;
     private readonly Uri _endpoint;
+    private readonly TimeSpan _timeout;
 
-    public SystemOneClient(HttpClient http, IApiKeySource keySource, Uri? endpoint = null)
+    public SystemOneClient(HttpClient http, IApiKeySource keySource, Uri? endpoint = null, TimeSpan? timeout = null)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _keySource = keySource ?? throw new ArgumentNullException(nameof(keySource));
         _endpoint = endpoint ?? new Uri(DefaultEndpoint);
-        if (_http.Timeout == Timeout.InfiniteTimeSpan || _http.Timeout > DefaultTimeout)
-        {
-            _http.Timeout = DefaultTimeout;
-        }
+        _timeout = timeout ?? DefaultTimeout;
     }
 
     /// <summary>True when a key is available right now; lets callers skip work before capturing anything.</summary>
@@ -45,13 +43,16 @@ public sealed class SystemOneClient
 
         try
         {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(_timeout);
+
             using var message = new HttpRequestMessage(HttpMethod.Post, _endpoint);
             message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
             var json = JsonSerializer.Serialize(request, InferenceJsonContext.Default.SystemOneRequest);
             message.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            using var response = await _http.SendAsync(message, cancellationToken).ConfigureAwait(false);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var response = await _http.SendAsync(message, cts.Token).ConfigureAwait(false);
+            var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
 
             if (response.StatusCode == HttpStatusCode.OK)
             {
@@ -78,7 +79,7 @@ public sealed class SystemOneClient
             };
             return new SystemOneResult(outcome, null, $"HTTP {(int)response.StatusCode}: {Truncate(body)}");
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or IOException)
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException)
         {
             return new SystemOneResult(SystemOneOutcome.TransportFailure, null, ex.Message);
         }
