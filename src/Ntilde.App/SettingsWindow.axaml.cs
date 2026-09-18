@@ -3362,7 +3362,28 @@ namespace Ntilde
         }
 
         private bool _inferenceApiKeyControlsWired;
-        private const int AgentAccessTabIndex = 4; // Appearance, Profiles, Shortcuts, Command Assist, Agent Access
+        private const string AgentAccessTabHeader = "Agent Access";
+
+        /// <summary>
+        /// The Agent Access tab, located by its header rather than a position: a hard-coded index
+        /// keeps compiling when a tab is added, removed or reordered ahead of it and silently sends
+        /// the title-bar light's click (and the key-status refresh) to the wrong page. Same rule as
+        /// <see cref="SelectBackupPage"/>. Returns -1 when the tab is not present.
+        /// </summary>
+        private static int FindAgentAccessTabIndex(TabControl tabs)
+        {
+            var tab = tabs.Items.OfType<TabItem>().FirstOrDefault(t => (string?)t.Header == AgentAccessTabHeader);
+            return tab is null ? -1 : tabs.Items.IndexOf(tab);
+        }
+
+        /// <summary>Selects the Agent Access tab, the way the title-bar screen-inference light opens Settings.</summary>
+        public void SelectAgentAccessPage()
+        {
+            var tabs = this.FindControl<TabControl>(MainTabsName);
+            if (tabs is null) return;
+            int index = FindAgentAccessTabIndex(tabs);
+            if (index >= 0) tabs.SelectedIndex = index;
+        }
 
         /// <summary>
         /// Wires the Set/Clear handlers once and refreshes the status line only when the Agent
@@ -3431,11 +3452,13 @@ namespace Ntilde
 
         private void HookAgentAccessTabRefresh(TabControl tabs)
         {
+            int agentAccessIndex = FindAgentAccessTabIndex(tabs);
+            if (agentAccessIndex < 0) return;
             tabs.SelectionChanged += (_, _) =>
             {
-                if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
+                if (tabs.SelectedIndex == agentAccessIndex) RefreshInferenceApiKeyStatus();
             };
-            if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
+            if (tabs.SelectedIndex == agentAccessIndex) RefreshInferenceApiKeyStatus();
         }
 
         private void RefreshInferenceApiKeyStatus()

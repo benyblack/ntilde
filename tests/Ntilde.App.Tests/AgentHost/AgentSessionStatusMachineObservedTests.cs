@@ -211,6 +211,66 @@ public class AgentSessionStatusMachineObservedTests
     }
 
     [Fact]
+    public void Status_changed_event_fires_when_only_the_confidence_changes()
+    {
+        var (machine, _, events) = Make();
+        machine.Sweep(hasActiveChildProcesses: false); // heuristic awaitingInput
+        events.Clear();
+
+        machine.NotifyObserved(Obs(machine, ScreenActivity.IdleShellPrompt)); // still awaitingInput, now observed
+
+        var evt = Assert.Single(events, e => e.Type == AgentSessionEventType.StatusChanged);
+        Assert.Equal(AgentSessionStatusKind.AwaitingInput, evt.Status);
+        Assert.Equal(AgentSessionStatusConfidence.Observed, evt.Confidence);
+        Assert.Equal(AgentSessionStatusConfidence.Observed, machine.Snapshot().Confidence);
+    }
+
+    [Fact]
+    public void Status_changed_event_fires_when_an_observation_goes_stale()
+    {
+        var (machine, _, events) = Make();
+        machine.Sweep(hasActiveChildProcesses: false);
+        machine.NotifyObserved(Obs(machine, ScreenActivity.IdleShellPrompt));
+        events.Clear();
+
+        machine.NotifyOutput(); // observation stale: back to heuristic, kind unchanged
+
+        var evt = Assert.Single(events, e => e.Type == AgentSessionEventType.StatusChanged);
+        Assert.Equal(AgentSessionStatusConfidence.Heuristic, evt.Confidence);
+    }
+
+    [Fact]
+    public void Stall_recovery_on_an_observed_running_session_emits_one_status_changed_event()
+    {
+        var (machine, clock, events) = Make();
+        machine.Sweep(hasActiveChildProcesses: false);
+        machine.NotifyObserved(Obs(machine, ScreenActivity.AgentWorking)); // observed running
+        clock.Advance(TimeSpan.FromSeconds(AgentSessionStatusMachine.StallThresholdSeconds));
+        machine.Sweep(hasActiveChildProcesses: false); // stalled
+        events.Clear();
+
+        machine.NotifyOutput(); // recovery: observation goes stale too (observed -> heuristic)
+
+        var evt = Assert.Single(events, e => e.Type == AgentSessionEventType.StatusChanged);
+        Assert.Equal(AgentSessionStatusConfidence.Heuristic, evt.Confidence);
+        Assert.False(machine.Snapshot().IsStalled);
+    }
+
+    [Fact]
+    public void Events_carry_the_confidence_of_the_status_they_report()
+    {
+        var (machine, _, events) = Make();
+        machine.NotifyPromptReady();
+        machine.NotifyCommandStarted();
+        events.Clear();
+
+        machine.NotifyCommandFinished(exitCode: 0);
+
+        var finished = Assert.Single(events, e => e.Type == AgentSessionEventType.CommandFinished);
+        Assert.Equal(AgentSessionStatusConfidence.Precise, finished.Confidence);
+    }
+
+    [Fact]
     public void Snapshot_reports_age_and_threshold()
     {
         var (machine, clock, _) = Make();

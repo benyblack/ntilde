@@ -432,7 +432,8 @@ public static class SessionTools
             var details = e.Type == AgentHostProtocol.EventTypes.CommandFinished
                 ? $"exit {(e.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?")}{(e.DurationMs is { } d ? $", {d} ms" : "")}"
                 : e.ExitCode is { } code ? $"exit {code}" : "-";
-            sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {e.Status} | {details} |");
+            var status = e.Confidence is null ? e.Status : $"{e.Status} ({e.Confidence})";
+            sb.AppendLine($"| {e.Seq} | {FormatUtc(e.TimestampMs)} | {e.PaneId} | {e.Type} | {status} | {details} |");
         }
         return sb.ToString().TrimEnd();
     }

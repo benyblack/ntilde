@@ -411,6 +411,27 @@ public class SessionToolsFormattingTests
     }
 
     [Fact]
+    public void FormatEvents_shows_the_confidence_tier_beside_the_status_when_present()
+    {
+        var pane = Guid.NewGuid();
+        var result = new WaitForEventsResult
+        {
+            Events =
+            [
+                new AgentEventDto { Seq = 1, TimestampMs = 1_800_000_000_000, PaneId = pane, Type = AgentHostProtocol.EventTypes.StatusChanged, Status = AgentHostProtocol.StatusKinds.AwaitingInput, Confidence = AgentHostProtocol.StatusConfidences.Observed },
+                new AgentEventDto { Seq = 2, TimestampMs = 1_800_000_001_000, PaneId = pane, Type = AgentHostProtocol.EventTypes.Bell, Status = AgentHostProtocol.StatusKinds.Running },
+            ],
+            NextSeq = 2,
+            OldestSeq = 1,
+        };
+
+        var text = SessionTools.FormatEvents(result, sinceSeq: 0);
+
+        Assert.Contains("| awaitingInput (observed) |", text, StringComparison.Ordinal);
+        Assert.Contains("| running |", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FormatEvents_teaches_the_cursor_and_reports_eviction_gaps()
     {
         var paneId = Guid.NewGuid();

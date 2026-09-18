@@ -99,6 +99,13 @@ public sealed record AgentEventDto
     [JsonPropertyName("status")]
     public required string Status { get; init; }
 
+    /// <summary>
+    /// How <see cref="Status"/> was derived at emission time (<see cref="AgentHostProtocol.StatusConfidences"/>).
+    /// A <c>statusChanged</c> event is also emitted when only this changes. Omitted by older endpoints.
+    /// </summary>
+    [JsonPropertyName("confidence")]
+    public string? Confidence { get; init; }
+
     [JsonPropertyName("exitCode")]
     public int? ExitCode { get; init; }
 
