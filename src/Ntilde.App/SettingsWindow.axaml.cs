@@ -47,6 +47,9 @@ namespace Ntilde
         private System.Collections.Generic.List<TerminalProfile> _profilesList = new();
         private Dictionary<string, string> _shortcutDraftBindings = new(StringComparer.OrdinalIgnoreCase);
         private readonly TitleBarDraftState _titleBarDraft = new();
+        // Lazy: the OS Credential Manager must not be touched by constructing this window (every
+        // headless test does), only when the user actually looks at the Agent Access tab.
+        private readonly Lazy<VaultService> _inferenceVault = new(() => new VaultService());
 
         // Shared style-class name (see SettingsWindow.axaml's "TextBlock.RowDesc" selector) used
         // across several row-building methods below; a const avoids the literal drifting out of
@@ -111,6 +114,9 @@ namespace Ntilde
         /// <summary>The Appearance tab's index in <c>MainTabs</c> - where every <see cref="SettingsSection"/> currently lives.</summary>
         private const int AppearanceTabIndex = 0;
 
+        /// <summary>The name of the settings window's main <see cref="TabControl"/>, as given in the XAML.</summary>
+        private const string MainTabsName = "MainTabs";
+
         /// <summary>
         /// The section this window was asked to bring into view once opened (PR #342 Codex round 6),
         /// in addition to whatever tab it selects. Recorded even when it is <see cref="SettingsSection.None"/>
@@ -143,7 +149,7 @@ namespace Ntilde
 
             _targetSection = section;
 
-            var tabs = this.FindControl<TabControl>("MainTabs");
+            var tabs = this.FindControl<TabControl>(MainTabsName);
             // Every SettingsSection currently lives on Appearance, so a section target overrides
             // whatever tab index the caller passed - a caller asking for the TITLE BAR section
             // with the wrong tab index is a bug, not something this window should surface as "the
@@ -1017,7 +1023,7 @@ namespace Ntilde
         /// </summary>
         public void SelectBackupPage()
         {
-            var tabs = this.FindControl<TabControl>("MainTabs");
+            var tabs = this.FindControl<TabControl>(MainTabsName);
             if (tabs is null) return;
 
             var backupTab = tabs.Items.OfType<TabItem>().FirstOrDefault(t => (string?)t.Header == "Backup");
@@ -2997,6 +3003,9 @@ namespace Ntilde
             if (agentReplayExportToggle != null) agentReplayExportToggle.IsChecked = _settings.AgentReplayExportEnabled;
             var agentAccessActToggle = this.FindControl<CheckBox>("AgentAccessActToggle");
             if (agentAccessActToggle != null) agentAccessActToggle.IsChecked = _settings.AgentAccessActEnabled;
+            var screenInferenceToggle = this.FindControl<CheckBox>("ScreenInferenceToggle");
+            if (screenInferenceToggle != null) screenInferenceToggle.IsChecked = _settings.ScreenInferenceEnabled;
+            WireInferenceApiKeyControls();
             var agentIndicatorTabRollupList = this.FindControl<ComboBox>("AgentIndicatorTabRollupList");
             if (agentIndicatorTabRollupList != null)
             {
@@ -3294,6 +3303,8 @@ namespace Ntilde
             if (agentReplayExportToggle != null) _settings.AgentReplayExportEnabled = agentReplayExportToggle.IsChecked == true;
             var agentAccessActToggle = this.FindControl<CheckBox>("AgentAccessActToggle");
             if (agentAccessActToggle != null) _settings.AgentAccessActEnabled = agentAccessActToggle.IsChecked == true;
+            var screenInferenceToggle = this.FindControl<CheckBox>("ScreenInferenceToggle");
+            if (screenInferenceToggle != null) _settings.ScreenInferenceEnabled = screenInferenceToggle.IsChecked == true;
             var agentIndicatorTabRollupList = this.FindControl<ComboBox>("AgentIndicatorTabRollupList");
             if (agentIndicatorTabRollupList?.SelectedItem is ComboBoxItem agentRollupItem)
             {
@@ -3326,7 +3337,7 @@ namespace Ntilde
             if (!shortcutResolution.IsValid)
             {
                 ShowShortcutValidationMessage("Resolve duplicate shortcuts before saving.");
-                var tabs = this.FindControl<TabControl>("MainTabs");
+                var tabs = this.FindControl<TabControl>(MainTabsName);
                 if (tabs != null)
                 {
                     tabs.SelectedIndex = 2;
@@ -3348,6 +3359,109 @@ namespace Ntilde
 
             _settings.Save();
             Close(true); // Return true to indicate saved
+        }
+
+        private bool _inferenceApiKeyControlsWired;
+        private const int AgentAccessTabIndex = 4; // Appearance, Profiles, Shortcuts, Command Assist, Agent Access
+
+        /// <summary>
+        /// Wires the Set/Clear handlers once and refreshes the status line only when the Agent
+        /// Access tab is (or becomes) selected. Deliberately does NOT touch the vault or
+        /// <see cref="AgentHost.ObservedActivityMonitorComposition"/> at call time - this runs from
+        /// <c>LoadCurrentSettings()</c>, which every <c>SettingsWindow</c> construction hits,
+        /// including headless tests (ThemeApplicationRegressionTests, SettingsWindowBackupSectionTests,
+        /// etc.) that never select tab 4. Reading the OS Credential Manager or forcing the
+        /// process-wide monitor singleton from those tests would be surprising and slow; gating on
+        /// tab selection keeps a SettingsWindow construction that never looks at Agent Access from
+        /// reaching either.
+        /// </summary>
+        private void WireInferenceApiKeyControls()
+        {
+            if (_inferenceApiKeyControlsWired) return;
+            _inferenceApiKeyControlsWired = true;
+
+            var box = this.FindControl<TextBox>("InferenceApiKeyBox");
+            var set = this.FindControl<Button>("InferenceApiKeySetButton");
+            var clear = this.FindControl<Button>("InferenceApiKeyClearButton");
+            if (box == null || set == null || clear == null) return;
+
+            set.Click += (_, _) => OnInferenceApiKeySet(box);
+            clear.Click += (_, _) => OnInferenceApiKeyClear();
+
+            var tabs = this.FindControl<TabControl>(MainTabsName);
+            if (tabs != null) HookAgentAccessTabRefresh(tabs);
+        }
+
+        private void OnInferenceApiKeySet(TextBox box)
+        {
+            try
+            {
+                _inferenceVault.Value.SetInferenceApiKey(box.Text);
+                box.Text = string.Empty;
+                RefreshInferenceApiKeyStatus();
+                // The monitor's key source caches the vault read for up to 30 s (F3): without
+                // invalidating first, a re-saved key would not take effect until that cache
+                // expires. A re-saved key also re-enables a monitor that 401'd: Apply(true)
+                // restarts it.
+                AgentHost.ObservedActivityMonitorComposition.InvalidateApiKeyCache();
+                AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+            }
+            catch (Exception ex)
+            {
+                var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
+                if (status != null) status.Text = "Could not access the secret store: " + ex.Message;
+                AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        private void OnInferenceApiKeyClear()
+        {
+            try
+            {
+                _inferenceVault.Value.SetInferenceApiKey(null);
+                RefreshInferenceApiKeyStatus();
+            }
+            catch (Exception ex)
+            {
+                var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
+                if (status != null) status.Text = "Could not access the secret store: " + ex.Message;
+                AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        private void HookAgentAccessTabRefresh(TabControl tabs)
+        {
+            tabs.SelectionChanged += (_, _) =>
+            {
+                if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
+            };
+            if (tabs.SelectedIndex == AgentAccessTabIndex) RefreshInferenceApiKeyStatus();
+        }
+
+        private void RefreshInferenceApiKeyStatus()
+        {
+            var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
+            if (status == null) return;
+            try
+            {
+                if (!_inferenceVault.Value.IsVaultAvailable)
+                {
+                    status.Text = "Secret store unavailable on this system; the key cannot be saved.";
+                }
+                else if (AgentHost.ObservedActivityMonitorComposition.Instance.IsDisabledUnauthorized)
+                {
+                    status.Text = "The API rejected the stored key. Paste a new one and press Set.";
+                }
+                else
+                {
+                    status.Text = _inferenceVault.Value.HasInferenceApiKey() ? "A key is stored." : "No key stored.";
+                }
+            }
+            catch (Exception ex)
+            {
+                status.Text = "Could not access the secret store: " + ex.Message;
+                AppLogger.Log($"[ScreenInference] secret store access failed: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         public partial class Helper

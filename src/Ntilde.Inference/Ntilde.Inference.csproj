@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Leaf library for remote model calls (TypeSafe System One). Referenced by Ntilde.App only.
+    Zero project references, zero package references: System.Net.Http comes from the shared
+    framework. The leaf rule is enforced by Ntilde.Architecture.Tests
+    (Inference_csproj_must_have_no_project_references, Inference_must_be_a_leaf_assembly).
+  -->
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>Ntilde.Inference</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ntilde.App.Tests" />
+  </ItemGroup>
+
+</Project>

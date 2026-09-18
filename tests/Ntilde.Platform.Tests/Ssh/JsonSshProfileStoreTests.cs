@@ -190,6 +190,39 @@ public sealed class JsonSshProfileStoreTests
     }
 
     [Fact]
+    public void SaveAndLoad_RoundTripsAllowScreenInference()
+    {
+        // Regression: the screen-inference per-profile opt-in must survive the store's
+        // clone path (GetProfile clones), or SSH panes never become eligible for inference.
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            string storePath = Path.Combine(tempRoot, "profiles.json");
+            var store = new JsonSshProfileStore(storePath);
+            var profile = new SshProfile
+            {
+                Id = Guid.Parse("c2d3e4f5-a6b7-4809-92a3-b4c5d6e7f8a9"),
+                Name = "allowed",
+                Host = "allowed.internal",
+                AllowScreenInference = true
+            };
+
+            store.SaveProfile(profile);
+
+            // Fresh store instance forces a load from disk, not a cached object.
+            var reopened = new JsonSshProfileStore(storePath);
+            SshProfile? loaded = reopened.GetProfile(profile.Id);
+
+            Assert.NotNull(loaded);
+            Assert.True(loaded!.AllowScreenInference);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void SaveAndLoad_RoundTripsRemoteShellKind()
     {
         string tempRoot = CreateTempDirectory();

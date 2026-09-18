@@ -167,7 +167,7 @@
 
             <TabItem Header="Advanced">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Grid Margin="0,10,4,0" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                <Grid Margin="0,10,4,0" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
                     <TextBlock Grid.Row="0" Text="Extra ssh args (appended after alias)" Opacity="0.8" />
                     <TextBox Grid.Row="1"
                              Text="{Binding ExtraSshArgs}"
@@ -180,6 +180,12 @@
                         <CheckBox IsChecked="{Binding AllowAgentAccess}"
                                   Content="Allow AI agent access to this connection" />
                         <TextBlock Text="Lets AI agents type into and open this SSH connection, when 'Agent access (act)' is enabled in Settings. Every action is shown in the agent activity journal. Off by default."
+                                   Opacity="0.7" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="3" Spacing="2" Margin="0,8,0,0">
+                        <CheckBox IsChecked="{Binding AllowScreenInference}"
+                                  Content="Allow screen inference for this connection" />
+                        <TextBlock Text="When 'Screen inference' is enabled in Settings, the visible text of panes on this connection (known secret patterns redacted) may be sent to the TypeSafe API to derive session status. Off by default; remote screens never leave the machine without this."
                                    Opacity="0.7" TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>

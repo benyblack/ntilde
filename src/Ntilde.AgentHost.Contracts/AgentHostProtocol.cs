@@ -151,6 +151,23 @@ public static class AgentHostProtocol
 
         /// <summary>PTY-level signals only (child processes, alt screen, output activity).</summary>
         public const string Heuristic = "heuristic";
+
+        /// <summary>
+        /// A judgment over the pane's visible text decided the status (opt-in screen
+        /// inference). Overrides the heuristic tier, and refines a precise running
+        /// command into awaitingInput when a program inside it is waiting on the user.
+        /// </summary>
+        public const string Observed = "observed";
+    }
+
+    /// <summary>Wire values for <c>observation.activity</c> (screen inference).</summary>
+    public static class ObservedActivities
+    {
+        public const string CommandRunning = "commandRunning";
+        public const string AgentWorking = "agentWorking";
+        public const string WaitingForUser = "waitingForUser";
+        public const string IdleShellPrompt = "idleShellPrompt";
+        public const string UnknownBlank = "unknownBlank";
     }
 
     /// <summary>Wire values for event types on the waitForEvents channel.</summary>

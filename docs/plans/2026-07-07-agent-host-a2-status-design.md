@@ -19,7 +19,9 @@ Expose per-session status and an event channel:
 The change must:
 
 - derive status from **owned signals** (PTY process state, shell-integration
-  events, alt-screen state) — never from screen scraping
+  events, alt-screen state). Screen text is never consulted by default; the
+  opt-in **observed** tier (2026-09-17 amendment, below) is the one exception
+  and reports itself as such
 - be explicit about precision: a `confidence` field distinguishes
   shell-integration-backed status from PTY-only heuristics
 - keep every stall/idle definition explicit and testable (fixed thresholds,
@@ -67,6 +69,26 @@ hard-code them.
 `confidence` is `precise` when the pane's shell integration is active,
 `heuristic` otherwise. Agents (and Warp-style comparisons) get honesty for
 free: Ntilde reports *how* it knows, which tmux-layer scrapers cannot.
+
+### Observed tier (2026-09-17 amendment)
+
+A third confidence, `observed`, added by
+`docs/superpowers/specs/2026-09-17-screen-inference-observed-status-design.md`.
+When the user enables Screen inference (and, for SSH, allowlists the profile),
+a quiet pane's redacted visible text is judged once by a TypeSafe System One
+model. The judgment is consulted only while no output has arrived since the
+screen was captured, and only above `ObservedOverrideThreshold` (0.85):
+
+| Tier before | Observation | Result |
+|---|---|---|
+| heuristic | `command_running` / `agent_working` | `running` (observed) |
+| heuristic | `waiting_for_user` / `idle_shell_prompt` | `awaitingInput` → `idle` after 60 s (observed) |
+| precise, command in flight | `waiting_for_user` | `awaitingInput` → `idle` after 60 s (observed): a program inside the command waits on the user |
+| precise, at prompt | any | unchanged (precise) |
+| any | `unknown_blank`, or below threshold, or stale | unchanged |
+
+Exited and alt-screen are never overridden. The status DTO carries the
+observation and the threshold so clients never hard-code either.
 
 ## Architecture
 

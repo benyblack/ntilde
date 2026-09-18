@@ -278,6 +278,9 @@ namespace Ntilde
             public TabStatusTracker Status { get; } = new();
             public TabTrackerStatus RenderedStatus { get; set; }
 
+            /// <summary>ObservedAt of the last observation that raised Attention, so one observation raises it once.</summary>
+            public DateTimeOffset? LastObservedAttentionAt { get; set; }
+
             /// <summary>True while any pane in this tab has a command running — the agent-session
             /// status machine's precise per-session state (see <see cref="RefreshTabStatuses"/>),
             /// which survives silent stretches that decay the output-burst heuristic. Feeds
@@ -632,21 +635,14 @@ namespace Ntilde
             // tab id). Snapshot() is thread-safe; GetRegistrations() hands back a point-in-time
             // array, so no registry lock is held. 1 Hz over at most dozens of registrations:
             // one HashSet per tick is the whole allocation cost.
-            var runningTabIds = new HashSet<Guid>();
-            foreach (var registration in AgentHost.AgentSessionRegistry.Instance.GetRegistrations())
-            {
-                var tabId = registration.TabId;
-                if (tabId.HasValue
-                    && registration.StatusMachine.Snapshot().Kind == AgentHost.AgentSessionStatusKind.Running)
-                {
-                    runningTabIds.Add(tabId.Value);
-                }
-            }
+            var (runningTabIds, attentionByTab) = CollectTabAgentStatus();
 
             var now = DateTime.UtcNow;
             foreach (TabItem tab in tabs.Items.Cast<TabItem>())
             {
                 var state = GetOrCreateTabState(tab);
+                ApplyObservedAttention(tab, state, attentionByTab);
+
                 var status = state.Status.Evaluate(now, isSelected: tab.IsSelected);
                 if (status != state.RenderedStatus)
                 {
@@ -667,6 +663,53 @@ namespace Ntilde
                     state.HasRunningCommand = running;
                     QueueTabVisualRefresh(tab);
                 }
+            }
+        }
+
+        /// <summary>
+        /// One pass over the agent-session registry snapshot, mapping each registration's tab to
+        /// whether it has a command running and, separately, the newest observation timestamp
+        /// that still needs attention (see <see cref="RefreshTabStatuses"/> for why this precedes
+        /// the per-tab loop).
+        /// </summary>
+        private static (HashSet<Guid> RunningTabIds, Dictionary<Guid, DateTimeOffset> AttentionByTab) CollectTabAgentStatus()
+        {
+            var runningTabIds = new HashSet<Guid>();
+            var attentionByTab = new Dictionary<Guid, DateTimeOffset>();
+            foreach (var registration in AgentHost.AgentSessionRegistry.Instance.GetRegistrations())
+            {
+                var tabId = registration.TabId;
+                if (!tabId.HasValue) continue;
+                var snapshot = registration.StatusMachine.Snapshot();
+                if (snapshot.Kind == AgentHost.AgentSessionStatusKind.Running)
+                {
+                    runningTabIds.Add(tabId.Value);
+                }
+                if (snapshot.Observation is { } observation
+                    && observation.NeedsAttention >= TabStatusTracker.AttentionThreshold
+                    && snapshot.Kind != AgentHost.AgentSessionStatusKind.Exited)
+                {
+                    // Multiple panes can share one tab: keep the newer observation rather than
+                    // letting whichever pane is enumerated last in the registry win.
+                    attentionByTab[tabId.Value] = attentionByTab.TryGetValue(tabId.Value, out var existing) && existing > observation.ObservedAt
+                        ? existing
+                        : observation.ObservedAt;
+                }
+            }
+            return (runningTabIds, attentionByTab);
+        }
+
+        /// <summary>Once-per-observation attention note: a newly-arrived, still-attention-worthy
+        /// observation on a tab that is not the selected one marks its tracker exactly once
+        /// (guarded by <see cref="TabRuntimeState.LastObservedAttentionAt"/>).</summary>
+        private void ApplyObservedAttention(TabItem tab, TabRuntimeState state, Dictionary<Guid, DateTimeOffset> attentionByTab)
+        {
+            if (!tab.IsSelected
+                && attentionByTab.TryGetValue(GetPersistentTabId(tab), out var observedAt)
+                && state.LastObservedAttentionAt != observedAt)
+            {
+                state.LastObservedAttentionAt = observedAt;
+                state.Status.NoteObservedAttention();
             }
         }
 
@@ -3712,6 +3755,13 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ObserveActivityChanged += OnAgentObserveActivityChanged;
             RefreshAgentObserveIndicator();
 
+            // Screen inference (observed status tier): its own timer, independent of the IPC
+            // endpoint, so the tab strip benefits with agent access off. Off unless opted in.
+            AgentHost.ObservedActivityMonitorComposition.Instance.SetSshProfileAllowlist(IsSshProfileScreenInferenceAllowed);
+            AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+            AgentHost.ObservedActivityMonitorComposition.Instance.StateChanged += OnScreenInferenceStateChanged;
+            RefreshScreenInferenceIndicator();
+
             // Tab-label rollup: mirror each pane's attention tier onto its
             // owning tab. Subscribe to sessions already registered (a pane can
             // register before MainWindow's constructor reaches this point is
@@ -3909,6 +3959,16 @@ namespace Ntilde
             if (agentObserveIndicator != null)
             {
                 agentObserveIndicator.Click += async (_, _) => await ShowAgentActivityJournalAsync();
+            }
+
+            // Screen-inference light opens Settings straight to Agent Access (tab index 4), where
+            // the toggle and API key live. PlaceAgentObserveIndicator re-parents this exact
+            // instance on every RebuildTitleBar instead of recreating it, so wiring once here
+            // (same pattern as agentObserveIndicator above) survives every rebuild.
+            var screenInferenceIndicator = this.FindControl<Button>("ScreenInferenceIndicator");
+            if (screenInferenceIndicator != null)
+            {
+                screenInferenceIndicator.Click += (_, _) => _ = OpenSettings(4);
             }
 
             var recordingToastClose = this.FindControl<Button>("RecordingToastClose");
@@ -5138,6 +5198,20 @@ namespace Ntilde
             }
         }
 
+        // Screen-inference per-profile SSH probe, handed to the observed-activity monitor. Same
+        // contract as IsSshProfileAgentAllowed: thread-safe store read, fail closed.
+        private bool IsSshProfileScreenInferenceAllowed(Guid profileId)
+        {
+            try
+            {
+                return _sshConnectionService?.GetStoredProfile(profileId)?.AllowScreenInference == true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // ── A3 agent act executor (spawn/close) ──────────────────────────────
         // Implemented on MainWindow because spawning/closing is inherently UI-thread
         // tab work. Published to the agent-host endpoint via SetActionExecutor; the
@@ -5639,6 +5713,32 @@ namespace Ntilde
         private void OnAgentObserveActivityChanged()
             => Dispatcher.UIThread.Post(RefreshAgentObserveIndicator);
 
+        /// <summary>Shows the screen-inference light while the monitor runs. UI thread.</summary>
+        internal void RefreshScreenInferenceIndicator()
+        {
+            var indicator = this.FindControl<Button>("ScreenInferenceIndicator");
+            var glyph = this.FindControl<TextBlock>("ScreenInferenceIndicatorGlyph");
+            if (indicator == null || glyph == null) return;
+
+            var monitor = AgentHost.ObservedActivityMonitorComposition.Instance;
+            indicator.IsVisible = monitor.IsRunning;
+            if (!monitor.IsRunning) return;
+
+            if (monitor.IsDisabledUnauthorized)
+            {
+                glyph.Foreground = new SolidColorBrush(Color.Parse("#D48A4F"));
+                ToolTip.SetTip(indicator, "Screen inference is on, but the API rejected the stored key. Open Settings → Agent Access to replace it.");
+            }
+            else
+            {
+                glyph.Foreground = new SolidColorBrush(Color.Parse("#4FB0D4"));
+                ToolTip.SetTip(indicator, $"Screen inference is on · {monitor.RequestCount} request(s) this session. Pane text (known secret patterns redacted) is sent to the TypeSafe API when a pane goes quiet.");
+            }
+        }
+
+        private void OnScreenInferenceStateChanged()
+            => Dispatcher.UIThread.Post(RefreshScreenInferenceIndicator);
+
         /// <summary>
         /// Recomputes each tab's agent marker from the loudest attention tier
         /// among its panes, filtered by the rollup setting, then refreshes the
@@ -5699,6 +5799,11 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
+            // Screen inference (observed status tier): its own timer, independent of the IPC
+            // endpoint, so the tab strip benefits with agent access off. Off unless opted in.
+            AgentHost.ObservedActivityMonitorComposition.Instance.SetSshProfileAllowlist(IsSshProfileScreenInferenceAllowed);
+            AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+            RefreshScreenInferenceIndicator();
             // RefreshTabAgentAttention already ends by calling
             // RefreshAgentObserveIndicator, so this covers both surfaces.
             RefreshTabAgentAttention();
@@ -9174,6 +9279,18 @@ namespace Ntilde
         /// </summary>
         private void PlaceAgentObserveIndicator(Panel host)
         {
+            // Screen-inference light rides the same locked slot, placed first so the observe dot
+            // stays the final child (its position guarantee is documented above).
+            var inference = this.FindControl<Button>("ScreenInferenceIndicator");
+            if (inference != null)
+            {
+                if (inference.Parent is Panel inferenceParent)
+                {
+                    inferenceParent.Children.Remove(inference);
+                }
+                host.Children.Add(inference);
+            }
+
             var indicator = this.FindControl<Button>("AgentObserveIndicator");
             if (indicator == null)
             {

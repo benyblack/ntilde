@@ -88,4 +88,21 @@ public sealed class TabStatusTrackerTests
         tracker.NoteOutput(T0.AddSeconds(20));
         Assert.Equal(TabTrackerStatus.Working, tracker.Evaluate(T0.AddSeconds(21), isSelected: false));
     }
+
+    [Fact]
+    public void ObservedAttention_RaisesAttentionWhileUnselected()
+    {
+        var tracker = new TabStatusTracker();
+        tracker.NoteObservedAttention();
+        Assert.Equal(TabTrackerStatus.Attention, tracker.Evaluate(T0, isSelected: false));
+    }
+
+    [Fact]
+    public void ObservedAttention_ClearsOnSelection()
+    {
+        var tracker = new TabStatusTracker();
+        tracker.NoteObservedAttention();
+        Assert.Equal(TabTrackerStatus.Idle, tracker.Evaluate(T0, isSelected: true));
+        Assert.Equal(TabTrackerStatus.Idle, tracker.Evaluate(T0.AddSeconds(1), isSelected: false));
+    }
 }

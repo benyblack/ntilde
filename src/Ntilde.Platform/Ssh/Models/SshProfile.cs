@@ -39,4 +39,10 @@ public sealed class SshProfile
     // credentials, so it is opt-in per profile on top of the global act toggle.
     // New field; absent in older stores deserializes to false (no migration).
     public bool AllowAgentAccess { get; set; }
+
+    // Screen inference: when true (and the global ScreenInferenceEnabled setting is on), the
+    // redacted visible text of panes on this profile may be sent to a remote model to derive
+    // session status. Default false — a remote host's screen leaving the machine is a separate
+    // consent from letting agents type into it. Absent in older stores deserializes to false.
+    public bool AllowScreenInference { get; set; }
 }

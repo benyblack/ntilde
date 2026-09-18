@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Pipes;
 using System.Net.Sockets;
 using System.Text;
@@ -319,6 +320,94 @@ public class SessionToolsFormattingTests
         Assert.Contains("command: cargo build", text, StringComparison.Ordinal);
         Assert.Contains("STALLED", text, StringComparison.Ordinal);
         Assert.Contains("idle after 60s", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FormatStatus_renders_an_observation_line_when_present()
+    {
+        var text = SessionTools.FormatStatus(new SessionStatusDto
+        {
+            PaneId = Guid.NewGuid(),
+            Status = AgentHostProtocol.StatusKinds.AwaitingInput,
+            Confidence = AgentHostProtocol.StatusConfidences.Observed,
+            StatusSinceMs = 1_800_000_000_000,
+            LastOutputAtMs = 1_800_000_030_000,
+            IsStalled = false,
+            StallThresholdSeconds = 30,
+            IdleThresholdSeconds = 60,
+            ObservedOverrideThresholdPercent = 85,
+            Observation = new SessionObservationDto
+            {
+                Activity = AgentHostProtocol.ObservedActivities.WaitingForUser,
+                Confidence = 0.92,
+                NeedsAttention = 0.79,
+                LastCommandFailed = 0.04,
+                AgeMs = 1830,
+            },
+        });
+
+        Assert.Contains("awaitingInput (observed confidence)", text, StringComparison.Ordinal);
+        Assert.Contains("Observed: waitingForUser (0.92)", text, StringComparison.Ordinal);
+        Assert.Contains("attention 0.79", text, StringComparison.Ordinal);
+        Assert.Contains("last command failed 0.04", text, StringComparison.Ordinal);
+        Assert.Contains("1.8s ago", text, StringComparison.Ordinal);
+        Assert.Contains("override at 85%", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FormatStatus_omits_the_observation_line_when_absent()
+    {
+        var text = SessionTools.FormatStatus(new SessionStatusDto
+        {
+            PaneId = Guid.NewGuid(),
+            Status = AgentHostProtocol.StatusKinds.Idle,
+            Confidence = AgentHostProtocol.StatusConfidences.Heuristic,
+            StatusSinceMs = 1_800_000_000_000,
+            LastOutputAtMs = 1_800_000_000_000,
+            IsStalled = false,
+            StallThresholdSeconds = 30,
+            IdleThresholdSeconds = 60,
+        });
+
+        Assert.DoesNotContain("Observed:", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FormatStatus_renders_the_observation_line_culture_invariantly()
+    {
+        var savedCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+            var text = SessionTools.FormatStatus(new SessionStatusDto
+            {
+                PaneId = Guid.NewGuid(),
+                Status = AgentHostProtocol.StatusKinds.AwaitingInput,
+                Confidence = AgentHostProtocol.StatusConfidences.Observed,
+                StatusSinceMs = 1_800_000_000_000,
+                LastOutputAtMs = 1_800_000_030_000,
+                IsStalled = false,
+                StallThresholdSeconds = 30,
+                IdleThresholdSeconds = 60,
+                ObservedOverrideThresholdPercent = 85,
+                Observation = new SessionObservationDto
+                {
+                    Activity = AgentHostProtocol.ObservedActivities.WaitingForUser,
+                    Confidence = 0.92,
+                    NeedsAttention = 0.79,
+                    LastCommandFailed = 0.04,
+                    AgeMs = 1830,
+                },
+            });
+
+            Assert.Contains("(0.92)", text, StringComparison.Ordinal);
+            Assert.Contains("1.8s ago", text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = savedCulture;
+        }
     }
 
     [Fact]

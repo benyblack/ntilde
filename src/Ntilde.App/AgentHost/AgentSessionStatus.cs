@@ -27,6 +27,8 @@ namespace Ntilde.AgentHost
     {
         Heuristic,
         Precise,
+        /// <summary>A screen observation decided the kind (see <see cref="ScreenObservation"/>).</summary>
+        Observed,
     }
 
     public enum AgentSessionEventType
@@ -49,6 +51,17 @@ namespace Ntilde.AgentHost
         public required bool IsStalled { get; init; }
         public int StallThresholdSeconds { get; init; } = AgentSessionStatusMachine.StallThresholdSeconds;
         public int IdleThresholdSeconds { get; init; } = AgentSessionStatusMachine.IdleThresholdSeconds;
+
+        /// <summary>Monotonic count of output notifications; observations are fresh only while it matches theirs.</summary>
+        public long OutputSequence { get; init; }
+
+        /// <summary>The current observation, only when still fresh (no output since it was captured).</summary>
+        public ScreenObservation? Observation { get; init; }
+
+        /// <summary>Age of <see cref="Observation"/> at snapshot time, or null.</summary>
+        public long? ObservationAgeMs { get; init; }
+
+        public int ObservedOverrideThresholdPercent { get; init; } = (int)Math.Round(AgentSessionStatusMachine.ObservedOverrideThreshold * 100);
     }
 
     /// <summary>

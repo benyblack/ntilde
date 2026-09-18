@@ -339,7 +339,8 @@ public sealed class JsonSshProfileStore : ISshProfileStore
             ExtraSshArgs = profile.ExtraSshArgs,
             WorkingDirectory = profile.WorkingDirectory,
             RemoteShellKind = profile.RemoteShellKind,
-            AllowAgentAccess = profile.AllowAgentAccess
+            AllowAgentAccess = profile.AllowAgentAccess,
+            AllowScreenInference = profile.AllowScreenInference
         };
     }
 

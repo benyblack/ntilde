@@ -56,6 +56,7 @@ public static class ConnectionProfileTools
         | `IdentityFilePath` | string | Key path; expected when AuthMode is 2 (IdentityFile). |
         | `RememberPasswordInVault` | bool | Whether to keep the password in the vault. |
         | `AllowAgentAccess` | bool | Default false. Allowlists this SSH profile for the agent-host act surface (typing/spawning); requires the global "Agent access (act)" setting too. |
+        | `AllowScreenInference` | bool | Default false. Lets the redacted visible text of panes on this profile be sent to a remote model for the "observed" status tier; requires the global `ScreenInferenceEnabled` setting too. |
 
         ## Jump hosts
         `JumpHops` is an array of `{ "Host": string, "User": string, "Port": int (1–65535) }`.
@@ -122,7 +123,8 @@ public static class ConnectionProfileTools
               "ExtraSshArgs": "",
               "WorkingDirectory": "",
               "RemoteShellKind": 0,
-              "AllowAgentAccess": false
+              "AllowAgentAccess": false,
+              "AllowScreenInference": false
             }
           ]
         }
@@ -138,7 +140,7 @@ public static class ConnectionProfileTools
         "User", "Port", "AuthMode", "IdentityFilePath", "RememberPasswordInVault",
         "JumpHops", "Forwards", "MuxOptions", "ServerAliveIntervalSeconds",
         "ServerAliveCountMax", "ExtraSshArgs", "WorkingDirectory", "RemoteShellKind",
-        "AllowAgentAccess",
+        "AllowAgentAccess", "AllowScreenInference",
     };
     internal static readonly string[] JumpHopFields = { "Host", "User", "Port" };
     internal static readonly string[] PortForwardFields =
@@ -289,6 +291,7 @@ public static class ConnectionProfileTools
 
         RequireBoolType(p, path, "RememberPasswordInVault", errors);
         RequireBoolType(p, path, "AllowAgentAccess", errors);
+        RequireBoolType(p, path, "AllowScreenInference", errors);
 
         CheckEnum(p, path, "BackendKind", BackendKindNames, errors);
         CheckEnum(p, path, "AuthMode", AuthModeNames, errors);

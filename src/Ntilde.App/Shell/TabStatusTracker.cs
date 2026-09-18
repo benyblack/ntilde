@@ -26,6 +26,9 @@ namespace Ntilde.Shell
         /// streamed for a while and stopped — probably finished or waiting for input".</summary>
         internal static readonly TimeSpan MinAttentionBurst = TimeSpan.FromSeconds(5);
 
+        /// <summary>Minimum <c>needsAttention</c> probability from a screen observation to raise Attention.</summary>
+        internal const double AttentionThreshold = 0.7;
+
         private DateTime _burstStartUtc;
         private DateTime _lastOutputUtc;
         private bool _inBurst;
@@ -43,6 +46,9 @@ namespace Ntilde.Shell
         }
 
         public void NoteBell() => _attention = true;
+
+        /// <summary>A screen observation says the pane is waiting on the user. Same effect as a bell.</summary>
+        public void NoteObservedAttention() => _attention = true;
 
         /// <summary>Selecting the tab acknowledges it: Attention clears. The burst history
         /// survives, so a still-streaming agent keeps showing Working after selection.</summary>

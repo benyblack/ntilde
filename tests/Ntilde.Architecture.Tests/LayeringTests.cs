@@ -12,6 +12,7 @@ public class LayeringTests
     private static Assembly Platform => typeof(global::Ntilde.Platform.Input.TerminalInputSender).Assembly;
     private static Assembly AgentHostContracts => typeof(global::Ntilde.AgentHost.Contracts.AgentHostProtocol).Assembly;
     private static Assembly CommandAssist => typeof(global::Ntilde.CommandAssist.Application.CommandAssistAnchorCalculator).Assembly;
+    private static Assembly Inference => typeof(global::Ntilde.Inference.SystemOneClient).Assembly;
 
     [Fact]
     public void Vt_must_be_a_leaf_assembly()
@@ -192,10 +193,37 @@ public class LayeringTests
             $"CommandAssist must not reference networking assemblies. Offenders: {Join(offenders)}");
     }
 
+    /// <summary>
+    /// Inference is the one assembly allowed to talk to a remote model, so it must not be able
+    /// to reach anything worth leaking: no UI, no settings, no vault, no command history.
+    /// </summary>
+    [Fact]
+    public void Inference_must_be_a_leaf_assembly()
+    {
+        var result = Types.InAssembly(Inference)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "Avalonia",
+                "SkiaSharp",
+                "Ntilde.Shell",
+                "Ntilde.Controls",
+                "Ntilde.AgentHost",
+                "Ntilde.CommandAssist",
+                "Ntilde.Platform",
+                "Ntilde.VT",
+                "Ntilde.Pty",
+                "Ntilde.Replay",
+                "Ntilde.Rendering")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Inference must stay a leaf. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, Inference })
         {
             var result = Types.InAssembly(asm)
                 .Should()

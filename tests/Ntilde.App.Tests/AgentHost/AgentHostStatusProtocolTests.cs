@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Ntilde.AgentHost;
 using Ntilde.AgentHost.Contracts;
+using Ntilde.Inference;
 using Ntilde.VT;
 
 namespace Ntilde.AppTests.AgentHost;
@@ -186,5 +187,85 @@ public class AgentHostStatusProtocolTests : IDisposable
         using var service = NewRunningService(new AgentSessionRegistry());
         var response = await HandleAsync(service, AgentHostProtocol.Methods.WaitForEvents);
         Assert.Equal(AgentHostProtocol.ErrorCodes.MalformedRequest, response.Error?.Code);
+    }
+
+    [Fact]
+    public void Observed_confidence_maps_to_its_wire_string()
+    {
+        Assert.Equal(AgentHostProtocol.StatusConfidences.Observed, AgentSessionStatusConfidence.Observed.ToWire());
+    }
+
+    [Theory]
+    [InlineData(ScreenActivity.CommandRunning, AgentHostProtocol.ObservedActivities.CommandRunning)]
+    [InlineData(ScreenActivity.AgentWorking, AgentHostProtocol.ObservedActivities.AgentWorking)]
+    [InlineData(ScreenActivity.WaitingForUser, AgentHostProtocol.ObservedActivities.WaitingForUser)]
+    [InlineData(ScreenActivity.IdleShellPrompt, AgentHostProtocol.ObservedActivities.IdleShellPrompt)]
+    [InlineData(ScreenActivity.UnknownBlank, AgentHostProtocol.ObservedActivities.UnknownBlank)]
+    public void Each_screen_activity_maps_to_its_wire_string(ScreenActivity activity, string expected)
+    {
+        Assert.Equal(expected, activity.ToWire());
+    }
+
+    [Fact]
+    public void ToDto_maps_a_fresh_observation_with_a_clamped_age()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var snapshot = new AgentSessionStatusSnapshot
+        {
+            Kind = AgentSessionStatusKind.AwaitingInput,
+            Confidence = AgentSessionStatusConfidence.Observed,
+            StatusSince = now,
+            LastOutputAt = now,
+            IsStalled = false,
+            Observation = new ScreenObservation
+            {
+                Activity = ScreenActivity.WaitingForUser,
+                Confidence = 0.92,
+                NeedsAttention = 0.79,
+                LastCommandFailed = 0.04,
+                ObservedAt = now,
+                OutputSequence = 1,
+            },
+            // Negative age (a clock skew edge case) must clamp to 0 rather than go negative on the wire.
+            ObservationAgeMs = -50,
+        };
+
+        var dto = snapshot.ToDto(Guid.NewGuid());
+
+        Assert.NotNull(dto.Observation);
+        var observation = dto.Observation!;
+        Assert.Equal(AgentHostProtocol.ObservedActivities.WaitingForUser, observation.Activity);
+        Assert.Equal(0.92, observation.Confidence);
+        Assert.Equal(0.79, observation.NeedsAttention);
+        Assert.Equal(0.04, observation.LastCommandFailed);
+        Assert.Equal(0, observation.AgeMs);
+    }
+
+    [Fact]
+    public void ToDto_omits_the_observation_when_the_session_has_exited()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var snapshot = new AgentSessionStatusSnapshot
+        {
+            Kind = AgentSessionStatusKind.Exited,
+            Confidence = AgentSessionStatusConfidence.Observed,
+            StatusSince = now,
+            LastOutputAt = now,
+            IsStalled = false,
+            Observation = new ScreenObservation
+            {
+                Activity = ScreenActivity.WaitingForUser,
+                Confidence = 0.92,
+                NeedsAttention = 0.79,
+                LastCommandFailed = 0.04,
+                ObservedAt = now,
+                OutputSequence = 1,
+            },
+            ObservationAgeMs = 100,
+        };
+
+        var dto = snapshot.ToDto(Guid.NewGuid());
+
+        Assert.Null(dto.Observation);
     }
 }
