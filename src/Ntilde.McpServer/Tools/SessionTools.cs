@@ -401,7 +401,11 @@ public static class SessionTools
         if (dto.Observation is { } o)
         {
             sb.AppendLine();
-            sb.Append($"Observed: {o.Activity} ({o.Confidence:0.00}) · attention {o.NeedsAttention:0.00} · last command failed {o.LastCommandFailed:0.00} · {o.AgeMs / 1000.0:0.0}s ago");
+            // Culture-invariant: under a comma-decimal locale, unpinned interpolation would
+            // render "(0,92)" instead of "(0.92)" (see FormatUtc / FormatEvents for the same pin).
+            sb.Append(string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"Observed: {o.Activity} ({o.Confidence:0.00}) · attention {o.NeedsAttention:0.00} · last command failed {o.LastCommandFailed:0.00} · {o.AgeMs / 1000.0:0.0}s ago"));
         }
         return sb.ToString();
     }
