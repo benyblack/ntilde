@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Ntilde.Inference;
 
 namespace Ntilde.AgentHost
 {
@@ -24,6 +25,9 @@ namespace Ntilde.AgentHost
         public const int StallThresholdSeconds = 30;
         public const int IdleThresholdSeconds = 60;
 
+        /// <summary>Minimum Choice confidence for a screen observation to decide the kind.</summary>
+        public const double ObservedOverrideThreshold = 0.85;
+
         private readonly object _gate = new();
         private readonly Func<DateTimeOffset> _now;
 
@@ -37,6 +41,8 @@ namespace Ntilde.AgentHost
         private int? _exitCode;
         private string? _currentCommand;
         private DateTimeOffset? _commandStartedAt;
+        private long _outputSequence;
+        private ScreenObservation? _observation;
 
         // Derived state
         private AgentSessionStatusKind _kind;
@@ -63,6 +69,7 @@ namespace Ntilde.AgentHost
         {
             RunUnderGate(now =>
             {
+                _outputSequence++;
                 _lastOutputAt = now;
                 if (_stalled)
                 {
@@ -163,6 +170,25 @@ namespace Ntilde.AgentHost
             });
         }
 
+        /// <summary>
+        /// Stores a screen observation. Returns false and stores nothing when output has
+        /// arrived since the screen was captured (the observation is already stale).
+        /// Any thread.
+        /// </summary>
+        public bool NotifyObserved(ScreenObservation observation)
+        {
+            ArgumentNullException.ThrowIfNull(observation);
+            bool accepted = false;
+            RunUnderGate(_ =>
+            {
+                if (observation.OutputSequence != _outputSequence) return null;
+                _observation = observation;
+                accepted = true;
+                return null;
+            });
+            return accepted;
+        }
+
         // ── Sweep (periodic; endpoint-owned in PR2) ─────────────────────────
 
         /// <summary>
@@ -204,15 +230,20 @@ namespace Ntilde.AgentHost
             lock (_gate)
             {
                 var now = _now();
+                var (kind, confidence) = Compute(now);
+                var fresh = FreshObservation();
                 return new AgentSessionStatusSnapshot
                 {
-                    Kind = ComputeKind(now),
-                    Confidence = _precise ? AgentSessionStatusConfidence.Precise : AgentSessionStatusConfidence.Heuristic,
+                    Kind = kind,
+                    Confidence = confidence,
                     ExitCode = _exitCode,
                     CurrentCommand = _currentCommand,
                     StatusSince = _statusSince,
                     LastOutputAt = _lastOutputAt,
                     IsStalled = _stalled,
+                    OutputSequence = _outputSequence,
+                    Observation = fresh,
+                    ObservationAgeMs = fresh == null ? null : (long)(now - fresh.ObservedAt).TotalMilliseconds,
                 };
             }
         }
@@ -298,19 +329,47 @@ namespace Ntilde.AgentHost
             }
         }
 
-        private AgentSessionStatusKind ComputeKind(DateTimeOffset now)
+        private AgentSessionStatusKind ComputeKind(DateTimeOffset now) => Compute(now).Kind;
+
+        private (AgentSessionStatusKind Kind, AgentSessionStatusConfidence Confidence) Compute(DateTimeOffset now)
         {
-            if (_exited) return AgentSessionStatusKind.Exited;
-            if (_altScreenActive) return AgentSessionStatusKind.Running;
+            var baseConfidence = _precise ? AgentSessionStatusConfidence.Precise : AgentSessionStatusConfidence.Heuristic;
+            if (_exited) return (AgentSessionStatusKind.Exited, baseConfidence);
+            if (_altScreenActive) return (AgentSessionStatusKind.Running, baseConfidence);
 
-            bool running = _precise ? _commandInFlight : _hasActiveChildren;
-            if (running) return AgentSessionStatusKind.Running;
+            var fresh = FreshObservation();
+            bool confident = fresh != null && fresh.Confidence >= ObservedOverrideThreshold;
 
-            // At a prompt (precise) or no busy children (heuristic).
-            return now - _lastOutputAt >= TimeSpan.FromSeconds(IdleThresholdSeconds)
+            if (_precise)
+            {
+                if (!_commandInFlight) return (PromptKind(now), AgentSessionStatusConfidence.Precise);
+                // The one precise override: a program inside the running command is waiting on the user.
+                if (confident && fresh!.Activity == ScreenActivity.WaitingForUser)
+                {
+                    return (PromptKind(now), AgentSessionStatusConfidence.Observed);
+                }
+                return (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Precise);
+            }
+
+            if (confident && fresh!.Activity != ScreenActivity.UnknownBlank)
+            {
+                return fresh.Activity is ScreenActivity.CommandRunning or ScreenActivity.AgentWorking
+                    ? (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Observed)
+                    : (PromptKind(now), AgentSessionStatusConfidence.Observed);
+            }
+
+            return _hasActiveChildren
+                ? (AgentSessionStatusKind.Running, AgentSessionStatusConfidence.Heuristic)
+                : (PromptKind(now), AgentSessionStatusConfidence.Heuristic);
+        }
+
+        private AgentSessionStatusKind PromptKind(DateTimeOffset now)
+            => now - _lastOutputAt >= TimeSpan.FromSeconds(IdleThresholdSeconds)
                 ? AgentSessionStatusKind.Idle
                 : AgentSessionStatusKind.AwaitingInput;
-        }
+
+        private ScreenObservation? FreshObservation()
+            => _observation is { } o && o.OutputSequence == _outputSequence ? o : null;
 
         private static AgentSessionStatusEvent MakeEvent(
             AgentSessionEventType type,

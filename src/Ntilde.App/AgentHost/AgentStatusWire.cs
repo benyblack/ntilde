@@ -23,6 +23,7 @@ namespace Ntilde.AgentHost
         {
             AgentSessionStatusConfidence.Precise => AgentHostProtocol.StatusConfidences.Precise,
             AgentSessionStatusConfidence.Heuristic => AgentHostProtocol.StatusConfidences.Heuristic,
+            AgentSessionStatusConfidence.Observed => AgentHostProtocol.StatusConfidences.Observed,
             _ => throw new ArgumentOutOfRangeException(nameof(confidence), confidence, null),
         };
 
