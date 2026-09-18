@@ -273,11 +273,13 @@ namespace Ntilde.AgentHost
                 var beforeKind = _kind;
                 var beforeConfidence = _confidence;
                 var produced = mutate(now);
+                bool alreadyAnnounced = false;
                 if (produced != null)
                 {
                     foreach (var evt in produced)
                     {
                         _pendingEvents.Enqueue(evt);
+                        alreadyAnnounced |= evt.Type == AgentSessionEventType.StatusChanged;
                     }
                 }
 
@@ -297,7 +299,10 @@ namespace Ntilde.AgentHost
                 // A tier change with the same kind (heuristic awaitingInput becoming observed
                 // awaitingInput, or an observation going stale) is a status change to a caller
                 // reading the tier, so it emits too. StatusSince is about the kind and stays put.
-                if (kindChanged || confidenceChanged)
+                // A mutation that already announced the new status itself (stall recovery in
+                // NotifyOutput, whose event is computed after the mutation and so already carries
+                // this kind and tier) is not announced a second time.
+                if ((kindChanged || confidenceChanged) && !alreadyAnnounced)
                 {
                     _pendingEvents.Enqueue(
                         MakeEvent(AgentSessionEventType.StatusChanged, after, now, _exited ? _exitCode : null));

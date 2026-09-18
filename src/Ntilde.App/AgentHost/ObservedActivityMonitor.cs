@@ -46,6 +46,14 @@ namespace Ntilde.AgentHost
         private Timer? _timer;
         /// <summary>Cancels every request in flight when the monitor stops; a screen must not leave the process after the user turned the feature off.</summary>
         private CancellationTokenSource? _lifetime;
+        /// <summary>
+        /// Set by <see cref="Stop"/>, cleared by <see cref="Start"/>. A timer callback already queued
+        /// when Stop() ran can still enter <see cref="TryObserve"/> (Timer.Dispose does not wait for
+        /// it), and a monitor that has been stopped must abort the observation rather than send
+        /// with an uncancellable token. A monitor that was never started (tests drive TickAsync
+        /// directly) is not stopped and proceeds.
+        /// </summary>
+        private bool _stopped;
         private int _tickRunning;
         private int _requestCount;
         private bool _disabledUnauthorized;
@@ -123,6 +131,7 @@ namespace Ntilde.AgentHost
                 _currentBackoff = TimeSpan.Zero;
                 _backoffUntil = DateTimeOffset.MinValue;
                 _lifetime = new CancellationTokenSource();
+                _stopped = false;
                 _timer = new Timer(OnTimerTick, null, TickInterval, TickInterval);
             }
             RaiseStateChanged();
@@ -158,6 +167,7 @@ namespace Ntilde.AgentHost
                 _timer = null;
                 lifetime = _lifetime;
                 _lifetime = null;
+                _stopped = true;
                 _panes.Clear();
             }
             // Cancel outside the gate: continuations may run synchronously on Cancel() and
@@ -274,6 +284,11 @@ namespace Ntilde.AgentHost
             CancellationToken token;
             lock (_gate)
             {
+                // Stop() may have run since the due checks above (a queued timer callback, or
+                // between the capture and this commit). Nothing has been committed yet, and the
+                // captured text must not go anywhere: abort instead of sending with a token that
+                // no longer exists.
+                if (_stopped) return Task.CompletedTask;
                 if (string.Equals(sample.Text, state.LastTextSent, StringComparison.Ordinal))
                 {
                     state.LastSequenceSent = sequence;

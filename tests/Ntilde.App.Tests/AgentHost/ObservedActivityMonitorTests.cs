@@ -508,6 +508,23 @@ public class ObservedActivityMonitorTests
     }
 
     [Fact]
+    public async Task Tick_after_stop_sends_nothing_even_for_a_due_pane()
+    {
+        // Timer.Dispose does not wait for an already queued callback, so a tick can still run
+        // after Stop(). It must abort before sending rather than fall back to an uncancellable token.
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.OutputThenQuiet(reg);
+        h.Monitor.Apply(true);
+        h.Monitor.Stop();
+
+        await h.Monitor.TickAsync();
+
+        Assert.Empty(h.Classifier.Samples);
+        Assert.Equal(0, h.Monitor.RequestCount);
+    }
+
+    [Fact]
     public async Task Disabled_monitor_still_prunes_closed_panes()
     {
         var h = new Harness();

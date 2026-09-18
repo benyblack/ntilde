@@ -240,6 +240,23 @@ public class AgentSessionStatusMachineObservedTests
     }
 
     [Fact]
+    public void Stall_recovery_on_an_observed_running_session_emits_one_status_changed_event()
+    {
+        var (machine, clock, events) = Make();
+        machine.Sweep(hasActiveChildProcesses: false);
+        machine.NotifyObserved(Obs(machine, ScreenActivity.AgentWorking)); // observed running
+        clock.Advance(TimeSpan.FromSeconds(AgentSessionStatusMachine.StallThresholdSeconds));
+        machine.Sweep(hasActiveChildProcesses: false); // stalled
+        events.Clear();
+
+        machine.NotifyOutput(); // recovery: observation goes stale too (observed -> heuristic)
+
+        var evt = Assert.Single(events, e => e.Type == AgentSessionEventType.StatusChanged);
+        Assert.Equal(AgentSessionStatusConfidence.Heuristic, evt.Confidence);
+        Assert.False(machine.Snapshot().IsStalled);
+    }
+
+    [Fact]
     public void Events_carry_the_confidence_of_the_status_they_report()
     {
         var (machine, _, events) = Make();
