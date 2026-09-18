@@ -276,4 +276,148 @@ public class ObservedActivityMonitorTests
 
         Assert.Equal(0, h.Monitor.TrackedPaneCount);
     }
+
+    [Fact]
+    public async Task Rate_limit_backs_off_doubling_to_the_cap_and_resets_on_success()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.RateLimited, null, "429");
+
+        var expected = ObservedActivityMonitor.InitialBackoff;
+        for (int i = 0; i < 8; i++)
+        {
+            h.Screens[reg.PaneId] = $"screen {i}$ ";
+            h.OutputThenQuiet(reg);
+            h.Clock.Advance(ObservedActivityMonitor.MaxBackoff); // clear any pending backoff and the min interval
+            await h.Monitor.TickAsync();
+            Assert.Equal(expected, h.Monitor.CurrentBackoff);
+            Assert.Equal(h.Clock.Now + expected, h.Monitor.BackoffUntil);
+            expected = TimeSpan.FromTicks(Math.Min(expected.Ticks * 2, ObservedActivityMonitor.MaxBackoff.Ticks));
+        }
+        Assert.Equal(ObservedActivityMonitor.MaxBackoff, h.Monitor.CurrentBackoff);
+
+        // While backed off, no pane is even considered.
+        h.Screens[reg.PaneId] = "later$ ";
+        h.OutputThenQuiet(reg);
+        int before = h.Classifier.Samples.Count;
+        await h.Monitor.TickAsync();
+        Assert.Equal(before, h.Classifier.Samples.Count);
+
+        // After the backoff, a success resets it.
+        h.Clock.Advance(ObservedActivityMonitor.MaxBackoff);
+        h.Classifier.Respond = _ => FakeClassifier.Answered(ScreenActivity.IdleShellPrompt, 0.99, 0.1);
+        await h.Monitor.TickAsync();
+        Assert.Equal(TimeSpan.Zero, h.Monitor.CurrentBackoff);
+    }
+
+    [Fact]
+    public async Task Overloaded_also_backs_off()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.Overloaded, null, "529");
+        h.OutputThenQuiet(reg);
+
+        await h.Monitor.TickAsync();
+
+        Assert.Equal(ObservedActivityMonitor.InitialBackoff, h.Monitor.CurrentBackoff);
+    }
+
+    [Fact]
+    public async Task Unauthorized_disables_the_monitor_until_apply_restarts_it()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.Unauthorized, null, "401");
+        h.OutputThenQuiet(reg);
+        int stateChanges = 0;
+        h.Monitor.StateChanged += () => stateChanges++;
+
+        await h.Monitor.TickAsync();
+        Assert.True(h.Monitor.IsDisabledUnauthorized);
+        Assert.True(stateChanges >= 1);
+
+        h.Screens[reg.PaneId] = "again$ ";
+        h.OutputThenQuiet(reg);
+        h.Clock.Advance(ObservedActivityMonitor.MinInterval);
+        await h.Monitor.TickAsync();
+        Assert.Single(h.Classifier.Samples);
+
+        h.Monitor.Apply(true);  // a re-saved key re-enables: Start() clears the flag
+        Assert.False(h.Monitor.IsDisabledUnauthorized);
+        h.Monitor.Stop();
+    }
+
+    [Fact]
+    public async Task Transport_failure_leaves_status_untouched_and_does_not_back_off()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.TransportFailure, null, "timed out");
+        h.OutputThenQuiet(reg);
+        var before = reg.StatusMachine.Snapshot();
+
+        await h.Monitor.TickAsync();
+
+        var after = reg.StatusMachine.Snapshot();
+        Assert.Equal(before.Kind, after.Kind);
+        Assert.Equal(before.Confidence, after.Confidence);
+        Assert.Null(after.Observation);
+        Assert.Equal(TimeSpan.Zero, h.Monitor.CurrentBackoff);
+        Assert.Contains(h.Log, line => line.Contains("outcome=TransportFailure", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_throwing_classifier_does_not_kill_the_sweep()
+    {
+        var h = new Harness();
+        var bad = h.AddPane(screen: "bad$ ");
+        var good = h.AddPane(screen: "good$ ");
+        h.Classifier.Respond = s => s.Text.Contains("bad", StringComparison.Ordinal)
+            ? throw new InvalidOperationException("kaboom")
+            : FakeClassifier.Answered(ScreenActivity.IdleShellPrompt, 0.99, 0.1);
+        h.OutputThenQuiet(bad);
+        h.OutputThenQuiet(good);
+
+        await h.Monitor.TickAsync();
+
+        Assert.NotNull(good.StatusMachine.Snapshot().Observation);
+        Assert.Null(bad.StatusMachine.Snapshot().Observation);
+        Assert.Contains(h.Log, line => line.Contains("kaboom", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_throwing_capture_is_logged_and_the_sweep_continues()
+    {
+        var h = new Harness();
+        var a = h.AddPane(screen: "a$ ");
+        var b = h.AddPane(screen: "b$ ");
+        var monitor = new ObservedActivityMonitor(h.Registry, h.Classifier, new MarkingFilter(),
+            reg => reg.PaneId == a.PaneId ? throw new InvalidOperationException("capture failed") : new ScreenSample("b$ ", 24, 80),
+            h.Clock.Provider, h.Log.Add);
+        h.OutputThenQuiet(a);
+        h.OutputThenQuiet(b);
+
+        await monitor.TickAsync();
+
+        Assert.Single(h.Classifier.Samples);
+        Assert.Contains(h.Log, line => line.Contains("capture failed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Apply_and_stop_toggle_running_and_raise_state_changed()
+    {
+        var h = new Harness();
+        int changes = 0;
+        h.Monitor.StateChanged += () => changes++;
+
+        h.Monitor.Apply(true);
+        Assert.True(h.Monitor.IsRunning);
+        h.Monitor.Apply(true); // idempotent
+        h.Monitor.Apply(false);
+        Assert.False(h.Monitor.IsRunning);
+
+        Assert.Equal(2, changes); // start, stop; the no-op second Apply(true) returns before raising
+    }
 }
