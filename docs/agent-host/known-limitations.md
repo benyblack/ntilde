@@ -54,10 +54,18 @@ answer overrides the heuristic tier. It also refines a precise `running` for an
 agent CLI (Claude Code, Codex) into `awaitingInput` when the agent has finished
 and is waiting at its input box. Status then reports `observed` confidence and
 an `observation` object. Off by default; nothing leaves the machine otherwise.
-The redaction is pattern-based (the same `SecretsFilter` used for command
-history: `--password`, `token=`, bearer headers, connection-string passwords)
-and is not exhaustive; a pane that prints credentials in free text can leak
-them, so leave Screen inference off for such panes.
+The redaction is pattern-based and is not exhaustive. Screens pass through
+`ScreenSecretsFilter`, which layers output-oriented patterns over the command
+history filter: private-key blocks, credential-named assignments in any config
+syntax (`SECRET`, `TOKEN`, `PASSWORD`, `API_KEY`, `ACCESS_KEY`, `PRIVATE_KEY`,
+`CLIENT_SECRET`, `AUTH_TOKEN`), URL userinfo, well-known provider token shapes
+(GitHub, GitLab, Slack, AWS key ids, `sk-`, `apikey_`, bare JWTs) and Basic auth
+headers, plus the history filter's `--password`, `token=`, bearer headers and
+connection-string passwords. There is deliberately no generic high-entropy
+detector: it would redact git SHAs, package hashes and base64 in ordinary build
+output and degrade what the classifier sees. A pane that prints a credential
+with no recognisable name or shape can still leak it, so leave Screen inference
+off for such panes.
 
 **Still planned:** foreground-process reporting for WSL/SSH so the heuristic
 tier is accurate without sending any text anywhere.
