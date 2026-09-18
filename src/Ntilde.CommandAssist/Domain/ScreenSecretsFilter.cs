@@ -128,7 +128,9 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     //
     //  NAME=value  (shell, .env, INI): the value is one shell word, or a quoted string.
     //  name: value (YAML, JSON, key/value prints): the value runs to the end of the line, stopping
-    //              before a trailing "# comment" or a trailing ",", or is a quoted string.
+    //              before a trailing ",", or before a "# comment" that is separated from the value
+    //              by whitespace (a "#" glued to the value is part of it, as in YAML), or is a
+    //              quoted string.
     //
     // Quoted strings consume backslash escapes so an embedded \" cannot end the value early.
     [GeneratedRegex(
@@ -137,7 +139,7 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     private static partial Regex CredentialAssignmentEquals();
 
     [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*:\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s#,;][^#\r\n]*?)(?=\s*,?\s*(?:#.*)?$)",
+        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*:\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s#,;][^\r\n]*?)(?=\s*,?(?:\s+#.*)?\s*$)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex CredentialAssignmentColon();
 }

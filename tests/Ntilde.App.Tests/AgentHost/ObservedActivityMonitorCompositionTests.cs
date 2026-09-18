@@ -29,10 +29,50 @@ public class ObservedActivityMonitorCompositionTests
         string[] lines = ["token is ghp_abcdefghij", "klmnopqrstuvwxyz0123456789", "$ ", ""];
         bool[] wrapped = [true, false, false, false];
 
-        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped);
+        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped, cols: 23);
 
         // Rows are right-trimmed (a prompt's trailing space goes with the padding), so "$ " → "$".
         Assert.Equal("token is ghp_abcdefghijklmnopqrstuvwxyz0123456789\n$", text);
+    }
+
+    [Fact]
+    public void JoinSoftWrappedRows_restores_the_spaces_a_wrapped_row_lost_to_trimming()
+    {
+        // The snapshot trims every row; a wrapped row is full width, so what it lost was spaces.
+        string[] lines = ["PASSWORD=", "secret", "$"];
+        bool[] wrapped = [true, false, false];
+
+        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped, cols: 20);
+
+        Assert.Equal("PASSWORD=           secret\n$", text);
+    }
+
+    [Fact]
+    public void CaptureVisibleText_keeps_a_wrap_whose_last_column_is_a_written_space()
+    {
+        // "PASSWORD=" + 11 spaces fills a 20-column row; "secret" lands on the next row. The wrap
+        // is genuine even though the last cell is a space, so the rows must rejoin and the
+        // assignment must be redacted.
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer);
+        parser.Process("PASSWORD=" + new string(' ', 11) + "secret\r\n$ ");
+        var registration = new AgentSessionRegistration(
+            paneId: Guid.NewGuid(),
+            buffer: buffer,
+            title: "pane",
+            profileName: "Terminal",
+            kind: "local",
+            isActive: false);
+
+        ScreenSample? sample = ObservedActivityMonitorComposition.CaptureVisibleText(registration);
+
+        Assert.NotNull(sample);
+        Assert.Equal("PASSWORD=           secret\n$", sample!.Text);
+        // The inner history filter's Password= pattern fires first and consumes the padding with
+        // the value; what matters is that "secret" is gone.
+        string redacted = ObservedActivityMonitorComposition.CreateScreenSecretsFilter().Redact(sample.Text).RedactedText;
+        Assert.Equal("PASSWORD=[REDACTED]\n$", redacted);
+        Assert.DoesNotContain("secret", redacted, StringComparison.Ordinal);
     }
 
     [Fact]

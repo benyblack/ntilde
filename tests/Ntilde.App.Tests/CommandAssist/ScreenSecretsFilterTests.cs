@@ -24,6 +24,9 @@ public sealed class ScreenSecretsFilterTests
     [InlineData("password: correct horse battery staple", "password: [REDACTED]")]
     [InlineData("  db_password: correct horse   # rotated weekly", "  db_password: [REDACTED]   # rotated weekly")]
     [InlineData("  api_key: abc def,", "  api_key: [REDACTED],")]
+    // a '#' glued to the value is part of it (YAML); only a whitespace-separated '#' is a comment
+    [InlineData("password: abc#sensitive", "password: [REDACTED]")]
+    [InlineData("token: a#b # note", "token: [REDACTED] # note")]
     // a provider token glued to a preceding word is still caught (no leading word boundary)
     [InlineData("prefixghp_abcdefghijklmnopqrstuvwxyz0123456789", "prefix[REDACTED]")]
     [InlineData("password: s3cret", "password: [REDACTED]")]
