@@ -85,4 +85,27 @@ public class ObservedActivityMonitorCompositionTests
         Assert.NotNull(sample);
         Assert.Equal("prefix\nmnopqrstuvwxyz0123456789\n$", sample!.Text);
     }
+
+    [Fact]
+    public void CaptureVisibleText_does_not_join_a_full_row_to_a_continuation_row_that_was_erased_and_repainted()
+    {
+        // The other direction: row 0 is a genuine full-width wrap, row 1 (its continuation) is
+        // erased and a bare token is painted there. Row 0 must not be glued to the token.
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer);
+        parser.Process("abcdefghijklmnopqrstuvwxyz0123456789\r\n$ ");
+        parser.Process("\x1b[2;1H\x1b[2Kghp_abcdefghijklmnop");
+        var registration = new AgentSessionRegistration(
+            paneId: Guid.NewGuid(),
+            buffer: buffer,
+            title: "pane",
+            profileName: "Terminal",
+            kind: "local",
+            isActive: false);
+
+        ScreenSample? sample = ObservedActivityMonitorComposition.CaptureVisibleText(registration);
+
+        Assert.NotNull(sample);
+        Assert.Equal("abcdefghijklmnopqrst\nghp_abcdefghijklmnop\n$", sample!.Text);
+    }
 }

@@ -466,12 +466,17 @@ namespace Ntilde.VT
             {
                 row.Cells[i] = empty;
             }
-            // A whole-row erase ends whatever logical line ran through this row: the content that
-            // wrapped into the next row is gone, so the row no longer continues into it. Leaving the
-            // flag set made a later repaint ("prefix" written into the erased row) read as one line
-            // with the untouched row below, both for reflow and for readers that rejoin soft wraps.
-            // Anything rewritten here that reaches the last column sets the flag again on the way.
+            // A whole-row erase ends whatever logical line ran through this row, in both
+            // directions: this row no longer continues into the next (its content is gone), and the
+            // row above no longer continues into this one (what it wrapped into is gone). Leaving
+            // either flag set made a later repaint read as one line with an untouched neighbour,
+            // both for reflow and for readers that rejoin soft wraps. Anything rewritten here that
+            // reaches the last column sets this row's own flag again on the way.
             row.IsWrapped = false;
+            if (rowIndex > 0)
+            {
+                _viewport[rowIndex - 1].IsWrapped = false;
+            }
             row.ClearExtendedText();
             row.ClearHyperlinks();
             row.TouchRevision();

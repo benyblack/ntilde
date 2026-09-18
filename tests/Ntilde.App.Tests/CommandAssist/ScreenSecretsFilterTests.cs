@@ -20,6 +20,12 @@ public sealed class ScreenSecretsFilterTests
     // escaped quotes inside a JSON string must not end the value early
     [InlineData("  \"client_secret\": \"abc\\\"sensitive-tail\",", "  \"client_secret\": [REDACTED],")]
     [InlineData("password: 'it\\'s-secret' # comment", "password: [REDACTED] # comment")]
+    // YAML plain scalars run to the end of the line; a trailing comment or comma survives
+    [InlineData("password: correct horse battery staple", "password: [REDACTED]")]
+    [InlineData("  db_password: correct horse   # rotated weekly", "  db_password: [REDACTED]   # rotated weekly")]
+    [InlineData("  api_key: abc def,", "  api_key: [REDACTED],")]
+    // a provider token glued to a preceding word is still caught (no leading word boundary)
+    [InlineData("prefixghp_abcdefghijklmnopqrstuvwxyz0123456789", "prefix[REDACTED]")]
     [InlineData("password: s3cret", "password: [REDACTED]")]
     [InlineData("GITHUB_TOKEN: 'abc'", "GITHUB_TOKEN: [REDACTED]")]
     [InlineData("AUTH_TOKEN=Bearer-ish", "AUTH_TOKEN=[REDACTED]")]
@@ -89,6 +95,25 @@ public sealed class ScreenSecretsFilterTests
 
         Assert.True(result.WasRedacted);
         Assert.Equal("[REDACTED]\n-----END OPENSSH PRIVATE KEY-----\n$ ", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_LoneShortPrivateKeyTail_IsRedacted()
+    {
+        // PEM's last base64 row can be as short as "AQ=="; on a small viewport it may be the only
+        // body row left above the END marker.
+        RedactionResult result = Make().Redact("AQ==\n-----END RSA PRIVATE KEY-----\n$ ");
+
+        Assert.True(result.WasRedacted);
+        Assert.Equal("[REDACTED]\n-----END RSA PRIVATE KEY-----\n$ ", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_EndMarkerWithNoBodyAbove_IsLeftAlone()
+    {
+        RedactionResult result = Make().Redact("$ cat key.pem | tail -1\n-----END RSA PRIVATE KEY-----\n$ ");
+
+        Assert.False(result.WasRedacted);
     }
 
     [Fact]

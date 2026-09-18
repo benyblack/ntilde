@@ -34,6 +34,17 @@ public class EraseLineClearsWrapTests
     }
 
     [Fact]
+    public void EraseLineAll_OnAContinuationRow_ClearsTheRowAbovesWrapFlagToo()
+    {
+        var (buffer, parser) = WrappedTerminal();
+
+        parser.Process("\x1b[2;1H\x1b[2Kfresh");
+
+        Assert.False(buffer.ViewportRows[0].IsWrapped, "row 0 no longer continues into an erased row 1");
+        Assert.False(buffer.ViewportRows[1].IsWrapped);
+    }
+
+    [Fact]
     public void EraseInDisplay_ClearsEveryErasedRowsWrapFlag()
     {
         var (buffer, parser) = WrappedTerminal();
