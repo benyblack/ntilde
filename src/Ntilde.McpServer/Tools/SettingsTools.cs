@@ -66,6 +66,7 @@ public static class SettingsTools
         | `AgentReplayExportEnabled` | bool | Default false. Sub-gate on top of the observe toggle: allows agents to export a session's recent output as a replay file (output + resizes only, never input). |
         | `AgentAccessActEnabled` | bool | Default false. Separate opt-in on top of observe: allows agents to type into, spawn, and close sessions. SSH sessions additionally require per-profile allowlisting. |
         | `LongCommandNotificationsEnabled` | bool | Default false. In-app toast when a command that ran ≥30s finishes in an unfocused pane. |
+        | `ScreenInferenceEnabled` | bool | Default false. Sends the redacted visible text of quiet local panes to the TypeSafe API to derive the "observed" session-status tier. SSH profiles need `AllowScreenInference` too. Requires an API key stored via Settings. |
         | `AutomaticUpdateChecks` | bool | Default **true**. Background update check ~10s after launch, downloading quietly and applying on the next restart the user accepts. Off stops background traffic only — the palette's manual "Check for updates" still works. Ignored entirely unless the app was installed by the Velopack installer (portable zip, winget and dev runs have nothing to update). |
 
         ## Background
@@ -145,6 +146,7 @@ public static class SettingsTools
           "AgentReplayExportEnabled": false,
           "AgentAccessActEnabled": false,
           "LongCommandNotificationsEnabled": false,
+          "ScreenInferenceEnabled": false,
           "AutomaticUpdateChecks": true,
           "Profiles": [
             { "Id": "00000000-0000-0000-0000-000000000001", "Name": "Command Prompt", "Command": "cmd.exe", "Type": 0 }
@@ -167,7 +169,7 @@ public static class SettingsTools
         "CommandAssistEnabled", "CommandAssistHistoryEnabled", "CommandAssistPassiveBubbleEnabled",
         "CommandAssistShellIntegrationEnabled", "CommandAssistPowerShellIntegrationEnabled",
         "ExperimentalNativeSshEnabled", "AgentAccessObserveEnabled", "AgentReplayExportEnabled",
-        "AgentAccessActEnabled", "LongCommandNotificationsEnabled",
+        "AgentAccessActEnabled", "LongCommandNotificationsEnabled", "ScreenInferenceEnabled",
         "AutomaticUpdateChecks",
     };
 
@@ -195,7 +197,7 @@ public static class SettingsTools
         "CommandAssistMaxHistoryEntries", "CommandAssistPassiveBubbleEnabled",
         "CommandAssistShellIntegrationEnabled", "CommandAssistPowerShellIntegrationEnabled",
         "ExperimentalNativeSshEnabled", "AgentAccessObserveEnabled", "AgentReplayExportEnabled",
-        "AgentAccessActEnabled", "LongCommandNotificationsEnabled",
+        "AgentAccessActEnabled", "LongCommandNotificationsEnabled", "ScreenInferenceEnabled",
         "AutomaticUpdateChecks",
         "Profiles", "DefaultProfileId", "TitleBarItems", "TitleBarOrder",
     };

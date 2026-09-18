@@ -294,6 +294,7 @@ public sealed class SshConnectionService
         merged.IdentityFilePath = incoming.IdentityFilePath;
         merged.RememberPasswordInVault = incoming.RememberPasswordInVault;
         merged.AllowAgentAccess = incoming.AllowAgentAccess;
+        merged.AllowScreenInference = incoming.AllowScreenInference;
         merged.JumpHops = incoming.JumpHops.Select(CloneJumpHop).ToList();
         merged.Forwards = incoming.Forwards.Select(CloneForward).ToList();
         merged.MuxOptions = CloneMuxOptions(incoming.MuxOptions);
@@ -598,7 +599,8 @@ public sealed class SshConnectionService
             ExtraSshArgs = profile.ExtraSshArgs,
             WorkingDirectory = profile.WorkingDirectory,
             RemoteShellKind = profile.RemoteShellKind,
-            AllowAgentAccess = profile.AllowAgentAccess
+            AllowAgentAccess = profile.AllowAgentAccess,
+            AllowScreenInference = profile.AllowScreenInference
         };
     }
 

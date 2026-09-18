@@ -168,6 +168,11 @@ namespace Ntilde.Shell
         // In-app toast when a command that ran ≥30s finishes in an unfocused
         // pane (A2 PR4, absorbs ROADMAP §5.2). Off by default.
         public bool LongCommandNotificationsEnabled { get; set; } = false;
+        // Screen inference (docs/superpowers/specs/2026-09-17-screen-inference-observed-status-design.md):
+        // when true, the visible text of quiet local panes is redacted and sent to the TypeSafe
+        // System One API to derive an "observed" status tier. SSH panes additionally need
+        // SshProfile.AllowScreenInference. Requires an API key in the OS secret store. Off by default.
+        public bool ScreenInferenceEnabled { get; set; } = false;
         // Governs the once-per-launch background update check (#91). Default on: an installed
         // build that never learns about a fix is worse than a single anonymous request to
         // GitHub's releases API 10 seconds after launch. Off stops all background traffic; the

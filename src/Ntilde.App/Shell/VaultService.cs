@@ -289,5 +289,33 @@ namespace Ntilde.Shell
             if (!_store.IsAvailable) return false;
             return _store.Delete(key);
         }
+
+        /// <summary>
+        /// Secret-store key for the TypeSafe API key used by screen inference
+        /// (docs/superpowers/specs/2026-09-17-screen-inference-observed-status-design.md §2.4).
+        /// The value never round-trips through settings.json.
+        /// </summary>
+        public const string InferenceApiKeySecretKey = "ntilde/inference/typesafe-api-key";
+
+        public string? GetInferenceApiKey()
+        {
+            string? value = GetSecret(InferenceApiKeySecretKey);
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        public bool HasInferenceApiKey() => GetInferenceApiKey() != null;
+
+        /// <summary>Stores the key trimmed; null, empty or whitespace removes it.</summary>
+        public void SetInferenceApiKey(string? value)
+        {
+            string? trimmed = value?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                RemoveSecret(InferenceApiKeySecretKey);
+                return;
+            }
+
+            SetSecret(InferenceApiKeySecretKey, trimmed);
+        }
     }
 }
