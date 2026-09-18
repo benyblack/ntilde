@@ -142,6 +142,18 @@ public class ProjectFileLayeringTests
     }
 
     /// <summary>
+    /// Ntilde.Inference is the assembly that talks to a remote model. It stays a leaf so the
+    /// only thing it can send is what a caller hands it: no reach into settings, the vault,
+    /// the grid, or the command history.
+    /// </summary>
+    [Fact]
+    public void Inference_csproj_must_have_no_project_references()
+    {
+        var refs = ProjectReferences("src/Ntilde.Inference/Ntilde.Inference.csproj");
+        Assert.Empty(refs);
+    }
+
+    /// <summary>
     /// The MCP server is a *client* of the running app, reached over the AgentHost wire
     /// protocol - not an in-process consumer of terminal state. That boundary is what stops
     /// an MCP tool reaching into a <c>TerminalBuffer</c> directly instead of going through
