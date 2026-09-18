@@ -47,6 +47,7 @@ namespace Ntilde
         private System.Collections.Generic.List<TerminalProfile> _profilesList = new();
         private Dictionary<string, string> _shortcutDraftBindings = new(StringComparer.OrdinalIgnoreCase);
         private readonly TitleBarDraftState _titleBarDraft = new();
+        private readonly VaultService _inferenceVault = new();
 
         // Shared style-class name (see SettingsWindow.axaml's "TextBlock.RowDesc" selector) used
         // across several row-building methods below; a const avoids the literal drifting out of
@@ -2997,6 +2998,9 @@ namespace Ntilde
             if (agentReplayExportToggle != null) agentReplayExportToggle.IsChecked = _settings.AgentReplayExportEnabled;
             var agentAccessActToggle = this.FindControl<CheckBox>("AgentAccessActToggle");
             if (agentAccessActToggle != null) agentAccessActToggle.IsChecked = _settings.AgentAccessActEnabled;
+            var screenInferenceToggle = this.FindControl<CheckBox>("ScreenInferenceToggle");
+            if (screenInferenceToggle != null) screenInferenceToggle.IsChecked = _settings.ScreenInferenceEnabled;
+            WireInferenceApiKeyControls();
             var agentIndicatorTabRollupList = this.FindControl<ComboBox>("AgentIndicatorTabRollupList");
             if (agentIndicatorTabRollupList != null)
             {
@@ -3294,6 +3298,8 @@ namespace Ntilde
             if (agentReplayExportToggle != null) _settings.AgentReplayExportEnabled = agentReplayExportToggle.IsChecked == true;
             var agentAccessActToggle = this.FindControl<CheckBox>("AgentAccessActToggle");
             if (agentAccessActToggle != null) _settings.AgentAccessActEnabled = agentAccessActToggle.IsChecked == true;
+            var screenInferenceToggle = this.FindControl<CheckBox>("ScreenInferenceToggle");
+            if (screenInferenceToggle != null) _settings.ScreenInferenceEnabled = screenInferenceToggle.IsChecked == true;
             var agentIndicatorTabRollupList = this.FindControl<ComboBox>("AgentIndicatorTabRollupList");
             if (agentIndicatorTabRollupList?.SelectedItem is ComboBoxItem agentRollupItem)
             {
@@ -3348,6 +3354,52 @@ namespace Ntilde
 
             _settings.Save();
             Close(true); // Return true to indicate saved
+        }
+
+        private bool _inferenceApiKeyControlsWired;
+
+        private void WireInferenceApiKeyControls()
+        {
+            RefreshInferenceApiKeyStatus();
+            if (_inferenceApiKeyControlsWired) return;
+            _inferenceApiKeyControlsWired = true;
+
+            var box = this.FindControl<TextBox>("InferenceApiKeyBox");
+            var set = this.FindControl<Button>("InferenceApiKeySetButton");
+            var clear = this.FindControl<Button>("InferenceApiKeyClearButton");
+            if (box == null || set == null || clear == null) return;
+
+            set.Click += (_, _) =>
+            {
+                _inferenceVault.SetInferenceApiKey(box.Text);
+                box.Text = string.Empty;
+                RefreshInferenceApiKeyStatus();
+                // A re-saved key re-enables a monitor that 401'd: Apply(true) restarts it.
+                AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+            };
+            clear.Click += (_, _) =>
+            {
+                _inferenceVault.SetInferenceApiKey(null);
+                RefreshInferenceApiKeyStatus();
+            };
+        }
+
+        private void RefreshInferenceApiKeyStatus()
+        {
+            var status = this.FindControl<TextBlock>("InferenceApiKeyStatus");
+            if (status == null) return;
+            if (!_inferenceVault.IsVaultAvailable)
+            {
+                status.Text = "Secret store unavailable on this system; the key cannot be saved.";
+            }
+            else if (AgentHost.ObservedActivityMonitorComposition.Instance.IsDisabledUnauthorized)
+            {
+                status.Text = "The API rejected the stored key. Paste a new one and press Set.";
+            }
+            else
+            {
+                status.Text = _inferenceVault.HasInferenceApiKey() ? "A key is stored." : "No key stored.";
+            }
         }
 
         public partial class Helper

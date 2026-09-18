@@ -3729,6 +3729,11 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ObserveActivityChanged += OnAgentObserveActivityChanged;
             RefreshAgentObserveIndicator();
 
+            // Screen inference (observed status tier): its own timer, independent of the IPC
+            // endpoint, so the tab strip benefits with agent access off. Off unless opted in.
+            AgentHost.ObservedActivityMonitorComposition.Instance.SetSshProfileAllowlist(IsSshProfileScreenInferenceAllowed);
+            AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+
             // Tab-label rollup: mirror each pane's attention tier onto its
             // owning tab. Subscribe to sessions already registered (a pane can
             // register before MainWindow's constructor reaches this point is
@@ -5155,6 +5160,20 @@ namespace Ntilde
             }
         }
 
+        // Screen-inference per-profile SSH probe, handed to the observed-activity monitor. Same
+        // contract as IsSshProfileAgentAllowed: thread-safe store read, fail closed.
+        private bool IsSshProfileScreenInferenceAllowed(Guid profileId)
+        {
+            try
+            {
+                return _sshConnectionService?.GetStoredProfile(profileId)?.AllowScreenInference == true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // ── A3 agent act executor (spawn/close) ──────────────────────────────
         // Implemented on MainWindow because spawning/closing is inherently UI-thread
         // tab work. Published to the agent-host endpoint via SetActionExecutor; the
@@ -5716,6 +5735,10 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
+            // Screen inference (observed status tier): its own timer, independent of the IPC
+            // endpoint, so the tab strip benefits with agent access off. Off unless opted in.
+            AgentHost.ObservedActivityMonitorComposition.Instance.SetSshProfileAllowlist(IsSshProfileScreenInferenceAllowed);
+            AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
             // RefreshTabAgentAttention already ends by calling
             // RefreshAgentObserveIndicator, so this covers both surfaces.
             RefreshTabAgentAttention();

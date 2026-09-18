@@ -187,6 +187,15 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
         set => SetField(ref _allowAgentAccess, value);
     }
 
+    private bool _allowScreenInference;
+
+    /// <summary>Per-profile opt-in for screen inference on this SSH connection. Default false.</summary>
+    public bool AllowScreenInference
+    {
+        get => _allowScreenInference;
+        set => SetField(ref _allowScreenInference, value);
+    }
+
     public int KeepAliveIntervalSeconds
     {
         get => _keepAliveIntervalSeconds;
@@ -426,7 +435,8 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
             ServerAliveCountMax = keepAliveCountMax,
             ExtraSshArgs = ExtraSshArgs?.Trim() ?? string.Empty,
             RemoteShellKind = RemoteShellKind,
-            AllowAgentAccess = AllowAgentAccess
+            AllowAgentAccess = AllowAgentAccess,
+            AllowScreenInference = AllowScreenInference
         };
     }
 
@@ -493,6 +503,7 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
         AuthMode = sshProfile.AuthMode == SshAuthMode.IdentityFile ? NewSshAuthMode.IdentityFile : NewSshAuthMode.Agent;
         IdentityFilePath = sshProfile.IdentityFilePath ?? string.Empty;
         AllowAgentAccess = sshProfile.AllowAgentAccess;
+        AllowScreenInference = sshProfile.AllowScreenInference;
 
         JumpHops.Clear();
         foreach (SshJumpHop hop in sshProfile.JumpHops)

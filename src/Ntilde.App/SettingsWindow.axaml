@@ -1023,6 +1023,29 @@
 
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Screen inference"/>
+                                    <TextBlock Classes="RowDesc" Text="After a pane goes quiet, send its visible text (secrets redacted) to the TypeSafe API to tell whether it is running, waiting for you, or idle. Improves session status for WSL, SSH and agent CLIs. Local panes only, unless an SSH connection is allowlisted individually. A dot in the title bar shows while this is on."/>
+                                </StackPanel>
+                                <CheckBox Name="ScreenInferenceToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360" Margin="24,0,0,0">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="TypeSafe API key"/>
+                                    <TextBlock Classes="RowDesc" Text="Stored in the operating system's secret store, never in settings.json. Paste a key and press Set; Clear removes it."/>
+                                    <TextBlock Name="InferenceApiKeyStatus" Classes="RowDesc" Text=""/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <TextBox Name="InferenceApiKeyBox" Width="220" PasswordChar="•" Watermark="apikey_…"/>
+                                    <Button Name="InferenceApiKeySetButton" Content="Set"/>
+                                    <Button Name="InferenceApiKeyClearButton" Content="Clear"/>
+                                </StackPanel>
+                            </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Tab indicator"/>
                                     <TextBlock Classes="RowDesc" Text="Which agent activity is shown on tab headers. Writes are always shown; choose All to also mark tabs whose panes are being read."/>
                                 </StackPanel>
