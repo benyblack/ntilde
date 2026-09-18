@@ -278,6 +278,9 @@ namespace Ntilde
             public TabStatusTracker Status { get; } = new();
             public TabTrackerStatus RenderedStatus { get; set; }
 
+            /// <summary>ObservedAt of the last observation that raised Attention, so one observation raises it once.</summary>
+            public DateTimeOffset? LastObservedAttentionAt { get; set; }
+
             /// <summary>True while any pane in this tab has a command running — the agent-session
             /// status machine's precise per-session state (see <see cref="RefreshTabStatuses"/>),
             /// which survives silent stretches that decay the output-burst heuristic. Feeds
@@ -633,13 +636,20 @@ namespace Ntilde
             // array, so no registry lock is held. 1 Hz over at most dozens of registrations:
             // one HashSet per tick is the whole allocation cost.
             var runningTabIds = new HashSet<Guid>();
+            var attentionByTab = new Dictionary<Guid, DateTimeOffset>();
             foreach (var registration in AgentHost.AgentSessionRegistry.Instance.GetRegistrations())
             {
                 var tabId = registration.TabId;
-                if (tabId.HasValue
-                    && registration.StatusMachine.Snapshot().Kind == AgentHost.AgentSessionStatusKind.Running)
+                if (!tabId.HasValue) continue;
+                var snapshot = registration.StatusMachine.Snapshot();
+                if (snapshot.Kind == AgentHost.AgentSessionStatusKind.Running)
                 {
                     runningTabIds.Add(tabId.Value);
+                }
+                if (snapshot.Observation is { } observation
+                    && observation.NeedsAttention >= TabStatusTracker.AttentionThreshold)
+                {
+                    attentionByTab[tabId.Value] = observation.ObservedAt;
                 }
             }
 
@@ -647,6 +657,13 @@ namespace Ntilde
             foreach (TabItem tab in tabs.Items.Cast<TabItem>())
             {
                 var state = GetOrCreateTabState(tab);
+                if (!tab.IsSelected
+                    && attentionByTab.TryGetValue(GetPersistentTabId(tab), out var observedAt)
+                    && state.LastObservedAttentionAt != observedAt)
+                {
+                    state.LastObservedAttentionAt = observedAt;
+                    state.Status.NoteObservedAttention();
+                }
                 var status = state.Status.Evaluate(now, isSelected: tab.IsSelected);
                 if (status != state.RenderedStatus)
                 {
