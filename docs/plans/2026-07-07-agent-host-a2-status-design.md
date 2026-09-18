@@ -83,7 +83,7 @@ screen was captured, and only above `ObservedOverrideThreshold` (0.85):
 |---|---|---|
 | heuristic | `command_running` / `agent_working` | `running` (observed) |
 | heuristic | `waiting_for_user` / `idle_shell_prompt` | `awaitingInput` → `idle` after 60 s (observed) |
-| precise, command in flight | `waiting_for_user` | `awaitingInput` (observed): a program inside the command waits on the user |
+| precise, command in flight | `waiting_for_user` | `awaitingInput` → `idle` after 60 s (observed): a program inside the command waits on the user |
 | precise, at prompt | any | unchanged (precise) |
 | any | `unknown_blank`, or below threshold, or stale | unchanged |
 

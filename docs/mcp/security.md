@@ -56,7 +56,7 @@ macOS/Linux). They are gated by opt-ins in the app's settings:
   record; these are the live ones. There is no way to silence them — the way to have no
   indicator is to turn agent access off. The same rule applies to the screen-inference light
   (◉) that shows while Settings → Agent Access → Screen inference is on: it has no off switch
-  other than the setting, because pane text (secrets redacted) may be leaving the machine
+  other than the setting, because pane text (known secret patterns redacted) may be leaving the machine
   while it is lit.
 - With both toggles off, **no endpoint exists** and the live-session tools return guidance, not data.
 

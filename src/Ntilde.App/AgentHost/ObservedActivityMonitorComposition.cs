@@ -8,12 +8,45 @@ using Ntilde.Shell;
 
 namespace Ntilde.AgentHost
 {
-    /// <summary>Reads the TypeSafe key from the OS secret store on every call, so a key saved in Settings takes effect without a restart.</summary>
+    /// <summary>
+    /// Reads the TypeSafe key from the OS secret store, but re-reads it at most every 30 s, and
+    /// immediately after a key is saved (<see cref="Invalidate"/>). Screen inference ticks every
+    /// second, and every tick calls <see cref="TryGetKey"/>; without the cache that is a
+    /// secret-store round trip once a second even when the key never changes.
+    /// </summary>
     internal sealed class VaultApiKeySource : IApiKeySource
     {
+        private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(30);
+
         private readonly VaultService _vault;
-        public VaultApiKeySource(VaultService vault) => _vault = vault ?? throw new ArgumentNullException(nameof(vault));
-        public string? TryGetKey() => _vault.GetInferenceApiKey();
+        private readonly Func<DateTimeOffset> _now;
+        private readonly object _lock = new();
+        private string? _cached;
+        private DateTimeOffset _cachedAt = DateTimeOffset.MinValue;
+
+        public VaultApiKeySource(VaultService vault, Func<DateTimeOffset>? nowProvider = null)
+        {
+            _vault = vault ?? throw new ArgumentNullException(nameof(vault));
+            _now = nowProvider ?? (() => DateTimeOffset.UtcNow);
+        }
+
+        public string? TryGetKey()
+        {
+            lock (_lock)
+            {
+                var now = _now();
+                if (now - _cachedAt < Ttl) return _cached;
+                _cached = _vault.GetInferenceApiKey();
+                _cachedAt = now;
+                return _cached;
+            }
+        }
+
+        /// <summary>Forces the next <see cref="TryGetKey"/> call to re-read the vault.</summary>
+        public void Invalidate()
+        {
+            lock (_lock) { _cachedAt = DateTimeOffset.MinValue; }
+        }
     }
 
     /// <summary>
@@ -23,13 +56,21 @@ namespace Ntilde.AgentHost
     public static class ObservedActivityMonitorComposition
     {
         private static readonly Lazy<ObservedActivityMonitor> LazyInstance = new(Create);
+        private static VaultApiKeySource? _apiKeySource;
 
         public static ObservedActivityMonitor Instance => LazyInstance.Value;
+
+        /// <summary>
+        /// Forces the next screen-inference request to re-read the API key from the OS secret
+        /// store, instead of waiting out the 30 s cache. Called right after Settings saves a key.
+        /// </summary>
+        internal static void InvalidateApiKeyCache() => _apiKeySource?.Invalidate();
 
         private static ObservedActivityMonitor Create()
         {
             var http = new HttpClient { Timeout = SystemOneClient.DefaultTimeout };
-            var client = new SystemOneClient(http, new VaultApiKeySource(new VaultService()));
+            _apiKeySource = new VaultApiKeySource(new VaultService());
+            var client = new SystemOneClient(http, _apiKeySource);
             return new ObservedActivityMonitor(
                 AgentSessionRegistry.Instance,
                 new ScreenActivityClassifier(client),

@@ -289,12 +289,15 @@ namespace Ntilde.AgentHost
             lock (_gate)
             {
                 state.InFlight = false;
-                if (result.Outcome != ScreenClassificationOutcome.Answered)
+                // Rejected is a deterministic 422 on this exact request body: identical content
+                // can never succeed on a retry, so the commit stays and this screen is never
+                // resent. Every other non-Answered outcome is transient, so undo the commit
+                // TryObserve made before the request, so this pane is due again once MinInterval
+                // passes rather than being silently skipped forever (LastRequestAt is left alone —
+                // it still spaces out the retry).
+                if (result.Outcome != ScreenClassificationOutcome.Answered
+                    && result.Outcome != ScreenClassificationOutcome.Rejected)
                 {
-                    // The round trip did not produce a usable answer: undo the commit TryObserve
-                    // made before the request, so this pane is due again once MinInterval passes
-                    // rather than being silently skipped forever (LastRequestAt is left alone —
-                    // it still spaces out the retry).
                     state.LastSequenceSent = previousSequence;
                     state.LastTextSent = previousText;
                 }
@@ -339,6 +342,19 @@ namespace Ntilde.AgentHost
                 case ScreenClassificationOutcome.RateLimited:
                 case ScreenClassificationOutcome.Overloaded:
                     note = $"backing off {ApplyBackoff().TotalSeconds:0}s";
+                    break;
+                case ScreenClassificationOutcome.Rejected:
+                    // Deterministic 422: never retried (see the lock above), so it must not follow
+                    // the 5s -> 5min retry ladder either - a differently-worded screen from the
+                    // same pane next tick is unaffected.
+                    note = $"rejected, not retried: {SanitizeDetail(result.Detail)}";
+                    break;
+                case ScreenClassificationOutcome.TransportFailure:
+                case ScreenClassificationOutcome.Malformed:
+                    // Transient failures: keep the retry (restored above) on the same 5s -> 5min
+                    // backoff ladder as rate-limit/overload so a flaky transport does not hammer
+                    // the service every tick.
+                    note = $"{SanitizeDetail(result.Detail)}; backing off {ApplyBackoff().TotalSeconds:0}s";
                     break;
                 default:
                     note = SanitizeDetail(result.Detail);

@@ -54,6 +54,10 @@ answer overrides the heuristic tier. It also refines a precise `running` for an
 agent CLI (Claude Code, Codex) into `awaitingInput` when the agent has finished
 and is waiting at its input box. Status then reports `observed` confidence and
 an `observation` object. Off by default; nothing leaves the machine otherwise.
+The redaction is pattern-based (the same `SecretsFilter` used for command
+history: `--password`, `token=`, bearer headers, connection-string passwords)
+and is not exhaustive; a pane that prints credentials in free text can leak
+them, so leave Screen inference off for such panes.
 
 **Still planned:** foreground-process reporting for WSL/SSH so the heuristic
 tier is accurate without sending any text anywhere.

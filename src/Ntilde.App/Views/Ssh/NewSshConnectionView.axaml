@@ -185,7 +185,7 @@
                     <StackPanel Grid.Row="3" Spacing="2" Margin="0,8,0,0">
                         <CheckBox IsChecked="{Binding AllowScreenInference}"
                                   Content="Allow screen inference for this connection" />
-                        <TextBlock Text="When 'Screen inference' is enabled in Settings, the visible text of panes on this connection (secrets redacted) may be sent to the TypeSafe API to derive session status. Off by default; remote screens never leave the machine without this."
+                        <TextBlock Text="When 'Screen inference' is enabled in Settings, the visible text of panes on this connection (known secret patterns redacted) may be sent to the TypeSafe API to derive session status. Off by default; remote screens never leave the machine without this."
                                    Opacity="0.7" TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>

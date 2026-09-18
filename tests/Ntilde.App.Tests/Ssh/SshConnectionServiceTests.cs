@@ -311,6 +311,79 @@ public sealed class SshConnectionServiceTests
     }
 
     [Fact]
+    public void EditorRoundTrip_LoadsAndPreservesScreenInferenceAllowlist()
+    {
+        // Mirrors EditorRoundTrip_LoadsAndPreservesAgentAllowlist for the screen-inference
+        // per-profile opt-in: the editor loads it into the view-model, so editing an unrelated
+        // field and saving preserves it.
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            string path = Path.Combine(tempRoot, "profiles.json");
+            var store = new JsonSshProfileStore(path);
+            var service = new SshConnectionService(store);
+            var existingId = Guid.Parse("e6f7a8b9-c0d1-4e2f-8a3b-4c5d6e7f8091");
+
+            store.SaveProfile(new SshProfile
+            {
+                Id = existingId,
+                Name = "Allowed",
+                Host = "allowed.internal",
+                AllowScreenInference = true
+            });
+
+            // Load through the real editor path and confirm the checkbox reflects state.
+            var runtime = SshConnectionService.ToRuntimeProfile(store.GetProfile(existingId)!);
+            var vm = service.CreateEditorViewModel(runtime);
+            Assert.True(vm.AllowScreenInference);
+
+            // Edit an unrelated field; the flag rides along on the view-model.
+            vm.HostName = "renamed.internal";
+            SshProfile saved = service.SaveProfile(vm);
+
+            Assert.True(saved.AllowScreenInference);
+            Assert.True(new JsonSshProfileStore(path).GetProfile(saved.Id)!.AllowScreenInference);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void EditorRoundTrip_CanRevokeScreenInferenceAllowlist()
+    {
+        // Unchecking the box must win — the view-model is authoritative, not a
+        // force-preserved stored value.
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            string path = Path.Combine(tempRoot, "profiles.json");
+            var store = new JsonSshProfileStore(path);
+            var service = new SshConnectionService(store);
+            var existingId = Guid.Parse("f7a8b9c0-d1e2-4f3a-8b4c-5d6e7f809172");
+
+            store.SaveProfile(new SshProfile
+            {
+                Id = existingId,
+                Name = "Allowed",
+                Host = "allowed.internal",
+                AllowScreenInference = true
+            });
+
+            var vm = service.CreateEditorViewModel(SshConnectionService.ToRuntimeProfile(store.GetProfile(existingId)!));
+            vm.AllowScreenInference = false; // user unchecks
+            service.SaveProfile(vm);
+
+            Assert.False(new JsonSshProfileStore(path).GetProfile(existingId)!.AllowScreenInference);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void EditorRoundTrip_CanRevokeAgentAllowlist()
     {
         // Unchecking the box must win — the view-model is authoritative, not a

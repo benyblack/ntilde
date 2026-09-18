@@ -1024,7 +1024,7 @@
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Screen inference"/>
-                                    <TextBlock Classes="RowDesc" Text="After a pane goes quiet, send its visible text (secrets redacted) to the TypeSafe API to tell whether it is running, waiting for you, or idle. Improves session status for WSL, SSH and agent CLIs. Local panes only, unless an SSH connection is allowlisted individually. A dot in the title bar shows while this is on."/>
+                                    <TextBlock Classes="RowDesc" Text="After a pane goes quiet, send its visible text (known secret patterns redacted) to the TypeSafe API to tell whether it is running, waiting for you, or idle. Improves session status for WSL, SSH and agent CLIs. Local panes only, unless an SSH connection is allowlisted individually. A dot in the title bar shows while this is on."/>
                                 </StackPanel>
                                 <CheckBox Name="ScreenInferenceToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>

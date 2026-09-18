@@ -223,7 +223,7 @@ public class LayeringTests
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, Inference })
         {
             var result = Types.InAssembly(asm)
                 .Should()

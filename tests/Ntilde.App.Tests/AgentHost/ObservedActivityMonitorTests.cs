@@ -360,7 +360,7 @@ public class ObservedActivityMonitorTests
     }
 
     [Fact]
-    public async Task Transport_failure_leaves_status_untouched_and_does_not_back_off()
+    public async Task Transport_failure_leaves_status_untouched_and_backs_off()
     {
         var h = new Harness();
         var reg = h.AddPane();
@@ -374,7 +374,7 @@ public class ObservedActivityMonitorTests
         Assert.Equal(before.Kind, after.Kind);
         Assert.Equal(before.Confidence, after.Confidence);
         Assert.Null(after.Observation);
-        Assert.Equal(TimeSpan.Zero, h.Monitor.CurrentBackoff);
+        Assert.Equal(ObservedActivityMonitor.InitialBackoff, h.Monitor.CurrentBackoff);
         Assert.Contains(h.Log, line => line.Contains("outcome=TransportFailure", StringComparison.Ordinal));
     }
 
@@ -390,17 +390,39 @@ public class ObservedActivityMonitorTests
         Assert.Single(h.Classifier.Samples);
 
         // No new output landed, but the failed send must not have permanently consumed the pane's
-        // sequence/text: once the minimum interval has passed, the same quiet screen is due again.
-        h.Clock.Advance(ObservedActivityMonitor.MinInterval);
+        // sequence/text: once BOTH the minimum interval and the failure backoff have elapsed, the
+        // same quiet screen is due again. Advance by MaxBackoff (as the backoff test does) so
+        // either ladder position clears regardless of how many times it has doubled.
+        h.Clock.Advance(ObservedActivityMonitor.MaxBackoff);
         await h.Monitor.TickAsync();
         Assert.Equal(2, h.Classifier.Samples.Count);
 
         h.Classifier.Respond = _ => FakeClassifier.Answered(ScreenActivity.IdleShellPrompt, 0.99, 0.1);
-        h.Clock.Advance(ObservedActivityMonitor.MinInterval);
+        h.Clock.Advance(ObservedActivityMonitor.MaxBackoff);
         await h.Monitor.TickAsync();
 
         Assert.Equal(3, h.Classifier.Samples.Count);
         Assert.NotNull(reg.StatusMachine.Snapshot().Observation);
+    }
+
+    [Fact]
+    public async Task Rejected_does_not_restore_the_sequence()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.Rejected, null, "422");
+        h.OutputThenQuiet(reg);
+
+        await h.Monitor.TickAsync();
+        Assert.Single(h.Classifier.Samples);
+
+        // A 422 on this exact request can never succeed on retry, so the commit made before the
+        // request must NOT be restored: with no new output, the pane is not due again even after
+        // the full backoff window (which does not apply to Rejected anyway).
+        h.Clock.Advance(ObservedActivityMonitor.MaxBackoff);
+        await h.Monitor.TickAsync();
+
+        Assert.Single(h.Classifier.Samples);
     }
 
     [Fact]

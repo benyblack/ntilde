@@ -3389,7 +3389,11 @@ namespace Ntilde
                     _inferenceVault.Value.SetInferenceApiKey(box.Text);
                     box.Text = string.Empty;
                     RefreshInferenceApiKeyStatus();
-                    // A re-saved key re-enables a monitor that 401'd: Apply(true) restarts it.
+                    // The monitor's key source caches the vault read for up to 30 s (F3): without
+                    // invalidating first, a re-saved key would not take effect until that cache
+                    // expires. A re-saved key also re-enables a monitor that 401'd: Apply(true)
+                    // restarts it.
+                    AgentHost.ObservedActivityMonitorComposition.InvalidateApiKeyCache();
                     AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
                 }
                 catch (Exception ex)

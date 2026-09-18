@@ -647,9 +647,14 @@ namespace Ntilde
                     runningTabIds.Add(tabId.Value);
                 }
                 if (snapshot.Observation is { } observation
-                    && observation.NeedsAttention >= TabStatusTracker.AttentionThreshold)
+                    && observation.NeedsAttention >= TabStatusTracker.AttentionThreshold
+                    && snapshot.Kind != AgentHost.AgentSessionStatusKind.Exited)
                 {
-                    attentionByTab[tabId.Value] = observation.ObservedAt;
+                    // Multiple panes can share one tab: keep the newer observation rather than
+                    // letting whichever pane is enumerated last in the registry win.
+                    attentionByTab[tabId.Value] = attentionByTab.TryGetValue(tabId.Value, out var existing) && existing > observation.ObservedAt
+                        ? existing
+                        : observation.ObservedAt;
                 }
             }
 
@@ -5706,7 +5711,7 @@ namespace Ntilde
             else
             {
                 glyph.Foreground = new SolidColorBrush(Color.Parse("#4FB0D4"));
-                ToolTip.SetTip(indicator, $"Screen inference is on · {monitor.RequestCount} request(s) this session. Pane text (secrets redacted) is sent to the TypeSafe API when a pane goes quiet.");
+                ToolTip.SetTip(indicator, $"Screen inference is on · {monitor.RequestCount} request(s) this session. Pane text (known secret patterns redacted) is sent to the TypeSafe API when a pane goes quiet.");
             }
         }
 
