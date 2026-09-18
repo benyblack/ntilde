@@ -3733,6 +3733,8 @@ namespace Ntilde
             // endpoint, so the tab strip benefits with agent access off. Off unless opted in.
             AgentHost.ObservedActivityMonitorComposition.Instance.SetSshProfileAllowlist(IsSshProfileScreenInferenceAllowed);
             AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+            AgentHost.ObservedActivityMonitorComposition.Instance.StateChanged += OnScreenInferenceStateChanged;
+            RefreshScreenInferenceIndicator();
 
             // Tab-label rollup: mirror each pane's attention tier onto its
             // owning tab. Subscribe to sessions already registered (a pane can
@@ -3931,6 +3933,16 @@ namespace Ntilde
             if (agentObserveIndicator != null)
             {
                 agentObserveIndicator.Click += async (_, _) => await ShowAgentActivityJournalAsync();
+            }
+
+            // Screen-inference light opens Settings straight to Agent Access (tab index 4), where
+            // the toggle and API key live. PlaceAgentObserveIndicator re-parents this exact
+            // instance on every RebuildTitleBar instead of recreating it, so wiring once here
+            // (same pattern as agentObserveIndicator above) survives every rebuild.
+            var screenInferenceIndicator = this.FindControl<Button>("ScreenInferenceIndicator");
+            if (screenInferenceIndicator != null)
+            {
+                screenInferenceIndicator.Click += (_, _) => _ = OpenSettings(4);
             }
 
             var recordingToastClose = this.FindControl<Button>("RecordingToastClose");
@@ -5675,6 +5687,32 @@ namespace Ntilde
         private void OnAgentObserveActivityChanged()
             => Dispatcher.UIThread.Post(RefreshAgentObserveIndicator);
 
+        /// <summary>Shows the screen-inference light while the monitor runs. UI thread.</summary>
+        internal void RefreshScreenInferenceIndicator()
+        {
+            var indicator = this.FindControl<Button>("ScreenInferenceIndicator");
+            var glyph = this.FindControl<TextBlock>("ScreenInferenceIndicatorGlyph");
+            if (indicator == null || glyph == null) return;
+
+            var monitor = AgentHost.ObservedActivityMonitorComposition.Instance;
+            indicator.IsVisible = monitor.IsRunning;
+            if (!monitor.IsRunning) return;
+
+            if (monitor.IsDisabledUnauthorized)
+            {
+                glyph.Foreground = new SolidColorBrush(Color.Parse("#D48A4F"));
+                ToolTip.SetTip(indicator, "Screen inference is on, but the API rejected the stored key. Open Settings → Agent Access to replace it.");
+            }
+            else
+            {
+                glyph.Foreground = new SolidColorBrush(Color.Parse("#4FB0D4"));
+                ToolTip.SetTip(indicator, $"Screen inference is on · {monitor.RequestCount} request(s) this session. Pane text (secrets redacted) is sent to the TypeSafe API when a pane goes quiet.");
+            }
+        }
+
+        private void OnScreenInferenceStateChanged()
+            => Dispatcher.UIThread.Post(RefreshScreenInferenceIndicator);
+
         /// <summary>
         /// Recomputes each tab's agent marker from the loudest attention tier
         /// among its panes, filtered by the rollup setting, then refreshes the
@@ -5739,6 +5777,7 @@ namespace Ntilde
             // endpoint, so the tab strip benefits with agent access off. Off unless opted in.
             AgentHost.ObservedActivityMonitorComposition.Instance.SetSshProfileAllowlist(IsSshProfileScreenInferenceAllowed);
             AgentHost.ObservedActivityMonitorComposition.Instance.Apply(_settings.ScreenInferenceEnabled);
+            RefreshScreenInferenceIndicator();
             // RefreshTabAgentAttention already ends by calling
             // RefreshAgentObserveIndicator, so this covers both surfaces.
             RefreshTabAgentAttention();
@@ -9214,6 +9253,18 @@ namespace Ntilde
         /// </summary>
         private void PlaceAgentObserveIndicator(Panel host)
         {
+            // Screen-inference light rides the same locked slot, placed first so the observe dot
+            // stays the final child (its position guarantee is documented above).
+            var inference = this.FindControl<Button>("ScreenInferenceIndicator");
+            if (inference != null)
+            {
+                if (inference.Parent is Panel inferenceParent)
+                {
+                    inferenceParent.Children.Remove(inference);
+                }
+                host.Children.Add(inference);
+            }
+
             var indicator = this.FindControl<Button>("AgentObserveIndicator");
             if (indicator == null)
             {

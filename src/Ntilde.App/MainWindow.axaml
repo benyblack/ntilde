@@ -274,6 +274,21 @@
                      whose on-screen location never shifts when items are pinned, unpinned,
                      reordered, or auto-surfaced. Contrast TabOverflowBadge, which deliberately
                      tracks a user-movable button because it annotates that button. -->
+                <!-- Screen inference indicator: visible while pane text may be leaving the machine
+                     (spec 2026-09-17 §2.5). Same non-catalog, locked placement rule as
+                     AgentObserveIndicator: MainWindow.PlaceAgentObserveIndicator re-inserts it
+                     before the observe dot after every RebuildTitleBar, so it has no off switch
+                     other than the setting itself. -->
+                <Button Name="ScreenInferenceIndicator"
+                        IsVisible="False"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6,0"
+                        Focusable="False"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="Screen inference is on.">
+                    <TextBlock Name="ScreenInferenceIndicatorGlyph" Text="◉" FontSize="10" Foreground="#4FB0D4" VerticalAlignment="Center"/>
+                </Button>
                 <Button Name="AgentObserveIndicator"
                         IsVisible="False"
                         Background="Transparent"

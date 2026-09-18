@@ -48,9 +48,12 @@ public sealed class MainWindowTitleBarTests : IDisposable
         TitleBarViewFactory.ButtonName("connections"),
         TitleBarViewFactory.ButtonName("settings"),
         TitleBarViewFactory.OverflowButtonName,
-        // Always last, and present in every configuration: the agent observe light is locked into
-        // the bar by MainWindow.PlaceAgentObserveIndicator and is deliberately not a catalog entry,
-        // so no title bar layout can move or remove it. See RebuildTitleBar_AgentObserveIndicator_*.
+        // Always last two, and present in every configuration: the screen-inference light and the
+        // agent observe light are both locked into the bar by MainWindow.PlaceAgentObserveIndicator
+        // (which places ScreenInferenceIndicator first so AgentObserveIndicator stays the final
+        // child) and are deliberately not catalog entries, so no title bar layout can move or
+        // remove them. See RebuildTitleBar_AgentObserveIndicator_*.
+        "ScreenInferenceIndicator",
         "AgentObserveIndicator",
     ];
 
