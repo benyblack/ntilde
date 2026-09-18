@@ -42,7 +42,8 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     private static readonly Regex BasicAuthRegex = BasicAuth();
     private static readonly Regex UrlUserInfoRegex = UrlUserInfo();
     private static readonly Regex ProviderTokenRegex = ProviderToken();
-    private static readonly Regex CredentialAssignmentRegex = CredentialAssignment();
+    private static readonly Regex CredentialAssignmentEqualsRegex = CredentialAssignmentEquals();
+    private static readonly Regex CredentialAssignmentColonRegex = CredentialAssignmentColon();
 
     private readonly ISecretsFilter _inner;
 
@@ -85,22 +86,24 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
         redacted = BasicAuthRegex.Replace(redacted, "$1" + Redacted);
         redacted = UrlUserInfoRegex.Replace(redacted, "$1" + Redacted + "@");
         redacted = ProviderTokenRegex.Replace(redacted, Redacted);
-        redacted = CredentialAssignmentRegex.Replace(redacted, "$1" + Redacted);
+        redacted = CredentialAssignmentEqualsRegex.Replace(redacted, "$1" + Redacted);
+        redacted = CredentialAssignmentColonRegex.Replace(redacted, "$1" + Redacted);
         return redacted;
     }
 
     // "-----BEGIN ... PRIVATE KEY-----" through the matching END line, or to the end of the text
     // when the screen cut the block off at the bottom. The body is matched lazily so two blocks on
     // one screen are redacted separately.
-    // "PRIVATE KEY BLOCK" covers ASCII-armored OpenPGP exports.
-    [GeneratedRegex(@"(-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)\r?\n[\s\S]*?(?:\r?\n(-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)|\z)", RegexOptions.CultureInvariant)]
+    // "PRIVATE KEY BLOCK" covers ASCII-armored OpenPGP exports. Markers may be indented (a key
+    // printed from a config file or a log), so leading blanks are part of the kept marker line.
+    [GeneratedRegex(@"([ \t]*-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)\r?\n[\s\S]*?(?:\r?\n([ \t]*-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)|\z)", RegexOptions.CultureInvariant)]
     private static partial Regex PrivateKeyBlock();
 
     // The block's BEGIN line scrolled off the top: base64-looking rows immediately above an END
     // marker. Key bodies are 64-70 chars of base64 per row and the final row may be short (even
     // "AQ=="), so the tail is either full rows with an optional short last row, or a lone short
     // row. A prompt or prose row is not base64, so the redaction stops at the body's top edge.
-    [GeneratedRegex(@"(?:(?:^[A-Za-z0-9+/=]{16,}\r?\n)+(?:^[A-Za-z0-9+/=]{1,15}\r?\n)?|^[A-Za-z0-9+/=]{1,15}\r?\n)(-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?:(?:^[ \t]*[A-Za-z0-9+/=]{16,}\r?\n)+(?:^[ \t]*[A-Za-z0-9+/=]{1,15}\r?\n)?|^[ \t]*[A-Za-z0-9+/=]{1,15}\r?\n)([ \t]*-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex OrphanPrivateKeyTail();
 
     // Sibling of the inner filter's "Authorization: Bearer" pattern.
@@ -131,8 +134,17 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     // of it, as in YAML). To the end of the line for BOTH forms: printenv, docker inspect and
     // dotenv dumps print the whole value, spaces included, so a one-word rule leaks the rest.
     // Over-redacting the tail of a typed "TOKEN=x ./run.sh" line costs the classifier little.
+    //
+    // The two forms differ only in what may START an unquoted value: an environment value may
+    // begin with any non-space character ("DB_PASSWORD=#hunter2" is a valid value), while a YAML
+    // plain scalar cannot begin with "#", "," or ";".
     [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*[=:]\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s#,;][^\r\n]*?)(?=\s*,?(?:\s+#.*)?\s*$)",
+        @"(?<![A-Za-z0-9_.\-])(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*=\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|\S[^\r\n]*?)(?=\s*,?(?:\s+#.*)?\s*$)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex CredentialAssignment();
+    private static partial Regex CredentialAssignmentEquals();
+
+    [GeneratedRegex(
+        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*:\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s#,;][^\r\n]*?)(?=\s*,?(?:\s+#.*)?\s*$)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex CredentialAssignmentColon();
 }

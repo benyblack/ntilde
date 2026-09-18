@@ -29,6 +29,9 @@ public sealed class ScreenSecretsFilterTests
     // printenv / dotenv dumps print whole values, spaces included
     [InlineData("DB_PASSWORD=correct horse battery staple", "DB_PASSWORD=[REDACTED]")]
     [InlineData("API_KEY=abc def # note", "API_KEY=[REDACTED] # note")]
+    // an environment value may begin with punctuation a YAML scalar could not
+    [InlineData("DB_PASSWORD=#hunter2", "DB_PASSWORD=[REDACTED]")]
+    [InlineData("TOKEN=;semi,colon", "TOKEN=[REDACTED]")]
     [InlineData("token: a#b # note", "token: [REDACTED] # note")]
     // a provider token glued to a preceding word is still caught (no leading word boundary)
     [InlineData("prefixghp_abcdefghijklmnopqrstuvwxyz0123456789", "prefix[REDACTED]")]
@@ -89,6 +92,26 @@ public sealed class ScreenSecretsFilterTests
         RedactionResult result = Make().Redact(input);
 
         Assert.Equal("-----BEGIN PGP PRIVATE KEY BLOCK-----\n[REDACTED]\n-----END PGP PRIVATE KEY BLOCK-----\n$ ", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_IndentedPrivateKeyBlockAndOrphanTail_AreRedacted()
+    {
+        // A key printed from a config file or a log keeps its indentation on every line.
+        RedactionResult block = Make().Redact(
+            "  key: |\n" +
+            "    -----BEGIN RSA PRIVATE KEY-----\n" +
+            "    MIIEpAIBAAKCAQEA0Z3VS5JJcds3xfnQm2F5sT1Ggvz\n" +
+            "    -----END RSA PRIVATE KEY-----\n" +
+            "$ ");
+        Assert.Equal("  key: |\n    -----BEGIN RSA PRIVATE KEY-----\n[REDACTED]\n    -----END RSA PRIVATE KEY-----\n$ ", block.RedactedText);
+
+        RedactionResult tail = Make().Redact(
+            "    MIIEpAIBAAKCAQEA0Z3VS5JJcds3xfnQm2F5sT1Ggvz\n" +
+            "    AQ==\n" +
+            "    -----END RSA PRIVATE KEY-----\n" +
+            "$ ");
+        Assert.Equal("[REDACTED]\n    -----END RSA PRIVATE KEY-----\n$ ", tail.RedactedText);
     }
 
     [Fact]
