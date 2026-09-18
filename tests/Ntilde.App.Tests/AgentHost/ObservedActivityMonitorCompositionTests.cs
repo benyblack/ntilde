@@ -61,4 +61,28 @@ public class ObservedActivityMonitorCompositionTests
         string redacted = ObservedActivityMonitorComposition.CreateScreenSecretsFilter().Redact(sample.Text).RedactedText;
         Assert.Equal("key [REDACTED]\n$", redacted);
     }
+
+    [Fact]
+    public void CaptureVisibleText_does_not_join_a_row_that_was_erased_and_repainted_shorter()
+    {
+        // Row 0 wraps into row 1 and row 1 into row 2. A cursor-addressed repaint then erases row 0
+        // and writes "prefix" into it. Row 0 must not be glued to row 1: the token on row 1 would
+        // otherwise lose its word boundary and slip past the filter.
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer);
+        parser.Process("key ghp_abcdefghijklmnopqrstuvwxyz0123456789\r\n$ ");
+        parser.Process("\x1b[1;1H\x1b[2Kprefix");
+        var registration = new AgentSessionRegistration(
+            paneId: Guid.NewGuid(),
+            buffer: buffer,
+            title: "pane",
+            profileName: "Terminal",
+            kind: "local",
+            isActive: false);
+
+        ScreenSample? sample = ObservedActivityMonitorComposition.CaptureVisibleText(registration);
+
+        Assert.NotNull(sample);
+        Assert.Equal("prefix\nmnopqrstuvwxyz0123456789\n$", sample!.Text);
+    }
 }

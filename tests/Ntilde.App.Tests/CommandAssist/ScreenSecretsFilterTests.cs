@@ -17,6 +17,9 @@ public sealed class ScreenSecretsFilterTests
     [InlineData("DATABASE_PASSWORD=hunter2", "DATABASE_PASSWORD=[REDACTED]")]
     [InlineData("OPENAI_API_KEY=\"sk-live-abc\"", "OPENAI_API_KEY=[REDACTED]")]
     [InlineData("  \"client_secret\": \"9f8e7d6c\",", "  \"client_secret\": [REDACTED],")]
+    // escaped quotes inside a JSON string must not end the value early
+    [InlineData("  \"client_secret\": \"abc\\\"sensitive-tail\",", "  \"client_secret\": [REDACTED],")]
+    [InlineData("password: 'it\\'s-secret' # comment", "password: [REDACTED] # comment")]
     [InlineData("password: s3cret", "password: [REDACTED]")]
     [InlineData("GITHUB_TOKEN: 'abc'", "GITHUB_TOKEN: [REDACTED]")]
     [InlineData("AUTH_TOKEN=Bearer-ish", "AUTH_TOKEN=[REDACTED]")]

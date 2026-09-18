@@ -120,7 +120,7 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     // credential keyword. Bare "auth" is excluded on purpose ("Author:" in git log, and the
     // "Authorization:" header, which its own patterns handle); so is "pwd" (printenv's PWD=).
     [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*[=:]\s*)(""[^""]*""|'[^']*'|[^\s,;]+)",
+        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*[=:]\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s,;]+)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex CredentialAssignment();
 }

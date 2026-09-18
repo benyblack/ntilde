@@ -102,8 +102,13 @@ namespace Ntilde.AgentHost
             try
             {
                 lines = BufferSnapshot.Capture(buffer, includeAttributes: false).Lines;
-                // IsWrapped on row i means the row ended by auto-wrap, so row i+1 continues it.
-                wrapped = buffer.ViewportRows.Select(r => r.IsWrapped).ToArray();
+                // IsWrapped on row i means the row ended by auto-wrap, so row i+1 continues it. A
+                // genuine wrap fills the row to its last column, so a row whose last cell holds no
+                // written character is treated as not wrapped even if the flag says otherwise:
+                // that shape is a row erased and repainted with shorter content, and joining it
+                // to the row below would glue unrelated text together (and could hide a token
+                // from the filter behind a missing word boundary).
+                wrapped = buffer.ViewportRows.Select(r => r.IsWrapped && RowEndsWithContent(r)).ToArray();
                 rows = buffer.Rows;
                 cols = buffer.Cols;
             }
@@ -113,6 +118,13 @@ namespace Ntilde.AgentHost
             }
 
             return new ScreenSample(JoinSoftWrappedRows(lines, wrapped), rows, cols);
+        }
+
+        private static bool RowEndsWithContent(Ntilde.VT.TerminalRow row)
+        {
+            if (row.Cells.Length == 0) return false;
+            char last = row.Cells[^1].Character;
+            return last != ' ' && last != '\0';
         }
 
         /// <summary>
