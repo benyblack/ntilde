@@ -48,6 +48,34 @@ public sealed record SessionStatusDto
 
     [JsonPropertyName("idleThresholdSeconds")]
     public required int IdleThresholdSeconds { get; init; }
+
+    /// <summary>Minimum observation confidence (percent) for the observed tier to decide the status.</summary>
+    [JsonPropertyName("observedOverrideThresholdPercent")]
+    public int ObservedOverrideThresholdPercent { get; init; } = 85;
+
+    /// <summary>The current screen observation, omitted when none is fresh.</summary>
+    [JsonPropertyName("observation")]
+    public SessionObservationDto? Observation { get; init; }
+}
+
+/// <summary>One screen-inference judgment (see <see cref="AgentHostProtocol.ObservedActivities"/>).</summary>
+public sealed record SessionObservationDto
+{
+    [JsonPropertyName("activity")]
+    public required string Activity { get; init; }
+
+    [JsonPropertyName("confidence")]
+    public required double Confidence { get; init; }
+
+    [JsonPropertyName("needsAttention")]
+    public required double NeedsAttention { get; init; }
+
+    [JsonPropertyName("lastCommandFailed")]
+    public required double LastCommandFailed { get; init; }
+
+    /// <summary>Milliseconds since the screen was captured.</summary>
+    [JsonPropertyName("ageMs")]
+    public required long AgeMs { get; init; }
 }
 
 /// <summary>One event on the <c>waitForEvents</c> channel.</summary>

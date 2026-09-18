@@ -25,6 +25,7 @@ namespace Ntilde.AgentHost.Contracts;
 [JsonSerializable(typeof(ReadScrollbackResult))]
 [JsonSerializable(typeof(GetSessionStatusParams))]
 [JsonSerializable(typeof(SessionStatusDto))]
+[JsonSerializable(typeof(SessionObservationDto))]
 [JsonSerializable(typeof(AgentEventDto))]
 [JsonSerializable(typeof(WaitForEventsParams))]
 [JsonSerializable(typeof(WaitForEventsResult))]

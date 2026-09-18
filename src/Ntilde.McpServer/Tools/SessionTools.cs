@@ -160,7 +160,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.get_session_status"),
-     Description("Reports what a live Ntilde session is doing right now: running / awaitingInput / idle / exited, with a confidence tier (precise = shell-integration events; heuristic = PTY signals), the in-flight command when known, exit code, and stall state. Read-only. Get paneId from ntilde.list_sessions. Limitation: the heuristic tier detects a running command via the OS process tree, which cannot see processes running inside a WSL distribution or on a remote SSH host — so a genuinely-running command in a WSL or SSH session may report awaitingInput/idle. Native local shells (cmd/PowerShell) are accurate; enabling shell integration upgrades a session to the precise tier, which is accurate regardless.")]
+     Description("Reports what a live Ntilde session is doing right now: running / awaitingInput / idle / exited, with a confidence tier, the in-flight command when known, exit code, stall state, and the latest screen observation when screen inference is enabled. Tiers: precise = shell-integration events; heuristic = PTY signals (child processes, alt screen), which cannot see processes inside WSL or on a remote SSH host; observed = an opt-in judgment over the pane's visible text decided the status. The observed tier closes the WSL/SSH gap and also detects an agent CLI (Claude Code etc.) that has finished and is waiting at its input box while the shell still sees one long command. It is off by default and never used for SSH profiles unless the profile allows it. Read-only. Get paneId from ntilde.list_sessions.")]
     public static async Task<string> GetSessionStatus(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -397,7 +397,12 @@ public static class SessionTools
         if (dto.IsStalled) sb.Append($" — STALLED (no output for at least {dto.StallThresholdSeconds}s)");
         sb.AppendLine();
         sb.AppendLine($"Status since: {FormatUtc(dto.StatusSinceMs)}; last output: {FormatUtc(dto.LastOutputAtMs)}.");
-        sb.Append($"Thresholds: stall after {dto.StallThresholdSeconds}s of silence while running, idle after {dto.IdleThresholdSeconds}s at a prompt.");
+        sb.Append($"Thresholds: stall after {dto.StallThresholdSeconds}s of silence while running, idle after {dto.IdleThresholdSeconds}s at a prompt, observed override at {dto.ObservedOverrideThresholdPercent}%.");
+        if (dto.Observation is { } o)
+        {
+            sb.AppendLine();
+            sb.Append($"Observed: {o.Activity} ({o.Confidence:0.00}) · attention {o.NeedsAttention:0.00} · last command failed {o.LastCommandFailed:0.00} · {o.AgeMs / 1000.0:0.0}s ago");
+        }
         return sb.ToString();
     }
 

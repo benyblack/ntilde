@@ -160,6 +160,16 @@ public static class AgentHostProtocol
         public const string Observed = "observed";
     }
 
+    /// <summary>Wire values for <c>observation.activity</c> (screen inference).</summary>
+    public static class ObservedActivities
+    {
+        public const string CommandRunning = "commandRunning";
+        public const string AgentWorking = "agentWorking";
+        public const string WaitingForUser = "waitingForUser";
+        public const string IdleShellPrompt = "idleShellPrompt";
+        public const string UnknownBlank = "unknownBlank";
+    }
+
     /// <summary>Wire values for event types on the waitForEvents channel.</summary>
     public static class EventTypes
     {

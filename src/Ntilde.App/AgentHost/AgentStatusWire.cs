@@ -1,5 +1,6 @@
 using System;
 using Ntilde.AgentHost.Contracts;
+using Ntilde.Inference;
 
 namespace Ntilde.AgentHost
 {
@@ -27,6 +28,16 @@ namespace Ntilde.AgentHost
             _ => throw new ArgumentOutOfRangeException(nameof(confidence), confidence, null),
         };
 
+        public static string ToWire(this ScreenActivity activity) => activity switch
+        {
+            ScreenActivity.CommandRunning => AgentHostProtocol.ObservedActivities.CommandRunning,
+            ScreenActivity.AgentWorking => AgentHostProtocol.ObservedActivities.AgentWorking,
+            ScreenActivity.WaitingForUser => AgentHostProtocol.ObservedActivities.WaitingForUser,
+            ScreenActivity.IdleShellPrompt => AgentHostProtocol.ObservedActivities.IdleShellPrompt,
+            ScreenActivity.UnknownBlank => AgentHostProtocol.ObservedActivities.UnknownBlank,
+            _ => throw new ArgumentOutOfRangeException(nameof(activity), activity, null),
+        };
+
         public static string ToWire(this AgentSessionEventType type) => type switch
         {
             AgentSessionEventType.StatusChanged => AgentHostProtocol.EventTypes.StatusChanged,
@@ -48,6 +59,17 @@ namespace Ntilde.AgentHost
             IsStalled = snapshot.IsStalled,
             StallThresholdSeconds = snapshot.StallThresholdSeconds,
             IdleThresholdSeconds = snapshot.IdleThresholdSeconds,
+            ObservedOverrideThresholdPercent = snapshot.ObservedOverrideThresholdPercent,
+            Observation = snapshot.Observation is { } o && snapshot.Kind != AgentSessionStatusKind.Exited
+                ? new SessionObservationDto
+                {
+                    Activity = o.Activity.ToWire(),
+                    Confidence = o.Confidence,
+                    NeedsAttention = o.NeedsAttention,
+                    LastCommandFailed = o.LastCommandFailed,
+                    AgeMs = Math.Max(0, snapshot.ObservationAgeMs ?? 0),
+                }
+                : null,
         };
     }
 }
