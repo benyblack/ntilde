@@ -47,9 +47,16 @@ it. Installing PSReadLine restores full status.
 - Use `wait_for_events` / `read_screen` to corroborate rather than relying on the
   heuristic running/idle alone.
 
-**Planned fix:** foreground-process reporting for the heuristic tier
-(DIRECTION A2 follow-up) — query the foreground process inside the WSL distro /
-over the SSH channel so the heuristic tier is accurate there too.
+**Mitigation (shipped):** the opt-in **observed** tier. With Settings → Agent
+Access → Screen inference on (and `AllowScreenInference` on the SSH profile), a
+quiet pane's redacted visible text is judged by the TypeSafe API and the
+answer overrides the heuristic tier. It also refines a precise `running` for an
+agent CLI (Claude Code, Codex) into `awaitingInput` when the agent has finished
+and is waiting at its input box. Status then reports `observed` confidence and
+an `observation` object. Off by default; nothing leaves the machine otherwise.
+
+**Still planned:** foreground-process reporting for WSL/SSH so the heuristic
+tier is accurate without sending any text anywhere.
 
 ## Other parked follow-ups
 
