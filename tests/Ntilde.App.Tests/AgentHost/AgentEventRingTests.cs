@@ -33,6 +33,20 @@ public class AgentEventRingTests
     }
 
     [Fact]
+    public void Confidence_rides_along_when_given_and_is_omitted_when_not()
+    {
+        var ring = new AgentEventRing();
+        var pane = Guid.NewGuid();
+        ring.Append(pane, AgentHostProtocol.EventTypes.StatusChanged, AgentHostProtocol.StatusKinds.AwaitingInput, DateTimeOffset.UtcNow,
+            confidence: AgentHostProtocol.StatusConfidences.Observed);
+        Append(ring);
+
+        var events = ring.ReadSince(0).Events;
+        Assert.Equal(AgentHostProtocol.StatusConfidences.Observed, events[0].Confidence);
+        Assert.Null(events[1].Confidence);
+    }
+
+    [Fact]
     public void Eviction_is_detectable_via_oldestSeq()
     {
         var ring = new AgentEventRing(capacity: 4);

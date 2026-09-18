@@ -46,6 +46,7 @@ namespace Ntilde.AgentHost
 
         // Derived state
         private AgentSessionStatusKind _kind;
+        private AgentSessionStatusConfidence _confidence = AgentSessionStatusConfidence.Heuristic;
         private DateTimeOffset _statusSince;
         private DateTimeOffset _lastOutputAt;
         private bool _stalled;
@@ -78,7 +79,7 @@ namespace Ntilde.AgentHost
                     _stalled = false;
                     return new List<AgentSessionStatusEvent>
                     {
-                        MakeEvent(AgentSessionEventType.StatusChanged, ComputeKind(now), now),
+                        MakeEvent(AgentSessionEventType.StatusChanged, Compute(now), now),
                     };
                 }
                 return null;
@@ -134,7 +135,7 @@ namespace Ntilde.AgentHost
                 _commandStartedAt = null;
                 var events = new List<AgentSessionStatusEvent>
                 {
-                    MakeEvent(AgentSessionEventType.CommandFinished, ComputeKind(now), now, exitCode, duration),
+                    MakeEvent(AgentSessionEventType.CommandFinished, Compute(now), now, exitCode, duration),
                 };
                 _currentCommand = null;
                 return events;
@@ -145,7 +146,7 @@ namespace Ntilde.AgentHost
         {
             RunUnderGate(now => new List<AgentSessionStatusEvent>
             {
-                MakeEvent(AgentSessionEventType.Bell, ComputeKind(now), now),
+                MakeEvent(AgentSessionEventType.Bell, Compute(now), now),
             });
         }
 
@@ -216,7 +217,7 @@ namespace Ntilde.AgentHost
                     _stalled = true;
                     return new List<AgentSessionStatusEvent>
                     {
-                        MakeEvent(AgentSessionEventType.Stalled, AgentSessionStatusKind.Running, now),
+                        MakeEvent(AgentSessionEventType.Stalled, Compute(now), now),
                     };
                 }
                 return null;
@@ -269,7 +270,8 @@ namespace Ntilde.AgentHost
             lock (_gate)
             {
                 var now = _now();
-                var before = _kind;
+                var beforeKind = _kind;
+                var beforeConfidence = _confidence;
                 var produced = mutate(now);
                 if (produced != null)
                 {
@@ -279,15 +281,24 @@ namespace Ntilde.AgentHost
                     }
                 }
 
-                var after = ComputeKind(now);
-                if (after != before)
+                var after = Compute(now);
+                bool kindChanged = after.Kind != beforeKind;
+                bool confidenceChanged = after.Confidence != beforeConfidence;
+                if (kindChanged)
                 {
-                    _kind = after;
+                    _kind = after.Kind;
                     _statusSince = now;
-                    if (after != AgentSessionStatusKind.Running)
+                    if (after.Kind != AgentSessionStatusKind.Running)
                     {
                         _stalled = false; // stall is a running-only condition
                     }
+                }
+                _confidence = after.Confidence;
+                // A tier change with the same kind (heuristic awaitingInput becoming observed
+                // awaitingInput, or an observation going stale) is a status change to a caller
+                // reading the tier, so it emits too. StatusSince is about the kind and stays put.
+                if (kindChanged || confidenceChanged)
+                {
                     _pendingEvents.Enqueue(
                         MakeEvent(AgentSessionEventType.StatusChanged, after, now, _exited ? _exitCode : null));
                 }
@@ -388,13 +399,14 @@ namespace Ntilde.AgentHost
 
         private static AgentSessionStatusEvent MakeEvent(
             AgentSessionEventType type,
-            AgentSessionStatusKind status,
+            (AgentSessionStatusKind Kind, AgentSessionStatusConfidence Confidence) status,
             DateTimeOffset timestamp,
             int? exitCode = null,
             TimeSpan? duration = null) => new()
             {
                 Type = type,
-                Status = status,
+                Status = status.Kind,
+                Confidence = status.Confidence,
                 Timestamp = timestamp,
                 ExitCode = exitCode,
                 Duration = duration,

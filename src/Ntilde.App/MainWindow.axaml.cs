@@ -3968,7 +3968,7 @@ namespace Ntilde
             var screenInferenceIndicator = this.FindControl<Button>("ScreenInferenceIndicator");
             if (screenInferenceIndicator != null)
             {
-                screenInferenceIndicator.Click += (_, _) => _ = OpenSettings(4);
+                screenInferenceIndicator.Click += (_, _) => _ = OpenSettings(0, selectAgentAccessPage: true);
             }
 
             var recordingToastClose = this.FindControl<Button>("RecordingToastClose");
@@ -7661,12 +7661,16 @@ namespace Ntilde
             _ = OpenSettings(0, selectBackupPage: true);
         }
 
-        private async Task OpenSettings(int tabIndex, Guid? profileId = null, SettingsSection section = SettingsSection.None, bool selectBackupPage = false)
+        private async Task OpenSettings(int tabIndex, Guid? profileId = null, SettingsSection section = SettingsSection.None, bool selectBackupPage = false, bool selectAgentAccessPage = false)
         {
             var sw = new SettingsWindow(tabIndex, profileId, section);
             if (selectBackupPage)
             {
                 sw.SelectBackupPage();
+            }
+            if (selectAgentAccessPage)
+            {
+                sw.SelectAgentAccessPage();
             }
 
             // The one live history store, so Settings' "Clear history" acts on the same instance the

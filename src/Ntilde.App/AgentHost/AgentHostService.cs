@@ -527,7 +527,8 @@ namespace Ntilde.AgentHost
                 evt.Status.ToWire(),
                 evt.Timestamp,
                 evt.ExitCode,
-                evt.Duration is { } d ? (long)d.TotalMilliseconds : null);
+                evt.Duration is { } d ? (long)d.TotalMilliseconds : null,
+                confidence: evt.Confidence.ToWire());
 
             _statusSubscriptions[registration] = Handler;
             registration.StatusMachine.EventEmitted += Handler;

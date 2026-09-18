@@ -73,6 +73,8 @@ namespace Ntilde.AgentHost
     {
         public required AgentSessionEventType Type { get; init; }
         public required AgentSessionStatusKind Status { get; init; }
+        /// <summary>How <see cref="Status"/> was derived at emission time; a tier change alone also emits StatusChanged.</summary>
+        public AgentSessionStatusConfidence Confidence { get; init; }
         public required DateTimeOffset Timestamp { get; init; }
         public int? ExitCode { get; init; }
         public TimeSpan? Duration { get; init; }

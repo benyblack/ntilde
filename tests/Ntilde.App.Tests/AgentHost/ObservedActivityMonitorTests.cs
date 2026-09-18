@@ -29,10 +29,12 @@ public class ObservedActivityMonitorTests
         public List<ScreenSample> Samples { get; } = new();
         public Func<ScreenSample, ScreenClassificationResult> Respond { get; set; } = _ => Answered(ScreenActivity.WaitingForUser, 0.95, 0.9);
         public TaskCompletionSource<ScreenClassificationResult>? Hold { get; set; }
+        public CancellationToken LastToken { get; private set; }
 
         public async Task<ScreenClassificationResult> ClassifyAsync(ScreenSample sample, CancellationToken cancellationToken)
         {
             Samples.Add(sample);
+            LastToken = cancellationToken;
             if (Hold != null) return await Hold.Task;
             return Respond(sample);
         }
@@ -473,6 +475,53 @@ public class ObservedActivityMonitorTests
         await h.Monitor.TickAsync();
 
         Assert.NotNull(reg.StatusMachine.Snapshot().Observation);
+    }
+
+    [Fact]
+    public async Task Stop_cancels_a_request_in_flight_and_drops_its_answer()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.OutputThenQuiet(reg);
+        h.Classifier.Hold = new TaskCompletionSource<ScreenClassificationResult>();
+        h.Monitor.Apply(true); // a lifetime token exists only while the monitor runs
+        try
+        {
+            var tick = h.Monitor.TickAsync();
+            Assert.Single(h.Classifier.Samples);
+            Assert.False(h.Classifier.LastToken.IsCancellationRequested);
+
+            h.Monitor.Stop(); // the user turned the feature off while the request was out
+
+            Assert.True(h.Classifier.LastToken.IsCancellationRequested, "the in-flight request's token must be cancelled");
+            h.Classifier.Hold.SetResult(FakeClassifier.Answered(ScreenActivity.WaitingForUser, 0.99, 0.9));
+            await tick;
+
+            Assert.Null(reg.StatusMachine.Snapshot().Observation);
+            Assert.Contains(h.Log, line => line.Contains("outcome=Cancelled", StringComparison.Ordinal));
+            Assert.Equal(TimeSpan.Zero, h.Monitor.CurrentBackoff);
+        }
+        finally
+        {
+            h.Monitor.Stop();
+        }
+    }
+
+    [Fact]
+    public async Task Disabled_monitor_still_prunes_closed_panes()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.Unauthorized, null, "401");
+        h.OutputThenQuiet(reg);
+        await h.Monitor.TickAsync();
+        Assert.True(h.Monitor.IsDisabledUnauthorized);
+        Assert.Equal(1, h.Monitor.TrackedPaneCount);
+
+        h.Registry.Unregister(reg.PaneId);
+        await h.Monitor.TickAsync(); // returns early, but must still forget the pane
+
+        Assert.Equal(0, h.Monitor.TrackedPaneCount);
     }
 
     [Fact]

@@ -44,6 +44,8 @@ namespace Ntilde.AgentHost
         private readonly Dictionary<AgentSessionRegistration, PaneState> _panes = new(ReferenceEqualityComparer.Instance);
         private volatile Func<Guid, bool>? _sshAllowlist;
         private Timer? _timer;
+        /// <summary>Cancels every request in flight when the monitor stops; a screen must not leave the process after the user turned the feature off.</summary>
+        private CancellationTokenSource? _lifetime;
         private int _tickRunning;
         private int _requestCount;
         private bool _disabledUnauthorized;
@@ -120,6 +122,7 @@ namespace Ntilde.AgentHost
                 _disabledUnauthorized = false;
                 _currentBackoff = TimeSpan.Zero;
                 _backoffUntil = DateTimeOffset.MinValue;
+                _lifetime = new CancellationTokenSource();
                 _timer = new Timer(OnTimerTick, null, TickInterval, TickInterval);
             }
             RaiseStateChanged();
@@ -147,12 +150,22 @@ namespace Ntilde.AgentHost
         public void Stop()
         {
             bool changed;
+            CancellationTokenSource? lifetime;
             lock (_gate)
             {
                 changed = _timer != null;
                 _timer?.Dispose();
                 _timer = null;
+                lifetime = _lifetime;
+                _lifetime = null;
                 _panes.Clear();
+            }
+            // Cancel outside the gate: continuations may run synchronously on Cancel() and
+            // must be free to take the gate themselves.
+            if (lifetime != null)
+            {
+                try { lifetime.Cancel(); } catch (ObjectDisposedException) { /* already gone */ }
+                lifetime.Dispose();
             }
             if (changed) RaiseStateChanged();
         }
@@ -183,13 +196,17 @@ namespace Ntilde.AgentHost
             {
                 var sends = new List<Task>();
                 var now = _now();
+                // Prune first, before any early return: a disabled or backed-off monitor must
+                // still forget panes that were closed, or their registrations stay referenced
+                // for the length of the backoff.
+                var registrations = _registry.GetRegistrations();
+                Prune(registrations);
                 lock (_gate)
                 {
                     if (_disabledUnauthorized || now < _backoffUntil) return Task.CompletedTask;
                 }
                 if (!_classifier.HasCredentials) return Task.CompletedTask;
 
-                var registrations = _registry.GetRegistrations();
                 foreach (var registration in registrations)
                 {
                     try
@@ -201,7 +218,6 @@ namespace Ntilde.AgentHost
                         SafeLog($"[ScreenInference] pane={registration.PaneId} tick failed: {ex.GetType().Name}: {ex.Message}");
                     }
                 }
-                Prune(registrations);
                 return Task.WhenAll(sends);
             }
             catch (Exception ex)
@@ -255,6 +271,7 @@ namespace Ntilde.AgentHost
             // never be re-judged after one transient failure.
             long previousSequence;
             string? previousText;
+            CancellationToken token;
             lock (_gate)
             {
                 if (string.Equals(sample.Text, state.LastTextSent, StringComparison.Ordinal))
@@ -269,12 +286,13 @@ namespace Ntilde.AgentHost
                 state.LastRequestAt = now;
                 state.LastSequenceSent = sequence;
                 state.LastTextSent = sample.Text;
+                token = _lifetime?.Token ?? CancellationToken.None;
             }
 
             var redacted = _secretsFilter.Redact(sample.Text).RedactedText;
             Interlocked.Increment(ref _requestCount);
             RaiseStateChanged();
-            return SendAsync(registration, state, sample with { Text = redacted }, sequence, now, previousSequence, previousText);
+            return SendAsync(registration, state, sample with { Text = redacted }, sequence, now, previousSequence, previousText, token);
         }
 
         private bool IsEligible(AgentSessionRegistration registration)
@@ -293,16 +311,28 @@ namespace Ntilde.AgentHost
             long sequence,
             DateTimeOffset startedAt,
             long previousSequence,
-            string? previousText)
+            string? previousText,
+            CancellationToken token)
         {
             ScreenClassificationResult result;
             try
             {
-                result = await _classifier.ClassifyAsync(sample, CancellationToken.None).ConfigureAwait(false);
+                result = await _classifier.ClassifyAsync(sample, token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 result = new ScreenClassificationResult(ScreenClassificationOutcome.TransportFailure, null, $"{ex.GetType().Name}: {ex.Message}");
+            }
+
+            if (token.IsCancellationRequested)
+            {
+                // The monitor was stopped while this request was out (the client reports a
+                // cancelled call as a transport failure, so check the token, not the outcome).
+                // Whatever came back is not applied: the user turned the feature off. Nothing is
+                // restored or backed off either; Stop() already cleared the pane bookkeeping.
+                lock (_gate) { state.InFlight = false; }
+                SafeLog($"[ScreenInference] pane={registration.PaneId} bytes={sample.Text.Length} outcome=Cancelled (monitor stopped)");
+                return;
             }
 
             lock (_gate)
