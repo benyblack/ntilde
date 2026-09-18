@@ -3,7 +3,6 @@ using System.Linq;
 using System.Net.Http;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.Inference;
-using Ntilde.Replay;
 using Ntilde.Shell;
 
 namespace Ntilde.AgentHost
@@ -101,13 +100,24 @@ namespace Ntilde.AgentHost
             buffer.Lock.EnterReadLock();
             try
             {
-                lines = BufferSnapshot.Capture(buffer, includeAttributes: false).Lines;
-                // IsWrapped on row i means the row ended by auto-wrap, so row i+1 continues it.
-                // The flag is trusted as is: TerminalBuffer clears it in both directions on a
-                // whole-row erase, so a repainted row never carries a stale relationship, and a
-                // content-based guard here would reject real wraps whose last column holds a
-                // written space (or a wide-character continuation cell).
-                wrapped = buffer.ViewportRows.Select(r => r.IsWrapped).ToArray();
+                // Rows are read cell by cell (the same walk BufferSnapshot does) but NOT trimmed
+                // here: a soft-wrapped row is full width and its trailing spaces are content the
+                // next row continues from. Trimming happens in JoinSoftWrappedRows, on the rows
+                // that end a logical line. Working from cells rather than a trimmed string also
+                // keeps wide characters honest: a two-column glyph is one string character, so no
+                // string length can say how many columns a row really occupied.
+                var viewport = buffer.ViewportRows;
+                lines = new string[viewport.Count];
+                wrapped = new bool[viewport.Count];
+                for (int i = 0; i < viewport.Count; i++)
+                {
+                    lines[i] = RowText(viewport[i]);
+                    // IsWrapped on row i means the row ended by auto-wrap, so row i+1 continues it.
+                    // Trusted as is: TerminalBuffer clears the flag in both directions whenever an
+                    // erase removes the content that made the wrap, so a repainted row never
+                    // carries a stale relationship.
+                    wrapped[i] = viewport[i].IsWrapped;
+                }
                 rows = buffer.Rows;
                 cols = buffer.Cols;
             }
@@ -116,7 +126,22 @@ namespace Ntilde.AgentHost
                 buffer.Lock.ExitReadLock();
             }
 
-            return new ScreenSample(JoinSoftWrappedRows(lines, wrapped, cols), rows, cols);
+            return new ScreenSample(JoinSoftWrappedRows(lines, wrapped), rows, cols);
+        }
+
+        /// <summary>One row's text, untrimmed: wide-character continuation cells are skipped, unwritten cells read as spaces.</summary>
+        private static string RowText(Ntilde.VT.TerminalRow row)
+        {
+            var sb = new System.Text.StringBuilder(row.Cells.Length);
+            for (int i = 0; i < row.Cells.Length; i++)
+            {
+                var cell = row.Cells[i];
+                if (cell.IsWideContinuation) continue;
+                string text = (cell.HasExtendedText ? row.GetExtendedText(i) : null)
+                    ?? (cell.Character == '\0' ? " " : cell.Character.ToString());
+                sb.Append(text);
+            }
+            return sb.ToString();
         }
 
         /// <summary>
@@ -124,20 +149,18 @@ namespace Ntilde.AgentHost
         /// split across two rows reaches the secrets filter (and the model) as one string. A
         /// line-bounded redaction pattern cannot recognise <c>ghp_abc</c> on one row and the rest on
         /// the next; without this, a narrow pane would leak exactly the tokens the filter exists
-        /// to catch. A wrapped row is full width by definition, so the spaces the snapshot trimmed
-        /// from its end are restored before joining (<c>PASSWORD=</c> followed by spaces then
-        /// <c>secret</c> on the next row must stay an assignment, not become <c>PASSWORD=secret</c>
-        /// or two unrelated rows). Hard line breaks stay as <c>\n</c>. Trailing blank lines are
-        /// dropped.
+        /// to catch. Rows arrive untrimmed; a row that continues into the next is appended whole
+        /// (<c>PASSWORD=</c> followed by spaces then <c>secret</c> on the next row stays one
+        /// assignment), and only the row that ends a logical line is right-trimmed. Hard line
+        /// breaks stay as <c>\n</c>. Trailing blank lines are dropped.
         /// </summary>
-        internal static string JoinSoftWrappedRows(string[] lines, bool[] wrapped, int cols)
+        internal static string JoinSoftWrappedRows(string[] lines, bool[] wrapped)
         {
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < lines.Length; i++)
             {
                 bool continues = i < wrapped.Length && wrapped[i] && i + 1 < lines.Length;
-                string line = lines[i].TrimEnd();
-                sb.Append(continues && cols > line.Length ? line.PadRight(cols) : line);
+                sb.Append(continues ? lines[i] : lines[i].TrimEnd());
                 if (!continues && i + 1 < lines.Length)
                 {
                     sb.Append('\n');

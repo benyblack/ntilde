@@ -45,6 +45,39 @@ public class EraseLineClearsWrapTests
     }
 
     [Fact]
+    public void EraseLineToEnd_FromColumnZero_ClearsBothWrapFlags()
+    {
+        var (buffer, parser) = WrappedTerminal();
+
+        parser.Process("\x1b[2;1H\x1b[K");
+
+        Assert.False(buffer.ViewportRows[0].IsWrapped, "row 0 no longer continues into the emptied row 1");
+        Assert.False(buffer.ViewportRows[1].IsWrapped);
+    }
+
+    [Fact]
+    public void EraseLineToEnd_MidRow_ClearsOnlyTheOutgoingWrap()
+    {
+        var (buffer, parser) = WrappedTerminal();
+
+        parser.Process("\x1b[1;6H\x1b[K");
+
+        Assert.False(buffer.ViewportRows[0].IsWrapped, "the content that reached the last column is gone");
+        Assert.True(buffer.ViewportRows[1].IsWrapped, "row 1 still continues into row 2");
+    }
+
+    [Fact]
+    public void EraseLineFromStart_ClearsTheIncomingWrap()
+    {
+        var (buffer, parser) = WrappedTerminal();
+
+        parser.Process("\x1b[2;5H\x1b[1K");
+
+        Assert.False(buffer.ViewportRows[0].IsWrapped, "row 1's start is gone, so row 0 no longer continues into it");
+        Assert.True(buffer.ViewportRows[1].IsWrapped, "row 1's tail still reaches row 2");
+    }
+
+    [Fact]
     public void EraseInDisplay_ClearsEveryErasedRowsWrapFlag()
     {
         var (buffer, parser) = WrappedTerminal();

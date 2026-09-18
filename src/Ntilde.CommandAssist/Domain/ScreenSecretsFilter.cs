@@ -42,8 +42,7 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     private static readonly Regex BasicAuthRegex = BasicAuth();
     private static readonly Regex UrlUserInfoRegex = UrlUserInfo();
     private static readonly Regex ProviderTokenRegex = ProviderToken();
-    private static readonly Regex CredentialAssignmentEqualsRegex = CredentialAssignmentEquals();
-    private static readonly Regex CredentialAssignmentColonRegex = CredentialAssignmentColon();
+    private static readonly Regex CredentialAssignmentRegex = CredentialAssignment();
 
     private readonly ISecretsFilter _inner;
 
@@ -86,22 +85,22 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
         redacted = BasicAuthRegex.Replace(redacted, "$1" + Redacted);
         redacted = UrlUserInfoRegex.Replace(redacted, "$1" + Redacted + "@");
         redacted = ProviderTokenRegex.Replace(redacted, Redacted);
-        redacted = CredentialAssignmentEqualsRegex.Replace(redacted, "$1" + Redacted);
-        redacted = CredentialAssignmentColonRegex.Replace(redacted, "$1" + Redacted);
+        redacted = CredentialAssignmentRegex.Replace(redacted, "$1" + Redacted);
         return redacted;
     }
 
     // "-----BEGIN ... PRIVATE KEY-----" through the matching END line, or to the end of the text
     // when the screen cut the block off at the bottom. The body is matched lazily so two blocks on
     // one screen are redacted separately.
-    [GeneratedRegex(@"(-----BEGIN [A-Z ]*PRIVATE KEY-----)\r?\n[\s\S]*?(?:\r?\n(-----END [A-Z ]*PRIVATE KEY-----)|\z)", RegexOptions.CultureInvariant)]
+    // "PRIVATE KEY BLOCK" covers ASCII-armored OpenPGP exports.
+    [GeneratedRegex(@"(-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)\r?\n[\s\S]*?(?:\r?\n(-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)|\z)", RegexOptions.CultureInvariant)]
     private static partial Regex PrivateKeyBlock();
 
     // The block's BEGIN line scrolled off the top: base64-looking rows immediately above an END
     // marker. Key bodies are 64-70 chars of base64 per row and the final row may be short (even
     // "AQ=="), so the tail is either full rows with an optional short last row, or a lone short
     // row. A prompt or prose row is not base64, so the redaction stops at the body's top edge.
-    [GeneratedRegex(@"(?:(?:^[A-Za-z0-9+/=]{16,}\r?\n)+(?:^[A-Za-z0-9+/=]{1,15}\r?\n)?|^[A-Za-z0-9+/=]{1,15}\r?\n)(-----END [A-Z ]*PRIVATE KEY-----)", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?:(?:^[A-Za-z0-9+/=]{16,}\r?\n)+(?:^[A-Za-z0-9+/=]{1,15}\r?\n)?|^[A-Za-z0-9+/=]{1,15}\r?\n)(-----END [A-Z ]*PRIVATE KEY(?: BLOCK)?-----)", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex OrphanPrivateKeyTail();
 
     // Sibling of the inner filter's "Authorization: Bearer" pattern.
@@ -122,24 +121,18 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
         RegexOptions.CultureInvariant)]
     private static partial Regex ProviderToken();
 
-    // Credential-named assignments, where the name carries a credential keyword. Bare "auth" is
-    // excluded on purpose ("Author:" in git log, and the "Authorization:" header, which its own
-    // patterns handle); so is "pwd" (printenv's PWD=). Two shapes with different value rules:
+    // Credential-named assignments, NAME=value or name: value, where the name carries a credential
+    // keyword. Bare "auth" is excluded on purpose ("Author:" in git log, and the "Authorization:"
+    // header, which its own patterns handle); so is "pwd" (printenv's PWD=).
     //
-    //  NAME=value  (shell, .env, INI): the value is one shell word, or a quoted string.
-    //  name: value (YAML, JSON, key/value prints): the value runs to the end of the line, stopping
-    //              before a trailing ",", or before a "# comment" that is separated from the value
-    //              by whitespace (a "#" glued to the value is part of it, as in YAML), or is a
-    //              quoted string.
-    //
-    // Quoted strings consume backslash escapes so an embedded \" cannot end the value early.
+    // The value is a quoted string (consuming backslash escapes, so an embedded \" cannot end it
+    // early) or else runs to the end of the line, stopping before a trailing "," or before a
+    // "# comment" that is separated from the value by whitespace (a "#" glued to the value is part
+    // of it, as in YAML). To the end of the line for BOTH forms: printenv, docker inspect and
+    // dotenv dumps print the whole value, spaces included, so a one-word rule leaks the rest.
+    // Over-redacting the tail of a typed "TOKEN=x ./run.sh" line costs the classifier little.
     [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.\-])(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*=\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s,;]+)",
+        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*[=:]\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s#,;][^\r\n]*?)(?=\s*,?(?:\s+#.*)?\s*$)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex CredentialAssignmentEquals();
-
-    [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.\-])(?!authorization\s*:)(""?'?[A-Za-z0-9_.\-]*(?:secret|token|passw(?:or)?d|api[_\-]?key|access[_\-]?key|private[_\-]?key|client[_\-]?secret|auth[_\-]?token)[A-Za-z0-9_.\-]*""?'?\s*:\s*)(""(?:[^""\\]|\\.)*""|'(?:[^'\\]|\\.)*'|[^\s#,;][^\r\n]*?)(?=\s*,?(?:\s+#.*)?\s*$)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex CredentialAssignmentColon();
+    private static partial Regex CredentialAssignment();
 }

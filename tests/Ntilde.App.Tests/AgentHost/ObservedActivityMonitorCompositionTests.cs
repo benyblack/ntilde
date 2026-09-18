@@ -29,22 +29,72 @@ public class ObservedActivityMonitorCompositionTests
         string[] lines = ["token is ghp_abcdefghij", "klmnopqrstuvwxyz0123456789", "$ ", ""];
         bool[] wrapped = [true, false, false, false];
 
-        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped, cols: 23);
+        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped);
 
-        // Rows are right-trimmed (a prompt's trailing space goes with the padding), so "$ " → "$".
+        // Rows that end a logical line are right-trimmed (a prompt's trailing space goes), so "$ " → "$".
         Assert.Equal("token is ghp_abcdefghijklmnopqrstuvwxyz0123456789\n$", text);
     }
 
     [Fact]
-    public void JoinSoftWrappedRows_restores_the_spaces_a_wrapped_row_lost_to_trimming()
+    public void JoinSoftWrappedRows_keeps_the_trailing_spaces_of_a_row_that_continues()
     {
-        // The snapshot trims every row; a wrapped row is full width, so what it lost was spaces.
-        string[] lines = ["PASSWORD=", "secret", "$"];
+        // Rows arrive untrimmed; a wrapped row's trailing spaces are content the next row continues.
+        string[] lines = ["PASSWORD=           ", "secret              ", "$                   "];
         bool[] wrapped = [true, false, false];
 
-        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped, cols: 20);
+        string text = ObservedActivityMonitorComposition.JoinSoftWrappedRows(lines, wrapped);
 
         Assert.Equal("PASSWORD=           secret\n$", text);
+    }
+
+    [Fact]
+    public void CaptureVisibleText_rejoins_a_token_after_a_wide_character_without_inserting_padding()
+    {
+        // "日" occupies two columns but is one string character, so string length is 19 for a
+        // full 20-column row. Padding by string length would insert a space inside the token.
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer);
+        const string token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+        parser.Process("日" + token + "\r\n$ ");
+        var registration = new AgentSessionRegistration(
+            paneId: Guid.NewGuid(),
+            buffer: buffer,
+            title: "pane",
+            profileName: "Terminal",
+            kind: "local",
+            isActive: false);
+
+        ScreenSample? sample = ObservedActivityMonitorComposition.CaptureVisibleText(registration);
+
+        Assert.NotNull(sample);
+        Assert.Equal("日" + token + "\n$", sample!.Text);
+        string redacted = ObservedActivityMonitorComposition.CreateScreenSecretsFilter().Redact(sample.Text).RedactedText;
+        Assert.Equal("日[REDACTED]\n$", redacted);
+    }
+
+    [Fact]
+    public void CaptureVisibleText_does_not_join_after_a_default_erase_line_from_column_zero()
+    {
+        // CSI K (erase to end) from column 0 clears the whole continuation row without going
+        // through the whole-row erase path; the wrap relationship must still be invalidated.
+        var buffer = new TerminalBuffer(20, 6);
+        var parser = new AnsiParser(buffer);
+        parser.Process("abcdefghijklmnopqrstuvwxyz0123456789\r\n$ ");
+        parser.Process("\x1b[2;1H\x1b[KPASSWORD=hunter2");
+        var registration = new AgentSessionRegistration(
+            paneId: Guid.NewGuid(),
+            buffer: buffer,
+            title: "pane",
+            profileName: "Terminal",
+            kind: "local",
+            isActive: false);
+
+        ScreenSample? sample = ObservedActivityMonitorComposition.CaptureVisibleText(registration);
+
+        Assert.NotNull(sample);
+        Assert.Equal("abcdefghijklmnopqrst\nPASSWORD=hunter2\n$", sample!.Text);
+        string redacted = ObservedActivityMonitorComposition.CreateScreenSecretsFilter().Redact(sample.Text).RedactedText;
+        Assert.DoesNotContain("hunter2", redacted, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -26,6 +26,9 @@ public sealed class ScreenSecretsFilterTests
     [InlineData("  api_key: abc def,", "  api_key: [REDACTED],")]
     // a '#' glued to the value is part of it (YAML); only a whitespace-separated '#' is a comment
     [InlineData("password: abc#sensitive", "password: [REDACTED]")]
+    // printenv / dotenv dumps print whole values, spaces included
+    [InlineData("DB_PASSWORD=correct horse battery staple", "DB_PASSWORD=[REDACTED]")]
+    [InlineData("API_KEY=abc def # note", "API_KEY=[REDACTED] # note")]
     [InlineData("token: a#b # note", "token: [REDACTED] # note")]
     // a provider token glued to a preceding word is still caught (no leading word boundary)
     [InlineData("prefixghp_abcdefghijklmnopqrstuvwxyz0123456789", "prefix[REDACTED]")]
@@ -71,6 +74,29 @@ public sealed class ScreenSecretsFilterTests
 
         Assert.True(result.WasRedacted);
         Assert.Equal("$ cat id_ed25519\n-----BEGIN OPENSSH PRIVATE KEY-----\n[REDACTED]\n-----END OPENSSH PRIVATE KEY-----\n$ ", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_PgpPrivateKeyBlock_IsRedacted()
+    {
+        const string input =
+            "-----BEGIN PGP PRIVATE KEY BLOCK-----\n" +
+            "\n" +
+            "lQdGBGXo1a0BEADFj3Q1ZkMSk2e5o1Bq0m3uTz6Wm5bFf2cFcfZfOTn4l9M0u6xI\n" +
+            "-----END PGP PRIVATE KEY BLOCK-----\n" +
+            "$ ";
+
+        RedactionResult result = Make().Redact(input);
+
+        Assert.Equal("-----BEGIN PGP PRIVATE KEY BLOCK-----\n[REDACTED]\n-----END PGP PRIVATE KEY BLOCK-----\n$ ", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_OrphanPgpTail_IsRedacted()
+    {
+        RedactionResult result = Make().Redact("lQdGBGXo1a0BEADFj3Q1ZkMSk2e5o1Bq0m3uTz6Wm5bFf2cFcfZfOTn4l9M0u6xI\n=abcd\n-----END PGP PRIVATE KEY BLOCK-----");
+
+        Assert.Equal("[REDACTED]\n-----END PGP PRIVATE KEY BLOCK-----", result.RedactedText);
     }
 
     [Fact]

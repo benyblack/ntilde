@@ -402,6 +402,14 @@ namespace Ntilde.VT
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
                 }
+                // The content that reached the last column is gone, so this row no longer
+                // continues into the next; from column 0 the whole row is gone, so the row above
+                // no longer continues into this one either (see ClearRowInternal).
+                row.IsWrapped = false;
+                if (_cursorCol <= 0 && _cursorRow > 0)
+                {
+                    _viewport[_cursorRow - 1].IsWrapped = false;
+                }
                 row.TouchRevision();
             }
             finally
@@ -424,6 +432,17 @@ namespace Ntilde.VT
                     row.Cells[i] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
                     row.SetExtendedText(i, null);
                     row.SetHyperlink(i, null);
+                }
+                // The start of the row is gone, so the row above no longer continues into it; if
+                // the erase reached the last column the whole row is gone and this row no longer
+                // continues into the next either (see ClearRowInternal).
+                if (_cursorRow > 0)
+                {
+                    _viewport[_cursorRow - 1].IsWrapped = false;
+                }
+                if (_cursorCol >= Cols - 1)
+                {
+                    row.IsWrapped = false;
                 }
                 row.TouchRevision();
             }
@@ -498,6 +517,17 @@ namespace Ntilde.VT
                     row.Cells[col] = new TerminalCell(' ', CurrentForeground, CurrentBackground, false, false, IsDefaultForeground, IsDefaultBackground);
                     row.SetExtendedText(col, null);
                     row.SetHyperlink(col, null);
+                }
+                // Same rule as the line erases: an erase that reaches the last column removes the
+                // content that made this row wrap; one that starts at column 0 removes the content
+                // the row above wrapped into.
+                if (_cursorCol + count >= Cols)
+                {
+                    row.IsWrapped = false;
+                }
+                if (_cursorCol <= 0 && count > 0 && _cursorRow > 0)
+                {
+                    _viewport[_cursorRow - 1].IsWrapped = false;
                 }
                 row.TouchRevision();
             }
