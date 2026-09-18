@@ -1037,7 +1037,7 @@
                                     <TextBlock Name="InferenceApiKeyStatus" Classes="RowDesc" Text=""/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <TextBox Name="InferenceApiKeyBox" Width="220" PasswordChar="•" Watermark="apikey_…"/>
+                                    <TextBox Name="InferenceApiKeyBox" Width="220" PasswordChar="•" PlaceholderText="apikey_…"/>
                                     <Button Name="InferenceApiKeySetButton" Content="Set"/>
                                     <Button Name="InferenceApiKeyClearButton" Content="Clear"/>
                                 </StackPanel>
