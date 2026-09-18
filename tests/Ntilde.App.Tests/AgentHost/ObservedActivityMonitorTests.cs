@@ -330,23 +330,33 @@ public class ObservedActivityMonitorTests
         var h = new Harness();
         var reg = h.AddPane();
         h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.Unauthorized, null, "401");
-        h.OutputThenQuiet(reg);
-        int stateChanges = 0;
-        h.Monitor.StateChanged += () => stateChanges++;
+        // The timer is already live (Apply(true) on a fresh monitor) before the 401 lands: in
+        // production a session runs continuously, so Apply(true) after a re-saved key must clear
+        // the disable without the caller stopping the timer first.
+        h.Monitor.Apply(true);
+        try
+        {
+            h.OutputThenQuiet(reg);
+            int stateChanges = 0;
+            h.Monitor.StateChanged += () => stateChanges++;
 
-        await h.Monitor.TickAsync();
-        Assert.True(h.Monitor.IsDisabledUnauthorized);
-        Assert.True(stateChanges >= 1);
+            await h.Monitor.TickAsync();
+            Assert.True(h.Monitor.IsDisabledUnauthorized);
+            Assert.True(stateChanges >= 1);
 
-        h.Screens[reg.PaneId] = "again$ ";
-        h.OutputThenQuiet(reg);
-        h.Clock.Advance(ObservedActivityMonitor.MinInterval);
-        await h.Monitor.TickAsync();
-        Assert.Single(h.Classifier.Samples);
+            h.Screens[reg.PaneId] = "again$ ";
+            h.OutputThenQuiet(reg);
+            h.Clock.Advance(ObservedActivityMonitor.MinInterval);
+            await h.Monitor.TickAsync();
+            Assert.Single(h.Classifier.Samples); // still disabled: no second request
 
-        h.Monitor.Apply(true);  // a re-saved key re-enables: Start() clears the flag
-        Assert.False(h.Monitor.IsDisabledUnauthorized);
-        h.Monitor.Stop();
+            h.Monitor.Apply(true); // a re-saved key re-enables even though the timer never stopped
+            Assert.False(h.Monitor.IsDisabledUnauthorized);
+        }
+        finally
+        {
+            h.Monitor.Stop();
+        }
     }
 
     [Fact]
@@ -366,6 +376,31 @@ public class ObservedActivityMonitorTests
         Assert.Null(after.Observation);
         Assert.Equal(TimeSpan.Zero, h.Monitor.CurrentBackoff);
         Assert.Contains(h.Log, line => line.Contains("outcome=TransportFailure", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Transport_failure_allows_a_retry_of_the_same_screen_after_the_minimum_interval()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Classifier.Respond = _ => new ScreenClassificationResult(ScreenClassificationOutcome.TransportFailure, null, "timed out");
+        h.OutputThenQuiet(reg);
+
+        await h.Monitor.TickAsync();
+        Assert.Single(h.Classifier.Samples);
+
+        // No new output landed, but the failed send must not have permanently consumed the pane's
+        // sequence/text: once the minimum interval has passed, the same quiet screen is due again.
+        h.Clock.Advance(ObservedActivityMonitor.MinInterval);
+        await h.Monitor.TickAsync();
+        Assert.Equal(2, h.Classifier.Samples.Count);
+
+        h.Classifier.Respond = _ => FakeClassifier.Answered(ScreenActivity.IdleShellPrompt, 0.99, 0.1);
+        h.Clock.Advance(ObservedActivityMonitor.MinInterval);
+        await h.Monitor.TickAsync();
+
+        Assert.Equal(3, h.Classifier.Samples.Count);
+        Assert.NotNull(reg.StatusMachine.Snapshot().Observation);
     }
 
     [Fact]
@@ -403,6 +438,19 @@ public class ObservedActivityMonitorTests
 
         Assert.Single(h.Classifier.Samples);
         Assert.Contains(h.Log, line => line.Contains("capture failed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_throwing_state_changed_subscriber_does_not_fault_the_tick()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.Monitor.StateChanged += () => throw new InvalidOperationException("boom");
+        h.OutputThenQuiet(reg);
+
+        await h.Monitor.TickAsync();
+
+        Assert.NotNull(reg.StatusMachine.Snapshot().Observation);
     }
 
     [Fact]

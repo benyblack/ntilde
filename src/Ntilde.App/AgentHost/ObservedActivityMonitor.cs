@@ -78,23 +78,51 @@ namespace Ntilde.AgentHost
         /// <summary>Per-profile SSH opt-in probe (fail closed when null). UI thread publishes it.</summary>
         public void SetSshProfileAllowlist(Func<Guid, bool>? probe) => _sshAllowlist = probe;
 
-        /// <summary>Starts or stops the timer to match the setting. Safe to call repeatedly.</summary>
+        /// <summary>
+        /// Starts or stops the timer to match the setting. Safe to call repeatedly. Critically,
+        /// enabling always clears an unauthorized disable and any pending backoff even when the
+        /// timer is already running: a re-saved API key must re-enable inference without the
+        /// caller having to Stop() first, and <see cref="Start"/> alone cannot do that because it
+        /// returns before touching state when the timer already exists.
+        /// </summary>
         public void Apply(bool enabled)
         {
-            if (enabled) Start(); else Stop();
-        }
+            if (!enabled)
+            {
+                Stop();
+                return;
+            }
 
-        private void Start()
-        {
+            bool wasDisabled;
             lock (_gate)
             {
-                if (_timer != null) return;
+                wasDisabled = _disabledUnauthorized;
                 _disabledUnauthorized = false;
                 _currentBackoff = TimeSpan.Zero;
                 _backoffUntil = DateTimeOffset.MinValue;
-                _timer = new Timer(_ => _ = TickAsync(), null, TickInterval, TickInterval);
             }
-            StateChanged?.Invoke();
+            bool started = Start();
+            // Start() already raised StateChanged when it actually created the timer; only raise
+            // here for the case Start() was a no-op (already running) but the flag still changed.
+            if (wasDisabled && !started)
+            {
+                RaiseStateChanged();
+            }
+        }
+
+        /// <summary>Returns true when this call actually created the timer (false when already running).</summary>
+        private bool Start()
+        {
+            lock (_gate)
+            {
+                if (_timer != null) return false;
+                _disabledUnauthorized = false;
+                _currentBackoff = TimeSpan.Zero;
+                _backoffUntil = DateTimeOffset.MinValue;
+                _timer = new Timer(_ => { try { _ = TickAsync(); } catch { } }, null, TickInterval, TickInterval);
+            }
+            RaiseStateChanged();
+            return true;
         }
 
         public void Stop()
@@ -107,10 +135,22 @@ namespace Ntilde.AgentHost
                 _timer = null;
                 _panes.Clear();
             }
-            if (changed) StateChanged?.Invoke();
+            if (changed) RaiseStateChanged();
         }
 
         public void Dispose() => Stop();
+
+        /// <summary>Logs without ever throwing back into a caller on the send/timer path.</summary>
+        private void SafeLog(string line)
+        {
+            try { _log(line); } catch { /* a throwing logger must not fault the caller */ }
+        }
+
+        /// <summary>Raises <see cref="StateChanged"/> without a throwing subscriber faulting the caller.</summary>
+        private void RaiseStateChanged()
+        {
+            try { StateChanged?.Invoke(); } catch { /* a throwing subscriber must not fault the caller */ }
+        }
 
         /// <summary>
         /// One sweep. Returns a task that completes when every request this sweep started has
@@ -120,9 +160,9 @@ namespace Ntilde.AgentHost
         internal Task TickAsync()
         {
             if (Interlocked.Exchange(ref _tickRunning, 1) == 1) return Task.CompletedTask;
-            var sends = new List<Task>();
             try
             {
+                var sends = new List<Task>();
                 var now = _now();
                 lock (_gate)
                 {
@@ -140,16 +180,24 @@ namespace Ntilde.AgentHost
                     }
                     catch (Exception ex)
                     {
-                        _log($"[ScreenInference] pane={registration.PaneId} tick failed: {ex.GetType().Name}: {ex.Message}");
+                        SafeLog($"[ScreenInference] pane={registration.PaneId} tick failed: {ex.GetType().Name}: {ex.Message}");
                     }
                 }
                 Prune(registrations);
+                return Task.WhenAll(sends);
+            }
+            catch (Exception ex)
+            {
+                // _now(), _classifier.HasCredentials, and _registry.GetRegistrations() run outside
+                // any inner try; a throw here would otherwise be an unhandled exception on the
+                // Timer's pool thread, which kills the process.
+                SafeLog($"[ScreenInference] sweep failed: {ex.GetType().Name}: {ex.Message}");
+                return Task.CompletedTask;
             }
             finally
             {
                 Volatile.Write(ref _tickRunning, 0);
             }
-            return Task.WhenAll(sends);
         }
 
         private Task? TryObserve(AgentSessionRegistration registration, DateTimeOffset now)
@@ -182,6 +230,12 @@ namespace Ntilde.AgentHost
                 return null;
             }
 
+            // Captured before the commit below so a failed send (anything but Answered) can put
+            // the pane back exactly as it was: otherwise the commit permanently marks this
+            // sequence/text as already sent, and a quiet pane that never outputs again would
+            // never be re-judged after one transient failure.
+            long previousSequence;
+            string? previousText;
             lock (_gate)
             {
                 if (string.Equals(sample.Text, state.LastTextSent, StringComparison.Ordinal))
@@ -190,6 +244,8 @@ namespace Ntilde.AgentHost
                     state.LastRequestAt = now;
                     return null;
                 }
+                previousSequence = state.LastSequenceSent;
+                previousText = state.LastTextSent;
                 state.InFlight = true;
                 state.LastRequestAt = now;
                 state.LastSequenceSent = sequence;
@@ -198,8 +254,8 @@ namespace Ntilde.AgentHost
 
             var redacted = _secretsFilter.Redact(sample.Text).RedactedText;
             Interlocked.Increment(ref _requestCount);
-            StateChanged?.Invoke();
-            return SendAsync(registration, state, sample with { Text = redacted }, sequence, now);
+            RaiseStateChanged();
+            return SendAsync(registration, state, sample with { Text = redacted }, sequence, now, previousSequence, previousText);
         }
 
         private bool IsEligible(AgentSessionRegistration registration)
@@ -211,7 +267,14 @@ namespace Ntilde.AgentHost
             try { return probe(profileId); } catch { return false; }
         }
 
-        private async Task SendAsync(AgentSessionRegistration registration, PaneState state, ScreenSample sample, long sequence, DateTimeOffset startedAt)
+        private async Task SendAsync(
+            AgentSessionRegistration registration,
+            PaneState state,
+            ScreenSample sample,
+            long sequence,
+            DateTimeOffset startedAt,
+            long previousSequence,
+            string? previousText)
         {
             ScreenClassificationResult result;
             try
@@ -222,7 +285,20 @@ namespace Ntilde.AgentHost
             {
                 result = new ScreenClassificationResult(ScreenClassificationOutcome.TransportFailure, null, $"{ex.GetType().Name}: {ex.Message}");
             }
-            lock (_gate) { state.InFlight = false; }
+
+            lock (_gate)
+            {
+                state.InFlight = false;
+                if (result.Outcome != ScreenClassificationOutcome.Answered)
+                {
+                    // The round trip did not produce a usable answer: undo the commit TryObserve
+                    // made before the request, so this pane is due again once MinInterval passes
+                    // rather than being silently skipped forever (LastRequestAt is left alone —
+                    // it still spaces out the retry).
+                    state.LastSequenceSent = previousSequence;
+                    state.LastTextSent = previousText;
+                }
+            }
 
             var latency = _now() - startedAt;
             string note = string.Empty;
@@ -244,20 +320,17 @@ namespace Ntilde.AgentHost
                             ObservedAt = startedAt,
                             OutputSequence = sequence,
                         });
-                        if (accepted)
-                        {
-                            note = $"activity={a.Activity} conf={a.Confidence:0.00} tokens={a.InputTokens}";
-                            ResetBackoff();
-                        }
-                        else
-                        {
-                            note = "dropped: stale (output arrived during the request)";
-                        }
+                        note = accepted
+                            ? $"activity={a.Activity} conf={a.Confidence:0.00} tokens={a.InputTokens}"
+                            : "dropped: stale (output arrived during the request)";
                     }
                     catch (Exception ex)
                     {
                         note = $"{ex.GetType().Name}: {ex.Message}";
                     }
+                    // A stale drop is still a successful round trip with the service: the request
+                    // itself succeeded, so the failure backoff has nothing to do with it.
+                    ResetBackoff();
                     break;
                 case ScreenClassificationOutcome.Unauthorized:
                     DisableUnauthorized();
@@ -268,10 +341,21 @@ namespace Ntilde.AgentHost
                     note = $"backing off {ApplyBackoff().TotalSeconds:0}s";
                     break;
                 default:
-                    note = result.Detail ?? string.Empty;
+                    note = SanitizeDetail(result.Detail);
                     break;
             }
-            _log($"[ScreenInference] pane={registration.PaneId} bytes={sample.Text.Length} latency={latency.TotalMilliseconds:0}ms outcome={result.Outcome} {note}");
+            SafeLog($"[ScreenInference] pane={registration.PaneId} bytes={sample.Text.Length} latency={latency.TotalMilliseconds:0}ms outcome={result.Outcome} {note}");
+        }
+
+        /// <summary>
+        /// Flattens newlines and caps length so a classifier/transport error message can never
+        /// carry enough of an echoed request body to leak screen text into the log.
+        /// </summary>
+        private static string SanitizeDetail(string? detail)
+        {
+            if (string.IsNullOrEmpty(detail)) return string.Empty;
+            var flattened = detail.Replace('\r', ' ').Replace('\n', ' ');
+            return flattened.Length > 120 ? flattened[..120] : flattened;
         }
 
         private void Prune(AgentSessionRegistration[] live)
@@ -313,7 +397,7 @@ namespace Ntilde.AgentHost
         private void DisableUnauthorized()
         {
             lock (_gate) { _disabledUnauthorized = true; }
-            StateChanged?.Invoke();
+            RaiseStateChanged();
         }
     }
 }
