@@ -72,6 +72,44 @@ public sealed class ScreenSecretsFilterTests
         Assert.Equal("-----BEGIN RSA PRIVATE KEY-----\n[REDACTED]", result.RedactedText);
     }
 
+    [Fact]
+    public void Redact_PrivateKeyTailWhoseBeginScrolledAway_RedactsTheVisibleBody()
+    {
+        const string input =
+            "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\n" +
+            "QyNTUxOQAAACBn3tqhRrJ6w4tS1gA0Y0GJZ0lXt5h2Y5Y5c9k0m2yc4wAAAJgq2Ckg\n" +
+            "AAAAECg==\n" +
+            "-----END OPENSSH PRIVATE KEY-----\n" +
+            "$ ";
+
+        RedactionResult result = Make().Redact(input);
+
+        Assert.True(result.WasRedacted);
+        Assert.Equal("[REDACTED]\n-----END OPENSSH PRIVATE KEY-----\n$ ", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_OrphanEndMarker_DoesNotEatTheProseAboveTheKeyBody()
+    {
+        const string input = "$ cat key.pem\nMIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn\n-----END RSA PRIVATE KEY-----";
+
+        RedactionResult result = Make().Redact(input);
+
+        Assert.Equal("$ cat key.pem\n[REDACTED]\n-----END RSA PRIVATE KEY-----", result.RedactedText);
+    }
+
+    [Fact]
+    public void Redact_InnerPasswordPattern_IsBoundedToItsOwnScreenLine()
+    {
+        // The history filter's connection-string pattern is Password=[^;]+ which, over a whole
+        // screen, would swallow every row after a printenv PASSWORD= line up to the next ';'.
+        const string input = "PASSWORD=hunter2\nuser@host:~$ ls\nnotes.txt; todo.md\nuser@host:~$ ";
+
+        RedactionResult result = Make().Redact(input);
+
+        Assert.Equal("PASSWORD=[REDACTED]\nuser@host:~$ ls\nnotes.txt; todo.md\nuser@host:~$ ", result.RedactedText);
+    }
+
     [Theory]
     [InlineData("commit 3b80c45f0e9a1d2c4b6e8f7a9c1d3e5f7a9b1c3d\nAuthor: someone")]
     [InlineData("-rw-r--r-- 1 u u   12 Sep 17 10:00 notes.txt")]

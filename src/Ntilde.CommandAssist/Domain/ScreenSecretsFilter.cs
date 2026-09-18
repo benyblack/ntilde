@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Ntilde.CommandAssist.Domain;
@@ -13,14 +14,23 @@ namespace Ntilde.CommandAssist.Domain;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Deliberately absent: a generic high-entropy detector. It would redact git SHAs, package
-/// hashes and base64 in ordinary build output, which degrades what the classifier sees far more
-/// than it protects. Documented in <c>docs/agent-host/known-limitations.md</c>.
+/// <strong>Everything except the private-key passes runs one screen line at a time.</strong> The
+/// inner filter was written for a single command line, and at least one of its patterns
+/// (<c>Password=[^;]+</c>) would otherwise run across line breaks and swallow the rest of the
+/// screen after a <c>PASSWORD=</c> row in a <c>printenv</c> dump. Per-line application bounds every
+/// pattern, keeps the line count stable, and is what a screen actually is: rows.
 /// </para>
 /// <para>
-/// Every pattern keeps the name and redacts the value, so the model still sees that an
-/// assignment happened. Single-line patterns never add or remove lines; the private-key block
-/// collapses its body to one <c>[REDACTED]</c> line.
+/// A private key taller than the viewport can lose its BEGIN line to scrollback while its body
+/// and END marker stay visible, so an END marker with base64-looking rows above it is redacted
+/// on its own; a BEGIN with no END (the block runs off the bottom) is redacted to the end of text.
+/// </para>
+/// <para>
+/// Deliberately absent: a generic high-entropy detector. It would redact git SHAs, package
+/// hashes and base64 in ordinary build output, which degrades what the classifier sees far more
+/// than it protects. Documented in <c>docs/agent-host/known-limitations.md</c>. Soft-wrapped
+/// tokens are the caller's job: the screen capture joins wrapped rows before this filter sees
+/// them, because no line-bounded pattern can recognise a token split across two rows.
 /// </para>
 /// </remarks>
 public sealed partial class ScreenSecretsFilter : ISecretsFilter
@@ -28,6 +38,7 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
     private const string Redacted = "[REDACTED]";
 
     private static readonly Regex PrivateKeyBlockRegex = PrivateKeyBlock();
+    private static readonly Regex OrphanPrivateKeyTailRegex = OrphanPrivateKeyTail();
     private static readonly Regex BasicAuthRegex = BasicAuth();
     private static readonly Regex UrlUserInfoRegex = UrlUserInfo();
     private static readonly Regex ProviderTokenRegex = ProviderToken();
@@ -47,24 +58,48 @@ public sealed partial class ScreenSecretsFilter : ISecretsFilter
             return new RedactionResult(commandText, false);
         }
 
-        string redacted = _inner.Redact(commandText).RedactedText;
-
-        redacted = PrivateKeyBlockRegex.Replace(redacted, static m => m.Groups[2].Success
+        // Multi-line passes first, over the whole text.
+        string redacted = PrivateKeyBlockRegex.Replace(commandText, static m => m.Groups[2].Success
             ? $"{m.Groups[1].Value}\n{Redacted}\n{m.Groups[2].Value}"
             : $"{m.Groups[1].Value}\n{Redacted}");
-        redacted = BasicAuthRegex.Replace(redacted, "$1" + Redacted);
-        redacted = UrlUserInfoRegex.Replace(redacted, "$1" + Redacted + "@");
-        redacted = ProviderTokenRegex.Replace(redacted, Redacted);
-        redacted = CredentialAssignmentRegex.Replace(redacted, "$1" + Redacted);
+        redacted = OrphanPrivateKeyTailRegex.Replace(redacted, static m => $"{Redacted}\n{m.Groups[1].Value}");
+
+        // Everything else line by line, so no pattern (ours or the inner filter's) can cross a row.
+        string[] lines = redacted.Split('\n');
+        var sb = new StringBuilder(redacted.Length);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (i > 0) sb.Append('\n');
+            sb.Append(RedactLine(lines[i]));
+        }
+        redacted = sb.ToString();
 
         return new RedactionResult(redacted, !string.Equals(commandText, redacted, StringComparison.Ordinal));
     }
 
+    private string RedactLine(string line)
+    {
+        if (line.Length == 0) return line;
+
+        string redacted = _inner.Redact(line).RedactedText;
+        redacted = BasicAuthRegex.Replace(redacted, "$1" + Redacted);
+        redacted = UrlUserInfoRegex.Replace(redacted, "$1" + Redacted + "@");
+        redacted = ProviderTokenRegex.Replace(redacted, Redacted);
+        redacted = CredentialAssignmentRegex.Replace(redacted, "$1" + Redacted);
+        return redacted;
+    }
+
     // "-----BEGIN ... PRIVATE KEY-----" through the matching END line, or to the end of the text
-    // when the screen cut the block off. The body is matched lazily so two blocks on one screen
-    // are redacted separately.
+    // when the screen cut the block off at the bottom. The body is matched lazily so two blocks on
+    // one screen are redacted separately.
     [GeneratedRegex(@"(-----BEGIN [A-Z ]*PRIVATE KEY-----)\r?\n[\s\S]*?(?:\r?\n(-----END [A-Z ]*PRIVATE KEY-----)|\z)", RegexOptions.CultureInvariant)]
     private static partial Regex PrivateKeyBlock();
+
+    // The block's BEGIN line scrolled off the top: one or more base64-looking rows immediately
+    // above an END marker. Key bodies are 64-70 chars of base64 per row; a shorter final row is
+    // allowed, a prompt or prose row is not, so the redaction stops at the body's top edge.
+    [GeneratedRegex(@"(?:^[A-Za-z0-9+/=]{16,}\r?\n)+(?:[A-Za-z0-9+/=]{1,15}\r?\n)?(-----END [A-Z ]*PRIVATE KEY-----)", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex OrphanPrivateKeyTail();
 
     // Sibling of the inner filter's "Authorization: Bearer" pattern.
     [GeneratedRegex(@"(Authorization:\s+Basic\s+)(\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

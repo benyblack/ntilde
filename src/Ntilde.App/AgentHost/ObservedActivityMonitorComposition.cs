@@ -96,11 +96,14 @@ namespace Ntilde.AgentHost
         {
             var buffer = registration.Buffer;
             string[] lines;
+            bool[] wrapped;
             int rows, cols;
             buffer.Lock.EnterReadLock();
             try
             {
                 lines = BufferSnapshot.Capture(buffer, includeAttributes: false).Lines;
+                // IsWrapped on row i means the row ended by auto-wrap, so row i+1 continues it.
+                wrapped = buffer.ViewportRows.Select(r => r.IsWrapped).ToArray();
                 rows = buffer.Rows;
                 cols = buffer.Cols;
             }
@@ -109,8 +112,29 @@ namespace Ntilde.AgentHost
                 buffer.Lock.ExitReadLock();
             }
 
-            var text = string.Join('\n', lines.Select(l => l.TrimEnd())).TrimEnd('\n');
-            return new ScreenSample(text, rows, cols);
+            return new ScreenSample(JoinSoftWrappedRows(lines, wrapped), rows, cols);
+        }
+
+        /// <summary>
+        /// Re-joins rows that the terminal soft-wrapped, so a token or path that the viewport
+        /// split across two rows reaches the secrets filter (and the model) as one string. A
+        /// line-bounded redaction pattern cannot recognise <c>ghp_abc</c> on one row and the rest on
+        /// the next; without this, a narrow pane would leak exactly the tokens the filter exists
+        /// to catch. Hard line breaks stay as <c>\n</c>. Trailing blank lines are dropped.
+        /// </summary>
+        internal static string JoinSoftWrappedRows(string[] lines, bool[] wrapped)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                sb.Append(lines[i].TrimEnd());
+                bool continues = i < wrapped.Length && wrapped[i] && i + 1 < lines.Length;
+                if (!continues && i + 1 < lines.Length)
+                {
+                    sb.Append('\n');
+                }
+            }
+            return sb.ToString().TrimEnd('\n');
         }
     }
 }
