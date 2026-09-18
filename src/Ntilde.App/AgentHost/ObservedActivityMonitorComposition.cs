@@ -66,6 +66,13 @@ namespace Ntilde.AgentHost
         /// </summary>
         internal static void InvalidateApiKeyCache() => _apiKeySource?.Invalidate();
 
+        /// <summary>
+        /// The filter every captured screen passes through before it leaves the process: the
+        /// output-oriented <see cref="ScreenSecretsFilter"/> layered over the command-history
+        /// <see cref="SecretsFilter"/>. Internal so a test can pin the choice.
+        /// </summary>
+        internal static ISecretsFilter CreateScreenSecretsFilter() => new ScreenSecretsFilter(new SecretsFilter());
+
         private static ObservedActivityMonitor Create()
         {
             var http = new HttpClient { Timeout = SystemOneClient.DefaultTimeout };
@@ -74,7 +81,7 @@ namespace Ntilde.AgentHost
             return new ObservedActivityMonitor(
                 AgentSessionRegistry.Instance,
                 new ScreenActivityClassifier(client),
-                new SecretsFilter(),
+                CreateScreenSecretsFilter(),
                 CaptureVisibleText,
                 () => DateTimeOffset.UtcNow,
                 AppLogger.Log);
