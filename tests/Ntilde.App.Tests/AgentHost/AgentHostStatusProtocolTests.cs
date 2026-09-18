@@ -125,6 +125,9 @@ public class AgentHostStatusProtocolTests : IDisposable
 
         var opened = Assert.Single(result.Events, e => e.Type == AgentHostProtocol.EventTypes.SessionOpened);
         Assert.Equal(registration.PaneId, opened.PaneId);
+        // Lifecycle events carry the tier too, so a consumer can tell a new endpoint's
+        // sessionOpened from an older endpoint's (which omits the field).
+        Assert.Equal(AgentHostProtocol.StatusConfidences.Heuristic, opened.Confidence);
     }
 
     [Fact]

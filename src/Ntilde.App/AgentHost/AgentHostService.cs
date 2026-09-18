@@ -486,7 +486,8 @@ namespace Ntilde.AgentHost
             }
 
             var status = registration.StatusMachine.Snapshot();
-            ring.Append(registration.PaneId, AgentHostProtocol.EventTypes.SessionOpened, status.Kind.ToWire(), DateTimeOffset.UtcNow);
+            ring.Append(registration.PaneId, AgentHostProtocol.EventTypes.SessionOpened, status.Kind.ToWire(), DateTimeOffset.UtcNow,
+                confidence: status.Confidence.ToWire());
         }
 
         private void OnSessionUnregistered(AgentSessionRegistration registration)
@@ -502,7 +503,8 @@ namespace Ntilde.AgentHost
             }
 
             var status = registration.StatusMachine.Snapshot();
-            ring?.Append(registration.PaneId, AgentHostProtocol.EventTypes.SessionClosed, status.Kind.ToWire(), DateTimeOffset.UtcNow, status.ExitCode);
+            ring?.Append(registration.PaneId, AgentHostProtocol.EventTypes.SessionClosed, status.Kind.ToWire(), DateTimeOffset.UtcNow, status.ExitCode,
+                confidence: status.Confidence.ToWire());
         }
 
         private void AttachStatusForwarding(AgentSessionRegistration registration)

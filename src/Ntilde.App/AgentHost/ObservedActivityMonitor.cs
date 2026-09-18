@@ -54,6 +54,14 @@ namespace Ntilde.AgentHost
         /// directly) is not stopped and proceeds.
         /// </summary>
         private bool _stopped;
+        /// <summary>
+        /// Bumped by <see cref="Start"/> and <see cref="Stop"/>. A send captures the generation it
+        /// was issued under and, after its answer arrives, publishes only if the generation is
+        /// unchanged (checked under the gate). The token alone leaves a window: an answer that
+        /// arrived just before Stop() would pass the token check and then publish an observation
+        /// into a stopped monitor, or disable/back off a monitor that has since restarted.
+        /// </summary>
+        private int _generation;
         private int _tickRunning;
         private int _requestCount;
         private bool _disabledUnauthorized;
@@ -132,6 +140,7 @@ namespace Ntilde.AgentHost
                 _backoffUntil = DateTimeOffset.MinValue;
                 _lifetime = new CancellationTokenSource();
                 _stopped = false;
+                _generation++;
                 _timer = new Timer(OnTimerTick, null, TickInterval, TickInterval);
             }
             RaiseStateChanged();
@@ -168,6 +177,7 @@ namespace Ntilde.AgentHost
                 lifetime = _lifetime;
                 _lifetime = null;
                 _stopped = true;
+                _generation++;
                 _panes.Clear();
             }
             // Cancel outside the gate: continuations may run synchronously on Cancel() and
@@ -282,6 +292,7 @@ namespace Ntilde.AgentHost
             long previousSequence;
             string? previousText;
             CancellationToken token;
+            int generation;
             lock (_gate)
             {
                 // Stop() may have run since the due checks above (a queued timer callback, or
@@ -302,12 +313,13 @@ namespace Ntilde.AgentHost
                 state.LastSequenceSent = sequence;
                 state.LastTextSent = sample.Text;
                 token = _lifetime?.Token ?? CancellationToken.None;
+                generation = _generation;
             }
 
             var redacted = _secretsFilter.Redact(sample.Text).RedactedText;
             Interlocked.Increment(ref _requestCount);
             RaiseStateChanged();
-            return SendAsync(registration, state, sample with { Text = redacted }, sequence, now, previousSequence, previousText, token);
+            return SendAsync(registration, state, sample with { Text = redacted }, sequence, now, previousSequence, previousText, token, generation);
         }
 
         private bool IsEligible(AgentSessionRegistration registration)
@@ -327,7 +339,8 @@ namespace Ntilde.AgentHost
             DateTimeOffset startedAt,
             long previousSequence,
             string? previousText,
-            CancellationToken token)
+            CancellationToken token,
+            int generation)
         {
             ScreenClassificationResult result;
             try
@@ -339,32 +352,38 @@ namespace Ntilde.AgentHost
                 result = new ScreenClassificationResult(ScreenClassificationOutcome.TransportFailure, null, $"{ex.GetType().Name}: {ex.Message}");
             }
 
-            if (token.IsCancellationRequested)
-            {
-                // The monitor was stopped while this request was out (the client reports a
-                // cancelled call as a transport failure, so check the token, not the outcome).
-                // Whatever came back is not applied: the user turned the feature off. Nothing is
-                // restored or backed off either; Stop() already cleared the pane bookkeeping.
-                lock (_gate) { state.InFlight = false; }
-                SafeLog($"[ScreenInference] pane={registration.PaneId} bytes={sample.Text.Length} outcome=Cancelled (monitor stopped)");
-                return;
-            }
-
+            bool current;
             lock (_gate)
             {
                 state.InFlight = false;
-                // Rejected is a deterministic 422 on this exact request body: identical content
-                // can never succeed on a retry, so the commit stays and this screen is never
-                // resent. Every other non-Answered outcome is transient, so undo the commit
-                // TryObserve made before the request, so this pane is due again once MinInterval
-                // passes rather than being silently skipped forever (LastRequestAt is left alone —
-                // it still spaces out the retry).
-                if (result.Outcome != ScreenClassificationOutcome.Answered
+                // Same lifetime generation as when the request was issued, and not cancelled: only
+                // then may this answer touch the monitor or the status machine. Stop() bumps the
+                // generation under the same gate, so an answer that raced Stop() (arrived just
+                // before it, checked just after) is fenced out here, and a restarted monitor is
+                // never disabled or backed off by its predecessor's answer.
+                current = generation == _generation && !token.IsCancellationRequested;
+                if (current
+                    && result.Outcome != ScreenClassificationOutcome.Answered
                     && result.Outcome != ScreenClassificationOutcome.Rejected)
                 {
+                    // Rejected is a deterministic 422 on this exact request body: identical content
+                    // can never succeed on a retry, so the commit stays and this screen is never
+                    // resent. Every other non-Answered outcome is transient, so undo the commit
+                    // TryObserve made before the request, so this pane is due again once MinInterval
+                    // passes rather than being silently skipped forever (LastRequestAt is left alone —
+                    // it still spaces out the retry).
                     state.LastSequenceSent = previousSequence;
                     state.LastTextSent = previousText;
                 }
+            }
+
+            if (!current)
+            {
+                // The monitor was stopped (or stopped and restarted) while this request was out.
+                // Whatever came back is not applied: the user turned the feature off. Nothing is
+                // restored or backed off either; Stop() already cleared the pane bookkeeping.
+                SafeLog($"[ScreenInference] pane={registration.PaneId} bytes={sample.Text.Length} outcome=Cancelled (monitor stopped)");
+                return;
             }
 
             var latency = _now() - startedAt;

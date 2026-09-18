@@ -508,6 +508,37 @@ public class ObservedActivityMonitorTests
     }
 
     [Fact]
+    public async Task An_answer_from_a_previous_lifetime_cannot_disable_or_back_off_a_restarted_monitor()
+    {
+        var h = new Harness();
+        var reg = h.AddPane();
+        h.OutputThenQuiet(reg);
+        h.Classifier.Hold = new TaskCompletionSource<ScreenClassificationResult>();
+        h.Monitor.Apply(true);
+        try
+        {
+            var tick = h.Monitor.TickAsync();
+            Assert.Single(h.Classifier.Samples);
+
+            h.Monitor.Stop();
+            h.Monitor.Apply(true); // new lifetime generation
+
+            // The old request finishes with an outcome that would normally disable the monitor.
+            h.Classifier.Hold.SetResult(new ScreenClassificationResult(ScreenClassificationOutcome.Unauthorized, null, "401"));
+            await tick;
+
+            Assert.False(h.Monitor.IsDisabledUnauthorized);
+            Assert.Equal(TimeSpan.Zero, h.Monitor.CurrentBackoff);
+            Assert.Null(reg.StatusMachine.Snapshot().Observation);
+            Assert.Contains(h.Log, line => line.Contains("outcome=Cancelled", StringComparison.Ordinal));
+        }
+        finally
+        {
+            h.Monitor.Stop();
+        }
+    }
+
+    [Fact]
     public async Task Tick_after_stop_sends_nothing_even_for_a_due_pane()
     {
         // Timer.Dispose does not wait for an already queued callback, so a tick can still run
