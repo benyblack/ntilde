@@ -6,7 +6,6 @@ using System.Text;
 using System.Text.Unicode;
 using Ntilde.Replay;
 using Ntilde.VT;
-using Ntilde.VT.Links;
 using Xunit;
 
 namespace Ntilde.VT.Tests.StateTransfer;
@@ -191,16 +190,16 @@ internal static class ParityHarness
             // so the second application changes nothing and emits no in-band resize report under
             // mode 2048. If that early return ever goes away, this is the line to fix - the symptom
             // will be a phantom parity divergence with no bug behind it.
+            // Through TerminalStateTransfer.Restore rather than the three underlying calls, so the
+            // entry point Phase 1 will attach with is the one this suite proves. Its third step -
+            // seeding the parser's OSC 8 registry from the table the buffer rebuilt - is the half
+            // of link identity that AnsiParserState deliberately does not carry: the buffer's table
+            // restores identity for cells that already exist, while the registry is what an OSC 8
+            // in the TAIL consults. Without it a re-referenced `id=` mints a second Hyperlink and
+            // those cells stop grouping, which is what this harness caught on osc8-hyperlinks at
+            // cut 36.
             var c = new ParityRun(b.Buffer.Cols, b.Buffer.Rows, forceConPtyFiltering);
-            IReadOnlyList<Hyperlink> restoredLinks = c.Buffer.ImportState(snapshot);
-            c.Parser.ImportState(snapshot.Parser);
-
-            // The third half of the transfer. The buffer's table restores link identity for cells
-            // that already exist; the parser's interning registry is what an OSC 8 in the TAIL
-            // consults, and it is not in AnsiParserState. Without this, a re-referenced `id=` mints
-            // a second Hyperlink and those cells stop grouping with the restored ones - which is
-            // exactly what this harness caught on osc8-hyperlinks at cut 36.
-            c.Parser.SeedHyperlinkRegistry(restoredLinks);
+            TerminalStateTransfer.Restore(c.Buffer, c.Parser, snapshot);
 
             c.Feed(corpus, (int)snapshot.StreamSeq, corpus.Length, resizes);
 

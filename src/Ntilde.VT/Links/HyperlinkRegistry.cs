@@ -142,15 +142,18 @@ namespace Ntilde.VT.Links
                 }
 
                 var key = (link.Uri, link.Id);
-                if (_interned.ContainsKey(key))
-                {
-                    continue;
-                }
 
-                if (_interned.Count >= MaxInternedLinks)
+                // Overwrite, never skip. An entry this registry already holds for the same
+                // (URI, id) is from a previous attach and is NOT in the buffer's table, so keeping
+                // it would hand the tail an instance no restored cell carries - reproducing, on a
+                // re-attach into a reused parser, precisely the grouping bug this method exists to
+                // fix. The buffer's table is authoritative by construction, and it cannot itself
+                // hold a duplicate key: HyperlinkTableBuilder.IndexOf interns as it discovers.
+                if (!_interned.ContainsKey(key) && _interned.Count >= MaxInternedLinks)
                 {
                     // Clear wholesale, as Resolve does: past the cap, grouping is already
                     // degraded, and a snapshot is not a reason to grow the table without bound.
+                    // Only on a genuinely new key - replacing one leaves the count unchanged.
                     _interned.Clear();
                 }
 

@@ -7,13 +7,12 @@ namespace Ntilde.VT.Tests.StateTransfer;
 /// <summary>
 /// The parser's OSC 8 interning registry is deliberately absent from <see cref="AnsiParserState"/> -
 /// link identity has a single source, the buffer's link table - so a restored parser has to be
-/// re-seeded from that table instead. These pin both halves of that rule.
+/// re-seeded from that table instead. These pin the rules that govern the re-seeding.
 /// </summary>
 /// <remarks>
-/// The parity suite caught the missing seeding (osc8-hyperlinks, cut 36) but cannot catch seeding
-/// too <em>much</em>: no corpus stream has two separate id-less OSC 8 runs sharing a URI on
-/// opposite sides of a cut, so wrongly interning a no-id link would go unnoticed there while
-/// silently merging two links that <c>id</c> exists to keep apart.
+/// Driven through <see cref="TerminalStateTransfer.Restore"/>, the supported attach entry point, so
+/// these cover the same path <c>ParityHarness</c> and Phase 1 use rather than a second arrangement
+/// of the three underlying calls.
 /// </remarks>
 public class HyperlinkRegistrySeedingTests
 {
@@ -27,6 +26,13 @@ public class HyperlinkRegistrySeedingTests
     {
         var buffer = new TerminalBuffer(80, 5);
         return (buffer, new AnsiParser(buffer));
+    }
+
+    private static TerminalStateSnapshot SnapshotOf(TerminalBuffer buffer, AnsiParser parser)
+    {
+        TerminalStateSnapshot snapshot = buffer.ExportState(int.MaxValue);
+        snapshot.Parser = parser.ExportState();
+        return snapshot;
     }
 
     private static Hyperlink? LinkAt(TerminalBuffer buffer, int col)
@@ -43,13 +49,8 @@ public class HyperlinkRegistrySeedingTests
         var (source, sourceParser) = NewTerminal();
         sourceParser.Process(Open("id=alpha", Uri) + "A" + Close());
 
-        TerminalStateSnapshot snapshot = source.ExportState(int.MaxValue);
-        snapshot.Parser = sourceParser.ExportState();
-
         var (restored, restoredParser) = NewTerminal();
-        System.Collections.Generic.IReadOnlyList<Hyperlink> links = restored.ImportState(snapshot);
-        restoredParser.ImportState(snapshot.Parser);
-        restoredParser.SeedHyperlinkRegistry(links);
+        TerminalStateTransfer.Restore(restored, restoredParser, SnapshotOf(source, sourceParser));
 
         // The tail re-references the same anchor.
         restoredParser.Process("\x1b[1;3H" + Open("id=alpha", Uri) + "B" + Close());
@@ -62,24 +63,58 @@ public class HyperlinkRegistrySeedingTests
     }
 
     /// <summary>
-    /// The mirror constraint: a link written without an <c>id</c> must not be seeded, so a later
-    /// id-less OSC 8 to the same URI stays a separate anchor. Interning it would merge two links
-    /// that merely share a target - the exact case the spec's <c>id</c> exists to disambiguate, and
-    /// the reason <see cref="HyperlinkRegistry.Resolve"/> mints a fresh instance every time.
+    /// Re-attach into a parser that has already seen the same <c>(URI, id)</c> in a previous life.
+    /// The instance it is still holding is <em>not</em> in the incoming snapshot's table, so the
+    /// seeding must replace it rather than keep it: handing the tail a stale instance no restored
+    /// cell carries reproduces exactly the grouping bug the seeding exists to fix. The buffer's
+    /// table is authoritative.
     /// </summary>
+    [Fact]
+    public void SeededRegistry_ReplacesAStaleIdentityFromAnEarlierAttach()
+    {
+        // A parser with a life of its own: it interns (Uri, alpha) as instance X.
+        var (reused, reusedParser) = NewTerminal();
+        reusedParser.Process(Open("id=alpha", Uri) + "X" + Close());
+        Hyperlink? stale = LinkAt(reused, 0);
+        Assert.NotNull(stale);
+
+        // An unrelated session that happens to use the same (URI, id) - a different instance.
+        var (source, sourceParser) = NewTerminal();
+        sourceParser.Process(Open("id=alpha", Uri) + "A" + Close());
+
+        TerminalStateTransfer.Restore(reused, reusedParser, SnapshotOf(source, sourceParser));
+        reusedParser.Process("\x1b[1;3H" + Open("id=alpha", Uri) + "B" + Close());
+
+        Hyperlink? fromSnapshot = LinkAt(reused, 0);
+        Hyperlink? fromTail = LinkAt(reused, 2);
+        Assert.NotNull(fromSnapshot);
+        Assert.NotNull(fromTail);
+        Assert.Same(fromSnapshot, fromTail);
+        Assert.NotSame(stale, fromTail);
+    }
+
+    /// <summary>
+    /// A link written without an <c>id</c> stays its own anchor across the restore: a later id-less
+    /// OSC 8 to the same URI must not join it.
+    /// </summary>
+    /// <remarks>
+    /// This pins <see cref="HyperlinkRegistry.Resolve"/>'s no-id rule <em>through the restore
+    /// path</em>, not the seeding. The guarantee lives in <c>Resolve</c>, which returns a fresh
+    /// instance for an id-less OSC 8 before the interning table is ever consulted - so seeding a
+    /// no-id link would not actually break this, and the <c>Id</c> check in
+    /// <c>SeedInterned</c> is defence in depth rather than the load-bearing guard. The regression
+    /// this would catch is someone making <c>Resolve</c> consult the table for id-less links in
+    /// order to "fix" a future parity failure, which would silently merge two distinct links that
+    /// happen to share a target - the exact case <c>id</c> exists to disambiguate.
+    /// </remarks>
     [Fact]
     public void SeededRegistry_LeavesIdLessLinksDistinct()
     {
         var (source, sourceParser) = NewTerminal();
         sourceParser.Process(Open(string.Empty, Uri) + "A" + Close());
 
-        TerminalStateSnapshot snapshot = source.ExportState(int.MaxValue);
-        snapshot.Parser = sourceParser.ExportState();
-
         var (restored, restoredParser) = NewTerminal();
-        System.Collections.Generic.IReadOnlyList<Hyperlink> links = restored.ImportState(snapshot);
-        restoredParser.ImportState(snapshot.Parser);
-        restoredParser.SeedHyperlinkRegistry(links);
+        TerminalStateTransfer.Restore(restored, restoredParser, SnapshotOf(source, sourceParser));
 
         restoredParser.Process("\x1b[1;3H" + Open(string.Empty, Uri) + "B" + Close());
 
