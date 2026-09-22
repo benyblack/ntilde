@@ -402,6 +402,407 @@ public class StateTransferValidationTests
         Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
     }
 
+
+    // ── the family: every required member of the envelope, rejected before mutation ──
+
+    /// <summary>
+    /// One name per required member of the envelope - the top-level nested objects and the nested
+    /// DTOs' own required members. Each is non-nullable with a <c>= new()</c> or <c>= []</c>
+    /// initialiser, so only an explicit <c>null</c> in an IPC payload can produce one.
+    /// </summary>
+    public static TheoryData<string> RequiredMembers() =>
+    [
+        "main", "alt", "scrollback", "tabs",
+        "saved_main", "saved_alt", "screen_main", "screen_alt", "saved_main.sgr",
+        "sgr", "modes",
+        "kitty_kbd", "kitty_kbd.main", "kitty_kbd.alt",
+        "grapheme", "links",
+    ];
+
+    private static void NullOut(TerminalStateSnapshot snapshot, string member)
+    {
+        switch (member)
+        {
+            case "main": snapshot.Main = null!; break;
+            case "alt": snapshot.Alt = null!; break;
+            case "scrollback": snapshot.Scrollback = null!; break;
+            case "tabs": snapshot.TabStops = null!; break;
+            case "saved_main": snapshot.SavedCursorMain = null!; break;
+            case "saved_alt": snapshot.SavedCursorAlt = null!; break;
+            case "screen_main": snapshot.ScreenCursorMain = null!; break;
+            case "screen_alt": snapshot.ScreenCursorAlt = null!; break;
+            case "saved_main.sgr": snapshot.SavedCursorMain.Sgr = null!; break;
+            case "sgr": snapshot.Sgr = null!; break;
+            case "modes": snapshot.Modes = null!; break;
+            case "kitty_kbd": snapshot.KittyKeyboard = null!; break;
+            case "kitty_kbd.main": snapshot.KittyKeyboard.MainStack = null!; break;
+            case "kitty_kbd.alt": snapshot.KittyKeyboard.AltStack = null!; break;
+            case "grapheme": snapshot.Grapheme = null!; break;
+            case "links": snapshot.Hyperlinks = null!; break;
+            default: throw new ArgumentOutOfRangeException(nameof(member), member, "unknown member");
+        }
+    }
+
+    /// <summary>
+    /// Codex finding 2, generalised from the one field it named to every required member of the
+    /// envelope. A required nested object arriving <c>null</c> is malformed structure, not an
+    /// absent optional, and tolerating it was wrong in two distinct ways that this one theory
+    /// pins at once: <c>modes</c> and the four cursor states <em>returned early</em>, so the
+    /// destination kept its own insert mode, autowrap, mouse reporting and saved cursor while
+    /// every screen around them was replaced; <c>sgr</c>, <c>tabs</c> and the kitty stacks
+    /// substituted defaults, so the terminal adopted attributes the sender never described.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: restore any one of the tolerant branches this pass removed - the
+    /// <c>if (source is null) return;</c> in <c>ImportModes</c>/<c>ImportCursor</c>, the
+    /// <c>sgr ??= new()</c> in <c>ImportLiveSgrNoLock</c>, the <c>incoming?.Length ?? 0</c> in
+    /// <c>ImportTabStopsNoLock</c>, the <c>?? []</c> on the kitty stacks, or the
+    /// <c>entries is null</c> guard in <c>RebuildHyperlinks</c> - together with dropping that
+    /// member's <c>RequirePresent</c>, and the corresponding case here imports cleanly: the
+    /// <c>Assert.Throws</c> fails, and so do both destination assertions, because the screen was
+    /// replaced with the source's.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(RequiredMembers))]
+    public void BufferImport_RejectsANullRequiredMemberWithoutTouchingTheBuffer(string member)
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        NullOut(snapshot, member);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content\u001b[4h");
+        Assert.True(target.Modes.IsInsertMode);
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+        Assert.True(target.Modes.IsInsertMode);
+    }
+
+    /// <summary>
+    /// The same family seen through <see cref="TerminalStateTransfer.Restore"/>, which is the gap
+    /// finding 1 named: <c>Restore</c> resizes the destination before importing, so a member it
+    /// does not preflight is one whose rejection arrives after the destination has already been
+    /// resized and reflowed. Preflighting a <em>selection</em> of the import's checks is what
+    /// this replaced; it now runs the whole routine.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: narrow <c>Restore</c>'s preflight back to
+    /// <c>ValidateVersionAndCellLayout</c> (its previous scope) and every case here fails on the
+    /// size assertions, because the geometry differs and the resize runs before the import
+    /// notices the null.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(RequiredMembers))]
+    public void Restore_RejectsANullRequiredMemberWithoutResizingOrTouchingTheBuffer(string member)
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 100, rows: 30);
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        NullOut(snapshot, member);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 40, rows: 12);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(
+            () => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+
+        Assert.Equal(40, target.Cols);
+        Assert.Equal(12, target.Rows);
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    // ── finding 1: the rest of the import's checks, hoisted ahead of the resize ──
+
+    /// <summary>
+    /// The exact case the report named: the previous preflight hoisted only the version/layout
+    /// and parser checks, so a buffer-only fault - here an unreadable cell blob - was still
+    /// discovered by <c>DecodeBlob</c> <em>after</em> the resize had reflowed the destination.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: replace <c>Restore</c>'s <c>ValidateBufferState</c> call with the old
+    /// <c>ValidateVersionAndCellLayout</c> and both size assertions fail - the destination is
+    /// 100x30 by the time the decode refuses the payload.
+    /// </remarks>
+    [Fact]
+    public void Restore_RejectsAMalformedCellBlobWithoutResizingOrTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 100, rows: 30);
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Scrollback.CellsBase64 = "!!!! not base64 !!!!";
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 40, rows: 12);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(
+            () => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+
+        Assert.Equal(40, target.Cols);
+        Assert.Equal(12, target.Rows);
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>The same gap for the other value the report named: the sync-output timestamp.</summary>
+    /// <remarks>Falsifiable exactly as the cell-blob case above.</remarks>
+    [Fact]
+    public void Restore_RejectsAnUnrepresentableSyncStartWithoutResizingOrTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 100, rows: 30);
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.LastSyncStartUtcTicks = long.MaxValue;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 40, rows: 12);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(
+            () => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+
+        Assert.Equal(40, target.Cols);
+        Assert.Equal(12, target.Rows);
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    // ── structure the audit turned up: enum ordinals and table indices ──────────
+
+    /// <summary>
+    /// <c>CursorStyle</c> is an enum ordinal, which the policy calls structure: it selects a caret
+    /// shape rather than sizing one, and an undefined value was cast straight through to
+    /// <c>ModeState.CursorStyle</c> and then out to the renderer.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: drop the <c>Enum.IsDefined</c> check and the import succeeds, leaving
+    /// <c>target.Modes.CursorStyle</c> holding ordinal 99.
+    /// </remarks>
+    [Fact]
+    public void BufferImport_RejectsAnUndefinedCursorStyleWithoutTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Modes.CursorStyle = 99;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+        CursorStyle before = target.Modes.CursorStyle;
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+        Assert.Equal(before, target.Modes.CursorStyle);
+    }
+
+    /// <summary>
+    /// An index into the snapshot's own hyperlink table. Out of range it used to be silently
+    /// mapped to "no link", which drops an identity the payload explicitly named - the quiet half
+    /// of the same failure OSC 8 grouping already depends on.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: remove the <c>RequireInRange</c> and the import succeeds with
+    /// <c>_currentHyperlink</c> silently null.
+    /// </remarks>
+    [Fact]
+    public void BufferImport_RejectsACurrentHyperlinkIndexNamingNoTableEntry()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.CurrentHyperlinkId = snapshot.Hyperlinks.Count;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The per-cell half of the same index: a <c>LinkIds</c> value naming no table entry used to
+    /// be skipped, so the restored cell lost a link the payload asserted it had.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: remove <c>ValidateSideTables</c>' bound check and the import succeeds with
+    /// the decorated cell carrying no hyperlink at all.
+    /// </remarks>
+    [Fact]
+    public void BufferImport_RejectsACellLinkIndexNamingNoTableEntry()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("\u001b]8;id=alpha;https://example.com\u001b\\link\u001b]8;;\u001b\\");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        Assert.NotNull(snapshot.Main.LinkIds);
+        Assert.NotEmpty(snapshot.Main.LinkIds!);
+        snapshot.Main.LinkIds![0] = snapshot.Hyperlinks.Count;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The table's own entries. A null entry used to throw <see cref="NullReferenceException"/>
+    /// from <c>RebuildHyperlinks</c> - the first statement <em>inside</em> the write lock - and a
+    /// null <c>Uri</c> was quietly substituted with the empty string, minting an identity for a
+    /// link that names nothing.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: drop the per-entry <c>RequirePresent</c> pair; the null-entry case then
+    /// throws the wrong exception type and the null-URI case does not throw at all.
+    /// </remarks>
+    [Fact]
+    public void BufferImport_RejectsAMalformedHyperlinkTableEntry()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("\u001b]8;id=alpha;https://example.com\u001b\\link\u001b]8;;\u001b\\");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        Assert.NotEmpty(snapshot.Hyperlinks);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        snapshot.Hyperlinks[0].Uri = null!;
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+
+        snapshot.Hyperlinks[0] = null!;
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The side tables' string values. <c>SetExtendedText</c> treats a null cluster as a
+    /// <em>removal</em>, so a null here silently dropped the grapheme the payload named rather
+    /// than restoring it.
+    /// </summary>
+    /// <remarks>Falsifiable: remove the null check in <c>ValidateSideTables</c>.</remarks>
+    [Fact]
+    public void BufferImport_RejectsANullExtendedTextCluster()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Main.ExtendedText = new Dictionary<int, string> { [3] = null! };
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    // ── finding 3: import must not exceed the parser's own live bounds ───────────
+
+    /// <summary>
+    /// Codex finding 3. The live parser stops adding to an OSC/APC/DCS accumulator at
+    /// <c>MaxStringSequenceChars</c>; the import copied the whole transferred string, so a payload
+    /// from a source with a larger ceiling (or an IPC payload simply claiming one) left this
+    /// parser holding an accumulator it could never have filled, and the next terminator would
+    /// dispatch it.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: restore the three <c>AddRange</c> calls and each assertion below reads 40
+    /// characters instead of 16.
+    /// </remarks>
+    [Fact]
+    public void ParserImport_ClampsStringAccumulatorsToThisParsersStringSequenceCap()
+    {
+        (AnsiParser source, _) = NewPair();
+        AnsiParserState exported = source.ExportState();
+        exported.OscBuffer = new string('o', 40);
+        exported.ApcBuffer = new string('a', 40);
+        exported.DcsBuffer = new string('d', 40);
+
+        (AnsiParser target, _) = NewPair();
+        target.MaxStringSequenceChars = 16;
+        target.ImportState(exported);
+
+        AnsiParserState reExported = target.ExportState();
+        Assert.Equal(new string('o', 16), reExported.OscBuffer);
+        Assert.Equal(new string('a', 16), reExported.ApcBuffer);
+        Assert.Equal(new string('d', 16), reExported.DcsBuffer);
+    }
+
+    /// <summary>
+    /// The same bound on the one accumulator that overflows differently. The live path does not
+    /// truncate the cross-chunk kitty payload: on the chunk that would exceed the cap it latches
+    /// <c>_kittyPayloadOverflow</c> and frees the buffer, so the terminator skips a payload it
+    /// knows is undecodable. Truncating on import would instead hand the terminator a prefix to
+    /// base64-decode - the allocation the cap exists to prevent.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: <c>Append(state.KittyPayload)</c> unconditionally and the overflow assertion
+    /// fails with a 40-character payload held.
+    /// </remarks>
+    [Fact]
+    public void ParserImport_TurnsAnOverCapKittyPayloadIntoTheLatchedOverflowInstead()
+    {
+        (AnsiParser source, _) = NewPair();
+        AnsiParserState exported = source.ExportState();
+        exported.KittyPayload = new string('k', 40);
+        exported.KittyPayloadOverflow = false;
+
+        (AnsiParser target, _) = NewPair();
+        target.MaxStringSequenceChars = 16;
+        target.ImportState(exported);
+
+        AnsiParserState reExported = target.ExportState();
+        Assert.True(reExported.KittyPayloadOverflow);
+        Assert.Equal(string.Empty, reExported.KittyPayload);
+    }
+
+    /// <summary>
+    /// The paired invariant: a latched overflow always accompanies an emptied buffer in the live
+    /// parser, so a payload claiming both is another state it could never have reached.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: append whenever the payload fits the cap, regardless of the flag, and the
+    /// buffer comes back holding "partial".
+    /// </remarks>
+    [Fact]
+    public void ParserImport_EmptiesTheKittyPayloadWhenTheOverflowFlagIsLatched()
+    {
+        (AnsiParser source, _) = NewPair();
+        AnsiParserState exported = source.ExportState();
+        exported.KittyPayload = "partial";
+        exported.KittyPayloadOverflow = true;
+
+        (AnsiParser target, _) = NewPair();
+        target.ImportState(exported);
+
+        AnsiParserState reExported = target.ExportState();
+        Assert.True(reExported.KittyPayloadOverflow);
+        Assert.Equal(string.Empty, reExported.KittyPayload);
+    }
+
+    /// <summary>
+    /// The kitty control parameters only ever receive a parsed substring or the literal "1", so a
+    /// null value is another state no stream produces - and one that used to reach
+    /// <c>HandleKitty</c>'s dimension parsing rather than failing at the boundary.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: drop the per-value <c>RequirePresent</c> loop and the import succeeds, so the
+    /// throw assertion fails; the parser-state assertion is what makes it a refuse-before-mutating
+    /// test rather than merely a throwing one.
+    /// </remarks>
+    [Fact]
+    public void ParserImport_RejectsANullKittyParameterWithoutTouchingTheParser()
+    {
+        (AnsiParser source, _) = NewPair();
+        AnsiParserState exported = source.ExportState();
+        exported.KittyPendingParams = new Dictionary<string, string> { ["m"] = null! };
+
+        (AnsiParser target, _) = NewPair();
+        target.Process("\u001b]0;target title");
+        string before = target.ExportState().ToDebugString();
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(exported));
+        Assert.Equal(before, target.ExportState().ToDebugString());
+    }
+
     private static string RowText(TerminalBuffer buffer, int row)
     {
         buffer.Lock.EnterReadLock();

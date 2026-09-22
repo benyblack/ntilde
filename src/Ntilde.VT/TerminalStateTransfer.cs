@@ -30,14 +30,17 @@ namespace Ntilde.VT
     /// </para>
     /// <para>
     /// <see cref="Restore"/> validates the whole envelope - the buffer portion and, when present,
-    /// the parser portion - before it resizes or imports anything. An invalid snapshot is refused
-    /// with the destination buffer completely untouched: unresized, unreflowed, and with its prior
-    /// content intact. This closes a gap the resize step opened: without hoisting, a snapshot with
-    /// a bad version, a mismatched cell layout, or a malformed parser position could reflow and
-    /// mutate the destination and only then throw, from inside
-    /// <see cref="TerminalBuffer.ImportState"/> or <see cref="AnsiParser.ImportState"/>. Both of
-    /// those methods keep validating their own input too - they are public and independently
-    /// callable, so this hoisting does not relieve them of it.
+    /// the parser portion - before it resizes or imports anything. "Whole" is the operative word:
+    /// it runs <see cref="TerminalBuffer.ValidateBufferState"/> and
+    /// <see cref="AnsiParser.ValidateParserState"/>, the same routines the two
+    /// <c>ImportState</c> methods run on their own input, rather than a hoisted selection of the
+    /// checks inside them. Hoisting a selection is what this used to do, and it left the
+    /// remainder - the base64 cell blobs, the synchronized-output timestamp, and every required
+    /// nested object - to fail after the resize had already reflowed the destination. An invalid
+    /// snapshot is now refused with the destination buffer completely untouched: unresized,
+    /// unreflowed, and with its prior content intact. Both <c>ImportState</c> methods keep
+    /// validating their own input too - they are public and independently callable, so this
+    /// hoisting does not relieve them of it.
     /// </para>
     /// </remarks>
     public static class TerminalStateTransfer
@@ -81,10 +84,13 @@ namespace Ntilde.VT
 
             // Validate the whole envelope before anything is resized or imported: a caller that
             // catches the exception below gets the destination exactly as it was, not reflowed
-            // partway through. TerminalBuffer.ImportState and AnsiParser.ImportState run these same
-            // checks again themselves - deliberate belt-and-braces, since both are public and
-            // independently callable, not redundancy to optimise away.
-            TerminalBuffer.ValidateVersionAndCellLayout(snapshot);
+            // partway through. These are the very routines TerminalBuffer.ImportState and
+            // AnsiParser.ImportState run on their own input - not a hoisted subset of them, which
+            // is what this used to be and why a bad cell blob, an unrepresentable synchronized
+            // output timestamp or a null mode object still got the destination resized first.
+            // Both ImportState methods still call them - deliberate belt-and-braces, since both
+            // are public and independently callable, not redundancy to optimise away.
+            TerminalBuffer.ValidateBufferState(snapshot);
             if (snapshot.Parser is not null)
             {
                 parser.ValidateParserState(snapshot.Parser);

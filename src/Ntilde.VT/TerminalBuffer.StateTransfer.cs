@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -124,30 +124,16 @@ namespace Ntilde.VT
         public IReadOnlyList<Hyperlink> ImportState(TerminalStateSnapshot snapshot)
         {
             ArgumentNullException.ThrowIfNull(snapshot);
-            ValidateVersionAndCellLayout(snapshot);
 
-            // Everything that can fail on a malformed payload happens up here, outside the write
-            // lock and before a single field is written: the base64 blobs, which used to throw
-            // FormatException from the middle of the import, and the synchronized-output
-            // timestamp, whose DateTime ctor used to throw from the middle of it too. Decoding
-            // outside the lock is also simply better - it is the expensive part of the payload.
-            byte[]? mainCells = StateTransferValidation.DecodeBlob(
-                snapshot.Main?.CellsBase64, "main screen cells");
-            byte[]? altCells = StateTransferValidation.DecodeBlob(
-                snapshot.Alt?.CellsBase64, "alternate screen cells");
-            byte[]? scrollbackCells = StateTransferValidation.DecodeBlob(
-                snapshot.Scrollback?.CellsBase64, "scrollback cells");
-            DateTime lastSyncStart = StateTransferValidation.UtcFromTicks(
-                snapshot.LastSyncStartUtcTicks, "synchronized-output start");
-
-            // Also required up here: KittyKeyboard and Grapheme are read as non-nullable objects
-            // below (never through a "source is null ? return" guard the way Main/Alt/Scrollback/
-            // Sgr/Modes/the four saved cursors/TabStops/Hyperlinks all are), so a deserialized
-            // payload that supplies an explicit null for either would throw a
-            // NullReferenceException from inside the write lock, after the screens and scrollback
-            // were already replaced.
-            StateTransferValidation.RequirePresent(snapshot.KittyKeyboard, "kitty keyboard state");
-            StateTransferValidation.RequirePresent(snapshot.Grapheme, "grapheme continuation state");
+            // The whole envelope, in one routine shared with TerminalStateTransfer.Restore:
+            // every rejection this import can make happens here, outside the write lock and
+            // before a single field is written. The decoded blobs and the synchronized-output
+            // timestamp come back with it because proving them well-formed *is* decoding them.
+            ValidatedBufferState validated = ValidateBufferState(snapshot);
+            byte[]? mainCells = validated.MainCells;
+            byte[]? altCells = validated.AltCells;
+            byte[]? scrollbackCells = validated.ScrollbackCells;
+            DateTime lastSyncStart = validated.LastSyncStart;
 
             Hyperlink[] links;
             Lock.EnterWriteLock();
@@ -198,8 +184,8 @@ namespace Ntilde.VT
 
                 ImportModes(Modes, snapshot.Modes);
                 Modes.KittyKeyboard.ImportStacksForState(
-                    snapshot.KittyKeyboard.MainStack ?? [],
-                    snapshot.KittyKeyboard.AltStack ?? [],
+                    snapshot.KittyKeyboard.MainStack,
+                    snapshot.KittyKeyboard.AltStack,
                     snapshot.KittyKeyboard.IsAltScreenActive);
 
                 _isSynchronizedOutput = snapshot.IsSynchronizedOutput;
@@ -342,7 +328,7 @@ namespace Ntilde.VT
 
         private void ImportScreenNoLock(
             TerminalRow[] rows,
-            TerminalScreenState? state,
+            TerminalScreenState state,
             byte[]? blob,
             int sourceCols,
             int sourceRows,
@@ -362,7 +348,7 @@ namespace Ntilde.VT
                 row.TouchRevision();
             }
 
-            if (state is null || blob is null || blob.Length == 0 || sourceCols <= 0)
+            if (blob is null || blob.Length == 0 || sourceCols <= 0)
             {
                 return;
             }
@@ -489,9 +475,9 @@ namespace Ntilde.VT
         {
             _scrollback.Clear();
 
-            TerminalScreenState? state = snapshot.Scrollback;
+            TerminalScreenState state = snapshot.Scrollback;
             int sourceCols = snapshot.Cols;
-            if (state is null || blob is null || blob.Length == 0 || sourceCols <= 0 || Cols <= 0)
+            if (blob is null || blob.Length == 0 || sourceCols <= 0 || Cols <= 0)
             {
                 return;
             }
@@ -547,13 +533,13 @@ namespace Ntilde.VT
         /// every-eight default. A snapshot taken at a different width then degrades exactly as a
         /// resize would, rather than arriving with no stops at all.
         /// </summary>
-        private void ImportTabStopsNoLock(bool[]? incoming)
+        private void ImportTabStopsNoLock(bool[] incoming)
         {
             var stops = new bool[Math.Max(0, Cols)];
-            int shared = Math.Min(stops.Length, incoming?.Length ?? 0);
+            int shared = Math.Min(stops.Length, incoming.Length);
             for (int col = 0; col < shared; col++)
             {
-                stops[col] = incoming![col];
+                stops[col] = incoming[col];
             }
 
             for (int col = shared; col < stops.Length; col++)
@@ -590,14 +576,9 @@ namespace Ntilde.VT
             },
         };
 
-        private static void ImportCursor(CursorState target, TerminalCursorState? source)
+        private static void ImportCursor(CursorState target, TerminalCursorState source)
         {
-            if (source is null)
-            {
-                return;
-            }
-
-            TerminalSgrState sgr = source.Sgr ?? new TerminalSgrState();
+            TerminalSgrState sgr = source.Sgr;
             target.Row = source.Row;
             target.Col = source.Col;
             target.IsPendingWrap = source.IsPendingWrap;
@@ -642,9 +623,8 @@ namespace Ntilde.VT
         /// colour means the colour is explicit - so restoring through them makes the result depend
         /// on statement order. The fields carry no such coupling.
         /// </summary>
-        private void ImportLiveSgrNoLock(TerminalSgrState? sgr)
+        private void ImportLiveSgrNoLock(TerminalSgrState sgr)
         {
-            sgr ??= new TerminalSgrState();
             _currentForeground = TermColor.FromUint(sgr.Foreground);
             _currentBackground = TermColor.FromUint(sgr.Background);
             _currentFgIndex = sgr.FgIndex;
@@ -680,13 +660,8 @@ namespace Ntilde.VT
             IsEchoEnabled = modes.IsEchoEnabled,
         };
 
-        private static void ImportModes(ModeState target, TerminalModeState? source)
+        private static void ImportModes(ModeState target, TerminalModeState source)
         {
-            if (source is null)
-            {
-                return;
-            }
-
             target.MouseModeX10 = source.MouseModeX10;
             target.MouseModeButtonEvent = source.MouseModeButtonEvent;
             target.MouseModeAnyEvent = source.MouseModeAnyEvent;
@@ -707,6 +682,191 @@ namespace Ntilde.VT
         // ── validation ───────────────────────────────────────────────────────────
 
         /// <summary>
+        /// Refuses a payload this build cannot read.        /// <summary>
+        /// What a validated snapshot hands the import: the three cell blobs, already decoded and
+        /// proven well-formed, and the synchronized-output timestamp, already proven
+        /// representable. Returned rather than recomputed because proving them well-formed *is*
+        /// decoding them, and doing it twice inside one import would be the expensive half of the
+        /// payload paid twice.
+        /// </summary>
+        internal readonly struct ValidatedBufferState
+        {
+            internal ValidatedBufferState(
+                byte[]? mainCells, byte[]? altCells, byte[]? scrollbackCells, DateTime lastSyncStart)
+            {
+                MainCells = mainCells;
+                AltCells = altCells;
+                ScrollbackCells = scrollbackCells;
+                LastSyncStart = lastSyncStart;
+            }
+
+            internal byte[]? MainCells { get; }
+
+            internal byte[]? AltCells { get; }
+
+            internal byte[]? ScrollbackCells { get; }
+
+            internal DateTime LastSyncStart { get; }
+        }
+
+        /// <summary>
+        /// The single routine that decides whether a <see cref="TerminalStateSnapshot"/>'s buffer
+        /// half is acceptable. Every rejection <see cref="ImportState"/> can make is made here,
+        /// before it takes its write lock and before it writes a field.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Internal, and factored out of <see cref="ImportState"/>, so
+        /// <see cref="TerminalStateTransfer.Restore"/> can run <em>the whole thing</em> before it
+        /// resizes the destination buffer. Hoisting a subset is not enough and was the bug this
+        /// replaced: a snapshot whose version and layout were fine but whose scrollback blob was
+        /// not valid base64 would pass the hoisted half, get the destination resized and reflowed,
+        /// and only then be refused by the decode inside the import.
+        /// </para>
+        /// <para>
+        /// <see cref="ImportState"/> calls it too. That is deliberate belt-and-braces, not
+        /// redundancy to optimise away: <see cref="ImportState"/> is public and independently
+        /// callable, so it validates its own input regardless of what a caller already checked.
+        /// </para>
+        /// </remarks>
+        internal static ValidatedBufferState ValidateBufferState(TerminalStateSnapshot snapshot)
+        {
+            ValidateVersionAndCellLayout(snapshot);
+            ValidateRequiredStructure(snapshot);
+
+            // Ordered after the structure pass on purpose: the three CellsBase64 reads below
+            // dereference Main/Alt/Scrollback, which the pass has just proven present.
+            byte[]? mainCells = StateTransferValidation.DecodeBlob(
+                snapshot.Main.CellsBase64, "main screen cells");
+            byte[]? altCells = StateTransferValidation.DecodeBlob(
+                snapshot.Alt.CellsBase64, "alternate screen cells");
+            byte[]? scrollbackCells = StateTransferValidation.DecodeBlob(
+                snapshot.Scrollback.CellsBase64, "scrollback cells");
+            DateTime lastSyncStart = StateTransferValidation.UtcFromTicks(
+                snapshot.LastSyncStartUtcTicks, "synchronized-output start");
+
+            return new ValidatedBufferState(mainCells, altCells, scrollbackCells, lastSyncStart);
+        }
+
+        /// <summary>
+        /// The structure half of <see cref="StateTransferValidation"/>'s rule applied to every
+        /// required member of the envelope, nested DTOs included.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>Required nested objects are rejected when null, never tolerated.</b> Every one of
+        /// these properties is non-nullable with a <c>= new()</c> initialiser, so a normal
+        /// serialize/deserialize round trip cannot produce null here; only an explicit
+        /// <c>"modes": null</c> in the payload can. Tolerating that was worse than throwing in
+        /// two different ways, and both were live before this pass: the four cursor states and
+        /// the mode state returned early and therefore <em>kept the destination's own</em>, so a
+        /// restore into a reused buffer produced a hybrid terminal whose insert mode, autowrap
+        /// and mouse reporting came from the previous session; the live SGR state substituted
+        /// defaults, so the terminal adopted attributes the sender never described. A snapshot
+        /// that cannot express modes cannot be adopted wholesale, which is the only thing
+        /// <see cref="ImportState"/> offers, so it is refused instead.
+        /// </para>
+        /// <para>
+        /// <b>Enum ordinals and table indices are structure too.</b> <c>CursorStyle</c> selects a
+        /// caret shape and <c>CurrentHyperlinkId</c> / the per-cell <c>LinkIds</c> values select
+        /// entries of the hyperlink table; none of them has a defensible clamp, and each fails
+        /// far from the import that set it - or, worse, does not fail at all and silently drops a
+        /// link the payload named.
+        /// </para>
+        /// </remarks>
+        private static void ValidateRequiredStructure(TerminalStateSnapshot snapshot)
+        {
+            TerminalScreenState main = StateTransferValidation.RequirePresent(
+                snapshot.Main, "main screen state");
+            TerminalScreenState alt = StateTransferValidation.RequirePresent(
+                snapshot.Alt, "alternate screen state");
+            TerminalScreenState scrollback = StateTransferValidation.RequirePresent(
+                snapshot.Scrollback, "scrollback state");
+            StateTransferValidation.RequirePresent(snapshot.TabStops, "tab stops");
+
+            ValidateCursorState(snapshot.SavedCursorMain, "saved cursor (main screen)");
+            ValidateCursorState(snapshot.SavedCursorAlt, "saved cursor (alternate screen)");
+            ValidateCursorState(snapshot.ScreenCursorMain, "screen cursor (main screen)");
+            ValidateCursorState(snapshot.ScreenCursorAlt, "screen cursor (alternate screen)");
+
+            StateTransferValidation.RequirePresent(snapshot.Sgr, "live SGR state");
+
+            TerminalModeState modes = StateTransferValidation.RequirePresent(
+                snapshot.Modes, "mode state");
+            if (!Enum.IsDefined((CursorStyle)modes.CursorStyle))
+            {
+                throw StateTransferValidation.Reject(
+                    "mode state cursor style", $"cstyle={modes.CursorStyle} is not a defined style");
+            }
+
+            TerminalKittyKeyboardState kitty = StateTransferValidation.RequirePresent(
+                snapshot.KittyKeyboard, "kitty keyboard state");
+            StateTransferValidation.RequirePresent(kitty.MainStack, "kitty keyboard main stack");
+            StateTransferValidation.RequirePresent(kitty.AltStack, "kitty keyboard alternate stack");
+
+            StateTransferValidation.RequirePresent(snapshot.Grapheme, "grapheme continuation state");
+
+            List<TerminalHyperlinkEntry> hyperlinks = StateTransferValidation.RequirePresent(
+                snapshot.Hyperlinks, "hyperlink table");
+            for (int i = 0; i < hyperlinks.Count; i++)
+            {
+                TerminalHyperlinkEntry entry = StateTransferValidation.RequirePresent(
+                    hyperlinks[i], $"hyperlink table entry {i}");
+                StateTransferValidation.RequirePresent(entry.Uri, $"hyperlink table entry {i} URI");
+            }
+
+            // -1 is the "cursor is not writing under a link" sentinel, so the range starts there.
+            // An empty table therefore admits -1 and nothing else.
+            StateTransferValidation.RequireInRange(
+                snapshot.CurrentHyperlinkId, -1, hyperlinks.Count - 1, "current hyperlink index");
+
+            ValidateSideTables(main, hyperlinks.Count, "main screen");
+            ValidateSideTables(alt, hyperlinks.Count, "alternate screen");
+            ValidateSideTables(scrollback, hyperlinks.Count, "scrollback");
+        }
+
+        private static void ValidateCursorState(TerminalCursorState? cursor, string what)
+        {
+            TerminalCursorState present = StateTransferValidation.RequirePresent(cursor, what);
+            StateTransferValidation.RequirePresent(present.Sgr, $"{what} SGR");
+        }
+
+        /// <summary>
+        /// The per-cell side tables. Their <em>keys</em> are deliberately not validated - a key
+        /// outside the copied region is dropped rather than refused, because a snapshot imported
+        /// into a differently-shaped buffer legitimately has rows it cannot restore. Their
+        /// <em>values</em> are: a null grapheme cluster and a link index naming no table entry are
+        /// both malformed however the geometry lands.
+        /// </summary>
+        private static void ValidateSideTables(TerminalScreenState state, int linkCount, string what)
+        {
+            if (state.ExtendedText is { } extended)
+            {
+                foreach (KeyValuePair<int, string> entry in extended)
+                {
+                    if (entry.Value is null)
+                    {
+                        throw StateTransferValidation.Reject(
+                            $"{what} extended text", $"cell {entry.Key} carries a null cluster");
+                    }
+                }
+            }
+
+            if (state.LinkIds is { } linkIds)
+            {
+                foreach (KeyValuePair<int, int> entry in linkIds)
+                {
+                    if ((uint)entry.Value >= (uint)linkCount)
+                    {
+                        throw StateTransferValidation.Reject(
+                            $"{what} link index",
+                            $"cell {entry.Key} names link {entry.Value} of {linkCount}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Refuses a payload this build cannot read. The cell check mirrors
         /// <c>ReplayRunner.ValidateSnapshotCellLayout</c>: the blob is reinterpreted with
         /// <see cref="MemoryMarshal.Cast{TFrom, TTo}(ReadOnlySpan{TFrom})"/>, which will happily
@@ -719,14 +879,7 @@ namespace Ntilde.VT
         /// in the payload is expressed in. Sizes and counts inside those dimensions - the cursor,
         /// the scroll region, the scrollback row count - are clamped by the import instead.
         /// </remarks>
-        /// <remarks>
-        /// Internal rather than private so <see cref="TerminalStateTransfer.Restore"/> can run it
-        /// before resizing the destination buffer, ahead of <see cref="ImportState"/>'s own call to
-        /// it. That is deliberate belt-and-braces, not redundancy to optimise away: <see
-        /// cref="ImportState"/> is public and independently callable, so it keeps validating its
-        /// own input regardless of what a caller already checked.
-        /// </remarks>
-        internal static void ValidateVersionAndCellLayout(TerminalStateSnapshot snapshot)
+        private static void ValidateVersionAndCellLayout(TerminalStateSnapshot snapshot)
         {
             if (snapshot.Version != TerminalStateSnapshot.CurrentVersion)
             {
@@ -807,9 +960,9 @@ namespace Ntilde.VT
         /// link across the wire - minting one per cell would leave adjacent cells refusing to
         /// underline together even though every field matched.
         /// </summary>
-        private static Hyperlink[] RebuildHyperlinks(List<TerminalHyperlinkEntry>? entries)
+        private static Hyperlink[] RebuildHyperlinks(List<TerminalHyperlinkEntry> entries)
         {
-            if (entries is null || entries.Count == 0)
+            if (entries.Count == 0)
             {
                 return [];
             }
@@ -818,7 +971,7 @@ namespace Ntilde.VT
             for (int i = 0; i < entries.Count; i++)
             {
                 TerminalHyperlinkEntry entry = entries[i];
-                links[i] = new Hyperlink(entry.Uri ?? string.Empty, entry.Id);
+                links[i] = new Hyperlink(entry.Uri, entry.Id);
             }
 
             return links;

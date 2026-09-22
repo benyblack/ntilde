@@ -64,16 +64,30 @@ namespace Ntilde.VT
             _paramLen = csiLen;
             _csiTruncated = state.CsiTruncated || csiLen < state.CsiParams.Length;
 
-            _oscStringBuffer.Clear();
-            _oscStringBuffer.AddRange(state.OscBuffer);
-            _apcStringBuffer.Clear();
-            _apcStringBuffer.AddRange(state.ApcBuffer);
-            _dcsStringBuffer.Clear();
-            _dcsStringBuffer.AddRange(state.DcsBuffer);
+            // The same half of the rule, applied to the string accumulators. The cap is a
+            // property of this parser, not of the payload: a snapshot from a source configured
+            // with a larger ceiling - or an IPC payload that simply claims one - must not leave
+            // this parser holding an accumulator it could never have filled, because the next
+            // terminator would then dispatch (and, for an image, allocate and decode) a payload
+            // its own accumulation path would have stopped short of.
+            int stringCap = Math.Max(0, MaxStringSequenceChars);
+            ImportStringAccumulator(_oscStringBuffer, state.OscBuffer, stringCap);
+            ImportStringAccumulator(_apcStringBuffer, state.ApcBuffer, stringCap);
+            ImportStringAccumulator(_dcsStringBuffer, state.DcsBuffer, stringCap);
 
+            // The kitty accumulator overflows differently, and is mirrored differently: the live
+            // path does not truncate on the chunk that would exceed the cap, it latches
+            // _kittyPayloadOverflow and *frees* the buffer, so the terminator skips a payload it
+            // knows is undecodable. A latched overflow therefore always pairs with an empty
+            // buffer, and an over-cap payload is turned into that pair rather than trimmed.
+            bool kittyOverflow = state.KittyPayloadOverflow || state.KittyPayload.Length > stringCap;
             _kittyPayloadBuffer.Clear();
-            _kittyPayloadBuffer.Append(state.KittyPayload);
-            _kittyPayloadOverflow = state.KittyPayloadOverflow;
+            if (!kittyOverflow)
+            {
+                _kittyPayloadBuffer.Append(state.KittyPayload);
+            }
+
+            _kittyPayloadOverflow = kittyOverflow;
             _kittyPendingParams = new Dictionary<string, string>(state.KittyPendingParams);
 
             for (int i = 0; i < _charsets.Length; i++)
@@ -160,7 +174,17 @@ namespace Ntilde.VT
             StateTransferValidation.RequirePresent(state.ApcBuffer, "parser APC accumulator");
             StateTransferValidation.RequirePresent(state.DcsBuffer, "parser DCS accumulator");
             StateTransferValidation.RequirePresent(state.KittyPayload, "parser kitty payload");
-            StateTransferValidation.RequirePresent(state.KittyPendingParams, "parser kitty parameters");
+            Dictionary<string, string> kittyParams = StateTransferValidation.RequirePresent(
+                state.KittyPendingParams, "parser kitty parameters");
+            foreach (KeyValuePair<string, string> entry in kittyParams)
+            {
+                // The accumulation path only ever stores a parsed substring or the literal "1",
+                // so a null value is a state no stream could produce - and one that reaches
+                // HandleKitty's ParseDimension/TryParse calls rather than failing here.
+                StateTransferValidation.RequirePresent(
+                    entry.Value, $"parser kitty parameter '{entry.Key}'");
+            }
+
             StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");
 
             // Enum.IsDefined rather than a hand-written upper bound: a bound spelled as a constant
@@ -200,6 +224,24 @@ namespace Ntilde.VT
         /// <c>EnsureCsiParamCapacity</c> enforces on the accumulation path, so an imported run
         /// cannot buy a buffer a parsed one could not.
         /// </summary>
+        /// <summary>
+        /// Replaces one <c>OSC</c>/<c>APC</c>/<c>DCS</c> accumulator with at most
+        /// <paramref name="cap"/> characters of <paramref name="value"/> - the same ceiling the
+        /// three <c>if (buffer.Count &lt; MaxStringSequenceChars)</c> guards in <c>Process</c>
+        /// enforce while accumulating, so an imported accumulator cannot hold what a parsed one
+        /// could not.
+        /// </summary>
+        private static void ImportStringAccumulator(List<char> destination, string value, int cap)
+        {
+            int length = StateTransferValidation.ClampCount(value.Length, cap);
+            destination.Clear();
+            destination.EnsureCapacity(length);
+            for (int i = 0; i < length; i++)
+            {
+                destination.Add(value[i]);
+            }
+        }
+
         private void EnsureParamCapacity(int length)
         {
             if (_paramBuffer.Length < length)
