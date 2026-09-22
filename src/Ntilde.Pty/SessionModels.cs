@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Ntilde.Pty
 {
@@ -56,6 +57,7 @@ namespace Ntilde.Pty
         /// Id of the multiplexer session this pane attaches to, or <c>null</c> for a pane that
         /// owns its PTY directly (every pane today).
         /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MuxSessionId { get; set; }
 
         /// <summary>
@@ -63,6 +65,7 @@ namespace Ntilde.Pty
         /// <c>null</c>. Stored per pane rather than per session file so a window can hold panes
         /// from more than one daemon.
         /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MuxEndpoint { get; set; }
     }
 

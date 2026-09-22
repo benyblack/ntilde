@@ -338,6 +338,40 @@ public sealed class SessionManagerTests
         Assert.Null(root.MuxEndpoint);
     }
 
+    /// <summary>
+    /// The mux fields are nullable and omitted when null to preserve backward compatibility.
+    /// Every leaf pane written to a session file should not contain these fields if they are
+    /// unpopulated, so that old readers do not see spurious nulls.
+    /// </summary>
+    [Fact]
+    public void PaneNode_NullMuxFields_AreOmittedFromJson()
+    {
+        var session = new NtildeSession
+        {
+            Tabs =
+            [
+                new TabSession
+                {
+                    Root = new PaneNode
+                    {
+                        Type = NodeType.Leaf,
+                        PaneId = "pane-1",
+                        Command = "pwsh.exe",
+                        MuxSessionId = null,
+                        MuxEndpoint = null
+                    }
+                }
+            ]
+        };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(
+            session, SessionSerializationContext.Default.NtildeSession);
+
+        // The JSON text must not contain the field names if they are null
+        Assert.DoesNotContain("MuxSessionId", json);
+        Assert.DoesNotContain("MuxEndpoint", json);
+    }
+
     private static TabSession LeafTabWithProfile(Guid profileId) => new()
     {
         Title = "Restored",
