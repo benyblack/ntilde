@@ -15,6 +15,21 @@ namespace Ntilde.VT.Tests.StateTransfer;
 /// </summary>
 internal static class ParityCorpus
 {
+    /// <summary>
+    /// Fewest recorded streams <see cref="Recorded"/> will accept before declaring the fixture
+    /// wiring broken. A floor, not an equality, so adding a <c>.rec</c> fixture does not break the
+    /// guard - it only ever has to notice fixtures going *missing*.
+    /// </summary>
+    /// <remarks>
+    /// The guard exists because the silent version of this failure is the worst thing the
+    /// instrument could do. If the linked <c>Content</c> item in Ntilde.VT.Tests.csproj stops
+    /// resolving - the fixture folder moves inside Ntilde.App.Tests, the <c>Link</c> metadata
+    /// changes, a case-sensitive CI runner disagrees about "Fixtures/Replay" - the corpus would
+    /// quietly shrink to its synthetic half and the parity suite would still report success, over
+    /// a corpus it never loaded. Absent fixtures must be an error, not a smaller corpus.
+    /// </remarks>
+    public const int MinimumRecordedStreams = 16;
+
     public static IEnumerable<(string Name, byte[] Bytes)> All()
     {
         foreach ((string name, byte[] bytes) in Synthetic())
@@ -43,9 +58,16 @@ internal static class ParityCorpus
         string dir = Path.Combine(AppContext.BaseDirectory, "Fixtures", "Replay");
         if (!Directory.Exists(dir))
         {
-            yield break;
+            throw new InvalidOperationException(
+                $"Replay fixture directory '{dir}' does not exist, so the parity corpus would be " +
+                $"its synthetic half only. Expected at least {MinimumRecordedStreams} '*.rec' " +
+                "fixtures, linked into the output by the Content item in Ntilde.VT.Tests.csproj " +
+                "from tests/Ntilde.App.Tests/Fixtures/Replay. Fix the link rather than lowering " +
+                "the floor: a parity run over a corpus that silently failed to load reports " +
+                "success while testing almost nothing.");
         }
 
+        int yielded = 0;
         foreach (string path in Directory.GetFiles(dir, "*.rec").OrderBy(p => p, StringComparer.Ordinal))
         {
             var bytes = new List<byte>();
@@ -61,8 +83,20 @@ internal static class ParityCorpus
 
             if (bytes.Count > 0)
             {
+                yielded++;
                 yield return (Path.GetFileNameWithoutExtension(path), bytes.ToArray());
             }
+        }
+
+        if (yielded < MinimumRecordedStreams)
+        {
+            throw new InvalidOperationException(
+                $"Replay fixture directory '{dir}' yielded {yielded} non-empty stream(s), fewer " +
+                $"than the expected minimum of {MinimumRecordedStreams}. Either fixtures went " +
+                "missing from tests/Ntilde.App.Tests/Fixtures/Replay, the Content link in " +
+                "Ntilde.VT.Tests.csproj stopped resolving, or a fixture stopped parsing. Fix the " +
+                "cause rather than lowering the floor: a parity run over a corpus that silently " +
+                "failed to load reports success while testing almost nothing.");
         }
     }
 

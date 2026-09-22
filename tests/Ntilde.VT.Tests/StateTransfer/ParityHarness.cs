@@ -181,6 +181,15 @@ internal static class ParityHarness
             // not resize, and a width mismatch degrades silently instead of throwing, so a
             // resize-interleaved run would otherwise compare two different geometries and call
             // it parity.
+            //
+            // C re-feeds from StreamSeq, which is at or before the cut, so a resize whose offset
+            // lands inside the pending decoder tail is applied twice: once by B on its way to the
+            // snapshot, once by C on the re-feed. That is inert ONLY because TerminalBuffer.Resize
+            // early-returns when the dimensions are unchanged
+            // (TerminalBuffer.ResizeAndReflow.cs: "if (newCols == Cols && newRows == Rows) return;"),
+            // so the second application changes nothing and emits no in-band resize report under
+            // mode 2048. If that early return ever goes away, this is the line to fix - the symptom
+            // will be a phantom parity divergence with no bug behind it.
             var c = new ParityRun(b.Buffer.Cols, b.Buffer.Rows, forceConPtyFiltering);
             c.Buffer.ImportState(snapshot);
             c.Parser.ImportState(snapshot.Parser);
