@@ -298,6 +298,110 @@ public class StateTransferValidationTests
         Assert.StartsWith("wide and tall", RowText(target, 0), StringComparison.Ordinal);
     }
 
+    // ── Restore validates the whole envelope before resizing or importing ───────
+
+    /// <summary>
+    /// Codex finding 1: a geometry mismatch used to make <see cref="TerminalStateTransfer.Restore"/>
+    /// resize the destination before <c>TerminalBuffer.ImportState</c> got a chance to reject a bad
+    /// version. A caller catching the resulting exception was left with a resized, reflowed
+    /// destination. This is falsifiable: reverting the hoist in <c>Restore</c> (validating only
+    /// inside <c>ImportState</c>, after the resize) makes the resize run unconditionally whenever
+    /// the geometry differs, so the buffer's <c>Cols</c>/<c>Rows</c> would already be the snapshot's
+    /// by the time the version check throws, and the size assertions below would fail.
+    /// </summary>
+    [Fact]
+    public void Restore_RejectsABadVersionWithoutResizingOrTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 100, rows: 30);
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Version = TerminalStateSnapshot.CurrentVersion + 1;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 40, rows: 12);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(
+            () => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+
+        Assert.Equal(40, target.Cols);
+        Assert.Equal(12, target.Rows);
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Codex finding 1's second half: a malformed <em>parser</em> position used to be rejected only
+    /// after the buffer half of the transfer had already resized and imported - the exact case the
+    /// report called out. Falsifiable the same way: move the parser validation back to run only
+    /// inside <c>AnsiParser.ImportState</c> (i.e. after <c>buffer.ImportState</c> in <c>Restore</c>)
+    /// and the buffer will have already been resized and its content replaced with the source's by
+    /// the time the throw happens, failing every assertion below.
+    /// </summary>
+    [Fact]
+    public void Restore_RejectsABadParserStateWithoutResizingOrTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 100, rows: 30);
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Parser.State = -1;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 40, rows: 12);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(
+            () => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+
+        Assert.Equal(40, target.Cols);
+        Assert.Equal(12, target.Rows);
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    // ── buffer state: required nested objects, rejected before the write lock ───
+
+    /// <summary>
+    /// Codex finding 2: <c>KittyKeyboard</c> is read as a non-nullable object inside the write lock
+    /// (<c>snapshot.KittyKeyboard.MainStack</c>, directly, unlike the null-tolerant
+    /// Main/Alt/Scrollback/Sgr/Modes/saved-cursor/TabStops/Hyperlinks paths below it), so a
+    /// deserialized payload carrying an explicit <c>"kitty_kbd": null</c> used to throw a
+    /// <see cref="NullReferenceException"/> only after the screens, scrollback and cursors had
+    /// already been replaced. Falsifiable: remove the <c>RequirePresent</c> call added for this and
+    /// the main screen is overwritten with "source content" before the (wrongly-typed) exception
+    /// fires, so both the exception-type assertion and the content assertion fail.
+    /// </summary>
+    [Fact]
+    public void BufferImport_RejectsNullKittyKeyboardStateWithoutTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.KittyKeyboard = null!;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Same gap, the other field Codex named: <c>snapshot.Grapheme.HighSurrogate</c> dereferences
+    /// <c>Grapheme</c> itself directly, so an explicit <c>"grapheme": null</c> used to throw mid
+    /// import for the same reason. Falsifiable the same way as the kitty-keyboard case above.
+    /// </summary>
+    [Fact]
+    public void BufferImport_RejectsNullGraphemeStateWithoutTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Grapheme = null!;
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
     private static string RowText(TerminalBuffer buffer, int row)
     {
         buffer.Lock.EnterReadLock();

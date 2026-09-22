@@ -28,6 +28,17 @@ namespace Ntilde.VT
     /// wrong-sized buffer is the more damaging of the two - it produces a visibly wrong screen
     /// rather than a subtly wrong one.
     /// </para>
+    /// <para>
+    /// <see cref="Restore"/> validates the whole envelope - the buffer portion and, when present,
+    /// the parser portion - before it resizes or imports anything. An invalid snapshot is refused
+    /// with the destination buffer completely untouched: unresized, unreflowed, and with its prior
+    /// content intact. This closes a gap the resize step opened: without hoisting, a snapshot with
+    /// a bad version, a mismatched cell layout, or a malformed parser position could reflow and
+    /// mutate the destination and only then throw, from inside
+    /// <see cref="TerminalBuffer.ImportState"/> or <see cref="AnsiParser.ImportState"/>. Both of
+    /// those methods keep validating their own input too - they are public and independently
+    /// callable, so this hoisting does not relieve them of it.
+    /// </para>
     /// </remarks>
     public static class TerminalStateTransfer
     {
@@ -67,6 +78,17 @@ namespace Ntilde.VT
             ArgumentNullException.ThrowIfNull(buffer);
             ArgumentNullException.ThrowIfNull(parser);
             ArgumentNullException.ThrowIfNull(snapshot);
+
+            // Validate the whole envelope before anything is resized or imported: a caller that
+            // catches the exception below gets the destination exactly as it was, not reflowed
+            // partway through. TerminalBuffer.ImportState and AnsiParser.ImportState run these same
+            // checks again themselves - deliberate belt-and-braces, since both are public and
+            // independently callable, not redundancy to optimise away.
+            TerminalBuffer.ValidateVersionAndCellLayout(snapshot);
+            if (snapshot.Parser is not null)
+            {
+                parser.ValidateParserState(snapshot.Parser);
+            }
 
             // Before anything else, and before ImportState's own validation runs: a caller that
             // got this wrong gets a correct screen rather than a subtly wrong one. Resize ignores

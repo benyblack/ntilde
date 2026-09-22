@@ -140,6 +140,15 @@ namespace Ntilde.VT
             DateTime lastSyncStart = StateTransferValidation.UtcFromTicks(
                 snapshot.LastSyncStartUtcTicks, "synchronized-output start");
 
+            // Also required up here: KittyKeyboard and Grapheme are read as non-nullable objects
+            // below (never through a "source is null ? return" guard the way Main/Alt/Scrollback/
+            // Sgr/Modes/the four saved cursors/TabStops/Hyperlinks all are), so a deserialized
+            // payload that supplies an explicit null for either would throw a
+            // NullReferenceException from inside the write lock, after the screens and scrollback
+            // were already replaced.
+            StateTransferValidation.RequirePresent(snapshot.KittyKeyboard, "kitty keyboard state");
+            StateTransferValidation.RequirePresent(snapshot.Grapheme, "grapheme continuation state");
+
             Hyperlink[] links;
             Lock.EnterWriteLock();
             try
@@ -710,7 +719,14 @@ namespace Ntilde.VT
         /// in the payload is expressed in. Sizes and counts inside those dimensions - the cursor,
         /// the scroll region, the scrollback row count - are clamped by the import instead.
         /// </remarks>
-        private static void ValidateVersionAndCellLayout(TerminalStateSnapshot snapshot)
+        /// <remarks>
+        /// Internal rather than private so <see cref="TerminalStateTransfer.Restore"/> can run it
+        /// before resizing the destination buffer, ahead of <see cref="ImportState"/>'s own call to
+        /// it. That is deliberate belt-and-braces, not redundancy to optimise away: <see
+        /// cref="ImportState"/> is public and independently callable, so it keeps validating its
+        /// own input regardless of what a caller already checked.
+        /// </remarks>
+        internal static void ValidateVersionAndCellLayout(TerminalStateSnapshot snapshot)
         {
             if (snapshot.Version != TerminalStateSnapshot.CurrentVersion)
             {

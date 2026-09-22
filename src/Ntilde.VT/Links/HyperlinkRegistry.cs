@@ -158,6 +158,21 @@ namespace Ntilde.VT.Links
                 // entry for a key wins, and every winner is an instance the restored cells
                 // actually hold. A tail that re-references that id groups with the newest cells
                 // carrying it, which is the same answer the source terminal gives.
+                //
+                // KNOWN LIMITATION (deliberately deferred, not fixed here): "the LAST entry wins"
+                // assumes list order tracks recency, which TerminalBuffer.ExportState does not
+                // guarantee once the source registry has cleared. ExportState visits the current
+                // main screen before scrollback, so links[] orders main-screen entries first. Past
+                // MaxInternedLinks distinct explicit ids in a single source session, the source
+                // registry's own cap-clear (above) can leave two live Hyperlink instances for one
+                // (URI, id) - one still referenced by scrollback cells, one newly minted and now on
+                // the main screen. Seeding then sees the scrollback (older) instance AFTER the
+                // main-screen (newer) one in links[], so it wins here, inverting which identity a
+                // re-referencing tail groups with. Reaching this needs >MaxInternedLinks distinct
+                // explicit ids inside one snapshot; the real fix is export-ordering semantics (or
+                // carrying the source registry's authoritative identity through the payload), which
+                // is design work for the phase that actually exercises id volume at this scale, not
+                // a patch here.
                 if (!_interned.ContainsKey(key) && _interned.Count >= MaxInternedLinks)
                 {
                     // Clear wholesale, as Resolve does: past the cap, grouping is already

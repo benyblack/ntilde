@@ -146,8 +146,14 @@ namespace Ntilde.VT
         /// payload that simply omits <c>"csi"</c> or <c>"kitty_params"</c> produces nulls that
         /// would surface as a <see cref="NullReferenceException"/> from inside the import.
         /// </para>
+        /// <para>
+        /// Internal rather than private so <see cref="TerminalStateTransfer.Restore"/> can run it
+        /// on <see cref="TerminalStateSnapshot.Parser"/> before the buffer is resized or imported.
+        /// <see cref="ImportState"/> still calls it too - that is deliberate belt-and-braces, since
+        /// <see cref="ImportState"/> is public and independently callable.
+        /// </para>
         /// </remarks>
-        private void ValidateParserState(AnsiParserState state)
+        internal void ValidateParserState(AnsiParserState state)
         {
             StateTransferValidation.RequirePresent(state.CsiParams, "parser CSI run");
             StateTransferValidation.RequirePresent(state.OscBuffer, "parser OSC accumulator");
