@@ -259,6 +259,7 @@ namespace Ntilde
         /// every pane this window creates. Replaces the static <c>CommandAssistInfrastructure</c>.
         /// </summary>
         private readonly CommandAssistServices _commandAssistServices;
+        private readonly Ntilde.Pty.ITerminalSessionFactory _sessionFactory;
 
         private sealed class PaneZoomState
         {
@@ -3680,6 +3681,7 @@ namespace Ntilde
             ArgumentNullException.ThrowIfNull(services);
             _startup = services.Startup;
             _commandAssistServices = services.CommandAssist;
+            _sessionFactory = services.SessionFactory ?? Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -4497,6 +4499,7 @@ namespace Ntilde
         private void WirePane(TerminalPane pane)
         {
             pane.CommandAssistServices = _commandAssistServices;
+            pane.SessionFactory = _sessionFactory;
             pane.SshInteractionHandler = _sshInteractionService;
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged -= OnPaneWorkingDirectoryChanged;
