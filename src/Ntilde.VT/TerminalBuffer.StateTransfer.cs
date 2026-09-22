@@ -97,15 +97,25 @@ namespace Ntilde.VT
         /// (the packed style, the render diff) are invalidated rather than carried, so the first
         /// write and the first render recompute them.
         /// </summary>
-        public void ImportState(TerminalStateSnapshot snapshot)
+        /// <returns>
+        /// The rebuilt <see cref="Hyperlink"/> identity table, in snapshot order - one instance per
+        /// entry, the same instances the restored cells now hold. Hand it to
+        /// <see cref="AnsiParser.SeedHyperlinkRegistry"/> on the parser that shares this buffer, or
+        /// the first <c>OSC 8</c> in the tail that re-references an <c>id</c> already on screen
+        /// mints a second identity for it and those cells stop grouping. Returned rather than
+        /// reachable from a property because it describes one import, not the buffer: a later
+        /// write can add links this array does not name.
+        /// </returns>
+        public IReadOnlyList<Hyperlink> ImportState(TerminalStateSnapshot snapshot)
         {
             ArgumentNullException.ThrowIfNull(snapshot);
             ValidateVersionAndCellLayout(snapshot);
 
+            Hyperlink[] links;
             Lock.EnterWriteLock();
             try
             {
-                Hyperlink[] links = RebuildHyperlinks(snapshot.Hyperlinks);
+                links = RebuildHyperlinks(snapshot.Hyperlinks);
 
                 (TerminalRow[] mainRows, TerminalRow[] altRows) = ResolveScreensNoLock();
                 mainRows = EnsureScreenShapeNoLock(mainRows);
@@ -177,6 +187,7 @@ namespace Ntilde.VT
             }
 
             Invalidate();
+            return links;
         }
 
         // ── screens ──────────────────────────────────────────────────────────────

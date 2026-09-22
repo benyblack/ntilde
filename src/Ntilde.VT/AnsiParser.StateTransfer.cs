@@ -83,13 +83,44 @@ namespace Ntilde.VT
             _inBandResizeReportsEnabled = state.InBandResizeReportsEnabled;
 
             // Deliberately not restored: the text-batching buffer (always empty between Process()
-            // calls - AnsiParserStateTests asserts it), the per-batch cursor-visibility flags
-            // (reset inside Process()), and the hyperlink interning registry (identity travels
-            // with the buffer's link table instead).
+            // calls - AnsiParserStateTests asserts it) and the per-batch cursor-visibility flags
+            // (reset inside Process()). The hyperlink interning registry is not in
+            // AnsiParserState either, but it is not simply dropped: see
+            // <see cref="SeedHyperlinkRegistry"/>, which the caller invokes with the instances
+            // TerminalBuffer.ImportState rebuilt.
             _textBuffer.Clear();
             _sawCursorHideInBatch = false;
             _sawCursorShowAfterHideInBatch = false;
         }
+
+        /// <summary>
+        /// Re-seeds the OSC 8 interning registry with the link identities
+        /// <see cref="TerminalBuffer.ImportState"/> rebuilt, so an <c>id=</c> the restored cells
+        /// already carry resolves to those same instances when the tail re-references it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Call after both halves of the transfer: <c>buffer.ImportState(snapshot)</c> hands back
+        /// the array, <c>parser.ImportState(snapshot.Parser)</c> restores the parse position, and
+        /// this closes the gap between them. Skipping it is not a crash but a silent grouping bug:
+        /// a later <c>OSC 8 ;id=alpha;...</c> finds an empty registry, mints a fresh
+        /// <see cref="Links.Hyperlink"/>, and the cells it writes stop grouping with the restored
+        /// ones that were the same anchor.
+        /// </para>
+        /// <para>
+        /// A separate call rather than a field of <see cref="AnsiParserState"/>: putting the
+        /// registry in the payload would give link identity two independent sources - the parser's
+        /// table and the buffer's - which would mint different instances for the same (URI, id)
+        /// and reintroduce the same bug from the other side. Seeding from the buffer's rebuilt
+        /// table keeps one source of identity, which is what the design rests on.
+        /// </para>
+        /// </remarks>
+        /// <param name="links">
+        /// The identity table from <see cref="TerminalBuffer.ImportState"/>. Entries without an
+        /// explicit <c>id</c> are ignored, because those are never interned.
+        /// </param>
+        public void SeedHyperlinkRegistry(IReadOnlyList<Links.Hyperlink>? links) =>
+            _hyperlinks.SeedInterned(links);
 
         /// <summary>Grows <see cref="_paramBuffer"/> to hold at least <paramref name="length"/> chars.</summary>
         private void EnsureParamCapacity(int length)

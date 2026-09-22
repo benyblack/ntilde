@@ -92,6 +92,73 @@ namespace Ntilde.VT.Links
         }
 
         /// <summary>
+        /// Re-seeds the interning table with link identities restored from a state snapshot, so a
+        /// parser resumed mid-stream returns the <em>buffer's</em> instance for an <c>id</c> it has
+        /// already seen instead of minting a second one.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// State-transfer plumbing, deliberately internal for the same reason as
+        /// <c>KittyKeyboardState.ImportStacksForState</c>: the protocol surface is
+        /// <see cref="Resolve"/>, and nothing outside Ntilde.VT should be able to plant an
+        /// identity.
+        /// </para>
+        /// <para>
+        /// Only links carrying an explicit <c>id</c> are seeded, because only those are interned at
+        /// all. Seeding a no-id link would make two distinct runs that happen to share a URI group
+        /// together - exactly the merge <c>id</c> exists to disambiguate, and the reason
+        /// <see cref="Resolve"/> mints a fresh instance for every id-less OSC 8.
+        /// </para>
+        /// <para>
+        /// Identity, not content: the instances handed in are the ones the buffer's cells hold, and
+        /// they are stored by reference. Constructing equivalent links here instead would give the
+        /// parser a second source of identity for the same (URI, id) pair, which is the bug this
+        /// method exists to close, inverted.
+        /// </para>
+        /// </remarks>
+        internal void SeedInterned(IReadOnlyList<Hyperlink>? links)
+        {
+            if (links is null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < links.Count; i++)
+            {
+                Hyperlink? link = links[i];
+                if (link is null || string.IsNullOrEmpty(link.Uri) || string.IsNullOrEmpty(link.Id))
+                {
+                    // No id, no interning - and an *empty* id is skipped too, not stored under "":
+                    // Resolve never produces that key (ExtractId maps an empty id to null), so an
+                    // entry under it could never be hit and would only take up room under the cap.
+                    continue;
+                }
+
+                // The same bounds Resolve applies on the way in. A payload arriving from another
+                // process is not trusted to have respected them.
+                if (link.Uri.Length > MaxUriLength || link.Id.Length > MaxIdLength)
+                {
+                    continue;
+                }
+
+                var key = (link.Uri, link.Id);
+                if (_interned.ContainsKey(key))
+                {
+                    continue;
+                }
+
+                if (_interned.Count >= MaxInternedLinks)
+                {
+                    // Clear wholesale, as Resolve does: past the cap, grouping is already
+                    // degraded, and a snapshot is not a reason to grow the table without bound.
+                    _interned.Clear();
+                }
+
+                _interned[key] = link;
+            }
+        }
+
+        /// <summary>
         /// Pulls <c>id</c> out of the OSC 8 params field, or <c>null</c> when absent, empty or unusable.
         /// </summary>
         /// <remarks>

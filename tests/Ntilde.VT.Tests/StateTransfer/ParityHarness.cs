@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Unicode;
 using Ntilde.Replay;
 using Ntilde.VT;
+using Ntilde.VT.Links;
 using Xunit;
 
 namespace Ntilde.VT.Tests.StateTransfer;
@@ -191,8 +192,16 @@ internal static class ParityHarness
             // mode 2048. If that early return ever goes away, this is the line to fix - the symptom
             // will be a phantom parity divergence with no bug behind it.
             var c = new ParityRun(b.Buffer.Cols, b.Buffer.Rows, forceConPtyFiltering);
-            c.Buffer.ImportState(snapshot);
+            IReadOnlyList<Hyperlink> restoredLinks = c.Buffer.ImportState(snapshot);
             c.Parser.ImportState(snapshot.Parser);
+
+            // The third half of the transfer. The buffer's table restores link identity for cells
+            // that already exist; the parser's interning registry is what an OSC 8 in the TAIL
+            // consults, and it is not in AnsiParserState. Without this, a re-referenced `id=` mints
+            // a second Hyperlink and those cells stop grouping with the restored ones - which is
+            // exactly what this harness caught on osc8-hyperlinks at cut 36.
+            c.Parser.SeedHyperlinkRegistry(restoredLinks);
+
             c.Feed(corpus, (int)snapshot.StreamSeq, corpus.Length, resizes);
 
             AssertEquivalent(name, cut, a, responsesAfterCut, c);
