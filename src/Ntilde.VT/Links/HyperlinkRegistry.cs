@@ -147,8 +147,17 @@ namespace Ntilde.VT.Links
                 // (URI, id) is from a previous attach and is NOT in the buffer's table, so keeping
                 // it would hand the tail an instance no restored cell carries - reproducing, on a
                 // re-attach into a reused parser, precisely the grouping bug this method exists to
-                // fix. The buffer's table is authoritative by construction, and it cannot itself
-                // hold a duplicate key: HyperlinkTableBuilder.IndexOf interns as it discovers.
+                // fix.
+                //
+                // The buffer's table CAN contain two entries with the same (URI, id):
+                // HyperlinkTableBuilder.IndexOf interns by *reference*, and two distinct Hyperlink
+                // instances sharing a key are reachable - Resolve clears the interning table
+                // wholesale when it passes MaxInternedLinks, after which the same `id=` mints a
+                // second instance while the first is still on screen. What the seeding guarantees
+                // is therefore narrower than "no duplicate key", and is all it needs: the LAST
+                // entry for a key wins, and every winner is an instance the restored cells
+                // actually hold. A tail that re-references that id groups with the newest cells
+                // carrying it, which is the same answer the source terminal gives.
                 if (!_interned.ContainsKey(key) && _interned.Count >= MaxInternedLinks)
                 {
                     // Clear wholesale, as Resolve does: past the cap, grouping is already

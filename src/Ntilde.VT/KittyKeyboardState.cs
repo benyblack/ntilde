@@ -215,20 +215,35 @@ namespace Ntilde.VT
         }
 
         /// <summary>
-        /// Replaces both stacks and the active-screen selection. Incoming lengths are clamped to
-        /// <see cref="MaxStackDepth"/> - the payload arrives from another process, and a longer
-        /// array is a bug or an attack, never something to honour.
+        /// Replaces both stacks and the active-screen selection.
         /// </summary>
+        /// <remarks>
+        /// Two dimensions, both clamped, per <c>StateTransferValidation</c>'s "clamp geometry and
+        /// counts" half: stack <em>length</em> to <see cref="MaxStackDepth"/>, and each entry's
+        /// flag <em>value</em> through <see cref="Mask"/>, exactly as <see cref="Push"/> and
+        /// <see cref="Set"/> do on the way in. The payload arrives from another process, so an
+        /// over-long array or an unsupported flag bit is a bug or an attack, never something to
+        /// honour - and honouring the bits while policing the length would let an import reach a
+        /// flag state no sequence could produce, which is worse than either check alone.
+        /// </remarks>
         internal void ImportStacksForState(int[] main, int[] alt, bool altActive)
         {
             lock (_gate)
             {
                 _mainCount = Math.Min(main.Length, MaxStackDepth);
-                Array.Copy(main, _mainStack, _mainCount);
+                CopyMasked(main, _mainStack, _mainCount);
                 _altCount = Math.Min(alt.Length, MaxStackDepth);
-                Array.Copy(alt, _altStack, _altCount);
+                CopyMasked(alt, _altStack, _altCount);
                 _altActive = altActive;
                 RefreshCurrentFlagsNoLock();
+            }
+        }
+
+        private static void CopyMasked(int[] source, int[] destination, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                destination[i] = Mask(source[i]);
             }
         }
 

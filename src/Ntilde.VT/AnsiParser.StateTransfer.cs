@@ -50,13 +50,19 @@ namespace Ntilde.VT
         public void ImportState(AnsiParserState state)
         {
             ArgumentNullException.ThrowIfNull(state);
+            ValidateParserState(state);
 
             _state = (State)state.State;
 
-            EnsureParamCapacity(state.CsiParams.Length);
-            state.CsiParams.AsSpan().CopyTo(_paramBuffer);
-            _paramLen = state.CsiParams.Length;
-            _csiTruncated = state.CsiTruncated;
+            // The counts half of StateTransferValidation's rule: a parameter run longer than this
+            // build's cap is truncated exactly where the accumulation path would have truncated
+            // it, and the truncation is latched so the surviving prefix is not mistaken for a
+            // complete, classifiable CSI.
+            int csiLen = StateTransferValidation.ClampCount(state.CsiParams.Length, MaxCsiParamChars);
+            EnsureParamCapacity(csiLen);
+            state.CsiParams.AsSpan(0, csiLen).CopyTo(_paramBuffer);
+            _paramLen = csiLen;
+            _csiTruncated = state.CsiTruncated || csiLen < state.CsiParams.Length;
 
             _oscStringBuffer.Clear();
             _oscStringBuffer.AddRange(state.OscBuffer);
@@ -70,7 +76,7 @@ namespace Ntilde.VT
             _kittyPayloadOverflow = state.KittyPayloadOverflow;
             _kittyPendingParams = new Dictionary<string, string>(state.KittyPendingParams);
 
-            for (int i = 0; i < 4 && i < state.Charsets.Length; i++)
+            for (int i = 0; i < _charsets.Length; i++)
             {
                 _charsets[i] = (Charset)state.Charsets[i];
             }
@@ -122,12 +128,78 @@ namespace Ntilde.VT
         public void SeedHyperlinkRegistry(IReadOnlyList<Links.Hyperlink>? links) =>
             _hyperlinks.SeedInterned(links);
 
-        /// <summary>Grows <see cref="_paramBuffer"/> to hold at least <paramref name="length"/> chars.</summary>
+        /// <summary>
+        /// Refuses a parser state this build cannot resume from, before any field is written.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The structure half of <see cref="StateTransferValidation"/>'s rule, applied to the one
+        /// payload in the transfer whose fields are almost all indices rather than sizes.
+        /// <c>_state</c> chooses a branch of the escape state machine; <c>_gl</c> and
+        /// <c>_pendingCharsetSlot</c> index <see cref="_charsets"/>; the charset ordinals choose a
+        /// glyph mapping. None of those has a meaningful clamp, and none of them fails where it is
+        /// set: an out-of-range <c>_gl</c> throws <see cref="IndexOutOfRangeException"/> on the
+        /// next printable character, arbitrarily far from the import that caused it.
+        /// </para>
+        /// <para>
+        /// The null checks are here for the same reason. The state object is deserialized, so a
+        /// payload that simply omits <c>"csi"</c> or <c>"kitty_params"</c> produces nulls that
+        /// would surface as a <see cref="NullReferenceException"/> from inside the import.
+        /// </para>
+        /// </remarks>
+        private void ValidateParserState(AnsiParserState state)
+        {
+            StateTransferValidation.RequirePresent(state.CsiParams, "parser CSI run");
+            StateTransferValidation.RequirePresent(state.OscBuffer, "parser OSC accumulator");
+            StateTransferValidation.RequirePresent(state.ApcBuffer, "parser APC accumulator");
+            StateTransferValidation.RequirePresent(state.DcsBuffer, "parser DCS accumulator");
+            StateTransferValidation.RequirePresent(state.KittyPayload, "parser kitty payload");
+            StateTransferValidation.RequirePresent(state.KittyPendingParams, "parser kitty parameters");
+            StateTransferValidation.RequirePresent(state.Charsets, "parser charset designations");
+
+            // Enum.IsDefined rather than a hand-written upper bound: a bound spelled as a constant
+            // goes stale the moment a state is appended to the enum, and the failure mode is a
+            // legitimate payload being refused.
+            if (!Enum.IsDefined((State)state.State))
+            {
+                throw StateTransferValidation.Reject(
+                    "parser state-machine position", $"state={state.State} is not a defined position");
+            }
+
+            if (state.Charsets.Length != _charsets.Length)
+            {
+                throw StateTransferValidation.Reject(
+                    "parser charset designations",
+                    $"{state.Charsets.Length} slots, expected {_charsets.Length}");
+            }
+
+            for (int i = 0; i < state.Charsets.Length; i++)
+            {
+                if (!Enum.IsDefined((Charset)state.Charsets[i]))
+                {
+                    throw StateTransferValidation.Reject(
+                        "parser charset designation",
+                        $"G{i}={state.Charsets[i]} is not a defined charset");
+                }
+            }
+
+            StateTransferValidation.RequireInRange(state.Gl, 0, _charsets.Length - 1, "parser GL slot");
+            StateTransferValidation.RequireInRange(
+                state.PendingCharsetSlot, -1, _charsets.Length - 1, "parser pending charset slot");
+        }
+
+        /// <summary>
+        /// Grows <see cref="_paramBuffer"/> to hold at least <paramref name="length"/> chars, never
+        /// past <see cref="MaxCsiParamChars"/> - the same ceiling
+        /// <c>EnsureCsiParamCapacity</c> enforces on the accumulation path, so an imported run
+        /// cannot buy a buffer a parsed one could not.
+        /// </summary>
         private void EnsureParamCapacity(int length)
         {
             if (_paramBuffer.Length < length)
             {
-                _paramBuffer = new char[Math.Max(length, _paramBuffer.Length * 2)];
+                _paramBuffer = new char[Math.Min(
+                    MaxCsiParamChars, Math.Max(length, _paramBuffer.Length * 2))];
             }
         }
     }

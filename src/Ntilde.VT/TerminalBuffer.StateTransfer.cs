@@ -93,10 +93,25 @@ namespace Ntilde.VT
 
         /// <summary>
         /// Adopts <paramref name="snapshot"/> wholesale. The buffer must already be the
-        /// snapshot's size; a caller that cannot guarantee that resizes first. Derived caches
+        /// snapshot's size; a caller that cannot guarantee that resizes first, and
+        /// <see cref="TerminalStateTransfer.Restore"/> does it for you. Derived caches
         /// (the packed style, the render diff) are invalidated rather than carried, so the first
         /// write and the first render recompute them.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// "Wholesale" is literal, which is why inline images and the tracked OSC 133 marks are
+        /// <em>cleared</em> rather than left alone. Both are state the snapshot deliberately does
+        /// not carry (see <see cref="TerminalStateSnapshot"/>), and both are anchored to rows this
+        /// call is about to replace: a retained image would float over a screen it was never
+        /// drawn on, and a retained command mark would point Command Assist at a row belonging to
+        /// the previous session.
+        /// </para>
+        /// <para>
+        /// Malformed payloads are refused before the write lock is taken, per
+        /// <see cref="StateTransferValidation"/>. Nothing here half-applies.
+        /// </para>
+        /// </remarks>
         /// <returns>
         /// The rebuilt <see cref="Hyperlink"/> identity table, in snapshot order - one instance per
         /// entry, the same instances the restored cells now hold. Hand it to
@@ -111,6 +126,20 @@ namespace Ntilde.VT
             ArgumentNullException.ThrowIfNull(snapshot);
             ValidateVersionAndCellLayout(snapshot);
 
+            // Everything that can fail on a malformed payload happens up here, outside the write
+            // lock and before a single field is written: the base64 blobs, which used to throw
+            // FormatException from the middle of the import, and the synchronized-output
+            // timestamp, whose DateTime ctor used to throw from the middle of it too. Decoding
+            // outside the lock is also simply better - it is the expensive part of the payload.
+            byte[]? mainCells = StateTransferValidation.DecodeBlob(
+                snapshot.Main?.CellsBase64, "main screen cells");
+            byte[]? altCells = StateTransferValidation.DecodeBlob(
+                snapshot.Alt?.CellsBase64, "alternate screen cells");
+            byte[]? scrollbackCells = StateTransferValidation.DecodeBlob(
+                snapshot.Scrollback?.CellsBase64, "scrollback cells");
+            DateTime lastSyncStart = StateTransferValidation.UtcFromTicks(
+                snapshot.LastSyncStartUtcTicks, "synchronized-output start");
+
             Hyperlink[] links;
             Lock.EnterWriteLock();
             try
@@ -121,8 +150,8 @@ namespace Ntilde.VT
                 mainRows = EnsureScreenShapeNoLock(mainRows);
                 altRows = EnsureScreenShapeNoLock(altRows);
 
-                ImportScreenNoLock(mainRows, snapshot.Main, snapshot.Cols, snapshot.Rows, links);
-                ImportScreenNoLock(altRows, snapshot.Alt, snapshot.Cols, snapshot.Rows, links);
+                ImportScreenNoLock(mainRows, snapshot.Main, mainCells, snapshot.Cols, snapshot.Rows, links);
+                ImportScreenNoLock(altRows, snapshot.Alt, altCells, snapshot.Cols, snapshot.Rows, links);
 
                 // Normalises the three fields at once: whichever of them was stale before (a
                 // main-screen resize replaces _viewport without touching _mainScreen) is now
@@ -132,7 +161,7 @@ namespace Ntilde.VT
                 _isAltScreen = snapshot.IsAltScreenActive;
                 _viewport = _isAltScreen ? _altScreen : _mainScreen;
 
-                ImportScrollbackNoLock(snapshot, links);
+                ImportScrollbackNoLock(snapshot, scrollbackCells, links);
                 ImportTabStopsNoLock(snapshot.TabStops);
 
                 _cursorCol = Math.Clamp(snapshot.CursorCol, 0, Math.Max(0, Cols - 1));
@@ -165,7 +194,7 @@ namespace Ntilde.VT
                     snapshot.KittyKeyboard.IsAltScreenActive);
 
                 _isSynchronizedOutput = snapshot.IsSynchronizedOutput;
-                _lastSyncStart = new DateTime(snapshot.LastSyncStartUtcTicks, DateTimeKind.Utc);
+                _lastSyncStart = lastSyncStart;
 
                 _highSurrogateBuffer = string.IsNullOrEmpty(snapshot.Grapheme.HighSurrogate)
                     ? null
@@ -173,6 +202,18 @@ namespace Ntilde.VT
                 _lastCharCol = snapshot.Grapheme.LastCharCol;
                 _lastCharRow = snapshot.Grapheme.LastCharRow;
                 _isAfterZwj = snapshot.Grapheme.IsAfterZwj;
+
+                // Excluded from the payload, and therefore cleared rather than kept. Inline images
+                // are decoder-owned handles anchored to absolute rows this import just replaced,
+                // so keeping them would leave pixels floating over a screen they were never drawn
+                // on. Retired through the same queue ClearImages uses, not disposed here: a render
+                // pass may still be holding these handles.
+                foreach (TerminalImage image in _images)
+                {
+                    RetireImage(image);
+                }
+
+                _images.Clear();
 
                 // Derived, never carried: the packed style cache is rebuilt from the SGR fields
                 // above on the next write, and the render-diff cache stays cold so the first
@@ -185,6 +226,12 @@ namespace Ntilde.VT
             {
                 Lock.ExitWriteLock();
             }
+
+            // Also excluded from the payload (see TerminalStateSnapshot's remarks: the marks carry
+            // a process-local scrollback generation and a 133;B re-arms them). Cleared outside the
+            // write lock because it takes its own gate, and after it because a mark pointing into
+            // the replaced screen is exactly what must not survive.
+            ClearTrackedShellMarks();
 
             Invalidate();
             return links;
@@ -286,7 +333,8 @@ namespace Ntilde.VT
 
         private void ImportScreenNoLock(
             TerminalRow[] rows,
-            TerminalScreenState state,
+            TerminalScreenState? state,
+            byte[]? blob,
             int sourceCols,
             int sourceRows,
             Hyperlink[] links)
@@ -305,12 +353,11 @@ namespace Ntilde.VT
                 row.TouchRevision();
             }
 
-            if (state is null || string.IsNullOrEmpty(state.CellsBase64) || sourceCols <= 0)
+            if (state is null || blob is null || blob.Length == 0 || sourceCols <= 0)
             {
                 return;
             }
 
-            byte[] blob = Convert.FromBase64String(state.CellsBase64);
             ReadOnlySpan<TerminalCell> source = MemoryMarshal.Cast<byte, TerminalCell>(blob);
             int availableRows = source.Length / sourceCols;
             int rowsToCopy = Math.Min(Math.Min(sourceRows, availableRows), rows.Length);
@@ -328,11 +375,15 @@ namespace Ntilde.VT
                 }
             }
 
+            // rowsToCopy, not rows.Length: a row past it had its cells deliberately left at
+            // TerminalCell.Default (the source had no such row, or the destination screen is
+            // taller than the snapshot's), so applying the snapshot's extended text or link ids
+            // to it would decorate a row whose content was never restored.
             if (state.ExtendedText != null)
             {
                 foreach (KeyValuePair<int, string> kv in state.ExtendedText)
                 {
-                    if (!TrySplitKey(kv.Key, sourceCols, rows.Length, colsToCopy, out int r, out int c))
+                    if (!TrySplitKey(kv.Key, sourceCols, rowsToCopy, colsToCopy, out int r, out int c))
                     {
                         continue;
                     }
@@ -345,7 +396,7 @@ namespace Ntilde.VT
             {
                 foreach (KeyValuePair<int, int> kv in state.LinkIds)
                 {
-                    if (!TrySplitKey(kv.Key, sourceCols, rows.Length, colsToCopy, out int r, out int c))
+                    if (!TrySplitKey(kv.Key, sourceCols, rowsToCopy, colsToCopy, out int r, out int c))
                     {
                         continue;
                     }
@@ -424,18 +475,18 @@ namespace Ntilde.VT
             };
         }
 
-        private void ImportScrollbackNoLock(TerminalStateSnapshot snapshot, Hyperlink[] links)
+        private void ImportScrollbackNoLock(
+            TerminalStateSnapshot snapshot, byte[]? blob, Hyperlink[] links)
         {
             _scrollback.Clear();
 
-            TerminalScreenState state = snapshot.Scrollback;
+            TerminalScreenState? state = snapshot.Scrollback;
             int sourceCols = snapshot.Cols;
-            if (state is null || string.IsNullOrEmpty(state.CellsBase64) || sourceCols <= 0 || Cols <= 0)
+            if (state is null || blob is null || blob.Length == 0 || sourceCols <= 0 || Cols <= 0)
             {
                 return;
             }
 
-            byte[] blob = Convert.FromBase64String(state.CellsBase64);
             ReadOnlySpan<TerminalCell> source = MemoryMarshal.Cast<byte, TerminalCell>(blob);
             int rowCount = Math.Min(snapshot.ScrollbackRowCount, source.Length / sourceCols);
             if (rowCount <= 0)
@@ -653,6 +704,12 @@ namespace Ntilde.VT
         /// read a struct laid out differently and hand back plausible garbage, so the mismatch has
         /// to be caught here or not at all.
         /// </summary>
+        /// <remarks>
+        /// The structure half of <see cref="StateTransferValidation"/>'s rule for the buffer
+        /// payload: a format version, a struct layout id and the geometry every row/column index
+        /// in the payload is expressed in. Sizes and counts inside those dimensions - the cursor,
+        /// the scroll region, the scrollback row count - are clamped by the import instead.
+        /// </remarks>
         private static void ValidateVersionAndCellLayout(TerminalStateSnapshot snapshot)
         {
             if (snapshot.Version != TerminalStateSnapshot.CurrentVersion)
@@ -660,6 +717,16 @@ namespace Ntilde.VT
                 throw new InvalidOperationException(
                     $"Terminal state version mismatch: expected v={TerminalStateSnapshot.CurrentVersion}, " +
                     $"actual v={snapshot.Version}.");
+            }
+
+            // Geometry is structure, not a count: every ExtendedText/LinkIds key is a
+            // `row * Cols + col` encoding, so a non-positive Cols makes the whole side-table
+            // coordinate space meaningless rather than merely smaller. It is also the dimension
+            // TerminalStateTransfer.Restore resizes the destination buffer to.
+            if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
+            {
+                throw StateTransferValidation.Reject(
+                    "snapshot geometry", $"{snapshot.Cols}x{snapshot.Rows} is not a usable screen");
             }
 
             int expectedSizeOf = Unsafe.SizeOf<TerminalCell>();

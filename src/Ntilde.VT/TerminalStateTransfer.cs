@@ -22,6 +22,12 @@ namespace Ntilde.VT
     /// Order is not incidental. The buffer import is what mints the <see cref="Hyperlink"/>
     /// identities; the parser can only be seeded with instances that already exist.
     /// </para>
+    /// <para>
+    /// It owns the geometry precondition for the same reason it owns the seeding: a step that is
+    /// easy to forget and silent when forgotten needs an owner, and importing into a
+    /// wrong-sized buffer is the more damaging of the two - it produces a visibly wrong screen
+    /// rather than a subtly wrong one.
+    /// </para>
     /// </remarks>
     public static class TerminalStateTransfer
     {
@@ -31,10 +37,15 @@ namespace Ntilde.VT
         /// table the buffer rebuilt.
         /// </summary>
         /// <param name="buffer">
-        /// The buffer to restore into. It must already be the snapshot's size - neither this method
-        /// nor <see cref="TerminalBuffer.ImportState"/> resizes, and a mismatch degrades silently
-        /// rather than throwing. Construct it at <see cref="TerminalStateSnapshot.Cols"/> x
-        /// <see cref="TerminalStateSnapshot.Rows"/>, or resize it first.
+        /// The buffer to restore into, at any size. It is resized to
+        /// <see cref="TerminalStateSnapshot.Cols"/> x <see cref="TerminalStateSnapshot.Rows"/>
+        /// first when it does not already match, because
+        /// <see cref="TerminalBuffer.ImportState"/> does not resize and a geometry mismatch there
+        /// degrades <em>silently</em>: the cells are cropped and padded to the destination's
+        /// shape, and the extended-text and link entries are then applied at coordinates from the
+        /// other geometry, which puts a grapheme or an OSC 8 underline on the wrong cell. The
+        /// resize is free in the case that matters - a freshly constructed buffer is empty, so
+        /// there is nothing to reflow - and the import overwrites every row immediately after.
         /// </param>
         /// <param name="parser">
         /// The parser driving <paramref name="buffer"/>. It must have been constructed with the
@@ -56,6 +67,16 @@ namespace Ntilde.VT
             ArgumentNullException.ThrowIfNull(buffer);
             ArgumentNullException.ThrowIfNull(parser);
             ArgumentNullException.ThrowIfNull(snapshot);
+
+            // Before anything else, and before ImportState's own validation runs: a caller that
+            // got this wrong gets a correct screen rather than a subtly wrong one. Resize ignores
+            // non-positive dimensions, which is why the geometry is *also* structure that
+            // ImportState refuses outright - a 0-column snapshot would otherwise leave the buffer
+            // at its old size and import into it.
+            if (snapshot.Cols != buffer.Cols || snapshot.Rows != buffer.Rows)
+            {
+                buffer.Resize(snapshot.Cols, snapshot.Rows);
+            }
 
             IReadOnlyList<Hyperlink> links = buffer.ImportState(snapshot);
 

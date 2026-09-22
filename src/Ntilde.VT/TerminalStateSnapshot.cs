@@ -18,8 +18,20 @@ namespace Ntilde.VT
     /// stacks, hyperlink identity and the parser's own position, which is what "resume applying
     /// bytes" needs.
     ///
-    /// Inline images are deliberately excluded: the handles are decoder-owned and not
-    /// transferable, and carrying the pixels would dominate the payload.
+    /// Two things are deliberately excluded, and a reader who finds them missing should read
+    /// this rather than assume an oversight.
+    ///
+    /// <b>Inline images</b>: the handles are decoder-owned and not transferable, and carrying the
+    /// pixels would dominate the payload.
+    ///
+    /// <b>The OSC 133 shell-integration marks</b> (<c>TerminalBuffer</c>'s tracked command-start
+    /// and command-output-start marks, and the accepting-input flag). A mark is anchored by a
+    /// <c>ScrollbackPages.Generation</c> value, which is a process-local epoch: the number means
+    /// nothing in the importing process, so a transferred mark would resolve to an arbitrary row
+    /// or to none. They are also the one piece of excluded state that repairs itself - the next
+    /// <c>OSC 133;B</c> the shell emits re-arms them, which for an interactive shell is the next
+    /// prompt. Carrying a process-local anchor to buy back less than one prompt of accuracy is
+    /// the wrong trade, so <see cref="TerminalBuffer.ImportState"/> clears them instead.
     /// </remarks>
     public sealed class TerminalStateSnapshot
     {
