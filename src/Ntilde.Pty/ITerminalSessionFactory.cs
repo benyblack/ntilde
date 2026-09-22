@@ -29,7 +29,10 @@ namespace Ntilde.Pty
     /// plan already did that work.
     /// </param>
     /// <param name="Ssh">
-    /// Set for an SSH pane, null for a local one. When set, every local field above is ignored.
+    /// Set for an SSH pane, null for a local one. When set, <see cref="Command"/>,
+    /// <see cref="Arguments"/>, <see cref="StartingDirectory"/>, <see cref="EnvironmentOverrides"/>
+    /// and <see cref="SkipPowerShellPostLaunchInit"/> are ignored; <see cref="Cols"/> and
+    /// <see cref="Rows"/> still apply.
     /// </param>
     public sealed record TerminalSessionRequest(
         string Command,

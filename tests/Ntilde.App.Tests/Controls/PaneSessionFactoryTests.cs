@@ -137,6 +137,11 @@ public class PaneCapabilityGatingTests
         pane.CreateAndWireParser();
         pane.InitializeSessionCore("fake-shell", string.Empty, profile: null, cols: 80, rows: 24);
 
+        // Pins that the spawn actually succeeded and the factory's session is the one wired up -
+        // without this, a spawn that silently failed (Session stays null, nothing gets wired)
+        // would leave SentInput empty too, and this test would pass for the wrong reason.
+        Assert.Same(session, pane.Session);
+
         pane.Parser!.OnResponse?.Invoke("\u001b[?62;c");
 
         Assert.Empty(session.SentInput);
