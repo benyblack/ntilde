@@ -198,6 +198,40 @@ namespace Ntilde.VT
             return clone;
         }
 
+        /// <summary>
+        /// The main-screen flag stack, bottom first. State-transfer plumbing for
+        /// <see cref="TerminalStateSnapshot"/> - deliberately internal, because the protocol
+        /// surface is push/pop/set and nothing outside Ntilde.VT should reach past it.
+        /// </summary>
+        internal int[] ExportMainStackForState()
+        {
+            lock (_gate) { return _mainStack.AsSpan(0, _mainCount).ToArray(); }
+        }
+
+        /// <summary>The alternate-screen flag stack, bottom first. See <see cref="ExportMainStackForState"/>.</summary>
+        internal int[] ExportAltStackForState()
+        {
+            lock (_gate) { return _altStack.AsSpan(0, _altCount).ToArray(); }
+        }
+
+        /// <summary>
+        /// Replaces both stacks and the active-screen selection. Incoming lengths are clamped to
+        /// <see cref="MaxStackDepth"/> - the payload arrives from another process, and a longer
+        /// array is a bug or an attack, never something to honour.
+        /// </summary>
+        internal void ImportStacksForState(int[] main, int[] alt, bool altActive)
+        {
+            lock (_gate)
+            {
+                _mainCount = Math.Min(main.Length, MaxStackDepth);
+                Array.Copy(main, _mainStack, _mainCount);
+                _altCount = Math.Min(alt.Length, MaxStackDepth);
+                Array.Copy(alt, _altStack, _altCount);
+                _altActive = altActive;
+                RefreshCurrentFlagsNoLock();
+            }
+        }
+
         private static int Mask(int flags) => flags <= 0 ? 0 : flags & SupportedFlags;
 
         private void RefreshCurrentFlagsNoLock()

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -85,9 +86,18 @@ namespace Ntilde.VT
             sb.Append(" dcs=").Append(DcsBuffer);
             sb.Append(" kitty=").Append(KittyPayload).Append(" ovf=").Append(KittyPayloadOverflow);
             sb.Append(" kparams=");
-            foreach (KeyValuePair<string, string> kv in KittyPendingParams)
+
+            // Sorted, not in dictionary order: this rendering is the equality oracle the
+            // snapshot-parity tests compare two parsers with, across hundreds of cut points.
+            // Dictionary enumeration order is unspecified, so an unsorted rendering would make
+            // two identical parsers occasionally disagree - a parity failure indistinguishable
+            // from a real divergence. Only the rendering sorts; AnsiParser's own dictionary is
+            // copied verbatim, which is the point of exporting it.
+            var kittyKeys = new List<string>(KittyPendingParams.Keys);
+            kittyKeys.Sort(StringComparer.Ordinal);
+            foreach (string key in kittyKeys)
             {
-                sb.Append(kv.Key).Append('=').Append(kv.Value).Append(',');
+                sb.Append(key).Append('=').Append(KittyPendingParams[key]).Append(',');
             }
 
             sb.Append(" charsets=");
