@@ -55,10 +55,10 @@ Concretely, from the `.csproj` graph:
 
 | Assembly | Depends on | Owns |
 |---|---|---|
-| `Ntilde.VT` | (leaf) | VT/ANSI parser, terminal buffer state, scrollback, reflow |
+| `Ntilde.VT` | (leaf) | VT/ANSI parser, terminal buffer state, scrollback, reflow, transferable terminal/parser state (TerminalStateSnapshot) |
 | `Ntilde.Replay` | VT | Session recording/playback, snapshots, replay format v2 |
 | `Ntilde.Rendering` | VT, SkiaSharp | Skia glyph atlas/cache, pixel grid, sixel decoder |
-| `Ntilde.Pty` | Replay | PTY transport: rust-PTY adapter, session contracts. **Does not depend on VT** — see arch test `Pty_must_not_depend_on_Vt` |
+| `Ntilde.Pty` | Replay | PTY transport: rust-PTY adapter, session contracts, session factory contract, UTF-8 chunk decoding. **Does not depend on VT** — see arch test `Pty_must_not_depend_on_Vt` |
 | `Ntilde.Platform` | Pty | Platform-utilities: input routing, path mapping, SSH transport/sessions, credential vault |
 | `Ntilde.CommandAssist` | (leaf) | Command Assist domain, models, storage, shell integration, view-models and application core. **No Avalonia** — see arch test `CommandAssist_must_not_depend_on_Avalonia_or_the_App` |
 | `Ntilde.Backup` | (leaf) | `.ntildebackup` bundle format, export/import/restore, the category-to-path catalogue, the debounced snapshot scheduler. Never reads secret storage |
