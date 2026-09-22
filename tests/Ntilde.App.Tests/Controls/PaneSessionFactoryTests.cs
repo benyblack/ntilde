@@ -1,11 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Ntilde.Controls;
+using Ntilde.Platform.Ssh.Interactions;
+using Ntilde.Platform.Ssh.Launch;
 using Ntilde.Pty;
 using Ntilde.Replay;
 using Ntilde.Shell;
+using Ntilde.VT;
 using Xunit;
 
 namespace Ntilde.Tests.Controls;
@@ -119,6 +124,30 @@ internal sealed class RecordingSessionFactory : ITerminalSessionFactory
     }
 }
 
+/// <summary>
+/// A factory that refuses, and records what it was asked for. The SSH branch's whole contract on
+/// failure is negative - no session, no fall-through - so the request log is the only way to say
+/// "and it did not then quietly try again as a local shell".
+/// </summary>
+internal sealed class ThrowingSessionFactory : ITerminalSessionFactory
+{
+    public List<TerminalSessionRequest> Requests { get; } = new();
+
+    public ITerminalSession Create(TerminalSessionRequest request)
+    {
+        Requests.Add(request);
+        throw new InvalidOperationException("ssh-connect-failed-in-test");
+    }
+}
+
+/// <summary>A handler that is never invoked; only its identity crosses the seam.</summary>
+internal sealed class FakeSshInteractionHandler : ISshInteractionHandler
+{
+    public Task<SshInteractionResponse> HandleAsync(
+        SshInteractionRequest request, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("the factory seam never runs the handler");
+}
+
 public class PaneCapabilityGatingTests
 {
     /// <summary>
@@ -202,8 +231,18 @@ public class PaneSessionFactoryTests
         PaneSpawnTestHelpers.DisableShellIntegration(pane);
         pane.SessionFactory = factory;
 
+        // A non-default working directory, so StartingDirectory is asserted against a value that
+        // has to have travelled rather than one an empty request would satisfy by accident. It
+        // comes off the profile because that is the only way into the request - InitializeSessionCore
+        // reads `profile?.StartingDirectory ?? ""`. Type stays Local so this remains the local branch.
+        var profile = new TerminalProfile
+        {
+            Type = ConnectionType.Local,
+            StartingDirectory = "/tmp/pane-session-factory",
+        };
+
         pane.CreateAndWireParser();
-        pane.InitializeSessionCore("bash", "-l", profile: null, cols: 100, rows: 40);
+        pane.InitializeSessionCore("bash", "-l", profile, cols: 100, rows: 40);
 
         TerminalSessionRequest? request = factory.LastRequest;
         Assert.NotNull(request);
@@ -212,6 +251,23 @@ public class PaneSessionFactoryTests
         Assert.Equal(100, request.Cols);
         Assert.Equal(40, request.Rows);
         Assert.Null(request.Ssh);
+
+        // The three the summary above calls dangerous, and which this test used not to check.
+        Assert.Equal("/tmp/pane-session-factory", request.StartingDirectory);
+
+        // Shell integration is off for this pane (see PaneSpawnTestHelpers), so both of its
+        // outputs must be off too: no env overrides to inject, and therefore no reason to suppress
+        // PowerShell's post-launch init. A request that carried either anyway would mean the pane
+        // decided it was integrated when it was not.
+        //
+        // These are the integration-OFF values, which is all this test can pin: the only producer
+        // of a non-null EnvironmentOverrides is ApplyShellIntegrationLaunchPlan, which needs
+        // CommandAssistServices and writes a bootstrap file to disk. What they establish is that
+        // the fields are populated FROM the pane rather than left at a constant - the request used
+        // to be asserted without them at all, so a seam that dropped them silently would have
+        // passed.
+        Assert.Null(request.EnvironmentOverrides);
+        Assert.False(request.SkipPowerShellPostLaunchInit);
     }
 
     /// <summary>
@@ -264,5 +320,147 @@ public class PaneSessionFactoryTests
         using var pane = new TerminalPane();
 
         Assert.Same(Ntilde.Shell.DefaultTerminalSessionFactory.Instance, pane.SessionFactory);
+    }
+}
+
+/// <summary>
+/// The SSH half of the seam, which is the half with the untyped crossing in it.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Shell integration is deliberately NOT disabled here, unlike the local-branch tests. The SSH
+/// path does not call <c>ApplyShellIntegrationLaunchPlan</c> at all - it calls
+/// <c>ArmRemoteShellIntegrationTracker</c>, which allocates a <c>ShellLifecycleTracker</c> and
+/// subscribes to it and needs no <c>CommandAssistServices</c>. Turning integration off would
+/// therefore suppress a real production behaviour for no benefit, so these tests run the branch
+/// as the app runs it.
+/// </para>
+/// <para>
+/// Every profile here leaves <c>SshBackendKind</c> at its <c>OpenSsh</c> default, which keeps
+/// <c>RegisterActiveSshSession</c> a no-op: the Native branch writes into the process-wide
+/// <c>ActiveSshSessionRegistry</c> singleton, and a test that leaves an entry behind there is a
+/// test that pollutes the rest of the lane.
+/// </para>
+/// </remarks>
+public class PaneSshSessionFactoryTests
+{
+    private static TerminalProfile SshProfile() => new()
+    {
+        Name = "remote-host",
+        Type = ConnectionType.SSH,
+        SshHost = "example.invalid",
+        SshUser = "someone",
+    };
+
+    /// <summary>
+    /// The descriptor has to carry all four fields the SSH branch used to read off the pane
+    /// directly, and the diagnostics level has to survive the trip as a number.
+    /// </summary>
+    /// <remarks>
+    /// <c>SshSessionDescriptor.DiagnosticsLevel</c> is an <c>int</c> because naming
+    /// <c>SshDiagnosticsLevel</c> in Ntilde.Pty would invert the dependency on Ntilde.Platform.
+    /// That is the seam's one untyped crossing and the entire reason the layering constraint is
+    /// paid for, so the round trip - <c>(int)</c> on the way in, <c>(SshDiagnosticsLevel)</c> on
+    /// the way out - is asserted rather than assumed. A level silently reduced to <c>None</c>
+    /// drops the <c>-v</c> flags and takes the diagnostics the user asked for with it, and nothing
+    /// throws.
+    /// </remarks>
+    [AvaloniaFact]
+    public void SshSpawn_HandsTheFactoryTheProfileDiagnosticsHandlerAndNativeFlag()
+    {
+        TerminalProfile profile = SshProfile();
+        var handler = new FakeSshInteractionHandler();
+        var session = new PlainFakeTerminalSession { ShellCommand = "ssh someone@example.invalid" };
+        var factory = new RecordingSessionFactory(session);
+
+        using var pane = new TerminalPane(
+            profile,
+            new TerminalSettings { ExperimentalNativeSshEnabled = true },
+            SshDiagnosticsLevel.VeryVerbose);
+        pane.SshInteractionHandler = handler;
+        pane.SessionFactory = factory;
+
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 90, rows: 30);
+
+        Assert.Same(session, pane.Session);
+
+        TerminalSessionRequest? request = factory.LastRequest;
+        Assert.NotNull(request);
+        Assert.Equal(90, request!.Cols);
+        Assert.Equal(30, request.Rows);
+
+        SshSessionDescriptor? ssh = request.Ssh;
+        Assert.NotNull(ssh);
+        Assert.Equal(profile.Id, ssh!.ProfileId);
+        Assert.Same(handler, ssh.InteractionHandler);
+        Assert.True(ssh.NativeSshEnabled);
+
+        // Both directions of the untyped crossing, named explicitly so a failure says which end
+        // of it broke.
+        Assert.Equal((int)SshDiagnosticsLevel.VeryVerbose, ssh.DiagnosticsLevel);
+        Assert.Equal(SshDiagnosticsLevel.VeryVerbose, (SshDiagnosticsLevel)ssh.DiagnosticsLevel);
+
+        // The fix-up after a successful connect: the session decides what command actually ran
+        // (the SSH factory builds the command line, including -v flags and ProxyJump), and the
+        // pane adopts it. SessionManager persists ShellCommand, so a pane that kept the profile's
+        // placeholder would write the wrong thing to disk.
+        Assert.Equal("ssh someone@example.invalid", pane.ShellCommand);
+        Assert.Equal(string.Empty, pane.ShellArgs);
+    }
+
+    /// <summary>
+    /// A factory that throws must leave the pane with no session, a visible banner, and - above
+    /// all - no second attempt.
+    /// </summary>
+    /// <remarks>
+    /// Falling back to <c>RustPtySession</c> after a failed SSH connect is the specific failure
+    /// this branch's "fail loudly" comment exists to prevent: the fallback would spawn a LOCAL
+    /// shell in a tab the user opened to reach a remote host, with the SSH arguments dropped, and
+    /// it would look like a successful connection. The request log is asserted to hold exactly one
+    /// entry, and that entry to be the SSH one.
+    /// </remarks>
+    [AvaloniaFact]
+    public void SshSpawn_WhenTheFactoryThrows_LeavesNoSessionAndDoesNotFallBackToALocalShell()
+    {
+        TerminalProfile profile = SshProfile();
+        var factory = new ThrowingSessionFactory();
+
+        using var pane = new TerminalPane(profile, new TerminalSettings(), SshDiagnosticsLevel.Verbose);
+        pane.SessionFactory = factory;
+
+        pane.CreateAndWireParser();
+        pane.InitializeSessionCore(profile.Command, profile.Arguments, profile, cols: 80, rows: 24);
+
+        Assert.Null(pane.Session);
+
+        TerminalSessionRequest request = Assert.Single(factory.Requests);
+        Assert.NotNull(request.Ssh);
+
+        Assert.Contains("SSH Connection Failed", ScreenText(pane), StringComparison.Ordinal);
+    }
+
+    private static string ScreenText(TerminalPane pane)
+    {
+        pane.Buffer!.Lock.EnterReadLock();
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (TerminalRow row in pane.Buffer.ViewportRows)
+            {
+                foreach (TerminalCell cell in row.Cells)
+                {
+                    sb.Append(cell.Character == '\0' ? ' ' : cell.Character);
+                }
+
+                sb.Append('\n');
+            }
+
+            return sb.ToString();
+        }
+        finally
+        {
+            pane.Buffer.Lock.ExitReadLock();
+        }
     }
 }
