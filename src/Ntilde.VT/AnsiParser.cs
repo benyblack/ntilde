@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Ntilde.VT
 {
-    public class AnsiParser
+    public partial class AnsiParser
     {
         private TerminalBuffer _buffer;
         private enum State { Normal, Esc, Csi, Osc, OscEsc, Dcs, DcsEsc, Charset, Apc, ApcEsc, EscHash }
