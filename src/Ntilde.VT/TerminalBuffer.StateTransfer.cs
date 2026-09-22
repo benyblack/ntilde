@@ -68,7 +68,18 @@ namespace Ntilde.VT
                 // comparison sees a difference that is not one.
                 (TerminalRow[] mainRows, TerminalRow[] altRows) = ResolveScreensNoLock();
                 snapshot.Main = ExportScreenNoLock(mainRows, links);
-                snapshot.Alt = ExportScreenNoLock(altRows, links);
+
+                // The alt side is shape-normalised on the way out, the main side is not, because
+                // the two screens degrade differently when a resize leaves the detached one at the
+                // old shape. SwitchToMainScreen crops and pads a wrong-shaped _mainScreen
+                // (ResizeDetachedScreenBufferNoLock), so exporting its content is what the source
+                // buffer would itself have shown. EnterAltScreen instead *discards* a wrong-shaped
+                // _altScreen and allocates a blank one, so exporting that content would resurrect
+                // it: the source, on the next `ESC [ ?47h` (clearAlt: false), shows a blank alt
+                // screen, while a buffer restored from the raw content would show the carried
+                // content in a now-correctly-shaped array that passes the very check that would
+                // have discarded it. ?1049h masks this by clearing; ?47h and ?1047h do not.
+                snapshot.Alt = ExportScreenNoLock(EnsureScreenShapeNoLock(altRows), links);
                 snapshot.Scrollback = ExportScrollbackNoLock(maxScrollbackRows, links, snapshot);
                 snapshot.CurrentHyperlinkId = links.IndexOf(_currentHyperlink);
                 snapshot.Hyperlinks = links.Entries;
@@ -191,9 +202,20 @@ namespace Ntilde.VT
                 : (_viewport, _altScreen);
         }
 
-        /// <summary>Returns <paramref name="rows"/> if it already matches this buffer's size, or a
-        /// freshly built screen of the right shape if it does not (a detached screen can be left
-        /// at a pre-resize size until the next switch).</summary>
+        /// <summary>
+        /// Returns <paramref name="rows"/> if it already matches this buffer's size, or a freshly
+        /// built blank screen of the right shape if it does not (a detached screen can be left at a
+        /// pre-resize size until the next switch).
+        /// </summary>
+        /// <remarks>
+        /// Blank-on-mismatch rather than crop-and-pad, because this is <c>EnterAltScreen</c>'s rule
+        /// (<c>TerminalBuffer.AccessAndSnapshot.cs:666-673</c>): a wrong-shaped alt screen is
+        /// discarded, not resized. Used on both sides of the transfer - to normalise the alt screen
+        /// on the way out, so an export never ships content the source itself would have thrown
+        /// away, and to give the import a correctly-shaped target to write into. The main screen
+        /// does <em>not</em> go through here on export: <c>SwitchToMainScreen</c> crops and pads it
+        /// instead, so its content survives a shape change and must be exported.
+        /// </remarks>
         private TerminalRow[] EnsureScreenShapeNoLock(TerminalRow[]? rows)
         {
             if (rows != null && rows.Length == Rows && (Rows == 0 || rows[0].Cells.Length == Cols))

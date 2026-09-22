@@ -150,6 +150,71 @@ public class TerminalStateSnapshotTests
     }
 
     /// <summary>
+    /// A resize replaces <c>_viewport</c> but leaves the stashed <c>_mainScreen</c> pointing at the
+    /// pre-resize array - it is only reconciled on the next screen switch
+    /// (<c>TerminalBuffer.ResizeAndReflow.cs</c>, the "Normal Main Screen Resize" branch). So the
+    /// export has to resolve the active screen through <c>_viewport</c>; reading <c>_mainScreen</c>
+    /// directly ships a screen that is stale in both content and shape.
+    /// </summary>
+    [Fact]
+    public void ExportImport_AfterAResize_CarriesTheScreenTheViewportActuallyHolds()
+    {
+        (AnsiParser a, TerminalBuffer bufA) = NewPair(cols: 40, rows: 8);
+
+        // 50 characters: wraps across two rows at 40 columns, and reflows back onto one at 60.
+        // That makes the stale array observably different from the live one rather than merely
+        // a different object holding the same text.
+        a.Process(new string('x', 39) + "ABCDEFGHIJK");
+        bufA.Resize(60, 10);
+
+        TerminalStateSnapshot snapshot = bufA.ExportState(UnlimitedScrollback);
+        Assert.Equal(60, snapshot.Cols);
+        Assert.Equal(10, snapshot.Rows);
+
+        (_, TerminalBuffer bufC) = NewPair(cols: 60, rows: 10);
+        bufC.ImportState(snapshot);
+
+        Assert.Equal(RowText(bufA, 0), RowText(bufC, 0));
+        Assert.Equal(RowText(bufA, 1), RowText(bufC, 1));
+        Assert.Equal(new string('x', 39) + "ABCDEFGHIJK", RowText(bufC, 0));
+    }
+
+    /// <summary>
+    /// <c>EnterAltScreen</c> discards a wrong-shaped <c>_altScreen</c> and allocates a blank one
+    /// rather than resizing it, so an export must not ship content the source buffer would itself
+    /// have thrown away. Shipping it would be worse than losing it: the import writes into a
+    /// correctly-shaped array, which then passes the very shape check that would have discarded it,
+    /// and the restored buffer shows content on an alt screen the source shows blank.
+    /// </summary>
+    /// <remarks>
+    /// Uses <c>?47h</c> rather than <c>?1049h</c> deliberately: 1049 clears on entry and would mask
+    /// the divergence entirely. 47 and 1047 do not.
+    /// </remarks>
+    [Fact]
+    public void ExportState_BlanksAnAltScreenLeftAtAStaleShapeByAResize()
+    {
+        (AnsiParser a, TerminalBuffer bufA) = NewPair(cols: 40, rows: 8);
+        a.Process("\u001b[?47h");            // legacy alt screen: does NOT clear on entry
+        a.Process("alt screen leftovers");
+        a.Process("\u001b[?47l");            // back to main; _altScreen keeps the content
+
+        // A main-screen resize touches neither stashed screen, so _altScreen is now genuinely
+        // stale-shaped: 8 rows of 40 columns against a 10x60 buffer.
+        bufA.Resize(60, 10);
+
+        TerminalStateSnapshot snapshot = bufA.ExportState(UnlimitedScrollback);
+
+        (AnsiParser c, TerminalBuffer bufC) = NewPair(cols: 60, rows: 10);
+        bufC.ImportState(snapshot);
+
+        a.Process("\u001b[?47h");
+        c.Process("\u001b[?47h");
+
+        Assert.Equal("", RowText(bufA, 0));
+        Assert.Equal(RowText(bufA, 0), RowText(bufC, 0));
+    }
+
+    /// <summary>
     /// Export → bytes → import into a fresh buffer → export again must produce the same bytes.
     /// The import in the middle is the point: a serializer round trip alone only proves the JSON
     /// survives, while this proves the buffer reconstructed from it is the same buffer. Anything
@@ -200,12 +265,14 @@ public class TerminalStateSnapshotTests
         (AnsiParser a, TerminalBuffer bufA) = NewPair(cols: 80, rows: 24);
         bufA.MaxHistory = 20000;
 
-        // 24 lines more than the 10k we want in scrollback: only rows that scroll OFF the
+        // Comfortably more than the 10k we want in scrollback: only rows that scroll OFF the
         // viewport reach it, so the 24-row viewport keeps the newest ones back. Emitting exactly
         // 10,000 lines leaves 9,977 rows in scrollback (10,000 lines + the cursor's empty row,
         // minus the 24 on screen) and the cap below never binds - the measurement is meant to be
-        // of a full 10k-row scrollback, and of a capped export.
-        for (int i = 0; i < 10_000 + 24; i++)
+        // of a full 10k-row scrollback, and of a capped export. The margin is 100 rather than the
+        // 24 that would just barely do it, so that a future one-row shift in row accounting costs
+        // a row of slack instead of flipping this straight back to a hard failure.
+        for (int i = 0; i < 10_000 + 100; i++)
         {
             a.Process($"scrollback line {i} with some filler text to make it realistic\r\n");
         }

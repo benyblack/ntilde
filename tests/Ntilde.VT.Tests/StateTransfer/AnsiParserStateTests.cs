@@ -175,4 +175,51 @@ public class AnsiParserStateTests
 
         Assert.Equal(0, a.ExportState().PendingTextLength);
     }
+
+    /// <summary>
+    /// <c>ToDebugString()</c> is the equality oracle the snapshot-parity tests compare two parsers
+    /// with, across hundreds of cut points and every corpus stream. <c>Dictionary</c> enumeration
+    /// order is unspecified, so rendering <c>KittyPendingParams</c> in it would let two identical
+    /// parsers occasionally disagree - a parity failure indistinguishable from a real divergence,
+    /// and the most expensive possible way to discover a missing sort. Hence this test rather than
+    /// a comment.
+    /// </summary>
+    [Fact]
+    public void ToDebugString_RendersKittyPendingParamsInSortedOrder()
+    {
+        var state = new AnsiParserState();
+
+        // Inserted in deliberately non-sorted order; insertion order is what an unsorted
+        // rendering would most likely echo back.
+        state.KittyPendingParams["z"] = "26";
+        state.KittyPendingParams["m"] = "1";
+        state.KittyPendingParams["a"] = "T";
+        state.KittyPendingParams["f"] = "100";
+
+        string rendered = state.ToDebugString();
+
+        Assert.Contains("kparams=a=T,f=100,m=1,z=26,", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The sort must not depend on the order the keys went in, which is the whole point: two
+    /// parsers that reached the same state by different insertion orders must render identically.
+    /// </summary>
+    [Fact]
+    public void ToDebugString_IsIndependentOfKittyPendingParamInsertionOrder()
+    {
+        var ascending = new AnsiParserState();
+        foreach (string key in new[] { "a", "f", "m", "z" })
+        {
+            ascending.KittyPendingParams[key] = key.ToUpperInvariant();
+        }
+
+        var descending = new AnsiParserState();
+        foreach (string key in new[] { "z", "m", "f", "a" })
+        {
+            descending.KittyPendingParams[key] = key.ToUpperInvariant();
+        }
+
+        Assert.Equal(ascending.ToDebugString(), descending.ToDebugString());
+    }
 }
