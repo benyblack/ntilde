@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text;
 using Ntilde.Pty;
 using Xunit;
@@ -48,6 +49,10 @@ public class Utf8ChunkDecoderTests
     private static byte[][] SplitAt(byte[] input, int offset) =>
         [input[..offset], input[offset..]];
 
+    /// <summary>One chunk per byte, which is the worst case for the carry.</summary>
+    private static byte[][] SplitEveryByte(byte[] input) =>
+        [.. input.Select(b => new[] { b })];
+
     public static TheoryData<string> Corpus() => new()
     {
         "hello world",
@@ -89,6 +94,59 @@ public class Utf8ChunkDecoderTests
                 Assert.Equal(DecodeAllReference(chunks), DecodeAll(chunks));
             }
         }
+    }
+
+    /// <summary>
+    /// The same differential, one byte per chunk.
+    /// </summary>
+    /// <remarks>
+    /// Every other test here splits into exactly two chunks, so the carry is filled and drained
+    /// at most once per stream. A byte-at-a-time feed makes every byte a chunk boundary and so
+    /// exercises repeated carry cycles - including the <c>C3 C3</c> trap, where the decoder emits
+    /// a U+FFFD for the first lead byte while still holding the second, and a carry that was
+    /// cleared on "emitted something" rather than on bytesRead would lose a byte. That case is
+    /// the one ParityHarness's comment calls out as the reason its tail tracking is written the
+    /// way it is, and until now it was only covered by accident.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(Corpus))]
+    public void MatchesEncodingUtf8Decoder_OneByteAtATime(string text)
+    {
+        byte[][] chunks = SplitEveryByte(Encoding.UTF8.GetBytes(text));
+        Assert.Equal(DecodeAllReference(chunks), DecodeAll(chunks));
+    }
+
+    [Fact]
+    public void MatchesEncodingUtf8Decoder_ForRandomByteStreams_OneByteAtATime()
+    {
+        // Same seed and shapes as the split sweep above, fed a byte at a time instead. Random
+        // bytes are mostly invalid UTF-8, so this is where consecutive lead bytes and orphaned
+        // continuations actually occur in bulk.
+        var rng = new Random(0x5EED);
+
+        for (int iteration = 0; iteration < 200; iteration++)
+        {
+            byte[] input = new byte[rng.Next(1, 48)];
+            rng.NextBytes(input);
+
+            byte[][] chunks = SplitEveryByte(input);
+            Assert.Equal(DecodeAllReference(chunks), DecodeAll(chunks));
+        }
+    }
+
+    /// <summary>
+    /// Consecutive lead bytes, fed one at a time, spelled out rather than left to the random
+    /// sweep: this is the exact shape the harness's tail invariant is built around.
+    /// </summary>
+    [Theory]
+    [InlineData(new byte[] { 0xC3, 0xC3 })]
+    [InlineData(new byte[] { 0xC3, 0xC3, 0xA9 })]
+    [InlineData(new byte[] { 0xE4, 0xE4, 0xE4 })]
+    [InlineData(new byte[] { 0xF0, 0xF0, 0x9F, 0x98, 0x80 })]
+    public void ConsecutiveLeadBytes_OneByteAtATime_MatchEncodingUtf8Decoder(byte[] input)
+    {
+        byte[][] chunks = SplitEveryByte(input);
+        Assert.Equal(DecodeAllReference(chunks), DecodeAll(chunks));
     }
 
     [Theory]

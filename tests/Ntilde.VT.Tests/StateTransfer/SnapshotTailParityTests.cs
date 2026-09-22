@@ -113,8 +113,15 @@ public class SnapshotTailParityTests
         return data;
     }
 
-    private static byte[] CorpusBytes(string name) =>
-        ParityCorpus.All().First(c => c.Name == name).Bytes;
+    /// <summary>
+    /// The corpus, loaded once per test class rather than once per theory case. Without the cache
+    /// <see cref="CorpusBytes"/> re-read and re-parsed all sixteen linked <c>.rec</c> fixtures for
+    /// every one of the 108 theory cases, which cost more than the parity runs themselves.
+    /// </summary>
+    private static readonly Dictionary<string, byte[]> CorpusByName =
+        ParityCorpus.All().ToDictionary(c => c.Name, c => c.Bytes, StringComparer.Ordinal);
+
+    private static byte[] CorpusBytes(string name) => CorpusByName[name];
 
     [Theory]
     [MemberData(nameof(CorpusNames))]
@@ -142,7 +149,13 @@ public class SnapshotTailParityTests
         byte[] corpus = CorpusBytes(name);
         if (corpus.Length < 8)
         {
-            return;
+            // Unreachable: ParityCorpusShapeTests asserts every stream is non-empty and the
+            // shortest is far longer than this. Skipping rather than returning because the quarter
+            // and half offsets below would collapse onto each other on a stream this short, and a
+            // silent `return` would report that as a pass - a corpus that shrank to nothing would
+            // look like 36 green resize theories.
+            Assert.Skip(
+                $"corpus '{name}' is {corpus.Length} bytes, too short for distinct resize offsets");
         }
 
         (int Offset, int Cols, int Rows)[] resizes =

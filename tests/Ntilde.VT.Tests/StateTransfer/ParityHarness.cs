@@ -16,10 +16,16 @@ namespace Ntilde.VT.Tests.StateTransfer;
 /// <remarks>
 /// <para>
 /// Byte-at-a-time is the point, not a simplification: it makes every byte offset a legal cut
-/// point and exercises mid-sequence chunking on every corpus for free. The pending-tail tracking
-/// is here rather than in <c>Utf8ChunkDecoder</c> because Ntilde.VT.Tests must not reference
-/// Ntilde.Pty - the decoder's own equivalence is pinned separately by
-/// <c>Utf8ChunkDecoderTests</c>.
+/// point and exercises mid-sequence chunking on every corpus for free.
+/// </para>
+/// <para>
+/// The tail tracking is a deliberate re-implementation of <c>Utf8ChunkDecoder</c>, not a
+/// workaround for a layering rule: this project references Ntilde.Pty and could simply use the
+/// real type. It mirrors it instead so the two can be compared against each other -
+/// <c>ParityRunDecoderEquivalenceTests</c> asserts that this run's
+/// <see cref="ConsumedBytes"/>/<see cref="PendingTail"/> equal a real decoder's at every split
+/// offset. A harness built on the type under test proves the snapshot's stream position against
+/// itself; a mirror that is independently proved equal does not.
 /// </para>
 /// <para>
 /// It tracks the tail with <see cref="Utf8.ToUtf16"/> rather than by watching whether
@@ -177,10 +183,11 @@ internal static class ParityHarness
             }
 
             // C: restored from the snapshot, then fed the tail INCLUDING the pending bytes.
-            // Constructed at the SNAPSHOT's dimensions, not a hardcoded 80x24: ImportState does
-            // not resize, and a width mismatch degrades silently instead of throwing, so a
-            // resize-interleaved run would otherwise compare two different geometries and call
-            // it parity.
+            // Constructed at 80x24 like every other run and left for TerminalStateTransfer.Restore
+            // to resize to the snapshot's dimensions. It used to be constructed at the snapshot's
+            // dimensions by hand, because ImportState does not resize and a mismatch degrades
+            // silently instead of throwing - a defence the helper now owns, so
+            // SnapshotTailParityTests' resize-interleaved theories are also what exercise it.
             //
             // C re-feeds from StreamSeq, which is at or before the cut, so a resize whose offset
             // lands inside the pending decoder tail is applied twice: once by B on its way to the
@@ -198,7 +205,7 @@ internal static class ParityHarness
             // in the TAIL consults. Without it a re-referenced `id=` mints a second Hyperlink and
             // those cells stop grouping, which is what this harness caught on osc8-hyperlinks at
             // cut 36.
-            var c = new ParityRun(b.Buffer.Cols, b.Buffer.Rows, forceConPtyFiltering);
+            var c = new ParityRun(80, 24, forceConPtyFiltering);
             TerminalStateTransfer.Restore(c.Buffer, c.Parser, snapshot);
 
             c.Feed(corpus, (int)snapshot.StreamSeq, corpus.Length, resizes);

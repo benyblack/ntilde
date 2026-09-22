@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Ntilde.VT;
 using Xunit;
 
@@ -289,17 +290,32 @@ public class TerminalStateSnapshotTests
         bufC.ImportState(restored);
         importWatch.Stop();
 
+        // What the payload is made of: both screens plus the capped scrollback, every cell of it
+        // a blittable TerminalCell. Expressed in terms of Unsafe.SizeOf rather than a byte
+        // constant so the bound tracks a legitimate change to the cell's layout instead of
+        // failing on one.
+        long cellCount = (long)snapshot.Cols * (snapshot.ScrollbackRowCount + (2 * snapshot.Rows));
+        long rawCellBytes = cellCount * Unsafe.SizeOf<TerminalCell>();
+
         // Printed so the phase report can quote real numbers rather than estimates.
         Console.WriteLine(
             $"[mux-phase0] 80x24 + 10k scrollback: {bytes.Length} bytes serialized, " +
+            $"{(double)bytes.Length / cellCount:F2} bytes/cell, " +
             $"export {exportWatch.Elapsed.TotalMilliseconds:F1} ms, " +
             $"deserialize+import {importWatch.Elapsed.TotalMilliseconds:F1} ms");
 
         Assert.Equal(10_000, snapshot.ScrollbackRowCount);
+
+        // The bound that actually bounds something. Base64 costs a fixed 4/3, so a payload that
+        // is nothing but the cells lands at ~1.33x the raw size; the 2x ceiling leaves two thirds
+        // of that again for the JSON envelope and the side tables, and still fails outright on a
+        // scrollback embedded twice or a screen that started carrying image pixels. The old 64 MB
+        // ceiling was five times the real 12.9 MB payload and would have passed both.
         Assert.True(
-            bytes.Length < 64 * 1024 * 1024,
-            $"Snapshot ballooned to {bytes.Length} bytes for 80x24 + 10k scrollback; something is " +
-            "being embedded that should not be (images? scrollback twice?).");
+            bytes.Length < rawCellBytes * 2,
+            $"Snapshot is {bytes.Length} bytes for {cellCount} cells ({rawCellBytes} raw) - more " +
+            "than twice the cell data it describes, so something is being embedded that should " +
+            "not be (images? scrollback twice?).");
     }
 
     private static string RowText(TerminalBuffer buffer, int row)
