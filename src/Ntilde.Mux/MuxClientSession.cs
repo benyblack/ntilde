@@ -203,10 +203,21 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Snapshot frame says seq {seq}; its payload says {snapshot.StreamSeq}.");
         }
 
+        if (snapshot.StreamSeq < 0)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Snapshot StreamSeq {snapshot.StreamSeq} is negative.");
+        }
+
         byte[] tail = snapshot.DecoderTail ?? [];
         if (tail.Length > MaxIncompleteUtf8Bytes)
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Decoder tail of {tail.Length} bytes cannot be an incomplete UTF-8 sequence.");
+        }
+
+        if (snapshot.StreamSeq > long.MaxValue - tail.Length)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError,
+                $"Snapshot StreamSeq {snapshot.StreamSeq} plus a {tail.Length}-byte tail overflows a 64-bit stream offset.");
         }
 
         // Seed a fresh decoder with the pending bytes: they complete with the first Output's bytes.
@@ -253,6 +264,15 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError,
                 $"Session {Id}: resize {cols}x{rows} at offset {seq}, expected offset {expected}.");
+        }
+
+        // MaxCells guards a snapshot's grid, but an in-stream resize can demand the same oversize
+        // TerminalBuffer just as well - and unlike attach, there is no earlier point to refuse it at.
+        long cells = (long)cols * rows;
+        if (cells > _client.AttachLimits.MaxCells)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError,
+                $"Session {Id}: resize grid {cols}x{rows} exceeds this client's {_client.AttachLimits.MaxCells}-cell ceiling.");
         }
 
         StreamResize?.Invoke(cols, rows);

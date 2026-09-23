@@ -21,6 +21,15 @@ public sealed class MuxClient : IDisposable
     private readonly BlockingCollection<MuxOutboundFrame> _outbound = new(boundedCapacity: 1024);
     private readonly ConcurrentDictionary<long, TaskCompletionSource<MuxResponse>> _pending = new();
     private readonly ConcurrentDictionary<long, MuxClientSession> _pendingAttaches = new();
+
+    /// <summary>
+    /// Attach request ids a caller gave up on (cancelled or timed out) while the server had already
+    /// committed to answering. A late Snapshot for one of these is dropped and detached instead of
+    /// being treated as unsolicited (which would kill the whole connection over a race the caller,
+    /// not the server, created).
+    /// </summary>
+    private readonly ConcurrentDictionary<long, MuxClientSession> _abandonedAttaches = new();
+
     private readonly ConcurrentDictionary<Guid, MuxClientSession> _sessions = new();
     private long _nextId;
     private int _disconnected;
@@ -46,6 +55,9 @@ public sealed class MuxClient : IDisposable
     public event Action<string?>? Disconnected;
 
     internal bool IsOnDeliveryThread => Thread.CurrentThread == _readerThread;
+
+    /// <summary>What an attaching session may adopt: consulted by <see cref="MuxClientSession.DeliverResize"/> too, since a resize is just as capable of demanding an oversize buffer as an attach's snapshot.</summary>
+    internal MuxAttachLimits AttachLimits => _options.AttachLimits;
 
     public static async Task<MuxClient> ConnectAsync(Stream stream, MuxClientOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -126,7 +138,25 @@ public sealed class MuxClient : IDisposable
                 MuxJsonContext.Default.AttachParams);
             MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.Attach, p, cancellationToken).ConfigureAwait(false);
             if (response.Error is { } error) throw new MuxProtocolException(error.Code, error.Message);
+
+            // A successful attach's reply IS the Snapshot frame; OnSnapshot removes this id from
+            // _pendingAttaches only when it delivers one. Still present here means the server sent a
+            // bare success Response instead - a protocol violation, not a session with nothing to show.
+            if (_pendingAttaches.ContainsKey(id))
+            {
+                throw new MuxProtocolException(MuxErrorCodes.ProtocolError,
+                    $"attach {id} for session {session.Id} completed without a snapshot.");
+            }
+
             return session.AttachedSeq;
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
+        {
+            // The caller gave up, but the server may already have committed to (or still send) a
+            // Snapshot for this id: remember it so a late frame is dropped and detached instead of
+            // read as protocol corruption (see _abandonedAttaches).
+            _abandonedAttaches[id] = session;
+            throw;
         }
         finally
         {
@@ -304,6 +334,7 @@ public sealed class MuxClient : IDisposable
         }
 
         if (_pending.TryGetValue(response.Id, out TaskCompletionSource<MuxResponse>? tcs)) tcs.TrySetResult(response);
+        else _abandonedAttaches.TryRemove(response.Id, out _); // an error reply to an abandoned attach: no Snapshot will follow for this id either
     }
 
     private void OnNotification(MuxNotification notification)
@@ -324,7 +355,21 @@ public sealed class MuxClient : IDisposable
             throw Malformed(MuxFrameKind.Snapshot);
         }
 
-        if (!_pendingAttaches.TryRemove(requestId, out MuxClientSession? session) || session.Id != sessionId)
+        if (!_pendingAttaches.TryRemove(requestId, out MuxClientSession? session))
+        {
+            if (_abandonedAttaches.TryRemove(requestId, out MuxClientSession? abandoned) && abandoned.Id == sessionId)
+            {
+                // The caller gave up on this attach before the snapshot arrived. The server already
+                // subscribed us; undo that instead of treating a frame this client itself solicited
+                // as unsolicited (which would tear down every session on this connection).
+                PostRequest(MuxMethods.Detach, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams);
+                return;
+            }
+
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Unsolicited snapshot for {sessionId} (request {requestId}).");
+        }
+
+        if (session.Id != sessionId)
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Unsolicited snapshot for {sessionId} (request {requestId}).");
         }

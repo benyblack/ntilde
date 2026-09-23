@@ -38,14 +38,14 @@ internal sealed class FakeMuxServerEnd : IDisposable
         Reply(hello.Id, new WelcomeResult { Version = version }, MuxJsonContext.Default.WelcomeResult);
     }
 
-    public static byte[] SnapshotJson(string screen = "", long streamSeq = 0)
+    public static byte[] SnapshotJson(string screen = "", long streamSeq = 0, byte[]? tail = null)
     {
         var buffer = new TerminalBuffer(80, 24);
         var parser = new AnsiParser(buffer, forceConPtyFiltering: false) { ImageDecoder = null };
         parser.Process(screen);
         TerminalStateSnapshot s = buffer.ExportState(100);
         s.Parser = parser.ExportState();
-        s.DecoderTail = [];
+        s.DecoderTail = tail ?? [];
         s.StreamSeq = streamSeq;
         return TerminalStateSerializer.ToBytes(s);
     }

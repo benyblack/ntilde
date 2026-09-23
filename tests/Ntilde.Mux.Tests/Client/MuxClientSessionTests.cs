@@ -197,4 +197,121 @@ public sealed class MuxClientSessionTests
         Assert.Empty(pane.Events);
         await TestWait.UntilAsync(() => !client.IsConnected, "the client drops the connection");
     }
+
+    [Fact]
+    public async Task A_resize_event_over_the_clients_cell_ceiling_disconnects_with_protocol_error()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        MuxClientSession session = client.OpenSession(id, "scripted");
+        var pane = new ClientPaneModel(session);
+
+        Task<long> attach = session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, FakeMuxServerEnd.SnapshotJson()));
+        await attach;
+
+        // MaxCells only guards a snapshot's grid; an in-stream resize can demand the same oversize
+        // buffer just as well, and there is no earlier point at which to refuse it.
+        fake.Raw.Send(MuxFrames.ResizeEvent(id, 0, 100_000, 100_000));
+
+        await TestWait.UntilAsync(() => !client.IsConnected, "the client drops the connection");
+        Assert.Equal(MuxErrorCodes.ProtocolError, client.DisconnectReason);
+        Assert.DoesNotContain(pane.Events, e => e.StartsWith("resize:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Cancelling_AttachAsync_drops_the_late_snapshot_and_detaches_instead_of_disconnecting()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        MuxClientSession session = client.OpenSession(id, "scripted");
+        var pane = new ClientPaneModel(session);
+
+        using var cts = new CancellationTokenSource();
+        Task<long> attach = session.AttachAsync(100, MuxTestHost.DefaultPresentation, cts.Token);
+        MuxRequest request = await fake.ReadRequestAsync();
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => attach);
+
+        // The server had already committed to answering when the caller gave up; its (now unwanted)
+        // snapshot can still arrive.
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, FakeMuxServerEnd.SnapshotJson()));
+
+        // Reading the client's next frame proves its reader thread kept running (rather than tearing
+        // the connection down over what would otherwise look like an unsolicited snapshot) and that
+        // it cleaned up the subscription the server made on our behalf.
+        MuxRequest detach = await fake.ReadRequestAsync();
+        Assert.Equal(MuxMethods.Detach, detach.Method);
+        Assert.True(client.IsConnected);
+        Assert.Empty(pane.Events);
+    }
+
+    [Fact]
+    public async Task A_snapshot_with_a_negative_StreamSeq_fails_the_attach_and_disconnects()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        var pane = new ClientPaneModel(client.OpenSession(id));
+
+        Task<long> attach = pane.Session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, -1, FakeMuxServerEnd.SnapshotJson(streamSeq: -1)));
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => attach);
+        Assert.True(ex is MuxProtocolException { Code: MuxErrorCodes.ProtocolError } or IOException, ex.ToString());
+        Assert.Empty(pane.Events);
+        await TestWait.UntilAsync(() => !client.IsConnected, "the client drops the connection");
+    }
+
+    [Fact]
+    public async Task A_snapshot_whose_StreamSeq_plus_tail_overflows_fails_the_attach_and_disconnects()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        var pane = new ClientPaneModel(client.OpenSession(id));
+
+        Task<long> attach = pane.Session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        byte[] json = FakeMuxServerEnd.SnapshotJson(streamSeq: long.MaxValue, tail: [0xC3]);
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, long.MaxValue, json));
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => attach);
+        Assert.True(ex is MuxProtocolException { Code: MuxErrorCodes.ProtocolError } or IOException, ex.ToString());
+        Assert.Empty(pane.Events);
+        await TestWait.UntilAsync(() => !client.IsConnected, "the client drops the connection");
+    }
+
+    [Fact]
+    public async Task A_plain_success_response_to_attach_with_no_snapshot_throws_protocol_error()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        MuxClientSession session = client.OpenSession(id, "scripted");
+        var pane = new ClientPaneModel(session);
+
+        Task<long> attach = session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Reply(request.Id, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty); // a bare success reply, never a Snapshot
+
+        var ex = await Assert.ThrowsAsync<MuxProtocolException>(() => attach);
+        Assert.Equal(MuxErrorCodes.ProtocolError, ex.Code);
+        Assert.Empty(pane.Events);
+        Assert.True(client.IsConnected); // the attach itself failed; the connection did not
+    }
 }
