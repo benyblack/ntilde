@@ -157,6 +157,31 @@ public sealed class MuxClientSessionTests
     }
 
     [Fact]
+    public async Task Stream_events_come_from_the_reader_thread_but_Disconnected_from_whoever_ends_the_connection()
+    {
+        // Pins the thread contract documented on MuxClientSession (Phase 2's pane marshals by it).
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        MuxClientSession session = client.OpenSession(id, "scripted");
+        string? snapshotThread = null, outputThread = null;
+        int disconnectedThread = -1, disconnectedCount = 0;
+        session.SnapshotReceived += _ => snapshotThread = Thread.CurrentThread.Name;
+        session.OnOutputReceived += _ => outputThread = Thread.CurrentThread.Name;
+        session.Disconnected += _ => { disconnectedThread = Environment.CurrentManagedThreadId; disconnectedCount++; };
+
+        await session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        host.Fake(id).Emit("x");
+        await host.SettleAsync(id, client);
+        client.Dispose();
+
+        Assert.Equal("MuxClientRead", snapshotThread);
+        Assert.Equal("MuxClientRead", outputThread);
+        Assert.Equal(Environment.CurrentManagedThreadId, disconnectedThread); // the Dispose caller, not the reader
+        Assert.Equal(1, disconnectedCount);
+    }
+
+    [Fact]
     public async Task Output_with_a_seq_gap_disconnects_with_protocol_error()
     {
         using var fake = FakeMuxServerEnd.Create();

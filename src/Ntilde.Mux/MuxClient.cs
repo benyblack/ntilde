@@ -9,8 +9,10 @@ namespace Ntilde.Mux;
 
 /// <summary>
 /// One connection to a <see cref="MuxServer"/>. Its reader thread is the delivery thread for every
-/// session opened on it: snapshots, output, resizes and exits are raised there, strictly in frame
-/// order. RPC continuations are forced asynchronous so no awaiting caller ever runs on it.
+/// session opened on it: snapshots, output, resizes, exits and faults are raised there, strictly in
+/// frame order. RPC continuations are forced asynchronous so no awaiting caller ever runs on it.
+/// <see cref="Disconnected"/> (and each session's) is the exception: it is raised on whichever of the
+/// reader thread, the sender thread or the <see cref="Dispose"/> caller ends the connection first.
 /// </summary>
 public sealed class MuxClient : IDisposable
 {

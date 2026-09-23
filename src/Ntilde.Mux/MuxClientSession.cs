@@ -10,8 +10,20 @@ namespace Ntilde.Mux;
 /// <see cref="SnapshotReceived"/>, parse <see cref="OnOutputReceived"/>, resize on
 /// <see cref="StreamResize"/> - exactly where the event sits in the stream, never ahead of it
 /// (<see cref="OrdersResizeInStream"/>). Device queries are answered by the mux
-/// (<see cref="AnswersDeviceQueries"/>). All events are raised on the owning client's reader thread.
+/// (<see cref="AnswersDeviceQueries"/>).
 /// </summary>
+/// <remarks>
+/// <b>Which thread raises what.</b> The stream events - <see cref="SnapshotReceived"/>,
+/// <see cref="OnOutputReceived"/>, <see cref="StreamResize"/>, <see cref="OnExit"/> and
+/// <see cref="Faulted"/> - are raised on the owning <see cref="MuxClient"/>'s reader thread, one at a
+/// time and strictly in frame order. <see cref="Disconnected"/> is NOT confined to it: it fires on
+/// whichever thread notices the connection ending first - the reader thread (end of stream, a
+/// protocol error, a throwing handler), the sender thread (a failed write), or the thread that calls
+/// <see cref="MuxClient.Dispose"/> - and
+/// it can therefore run concurrently with a stream event still in progress on the reader thread.
+/// A handler that touches UI state or the pane's buffer must marshal for <see cref="Disconnected"/>
+/// even if it relies on the reader thread's ordering for everything else. It is raised at most once.
+/// </remarks>
 public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabilities
 {
     private const int MaxIncompleteUtf8Bytes = 3;
