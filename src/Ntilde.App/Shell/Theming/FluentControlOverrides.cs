@@ -14,11 +14,17 @@ namespace Ntilde.Shell.Theming;
 /// Every key below was verified against the Fluent 12.0.4 control-theme sources
 /// (github.com/AvaloniaUI/Avalonia, tag release/12.0.4, src/Avalonia.Themes.Fluent/Controls/*.xaml)
 /// as an actual {DynamicResource X} lookup in that control's ControlTheme - not a name that merely
-/// exists as a string in the assembly. A few coverage-table rows have no matching DEDICATED key in
-/// 12.0.4 and are intentionally omitted; see task-4-report.md, "Round: user decision" for the list
-/// and why (Separator, ProgressBar, and ListBoxItem's hover/selected/pressed states all read a
-/// broadly-shared System* brush instead of a key scoped to that control, so aliasing it would have
-/// an unpredictable, wider blast radius than this curated map is meant to have).
+/// exists as a string in the assembly. Three coverage-table rows are intentionally not (fully)
+/// covered; see task-4-report.md, "Round: user decision" and "Fix round 1" for the detail:
+/// - ProgressBar's Foreground and ListBoxItem's Selected states need no entry: their brushes
+///   (SystemControlHighlightAccentBrush, SystemControlHighlightListAccent{Low,Medium,High}Brush) are
+///   built with Color="{DynamicResource SystemAccentColor}", so they already follow the live accent
+///   through FluentPaletteMapping's Accent reset.
+/// - ListBoxItem's hover/pressed/foreground states are covered by the "Shared ListBoxItem keys"
+///   group below, not by a ListBoxItem-scoped key (Fluent 12.0.4 has none).
+/// - Separator (SystemControlForegroundBaseMediumLowBrush) stays palette-at-first-use: that brush is
+///   the theme foreground at a fixed 0x66 opacity, and no token equals that exact color, so aliasing
+///   it would silently change what every OTHER consumer of that shared key looks like at startup.
 /// </summary>
 internal static class FluentControlOverrides
 {
@@ -97,6 +103,13 @@ internal static class FluentControlOverrides
         (FluentKey: "ComboBoxItemForegroundSelectedPressed", TokenKey: ThemeKeys.Fg),
         (FluentKey: "ComboBoxItemForegroundDisabled", TokenKey: ThemeKeys.Fg4),
         (FluentKey: "ComboBoxItemForegroundSelectedDisabled", TokenKey: ThemeKeys.Fg4),
+
+        // Shared ListBoxItem keys: a shared System* key is aliased only when FluentPaletteMapping
+        // writes its palette slot directly from the same token and the brush has no Opacity, so
+        // every consumer keeps its startup color and just stops going stale.
+        (FluentKey: "SystemControlHighlightListLowBrush", TokenKey: ThemeKeys.HoverFill),      // palette.ListLow = HoverFill
+        (FluentKey: "SystemControlHighlightListMediumBrush", TokenKey: ThemeKeys.PressedFill), // palette.ListMedium = PressedFill
+        (FluentKey: "SystemControlHighlightAltBaseHighBrush", TokenKey: ThemeKeys.Fg),          // palette.BaseHigh = Fg
 
         // Button
         (FluentKey: "ButtonBackground", TokenKey: ThemeKeys.Panel),
