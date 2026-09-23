@@ -85,6 +85,11 @@ namespace Ntilde
         private DispatcherTimer? _tabStatusTimer;
         private TerminalSettings _settings;
         private GlobalHotkey? _globalHotkey;
+
+        /// <summary>Test-only seam: the window's quake-mode hotkey, so a test can assert that
+        /// OnOpened re-running keeps the one instance (inert under headless - no HWND to hook).</summary>
+        internal GlobalHotkey? GlobalHotkeyForTest => _globalHotkey;
+
         // Started at the end of the constructor, not from SetupCommandPalette() - that method is
         // lazy (runs on palette-open / settings-save), so starting the scheduler there would mean
         // automatic snapshots only begin after the user's first palette open. Disposed in
@@ -305,7 +310,14 @@ namespace Ntilde
         {
             base.OnOpened(e);
             _startup.Mark(StartupPhase.WindowOpened);
-            if (_settings.QuakeModeEnabled)
+            // Once per window, not once per OnOpened: the hotkey's own Hide()/Show() round trip
+            // re-raises OnOpened (see _updateChecksStarted). Each GlobalHotkey subclasses the
+            // WNDPROC and chains to whatever it replaced, so a second instance would leave the
+            // first one's thunk in that chain with nothing rooting it. After the next GC, every
+            // window message would call freed memory (the crash GlobalHotkey.RemoveHook
+            // describes). Keeping the one instance also lets PerformAppTeardown's Dispose
+            // restore the original WNDPROC.
+            if (_settings.QuakeModeEnabled && _globalHotkey == null)
             {
                 try
                 {
