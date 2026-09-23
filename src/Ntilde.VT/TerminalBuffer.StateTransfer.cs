@@ -200,7 +200,7 @@ namespace Ntilde.VT
 
                 _highSurrogateBuffer = string.IsNullOrEmpty(snapshot.Grapheme.HighSurrogate)
                     ? null
-                    : snapshot.Grapheme.HighSurrogate![0];
+                    : snapshot.Grapheme.HighSurrogate[0];
                 _lastCharCol = snapshot.Grapheme.LastCharCol;
                 _lastCharRow = snapshot.Grapheme.LastCharRow;
                 _isAfterZwj = snapshot.Grapheme.IsAfterZwj;

@@ -99,7 +99,7 @@ namespace Ntilde.VT
             _pendingCharsetSlot = state.PendingCharsetSlot;
             _swallowNextNewline = state.SwallowNextNewline;
             _verticalOffset = state.VerticalOffset;
-            _lastGraphicChar = string.IsNullOrEmpty(state.LastGraphicChar) ? null : state.LastGraphicChar![0];
+            _lastGraphicChar = string.IsNullOrEmpty(state.LastGraphicChar) ? null : state.LastGraphicChar[0];
             _inBandResizeReportsEnabled = state.InBandResizeReportsEnabled;
 
             // Deliberately not restored: the text-batching buffer (always empty between Process()
