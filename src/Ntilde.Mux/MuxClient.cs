@@ -127,16 +127,52 @@ public sealed class MuxClient : IDisposable
         return RequestCoreAsync(id, method, MuxFrames.ToElement(parameters, paramsInfo), resultInfo, cancellationToken);
     }
 
+    /// <remarks>
+    /// Cancellation (or the request timeout) races the reader thread for the snapshot. Whoever
+    /// removes the id from <see cref="_pendingAttaches"/> first owns the outcome: the reader
+    /// delivers the snapshot, or the caller abandons the attach (and a late snapshot is undone with
+    /// a detach naming this attach). The request's <see cref="_pending"/> entry therefore stays
+    /// registered until that is decided, so a reader that won can still complete it - and a
+    /// cancellation that lost reports the attach that actually happened instead of contradicting
+    /// the <see cref="MuxClientSession.SnapshotReceived"/> the pane has just handled.
+    /// </remarks>
     internal async Task<long> AttachAsync(MuxClientSession session, int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken)
     {
         long id = Interlocked.Increment(ref _nextId);
+        JsonElement p = MuxFrames.ToElement(
+            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation },
+            MuxJsonContext.Default.AttachParams);
+        var tcs = new TaskCompletionSource<MuxResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pending[id] = tcs;
         _pendingAttaches[id] = session;
         try
         {
-            JsonElement p = MuxFrames.ToElement(
-                new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation },
-                MuxJsonContext.Default.AttachParams);
-            MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.Attach, p, cancellationToken).ConfigureAwait(false);
+            if (!IsConnected) throw Closed(); // after registering: OnDisconnected sets the flag before failing _pending
+            Enqueue(MuxFrames.Request(new MuxRequest { Id = id, Method = MuxMethods.Attach, Params = p }));
+
+            MuxResponse response;
+            try
+            {
+                response = await tcs.Task.WaitAsync(_options.RequestTimeout, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
+            {
+                // Abandoned FIRST, pending second: the reader must always find the id in one of
+                // the two maps, or a late snapshot would read as unsolicited and kill the connection.
+                _abandonedAttaches[id] = session;
+                if (_pendingAttaches.TryRemove(id, out _))
+                {
+                    // An error reply that already arrived means no snapshot will follow for this id.
+                    if (tcs.Task.IsCompletedSuccessfully && tcs.Task.Result.Error is not null) _abandonedAttaches.TryRemove(id, out _);
+                    throw;
+                }
+
+                // The reader claimed the snapshot first and is delivering it right now; it always
+                // completes tcs (with the outcome, or by failing the connection).
+                _abandonedAttaches.TryRemove(id, out _);
+                response = await tcs.Task.ConfigureAwait(false);
+            }
+
             if (response.Error is { } error) throw new MuxProtocolException(error.Code, error.Message);
 
             // A successful attach's reply IS the Snapshot frame; OnSnapshot removes this id from
@@ -150,16 +186,9 @@ public sealed class MuxClient : IDisposable
 
             return session.AttachedSeq;
         }
-        catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
-        {
-            // The caller gave up, but the server may already have committed to (or still send) a
-            // Snapshot for this id: remember it so a late frame is dropped and detached instead of
-            // read as protocol corruption (see _abandonedAttaches).
-            _abandonedAttaches[id] = session;
-            throw;
-        }
         finally
         {
+            _pending.TryRemove(id, out _);
             _pendingAttaches.TryRemove(id, out _);
         }
     }
@@ -177,8 +206,15 @@ public sealed class MuxClient : IDisposable
     internal void Detach(MuxClientSession session)
     {
         _sessions.TryRemove(new KeyValuePair<Guid, MuxClientSession>(session.Id, session));
-        PostRequest(MuxMethods.Detach, new SessionIdParams { SessionId = session.Id }, MuxJsonContext.Default.SessionIdParams);
+        PostRequest(MuxMethods.Detach, new DetachParams { SessionId = session.Id }, MuxJsonContext.Default.DetachParams);
     }
+
+    /// <summary>
+    /// Undoes the subscription one specific attach made. The server ignores it if this connection
+    /// has sent a newer attach for the session since (spec §6, <see cref="DetachParams.AttachRequestId"/>).
+    /// </summary>
+    private void DetachAttach(Guid sessionId, long attachRequestId) =>
+        PostRequest(MuxMethods.Detach, new DetachParams { SessionId = sessionId, AttachRequestId = attachRequestId }, MuxJsonContext.Default.DetachParams);
 
     public void Dispose()
     {
@@ -334,7 +370,10 @@ public sealed class MuxClient : IDisposable
         }
 
         if (_pending.TryGetValue(response.Id, out TaskCompletionSource<MuxResponse>? tcs)) tcs.TrySetResult(response);
-        else _abandonedAttaches.TryRemove(response.Id, out _); // an error reply to an abandoned attach: no Snapshot will follow for this id either
+
+        // After completing tcs (AttachAsync's abandon path checks it the other way round): a reply
+        // to an abandoned attach means no Snapshot will follow for this id either.
+        _abandonedAttaches.TryRemove(response.Id, out _);
     }
 
     private void OnNotification(MuxNotification notification)
@@ -367,8 +406,9 @@ public sealed class MuxClient : IDisposable
             {
                 // The caller gave up on this attach before the snapshot arrived. The server already
                 // subscribed us; undo that instead of treating a frame this client itself solicited
-                // as unsolicited (which would tear down every session on this connection).
-                PostRequest(MuxMethods.Detach, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams);
+                // as unsolicited (which would tear down every session on this connection). The
+                // detach names this attach, so a retry the caller has sent since is left alone.
+                DetachAttach(sessionId, requestId);
                 return;
             }
 
@@ -391,8 +431,9 @@ public sealed class MuxClient : IDisposable
             tcs?.TrySetResult(new MuxResponse { Id = requestId, Error = new MuxError { Code = ex.Code, Message = ex.Message } });
             if (ex.Code != MuxErrorCodes.SnapshotTooLarge) throw; // malformed: this connection is no longer trustworthy
 
-            // Too large is a policy refusal, not corruption: the server already subscribed us, so undo that.
-            PostRequest(MuxMethods.Detach, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams);
+            // Too large is a policy refusal, not corruption: the server already subscribed us, so
+            // undo that - this attach's subscription only, never a newer attach's.
+            DetachAttach(sessionId, requestId);
             return;
         }
 

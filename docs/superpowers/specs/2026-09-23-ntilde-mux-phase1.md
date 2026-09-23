@@ -130,7 +130,7 @@ Methods (task-text name → shipped shape):
 | `ListSessions` → `SessionList` | `listSessions` | `{}` → `{sessions:[{sessionId,title,command,arguments,cols,rows,running,exitCode,attachedClients,faulted}]}` |
 | `Spawn` → `Spawned` | `spawn` | `{command,arguments,startingDirectory,cols,rows,environmentOverrides,skipPowerShellPostLaunchInit,title}` → `{sessionId}` |
 | `Attach` → `Attached` | `attach` | `{sessionId,maxScrollbackRows,presentation}` → **`Snapshot` frame** (or an error `Response`) |
-| `Detach`, `Kill` | `detach`, `kill` | `{sessionId}` → `{}` |
+| `Detach`, `Kill` | `detach`, `kill` | `{sessionId}` → `{}`. `detach` also takes an optional, additive `attachRequestId`: set when the client undoes one specific attach (it gave up on it, or refused its snapshot as too large), and the server ignores the detach if this connection has since posted a newer attach for that session to the session, so a late snapshot's cleanup never removes a retry's subscription. Without it, detach is unconditional. |
 | `Input` | `Input` frame | — |
 | `Output` | `Output` frame | — |
 | `ResizeRequest` | `resize` (id 0) | `{sessionId,cols,rows,presentation?}` |

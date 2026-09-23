@@ -66,6 +66,25 @@ public sealed class MuxJsonTests
     }
 
     [Fact]
+    public void Detach_params_are_additive_over_the_session_id_shape()
+    {
+        Guid id = new("00000000-0000-0000-0000-000000000002");
+
+        // A plain detach is byte-for-byte the old SessionIdParams shape ...
+        string plain = System.Text.Json.JsonSerializer.Serialize(new DetachParams { SessionId = id }, MuxJsonContext.Default.DetachParams);
+        string old = System.Text.Json.JsonSerializer.Serialize(new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams);
+        Assert.Equal(old, plain);
+
+        // ... one undoing a specific attach adds a single optional member ...
+        string named = System.Text.Json.JsonSerializer.Serialize(new DetachParams { SessionId = id, AttachRequestId = 42 }, MuxJsonContext.Default.DetachParams);
+        Assert.Equal("{\"sessionId\":\"00000000-0000-0000-0000-000000000002\",\"attachRequestId\":42}", named);
+
+        // ... and each side reads the other's shape (an old server simply ignores the new member).
+        Assert.Equal(new DetachParams { SessionId = id }, System.Text.Json.JsonSerializer.Deserialize(old, MuxJsonContext.Default.DetachParams));
+        Assert.Equal(new SessionIdParams { SessionId = id }, System.Text.Json.JsonSerializer.Deserialize(named, MuxJsonContext.Default.SessionIdParams));
+    }
+
+    [Fact]
     public void Malformed_json_is_a_protocol_error()
     {
         var ex = Assert.Throws<MuxProtocolException>(() =>

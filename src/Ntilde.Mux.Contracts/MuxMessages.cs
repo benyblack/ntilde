@@ -98,6 +98,23 @@ public sealed record AttachParams
 
 public sealed record SessionIdParams { public Guid SessionId { get; init; } }
 
+/// <summary>
+/// Params of <c>detach</c>: <see cref="SessionIdParams"/> plus an optional, additive field (the
+/// wire shape without it is exactly the old one).
+/// </summary>
+public sealed record DetachParams
+{
+    public Guid SessionId { get; init; }
+
+    /// <summary>
+    /// Set when the detach undoes one specific attach (the caller gave up on it, or refused its
+    /// snapshot): the server ignores the detach if this connection has since sent a newer attach
+    /// for the session, because that attach already reset the subscription and a detach landing
+    /// after it would silently remove the newer one. Null = detach unconditionally.
+    /// </summary>
+    public long? AttachRequestId { get; init; }
+}
+
 public sealed record ResizeParams
 {
     public Guid SessionId { get; init; }

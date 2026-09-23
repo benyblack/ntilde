@@ -24,6 +24,7 @@ namespace Ntilde.Mux.Contracts;
 [JsonSerializable(typeof(ListSessionsResult))]
 [JsonSerializable(typeof(AttachParams))]
 [JsonSerializable(typeof(SessionIdParams))]
+[JsonSerializable(typeof(DetachParams))]
 [JsonSerializable(typeof(ResizeParams))]
 [JsonSerializable(typeof(SessionInfoResult))]
 [JsonSerializable(typeof(StartRecordingParams))]

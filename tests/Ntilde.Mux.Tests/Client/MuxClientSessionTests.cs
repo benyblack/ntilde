@@ -249,8 +249,42 @@ public sealed class MuxClientSessionTests
         // it cleaned up the subscription the server made on our behalf.
         MuxRequest detach = await fake.ReadRequestAsync();
         Assert.Equal(MuxMethods.Detach, detach.Method);
+        // It names the attach it undoes, so the server can ignore it if a retry has superseded it.
+        Assert.Equal(request.Id, MuxFrames.ParseParams(detach.Params, MuxJsonContext.Default.DetachParams).AttachRequestId);
         Assert.True(client.IsConnected);
         Assert.Empty(pane.Events);
+    }
+
+    [Fact]
+    public async Task Cancelling_while_the_snapshot_is_already_being_delivered_reports_the_attach_that_happened()
+    {
+        // The sliver: the reader has claimed the snapshot (the pane is restoring it right now) when
+        // the caller's token fires. Reporting a cancellation would contradict what the pane just
+        // saw - SnapshotReceived raised, output about to stream - so the attach reports its outcome.
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        MuxClientSession session = client.OpenSession(id, "scripted");
+        var pane = new ClientPaneModel(session);
+        using var restoring = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        session.SnapshotReceived += _ => { restoring.Set(); release.Wait(Ct); };
+
+        using var cts = new CancellationTokenSource();
+        Task<long> attach = session.AttachAsync(100, MuxTestHost.DefaultPresentation, cts.Token);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, FakeMuxServerEnd.SnapshotJson()));
+        Assert.True(restoring.Wait(TimeSpan.FromSeconds(10), Ct), "the reader is delivering the snapshot");
+        await cts.CancelAsync();
+        release.Set();
+
+        Assert.Equal(0, await attach.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        fake.Raw.Send(MuxFrames.Output(id, 0, "x"u8));
+        await TestWait.UntilAsync(() => pane.Events.Contains("out:x"), "output reaches the attached pane");
+        Assert.True(session.IsAttached);
+        Assert.True(client.IsConnected);
     }
 
     [Fact]

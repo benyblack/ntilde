@@ -21,6 +21,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private readonly object _gate = new();
     private readonly Queue<MuxOutboundFrame> _queue = new();
     private readonly HashSet<Guid> _attached = new(); // reader thread only
+
+    /// <summary>
+    /// Reader thread only: per session, the request id of the newest attach this connection posted
+    /// to the session. A detach naming an older attach (<see cref="DetachParams.AttachRequestId"/>)
+    /// arrives after that newer attach in the session's control queue and must not undo it.
+    /// </summary>
+    private readonly Dictionary<Guid, long> _latestAttach = new();
     private long _queuedBytes;       // stream frames queued + in flight (everything but snapshots)
     private long _queuedSnapshotBytes; // snapshot frames queued + in flight
     private bool _closed;            // stream closed or closing now; nothing more is accepted
@@ -386,8 +393,10 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     break;
                 case MuxMethods.Detach:
                     {
-                        SessionIdParams p = Params(request, MuxJsonContext.Default.SessionIdParams);
-                        if (_attached.Remove(p.SessionId) && _server.TryGetSession(p.SessionId, out HeadlessTerminalSession? s)) s.PostDetach(this);
+                        DetachParams p = Params(request, MuxJsonContext.Default.DetachParams);
+                        bool superseded = p.AttachRequestId is long undone
+                            && _latestAttach.TryGetValue(p.SessionId, out long latest) && latest > undone;
+                        if (!superseded && _attached.Remove(p.SessionId) && _server.TryGetSession(p.SessionId, out HeadlessTerminalSession? s)) s.PostDetach(this);
                         ReplyEmpty(request);
                         break;
                     }
@@ -477,6 +486,11 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         HeadlessTerminalSession session = Session(p.SessionId);
         int rows = Math.Clamp(p.MaxScrollbackRows, 0, _server.Options.MaxAttachScrollbackRows);
         _attached.Add(p.SessionId);
+
+        // Only an attach that actually reaches the session supersedes older ones: one refused above
+        // (geometry, unknown session) never touched the subscription, so a detach for an older
+        // attach must still be honoured.
+        _latestAttach[p.SessionId] = request.Id;
 
         // The reply - the Snapshot frame, or an error - comes from the parse thread.
         session.PostAttach(this, request.Id, rows, p.Presentation, _server.Options.MaxSnapshotBytes);
