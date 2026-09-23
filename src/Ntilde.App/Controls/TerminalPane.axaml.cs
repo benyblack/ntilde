@@ -322,6 +322,26 @@ namespace Ntilde.Controls
             set => _commandAssistServices = value;
         }
 
+        private ITerminalSessionFactory? _sessionFactory;
+
+        /// <summary>
+        /// Opens this pane's terminal session. Assigned by <c>MainWindow.WirePane</c> from the
+        /// instance in <c>AppServiceBundle</c>; defaults to
+        /// <see cref="Ntilde.Shell.DefaultTerminalSessionFactory.Instance"/>.
+        /// </summary>
+        /// <remarks>
+        /// Defaulted rather than throwing-when-unset, which is where this differs from
+        /// <see cref="CommandAssistServices"/>. That one throws because building a second graph
+        /// is silently wrong; here there is exactly one right production implementation, and the
+        /// pane has four public constructors reached from three creation sites plus session
+        /// restore, so a default keeps every one of them spawning without a wiring edit.
+        /// </remarks>
+        internal ITerminalSessionFactory SessionFactory
+        {
+            get => _sessionFactory ??= Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
+            set => _sessionFactory = value;
+        }
+
         public bool IsRecording => Session?.IsRecording ?? false;
         public string? CurrentWorkingDirectory { get; private set; }
         public string? CurrentOscTitle { get; private set; }
@@ -3321,7 +3341,7 @@ namespace Ntilde.Controls
 
         /// Spawns the session and wires the handlers that depend on it. Split out of
         /// <c>InitializeSession</c> alongside <see cref="CreateAndWireParser"/>; no behaviour change.
-        private void InitializeSessionCore(string effectiveShell, string args, TerminalProfile? profile, int cols, int rows)
+        internal void InitializeSessionCore(string effectiveShell, string args, TerminalProfile? profile, int cols, int rows)
         {
             _shellLifecycleTracker = null;
             _isShellIntegrationActive = false;
@@ -3388,41 +3408,44 @@ namespace Ntilde.Controls
                     ArmRemoteShellIntegrationTracker(profile);
                 }
 
-                if (profile != null && profile.Type == ConnectionType.SSH)
+                bool isSsh = profile != null && profile.Type == ConnectionType.SSH;
+                var request = new TerminalSessionRequest(
+                    Command: effectiveShell,
+                    Arguments: args,
+                    StartingDirectory: startingDir,
+                    Cols: cols,
+                    Rows: rows,
+                    EnvironmentOverrides: _shellIntegrationEnvOverrides,
+                    SkipPowerShellPostLaunchInit: _isShellIntegrationActive,
+                    Ssh: isSsh
+                        ? new SshSessionDescriptor(
+                            ProfileId: profile!.Id,
+                            DiagnosticsLevel: (int)_sshDiagnosticsLevel,
+                            InteractionHandler: SshInteractionHandler,
+                            NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
+                        : null);
+
+                if (isSsh)
                 {
                     try
                     {
-                        var sessionFactory = new SshSessionFactory(
-                            nativeInteractionHandler: SshInteractionHandler,
-                            nativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false);
-                        Session = sessionFactory.Create(
-                            profile.Id,
-                            cols,
-                            rows,
-                            _sshDiagnosticsLevel,
-                            null,
-                            log: TerminalLogger.Log);
+                        Session = SessionFactory.Create(request);
                         ShellCommand = Session.ShellCommand;
                         ShellArgs = string.Empty;
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[TerminalPane] SSH connection failed for '{profile.Name}': {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[TerminalPane] SSH connection failed for '{profile!.Name}': {ex.Message}");
                         WriteBanner($"\r\n[ERROR] SSH Connection Failed: {SanitizeBannerValue(ex.Message)}\r\n");
 
                         // Fail loudly: Do not fall back to RustPtySession with missing arguments.
                         return;
                     }
                 }
-
-                Session ??= new RustPtySession(
-                    effectiveShell,
-                    cols,
-                    rows,
-                    args,
-                    startingDir,
-                    skipPowerShellPostLaunchInit: _isShellIntegrationActive,
-                    environmentOverrides: _shellIntegrationEnvOverrides);
+                else
+                {
+                    Session = SessionFactory.Create(request);
+                }
 
                 TermView.SetSession(Session);
                 ITerminalSession session = Session;
@@ -3478,13 +3501,34 @@ namespace Ntilde.Controls
 
             // Wire up Parser responses (e.g. DA1). The accumulator invalidation for these lives in
             // CreateAndWireParser, next to the parser's other observers.
-            Parser.OnResponse += response =>
+            //
+            // Skipped for a session that answers device queries itself: a multiplexer-attached
+            // pane runs a second, downstream parser over a stream whose authoritative parser is
+            // in the daemon, and both replying means the child gets two answers to one query.
+            // The ObserveDeviceReply observer in CreateAndWireParser deliberately stays wired
+            // either way - it only invalidates a local heuristic and writes nothing to the child.
+            if (!SessionAnswersDeviceQueries(Session))
             {
-                Session.SendInput(response);
-            };
+                Parser.OnResponse += response =>
+                {
+                    Session.SendInput(response);
+                };
+            }
 
             WireReusedTermViewHandlers();
         }
+
+        /// <summary>
+        /// True when <paramref name="session"/> answers device queries itself, so this pane's
+        /// parser must not write its replies back to the child.
+        /// </summary>
+        /// <remarks>
+        /// Evaluated at call time rather than cached, because the cached TermView handlers in
+        /// <see cref="WireReusedTermViewHandlers"/> outlive any individual session: a pane can
+        /// reconnect from a multiplexer-backed session to a local one and back.
+        /// </remarks>
+        private static bool SessionAnswersDeviceQueries(ITerminalSession? session)
+            => session is ITerminalSessionCapabilities { AnswersDeviceQueries: true };
 
         /// <summary>
         /// Queues the after-output UI work — scrollbar extent, cursor visibility, and the
@@ -3582,7 +3626,7 @@ namespace Ntilde.Controls
                 // terminal-browser on Windows has no SIGWINCH and never polls console size —
                 // only learns about a new geometry from this report, so it must follow the
                 // PTY resize. Pixel dims come from the same metrics the grid draws with.
-                if (Parser is { InBandResizeReportsEnabled: true })
+                if (Parser is { InBandResizeReportsEnabled: true } && !SessionAnswersDeviceQueries(Session))
                 {
                     float cwReport = TermView.Metrics.CellWidth;
                     float chReport = TermView.Metrics.CellHeight;
@@ -3612,7 +3656,8 @@ namespace Ntilde.Controls
                 // the pane's pixel geometry WITHOUT changing the integer grid, so OnResize
                 // never fires and this is the only path that notices. A mode-2048 client keeps
                 // rendering at the stale pixel dimensions until it is told.
-                if (Parser is { InBandResizeReportsEnabled: true } && Buffer != null && cwMetric > 0 && chMetric > 0)
+                if (Parser is { InBandResizeReportsEnabled: true } && Buffer != null
+                    && !SessionAnswersDeviceQueries(Session) && cwMetric > 0 && chMetric > 0)
                 {
                     var (pxW, pxH) = InBandPixelDimensions(Buffer.Cols, Buffer.Rows, cwMetric, chMetric, TermView.EffectiveRenderScaling);
                     Parser.SendInBandResize(Buffer.Rows, Buffer.Cols, pxW, pxH);

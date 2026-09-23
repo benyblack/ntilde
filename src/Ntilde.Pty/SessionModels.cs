@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Ntilde.Pty
 {
@@ -45,6 +46,27 @@ namespace Ntilde.Pty
         // Fallbacks for ad-hoc panes (no profile)
         public string? Command { get; set; }
         public string? Arguments { get; set; }
+
+        // ── Multiplexer attach coordinates (Phase 0: persisted, not yet read) ─────
+        //
+        // Nullable and omitted when null, because every session.json written before the
+        // multiplexer exists has to keep loading. Nothing consumes these yet; they land now
+        // so the persisted shape is settled before the daemon needs it.
+
+        /// <summary>
+        /// Id of the multiplexer session this pane attaches to, or <c>null</c> for a pane that
+        /// owns its PTY directly (every pane today).
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MuxSessionId { get; set; }
+
+        /// <summary>
+        /// Transport address of the multiplexer that owns <see cref="MuxSessionId"/>, or
+        /// <c>null</c>. Stored per pane rather than per session file so a window can hold panes
+        /// from more than one daemon.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MuxEndpoint { get; set; }
     }
 
     public class WorkspaceBundlePackage

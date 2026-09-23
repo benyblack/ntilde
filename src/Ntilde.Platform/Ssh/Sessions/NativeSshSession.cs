@@ -18,7 +18,10 @@ public sealed class NativeSshSession : ITerminalSession
     private readonly NativeJumpHostConnector _jumpHostConnector = new();
     private readonly CancellationTokenSource _pollCts = new();
     private readonly Task _pollTask;
-    private readonly Decoder _utf8Decoder = Encoding.UTF8.GetDecoder();
+    // See RustPtySession's field of the same name for why this is Utf8ChunkDecoder rather than
+    // Encoding.UTF8.GetDecoder(): byte-identical output, plus a reportable stream offset and
+    // pending tail for the multiplexer snapshot.
+    private readonly Ntilde.Pty.Utf8ChunkDecoder _utf8Decoder = new();
     private readonly Action<string> _log;
     private readonly NativeSshMetrics _metrics = new();
     private readonly Guid _profileId;
@@ -512,8 +515,8 @@ public sealed class NativeSshSession : ITerminalSession
         _recorder?.RecordChunk(payload, payload.Length);
         _flightRecorder?.RecordChunk(payload, payload.Length);
 
-        char[] chars = new char[Encoding.UTF8.GetMaxCharCount(payload.Length)];
-        int charCount = _utf8Decoder.GetChars(payload, 0, payload.Length, chars, 0, flush: false);
+        char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(payload.Length)];
+        int charCount = _utf8Decoder.Decode(payload, chars);
         if (charCount > 0)
         {
             EmitText(new string(chars, 0, charCount));

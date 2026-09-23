@@ -273,6 +273,105 @@ public sealed class SessionManagerTests
         Assert.Equal("--login", pane.Profile.Arguments);
     }
 
+    /// <summary>
+    /// The multiplexer's per-pane attach coordinates ride in the session file. They are written
+    /// and read back here well before anything consumes them, because the shape of a persisted
+    /// field is the expensive thing to change later - a session file written by one build has to
+    /// load in the next one.
+    /// </summary>
+    [Fact]
+    public void PaneNode_MuxFields_SurviveAJsonRoundTrip()
+    {
+        var session = new NtildeSession
+        {
+            Tabs =
+            [
+                new TabSession
+                {
+                    Root = new PaneNode
+                    {
+                        Type = NodeType.Leaf,
+                        PaneId = "pane-1",
+                        MuxSessionId = "s-42",
+                        MuxEndpoint = "npipe://ntilde-mux/default"
+                    }
+                }
+            ]
+        };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(
+            session, SessionSerializationContext.Default.NtildeSession);
+        NtildeSession? loaded = System.Text.Json.JsonSerializer.Deserialize(
+            json, SessionSerializationContext.Default.NtildeSession);
+
+        PaneNode? root = loaded?.Tabs[0].Root;
+        Assert.NotNull(root);
+        Assert.Equal("s-42", root!.MuxSessionId);
+        Assert.Equal("npipe://ntilde-mux/default", root.MuxEndpoint);
+    }
+
+    /// <summary>
+    /// Every session.json on every user's disk predates these fields. Loading one must produce
+    /// nulls, not a throw and not a default that later reads as "attached to a mux".
+    /// </summary>
+    [Fact]
+    public void PaneNode_LegacyJsonWithoutMuxFields_LoadsWithNulls()
+    {
+        const string legacyJson = """
+        {
+          "ActiveTabIndex": 0,
+          "Tabs": [
+            {
+              "Title": "Terminal",
+              "Root": { "Type": 0, "PaneId": "pane-1", "Command": "pwsh.exe" }
+            }
+          ]
+        }
+        """;
+
+        NtildeSession? loaded = System.Text.Json.JsonSerializer.Deserialize(
+            legacyJson, SessionSerializationContext.Default.NtildeSession);
+
+        PaneNode? root = loaded?.Tabs[0].Root;
+        Assert.NotNull(root);
+        Assert.Null(root!.MuxSessionId);
+        Assert.Null(root.MuxEndpoint);
+    }
+
+    /// <summary>
+    /// The mux fields are nullable and omitted when null to preserve backward compatibility.
+    /// Every leaf pane written to a session file should not contain these fields if they are
+    /// unpopulated, so that old readers do not see spurious nulls.
+    /// </summary>
+    [Fact]
+    public void PaneNode_NullMuxFields_AreOmittedFromJson()
+    {
+        var session = new NtildeSession
+        {
+            Tabs =
+            [
+                new TabSession
+                {
+                    Root = new PaneNode
+                    {
+                        Type = NodeType.Leaf,
+                        PaneId = "pane-1",
+                        Command = "pwsh.exe",
+                        MuxSessionId = null,
+                        MuxEndpoint = null
+                    }
+                }
+            ]
+        };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(
+            session, SessionSerializationContext.Default.NtildeSession);
+
+        // The JSON text must not contain the field names if they are null
+        Assert.DoesNotContain("MuxSessionId", json);
+        Assert.DoesNotContain("MuxEndpoint", json);
+    }
+
     private static TabSession LeafTabWithProfile(Guid profileId) => new()
     {
         Title = "Restored",

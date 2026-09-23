@@ -16,7 +16,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.VT` (+ `.Export`, `.Links`, `.Storage` sub-namespaces)
 **Depends on:** *(leaf — only BCL)*
-**Public surface:** `AnsiParser`, `TerminalBuffer`, `TerminalRow`, `TerminalCell`, `BufferSnapshot`, `RenderSnapshots.*`, `ReplayModels.*`, `TerminalTheme`, `UnicodeWidth`
+**Public surface:** `AnsiParser`, `TerminalBuffer`, `TerminalRow`, `TerminalCell`, `BufferSnapshot`, `RenderSnapshots.*`, `ReplayModels.*`, `TerminalTheme`, `UnicodeWidth`, `TerminalStateSnapshot`, `AnsiParserState`, `TerminalStateSerializer`
 
 **Owns**
 - VT/ANSI state machine and parser
@@ -103,7 +103,7 @@ invariant changes.
 
 **Namespace:** `Ntilde.Pty`
 **Depends on:** Replay (for `ReplayWriter` only)
-**Public surface:** `ITerminalIO`, `ITerminalLifecycle`, `ITerminalShellMetadata`, `ITerminalRecorder`, `ITerminalSession` (composite), `RustPtySession`, `ShellHelper`, session model DTOs
+**Public surface:** `ITerminalIO`, `ITerminalLifecycle`, `ITerminalShellMetadata`, `ITerminalRecorder`, `ITerminalSession` (composite), `RustPtySession`, `ShellHelper`, session model DTOs, `ITerminalSessionFactory`, `TerminalSessionRequest`, `SshSessionDescriptor`, `ITerminalSessionCapabilities`, `Utf8ChunkDecoder`
 
 **Owns**
 - The rust-PTY adapter (`RustPtySession` + `ConPtyNative` P/Invoke)
