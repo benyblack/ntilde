@@ -973,6 +973,20 @@ namespace Ntilde.VT
             // `row * Cols + col` encoding, so a non-positive Cols makes the whole side-table
             // coordinate space meaningless rather than merely smaller. It is also the dimension
             // TerminalStateTransfer.Restore resizes the destination buffer to.
+            //
+            // There is deliberately NO upper bound here, and the omission is not an oversight.
+            // Clamping would be the wrong instrument: Cols is the base of every side-table key,
+            // so silently shrinking it would re-point every extended-text and hyperlink entry at
+            // the wrong cell - corrupting the mapping rather than refusing it. The right shape is
+            // a rejection ceiling, and its value is a product decision (the largest terminal this
+            // is willing to accept) rather than something to invent here.
+            //
+            // What makes deferring it safe today is ValidateCellBlobLength below: the decoded
+            // blob must equal Cols * Rows * sizeof(TerminalCell), so absurd geometry is only
+            // reachable by actually sending that many cell bytes. That leaves a bandwidth-bound
+            // cost, not an amplification - a tiny payload cannot provoke a large allocation. The
+            // ceiling is a resource-policy question for whoever adds the transport, not an open
+            // hole in this validation routine.
             if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
             {
                 throw StateTransferValidation.Reject(
