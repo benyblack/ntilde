@@ -11,8 +11,11 @@ namespace Ntilde.Shell
     {
         private readonly string _themesDirectory;
         private readonly Dictionary<string, TerminalTheme> _loadedThemes = new();
+        // Several formats share an extension (".json" is both native and Windows Terminal), so
+        // ImportTheme tries every importer for the extension in this order.
         private readonly List<ThemeImporters.IThemeImporter> _importers = new()
         {
+            new ThemeImporters.NativeThemeImporter(),
             new ThemeImporters.WindowsTerminalImporter(),
             new ThemeImporters.ITerm2Importer(),
             new ThemeImporters.AlacrittyImporter()
@@ -70,31 +73,25 @@ namespace Ntilde.Shell
 
         public string ImportTheme(string filePath)
         {
-            string ext = Path.GetExtension(filePath).ToLower();
-            var importer = _importers.FirstOrDefault(i => i.Extension.ToLower() == ext);
+            string ext = Path.GetExtension(filePath);
 
-            if (importer == null && ext == ".json")
+            // An importer that does not recognise the file yields nothing, and the next one for
+            // the extension gets a turn; an unexpected throw from one is logged, not allowed to
+            // end the search.
+            foreach (var importer in _importers.Where(i => string.Equals(i.Extension, ext, StringComparison.OrdinalIgnoreCase)))
             {
-                // Simple JSON theme? Try to just copy it
+                List<TerminalTheme> imported;
                 try
                 {
-                    string json = File.ReadAllText(filePath);
-                    var theme = JsonSerializer.Deserialize(json, AppJsonContext.Default.TerminalTheme);
-                    if (theme != null)
-                    {
-                        string targetPath = Path.Combine(_themesDirectory, Path.GetFileName(filePath));
-                        File.WriteAllText(targetPath, json);
-                        _loadedThemes[theme.Name] = theme;
-                        return theme.Name;
-                    }
+                    imported = importer.Import(filePath).ToList();
                 }
-                catch { }
-            }
+                catch (Exception ex)
+                {
+                    TerminalLogger.Warning($"[ThemeManager] {importer.Name} importer failed on {filePath}: {ex.Message}");
+                    continue;
+                }
+                if (imported.Count == 0) continue;
 
-            if (importer != null)
-            {
-                var imported = importer.Import(filePath);
-                string lastThemeName = "";
                 foreach (var theme in imported)
                 {
                     string fileName = theme.Name.Replace(" ", "") + ".json";
@@ -102,11 +99,11 @@ namespace Ntilde.Shell
                     string json = JsonSerializer.Serialize(theme, AppJsonContext.Default.TerminalTheme);
                     File.WriteAllText(targetPath, json);
                     _loadedThemes[theme.Name] = theme;
-                    lastThemeName = theme.Name;
                 }
-                return lastThemeName;
+                return imported[^1].Name;
             }
 
+            TerminalLogger.Warning($"[ThemeManager] No theme importer recognised {filePath}");
             return "";
         }
 

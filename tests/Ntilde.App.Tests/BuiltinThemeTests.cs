@@ -81,7 +81,7 @@ namespace Ntilde.Tests
             Assert.Equal(new TermColor(0xF8, 0xF8, 0xF2), theme!.Foreground);
         }
 
-        private static string FindThemesDirectory()
+        internal static string FindThemesDirectory()
         {
             // The app project's content glob copies themes into referencing projects' output;
             // prefer that so the test does not require running inside a source checkout.
