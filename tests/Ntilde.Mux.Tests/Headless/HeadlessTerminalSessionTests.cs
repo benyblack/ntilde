@@ -286,6 +286,35 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task A_fault_is_announced_to_every_subscriber_who_are_then_dropped_and_hear_nothing_more()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            var first = new RecordingFrameSink();
+            var second = new RecordingFrameSink();
+            mux.PostAttach(first, 1, 100, Presentation80x24, MuxProtocol.MaxFrameBytes);
+            mux.PostAttach(second, 2, 100, Presentation80x24, MuxProtocol.MaxFrameBytes);
+            fake.Emit("ok");
+            await mux.FlushAsync();
+
+            fake.ThrowOnSendInput = true;
+            fake.Emit("\x1b[c");
+            await mux.FlushAsync();
+            mux.PostResize(100, 30, null); // the offset moved on: a ResizeEvent now would be a gap
+            fake.Emit("more");
+            await mux.FlushAsync();
+            Assert.Equal(1, await mux.InvokeAsync(() => 1));
+
+            Assert.Equal(["Snapshot@0", "Output@0:ok", "Faulted"], first.Described);
+            Assert.Equal(["Snapshot@0", "Output@0:ok", "Faulted"], second.Described);
+            Assert.Equal(0, mux.AttachedClients);
+            Assert.Equal((100, 30), (mux.Cols, mux.Rows)); // the child still gets its resize
+            Assert.Equal((100, 30), fake.Resizes.Last());
+        }
+    }
+
+    [Fact]
     public async Task Kill_disposes_the_child_and_announces_the_exit_once()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

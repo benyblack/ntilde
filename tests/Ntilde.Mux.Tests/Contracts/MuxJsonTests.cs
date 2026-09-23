@@ -33,6 +33,39 @@ public sealed class MuxJsonTests
     }
 
     [Fact]
+    public void The_faulted_notification_round_trips_with_camel_case_params()
+    {
+        var faulted = new FaultedNotification { SessionId = Guid.NewGuid(), Message = "The parser threw at stream offset 3." };
+        MuxOutboundFrame frame = MuxFrames.Notification(new MuxNotification
+        {
+            Method = MuxMethods.Faulted,
+            Params = MuxFrames.ToElement(faulted, MuxJsonContext.Default.FaultedNotification),
+        });
+        byte[] payload = frame.Bytes[MuxProtocol.FrameHeaderBytes..].ToArray();
+        frame.Release();
+
+        string json = Encoding.UTF8.GetString(payload);
+        Assert.Contains("\"method\":\"faulted\"", json, StringComparison.Ordinal);
+        Assert.Contains($"\"sessionId\":\"{faulted.SessionId}\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"message\":", json, StringComparison.Ordinal);
+
+        MuxNotification back = MuxFrames.ParseJson(payload, MuxJsonContext.Default.MuxNotification);
+        Assert.Equal(faulted, MuxFrames.ParseParams(back.Params, MuxJsonContext.Default.FaultedNotification));
+    }
+
+    [Fact]
+    public void A_faulted_notification_without_a_message_still_parses()
+    {
+        // Additive and tolerant: only sessionId is load-bearing.
+        FaultedNotification parsed = MuxFrames.ParseParams(
+            MuxFrames.ParseJson("{\"method\":\"faulted\",\"params\":{\"sessionId\":\"00000000-0000-0000-0000-000000000001\"}}"u8,
+                MuxJsonContext.Default.MuxNotification).Params,
+            MuxJsonContext.Default.FaultedNotification);
+        Assert.Equal(new Guid("00000000-0000-0000-0000-000000000001"), parsed.SessionId);
+        Assert.Null(parsed.Message);
+    }
+
+    [Fact]
     public void Malformed_json_is_a_protocol_error()
     {
         var ex = Assert.Throws<MuxProtocolException>(() =>

@@ -316,8 +316,8 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         catch (Exception ex)
         {
-            Volatile.Write(ref _faulted, 1);
             Log($"[Mux] session {Id}: parse loop terminated: {ex}");
+            EnterFaulted($"The session's parse loop terminated: {ex.GetType().Name}.");
         }
         finally
         {
@@ -370,8 +370,8 @@ public sealed class HeadlessTerminalSession : IDisposable
             }
             catch (Exception ex)
             {
-                Volatile.Write(ref _faulted, 1);
                 Log($"[Mux] session {Id} faulted: the parser threw at stream offset {seq}: {ex}");
+                EnterFaulted($"The parser threw at stream offset {seq}: {ex.GetType().Name}.");
                 return;
             }
         }
@@ -480,7 +480,10 @@ public sealed class HeadlessTerminalSession : IDisposable
         _buffer.Resize(cols, rows);
         Volatile.Write(ref _cols, cols);
         Volatile.Write(ref _rows, rows);
-        if (_subscribers.Count > 0) Broadcast(MuxFrames.ResizeEvent(Id, Interlocked.Read(ref _rawOffset), cols, rows));
+
+        // Never while faulted: the offset has moved on without Output frames, so an event at it
+        // would read as a gap (EnterFaulted already dropped every subscriber; this is the belt).
+        if (_subscribers.Count > 0 && !IsFaulted) Broadcast(MuxFrames.ResizeEvent(Id, Interlocked.Read(ref _rawOffset), cols, rows));
         if (IsExited) return;
         _session.Resize(cols, rows);
         if (_parser.InBandResizeReportsEnabled)
@@ -506,6 +509,42 @@ public sealed class HeadlessTerminalSession : IDisposable
         finally
         {
             frame.Release();
+        }
+    }
+
+    /// <summary>
+    /// Parse thread only. From here the offset advances with no Output frames (a faulted parser no
+    /// longer tracks the child), so every subscriber must hear an explicit end - never a silent gap,
+    /// which a client can only read as corruption of the whole connection. Each gets a
+    /// <see cref="MuxMethods.Faulted"/> notification and is dropped; a later attach is refused.
+    /// </summary>
+    private void EnterFaulted(string reason)
+    {
+        if (Interlocked.Exchange(ref _faulted, 1) != 0 || _subscribers.Count == 0) return;
+        try
+        {
+            MuxOutboundFrame frame = MuxFrames.Notification(new MuxNotification
+            {
+                Method = MuxMethods.Faulted,
+                Params = MuxFrames.ToElement(new FaultedNotification { SessionId = Id, Message = reason }, MuxJsonContext.Default.FaultedNotification),
+            });
+            try
+            {
+                foreach (IMuxFrameSink sink in _subscribers) sink.TryEnqueue(frame);
+            }
+            finally
+            {
+                frame.Release();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"[Mux] session {Id}: announcing the fault failed: {ex.Message}");
+        }
+        finally
+        {
+            _subscribers.Clear();
+            PublishAttachedCount();
         }
     }
 

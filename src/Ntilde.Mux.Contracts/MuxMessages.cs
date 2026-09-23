@@ -142,3 +142,12 @@ public sealed record ExitedNotification
     public Guid SessionId { get; init; }
     public int ExitCode { get; init; }
 }
+
+/// <summary>Params of <see cref="MuxMethods.Faulted"/>.</summary>
+public sealed record FaultedNotification
+{
+    public Guid SessionId { get; init; }
+
+    /// <summary>Human-readable reason, for logs and the pane's banner; not machine-parsed. May be absent.</summary>
+    public string? Message { get; init; }
+}

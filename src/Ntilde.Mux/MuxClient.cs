@@ -344,6 +344,12 @@ public sealed class MuxClient : IDisposable
             ExitedNotification exited = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.ExitedNotification);
             if (_sessions.TryGetValue(exited.SessionId, out MuxClientSession? session)) session.DeliverExited(exited.ExitCode);
         }
+        else if (notification.Method == MuxMethods.Faulted)
+        {
+            // Session-level, never connection-level: only that session's stream ends.
+            FaultedNotification faulted = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.FaultedNotification);
+            if (_sessions.TryGetValue(faulted.SessionId, out MuxClientSession? session)) session.DeliverFaulted(faulted.Message ?? "The mux session faulted.");
+        }
 
         // Unknown notifications are ignored: a newer server may send more than this client knows.
     }

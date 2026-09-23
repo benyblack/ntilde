@@ -28,7 +28,7 @@ internal sealed class RecordingFrameSink : IMuxFrameSink
 
 internal sealed record RecordedFrame(MuxFrameKind Kind, byte[] Payload)
 {
-    /// <summary>"Output@0:abc", "Resize@3:40x10", "Snapshot@5+1", "Exited:7", "Error:snapshot_too_large".</summary>
+    /// <summary>"Output@0:abc", "Resize@3:40x10", "Snapshot@5+1", "Exited:7", "Faulted", "Error:snapshot_too_large".</summary>
     public string Describe()
     {
         switch (Kind)
@@ -44,6 +44,7 @@ internal sealed record RecordedFrame(MuxFrameKind Kind, byte[] Payload)
                 return string.Create(CultureInfo.InvariantCulture, $"Snapshot@{sseq}");
             case MuxFrameKind.Notification:
                 MuxNotification n = MuxFrames.ParseJson(Payload, MuxJsonContext.Default.MuxNotification);
+                if (n.Method == MuxMethods.Faulted) return "Faulted";
                 ExitedNotification e = MuxFrames.ParseParams(n.Params, MuxJsonContext.Default.ExitedNotification);
                 return string.Create(CultureInfo.InvariantCulture, $"Exited:{e.ExitCode}");
             case MuxFrameKind.Response:

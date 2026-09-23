@@ -30,6 +30,7 @@ namespace Ntilde.Mux.Contracts;
 [JsonSerializable(typeof(EnableFlightRecordingParams))]
 [JsonSerializable(typeof(ExportFlightResult))]
 [JsonSerializable(typeof(ExitedNotification))]
+[JsonSerializable(typeof(FaultedNotification))]
 public sealed partial class MuxJsonContext : JsonSerializerContext
 {
 }

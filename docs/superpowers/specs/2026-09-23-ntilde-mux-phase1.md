@@ -136,6 +136,7 @@ Methods (task-text name → shipped shape):
 | `ResizeRequest` | `resize` (id 0) | `{sessionId,cols,rows,presentation?}` |
 | `ResizeEvent` | `ResizeEvent` frame | — |
 | `Exited` | notification `exited` | `{sessionId,exitCode}` |
+| *(added)* | notification `faulted` | `{sessionId,message?}`: the session's headless parser failed. It is the last frame for that session: the server drops every subscriber (and refuses later attaches) instead of letting the offset move on under them, which a client could only read as a gap. The client raises `MuxClientSession.Faulted`, detaches locally, and keeps the connection. Additive: an older client ignores it and sees the stream stop. |
 | `SessionInfo` | `sessionInfo` | `{sessionId}` → `{running,exitCode,hasActiveChildProcesses,pid}` |
 | `StartRecording`, `StopRecording` | `startRecording`, `stopRecording` | `{sessionId,path}` / `{sessionId}` → `{}` |
 | `EnableFlightRecording`, `DisableFlightRecording` | same names | `{sessionId,maxBytes}` / `{sessionId}` → `{}` |

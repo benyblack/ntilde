@@ -59,6 +59,14 @@ public static class MuxMethods
 
     /// <summary>Notification (server → client).</summary>
     public const string Exited = "exited";
+
+    /// <summary>
+    /// Notification (server → client): the session's headless parser failed, so the mux no longer
+    /// vouches for its state. It is the last frame the client gets for that session - the server
+    /// has already dropped the subscription - while the child itself may still be running.
+    /// Additive: a client that does not know it ignores it and simply sees the stream stop.
+    /// </summary>
+    public const string Faulted = "faulted";
 }
 
 public enum MuxFrameKind : byte

@@ -27,6 +27,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _exited;
     private int _exitCode;
     private int _exitNotified;
+    private int _faulted;
     private int _hasActiveChildren;
     private long _sessionInfoAtMs = long.MinValue / 2;
     private int _sessionInfoInFlight;
@@ -61,6 +62,16 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     public event Action<int, int>? StreamResize;
     public event Action<int>? OnExit;
     public event Action<string?>? Disconnected;
+
+    /// <summary>
+    /// The mux's parser for this session failed: its stream has ended and the server has dropped
+    /// this subscription (the connection and every other session carry on). The child may still be
+    /// running, but nothing more will be delivered for it; the argument is a human-readable reason.
+    /// </summary>
+    public event Action<string>? Faulted;
+
+    /// <summary>True once <see cref="Faulted"/> has been raised.</summary>
+    public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
 
     /// <summary>Returns the snapshot's <c>StreamSeq</c>. <see cref="SnapshotReceived"/> has fired by then.</summary>
     public Task<long> AttachAsync(int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken = default)
@@ -283,6 +294,14 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         Volatile.Write(ref _exitCode, exitCode);
         Volatile.Write(ref _exited, 1);
         if (Interlocked.Exchange(ref _exitNotified, 1) == 0) OnExit?.Invoke(exitCode);
+    }
+
+    internal void DeliverFaulted(string message)
+    {
+        // Detach locally: the stream has explicitly ended, so any frame still in flight for this
+        // session is ignored rather than read as a gap.
+        Interlocked.Exchange(ref _expectedOffset, -1);
+        if (Interlocked.Exchange(ref _faulted, 1) == 0) Faulted?.Invoke(message);
     }
 
     internal void DeliverDisconnected(string? reason)
