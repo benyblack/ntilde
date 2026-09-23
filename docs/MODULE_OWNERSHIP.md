@@ -132,6 +132,7 @@ invariant changes.
 **Owns**
 - Input routing primitives (drop router, shell quoters, input sender)
 - Path mapping (notably WSL ↔ Windows)
+- Link activation policy (`Links/LinkSchemes`): whether a terminal link may open, reveal a local path, or do nothing. Platform path rules, so not in VT, which only detects and stores links
 - Process abstraction (`IProcessRunner`)
 - The entire SSH stack: native interop with `rusty_ssh.dll`, OpenSSH bridging, session factories, profile storage, transport
 - Future home of `SessionBufferBinder` and other session-orchestration helpers
