@@ -198,6 +198,13 @@ public class ProjectFileLayeringTests
         Assert.Empty(refs);
     }
 
+    [Fact]
+    public void MuxContracts_csproj_must_have_no_project_references()
+    {
+        var refs = ProjectReferences("src/Ntilde.Mux.Contracts/Ntilde.Mux.Contracts.csproj");
+        Assert.Empty(refs);
+    }
+
     /// <summary>
     /// #310: panes must be hosted by the sideloaded ConPTY host, not the OS conhost.exe.
     /// portable-pty only uses it when a <c>conpty.dll</c> sits next to the executable, and that

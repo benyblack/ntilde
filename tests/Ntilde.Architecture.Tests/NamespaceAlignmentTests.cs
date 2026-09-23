@@ -18,7 +18,7 @@ public class NamespaceAlignmentTests
     // Leaf assemblies, each owning exactly "Ntilde.<Name>.*".
     private static readonly string[] LeafAssemblies =
         { "Ntilde.VT", "Ntilde.Replay", "Ntilde.Rendering",
-          "Ntilde.Pty", "Ntilde.Platform", "Ntilde.AgentHost.Contracts" };
+          "Ntilde.Pty", "Ntilde.Platform", "Ntilde.AgentHost.Contracts", "Ntilde.Mux.Contracts" };
 
     [Theory]
     [InlineData("Ntilde.VT")]
@@ -28,6 +28,7 @@ public class NamespaceAlignmentTests
     [InlineData("Ntilde.Platform")]
     [InlineData("Ntilde.AgentHost.Contracts")]
     [InlineData("Ntilde.CommandAssist")]
+    [InlineData("Ntilde.Mux.Contracts")]
     public void Leaf_assembly_types_reside_in_its_own_namespace(string asmName)
     {
         var result = Types.InAssembly(LoadByName(asmName))

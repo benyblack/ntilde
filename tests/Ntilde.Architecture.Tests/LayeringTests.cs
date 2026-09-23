@@ -12,6 +12,7 @@ public class LayeringTests
     private static Assembly Platform => typeof(global::Ntilde.Platform.Input.TerminalInputSender).Assembly;
     private static Assembly AgentHostContracts => typeof(global::Ntilde.AgentHost.Contracts.AgentHostProtocol).Assembly;
     private static Assembly CommandAssist => typeof(global::Ntilde.CommandAssist.Application.CommandAssistAnchorCalculator).Assembly;
+    private static Assembly MuxContracts => typeof(global::Ntilde.Mux.Contracts.MuxProtocol).Assembly;
 
     [Fact]
     public void Vt_must_be_a_leaf_assembly()
@@ -192,10 +193,29 @@ public class LayeringTests
             $"CommandAssist must not reference networking assemblies. Offenders: {Join(offenders)}");
     }
 
+    /// <summary>
+    /// The IL sibling of <c>MuxContracts_csproj_must_have_no_project_references</c>. "Ntilde.Mux" is
+    /// deliberately not in the list: it is this assembly's own namespace root, and Mux referencing
+    /// Contracts (not the reverse) is enforced by the project-file test.
+    /// </summary>
+    [Fact]
+    public void MuxContracts_must_be_a_leaf_assembly()
+    {
+        var result = Types.InAssembly(MuxContracts)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "Ntilde.VT", "Ntilde.Replay", "Ntilde.Rendering", "Ntilde.Pty", "Ntilde.Platform",
+                "Ntilde.App", "Ntilde.AgentHost", "Avalonia", "SkiaSharp")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Mux.Contracts is a wire-contract leaf. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts })
         {
             var result = Types.InAssembly(asm)
                 .Should()
