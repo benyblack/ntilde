@@ -98,9 +98,24 @@ public sealed class HeadlessTerminalSession : IDisposable
         // the session's own string replay buffer (nothing else ever subscribes to it here, so it
         // would grow for the session's lifetime) - and subscribing it first would make
         // RawOutputTap drop the retained startup bytes.
-        _byteOutput.OnRawOutputReceived += _onRawOutput;
-        _session.OnOutputReceived += _onStringOutput;
-        _session.OnExit += _onExit;
+        try
+        {
+            _byteOutput.OnRawOutputReceived += _onRawOutput;
+            _session.OnOutputReceived += _onStringOutput;
+            _session.OnExit += _onExit;
+        }
+        catch
+        {
+            // The parse thread is already running: stop it (and drop whatever subscriptions did
+            // succeed) so a constructor that throws leaves no thread behind. The caller still owns
+            // the session and disposes it.
+            Volatile.Write(ref _disposed, 1);
+            _cts.Cancel();
+            try { Unsubscribe(); }
+            catch (Exception ex) { Log($"[Mux] session {id}: unsubscribing after a failed construction threw: {ex.Message}"); }
+            _parseThread.Join(TimeSpan.FromSeconds(5));
+            throw;
+        }
     }
 
     public Guid Id { get; }

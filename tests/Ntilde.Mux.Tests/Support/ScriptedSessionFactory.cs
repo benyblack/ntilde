@@ -10,6 +10,11 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
     public bool ProduceSessionsWithoutByteTap { get; set; }
     public NoTapTerminalSession? LastNoTapSession { get; private set; }
 
+    /// <summary>The next session's raw-tap subscription throws (see <see cref="ScriptedTerminalSession.ThrowOnRawSubscribe"/>).</summary>
+    public bool ThrowOnSubscribeNext { get; set; }
+
+    public ScriptedTerminalSession? LastScriptedSession { get; private set; }
+
     public ITerminalSession Create(TerminalSessionRequest request)
     {
         Requests.Enqueue(request);
@@ -24,6 +29,8 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
             return LastNoTapSession = new NoTapTerminalSession();
         }
 
-        return new ScriptedTerminalSession(request);
+        bool throwOnSubscribe = ThrowOnSubscribeNext;
+        ThrowOnSubscribeNext = false;
+        return LastScriptedSession = new ScriptedTerminalSession(request) { ThrowOnRawSubscribe = throwOnSubscribe };
     }
 }

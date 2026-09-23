@@ -159,7 +159,12 @@ the connection with `protocol_error`, and nothing reaches a buffer.
 
 - **Server:** `maxScrollbackRows` is clamped to `MuxServerOptions.MaxAttachScrollbackRows` (default
   20 000). A serialized snapshot larger than `MaxSnapshotBytes` (default `MaxFrameBytes` minus the
-  32-byte snapshot header) is refused with `snapshot_too_large`.
+  32-byte snapshot header) is refused with `snapshot_too_large`. Every peer-supplied geometry
+  (`spawn`, an attach's presentation, `resize` and its presentation) must fit
+  `MuxServerOptions.MaxDimension` (default 10 000 per dimension) and `MaxCells` (default 1 000 000,
+  the client's default ceiling): anything over is a `protocol_error` request error, the connection
+  stays open, and the geometry never reaches a buffer or a `ResizeEvent`. A factory-created child
+  that the server then fails to wrap is disposed and reported as `spawn_failed`.
 - **Client:** `MuxAttachLimits { MaxSnapshotBytes, MaxCells (cols×rows), MaxScrollbackRows }`
   (defaults 64 MiB, 1 000 000, 50 000). The byte ceiling is checked before deserialization, and the
   cell and scrollback ceilings are checked after deserialization but before `SnapshotReceived` is

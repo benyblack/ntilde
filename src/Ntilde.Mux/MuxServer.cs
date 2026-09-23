@@ -62,12 +62,28 @@ public sealed class MuxServer : IDisposable
     internal bool TryGetSession(Guid id, [NotNullWhen(true)] out HeadlessTerminalSession? session) =>
         _sessions.TryGetValue(id, out session);
 
+    /// <summary>
+    /// Every peer-supplied geometry (spawn, attach presentation, resize) passes here before it can
+    /// reach a <c>TerminalBuffer</c>, which allocates eagerly: over the ceiling is a request error,
+    /// never an OOM on a parse thread nor a ResizeEvent that makes every attached client drop.
+    /// </summary>
+    internal void RequireGeometry(int cols, int rows)
+    {
+        if (cols <= 0 || rows <= 0)
+        {
+            throw new MuxRequestException(MuxErrorCodes.ProtocolError, $"Invalid geometry {cols}x{rows}: cols and rows must be positive.");
+        }
+
+        if (cols > Options.MaxDimension || rows > Options.MaxDimension || (long)cols * rows > Options.MaxCells)
+        {
+            throw new MuxRequestException(MuxErrorCodes.ProtocolError,
+                $"Geometry {cols}x{rows} exceeds this server's ceiling ({Options.MaxDimension} per dimension, {Options.MaxCells} cells).");
+        }
+    }
+
     internal Guid Spawn(SpawnParams p)
     {
-        if (p.Cols <= 0 || p.Rows <= 0)
-        {
-            throw new MuxRequestException(MuxErrorCodes.ProtocolError, "spawn needs positive cols and rows.");
-        }
+        RequireGeometry(p.Cols, p.Rows);
 
         var request = new TerminalSessionRequest(
             p.Command, p.Arguments, p.StartingDirectory, p.Cols, p.Rows,
@@ -91,16 +107,31 @@ public sealed class MuxServer : IDisposable
         }
 
         Guid id = Guid.NewGuid();
-        _sessions[id] = new HeadlessTerminalSession(id, inner, new HeadlessSessionOptions
+        HeadlessTerminalSession session;
+        try
         {
-            Title = string.IsNullOrEmpty(p.Title) ? p.Command : p.Title,
-            Command = p.Command,
-            Arguments = p.Arguments,
-            Cols = p.Cols,
-            Rows = p.Rows,
-            ForceConPtyFiltering = Options.ForceConPtyFiltering,
-            Log = Options.Log,
-        });
+            session = new HeadlessTerminalSession(id, inner, new HeadlessSessionOptions
+            {
+                Title = string.IsNullOrEmpty(p.Title) ? p.Command : p.Title,
+                Command = p.Command,
+                Arguments = p.Arguments,
+                Cols = p.Cols,
+                Rows = p.Rows,
+                ForceConPtyFiltering = Options.ForceConPtyFiltering,
+                Log = Options.Log,
+            });
+        }
+        catch (Exception ex)
+        {
+            // The factory already started a child: nothing else will ever own it, so end it here
+            // rather than leak a process, and report the failure as the spawn's (not an internal
+            // error that would close this client's connection).
+            try { inner.Dispose(); }
+            catch (Exception disposeEx) { Log($"[MuxServer] disposing an unwrapped session failed: {disposeEx.Message}"); }
+            throw new MuxRequestException(MuxErrorCodes.SpawnFailed, $"The session could not be multiplexed: {ex.Message}");
+        }
+
+        _sessions[id] = session;
         return id;
     }
 

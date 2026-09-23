@@ -20,5 +20,16 @@ public sealed class MuxServerOptions
 
     public int MaxInboundFrameBytes { get; init; } = MuxProtocol.MaxFrameBytes;
 
+    /// <summary>
+    /// Largest grid (cols x rows) a peer may ask for through spawn, attach or resize. The headless
+    /// buffer allocates eagerly, so this is what stands between a hostile geometry and an OOM in the
+    /// daemon. Matches the client's default <c>MuxAttachLimits.MaxCells</c>, so nothing the server
+    /// accepts makes a default client drop its connection (spec §7).
+    /// </summary>
+    public long MaxCells { get; init; } = 1_000_000;
+
+    /// <summary>Largest single dimension (cols or rows) a peer may ask for.</summary>
+    public int MaxDimension { get; init; } = 10_000;
+
     public Action<string>? Log { get; init; }
 }

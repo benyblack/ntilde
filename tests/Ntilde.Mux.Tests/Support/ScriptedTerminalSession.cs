@@ -33,6 +33,10 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     public ConcurrentQueue<string> SentInput { get; } = new();
     public ConcurrentQueue<(int Cols, int Rows)> Resizes { get; } = new();
     public bool ThrowOnSendInput { get; set; }
+
+    /// <summary>Subscribing to the raw tap throws: a session the mux fails to wrap after the factory built it.</summary>
+    public bool ThrowOnRawSubscribe { get; init; }
+
     public Action<int, int>? OnResizeCalled { get; set; }
     public bool Disposed { get; private set; }
 
@@ -41,7 +45,11 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
     {
-        add { lock (_gate) _raw += value; }
+        add
+        {
+            if (ThrowOnRawSubscribe) throw new InvalidOperationException("scripted raw-tap subscription failure");
+            lock (_gate) _raw += value;
+        }
         remove { lock (_gate) _raw -= value; }
     }
 

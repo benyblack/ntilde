@@ -387,8 +387,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.Resize:
                     {
                         ResizeParams p = Params(request, MuxJsonContext.Default.ResizeParams);
-                        RequireGeometry(p.Cols, p.Rows);
-                        if (p.Presentation is { } presentation) RequireGeometry(presentation.Cols, presentation.Rows);
+                        _server.RequireGeometry(p.Cols, p.Rows);
+                        if (p.Presentation is { } presentation) _server.RequireGeometry(presentation.Cols, presentation.Rows);
                         Session(p.SessionId).PostResize(p.Cols, p.Rows, p.Presentation);
                         ReplyEmpty(request);
                         break;
@@ -456,7 +456,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         AttachParams p = Params(request, MuxJsonContext.Default.AttachParams);
-        RequireGeometry(p.Presentation.Cols, p.Presentation.Rows);
+        _server.RequireGeometry(p.Presentation.Cols, p.Presentation.Rows);
         HeadlessTerminalSession session = Session(p.SessionId);
         int rows = Math.Clamp(p.MaxScrollbackRows, 0, _server.Options.MaxAttachScrollbackRows);
         _attached.Add(p.SessionId);
@@ -467,11 +467,6 @@ internal sealed class MuxServerConnection : IMuxFrameSink
 
     private static T Params<T>(MuxRequest request, JsonTypeInfo<T> typeInfo) where T : class =>
         MuxFrames.ParseParams(request.Params, typeInfo); // malformed → MuxProtocolException → connection closed
-
-    private static void RequireGeometry(int cols, int rows)
-    {
-        if (cols <= 0 || rows <= 0) throw new MuxRequestException(MuxErrorCodes.ProtocolError, $"Invalid geometry {cols}x{rows}.");
-    }
 
     private HeadlessTerminalSession Session(Guid id) =>
         _server.TryGetSession(id, out HeadlessTerminalSession? s) ? s : throw new MuxRequestException(MuxErrorCodes.UnknownSession, $"No session {id}.");
