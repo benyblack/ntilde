@@ -105,14 +105,42 @@ public class UnicodeWidthTests
 
     // ---- Grapheme-level rules, re-checked on top of the rune table ----
 
-    [Fact]
-    public void TextDefaultPictographWithEmojiSelector_IsTwoCells()
+    // Text-default emoji (Emoji=Yes, Emoji_Presentation=No) are narrow as bare runes and become a
+    // two-cell emoji when VS16 asks for emoji presentation, wherever they live in the code space.
+    [Theory]
+    [InlineData("\u2764\uFE0F")]     // HEAVY BLACK HEART (Dingbats)
+    [InlineData("\U0001F321\uFE0F")] // THERMOMETER (SMP pictograph, narrow alone)
+    [InlineData("\U0001F3F3\uFE0F")] // WAVING WHITE FLAG
+    [InlineData("\u25B6\uFE0F")]     // BLACK RIGHT-POINTING TRIANGLE (Geometric Shapes)
+    [InlineData("\u2194\uFE0F")]     // LEFT RIGHT ARROW
+    [InlineData("\u00A9\uFE0F")]     // COPYRIGHT SIGN
+    [InlineData("\u00AE\uFE0F")]     // REGISTERED SIGN
+    [InlineData("\u203C\uFE0F")]     // DOUBLE EXCLAMATION MARK
+    [InlineData("1\uFE0F\u20E3")]    // keycap one: digit + VS16 + COMBINING ENCLOSING KEYCAP
+    [InlineData("#\uFE0F\u20E3")]    // keycap number sign
+    public void TextDefaultEmojiWithEmojiSelector_IsTwoCells(string grapheme)
     {
-        // Heart: Dingbats. Thermometer and white flag: text-default pictographs from the SMP symbol
-        // blocks, which are narrow as bare runes now, so VS16 is what makes them wide.
-        Assert.Equal(2, UnicodeWidth.GetGraphemeWidth("\u2764\uFE0F"));
-        Assert.Equal(2, UnicodeWidth.GetGraphemeWidth("\U0001F321\uFE0F"));
-        Assert.Equal(2, UnicodeWidth.GetGraphemeWidth("\U0001F3F3\uFE0F"));
+        Assert.Equal(2, UnicodeWidth.GetGraphemeWidth(grapheme));
+    }
+
+    // VS16 only has an effect on characters that have an emoji presentation. Anywhere else it is an
+    // unsupported sequence, and applications measure it as the base (1) plus a zero-width selector.
+    [Theory]
+    [InlineData("\U0001F700\uFE0F")] // ALCHEMICAL SYMBOL FOR QUINTESSENCE (SMP symbol, not an emoji)
+    [InlineData("\U0001FB00\uFE0F")] // BLOCK SEXTANT-1
+    [InlineData("\u2605\uFE0F")]     // BLACK STAR (Misc Symbols, not an emoji)
+    [InlineData("\u266B\uFE0F")]     // BEAMED EIGHTH NOTES (Misc Symbols, not an emoji)
+    [InlineData("a\uFE0F")]
+    public void EmojiSelectorOnANonEmojiBase_AddsNoWidth(string grapheme)
+    {
+        Assert.Equal(1, UnicodeWidth.GetGraphemeWidth(grapheme));
+    }
+
+    [Fact]
+    public void KeycapWithoutEmojiSelector_StaysText()
+    {
+        // Digit + enclosing keycap with no VS16 is the text keycap; nothing requested emoji.
+        Assert.Equal(1, UnicodeWidth.GetGraphemeWidth("1\u20E3"));
     }
 
     [Fact]
@@ -155,17 +183,49 @@ public class UnicodeWidthTests
         Assert.Equal(1, UnicodeWidth.GetGraphemeWidth("e\u0301"));
     }
 
-    // ---- The generated table ----
+    // ---- The generated tables ----
 
     [Fact]
-    public void GeneratedTable_IsSortedDisjointAndMerged()
+    public void GeneratedTables_AreSortedDisjointAndMerged()
     {
         // The binary search is only exact if these hold; the generator produces them, and this
         // catches a hand edit or a generator change that breaks them.
-        ReadOnlySpan<int> ranges = UnicodeWidth.EastAsianWideRanges;
+        AssertSortedDisjointMerged(UnicodeWidth.EastAsianWideRanges, UnicodeWidth.EastAsianWideMin, UnicodeWidth.EastAsianWideMax);
+        AssertSortedDisjointMerged(UnicodeWidth.TextDefaultEmojiRanges, UnicodeWidth.TextDefaultEmojiMin, UnicodeWidth.TextDefaultEmojiMax);
+    }
+
+    [Fact]
+    public void BinarySearch_AgreesWithTheTablesAtEveryRangeBoundary()
+    {
+        AssertLookupMatchesTableAtBoundaries(UnicodeWidth.EastAsianWideRanges.ToArray(), UnicodeWidth.IsEastAsianWide);
+        AssertLookupMatchesTableAtBoundaries(UnicodeWidth.TextDefaultEmojiRanges.ToArray(), UnicodeWidth.IsTextDefaultEmoji);
+    }
+
+    [Theory]
+    [InlineData(0x0023, true)]   // NUMBER SIGN - a keycap base
+    [InlineData(0x0031, true)]   // DIGIT ONE - a keycap base
+    [InlineData(0x00A9, true)]   // COPYRIGHT SIGN
+    [InlineData(0x25B6, true)]   // BLACK RIGHT-POINTING TRIANGLE
+    [InlineData(0x2764, true)]   // HEAVY BLACK HEART
+    [InlineData(0x1F321, true)]  // THERMOMETER
+    [InlineData(0x1F3F3, true)]  // WAVING WHITE FLAG
+    [InlineData(0x0041, false)]  // A - not an emoji
+    [InlineData(0x2605, false)]  // BLACK STAR - Misc Symbols, not an emoji
+    [InlineData(0x1F700, false)] // ALCHEMICAL SYMBOL FOR QUINTESSENCE - not an emoji
+    [InlineData(0x2705, false)]  // WHITE HEAVY CHECK MARK - emoji presentation by default
+    [InlineData(0x1F600, false)] // GRINNING FACE - emoji presentation by default
+    [InlineData(0x3030, false)]  // WAVY DASH - text-default emoji, but EAW=W, so two cells already
+    [InlineData(0x1F1E6, false)] // REGIONAL INDICATOR A - emoji presentation; flags have their own rule
+    public void TextDefaultEmojiTable_HoldsExactlyTheNarrowTextDefaultEmoji(int codePoint, bool expected)
+    {
+        Assert.Equal(expected, UnicodeWidth.IsTextDefaultEmoji(codePoint));
+    }
+
+    private static void AssertSortedDisjointMerged(ReadOnlySpan<int> ranges, int min, int max)
+    {
         Assert.True(ranges.Length > 0 && ranges.Length % 2 == 0);
-        Assert.Equal(UnicodeWidth.EastAsianWideMin, ranges[0]);
-        Assert.Equal(UnicodeWidth.EastAsianWideMax, ranges[^1]);
+        Assert.Equal(min, ranges[0]);
+        Assert.Equal(max, ranges[^1]);
 
         for (int i = 0; i < ranges.Length; i += 2)
         {
@@ -178,13 +238,10 @@ public class UnicodeWidthTests
         }
     }
 
-    [Fact]
-    public void BinarySearch_AgreesWithTheTableAtEveryRangeBoundary()
+    // Every edge of every range, from both sides, checked against a linear scan. An off-by-one in
+    // the search shows up exactly at these points.
+    private static void AssertLookupMatchesTableAtBoundaries(int[] ranges, Func<int, bool> lookup)
     {
-        // Every edge of every range, from both sides, checked against a linear scan. An off-by-one
-        // in the search shows up exactly at these points.
-        int[] ranges = UnicodeWidth.EastAsianWideRanges.ToArray();
-
         bool LinearContains(int cp)
         {
             for (int i = 0; i < ranges.Length; i += 2)
@@ -199,7 +256,7 @@ public class UnicodeWidthTests
             foreach (int cp in new[] { ranges[i] - 1, ranges[i], ranges[i + 1], ranges[i + 1] + 1 })
             {
                 // The code point rides along so a failure names it.
-                Assert.Equal((cp, LinearContains(cp)), (cp, UnicodeWidth.IsEastAsianWide(cp)));
+                Assert.Equal((cp, LinearContains(cp)), (cp, lookup(cp)));
             }
         }
     }
@@ -211,18 +268,22 @@ public class UnicodeWidthTests
         // for this reason: the tempting `ReadOnlySpan<int> X => new int[] { ... }` property is only
         // allocation-free when the JIT optimizes, and allocates on every access in Debug builds,
         // which is what the test suite runs.
+        // The VS16 grapheme exercises the text-default emoji table the same way.
+        const string thermometerEmoji = "\U0001F321\uFE0F";
         int[] probes = [0x4E2D, 0xAC00, 0x2705, 0x1F600, 0x1FB00, 0xFF61, 0x20000];
         foreach (int cp in probes) UnicodeWidth.GetRuneWidth(new Rune(cp));
+        UnicodeWidth.GetGraphemeWidth(thermometerEmoji);
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         int sum = 0;
         for (int i = 0; i < 10_000; i++)
         {
             foreach (int cp in probes) sum += UnicodeWidth.GetRuneWidth(new Rune(cp));
+            sum += UnicodeWidth.GetGraphemeWidth(thermometerEmoji);
         }
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        Assert.Equal(10_000 * 12, sum); // five wide and two narrow probes per pass
+        Assert.Equal(10_000 * 14, sum); // five wide and two narrow probes, plus one 2-cell emoji
         Assert.Equal(0, allocated);
     }
 
