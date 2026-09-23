@@ -1,6 +1,6 @@
-using Ntilde.VT.Links;
+using Ntilde.Platform.Links;
 
-namespace Ntilde.VT.Tests.Links;
+namespace Ntilde.Platform.Tests.Links;
 
 /// <summary>
 /// What a Ctrl+click on a terminal link may do. Link targets are untrusted program output (an OSC 8

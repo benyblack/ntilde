@@ -1,6 +1,6 @@
 using System;
 
-namespace Ntilde.VT.Links
+namespace Ntilde.Platform.Links
 {
     /// <summary>What activating a link is allowed to do. See <see cref="LinkSchemes.Classify"/>.</summary>
     public enum LinkAction

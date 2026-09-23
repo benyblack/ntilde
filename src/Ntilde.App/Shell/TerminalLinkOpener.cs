@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using Ntilde.VT.Links;
+using Ntilde.Platform.Links;
 
 namespace Ntilde.Shell
 {

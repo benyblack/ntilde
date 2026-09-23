@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Ntilde.VT.Links
+namespace Ntilde.Platform.Links
 {
     /// <summary>
     /// Decides what activating a terminal link may do. A link target is untrusted program output: an
