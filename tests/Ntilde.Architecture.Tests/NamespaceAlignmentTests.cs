@@ -18,7 +18,8 @@ public class NamespaceAlignmentTests
     // Leaf assemblies, each owning exactly "Ntilde.<Name>.*".
     private static readonly string[] LeafAssemblies =
         { "Ntilde.VT", "Ntilde.Replay", "Ntilde.Rendering",
-          "Ntilde.Pty", "Ntilde.Platform", "Ntilde.AgentHost.Contracts", "Ntilde.Mux.Contracts" };
+          "Ntilde.Pty", "Ntilde.Platform", "Ntilde.AgentHost.Contracts", "Ntilde.Mux.Contracts",
+          "Ntilde.Mux" };
 
     [Theory]
     [InlineData("Ntilde.VT")]
@@ -29,6 +30,7 @@ public class NamespaceAlignmentTests
     [InlineData("Ntilde.AgentHost.Contracts")]
     [InlineData("Ntilde.CommandAssist")]
     [InlineData("Ntilde.Mux.Contracts")]
+    [InlineData("Ntilde.Mux")]
     public void Leaf_assembly_types_reside_in_its_own_namespace(string asmName)
     {
         var result = Types.InAssembly(LoadByName(asmName))
@@ -64,6 +66,12 @@ public class NamespaceAlignmentTests
             foreach (var (label, asmName) in others)
             {
                 if (label == owner) continue;
+
+                // A child assembly owns a sub-namespace of its parent's prefix by construction:
+                // Ntilde.Mux.Contracts lives under "Ntilde.Mux". The reverse direction - the parent
+                // reaching into the child's namespace - is asserted by
+                // Mux_does_not_use_the_MuxContracts_namespace below.
+                if (asmName.StartsWith(owner + ".", StringComparison.Ordinal)) continue;
 
                 var result = Types.InAssembly(LoadByName(asmName))
                     .That().ArePublic()
@@ -106,5 +114,18 @@ public class NamespaceAlignmentTests
         Assert.True(result.IsSuccessful,
             "App may only own Ntilde.CommandAssist.Views; everything else under that prefix " +
             $"belongs in the CommandAssist assembly. Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
+    [Fact]
+    public void Mux_does_not_use_the_MuxContracts_namespace()
+    {
+        var result = Types.InAssembly(LoadByName("Ntilde.Mux"))
+            .That().ArePublic()
+            .Should()
+            .NotResideInNamespaceStartingWith("Ntilde.Mux.Contracts")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Wire types belong in Ntilde.Mux.Contracts. Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 }

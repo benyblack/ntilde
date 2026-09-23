@@ -13,6 +13,11 @@ public class LayeringTests
     private static Assembly AgentHostContracts => typeof(global::Ntilde.AgentHost.Contracts.AgentHostProtocol).Assembly;
     private static Assembly CommandAssist => typeof(global::Ntilde.CommandAssist.Application.CommandAssistAnchorCalculator).Assembly;
     private static Assembly MuxContracts => typeof(global::Ntilde.Mux.Contracts.MuxProtocol).Assembly;
+    private static Assembly Mux => typeof(global::Ntilde.Mux.Transport.InMemoryMuxListener).Assembly;
+
+    // Hoisted for CA1861.
+    private static readonly string[] MuxApprovedNtildeReferences =
+        ["Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay", "Ntilde.Mux.Contracts"];
 
     [Fact]
     public void Vt_must_be_a_leaf_assembly()
@@ -212,10 +217,41 @@ public class LayeringTests
             $"Mux.Contracts is a wire-contract leaf. Offenders: {Join(result.FailingTypeNames)}");
     }
 
+    /// <summary>
+    /// The mux is a headless library a daemon will host: no UI toolkit, no renderer, no App, and no
+    /// Platform (SSH/process plumbing stays behind the ITerminalSessionFactory the host injects).
+    /// </summary>
+    [Fact]
+    public void Mux_must_not_depend_on_ui_platform_or_app()
+    {
+        var result = Types.InAssembly(Mux)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "Avalonia", "SkiaSharp", "Ntilde.Platform", "Ntilde.Rendering", "Ntilde.Shell",
+                "Ntilde.Controls", "Ntilde.CommandAssist", "Ntilde.AgentHost")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Mux must stay headless. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
+    /// <summary>The emitted-reference edge, which catches a dependency no type names yet.</summary>
+    [Fact]
+    public void Mux_references_only_approved_ntilde_assemblies()
+    {
+        string[] offenders = Mux.GetReferencedAssemblies()
+            .Select(r => r.Name ?? string.Empty)
+            .Where(n => n.StartsWith("Ntilde", StringComparison.Ordinal))
+            .Where(n => !MuxApprovedNtildeReferences.Contains(n))
+            .ToArray();
+
+        Assert.True(offenders.Length == 0, $"Mux references unapproved assemblies: {Join(offenders)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux })
         {
             var result = Types.InAssembly(asm)
                 .Should()

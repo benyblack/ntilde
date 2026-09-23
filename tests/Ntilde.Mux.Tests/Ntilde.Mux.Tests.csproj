@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Ntilde.Mux\Ntilde.Mux.csproj" />
+    <ProjectReference Include="..\..\src\Ntilde.VT\Ntilde.VT.csproj" />
+    <ProjectReference Include="..\..\src\Ntilde.Pty\Ntilde.Pty.csproj" />
+    <ProjectReference Include="..\..\src\Ntilde.Replay\Ntilde.Replay.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
   </ItemGroup>
 </Project>

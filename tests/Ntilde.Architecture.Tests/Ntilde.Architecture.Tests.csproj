@@ -30,5 +30,6 @@
     <ProjectReference Include="..\..\src\Ntilde.Conformance\Ntilde.Conformance.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.AgentHost.Contracts\Ntilde.AgentHost.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Ntilde.Mux\Ntilde.Mux.csproj" />
   </ItemGroup>
 </Project>
