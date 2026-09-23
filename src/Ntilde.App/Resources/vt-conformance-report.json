@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "660b22afec722704079dc9aee5ff1dccca412dfaac7f91518a47b667221d83d9",
+  "matrixSha256": "609e8b77ca33350635bb237ecd9d30dc92bf2a8774f4d1ccd687def79a04551e",
   "summary": {
     "totalRows": 63,
     "supportedCount": 26,
@@ -9,7 +9,7 @@
     "experimentalCount": 1,
     "notSupportedCount": 4,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 41,
+    "rowsWithLinkedEvidence": 42,
     "supportedRowsWithLinkedEvidence": 26,
     "errorCount": 0,
     "warningCount": 0
@@ -702,16 +702,25 @@
       "feature": "Application cursor keys",
       "status": "\u26A0 Partial",
       "specOrNotes": "Impacts input mapping",
-      "evidenceText": "Unit/Code: \u0060ReplayV2Tests\u0060, app input paths",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060, \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060; Unit/Code: \u0060ReplayV2Tests\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
       ],
-      "evidenceLinks": [],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs",
+          "exists": true
+        }
+      ],
       "hasAutomatedEvidenceSignal": true,
-      "hasLinkedEvidence": false,
+      "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
-      "knownDeviations": "Parser/UI wiring exists; needs targeted key-mapping tests",
+      "knownDeviations": "Unmodified arrows and Home/End switch between CSI and SS3 with the mode; with a modifier held they always use xterm\u0027s \u0060CSI 1;m\u0060 form (e.g. Ctrl\u002BLeft \u0060CSI 1;5D\u0060), as xterm does, since SS3 has no parameter slot",
       "sourceLine": 113
     },
     {
@@ -822,7 +831,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
-      "knownDeviations": "Scope: disambiguate-escape-codes tier (\u00600b1\u0060) only. Bits \u00600b10\u0060/\u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (event types, alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad and functional keys keep their legacy encodings (including modified arrows/Home/End/PgUp/PgDn - the spec\u0027s \u0060CSI 1;mod \u003Cletter\u003E\u0060 form is not emitted, so e.g. Ctrl\u002BLeft stays an unmodified \u0060CSI D\u0060). AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
+      "knownDeviations": "Scope: disambiguate-escape-codes tier (\u00600b1\u0060) only. Bits \u00600b10\u0060/\u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (event types, alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad and functional keys keep their legacy encodings, which for arrows/Home/End/Insert/Delete/PgUp/PgDn/F1-F12 carry modifiers in xterm\u0027s PC-style form (e.g. Ctrl\u002BLeft is \u0060CSI 1;5D\u0060, Ctrl\u002BDelete \u0060CSI 3;5~\u0060). AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
       "sourceLine": 118
     },
     {
