@@ -21,6 +21,14 @@ public sealed class ThemeTokens
     /// <summary>Minimum contrast for non-text indicators (status dots, bars).</summary>
     public const double IndicatorContrast = 3.0;
 
+    /// <summary>
+    /// Minimum opaque-foreground-vs-ChromeBg contrast used to derive the hover/selected/pressed
+    /// row fills (see <see cref="Derive"/>). Higher than <see cref="TextContrast"/>: at the fills'
+    /// fixed low alphas (0x14/0x26/0x30), 4.5:1 leaves too little headroom for the composited
+    /// tints to read as visually distinct from ChromeBg and from each other.
+    /// </summary>
+    private const double FillContrast = 6.5;
+
     // Text-on-accent candidates: white, or the dark navy the Settings XAML always used.
     private static readonly Color LightInk = Color.FromRgb(0xFF, 0xFF, 0xFF);
     private static readonly Color DarkInk = Color.FromRgb(0x0A, 0x16, 0x22);
@@ -77,12 +85,23 @@ public sealed class ThemeTokens
         var fg = EnsureContrast(themeFg, textSurfaces, TextContrast);
         c[ThemeKeys.Fg] = fg;
         c[ThemeKeys.Fg2] = WithAlpha(fg, 0xC8);
-        c[ThemeKeys.Fg3] = WithAlpha(fg, 0x9A);
+        // Fg3 is translucent (0x9A), so meeting TextContrast at full opacity does not guarantee
+        // its composited-over-Panel ratio clears the (lower) secondary bar; some near-white/
+        // near-black surfaces (e.g. Solarized) land just under 3:1 otherwise. Fix the composited
+        // result directly, same technique as TabPreviewFg below.
+        c[ThemeKeys.Fg3] = EnsureContrast(WithAlpha(fg, 0x9A), textSurfaces, SecondaryTextContrast);
         c[ThemeKeys.Fg4] = WithAlpha(fg, 0x6E);
 
-        c[ThemeKeys.HoverFill] = WithAlpha(fg, 0x14);
-        c[ThemeKeys.SelectedFill] = WithAlpha(fg, 0x26);
-        c[ThemeKeys.PressedFill] = WithAlpha(fg, 0x30);
+        // Hover/selected/pressed are the same foreground at low, fixed alphas, so a reader tells
+        // them apart only by how far each composited tint sits from ChromeBg and from each other.
+        // TextContrast (4.5) on the opaque Fg is not enough headroom for that at these alphas: on
+        // Solarized, ChromeBg sits within a few units of white/near-black, so hover and selected
+        // land almost on top of each other. Derive the three fills from a separately-boosted base
+        // instead of Fg itself, so ordinary themes (already far above this bar) are untouched.
+        var fillFg = EnsureContrast(fg, [c[ThemeKeys.ChromeBg]], FillContrast);
+        c[ThemeKeys.HoverFill] = WithAlpha(fillFg, 0x14);
+        c[ThemeKeys.SelectedFill] = WithAlpha(fillFg, 0x26);
+        c[ThemeKeys.PressedFill] = WithAlpha(fillFg, 0x30);
 
         // Accent: soften the ANSI blue for chrome use, pick the better-contrasting ink, and if even
         // that ink misses 4.5:1, move the accent away from it.
