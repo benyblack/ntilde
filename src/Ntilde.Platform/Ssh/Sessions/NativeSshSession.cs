@@ -527,10 +527,26 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         _metrics.MarkFirstOutput();
         _recorder?.RecordChunk(payload, payload.Length);
         _flightRecorder?.RecordChunk(payload, payload.Length);
-        _rawOutput.Publish(payload);
+        lock (_decodeGate)
+        {
+            _rawOutput.Publish(payload);
+            EmitDecoded(payload);
+        }
+    }
 
-        char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(payload.Length)];
-        int charCount = _utf8Decoder.Decode(payload, chars);
+    // Serialises publish + decode across the threads that produce output: the poll loop (wire
+    // bytes, failure banners) and the port-forward worker that reports a refused remote listener
+    // (a thread-pool task). _utf8Decoder is stateful and not thread-safe, and holding one gate over
+    // both steps also keeps the raw and string streams in the same order.
+    private readonly object _decodeGate = new();
+
+    // The one place bytes become the string stream. Wire output and session-written text both go
+    // through it, so the string stream is always exactly what a UTF-8 decoder makes of the raw
+    // stream - which is what keeps a byte subscriber (the mux) and a string subscriber identical.
+    private void EmitDecoded(byte[] bytes)
+    {
+        char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(bytes.Length)];
+        int charCount = _utf8Decoder.Decode(bytes, chars);
         if (charCount > 0)
         {
             EmitText(new string(chars, 0, charCount));
@@ -671,13 +687,19 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
     }
 
     // Text this session writes itself (warnings, failure banners) rather than bytes off the wire.
-    // Published to the raw tap as UTF-8 too, so a byte subscriber sees everything a string
-    // subscriber does. It bypasses the wire decoder, so a partial code point pending in
-    // _utf8Decoder is not flushed first - these arrive at connect or at failure, not mid-stream.
+    // Published to the raw tap as UTF-8, and decoded through the same _utf8Decoder as wire bytes -
+    // not emitted as-is - so that when the wire stopped mid code point, both streams render the
+    // dangling prefix the same way (U+FFFD) before the banner, instead of the string stream
+    // silently dropping it while a raw decoder shows it. Callers include the port-forward worker's
+    // thread as well as the poll loop, hence _decodeGate.
     private void EmitSessionText(string text)
     {
-        _rawOutput.Publish(Encoding.UTF8.GetBytes(text));
-        EmitText(text);
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        lock (_decodeGate)
+        {
+            _rawOutput.Publish(bytes);
+            EmitDecoded(bytes);
+        }
     }
 
     private void RefuseUnsolicitedForwardChannel(int channelId)

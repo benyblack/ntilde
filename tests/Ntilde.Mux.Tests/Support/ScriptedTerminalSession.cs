@@ -34,6 +34,9 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     public ConcurrentQueue<(int Cols, int Rows)> Resizes { get; } = new();
     public bool ThrowOnSendInput { get; set; }
 
+    /// <summary>Makes Resize fail the way a native transport can (the PTY handle went bad).</summary>
+    public bool ThrowOnResize { get; set; }
+
     /// <summary>Subscribing to the raw tap throws: a session the mux fails to wrap after the factory built it.</summary>
     public bool ThrowOnRawSubscribe { get; init; }
 
@@ -95,6 +98,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public void Resize(int cols, int rows)
     {
+        if (ThrowOnResize) throw new IOException("scripted resize failure: the PTY handle is gone");
         Cols = cols;
         Rows = rows;
         Resizes.Enqueue((cols, rows));

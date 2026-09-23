@@ -508,7 +508,25 @@ public sealed class MuxClient : IDisposable
 
         IOException closed = Closed();
         foreach (TaskCompletionSource<MuxResponse> tcs in _pending.Values) tcs.TrySetException(closed);
-        foreach (MuxClientSession session in _sessions.Values) session.DeliverDisconnected(DisconnectReason);
-        Disconnected?.Invoke(DisconnectReason);
+
+        // Host code, raised from whichever thread ended the connection: the reader, the sender (a
+        // failed write) or the Dispose caller. Each handler is isolated, so one that throws neither
+        // escapes that thread - on the sender that would be a process crash - nor stops every
+        // session and handler after it from being told.
+        string? finalReason = DisconnectReason;
+        foreach (MuxClientSession session in _sessions.Values)
+        {
+            try { session.DeliverDisconnected(finalReason); }
+            catch (Exception ex) { SafeLog($"[MuxClient] a session Disconnected handler threw: {ex}"); }
+        }
+
+        if (Disconnected is { } handlers)
+        {
+            foreach (Action<string?> handler in Delegate.EnumerateInvocationList(handlers))
+            {
+                try { handler(finalReason); }
+                catch (Exception ex) { SafeLog($"[MuxClient] a Disconnected handler threw: {ex}"); }
+            }
+        }
     }
 }

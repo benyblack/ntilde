@@ -429,6 +429,33 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
+    public async Task SessionTextAfterAnIncompleteCodePoint_DecodesIdenticallyOnTheRawAndStringStreams()
+    {
+        // The wire ends mid code point, then the session writes its own failure banner. A raw
+        // subscriber (the mux) decodes prefix + banner bytes and gets U+FFFD before the banner; the
+        // string stream must say exactly the same, or the two terminal states diverge right when
+        // the connection fails.
+        var interop = new FakeNativeSshInterop();
+        interop.Enqueue(NativeSshEvent.Data(new byte[] { (byte)'x', 0xE2, 0x82 }));
+        interop.Enqueue(new NativeSshEvent(NativeSshEventKind.Error, Encoding.UTF8.GetBytes("auth failed"), statusCode: 5));
+
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var raw = new ConcurrentQueue<byte[]>();
+        var text = new ConcurrentQueue<string>();
+        session.OnRawOutputReceived += m => raw.Enqueue(m.ToArray());
+        session.OnOutputReceived += text.Enqueue;
+        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.OnExit += code => exit.TrySetResult(code);
+
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await WaitUntilAsync(() => string.Concat(text).Contains("auth failed", StringComparison.Ordinal));
+
+        string decodedRaw = Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray());
+        Assert.Equal(decodedRaw, string.Concat(text));
+        Assert.Contains('�', decodedRaw);
+    }
+
+    [Fact]
     public async Task LateRawSubscriberAfterAStringSubscriber_GetsNoRetainedBytes()
     {
         var interop = new FakeNativeSshInterop();

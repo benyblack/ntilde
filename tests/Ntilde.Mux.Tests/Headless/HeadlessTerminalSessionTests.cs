@@ -209,6 +209,36 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task An_attach_is_answered_even_when_the_childs_resize_throws()
+    {
+        // The attach resizes the session to the attaching client's size. If the child's Resize
+        // throws (a native transport gone bad), the attach must still be answered - the buffer and
+        // every client have already moved to the new size, so the snapshot is still the truth -
+        // rather than leave the client waiting out its whole request timeout.
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            fake.Emit("before");
+            await mux.FlushAsync(); // control outranks data: parse "before" first
+            fake.ThrowOnResize = true;
+            var sink = new RecordingFrameSink();
+
+            mux.PostAttach(sink, 3, 100, Presentation80x24 with { Cols = 100, Rows = 30 }, MuxProtocol.MaxFrameBytes);
+            await mux.FlushAsync();
+
+            Assert.Equal(["Snapshot@6"], sink.Described);
+            Assert.Equal((100, 30), (mux.Cols, mux.Rows));
+            Assert.False(mux.IsFaulted);
+
+            // ... and the session keeps working: a later resize failing the same way is survived too.
+            mux.PostResize(90, 20, presentation: null);
+            fake.Emit(" after");
+            await mux.FlushAsync();
+            Assert.Equal(["Snapshot@6", "Resize@6:90x20", "Output@6: after"], sink.Described);
+        }
+    }
+
+    [Fact]
     public async Task An_oversize_snapshot_is_refused_and_the_sink_is_not_subscribed()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

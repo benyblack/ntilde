@@ -199,8 +199,12 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
             info = new FlightExportInfo(result.EventCount, result.FirstEventMs, result.LastEventMs, result.TruncatedAtStart);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or MuxProtocolException or TimeoutException)
+        catch (Exception ex) when (ex is IOException or MuxProtocolException or TimeoutException
+            or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
+            // Try-style, like the Rust and native-SSH implementations: an unwritable or malformed
+            // local path, a dead connection or a timeout is "no export", never an exception at the
+            // caller.
             info = default;
             return false;
         }
@@ -316,10 +320,23 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         if (Interlocked.Exchange(ref _faulted, 1) == 0) Faulted?.Invoke(message);
     }
 
+    /// <remarks>
+    /// Every handler runs even if an earlier one throws; the failures are rethrown together at the
+    /// end so the client (which owns a logger) can report them without any handler being skipped.
+    /// </remarks>
     internal void DeliverDisconnected(string? reason)
     {
         Interlocked.Exchange(ref _expectedOffset, -1);
-        Disconnected?.Invoke(reason);
+        if (Disconnected is not { } handlers) return;
+
+        List<Exception>? failures = null;
+        foreach (Action<string?> handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(reason); }
+            catch (Exception ex) { (failures ??= []).Add(ex); }
+        }
+
+        if (failures is not null) throw new AggregateException($"Disconnected handler(s) of session {Id} threw.", failures);
     }
 
     private void RefreshSessionInfoIfStale()

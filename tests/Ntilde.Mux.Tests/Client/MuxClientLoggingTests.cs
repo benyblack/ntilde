@@ -35,4 +35,51 @@ public sealed class MuxClientLoggingTests
         Assert.Equal(MuxErrorCodes.ProtocolError, client.DisconnectReason);
         Assert.True(Volatile.Read(ref logCalls) >= 1, "the logger was reached (and threw)");
     }
+
+    /// <summary>
+    /// Disconnected handlers are host code, raised from whichever thread ends the connection - the
+    /// reader, the sender (a failed write) or the Dispose caller. One that throws must neither
+    /// escape that thread (a crash on the sender) nor stop the others being told.
+    /// </summary>
+    [Fact]
+    public async Task A_throwing_Disconnected_handler_does_not_stop_the_others_or_escape()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        MuxClient client = await connect;
+        MuxClientSession first = client.OpenSession(Guid.NewGuid());
+        MuxClientSession second = client.OpenSession(Guid.NewGuid());
+        var told = new List<string>();
+        first.Disconnected += _ => { lock (told) told.Add("first"); throw new InvalidOperationException("session handler bug"); };
+        second.Disconnected += _ => { lock (told) told.Add("second"); throw new InvalidOperationException("session handler bug"); };
+        client.Disconnected += _ => { lock (told) told.Add("client"); throw new InvalidOperationException("client handler bug"); };
+
+        Exception? escaped = Record.Exception(client.Dispose); // Dispose runs OnDisconnected on this thread
+
+        Assert.Null(escaped);
+        lock (told)
+        {
+            Assert.Equal(["client", "first", "second"], told.Order(StringComparer.Ordinal).ToArray());
+        }
+    }
+
+    [Fact]
+    public async Task TryExportFlightRecording_returns_false_for_a_path_it_cannot_write()
+    {
+        // The interface is try-style and the Rust/native-SSH implementations return false on path
+        // failures; the mux client must not be the one that throws at its caller instead.
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        using MuxClientSession session = client.OpenSession(id, "scripted");
+        session.EnableFlightRecording(1 << 20);
+        await client.PingAsync(Ct);
+        host.Fake(id).Emit("some output");
+
+        string unwritable = "bad\0path.rec"; // an embedded NUL is refused by the file APIs on every OS
+        bool exported = await Task.Run(() => session.TryExportFlightRecording(unwritable, out _), Ct);
+
+        Assert.False(exported);
+    }
 }

@@ -429,9 +429,18 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
 
         // Attaching is a resize to the attaching client's size (latest wins). The other clients get
-        // the ResizeEvent; this one's snapshot already reflects it.
-        ApplyPresentation(presentation);
-        ApplyResize(presentation.Cols, presentation.Rows);
+        // the ResizeEvent; this one's snapshot already reflects it. Guarded like everything else in
+        // here: an attach must always be answered, never left to the client's request timeout.
+        try
+        {
+            ApplyPresentation(presentation);
+            ApplyResize(presentation.Cols, presentation.Rows);
+        }
+        catch (Exception ex)
+        {
+            Reply(sink, requestId, MuxErrorCodes.Internal, $"Preparing the attach failed: {ex.Message}");
+            return;
+        }
 
         byte[] json;
         long seq;
@@ -501,7 +510,20 @@ public sealed class HeadlessTerminalSession : IDisposable
         // would read as a gap (EnterFaulted already dropped every subscriber; this is the belt).
         if (_subscribers.Count > 0 && !IsFaulted) Broadcast(MuxFrames.ResizeEvent(Id, Interlocked.Read(ref _rawOffset), cols, rows));
         if (IsExited) return;
-        _session.Resize(cols, rows);
+
+        // The buffer and every client have already moved to the new size, so a child that fails to
+        // learn it (a native transport gone bad) is logged, not propagated: propagating would leave
+        // an attach unanswered and the mux half-resized for no gain - the size cannot be un-sent.
+        try
+        {
+            _session.Resize(cols, rows);
+        }
+        catch (Exception ex)
+        {
+            Log($"[Mux] session {Id}: the child's Resize({cols}x{rows}) failed: {ex.Message}");
+            return;
+        }
+
         if (_parser.InBandResizeReportsEnabled)
         {
             _parser.SendInBandResize(rows, cols,
