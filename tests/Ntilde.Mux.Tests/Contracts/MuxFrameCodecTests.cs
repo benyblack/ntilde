@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Ntilde.Mux.Contracts;
 
 namespace Ntilde.Mux.Tests.Contracts;
@@ -82,5 +83,45 @@ public sealed class MuxFrameCodecTests
         frame.Release();
         Assert.Throws<ObjectDisposedException>(() => frame.AddRef());
         Assert.Throws<InvalidOperationException>(() => frame.Release());
+    }
+
+    /// <summary>
+    /// Regression for the increment-then-corrective-decrement race: two separate atomic ops let a
+    /// concurrent AddRef on an already-released frame observe a transient post-increment value
+    /// above 1 and succeed on a frame whose buffer is already back in the pool. While the creator
+    /// holds its own reference, every AddRef/Release pair here must succeed cleanly; only once the
+    /// creator also releases (dropping the count to zero) does a further AddRef see a dead frame.
+    /// </summary>
+    [Fact]
+    public void Concurrent_AddRef_and_Release_pairs_never_corrupt_the_count()
+    {
+        MuxOutboundFrame frame = MuxOutboundFrame.Rent(MuxFrameKind.Output, 4);
+        var exceptions = new ConcurrentBag<Exception>();
+        var options = new ParallelOptions
+        {
+            CancellationToken = TestContext.Current.CancellationToken,
+            MaxDegreeOfParallelism = Environment.ProcessorCount,
+        };
+
+        Parallel.For(0, 50, options, _ =>
+        {
+            for (int i = 0; i < 200; i++)
+            {
+                try
+                {
+                    frame.AddRef();
+                    frame.Release();
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+            }
+        });
+
+        Assert.Empty(exceptions);
+
+        frame.Release(); // the creator's own reference: count now reaches zero.
+        Assert.Throws<ObjectDisposedException>(() => frame.AddRef());
     }
 }

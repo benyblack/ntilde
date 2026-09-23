@@ -44,16 +44,30 @@ public sealed class MuxOutboundFrame
         return new MuxOutboundFrame(kind, buffer, payloadLength);
     }
 
+    /// <summary>
+    /// Increment-then-corrective-decrement is two separate atomic operations: a concurrent AddRef
+    /// on an already-released frame (count 0) could interleave between them and observe a
+    /// transient post-increment value greater than 1, succeeding on a frame whose buffer is
+    /// already back in the pool. A single CompareExchange retry loop makes "is this frame still
+    /// alive" and "take a reference" one atomic step, so no caller ever sees a torn state.
+    /// </summary>
     public void AddRef()
     {
-        if (Interlocked.Increment(ref _refCount) <= 1)
+        int current = Volatile.Read(ref _refCount);
+        while (true)
         {
-            // Undo the increment before throwing: leaving the counter bumped would let a
-            // subsequent stray Release() on this already-disposed frame land back on a
-            // "one ref left" reading and silently succeed instead of reporting the
-            // over-release (see MuxFrameCodecTests.Outbound_frames_are_reference_counted).
-            Interlocked.Decrement(ref _refCount);
-            throw new ObjectDisposedException(nameof(MuxOutboundFrame), "AddRef on a frame already returned to the pool.");
+            if (current <= 0)
+            {
+                throw new ObjectDisposedException(nameof(MuxOutboundFrame), "AddRef on a frame already returned to the pool.");
+            }
+
+            int observed = Interlocked.CompareExchange(ref _refCount, current + 1, current);
+            if (observed == current)
+            {
+                return;
+            }
+
+            current = observed;
         }
     }
 
