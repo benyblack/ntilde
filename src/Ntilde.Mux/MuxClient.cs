@@ -16,6 +16,9 @@ namespace Ntilde.Mux;
 /// </summary>
 public sealed class MuxClient : IDisposable
 {
+    /// <summary>Disconnect reason when the transport simply went away: not an error code, so not in MuxErrorCodes.</summary>
+    private const string ReasonDisconnected = "disconnected";
+
     private readonly Stream _stream;
     private readonly MuxClientOptions _options;
     private readonly Thread _readerThread;
@@ -274,7 +277,7 @@ public sealed class MuxClient : IDisposable
         }
     }
 
-    private IOException Closed() => new($"The mux connection is closed ({DisconnectReason ?? "disconnected"}).");
+    private IOException Closed() => new($"The mux connection is closed ({DisconnectReason ?? ReasonDisconnected}).");
 
     private void SendLoop()
     {
@@ -288,7 +291,7 @@ public sealed class MuxClient : IDisposable
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
         {
-            OnDisconnected("disconnected");
+            OnDisconnected(ReasonDisconnected);
         }
 
         while (_outbound.TryTake(out MuxOutboundFrame? left)) left.Release();
@@ -316,7 +319,7 @@ public sealed class MuxClient : IDisposable
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException)
         {
-            reason = "disconnected";
+            reason = ReasonDisconnected;
         }
         catch (Exception ex)
         {
@@ -485,10 +488,10 @@ public sealed class MuxClient : IDisposable
     private void OnDisconnected(string? reason)
     {
         if (Interlocked.Exchange(ref _disconnected, 1) != 0) return;
-        Interlocked.CompareExchange(ref _disconnectReason, reason ?? "disconnected", null);
+        Interlocked.CompareExchange(ref _disconnectReason, reason ?? ReasonDisconnected, null);
         _outbound.CompleteAdding();
         try { _stream.Dispose(); }
-        catch (IOException) { }
+        catch (IOException) { /* closing a transport the peer already dropped - the goal is reached */ }
 
         IOException closed = Closed();
         foreach (TaskCompletionSource<MuxResponse> tcs in _pending.Values) tcs.TrySetException(closed);

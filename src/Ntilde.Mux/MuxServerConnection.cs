@@ -14,6 +14,9 @@ namespace Ntilde.Mux;
 /// </summary>
 internal sealed class MuxServerConnection : IMuxFrameSink
 {
+    /// <summary>Close reason when the peer simply went away: not an error code, so not in MuxErrorCodes.</summary>
+    private const string ReasonDisconnected = "disconnected";
+
     private readonly MuxServer _server;
     private readonly Stream _stream;
     private readonly Thread _readerThread;
@@ -129,9 +132,11 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             SafeLog($"[MuxServer] connection {ConnectionId} disconnected: {reason} (send budget of {_server.Options.ClientSendBudgetBytes} stream bytes or {_server.Options.MaxQueuedSnapshotBytes} snapshot bytes exceeded).");
         }
 
+        // Closing is the goal; a transport that complains while being closed is already closed
+        // as far as this connection is concerned.
         try { _stream.Dispose(); }
-        catch (IOException) { }
-        catch (ObjectDisposedException) { }
+        catch (IOException) { /* the peer end is already gone */ }
+        catch (ObjectDisposedException) { /* disposed by the other thread first */ }
     }
 
     /// <summary>Sends one last frame (the peer is still reading and deserves the reason), then closes.</summary>
@@ -188,8 +193,10 @@ internal sealed class MuxServerConnection : IMuxFrameSink
 
     private void SafeLog(string message)
     {
+        // Called from catch clauses and parse threads: a throwing host logger must never turn a
+        // report about a failure into a second, escaping failure.
         try { _server.Log(message); }
-        catch (Exception) { }
+        catch (Exception) { /* deliberately swallowed - see above */ }
     }
 
     private void SendLoop()
@@ -214,9 +221,12 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
             {
+                // The peer went away or the stream was closed under us (Abort from another
+                // thread): not an error, just the end of this connection. The Abort below closes
+                // up with whatever reason was recorded first.
             }
 
-            Abort(CloseReason ?? "disconnected");
+            Abort(CloseReason ?? ReasonDisconnected);
         }
         catch (Exception ex)
         {
@@ -225,7 +235,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             // failure, never a server-wide one).
             SafeLog($"[MuxServer] connection {ConnectionId} sender loop crashed: {ex}");
             try { Abort(MuxErrorCodes.Internal); }
-            catch (Exception) { }
+            catch (Exception) { /* already logged; nothing may escape this thread's entry point */ }
         }
         finally
         {
@@ -275,6 +285,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException)
             {
+                // The peer closed or the stream was aborted from another thread: the connection is
+                // over, and the finally below does the cleanup either way.
             }
             catch (Exception ex)
             {
@@ -289,7 +301,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 }
 
                 _attached.Clear();
-                if (!IsClosing) Abort("disconnected");
+                if (!IsClosing) Abort(ReasonDisconnected);
             }
         }
         catch (Exception ex)
@@ -299,7 +311,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             // failure, never a server-wide one).
             SafeLog($"[MuxServer] connection {ConnectionId} reader loop crashed: {ex}");
             try { Abort(MuxErrorCodes.Internal); }
-            catch (Exception) { }
+            catch (Exception) { /* already logged; nothing may escape this thread's entry point */ }
         }
         finally
         {

@@ -122,7 +122,7 @@ public sealed class MuxServerRequestTests
         Assert.Null((await CallAsync(raw, MuxMethods.Kill, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams)).Error);
 
         Assert.True(fake.Disposed);
-        Assert.DoesNotContain(id, host.Server.SessionIds);
+        Assert.DoesNotContain(id, host.Server.GetSessionIds());
     }
 
     [Fact]

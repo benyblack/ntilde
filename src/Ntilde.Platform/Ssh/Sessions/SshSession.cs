@@ -79,16 +79,14 @@ public sealed class SshSession : ITerminalSession, ITerminalByteOutput
         remove => _inner.OnExit -= value;
     }
 
-    // Forwarded, and loud when the inner session cannot tap: a multiplexer that subscribed and
-    // silently got nothing would show an empty screen with no clue why.
+    // Forwarded straight through: the inner OpenSshSession implements ITerminalByteOutput itself
+    // (and is the one that is loud when *its* inner session cannot tap), so there is no runtime
+    // "can it tap?" question left to ask here.
     public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
     {
-        add => InnerBytes.OnRawOutputReceived += value;
-        remove => InnerBytes.OnRawOutputReceived -= value;
+        add => _inner.OnRawOutputReceived += value;
+        remove => _inner.OnRawOutputReceived -= value;
     }
-
-    private ITerminalByteOutput InnerBytes => _inner as ITerminalByteOutput
-        ?? throw new InvalidOperationException($"{_inner.GetType().Name} does not expose raw output.");
 
     public void SendInput(string input) => _inner.SendInput(input);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);

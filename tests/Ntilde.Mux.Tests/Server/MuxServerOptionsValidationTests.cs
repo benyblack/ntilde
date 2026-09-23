@@ -39,8 +39,7 @@ public sealed class MuxServerOptionsValidationTests
     [Fact]
     public void The_defaults_and_the_boundaries_are_accepted()
     {
-        new MuxServer(new ScriptedSessionFactory()).Dispose();
-        new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions
+        var boundaries = new MuxServerOptions
         {
             ClientSendBudgetBytes = 1,
             MaxQueuedSnapshotBytes = 1,
@@ -49,6 +48,15 @@ public sealed class MuxServerOptionsValidationTests
             MaxAttachScrollbackRows = 0,
             MaxCells = 1,
             MaxDimension = 1,
-        }).Dispose();
+        };
+
+        using (var defaults = new MuxServer(new ScriptedSessionFactory()))
+        {
+            Assert.Equal(new MuxServerOptions().MaxCells, defaults.Options.MaxCells);
+        }
+
+        // Accepted as given - validation refuses nonsense, it never silently rewrites a valid edge.
+        using var edge = new MuxServer(new ScriptedSessionFactory(), boundaries);
+        Assert.Same(boundaries, edge.Options);
     }
 }

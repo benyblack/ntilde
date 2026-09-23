@@ -106,7 +106,7 @@ public sealed class MuxServerGeometryCeilingTests
 
         Assert.Equal(MuxErrorCodes.ProtocolError, r.Error?.Code);
         Assert.Empty(host.Factory.Requests);
-        Assert.Empty(host.Server.SessionIds);
+        Assert.Empty(host.Server.GetSessionIds());
         await AssertStillOpenAsync(raw);
     }
 
@@ -124,7 +124,7 @@ public sealed class MuxServerGeometryCeilingTests
         Assert.Null(ok.Error);
         Assert.Equal(MuxErrorCodes.ProtocolError, tooWide.Error?.Code);
         Assert.Equal(MuxErrorCodes.ProtocolError, tooMany.Error?.Code);
-        Assert.Single(host.Server.SessionIds);
+        Assert.Single(host.Server.GetSessionIds());
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class MuxServerGeometryCeilingTests
 
         Assert.Equal(MuxErrorCodes.SpawnFailed, r.Error?.Code);
         Assert.True(host.Factory.LastScriptedSession!.Disposed);
-        Assert.Empty(host.Server.SessionIds);
+        Assert.Empty(host.Server.GetSessionIds());
         await AssertStillOpenAsync(raw);
     }
 }

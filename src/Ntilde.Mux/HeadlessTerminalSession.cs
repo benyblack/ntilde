@@ -246,9 +246,11 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         finally
         {
+            // Best-effort cleanup of our own temp file: the export already succeeded or failed on
+            // its own terms, and a leftover file in %TEMP% is not worth failing the reply over.
             try { File.Delete(path); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
+            catch (IOException) { /* in use or already gone - leave it to the OS temp sweep */ }
+            catch (UnauthorizedAccessException) { /* same: cleanup is best-effort */ }
         }
     }
 
@@ -260,7 +262,8 @@ public sealed class HeadlessTerminalSession : IDisposable
         // the unsubscribe below needs that lock. Cancelling throws it out of Add.
         _cts.Cancel();
         Unsubscribe();
-        if (Thread.CurrentThread != _parseThread) _parseThread.Join(TimeSpan.FromSeconds(5));
+        bool parseThreadStopped = Thread.CurrentThread == _parseThread
+            || _parseThread.Join(TimeSpan.FromSeconds(5));
 
         // Ordinarily redundant with ParseLoop's own finally (Join waited for it to run), but cheap
         // and idempotent, and it still protects the join-timeout edge case: nothing posted around
@@ -270,6 +273,18 @@ public sealed class HeadlessTerminalSession : IDisposable
         DrainAfterStop();
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
+
+        // Only once the parse thread is gone: it is the one thread that still reads the token and
+        // takes from the queues. A late producer (the tap handler, OnExit) that slipped past the
+        // _disposed check meets ObjectDisposedException in TryEnqueue, which treats it as closed.
+        // If the join timed out, the thread is wedged and these are left to the finalizer rather
+        // than yanked out from under it.
+        if (parseThreadStopped && Thread.CurrentThread != _parseThread)
+        {
+            _cts.Dispose();
+            _control.Dispose();
+            _data.Dispose();
+        }
     }
 
     private void OnRawOutput(ReadOnlyMemory<byte> chunk)
@@ -313,6 +328,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         catch (OperationCanceledException)
         {
+            // Dispose (or the terminal exit) cancelled the token: the normal way this loop ends.
         }
         catch (Exception ex)
         {
@@ -595,8 +611,10 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// <summary>Never throws: it is called from the parse thread's own catch blocks, where a throwing logger would escape the thread.</summary>
     private void Log(string message)
     {
+        // The host's logger is arbitrary code running on the parse thread; a logger that throws
+        // (disk full, closed sink) must not fault the session it is only reporting on.
         try { _log?.Invoke(message); }
-        catch (Exception) { }
+        catch (Exception) { /* deliberately swallowed - see above */ }
     }
 
     private enum WorkKind : byte { Data, Action, Exit }

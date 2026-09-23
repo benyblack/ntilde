@@ -55,7 +55,8 @@ public sealed class MuxServer : IDisposable
 
     public MuxServerOptions Options { get; }
     public int ConnectionCount => _connections.Count;
-    public IReadOnlyCollection<Guid> SessionIds => _sessions.Keys.ToArray();
+    /// <summary>A snapshot of the ids of the sessions this server hosts right now (a copy, hence a method).</summary>
+    public IReadOnlyCollection<Guid> GetSessionIds() => _sessions.Keys.ToArray();
 
     internal event Action<MuxServerConnection>? ConnectionClosed;
 
@@ -196,8 +197,10 @@ public sealed class MuxServer : IDisposable
     /// <summary>Never throws: a caller's logger must not take down the thread (accept, reader, parse) that reports through it.</summary>
     internal void Log(string message)
     {
+        // Reached from parse threads and catch clauses: a throwing host logger must not fault a
+        // session or turn a report about one failure into a second, escaping one.
         try { Options.Log?.Invoke(message); }
-        catch (Exception) { }
+        catch (Exception) { /* deliberately swallowed - see above */ }
     }
 
     public void Dispose()
@@ -225,6 +228,7 @@ public sealed class MuxServer : IDisposable
         }
         catch (OperationCanceledException)
         {
+            // Dispose cancelled the token: the normal way this loop ends.
         }
         catch (Exception ex)
         {
