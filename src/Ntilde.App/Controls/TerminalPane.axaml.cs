@@ -4823,7 +4823,9 @@ namespace Ntilde.Controls
                 using (var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(
                     pixelSize, new Vector(96 * effectiveScale, 96 * effectiveScale)))
                 {
-                    rtb.Render(view);
+                    // Not rtb.Render(view): this runs beside the render thread's live frames,
+                    // and RenderOffscreen keeps it from acting as one.
+                    view.RenderOffscreen(rtb);
                     using var stream = new System.IO.MemoryStream();
                     rtb.Save(stream);
                     png = stream.ToArray();
@@ -4895,7 +4897,7 @@ namespace Ntilde.Controls
                         (int)Math.Ceiling(TermView.Bounds.Height * dpi));
 
                     var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(pixelSize, new Vector(96 * dpi, 96 * dpi));
-                    rtb.Render(TermView);
+                    TermView.RenderOffscreen(rtb);
 
                     using var stream = await file.OpenWriteAsync();
                     rtb.Save(stream);

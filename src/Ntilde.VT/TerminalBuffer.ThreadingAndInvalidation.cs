@@ -12,6 +12,20 @@ namespace Ntilde.VT
         private long _cursorSuppressedUntilUtcTicks;
         private long _cursorSuppressionBlockedUntilUtcTicks;
         private static readonly TimeSpan _maxSyncDuration = TimeSpan.FromMilliseconds(200);
+
+        // Live render-snapshot state: the row-diff baseline (_lastSnapshot*, _hasSnapshotState),
+        // the built-row cache (_cachedRenderRow*) and the reused palette (_cachedAnsiPalette).
+        // It records what the live renderer last drew, so only live-mode captures touch it;
+        // isolated captures (RenderSnapshotRequest.Isolated) build everything fresh.
+        //
+        // Live captures write it under _liveSnapshotStateGate as well as the read lock. The read
+        // lock is shared, so it alone would let two captures write these arrays at once, and a
+        // torn cache entry serves one row's cells for another. There is one live renderer per
+        // buffer, so the gate is uncontended in practice; it is what keeps a stray second
+        // live-mode caller from corrupting the state rather than merely confusing the diff. The
+        // screen-switch resets of _hasSnapshotState run under the write lock, which already
+        // excludes every reader, so they do not take it.
+        private readonly object _liveSnapshotStateGate = new();
         private int[] _lastSnapshotAbsRows = Array.Empty<int>();
         private long[] _lastSnapshotRowIds = Array.Empty<long>();
         private uint[] _lastSnapshotRowRevisions = Array.Empty<uint>();
@@ -226,6 +240,12 @@ namespace Ntilde.VT
             OnInvalidate?.Invoke();
         }
 
+        /// <summary>
+        /// Copies the visible rows, cursor, theme and images out under the read lock. A live-mode
+        /// request (the default) also diffs against the previous live capture and reports what
+        /// changed in <see cref="TerminalRenderSnapshot.DirtySpans"/>; that mode is for the live
+        /// renderer alone. Every other caller sets <see cref="RenderSnapshotRequest.Isolated"/>.
+        /// </summary>
         public TerminalRenderSnapshot CaptureRenderSnapshot(RenderSnapshotRequest req, out long readLockMs)
         {
             int viewportRows = Math.Max(0, req.ViewportRows);
@@ -249,121 +269,22 @@ namespace Ntilde.VT
                 cursorRow = _cursorRow;
                 cursorCol = _cursorCol;
                 cursorStyle = Modes.CursorStyle;
-                theme = CreateRenderThemeSnapshot_NoLock();
-                int themeEpoch = _renderThemeEpoch;
-                bool themeEpochChanged = _hasSnapshotState && _lastSnapshotThemeEpoch != themeEpoch;
 
-                EnsureSnapshotStateCapacity_NoLock(viewportRows);
-
-                var dirtyList = new List<DirtySpan>(Math.Max(8, viewportRows * 2));
-
-                for (int r = 0; r < viewportRows; r++)
+                if (req.Isolated)
                 {
-                    int absRow = absDisplayStart + r;
-                    var row = GetRowAbsolute(absRow);
-                    RenderRowSnapshot rowSnapshot;
-                    long rowId = 0;
-                    uint rowRevision = 0;
-
-                    if (row != null)
-                    {
-                        rowSnapshot = new RenderRowSnapshot
-                        {
-                            AbsRow = absRow,
-                            Revision = row.Revision,
-                            Cols = viewportCols,
-                            Cells = GetOrBuildCachedRenderRowCells_NoLock(r, row, viewportCols),
-                            RowId = row.Id
-                        };
-                        rowId = rowSnapshot.RowId;
-                        rowRevision = rowSnapshot.Revision;
-                    }
-                    else if (!_isAltScreen && absRow < _scrollback.Count)
-                    {
-                        // Scrollback row (paged)
-                        long absRowId = _scrollback.TotalRowsEvicted + absRow;
-                        rowSnapshot = new RenderRowSnapshot
-                        {
-                            AbsRow = absRow,
-                            // Scrollback row content is immutable, but a theme switch rewrites
-                            // the stored default colors (UpdateThemeColors). Stamping the theme
-                            // epoch here is what invalidates the paged-row snapshot cache below
-                            // and every render-side cache keyed by this revision.
-                            Revision = (uint)themeEpoch,
-                            Cols = viewportCols,
-                            Cells = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, themeEpoch),
-                            RowId = absRowId
-                        };
-                        rowId = rowSnapshot.RowId;
-                        rowRevision = rowSnapshot.Revision;
-                    }
-                    else
-                    {
-                        rowSnapshot = new RenderRowSnapshot
-                        {
-                            AbsRow = absRow,
-                            Revision = 0,
-                            Cols = 0,
-                            Cells = Array.Empty<RenderCellSnapshot>(),
-                            RowId = 0
-                        };
-                        _cachedRenderRowIds[r] = 0;
-                        _cachedRenderRowRevisions[r] = 0;
-                        _cachedRenderRowCols[r] = 0;
-                        _cachedRenderRowCells[r] = Array.Empty<RenderCellSnapshot>();
-                    }
-
-                    if (viewportRows > 0 && rowsData.Array != null)
-                    {
-                        rowsData.Array[r] = rowSnapshot;
-                    }
-
-                    bool fullRowDirty = !_hasSnapshotState ||
-                                        _lastSnapshotCols != viewportCols ||
-                                        _lastSnapshotAbsRows[r] != absRow ||
-                                        _lastSnapshotRowIds[r] != rowId ||
-                                        // A theme switch recolors cells in place; the span-diff
-                                        // would compare against pre-switch snapshots and miss
-                                        // recolored regions, so re-render every row once.
-                                        themeEpochChanged;
-
-                    if (rowSnapshot.Cols > 0 && viewportCols > 0)
-                    {
-                        if (fullRowDirty)
-                        {
-                            dirtyList.Add(new DirtySpan
-                            {
-                                Row = r,
-                                ColStart = 0,
-                                ColEnd = viewportCols
-                            });
-                        }
-                        else if (_lastSnapshotRowRevisions[r] != rowRevision)
-                        {
-                            AppendChangedSpansForRow_NoLock(r, rowSnapshot.Cells, viewportCols, dirtyList);
-                            if (dirtyList.Count == 0 || dirtyList[^1].Row != r)
-                            {
-                                // Revision changed but cell diff produced no spans. Be conservative.
-                                dirtyList.Add(new DirtySpan
-                                {
-                                    Row = r,
-                                    ColStart = 0,
-                                    ColEnd = viewportCols
-                                });
-                            }
-                        }
-                    }
-
-                    _lastSnapshotAbsRows[r] = absRow;
-                    _lastSnapshotRowIds[r] = rowId;
-                    _lastSnapshotRowRevisions[r] = rowRevision;
-                    _lastSnapshotRowCells[r] = rowSnapshot.Cells;
+                    // A palette of its own: the shared one belongs to the live path, and a live
+                    // frame keeps drawing with it after releasing the read lock.
+                    theme = CreateRenderThemeSnapshot_NoLock(new TermColor[16]);
+                    dirtySpans = CaptureIsolatedRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
                 }
-
-                _lastSnapshotCols = viewportCols;
-                _lastSnapshotThemeEpoch = themeEpoch;
-                _hasSnapshotState = true;
-                dirtySpans = NormalizeDirtySpans(dirtyList, viewportRows, viewportCols);
+                else
+                {
+                    lock (_liveSnapshotStateGate)
+                    {
+                        theme = CreateRenderThemeSnapshot_NoLock(_cachedAnsiPalette ??= new TermColor[16]);
+                        dirtySpans = CaptureLiveRows_NoLock(rowsData, absDisplayStart, viewportRows, viewportCols);
+                    }
+                }
 
                 var visibleImages = GetVisibleImagesSnapshot(absDisplayStart, viewportRows);
                 if (visibleImages.Count > 0)
@@ -402,35 +323,232 @@ namespace Ntilde.VT
             };
         }
 
-        private RenderThemeSnapshot CreateRenderThemeSnapshot_NoLock()
+        /// <summary>
+        /// Live-mode rows: built through the render-row cache and diffed against the previous live
+        /// capture, which this capture then replaces as the baseline. Caller holds the read lock and
+        /// <see cref="_liveSnapshotStateGate"/>.
+        /// </summary>
+        private PooledArray<DirtySpan> CaptureLiveRows_NoLock(PooledArray<RenderRowSnapshot> rowsData, int absDisplayStart, int viewportRows, int viewportCols)
         {
-            // Reuse the palette array to avoid per-frame allocation.
-            if (_cachedAnsiPalette == null)
+            int themeEpoch = _renderThemeEpoch;
+            bool themeEpochChanged = _hasSnapshotState && _lastSnapshotThemeEpoch != themeEpoch;
+
+            EnsureSnapshotStateCapacity_NoLock(viewportRows);
+
+            var dirtyList = new List<DirtySpan>(Math.Max(8, viewportRows * 2));
+
+            for (int r = 0; r < viewportRows; r++)
             {
-                _cachedAnsiPalette = new TermColor[16];
+                int absRow = absDisplayStart + r;
+                var row = GetRowAbsolute(absRow);
+                RenderRowSnapshot rowSnapshot;
+                long rowId = 0;
+                uint rowRevision = 0;
+
+                if (row != null)
+                {
+                    rowSnapshot = new RenderRowSnapshot
+                    {
+                        AbsRow = absRow,
+                        Revision = row.Revision,
+                        Cols = viewportCols,
+                        Cells = GetOrBuildCachedRenderRowCells_NoLock(r, row, viewportCols),
+                        RowId = row.Id
+                    };
+                    rowId = rowSnapshot.RowId;
+                    rowRevision = rowSnapshot.Revision;
+                }
+                else if (!_isAltScreen && absRow < _scrollback.Count)
+                {
+                    // Scrollback row (paged)
+                    long absRowId = _scrollback.TotalRowsEvicted + absRow;
+                    rowSnapshot = new RenderRowSnapshot
+                    {
+                        AbsRow = absRow,
+                        // Scrollback row content is immutable, but a theme switch rewrites
+                        // the stored default colors (UpdateThemeColors). Stamping the theme
+                        // epoch here is what invalidates the paged-row snapshot cache below
+                        // and every render-side cache keyed by this revision.
+                        Revision = (uint)themeEpoch,
+                        Cols = viewportCols,
+                        Cells = GetOrBuildCachedPagedRenderRowCells_NoLock(r, absRow, absRowId, viewportCols, themeEpoch),
+                        RowId = absRowId
+                    };
+                    rowId = rowSnapshot.RowId;
+                    rowRevision = rowSnapshot.Revision;
+                }
+                else
+                {
+                    rowSnapshot = new RenderRowSnapshot
+                    {
+                        AbsRow = absRow,
+                        Revision = 0,
+                        Cols = 0,
+                        Cells = Array.Empty<RenderCellSnapshot>(),
+                        RowId = 0
+                    };
+                    _cachedRenderRowIds[r] = 0;
+                    _cachedRenderRowRevisions[r] = 0;
+                    _cachedRenderRowCols[r] = 0;
+                    _cachedRenderRowCells[r] = Array.Empty<RenderCellSnapshot>();
+                }
+
+                if (viewportRows > 0 && rowsData.Array != null)
+                {
+                    rowsData.Array[r] = rowSnapshot;
+                }
+
+                bool fullRowDirty = !_hasSnapshotState ||
+                                    _lastSnapshotCols != viewportCols ||
+                                    _lastSnapshotAbsRows[r] != absRow ||
+                                    _lastSnapshotRowIds[r] != rowId ||
+                                    // A theme switch recolors cells in place; the span-diff
+                                    // would compare against pre-switch snapshots and miss
+                                    // recolored regions, so re-render every row once.
+                                    themeEpochChanged;
+
+                if (rowSnapshot.Cols > 0 && viewportCols > 0)
+                {
+                    if (fullRowDirty)
+                    {
+                        dirtyList.Add(new DirtySpan
+                        {
+                            Row = r,
+                            ColStart = 0,
+                            ColEnd = viewportCols
+                        });
+                    }
+                    else if (_lastSnapshotRowRevisions[r] != rowRevision)
+                    {
+                        AppendChangedSpansForRow_NoLock(r, rowSnapshot.Cells, viewportCols, dirtyList);
+                        if (dirtyList.Count == 0 || dirtyList[^1].Row != r)
+                        {
+                            // Revision changed but cell diff produced no spans. Be conservative.
+                            dirtyList.Add(new DirtySpan
+                            {
+                                Row = r,
+                                ColStart = 0,
+                                ColEnd = viewportCols
+                            });
+                        }
+                    }
+                }
+
+                _lastSnapshotAbsRows[r] = absRow;
+                _lastSnapshotRowIds[r] = rowId;
+                _lastSnapshotRowRevisions[r] = rowRevision;
+                _lastSnapshotRowCells[r] = rowSnapshot.Cells;
             }
-            _cachedAnsiPalette[0] = Theme.Black;
-            _cachedAnsiPalette[1] = Theme.Red;
-            _cachedAnsiPalette[2] = Theme.Green;
-            _cachedAnsiPalette[3] = Theme.Yellow;
-            _cachedAnsiPalette[4] = Theme.Blue;
-            _cachedAnsiPalette[5] = Theme.Magenta;
-            _cachedAnsiPalette[6] = Theme.Cyan;
-            _cachedAnsiPalette[7] = Theme.White;
-            _cachedAnsiPalette[8] = Theme.BrightBlack;
-            _cachedAnsiPalette[9] = Theme.BrightRed;
-            _cachedAnsiPalette[10] = Theme.BrightGreen;
-            _cachedAnsiPalette[11] = Theme.BrightYellow;
-            _cachedAnsiPalette[12] = Theme.BrightBlue;
-            _cachedAnsiPalette[13] = Theme.BrightMagenta;
-            _cachedAnsiPalette[14] = Theme.BrightCyan;
-            _cachedAnsiPalette[15] = Theme.BrightWhite;
+
+            _lastSnapshotCols = viewportCols;
+            _lastSnapshotThemeEpoch = themeEpoch;
+            _hasSnapshotState = true;
+            return NormalizeDirtySpans(dirtyList, viewportRows, viewportCols);
+        }
+
+        /// <summary>
+        /// Isolated-mode rows (<see cref="RenderSnapshotRequest.Isolated"/>): every row built fresh
+        /// and reported fully dirty, which is what the live path reports on its first capture, when
+        /// it has no baseline either. Reads buffer state only, so it can run beside a live capture
+        /// under the shared read lock. Caller holds the read lock.
+        /// </summary>
+        private PooledArray<DirtySpan> CaptureIsolatedRows_NoLock(PooledArray<RenderRowSnapshot> rowsData, int absDisplayStart, int viewportRows, int viewportCols)
+        {
+            int themeEpoch = _renderThemeEpoch;
+            var dirtyList = new List<DirtySpan>(Math.Max(8, viewportRows));
+
+            for (int r = 0; r < viewportRows; r++)
+            {
+                int absRow = absDisplayStart + r;
+                var row = GetRowAbsolute(absRow);
+                RenderRowSnapshot rowSnapshot;
+
+                if (row != null)
+                {
+                    var cells = viewportCols > 0 ? new RenderCellSnapshot[viewportCols] : Array.Empty<RenderCellSnapshot>();
+                    PopulateRenderCellsFromRow_NoLock(row, viewportCols, cells);
+                    rowSnapshot = new RenderRowSnapshot
+                    {
+                        AbsRow = absRow,
+                        Revision = row.Revision,
+                        Cols = viewportCols,
+                        Cells = cells,
+                        RowId = row.Id
+                    };
+                }
+                else if (!_isAltScreen && absRow < _scrollback.Count)
+                {
+                    // Same id and theme-epoch revision the live path stamps on a paged row, so a
+                    // caller's own row-picture cache keys it the same way.
+                    rowSnapshot = new RenderRowSnapshot
+                    {
+                        AbsRow = absRow,
+                        Revision = (uint)themeEpoch,
+                        Cols = viewportCols,
+                        Cells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols),
+                        RowId = _scrollback.TotalRowsEvicted + absRow
+                    };
+                }
+                else
+                {
+                    rowSnapshot = new RenderRowSnapshot
+                    {
+                        AbsRow = absRow,
+                        Revision = 0,
+                        Cols = 0,
+                        Cells = Array.Empty<RenderCellSnapshot>(),
+                        RowId = 0
+                    };
+                }
+
+                if (rowsData.Array != null)
+                {
+                    rowsData.Array[r] = rowSnapshot;
+                }
+
+                if (rowSnapshot.Cols > 0 && viewportCols > 0)
+                {
+                    dirtyList.Add(new DirtySpan
+                    {
+                        Row = r,
+                        ColStart = 0,
+                        ColEnd = viewportCols
+                    });
+                }
+            }
+
+            return NormalizeDirtySpans(dirtyList, viewportRows, viewportCols);
+        }
+
+        /// <summary>
+        /// Fills <paramref name="palette"/> (16 entries) from the current theme and wraps it. The
+        /// live path passes its one reused array, to avoid a per-frame allocation; isolated
+        /// captures pass a fresh one.
+        /// </summary>
+        private RenderThemeSnapshot CreateRenderThemeSnapshot_NoLock(TermColor[] palette)
+        {
+            palette[0] = Theme.Black;
+            palette[1] = Theme.Red;
+            palette[2] = Theme.Green;
+            palette[3] = Theme.Yellow;
+            palette[4] = Theme.Blue;
+            palette[5] = Theme.Magenta;
+            palette[6] = Theme.Cyan;
+            palette[7] = Theme.White;
+            palette[8] = Theme.BrightBlack;
+            palette[9] = Theme.BrightRed;
+            palette[10] = Theme.BrightGreen;
+            palette[11] = Theme.BrightYellow;
+            palette[12] = Theme.BrightBlue;
+            palette[13] = Theme.BrightMagenta;
+            palette[14] = Theme.BrightCyan;
+            palette[15] = Theme.BrightWhite;
             return new RenderThemeSnapshot
             {
                 Foreground = Theme.Foreground,
                 Background = Theme.Background,
                 CursorColor = Theme.CursorColor,
-                AnsiPalette = _cachedAnsiPalette
+                AnsiPalette = palette
             };
         }
 
@@ -718,6 +836,23 @@ namespace Ntilde.VT
             }
 
             // Scrollback rows are immutable, so we only need to build them once per rowId/Cols combination.
+            var rebuiltCells = BuildPagedRenderRowCells_NoLock(absRow, viewportCols);
+
+            _cachedRenderRowIds[rowIndex] = rowId;
+            _cachedRenderRowRevisions[rowIndex] = (uint)themeEpoch;
+            _cachedRenderRowCols[rowIndex] = viewportCols;
+            _cachedRenderRowCells[rowIndex] = rebuiltCells;
+
+            return rebuiltCells;
+        }
+
+        private RenderCellSnapshot[] BuildPagedRenderRowCells_NoLock(int absRow, int viewportCols)
+        {
+            if (viewportCols <= 0)
+            {
+                return Array.Empty<RenderCellSnapshot>();
+            }
+
             var rebuiltCells = new RenderCellSnapshot[viewportCols];
             var sourceCells = _scrollback.GetRow(absRow);
             int copyLen = Math.Min(sourceCells.Length, viewportCols);
@@ -772,11 +907,6 @@ namespace Ntilde.VT
                     };
                 }
             }
-
-            _cachedRenderRowIds[rowIndex] = rowId;
-            _cachedRenderRowRevisions[rowIndex] = (uint)themeEpoch;
-            _cachedRenderRowCols[rowIndex] = viewportCols;
-            _cachedRenderRowCells[rowIndex] = rebuiltCells;
 
             return rebuiltCells;
         }
