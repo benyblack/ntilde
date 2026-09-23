@@ -540,7 +540,12 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    private void Log(string message) => _log?.Invoke(message);
+    /// <summary>Never throws: it is called from the parse thread's own catch blocks, where a throwing logger would escape the thread.</summary>
+    private void Log(string message)
+    {
+        try { _log?.Invoke(message); }
+        catch (Exception) { }
+    }
 
     private enum WorkKind : byte { Data, Action, Exit }
 

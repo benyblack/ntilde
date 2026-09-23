@@ -102,7 +102,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         foreach (MuxOutboundFrame f in dropped) f.Release();
         if (reason == MuxErrorCodes.ClientTooSlow)
         {
-            _server.Log($"[MuxServer] connection {ConnectionId} disconnected: {reason} (send budget {_server.Options.ClientSendBudgetBytes} bytes exceeded).");
+            // SafeLog: this runs on a session parse thread (Broadcast -> TryEnqueue -> Abort)
+            // outside any try, and must still reach the stream dispose below.
+            SafeLog($"[MuxServer] connection {ConnectionId} disconnected: {reason} (send budget {_server.Options.ClientSendBudgetBytes} bytes exceeded).");
         }
 
         try { _stream.Dispose(); }

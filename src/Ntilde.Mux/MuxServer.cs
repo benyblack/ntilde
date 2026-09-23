@@ -166,7 +166,12 @@ public sealed class MuxServer : IDisposable
         ConnectionClosed?.Invoke(connection);
     }
 
-    internal void Log(string message) => Options.Log?.Invoke(message);
+    /// <summary>Never throws: a caller's logger must not take down the thread (accept, reader, parse) that reports through it.</summary>
+    internal void Log(string message)
+    {
+        try { Options.Log?.Invoke(message); }
+        catch (Exception) { }
+    }
 
     public void Dispose()
     {
