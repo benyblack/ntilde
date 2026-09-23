@@ -239,6 +239,45 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task A_failed_reattach_keeps_the_stream_that_was_already_working()
+    {
+        // An attached client asks for a fresh snapshot, and this one is refused (the scrollback has
+        // grown past the limit). Its existing subscription must survive: the client keeps its old
+        // position and would otherwise wait forever for output that is no longer sent.
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            var sink = new RecordingFrameSink();
+            mux.PostAttach(sink, 1, 100, Presentation80x24, MuxProtocol.MaxFrameBytes);
+            await mux.FlushAsync();
+
+            mux.PostAttach(sink, 2, 100, Presentation80x24, maxSnapshotBytes: 16);
+            fake.Emit("still streaming");
+            await mux.FlushAsync();
+
+            Assert.Equal(["Snapshot@0", "Error:snapshot_too_large", "Output@0:still streaming"], sink.Described);
+            Assert.Equal(1, mux.AttachedClients);
+        }
+    }
+
+    [Fact]
+    public async Task A_successful_reattach_does_not_subscribe_the_sink_twice()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            var sink = new RecordingFrameSink();
+            mux.PostAttach(sink, 1, 100, Presentation80x24, MuxProtocol.MaxFrameBytes);
+            mux.PostAttach(sink, 2, 100, Presentation80x24, MuxProtocol.MaxFrameBytes);
+            fake.Emit("x");
+            await mux.FlushAsync();
+
+            Assert.Equal(["Snapshot@0", "Snapshot@0", "Output@0:x"], sink.Described);
+            Assert.Equal(1, mux.AttachedClients);
+        }
+    }
+
+    [Fact]
     public async Task An_oversize_snapshot_is_refused_and_the_sink_is_not_subscribed()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

@@ -161,6 +161,23 @@ public sealed class MuxServerRequestTests
     }
 
     [Fact]
+    public async Task A_peer_chosen_flight_budget_is_capped_by_the_server()
+    {
+        // The budget decides how much output the mux retains in memory; a peer must not be able to
+        // pick long.MaxValue and grow the daemon without bound.
+        using var host = new MuxTestHost(new MuxServerOptions { MaxFlightRecordingBytes = 4 * 1024 * 1024, ForceConPtyFiltering = false });
+        RawMuxConnection raw = host.ConnectRaw();
+        await raw.HelloAsync();
+        Guid id = await SpawnAsync(raw);
+
+        MuxResponse r = await CallAsync(raw, MuxMethods.EnableFlightRecording,
+            new EnableFlightRecordingParams { SessionId = id, MaxBytes = long.MaxValue }, MuxJsonContext.Default.EnableFlightRecordingParams);
+
+        Assert.Null(r.Error);
+        Assert.Equal(4 * 1024 * 1024, host.Fake(id).LastFlightBudget);
+    }
+
+    [Fact]
     public async Task Input_reaches_the_session_as_the_sent_string()
     {
         using var host = new MuxTestHost();

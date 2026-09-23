@@ -120,7 +120,17 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     public void StopRecording() => IsRecording = false;
 
     public bool IsFlightRecording { get { lock (_gate) return _flight is not null; } }
-    public void EnableFlightRecording(long maxTotalBytes) { lock (_gate) _flight ??= new FlightRecordingBuffer(maxTotalBytes, Cols, Rows); }
+    /// <summary>The budget the mux actually passed to the last EnableFlightRecording call.</summary>
+    public long? LastFlightBudget { get; private set; }
+
+    public void EnableFlightRecording(long maxTotalBytes)
+    {
+        lock (_gate)
+        {
+            LastFlightBudget = maxTotalBytes;
+            _flight ??= new FlightRecordingBuffer(maxTotalBytes, Cols, Rows);
+        }
+    }
     public void DisableFlightRecording() { lock (_gate) _flight = null; }
 
     public bool TryExportFlightRecording(string filePath, out FlightExportInfo info)

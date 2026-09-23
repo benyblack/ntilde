@@ -421,7 +421,11 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
     {
-        if (_subscribers.Remove(sink)) PublishAttachedCount();
+        // A re-attach keeps the sink's existing subscription until its new snapshot is actually
+        // enqueued: if this attempt fails (snapshot_too_large once the scrollback has grown), the
+        // client keeps its old position and must go on receiving the stream it already has - not
+        // silently starve while still believing it is attached. Until then it is an ordinary
+        // subscriber, so it also gets this attach's ResizeEvent, then the snapshot that supersedes it.
         if (IsFaulted)
         {
             Reply(sink, requestId, MuxErrorCodes.Internal, $"Session {Id} is faulted; its state no longer tracks the child.");
@@ -480,9 +484,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         bool accepted;
         try { accepted = sink.TryEnqueue(frame); }
         finally { frame.Release(); }
-        if (!accepted) return;
+        if (!accepted)
+        {
+            // A sink that refuses a frame is gone (Broadcast drops it the same way).
+            if (_subscribers.Remove(sink)) PublishAttachedCount();
+            return;
+        }
 
-        _subscribers.Add(sink);
+        if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
         PublishAttachedCount();
         if (IsExited) Offer(sink, ExitedFrame());
     }

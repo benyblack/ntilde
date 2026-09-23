@@ -461,7 +461,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     {
                         EnableFlightRecordingParams p = Params(request, MuxJsonContext.Default.EnableFlightRecordingParams);
                         if (p.MaxBytes <= 0) throw new MuxRequestException(MuxErrorCodes.ProtocolError, "maxBytes must be positive.");
-                        LiveSession(p.SessionId).Inner.EnableFlightRecording(p.MaxBytes);
+
+                        // The budget is memory the daemon holds: never the peer's to choose unbounded.
+                        LiveSession(p.SessionId).Inner.EnableFlightRecording(Math.Min(p.MaxBytes, _server.Options.MaxFlightRecordingBytes));
                         ReplyEmpty(request);
                         break;
                     }

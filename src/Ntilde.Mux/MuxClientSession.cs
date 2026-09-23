@@ -44,6 +44,8 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private long _sessionInfoAtMs = long.MinValue / 2;
     private int _sessionInfoInFlight;
     private int _recording;
+    private readonly object _recordingGate = new();
+    private int _recordingGeneration; // bumped by every Start/Stop; guarded by _recordingGate
     private int _flightRecording;
     private int _disposed;
 
@@ -141,18 +143,46 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     public bool IsRecording => Volatile.Read(ref _recording) != 0;
 
-    /// <summary>The path is on the mux's machine (the same one, in Phase 1-3).</summary>
+    /// <summary>
+    /// The path is on the mux's machine (the same one, in Phase 1-3). Returns at once; <see cref="IsRecording"/>
+    /// turns true only when the server confirms the recorder started, so a path it cannot open (disk
+    /// full, access denied) never shows as an active recording.
+    /// </summary>
     public void StartRecording(string filePath)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
-        Volatile.Write(ref _recording, 1);
-        _client.PostRequest(MuxMethods.StartRecording, new StartRecordingParams { SessionId = Id, Path = filePath }, MuxJsonContext.Default.StartRecordingParams);
+        if (Volatile.Read(ref _disposed) != 0) return;
+        int generation;
+        lock (_recordingGate) generation = ++_recordingGeneration;
+        _ = ConfirmRecordingStartAsync(filePath, generation);
     }
 
     public void StopRecording()
     {
-        Volatile.Write(ref _recording, 0);
+        lock (_recordingGate)
+        {
+            _recordingGeneration++; // a start still awaiting its confirmation must not switch this back on
+            Volatile.Write(ref _recording, 0);
+        }
+
         _client.PostRequest(MuxMethods.StopRecording, new SessionIdParams { SessionId = Id }, MuxJsonContext.Default.SessionIdParams);
+    }
+
+    private async Task ConfirmRecordingStartAsync(string filePath, int generation)
+    {
+        try
+        {
+            await _client.RequestAsync(MuxMethods.StartRecording, new StartRecordingParams { SessionId = Id, Path = filePath },
+                MuxJsonContext.Default.StartRecordingParams, MuxJsonContext.Default.MuxEmpty, CancellationToken.None).ConfigureAwait(false);
+            lock (_recordingGate)
+            {
+                if (_recordingGeneration == generation) Volatile.Write(ref _recording, 1);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or MuxProtocolException or TimeoutException)
+        {
+            // Not started (the server's error reply, or the connection went away): IsRecording stays false.
+        }
     }
 
     public bool IsFlightRecording => Volatile.Read(ref _flightRecording) != 0;
@@ -271,6 +301,14 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         {
             throw new MuxProtocolException(MuxErrorCodes.ProtocolError,
                 $"Session {Id}: output at stream offset {seq}, expected {expected}. Healing a gap here would silently desynchronise the pane.");
+        }
+
+        // Checked before the addition: a wrapped (negative) offset would read as "detached" and every
+        // later frame would be dropped in silence, where the continuity rule demands a disconnect.
+        if (expected > long.MaxValue - data.Length)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError,
+                $"Session {Id}: {data.Length} bytes at stream offset {expected} would overflow the stream position.");
         }
 
         long next = expected + data.Length;

@@ -42,5 +42,13 @@ public sealed class MuxServerOptions
     /// <summary>Largest single dimension (cols or rows) a peer may ask for.</summary>
     public int MaxDimension { get; init; } = 10_000;
 
+    /// <summary>
+    /// Server-owned ceiling on a session's flight-recorder budget: a peer's <c>maxBytes</c> is
+    /// capped to this, since the recorder keeps that much output in the daemon's memory. Capped
+    /// rather than refused - the request is fire-and-forget on the client, so a refusal would
+    /// silently leave no recorder at all. 32 MiB is 16x the agent-host default of 2 MiB.
+    /// </summary>
+    public long MaxFlightRecordingBytes { get; init; } = 32L * 1024 * 1024;
+
     public Action<string>? Log { get; init; }
 }

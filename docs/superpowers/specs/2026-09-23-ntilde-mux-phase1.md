@@ -99,11 +99,14 @@ No thread-pool work on the output path. Snapshot capture runs on the parse threa
 `parser.SendInBandResize`. Bytes the child writes after learning the new size therefore sort after
 the event. A resize to the current size is a no-op and emits no event.
 
-**Attach on the parse thread (atomic with respect to the stream):** drop any prior subscription of
-this client → apply presentation and resize (broadcast to the *other* clients) → capture →
-serialize → size check → enqueue the `Snapshot` frame to this client → subscribe it. If the session
-has exited, an `Exited` notification follows. Every later chunk reaches this client after its
-snapshot, and no chunk reaches it twice.
+**Attach on the parse thread (atomic with respect to the stream):** apply presentation and resize
+(broadcast to the other clients) → capture → serialize → size check → enqueue the `Snapshot` frame
+to this client → subscribe it. If the session has exited, an `Exited` notification follows. Every
+later chunk reaches this client after its snapshot, and no chunk reaches it twice. A **re-attach**
+keeps the client's existing subscription until the new snapshot is enqueued, so a refused re-attach
+(for example `snapshot_too_large` once the scrollback has grown) leaves the working stream intact.
+Until then the client is an ordinary subscriber, so it also receives that attach's `ResizeEvent`,
+followed by the snapshot that supersedes it.
 
 ## 6. Wire protocol (`Ntilde.Mux.Contracts`)
 
