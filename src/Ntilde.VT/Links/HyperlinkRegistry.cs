@@ -115,6 +115,16 @@ namespace Ntilde.VT.Links
         /// parser a second source of identity for the same (URI, id) pair, which is the bug this
         /// method exists to close, inverted.
         /// </para>
+        /// <para>
+        /// <b>Replaces the table, does not merge into it.</b> Seeding starts from empty, so
+        /// afterwards the registry holds the imported state and nothing else. Overwriting only the
+        /// incoming keys would leave every unrelated key from the parser's previous life still
+        /// occupying the cap: a reused parser near <see cref="MaxInternedLinks"/> stays full, and
+        /// the first new <c>OSC 8</c> id in the restored tail then trips
+        /// <see cref="Resolve"/>'s wholesale clear - dropping the identities just seeded, so a
+        /// later reference to a restored id mints a second instance and stops grouping with the
+        /// restored cells. The cap must count the snapshot, not the session before it.
+        /// </para>
         /// </remarks>
         internal void SeedInterned(IReadOnlyList<Hyperlink>? links)
         {
@@ -122,6 +132,12 @@ namespace Ntilde.VT.Links
             {
                 return;
             }
+
+            // Before the first entry, not per entry: see the "replaces the table" note above.
+            // An empty table is also the right answer for an empty list - a snapshot that names no
+            // links describes a terminal with none, and the parser's old ones belong to a session
+            // this one has just replaced.
+            _interned.Clear();
 
             for (int i = 0; i < links.Count; i++)
             {
@@ -143,11 +159,13 @@ namespace Ntilde.VT.Links
 
                 var key = (link.Uri, link.Id);
 
-                // Overwrite, never skip. An entry this registry already holds for the same
-                // (URI, id) is from a previous attach and is NOT in the buffer's table, so keeping
-                // it would hand the tail an instance no restored cell carries - reproducing, on a
-                // re-attach into a reused parser, precisely the grouping bug this method exists to
-                // fix.
+                // Overwrite, never skip. The clear above means a colliding key can now only come
+                // from earlier in this same seeding - an entry from a previous attach cannot
+                // survive to be met here - so the invariant this states is no longer reachable
+                // from the stale-identity direction. It is kept explicit anyway, because it is
+                // what makes the collision rule below ("the LAST entry for a key wins") true, and
+                // because skipping would silently become wrong again if the clear were ever
+                // narrowed.
                 //
                 // The buffer's table CAN contain two entries with the same (URI, id):
                 // HyperlinkTableBuilder.IndexOf interns by *reference*, and two distinct Hyperlink
@@ -178,6 +196,10 @@ namespace Ntilde.VT.Links
                     // Clear wholesale, as Resolve does: past the cap, grouping is already
                     // degraded, and a snapshot is not a reason to grow the table without bound.
                     // Only on a genuinely new key - replacing one leaves the count unchanged.
+                    //
+                    // Reachable only from the snapshot itself now, since the table started empty:
+                    // it takes more than MaxInternedLinks distinct explicit ids in one payload,
+                    // which is the same volume that degrades grouping on a live stream.
                     _interned.Clear();
                 }
 

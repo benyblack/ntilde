@@ -803,6 +803,120 @@ public class StateTransferValidationTests
         Assert.Equal(before, target.ExportState().ToDebugString());
     }
 
+    // ── the family's missed member: a blob must match the shape it declares ──────
+
+    /// <summary>
+    /// Valid base64 was as far as the preflight went, so a payload carrying fewer cell bytes than
+    /// <c>cols * rows * cells_sizeof</c> - or a count that is not a whole number of cells - sailed
+    /// through. <c>ImportScreenNoLock</c> then blanked the destination and copied only the rows
+    /// that had actually arrived, turning a truncated snapshot into a partially erased terminal
+    /// instead of a refusal. A blob's length is structure, not a count: it is reinterpreted whole,
+    /// against the geometry the envelope declares, so there is no defensible "take what fits".
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: drop the <c>ValidateCellBlobLength</c> calls from <c>ValidateBufferState</c>
+    /// and the import succeeds - the throw assertion fails, and the row assertion fails with it
+    /// because row 0 comes back blank rather than still holding the destination's own content.
+    /// </remarks>
+    [Fact]
+    public void BufferImport_RejectsAMainCellBlobShorterThanTheDeclaredGeometry()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+
+        // One row short of what 80x24 declares.
+        snapshot.Main.CellsBase64 = DropTrailingBytes(
+            snapshot.Main.CellsBase64, snapshot.CellsSizeOf * snapshot.Cols);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The alignment half of the same fault: a blob that is not a whole number of cells long.
+    /// <see cref="System.Runtime.InteropServices.MemoryMarshal"/>'s cast drops the partial cell
+    /// silently rather than complaining.
+    /// </summary>
+    /// <remarks>Falsifiable exactly as the main-screen case above.</remarks>
+    [Fact]
+    public void BufferImport_RejectsAnAlternateCellBlobThatIsNotCellAligned()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair();
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Alt.CellsBase64 = DropTrailingBytes(snapshot.Alt.CellsBase64, 1);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The scrollback blob is measured against its own declared row count rather than the screen
+    /// geometry, and is the case where the old behaviour was quietest: a short blob simply
+    /// restored fewer history rows than the envelope said it carried.
+    /// </summary>
+    /// <remarks>Falsifiable exactly as the main-screen case above.</remarks>
+    [Fact]
+    public void BufferImport_RejectsAScrollbackBlobShorterThanItsDeclaredRowCount()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 20, rows: 4);
+        for (int i = 0; i < 30; i++)
+        {
+            parser.Process($"line{i}\r\n");
+        }
+
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        Assert.True(snapshot.ScrollbackRowCount > 1);
+        snapshot.Scrollback.CellsBase64 = DropTrailingBytes(
+            snapshot.Scrollback.CellsBase64, snapshot.CellsSizeOf * snapshot.Cols);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 20, rows: 4);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(() => target.ImportState(snapshot));
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+        Assert.Equal(0, target.Scrollback.Count);
+    }
+
+    /// <summary>
+    /// And through the supported attach entry point, where the cost of discovering it late is a
+    /// destination that has already been resized and reflowed.
+    /// </summary>
+    /// <remarks>Falsifiable exactly as the main-screen case above.</remarks>
+    [Fact]
+    public void Restore_RejectsATruncatedCellBlobWithoutResizingOrTouchingTheBuffer()
+    {
+        (AnsiParser parser, TerminalBuffer source) = NewPair(cols: 100, rows: 30);
+        parser.Process("source content");
+        TerminalStateSnapshot snapshot = SnapshotOf(source, parser);
+        snapshot.Main.CellsBase64 = DropTrailingBytes(
+            snapshot.Main.CellsBase64, snapshot.CellsSizeOf * snapshot.Cols);
+
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair(cols: 40, rows: 12);
+        targetParser.Process("target content");
+
+        Assert.Throws<InvalidOperationException>(
+            () => TerminalStateTransfer.Restore(target, targetParser, snapshot));
+
+        Assert.Equal(40, target.Cols);
+        Assert.Equal(12, target.Rows);
+        Assert.StartsWith("target content", RowText(target, 0), StringComparison.Ordinal);
+    }
+
+    private static string DropTrailingBytes(string? base64, int count)
+    {
+        byte[] bytes = Convert.FromBase64String(
+            base64 ?? throw new InvalidOperationException("export produced no cell blob"));
+        return Convert.ToBase64String(bytes, 0, bytes.Length - count);
+    }
+
     private static string RowText(TerminalBuffer buffer, int row)
     {
         buffer.Lock.EnterReadLock();

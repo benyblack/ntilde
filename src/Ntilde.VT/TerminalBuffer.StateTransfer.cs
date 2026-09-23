@@ -136,6 +136,7 @@ namespace Ntilde.VT
             DateTime lastSyncStart = validated.LastSyncStart;
 
             Hyperlink[] links;
+            bool activeScreenChanged;
             Lock.EnterWriteLock();
             try
             {
@@ -153,6 +154,12 @@ namespace Ntilde.VT
                 // rebuilt from the snapshot, and _viewport is re-pointed at the active one.
                 _mainScreen = mainRows;
                 _altScreen = altRows;
+
+                // Read before the assignment, raised after the lock: an import that lands on the
+                // other screen is a screen switch as far as every subscriber is concerned, and
+                // the imported tail does not contain the `?1049h` that would otherwise announce
+                // it. See the OnScreenSwitched call at the end of this method.
+                activeScreenChanged = _isAltScreen != snapshot.IsAltScreenActive;
                 _isAltScreen = snapshot.IsAltScreenActive;
                 _viewport = _isAltScreen ? _altScreen : _mainScreen;
 
@@ -229,6 +236,34 @@ namespace Ntilde.VT
             ClearTrackedShellMarks();
 
             Invalidate();
+
+            // The transition notification EnterAltScreen and SwitchToMainScreen raise, for the
+            // transition an import can perform without either of them running. Attaching an
+            // alt-screen snapshot to a pane whose buffer is on the main screen leaves the assist
+            // UI in main-screen state - Command Assist and the Agent Output panel visible over a
+            // full-screen TUI, agent status never told - because the tail carries no enter-alt
+            // sequence to announce the switch later (AGENTS.md: assist UI auto-hides in
+            // alternate-screen mode).
+            //
+            // On an actual transition only. Firing unconditionally would report a switch on every
+            // attach, and `?1049h`-on-`?1049h` is precisely what EnterAltScreen's own early-out
+            // declines to announce.
+            //
+            // Outside the write lock, unlike the two live switch sites, and for the reason
+            // ImportState already places Invalidate() here rather than inside: Lock is
+            // NoRecursion, so a subscriber that reaches back into the buffer from its handler -
+            // TerminalView.OnScreenSwitched reads it, and its scroll-to-cursor continuation goes
+            // further - throws LockRecursionException against a lock this method still holds.
+            // That hazard is pre-existing at the two live sites and is not this change's to fix;
+            // it is a hazard a new call site has no reason to inherit.
+            //
+            // After Invalidate(), matching both live sites: a handler that reacts by dropping
+            // caches and asking for a repaint should find the repaint already requested.
+            if (activeScreenChanged)
+            {
+                OnScreenSwitched?.Invoke(snapshot.IsAltScreenActive);
+            }
+
             return links;
         }
 
@@ -745,7 +780,53 @@ namespace Ntilde.VT
             DateTime lastSyncStart = StateTransferValidation.UtcFromTicks(
                 snapshot.LastSyncStartUtcTicks, "synchronized-output start");
 
+            // Valid base64 is not yet a valid screen. The blob is reinterpreted whole by
+            // MemoryMarshal.Cast against the geometry the envelope declares, so its length is
+            // structure, not a count: a short or cell-misaligned blob describes a screen the
+            // sender never had. Left unchecked, ImportScreenNoLock blanks the destination and then
+            // copies only the rows that happened to arrive, turning a truncated payload into a
+            // partially erased terminal rather than a refusal - and ImportScrollbackNoLock does
+            // the same against ScrollbackRowCount. Checked here so the refusal still lands before
+            // the write lock and before Restore's resize.
+            ValidateCellBlobLength(mainCells, snapshot, snapshot.Rows, "main screen cells");
+            ValidateCellBlobLength(altCells, snapshot, snapshot.Rows, "alternate screen cells");
+            ValidateCellBlobLength(
+                scrollbackCells, snapshot, snapshot.ScrollbackRowCount, "scrollback cells");
+
             return new ValidatedBufferState(mainCells, altCells, scrollbackCells, lastSyncStart);
+        }
+
+        /// <summary>
+        /// Rejects a decoded cell blob whose byte count is not exactly
+        /// <c>Cols * <paramref name="declaredRows"/></c> whole <see cref="TerminalCell"/> structs.
+        /// </summary>
+        /// <remarks>
+        /// Exact, not "at least": a longer-than-declared blob is as malformed as a short one here,
+        /// because nothing in the envelope says what the surplus is. The legacy
+        /// <c>TerminalBuffer.ApplySnapshot</c> replay path deliberately tolerates a longer blob -
+        /// it reads recorded files already on disk - and is left alone; this is the import path,
+        /// and its policy is to reject malformed structure.
+        /// <para>
+        /// A missing blob is length zero and is therefore accepted only where zero is what the
+        /// geometry asks for, which is exactly the empty-scrollback export. With
+        /// <c>Cols</c> and <c>Rows</c> already proven positive, an absent main or alternate screen
+        /// can never satisfy it.
+        /// </para>
+        /// </remarks>
+        private static void ValidateCellBlobLength(
+            byte[]? blob, TerminalStateSnapshot snapshot, int declaredRows, string what)
+        {
+            long expectedBytes = (long)snapshot.Cols * declaredRows * Unsafe.SizeOf<TerminalCell>();
+            long actualBytes = blob?.LongLength ?? 0L;
+            if (actualBytes == expectedBytes)
+            {
+                return;
+            }
+
+            throw StateTransferValidation.Reject(
+                what,
+                $"{actualBytes} decoded bytes, expected {expectedBytes} for " +
+                $"{snapshot.Cols}x{declaredRows} at cells_sizeof={snapshot.CellsSizeOf}");
         }
 
         /// <summary>

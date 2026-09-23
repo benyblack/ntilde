@@ -1,3 +1,4 @@
+using System.Text;
 using Ntilde.VT;
 using Ntilde.VT.Links;
 using Xunit;
@@ -124,5 +125,54 @@ public class HyperlinkRegistrySeedingTests
         Assert.NotNull(fromTail);
         Assert.Equal(fromSnapshot!.Uri, fromTail!.Uri);
         Assert.NotSame(fromSnapshot, fromTail);
+    }
+
+    /// <summary>
+    /// Replacing a colliding key was not enough: seeding used to merge into whatever the parser
+    /// had interned in a previous life, so a reused parser already at
+    /// <see cref="HyperlinkRegistry.MaxInternedLinks"/> stayed full. One unrelated <c>id=</c> in
+    /// the restored tail then tripped <c>Resolve</c>'s wholesale cap-clear, discarding the
+    /// identities just seeded, and a later reference to a restored id minted a second instance -
+    /// the very grouping bug the seeding exists to prevent, arriving one link later. The cap has
+    /// to count the imported state, not the session before it.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: remove <c>SeedInterned</c>'s leading <c>_interned.Clear()</c> and the final
+    /// <c>Assert.Same</c> fails - the tail's "alpha" is a different instance from the restored
+    /// cell's.
+    /// </remarks>
+    [Fact]
+    public void SeededRegistry_DoesNotInheritAFullTableFromTheParsersPreviousSession()
+    {
+        var (reused, reusedParser) = NewTerminal();
+
+        // Fill this parser's table to the cap. "alpha" is among them deliberately: it is the one
+        // key the snapshot below also carries, so the seeding's single entry collides and leaves
+        // the count exactly where it was.
+        var fill = new StringBuilder();
+        fill.Append(Open("id=alpha", Uri)).Append(Close());
+        for (int i = 1; i < HyperlinkRegistry.MaxInternedLinks; i++)
+        {
+            fill.Append(Open($"id=old{i}", Uri)).Append(Close());
+        }
+
+        reusedParser.Process(fill.ToString());
+
+        var (source, sourceParser) = NewTerminal();
+        sourceParser.Process(Open("id=alpha", Uri) + "A" + Close());
+
+        TerminalStateTransfer.Restore(reused, reusedParser, SnapshotOf(source, sourceParser));
+
+        // One id the snapshot never named is all it takes to trip a still-full table's clear...
+        reusedParser.Process("\x1b[1;3H" + Open("id=beta", Uri) + "B" + Close());
+
+        // ...after which the restored anchor must still resolve to the restored cells' instance.
+        reusedParser.Process("\x1b[1;5H" + Open("id=alpha", Uri) + "C" + Close());
+
+        Hyperlink? fromSnapshot = LinkAt(reused, 0);
+        Hyperlink? fromTail = LinkAt(reused, 4);
+        Assert.NotNull(fromSnapshot);
+        Assert.NotNull(fromTail);
+        Assert.Same(fromSnapshot, fromTail);
     }
 }

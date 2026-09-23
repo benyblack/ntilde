@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Ntilde.VT;
@@ -316,6 +317,82 @@ public class TerminalStateSnapshotTests
             $"Snapshot is {bytes.Length} bytes for {cellCount} cells ({rawCellBytes} raw) - more " +
             "than twice the cell data it describes, so something is being embedded that should " +
             "not be (images? scrollback twice?).");
+    }
+
+    // ── the screen switch an import performs, and has to announce ────────────────
+
+    /// <summary>
+    /// An import that lands on the other screen <em>is</em> a screen switch, and is the only
+    /// announcement of it there will be: the restored tail carries no enter-alt sequence, so a
+    /// pane attached to an alt-screen snapshot would otherwise keep Command Assist and the Agent
+    /// Output panel in main-screen state - visible over a full-screen TUI, agent status never
+    /// updated - until some later, unrelated transition. <c>AGENTS.md</c> requires the assist UI
+    /// to auto-hide in alternate-screen mode; <c>TerminalPane.OnBufferScreenSwitched</c> is what
+    /// enforces it, and this event is what reaches it.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: assign <c>_isAltScreen</c> from the snapshot without raising the event, as
+    /// <c>ImportState</c> used to, and <c>observed</c> comes back empty.
+    /// </remarks>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ImportState_RaisesTheScreenSwitchNotificationWhenTheImportChangesScreen(bool toAlt)
+    {
+        (AnsiParser source, TerminalBuffer sourceBuffer) = NewPair();
+        if (toAlt)
+        {
+            source.Process("\u001b[?1049h");
+        }
+
+        TerminalStateSnapshot snapshot = sourceBuffer.ExportState(UnlimitedScrollback);
+
+        // The destination starts on the other screen, so adopting the snapshot moves it.
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        if (!toAlt)
+        {
+            targetParser.Process("\u001b[?1049h");
+        }
+
+        var observed = new List<bool>();
+        target.OnScreenSwitched += observed.Add;
+        target.ImportState(snapshot);
+
+        Assert.Equal([toAlt], observed);
+        Assert.Equal(toAlt, target.IsAltScreenActive);
+    }
+
+    /// <summary>
+    /// The other half of the contract: an attach that does not move the screen must not report
+    /// one. Raising unconditionally would announce a switch on every attach, which is exactly what
+    /// <c>EnterAltScreen</c> and <c>SwitchToMainScreen</c> decline to do when they early-out on an
+    /// already-active screen.
+    /// </summary>
+    /// <remarks>
+    /// Falsifiable: raise the event unconditionally instead of on a changed screen, and both
+    /// cases come back with one notification instead of none.
+    /// </remarks>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ImportState_DoesNotRaiseTheScreenSwitchNotificationWhenTheScreenIsUnchanged(bool onAlt)
+    {
+        (AnsiParser source, TerminalBuffer sourceBuffer) = NewPair();
+        (AnsiParser targetParser, TerminalBuffer target) = NewPair();
+        if (onAlt)
+        {
+            source.Process("\u001b[?1049h");
+            targetParser.Process("\u001b[?1049h");
+        }
+
+        TerminalStateSnapshot snapshot = sourceBuffer.ExportState(UnlimitedScrollback);
+
+        var observed = new List<bool>();
+        target.OnScreenSwitched += observed.Add;
+        target.ImportState(snapshot);
+
+        Assert.Empty(observed);
+        Assert.Equal(onAlt, target.IsAltScreenActive);
     }
 
     private static string RowText(TerminalBuffer buffer, int row)
