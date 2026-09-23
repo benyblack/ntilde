@@ -431,14 +431,27 @@ public sealed class HeadlessTerminalSession : IDisposable
             return;
         }
 
-        if (json.Length > maxSnapshotBytes)
+        // No caller can allow more than one frame carries: past that, MuxFrames.Snapshot throws.
+        int limit = Math.Min(maxSnapshotBytes, MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes);
+        if (json.Length > limit)
         {
             Reply(sink, requestId, MuxErrorCodes.SnapshotTooLarge,
-                $"Snapshot of session {Id} is {json.Length} bytes; the limit is {maxSnapshotBytes}.");
+                $"Snapshot of session {Id} is {json.Length} bytes; the limit is {limit}.");
             return;
         }
 
-        MuxOutboundFrame frame = MuxFrames.Snapshot(requestId, Id, seq, json);
+        // Fail safe regardless: an attach must always be answered, never left to the client's timeout.
+        MuxOutboundFrame frame;
+        try
+        {
+            frame = MuxFrames.Snapshot(requestId, Id, seq, json);
+        }
+        catch (Exception ex)
+        {
+            Reply(sink, requestId, MuxErrorCodes.Internal, $"Snapshot frame could not be built: {ex.Message}");
+            return;
+        }
+
         bool accepted;
         try { accepted = sink.TryEnqueue(frame); }
         finally { frame.Release(); }

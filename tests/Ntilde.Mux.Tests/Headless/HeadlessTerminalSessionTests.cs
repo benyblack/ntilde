@@ -225,6 +225,26 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task A_snapshot_too_big_for_any_frame_is_answered_even_when_the_caller_allows_more()
+    {
+        // A caller-supplied limit above what one frame can carry used to reach MuxFrames.Snapshot,
+        // which threw inside the attach action: no reply at all, and the client waited out its
+        // 30 s timeout. The frame build must fail safe, with an error reply.
+        const int cols = 2_500, rows = 1_500; // 3.75M cells, base64 of the raw cells: well past 64 MiB
+        (HeadlessTerminalSession mux, _) = NewSession(cols, rows);
+        using (mux)
+        {
+            var sink = new RecordingFrameSink();
+            mux.PostAttach(sink, 7, 0, Presentation80x24 with { Cols = cols, Rows = rows }, maxSnapshotBytes: int.MaxValue);
+            await mux.FlushAsync();
+            Assert.Equal(1, await mux.InvokeAsync(() => 1)); // the attach action has run
+
+            Assert.Equal(["Error:snapshot_too_large"], sink.Described);
+            Assert.Equal(0, mux.AttachedClients);
+        }
+    }
+
+    [Fact]
     public async Task A_sink_that_refuses_a_frame_is_dropped()
     {
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();

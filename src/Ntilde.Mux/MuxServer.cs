@@ -23,7 +23,34 @@ public sealed class MuxServer : IDisposable
     public MuxServer(ITerminalSessionFactory sessionFactory, MuxServerOptions? options = null)
     {
         _factory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
-        Options = options ?? new MuxServerOptions();
+        Options = Validate(options ?? new MuxServerOptions());
+    }
+
+    /// <summary>
+    /// Refuses values that cannot work instead of failing later on a worker thread - e.g. a
+    /// <see cref="MuxServerOptions.MaxSnapshotBytes"/> no frame can carry, which would make every
+    /// large attach go unanswered until the client's request timeout.
+    /// </summary>
+    private static MuxServerOptions Validate(MuxServerOptions options)
+    {
+        MuxServerOptions o = options;
+        if (o.ClientSendBudgetBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.ClientSendBudgetBytes, "ClientSendBudgetBytes must be positive.");
+        if (o.MaxQueuedSnapshotBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxQueuedSnapshotBytes, "MaxQueuedSnapshotBytes must be positive.");
+        if (o.MaxSnapshotBytes <= 0 || o.MaxSnapshotBytes > MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), o.MaxSnapshotBytes,
+                $"MaxSnapshotBytes must be in 1..{MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes} (one frame minus the snapshot header).");
+        }
+
+        if (o.MaxInboundFrameBytes <= 0 || o.MaxInboundFrameBytes > MuxProtocol.MaxFrameBytes)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), o.MaxInboundFrameBytes, $"MaxInboundFrameBytes must be in 1..{MuxProtocol.MaxFrameBytes}.");
+        }
+
+        if (o.MaxAttachScrollbackRows < 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxAttachScrollbackRows, "MaxAttachScrollbackRows cannot be negative.");
+        if (o.MaxCells <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxCells, "MaxCells must be positive.");
+        if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");
+        return o;
     }
 
     public MuxServerOptions Options { get; }
