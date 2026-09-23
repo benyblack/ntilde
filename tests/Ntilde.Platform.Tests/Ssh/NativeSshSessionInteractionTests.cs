@@ -68,14 +68,8 @@ public sealed class NativeSshSessionInteractionTests
     public async Task PasswordPromptCarriesNativeProfileContext()
     {
         var interop = new FakeNativeSshInterop();
-        interop.Enqueue(new NativeSshEvent(
-            NativeSshEventKind.PasswordPrompt,
-            Encoding.UTF8.GetBytes("""{"prompt":"Password:"}"""),
-            flags: NativeSshEventFlags.Json));
-        interop.Enqueue(new NativeSshEvent(
-            NativeSshEventKind.PasswordPrompt,
-            Encoding.UTF8.GetBytes("""{"prompt":"Password:"}"""),
-            flags: NativeSshEventFlags.Json));
+        interop.Enqueue(TargetPasswordPrompt());
+        interop.Enqueue(TargetPasswordPrompt());
 
         var requests = new List<SshInteractionRequest>();
         var handler = new RecordingInteractionHandler(requests);
@@ -89,11 +83,58 @@ public sealed class NativeSshSessionInteractionTests
         Assert.Equal(profile.Name, requests[0].ProfileName);
         Assert.Equal(profile.User, requests[0].ProfileUser);
         Assert.Equal(profile.Host, requests[0].ProfileHost);
+        Assert.Equal("native.example", requests[0].Host);
+        Assert.Equal(22, requests[0].Port);
+        Assert.Equal("nova", requests[0].User);
+        Assert.False(requests[0].IsJumpHop);
         Assert.True(requests[0].RememberPasswordInVault);
         Assert.True(requests[0].AllowVaultPasswordReuse);
 
         Assert.True(requests[1].RememberPasswordInVault);
         Assert.False(requests[1].AllowVaultPasswordReuse);
+    }
+
+    [Fact]
+    public async Task JumpHopPasswordPrompt_DoesNotSpendOrTouchTheTargetsVaultEntry()
+    {
+        // In a chain the bastion prompts first. The one-shot vault reuse used to be spent on that
+        // first prompt — handing the bastion the target's saved password. It must now survive the
+        // bastion's prompt and apply to the target's.
+        var interop = new FakeNativeSshInterop();
+        interop.Enqueue(new NativeSshEvent(
+            NativeSshEventKind.PasswordPrompt,
+            Encoding.UTF8.GetBytes("""{"prompt":"Password:","host":"bastion.example","port":2200,"user":"jump","isJumpHop":true}"""),
+            flags: NativeSshEventFlags.Json));
+        interop.Enqueue(TargetPasswordPrompt());
+
+        var requests = new List<SshInteractionRequest>();
+        var handler = new RecordingInteractionHandler(requests);
+
+        using var session = new NativeSshSession(CreateProfile(), interop: interop, interactionHandler: handler);
+
+        await WaitUntilAsync(() => requests.Count >= 2);
+
+        SshInteractionRequest bastion = requests[0];
+        Assert.True(bastion.IsJumpHop);
+        Assert.Equal("bastion.example", bastion.Host);
+        Assert.Equal(2200, bastion.Port);
+        Assert.Equal("jump", bastion.User);
+        Assert.Equal(session.Id, bastion.SessionId);
+        Assert.False(bastion.AllowVaultPasswordReuse);
+        Assert.False(bastion.RememberPasswordInVault);
+
+        SshInteractionRequest target = requests[1];
+        Assert.False(target.IsJumpHop);
+        Assert.True(target.AllowVaultPasswordReuse);
+        Assert.True(target.RememberPasswordInVault);
+    }
+
+    private static NativeSshEvent TargetPasswordPrompt()
+    {
+        return new NativeSshEvent(
+            NativeSshEventKind.PasswordPrompt,
+            Encoding.UTF8.GetBytes("""{"prompt":"Password:","host":"native.example","port":22,"user":"nova","isJumpHop":false}"""),
+            flags: NativeSshEventFlags.Json);
     }
 
     private static SshProfile CreateProfile()

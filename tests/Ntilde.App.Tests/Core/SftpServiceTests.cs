@@ -156,6 +156,105 @@ public sealed class SftpServiceTests
     }
 
     [Fact]
+    public void ExecuteNativeSftpTransfer_SendsEachJumpHopOnlyItsOwnSessionPassword()
+    {
+        // The transfer path used to send its one password to every hop, so a bastion received the
+        // target's saved password. Each hop now gets only the password its terminal session entered
+        // for THAT hop; a hop with none gets none — never the target's.
+        Guid profileId = Guid.Parse("01984e10-5a2b-7c3d-8e4f-5a6b7c8d9e01");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Chained",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default,
+            JumpHops =
+            {
+                new SshJumpHop { Host = "bastion-one.internal", User = "jump", Port = 22 },
+                // No user: authenticates as the target user, and is keyed that way too.
+                new SshJumpHop { Host = "bastion-two.internal", User = string.Empty, Port = 2222 }
+            }
+        });
+        var service = new SshConnectionService(store);
+        TerminalProfile profile = service.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.SetRuntimePassword(sessionId, "bastion-one.internal", 22, "jump", "bastion-one-secret");
+        var job = new TransferJob
+        {
+            SessionId = sessionId,
+            ProfileId = profileId,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\download.txt",
+            RemotePath = "/tmp/download.txt"
+        };
+        var interop = new CapturingNativeSshInterop();
+
+        SftpService.ExecuteNativeSftpTransfer(
+            job,
+            profile,
+            service,
+            allProfiles: null,
+            interop: interop,
+            passwordResolver: static _ => "target-vault-secret",
+            sessionRegistry: registry,
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+
+        Assert.NotNull(interop.ConnectionOptions);
+        Assert.Equal("target-vault-secret", interop.ConnectionOptions!.Password);
+        Assert.Equal(new string?[] { "bastion-one-secret", null }, interop.ConnectionOptions.JumpHopPasswords);
+    }
+
+    [Fact]
+    public void ExecuteNativeSftpTransfer_PrefersThePasswordTheSessionEnteredForTheTarget()
+    {
+        Guid profileId = Guid.Parse("01984e11-6b3c-7d4e-9f5a-6b7c8d9e0f02");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Direct",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default
+        });
+        var service = new SshConnectionService(store);
+        TerminalProfile profile = service.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.SetRuntimePassword(sessionId, "prod.internal", 2200, "ops", "typed-target-secret");
+        var job = new TransferJob
+        {
+            SessionId = sessionId,
+            ProfileId = profileId,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\download.txt",
+            RemotePath = "/tmp/download.txt"
+        };
+        var interop = new CapturingNativeSshInterop();
+
+        SftpService.ExecuteNativeSftpTransfer(
+            job,
+            profile,
+            service,
+            interop: interop,
+            passwordResolver: static _ => "stale-vault-secret",
+            sessionRegistry: registry,
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+
+        Assert.Equal("typed-target-secret", interop.ConnectionOptions!.Password);
+        Assert.Empty(interop.ConnectionOptions.JumpHopPasswords);
+    }
+
+    [Fact]
     public void ExecuteNativeSftpTransfer_ForwardsCancellationTokenToInterop()
     {
         var service = new SshConnectionService(new InMemorySshProfileStore());

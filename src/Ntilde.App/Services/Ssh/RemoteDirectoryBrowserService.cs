@@ -128,12 +128,11 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
                 sshService,
                 profile,
                 sshService.GetConnectionProfiles());
-            bool prefersIdentityFile = !string.IsNullOrWhiteSpace(baseOptions.IdentityFilePath);
-            string? resolvedPassword = prefersIdentityFile
-                ? null
-                : (sessionRegistry.TryGetRuntimePassword(sessionId, out string? runtimePassword)
-                    ? runtimePassword
-                    : passwordResolver(profile));
+            NativeHopPasswords passwords = NativeHopPasswordResolver.Resolve(
+                baseOptions,
+                sessionRegistry,
+                sessionId,
+                () => passwordResolver(profile));
 
             connectionOptions = new NativeSshConnectionOptions
             {
@@ -145,7 +144,8 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
                 Term = baseOptions.Term,
                 KeepAliveIntervalSeconds = baseOptions.KeepAliveIntervalSeconds,
                 KeepAliveCountMax = baseOptions.KeepAliveCountMax,
-                Password = string.IsNullOrWhiteSpace(resolvedPassword) ? null : resolvedPassword,
+                Password = passwords.Target,
+                JumpHopPasswords = passwords.JumpHops,
                 IdentityFilePath = baseOptions.IdentityFilePath,
                 UseAgent = baseOptions.UseAgent,
                 KnownHostsFilePath = string.IsNullOrWhiteSpace(baseOptions.KnownHostsFilePath)

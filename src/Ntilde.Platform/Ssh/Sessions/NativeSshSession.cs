@@ -582,6 +582,11 @@ public sealed class NativeSshSession : ITerminalSession
             return request;
         }
 
+        // The profile's vault entry belongs to its final target. In a jump chain the first password
+        // prompt usually comes from a bastion, and this used to spend the one-shot vault reuse on
+        // it — sending the target's saved password to the bastion. Only the target's own prompt
+        // may reuse or be remembered as the profile's password; a hop's prompt is left alone.
+        bool isTargetPasswordPrompt = request.Kind == SshInteractionKind.Password && !request.IsJumpHop;
         SshInteractionRequest requestWithContext = new()
         {
             Kind = request.Kind,
@@ -590,10 +595,12 @@ public sealed class NativeSshSession : ITerminalSession
             ProfileName = _profileName,
             ProfileUser = _profileUser,
             ProfileHost = _profileHost,
-            AllowVaultPasswordReuse = request.Kind == SshInteractionKind.Password && _allowVaultPasswordReuse && _profileId != Guid.Empty,
-            RememberPasswordInVault = request.Kind == SshInteractionKind.Password && _profileId != Guid.Empty,
+            AllowVaultPasswordReuse = isTargetPasswordPrompt && _allowVaultPasswordReuse,
+            RememberPasswordInVault = isTargetPasswordPrompt,
             Host = request.Host,
             Port = request.Port,
+            User = request.User,
+            IsJumpHop = request.IsJumpHop,
             Algorithm = request.Algorithm,
             Fingerprint = request.Fingerprint,
             Prompt = request.Prompt,
@@ -602,7 +609,7 @@ public sealed class NativeSshSession : ITerminalSession
             KeyboardPrompts = request.KeyboardPrompts
         };
 
-        if (request.Kind == SshInteractionKind.Password)
+        if (isTargetPasswordPrompt)
         {
             _allowVaultPasswordReuse = false;
         }

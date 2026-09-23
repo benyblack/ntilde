@@ -594,6 +594,7 @@ namespace Ntilde.Shell
                 allProfiles,
                 interop: _nativeInterop,
                 passwordResolver: static transferProfile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordForProfile(transferProfile),
+                sessionRegistry: ActiveSshSessionRegistry.Instance,
                 knownHostsFilePath: AppPaths.NativeKnownHostsFilePath,
                 progress: nativeProgress => Dispatcher.UIThread.Post(() =>
                 {
@@ -605,6 +606,11 @@ namespace Ntilde.Shell
             return Task.CompletedTask;
         }
 
+        /// <param name="sessionRegistry">
+        /// Where the job's terminal session keeps the passwords it entered, per server. Each server
+        /// of the chain is offered only its own (see <see cref="NativeHopPasswordResolver"/>); null
+        /// means only the profile's saved password, and only for the target.
+        /// </param>
         internal static void ExecuteNativeSftpTransfer(
             TransferJob job,
             TerminalProfile profile,
@@ -612,6 +618,7 @@ namespace Ntilde.Shell
             IReadOnlyList<TerminalProfile>? allProfiles = null,
             INativeSshInterop? interop = null,
             Func<TerminalProfile, string?>? passwordResolver = null,
+            ActiveSshSessionRegistry? sessionRegistry = null,
             string? knownHostsFilePath = null,
             Action<NativeSftpTransferProgress>? progress = null,
             CancellationToken cancellationToken = default)
@@ -621,8 +628,11 @@ namespace Ntilde.Shell
             ArgumentNullException.ThrowIfNull(sshService);
 
             NativeSshConnectionOptions baseOptions = BuildNativeTransferConnectionOptions(sshService, profile, allProfiles);
-            bool prefersIdentityFile = !string.IsNullOrWhiteSpace(baseOptions.IdentityFilePath);
-            string? resolvedPassword = prefersIdentityFile ? null : passwordResolver?.Invoke(profile);
+            NativeHopPasswords passwords = NativeHopPasswordResolver.Resolve(
+                baseOptions,
+                sessionRegistry,
+                job.SessionId,
+                () => passwordResolver?.Invoke(profile));
             string effectiveKnownHostsPath = string.IsNullOrWhiteSpace(knownHostsFilePath)
                 ? AppPaths.NativeKnownHostsFilePath
                 : knownHostsFilePath;
@@ -635,7 +645,8 @@ namespace Ntilde.Shell
                 Cols = baseOptions.Cols,
                 Rows = baseOptions.Rows,
                 Term = baseOptions.Term,
-                Password = string.IsNullOrWhiteSpace(resolvedPassword) ? null : resolvedPassword,
+                Password = passwords.Target,
+                JumpHopPasswords = passwords.JumpHops,
                 IdentityFilePath = baseOptions.IdentityFilePath,
                 UseAgent = baseOptions.UseAgent,
                 KnownHostsFilePath = effectiveKnownHostsPath,
