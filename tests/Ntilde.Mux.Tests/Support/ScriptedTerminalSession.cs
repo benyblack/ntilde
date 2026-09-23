@@ -47,14 +47,15 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public void Emit(byte[] chunk)
     {
-        Action<ReadOnlyMemory<byte>>? handler;
+        // Invokes the handler while holding _gate, matching RawOutputTap.Publish: that is the
+        // contract ITerminalByteOutput subscribers are written against (a blocked Add inside the
+        // handler holds this lock), and a fake that released the lock first would hide any
+        // deadlock a real subscriber could hit against RawOutputTap.
         lock (_gate)
         {
-            handler = _raw;
             _flight?.RecordChunk(chunk, chunk.Length);
+            _raw?.Invoke(chunk.ToArray());
         }
-
-        handler?.Invoke(chunk.ToArray());
     }
 
     public void Emit(string text) => Emit(Encoding.UTF8.GetBytes(text));

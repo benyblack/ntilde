@@ -141,8 +141,17 @@ public sealed class HeadlessTerminalSession : IDisposable
             ApplyResize(cols, rows);
         });
 
-    internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes) =>
-        EnqueueControl(() => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes));
+    internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
+    {
+        // Unlike PostResize/PostDetach, a dropped attach must still answer: the sink is a client
+        // waiting on this specific requestId, and silence would leave it hung rather than told the
+        // session is gone. OnDropped runs whether TryEnqueue refuses synchronously (below) or the
+        // item is later found undelivered by DrainAfterStop.
+        var item = WorkItem.ForAction(
+            () => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes),
+            onDropped: () => ReplySessionExited(sink, requestId));
+        if (!TryEnqueue(_control, item)) item.OnDropped!();
+    }
 
     internal void PostDetach(IMuxFrameSink sink) =>
         EnqueueControl(() =>
@@ -237,6 +246,12 @@ public sealed class HeadlessTerminalSession : IDisposable
         _cts.Cancel();
         Unsubscribe();
         if (Thread.CurrentThread != _parseThread) _parseThread.Join(TimeSpan.FromSeconds(5));
+
+        // Ordinarily redundant with ParseLoop's own finally (Join waited for it to run), but cheap
+        // and idempotent, and it still protects the join-timeout edge case: nothing posted around
+        // this point should be able to sit in a queue forever.
+        _control.CompleteAdding();
+        _data.CompleteAdding();
         DrainAfterStop();
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
@@ -291,6 +306,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         finally
         {
+            // Covers every stop path: a natural terminal-exit break (Kill) and the
+            // OperationCanceledException a Dispose()-triggered cancellation throws both land here.
+            // CompleteAdding waits for any in-flight Add and releases anything blocked on a full
+            // queue (which TryEnqueue's catch turns into a dropped item), so nothing posted after
+            // this point can be silently queued forever - it either fails TryEnqueue synchronously
+            // or is picked up, un-executed, by the drain right after.
+            _control.CompleteAdding();
+            _data.CompleteAdding();
             DrainAfterStop();
         }
     }
@@ -354,8 +377,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             _subscribers.Clear();
             PublishAttachedCount();
-            Unsubscribe();
+
+            // Cancel FIRST, same as Dispose and for the same reason: a producer parked in
+            // _data.Add (reached from inside RawOutputTap.Publish, which invokes handlers while
+            // holding its own lock) blocks holding that lock until its Add is released or
+            // cancelled. Unsubscribe needs that same lock to remove the handler, so unsubscribing
+            // before cancelling can deadlock this thread against its own producer.
             _cts.Cancel();
+            Unsubscribe();
         }
     }
 
@@ -460,6 +489,9 @@ public sealed class HeadlessTerminalSession : IDisposable
                 new ExitedNotification { SessionId = Id, ExitCode = Volatile.Read(ref _exitCode) },
                 MuxJsonContext.Default.ExitedNotification),
         });
+
+    private void ReplySessionExited(IMuxFrameSink sink, long requestId) =>
+        Reply(sink, requestId, MuxErrorCodes.SessionExited, $"Session {Id} has exited; it cannot be attached.");
 
     private static void Reply(IMuxFrameSink sink, long requestId, string code, string message) =>
         Offer(sink, MuxFrames.Response(new MuxResponse

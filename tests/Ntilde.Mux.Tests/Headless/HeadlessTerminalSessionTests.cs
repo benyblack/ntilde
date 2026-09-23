@@ -300,6 +300,63 @@ public sealed class HeadlessTerminalSessionTests
         release.Set();
         await dispose.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await parked.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // The parse thread must actually be gone, not merely have had Dispose() return around a
+        // Join timeout: a fresh request should be refused promptly, never left hanging.
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => mux.InvokeAsync(() => 0))
+            .WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task Kill_with_a_producer_blocked_on_a_full_queue_does_not_deadlock()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using var release = new ManualResetEventSlim();
+        Task<int> parked = mux.InvokeAsync(() => { release.Wait(TimeSpan.FromSeconds(30)); return 0; });
+        // Far beyond capacity (unlike the Dispose test's +50): Kill's own posted exit has to reach
+        // the queue too (see below), and only a producer that is still actively refilling - not
+        // one that finished shortly after the drain starts - keeps the tap's lock genuinely
+        // contended for long enough to overlap the terminal exit being processed.
+        Task producer = Task.Run(() =>
+        {
+            for (int i = 0; i < HeadlessTerminalSession.DataQueueCapacity + 20_000; i++) fake.Emit("x");
+        }, TestContext.Current.CancellationToken);
+        await TestWait.UntilAsync(() => mux.QueuedDataCount == HeadlessTerminalSession.DataQueueCapacity, "the data queue is full");
+
+        // Kill (not Dispose): the terminal exit is processed on the parse thread itself
+        // (ProcessExit), which is the code path Dispose does not exercise. Kill's own attempt to
+        // post the child's exit (via _session.Dispose() -> Exit -> OnExit) must ALSO be stuck
+        // behind the full queue before the parked invoke is released - otherwise the drain can
+        // race ahead of Kill ever reaching the queue, and the test would prove nothing. Disposed
+        // flips true synchronously at the top of ScriptedTerminalSession.Dispose(), just before
+        // Exit(-1) reaches the blocking Add, so waiting for it pins Kill in the traffic jam too.
+        Task kill = Task.Run(mux.Kill, TestContext.Current.CancellationToken);
+        await TestWait.UntilAsync(() => fake.Disposed, "Kill has started disposing the child");
+
+        release.Set();
+        await producer.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await kill.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await parked.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        mux.Dispose();
+    }
+
+    [Fact]
+    public async Task An_attach_after_kill_is_answered_with_session_exited_instead_of_silence()
+    {
+        (HeadlessTerminalSession mux, _) = NewSession();
+        using (mux)
+        {
+            mux.Kill();
+            await TestWait.UntilAsync(() => mux.IsExited, "the kill exit has been processed");
+
+            var sink = new RecordingFrameSink();
+            mux.PostAttach(sink, 42, 100, Presentation80x24, MuxProtocol.MaxFrameBytes);
+            await TestWait.UntilAsync(() => sink.Described.Count > 0, "the attach is answered");
+
+            Assert.Equal(["Error:session_exited"], sink.Described);
+            Assert.Equal(0, mux.AttachedClients);
+        }
     }
 
     [Fact]
