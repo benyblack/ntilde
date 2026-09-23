@@ -8,6 +8,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia.Controls.Presenters;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Platform;
 using Ntilde.VT;
 using Ntilde.Rendering;
@@ -8656,6 +8657,11 @@ namespace Ntilde
         private void ApplyThemeToUI()
         {
             var theme = _settings.ActiveTheme;
+
+            // App-wide tokens, the Fluent palette and the variant come first. Every DynamicResource
+            // consumer (Settings, Connection Manager, Agent Output, stock controls) updates from this
+            // one call. The imperative per-control code below moves onto tokens in phase 2.
+            ThemeService.Apply(theme, _settings.WindowOpacity);
 
             // Background brush for the main content area
             var bgBrush = new SolidColorBrush(theme.Background.ToAvaloniaColor(), _settings.WindowOpacity);
