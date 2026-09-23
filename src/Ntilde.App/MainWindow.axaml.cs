@@ -3596,7 +3596,11 @@ namespace Ntilde
                 case Key.Escape: sequence = "\x1b"; return true;
             }
 
-            sequence = TerminalInputModeEncoder.EncodeSpecialKey(e.Key, buffer?.Modes);
+            // Modifiers go through for the same reason the focused pane's TerminalView passes them:
+            // Ctrl+Left has to word-jump in every broadcast pane, not word-jump in the focused one
+            // and move one character in its siblings, which would leave their command lines
+            // diverged from that point on.
+            sequence = TerminalInputModeEncoder.EncodeSpecialKey(e.Key, e.KeyModifiers, buffer?.Modes);
             if (sequence != null)
             {
                 return true;

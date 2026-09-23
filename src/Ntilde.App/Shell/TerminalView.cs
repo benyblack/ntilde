@@ -286,7 +286,15 @@ namespace Ntilde.Shell
                     // Arrows
             }
 
-            string? sequence = TerminalInputModeEncoder.EncodeSpecialKey(key, _buffer?.Modes);
+            // Cursor, editing and function keys, with their modifiers (Ctrl+Left -> CSI 1;5D). Every
+            // modifier combination of these keys arrives here: the kitty encoder leaves functional
+            // keys alone, EncodeAltKey declines non-printable keys (so Alt+arrow lands here too),
+            // and the Ctrl branch above only claims letters. Command Assist's interceptor matches
+            // its bindings with exact modifiers, so by default it takes only the unmodified
+            // Up/Down. App chords on these keys never get this far - MainWindow's tunnel handler
+            // takes Ctrl+Shift+PageUp/PageDown (move tab) and Alt+arrow when there is a pane to
+            // move to, and marks the event handled first.
+            string? sequence = TerminalInputModeEncoder.EncodeSpecialKey(key, keyModifiers, _buffer?.Modes);
             if (sequence != null)
             {
                 SendUserInput(sequence);
