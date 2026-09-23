@@ -41,6 +41,23 @@ public class SkiaImageDecoderTests
         Assert.True(height > 0);
     }
 
+    [Fact]
+    public void DecodeSixel_ClipsToMaxPixelDimension()
+    {
+        Assert.SkipUnless(SkiaAvailable, "SkiaSharp native library not available on this platform.");
+
+        // A 100-column run over two bands (12 rows) against an 8-pixel bound: the one knob that
+        // bounds kitty and iTerm2 images bounds sixel too.
+        var decoder = new SkiaImageDecoder { MaxPixelDimension = 8 };
+        var handle = decoder.DecodeSixel("q!100~-!100~", out int width, out int height);
+
+        using var bitmap = Assert.IsType<SKBitmap>(handle);
+        Assert.Equal(8, width);
+        Assert.Equal(8, height);
+        Assert.Equal(8, bitmap.Width);
+        Assert.Equal(8, bitmap.Height);
+    }
+
     [Theory]
     [InlineData("1;2;3")]   // no 'q' header terminator — anything below '?' is not sixel data
     [InlineData("0;0;0q")]  // header but no pixel data
