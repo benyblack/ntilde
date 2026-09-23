@@ -1,12 +1,31 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using SkiaSharp;
 
 namespace Ntilde.Rendering
 {
     public class SixelDecoder
     {
+        /// <summary>
+        /// Default for <see cref="MaxPixelDimension"/> here and in SkiaImageDecoder: the same
+        /// 2000 pixels AnsiParser enforces on kitty and iTerm2 images, so no image protocol can
+        /// produce a larger bitmap than the others.
+        /// </summary>
+        public const int DefaultMaxPixelDimension = 2000;
+
+        /// <summary>
+        /// Largest width and height, in pixels, of a decoded image. Sixel is remote-controlled
+        /// input and a single repeat introducer can ask for two billion columns in 13 bytes, so
+        /// the bound is applied while decoding: a pixel past either edge is dropped without being
+        /// stored or looped over. Memory is then bounded by this alone, and time by this and the
+        /// input length, never by the counts and sizes the input declares.
+        /// </summary>
+        public int MaxPixelDimension { get; init; } = DefaultMaxPixelDimension;
+
+        private int Limit => Math.Max(0, MaxPixelDimension);
+
         private class SixelColor
         {
             public byte R, G, B;
@@ -20,10 +39,13 @@ namespace Ntilde.Rendering
         private int _maxWidth = 0;
         private int _maxHeight = 0;
 
-        // Sixel data is represented as vertical bit-slices.
-        // We use a dictionary or a list of bands to handle sparse/infinite vertically.
-        // Each band is 6 pixels high.
-        private readonly List<byte[]> _bands = new();
+        // The painted pixels, one array per 6-pixel band: six rows of equal width, allocated when
+        // the band is first painted and widened (never past MaxPixelDimension) as runs reach
+        // further right. A pixel holds its palette register + 1, 0 meaning never painted, and is
+        // resolved to a color only when the bitmap is built, so a register redefined after use
+        // recolors what it already drew. Painting overwrites in place: going back over a band
+        // with '$' as often as the input likes costs time, never memory.
+        private readonly List<ushort[]> _bands = new();
 
         public SixelDecoder()
         {
@@ -101,7 +123,6 @@ namespace Ntilde.Rendering
             _maxWidth = 0;
             _maxHeight = 0;
             _bands.Clear();
-            _placements.Clear();
 
             int i = 0;
             while (i < data.Length)
@@ -154,18 +175,26 @@ namespace Ntilde.Rendering
                     }
                     continue; // i already advanced
                 }
-                else if (c == '!') // Repeat
+                else if (c == '!') // Repeat: '!' count sixel
                 {
                     i++;
                     int start = i;
-                    while (i < data.Length && char.IsDigit(data[i])) i++;
-                    if (int.TryParse(data.Substring(start, i - start), out int count))
+                    long count = 0;
+                    while (i < data.Length && char.IsAsciiDigit(data[i]))
                     {
-                        if (i < data.Length)
-                        {
-                            char target = data[i++];
-                            for (int r = 0; r < count; r++) ProcessSixel(target);
-                        }
+                        // Saturate rather than overflow: every count from the width cap up
+                        // paints the same clipped run.
+                        count = Math.Min(count * 10 + (data[i] - '0'), int.MaxValue);
+                        i++;
+                    }
+                    // The count applies to the sixel character after it. Anything else there
+                    // (no count, or a control such as '$' or '#') drops the introducer, and that
+                    // character is handled normally on the next pass instead of being painted as
+                    // out-of-range bits.
+                    if (i > start && i < data.Length && IsSixelData(data[i]))
+                    {
+                        ProcessSixel(data[i], (int)count);
+                        i++;
                     }
                     continue;
                 }
@@ -177,17 +206,21 @@ namespace Ntilde.Rendering
                 else if (c == '-') // LF
                 {
                     _cursorX = 0;
-                    _cursorY += 6;
+                    // Bands from the height cap down are dropped whole, so there is no need to
+                    // keep counting rows past it - and a flood of '-' can then never overflow.
+                    if (_cursorY < Limit) _cursorY += 6;
                     i++;
                 }
-                else if (c == '"') // Grid size (skip)
+                else if (c == '"') // Raster attributes: "Pan;Pad;Ph;Pv (skipped)
                 {
+                    // The image is sized by what is actually drawn, clipped to the caps, so a
+                    // declared size, however large, allocates nothing.
                     i++;
                     while (i < data.Length && (char.IsDigit(data[i]) || data[i] == ';')) i++;
                 }
-                else if (c >= '?' && c <= '~') // Sixel data
+                else if (IsSixelData(c))
                 {
-                    ProcessSixel(c);
+                    ProcessSixel(c, 1);
                     i++;
                 }
                 else
@@ -196,77 +229,97 @@ namespace Ntilde.Rendering
                 }
             }
 
-            if (_maxWidth == 0 || _maxHeight == 0) return null;
-
-            // Render bit-planes to bitmap
-            var bitmap = new SKBitmap(_maxWidth, _maxHeight);
-            using (var canvas = new SKCanvas(bitmap))
-            {
-                canvas.Clear(SKColors.Transparent);
-            }
-
-            // This is a very simplified Sixel renderer. 
-            // Proper Sixel requires bit-plane layering per color.
-            // Our current 'bands' structure is too simple for multi-color overlays.
-            // For now, let's just return a placeholder or implement a proper pixel buffer.
-
             return RenderToBitmap();
         }
 
-        private void ProcessSixel(char c)
+        private static bool IsSixelData(char c) => c >= '?' && c <= '~';
+
+        // Paints sixel `c` in `count` consecutive columns from the cursor and advances past them.
+        private void ProcessSixel(char c, int count)
         {
-            int sixel = c - 63;
-            // In a better implementation, we'd store (x, y, color, sixel_bits)
-            // But Sixel is often used per-color: #0 ... data ... #1 ... data (overlaid)
-            // So we need a 2D buffer of pixels or a list of drawn sixels.
+            int limit = Limit;
+            int x0 = _cursorX;
+            // The cursor never moves past the width cap, so the columns of a run that would
+            // cross it are cut off here, before anything iterates over them.
+            int x1 = (int)Math.Min((long)x0 + count, limit);
+            if (x1 <= x0 || _cursorY >= limit) return;
 
-            // For MVP, keep track of pixels
-            RecordPixels(_cursorX, _cursorY, _currentColorIdx, sixel);
+            _cursorX = x1;
+            if (x1 > _maxWidth) _maxWidth = x1;
+            int bandBottom = Math.Min(_cursorY + 6, limit);
+            if (bandBottom > _maxHeight) _maxHeight = bandBottom;
 
-            _cursorX++;
-            if (_cursorX > _maxWidth) _maxWidth = _cursorX;
-            if (_cursorY + 6 > _maxHeight) _maxHeight = _cursorY + 6;
+            // An undefined register draws nothing, but the columns still count toward the size.
+            int bits = c - '?';
+            if (bits == 0 || !_palette.ContainsKey(_currentColorIdx)) return;
+
+            ushort[] band = GetBand(_cursorY / 6, x1);
+            int stride = band.Length / 6;
+            ushort register = (ushort)(_currentColorIdx + 1);
+            int rows = bandBottom - _cursorY;
+            for (int row = 0; row < rows; row++)
+            {
+                if ((bits & (1 << row)) != 0)
+                {
+                    band.AsSpan((row * stride) + x0, x1 - x0).Fill(register);
+                }
+            }
         }
 
-        private struct SixelPlacement
+        // The band's pixel rows, allocated or widened to at least `width` columns.
+        private ushort[] GetBand(int index, int width)
         {
-            public int X, Y, ColorIdx;
-            public byte Bits;
-        }
-        private readonly List<SixelPlacement> _placements = new();
+            while (_bands.Count <= index) _bands.Add(Array.Empty<ushort>());
 
-        private void RecordPixels(int x, int y, int colorIdx, int bits)
-        {
-            _placements.Add(new SixelPlacement { X = x, Y = y, ColorIdx = colorIdx, Bits = (byte)bits });
+            ushort[] band = _bands[index];
+            int stride = band.Length / 6;
+            if (stride >= width) return band;
+
+            // Doubling keeps widening amortized; the cap bounds it (width never exceeds it).
+            int newStride = Math.Min(Limit, Math.Max(width, Math.Max(stride * 2, 64)));
+            var widened = new ushort[newStride * 6];
+            for (int row = 0; row < 6; row++)
+            {
+                Array.Copy(band, row * stride, widened, row * newStride, stride);
+            }
+            _bands[index] = widened;
+            return widened;
         }
 
         private SKBitmap? RenderToBitmap()
         {
             if (_maxWidth <= 0 || _maxHeight <= 0) return null;
 
-            var bitmap = new SKBitmap(_maxWidth, _maxHeight);
-
-            // Clear bitmap
-            for (int y = 0; y < _maxHeight; y++)
-                for (int x = 0; x < _maxWidth; x++)
-                    bitmap.SetPixel(x, y, SKColors.Transparent);
-
-            foreach (var p in _placements)
+            // Every register resolved to its pixel value once rather than per pixel. Bgra8888 is
+            // B,G,R,A in memory, which is SKColor's 0xAARRGGBB value on a little-endian machine,
+            // i.e. everywhere this ships. Slot 0 (never painted) stays 0: transparent.
+            int maxRegister = 0;
+            foreach (int idx in _palette.Keys) maxRegister = Math.Max(maxRegister, idx);
+            var colors = new uint[maxRegister + 2];
+            foreach (var (idx, color) in _palette)
             {
-                if (!_palette.TryGetValue(p.ColorIdx, out var color)) continue;
-                var skColor = new SKColor(color.R, color.G, color.B);
+                colors[idx + 1] = (uint)new SKColor(color.R, color.G, color.B);
+            }
 
-                for (int b = 0; b < 6; b++)
+            var bitmap = new SKBitmap(new SKImageInfo(_maxWidth, _maxHeight, SKColorType.Bgra8888, SKAlphaType.Premul));
+            Span<byte> pixels = bitmap.GetPixelSpan();
+            int rowBytes = bitmap.RowBytes;
+
+            // Each row is written in full, unpainted pixels as 0, straight into the bitmap's own
+            // memory: no clearing pass, and no per-pixel call into Skia.
+            for (int y = 0; y < _maxHeight; y++)
+            {
+                Span<uint> row = MemoryMarshal.Cast<byte, uint>(pixels.Slice(y * rowBytes, _maxWidth * 4));
+                ushort[] band = y / 6 < _bands.Count ? _bands[y / 6] : Array.Empty<ushort>();
+                int stride = band.Length / 6;
+                int painted = Math.Min(stride, _maxWidth);
+                ReadOnlySpan<ushort> registers = band.AsSpan((y % 6) * stride, painted);
+                for (int x = 0; x < painted; x++)
                 {
-                    if (((p.Bits >> b) & 1) != 0)
-                    {
-                        int py = p.Y + b;
-                        if (py < _maxHeight)
-                        {
-                            bitmap.SetPixel(p.X, py, skColor);
-                        }
-                    }
+                    ushort register = registers[x];
+                    row[x] = register < colors.Length ? colors[register] : 0;
                 }
+                row.Slice(painted).Clear();
             }
 
             return bitmap;
