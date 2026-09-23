@@ -34,6 +34,46 @@ internal sealed class MuxTestHost : IDisposable
 
     public ScriptedTerminalSession Fake(Guid id) => (ScriptedTerminalSession)Mux(id).Inner;
 
+    public async Task<MuxClient> ConnectClientAsync(MuxClientOptions? options = null)
+    {
+        MuxClient client = await MuxClient.ConnectAsync(Listener.Connect(), options, TestContext.Current.CancellationToken);
+        Own(client);
+        return client;
+    }
+
+    public static Task<Guid> SpawnAsync(MuxClient client, int cols = 80, int rows = 24) =>
+        client.SpawnAsync(new SpawnParams { Command = "scripted", Cols = cols, Rows = rows, Title = "test" }, TestContext.Current.CancellationToken);
+
+    public static async Task<ClientPaneModel> AttachPaneAsync(
+        MuxClient client, Guid sessionId, MuxPresentation? presentation = null, int maxScrollbackRows = 10_000)
+    {
+        MuxClientSession session = client.OpenSession(sessionId, "scripted");
+        var pane = new ClientPaneModel(session);
+        await session.AttachAsync(maxScrollbackRows, presentation ?? DefaultPresentation, TestContext.Current.CancellationToken);
+        return pane;
+    }
+
+    /// <summary>
+    /// Quiesces one session: ping each client (the server has handled everything it sent), flush the
+    /// parse thread (every byte and control item is processed and its frames enqueued), ping again
+    /// (every frame enqueued before the pong has been delivered - the reader is sequential).
+    /// </summary>
+    public async Task SettleAsync(Guid sessionId, params MuxClient[] clients)
+    {
+        foreach (MuxClient c in clients) await c.PingAsync(TestContext.Current.CancellationToken);
+        await Mux(sessionId).FlushAsync();
+        foreach (MuxClient c in clients) await c.PingAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Call only after <see cref="SettleAsync"/>: reads both sides with their threads idle.</summary>
+    public void AssertPaneMatchesMux(Guid sessionId, ClientPaneModel pane, string because)
+    {
+        HeadlessTerminalSession mux = Mux(sessionId);
+        Assert.Equal(mux.StreamPosition, pane.Session.StreamPosition);
+        Ntilde.VT.Tests.StateTransfer.TerminalStateAssert.AssertEquivalent(
+            $"[{because}]", mux.Buffer, mux.Parser, pane.Buffer, pane.Parser);
+    }
+
     public void Dispose()
     {
         for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();

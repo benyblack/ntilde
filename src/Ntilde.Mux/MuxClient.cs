@@ -1,0 +1,404 @@
+using System.Collections.Concurrent;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using Ntilde.Mux.Contracts;
+using Ntilde.VT;
+
+namespace Ntilde.Mux;
+
+/// <summary>
+/// One connection to a <see cref="MuxServer"/>. Its reader thread is the delivery thread for every
+/// session opened on it: snapshots, output, resizes and exits are raised there, strictly in frame
+/// order. RPC continuations are forced asynchronous so no awaiting caller ever runs on it.
+/// </summary>
+public sealed class MuxClient : IDisposable
+{
+    private readonly Stream _stream;
+    private readonly MuxClientOptions _options;
+    private readonly Thread _readerThread;
+    private readonly Thread _senderThread;
+    private readonly BlockingCollection<MuxOutboundFrame> _outbound = new(boundedCapacity: 1024);
+    private readonly ConcurrentDictionary<long, TaskCompletionSource<MuxResponse>> _pending = new();
+    private readonly ConcurrentDictionary<long, MuxClientSession> _pendingAttaches = new();
+    private readonly ConcurrentDictionary<Guid, MuxClientSession> _sessions = new();
+    private long _nextId;
+    private int _disconnected;
+    private string? _disconnectReason;
+
+    private MuxClient(Stream stream, MuxClientOptions options)
+    {
+        _stream = stream;
+        _options = options;
+        _readerThread = new Thread(ReadLoop) { IsBackground = true, Name = "MuxClientRead" };
+        _senderThread = new Thread(SendLoop) { IsBackground = true, Name = "MuxClientSend" };
+        _senderThread.Start();
+        _readerThread.Start();
+    }
+
+    public int ProtocolVersion { get; private set; }
+
+    /// <summary>From Welcome. Construct the pane's parser with this so both halves of a snapshot parse identically.</summary>
+    public bool ForceConPtyFiltering { get; private set; }
+
+    public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
+    public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
+    public event Action<string?>? Disconnected;
+
+    internal bool IsOnDeliveryThread => Thread.CurrentThread == _readerThread;
+
+    public static async Task<MuxClient> ConnectAsync(Stream stream, MuxClientOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        options ??= new MuxClientOptions();
+        var client = new MuxClient(stream, options);
+        try
+        {
+            WelcomeResult welcome = await client.RequestAsync(
+                MuxMethods.Hello,
+                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind },
+                MuxJsonContext.Default.HelloParams,
+                MuxJsonContext.Default.WelcomeResult,
+                cancellationToken).ConfigureAwait(false);
+            if (welcome.Version < options.MinProtocolVersion || welcome.Version > options.MaxProtocolVersion)
+            {
+                throw new MuxProtocolException(MuxErrorCodes.VersionMismatch,
+                    $"Server chose protocol {welcome.Version}, outside this client's {options.MinProtocolVersion}..{options.MaxProtocolVersion}.");
+            }
+
+            client.ProtocolVersion = welcome.Version;
+            client.ForceConPtyFiltering = welcome.ForceConPtyFiltering;
+            return client;
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<SessionSummary>> ListSessionsAsync(CancellationToken cancellationToken = default) =>
+        (await RequestAsync(MuxMethods.ListSessions, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty,
+            MuxJsonContext.Default.ListSessionsResult, cancellationToken).ConfigureAwait(false)).Sessions;
+
+    public async Task<Guid> SpawnAsync(SpawnParams request, CancellationToken cancellationToken = default) =>
+        (await RequestAsync(MuxMethods.Spawn, request, MuxJsonContext.Default.SpawnParams,
+            MuxJsonContext.Default.SpawnResult, cancellationToken).ConfigureAwait(false)).SessionId;
+
+    public Task KillAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
+        RequestAsync(MuxMethods.Kill, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams,
+            MuxJsonContext.Default.MuxEmpty, cancellationToken);
+
+    public Task PingAsync(CancellationToken cancellationToken = default) =>
+        RequestAsync(MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty, MuxJsonContext.Default.MuxEmpty, cancellationToken);
+
+    /// <summary>
+    /// An unattached session. Wire its events, then call <see cref="MuxClientSession.AttachAsync"/>:
+    /// nothing is raised before a handler can exist, so nothing needs buffering (spec §9.6).
+    /// </summary>
+    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null)
+    {
+        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments);
+        if (!_sessions.TryAdd(sessionId, session))
+        {
+            throw new InvalidOperationException($"Session {sessionId} is already open on this client; dispose it first.");
+        }
+
+        return session;
+    }
+
+    internal Task<TResult> RequestAsync<TParams, TResult>(
+        string method, TParams parameters, JsonTypeInfo<TParams> paramsInfo, JsonTypeInfo<TResult> resultInfo, CancellationToken cancellationToken)
+        where TResult : class
+    {
+        long id = Interlocked.Increment(ref _nextId);
+        return RequestCoreAsync(id, method, MuxFrames.ToElement(parameters, paramsInfo), resultInfo, cancellationToken);
+    }
+
+    internal async Task<long> AttachAsync(MuxClientSession session, int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken)
+    {
+        long id = Interlocked.Increment(ref _nextId);
+        _pendingAttaches[id] = session;
+        try
+        {
+            JsonElement p = MuxFrames.ToElement(
+                new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation },
+                MuxJsonContext.Default.AttachParams);
+            MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.Attach, p, cancellationToken).ConfigureAwait(false);
+            if (response.Error is { } error) throw new MuxProtocolException(error.Code, error.Message);
+            return session.AttachedSeq;
+        }
+        finally
+        {
+            _pendingAttaches.TryRemove(id, out _);
+        }
+    }
+
+    /// <summary>Fire-and-forget request (id 0: the server sends no response).</summary>
+    internal void PostRequest<T>(string method, T parameters, JsonTypeInfo<T> typeInfo) =>
+        Post(MuxFrames.Request(new MuxRequest { Id = 0, Method = method, Params = MuxFrames.ToElement(parameters, typeInfo) }));
+
+    internal void SendInput(Guid sessionId, string text) => Post(MuxFrames.Input(sessionId, Encoding.UTF8.GetBytes(text)));
+
+    internal void SendResize(Guid sessionId, int cols, int rows, MuxPresentation? presentation) =>
+        PostRequest(MuxMethods.Resize, new ResizeParams { SessionId = sessionId, Cols = cols, Rows = rows, Presentation = presentation },
+            MuxJsonContext.Default.ResizeParams);
+
+    internal void Detach(MuxClientSession session)
+    {
+        _sessions.TryRemove(new KeyValuePair<Guid, MuxClientSession>(session.Id, session));
+        PostRequest(MuxMethods.Detach, new SessionIdParams { SessionId = session.Id }, MuxJsonContext.Default.SessionIdParams);
+    }
+
+    public void Dispose()
+    {
+        OnDisconnected("client_disposed");
+        if (Thread.CurrentThread != _readerThread) _readerThread.Join(TimeSpan.FromSeconds(5));
+        if (Thread.CurrentThread != _senderThread) _senderThread.Join(TimeSpan.FromSeconds(5));
+    }
+
+    private async Task<TResult> RequestCoreAsync<TResult>(long id, string method, JsonElement parameters, JsonTypeInfo<TResult> resultInfo, CancellationToken cancellationToken)
+        where TResult : class
+    {
+        MuxResponse response = await SendAndAwaitAsync(id, method, parameters, cancellationToken).ConfigureAwait(false);
+        if (response.Error is { } error) throw new MuxProtocolException(error.Code, error.Message);
+        return MuxFrames.ParseParams(response.Result, resultInfo);
+    }
+
+    private async Task<MuxResponse> SendAndAwaitAsync(long id, string method, JsonElement parameters, CancellationToken cancellationToken)
+    {
+        var tcs = new TaskCompletionSource<MuxResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pending[id] = tcs;
+        try
+        {
+            if (!IsConnected) throw Closed(); // after registering: OnDisconnected sets the flag before failing _pending
+            Enqueue(MuxFrames.Request(new MuxRequest { Id = id, Method = method, Params = parameters }));
+            return await tcs.Task.WaitAsync(_options.RequestTimeout, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _pending.TryRemove(id, out _);
+        }
+    }
+
+    private void Enqueue(MuxOutboundFrame frame)
+    {
+        try
+        {
+            _outbound.Add(frame);
+        }
+        catch (InvalidOperationException)
+        {
+            frame.Release();
+            throw Closed();
+        }
+    }
+
+    private void Post(MuxOutboundFrame frame)
+    {
+        try
+        {
+            _outbound.Add(frame);
+        }
+        catch (InvalidOperationException)
+        {
+            frame.Release(); // disconnected: fire-and-forget has nobody to tell
+        }
+    }
+
+    private IOException Closed() => new($"The mux connection is closed ({DisconnectReason ?? "disconnected"}).");
+
+    private void SendLoop()
+    {
+        try
+        {
+            foreach (MuxOutboundFrame frame in _outbound.GetConsumingEnumerable())
+            {
+                try { frame.WriteTo(_stream); }
+                finally { frame.Release(); }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
+        {
+            OnDisconnected("disconnected");
+        }
+
+        while (_outbound.TryTake(out MuxOutboundFrame? left)) left.Release();
+    }
+
+    private void ReadLoop()
+    {
+        string? reason = null;
+        try
+        {
+            while (true)
+            {
+                MuxInboundFrame? frame = MuxFrameReader.Read(_stream);
+                if (frame is null) break;
+                using (frame)
+                {
+                    Dispatch(frame);
+                }
+            }
+        }
+        catch (MuxProtocolException ex)
+        {
+            reason = ex.Code;
+            _options.Log?.Invoke($"[MuxClient] protocol error: {ex.Message}");
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        {
+            reason = "disconnected";
+        }
+        catch (Exception ex)
+        {
+            reason = MuxErrorCodes.Internal;
+            _options.Log?.Invoke($"[MuxClient] delivery failed: {ex}");
+        }
+
+        OnDisconnected(reason);
+    }
+
+    private void Dispatch(MuxInboundFrame frame)
+    {
+        switch (frame.Kind)
+        {
+            case MuxFrameKind.Response:
+                OnResponse(MuxFrames.ParseJson(frame.Payload, MuxJsonContext.Default.MuxResponse));
+                break;
+            case MuxFrameKind.Notification:
+                OnNotification(MuxFrames.ParseJson(frame.Payload, MuxJsonContext.Default.MuxNotification));
+                break;
+            case MuxFrameKind.Output:
+                {
+                    if (!MuxFrames.TryParseOutput(frame.Payload, out Guid id, out long seq, out ReadOnlySpan<byte> data)) throw Malformed(frame.Kind);
+                    if (_sessions.TryGetValue(id, out MuxClientSession? session)) session.DeliverOutput(seq, data);
+                    break;
+                }
+
+            case MuxFrameKind.ResizeEvent:
+                {
+                    if (!MuxFrames.TryParseResizeEvent(frame.Payload, out Guid id, out long seq, out int cols, out int rows)) throw Malformed(frame.Kind);
+                    if (_sessions.TryGetValue(id, out MuxClientSession? session)) session.DeliverResize(seq, cols, rows);
+                    break;
+                }
+
+            case MuxFrameKind.Snapshot:
+                OnSnapshot(frame.Payload);
+                break;
+            default:
+                throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"A server may not send {frame.Kind} frames.");
+        }
+    }
+
+    private static MuxProtocolException Malformed(MuxFrameKind kind) =>
+        new(MuxErrorCodes.ProtocolError, $"Malformed {kind} frame.");
+
+    private void OnResponse(MuxResponse response)
+    {
+        if (response.Id == 0)
+        {
+            // Connection-level: the server is about to close. Keep the reason for DisconnectReason.
+            if (response.Error is { } error) Interlocked.CompareExchange(ref _disconnectReason, error.Code, null);
+            return;
+        }
+
+        if (_pending.TryGetValue(response.Id, out TaskCompletionSource<MuxResponse>? tcs)) tcs.TrySetResult(response);
+    }
+
+    private void OnNotification(MuxNotification notification)
+    {
+        if (notification.Method == MuxMethods.Exited)
+        {
+            ExitedNotification exited = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.ExitedNotification);
+            if (_sessions.TryGetValue(exited.SessionId, out MuxClientSession? session)) session.DeliverExited(exited.ExitCode);
+        }
+
+        // Unknown notifications are ignored: a newer server may send more than this client knows.
+    }
+
+    private void OnSnapshot(ReadOnlySpan<byte> payload)
+    {
+        if (!MuxFrames.TryParseSnapshot(payload, out long requestId, out Guid sessionId, out long seq, out ReadOnlySpan<byte> json))
+        {
+            throw Malformed(MuxFrameKind.Snapshot);
+        }
+
+        if (!_pendingAttaches.TryRemove(requestId, out MuxClientSession? session) || session.Id != sessionId)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Unsolicited snapshot for {sessionId} (request {requestId}).");
+        }
+
+        _pending.TryGetValue(requestId, out TaskCompletionSource<MuxResponse>? tcs);
+        TerminalStateSnapshot snapshot;
+        try
+        {
+            snapshot = DecodeSnapshot(json);
+        }
+        catch (MuxProtocolException ex)
+        {
+            tcs?.TrySetResult(new MuxResponse { Id = requestId, Error = new MuxError { Code = ex.Code, Message = ex.Message } });
+            if (ex.Code != MuxErrorCodes.SnapshotTooLarge) throw; // malformed: this connection is no longer trustworthy
+
+            // Too large is a policy refusal, not corruption: the server already subscribed us, so undo that.
+            PostRequest(MuxMethods.Detach, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams);
+            return;
+        }
+
+        session.DeliverSnapshot(seq, snapshot, json.Length);
+        tcs?.TrySetResult(new MuxResponse { Id = requestId });
+    }
+
+    private TerminalStateSnapshot DecodeSnapshot(ReadOnlySpan<byte> json)
+    {
+        MuxAttachLimits limits = _options.AttachLimits;
+        if (json.Length > limits.MaxSnapshotBytes)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.SnapshotTooLarge,
+                $"Snapshot is {json.Length} bytes; this client accepts at most {limits.MaxSnapshotBytes}.");
+        }
+
+        TerminalStateSnapshot snapshot;
+        try
+        {
+            snapshot = TerminalStateSerializer.FromBytes(json);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Malformed snapshot: {ex.Message}", ex);
+        }
+
+        if (snapshot.Cols <= 0 || snapshot.Rows <= 0)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Snapshot geometry {snapshot.Cols}x{snapshot.Rows} is invalid.");
+        }
+
+        if ((long)snapshot.Cols * snapshot.Rows > limits.MaxCells)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.SnapshotTooLarge,
+                $"Snapshot grid {snapshot.Cols}x{snapshot.Rows} exceeds this client's {limits.MaxCells}-cell ceiling.");
+        }
+
+        if (snapshot.ScrollbackRowCount > limits.MaxScrollbackRows)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.SnapshotTooLarge,
+                $"Snapshot carries {snapshot.ScrollbackRowCount} scrollback rows; this client accepts at most {limits.MaxScrollbackRows}.");
+        }
+
+        return snapshot;
+    }
+
+    private void OnDisconnected(string? reason)
+    {
+        if (Interlocked.Exchange(ref _disconnected, 1) != 0) return;
+        Interlocked.CompareExchange(ref _disconnectReason, reason ?? "disconnected", null);
+        _outbound.CompleteAdding();
+        try { _stream.Dispose(); }
+        catch (IOException) { }
+
+        IOException closed = Closed();
+        foreach (TaskCompletionSource<MuxResponse> tcs in _pending.Values) tcs.TrySetException(closed);
+        foreach (MuxClientSession session in _sessions.Values) session.DeliverDisconnected(DisconnectReason);
+        Disconnected?.Invoke(DisconnectReason);
+    }
+}
