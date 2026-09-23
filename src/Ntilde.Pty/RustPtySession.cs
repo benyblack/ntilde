@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -255,6 +255,18 @@ namespace Ntilde.Pty
         // snapshot needs to let an attaching pane resume decoding mid-sequence.
         private readonly Utf8ChunkDecoder _utf8Decoder = new();
 
+        // Raw-byte tap for the multiplexer (ITerminalByteOutput). Published from ReadLoop in read
+        // order, right after the recorders, so its stream is exactly the bytes RecordChunk sees.
+        // When nothing taps it (every GUI pane), it costs one lock per chunk and allocates nothing:
+        // the first string subscriber below calls StopRetaining.
+        private readonly RawOutputTap _rawOutput = new();
+
+        public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
+        {
+            add => _rawOutput.Subscribe(value);
+            remove => _rawOutput.Unsubscribe(value);
+        }
+
         // Output is buffered until the first subscriber attaches, then replayed.
         // The read/process threads start in the constructor, so a shell's initial
         // prompt can arrive before the UI wires OnOutputReceived; without this,
@@ -294,6 +306,7 @@ namespace Ntilde.Pty
                         if (!_hasOutputSubscriberEver)
                         {
                             _hasOutputSubscriberEver = true;
+                            _rawOutput.StopRetaining();
                             if (_pendingOutputReplay != null)
                             {
                                 replay = _pendingOutputReplay.ToArray();
@@ -1013,6 +1026,7 @@ namespace Ntilde.Pty
                         // Record raw bytes before any processing
                         _recorder?.RecordChunk(buffer, read);
                         _flightRecorder?.RecordChunk(buffer, read);
+                        _rawOutput.Publish(buffer.AsSpan(0, read));
 
                         // Use the stateful decoder - it will hold incomplete multi-byte sequences
                         // until more bytes arrive, preventing U+FFFD replacement characters

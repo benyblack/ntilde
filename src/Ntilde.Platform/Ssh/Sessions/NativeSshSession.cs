@@ -9,7 +9,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class NativeSshSession : ITerminalSession
+public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
 {
     private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(25);
 
@@ -36,6 +36,18 @@ public sealed class NativeSshSession : ITerminalSession
     // subscriber (AnsiParser/TerminalBuffer) concurrently, and replayed startup
     // output always precedes live output. Outer lock; order is invocation -> gate.
     private readonly object _outputInvocationLock = new();
+
+    // Raw-byte tap for the multiplexer (ITerminalByteOutput). Published from the poll loop in wire
+    // order, right after the recorders, so its stream is exactly the bytes RecordChunk sees. When
+    // nothing taps it (every GUI pane), it costs one lock per chunk and allocates nothing: the
+    // first string subscriber below calls StopRetaining.
+    private readonly RawOutputTap _rawOutput = new();
+
+    public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
+    {
+        add => _rawOutput.Subscribe(value);
+        remove => _rawOutput.Unsubscribe(value);
+    }
 
     private ReplayWriter? _recorder;
 
@@ -97,12 +109,12 @@ public sealed class NativeSshSession : ITerminalSession
         // buffered for the first subscriber, so they are never scrolled away by the banner.
         if (profile.MuxOptions?.Enabled == true)
         {
-            EmitText("Warning: multiplexing (ControlMaster) is an OpenSSH client feature; the native backend ignores this profile's mux options.\r\n");
+            EmitSessionText("Warning: multiplexing (ControlMaster) is an OpenSSH client feature; the native backend ignores this profile's mux options.\r\n");
         }
 
         if (!string.IsNullOrWhiteSpace(profile.ExtraSshArgs))
         {
-            EmitText("Warning: extra SSH arguments drive the OpenSSH client; the native backend ignores this profile's extra arguments.\r\n");
+            EmitSessionText("Warning: extra SSH arguments drive the OpenSSH client; the native backend ignores this profile's extra arguments.\r\n");
         }
 
         JumpHostConnectPlan connectPlan = JumpHostConnectPlan.Create(profile);
@@ -121,7 +133,7 @@ public sealed class NativeSshSession : ITerminalSession
                     profile.Forwards,
                     _interop,
                     _log,
-                    warn: message => EmitText($"{message}\r\n"));
+                    warn: message => EmitSessionText($"{message}\r\n"));
                 foreach (PortForward forward in profile.Forwards)
                 {
                     _metrics.RecordForwardSetup(forward.ToString());
@@ -213,6 +225,7 @@ public sealed class NativeSshSession : ITerminalSession
                     if (!_hasOutputSubscriberEver)
                     {
                         _hasOutputSubscriberEver = true;
+                        _rawOutput.StopRetaining();
                         if (_pendingOutputReplay != null)
                         {
                             replay = _pendingOutputReplay.ToArray();
@@ -498,7 +511,7 @@ public sealed class NativeSshSession : ITerminalSession
                 _metrics.MarkDisconnected(failure.Kind.ToString());
                 _log($"[NativeSshSession] Poll loop failed: {ex.Message}");
                 _log($"[NativeSshSession] failure={failure.Kind}");
-                EmitText($"Native SSH session failed: {ex.Message}{Environment.NewLine}");
+                EmitSessionText($"Native SSH session failed: {ex.Message}{Environment.NewLine}");
                 TryNotifyExit(-1);
             }
         }
@@ -514,6 +527,7 @@ public sealed class NativeSshSession : ITerminalSession
         _metrics.MarkFirstOutput();
         _recorder?.RecordChunk(payload, payload.Length);
         _flightRecorder?.RecordChunk(payload, payload.Length);
+        _rawOutput.Publish(payload);
 
         char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(payload.Length)];
         int charCount = _utf8Decoder.Decode(payload, chars);
@@ -534,7 +548,7 @@ public sealed class NativeSshSession : ITerminalSession
 
         if (nextEvent.Payload.Length > 0)
         {
-            EmitText($"{message}{Environment.NewLine}");
+            EmitSessionText($"{message}{Environment.NewLine}");
         }
 
         TryNotifyExit(nextEvent.StatusCode == 0 ? -1 : nextEvent.StatusCode);
@@ -654,6 +668,16 @@ public sealed class NativeSshSession : ITerminalSession
             // stall the poll loop and any new subscriber.
             handler?.Invoke(text);
         }
+    }
+
+    // Text this session writes itself (warnings, failure banners) rather than bytes off the wire.
+    // Published to the raw tap as UTF-8 too, so a byte subscriber sees everything a string
+    // subscriber does. It bypasses the wire decoder, so a partial code point pending in
+    // _utf8Decoder is not flushed first - these arrive at connect or at failure, not mid-stream.
+    private void EmitSessionText(string text)
+    {
+        _rawOutput.Publish(Encoding.UTF8.GetBytes(text));
+        EmitText(text);
     }
 
     private void RefuseUnsolicitedForwardChannel(int channelId)
