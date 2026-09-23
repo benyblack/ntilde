@@ -60,6 +60,12 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _disposed;
     private int _unsubscribed;
 
+    // PostResize coalescing (any thread -> parse thread); see PostResize.
+    private readonly object _pendingResizeGate = new();
+    private (int Cols, int Rows)? _pendingResize;
+    private MuxPresentation? _pendingPresentation;
+    private bool _resizeQueued;
+
     public HeadlessTerminalSession(Guid id, ITerminalSession session, HeadlessSessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(session);
@@ -148,6 +154,8 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal int QueuedDataCount => _data.Count;
 
+    internal int QueuedControlCount => _control.Count;
+
     /// <summary>Thread-safe; goes straight to the session (input is independent of the output stream).</summary>
     public void SendInput(string text)
     {
@@ -155,13 +163,46 @@ public sealed class HeadlessTerminalSession : IDisposable
         _session.SendInput(text);
     }
 
-    /// <summary>Latest request wins. Presentation (if any) is applied first, so an in-band report uses the new cell size.</summary>
-    public void PostResize(int cols, int rows, MuxPresentation? presentation) =>
-        EnqueueControl(() =>
+    /// <summary>
+    /// Latest request wins. Presentation (if any) is applied first, so an in-band report uses the
+    /// new cell size.
+    /// </summary>
+    /// <remarks>
+    /// Coalesced: resize requests carry no reply, so nothing throttles a peer that sends them faster
+    /// than the parse thread applies them. Only the newest size matters, so a burst collapses into a
+    /// single queued item that applies whatever is pending when it runs - never an unbounded backlog
+    /// of stale resizes starving output. The newest presentation any coalesced request carried is
+    /// kept, since a later size-only request must not discard it.
+    /// </remarks>
+    public void PostResize(int cols, int rows, MuxPresentation? presentation)
+    {
+        lock (_pendingResizeGate)
         {
-            if (presentation is not null) ApplyPresentation(presentation);
-            ApplyResize(cols, rows);
-        });
+            _pendingResize = (cols, rows);
+            if (presentation is not null) _pendingPresentation = presentation;
+            if (_resizeQueued) return;
+            _resizeQueued = true;
+        }
+
+        EnqueueControl(ApplyPendingResize);
+    }
+
+    private void ApplyPendingResize()
+    {
+        (int Cols, int Rows)? size;
+        MuxPresentation? presentation;
+        lock (_pendingResizeGate)
+        {
+            size = _pendingResize;
+            presentation = _pendingPresentation;
+            _pendingResize = null;
+            _pendingPresentation = null;
+            _resizeQueued = false;
+        }
+
+        if (presentation is not null) ApplyPresentation(presentation);
+        if (size is { } s) ApplyResize(s.Cols, s.Rows);
+    }
 
     internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
     {

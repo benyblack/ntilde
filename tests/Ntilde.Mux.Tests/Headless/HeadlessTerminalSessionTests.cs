@@ -239,6 +239,38 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task A_flood_of_resize_requests_coalesces_into_one_pending_resize()
+    {
+        // Resize requests expect no reply, so nothing throttles a peer that sends them faster than
+        // the parse thread can apply them. Only the latest size matters (latest wins), so pending
+        // resizes must collapse into one work item instead of piling up without bound.
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
+        using (mux)
+        {
+            using var release = new ManualResetEventSlim();
+            Task<int> parked = mux.InvokeAsync(() => { release.Wait(TimeSpan.FromSeconds(30)); return 0; });
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread is parked inside the invoke");
+
+            for (int i = 0; i < 10_000; i++)
+            {
+                mux.PostResize(100 + (i % 2), 30, presentation: null);
+            }
+
+            mux.PostResize(90, 20, new MuxPresentation { Cols = 90, Rows = 20, CellWidthPx = 9, CellHeightPx = 18 });
+            Assert.True(mux.QueuedControlCount <= 1, $"{mux.QueuedControlCount} control items queued for 10,001 resizes");
+
+            release.Set();
+            await parked;
+            fake.Emit("\x1b[14t");
+            await mux.FlushAsync();
+
+            Assert.Equal((90, 20), (mux.Cols, mux.Rows));
+            Assert.Equal([(90, 20)], fake.Resizes.ToArray());          // the child learned the final size, once
+            Assert.Contains("\x1b[4;360;810t", fake.SentInput);         // the coalesced presentation still applied
+        }
+    }
+
+    [Fact]
     public async Task A_child_that_exited_before_the_mux_subscribed_is_reported_exited()
     {
         // The factory hands over an already-running session; a short command can be gone before

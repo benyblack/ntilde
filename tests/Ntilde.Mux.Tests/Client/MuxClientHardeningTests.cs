@@ -66,6 +66,47 @@ public sealed class MuxClientHardeningTests
     }
 
     [Fact]
+    public async Task A_disconnect_right_after_the_snapshot_publish_suppresses_SnapshotReceived()
+    {
+        // The connection is torn down after DeliverSnapshot published the offset but before it
+        // raised the event. The post-publish check covered Dispose only; a disconnect in that
+        // window still notified a pane whose client was already gone.
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        MuxClientSession session = client.OpenSession(id);
+        var pane = new ClientPaneModel(session);
+        Exception? hookFailure = null;
+        int raised = 0;
+        session.SnapshotReceived += _ => Interlocked.Increment(ref raised);
+        session.AfterSnapshotPublishedForTest = () =>
+        {
+            // The teardown, landing in the window. Contained, so that a throw from Dispose on the
+            // delivery thread cannot abort DeliverSnapshot early and pass this test vacuously.
+            try { client.Dispose(); }
+            catch (Exception ex) { hookFailure = ex; }
+        };
+
+        Task<long> attach = session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, FakeMuxServerEnd.SnapshotJson()));
+        await Record.ExceptionAsync(() => attach.WaitAsync(TimeSpan.FromSeconds(5), Ct));
+
+        // The attach fails as soon as the connection closes, but the delivery thread is still inside
+        // the hook (Dispose joins the sender) - asserting now would pass without the event ever
+        // having had its chance. Wait until DeliverSnapshot has actually finished.
+        await TestWait.UntilAsync(() => session.DeliveryFinishedCountForTest > 0, "DeliverSnapshot has returned", TimeSpan.FromSeconds(15));
+
+        Assert.Null(hookFailure);
+        Assert.False(client.IsConnected);
+        Assert.Equal(0, Volatile.Read(ref raised));
+        Assert.Empty(pane.Events);
+        Assert.False(session.IsAttached);
+    }
+
+    [Fact]
     public async Task An_output_offset_that_would_overflow_disconnects_instead_of_wrapping()
     {
         // A malformed server attaches at StreamSeq == long.MaxValue, then sends output there. The

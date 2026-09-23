@@ -77,6 +77,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// </summary>
     internal Action? BeforeSnapshotPublishedForTest { get; set; }
 
+    /// <summary>Test seam: runs right after the attached offset is published, before SnapshotReceived.</summary>
+    internal Action? AfterSnapshotPublishedForTest { get; set; }
+
     public event Action<TerminalStateSnapshot>? SnapshotReceived;
     public event Action<string>? OnOutputReceived;
     public event Action<int, int>? StreamResize;
@@ -251,6 +254,16 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     public void Kill() => _client.PostRequest(MuxMethods.Kill, new SessionIdParams { SessionId = Id }, MuxJsonContext.Default.SessionIdParams);
 
     /// <summary>Detaches. The session keeps running in the mux; use <see cref="Kill"/> to end it.</summary>
+    /// <remarks>
+    /// Dispose does <b>not</b> wait for a delivery already in progress on the client's reader thread,
+    /// so one <see cref="SnapshotReceived"/>, <see cref="OnOutputReceived"/> or
+    /// <see cref="StreamResize"/> that had passed its checks may still run concurrently with, or
+    /// just after, this call. Handlers must tolerate that (a pane checks its own torn-down flag).
+    /// Waiting instead was considered and rejected: a handler that marshals synchronously to the UI
+    /// thread, while the UI thread is the one calling Dispose, would deadlock - a hang traded for a
+    /// harmless late event. What Dispose does guarantee: no new delivery starts after it returns, and
+    /// the session never reports itself attached again.
+    /// </remarks>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
@@ -258,7 +271,24 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         _client.Detach(this);
     }
 
+    /// <summary>Test seam: how many DeliverSnapshot calls have returned (by any path).</summary>
+    internal int DeliveryFinishedCountForTest => Volatile.Read(ref _deliveryFinishedCount);
+
+    private int _deliveryFinishedCount;
+
     internal void DeliverSnapshot(long seq, TerminalStateSnapshot snapshot, int byteCount)
+    {
+        try
+        {
+            DeliverSnapshotCore(seq, snapshot, byteCount);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _deliveryFinishedCount);
+        }
+    }
+
+    private void DeliverSnapshotCore(long seq, TerminalStateSnapshot snapshot, int byteCount)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
         if (seq != snapshot.StreamSeq)
@@ -303,10 +333,11 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         BeforeSnapshotPublishedForTest?.Invoke();
         if (Volatile.Read(ref _disposed) != 0 || _client is { IsConnected: false }) return;
         if (Interlocked.CompareExchange(ref _expectedOffset, next, observed) != observed) return;
-        if (Volatile.Read(ref _disposed) != 0)
+        AfterSnapshotPublishedForTest?.Invoke();
+        if (Volatile.Read(ref _disposed) != 0 || _client is { IsConnected: false })
         {
-            // Disposed after the publish but before the event: undo it rather than notify a pane
-            // that has already been torn down.
+            // Disposed or disconnected after the publish but before the event: undo it rather than
+            // notify a pane that has already been torn down (or whose client is gone).
             Interlocked.Exchange(ref _expectedOffset, -1);
             return;
         }
