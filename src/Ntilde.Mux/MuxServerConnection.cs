@@ -484,6 +484,17 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         {
             ReplyError(request, ex.Code, ex.Message);
         }
+        catch (Exception ex) when (ex is not MuxProtocolException)
+        {
+            // A well-formed request whose *operation* failed - most plausibly the session's own
+            // StartRecording on an unwritable path, or a flight export hitting I/O. That is this
+            // request's failure, never the connection's: letting it reach ReadLoop's generic catch
+            // would close the shared connection and disconnect every other pane on the client.
+            // (A MuxProtocolException still propagates: malformed input does end the connection.)
+            SafeLog($"[MuxServer] connection {ConnectionId}: {Clip(request.Method)} failed: {ex}");
+            string message = ex.Message.Length <= 512 ? ex.Message : string.Concat(ex.Message.AsSpan(0, 512), "…");
+            ReplyError(request, MuxErrorCodes.Internal, $"{ex.GetType().Name}: {message}");
+        }
     }
 
     private void HandleAttach(MuxRequest request)

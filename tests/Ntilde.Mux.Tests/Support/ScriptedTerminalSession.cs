@@ -104,7 +104,15 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public bool IsRecording { get; private set; }
     public string? RecordingPath { get; private set; }
-    public void StartRecording(string filePath) { IsRecording = true; RecordingPath = filePath; }
+    /// <summary>Makes StartRecording fail the way RustPtySession's does on an unwritable path.</summary>
+    public bool ThrowOnStartRecording { get; set; }
+
+    public void StartRecording(string filePath)
+    {
+        if (ThrowOnStartRecording) throw new UnauthorizedAccessException($"Access to the path '{filePath}' is denied.");
+        IsRecording = true;
+        RecordingPath = filePath;
+    }
     public void StopRecording() => IsRecording = false;
 
     public bool IsFlightRecording { get { lock (_gate) return _flight is not null; } }

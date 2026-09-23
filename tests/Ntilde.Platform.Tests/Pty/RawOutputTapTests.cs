@@ -78,6 +78,23 @@ public sealed class RawOutputTapTests
     }
 
     [Fact]
+    public void A_throwing_subscriber_does_not_starve_the_subscribers_after_it()
+    {
+        // A multicast delegate invoked as one call stops at the first throw, so every later
+        // subscriber would silently miss that chunk - desynchronising, say, a mux that happened to
+        // subscribe second. Each subscriber is invoked and contained on its own.
+        var tap = new RawOutputTap();
+        var seen = new List<string>();
+        tap.Subscribe(_ => throw new InvalidOperationException("first subscriber fails"));
+        tap.Subscribe(m => seen.Add(Ascii(m)));
+
+        tap.Publish("a"u8);
+        tap.Publish("b"u8);
+
+        Assert.Equal(["a", "b"], seen);
+    }
+
+    [Fact]
     public void Empty_chunks_are_not_published()
     {
         var tap = new RawOutputTap();

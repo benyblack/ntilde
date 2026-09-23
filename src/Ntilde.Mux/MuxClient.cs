@@ -315,7 +315,7 @@ public sealed class MuxClient : IDisposable
         catch (MuxProtocolException ex)
         {
             reason = ex.Code;
-            _options.Log?.Invoke($"[MuxClient] protocol error: {ex.Message}");
+            SafeLog($"[MuxClient] protocol error: {ex.Message}");
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException)
         {
@@ -324,10 +324,23 @@ public sealed class MuxClient : IDisposable
         catch (Exception ex)
         {
             reason = MuxErrorCodes.Internal;
-            _options.Log?.Invoke($"[MuxClient] delivery failed: {ex}");
+            SafeLog($"[MuxClient] delivery failed: {ex}");
         }
 
-        OnDisconnected(reason);
+        // OnDisconnected raises Disconnected, i.e. runs host code on this dedicated thread: nothing
+        // it throws may escape the thread's entry point and take the process down with it.
+        try { OnDisconnected(reason); }
+        catch (Exception ex) { SafeLog($"[MuxClient] a Disconnected handler threw: {ex}"); }
+    }
+
+    /// <summary>
+    /// The host's logger is arbitrary code, called here from catch clauses on the reader thread:
+    /// a logger that throws (disk full, closed sink) must not turn a disconnect into a crash.
+    /// </summary>
+    private void SafeLog(string message)
+    {
+        try { _options.Log?.Invoke(message); }
+        catch (Exception) { /* deliberately swallowed - see above */ }
     }
 
     private void Dispatch(MuxInboundFrame frame)

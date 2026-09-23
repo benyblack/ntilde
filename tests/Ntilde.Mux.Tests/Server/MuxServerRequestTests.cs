@@ -142,6 +142,25 @@ public sealed class MuxServerRequestTests
     }
 
     [Fact]
+    public async Task A_session_operation_that_throws_is_a_request_error_not_a_disconnect()
+    {
+        // One session failing to start recording (an unwritable path) must not close the shared
+        // connection - that would disconnect every other pane on the same client.
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+        await raw.HelloAsync();
+        Guid id = await SpawnAsync(raw);
+        host.Fake(id).ThrowOnStartRecording = true;
+
+        MuxResponse r = await CallAsync(raw, MuxMethods.StartRecording,
+            new StartRecordingParams { SessionId = id, Path = "Z:\\nowhere\\rec.nrec" }, MuxJsonContext.Default.StartRecordingParams);
+
+        Assert.Equal(MuxErrorCodes.Internal, r.Error?.Code);
+        Assert.Contains("denied", r.Error!.Message, StringComparison.Ordinal);
+        Assert.Null((await CallAsync(raw, MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty)).Error);
+    }
+
+    [Fact]
     public async Task Input_reaches_the_session_as_the_sent_string()
     {
         using var host = new MuxTestHost();

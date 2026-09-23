@@ -81,15 +81,24 @@ namespace Ntilde.Pty
             }
         }
 
+        /// <summary>
+        /// Invokes each subscriber on its own. A multicast delegate invoked as one call stops at the
+        /// first throw, so every later subscriber would silently miss the chunk - and a subscriber
+        /// that misses a chunk (a mux's decoder) is desynchronised for good. The enumeration is
+        /// allocation-free, so the common single-subscriber case costs nothing extra.
+        /// </summary>
         private static void Invoke(Action<ReadOnlyMemory<byte>> handler, byte[] chunk)
         {
-            try
+            foreach (Action<ReadOnlyMemory<byte>> subscriber in Delegate.EnumerateInvocationList(handler))
             {
-                handler(chunk);
-            }
-            catch (Exception ex)
-            {
-                PtyLogger.Error($"[RawOutputTap] A raw output subscriber threw; the chunk is dropped for it: {ex}");
+                try
+                {
+                    subscriber(chunk);
+                }
+                catch (Exception ex)
+                {
+                    PtyLogger.Error($"[RawOutputTap] A raw output subscriber threw; the chunk is dropped for it: {ex}");
+                }
             }
         }
     }
