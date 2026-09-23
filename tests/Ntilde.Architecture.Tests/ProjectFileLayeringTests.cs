@@ -198,6 +198,24 @@ public class ProjectFileLayeringTests
         Assert.Empty(refs);
     }
 
+    [Fact]
+    public void MuxContracts_csproj_must_have_no_project_references()
+    {
+        var refs = ProjectReferences("src/Ntilde.Mux.Contracts/Ntilde.Mux.Contracts.csproj");
+        Assert.Empty(refs);
+    }
+
+    // Same CA1861 reasoning as VtOnly. Order matches the csproj.
+    private static readonly string[] MuxDependencies =
+        ["Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay", "Ntilde.Mux.Contracts"];
+
+    [Fact]
+    public void Mux_only_references_Pty_Vt_Replay_and_MuxContracts()
+    {
+        var refs = ProjectReferences("src/Ntilde.Mux/Ntilde.Mux.csproj");
+        Assert.Equal(MuxDependencies, refs);
+    }
+
     /// <summary>
     /// #310: panes must be hosted by the sideloaded ConPTY host, not the OS conhost.exe.
     /// portable-pty only uses it when a <c>conpty.dll</c> sits next to the executable, and that

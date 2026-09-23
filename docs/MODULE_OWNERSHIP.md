@@ -168,6 +168,47 @@ invariant changes.
 
 ---
 
+## Ntilde.Mux.Contracts (`src/Ntilde.Mux.Contracts/`)
+
+**Namespace:** `Ntilde.Mux.Contracts`
+**Depends on:** *(leaf — only BCL)*
+
+**Owns**
+- The multiplexer wire protocol: frame kinds, framing, binary payload codecs, source-generated JSON DTOs, error codes, version negotiation
+
+**Invariants**
+- Frame = `u8 kind` + `u32` LE length + payload, payload ≤ `MaxFrameBytes`, header validated before any payload byte is read
+- Every JSON type goes through `MuxJsonContext`
+- Binary parsers length-check before slicing
+- Version negotiation picks the highest common version or refuses
+
+**Test authority**
+- `tests/Ntilde.Mux.Tests/`
+
+---
+
+## Ntilde.Mux (`src/Ntilde.Mux/`)
+
+**Namespace:** `Ntilde.Mux` (+ `.Transport`)
+**Depends on:** Pty, VT, Replay, Mux.Contracts
+
+**Owns**
+- Multiplexer core: headless authoritative sessions (one parse thread each), the server, the client (`MuxClientSession : ITerminalSession`), and an in-memory transport
+
+**Invariants**
+- **One parse thread per session** owns the headless parser and buffer, and control items run only between `Process()` calls
+- **Seq semantics:** `Output.seq` = raw offset before the chunk, `ResizeEvent.seq` = offset it applies at, snapshot `StreamSeq + DecoderTail.Length` = offset at capture, and clients drop the connection on any gap
+- **The mux answers device queries** and clients never do
+- Latest resize wins
+- No thread-pool work on the output path
+- A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
+- Attach limits are rejection ceilings, never clamps (#473)
+
+**Test authority**
+- `tests/Ntilde.Mux.Tests/` (+ `MuxRealShellSmokeTests` in App.Tests)
+
+---
+
 ## Ntilde.VtContract (`src/Ntilde.VtContract/`)
 
 **Namespace:** `Ntilde.VtContract`
@@ -441,6 +482,10 @@ Four files, by concern:
 ### `tests/Ntilde.McpServer.Tests/`
 
 **Owns** the MCP tool surface: tool behaviour, input validation, the connection-profile schema-drift guard, and a stdio end-to-end test that exercises the real protocol rather than a mock.
+
+### `tests/Ntilde.Mux.Tests/`
+
+Scripted-session suite for the mux: contracts, transport, headless session, server, client, and end-to-end scenarios. Shares `TerminalStateAssert` and `ParityCorpus` with VT.Tests by file link.
 
 ### `tests/Ntilde.Benchmarks/` + `tests/Ntilde.ExternalSuites/`
 

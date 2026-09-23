@@ -6,7 +6,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class OpenSshSession : ITerminalSession
+public sealed class OpenSshSession : ITerminalSession, ITerminalByteOutput
 {
     private readonly ITerminalSession _inner;
 
@@ -70,6 +70,17 @@ public sealed class OpenSshSession : ITerminalSession
         add => _inner.OnExit += value;
         remove => _inner.OnExit -= value;
     }
+
+    // Forwarded, and loud when the inner session cannot tap: a multiplexer that subscribed and
+    // silently got nothing would show an empty screen with no clue why.
+    public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
+    {
+        add => InnerBytes.OnRawOutputReceived += value;
+        remove => InnerBytes.OnRawOutputReceived -= value;
+    }
+
+    private ITerminalByteOutput InnerBytes => _inner as ITerminalByteOutput
+        ?? throw new InvalidOperationException($"{_inner.GetType().Name} does not expose raw output.");
 
     public void SendInput(string input) => _inner.SendInput(input);
     public void Resize(int cols, int rows) => _inner.Resize(cols, rows);

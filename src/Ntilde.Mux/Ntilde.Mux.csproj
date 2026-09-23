@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Multiplexer core (docs/superpowers/specs/2026-09-23-ntilde-mux-phase1.md). References exactly
+    Pty, VT, Replay and Mux.Contracts - enforced by Ntilde.Architecture.Tests
+    (Mux_only_references_Pty_Vt_Replay_and_MuxContracts, Mux_must_not_depend_on_ui_platform_or_app).
+    The headless session lives here rather than in Pty because it needs VT, and Pty must not.
+  -->
+
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ntilde.Mux.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ntilde.Pty\Ntilde.Pty.csproj" />
+    <ProjectReference Include="..\Ntilde.VT\Ntilde.VT.csproj" />
+    <ProjectReference Include="..\Ntilde.Replay\Ntilde.Replay.csproj" />
+    <ProjectReference Include="..\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

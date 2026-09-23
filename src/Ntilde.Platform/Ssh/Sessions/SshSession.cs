@@ -18,7 +18,7 @@ public sealed class PtySshProcessLauncher : ISshProcessLauncher
     }
 }
 
-public sealed class SshSession : ITerminalSession
+public sealed class SshSession : ITerminalSession, ITerminalByteOutput
 {
     private readonly OpenSshSession _inner;
 
@@ -77,6 +77,15 @@ public sealed class SshSession : ITerminalSession
     {
         add => _inner.OnExit += value;
         remove => _inner.OnExit -= value;
+    }
+
+    // Forwarded straight through: the inner OpenSshSession implements ITerminalByteOutput itself
+    // (and is the one that is loud when *its* inner session cannot tap), so there is no runtime
+    // "can it tap?" question left to ask here.
+    public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
+    {
+        add => _inner.OnRawOutputReceived += value;
+        remove => _inner.OnRawOutputReceived -= value;
     }
 
     public void SendInput(string input) => _inner.SendInput(input);

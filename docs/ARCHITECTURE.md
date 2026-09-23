@@ -22,7 +22,7 @@ All architectural decisions follow from these goals.
 
 ## 2. Assembly Graph
 
-Ntilde is structured as thirteen focused .NET assemblies. The dependency graph is acyclic. Each assembly's namespace matches its assembly name (enforced by `tests/Ntilde.Architecture.Tests/NamespaceAlignmentTests`).
+Ntilde is structured as fifteen focused .NET assemblies. The dependency graph is acyclic. Each assembly's namespace matches its assembly name (enforced by `tests/Ntilde.Architecture.Tests/NamespaceAlignmentTests`).
 
 ```
 Cli ──► App ──► Platform ──► Pty ──► Replay ──► VT
@@ -39,10 +39,13 @@ McpServer  ──► AgentHost.Contracts     (leaf)
            └─► VtContract              (leaf)
 
 Conformance ─► VtContract              (leaf)
+
+Mux  ──► Pty, VT, Replay, Mux.Contracts
+Mux.Contracts                           (leaf)
 ```
 
-Four of those thirteen are **leaves with no project references at all**:
-`CommandAssist`, `Backup`, `VtContract`, `AgentHost.Contracts`. The empty
+Five of those fifteen are **leaves with no project references at all**:
+`CommandAssist`, `Backup`, `VtContract`, `AgentHost.Contracts`, `Mux.Contracts`. The empty
 reference list is the point — it is what lets `McpServer` share real code with
 the app without acquiring a transitive path into `App`, `VT`, `Pty` or
 `Rendering`. An earlier attempt routed the MCP backup tools through
@@ -64,6 +67,8 @@ Concretely, from the `.csproj` graph:
 | `Ntilde.Backup` | (leaf) | `.ntildebackup` bundle format, export/import/restore, the category-to-path catalogue, the debounced snapshot scheduler. Never reads secret storage |
 | `Ntilde.VtContract` | (leaf) | The machine-readable VT capability catalogue (`vt-capabilities.json`) and its strict schema validation |
 | `Ntilde.AgentHost.Contracts` | (leaf) | Wire protocol between the app's agent host and any external client: frames, discovery, source-generated JSON context |
+| `Ntilde.Mux.Contracts` | (leaf) | Multiplexer wire protocol: framing, frame kinds, binary payload codecs, source-generated JSON DTOs, error codes, version negotiation |
+| `Ntilde.Mux` | Pty, VT, Replay, Mux.Contracts | Multiplexer core: headless authoritative sessions (one parse thread each), server, client + `MuxClientSession : ITerminalSession`, in-memory transport. **Must not reference Platform, App, Avalonia or SkiaSharp** |
 | `Ntilde.App` | Platform, VT, Rendering, Pty, Replay, CommandAssist, Backup, AgentHost.Contracts | Avalonia UI shell: windows, controls, command palette, settings, themes, command-assist views, Agent Output panel |
 | `Ntilde.McpServer` | AgentHost.Contracts, Backup, VtContract | stdio MCP server: repo/dev-companion tools, config validators, and the opt-in observe/act channel into live sessions. **Must not reference App, VT, Pty or Rendering** |
 | `Ntilde.Cli` | App | Headless CLI shim (`vt-report`, `--replay`, askpass, `backup` verbs) |
@@ -247,12 +252,16 @@ Allowed differences: window chrome, hotkeys, blur/transparency, credential stora
 - `Rendering_only_depends_on_Vt_and_Skia`
 - `Pty_must_not_depend_on_Vt`
 - `CommandAssist_must_not_depend_on_Avalonia_or_the_App`
+- `MuxContracts_must_be_a_leaf_assembly`
+- `Mux_must_not_depend_on_ui_platform_or_app`
+- `Mux_references_only_approved_ntilde_assemblies`
 - `No_production_assembly_references_test_assemblies`
 
 **`NamespaceAlignmentTests`**
-- `Leaf_assembly_types_reside_in_its_own_namespace` (Theory: VT, Replay, Rendering, Pty, Platform, AgentHost.Contracts, CommandAssist)
+- `Leaf_assembly_types_reside_in_its_own_namespace` (Theory: VT, Replay, Rendering, Pty, Platform, AgentHost.Contracts, CommandAssist, Mux.Contracts, Mux)
 - `No_two_assemblies_share_a_namespace_prefix`
 - `App_may_only_use_the_CommandAssist_prefix_for_Views`
+- `Mux_does_not_use_the_MuxContracts_namespace`
 
 **`ProjectFileLayeringTests`**
 - `Pty_csproj_must_not_reference_Vt`
@@ -260,6 +269,8 @@ Allowed differences: window chrome, hotkeys, blur/transparency, credential stora
 - `Rendering_csproj_only_references_Vt`
 - `Vt_csproj_must_have_no_project_references`
 - `CommandAssist_csproj_must_have_no_project_or_avalonia_references`
+- `MuxContracts_csproj_must_have_no_project_references`
+- `Mux_only_references_Pty_Vt_Replay_and_MuxContracts`
 
 Adding a new layering invariant means adding a new fact. Reverting one of these accidentally fails CI.
 
@@ -293,6 +304,7 @@ These are tracked in follow-up plans under `docs/plans/`:
 - **Buffer-snapshot recording.** Phase 5 removed `ITerminalSession.AttachBuffer` / `TakeSnapshot`. The byte-stream is still recorded; buffer snapshots at recording start/stop are gone. Re-introducing them as an orchestration helper (likely in `Replay` or `Platform`) is a small follow-up.
 - **`MainWindow.axaml.cs` is 8,755 LOC, `TerminalPane.axaml.cs` 5,029 LOC, `SettingsWindow.axaml.cs` 3,312 LOC** (measured 2026-09-03; each has grown 60-95% since this item was written, so the trend is the finding as much as the number). These code-behinds contain business logic that should live in services and view-models.
 - **`TerminalBuffer` is split across 10 partial files (~5K LOC).** Several of the partials (`WritePath`, `ReflowEngine`, `ThreadingAndInvalidation`, `TabStops`) want to be collaborators rather than partials.
+- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows);** the mux parser has no image decoder, so kitty images exist only in clients and are absent from a reattach snapshot (Phase 2).
 
 The 2026-05-28 architecture review (`docs/plans/2026-05-28-architecture-module-boundaries-review.md`) catalogs all of the above and ranks them by leverage.
 

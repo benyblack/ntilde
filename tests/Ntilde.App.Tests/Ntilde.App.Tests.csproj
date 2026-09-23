@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\Ntilde.App\Ntilde.App.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Cli\Ntilde.Cli.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Conformance\Ntilde.Conformance.csproj" />
+    <ProjectReference Include="..\..\src\Ntilde.Mux\Ntilde.Mux.csproj" />
   </ItemGroup>
 
 </Project>

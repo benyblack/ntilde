@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Text;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
@@ -390,6 +391,86 @@ public sealed class NativeSshSessionTests
 
         await WaitUntilAsync(() => string.Concat(outputs).Contains("localhost:18082", StringComparison.Ordinal));
         Assert.Contains("Warning", string.Concat(outputs), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RawOutputCarriesTheWireBytesInOrder_IncludingSplitCodePoints()
+    {
+        var interop = new FakeNativeSshInterop();
+        interop.Enqueue(NativeSshEvent.Data(new byte[] { 0xE2, 0x82 }));
+        interop.Enqueue(NativeSshEvent.Data(new byte[] { 0xAC, (byte)'!' }));
+        interop.Enqueue(NativeSshEvent.ExitStatus(0));
+        interop.Enqueue(NativeSshEvent.Closed(Array.Empty<byte>()));
+
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var raw = new ConcurrentQueue<byte[]>();
+        session.OnRawOutputReceived += m => raw.Enqueue(m.ToArray());
+        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.OnExit += code => exit.TrySetResult(code);
+
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal(new byte[] { 0xE2, 0x82, 0xAC, (byte)'!' }, raw.SelectMany(b => b).ToArray());
+    }
+
+    [Fact]
+    public async Task RawOutputCarriesSessionWrittenText_SoItMatchesTheStringStream()
+    {
+        var interop = new FakeNativeSshInterop();
+        interop.Enqueue(new NativeSshEvent(NativeSshEventKind.Error, Encoding.UTF8.GetBytes("auth failed"), statusCode: 5));
+
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var raw = new ConcurrentQueue<byte[]>();
+        session.OnRawOutputReceived += m => raw.Enqueue(m.ToArray());
+        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.OnExit += code => exit.TrySetResult(code);
+
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal("auth failed" + Environment.NewLine, Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray()));
+    }
+
+    [Fact]
+    public async Task SessionTextAfterAnIncompleteCodePoint_DecodesIdenticallyOnTheRawAndStringStreams()
+    {
+        // The wire ends mid code point, then the session writes its own failure banner. A raw
+        // subscriber (the mux) decodes prefix + banner bytes and gets U+FFFD before the banner; the
+        // string stream must say exactly the same, or the two terminal states diverge right when
+        // the connection fails.
+        var interop = new FakeNativeSshInterop();
+        interop.Enqueue(NativeSshEvent.Data(new byte[] { (byte)'x', 0xE2, 0x82 }));
+        interop.Enqueue(new NativeSshEvent(NativeSshEventKind.Error, Encoding.UTF8.GetBytes("auth failed"), statusCode: 5));
+
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var raw = new ConcurrentQueue<byte[]>();
+        var text = new ConcurrentQueue<string>();
+        session.OnRawOutputReceived += m => raw.Enqueue(m.ToArray());
+        session.OnOutputReceived += text.Enqueue;
+        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        session.OnExit += code => exit.TrySetResult(code);
+
+        await exit.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await WaitUntilAsync(() => string.Concat(text).Contains("auth failed", StringComparison.Ordinal));
+
+        string decodedRaw = Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray());
+        Assert.Equal(decodedRaw, string.Concat(text));
+        Assert.Contains('�', decodedRaw);
+    }
+
+    [Fact]
+    public async Task LateRawSubscriberAfterAStringSubscriber_GetsNoRetainedBytes()
+    {
+        var interop = new FakeNativeSshInterop();
+        using var session = new NativeSshSession(CreateProfile(), interop: interop);
+        var text = new ConcurrentQueue<string>();
+        session.OnOutputReceived += text.Enqueue;
+
+        interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes("early")));
+        await WaitUntilAsync(() => string.Concat(text) == "early");
+        var raw = new ConcurrentQueue<byte[]>();
+        session.OnRawOutputReceived += m => raw.Enqueue(m.ToArray());
+        interop.Enqueue(NativeSshEvent.Data(Encoding.UTF8.GetBytes("late")));
+        await WaitUntilAsync(() => string.Concat(text) == "earlylate");
+
+        Assert.Equal("late", Encoding.UTF8.GetString(raw.SelectMany(b => b).ToArray()));
     }
 
     private static SshProfile CreateProfile()
