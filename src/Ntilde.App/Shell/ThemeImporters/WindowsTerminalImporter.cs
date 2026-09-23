@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Avalonia.Media;
@@ -19,23 +20,36 @@ namespace Ntilde.Shell.ThemeImporters
             try
             {
                 string json = File.ReadAllText(filePath);
-                var root = JsonNode.Parse(json);
-                if (root == null) return themes;
-
-                // WT can be a whole settings file with "schemes" array, or just an array of schemes
-                var schemes = root["schemes"]?.AsArray() ?? root.AsArray();
-                if (schemes == null) return themes;
-
-                foreach (var scheme in schemes)
+                foreach (var scheme in FindSchemes(JsonNode.Parse(json)))
                 {
-                    if (scheme == null) continue;
                     var theme = MapToTerminalTheme(scheme);
                     if (theme != null) themes.Add(theme);
                 }
             }
-            catch { }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                // Not readable JSON; ThemeManager offers the file to the next importer.
+            }
             return themes;
         }
+
+        /// <summary>
+        /// WT schemes turn up as a whole settings file with a "schemes" array, a bare array of
+        /// schemes, or one scheme object copied out of that array. Any other shape, including a
+        /// native theme (PascalCase keys), yields nothing instead of throwing, so it cannot mask
+        /// a format another importer would have recognised.
+        /// </summary>
+        private static IEnumerable<JsonObject> FindSchemes(JsonNode? root) => root switch
+        {
+            JsonObject settings when settings["schemes"] is JsonArray schemes => schemes.OfType<JsonObject>().Where(IsScheme),
+            JsonArray schemes => schemes.OfType<JsonObject>().Where(IsScheme),
+            JsonObject scheme when IsScheme(scheme) => new[] { scheme },
+            _ => Array.Empty<JsonObject>()
+        };
+
+        private static bool IsScheme(JsonObject node) =>
+            node["name"]?.GetValueKind() == JsonValueKind.String
+            && (node.ContainsKey("background") || node.ContainsKey("foreground"));
 
         private TerminalTheme? MapToTerminalTheme(JsonNode node)
         {
