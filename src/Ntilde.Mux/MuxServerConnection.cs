@@ -25,7 +25,15 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private bool _closeAfterFlush;   // the queue ends with a final frame; the sender closes after it
     private int _version;
     private string? _closeReason;
-    private int _closedNotified;
+
+    /// <summary>
+    /// Reader and sender each decrement exactly once, from their own outer <c>finally</c>. The one
+    /// that reaches zero notifies the server - so a connection whose reader has already exited (a
+    /// protocol error) but whose sender is still stuck writing an unread final frame to a stalled
+    /// peer stays in <see cref="MuxServer"/>'s registry, and <see cref="MuxServer.Dispose"/> can
+    /// still find and abort it instead of leaking an open stream nobody is tracking any more.
+    /// </summary>
+    private int _activeThreads = 2;
 
     public MuxServerConnection(MuxServer server, Stream stream)
     {
@@ -127,32 +135,78 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         foreach (MuxOutboundFrame f in dropped) f.Release();
     }
 
-    private void CloseWithError(long requestId, string code, string message) =>
-        CloseAfter(MuxFrames.Response(new MuxResponse { Id = requestId, Error = new MuxError { Code = code, Message = message } }), code);
+    /// <summary>
+    /// Never throws: building the response frame is itself untrusted-input-adjacent (the message
+    /// usually echoes something the peer sent), so a failure here - most plausibly
+    /// <see cref="MuxErrorCodes.FrameTooLarge"/> from an oversize message - falls back to a plain
+    /// abort instead of escaping from inside a reader-thread catch clause and killing the process.
+    /// </summary>
+    private void CloseWithError(long requestId, string code, string message)
+    {
+        MuxOutboundFrame frame;
+        try
+        {
+            frame = MuxFrames.Response(new MuxResponse { Id = requestId, Error = new MuxError { Code = code, Message = message } });
+        }
+        catch (Exception ex)
+        {
+            SafeLog($"[MuxServer] connection {ConnectionId}: could not build a close-with-error frame for '{code}': {ex.Message}");
+            Abort(code);
+            return;
+        }
+
+        CloseAfter(frame, code);
+    }
+
+    /// <summary>At most 64 characters of client-supplied text, so an oversize field never blows up an echo of it.</summary>
+    private static string Clip(string value) =>
+        value.Length <= 64 ? value : string.Concat(value.AsSpan(0, 64), "…");
+
+    private void SafeLog(string message)
+    {
+        try { _server.Log(message); }
+        catch (Exception) { }
+    }
 
     private void SendLoop()
     {
         try
         {
-            while (TryTakeNext(out MuxOutboundFrame? frame))
+            try
             {
-                int length = frame.Length;
-                try
+                while (TryTakeNext(out MuxOutboundFrame? frame))
                 {
-                    frame.WriteTo(_stream);
-                }
-                finally
-                {
-                    frame.Release();
-                    lock (_gate) _queuedBytes -= length;
+                    int length = frame.Length;
+                    try
+                    {
+                        frame.WriteTo(_stream);
+                    }
+                    finally
+                    {
+                        frame.Release();
+                        lock (_gate) _queuedBytes -= length;
+                    }
                 }
             }
-        }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
-        {
-        }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
+            {
+            }
 
-        Abort(CloseReason ?? "disconnected");
+            Abort(CloseReason ?? "disconnected");
+        }
+        catch (Exception ex)
+        {
+            // Last resort: nothing may escape a background thread's entry point and crash the
+            // process over one client's connection (spec §9: untrusted input is a per-connection
+            // failure, never a server-wide one).
+            SafeLog($"[MuxServer] connection {ConnectionId} sender loop crashed: {ex}");
+            try { Abort(MuxErrorCodes.Internal); }
+            catch (Exception) { }
+        }
+        finally
+        {
+            NotifyThreadFinished();
+        }
     }
 
     private bool TryTakeNext([NotNullWhen(true)] out MuxOutboundFrame? frame)
@@ -179,38 +233,65 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     {
         try
         {
-            while (!IsClosing)
+            try
             {
-                MuxInboundFrame? frame = MuxFrameReader.Read(_stream, _server.Options.MaxInboundFrameBytes);
-                if (frame is null) break;
-                using (frame)
+                while (!IsClosing)
                 {
-                    Dispatch(frame);
+                    MuxInboundFrame? frame = MuxFrameReader.Read(_stream, _server.Options.MaxInboundFrameBytes);
+                    if (frame is null) break;
+                    using (frame)
+                    {
+                        Dispatch(frame);
+                    }
                 }
             }
-        }
-        catch (MuxProtocolException ex)
-        {
-            CloseWithError(0, ex.Code, ex.Message);
-        }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
-        {
+            catch (MuxProtocolException ex)
+            {
+                CloseWithError(0, ex.Code, ex.Message);
+            }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+            {
+            }
+            catch (Exception ex)
+            {
+                SafeLog($"[MuxServer] connection {ConnectionId} reader failed: {ex}");
+                CloseWithError(0, MuxErrorCodes.Internal, ex.Message);
+            }
+            finally
+            {
+                foreach (Guid id in _attached)
+                {
+                    if (_server.TryGetSession(id, out HeadlessTerminalSession? session)) session.PostDetach(this);
+                }
+
+                _attached.Clear();
+                if (!IsClosing) Abort("disconnected");
+            }
         }
         catch (Exception ex)
         {
-            _server.Log($"[MuxServer] connection {ConnectionId} reader failed: {ex}");
-            CloseWithError(0, MuxErrorCodes.Internal, ex.Message);
+            // Last resort: nothing may escape a background thread's entry point and crash the
+            // process over one client's connection (spec §9: untrusted input is a per-connection
+            // failure, never a server-wide one).
+            SafeLog($"[MuxServer] connection {ConnectionId} reader loop crashed: {ex}");
+            try { Abort(MuxErrorCodes.Internal); }
+            catch (Exception) { }
         }
         finally
         {
-            foreach (Guid id in _attached)
-            {
-                if (_server.TryGetSession(id, out HeadlessTerminalSession? session)) session.PostDetach(this);
-            }
+            NotifyThreadFinished();
+        }
+    }
 
-            _attached.Clear();
-            if (!IsClosing) Abort("disconnected");
-            if (Interlocked.Exchange(ref _closedNotified, 1) == 0) _server.OnConnectionClosed(this);
+    /// <summary>
+    /// The last of the reader and the sender to finish tells the server: see the remarks on
+    /// <see cref="_activeThreads"/>.
+    /// </summary>
+    private void NotifyThreadFinished()
+    {
+        if (Interlocked.Decrement(ref _activeThreads) == 0)
+        {
+            _server.OnConnectionClosed(this);
         }
     }
 
@@ -226,7 +307,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             MuxRequest hello = MuxFrames.ParseJson(frame.Payload, MuxJsonContext.Default.MuxRequest);
             if (hello.Method != MuxMethods.Hello)
             {
-                throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Expected hello, got '{hello.Method}'.");
+                throw new MuxProtocolException(MuxErrorCodes.ProtocolError, $"Expected hello, got '{Clip(hello.Method)}'.");
             }
 
             HandleHello(hello);
@@ -357,7 +438,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.Hello:
                     throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "hello may only be sent once.");
                 default:
-                    ReplyError(request, MuxErrorCodes.ProtocolError, $"Unknown method '{request.Method}'.");
+                    ReplyError(request, MuxErrorCodes.ProtocolError, $"Unknown method '{Clip(request.Method)}'.");
                     break;
             }
         }
@@ -424,11 +505,23 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     {
         if (request.Id == 0)
         {
-            _server.Log($"[MuxServer] {request.Method} (no reply wanted) failed: {code}: {message}");
+            SafeLog($"[MuxServer] {Clip(request.Method)} (no reply wanted) failed: {code}: {message}");
             return;
         }
 
-        Send(MuxFrames.Response(new MuxResponse { Id = request.Id, Error = new MuxError { Code = code, Message = message } }));
+        MuxOutboundFrame frame;
+        try
+        {
+            frame = MuxFrames.Response(new MuxResponse { Id = request.Id, Error = new MuxError { Code = code, Message = message } });
+        }
+        catch (Exception ex)
+        {
+            SafeLog($"[MuxServer] connection {ConnectionId}: could not build an error reply for '{code}': {ex.Message}");
+            Abort(MuxErrorCodes.Internal);
+            return;
+        }
+
+        Send(frame);
     }
 
     private void Send(MuxOutboundFrame frame)
