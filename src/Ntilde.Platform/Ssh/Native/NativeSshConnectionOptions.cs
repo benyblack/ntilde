@@ -13,7 +13,21 @@ public sealed class NativeSshConnectionOptions
     public int Cols { get; init; } = 120;
     public int Rows { get; init; } = 30;
     public string Term { get; init; } = "xterm-256color";
+
+    /// <summary>
+    /// The target's password, for the non-interactive transfer and listing paths. Never offered
+    /// to a jump hop — see <see cref="JumpHopPasswords"/>. An interactive session ignores it and
+    /// prompts instead.
+    /// </summary>
     public string? Password { get; init; }
+
+    /// <summary>
+    /// Each jump hop's own password, index-aligned with <see cref="JumpHops"/>; null entries (or an
+    /// empty list) mean "offer that hop no password". Read only by the non-interactive transfer and
+    /// listing paths, which cannot prompt. A password is only ever sent to the server it belongs
+    /// to, so a hop never falls back to <see cref="Password"/>.
+    /// </summary>
+    public IReadOnlyList<string?> JumpHopPasswords { get; init; } = Array.Empty<string?>();
     public string? IdentityFilePath { get; init; }
 
     /// <summary>

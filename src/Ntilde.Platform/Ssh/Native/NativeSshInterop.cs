@@ -81,8 +81,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 if (options.JumpHops.Count > 0)
                 {
                     // The chain crosses the FFI as one JSON array rather than repeated C fields,
-                    // so any length works without renegotiating the ABI. Same shape as the hops
-                    // in the SFTP request JSON; the Rust side parses both with one struct.
+                    // so any length works without renegotiating the ABI. Deliberately never
+                    // carries a hop password (unlike the SFTP request's hops): an interactive
+                    // session prompts each hop for its own.
                     jumpHopsJsonPtr = Marshal.StringToCoTaskMemUTF8(
                         JsonSerializer.Serialize(
                             options.JumpHops.Select(JumpHopRequest.From).ToArray(),
@@ -707,6 +708,16 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 throw new ArgumentOutOfRangeException(nameof(options), "Every jump-hop port must be between 1 and 65535.");
             }
         }
+
+        // Hop passwords pair with hops by index. A list of the wrong length cannot be paired
+        // safely — every password after the gap would reach the wrong server — so it is refused
+        // rather than truncated or padded.
+        if (options.JumpHopPasswords.Count != 0 && options.JumpHopPasswords.Count != options.JumpHops.Count)
+        {
+            throw new ArgumentException(
+                "Jump-hop passwords must be empty or match the jump hops one to one.",
+                nameof(options));
+        }
     }
 
     private static void ValidateSftpConnectionOptions(NativeSshConnectionOptions options)
@@ -919,15 +930,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         public static SftpTransferRequest From(NativeSshConnectionOptions connectionOptions, NativeSftpTransferOptions transferOptions)
         {
             return new SftpTransferRequest(
-                new SftpConnectionRequest(
-                    connectionOptions.Host,
-                    connectionOptions.User,
-                    connectionOptions.Port,
-                    string.IsNullOrWhiteSpace(connectionOptions.Password) ? null : connectionOptions.Password,
-                    string.IsNullOrWhiteSpace(connectionOptions.IdentityFilePath) ? null : connectionOptions.IdentityFilePath,
-                    connectionOptions.UseAgent,
-                    connectionOptions.KnownHostsFilePath!,
-                    connectionOptions.JumpHops.Select(JumpHopRequest.From).ToArray()),
+                SftpConnectionRequest.From(connectionOptions),
                 new SftpTransferRequestBody(
                     transferOptions.Direction.ToString().ToLowerInvariant(),
                     transferOptions.Kind.ToString().ToLowerInvariant(),
@@ -936,6 +939,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
     }
 
+    /// <param name="Password">The target's password. The native side never offers it to a hop.</param>
     private sealed record SftpConnectionRequest(
         string Host,
         string User,
@@ -944,11 +948,31 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         string? IdentityFilePath,
         bool UseAgent,
         string KnownHostsFilePath,
-        IReadOnlyList<JumpHopRequest> JumpHops);
+        IReadOnlyList<SftpJumpHopRequest> JumpHops)
+    {
+        public static SftpConnectionRequest From(NativeSshConnectionOptions connectionOptions)
+        {
+            return new SftpConnectionRequest(
+                connectionOptions.Host,
+                connectionOptions.User,
+                connectionOptions.Port,
+                NullIfBlank(connectionOptions.Password),
+                NullIfBlank(connectionOptions.IdentityFilePath),
+                connectionOptions.UseAgent,
+                connectionOptions.KnownHostsFilePath!,
+                connectionOptions.JumpHops
+                    .Select((hop, index) => SftpJumpHopRequest.From(
+                        hop,
+                        index < connectionOptions.JumpHopPasswords.Count
+                            ? connectionOptions.JumpHopPasswords[index]
+                            : null))
+                    .ToArray());
+        }
+    }
 
     /// <summary>
-    /// One jump hop as it crosses to the native layer — in the connect args' JSON chain and in
-    /// the SFTP request JSON alike. Null user means "authenticate as the connection's user".
+    /// One jump hop of the interactive connect args' JSON chain. Null user means "authenticate as
+    /// the connection's user". Carries no credential — each hop prompts for its own.
     /// </summary>
     private sealed record JumpHopRequest(string Host, string? User, int Port)
     {
@@ -958,21 +982,31 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             hop.Port);
     }
 
+    /// <summary>
+    /// One jump hop of an SFTP transfer or listing request. A transfer cannot prompt, so the hop
+    /// carries its OWN password when one is known; omitted from the JSON (not sent as null) when
+    /// not, which the native side reads as "offer this hop no password".
+    /// </summary>
+    private sealed record SftpJumpHopRequest(
+        string Host,
+        string? User,
+        int Port,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Password)
+    {
+        public static SftpJumpHopRequest From(SshJumpHop hop, string? password) => new(
+            hop.Host,
+            string.IsNullOrWhiteSpace(hop.User) ? null : hop.User,
+            hop.Port,
+            NullIfBlank(password));
+    }
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
     private sealed record RemotePathListRequest(SftpConnectionRequest Connection, string Path)
     {
         public static RemotePathListRequest From(NativeSshConnectionOptions connectionOptions, string remotePath)
         {
-            return new RemotePathListRequest(
-                new SftpConnectionRequest(
-                    connectionOptions.Host,
-                    connectionOptions.User,
-                    connectionOptions.Port,
-                    string.IsNullOrWhiteSpace(connectionOptions.Password) ? null : connectionOptions.Password,
-                    string.IsNullOrWhiteSpace(connectionOptions.IdentityFilePath) ? null : connectionOptions.IdentityFilePath,
-                    connectionOptions.UseAgent,
-                    connectionOptions.KnownHostsFilePath!,
-                    connectionOptions.JumpHops.Select(JumpHopRequest.From).ToArray()),
-                remotePath);
+            return new RemotePathListRequest(SftpConnectionRequest.From(connectionOptions), remotePath);
         }
     }
 
@@ -1010,6 +1044,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     [JsonSerializable(typeof(SftpConnectionRequest))]
     [JsonSerializable(typeof(JumpHopRequest))]
     [JsonSerializable(typeof(JumpHopRequest[]))]
+    [JsonSerializable(typeof(SftpJumpHopRequest))]
     [JsonSerializable(typeof(RemotePathListRequest))]
     [JsonSerializable(typeof(SftpTransferRequestBody))]
     [JsonSerializable(typeof(NativeSftpTransferResponse))]

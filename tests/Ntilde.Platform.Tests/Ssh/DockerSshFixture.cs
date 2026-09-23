@@ -49,6 +49,19 @@ internal sealed class DockerSshFixture : IAsyncDisposable
 
     public string KeyboardInteractivePassword => "kbd-pass";
 
+    /// <summary>
+    /// A password user that plays the bastion in jump-chain tests, with a password different from
+    /// <see cref="Password"/>. Exists only after <see cref="CreateJumpUserAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// With one password shared by every hop, a client that sends the target's password to the
+    /// bastion — or the bastion's to the target — still connects, so the credential leak jump chains
+    /// are prone to stays invisible. Distinct passwords make any cross-hop reuse fail authentication.
+    /// </remarks>
+    public string JumpUserName => "jumpnova";
+
+    public string JumpPassword => "jump-pass";
+
     /// <summary>Passphrase for <see cref="NativeSshTestKey.PassphraseProtected"/>.</summary>
     public string PrivateKeyPassphrase => PrivateKeyPassphraseValue;
 
@@ -123,6 +136,24 @@ internal sealed class DockerSshFixture : IAsyncDisposable
 
         await RunDockerCommandAsync($"exec {_containerName} mkdir -p {path}")
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates <see cref="JumpUserName"/> with <see cref="JumpPassword"/> in the running container.
+    /// Done at runtime rather than in the Dockerfile so the image (and its cached tag) is unchanged;
+    /// the account lives and dies with this one <c>--rm</c> container.
+    /// </summary>
+    public async Task CreateJumpUserAsync()
+    {
+        string output = await RunDockerCommandAsync(
+            $"exec {_containerName} sh -c \"useradd -m -s /bin/bash {JumpUserName} && echo '{JumpUserName}:{JumpPassword}' | chpasswd && echo jump-user-ready\"")
+            .ConfigureAwait(false);
+
+        if (!output.Contains("jump-user-ready", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Failed to create the jump user in container '{_containerName}'. Output: {output}");
+        }
     }
 
     public async Task SetLoginShellAsync(string shellPath)

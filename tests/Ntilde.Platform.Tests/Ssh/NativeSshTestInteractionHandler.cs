@@ -8,6 +8,7 @@ internal sealed class NativeSshTestInteractionHandler : ISshInteractionHandler
     private readonly string? _passphrase;
     private readonly string? _keyboardSecret;
     private readonly bool _acceptHostKeys;
+    private readonly IReadOnlyDictionary<string, string>? _passwordsByUser;
 
     /// <param name="password">Answer for a password prompt.</param>
     /// <param name="passphrase">
@@ -22,16 +23,23 @@ internal sealed class NativeSshTestInteractionHandler : ISshInteractionHandler
     /// False cancels host-key prompts instead of accepting them, so a test can assert the backend
     /// fails closed on a refused key rather than continuing.
     /// </param>
+    /// <param name="passwordsByUser">
+    /// When set, a password prompt is answered with the password of the user the prompt names —
+    /// the way a real user answers a chain whose hops have different passwords — and a prompt naming
+    /// no known user is a test failure. <paramref name="password"/> is then unused for passwords.
+    /// </param>
     public NativeSshTestInteractionHandler(
         string password,
         string? passphrase = null,
         string? keyboardSecret = null,
-        bool acceptHostKeys = true)
+        bool acceptHostKeys = true,
+        IReadOnlyDictionary<string, string>? passwordsByUser = null)
     {
         _password = password;
         _passphrase = passphrase;
         _keyboardSecret = keyboardSecret;
         _acceptHostKeys = acceptHostKeys;
+        _passwordsByUser = passwordsByUser;
     }
 
     public List<SshInteractionRequest> Requests { get; } = new();
@@ -60,13 +68,26 @@ internal sealed class NativeSshTestInteractionHandler : ISshInteractionHandler
         {
             SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey =>
                 _acceptHostKeys ? SshInteractionResponse.AcceptHostKey() : SshInteractionResponse.Cancel(),
-            SshInteractionKind.Password => SshInteractionResponse.FromSecret(_password),
+            SshInteractionKind.Password => SshInteractionResponse.FromSecret(PasswordFor(request)),
             SshInteractionKind.Passphrase => SshInteractionResponse.FromSecret(
                 _passphrase ?? throw new InvalidOperationException(
                     "Native SSH asked for a key passphrase, but this test did not supply one.")),
             SshInteractionKind.KeyboardInteractive => BuildKeyboardResponse(request),
             _ => throw new InvalidOperationException($"Unexpected native SSH interaction kind '{request.Kind}' in Docker E2E test.")
         });
+    }
+
+    private string PasswordFor(SshInteractionRequest request)
+    {
+        if (_passwordsByUser == null)
+        {
+            return _password;
+        }
+
+        return _passwordsByUser.TryGetValue(request.User, out string? password)
+            ? password
+            : throw new InvalidOperationException(
+                $"Native SSH asked for a password for user '{request.User}' on '{request.Host}:{request.Port}', which this test has no password for.");
     }
 
     /// <summary>

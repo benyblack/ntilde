@@ -73,7 +73,11 @@ public static class NativeSshInteractionJson
         return new SshInteractionRequest
         {
             Kind = kind,
-            Prompt = model.Prompt
+            Prompt = model.Prompt,
+            Host = model.Host,
+            Port = model.Port,
+            User = model.User,
+            IsJumpHop = model.IsJumpHop
         };
     }
 
@@ -92,7 +96,11 @@ public static class NativeSshInteractionJson
             Kind = SshInteractionKind.KeyboardInteractive,
             Name = model.Name,
             Instructions = model.Instructions,
-            KeyboardPrompts = model.Prompts.Select(prompt => new SshKeyboardPrompt(prompt.Prompt, prompt.Echo)).ToArray()
+            KeyboardPrompts = model.Prompts.Select(prompt => new SshKeyboardPrompt(prompt.Prompt, prompt.Echo)).ToArray(),
+            Host = model.Host,
+            Port = model.Port,
+            User = model.User,
+            IsJumpHop = model.IsJumpHop
         };
     }
 }
@@ -116,12 +124,24 @@ internal sealed class NativeHostKeyPromptPayload
     public string Fingerprint { get; set; } = string.Empty;
 }
 
-internal sealed class NativeTextPromptPayload
+/// <summary>
+/// Which server of the chain an authentication prompt comes from — the native layer's
+/// <c>AuthHop</c>, flattened into every auth prompt payload. Mirrors it field for field.
+/// </summary>
+internal abstract class NativeAuthHopPayload
+{
+    public string Host { get; set; } = string.Empty;
+    public int Port { get; set; }
+    public string User { get; set; } = string.Empty;
+    public bool IsJumpHop { get; set; }
+}
+
+internal sealed class NativeTextPromptPayload : NativeAuthHopPayload
 {
     public string Prompt { get; set; } = string.Empty;
 }
 
-internal sealed class NativeKeyboardInteractivePromptPayload
+internal sealed class NativeKeyboardInteractivePromptPayload : NativeAuthHopPayload
 {
     public string Name { get; set; } = string.Empty;
     public string Instructions { get; set; } = string.Empty;

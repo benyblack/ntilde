@@ -180,6 +180,91 @@ public sealed class NativeSftpTransferInteropTests
     }
 
     [Fact]
+    public void SerializeSftpTransferRequest_GivesEachHopOnlyItsOwnPassword()
+    {
+        // The native side offers the connection-level password to the target alone and each hop
+        // only the password on that hop. A hop with no password must not carry the field at all.
+        NativeSshConnectionOptions connectionOptions = new()
+        {
+            Host = "example.com",
+            User = "nova",
+            Port = 2222,
+            Password = "target-secret",
+            KnownHostsFilePath = @"C:\known-hosts.json",
+            JumpHops =
+            [
+                new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-one.internal", User = "jumper", Port = 2200 },
+                new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-two.internal", User = string.Empty, Port = 22 }
+            ],
+            JumpHopPasswords = ["bastion-secret", null]
+        };
+        NativeSftpTransferOptions transferOptions = new()
+        {
+            Direction = NativeSftpTransferDirection.Download,
+            Kind = NativeSftpTransferKind.File,
+            LocalPath = @"C:\downloads\report.txt",
+            RemotePath = "/tmp/report.txt"
+        };
+
+        string json = NativeSshInterop.SerializeSftpTransferRequestForTests(connectionOptions, transferOptions);
+
+        Assert.Contains(
+            "\"jumpHops\":[{\"host\":\"jump-one.internal\",\"user\":\"jumper\",\"port\":2200,\"password\":\"bastion-secret\"},"
+            + "{\"host\":\"jump-two.internal\",\"user\":null,\"port\":22}]",
+            json,
+            StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(json, "target-secret"));
+        Assert.Equal(1, CountOccurrences(json, "bastion-secret"));
+    }
+
+    [Fact]
+    public void RunSftpTransfer_RejectsJumpHopPasswordsThatDoNotPairWithTheHops()
+    {
+        // Pairing is by index; a short list would shift every later password onto the wrong server.
+        INativeSshInterop interop = new NativeSshInterop();
+        NativeSshConnectionOptions connectionOptions = new()
+        {
+            Host = "example.com",
+            User = "nova",
+            KnownHostsFilePath = @"C:\known-hosts.json",
+            JumpHops =
+            [
+                new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-one.internal", User = "jumper", Port = 2200 },
+                new Ntilde.Platform.Ssh.Models.SshJumpHop { Host = "jump-two.internal", User = "jumper", Port = 22 }
+            ],
+            JumpHopPasswords = ["only-one"]
+        };
+        NativeSftpTransferOptions transferOptions = new()
+        {
+            Direction = NativeSftpTransferDirection.Download,
+            Kind = NativeSftpTransferKind.File,
+            LocalPath = @"C:\downloads\report.txt",
+            RemotePath = "/tmp/report.txt"
+        };
+
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => interop.RunSftpTransfer(
+            connectionOptions,
+            transferOptions,
+            progress: null,
+            CancellationToken.None));
+
+        Assert.Contains("Jump-hop passwords", ex.Message, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        int count = 0;
+        for (int index = text.IndexOf(value, StringComparison.Ordinal);
+             index >= 0;
+             index = text.IndexOf(value, index + value.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    [Fact]
     public void RunSftpTransfer_RequiresKnownHostsStorePath()
     {
         INativeSshInterop interop = new NativeSshInterop();

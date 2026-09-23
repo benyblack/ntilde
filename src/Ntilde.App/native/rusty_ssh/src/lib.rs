@@ -401,15 +401,29 @@ struct JumpHostConfig {
     port: u16,
 }
 
-/// One hop as it crosses the FFI boundary — in the connect args' `jump_hops_json` array and in
-/// the SFTP transfer request JSON. `user` is optional because a hop without one authenticates as
-/// the connection's target user.
+/// One hop as it crosses the FFI boundary in the connect args' `jump_hops_json` array. `user` is
+/// optional because a hop without one authenticates as the connection's target user. No
+/// credential rides along: an interactive session prompts each hop for its own.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct JumpHopRequest {
     host: String,
     user: Option<String>,
     port: u16,
+}
+
+/// One hop of a transfer (SFTP, remote listing) connection. Unlike [`JumpHopRequest`] it can carry
+/// a password, because a transfer cannot prompt: the managed side supplies the password that
+/// belongs to THIS hop, if it holds one. The connection's own `password` is the target's alone
+/// and is never offered to a hop. Absent means the hop gets no password attempt at all.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TransferJumpHopRequest {
+    host: String,
+    user: Option<String>,
+    port: u16,
+    #[serde(default)]
+    password: Option<String>,
 }
 
 /// Parses the FFI jump-hop JSON into resolved configs. Absent or empty means direct. Invalid
@@ -471,25 +485,55 @@ struct TransferClientHandler {
 
 #[derive(Clone)]
 struct TransferAuthConfig {
-    /// Wrapped so the copy held for the lifetime of a transfer is wiped when the
-    /// transfer ends, rather than lingering in the heap until the allocator reuses it.
-    password: Option<Zeroizing<String>>,
+    /// The target's password. Wrapped so the copy held for the lifetime of a transfer is
+    /// wiped when the transfer ends, rather than lingering in the heap until the allocator
+    /// reuses it.
+    target_password: Option<Zeroizing<String>>,
+    /// Index-aligned with the request's jump hops: each hop's own password, or None.
+    jump_hop_passwords: Vec<Option<Zeroizing<String>>>,
     identity_file: Option<String>,
     use_agent: bool,
 }
 
+/// Which session of a transfer's chain is authenticating.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TransferHop {
+    /// The jump hop at this index, counted client → target.
+    Jump(usize),
+    Target,
+}
+
 impl TransferAuthConfig {
-    /// Moves the credential out of a deserialized request.
+    /// Moves the credentials out of a deserialized request.
     ///
-    /// `take` rather than `clone`: the password then exists as one allocation owned by
+    /// `take` rather than `clone`: each password then exists as one allocation owned by
     /// this struct, wiped when it drops, instead of two independent copies with the
-    /// request's copy outliving the transfer. Leaves `connection.password` as `None`,
-    /// so the request cannot be a second source of the secret afterwards.
+    /// request's copy outliving the transfer. Leaves every password in the request as
+    /// `None`, so the request cannot be a second source of a secret afterwards.
     fn take_from(connection: &mut SftpConnectionRequest) -> Self {
         Self {
-            password: connection.password.take().map(Zeroizing::new),
+            target_password: connection.password.take().map(Zeroizing::new),
+            jump_hop_passwords: connection
+                .jump_hops
+                .iter_mut()
+                .map(|hop| hop.password.take().map(Zeroizing::new))
+                .collect(),
             identity_file: connection.identity_file_path.clone(),
             use_agent: connection.use_agent,
+        }
+    }
+
+    /// The password `hop` may be sent — its own, never another hop's. A jump hop without one
+    /// gets `None` even when the target has a password: falling back to the target's would hand
+    /// the target's credential to the bastion, the leak this selection exists to prevent.
+    fn password_for(&self, hop: TransferHop) -> Option<&str> {
+        match hop {
+            TransferHop::Target => self.target_password.as_deref().map(String::as_str),
+            TransferHop::Jump(index) => self
+                .jump_hop_passwords
+                .get(index)
+                .and_then(|password| password.as_deref())
+                .map(String::as_str),
         }
     }
 }
@@ -502,16 +546,56 @@ struct HostKeyPromptPayload<'a> {
     fingerprint: String,
 }
 
-#[derive(Serialize)]
-struct TextPromptPayload<'a> {
-    prompt: &'a str,
+/// The endpoint an authentication prompt is for, carried on every auth prompt event.
+///
+/// A jump chain authenticates several servers through one session, and a password belongs to
+/// exactly one of them. Without this the managed side sees a bare "Password:" and cannot tell a
+/// bastion from the target — which is how a target's saved password used to reach the bastion,
+/// and a bastion's typed password the target. `is_jump_hop` is the load-bearing field: the saved
+/// credential of a profile belongs to its final target alone.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthHop<'a> {
+    host: &'a str,
+    port: u16,
+    user: &'a str,
+    is_jump_hop: bool,
+}
+
+impl<'a> AuthHop<'a> {
+    fn jump(hop: &'a JumpHostConfig) -> Self {
+        Self {
+            host: &hop.host,
+            port: hop.port,
+            user: &hop.user,
+            is_jump_hop: true,
+        }
+    }
+
+    fn target(config: &'a ConnectConfig) -> Self {
+        Self {
+            host: &config.host,
+            port: config.port,
+            user: &config.user,
+            is_jump_hop: false,
+        }
+    }
 }
 
 #[derive(Serialize)]
-struct KeyboardInteractivePromptPayload {
+struct TextPromptPayload<'a> {
+    prompt: &'a str,
+    #[serde(flatten)]
+    hop: AuthHop<'a>,
+}
+
+#[derive(Serialize)]
+struct KeyboardInteractivePromptPayload<'a> {
     name: String,
     instructions: String,
     prompts: Vec<KeyboardPromptPayload>,
+    #[serde(flatten)]
+    hop: AuthHop<'a>,
 }
 
 #[derive(Serialize)]
@@ -579,7 +663,7 @@ struct SftpConnectionRequest {
     known_hosts_file_path: String,
     /// Ordered client → target; absent or empty means a direct connection.
     #[serde(default)]
-    jump_hops: Vec<JumpHopRequest>,
+    jump_hops: Vec<TransferJumpHopRequest>,
 }
 
 #[derive(Deserialize)]
@@ -1910,7 +1994,7 @@ fn write_remote_path_list_response_json(
     result
 }
 
-fn jump_hops_have_blank_fields(jump_hops: &[JumpHopRequest]) -> bool {
+fn jump_hops_have_blank_fields(jump_hops: &[TransferJumpHopRequest]) -> bool {
     jump_hops.iter().any(|hop| {
         hop.host.trim().is_empty()
             || hop
@@ -1918,6 +2002,12 @@ fn jump_hops_have_blank_fields(jump_hops: &[JumpHopRequest]) -> bool {
                 .as_deref()
                 .is_some_and(|user| user.trim().is_empty())
             || hop.port == 0
+            // Same rule as the connection's own password: present-but-blank is a caller bug,
+            // not a credential worth sending.
+            || hop
+                .password
+                .as_deref()
+                .is_some_and(|password| password.trim().is_empty())
     })
 }
 
@@ -2073,6 +2163,10 @@ fn run_sftp_transfer(
 /// of `establish_session`, differing only in handler (known-hosts file instead of interactive
 /// prompts) and auth (non-interactive only). The jump handles are returned alongside the target
 /// session; the caller holds them so the tunnels outlive the transfer.
+///
+/// Each hop authenticates with its own password only (see [`TransferAuthConfig::password_for`]).
+/// A password-only hop the managed side holds no password for therefore fails the transfer — the
+/// correct outcome, since the alternative is guessing with another host's credential.
 async fn connect_transfer_session(
     connection: &SftpConnectionRequest,
     auth: &TransferAuthConfig,
@@ -2084,7 +2178,7 @@ async fn connect_transfer_session(
 )> {
     let mut jump_sessions: Vec<client::Handle<TransferClientHandler>> =
         Vec::with_capacity(connection.jump_hops.len());
-    for hop in &connection.jump_hops {
+    for (hop_index, hop) in connection.jump_hops.iter().enumerate() {
         let hop_port = if hop.port == 0 { 22 } else { hop.port };
         let hop_handler = TransferClientHandler {
             host: hop.host.clone(),
@@ -2114,7 +2208,13 @@ async fn connect_transfer_session(
             .as_deref()
             .filter(|user| !user.trim().is_empty())
             .unwrap_or(connection.user.as_str());
-        authenticate_transfer(hop_user, auth, &mut hop_session).await?;
+        authenticate_transfer(
+            hop_user,
+            TransferHop::Jump(hop_index),
+            auth,
+            &mut hop_session,
+        )
+        .await?;
         jump_sessions.push(hop_session);
     }
 
@@ -2138,7 +2238,7 @@ async fn connect_transfer_session(
         .await?
     };
 
-    authenticate_transfer(&connection.user, auth, &mut session).await?;
+    authenticate_transfer(&connection.user, TransferHop::Target, auth, &mut session).await?;
     Ok((jump_sessions, session))
 }
 
@@ -2162,6 +2262,7 @@ fn run_remote_path_list(
 
 async fn authenticate_transfer<H>(
     user: &str,
+    hop: TransferHop,
     auth: &TransferAuthConfig,
     session: &mut client::Handle<H>,
 ) -> anyhow::Result<()>
@@ -2208,7 +2309,7 @@ where
         return Ok(());
     }
 
-    if let Some(password) = auth.password.as_deref() {
+    if let Some(password) = auth.password_for(hop) {
         // russh's API takes an owned String, so this copy is unavoidable and its
         // lifetime is russh's to manage. Our own copy is still wiped when `auth` drops.
         let result = session
@@ -3169,7 +3270,7 @@ async fn establish_session(
         };
 
         authenticate(
-            &hop.user,
+            AuthHop::jump(hop),
             config.identity_file.as_deref(),
             config.use_agent,
             shared,
@@ -3197,7 +3298,7 @@ async fn establish_session(
     };
 
     authenticate(
-        &config.user,
+        AuthHop::target(config),
         config.identity_file.as_deref(),
         config.use_agent,
         shared,
@@ -3676,20 +3777,22 @@ async fn close_all_forward_channels(forward_channels: &ForwardChannels) {
     let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
 }
 
+/// Authenticates one session of the chain. `hop` names the server being authenticated and rides
+/// on every prompt this raises, so the managed side answers with that server's credential.
 async fn authenticate(
-    user: &str,
+    hop: AuthHop<'_>,
     identity_file: Option<&str>,
     use_agent: bool,
     shared: &Arc<SharedState>,
     session: &mut client::Handle<NovaClientHandler>,
 ) -> anyhow::Result<()> {
+    let user = hop.user;
     // The configured identity file keeps first position. It predates agent support, so it must
     // stay reachable: an agent stuffed with unrelated keys could otherwise exhaust the server's
     // MaxAuthTries — closing the transport — before the file that used to connect this profile
     // was ever offered (Codex review on #334).
     if let Some(identity_file) = identity_file {
-        if let Some(auth_result) = try_public_key_auth(user, shared, session, identity_file).await?
-        {
+        if let Some(auth_result) = try_public_key_auth(hop, shared, session, identity_file).await? {
             if auth_result.success() {
                 return Ok(());
             }
@@ -3708,6 +3811,7 @@ async fn authenticate(
         NovaSshEventKind::PasswordPrompt,
         "Password:",
         NovaSshResponseKind::Password,
+        hop,
     )?;
     // As in authenticate_transfer: russh needs an owned String; our copy is wiped when
     // `password` drops at the end of this function.
@@ -3718,7 +3822,7 @@ async fn authenticate(
         return Ok(());
     }
 
-    let keyboard_auth = authenticate_keyboard_interactive(user, shared, session).await?;
+    let keyboard_auth = authenticate_keyboard_interactive(hop, shared, session).await?;
     if keyboard_auth {
         return Ok(());
     }
@@ -3900,7 +4004,7 @@ where
 }
 
 async fn try_public_key_auth(
-    user: &str,
+    hop: AuthHop<'_>,
     shared: &Arc<SharedState>,
     session: &mut client::Handle<NovaClientHandler>,
     identity_file: &str,
@@ -3913,6 +4017,7 @@ async fn try_public_key_auth(
                 NovaSshEventKind::PassphrasePrompt,
                 "Key passphrase:",
                 NovaSshResponseKind::Passphrase,
+                hop,
             )?;
             load_secret_key(Path::new(identity_file), Some(passphrase.as_str()))?
         }
@@ -3921,7 +4026,7 @@ async fn try_public_key_auth(
     let hash_alg = session.best_supported_rsa_hash().await?.flatten();
     let auth = session
         .authenticate_publickey(
-            user.to_owned(),
+            hop.user.to_owned(),
             PrivateKeyWithHashAlg::new(Arc::new(key), hash_alg),
         )
         .await?;
@@ -3929,12 +4034,12 @@ async fn try_public_key_auth(
 }
 
 async fn authenticate_keyboard_interactive(
-    user: &str,
+    hop: AuthHop<'_>,
     shared: &Arc<SharedState>,
     session: &mut client::Handle<NovaClientHandler>,
 ) -> anyhow::Result<bool> {
     let mut response = session
-        .authenticate_keyboard_interactive_start(user.to_owned(), None::<String>)
+        .authenticate_keyboard_interactive_start(hop.user.to_owned(), None::<String>)
         .await?;
 
     loop {
@@ -3956,6 +4061,7 @@ async fn authenticate_keyboard_interactive(
                             echo: prompt.echo,
                         })
                         .collect(),
+                    hop,
                 };
 
                 shared.queue_event(QueuedEvent {
@@ -3979,10 +4085,11 @@ fn prompt_text(
     event_kind: NovaSshEventKind,
     prompt: &str,
     response_kind: NovaSshResponseKind,
+    hop: AuthHop<'_>,
 ) -> anyhow::Result<Zeroizing<String>> {
     shared.queue_event(QueuedEvent {
         kind: event_kind,
-        payload: serde_json::to_vec(&TextPromptPayload { prompt })?,
+        payload: serde_json::to_vec(&TextPromptPayload { prompt, hop })?,
         status_code: 0,
         flags: NOVA_SSH_EVENT_FLAG_JSON,
     });
@@ -4788,7 +4895,7 @@ mod tests {
 
         let auth = TransferAuthConfig::take_from(&mut connection);
 
-        assert_eq!(Some("s3cret"), auth.password.as_deref().map(String::as_str));
+        assert_eq!(Some("s3cret"), auth.password_for(TransferHop::Target));
         assert!(
             connection.password.is_none(),
             "the request must not retain a second copy of the credential"
@@ -4801,7 +4908,7 @@ mod tests {
 
         let auth = TransferAuthConfig::take_from(&mut connection);
 
-        assert!(auth.password.is_none());
+        assert!(auth.target_password.is_none());
         assert!(connection.password.is_none());
     }
 
@@ -4813,8 +4920,118 @@ mod tests {
         let first = TransferAuthConfig::take_from(&mut connection);
         let second = TransferAuthConfig::take_from(&mut connection);
 
-        assert!(first.password.is_some());
-        assert!(second.password.is_none());
+        assert!(first.target_password.is_some());
+        assert!(second.target_password.is_none());
+    }
+
+    // ---- per-hop credentials: a password only ever reaches the host it belongs to ----
+
+    /// A two-hop transfer request whose hops carry `hop_passwords` (index-aligned; None omits the
+    /// field) and whose target carries `target_password`.
+    fn chained_connection_request(
+        target_password: Option<&str>,
+        hop_passwords: [Option<&str>; 2],
+    ) -> SftpConnectionRequest {
+        let field = |password: Option<&str>| match password {
+            Some(value) => format!(r#","password":"{value}""#),
+            None => String::new(),
+        };
+        let json = format!(
+            r#"{{"host":"target.internal","user":"nova","port":22{target},"knownHostsFilePath":"known_hosts.json","jumpHops":[{{"host":"bastion-one","user":"ops","port":2200{hop0}}},{{"host":"bastion-two","user":null,"port":22{hop1}}}]}}"#,
+            target = field(target_password),
+            hop0 = field(hop_passwords[0]),
+            hop1 = field(hop_passwords[1]),
+        );
+        serde_json::from_str(&json).expect("chained connection request should deserialize")
+    }
+
+    #[test]
+    fn a_jump_hop_without_its_own_password_never_receives_the_targets() {
+        // The reported leak: the transfer path sent its one password to every hop, so a bastion
+        // saw the target's credential. A hop with no password of its own must get none at all.
+        let mut connection = chained_connection_request(Some("target-secret"), [None, None]);
+
+        let auth = TransferAuthConfig::take_from(&mut connection);
+
+        assert_eq!(None, auth.password_for(TransferHop::Jump(0)));
+        assert_eq!(None, auth.password_for(TransferHop::Jump(1)));
+        assert_eq!(
+            Some("target-secret"),
+            auth.password_for(TransferHop::Target)
+        );
+    }
+
+    #[test]
+    fn each_hop_receives_only_its_own_password() {
+        let mut connection = chained_connection_request(
+            Some("target-secret"),
+            [Some("bastion-one-secret"), Some("bastion-two-secret")],
+        );
+
+        let auth = TransferAuthConfig::take_from(&mut connection);
+
+        assert_eq!(
+            Some("bastion-one-secret"),
+            auth.password_for(TransferHop::Jump(0))
+        );
+        assert_eq!(
+            Some("bastion-two-secret"),
+            auth.password_for(TransferHop::Jump(1))
+        );
+        assert_eq!(
+            Some("target-secret"),
+            auth.password_for(TransferHop::Target)
+        );
+    }
+
+    #[test]
+    fn a_bastion_password_is_never_offered_to_the_target() {
+        // The mirror image: a password-only bastion in front of a key-only target. The target
+        // must not be handed the bastion's password just because it is the only one present.
+        let mut connection = chained_connection_request(None, [Some("bastion-one-secret"), None]);
+
+        let auth = TransferAuthConfig::take_from(&mut connection);
+
+        assert_eq!(None, auth.password_for(TransferHop::Target));
+        assert_eq!(None, auth.password_for(TransferHop::Jump(1)));
+    }
+
+    #[test]
+    fn a_hop_index_past_the_chain_gets_no_password() {
+        let mut connection = chained_connection_request(Some("target-secret"), [None, None]);
+
+        let auth = TransferAuthConfig::take_from(&mut connection);
+
+        assert_eq!(None, auth.password_for(TransferHop::Jump(2)));
+    }
+
+    #[test]
+    fn take_from_moves_every_hop_password_out_of_the_request() {
+        let mut connection = chained_connection_request(
+            Some("target-secret"),
+            [Some("bastion-one-secret"), Some("bastion-two-secret")],
+        );
+
+        let _auth = TransferAuthConfig::take_from(&mut connection);
+
+        assert!(
+            connection
+                .jump_hops
+                .iter()
+                .all(|hop| hop.password.is_none()),
+            "the request must not retain a second copy of any hop credential"
+        );
+    }
+
+    #[test]
+    fn a_blank_hop_password_rejects_the_request() {
+        // Mirrors the connection password's rule; a present-but-blank credential is a caller bug.
+        let request: SftpTransferRequest = serde_json::from_str(
+            r#"{"connection":{"host":"target.internal","user":"nova","port":22,"knownHostsFilePath":"known_hosts.json","jumpHops":[{"host":"bastion-one","user":"ops","port":2200,"password":"   "}]},"transfer":{"direction":"download","kind":"file","localPath":"/tmp/a","remotePath":"/tmp/b"}}"#,
+        )
+        .expect("request should deserialize");
+
+        assert!(sftp_request_has_blank_fields(&request));
     }
 
     #[test]
@@ -5505,6 +5722,117 @@ mod connect_arg_encoding_tests {
         assert_eq!("bastion-two", config.jump_hops[1].host);
         assert_eq!("nova", config.jump_hops[1].user);
         assert_eq!(22, config.jump_hops[1].port);
+    }
+
+    // ---- auth prompts name the hop that is asking ----
+
+    fn chained_connect_config() -> ConnectConfig {
+        let host = CString::new("target.internal").unwrap();
+        let user = CString::new("nova").unwrap();
+        let hops = CString::new(r#"[{"host":"bastion-one","user":"ops","port":2200}]"#).unwrap();
+
+        let mut args = valid_base_args(&host, &user);
+        args.port = 2222;
+        args.jump_hops_json = hops.as_ptr();
+        ConnectConfig::from_args(&args).expect("a valid chain must parse")
+    }
+
+    #[test]
+    fn auth_hops_mark_jump_hops_and_the_target_apart() {
+        let config = chained_connect_config();
+
+        let jump = AuthHop::jump(&config.jump_hops[0]);
+        assert_eq!(
+            ("bastion-one", 2200, "ops", true),
+            (jump.host, jump.port, jump.user, jump.is_jump_hop)
+        );
+
+        let target = AuthHop::target(&config);
+        assert_eq!(
+            ("target.internal", 2222, "nova", false),
+            (target.host, target.port, target.user, target.is_jump_hop)
+        );
+    }
+
+    #[test]
+    fn password_prompt_event_carries_the_hop_identity() {
+        // End to end through the real prompt machinery: the response is queued first so
+        // prompt_text returns immediately, then the event it queued is read back off the session.
+        let config = chained_connect_config();
+        let shared = Arc::new(SharedState::new());
+        shared.queue_response(QueuedResponse {
+            kind: NovaSshResponseKind::Password,
+            payload: br#"{"text":"bastion-secret"}"#.to_vec(),
+        });
+
+        let password = prompt_text(
+            &shared,
+            NovaSshEventKind::PasswordPrompt,
+            "Password:",
+            NovaSshResponseKind::Password,
+            AuthHop::jump(&config.jump_hops[0]),
+        )
+        .expect("a queued response answers the prompt");
+
+        assert_eq!("bastion-secret", password.as_str());
+        let EventRead::Ready(event) = shared.take_event_if_fits(usize::MAX) else {
+            panic!("the prompt must queue an event");
+        };
+        assert_eq!(NovaSshEventKind::PasswordPrompt, event.kind);
+        let payload: serde_json::Value =
+            serde_json::from_slice(&event.payload).expect("prompt payload is JSON");
+        assert_eq!(
+            serde_json::json!({
+                "prompt": "Password:",
+                "host": "bastion-one",
+                "port": 2200,
+                "user": "ops",
+                "isJumpHop": true
+            }),
+            payload
+        );
+    }
+
+    #[test]
+    fn target_prompt_payload_says_it_is_not_a_jump_hop() {
+        let config = chained_connect_config();
+
+        let payload = serde_json::to_value(TextPromptPayload {
+            prompt: "Password:",
+            hop: AuthHop::target(&config),
+        })
+        .expect("payload serializes");
+
+        assert_eq!(serde_json::json!("target.internal"), payload["host"]);
+        assert_eq!(serde_json::json!(2222), payload["port"]);
+        assert_eq!(serde_json::json!("nova"), payload["user"]);
+        assert_eq!(serde_json::json!(false), payload["isJumpHop"]);
+    }
+
+    #[test]
+    fn keyboard_interactive_payload_carries_the_hop_identity() {
+        let config = chained_connect_config();
+
+        let payload = serde_json::to_value(KeyboardInteractivePromptPayload {
+            name: "Duo".to_owned(),
+            instructions: String::new(),
+            prompts: vec![KeyboardPromptPayload {
+                prompt: "Passcode:".to_owned(),
+                echo: false,
+            }],
+            hop: AuthHop::jump(&config.jump_hops[0]),
+        })
+        .expect("payload serializes");
+
+        assert_eq!(serde_json::json!("Duo"), payload["name"]);
+        assert_eq!(
+            serde_json::json!("Passcode:"),
+            payload["prompts"][0]["prompt"]
+        );
+        assert_eq!(serde_json::json!("bastion-one"), payload["host"]);
+        assert_eq!(serde_json::json!(2200), payload["port"]);
+        assert_eq!(serde_json::json!("ops"), payload["user"]);
+        assert_eq!(serde_json::json!(true), payload["isJumpHop"]);
     }
 
     #[test]

@@ -21,6 +21,7 @@ public sealed class SshInteractionService : ISshInteractionService
     private readonly Func<Window?, AuthPromptViewModel, CancellationToken, Task<SshInteractionResponse>> _authPresenter;
     private readonly NativeKnownHostsStore _knownHostsStore;
     private readonly VaultService _vaultService;
+    private readonly ActiveSshSessionRegistry _sessionRegistry;
 
     public SshInteractionService(
         Func<Window?>? ownerProvider = null,
@@ -28,7 +29,8 @@ public sealed class SshInteractionService : ISshInteractionService
         Func<Window?, HostKeyPromptViewModel, CancellationToken, Task<SshInteractionResponse>>? hostKeyPresenter = null,
         Func<Window?, AuthPromptViewModel, CancellationToken, Task<SshInteractionResponse>>? authPresenter = null,
         NativeKnownHostsStore? knownHostsStore = null,
-        VaultService? vaultService = null)
+        VaultService? vaultService = null,
+        ActiveSshSessionRegistry? sessionRegistry = null)
     {
         _ownerProvider = ownerProvider ?? (() => null);
         _prepareDialog = prepareDialog;
@@ -36,6 +38,7 @@ public sealed class SshInteractionService : ISshInteractionService
         _authPresenter = authPresenter ?? PresentAuthAsync;
         _knownHostsStore = knownHostsStore ?? new NativeKnownHostsStore(AppPaths.NativeKnownHostsFilePath);
         _vaultService = vaultService ?? new VaultService();
+        _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
     }
 
     public async Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
@@ -78,9 +81,11 @@ public sealed class SshInteractionService : ISshInteractionService
     private async Task<SshInteractionResponse> HandlePasswordAsync(Window? owner, SshInteractionRequest request, CancellationToken cancellationToken)
     {
         SshInteractionResponse response = await _authPresenter(owner, CreatePasswordViewModel(request), cancellationToken);
-        if (request.SessionId.HasValue && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
+        // Held under the server that asked for it, so the password is only ever replayed to that
+        // server — never to the next hop of the chain, and never to a transfer's other hops.
+        if (request.SessionId.HasValue && request.HasHostIdentity && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
         {
-            ActiveSshSessionRegistry.Instance.SetRuntimePassword(request.SessionId.Value, response.Secret);
+            _sessionRegistry.SetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, response.Secret);
         }
 
         if (ShouldStorePasswordInVault(request, response))
@@ -101,14 +106,15 @@ public sealed class SshInteractionService : ISshInteractionService
         }
 
         if (request.SessionId.HasValue &&
-            ActiveSshSessionRegistry.Instance.TryGetRuntimePassword(request.SessionId.Value, out string? runtimePassword) &&
+            request.HasHostIdentity &&
+            _sessionRegistry.TryGetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, out string? runtimePassword) &&
             !string.IsNullOrEmpty(runtimePassword))
         {
             response = SshInteractionResponse.FromSecret(runtimePassword);
             return true;
         }
 
-        if (!request.AllowVaultPasswordReuse)
+        if (!request.AllowVaultPasswordReuse || !IsProfileTargetPrompt(request))
         {
             response = SshInteractionResponse.Cancel();
             return false;
@@ -207,8 +213,8 @@ public sealed class SshInteractionService : ISshInteractionService
         var viewModel = new AuthPromptViewModel
         {
             Title = "Password",
-            Message = "Enter the SSH password to continue.",
-            CanRememberPassword = request.ProfileId.HasValue
+            Message = CreatePasswordMessage(request),
+            CanRememberPassword = IsProfileTargetPrompt(request)
         };
         viewModel.Prompts.Add(new AuthPromptEntryViewModel
         {
@@ -218,10 +224,40 @@ public sealed class SshInteractionService : ISshInteractionService
         return viewModel;
     }
 
+    /// <summary>
+    /// Names the server asking, so the user can tell a bastion's prompt from the target's —
+    /// in a jump chain both used to read as the same bare "Password:".
+    /// </summary>
+    private static string CreatePasswordMessage(SshInteractionRequest request)
+    {
+        if (!request.HasHostIdentity)
+        {
+            return "Enter the SSH password to continue.";
+        }
+
+        string endpoint = request.Port == 22
+            ? $"{request.User}@{request.Host}"
+            : $"{request.User}@{request.Host}:{request.Port}";
+        return request.IsJumpHop
+            ? $"Enter the SSH password for jump host {endpoint} to continue."
+            : $"Enter the SSH password for {endpoint} to continue.";
+    }
+
+    /// <summary>
+    /// Whether this prompt comes from the profile's final target — the only server the profile's
+    /// vault entry belongs to. A jump hop's prompt, or one that does not say which server it is
+    /// from, is never filled from the vault and never saved into it: either would put one server's
+    /// password on another.
+    /// </summary>
+    private static bool IsProfileTargetPrompt(SshInteractionRequest request)
+    {
+        return request.ProfileId.HasValue && request.HasHostIdentity && !request.IsJumpHop;
+    }
+
     private static bool ShouldStorePasswordInVault(SshInteractionRequest request, SshInteractionResponse response)
     {
         return request.Kind == SshInteractionKind.Password &&
-            request.ProfileId.HasValue &&
+            IsProfileTargetPrompt(request) &&
             !response.IsCanceled &&
             response.RememberPasswordInVault &&
             !string.IsNullOrEmpty(response.Secret);
