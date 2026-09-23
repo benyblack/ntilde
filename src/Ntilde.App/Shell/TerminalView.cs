@@ -2250,6 +2250,38 @@ namespace Ntilde.Shell
             StopUiTimers();
         }
 
+        // Non-zero while RenderOffscreen is rasterizing this view. UI thread only.
+        private int _offscreenRenderDepth;
+
+        /// <summary>
+        /// Rasterizes this view into <paramref name="target"/> for a screenshot or export (the
+        /// agent-host <c>live</c> capture, Export Snapshot (PNG)). UI thread only.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Avalonia.Media.Imaging.RenderTargetBitmap.Render"/> calls <see cref="Render"/>
+        /// and runs the draw operation synchronously on the UI thread, while the compositor's render
+        /// thread may be drawing a live frame of the same buffer. So this pass must not act as a live
+        /// frame. It takes an isolated snapshot, leaving the buffer's row-diff baseline to the live
+        /// renderer. It also renders without the live row-picture cache: live frames repaint their
+        /// dirty spans over the latest cached picture of each row, so that picture is the other half
+        /// of the baseline, and the cache's disposal drain belongs to the render thread.
+        /// </remarks>
+        internal void RenderOffscreen(Avalonia.Media.Imaging.RenderTargetBitmap target)
+        {
+            ArgumentNullException.ThrowIfNull(target);
+            Dispatcher.UIThread.VerifyAccess();
+
+            _offscreenRenderDepth++;
+            try
+            {
+                target.Render(this);
+            }
+            finally
+            {
+                _offscreenRenderDepth--;
+            }
+        }
+
         public override void Render(DrawingContext context)
         {
             var buffer = _buffer; // Capture local reference to prevent it becoming null mid-render (race condition)
@@ -2309,6 +2341,9 @@ namespace Ntilde.Shell
                 _rowCache.RequestClear();
             }
 
+            // See RenderOffscreen for why an off-screen pass must not look like a live frame.
+            bool offscreen = _offscreenRenderDepth > 0;
+
             context.Custom(new TerminalDrawOperation(
                 Bounds,
                 buffer,
@@ -2333,10 +2368,11 @@ namespace Ntilde.Shell
                 totalLines,
                 cursorRow,
                 cursorCol,
-                _rowCache,
+                offscreen ? null : _rowCache,
                 _enableComplexShaping,
                 _glyphCache,
-                _showRenderHud
+                _showRenderHud,
+                isolatedSnapshot: offscreen
             ));
 
             if (_hoveredLink is { } link && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)

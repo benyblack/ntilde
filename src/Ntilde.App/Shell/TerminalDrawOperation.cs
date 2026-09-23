@@ -52,6 +52,13 @@ namespace Ntilde.Shell
         private readonly int _cellHeightDevicePx;
         private readonly PixelGrid _pixelGrid;
         private readonly bool _showRenderHud;
+
+        /// <summary>
+        /// True when this pass is not a frame of the live view (an agent-host capture, a PNG
+        /// export, a golden render), so it takes an isolated snapshot that leaves the buffer's
+        /// live row-diff baseline alone. See <see cref="RenderSnapshotRequest.Isolated"/>.
+        /// </summary>
+        private readonly bool _isolatedSnapshot;
         private bool _wasAltScreenLastFrame;
 
         private static readonly bool GlyphDiagnosticsEnabled = IsEnvFlagEnabled("NTILDE_DIAG_GLYPH");
@@ -203,7 +210,8 @@ namespace Ntilde.Shell
             RowImageCache? rowCache = null,
             bool enableComplexShaping = true,
             GlyphCache? glyphCache = null,
-            bool showRenderHud = false)
+            bool showRenderHud = false,
+            bool isolatedSnapshot = false)
         {
             _bounds = bounds;
             _buffer = buffer;
@@ -231,6 +239,7 @@ namespace Ntilde.Shell
             _enableComplexShaping = enableComplexShaping;
             _glyphCache = glyphCache;
             _showRenderHud = showRenderHud;
+            _isolatedSnapshot = isolatedSnapshot;
             _cellWidthDevicePx = Math.Max(1, ToDevicePx(_metrics.CellWidth));
             _cellHeightDevicePx = Math.Max(1, ToDevicePx(_metrics.CellHeight));
             int baselineOffsetPx = ToDevicePx(_metrics.Baseline);
@@ -342,7 +351,8 @@ namespace Ntilde.Shell
                     ScrollOffset = _scrollOffset,
                     Selection = _selection,
                     SearchMatches = _searchMatches,
-                    ActiveSearchIndex = _activeSearchIndex
+                    ActiveSearchIndex = _activeSearchIndex,
+                    Isolated = _isolatedSnapshot
                 };
                 TerminalRenderSnapshot renderSnapshot = _buffer.CaptureRenderSnapshot(snapshotRequest, out long readLockMs);
                 RendererStatistics.RecordBufferReadLockTimeMs(readLockMs);
