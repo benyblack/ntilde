@@ -24,4 +24,15 @@
     <ProjectReference Include="..\..\src\Ntilde.Replay\Ntilde.Replay.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- One definition of "same terminal state" and one corpus, shared with the Phase 0 parity
+         suite: a fix to either is a fix for both. -->
+    <Compile Include="..\Ntilde.VT.Tests\StateTransfer\TerminalStateAssert.cs" Link="Shared\TerminalStateAssert.cs" />
+    <Compile Include="..\Ntilde.VT.Tests\StateTransfer\ParityCorpus.cs" Link="Shared\ParityCorpus.cs" />
+    <Content Include="..\Ntilde.App.Tests\Fixtures\Replay\*.rec">
+      <Link>Fixtures/Replay/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
