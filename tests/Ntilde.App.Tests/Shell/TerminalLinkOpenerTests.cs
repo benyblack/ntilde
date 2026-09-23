@@ -19,6 +19,12 @@ public sealed class TerminalLinkOpenerTests
 
         public bool IsMacOS { get; init; }
 
+        /// <summary>
+        /// Always set, so every rejection below also proves that knowing this machine's name does not
+        /// loosen anything for a host that is not it.
+        /// </summary>
+        public IReadOnlyCollection<string> LocalHostNames { get; init; } = new[] { "DEVBOX", "devbox" };
+
         public HashSet<string> Files { get; } = new();
 
         public HashSet<string> Directories { get; } = new();
@@ -164,6 +170,60 @@ public sealed class TerminalLinkOpenerTests
         Assert.Equal(new[] { expectedArgument }, started.ArgumentList);
     }
 
+    // ---------------------------------------------------------------- this machine's own name (ls --hyperlink)
+
+    /// <summary>
+    /// <c>ls --hyperlink</c>, rg, fd and eza write <c>file://$HOSTNAME/path</c>. When the host is this
+    /// machine the link routes exactly like a hostless one, and the only path ever probed is the local
+    /// one: never <c>\\devbox\...</c>.
+    /// </summary>
+    [Fact]
+    public void Host_naming_this_machine_routes_like_a_hostless_link()
+    {
+        var windows = Windows();
+        windows.Files.Add(@"C:\Users\me\notes.txt");
+        Assert.True(new TerminalLinkOpener(windows).TryOpen("file://DevBox/C:/Users/me/notes.txt"));
+        Assert.Equal(@"/select,""C:\Users\me\notes.txt""", Assert.Single(windows.Started).Arguments);
+        Assert.Equal(@"C:\Users\me\notes.txt", Assert.Single(windows.Probed));
+
+        var mac = MacOS();
+        string macPath = "/Users/me/notes.txt";
+        mac.Files.Add(macPath);
+        Assert.True(new TerminalLinkOpener(mac).TryOpen("file://DEVBOX.local/Users/me/notes.txt"));
+        Assert.Equal(new[] { "-R", macPath }, Assert.Single(mac.Started).ArgumentList);
+
+        var linux = Linux();
+        linux.Files.Add("/home/u/notes.txt");
+        Assert.True(new TerminalLinkOpener(linux).TryOpen("file://devbox.lan/home/u/notes.txt"));
+        Assert.Equal("/home/u", Assert.Single(Assert.Single(linux.Started).ArgumentList));
+    }
+
+    /// <summary>
+    /// On Windows a path under this machine's name with no drive is only reachable as
+    /// <c>\\devbox\share\...</c>, so it stays inert and is never probed.
+    /// </summary>
+    [Fact]
+    public void Host_naming_this_machine_without_a_drive_path_is_inert_on_Windows()
+    {
+        var env = Windows();
+        env.Files.Add(@"\\devbox\share\x.lnk");
+
+        Assert.False(new TerminalLinkOpener(env).TryOpen("file://devbox/share/x.lnk"));
+        Assert.Empty(env.Started);
+        Assert.Empty(env.Probed);
+    }
+
+    /// <summary>Without any local name (e.g. both reads failed) a hostname link is simply inert.</summary>
+    [Fact]
+    public void Host_link_is_inert_when_no_local_name_is_known()
+    {
+        var env = new RecordingEnvironment { LocalHostNames = Array.Empty<string>() };
+        env.Files.Add("/home/u/notes.txt");
+
+        Assert.False(new TerminalLinkOpener(env).TryOpen("file://devbox/home/u/notes.txt"));
+        Assert.Empty(env.Probed);
+    }
+
     [Fact]
     public void Local_path_that_does_not_exist_does_nothing()
     {
@@ -191,6 +251,8 @@ public sealed class TerminalLinkOpenerTests
     [InlineData("file:///%5C%5Cattacker%5Cshare%5Cx.lnk")]
     [InlineData("file://attacker.example.com/C:/Users/me/x.exe")]
     [InlineData("file:///%5C%5C%3F%5CUNC%5Cattacker%5Cshare%5Cx")]
+    [InlineData("file://otherbox/home/u/x.txt")] // e.g. an SSH session's hostname
+    [InlineData("file://otherbox/C:/Users/me/x.exe")]
     [InlineData("javascript:alert(1)")]
     [InlineData("ftp://host/file")]
     [InlineData("")]

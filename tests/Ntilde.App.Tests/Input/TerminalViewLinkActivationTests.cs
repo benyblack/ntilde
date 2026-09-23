@@ -32,6 +32,8 @@ public sealed class TerminalViewLinkActivationTests
 
         public bool IsMacOS => false;
 
+        public IReadOnlyCollection<string> LocalHostNames { get; } = new[] { "DEVBOX", "devbox" };
+
         public HashSet<string> Files { get; } = new();
 
         public List<string> Probed { get; } = new();
@@ -140,6 +142,29 @@ public sealed class TerminalViewLinkActivationTests
 
         Assert.True(view.TryActivateLinkAt(CellCentre(0, 10), LinkModifier));
         Assert.True(Assert.Single(env.Started).UseShellExecute);
+    }
+
+    /// <summary>
+    /// The <c>ls --hyperlink</c> shape, <c>file://$HOSTNAME/path</c>, naming this machine: clickable and
+    /// revealed. A different hostname (a remote session's) stays inert.
+    /// </summary>
+    [AvaloniaFact]
+    public void Osc8_link_under_this_machines_hostname_is_revealed_and_another_host_is_inert()
+    {
+        var (view, env) = CreateView(
+            Osc8("file://DevBox/C:/Users/me/notes.txt", "notes.txt") + "\r\n" +
+            Osc8("file://buildhost/C:/Users/me/notes.txt", "notes.txt"));
+        env.Files.Add(@"C:\Users\me\notes.txt");
+
+        view.UpdateHoveredLink(CellCentre(0, 2));
+        Assert.Equal("file://DevBox/C:/Users/me/notes.txt", view.HoveredLinkUriForTest);
+        Assert.True(view.TryActivateLinkAt(CellCentre(0, 2), LinkModifier));
+        Assert.Equal(@"/select,""C:\Users\me\notes.txt""", Assert.Single(env.Started).Arguments);
+
+        view.UpdateHoveredLink(CellCentre(1, 2));
+        Assert.Null(view.HoveredLinkUriForTest);
+        Assert.False(view.TryActivateLinkAt(CellCentre(1, 2), LinkModifier));
+        Assert.Single(env.Started);
     }
 
     [AvaloniaFact]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Ntilde.VT.Links
@@ -34,7 +35,14 @@ namespace Ntilde.VT.Links
         /// Whether local paths follow Windows rules. A parameter rather than a runtime check so both
         /// rule sets can be tested on either OS.
         /// </param>
-        public static LinkTarget Classify(string? link, bool isWindows)
+        /// <param name="localHostNames">
+        /// This machine's own names (the App passes <c>Environment.MachineName</c> and the DNS host
+        /// name). A <c>file:</c> link whose host is one of them counts as local, which is what keeps
+        /// <c>ls --hyperlink</c>, rg, fd and eza links working: they write <c>file://$HOSTNAME/path</c>.
+        /// Null or empty accepts only an empty host and <c>localhost</c>. Passed in rather than read
+        /// here so the classification stays pure.
+        /// </param>
+        public static LinkTarget Classify(string? link, bool isWindows, IReadOnlyCollection<string>? localHostNames = null)
         {
             if (string.IsNullOrWhiteSpace(link)) return LinkTarget.Rejected;
 
@@ -58,22 +66,28 @@ namespace Ntilde.VT.Links
 
             if (scheme.Equals("file", StringComparison.OrdinalIgnoreCase))
             {
-                return ClassifyFile(uri, isWindows);
+                return ClassifyFile(uri, isWindows, localHostNames);
             }
 
             return LinkTarget.Rejected;
         }
 
-        private static LinkTarget ClassifyFile(Uri uri, bool isWindows)
+        private static LinkTarget ClassifyFile(Uri uri, bool isWindows, IReadOnlyCollection<string>? localHostNames)
         {
-            // The authority names the machine the path lives on. Only an empty one or "localhost"
-            // (RFC 8089) means this machine; any other host is remote, and on Windows it is also the
-            // UNC server the OS would connect to. The host is judged here, before the path, because
-            // Uri reports a localhost target as UNC as well (file://localhost/C:/x is
-            // \\localhost\C:\x to it), which is also why the path below comes from AbsolutePath and
-            // never from LocalPath.
-            bool isLocalhost = uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
-            if (!isLocalhost && (uri.Host.Length > 0 || uri.IsUnc)) return LinkTarget.Rejected;
+            // The authority names the machine the path lives on. Only an empty one, "localhost"
+            // (RFC 8089) or this machine's own name means here; any other host is remote (an SSH
+            // session's hostname, say, whose path does not exist on this machine), and on Windows it
+            // is also the UNC server the OS would connect to. A host that does name this machine
+            // only ever selects the local reading of the path: the host is judged here, before the
+            // path, because Uri reports such targets as UNC too (file://localhost/C:/x is
+            // \\localhost\C:\x to it), which is why the path below comes from AbsolutePath and never
+            // from LocalPath, and why it must pass the same local-shape rules as a hostless link.
+            if (uri.Host.Length > 0
+                    ? !NamesThisMachine(uri, localHostNames)
+                    : uri.IsUnc)
+            {
+                return LinkTarget.Rejected;
+            }
 
             // A path has no query; one here means the text was not a plain path (file:////?/C:/x
             // parses as the path "//" plus a query, for example). A fragment is dropped instead:
@@ -88,6 +102,37 @@ namespace Ntilde.VT.Links
 
             string? local = isWindows ? ToWindowsDrivePath(path) : ToPosixPath(path);
             return local is null ? LinkTarget.Rejected : LinkTarget.Local(local);
+        }
+
+        /// <summary>Whether a <c>file:</c> link's (non-empty) host is this machine.</summary>
+        /// <remarks>
+        /// Names are compared by their first DNS label, case-insensitively: a shell's
+        /// <c>$HOSTNAME</c> may or may not carry a domain (<c>box</c>, <c>box.local</c>,
+        /// <c>box.lan</c>), and Windows' machine name is the upper-case NetBIOS form. That is loose on
+        /// purpose, and safe because a match never reaches the network: nothing resolves or contacts
+        /// the host, it only decides that the path is read as a local one. The worst a false match
+        /// can do is reveal a local path the link happened to name. IP-address hosts are never
+        /// matched; no local name is an address.
+        /// </remarks>
+        private static bool NamesThisMachine(Uri uri, IReadOnlyCollection<string>? localHostNames)
+        {
+            if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return true;
+            if (uri.HostNameType != UriHostNameType.Dns || localHostNames is null) return false;
+
+            string label = FirstLabel(uri.Host);
+            foreach (string name in localHostNames)
+            {
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                if (FirstLabel(name.Trim()).Equals(label, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+
+            return false;
+        }
+
+        private static string FirstLabel(string host)
+        {
+            int dot = host.IndexOf('.');
+            return dot < 0 ? host : host.Substring(0, dot);
         }
 
         /// <summary>

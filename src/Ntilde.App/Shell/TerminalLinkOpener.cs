@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Ntilde.VT.Links;
@@ -6,15 +7,19 @@ using Ntilde.VT.Links;
 namespace Ntilde.Shell
 {
     /// <summary>
-    /// The side effects of activating a terminal link: the platform, two filesystem probes and a
-    /// process launch. Behind an interface so <see cref="TerminalLinkOpener"/>'s routing can be tested
-    /// without touching the disk or launching anything.
+    /// The side effects of activating a terminal link: the platform, this machine's names, two
+    /// filesystem probes and a process launch. Behind an interface so
+    /// <see cref="TerminalLinkOpener"/>'s routing can be tested without touching the disk or
+    /// launching anything.
     /// </summary>
     internal interface ILinkLaunchEnvironment
     {
         bool IsWindows { get; }
 
         bool IsMacOS { get; }
+
+        /// <summary>This machine's own names, for <c>file://$HOSTNAME/path</c> links.</summary>
+        IReadOnlyCollection<string> LocalHostNames { get; }
 
         bool FileExists(string path);
 
@@ -32,11 +37,40 @@ namespace Ntilde.Shell
 
         public bool IsMacOS => OperatingSystem.IsMacOS();
 
+        public IReadOnlyCollection<string> LocalHostNames => s_localHostNames.Value;
+
         public bool FileExists(string path) => File.Exists(path);
 
         public bool DirectoryExists(string path) => Directory.Exists(path);
 
         public void Start(ProcessStartInfo startInfo) => Process.Start(startInfo)?.Dispose();
+
+        // Read once: hover asks on every pointer move over a link. Both names are local queries
+        // (GetComputerName and gethostname underneath), not DNS lookups, and nothing here ever
+        // resolves the host a link names. Environment.MachineName alone is not enough on Windows,
+        // where it is the NetBIOS name, cut to 15 characters; the DNS host name is the full one.
+        private static readonly Lazy<string[]> s_localHostNames = new(ReadLocalHostNames);
+
+        private static string[] ReadLocalHostNames()
+        {
+            var names = new List<string>(2);
+            TryAdd(names, static () => Environment.MachineName);
+            TryAdd(names, static () => System.Net.Dns.GetHostName());
+            return names.ToArray();
+
+            static void TryAdd(List<string> names, Func<string> read)
+            {
+                try
+                {
+                    string name = read();
+                    if (!string.IsNullOrWhiteSpace(name)) names.Add(name);
+                }
+                catch (Exception)
+                {
+                    // No name means file://$HOSTNAME links stay inert, which is the safe side.
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -89,7 +123,8 @@ namespace Ntilde.Shell
             }
         }
 
-        private LinkTarget Classify(string? link) => LinkSchemes.Classify(link, _environment.IsWindows);
+        private LinkTarget Classify(string? link) =>
+            LinkSchemes.Classify(link, _environment.IsWindows, _environment.LocalHostNames);
 
         /// <summary>
         /// The file-manager launch that shows <paramref name="path"/>, or null when nothing exists there.
