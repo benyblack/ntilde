@@ -36,6 +36,12 @@ public sealed class TerminalLinkOpenerTests
 
         public Exception? ThrowOnStart { get; init; }
 
+        /// <summary>Where xdg-open is found on PATH; null when it is not installed.</summary>
+        public string? XdgOpenPath { get; init; } = "/usr/bin/xdg-open";
+
+        public string? FindOnPath(string executableName) =>
+            executableName == "xdg-open" ? XdgOpenPath : null;
+
         public bool FileExists(string path)
         {
             Probed.Add(path);
@@ -166,8 +172,61 @@ public sealed class TerminalLinkOpenerTests
 
         ProcessStartInfo started = Assert.Single(env.Started);
         Assert.False(started.UseShellExecute);
-        Assert.Equal("xdg-open", started.FileName);
+        Assert.Equal("/usr/bin/xdg-open", started.FileName);
         Assert.Equal(new[] { expectedArgument }, started.ArgumentList);
+    }
+
+    [Fact]
+    public void Linux_without_xdg_open_on_PATH_launches_nothing()
+    {
+        var env = new RecordingEnvironment { XdgOpenPath = null };
+        env.Files.Add("/home/u/notes.txt");
+
+        Assert.False(new TerminalLinkOpener(env).TryOpen("file:///home/u/notes.txt"));
+        Assert.Empty(env.Started);
+    }
+
+    // ---------------------------------------------------------------- PATH lookup: absolute entries only
+
+    /// <summary>
+    /// A bare executable name would let Process.Start pick up a same-named file from the current
+    /// directory, and so would a relative or empty PATH entry; only absolute entries are searched.
+    /// </summary>
+    [Fact]
+    public void ResolveOnPath_searches_absolute_entries_in_order_and_skips_relative_ones()
+    {
+        string first = Path.Combine(Path.GetTempPath(), "ntilde-path-a");
+        string second = Path.Combine(Path.GetTempPath(), "ntilde-path-b");
+        char sep = Path.PathSeparator;
+        string pathVariable = string.Join(sep, ".", "bin", "", first, second);
+        var present = new HashSet<string>
+        {
+            Path.Combine(".", "xdg-open"),
+            Path.Combine("bin", "xdg-open"),
+            Path.Combine(second, "xdg-open"),
+        };
+        var asked = new List<string>();
+
+        string? resolved = SystemLinkLaunchEnvironment.ResolveOnPath(
+            "xdg-open", pathVariable, sep, candidate => { asked.Add(candidate); return present.Contains(candidate); });
+
+        Assert.Equal(Path.Combine(second, "xdg-open"), resolved);
+        Assert.Equal(new[] { Path.Combine(first, "xdg-open"), Path.Combine(second, "xdg-open") }, asked);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ResolveOnPath_returns_null_without_a_PATH(string? pathVariable)
+    {
+        Assert.Null(SystemLinkLaunchEnvironment.ResolveOnPath("xdg-open", pathVariable, Path.PathSeparator, _ => true));
+    }
+
+    [Fact]
+    public void ResolveOnPath_returns_null_when_no_absolute_entry_holds_the_executable()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "ntilde-path-a");
+        Assert.Null(SystemLinkLaunchEnvironment.ResolveOnPath("xdg-open", dir, Path.PathSeparator, _ => false));
     }
 
     // ---------------------------------------------------------------- this machine's own name (ls --hyperlink)

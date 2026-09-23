@@ -25,6 +25,12 @@ namespace Ntilde.Shell
 
         bool DirectoryExists(string path);
 
+        /// <summary>
+        /// The absolute path of <paramref name="executableName"/> in a PATH directory, or null when no
+        /// absolute PATH entry holds it.
+        /// </summary>
+        string? FindOnPath(string executableName);
+
         void Start(ProcessStartInfo startInfo);
     }
 
@@ -43,7 +49,32 @@ namespace Ntilde.Shell
 
         public bool DirectoryExists(string path) => Directory.Exists(path);
 
+        public string? FindOnPath(string executableName) =>
+            ResolveOnPath(executableName, Environment.GetEnvironmentVariable("PATH"), Path.PathSeparator, File.Exists);
+
         public void Start(ProcessStartInfo startInfo) => Process.Start(startInfo)?.Dispose();
+
+        /// <summary>
+        /// Walks <paramref name="pathVariable"/> the way a shell would, but only through absolute
+        /// entries. Handing Process.Start a bare name is not the same thing: .NET looks in the
+        /// application's directory and the current directory before PATH, so an executable of that
+        /// name dropped into the terminal's working directory would run instead. A relative or empty
+        /// PATH entry means the current directory too, so those are skipped for the same reason.
+        /// </summary>
+        internal static string? ResolveOnPath(string executableName, string? pathVariable, char separator, Func<string, bool> fileExists)
+        {
+            if (string.IsNullOrEmpty(pathVariable)) return null;
+
+            foreach (string entry in pathVariable.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!Path.IsPathFullyQualified(entry)) continue;
+
+                string candidate = Path.Combine(entry, executableName);
+                if (fileExists(candidate)) return candidate;
+            }
+
+            return null;
+        }
 
         // Read once: hover asks on every pointer move over a link. Both names are local queries
         // (GetComputerName and gethostname underneath), not DNS lookups, and nothing here ever
@@ -167,9 +198,14 @@ namespace Ntilde.Shell
 
             // Linux and the BSDs: xdg-open has no "reveal", so a file opens its containing folder. A
             // directory is only ever handed to the directory handler, which is the file manager.
-            // xdg-open is looked up on PATH; where it is installed varies by distribution.
+            // Where xdg-open is installed varies by distribution, so it is found on PATH, and started
+            // by that absolute path (see ResolveOnPath for why never by bare name). Without one there
+            // is nothing to launch.
+            string? xdgOpen = _environment.FindOnPath("xdg-open");
+            if (xdgOpen is null) return null;
+
             return WithArguments(
-                new ProcessStartInfo("xdg-open") { UseShellExecute = false },
+                new ProcessStartInfo(xdgOpen) { UseShellExecute = false },
                 isFile ? PosixParentDirectory(path) : path);
         }
 

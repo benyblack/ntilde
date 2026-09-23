@@ -52,6 +52,9 @@ public sealed class TerminalViewLinkActivationTests
             return false;
         }
 
+        // Windows routes never look anything up on PATH.
+        public string? FindOnPath(string executableName) => null;
+
         public void Start(ProcessStartInfo startInfo) => Started.Add(startInfo);
     }
 
