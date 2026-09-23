@@ -12,7 +12,6 @@ using Avalonia.Input.Platform;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
@@ -1226,8 +1225,20 @@ namespace Ntilde.Shell
         // Selection state
         private readonly SelectionState _selection = new SelectionState();
         private readonly Ntilde.VT.Links.UrlDetector _urlDetector = new Ntilde.VT.Links.UrlDetector();
+
+        /// <summary>
+        /// Decides whether a link is clickable (hover) and carries out a Ctrl+click on one. Hover and
+        /// click both ask this one object, so a link that would not open never underlines. Settable
+        /// so tests can route links through a recording environment instead of launching anything.
+        /// </summary>
+        internal TerminalLinkOpener LinkOpener { get; set; } = TerminalLinkOpener.Default;
+
         // Hovered link overlay state (transient UI state, never written to the buffer).
         private (int AbsRow, int StartCol, int EndCol, string Uri)? _hoveredLink;
+
+        /// <summary>The link currently underlined under the pointer, if any.</summary>
+        internal string? HoveredLinkUriForTest => _hoveredLink?.Uri;
+
         // One-row memo so we only re-run detection when the pointer moves to a new row.
         private int _hoverScanRow = -1;
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
@@ -2450,18 +2461,14 @@ namespace Ntilde.Shell
 
             if (leftPressed)
             {
+                if (TryActivateLinkAt(point.Position, e.KeyModifiers))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 // Normal mode: Handle selection
                 var (row, col) = ScreenToTerminal(point.Position);
-
-                if (IsLinkActivationModifier(e.KeyModifiers) && _buffer != null)
-                {
-                    string? uri = ResolveLinkAt(row, col);
-                    if (TryOpenLink(uri))
-                    {
-                        e.Handled = true;
-                        return;
-                    }
-                }
 
                 // Check for double/triple-click
                 if (e.ClickCount == 2)
@@ -2571,7 +2578,7 @@ namespace Ntilde.Shell
             }
         }
 
-        private void UpdateHoveredLink(Avalonia.Point position)
+        internal void UpdateHoveredLink(Avalonia.Point position)
         {
             if (_buffer == null) return;
 
@@ -2581,9 +2588,10 @@ namespace Ntilde.Shell
             string? osc8 = _buffer.GetHyperlinkAbsolute(col, absRow);
             if (!string.IsNullOrWhiteSpace(osc8))
             {
-                // Only show as clickable if it would actually open (mirror the click allowlist),
-                // so non-openable schemes (e.g. ftp://) don't underline or show the hand cursor.
-                if (Ntilde.VT.Links.LinkSchemes.IsAllowed(osc8))
+                // Only show as clickable if it would actually open (the click asks the same
+                // LinkOpener), so non-openable targets (ftp://, a remote or UNC file: link) don't
+                // underline or show the hand cursor.
+                if (LinkOpener.IsActivatable(osc8))
                     SetHoveredLink((absRow, col, col, osc8));
                 else
                     ClearHoveredLink();
@@ -2606,8 +2614,8 @@ namespace Ntilde.Shell
                     var (startCol, endCol) = Ntilde.VT.Links.RowTextExtractor.SpanToColumns(span, _hoverScanMap);
                     if (col >= startCol && col <= endCol)
                     {
-                        // Mirror the click allowlist: don't underline schemes that can't open.
-                        if (Ntilde.VT.Links.LinkSchemes.IsAllowed(span.Uri))
+                        // Mirror the click: don't underline links that can't open.
+                        if (LinkOpener.IsActivatable(span.Uri))
                             SetHoveredLink((absRow, startCol, endCol, span.Uri));
                         else
                             ClearHoveredLink();
@@ -2643,24 +2651,16 @@ namespace Ntilde.Shell
                 : (modifiers & KeyModifiers.Control) != 0;
         }
 
-        private bool TryOpenLink(string? uri)
+        /// <summary>
+        /// Ctrl+click (Cmd+click on macOS) on a link at <paramref name="position"/>: true when a link
+        /// was opened and the click is consumed, false to let it fall through to selection.
+        /// </summary>
+        internal bool TryActivateLinkAt(Avalonia.Point position, KeyModifiers modifiers)
         {
-            if (!Ntilde.VT.Links.LinkSchemes.IsAllowed(uri)) return false;
-            if (!Uri.TryCreate(uri, UriKind.Absolute, out var linkUri)) return false;
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = linkUri.ToString(),
-                    UseShellExecute = true
-                });
-                return true;
-            }
-            catch
-            {
-                // Ignore failed launch attempts.
-                return false;
-            }
+            if (!IsLinkActivationModifier(modifiers) || _buffer == null) return false;
+
+            var (row, col) = ScreenToTerminal(position);
+            return LinkOpener.TryOpen(ResolveLinkAt(row, col));
         }
 
         // Resolves the link under (absRow, col): OSC 8 first, then a detected span.
