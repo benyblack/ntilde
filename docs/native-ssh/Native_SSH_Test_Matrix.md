@@ -41,7 +41,10 @@ Verified by automated tests:
   service, rather than only opening a channel
 - Dockerized jump-host tunnelling: a one-hop session, a two-hop chain running a live command, and
   dynamic forwarding through a hop — each hop dialling the fixture container back into itself, so
-  every hop is a real nested SSH session without a multi-container fixture
+  every hop is a real nested SSH session without a multi-container fixture. Hops authenticate as a
+  different user with a different password from the target, so a password sent to the wrong hop
+  fails instead of passing unnoticed; an SFTP transfer through a password bastion covers the
+  non-interactive path
 - Dockerized remote forwarding: a tcpip-forward listener on the server, dialled from inside the
   container by the session's own shell, carrying real bytes to a local destination and back
 
@@ -69,6 +72,7 @@ Rows marked Automated run in the `Native SSH Docker E2E` CI job (Linux), which s
 | Forwarding | One-hop jump-host dynamic forward | Automated | `NativeSshDockerJumpChainE2eTests.DynamicForward_ThroughAJumpHop_...`; forward channels ride the target session regardless of how it was reached |
 | Jump host | One-hop jump host | Automated + pending manual | `NativeSshDockerJumpChainE2eTests.JumpHost_OneHop_...` (the hop dials the fixture container back into itself); still validate against a real bastion |
 | Jump host | Multi-hop jump chain | Automated + pending manual | `NativeSshDockerJumpChainE2eTests.JumpChain_TwoHops_...` runs a live command through two nested tunnels; still validate against real distinct bastions |
+| Jump host | Per-hop passwords (prompts and SFTP) | Automated | Every jump-chain test asserts each password prompt names its own hop; `NativeSshDockerJumpChainE2eTests.NativeSftp_ThroughAPasswordBastion_...` transfers with a different password per hop |
 | Rollback | Broken native profile switched back to OpenSSH | Pending manual | Confirm backend selector flow is obvious and safe |
 
 ## Rollout Notes
@@ -127,6 +131,12 @@ Rows marked Automated run in the `Native SSH Docker E2E` CI job (Linux), which s
   ordered client → target, each hop with its own host-key verification and authentication.
   The chain crosses the FFI as a JSON array (`jump_hops_json` / the SFTP request's `jumpHops`),
   so chain length never renegotiates the ABI.
+- A password only ever reaches the server it belongs to. Every auth prompt event names the hop
+  asking (`host`, `port`, `user`, `isJumpHop`); session passwords are held per (session, host,
+  port, user); the profile's saved password fills and is remembered only for the final target.
+  An SFTP transfer cannot prompt, so each `jumpHops` entry carries that hop's own `password` (if
+  the terminal session entered one) and the connection's `password` goes to the target alone. A
+  password-only hop the session never authenticated therefore fails the transfer.
 - Remote forwarding is supported natively: the backend sends a `tcpip-forward`
   global request per remote rule once the session is established (on the
   Connected event, sequentially on one task — no thread-pool worker waits out
