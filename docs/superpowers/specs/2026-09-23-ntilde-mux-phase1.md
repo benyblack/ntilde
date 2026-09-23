@@ -170,10 +170,15 @@ the connection with `protocol_error`, and nothing reaches a buffer.
   cell and scrollback ceilings are checked after deserialization but before `SnapshotReceived` is
   raised. `SnapshotReceived` is the only path to `TerminalStateTransfer.Restore`, so no oversized
   snapshot can reach a buffer. A refused attach tells the server to detach.
-- **Send budget:** each server connection has a byte budget (default 16 MiB). A frame is accepted
-  when the queue is empty or when it fits in the remaining budget, so one snapshot larger than the
-  budget still goes out on a fresh attach. Overflow disconnects that client immediately, and the
-  parse thread and the other clients never wait.
+- **Send budget:** each server connection has a stream byte budget (`ClientSendBudgetBytes`,
+  default 16 MiB) that governs Output, ResizeEvent and control frames (responses, notifications).
+  Snapshot frames are not charged to it: they share the connection's one FIFO queue (so ordering is
+  unchanged) but are accounted separately against `MaxQueuedSnapshotBytes` (default 256 MiB), a
+  sanity bound on snapshot bytes queued or in flight. Each account accepts any frame while it is
+  empty and otherwise only a frame that fits what is left, so a single snapshot larger than either
+  limit still goes out, and parallel attaches on one GUI connection while other sessions' output is
+  queued never read as a slow client. Overflowing either account disconnects that client
+  immediately as `client_too_slow`, and the parse thread and the other clients never wait.
 - #473 asked for a geometry *rejection ceiling* (not a clamp). The ceiling lives at the transport
   boundary, on the client, where the payload's origin is known. `ValidateBufferState` stays
   structural.

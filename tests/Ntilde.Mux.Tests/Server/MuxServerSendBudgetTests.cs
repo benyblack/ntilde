@@ -54,4 +54,65 @@ public sealed class MuxServerSendBudgetTests
             second.Release();
         }
     }
+
+    [Fact]
+    public async Task A_snapshot_is_not_charged_to_the_stream_budget()
+    {
+        using var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ClientSendBudgetBytes = 16 * 1024 });
+        (Stream clientEnd, Stream serverEnd) = InMemoryDuplexPipe.Create(4096); // not read until the end
+        using var _ = clientEnd;
+        var connection = new MuxServerConnection(server, serverEnd);
+        connection.Start();
+
+        var frames = new List<MuxOutboundFrame>();
+        try
+        {
+            for (int i = 0; i < 12; i++) frames.Add(MuxFrames.Output(Guid.NewGuid(), 0, new byte[1024]));
+            frames.Add(MuxFrames.Snapshot(1, Guid.NewGuid(), 0, new byte[64 * 1024])); // 4x the whole budget
+            frames.Add(MuxFrames.Output(Guid.NewGuid(), 0, new byte[1024]));           // stream frames still fit after it
+
+            foreach (MuxOutboundFrame f in frames) Assert.True(connection.TryEnqueue(f), $"{f.Kind} refused");
+        }
+        finally
+        {
+            foreach (MuxOutboundFrame f in frames) f.Release();
+        }
+
+        // Everything arrives, in order, and the connection is still up.
+        int outputs = 0, snapshots = 0;
+        while (outputs + snapshots < 14)
+        {
+            using MuxInboundFrame frame = (await Task.Run(() => MuxFrameReader.Read(clientEnd), TestContext.Current.CancellationToken))!;
+            if (frame.Kind == MuxFrameKind.Snapshot) { Assert.Equal(12, outputs); snapshots++; }
+            else outputs++;
+        }
+
+        Assert.Equal((13, 1), (outputs, snapshots));
+        Assert.Null(connection.CloseReason);
+    }
+
+    [Fact]
+    public void Queued_snapshots_are_bounded_by_MaxQueuedSnapshotBytes()
+    {
+        using var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { MaxQueuedSnapshotBytes = 100 * 1024 });
+        (Stream clientEnd, Stream serverEnd) = InMemoryDuplexPipe.Create(4096); // the client never reads
+        using var _ = clientEnd;
+        var connection = new MuxServerConnection(server, serverEnd);
+        connection.Start();
+
+        MuxOutboundFrame first = MuxFrames.Snapshot(1, Guid.NewGuid(), 0, new byte[150 * 1024]); // alone: over the bound, still taken
+        MuxOutboundFrame second = MuxFrames.Snapshot(2, Guid.NewGuid(), 0, new byte[10 * 1024]);
+        try
+        {
+            Assert.True(connection.TryEnqueue(first));
+            Assert.False(connection.TryEnqueue(second)); // the first is still queued or in flight
+        }
+        finally
+        {
+            first.Release();
+            second.Release();
+        }
+
+        Assert.Equal(MuxErrorCodes.ClientTooSlow, connection.CloseReason);
+    }
 }

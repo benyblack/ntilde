@@ -201,7 +201,7 @@ invariant changes.
 - **The mux answers device queries** and clients never do
 - Latest resize wins
 - No thread-pool work on the output path
-- A slow client is disconnected, never waited for
+- A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
 - Attach limits are rejection ceilings, never clamps (#473)
 
 **Test authority**

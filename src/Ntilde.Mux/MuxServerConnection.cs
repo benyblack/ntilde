@@ -9,7 +9,8 @@ namespace Ntilde.Mux;
 /// <summary>
 /// One client: a reader thread that parses and dispatches frames, and a sender thread that drains
 /// a byte-budgeted queue. <see cref="TryEnqueue"/> is called from session parse threads and never
-/// blocks - overflowing the budget disconnects this client instead (spec §7).
+/// blocks - overflowing the budget disconnects this client instead (spec §7). Snapshots are
+/// accounted apart from the stream budget (<see cref="MuxServerOptions.MaxQueuedSnapshotBytes"/>).
 /// </summary>
 internal sealed class MuxServerConnection : IMuxFrameSink
 {
@@ -20,7 +21,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private readonly object _gate = new();
     private readonly Queue<MuxOutboundFrame> _queue = new();
     private readonly HashSet<Guid> _attached = new(); // reader thread only
-    private long _queuedBytes;       // queued + in flight
+    private long _queuedBytes;       // stream frames queued + in flight (everything but snapshots)
+    private long _queuedSnapshotBytes; // snapshot frames queued + in flight
     private bool _closed;            // stream closed or closing now; nothing more is accepted
     private bool _closeAfterFlush;   // the queue ends with a final frame; the sender closes after it
     private int _version;
@@ -64,13 +66,19 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         {
             if (_closed || _closeAfterFlush) return false;
 
-            // An empty queue takes any frame (a snapshot bigger than the budget on a fresh attach);
-            // otherwise the frame must fit.
-            if (_queuedBytes == 0 || _queuedBytes + frame.Length <= _server.Options.ClientSendBudgetBytes)
+            // Two accounts sharing one FIFO queue. Snapshots are charged to their own bound, never
+            // to the stream budget: one snapshot can be bigger than the whole budget (10k rows at
+            // 200 cols is ~32 MB), and parallel attaches on one GUI connection must not read as a
+            // slow client. Either account takes any frame while it is empty; otherwise the frame
+            // must fit what is left of it.
+            bool snapshot = frame.Kind == MuxFrameKind.Snapshot;
+            long queued = snapshot ? _queuedSnapshotBytes : _queuedBytes;
+            long limit = snapshot ? _server.Options.MaxQueuedSnapshotBytes : _server.Options.ClientSendBudgetBytes;
+            if (queued == 0 || queued + frame.Length <= limit)
             {
                 frame.AddRef();
                 _queue.Enqueue(frame);
-                _queuedBytes += frame.Length;
+                Account(frame, frame.Length);
                 Monitor.Pulse(_gate);
                 return true;
             }
@@ -78,6 +86,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
 
         Abort(MuxErrorCodes.ClientTooSlow);
         return false;
+    }
+
+    /// <summary>Caller holds <see cref="_gate"/>. Charges (positive) or refunds (negative) the frame's own account.</summary>
+    private void Account(MuxOutboundFrame frame, long delta)
+    {
+        if (frame.Kind == MuxFrameKind.Snapshot) _queuedSnapshotBytes += delta;
+        else _queuedBytes += delta;
     }
 
     /// <summary>
@@ -95,7 +110,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             Interlocked.CompareExchange(ref _closeReason, reason, null);
             dropped = _queue.ToArray();
             _queue.Clear();
-            foreach (MuxOutboundFrame f in dropped) _queuedBytes -= f.Length;
+            foreach (MuxOutboundFrame f in dropped) Account(f, -f.Length);
             Monitor.PulseAll(_gate);
         }
 
@@ -104,7 +119,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         {
             // SafeLog: this runs on a session parse thread (Broadcast -> TryEnqueue -> Abort)
             // outside any try, and must still reach the stream dispose below.
-            SafeLog($"[MuxServer] connection {ConnectionId} disconnected: {reason} (send budget {_server.Options.ClientSendBudgetBytes} bytes exceeded).");
+            SafeLog($"[MuxServer] connection {ConnectionId} disconnected: {reason} (send budget of {_server.Options.ClientSendBudgetBytes} stream bytes or {_server.Options.MaxQueuedSnapshotBytes} snapshot bytes exceeded).");
         }
 
         try { _stream.Dispose(); }
@@ -127,9 +142,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             Interlocked.CompareExchange(ref _closeReason, reason, null);
             dropped = _queue.ToArray();
             _queue.Clear();
-            foreach (MuxOutboundFrame f in dropped) _queuedBytes -= f.Length;
+            foreach (MuxOutboundFrame f in dropped) Account(f, -f.Length);
             _queue.Enqueue(finalFrame); // takes over the caller's reference
-            _queuedBytes += finalFrame.Length;
+            Account(finalFrame, finalFrame.Length);
             _closeAfterFlush = true;
             Monitor.PulseAll(_gate);
         }
@@ -185,8 +200,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     }
                     finally
                     {
+                        lock (_gate) Account(frame, -length); // Kind stays readable after Release
                         frame.Release();
-                        lock (_gate) _queuedBytes -= length;
                     }
                 }
             }
