@@ -71,6 +71,12 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     internal int LastSnapshotByteCount { get; private set; }
 
+    /// <summary>
+    /// Test seam: runs inside DeliverSnapshot between its disposed check and the moment the attached
+    /// offset is published - the window a concurrent Dispose or disconnect can land in.
+    /// </summary>
+    internal Action? BeforeSnapshotPublishedForTest { get; set; }
+
     public event Action<TerminalStateSnapshot>? SnapshotReceived;
     public event Action<string>? OnOutputReceived;
     public event Action<int, int>? StreamResize;
@@ -287,8 +293,25 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         _decoder = decoder;
         long next = snapshot.StreamSeq + tail.Length;
         LastSnapshotByteCount = byteCount;
+
+        // Publish only over the offset observed now, and only if nothing has torn the session down
+        // since: Dispose and a disconnect both set -1, and a blind write would resurrect a disposed
+        // session (IsAttached true again) and raise SnapshotReceived into a pane that is gone. A
+        // re-attach publishes over its previous positive offset, which is why this is not a CAS
+        // from -1.
+        long observed = Interlocked.Read(ref _expectedOffset);
+        BeforeSnapshotPublishedForTest?.Invoke();
+        if (Volatile.Read(ref _disposed) != 0 || _client is { IsConnected: false }) return;
+        if (Interlocked.CompareExchange(ref _expectedOffset, next, observed) != observed) return;
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            // Disposed after the publish but before the event: undo it rather than notify a pane
+            // that has already been torn down.
+            Interlocked.Exchange(ref _expectedOffset, -1);
+            return;
+        }
+
         Interlocked.Exchange(ref _attachedSeq, snapshot.StreamSeq);
-        Interlocked.Exchange(ref _expectedOffset, next);
         SnapshotReceived?.Invoke(snapshot);
         Interlocked.Exchange(ref _deliveredOffset, next);
     }

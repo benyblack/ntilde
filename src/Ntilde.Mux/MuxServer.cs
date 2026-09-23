@@ -161,6 +161,17 @@ public sealed class MuxServer : IDisposable
         }
 
         _sessions[id] = session;
+
+        // Dispose may have run while the factory was spawning (it sets _disposed before it sweeps
+        // _sessions). Checked after publishing, so there is no gap: either Dispose's sweep sees
+        // this session or this check sees Dispose - and HeadlessTerminalSession.Dispose is
+        // idempotent if both do. Without it the child and its parse thread outlive the server.
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            if (_sessions.TryRemove(id, out HeadlessTerminalSession? orphan)) orphan.Dispose();
+            throw new MuxRequestException(MuxErrorCodes.SpawnFailed, "The server is shutting down.");
+        }
+
         return id;
     }
 
@@ -211,8 +222,14 @@ public sealed class MuxServer : IDisposable
         _listener?.Dispose();
         _acceptThread?.Join(TimeSpan.FromSeconds(5));
         foreach (MuxServerConnection connection in _connections.Values) connection.Abort("server_shutdown");
-        foreach (HeadlessTerminalSession session in _sessions.Values) session.Dispose();
-        _sessions.Clear();
+        // TryRemove per key rather than dispose-all-then-Clear: a Clear would also drop a session a
+        // late Spawn published after the sweep, without disposing it. (Spawn re-checks _disposed
+        // after publishing and disposes its own session in that case.)
+        foreach (Guid id in _sessions.Keys)
+        {
+            if (_sessions.TryRemove(id, out HeadlessTerminalSession? session)) session.Dispose();
+        }
+
         _cts.Dispose();
     }
 

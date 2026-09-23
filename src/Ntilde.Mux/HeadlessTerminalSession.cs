@@ -103,6 +103,13 @@ public sealed class HeadlessTerminalSession : IDisposable
             _byteOutput.OnRawOutputReceived += _onRawOutput;
             _session.OnOutputReceived += _onStringOutput;
             _session.OnExit += _onExit;
+
+            // The factory hands over an already-running session, and a short command can be gone
+            // before the line above ran - RustPtySession does not replay OnExit to a late
+            // subscriber. Reconcile once, after subscribing: queued behind the replayed output, so
+            // clients still see the last bytes before Exited. If OnExit did fire too, the second
+            // exit item is ignored.
+            if (!_session.IsProcessRunning) TryEnqueue(_data, WorkItem.ForExit(_session.ExitCode));
         }
         catch
         {

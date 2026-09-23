@@ -239,6 +239,23 @@ public sealed class HeadlessTerminalSessionTests
     }
 
     [Fact]
+    public async Task A_child_that_exited_before_the_mux_subscribed_is_reported_exited()
+    {
+        // The factory hands over an already-running session; a short command can be gone before
+        // the constructor subscribes to OnExit, and RustPtySession does not replay OnExit. The mux
+        // must not report that session as running forever.
+        var fake = new ScriptedTerminalSession(new TerminalSessionRequest("scripted", string.Empty, string.Empty, 80, 24, null, false, null));
+        fake.Emit("last words"); // raw output before any subscriber: dropped by this fake, that's fine
+        fake.Exit(9);
+
+        using var mux = new HeadlessTerminalSession(Guid.NewGuid(), fake, new HeadlessSessionOptions { Cols = 80, Rows = 24, ForceConPtyFiltering = false });
+        await mux.FlushAsync();
+
+        Assert.True(mux.IsExited);
+        Assert.Equal(9, mux.ExitCode);
+    }
+
+    [Fact]
     public async Task A_failed_reattach_keeps_the_stream_that_was_already_working()
     {
         // An attached client asks for a fresh snapshot, and this one is refused (the scrollback has

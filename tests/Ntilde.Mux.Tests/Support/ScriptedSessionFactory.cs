@@ -15,9 +15,20 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
 
     public ScriptedTerminalSession? LastScriptedSession { get; private set; }
 
+    /// <summary>When set, Create signals <see cref="CreateEntered"/> and then waits for this gate - a spawn caught mid-flight.</summary>
+    public ManualResetEventSlim? CreateGate { get; set; }
+
+    public ManualResetEventSlim CreateEntered { get; } = new();
+
     public ITerminalSession Create(TerminalSessionRequest request)
     {
         Requests.Enqueue(request);
+        if (CreateGate is { } gate)
+        {
+            CreateEntered.Set();
+            gate.Wait(TimeSpan.FromSeconds(30));
+        }
+
         if (FailNext)
         {
             FailNext = false;

@@ -161,6 +161,27 @@ public sealed class MuxServerRequestTests
     }
 
     [Fact]
+    public async Task A_spawn_that_completes_during_server_shutdown_does_not_leak_its_session()
+    {
+        // Dispose aborts the connection and disposes every registered session while a spawn is
+        // still inside the factory. When the factory returns, that session must not be published
+        // into the dead server with its child process and parse thread left running, unowned.
+        var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+        await raw.HelloAsync();
+        using var gate = new ManualResetEventSlim();
+        host.Factory.CreateGate = gate;
+
+        raw.Request(MuxMethods.Spawn, new SpawnParams { Command = "scripted" }, MuxJsonContext.Default.SpawnParams);
+        Assert.True(host.Factory.CreateEntered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "the spawn reached the factory");
+        host.Dispose();
+        gate.Set();
+
+        await TestWait.UntilAsync(() => host.Factory.LastScriptedSession is { Disposed: true }, "the late session is disposed");
+        Assert.Empty(host.Server.GetSessionIds());
+    }
+
+    [Fact]
     public async Task A_peer_chosen_flight_budget_is_capped_by_the_server()
     {
         // The budget decides how much output the mux retains in memory; a peer must not be able to

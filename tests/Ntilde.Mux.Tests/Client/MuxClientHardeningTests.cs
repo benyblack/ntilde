@@ -41,6 +41,31 @@ public sealed class MuxClientHardeningTests
     }
 
     [Fact]
+    public async Task A_snapshot_racing_Dispose_does_not_reattach_the_disposed_session()
+    {
+        // Dispose lands between DeliverSnapshot's disposed check and the moment it publishes the
+        // attached offset. Publishing anyway resurrected the session (IsAttached true again) and
+        // raised SnapshotReceived into a pane that had already been torn down.
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Guid id = Guid.NewGuid();
+        MuxClientSession session = client.OpenSession(id);
+        var pane = new ClientPaneModel(session);
+        session.BeforeSnapshotPublishedForTest = session.Dispose; // the race, made deterministic
+
+        Task<long> attach = session.AttachAsync(100, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+        fake.Raw.Send(MuxFrames.Snapshot(request.Id, id, 0, FakeMuxServerEnd.SnapshotJson()));
+        await Record.ExceptionAsync(() => attach.WaitAsync(TimeSpan.FromSeconds(5), Ct)); // settles either way
+
+        Assert.False(session.IsAttached);
+        Assert.Empty(pane.Events);
+        Assert.True(client.IsConnected);
+    }
+
+    [Fact]
     public async Task An_output_offset_that_would_overflow_disconnects_instead_of_wrapping()
     {
         // A malformed server attaches at StreamSeq == long.MaxValue, then sends output there. The
