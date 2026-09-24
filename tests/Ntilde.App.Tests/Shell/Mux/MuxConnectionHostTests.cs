@@ -21,6 +21,7 @@ public sealed class MuxConnectionHostTests
         MuxClient?[] clients = new MuxClient?[8];
         Parallel.For(0, clients.Length, i => clients[i] = host.GetClient(TimeSpan.FromSeconds(5)));
         Assert.Equal(1, connects);
+        Assert.NotNull(clients[0]);
         Assert.All(clients, c => Assert.Same(clients[0], c));
     }
 
@@ -37,13 +38,49 @@ public sealed class MuxConnectionHostTests
     }
 
     [Fact]
-    public void A_failing_connect_returns_null_and_is_retried_next_time()
+    public void A_failing_connect_returns_null_and_is_retried_only_after_the_cooldown()
     {
         int attempts = 0;
-        using var host = new MuxConnectionHost(_ => { Interlocked.Increment(ref attempts); throw new MuxUnavailableException("nope"); }, "test", null);
+        using var host = new MuxConnectionHost(_ => { Interlocked.Increment(ref attempts); throw new MuxUnavailableException("nope"); }, "test", null)
+        {
+            FailureCooldown = TimeSpan.FromMilliseconds(200),
+        };
         Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
         Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
-        Assert.Equal(2, attempts);
+        Assert.Equal(1, Volatile.Read(ref attempts)); // still cooling down: no second attempt
+
+        Thread.Sleep(350);
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
+        Assert.Equal(2, Volatile.Read(ref attempts));
+        Assert.Equal(2, host.ConnectAttempts);
+    }
+
+    [Fact]
+    public async Task After_a_failed_connect_GetClient_returns_immediately_without_a_new_attempt()
+    {
+        var logs = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        using var host = new MuxConnectionHost(_ => throw new MuxUnavailableException("daemon will not start"), "test", logs.Enqueue);
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
+        Assert.Equal(1, host.ConnectAttempts);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(5)));
+        Assert.True(sw.Elapsed < TimeSpan.FromMilliseconds(100), $"took {sw.Elapsed}");
+        host.WarmUp(); // a no-op while cooling down
+        Assert.Equal(1, host.ConnectAttempts);
+        await TestWait.UntilAsync(() => logs.Any(l => l.Contains("daemon will not start", StringComparison.Ordinal)), "failure reason logged");
+    }
+
+    [Fact]
+    public void A_GetClient_that_times_out_also_enters_the_cooldown()
+    {
+        using var host = new MuxConnectionHost(async ct => { await Task.Delay(Timeout.Infinite, ct); return null!; }, "test", null);
+        Assert.Null(host.GetClient(TimeSpan.FromMilliseconds(300)));
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(5)));
+        Assert.True(sw.Elapsed < TimeSpan.FromMilliseconds(100), $"took {sw.Elapsed}");
+        Assert.Equal(1, host.ConnectAttempts);
     }
 
     [Fact]
