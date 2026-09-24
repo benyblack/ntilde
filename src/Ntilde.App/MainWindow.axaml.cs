@@ -267,6 +267,10 @@ namespace Ntilde
         // manual invocation) into the same staging directory - UpdateCoordinator.RunCheckAsync
         // has no serialization of its own.
         private bool _updateCheckInFlight;
+        // Guards ApplyStagedUpdateAsync against re-entrancy: the toast Restart button, the palette
+        // command and About's button all reach it, and nothing else stops a second click landing
+        // while the first is still probing the daemon or awaiting the confirmation dialog.
+        private bool _applyStagedUpdateInProgress;
         private ConnectionManagerWindow? _connectionManagerWindow;
         private TransferCenter? _transferCenterControl;
         private readonly CommandPaletteUsageStore _commandPaletteUsageStore;
@@ -9120,7 +9124,15 @@ namespace Ntilde
         /// mechanism. If it has running sessions, the user is asked to confirm the loss; declining
         /// leaves everything untouched (no teardown, no apply). Confirming - or no daemon at all -
         /// sends <c>shutdown</c> so no old-build daemon survives beside the new one, then proceeds
-        /// exactly as before.
+        /// exactly as before. If listing sessions fails, the count is unknown so there is nothing
+        /// to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative is the
+        /// exact bug this method exists to prevent, an old-build daemon surviving beside the new
+        /// one, just because a request on the way in happened to fail.
+        ///
+        /// Re-entrant: the toast button, the palette command and About's button can all reach this
+        /// (see <see cref="ApplyStagedUpdate"/>), and nothing stops two of them firing before the
+        /// first has finished probing. <see cref="_applyStagedUpdateInProgress"/> makes a second
+        /// call while one is already running a no-op rather than double-probing/double-confirming.
         /// </remarks>
         internal async System.Threading.Tasks.Task ApplyStagedUpdateAsync()
         {
@@ -9129,52 +9141,84 @@ namespace Ntilde
                 return;
             }
 
+            if (_applyStagedUpdateInProgress)
+            {
+                return;
+            }
+
+            _applyStagedUpdateInProgress = true;
             try
             {
-                using Ntilde.Mux.MuxClient? daemon = await MuxProbeForUpdate(CancellationToken.None);
+                Ntilde.Mux.MuxClient? daemon = null;
+                try
+                {
+                    daemon = await MuxProbeForUpdate(CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    // Best-effort: a daemon that cannot even be reached is not one the update
+                    // needs to wait on (there is no client to send `shutdown` to either).
+                    AppLogger.Log($"[MainWindow] mux probe before update failed: {ex.Message}");
+                }
+
                 if (daemon is not null)
                 {
-                    int running = (await daemon.ListSessionsAsync()).Count(s => s.Running);
-                    if (running > 0 && !await ConfirmSessionLossForUpdate(
-                            $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update."))
+                    using (daemon)
                     {
-                        return;
-                    }
+                        IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions = null;
+                        try
+                        {
+                            sessions = await daemon.ListSessionsAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            // The session count is now unknown, so there is nothing to confirm -
+                            // but the daemon answered the probe, so it is still there to shut down.
+                            AppLogger.Log($"[MainWindow] mux list-sessions before update failed: {ex.Message}");
+                        }
 
-                    try { await daemon.ShutdownServerAsync(); }
-                    catch (Exception ex) { AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}"); }
+                        if (sessions is not null)
+                        {
+                            int running = sessions.Count(s => s.Running);
+                            if (running > 0 && !await ConfirmSessionLossForUpdate(
+                                    $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update."))
+                            {
+                                return;
+                            }
+                        }
+
+                        try { await daemon.ShutdownServerAsync(); }
+                        catch (Exception ex) { AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}"); }
+                    }
+                }
+
+                PerformAppTeardown();
+
+                try
+                {
+                    _updateCoordinator.ApplyStagedUpdate();
+                }
+                catch (Exception ex)
+                {
+                    // Teardown already ran by this point, so the window is still up but the session
+                    // has been saved and the agent host and global hotkey are stopped - the app is
+                    // degraded, not healthy. The message has to say "restart manually" rather than
+                    // "try again", because carrying on in this state is not a supported outcome.
+                    TerminalLogger.Log("Applying the staged update failed: " + ex);
+                    // The window stays up and the user is told to close it: that close must run the
+                    // teardown again (above all SaveSession), not hit PerformAppTeardown's one-shot guard.
+                    _teardownDone = false;
+                    ShowRecordingToast(
+                        "Update could not be applied",
+                        "The update was downloaded but could not be applied. Close Ntilde and start it again to finish updating.",
+                        null,
+                        null,
+                        autoHide: false);
                 }
             }
-            catch (Exception ex)
+            finally
             {
-                // Best-effort: a daemon that cannot be probed or listed is not one the update
-                // needs to wait on. Log and fall through to teardown + apply rather than leaving
-                // a staged update stuck forever over an unrelated mux failure.
-                AppLogger.Log($"[MainWindow] mux probe before update failed: {ex.Message}");
-            }
-
-            PerformAppTeardown();
-
-            try
-            {
-                _updateCoordinator.ApplyStagedUpdate();
-            }
-            catch (Exception ex)
-            {
-                // Teardown already ran by this point, so the window is still up but the session
-                // has been saved and the agent host and global hotkey are stopped - the app is
-                // degraded, not healthy. The message has to say "restart manually" rather than
-                // "try again", because carrying on in this state is not a supported outcome.
-                TerminalLogger.Log("Applying the staged update failed: " + ex);
-                // The window stays up and the user is told to close it: that close must run the
-                // teardown again (above all SaveSession), not hit PerformAppTeardown's one-shot guard.
-                _teardownDone = false;
-                ShowRecordingToast(
-                    "Update could not be applied",
-                    "The update was downloaded but could not be applied. Close Ntilde and start it again to finish updating.",
-                    null,
-                    null,
-                    autoHide: false);
+                _applyStagedUpdateInProgress = false;
             }
         }
 

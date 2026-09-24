@@ -1,7 +1,9 @@
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Mux.Transport;
 using Ntilde.Shell;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
 using Ntilde.Tests.Core; // TestMainWindowFactory, TestAppDataRoot
@@ -150,6 +152,110 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         RunToCompletion(window).GetAwaiter().GetResult();
 
         Assert.True(shutdownRaised);
+        Assert.Equal(1, service.ApplyCount);
+    }
+
+    /// <summary>
+    /// A daemon that answers the probe but errors the <c>listSessions</c> request leaves the
+    /// session count unknown - there is nothing to confirm - but it is still a daemon of the old
+    /// build that must not survive the update, so <c>shutdown</c> is still sent. Scripted with a
+    /// hand-driven server end (<see cref="RawMuxConnection"/> over <see cref="InMemoryDuplexPipe"/>)
+    /// rather than <see cref="MuxTestHost"/>, which has no way to make a real
+    /// <c>MuxServer</c> fail one specific request.
+    /// </summary>
+    [AvaloniaFact]
+    public void Listing_sessions_failure_still_attempts_shutdown_then_applies()
+    {
+        MainWindow window = CreateWindow();
+        FakeApplyUpdateService service = StageUpdate(window);
+        (Stream clientEnd, Stream serverEnd) = InMemoryDuplexPipe.Create(1 << 20);
+        var raw = new RawMuxConnection(serverEnd);
+        bool shutdownReceived = false;
+
+        Task serverTask = Task.Run(async () =>
+        {
+            MuxRequest hello = await ReadRequestAsync(raw);
+            Assert.Equal(MuxMethods.Hello, hello.Method);
+            raw.Send(MuxFrames.Response(new MuxResponse
+            {
+                Id = hello.Id,
+                Result = MuxFrames.ToElement(new WelcomeResult { Version = 1 }, MuxJsonContext.Default.WelcomeResult),
+            }));
+
+            MuxRequest list = await ReadRequestAsync(raw);
+            Assert.Equal(MuxMethods.ListSessions, list.Method);
+            raw.Send(MuxFrames.Response(new MuxResponse
+            {
+                Id = list.Id,
+                Error = new MuxError { Code = MuxErrorCodes.Internal, Message = "scripted listSessions failure" },
+            }));
+
+            MuxRequest shutdown = await ReadRequestAsync(raw);
+            Assert.Equal(MuxMethods.Shutdown, shutdown.Method);
+            shutdownReceived = true;
+            raw.Send(MuxFrames.Response(new MuxResponse
+            {
+                Id = shutdown.Id,
+                Result = MuxFrames.ToElement(new MuxEmpty(), MuxJsonContext.Default.MuxEmpty),
+            }));
+        }, TestContext.Current.CancellationToken);
+
+        window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(clientEnd, null, ct)!;
+        window.ConfirmSessionLossForUpdate = _ =>
+            throw new InvalidOperationException("must not be asked: the session count is unknown when listing failed");
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+        serverTask.GetAwaiter().GetResult(); // observes the scripted server's own assertions too
+
+        Assert.True(shutdownReceived);
+        Assert.Equal(1, service.ApplyCount);
+
+        raw.Dispose();
+        clientEnd.Dispose();
+    }
+
+    private static async Task<MuxRequest> ReadRequestAsync(RawMuxConnection raw)
+    {
+        using MuxInboundFrame frame = await raw.ReadAsync() ?? throw new EndOfStreamException();
+        Assert.Equal(MuxFrameKind.Request, frame.Kind);
+        return MuxFrames.ParseJson(frame.Payload, MuxJsonContext.Default.MuxRequest);
+    }
+
+    /// <summary>
+    /// The toast button, the palette command and About's button can all reach
+    /// <see cref="MainWindow.ApplyStagedUpdate"/>; nothing else stops a second click landing while
+    /// the first call is still probing the daemon. The probe is gated on a
+    /// <see cref="TaskCompletionSource{TResult}"/> so the second call is guaranteed to start while
+    /// the first is still in flight, deterministically (no timing race).
+    /// </summary>
+    [AvaloniaFact]
+    public void A_second_call_while_one_is_running_is_a_no_op()
+    {
+        MainWindow window = CreateWindow();
+        FakeApplyUpdateService service = StageUpdate(window);
+        Task.Run(() =>
+        {
+            using MuxClient c = MuxClient.ConnectAsync(_mux.Listener.Connect(), null, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+            return MuxTestHost.SpawnAsync(c).GetAwaiter().GetResult();
+        }).GetAwaiter().GetResult();
+        var gate = new TaskCompletionSource<MuxClient?>();
+        int confirmCalls = 0;
+        window.MuxProbeForUpdate = _ => gate.Task;
+        window.ConfirmSessionLossForUpdate = _ => { Interlocked.Increment(ref confirmCalls); return Task.FromResult(true); };
+
+        Task first = window.ApplyStagedUpdateAsync();
+        Task second = window.ApplyStagedUpdateAsync();
+
+        Assert.True(second.IsCompleted, "a second call while the first is still probing must be a synchronous no-op");
+        Assert.False(first.IsCompleted, "the first call is still awaiting the gated probe");
+
+        MuxClient released = Task.Run(() => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)
+            .GetAwaiter().GetResult();
+        gate.SetResult(released);
+        PumpUntil(() => first.IsCompleted, "the first call finished");
+        first.GetAwaiter().GetResult(); // rethrows if it faulted
+
+        Assert.Equal(1, confirmCalls);
         Assert.Equal(1, service.ApplyCount);
     }
 

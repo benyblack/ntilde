@@ -175,37 +175,14 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.IsNotType<MuxTerminalSessionFactory>(pane.SessionFactory);
     }
 
-    [AvaloniaFact]
-    public void A_failed_update_apply_leaves_the_teardown_runnable_for_the_later_close()
-    {
-        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
-        {
-            CommandAssist = TestCommandAssistServices.Instance,
-            SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()),
-        });
-        var coordinator = new Ntilde.Update.UpdateCoordinator(new ThrowingApplyUpdateService(), () => true, _ => { }, _ => { });
-        Assert.Equal(Ntilde.Update.UpdateCheckOutcome.UpdateReady,
-            Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken).GetAwaiter().GetResult());
-        window.UpdateCoordinatorForTest = coordinator;
-
-        typeof(MainWindow).GetMethod("ApplyStagedUpdate", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
-        Assert.True(File.Exists(AppPaths.SessionFilePath), "the apply's own teardown saved the session");
-        File.Delete(AppPaths.SessionFilePath);
-
-        // The user closes the window as the failure toast asks: the session is saved again.
-        typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
-        Assert.True(File.Exists(AppPaths.SessionFilePath), "the close after a failed update saved the session again");
-    }
+    // A_failed_update_apply_leaves_the_teardown_runnable_for_the_later_close moved to
+    // Ntilde.Tests.Update.UpdateClosesMuxTests (tests/Ntilde.App.Tests/Update/UpdateClosesMuxTests.cs):
+    // that file properly awaits ApplyStagedUpdateAsync via a pumped wait rather than relying on the
+    // fire-and-forget entry point's async chain happening to finish synchronously, so it lives in
+    // one place rather than being duplicated across files.
 
     private static TerminalSettings Settings(MainWindow window) =>
         (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
-
-    private sealed class ThrowingApplyUpdateService : Ntilde.Update.IUpdateService
-    {
-        public bool IsSupported => true;
-        public Task<Ntilde.Update.UpdateAvailability> CheckAndDownloadAsync(CancellationToken ct) => Task.FromResult(new Ntilde.Update.UpdateAvailability(true, "99.0.0"));
-        public void ApplyAndRestart() => throw new IOException("Update.exe is locked");
-    }
 
     [AvaloniaFact]
     public void A_successful_attach_writes_the_session_file_with_the_mux_id()
