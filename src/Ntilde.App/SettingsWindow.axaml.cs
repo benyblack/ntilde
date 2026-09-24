@@ -3005,6 +3005,15 @@ namespace Ntilde
                     .FirstOrDefault(item => string.Equals(item.Content?.ToString(), _settings.AgentIndicatorTabRollup, StringComparison.Ordinal));
                 if (agentIndicatorTabRollupList.SelectedItem == null) agentIndicatorTabRollupList.SelectedIndex = 0;
             }
+            var sessionPersistenceList = this.FindControl<ComboBox>("SessionPersistenceList");
+            if (sessionPersistenceList != null)
+            {
+                string wanted = Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)
+                    ? Ntilde.Shell.Mux.SessionPersistenceMode.KeepOnClose : Ntilde.Shell.Mux.SessionPersistenceMode.Off;
+                sessionPersistenceList.SelectedItem = sessionPersistenceList.Items.Cast<ComboBoxItem>()
+                    .FirstOrDefault(i => string.Equals(i.Tag as string, wanted, StringComparison.Ordinal));
+                if (sessionPersistenceList.SelectedItem == null) sessionPersistenceList.SelectedIndex = 0;
+            }
             var longCommandNotificationsToggle = this.FindControl<CheckBox>("LongCommandNotificationsToggle");
             if (longCommandNotificationsToggle != null) longCommandNotificationsToggle.IsChecked = _settings.LongCommandNotificationsEnabled;
             var automaticUpdateChecksToggle = this.FindControl<CheckBox>("AutomaticUpdateChecksToggle");
@@ -3298,6 +3307,11 @@ namespace Ntilde
             if (agentIndicatorTabRollupList?.SelectedItem is ComboBoxItem agentRollupItem)
             {
                 _settings.AgentIndicatorTabRollup = agentRollupItem.Content?.ToString() ?? "WritesOnly";
+            }
+            var sessionPersistenceList = this.FindControl<ComboBox>("SessionPersistenceList");
+            if (sessionPersistenceList?.SelectedItem is ComboBoxItem persistenceItem)
+            {
+                _settings.SessionPersistence = persistenceItem.Tag as string ?? Ntilde.Shell.Mux.SessionPersistenceMode.Off;
             }
             var longCommandNotificationsToggle = this.FindControl<CheckBox>("LongCommandNotificationsToggle");
             if (longCommandNotificationsToggle != null) _settings.LongCommandNotificationsEnabled = longCommandNotificationsToggle.IsChecked == true;

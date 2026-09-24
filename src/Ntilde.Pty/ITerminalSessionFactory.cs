@@ -34,6 +34,10 @@ namespace Ntilde.Pty
     /// and <see cref="SkipPowerShellPostLaunchInit"/> are ignored; <see cref="Cols"/> and
     /// <see cref="Rows"/> still apply.
     /// </param>
+    /// <param name="ExistingMuxSessionId">
+    /// Multiplexer session to reopen instead of spawning (Phase 2 reattach). Ignored by factories that
+    /// do not multiplex. Null = spawn.
+    /// </param>
     public sealed record TerminalSessionRequest(
         string Command,
         string Arguments,
@@ -42,7 +46,8 @@ namespace Ntilde.Pty
         int Rows,
         IReadOnlyDictionary<string, string>? EnvironmentOverrides,
         bool SkipPowerShellPostLaunchInit,
-        SshSessionDescriptor? Ssh);
+        SshSessionDescriptor? Ssh,
+        Guid? ExistingMuxSessionId = null);
 
     /// <summary>
     /// The SSH half of a <see cref="TerminalSessionRequest"/>, kept deliberately opaque.

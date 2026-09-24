@@ -686,6 +686,18 @@
                                 </StackPanel>
                                 <NumericUpDown Name="ScrollbackInput" Grid.Column="1" Minimum="100" Maximum="100000" Value="10000" Increment="1000" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
                             </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Keep shells running when the window closes"/>
+                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Local shells run in a background multiplexer, survive closing the window or a crash, and reattach when Ntilde starts. SSH panes are not affected. Applies to panes opened after saving."/>
+                                </StackPanel>
+                                <ComboBox Name="SessionPersistenceList" Grid.Column="1" HorizontalAlignment="Right" MinWidth="180">
+                                    <ComboBoxItem Tag="Off">Off</ComboBoxItem>
+                                    <ComboBoxItem Tag="KeepOnClose">Keep running</ComboBoxItem>
+                                </ComboBox>
+                            </Grid>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
