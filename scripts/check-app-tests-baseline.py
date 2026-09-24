@@ -1,24 +1,34 @@
 #!/usr/bin/env python3
-"""Gate the non-blocking headless App.Tests lane against an explicit flake allowlist.
+"""Gate the headless App.Tests lane: the lane's verdict, with an explicit flake allowlist.
 
-The lane runs with continue-on-error because Avalonia.Headless.XUnit 12.0.4 can deadlock on
-testhost teardown (#81 / AvaloniaUI/Avalonia#21467) and a hang must not block PRs. The side
-effect was that nobody looked: the job reported success while 16 tests failed on Windows and
-14 on ubuntu, for weeks, and a real regression would have merged in silence.
-
-So the hang stays non-blocking and the *results* become blocking:
+The lane's test steps run with continue-on-error so that this script, not `dotnet test`'s exit
+code, decides whether the job fails. That is what lets the allowlist excuse a named flake at
+all - without it the step would red the job before anything consulted the list. Everything
+else fails here:
 
   * A failing test that is not named in the allowlist fails this step.
-  * A run that produced no results at all fails this step too - unless a hang dump is
-    present, which is the #81 signature and the one case continue-on-error exists for. A
-    crash, a discovery failure, or a zero-result trx is otherwise indistinguishable from
-    success, and that is exactly the "green but broken" shape this gate exists to stop.
-  * A truncated run is reported loudly, with the count, because the tests it never reached
-    cannot be said to have passed - and, when nothing hung, it *fails*. Reporting alone was
-    not enough: a run that executed 1,112 of 3,434 tests and lost the rest to xUnit
-    collection aborts reported "no failures" and went green, minutes after the same branch
-    had run all 3,434. Truncation is only tolerated for the one cause this lane exists to
-    tolerate, the #81 teardown hang, which leaves a hang dump behind to prove itself.
+  * A hang fails this step, whatever the trx says. The lane used to tolerate it as the #81
+    teardown hang, long misfiled as an upstream Avalonia.Headless deadlock
+    (AvaloniaUI/Avalonia#21467). It was ours: an off-thread read of Avalonia's
+    Dispatcher.UIThread static, landing between two lines of
+    HeadlessUnitTestSession.EnsureIsolatedApplication, unwound the one dispatcher loop the
+    assembly shares. #416 and #426 retired the readers. The hang then truncated about one
+    job-run in three between 2026-09-04 and #416, and none of 332 after #426, so the waiver
+    that used to live here is gone. The next hang is a regression, and its dump is uploaded
+    with the job's artifacts - that dump is what solved it the last two times.
+  * A run that produced no results at all fails this step too. A crash, a discovery failure,
+    or a zero-result trx is otherwise indistinguishable from success, and that is exactly
+    the "green but broken" shape this gate exists to stop.
+  * A truncated run fails, with the count, because the tests it never reached cannot be said
+    to have passed. Reporting alone was not enough: a run that executed 1,112 of 3,434 tests
+    and lost the rest to xUnit collection aborts reported "no failures" and went green,
+    minutes after the same branch had run all 3,434.
+  * A test step that exited non-zero fails this step unless the trx names a failing test to
+    account for it. continue-on-error hides that exit code from the job, so this script is
+    the only thing left to read it; a crashed testhost after its last result looks exactly
+    like a clean trx with a failed step.
+  * A test step that was skipped or cancelled fails this step: a lane that never ran has not
+    passed, and saying so beats the "no results, did not hang" message it would otherwise get.
   * A catastrophic (runner-level) failure in the step log *fails* this step, hang or no hang.
     Those aborts kill whole collections without ever appearing in the trx, which is why the
     summary can read "no failures" precisely because tests were never run. They used to be
@@ -31,23 +41,20 @@ So the hang stays non-blocking and the *results* become blocking:
     spent, so it is withdrawn: zero is now the only acceptable number, and the next one to
     appear is a regression rather than weather.
 
-    Unlike truncation, this check is not waived by a hang dump, because an abort is not
-    something the #81 teardown hang produces: the blame collector kills the testhost rather
-    than letting it print, and runs have been observed hanging with zero aborts, never the
-    reverse. Waiving it under a dump would reopen exactly the hole this gate was extended to
-    close, one job-run in three wide. If that reasoning is ever wrong it surfaces as a red PR
-    naming the abort, not as another green-but-broken run.
-
 Names are matched as substrings, so an allowlist entry without theory arguments covers
 every case of that theory.
 
-Usage: check-app-tests-baseline.py <trx-path> <allowlist-path> <min-executed> [log-path]
+Usage: check-app-tests-baseline.py <trx-path> <allowlist-path> <min-executed>
+                                   [log-path [step-outcome]]
 
   min-executed  Floor for the executed count in this lane. Lowering it is a decision, the
                 same way growing the flake allowlist is: it means the lane legitimately has
                 fewer tests, not that a truncated run should be waved through.
   log-path      Optional. The captured `dotnet test` output for this lane, scanned for
                 runner-level aborts that never reach the trx.
+  step-outcome  Optional. The test step's `steps.<id>.outcome` - success, failure, cancelled
+                or skipped - which is its result *before* continue-on-error rewrites it. An
+                empty value, or leaving it out for a local run, skips the exit-code check.
 """
 
 import os
@@ -121,7 +128,7 @@ def catastrophic_failures(log: Path) -> list[str]:
 
 
 def hang_dumps(trx: Path) -> list[Path]:
-    """Hang dumps written by --blame-hang-dump-type, i.e. the #81 signature."""
+    """Hang dumps written by --blame-hang-dump-type: the lane stopped making progress."""
     results_dir = trx.parent
     if not results_dir.is_dir():
         return []
@@ -141,35 +148,64 @@ def report_aborts(aborts: list[str], trx: Path) -> None:
         f"({len(set(aborts))} distinct). Each one kills a whole xUnit collection without "
         f"writing a result, so they are invisible to {trx.name} and the tests they took with "
         f"them cannot be said to have passed. This is blocking as of #411, which fixed the "
-        f"cause and left both OS lanes at zero; a hang dump does not excuse it, because the "
-        f"#81 hang does not produce aborts. Find what threw and contain it at its source - do "
-        f"not reach for the allowlist, which cannot name a test that never reported."
+        f"cause and left both OS lanes at zero. Find what threw and contain it at its source - "
+        f"do not reach for the allowlist, which cannot name a test that never reported."
     )
     for line in sorted(set(aborts)):
         summary(f"  - {line}")
 
 
-def judge(trx: Path, allowlist_path: Path, min_executed: int) -> int:
-    """Judge the lane's recorded results. Aborts are the caller's verdict, not this one's."""
-    dumps = hang_dumps(trx)
+def list_partial_failures(failures: list[str]) -> None:
+    """
+    Name the failures from the part of a rejected run that did execute. Knowing which tests
+    failed before the run was cut short is useful even when the run as a whole is rejected.
+    """
+    if failures:
+        summary(f"Failures recorded before the run was cut short ({len(failures)}):")
+        for name in failures:
+            summary(f"  - {name}")
 
-    if not trx.is_file():
-        if dumps:
-            summary(
-                f"::warning::App.Tests produced no trx, but wrote a hang dump "
-                f"({dumps[0].name}). That is the #81 teardown hang, which this lane tolerates "
-                f"by design. Nothing to gate on."
-            )
-            return 0
+
+def judge(trx: Path, allowlist_path: Path, min_executed: int, outcome: str) -> int:
+    """Judge the lane's recorded results. Aborts are the caller's verdict, not this one's."""
+    if outcome in ("skipped", "cancelled"):
+        summary(
+            f"::error::App.Tests did not run: its test step was {outcome}, so an earlier step "
+            f"in this job failed or the run was stopped. A lane that never ran has not passed. "
+            f"Fix whatever failed before it; this lane has nothing to report on its own."
+        )
+        return 1
+
+    dumps = hang_dumps(trx)
+    results = read_results(trx) if trx.is_file() else None
+
+    # First, because a hang explains every other symptom below - the missing trx, the short
+    # count, the failed step - and naming it is what points the reader at the dump.
+    if dumps:
+        recorded = f"{results[1]} executed test(s)" if results else "no trx"
+        summary(
+            f"::error::App.Tests hung ({dumps[0].name}) with {recorded}; the tests it never "
+            f"reached are neither passed nor failed. This lane no longer tolerates that: the "
+            f"#81 teardown hang it used to excuse was an off-thread read of Avalonia's "
+            f"Dispatcher.UIThread static unwinding HeadlessUnitTestSession's dispatcher loop, "
+            f"and #416 and #426 retired the readers the dumps named. A new hang is a regression. "
+            f"The dump is in this job's unit-tests-* artifact; TerminalPane.InitializeCommandAssist "
+            f"has the account of the last one."
+        )
+        if results:
+            list_partial_failures(results[0])
+        return 1
+
+    if results is None:
         summary(
             f"::error::App.Tests produced no results at {trx} and did not hang - no hang dump "
-            f"was written. That is a crash or a discovery failure, not the #81 hang, and it "
-            f"leaves the whole lane unjudged. Read the step log above."
+            f"was written. That is a crash or a discovery failure, and it leaves the whole "
+            f"lane unjudged. Read the step log above."
         )
         return 1
 
     allowlist = read_allowlist(allowlist_path)
-    failures, executed = read_results(trx)
+    failures, executed = results
 
     if executed == 0:
         summary(
@@ -178,35 +214,26 @@ def judge(trx: Path, allowlist_path: Path, min_executed: int) -> int:
         )
         return 1
 
-    if dumps:
-        summary(
-            f"::warning::App.Tests recorded {executed} executed test(s) and then hung "
-            f"({dumps[0].name}, the #81 teardown hang), so the run is truncated: tests it never "
-            f"reached are neither passed nor failed. The failures below are judged as usual."
-        )
-
-    # The floor is waived when a hang dump is present, and that is deliberate rather than
-    # lenient: the #81 hang truncates runs on roughly one job-run in three, and this lane is
-    # non-blocking precisely so that cannot red unrelated PRs. What it closes is the other
-    # case - a run cut short with nothing hung, which had no signal at all. Note that the
-    # abort check in main() takes no such waiver; see the module docstring for why the two
-    # truncation causes are treated differently.
-    if executed < min_executed and not dumps:
+    if executed < min_executed:
         summary(
             f"::error::App.Tests executed {executed} test(s), below this lane's floor of "
             f"{min_executed}, and nothing hung. The missing tests did not pass - they never "
             f"ran. If the lane legitimately has fewer tests now, lower the floor in ci.yml "
             f"deliberately; do not let a truncated run report success."
         )
-        # Listed before returning so the failures are still visible: knowing which tests failed
-        # in the part that did run is useful even when the run is being rejected.
-        if failures:
-            summary(f"Failures recorded before the run was cut short ({len(failures)}):")
-            for name in failures:
-                summary(f"  - {name}")
+        list_partial_failures(failures)
         return 1
 
     if not failures:
+        if outcome == "failure":
+            summary(
+                f"::error::App.Tests' test step exited non-zero, but {trx.name} records "
+                f"{executed} executed and no failing test, and nothing hung. Something failed "
+                f"that the trx cannot see - a testhost that crashed after its last result, or a "
+                f"data collector error. Read the step log above; continue-on-error keeps that "
+                f"exit code off the job, so this is the only place it is judged."
+            )
+            return 1
         summary(f"App.Tests: {executed} executed, no failures in {trx.name}.")
         return 0
 
@@ -237,10 +264,10 @@ def judge(trx: Path, allowlist_path: Path, min_executed: int) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) not in (4, 5):
+    if len(sys.argv) not in (4, 5, 6):
         print(
             f"usage: {Path(sys.argv[0]).name} <trx-path> <allowlist-path> <min-executed> "
-            f"[log-path]",
+            f"[log-path [step-outcome]]",
             file=sys.stderr,
         )
         return 2
@@ -252,14 +279,26 @@ def main() -> int:
     except ValueError:
         print(f"min-executed must be an integer, got {sys.argv[3]!r}", file=sys.stderr)
         return 2
-    log_path = Path(sys.argv[4]) if len(sys.argv) == 5 else None
+    log_path = Path(sys.argv[4]) if len(sys.argv) >= 5 else None
+    # Leaving the argument out (a local run) skips the exit-code check. Passing it empty does
+    # not: that is what `${{ steps.<id>.outcome }}` expands to when the id is misspelt, and
+    # reading it as "no outcome given" would quietly switch the check off - the exact
+    # silent-pass shape this script exists to stop.
+    outcome = sys.argv[5].strip().lower() if len(sys.argv) == 6 else ""
+    if len(sys.argv) == 6 and outcome not in ("success", "failure", "cancelled", "skipped"):
+        print(
+            f"step-outcome must be success, failure, cancelled or skipped; got {outcome!r}. "
+            f"An empty value usually means the step id in ci.yml does not match.",
+            file=sys.stderr,
+        )
+        return 2
 
     aborts = catastrophic_failures(log_path) if log_path else []
-    code = judge(trx, allowlist_path, min_executed)
+    code = judge(trx, allowlist_path, min_executed, outcome)
 
     # Reported after the result judgement, and overriding it, so the log ends on the reason the
-    # step is red. A tolerated outcome above - the #81 hang, with or without a trx - still loses
-    # here: those are excuses for missing *results*, not for a collection that died unread.
+    # step is red. A passing verdict above - including a failed step excused by the allowlist -
+    # still loses here: the allowlist names tests, and an abort is a collection that died unread.
     if aborts:
         report_aborts(aborts, trx)
         return 1

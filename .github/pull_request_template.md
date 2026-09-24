@@ -33,16 +33,17 @@ Fixes #
 - **Which categories did you run locally?**
   <!-- A bare `scripts/build.sh test` applies no filter and runs everything. But
        CI's gating job EXCLUDES Replay, RenderMetrics, PtySmoke, Stress and
-       GoldenSharedPng (each gets a dedicated job), and
-       tests/Ntilde.App.Tests is NON-BLOCKING there (#81) — so a failure in
-       it will not turn the check red. If your change touches either area, run it
-       locally and say so here. -->
+       GoldenSharedPng (each gets a dedicated job, some only on main), so a
+       failure there may not show on this PR. If your change touches one of
+       them, run it locally and say so here. tests/Ntilde.App.Tests IS gating
+       on this PR, on failures and on hangs; running it locally first just
+       saves a CI round trip. -->
 
   - [ ] full unfiltered run (`scripts/build.sh test`)
   - [ ] `Category=Replay`
   - [ ] `Category=RenderMetrics`
   - [ ] `Category=PtySmoke`
-  - [ ] `tests/Ntilde.App.Tests` (non-blocking in CI — check it yourself)
+  - [ ] `tests/Ntilde.App.Tests`
   - [ ] full local CI rehearsal (`ci/run.sh` / `ci/run.ps1`)
 
 ## Impact
