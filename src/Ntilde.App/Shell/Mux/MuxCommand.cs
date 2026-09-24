@@ -50,12 +50,21 @@ public static class MuxCommand
                 _ => Fail(stderr, Usage),
             };
         }
-        catch (Exception ex) when (ex is IOException or TimeoutException or MuxProtocolException or UnauthorizedAccessException or MuxUnavailableException)
+        catch (Exception ex) when (IsReportableFailure(ex))
         {
             stderr.WriteLine($"mux: {ex.Message}");
             return 1;
         }
     }
+
+    /// <summary>
+    /// Failures a verb reports as "mux: ..." with exit 1. SocketException is listed on its own: it is
+    /// not an IOException, and one escaping here reached Program.Main's catch, which writes the GUI's
+    /// startup-error file and rethrows - a crash for what is an "endpoint unusable" error.
+    /// </summary>
+    internal static bool IsReportableFailure(Exception ex) =>
+        ex is IOException or TimeoutException or MuxProtocolException or UnauthorizedAccessException or MuxUnavailableException
+            or System.Net.Sockets.SocketException;
 
     internal static bool TryParseServe(string[] args, out MuxServeOptions options, out string? error)
     {
@@ -95,6 +104,19 @@ public static class MuxCommand
     private static int Serve(string[] args, TextWriter stderr)
     {
         if (!TryParseServe(args, out MuxServeOptions options, out string? error)) return Fail(stderr, error + Environment.NewLine + Usage);
+
+        // Program.cs skips CliConsoleBindings.Prepare for serve (a daemon must not attach to the
+        // launching console), so a --foreground run, which is meant to be watched, binds it here -
+        // otherwise its output is invisible on Windows (a WinExe has no console of its own).
+        if (options.Foreground)
+        {
+            // Rebinding replaces Console.Error: follow it only when that is what we were handed
+            // (a caller's own writer, e.g. a test's, is kept).
+            bool wasConsoleError = ReferenceEquals(stderr, Console.Error);
+            CliConsoleBindings.Prepare();
+            if (wasConsoleError) stderr = Console.Error;
+        }
+
         return MuxDaemonProcess.Run(options, stderr);
     }
 

@@ -31,11 +31,42 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     /// </summary>
     public static ProcessMuxDaemonSpawner CreateDefault()
     {
-        string? appImage = Environment.GetEnvironmentVariable("APPIMAGE");
-        string exe = !string.IsNullOrEmpty(appImage) && File.Exists(appImage)
-            ? appImage
-            : Environment.ProcessPath ?? throw new InvalidOperationException("The executable path is unknown.");
+        string exe = ResolveDaemonExecutable(
+            Environment.GetEnvironmentVariable("APPIMAGE"),
+            Environment.GetEnvironmentVariable("APPDIR"),
+            Environment.ProcessPath,
+            File.Exists)
+            ?? throw new InvalidOperationException("The executable path is unknown.");
         return new ProcessMuxDaemonSpawner(exe, []);
+    }
+
+    /// <summary>
+    /// The executable to run as the daemon. <paramref name="appImage"/> only when we really run from
+    /// that AppImage - our own path inside its mount (<paramref name="appDir"/>). Both variables are
+    /// inherited by every child process: an ntilde started from a shell inside an AppImage-launched
+    /// ntilde (or any process with a stray/hostile $APPIMAGE) would otherwise spawn whatever file
+    /// $APPIMAGE names as the daemon that runs every shell. Case-sensitive on Linux, where paths are.
+    /// </summary>
+    internal static string? ResolveDaemonExecutable(string? appImage, string? appDir, string? processPath, Func<string, bool> fileExists)
+    {
+        ArgumentNullException.ThrowIfNull(fileExists);
+        if (!string.IsNullOrEmpty(appImage) && !string.IsNullOrEmpty(appDir) && !string.IsNullOrEmpty(processPath)
+            && IsUnder(processPath, appDir) && fileExists(appImage))
+        {
+            return appImage;
+        }
+
+        return processPath;
+    }
+
+    private static bool IsUnder(string path, string directory)
+    {
+        StringComparison comparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        string dir = Path.TrimEndingDirectorySeparator(directory);
+        if (dir.Length == 0) return false;
+        return path.Length > dir.Length + 1
+            && path.StartsWith(dir, comparison)
+            && (path[dir.Length] == Path.DirectorySeparatorChar || path[dir.Length] == Path.AltDirectorySeparatorChar);
     }
 
     public void Spawn()

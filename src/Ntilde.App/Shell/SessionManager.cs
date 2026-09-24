@@ -366,7 +366,36 @@ namespace Ntilde.Shell
             var json = File.ReadAllText(SessionPath);
             payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
             session = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession);
+            if (session != null) DedupeMuxIds(session);
             return session != null;
+        }
+
+        /// <summary>
+        /// Leaves each daemon session id on at most one pane - the first in tab/tree order - and
+        /// clears it from the rest, in place. A hand-edited or merged session file can name one id
+        /// twice; the daemon opens a session for one client only, so the second pane's reopen used to
+        /// fail and show a misleading "multiplexer unavailable". The duplicates start fresh shells.
+        /// Done on the loaded session, before any tab is built: startup restore builds tabs lazily,
+        /// one at a time, so no per-tab pass could see the whole file.
+        /// </summary>
+        internal static void DedupeMuxIds(NtildeSession session)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+            var claimed = new HashSet<Guid>();
+
+            void Visit(PaneNode? node)
+            {
+                if (node == null) return;
+                if (Guid.TryParse(node.MuxSessionId, out Guid id) && !claimed.Add(id))
+                {
+                    node.MuxSessionId = null;
+                    node.MuxEndpoint = null;
+                }
+
+                foreach (PaneNode child in node.Children) Visit(child);
+            }
+
+            foreach (TabSession tab in session.Tabs) Visit(tab.Root);
         }
 
         // Single source of truth for how a leaf resolves to a profile at restore time.
