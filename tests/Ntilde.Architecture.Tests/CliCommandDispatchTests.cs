@@ -113,6 +113,7 @@ public class CliCommandDispatchTests
         Assert.Contains(commandTypes, t => t.Name == "ReplayCommand");
         Assert.Contains(commandTypes, t => t.Name == "SshAskPassCommand");
         Assert.Contains(commandTypes, t => t.Name == "VtReportCommand");
+        Assert.Contains(commandTypes, t => t.Name == "MuxCommand");
 
         string programSource = File.ReadAllText(Path.Combine(RepoRoot(), "src/Ntilde.App/Program.cs"));
 

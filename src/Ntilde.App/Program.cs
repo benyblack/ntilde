@@ -65,6 +65,14 @@ class Program
                 return;
             }
 
+            if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args))
+            {
+                // serve is a daemon: it must not attach to the launching console (it detaches from it).
+                if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
+                Environment.ExitCode = Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
+                return;
+            }
+
             // Attach the debug-log sink before anything logs. Placed after the CLI dispatches
             // above, which return without ever writing to it — a `--replay` or `backup`
             // invocation has no business truncating the GUI's log.
