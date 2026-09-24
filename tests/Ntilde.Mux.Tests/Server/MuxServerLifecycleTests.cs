@@ -91,6 +91,28 @@ public sealed class MuxServerLifecycleTests
     }
 
     [Fact]
+    public async Task Shutdown_reply_reaches_the_client_even_when_the_handler_tears_the_server_down()
+    {
+        // What the daemon host does on ShutdownRequested. It aborts every connection, which drops
+        // any frame not yet written - so the reply must already be on the wire when the event fires.
+        // Looped: the race is between the sender thread and the handler.
+        for (int i = 0; i < 50; i++)
+        {
+            using var host = new MuxTestHost();
+            host.Server.ShutdownRequested += () =>
+            {
+                host.Server.KillAllSessions();
+                host.Server.Dispose();
+            };
+            MuxClient client = await host.ConnectClientAsync();
+            await MuxTestHost.SpawnAsync(client);
+
+            await client.ShutdownServerAsync(Ct); // throws "connection closed" if the reply was dropped
+            await TestWait.UntilAsync(() => !client.IsConnected, $"iteration {i}: the server closed the connection after replying");
+        }
+    }
+
+    [Fact]
     public async Task MuxClientSession_IsConnected_follows_the_client()
     {
         using var host = new MuxTestHost();

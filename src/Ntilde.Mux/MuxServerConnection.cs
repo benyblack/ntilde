@@ -39,6 +39,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private string? _closeReason;
 
     /// <summary>
+    /// The <c>shutdown</c> reply (reader writes, sender reads). The sender raises
+    /// <see cref="MuxServer.ShutdownRequested"/> only once this frame is on the wire: the host's
+    /// handler disposes the server, whose Abort drops every frame not yet written.
+    /// </summary>
+    private MuxOutboundFrame? _shutdownReply;
+
+    /// <summary>
     /// Reader and sender each decrement exactly once, from their own outer <c>finally</c>. The one
     /// that reaches zero notifies the server - so a connection whose reader has already exited (a
     /// protocol error) but whose sender is still stuck writing an unread final frame to a stalled
@@ -217,6 +224,10 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                         lock (_gate) Account(frame, -length); // Kind stays readable after Release
                         frame.Release();
                     }
+
+                    // Reached only when the write succeeded. Frames are not pooled (only their
+                    // buffers are), so reference identity cannot match a later frame.
+                    if (ReferenceEquals(frame, Volatile.Read(ref _shutdownReply))) RaiseShutdownRequested();
                 }
             }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
@@ -394,11 +405,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     ReplyEmpty(request);
                     break;
                 case MuxMethods.Shutdown:
-                    ReplyEmpty(request);
-                    // After the reply is queued: the host tears the server down, which aborts this
-                    // connection - so off this reader thread, or Dispose -> Abort would run on the
-                    // very thread it is stopping. Control plane, not the output path.
-                    ThreadPool.UnsafeQueueUserWorkItem(static s => s.RequestShutdown(), _server, preferLocal: false);
+                    HandleShutdown(request);
                     break;
                 case MuxMethods.ListSessions:
                     Reply(request, new ListSessionsResult { Sessions = _server.ListSessions() }, MuxJsonContext.Default.ListSessionsResult);
@@ -556,6 +563,32 @@ internal sealed class MuxServerConnection : IMuxFrameSink
 
         Send(frame);
     }
+
+    /// <summary>
+    /// Replies, and has the sender raise <see cref="MuxServer.ShutdownRequested"/> once that reply
+    /// is written (see <see cref="_shutdownReply"/>). A request that wants no reply raises it now.
+    /// If the reply never reaches the wire (the peer went away first), the event is not raised:
+    /// the client saw a failure and may retry.
+    /// </summary>
+    private void HandleShutdown(MuxRequest request)
+    {
+        if (request.Id == 0)
+        {
+            RaiseShutdownRequested();
+            return;
+        }
+
+        MuxOutboundFrame frame = MuxFrames.Response(new MuxResponse { Id = request.Id, Result = MuxFrames.ToElement(new MuxEmpty(), MuxJsonContext.Default.MuxEmpty) });
+        Volatile.Write(ref _shutdownReply, frame); // before it is queued, so the sender cannot miss it
+        Send(frame);
+    }
+
+    /// <summary>
+    /// Off this connection's threads: the handler tears the server down, and Dispose -> Abort must
+    /// not run on the very thread it is stopping. Control plane, not the output path.
+    /// </summary>
+    private void RaiseShutdownRequested() =>
+        ThreadPool.UnsafeQueueUserWorkItem(static s => s.RequestShutdown(), _server, preferLocal: false);
 
     private void ReplyEmpty(MuxRequest request) => Reply(request, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty);
 
