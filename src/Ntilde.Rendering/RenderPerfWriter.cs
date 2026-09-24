@@ -110,6 +110,7 @@ namespace Ntilde.Rendering
                         writer.WriteNumber(nameof(RenderPerfMetrics.DirectDrawTextCount), metrics.DirectDrawTextCount);
                         writer.WriteNumber(nameof(RenderPerfMetrics.ShapedTextRuns), metrics.ShapedTextRuns);
                         writer.WriteNumber(nameof(RenderPerfMetrics.AllocBytesThisFrame), metrics.AllocBytesThisFrame);
+                        writer.WriteString(nameof(RenderPerfMetrics.Backend), metrics.Backend ?? RenderBackend.Offscreen);
                         writer.WriteEndObject();
                         writer.Flush();
                     }
