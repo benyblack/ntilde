@@ -40,6 +40,11 @@ public static class MuxEndpointConnector
             socket.Dispose();
             throw new TimeoutException($"Timed out connecting to {endpoint}.");
         }
+        catch (SocketException ex)
+        {
+            socket.Dispose();
+            throw new IOException($"Could not connect to {endpoint}: {ex.Message}", ex);
+        }
         catch
         {
             socket.Dispose();

@@ -60,7 +60,9 @@ public sealed class NamedPipeMuxListenerTests
     public void Connecting_to_a_pipe_nobody_serves_times_out()
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Named pipes are the Windows transport.");
-        Assert.ThrowsAny<Exception>(() => MuxEndpointConnector.Connect(UniqueName(), TimeSpan.FromMilliseconds(300)));
+        // Verified (not guessed): NamedPipeClientStream.Connect(int) throws TimeoutException, with
+        // message "The operation has timed out.", when nothing serves the pipe within the timeout.
+        Assert.Throws<TimeoutException>(() => MuxEndpointConnector.Connect(UniqueName(), TimeSpan.FromMilliseconds(300)));
     }
 
     [Fact]

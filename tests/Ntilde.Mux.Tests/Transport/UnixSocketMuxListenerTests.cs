@@ -70,6 +70,14 @@ public sealed class UnixSocketMuxListenerTests : IDisposable
     }
 
     [Fact]
+    public void Connecting_to_a_socket_nobody_listens_on_throws_IOException()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets are the Linux/macOS transport.");
+        Directory.CreateDirectory(_dir);
+        Assert.Throws<IOException>(() => MuxEndpointConnector.Connect(SocketPath, TimeSpan.FromSeconds(2)));
+    }
+
+    [Fact]
     public async Task Dispose_unblocks_accept_and_unlinks_the_socket()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets are the Linux/macOS transport.");
