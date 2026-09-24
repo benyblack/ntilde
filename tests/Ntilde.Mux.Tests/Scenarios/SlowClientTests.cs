@@ -25,7 +25,7 @@ public sealed class SlowClientTests
         byte[] chunk = new byte[4096];
         Array.Fill(chunk, (byte)'x');
         const int chunks = 512; // 2 MiB
-        for (int i = 0; i < chunks; i++) host.Fake(id).Emit(chunk);
+        await EmitPacedAsync(host, id, pane, chunk, chunks);
 
         Assert.Equal(MuxErrorCodes.ClientTooSlow, await closed.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
         await host.SettleAsync(id, healthy);
@@ -62,7 +62,7 @@ public sealed class SlowClientTests
 
         byte[] chunk = new byte[4096];
         Array.Fill(chunk, (byte)'y');
-        for (int i = 0; i < 512; i++) host.Fake(id).Emit(chunk);
+        await EmitPacedAsync(host, id, pane, chunk, 512);
 
         Assert.Equal(MuxErrorCodes.ClientTooSlow, await closed.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
         host.Fake(id).Emit("still alive");
@@ -70,5 +70,28 @@ public sealed class SlowClientTests
         Assert.False(host.Mux(id).IsFaulted);
         Assert.Equal(1, host.Mux(id).AttachedClients);
         host.AssertPaneMatchesMux(id, pane, "the healthy client");
+    }
+
+    /// <summary>
+    /// Emits in batches well under the per-client budget and lets the healthy client catch up after
+    /// each one. Unpaced, the whole 2 MiB lands in one burst and a healthy client on a slow runner can
+    /// itself fall more than a budget behind - and be (correctly) dropped as too slow. The client that
+    /// never reads still overflows: its backlog only ever grows.
+    /// </summary>
+    private static async Task EmitPacedAsync(MuxTestHost host, Guid id, ClientPaneModel healthy, byte[] chunk, int chunks)
+    {
+        const int batch = 16; // 64 KiB per batch against a 256 KiB budget
+        long emitted = 0;
+        for (int i = 0; i < chunks; i += batch)
+        {
+            for (int j = i; j < Math.Min(i + batch, chunks); j++)
+            {
+                host.Fake(id).Emit(chunk);
+                emitted += chunk.Length;
+            }
+
+            long target = emitted;
+            await TestWait.UntilAsync(() => healthy.Session.StreamPosition >= target, "the healthy client caught up", TimeSpan.FromSeconds(30));
+        }
     }
 }
