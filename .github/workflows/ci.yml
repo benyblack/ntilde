@@ -354,31 +354,34 @@ jobs:
             echo "::endgroup::"
           done
 
-      # The Avalonia-headless suite (Ntilde.App.Tests). continue-on-error here tolerates
-      # the HANG only; test failures are blocking, via the allowlist gate below.
+      # The Avalonia-headless suite (Ntilde.App.Tests). BLOCKING - on failures, on hangs, and on
+      # a non-zero exit nobody can account for - but the verdict is given by the gate step
+      # below, not by this step's exit code.
       #
-      # The hang was long recorded here as an upstream framework deadlock — AvaloniaUI/Avalonia#21467,
-      # tracked as #81 — that no in-repo change could fix. That was wrong, and it is worth being
-      # precise about why, because believing it is what kept anyone from reading a dump for months.
-      # Four hang dumps all showed the same thing: our own Command Assist pass, still in flight from
-      # a finished test, read Avalonia's mutable Dispatcher.UIThread static from a threadpool thread
-      # and became the UI thread. The next test's Compositor then threw inside
-      # EnsureIsolatedApplication(), which sits outside the try in HeadlessUnitTestSession.DispatchCore,
-      # unwinding the one dispatcher loop the assembly shares — after which every remaining test
-      # blocks forever and the trx reports nothing. PR #416 fixed the read; #417 removed the leaked
-      # panes that fed the same contamination. TerminalPane.InitializeCommandAssist has the full
-      # account.
+      # continue-on-error is here for one reason: the flake allowlist. A test named in
+      # tests/app-tests-known-flaky.txt must be able to fail without failing the job, and a
+      # failing test makes `dotnet test` exit non-zero, which would red the job before the gate
+      # ever read the list. So this step hands its outcome to the gate (steps.<id>.outcome is
+      # the result before continue-on-error rewrites it), and the gate fails the job for
+      # anything the allowlist does not excuse - including an exit code with no failing test
+      # behind it. Removing continue-on-error would not make this lane stricter; it would only
+      # make the allowlist impossible to use.
       #
-      # continue-on-error stays for now anyway, because the claim that replaced the old one has to
-      # earn its keep the same way: a handful of green runs is not evidence that no hang remains.
-      # Revisit by counting hang-dump uploads on main over a few dozen runs; when they stop, drop
-      # continue-on-error from both test steps and delete the hang-dump branch in
-      # check-app-tests-baseline.py.
-      #
-      # continue-on-error covers the HANG, not the RESULTS. The results are gated by the
-      # step below, because "non-blocking" silently became "unread": this job reported
-      # success for weeks while 16 tests failed on Windows and 14 on ubuntu.
-      - name: Test (headless App.Tests — hang-tolerant, failures gated below; #81 / AvaloniaUI/Avalonia#21467)
+      # It used to tolerate the #81 testhost hang as well, long recorded here as an upstream
+      # framework deadlock (AvaloniaUI/Avalonia#21467) that no in-repo change could fix. That was
+      # wrong: an off-thread read of Avalonia's mutable Dispatcher.UIThread static, landing
+      # between two lines of HeadlessUnitTestSession.EnsureIsolatedApplication(), made that
+      # thread the UI thread, the next test's Compositor threw outside DispatchCore's try, and
+      # the one dispatcher loop the assembly shares unwound - after which every remaining test
+      # blocked forever and the trx reported nothing. #416 removed the Command Assist reader
+      # and #426 the 28 in TerminalPane; TerminalPane.InitializeCommandAssist has the account.
+      # The exit condition this comment used to state was "count hang dumps on main over a few
+      # dozen runs". Counted from the gate's own annotations on every Unit Tests job: 25 of 58
+      # hung from 2026-09-04 until #416, 4 of 38 between #416 and #426, and 0 of 332 in the 161
+      # runs after #426 (to 2026-09-23). So a hang now fails the gate like any other way of not
+      # finishing, and the blame dump is still captured and uploaded to diagnose it.
+      - name: Test (headless App.Tests — verdict in the gate step below)
+        id: app_tests_main
         continue-on-error: true
         env:
           SKIP_RUST_NATIVE_BUILD: '1'
@@ -409,7 +412,8 @@ jobs:
       # classes, order-dependent, green in isolation, and invisible because this job reported
       # success. Two in-process fixes were tried and both swapped the failures for a hang; see
       # SnapshotService.EnsureAvaloniaInitialized. Not sharing the process is what works.
-      - name: Test (headless App.Tests, PlatformBoot lane — hang-tolerant, failures gated below)
+      - name: Test (headless App.Tests, PlatformBoot lane — verdict in the gate step below)
+        id: app_tests_platformboot
         continue-on-error: true
         env:
           SKIP_RUST_NATIVE_BUILD: '1'
@@ -424,12 +428,12 @@ jobs:
             --logger "trx;LogFileName=unit_app_platformboot.trx" \
             2>&1 | tee tests/Ntilde.App.Tests/TestResults/platformboot/console.log
 
-      # Gates the lane above on its own results: any failing test not named in
-      # tests/app-tests-known-flaky.txt fails this job, as does a runner-level abort in the
-      # console log — those kill a whole collection without writing a result, so the trx
-      # cannot see them. A missing trx is the #81 hang and only warns; there are no results to
-      # judge, and that hang is the one thing this lane exists to tolerate. Runs on failure
-      # too, so a non-zero `dotnet test` still gets its results read.
+      # The verdict for both lanes above. Any failing test not named in
+      # tests/app-tests-known-flaky.txt fails this job, as do a hang, a missing or short trx,
+      # a runner-level abort in the console log — those kill a whole collection without
+      # writing a result, so the trx cannot see them — and a test step that exited non-zero
+      # with no failing test to explain it. Runs on failure too, so a non-zero `dotnet test`
+      # still gets its results read.
       # The gate decides whether this lane may report success, so its own branching is worth
       # a second of CI: the truncation and abort rules are what stop another green-but-broken
       # run, and getting them backwards would either red every PR or hide the next one.
@@ -453,25 +457,29 @@ jobs:
           # with one shared TestResults/ each lane would see the other's dump. That reported the
           # PlatformBoot lane as truncated when it had finished cleanly, and would have let a
           # leftover dump excuse a genuine crash in the other lane.
-          # The third field is the lane's floor for executed tests. A run below it that did not
-          # hang is rejected rather than summarised: 0962be8 executed 1,112 of 3,434 here, lost
-          # the rest to collection aborts, and reported "no failures" on a green job. The floors
-          # sit next to the --filter arguments above because changing a filter is what
-          # legitimately changes a count - and lowering one should be as deliberate as adding a
-          # line to the flake allowlist. Headroom is for OS skip differences (windows and ubuntu
-          # differ by a handful) and small churn, not for losing collections.
+          # The third field is the lane's floor for executed tests. A run below it is rejected
+          # rather than summarised: 0962be8 executed 1,112 of 3,434 here, lost the rest to
+          # collection aborts, and reported "no failures" on a green job. The floors sit next to
+          # the --filter arguments above because changing a filter is what legitimately changes
+          # a count - and lowering one should be as deliberate as adding a line to the flake
+          # allowlist. Headroom is for OS skip differences (windows and ubuntu differ by a
+          # handful) and small churn, not for losing collections.
+          #
+          # The fourth is the test step's outcome, the exit code continue-on-error keeps off the
+          # job. The gate rejects an empty one rather than skipping the check, so a step id
+          # misspelt here fails loudly instead of switching the check off.
           status=0
-          for lane in main:unit_app:3300 platformboot:unit_app_platformboot:40; do
-            dir="${lane%%:*}"
-            rest="${lane#*:}"
-            trx="${rest%%:*}"
-            floor="${rest##*:}"
+          for lane in \
+            "main:unit_app:3300:${{ steps.app_tests_main.outcome }}" \
+            "platformboot:unit_app_platformboot:40:${{ steps.app_tests_platformboot.outcome }}"; do
+            IFS=: read -r dir trx floor outcome <<< "$lane"
             echo "::group::$trx"
             "$py" scripts/check-app-tests-baseline.py \
               "tests/Ntilde.App.Tests/TestResults/$dir/$trx.trx" \
               tests/app-tests-known-flaky.txt \
               "$floor" \
-              "tests/Ntilde.App.Tests/TestResults/$dir/console.log" || status=1
+              "tests/Ntilde.App.Tests/TestResults/$dir/console.log" \
+              "$outcome" || status=1
             echo "::endgroup::"
           done
           exit $status
@@ -725,9 +733,10 @@ jobs:
           # attribute - excluding it is more honest than adding the package to make an
           # empty report appear.
           #
-          # App.Tests is also absent, matching the gating lane, which excludes it because
-          # of the Avalonia headless flake (#81). It does carry the collector, and it
-          # exercises a lot of VT (the buffer and reflow scenario suites live there) - so
+          # App.Tests is also absent. It was left out while its headless lane hung on
+          # roughly one run in three (#81); #426 fixed that, so the reason is gone and
+          # adding it is a follow-up rather than a hazard. It does carry the collector, and
+          # it exercises a lot of VT (the buffer and reflow scenario suites live there) - so
           # its absence is the main reason the VT figure below understates true coverage.
           for proj in VT Rendering Platform McpServer; do
             echo "::group::Ntilde.$proj.Tests"

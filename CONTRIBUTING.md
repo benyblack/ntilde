@@ -417,23 +417,26 @@ All PRs are automatically checked by CI:
   and commit the result.
 - unit tests (VT, Rendering, Architecture, Platform, McpServer — blocking)
 - headless App.Tests, in two lanes (`Lane!=PlatformBoot` and `Lane=PlatformBoot`)
-  — **failures are blocking**. Both test steps carry `continue-on-error`, but
-  that tolerates the *hang* only. That hang was recorded here for months as an
+  — **blocking**, on failures and on hangs. Both test steps carry
+  `continue-on-error`, but only so the verdict can come from the following step,
+  **Check App.Tests failures against the flake allowlist**, instead of from
+  `dotnet test`'s exit code. That step fails the job for any failing test not
+  named in `tests/app-tests-known-flaky.txt`, for a hang, for a missing or short
+  `.trx`, for a runner-level abort, and for a test step that exited non-zero
+  with no failing test to explain it. It prints how many tests executed, so a
+  truncated run is visible rather than silently green.
+
+  It used to tolerate the hang. That hang was recorded here for months as an
   upstream Avalonia.Headless deadlock (AvaloniaUI/Avalonia#21467, tracked as
-  #81) that no in-repo change could address; four dumps say otherwise. It was
-  ours: a Command Assist pass outliving its test read Avalonia's mutable
-  `Dispatcher.UIThread` static from a threadpool thread and became the UI
-  thread, and the next test's throw inside `EnsureIsolatedApplication()` — which
-  Avalonia does not guard — unwound the single dispatcher loop the whole
-  assembly shares, so every remaining test blocked forever and the `.trx`
-  reported nothing. PR #416 fixed it; #417 removed the leaked panes feeding the
-  same contamination. The tolerance stays until run data says the hang is gone,
-  because a handful of green runs is not that evidence. The *results* are then
-  gated by the following step,
-  **Check App.Tests failures against the flake allowlist**, which fails the job
-  for any failing test not named in `tests/app-tests-known-flaky.txt`. A missing
-  `.trx` is the hang and only warns, so the step also prints how many tests
-  executed — a truncated run is visible rather than silently green.
+  #81) that no in-repo change could address; the dumps said otherwise. It was
+  ours: code running off the UI thread read Avalonia's mutable
+  `Dispatcher.UIThread` static and became the UI thread, and the next test's
+  throw inside `EnsureIsolatedApplication()` — which Avalonia does not guard —
+  unwound the single dispatcher loop the whole assembly shares, so every
+  remaining test blocked forever and the `.trx` reported nothing. #416 and #426
+  removed the readers the dumps named, and no CI job has hung since. If yours
+  does, the blame dump is in the job's `unit-tests-*` artifact: read it before
+  theorising, which is what finally solved this one.
 - renderer metric thresholds (`tab_perf_smoke`)
 - golden shared PNG tests
 
@@ -448,10 +451,10 @@ a parity or replay break detected there must be fixed or reverted before the
 next release. Release tags additionally run the gating unit lane on all three
 OSes before any bundle is published.
 
-Failing blocking CI blocks merge. The only tolerated failure anywhere is the
-#81 hang, and the heavy categories (`Replay`, `RenderMetrics`, `PtySmoke`,
-`Stress`, `GoldenSharedPng`) run in their own jobs or on `main` rather than on
-every PR — run the ones your change touches locally.
+Failing blocking CI blocks merge. No failure is tolerated anywhere except a
+flaky App.Test named in the allowlist, and the heavy categories (`Replay`,
+`RenderMetrics`, `PtySmoke`, `Stress`, `GoldenSharedPng`) run in their own jobs
+or on `main` rather than on every PR — run the ones your change touches locally.
 
 Maintainers may request:
 - additional replay fixtures
