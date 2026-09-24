@@ -177,7 +177,7 @@ public class GlyphInkBoundsTests
             Subpixel = true
         };
         using var paint = new SKPaint { IsAntialias = true, Color = SKColors.White };
-        canvas.DrawText(text, penX, penY, physFont, paint);
+        canvas.DrawText(text, penX, penY, SKTextAlign.Left, physFont, paint);
 
         SKRectI ink = InkRect(bitmap, 0, 0, extent, extent);
         return ink.IsEmpty

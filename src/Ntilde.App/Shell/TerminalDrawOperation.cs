@@ -903,22 +903,21 @@ namespace Ntilde.Shell
             using var textPaint = new SKPaint
             {
                 Color = new SKColor(0, 255, 0, alpha),
-                Typeface = SKTypeface.Default,
-                TextSize = 12f,
                 IsAntialias = true
             };
+            using var textFont = new SKFont(SKTypeface.Default, 12f);
 
             float textX = x + padding;
             float textY = y + padding + 12f;
             float lineHeight = 16f;
 
-            canvas.DrawText($"Frame: {metrics.FrameTimeMs:F2} ms", textX, textY, textPaint);
+            canvas.DrawText($"Frame: {metrics.FrameTimeMs:F2} ms", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Dirty Cells: {metrics.DirtyCellsEstimated} | Rows: {metrics.DirtyRows}", textX, textY, textPaint);
+            canvas.DrawText($"Dirty Cells: {metrics.DirtyCellsEstimated} | Rows: {metrics.DirtyRows}", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Draws: {metrics.DrawCallsTotal} (Cache:{metrics.RowPictureCacheHits}/{metrics.RowPictureCacheMisses})", textX, textY, textPaint);
+            canvas.DrawText($"Draws: {metrics.DrawCallsTotal} (Cache:{metrics.RowPictureCacheHits}/{metrics.RowPictureCacheMisses})", textX, textY, SKTextAlign.Left, textFont, textPaint);
             textY += lineHeight;
-            canvas.DrawText($"Atlas Builds: {metrics.AtlasAlphaGlyphs}/{metrics.AtlasColorGlyphs} | Mem: {metrics.AllocBytesThisFrame / 1024.0:F1} kb", textX, textY, textPaint);
+            canvas.DrawText($"Atlas Builds: {metrics.AtlasAlphaGlyphs}/{metrics.AtlasColorGlyphs} | Mem: {metrics.AllocBytesThisFrame / 1024.0:F1} kb", textX, textY, SKTextAlign.Left, textFont, textPaint);
         }
 
         private void FlushBatches(SKCanvas canvas)
