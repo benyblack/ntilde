@@ -240,7 +240,7 @@ namespace Ntilde
         private Ntilde.Update.UpdateCoordinator? _updateCoordinator;
 
         /// <summary>Test seam: installs a coordinator over a fake IUpdateService.</summary>
-        internal Ntilde.Update.UpdateCoordinator? UpdateCoordinatorForTest { set => _updateCoordinator = value; }
+        internal void SetUpdateCoordinatorForTest(Ntilde.Update.UpdateCoordinator? coordinator) => _updateCoordinator = coordinator;
 
         /// <summary>
         /// Test seam: how <see cref="ApplyStagedUpdateAsync"/> checks for a live daemon before
@@ -6297,16 +6297,8 @@ namespace Ntilde
                 // catch, so a VerifyAccess throw aborted teardown before the session was
                 // disposed, leaking the PTY and its child shell.
                 var session = pane.DetachFromUiThread();
-                if (disposition == Ntilde.Shell.Mux.PaneDisposition.EndSession && session is Ntilde.Mux.MuxClientSession mux)
-                {
-                    // A user closed this pane: the shell must end, not linger detached in the daemon.
-                    // Here on the UI thread, not in the Task.Run below: Kill only enqueues a frame,
-                    // and closing the last tab closes the window right after this returns, whose
-                    // teardown closes the connection (after a bounded flush of what is already
-                    // queued). A kill posted from the pool could land after that and be dropped.
-                    try { mux.Kill(); }
-                    catch (Exception ex) { TerminalLogger.Log($"[MainWindow] mux kill failed: {ex.Message}"); }
-                }
+                // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose).
+                KillMuxSessionOnClose(session, disposition);
 
                 if (session != null)
                 {
@@ -6324,6 +6316,23 @@ namespace Ntilde
             }
             else if (control is Panel panel) { foreach (var child in panel.Children) if (child is Control c) DisposeControlTree(c, disposition); }
             else if (control is ContentPresenter cp && cp.Content is Control childContent) DisposeControlTree(childContent, disposition);
+        }
+
+        /// <summary>
+        /// A user closed this pane: a mux shell must end, not linger detached in the daemon. Called on
+        /// the UI thread, never from the pool: Kill only enqueues a frame, and closing the last tab
+        /// closes the window right after, whose teardown closes the connection (after a bounded flush
+        /// of what is already queued). A kill posted from the pool could land after that and be dropped.
+        /// </summary>
+        private static void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition)
+        {
+            if (disposition != Ntilde.Shell.Mux.PaneDisposition.EndSession || session is not Ntilde.Mux.MuxClientSession mux)
+            {
+                return;
+            }
+
+            try { mux.Kill(); }
+            catch (Exception ex) { TerminalLogger.Log($"[MainWindow] mux kill failed: {ex.Message}"); }
         }
 
         private void HandleSshQuickOpen(TerminalProfile profile, SshQuickOpenTarget target, SshDiagnosticsLevel diagnosticsLevel)
@@ -9176,91 +9185,9 @@ namespace Ntilde
             _applyStagedUpdateInProgress = true;
             try
             {
-                Ntilde.Mux.MuxClient? daemon = null;
-                try
+                if (!await PrepareMuxDaemonForUpdateAsync())
                 {
-                    daemon = await MuxProbeForUpdate(CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    // Best-effort: a daemon that cannot even be reached is not one the update
-                    // needs to wait on (there is no client to send `shutdown` to either).
-                    AppLogger.Log($"[MainWindow] mux probe before update failed: {ex.Message}");
-                }
-
-                if (daemon is not null)
-                {
-                    using (daemon)
-                    {
-                        IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions = null;
-                        try
-                        {
-                            sessions = await daemon.ListSessionsAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            // The session count is now unknown, so there is nothing to confirm -
-                            // but the daemon answered the probe, so it is still there to shut down.
-                            AppLogger.Log($"[MainWindow] mux list-sessions before update failed: {ex.Message}");
-                        }
-
-                        if (sessions is not null)
-                        {
-                            int running = sessions.Count(s => s.Running);
-                            if (running > 0)
-                            {
-                                bool confirmed;
-                                try
-                                {
-                                    confirmed = await ConfirmSessionLossForUpdate(
-                                        $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update.");
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Treated as a decline: a confirmation dialog that cannot even
-                                    // ask the question must not be read as "yes, close the sessions"
-                                    // - the safer failure is leaving the daemon and the update alone.
-                                    AppLogger.Log($"[MainWindow] mux update confirmation failed: {ex.Message}");
-                                    ShowRecordingToast(
-                                        "Update not applied",
-                                        "Could not confirm closing the multiplexed sessions; try again.",
-                                        null,
-                                        null,
-                                        autoHide: false);
-                                    return;
-                                }
-
-                                if (!confirmed)
-                                {
-                                    return;
-                                }
-                            }
-                        }
-
-                        // Read before the shutdown: the daemon deletes its descriptor on the way out,
-                        // and the pid in it is what says when the process is really gone.
-                        Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = null;
-                        try { before = MuxReadDescriptorForUpdate(); }
-                        catch (Exception ex) { AppLogger.Log($"[MainWindow] reading the mux descriptor before update failed: {ex.Message}"); }
-
-                        bool shutdownSent = false;
-                        try
-                        {
-                            await daemon.ShutdownServerAsync();
-                            shutdownSent = true;
-                        }
-                        catch (Exception ex) { AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}"); }
-
-                        // As kill-server does: the apply replaces the executable the daemon runs from,
-                        // so let it finish exiting first. Awaited, never blocking the UI thread.
-                        if (shutdownSent && before is not null)
-                        {
-                            bool gone = false;
-                            try { gone = await MuxWaitForDaemonExitForUpdate(before); }
-                            catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
-                            if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; applying the update anyway");
-                        }
-                    }
+                    return;
                 }
 
                 PerformAppTeardown();
@@ -9291,6 +9218,120 @@ namespace Ntilde
             {
                 _applyStagedUpdateInProgress = false;
             }
+        }
+
+        /// <summary>
+        /// The mux half of <see cref="ApplyStagedUpdateAsync"/> (spec §9): probes for a live daemon
+        /// and, when there is one, confirms the loss of its running sessions and shuts it down.
+        /// False means the user declined (or could not be asked): leave everything untouched.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> PrepareMuxDaemonForUpdateAsync()
+        {
+            Ntilde.Mux.MuxClient? daemon = await ProbeMuxDaemonForUpdateAsync();
+            if (daemon is null)
+            {
+                return true;
+            }
+
+            using (daemon)
+            {
+                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon))
+                {
+                    return false;
+                }
+
+                await ShutdownMuxDaemonForUpdateAsync(daemon);
+                return true;
+            }
+        }
+
+        private async System.Threading.Tasks.Task<Ntilde.Mux.MuxClient?> ProbeMuxDaemonForUpdateAsync()
+        {
+            try
+            {
+                return await MuxProbeForUpdate(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // Best-effort: a daemon that cannot even be reached is not one the update
+                // needs to wait on (there is no client to send `shutdown` to either).
+                AppLogger.Log($"[MainWindow] mux probe before update failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>True to go ahead: no running sessions, an unknown count, or the user confirmed.</summary>
+        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon)
+        {
+            IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> sessions;
+            try
+            {
+                sessions = await daemon.ListSessionsAsync();
+            }
+            catch (Exception ex)
+            {
+                // The session count is now unknown, so there is nothing to confirm -
+                // but the daemon answered the probe, so it is still there to shut down.
+                AppLogger.Log($"[MainWindow] mux list-sessions before update failed: {ex.Message}");
+                return true;
+            }
+
+            int running = sessions.Count(s => s.Running);
+            if (running == 0)
+            {
+                return true;
+            }
+
+            try
+            {
+                return await ConfirmSessionLossForUpdate(
+                    $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update.");
+            }
+            catch (Exception ex)
+            {
+                // Treated as a decline: a confirmation dialog that cannot even
+                // ask the question must not be read as "yes, close the sessions"
+                // - the safer failure is leaving the daemon and the update alone.
+                AppLogger.Log($"[MainWindow] mux update confirmation failed: {ex.Message}");
+                ShowRecordingToast(
+                    "Update not applied",
+                    "Could not confirm closing the multiplexed sessions; try again.",
+                    null,
+                    null,
+                    autoHide: false);
+                return false;
+            }
+        }
+
+        private async System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon)
+        {
+            // Read before the shutdown: the daemon deletes its descriptor on the way out,
+            // and the pid in it is what says when the process is really gone.
+            Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = null;
+            try { before = MuxReadDescriptorForUpdate(); }
+            catch (Exception ex) { AppLogger.Log($"[MainWindow] reading the mux descriptor before update failed: {ex.Message}"); }
+
+            try
+            {
+                await daemon.ShutdownServerAsync();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}");
+                return;
+            }
+
+            // As kill-server does: the apply replaces the executable the daemon runs from,
+            // so let it finish exiting first. Awaited, never blocking the UI thread.
+            if (before is null)
+            {
+                return;
+            }
+
+            bool gone = false;
+            try { gone = await MuxWaitForDaemonExitForUpdate(before); }
+            catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
+            if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; applying the update anyway");
         }
 
         /// <summary>

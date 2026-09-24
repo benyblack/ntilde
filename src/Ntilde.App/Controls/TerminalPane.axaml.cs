@@ -3090,7 +3090,7 @@ namespace Ntilde.Controls
 
             // Inline images (sixel / iTerm2 / Kitty) decode to the SKBitmap handles the draw
             // operation renders; without a decoder those parser paths silently no-op.
-            Parser.ImageDecoder = muxBacked ? null : new Ntilde.Rendering.SkiaImageDecoder();
+            Parser.ImageDecoder = CreateImageDecoder(muxBacked);
 
             // A device reply is text on the PTY that the keyboard path never produced: DA1, a DSR
             // cursor report, an answerback. Nothing here can promise the shell's line editor was not
@@ -3125,7 +3125,7 @@ namespace Ntilde.Controls
 
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created
             // parser must match what ApplySettings will set, same reasoning as above.
-            Parser.AllowNativeKittyGraphics = !muxBacked && (_settings?.AllowNativeKittyGraphics ?? true);
+            Parser.AllowNativeKittyGraphics = AllowsNativeKittyGraphics(muxBacked);
 
             // Kitty t=f (file transport) reads happen through this delegate so the VT layer
             // never touches disk itself. Confinement: absolute paths only, must resolve under
@@ -3138,9 +3138,7 @@ namespace Ntilde.Controls
             // the delegate null makes t=f probes answer ERR, so remote clients fall back to
             // inline payloads, which are self-contained.
             // A mux-backed pane never decodes images (above), so it has nothing to read either.
-            Parser.ReadFileBytes = muxBacked || Profile is { Type: ConnectionType.SSH }
-                ? null
-                : ReadKittyTransportFile;
+            Parser.ReadFileBytes = ResolveKittyFileReader(muxBacked);
 
             Parser.OnBell += () =>
             {
@@ -3347,6 +3345,17 @@ namespace Ntilde.Controls
             };
         }
 
+        private static Ntilde.Rendering.SkiaImageDecoder? CreateImageDecoder(bool muxBacked) =>
+            muxBacked ? null : new Ntilde.Rendering.SkiaImageDecoder();
+
+        private bool AllowsNativeKittyGraphics(bool muxBacked) =>
+            !muxBacked && (_settings?.AllowNativeKittyGraphics ?? true);
+
+        private Func<string, byte[]?>? ResolveKittyFileReader(bool muxBacked) =>
+            muxBacked || Profile is { Type: ConnectionType.SSH }
+                ? null
+                : ReadKittyTransportFile;
+
         /// Spawns the session and wires the handlers that depend on it. Split out of
         /// <c>InitializeSession</c> alongside <see cref="CreateAndWireParser"/>; no behaviour change.
         internal void InitializeSessionCore(string effectiveShell, string args, TerminalProfile? profile, int cols, int rows)
@@ -3441,7 +3450,7 @@ namespace Ntilde.Controls
                             InteractionHandler: SshInteractionHandler,
                             NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
                         : null,
-                    ExistingMuxSessionId: isSsh ? null : TakeMuxSessionIdToRestore());
+                    ExistingMuxSessionId: TakeMuxSessionIdToRestore(isSsh));
 
                 if (isSsh)
                 {
@@ -3460,26 +3469,9 @@ namespace Ntilde.Controls
                         return;
                     }
                 }
-                else if (SessionFactory is IPersistentSessionFactory persistent)
-                {
-                    PersistentSessionResult result = persistent.CreatePersistent(request);
-                    Session = result.Session;
-                    MuxEndpoint = result.Endpoint;
-                    if (result.Outcome == PersistentSessionOutcome.Unavailable)
-                    {
-                        WriteBanner(result.VersionMismatch
-                            ? $"\r\n\x1b[33m{MuxUnavailableBanner}\r\n{MuxVersionMismatchHint}\x1b[0m\r\n"
-                            : $"\r\n\x1b[33m{MuxUnavailableBanner}\x1b[0m\r\n");
-                    }
-                    else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
-                    {
-                        // Written only after the attach: the snapshot would otherwise overwrite it.
-                        muxBannerAfterAttach = $"\x1b[33m{MuxPreviousLostBanner}\x1b[0m\r\n";
-                    }
-                }
                 else
                 {
-                    Session = SessionFactory.Create(request);
+                    Session = CreateLocalSession(request, out muxBannerAfterAttach);
                 }
 
                 TermView.SetSession(Session);
@@ -3551,9 +3543,45 @@ namespace Ntilde.Controls
             }
 
             WireReusedTermViewHandlers();
+            WireStreamOrderedSession(muxBannerAfterAttach);
+        }
 
-            // A session that orders resizes in its stream resizes the buffer itself; the view only
-            // requests (spec §8).
+        /// <summary>
+        /// The non-SSH spawn: through the persistent (mux) factory when there is one, else a plain
+        /// session. <paramref name="bannerAfterAttach"/> is what to write once a mux session has
+        /// attached, or null.
+        /// </summary>
+        private ITerminalSession CreateLocalSession(TerminalSessionRequest request, out string? bannerAfterAttach)
+        {
+            bannerAfterAttach = null;
+            if (SessionFactory is not IPersistentSessionFactory persistent)
+            {
+                return SessionFactory.Create(request);
+            }
+
+            PersistentSessionResult result = persistent.CreatePersistent(request);
+            MuxEndpoint = result.Endpoint;
+            if (result.Outcome == PersistentSessionOutcome.Unavailable)
+            {
+                WriteBanner(result.VersionMismatch
+                    ? $"\r\n\x1b[33m{MuxUnavailableBanner}\r\n{MuxVersionMismatchHint}\x1b[0m\r\n"
+                    : $"\r\n\x1b[33m{MuxUnavailableBanner}\x1b[0m\r\n");
+            }
+            else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
+            {
+                // Written only after the attach: the snapshot would otherwise overwrite it.
+                bannerAfterAttach = $"\x1b[33m{MuxPreviousLostBanner}\x1b[0m\r\n";
+            }
+
+            return result.Session;
+        }
+
+        /// <summary>
+        /// A session that orders resizes in its stream resizes the buffer itself; the view only
+        /// requests (spec §8). A mux session is then wired and attached, last.
+        /// </summary>
+        private void WireStreamOrderedSession(string? muxBannerAfterAttach)
+        {
             TermView.DefersBufferResizeToSession = Session is ITerminalSessionCapabilities { OrdersResizeInStream: true };
             if (Session is MuxClientSession mux) WireMuxSession(mux, muxBannerAfterAttach);
         }
@@ -3586,6 +3614,9 @@ namespace Ntilde.Controls
 
         private Guid? _muxReattachId;    // UI thread: set when the connection dropped, consumed by Reconnect
         private bool _muxConnectionLost; // UI thread
+
+        /// <summary>An SSH pane never reopens a daemon session, and leaves any pending id unconsumed.</summary>
+        private Guid? TakeMuxSessionIdToRestore(bool isSsh) => isSsh ? null : TakeMuxSessionIdToRestore();
 
         private Guid? TakeMuxSessionIdToRestore()
         {

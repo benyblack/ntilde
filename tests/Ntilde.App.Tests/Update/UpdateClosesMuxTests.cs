@@ -79,7 +79,7 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(UpdateCheckOutcome.UpdateReady,
             Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)
                 .GetAwaiter().GetResult());
-        window.UpdateCoordinatorForTest = coordinator;
+        window.SetUpdateCoordinatorForTest(coordinator);
         return service;
     }
 
@@ -367,7 +367,7 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(UpdateCheckOutcome.UpdateReady,
             Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)
                 .GetAwaiter().GetResult());
-        window.UpdateCoordinatorForTest = coordinator;
+        window.SetUpdateCoordinatorForTest(coordinator);
         window.MuxProbeForUpdate = _ => Task.FromResult<MuxClient?>(null);
 
         RunToCompletion(window).GetAwaiter().GetResult();
