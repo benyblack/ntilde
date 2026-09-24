@@ -393,6 +393,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.Ping:
                     ReplyEmpty(request);
                     break;
+                case MuxMethods.Shutdown:
+                    ReplyEmpty(request);
+                    // After the reply is queued: the host tears the server down, which aborts this
+                    // connection - so off this reader thread, or Dispose -> Abort would run on the
+                    // very thread it is stopping. Control plane, not the output path.
+                    ThreadPool.UnsafeQueueUserWorkItem(static s => s.RequestShutdown(), _server, preferLocal: false);
+                    break;
                 case MuxMethods.ListSessions:
                     Reply(request, new ListSessionsResult { Sessions = _server.ListSessions() }, MuxJsonContext.Default.ListSessionsResult);
                     break;

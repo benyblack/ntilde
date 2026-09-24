@@ -66,6 +66,7 @@ public sealed class MuxClientSessionTests
 
         session.SendInput("é\r");
         await client.PingAsync(Ct);
+        await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the input reached the session"); // via the session's input writer thread
 
         string sent = Assert.Single(host.Fake(id).SentInput);
         Assert.Equal(new byte[] { 0xC3, 0xA9, 0x0D }, Encoding.UTF8.GetBytes(sent));

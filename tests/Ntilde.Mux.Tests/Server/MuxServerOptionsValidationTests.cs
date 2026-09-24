@@ -17,6 +17,7 @@ public sealed class MuxServerOptionsValidationTests
         "scrollback-negative" => new MuxServerOptions { MaxAttachScrollbackRows = -1 },
         "cells-zero" => new MuxServerOptions { MaxCells = 0 },
         "dimension-zero" => new MuxServerOptions { MaxDimension = 0 },
+        "input-queue-zero" => new MuxServerOptions { MaxQueuedInputBytes = 0 },
         _ => throw new ArgumentOutOfRangeException(nameof(name)),
     };
 
@@ -31,6 +32,7 @@ public sealed class MuxServerOptionsValidationTests
     [InlineData("scrollback-negative")]
     [InlineData("cells-zero")]
     [InlineData("dimension-zero")]
+    [InlineData("input-queue-zero")]
     public void Nonsensical_options_are_refused_at_construction(string name)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MuxServer(new ScriptedSessionFactory(), Invalid(name)).Dispose());

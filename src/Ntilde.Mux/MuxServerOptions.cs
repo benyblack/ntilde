@@ -50,5 +50,8 @@ public sealed class MuxServerOptions
     /// </summary>
     public long MaxFlightRecordingBytes { get; init; } = 32L * 1024 * 1024;
 
+    /// <summary>Per-session cap on input queued for a child that is not reading stdin (see <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/>).</summary>
+    public long MaxQueuedInputBytes { get; init; } = 16L * 1024 * 1024;
+
     public Action<string>? Log { get; init; }
 }

@@ -64,6 +64,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     public bool OrdersResizeInStream => true;
     public bool ForceConPtyFiltering => _client.ForceConPtyFiltering;
     public bool IsAttached => Interlocked.Read(ref _expectedOffset) >= 0;
+
+    /// <summary>False once the connection to the daemon is gone; the session may still be running there.</summary>
+    public bool IsConnected => _client.IsConnected;
     public long AttachedSeq => Interlocked.Read(ref _attachedSeq);
 
     /// <summary>Raw stream offset whose effects have been delivered to every handler.</summary>

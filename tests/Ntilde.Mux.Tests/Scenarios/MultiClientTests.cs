@@ -58,6 +58,7 @@ public sealed class MultiClientTests
         await host.SettleAsync(id, c1, c2);
         host.Fake(id).Emit("\x1b[14t");
         await host.SettleAsync(id, c1, c2);
+        await TestWait.UntilAsync(() => host.Fake(id).SentInput.Contains("\x1b[4;360;810t"), "the reply reached the session"); // via the input writer thread
 
         Assert.Single(host.Fake(id).SentInput, s => s == "\x1b[4;360;810t");
     }
@@ -74,6 +75,7 @@ public sealed class MultiClientTests
 
         host.Fake(id).Emit("\x1b[c");
         await host.SettleAsync(id, c1, c2);
+        await TestWait.UntilAsync(() => host.Fake(id).SentInput.Any(s => s.StartsWith("\x1b[?", StringComparison.Ordinal)), "the reply reached the session"); // via the input writer thread
 
         Assert.Single(host.Fake(id).SentInput, s => s.StartsWith("\x1b[?", StringComparison.Ordinal));
         Assert.NotEmpty(p1.Responses); // each pane's parser produced a reply ...

@@ -60,11 +60,25 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _disposed;
     private int _unsubscribed;
 
+    // Input writer (spec §4): SendInput runs on the connection reader thread; a child that stops
+    // reading stdin would otherwise stall every session sharing that connection. One thread per
+    // session keeps per-session order; the byte cap keeps a wedged child from growing the queue
+    // without bound. Never the thread pool (a blocked write would pin a pool thread).
+    private readonly BlockingCollection<string> _input = new();
+    private readonly Thread _inputThread;
+    private readonly long _maxQueuedInputBytes;
+    private long _queuedInputBytes;
+    private long _exitedAtMs;
+    private int _inputDropLogged;
+
     // PostResize coalescing (any thread -> parse thread); see PostResize.
     private readonly object _pendingResizeGate = new();
     private (int Cols, int Rows)? _pendingResize;
     private MuxPresentation? _pendingPresentation;
     private bool _resizeQueued;
+
+    /// <summary>Tests only: raised with the session id once the input writer thread has started.</summary>
+    internal static event Action<Guid, Thread>? InputThreadStartedForTest;
 
     public HeadlessTerminalSession(Guid id, ITerminalSession session, HeadlessSessionOptions options)
     {
@@ -83,13 +97,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         _log = options.Log;
         _cols = options.Cols;
         _rows = options.Rows;
+        _maxQueuedInputBytes = options.MaxQueuedInputBytes;
         _buffer = new TerminalBuffer(options.Cols, options.Rows);
         _parser = new AnsiParser(_buffer, options.ForceConPtyFiltering)
         {
             ImageDecoder = null,
             AllowNativeKittyGraphics = false,
         };
-        _parser.OnResponse = reply => _session.SendInput(reply);
+        _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
         _parser.OnTitleChanged = title => Volatile.Write(ref _title, title);
         _queues = [_control, _data];
         _onRawOutput = OnRawOutput;
@@ -99,6 +114,9 @@ public sealed class HeadlessTerminalSession : IDisposable
         // bounded data queue, which would block this constructor if nobody were draining it.
         _parseThread = new Thread(ParseLoop) { IsBackground = true, Name = $"MuxParse-{id:N}" };
         _parseThread.Start();
+        _inputThread = new Thread(InputLoop) { IsBackground = true, Name = $"MuxInput-{id:N}" };
+        _inputThread.Start();
+        InputThreadStartedForTest?.Invoke(id, _inputThread);
 
         // Raw FIRST, then string. The string subscription is a no-op whose only job is to release
         // the session's own string replay buffer (nothing else ever subscribes to it here, so it
@@ -119,14 +137,16 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         catch
         {
-            // The parse thread is already running: stop it (and drop whatever subscriptions did
-            // succeed) so a constructor that throws leaves no thread behind. The caller still owns
-            // the session and disposes it.
+            // The parse and input threads are already running: stop them (and drop whatever
+            // subscriptions did succeed) so a constructor that throws leaves no thread behind. The
+            // caller still owns the session and disposes it.
             Volatile.Write(ref _disposed, 1);
             _cts.Cancel();
+            _input.CompleteAdding();
             try { Unsubscribe(); }
             catch (Exception ex) { Log($"[Mux] session {id}: unsubscribing after a failed construction threw: {ex.Message}"); }
             _parseThread.Join(TimeSpan.FromSeconds(5));
+            _inputThread.Join(TimeSpan.FromSeconds(5));
             throw;
         }
     }
@@ -144,6 +164,9 @@ public sealed class HeadlessTerminalSession : IDisposable
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
     public long StreamPosition => Interlocked.Read(ref _rawOffset);
 
+    /// <summary><see cref="Environment.TickCount64"/> when the mux saw the exit; 0 while running. Set before <see cref="IsExited"/>.</summary>
+    public long ExitedAtMs => Interlocked.Read(ref _exitedAtMs);
+
     internal ITerminalSession Inner => _session;
 
     /// <summary>Tests only, and only while the parse thread is idle (after <see cref="FlushAsync"/>).</summary>
@@ -156,11 +179,80 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal int QueuedControlCount => _control.Count;
 
-    /// <summary>Thread-safe; goes straight to the session (input is independent of the output stream).</summary>
+    /// <summary>Bytes (UTF-16) queued for the input writer and not yet taken by it.</summary>
+    internal long QueuedInputBytes => Interlocked.Read(ref _queuedInputBytes);
+
+    /// <summary>Tests only: overrides <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/> when positive.</summary>
+    internal long MaxQueuedInputBytesForTest { get; set; }
+
+    internal bool IsInputThreadAliveForTest => _inputThread.IsAlive;
+
+    private long MaxQueuedInputBytes => MaxQueuedInputBytesForTest > 0 ? MaxQueuedInputBytesForTest : _maxQueuedInputBytes;
+
+    /// <summary>
+    /// Thread-safe and non-blocking: queued for this session's input writer (input is independent
+    /// of the output stream). Past <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/> of
+    /// unwritten input, further input is dropped - the child has stopped reading stdin.
+    /// </summary>
     public void SendInput(string text)
     {
         if (IsExited || Volatile.Read(ref _disposed) != 0 || string.IsNullOrEmpty(text)) return;
-        _session.SendInput(text);
+        EnqueueInput(text);
+    }
+
+    private void EnqueueInput(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        long bytes = (long)text.Length * sizeof(char);
+        if (Interlocked.Add(ref _queuedInputBytes, bytes) > MaxQueuedInputBytes)
+        {
+            Interlocked.Add(ref _queuedInputBytes, -bytes);
+            // Once per stall, not per keystroke: a client typing into a wedged child would flood the log.
+            if (Interlocked.Exchange(ref _inputDropLogged, 1) == 0)
+            {
+                Log($"[Mux] session {Id}: dropping input ({text.Length} chars, and any more until the queue drains); the child is not reading stdin.");
+            }
+
+            return;
+        }
+
+        try
+        {
+            _input.Add(text);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            // CompleteAdding (disposing) or already disposed: the session is going away.
+            Interlocked.Add(ref _queuedInputBytes, -bytes);
+        }
+    }
+
+    /// <summary>
+    /// The only caller of the child's SendInput. A throw is logged and the loop goes on: one failed
+    /// write must not silently end input for the rest of the session's life.
+    /// </summary>
+    private void InputLoop()
+    {
+        try
+        {
+            foreach (string text in _input.GetConsumingEnumerable(_cts.Token))
+            {
+                Interlocked.Add(ref _queuedInputBytes, -(long)text.Length * sizeof(char));
+                try
+                {
+                    _session.SendInput(text);
+                    Volatile.Write(ref _inputDropLogged, 0);
+                }
+                catch (Exception ex)
+                {
+                    Log($"[Mux] session {Id}: SendInput failed: {ex.Message}");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Dispose, a failed constructor or the terminal exit cancelled the token: the normal end.
+        }
     }
 
     /// <summary>
@@ -307,8 +399,10 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
         // Cancel FIRST: a producer parked in _data.Add holds RawOutputTap's lock while it waits, and
-        // the unsubscribe below needs that lock. Cancelling throws it out of Add.
+        // the unsubscribe below needs that lock. Cancelling throws it out of Add. It also ends the
+        // input writer's wait; CompleteAdding makes a late SendInput fail fast instead of queueing.
         _cts.Cancel();
+        _input.CompleteAdding();
         Unsubscribe();
         bool parseThreadStopped = Thread.CurrentThread == _parseThread
             || _parseThread.Join(TimeSpan.FromSeconds(5));
@@ -322,6 +416,13 @@ public sealed class HeadlessTerminalSession : IDisposable
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
 
+        // Joined AFTER the child is disposed: a writer blocked in a write to a child that stopped
+        // reading stdin is released by the child going away, not by the token. An idle writer has
+        // already left on the cancellation above. A write that races the child's disposal fails
+        // and is logged by InputLoop, as it would have been on the reader thread before.
+        bool inputThreadStopped = Thread.CurrentThread == _inputThread
+            || _inputThread.Join(TimeSpan.FromSeconds(2));
+
         // Only once the parse thread is gone: it is the one thread that still reads the token and
         // takes from the queues. A late producer (the tap handler, OnExit) that slipped past the
         // _disposed check meets ObjectDisposedException in TryEnqueue, which treats it as closed.
@@ -329,10 +430,14 @@ public sealed class HeadlessTerminalSession : IDisposable
         // than yanked out from under it.
         if (parseThreadStopped && Thread.CurrentThread != _parseThread)
         {
-            _cts.Dispose();
             _control.Dispose();
             _data.Dispose();
         }
+
+        // Same rule for the input writer's collection; the token is read by both threads.
+        bool inputThreadGone = inputThreadStopped && Thread.CurrentThread != _inputThread;
+        if (inputThreadGone) _input.Dispose();
+        if (inputThreadGone && parseThreadStopped && Thread.CurrentThread != _parseThread) _cts.Dispose();
     }
 
     private void OnRawOutput(ReadOnlyMemory<byte> chunk)
@@ -448,6 +553,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (!IsExited)
         {
             Volatile.Write(ref _exitCode, code ?? _session.ExitCode ?? -1);
+            Interlocked.Exchange(ref _exitedAtMs, Environment.TickCount64); // before _exited: a reaper that sees the exit sees its time
             Volatile.Write(ref _exited, 1);
             if (_subscribers.Count > 0) Broadcast(ExitedFrame());
         }

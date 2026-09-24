@@ -208,6 +208,7 @@ public sealed class MuxServerRequestTests
 
         raw.Send(MuxFrames.Input(id, "é\r"u8));
         await CallAsync(raw, MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty);
+        await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the input reached the session"); // via the session's input writer thread
 
         Assert.Equal("é\r", Assert.Single(host.Fake(id).SentInput));
     }

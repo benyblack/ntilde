@@ -20,6 +20,11 @@ public sealed class MuxServer : IDisposable
     private Thread? _acceptThread;
     private int _disposed;
 
+    // Serializes connection registration against TryBeginIdleShutdown (spec §4): a connection either
+    // registers before the idle check (which then refuses) or is refused after it.
+    private readonly object _lifecycleGate = new();
+    private bool _acceptingStopped;
+
     public MuxServer(ITerminalSessionFactory sessionFactory, MuxServerOptions? options = null)
     {
         _factory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
@@ -51,6 +56,7 @@ public sealed class MuxServer : IDisposable
         if (o.MaxCells <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxCells, "MaxCells must be positive.");
         if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");
         if (o.MaxFlightRecordingBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxFlightRecordingBytes, "MaxFlightRecordingBytes must be positive.");
+        if (o.MaxQueuedInputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxQueuedInputBytes, "MaxQueuedInputBytes must be positive.");
         return o;
     }
 
@@ -60,6 +66,18 @@ public sealed class MuxServer : IDisposable
     public IReadOnlyCollection<Guid> GetSessionIds() => _sessions.Keys.ToArray();
 
     internal event Action<MuxServerConnection>? ConnectionClosed;
+
+    /// <summary>
+    /// A client sent <c>shutdown</c>. Raised on a thread-pool thread after the reply is queued; the
+    /// host is expected to kill every session and dispose the server. Handler exceptions are logged.
+    /// </summary>
+    public event Action? ShutdownRequested;
+
+    /// <summary>True once <see cref="TryBeginIdleShutdown"/> succeeded: new connections are refused.</summary>
+    public bool IsAcceptingStopped { get { lock (_lifecycleGate) return _acceptingStopped; } }
+
+    /// <summary>Sessions whose child has not exited (a snapshot).</summary>
+    public int RunningSessionCount => _sessions.Values.Count(s => !s.IsExited);
 
     /// <summary>Starts accepting on a dedicated thread. The server owns the listener from here on.</summary>
     public void Start(IMuxListener listener)
@@ -77,15 +95,82 @@ public sealed class MuxServer : IDisposable
     public void AcceptConnection(Stream stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        if (Volatile.Read(ref _disposed) != 0)
+        MuxServerConnection connection;
+        lock (_lifecycleGate)
         {
-            stream.Dispose();
-            return;
+            if (Volatile.Read(ref _disposed) != 0 || _acceptingStopped)
+            {
+                stream.Dispose();
+                return;
+            }
+
+            connection = new MuxServerConnection(this, stream);
+            _connections[connection.ConnectionId] = connection;
         }
 
-        var connection = new MuxServerConnection(this, stream);
-        _connections[connection.ConnectionId] = connection;
         connection.Start();
+    }
+
+    /// <summary>
+    /// Removes and disposes exited sessions nobody is attached to that exited at least
+    /// <paramref name="grace"/> ago (spec §4). Returns how many were reaped.
+    /// </summary>
+    public int ReapExitedSessions(TimeSpan grace)
+    {
+        long now = Environment.TickCount64;
+        long graceMs = (long)grace.TotalMilliseconds;
+        int reaped = 0;
+        foreach (HeadlessTerminalSession s in _sessions.Values)
+        {
+            if (!s.IsExited || s.AttachedClients != 0 || now - s.ExitedAtMs < graceMs) continue;
+
+            // Remove only this exact instance: never a session that replaced it under the same id.
+            if (_sessions.TryRemove(new KeyValuePair<Guid, HeadlessTerminalSession>(s.Id, s)))
+            {
+                s.Dispose();
+                reaped++;
+            }
+        }
+
+        return reaped;
+    }
+
+    /// <summary>
+    /// Stops accepting iff there is nothing to serve (no connection, no running session),
+    /// atomically with <see cref="AcceptConnection"/>: a connection either registered before (and
+    /// this returns false) or is refused after. Idempotent once it has succeeded.
+    /// </summary>
+    public bool TryBeginIdleShutdown()
+    {
+        lock (_lifecycleGate)
+        {
+            if (_acceptingStopped) return true;
+            if (!_connections.IsEmpty || RunningSessionCount != 0) return false;
+            _acceptingStopped = true;
+        }
+
+        _listener?.Dispose();
+        return true;
+    }
+
+    /// <summary>Kills and disposes every session (the <c>shutdown</c> path).</summary>
+    public void KillAllSessions()
+    {
+        foreach (Guid id in _sessions.Keys)
+        {
+            if (_sessions.TryRemove(id, out HeadlessTerminalSession? s))
+            {
+                try { s.Kill(); }
+                catch (Exception ex) { Log($"[MuxServer] kill {id} failed: {ex.Message}"); }
+                s.Dispose();
+            }
+        }
+    }
+
+    internal void RequestShutdown()
+    {
+        try { ShutdownRequested?.Invoke(); }
+        catch (Exception ex) { Log($"[MuxServer] ShutdownRequested handler threw: {ex}"); }
     }
 
     internal bool TryGetSession(Guid id, [NotNullWhen(true)] out HeadlessTerminalSession? session) =>
@@ -148,6 +233,7 @@ public sealed class MuxServer : IDisposable
                 Rows = p.Rows,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
+                MaxQueuedInputBytes = Options.MaxQueuedInputBytes,
             });
         }
         catch (Exception ex)

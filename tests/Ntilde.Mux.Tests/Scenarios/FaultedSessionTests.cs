@@ -20,9 +20,9 @@ public sealed class FaultedSessionTests
         host.Fake(a).Emit("before the fault");
         await host.SettleAsync(a, client);
 
-        // The mux answers DA through the session's SendInput, which throws inside Process: to the
-        // parse thread that is a parser failure, and the session faults.
-        host.Fake(a).ThrowOnSendInput = true;
+        // The mux answers DA from inside Process; a reply callback that throws there is a parser
+        // failure to the parse thread, and the session faults.
+        await host.Mux(a).MakeParserThrowOnReplyAsync();
         host.Fake(a).Emit("\x1b[c");
         await host.SettleAsync(a, client);
         Assert.True(host.Mux(a).IsFaulted);
@@ -57,7 +57,7 @@ public sealed class FaultedSessionTests
         using var host = new MuxTestHost();
         MuxClient client = await host.ConnectClientAsync();
         Guid a = await MuxTestHost.SpawnAsync(client);
-        host.Fake(a).ThrowOnSendInput = true;
+        await host.Mux(a).MakeParserThrowOnReplyAsync();
         host.Fake(a).Emit("\x1b[c");
         await host.Mux(a).FlushAsync();
 

@@ -98,6 +98,7 @@ public sealed class HeadlessTerminalSessionTests
         {
             fake.Emit("\x1b[c");
             await mux.FlushAsync();
+            await TestWait.UntilAsync(() => !fake.SentInput.IsEmpty, "the reply reached the session"); // device replies and input reach the child on the input writer thread, after the flush
 
             string reply = Assert.Single(fake.SentInput);
             Assert.StartsWith("\x1b[?", reply, StringComparison.Ordinal);
@@ -155,8 +156,7 @@ public sealed class HeadlessTerminalSessionTests
             await mux.FlushAsync(); // mode on before the resize is dequeued
             mux.PostResize(100, 30, Presentation80x24 with { Cols = 100, Rows = 30, CellWidthPx = 8, CellHeightPx = 16 });
             await mux.FlushAsync();
-
-            Assert.Contains("\x1b[48;30;100;480;800t", fake.SentInput);
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[48;30;100;480;800t"), "the in-band report reached the session"); // device replies and input reach the child on the input writer thread, after the flush
         }
     }
 
@@ -169,8 +169,7 @@ public sealed class HeadlessTerminalSessionTests
             mux.PostResize(90, 20, new MuxPresentation { Cols = 90, Rows = 20, CellWidthPx = 9, CellHeightPx = 18 });
             fake.Emit("\x1b[14t");
             await mux.FlushAsync();
-
-            Assert.Contains("\x1b[4;360;810t", fake.SentInput);
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[4;360;810t"), "the CSI 14 t reply reached the session"); // device replies and input reach the child on the input writer thread, after the flush
         }
     }
 
@@ -266,7 +265,7 @@ public sealed class HeadlessTerminalSessionTests
 
             Assert.Equal((90, 20), (mux.Cols, mux.Rows));
             Assert.Equal([(90, 20)], fake.Resizes.ToArray());          // the child learned the final size, once
-            Assert.Contains("\x1b[4;360;810t", fake.SentInput);         // the coalesced presentation still applied
+            await TestWait.UntilAsync(() => fake.SentInput.Contains("\x1b[4;360;810t"), "the coalesced presentation still applied"); // device replies and input reach the child on the input writer thread, after the flush
         }
     }
 
@@ -384,13 +383,13 @@ public sealed class HeadlessTerminalSessionTests
     [Fact]
     public async Task A_throwing_parser_marks_the_session_faulted_instead_of_killing_the_host()
     {
-        // OnResponse -> session.SendInput runs inside Process, so a throwing SendInput is a parser
-        // failure as far as the parse thread can tell. (If AnsiParser ever starts containing
-        // callback exceptions itself, this test fails and needs a different trigger.)
+        // OnResponse runs inside Process, so a throwing reply callback is a parser failure as far
+        // as the parse thread can tell. (If AnsiParser ever starts containing callback exceptions
+        // itself, this test fails and needs a different trigger.)
         (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession();
         using (mux)
         {
-            fake.ThrowOnSendInput = true;
+            await mux.MakeParserThrowOnReplyAsync();
             fake.Emit("\x1b[c");
             await mux.FlushAsync();
 
@@ -416,7 +415,7 @@ public sealed class HeadlessTerminalSessionTests
             fake.Emit("ok");
             await mux.FlushAsync();
 
-            fake.ThrowOnSendInput = true;
+            await mux.MakeParserThrowOnReplyAsync();
             fake.Emit("\x1b[c");
             await mux.FlushAsync();
             mux.PostResize(100, 30, null); // the offset moved on: a ResizeEvent now would be a gap
