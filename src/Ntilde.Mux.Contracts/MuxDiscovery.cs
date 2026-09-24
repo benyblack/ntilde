@@ -40,8 +40,24 @@ public static class MuxDiscovery
         string preferred = Path.Combine(root, DirectoryName, SocketFileName);
         int budget = OperatingSystem.IsMacOS() ? 103 : 107; // sun_path minus the terminating NUL
         if (Encoding.UTF8.GetByteCount(preferred) <= budget) return preferred;
-        return Path.Combine(Path.GetTempPath(), "ntilde-mux-" + suffix, SocketFileName);
+
+        // Too long for sun_path. $XDG_RUNTIME_DIR first: per-user, 0700, made by the login manager -
+        // whereas the temp directory is world-writable, so a name derived from the user and root is
+        // predictable there and another user can create it first (the daemon then refuses it for its
+        // mode or owner: a denial of service, not a takeover). Only an absolute runtime dir that
+        // exists, and only if the result still fits.
+        string dirName = "ntilde-mux-" + suffix;
+        string? runtimeDir = Environment.GetEnvironmentVariable(RuntimeDirEnvVar);
+        if (!string.IsNullOrWhiteSpace(runtimeDir) && Path.IsPathRooted(runtimeDir) && Directory.Exists(runtimeDir))
+        {
+            string inRuntimeDir = Path.Combine(runtimeDir, dirName, SocketFileName);
+            if (Encoding.UTF8.GetByteCount(inRuntimeDir) <= budget) return inRuntimeDir;
+        }
+
+        return Path.Combine(Path.GetTempPath(), dirName, SocketFileName);
     }
+
+    private const string RuntimeDirEnvVar = "XDG_RUNTIME_DIR";
 
     private static string SanitizedUser()
     {

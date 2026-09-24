@@ -35,12 +35,25 @@ public sealed class NamedPipeMuxListener : IMuxListener
         _disposedToken = _disposed.Token;
         // Create the first instance now so a client that connects before the accept loop runs finds
         // the pipe (and so a name collision fails the constructor, not the accept thread).
-        _pending = CreateInstance();
+        //
+        // FirstPipeInstance on this one only: if any process already has an instance of this name
+        // (a squatter, or another daemon), creation fails instead of silently adding our instance
+        // to theirs - with mixed instances a client could connect to either server.
+        try
+        {
+            _pending = CreateInstance(PipeOptions.FirstPipeInstance);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // What CreateNamedPipe's ERROR_ACCESS_DENIED for FILE_FLAG_FIRST_PIPE_INSTANCE becomes.
+            // IOException is what the daemon host and `mux serve` report as "endpoint in use".
+            throw new IOException($"The pipe '{pipeName}' is already in use by another process: {ex.Message}", ex);
+        }
     }
 
-    private NamedPipeServerStream CreateInstance() =>
+    private NamedPipeServerStream CreateInstance(PipeOptions extra = PipeOptions.None) =>
         new(_pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | extra,
             inBufferSize: PipeBufferSize, outBufferSize: PipeBufferSize);
 
     public Stream? Accept(CancellationToken cancellationToken)

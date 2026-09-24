@@ -150,6 +150,60 @@ public sealed class MuxDiscoveryTests : IDisposable
         Assert.EndsWith("mux.sock", endpoint);
     }
 
+    /// <summary>
+    /// PR #489 review 2, item 9: the long-path fallback used the world-writable temp directory, where
+    /// the socket directory's name is predictable. $XDG_RUNTIME_DIR (per-user, 0700) comes first.
+    /// Runs in this class, whose tests run one at a time, so the variable change stays local.
+    /// </summary>
+    [Fact]
+    public void Unix_long_path_fallback_prefers_an_existing_XDG_RUNTIME_DIR()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows uses pipe names.");
+        string longRoot = Path.Combine(Path.GetTempPath(), new string('r', 150));
+        string runtimeDir = Path.Combine(Path.GetTempPath(), "nxdg" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(runtimeDir);
+        string? saved = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        try
+        {
+            Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", runtimeDir);
+            string endpoint = MuxDiscovery.GetDefaultEndpoint(longRoot);
+            Assert.Equal(runtimeDir, Path.GetDirectoryName(Path.GetDirectoryName(endpoint)));
+            Assert.EndsWith("mux.sock", endpoint);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", saved);
+            Directory.Delete(runtimeDir);
+        }
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("relative")]
+    [InlineData("empty")]
+    public void Unix_long_path_fallback_uses_tmp_when_XDG_RUNTIME_DIR_is_unusable(string kind)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows uses pipe names.");
+        string longRoot = Path.Combine(Path.GetTempPath(), new string('r', 150));
+        string value = kind switch
+        {
+            "missing" => Path.Combine(Path.GetTempPath(), "nxdg-absent-" + Guid.NewGuid().ToString("N")),
+            "relative" => "relative/run",
+            _ => "",
+        };
+        string? saved = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        try
+        {
+            Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", value);
+            string endpoint = MuxDiscovery.GetDefaultEndpoint(longRoot);
+            Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetTempPath()), Path.GetDirectoryName(Path.GetDirectoryName(endpoint)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("XDG_RUNTIME_DIR", saved);
+        }
+    }
+
     [Fact]
     public void Windows_endpoint_is_a_bare_pipe_name()
     {

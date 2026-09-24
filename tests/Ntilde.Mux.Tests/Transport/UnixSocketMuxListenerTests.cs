@@ -78,6 +78,22 @@ public sealed class UnixSocketMuxListenerTests : IDisposable
         Assert.Throws<IOException>(() => new UnixSocketMuxListener(SocketPath));
     }
 
+    /// <summary>
+    /// PR #489 review 2, item 3: a bind failure is a SocketException, which is not an IOException -
+    /// escaping as itself it crashed `mux serve`. Something that is not a socket file occupying the
+    /// path (here a directory, which the stale-socket check does not touch) makes bind fail.
+    /// </summary>
+    [Fact]
+    public void A_bind_failure_is_reported_as_IOException()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets are the Linux/macOS transport.");
+        using (new UnixSocketMuxListener(SocketPath)) { } // the 0700 directory
+        Directory.CreateDirectory(SocketPath);
+
+        var ex = Assert.Throws<IOException>(() => new UnixSocketMuxListener(SocketPath));
+        Assert.IsType<SocketException>(ex.InnerException);
+    }
+
     [Fact]
     public void Connecting_to_a_socket_nobody_listens_on_throws_IOException()
     {

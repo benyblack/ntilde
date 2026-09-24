@@ -47,9 +47,20 @@ public sealed class UnixSocketMuxListener : IMuxListener
         _socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         try
         {
+            // Listen straight after Bind: between the two the path exists but refuses connections,
+            // so another starter's stale-socket probe (IsAlive, above) would call this live socket
+            // dead and unlink it. The chmod can follow - the 0700 directory already keeps other
+            // users out, the 0600 is defence in depth.
             _socket.Bind(new UnixDomainSocketEndPoint(_socketPath));
-            File.SetUnixFileMode(_socketPath, SocketMode);
             _socket.Listen(backlog: 16);
+            File.SetUnixFileMode(_socketPath, SocketMode);
+        }
+        catch (SocketException ex)
+        {
+            _socket.Dispose();
+            // Not an IOException by itself: every caller (the daemon host, `mux serve`) handles
+            // IOException as "endpoint unusable", and a raw SocketException crashed the daemon.
+            throw new IOException($"Could not listen on {_socketPath}: {ex.Message}", ex);
         }
         catch
         {

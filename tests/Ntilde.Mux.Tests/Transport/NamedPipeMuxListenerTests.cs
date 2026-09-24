@@ -1,5 +1,7 @@
 using System.IO.Pipes;
 using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Ntilde.Mux.Transport;
 
 namespace Ntilde.Mux.Tests.Transport;
@@ -65,17 +67,44 @@ public sealed class NamedPipeMuxListenerTests
         Assert.Throws<TimeoutException>(() => MuxEndpointConnector.Connect(UniqueName(), TimeSpan.FromMilliseconds(300)));
     }
 
+    /// <summary>
+    /// PR #489 review 2, item 10: the old test only proved a same-user client could connect. This
+    /// reads the pipe's DACL through a connected client handle and requires every access rule to
+    /// name the current user - the default DACL would also grant Everyone/Anonymous read and
+    /// Administrators/SYSTEM full control.
+    /// </summary>
     [Fact]
-    public void The_pipe_is_created_current_user_only()
+    public async Task The_pipe_acl_grants_access_to_the_current_user_only()
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Named pipes are the Windows transport.");
-        // CurrentUserOnly on the server means a client that does NOT ask for it still connects as the
-        // same user, but the ACL names only the owner. We assert the owner-only ACL directly.
         string name = UniqueName();
         using var listener = new NamedPipeMuxListener(name);
-        Task.Run(() => listener.Accept(Ct), Ct);
-        using var client = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.CurrentUserOnly);
+        Task<Stream?> accept = Task.Run(() => listener.Accept(Ct), Ct);
+        using var client = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.None);
         client.Connect(5000);
-        Assert.True(client.IsConnected);
+        using Stream? server = await accept.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        using WindowsIdentity me = WindowsIdentity.GetCurrent();
+        PipeSecurity security = client.GetAccessControl();
+        AuthorizationRuleCollection rules = security.GetAccessRules(includeExplicit: true, includeInherited: true, typeof(SecurityIdentifier));
+        Assert.NotEmpty(rules);
+        foreach (PipeAccessRule rule in rules)
+        {
+            Assert.Equal(me.User, rule.IdentityReference);
+        }
+    }
+
+    /// <summary>
+    /// PR #489 review 2, item 8: the first instance is created FirstPipeInstance, so a name some
+    /// other process already serves fails the start (reported as "in use") instead of mixing that
+    /// process's instances with ours.
+    /// </summary>
+    [Fact]
+    public void A_second_listener_on_the_same_name_is_refused()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Named pipes are the Windows transport.");
+        string name = UniqueName();
+        using var first = new NamedPipeMuxListener(name);
+        Assert.Throws<IOException>(() => new NamedPipeMuxListener(name).Dispose());
     }
 }
