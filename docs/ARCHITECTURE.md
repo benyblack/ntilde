@@ -225,7 +225,11 @@ before Avalonia, so the daemon never initialises a UI. The edge is App → `Ntil
 - **Lifecycle.** `MuxDaemonHost` holds a lock file, writes the descriptor, reaps exited sessions
   that no client is attached to 60 s after exit, and exits 10 minutes after its last running
   session and last connection are gone (`--idle-exit-minutes`, 0 = never). The `shutdown` method
-  (`ntilde mux kill-server`, the update path) kills every session and exits. Daemon death kills
+  (`ntilde mux kill-server`, the update path) kills every session and exits. The accept loop
+  never gives up on a failing listener (capped backoff, rate-limited log); the host stops
+  (`accept-failed`) only after `AcceptFailureStopAfter` (60 s) of continuous accept failure with
+  zero connections, so a connected client's shells are never killed by an endpoint fault, and the
+  lock file is left in place (never unlinked). Daemon death kills
   its shells: there is no watchdog, as in tmux. The daemon logs to `logs/mux.log`.
 - **Launch.** `MuxDaemonLauncher` connects to a live descriptor or spawns `mux serve` fully
   detached (all three stdio streams redirected and closed, inheritable std handles cleared on

@@ -65,10 +65,9 @@ public sealed class MuxDaemonHost : IDisposable
             Log($"[MuxDaemon] replacing a stale descriptor (pid {stale.Pid}, {stale.Endpoint})");
         }
 
-        // Before the server starts: a shutdown request or an accept-loop fault can arrive as soon as
-        // the accept thread runs, and one raised before these were attached would be lost.
+        // Before the server starts: a shutdown request can arrive as soon as the accept thread runs,
+        // and one raised before this was attached would be lost.
         _server.ShutdownRequested += OnShutdownRequested;
-        _server.AcceptLoopFaulted += OnAcceptLoopFaulted;
         try
         {
             _server.Start(CreateListener());
@@ -84,15 +83,13 @@ public sealed class MuxDaemonHost : IDisposable
         catch
         {
             _server.ShutdownRequested -= OnShutdownRequested;
-            _server.AcceptLoopFaulted -= OnAcceptLoopFaulted;
             _server.Dispose();
             ReleaseLock();
             throw;
         }
 
-        // A stop that ran while this method was still writing the descriptor (the accept loop can
-        // fault, or a client ask for shutdown, the moment the server starts) must not leave a
-        // descriptor or a ticking timer behind it.
+        // A stop that ran while this method was still writing the descriptor (a client can ask for
+        // shutdown the moment the server starts) must not leave a descriptor or a ticking timer behind it.
         lock (_tickLock)
         {
             if (Volatile.Read(ref _stopping) != 0)
@@ -126,11 +123,15 @@ public sealed class MuxDaemonHost : IDisposable
 
     private void OnShutdownRequested() => RequestStop("shutdown");
 
-    private void OnAcceptLoopFaulted(Exception? reason)
-    {
-        Log($"[MuxDaemon] the endpoint stopped accepting connections ({reason?.Message ?? "listener closed"}); stopping");
-        RequestStop("accept-failed");
-    }
+    /// <summary>
+    /// Inside Tick. The accept loop retries forever; this is where a daemon nobody can reach gives up:
+    /// failing for <see cref="MuxDaemonOptions.AcceptFailureStopAfter"/> with no client connected.
+    /// A connected client keeps it alive - killing the shells it is using would be the worse failure.
+    /// </summary>
+    private bool ShouldStopForAcceptFailure() =>
+        _server.AcceptFailingFor is TimeSpan failing
+        && failing >= _options.AcceptFailureStopAfter
+        && _server.ConnectionCount == 0;
 
     internal void TickForTest() => Tick();
 
@@ -150,6 +151,13 @@ public sealed class MuxDaemonHost : IDisposable
             {
                 int reaped = _server.ReapExitedSessions(_options.ReapGrace);
                 if (reaped > 0) Log($"[MuxDaemon] reaped {reaped} exited session(s)");
+
+                if (ShouldStopForAcceptFailure())
+                {
+                    Log($"[MuxDaemon] the endpoint has not accepted a connection for {_server.AcceptFailingFor?.TotalSeconds:0} s and no client is connected; stopping");
+                    RequestStop("accept-failed"); // reentrant, as for idle below
+                    return;
+                }
 
                 if (_options.IdleExitAfter <= TimeSpan.Zero) return;
                 if (_server.RunningSessionCount != 0 || _server.ConnectionCount != 0)
@@ -190,7 +198,6 @@ public sealed class MuxDaemonHost : IDisposable
         {
             _timer?.Dispose();
             _server.ShutdownRequested -= OnShutdownRequested;
-            _server.AcceptLoopFaulted -= OnAcceptLoopFaulted;
             if (reason != "idle") _server.KillAllSessions();
             _server.Dispose();
             MuxDiscovery.DeleteDescriptorIfOwned(_options.DescriptorPath, _options.Pid);

@@ -149,9 +149,11 @@ again. They run inside a small background process, the *multiplexer daemon*
   shown again: Enter ends it and starts a new one.
 - **One pane per shell:** if a saved session names the same shell in two panes (for example a
   hand-edited session file), only the first reattaches; the others start new shells.
-- **If the daemon's endpoint breaks:** the daemon retries a failing endpoint for about ten seconds,
-  then exits (logging why in `logs/mux.log`) rather than staying up unreachable. Its shells end
-  with it; Ntilde starts a fresh daemon the next time it needs one.
+- **If the daemon's endpoint breaks:** the daemon keeps retrying it (logging to `logs/mux.log`)
+  and keeps serving every window that is already connected, so their shells are never ended
+  because of it. Only when it has not accepted a connection for 60 seconds *and* no window is
+  connected - so nobody can reach its shells - does it exit, ending those shells. Ntilde then
+  starts a fresh daemon the next time it needs one.
 - **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
 
   | Command | What it does |

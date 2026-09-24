@@ -20,7 +20,7 @@ public sealed class MuxServerOptionsValidationTests
         "input-queue-zero" => new MuxServerOptions { MaxQueuedInputBytes = 0 },
         "accept-delay-zero" => new MuxServerOptions { AcceptRetryInitialDelay = TimeSpan.Zero },
         "accept-max-below-initial" => new MuxServerOptions { AcceptRetryInitialDelay = TimeSpan.FromSeconds(3), AcceptRetryMaxDelay = TimeSpan.FromSeconds(2) },
-        "accept-failures-zero" => new MuxServerOptions { MaxConsecutiveAcceptFailures = 0 },
+        "accept-log-negative" => new MuxServerOptions { AcceptFailureLogInterval = TimeSpan.FromSeconds(-1) },
         _ => throw new ArgumentOutOfRangeException(nameof(name)),
     };
 
@@ -38,7 +38,7 @@ public sealed class MuxServerOptionsValidationTests
     [InlineData("input-queue-zero")]
     [InlineData("accept-delay-zero")]
     [InlineData("accept-max-below-initial")]
-    [InlineData("accept-failures-zero")]
+    [InlineData("accept-log-negative")]
     public void Nonsensical_options_are_refused_at_construction(string name)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MuxServer(new ScriptedSessionFactory(), Invalid(name)).Dispose());

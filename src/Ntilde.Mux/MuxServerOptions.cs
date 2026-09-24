@@ -63,11 +63,10 @@ public sealed class MuxServerOptions
     public TimeSpan AcceptRetryMaxDelay { get; init; } = TimeSpan.FromSeconds(2);
 
     /// <summary>
-    /// Consecutive accept failures after which the listener is taken to be permanently broken: the
-    /// accept loop stops and raises <see cref="MuxServer.AcceptLoopFaulted"/>, so the daemon exits
-    /// (releasing its lock and descriptor) instead of living on without accepting anyone.
+    /// While accepts keep failing (the loop retries forever), at most one log line per this interval
+    /// after the first. <see cref="TimeSpan.Zero"/> logs every failure.
     /// </summary>
-    public int MaxConsecutiveAcceptFailures { get; init; } = 10;
+    public TimeSpan AcceptFailureLogInterval { get; init; } = TimeSpan.FromSeconds(30);
 
     public Action<string>? Log { get; init; }
 }

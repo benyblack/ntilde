@@ -19,7 +19,8 @@ public sealed class MuxDaemonHostTests : IDisposable
     }
 
     private (MuxDaemonHost Host, MuxServer Server, MuxDaemonOptions Options) NewHost(
-        TimeSpan? idle = null, int? pid = null, MuxServerOptions? serverOptions = null, Func<string, IMuxListener>? listenerFactory = null)
+        TimeSpan? idle = null, int? pid = null, MuxServerOptions? serverOptions = null, Func<string, IMuxListener>? listenerFactory = null,
+        TimeSpan? acceptFailureStopAfter = null)
     {
         var server = new MuxServer(new ScriptedSessionFactory(), serverOptions ?? new MuxServerOptions { ForceConPtyFiltering = false });
         using Process self = Process.GetCurrentProcess();
@@ -32,6 +33,7 @@ public sealed class MuxDaemonHostTests : IDisposable
             Pid = pid ?? Environment.ProcessId,
             ProcessName = self.ProcessName,
             ListenerFactory = listenerFactory ?? MuxListeners.Create,
+            AcceptFailureStopAfter = acceptFailureStopAfter ?? TimeSpan.FromSeconds(60),
         };
         var host = new MuxDaemonHost(server, options);
         _owned.Add(host);
@@ -134,29 +136,69 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.Equal(o.Pid, d.Pid);
     }
 
-    /// <summary>
-    /// PR #489 review 2, item 1: a listener that keeps failing must stop the daemon - releasing its
-    /// lock and descriptor - rather than leave it running without accepting anyone.
-    /// </summary>
+    // PR #489 review 2, item 1 (controller rule): the accept loop retries forever; the host stops
+    // ("accept-failed") only after AcceptFailureStopAfter of continuous failure with NO client
+    // connected - never killing shells a connected client is still using.
+
+    private static readonly TimeSpan ShortWindow = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>(a) Accept fails continuously while a client stays connected: the host keeps running.</summary>
     [Fact]
-    public async Task A_listener_that_keeps_failing_stops_the_host_with_accept_failed()
+    public async Task Failing_accepts_with_a_client_connected_never_stop_the_host()
     {
-        var serverOptions = new MuxServerOptions
-        {
-            ForceConPtyFiltering = false,
-            AcceptRetryInitialDelay = TimeSpan.FromMilliseconds(5),
-            AcceptRetryMaxDelay = TimeSpan.FromMilliseconds(20),
-            MaxConsecutiveAcceptFailures = 3,
-        };
-        var (host, _, o) = NewHost(serverOptions: serverOptions,
-            listenerFactory: _ => new MuxServerAcceptLoopTests.FailingListener(new InMemoryMuxListener(), failures: int.MaxValue));
+        var inner = new InMemoryMuxListener();
+        var listener = new MuxServerAcceptLoopTests.ScriptedListener(inner, call => call >= 1); // one success, then broken
+        var (host, server, o) = NewHost(serverOptions: MuxServerAcceptLoopTests.FastRetry(), listenerFactory: _ => listener,
+            acceptFailureStopAfter: ShortWindow);
+        host.Start();
+        using MuxClient client = await MuxClient.ConnectAsync(inner.Connect(), null, Ct);
+        await client.PingAsync(Ct);
+
+        await TestWait.UntilAsync(() => server.AcceptFailingFor > ShortWindow * 3, "accept has been failing well past the window");
+        Assert.False(host.Completion.IsCompleted, "the host stopped although a client was connected");
+        await client.PingAsync(Ct); // its connection (and shells) are still served
+        Assert.True(File.Exists(o.DescriptorPath));
+
+        client.Dispose(); // now nobody can reach the daemon: it gives up
+        Assert.Equal("accept-failed", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+    }
+
+    /// <summary>(b) Accept fails continuously with no connection: the host stops after the window and frees the root.</summary>
+    [Fact]
+    public async Task Failing_accepts_with_no_client_stop_the_host_after_the_window()
+    {
+        var listener = new MuxServerAcceptLoopTests.ScriptedListener(new InMemoryMuxListener(), _ => true);
+        var (host, _, o) = NewHost(serverOptions: MuxServerAcceptLoopTests.FastRetry(), listenerFactory: _ => listener,
+            acceptFailureStopAfter: ShortWindow);
+        var sw = Stopwatch.StartNew();
 
         host.Start();
 
         Assert.Equal("accept-failed", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        Assert.True(sw.Elapsed >= ShortWindow, $"stopped after {sw.Elapsed}, before the {ShortWindow} window");
+        Assert.True(listener.Failed > 3, "the loop kept retrying until the host gave up");
         Assert.False(File.Exists(o.DescriptorPath));
         var (next, _, _) = NewHost(pid: Environment.ProcessId + 100_000);
         next.Start(); // the lock was released
+    }
+
+    /// <summary>(c) Transient failures, then success: the clock resets and the host keeps serving.</summary>
+    [Fact]
+    public async Task Transient_accept_failures_then_success_keep_the_host_serving()
+    {
+        var inner = new InMemoryMuxListener();
+        var listener = new MuxServerAcceptLoopTests.ScriptedListener(inner, call => call < 3);
+        var (host, server, _) = NewHost(serverOptions: MuxServerAcceptLoopTests.FastRetry(), listenerFactory: _ => listener,
+            acceptFailureStopAfter: ShortWindow);
+        host.Start();
+        using (MuxClient first = await MuxClient.ConnectAsync(inner.Connect(), null, Ct)) await first.PingAsync(Ct);
+
+        await Task.Delay(ShortWindow * 3, Ct);
+
+        Assert.False(host.Completion.IsCompleted);
+        Assert.Null(server.AcceptFailingFor);
+        using MuxClient later = await MuxClient.ConnectAsync(inner.Connect(), null, Ct);
+        await later.PingAsync(Ct);
     }
 
     /// <summary>
