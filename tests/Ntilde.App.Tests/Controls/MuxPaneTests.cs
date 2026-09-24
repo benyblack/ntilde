@@ -201,8 +201,12 @@ public sealed class MuxPaneTests : IDisposable
         var again = Assert.IsType<MuxClientSession>(_pane.Session);
         Assert.Equal(s.Id, again.Id);
         PumpUntil(() => again.IsAttached, "reattached");
-        Assert.DoesNotContain("[Multiplexer disconnected]", BufferText(_pane.Buffer!));
-        Assert.Contains("before", BufferText(_pane.Buffer!));
+        // IsAttached flips when DeliverSnapshot publishes the attach offset, which is just BEFORE it
+        // raises SnapshotReceived on the delivery thread - so it does not yet mean the snapshot has
+        // replaced the banner-polluted buffer. Wait for the replacement itself (a snapshot that never
+        // replaces the buffer still fails, on the timeout).
+        PumpUntil(() => BufferText(_pane.Buffer!) is var text && !text.Contains("[Multiplexer disconnected]") && text.Contains("before"),
+            "the reattach snapshot replaced the banner");
         SettleAndAssertEqual(s.Id, "after reattach");
     }
 
