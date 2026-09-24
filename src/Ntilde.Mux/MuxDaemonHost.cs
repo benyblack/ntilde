@@ -171,7 +171,9 @@ public sealed class MuxDaemonHost : IDisposable
         FileStream? held = Interlocked.Exchange(ref _lock, null);
         if (held is null) return;
         held.Dispose();
-        try { File.Delete(LockPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        try { File.Delete(LockPath); }
+        catch (IOException) { /* best effort: the lock is the open handle, not the file; a leftover file is reused */ }
+        catch (UnauthorizedAccessException) { /* best effort, as above */ }
     }
 
     private void Log(string message)

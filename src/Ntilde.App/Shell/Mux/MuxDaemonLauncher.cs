@@ -4,8 +4,10 @@ using Ntilde.Mux.Transport;
 
 namespace Ntilde.Shell.Mux;
 
-internal sealed class MuxUnavailableException : Exception
+public sealed class MuxUnavailableException : Exception
 {
+    public MuxUnavailableException() : this("The multiplexer is unavailable.") { }
+
     public MuxUnavailableException(string message, Exception? inner = null, bool versionMismatch = false) : base(message, inner) => VersionMismatch = versionMismatch;
 
     /// <summary>A daemon is running but speaks a protocol version this build does not: spawning another cannot help.</summary>

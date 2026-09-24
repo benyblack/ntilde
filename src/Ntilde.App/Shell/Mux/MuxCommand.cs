@@ -62,25 +62,27 @@ public static class MuxCommand
         TimeSpan idle = TimeSpan.FromMinutes(10);
         bool foreground = false;
         options = new MuxServeOptions(idle, foreground);
-        for (int i = 2; i < args.Length; i++)
+        int i = 2;
+        while (i < args.Length)
         {
-            switch (args[i])
+            string arg = args[i++];
+            switch (arg)
             {
                 case "--foreground":
                     foreground = true;
                     break;
                 case "--idle-exit-minutes":
-                    if (i + 1 >= args.Length || !int.TryParse(args[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out int m))
+                    // The value is the next argument: consumed here, so the loop resumes after it.
+                    if (i >= args.Length || !int.TryParse(args[i++], NumberStyles.None, CultureInfo.InvariantCulture, out int m))
                     {
                         error = "--idle-exit-minutes needs a non-negative whole number.";
                         return false;
                     }
 
                     idle = TimeSpan.FromMinutes(m);
-                    i++;
                     break;
                 default:
-                    error = $"Unknown option '{args[i]}'.";
+                    error = $"Unknown option '{arg}'.";
                     return false;
             }
         }
@@ -129,12 +131,18 @@ public static class MuxCommand
         stdout.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0,-36}  {1,-12}  {2,8}  {3,-9}  {4}", "ID", "STATE", "ATTACHED", "SIZE", "TITLE"));
         foreach (SessionSummary s in sessions)
         {
-            string state = s.Faulted ? "faulted" : s.Running ? "running" : $"exited {s.ExitCode}";
+            string state = DescribeState(s);
             stdout.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0,-36}  {1,-12}  {2,8}  {3,-9}  {4}",
                 s.SessionId, state, s.AttachedClients, $"{s.Cols}x{s.Rows}", s.Title));
         }
 
         return 0;
+    }
+
+    private static string DescribeState(SessionSummary s)
+    {
+        if (s.Faulted) return "faulted";
+        return s.Running ? "running" : $"exited {s.ExitCode}";
     }
 
     private static int Kill(string[] args, TextWriter stdout, TextWriter stderr, string descriptorPath)

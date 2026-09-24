@@ -218,7 +218,9 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         try
         {
-            _input.Add(text);
+            // Unbounded, so Add never blocks and there is nothing to cancel; teardown is signalled by
+            // CompleteAdding/Dispose, caught below.
+            _input.Add(text, CancellationToken.None);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
         {

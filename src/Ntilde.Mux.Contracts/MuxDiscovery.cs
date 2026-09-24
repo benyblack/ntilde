@@ -45,9 +45,8 @@ public static class MuxDiscovery
 
     private static string SanitizedUser()
     {
-        var sb = new StringBuilder();
-        foreach (char c in Environment.UserName.ToLowerInvariant()) if (char.IsAsciiLetterOrDigit(c)) sb.Append(c);
-        return sb.Length == 0 ? "user" : sb.ToString();
+        string sanitized = string.Concat(Environment.UserName.ToLowerInvariant().Where(char.IsAsciiLetterOrDigit));
+        return sanitized.Length == 0 ? "user" : sanitized;
     }
 
     private static string RootHash(string root)
@@ -73,7 +72,9 @@ public static class MuxDiscovery
         }
         catch
         {
-            try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            try { File.Delete(temp); }
+            catch (IOException) { /* best effort: a leftover .tmp is harmless, and the original error matters more */ }
+            catch (UnauthorizedAccessException) { /* best effort, as above */ }
             throw;
         }
     }
@@ -120,7 +121,7 @@ public static class MuxDiscovery
     {
         if (!TryReadDescriptor(path, out MuxEndpointDescriptor? d) || d.Pid != pid) return;
         try { File.Delete(path); }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
+        catch (IOException) { /* best effort: a stale descriptor is harmless (its pid is checked on read) */ }
+        catch (UnauthorizedAccessException) { /* best effort, as above */ }
     }
 }
