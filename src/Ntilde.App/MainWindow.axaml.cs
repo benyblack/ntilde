@@ -9127,7 +9127,10 @@ namespace Ntilde
         /// exactly as before. If listing sessions fails, the count is unknown so there is nothing
         /// to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative is the
         /// exact bug this method exists to prevent, an old-build daemon surviving beside the new
-        /// one, just because a request on the way in happened to fail.
+        /// one, just because a request on the way in happened to fail. A confirmation dialog that
+        /// itself throws is treated as a decline (logged, toasted, no shutdown, no apply) rather
+        /// than letting the exception escape this fire-and-forget method as an unobserved fault -
+        /// "yes" must never be inferred from a question that could not be asked.
         ///
         /// Re-entrant: the toast button, the palette command and About's button can all reach this
         /// (see <see cref="ApplyStagedUpdate"/>), and nothing stops two of them firing before the
@@ -9180,10 +9183,33 @@ namespace Ntilde
                         if (sessions is not null)
                         {
                             int running = sessions.Count(s => s.Running);
-                            if (running > 0 && !await ConfirmSessionLossForUpdate(
-                                    $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update."))
+                            if (running > 0)
                             {
-                                return;
+                                bool confirmed;
+                                try
+                                {
+                                    confirmed = await ConfirmSessionLossForUpdate(
+                                        $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    // Treated as a decline: a confirmation dialog that cannot even
+                                    // ask the question must not be read as "yes, close the sessions"
+                                    // - the safer failure is leaving the daemon and the update alone.
+                                    AppLogger.Log($"[MainWindow] mux update confirmation failed: {ex.Message}");
+                                    ShowRecordingToast(
+                                        "Update not applied",
+                                        "Could not confirm closing the multiplexed sessions; try again.",
+                                        null,
+                                        null,
+                                        autoHide: false);
+                                    return;
+                                }
+
+                                if (!confirmed)
+                                {
+                                    return;
+                                }
                             }
                         }
 

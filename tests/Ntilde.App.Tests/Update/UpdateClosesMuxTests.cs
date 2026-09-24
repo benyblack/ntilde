@@ -134,6 +134,34 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Contains(sessionId, _mux.Server.GetSessionIds());
     }
 
+    /// <summary>
+    /// A confirmation dialog that itself throws (e.g. it fails to construct) must be treated as a
+    /// decline, not as a fault that escapes the fire-and-forget <c>ApplyStagedUpdateAsync</c> and
+    /// becomes an unobserved task exception - "yes" must never be inferred from a question that
+    /// could not be asked.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_throwing_confirmation_counts_as_a_decline()
+    {
+        MainWindow window = CreateWindow();
+        FakeApplyUpdateService service = StageUpdate(window);
+        Task.Run(() =>
+        {
+            using MuxClient c = MuxClient.ConnectAsync(_mux.Listener.Connect(), null, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+            return MuxTestHost.SpawnAsync(c).GetAwaiter().GetResult();
+        }).GetAwaiter().GetResult();
+        bool shutdownRaised = false;
+        _mux.Server.ShutdownRequested += () => shutdownRaised = true;
+        window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!;
+        window.ConfirmSessionLossForUpdate = _ => throw new InvalidOperationException("scripted confirmation failure");
+
+        Task task = RunToCompletion(window); // must not fault: a throwing confirmation is a decline
+
+        Assert.False(task.IsFaulted);
+        Assert.Equal(0, service.ApplyCount);
+        Assert.False(shutdownRaised);
+    }
+
     [AvaloniaFact]
     public void Confirming_shuts_the_daemon_down_then_applies()
     {
