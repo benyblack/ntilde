@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Ntilde.Mux.Contracts;
 
 namespace Ntilde.Shell.Mux;
 
@@ -46,7 +47,7 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            WorkingDirectory = Path.GetTempPath(),
+            WorkingDirectory = GetDaemonWorkingDirectory(),
         };
         foreach (string a in _leadingArgs) psi.ArgumentList.Add(a);
         psi.ArgumentList.Add("mux");
@@ -63,10 +64,26 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
         CloseQuietly(process.StandardError.Close);
     }
 
+    /// <summary>
+    /// The daemon's own cwd - not a shared, world-writable one like the temp directory. Shells never
+    /// inherit it: each spawn request carries its own starting directory.
+    /// </summary>
+    internal static string GetDaemonWorkingDirectory()
+    {
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(profile) && Directory.Exists(profile)) return profile;
+        string root = MuxDiscovery.GetRootDirectory();
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
     private static void CloseQuietly(Action close)
     {
         try { close(); }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        {
+            // The pipe end is already gone (e.g. the child exited): nothing of ours is left open.
+        }
     }
 
     // With redirection, CreateProcess runs with bInheritHandles=TRUE and the child inherits every

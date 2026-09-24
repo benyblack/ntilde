@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 
@@ -14,6 +15,9 @@ internal sealed class MuxConnectionHost : IDisposable
     private readonly Action<string>? _log;
     private readonly object _gate = new();
     private readonly CancellationTokenSource _disposed = new();
+    // Captured once: CancellationTokenSource.Token throws once the source is disposed, and Dispose
+    // disposes it while a connect attempt may still hold (or be about to read) the token.
+    private readonly CancellationToken _disposedToken;
     private MuxClient? _client;
     private Task<MuxClient>? _connecting;
     private int _connectAttempts;
@@ -25,6 +29,7 @@ internal sealed class MuxConnectionHost : IDisposable
         _connect = connect;
         Endpoint = endpoint;
         _log = log;
+        _disposedToken = _disposed.Token;
     }
 
     public static MuxConnectionHost CreateDefault(Action<string>? log)
@@ -47,7 +52,7 @@ internal sealed class MuxConnectionHost : IDisposable
     public Exception? LastFailure { get { lock (_gate) return _lastFailure; } }
 
     /// <summary>Starts connecting (spawning the daemon if needed) in the background. Idempotent; a no-op during the failure cooldown.</summary>
-    public void WarmUp() => _ = StartConnecting();
+    public void WarmUp() => _ = TryStartConnecting(out _);
 
     /// <summary>
     /// The live client, joining the in-flight attempt or starting a new one. Null when the attempt
@@ -57,11 +62,12 @@ internal sealed class MuxConnectionHost : IDisposable
     /// </summary>
     public MuxClient? GetClient(TimeSpan timeout)
     {
-        Task<MuxClient>? attempt = StartConnecting();
-        if (attempt is null) return CurrentClient;
+        if (!TryStartConnecting(out Task<MuxClient>? attempt)) return CurrentClient;
         try
         {
-            if (!Task.Run(() => attempt).Wait(timeout))
+            // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
+            // faults and ends this wait through the AggregateException path below.
+            if (!Task.Run(() => attempt, CancellationToken.None).Wait(timeout, CancellationToken.None))
             {
                 _log?.Invoke($"[Mux] the multiplexer was not ready within {timeout.TotalSeconds:0.#} s; new panes will not persist for {FailureCooldown.TotalSeconds:0.#} s");
                 RecordFailure(attempt);
@@ -93,27 +99,36 @@ internal sealed class MuxConnectionHost : IDisposable
     private bool InCooldown() =>
         _failedAtMs is long failedAt && Environment.TickCount64 - failedAt < (long)FailureCooldown.TotalMilliseconds;
 
-    /// <summary>The in-flight or just-finished attempt; null when a live client already exists (or the host is disposed).</summary>
-    private Task<MuxClient>? StartConnecting()
+    /// <summary>
+    /// The in-flight or just-finished attempt in <paramref name="attempt"/>; false when a live client
+    /// already exists, during the failure cooldown, or once the host is disposed.
+    /// </summary>
+    private bool TryStartConnecting([NotNullWhen(true)] out Task<MuxClient>? attempt)
     {
+        attempt = null;
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested) return null;
-            if (_client is { IsConnected: true }) return null;
+            if (_disposed.IsCancellationRequested) return false;
+            if (_client is { IsConnected: true }) return false;
             // Before the in-flight check: a caller that already timed out on the running attempt must
             // not make the next pane wait on it again.
-            if (InCooldown()) return null;
+            if (InCooldown()) return false;
             // Every concurrent caller must join the same attempt: one daemon spawn, one client.
-            if (_connecting is { IsCompleted: false }) return _connecting;
+            if (_connecting is { IsCompleted: false })
+            {
+                attempt = _connecting;
+                return true;
+            }
+
             if (_connecting is { IsCompletedSuccessfully: true } done && done.Result.IsConnected && _client is null)
             {
                 _client = done.Result;
-                return null;
+                return false;
             }
 
             _client = null;
             Interlocked.Increment(ref _connectAttempts);
-            CancellationToken token = _disposed.Token;
+            CancellationToken token = _disposedToken;
             _connecting = Task.Run(async () =>
             {
                 MuxClient client = await _connect(token).ConfigureAwait(false);
@@ -127,16 +142,17 @@ internal sealed class MuxConnectionHost : IDisposable
 
                 return client;
             }, token);
-            Task<MuxClient> attempt = _connecting;
+            Task<MuxClient> started = _connecting;
             // Covers WarmUp too, whose failure nothing awaits: log the reason once, start the cooldown.
-            _ = attempt.ContinueWith(
+            _ = started.ContinueWith(
                 t =>
                 {
                     _log?.Invoke($"[Mux] connection failed: {t.Exception?.GetBaseException().Message}");
-                    RecordFailure(attempt, t.Exception?.GetBaseException());
+                    RecordFailure(started, t.Exception?.GetBaseException());
                 },
                 CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-            return attempt;
+            attempt = started;
+            return true;
         }
     }
 
@@ -160,13 +176,19 @@ internal sealed class MuxConnectionHost : IDisposable
             _client = null;
         }
 
+        // Safe to dispose now: the disposed checks above and in the connect attempt read
+        // IsCancellationRequested (valid after Dispose), and the attempt holds the token captured in
+        // the constructor, never _disposed.Token.
+        _disposed.Dispose();
+
         if (client is null) return;
         if (client.IsConnected)
         {
             try
             {
                 using var cts = new CancellationTokenSource(DisposeFlushTimeout);
-                if (!Task.Run(() => client.PingAsync(cts.Token)).Wait(DisposeFlushTimeout))
+                // Deliberately not tied to _disposed (already cancelled): the flush is bounded by its own timeout.
+                if (!Task.Run(() => client.PingAsync(cts.Token), CancellationToken.None).Wait(DisposeFlushTimeout, CancellationToken.None))
                 {
                     _log?.Invoke($"[Mux] the multiplexer did not confirm pending requests within {DisposeFlushTimeout.TotalSeconds:0.#} s; closing anyway");
                 }

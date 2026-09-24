@@ -21,6 +21,10 @@ public sealed class NamedPipeMuxListener : IMuxListener
 
     private readonly string _pipeName;
     private readonly CancellationTokenSource _disposed = new();
+    // Captured once: CancellationTokenSource.Token throws once the source is disposed, and an Accept
+    // on the accept-loop thread can race Dispose. The captured token stays usable (it is cancelled
+    // before the source is disposed, so linking to it simply yields a cancelled token).
+    private readonly CancellationToken _disposedToken;
     private readonly object _gate = new();
     private NamedPipeServerStream? _pending;
 
@@ -28,6 +32,7 @@ public sealed class NamedPipeMuxListener : IMuxListener
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
         _pipeName = pipeName;
+        _disposedToken = _disposed.Token;
         // Create the first instance now so a client that connects before the accept loop runs finds
         // the pipe (and so a name collision fails the constructor, not the accept thread).
         _pending = CreateInstance();
@@ -40,7 +45,7 @@ public sealed class NamedPipeMuxListener : IMuxListener
 
     public Stream? Accept(CancellationToken cancellationToken)
     {
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposed.Token);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposedToken);
         NamedPipeServerStream server;
         lock (_gate)
         {
@@ -79,5 +84,9 @@ public sealed class NamedPipeMuxListener : IMuxListener
             _pending?.Dispose();
             _pending = null;
         }
+
+        // Outside the lock and last: Accept only reads IsCancellationRequested (valid after Dispose)
+        // and the captured token, and the idempotency check above does the same.
+        _disposed.Dispose();
     }
 }

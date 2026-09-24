@@ -38,7 +38,7 @@ public sealed class MuxConnectionHostTests
     }
 
     [Fact]
-    public void A_failing_connect_returns_null_and_is_retried_only_after_the_cooldown()
+    public async Task A_failing_connect_returns_null_and_is_retried_only_after_the_cooldown()
     {
         int attempts = 0;
         using var host = new MuxConnectionHost(_ => { Interlocked.Increment(ref attempts); throw new MuxUnavailableException("nope"); }, "test", null)
@@ -49,7 +49,7 @@ public sealed class MuxConnectionHostTests
         Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
         Assert.Equal(1, Volatile.Read(ref attempts)); // still cooling down: no second attempt
 
-        Thread.Sleep(350);
+        await Task.Delay(350, TestContext.Current.CancellationToken);
         Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
         Assert.Equal(2, Volatile.Read(ref attempts));
         Assert.Equal(2, host.ConnectAttempts);
@@ -100,6 +100,9 @@ public sealed class MuxConnectionHostTests
         host.Dispose();
 
         await TestWait.UntilAsync(() => !mux.Server.GetSessionIds().Contains(id), "the kill queued before Dispose reached the daemon");
+        Assert.DoesNotContain(id, mux.Server.GetSessionIds());
+        Assert.Null(host.CurrentClient);
+        Assert.False(client.IsConnected);
     }
 
     [Fact]

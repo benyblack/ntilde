@@ -278,9 +278,13 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     [AvaloniaFact]
     public void Refresh_is_a_no_op_for_a_non_mux_session()
     {
-        Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(new FakeTerminalSession(), TimeSpan.FromSeconds(1)), TestContext.Current.CancellationToken)
-            .GetAwaiter().GetResult();
-        Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(null, TimeSpan.FromSeconds(1)), TestContext.Current.CancellationToken)
-            .GetAwaiter().GetResult();
+        var fake = new FakeTerminalSession();
+        // Both return before their first await, so neither touches the dispatcher or waits.
+        Task forFake = MainWindow.RefreshPersistentSessionInfoAsync(fake, TimeSpan.FromSeconds(1));
+        Task forNull = MainWindow.RefreshPersistentSessionInfoAsync(null, TimeSpan.FromSeconds(1));
+
+        Assert.True(forFake.IsCompletedSuccessfully);
+        Assert.True(forNull.IsCompletedSuccessfully);
+        Assert.Empty(fake.SentInput);
     }
 }

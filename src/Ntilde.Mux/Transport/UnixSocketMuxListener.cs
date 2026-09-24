@@ -24,10 +24,16 @@ public sealed class UnixSocketMuxListener : IMuxListener
     private readonly string _socketPath;
     private readonly Socket _socket;
     private readonly CancellationTokenSource _disposed = new();
+    // Captured once: CancellationTokenSource.Token throws once the source is disposed, and an Accept
+    // on the accept-loop thread can race Dispose. The captured token stays usable (it is cancelled
+    // before the source is disposed, so linking to it simply yields a cancelled token).
+    private readonly CancellationToken _disposedToken;
+    private int _disposeStarted;
 
     public UnixSocketMuxListener(string socketPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(socketPath);
+        _disposedToken = _disposed.Token;
         _socketPath = Path.GetFullPath(socketPath);
         string dir = Path.GetDirectoryName(_socketPath)!;
         EnsurePrivateDirectory(dir);
@@ -92,7 +98,7 @@ public sealed class UnixSocketMuxListener : IMuxListener
 
     public Stream? Accept(CancellationToken cancellationToken)
     {
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposed.Token);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposedToken);
         try
         {
             Socket client = _socket.AcceptAsync(linked.Token).AsTask().GetAwaiter().GetResult();
@@ -107,11 +113,14 @@ public sealed class UnixSocketMuxListener : IMuxListener
 
     public void Dispose()
     {
-        if (_disposed.IsCancellationRequested) return;
+        if (Interlocked.Exchange(ref _disposeStarted, 1) != 0) return;
         _disposed.Cancel();
         _socket.Dispose();
         try { File.Delete(_socketPath); }
         catch (IOException) { /* best effort; a stale file is probed next start */ }
-        catch (UnauthorizedAccessException) { }
+        catch (UnauthorizedAccessException) { /* best effort, as above: the next start probes and replaces it */ }
+        // Last: an Accept still in flight has already observed the cancellation through its linked
+        // source, and later ones use the captured token, never _disposed.Token.
+        _disposed.Dispose();
     }
 }
