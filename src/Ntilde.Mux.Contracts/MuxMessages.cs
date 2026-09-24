@@ -168,3 +168,17 @@ public sealed record FaultedNotification
     /// <summary>Human-readable reason, for logs and the pane's banner; not machine-parsed. May be absent.</summary>
     public string? Message { get; init; }
 }
+
+/// <summary>
+/// <c>mux/mux-endpoint.json</c> (spec §3): how a client finds a running daemon, and enough to tell a
+/// live daemon from a recycled pid (<see cref="ProcessName"/>).
+/// </summary>
+public sealed record MuxEndpointDescriptor
+{
+    public int MinVersion { get; init; }
+    public int MaxVersion { get; init; }
+    /// <summary>Pipe name (Windows) or absolute socket path (Linux/macOS).</summary>
+    public required string Endpoint { get; init; }
+    public int Pid { get; init; }
+    public required string ProcessName { get; init; }
+}
