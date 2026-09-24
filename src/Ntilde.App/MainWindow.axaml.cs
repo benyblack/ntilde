@@ -6664,7 +6664,7 @@ namespace Ntilde
                     try
                     {
                         string path = Ntilde.Platform.Input.ClipboardImage.GetTempImagePath(".png");
-                        bitmap.Save(path);
+                        bitmap.Save(path, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
 
                         // In a WSL session the Linux CLI can't resolve a C:\ path, so map it to
                         // its /mnt/<drive> form — mirroring the file-drop path handling.

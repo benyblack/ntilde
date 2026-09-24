@@ -4827,7 +4827,7 @@ namespace Ntilde.Controls
                     // and RenderOffscreen keeps it from acting as one.
                     view.RenderOffscreen(rtb);
                     using var stream = new System.IO.MemoryStream();
-                    rtb.Save(stream);
+                    rtb.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                     png = stream.ToArray();
                 }
 
@@ -4900,7 +4900,7 @@ namespace Ntilde.Controls
                     TermView.RenderOffscreen(rtb);
 
                     using var stream = await file.OpenWriteAsync();
-                    rtb.Save(stream);
+                    rtb.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 }
                 else if (format.Equals("ansi", StringComparison.OrdinalIgnoreCase))
                 {
