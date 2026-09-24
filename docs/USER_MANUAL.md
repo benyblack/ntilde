@@ -107,6 +107,57 @@ Panes allow you to split a single tab into multiple terminal windows.
 - **Broadcast Input:** `Ctrl+Shift+B` toggles sending keystrokes to *all* panes in the current tab simultaneously.
 - **Find/Search:** `Ctrl+Shift+F` opens the search overlay for the active pane.
 
+### 3.3 Persistent sessions (multiplexer)
+Local shells can keep running when Ntilde's window closes, and come back when Ntilde starts
+again. They run inside a small background process, the *multiplexer daemon*
+(`Ntilde mux serve`), which Ntilde starts on demand.
+
+- **Turning it on:** Settings → Appearance → *Scrollback* → **Keep shells running when the
+  window closes** → *Keep running*. The default is *Off*, and with it off no daemon is ever
+  started. The setting applies to panes opened after you save it. Panes that are already open
+  stay as they are.
+- **What persists:** local shells, with their screen and scrollback. They survive closing the
+  window, an Ntilde crash and a restart. On the next launch each saved pane reattaches to its
+  shell. A running shell that no saved pane refers to (for example one left over from a
+  crash) opens as a new background tab, and a toast reads "Reattached N detached sessions".
+- **What closes a shell:** closing its pane or tab, or the shell exiting. Closing the *window*
+  only detaches: the shells keep running in the daemon. A shell that has exited and has no
+  window attached is cleaned up after 60 seconds.
+- **If the daemon cannot be reached:** the pane starts a normal shell instead and shows
+  `[Multiplexer unavailable — this session will not persist]`. Ntilde tries the daemon again
+  for panes opened 30 seconds later. If a running daemon goes away, attached panes show
+  `[Multiplexer disconnected] [Press Enter to reconnect]`. Enter reconnects, starting a new
+  daemon if needed. When the old shell is gone the pane says
+  `[Previous session was lost — started a new shell]`.
+- **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
+
+  | Command | What it does |
+  |---|---|
+  | `ntilde mux ls` | Lists sessions: id, state (running / exited *code* / faulted), attached windows, size, title. |
+  | `ntilde mux ls --json` | The same list as JSON. |
+  | `ntilde mux kill <id>` | Ends one session. |
+  | `ntilde mux kill-server` | Ends every session and stops the daemon. |
+
+  These commands never start a daemon. With none running they print "No multiplexer is
+  running." and exit with code 1. The daemon writes its log to `logs/mux.log` in Ntilde's
+  data folder.
+- **Limitations:**
+  - Local shells only. SSH panes work exactly as before and do not persist.
+  - Inline images (sixel, kitty graphics) are not shown in persistent panes.
+  - Applying an update closes persistent sessions. Ntilde asks first ("N multiplexed sessions
+    will be closed by the update") and leaves the update unapplied if you decline.
+  - If the daemon crashes, or is killed, its shells are gone.
+  - A shell inherits the daemon's environment, not the window's. The daemon's environment is
+    the one Ntilde had when it first started the daemon.
+  - Turning the setting off does not stop sessions that are already running. Panes open with
+    normal shells from then on, and the next time Ntilde saves your session it forgets which
+    panes the running sessions belonged to. Use `ntilde mux kill-server` to end them.
+  - The daemon exits by itself 10 minutes after its last session and its last connection
+    close.
+- **Security:** the daemon listens only on a local endpoint that only your user account can
+  open (a per-user named pipe on Windows, a socket in a private `0700` folder on macOS and
+  Linux). It never opens a network port.
+
 ---
 
 ## 4. Command Assist

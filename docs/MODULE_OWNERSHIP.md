@@ -175,12 +175,14 @@ invariant changes.
 
 **Owns**
 - The multiplexer wire protocol: frame kinds, framing, binary payload codecs, source-generated JSON DTOs, error codes, version negotiation
+- Daemon discovery (`MuxDiscovery.cs`): the app-data root, the `mux/mux-endpoint.json` descriptor (`MuxEndpointDescriptor`), and the per-user, per-root default endpoint name
 
 **Invariants**
 - Frame = `u8 kind` + `u32` LE length + payload, payload ≤ `MaxFrameBytes`, header validated before any payload byte is read
 - Every JSON type goes through `MuxJsonContext`
 - Binary parsers length-check before slicing
 - Version negotiation picks the highest common version or refuses
+- A descriptor is live only when its pid is alive **and** runs under the recorded process name (pid-reuse guard); writes are atomic (temp file + move)
 
 **Test authority**
 - `tests/Ntilde.Mux.Tests/`
@@ -194,6 +196,8 @@ invariant changes.
 
 **Owns**
 - Multiplexer core: headless authoritative sessions (one parse thread each), the server, the client (`MuxClientSession : ITerminalSession`), and an in-memory transport
+- Local transports (`Transport/`): `NamedPipeMuxListener`, `UnixSocketMuxListener`, `MuxListeners.Create` (the platform's listener) and `MuxEndpointConnector` (the client end)
+- The daemon host: `MuxDaemonHost` / `MuxDaemonOptions` (lock file, descriptor, reaper, idle exit, `shutdown`)
 
 **Invariants**
 - **One parse thread per session** owns the headless parser and buffer, and control items run only between `Process()` calls
@@ -203,9 +207,12 @@ invariant changes.
 - No thread-pool work on the output path
 - A slow client is disconnected, never waited for (stream frames against the send budget, snapshots against their own separate bound)
 - Attach limits are rejection ceilings, never clamps (#473)
+- **Endpoints are current-user only and never TCP:** a `CurrentUserOnly` pipe on Windows (the client checks it too); a `0600` socket in a `0700` directory elsewhere, and the listener refuses a directory with any other mode or a live socket at the path. The protocol has no authentication by design
+- Per-session input writer: `SendInput` and parser replies share one byte-capped (16 MiB) queue per session, so a child that stops reading stdin cannot stall the shared connection
+- Exited, unattached sessions are reaped after `ReapGrace` (60 s); the daemon exits after `IdleExitAfter` (10 min) with no running session and no connection
 
 **Test authority**
-- `tests/Ntilde.Mux.Tests/` (+ `MuxRealShellSmokeTests` in App.Tests)
+- `tests/Ntilde.Mux.Tests/` (+ `MuxRealShellSmokeTests` and the real-daemon `MuxDaemonSmokeTests` in App.Tests)
 
 ---
 
@@ -387,7 +394,7 @@ requires public test classes.
 ## Ntilde.App (`src/Ntilde.App/`)
 
 **Namespace:** `Ntilde` (NOT `Ntilde.App` — see test-root-namespace note in `Ntilde.App.Tests`)
-**Depends on:** Platform, VT, Rendering, Pty, Replay, AgentHost.Contracts, CommandAssist, Backup, Avalonia 12.0.4, SkiaSharp 3.119.4
+**Depends on:** Platform, VT, Rendering, Pty, Replay, AgentHost.Contracts, CommandAssist, Backup, Mux, Mux.Contracts, Avalonia 12.0.4, SkiaSharp 3.119.4
 **Public surface:** `App`, `MainWindow`, `TerminalPane`, settings window, theme manager, command palette, command-assist controller, profile importers, startup orchestrator
 
 **Owns**
@@ -402,6 +409,12 @@ requires public test classes.
 - Startup orchestration (seven `Startup*.cs` files in `Shell/`)
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
+- Persistent sessions (`Shell/Mux/`, namespace `Ntilde.Shell.Mux`):
+  - `MuxCommand.cs` / `MuxDaemonProcess.cs`: the `ntilde mux serve|ls|kill|kill-server` CLI, dispatched from `Program.cs` before `AppLogger` and Avalonia; `serve` detaches from the console and hosts `MuxDaemonHost`, logging to `logs/mux.log`
+  - `MuxDaemonLauncher.cs` / `MuxDaemonSpawner.cs`: connect to a live daemon, or spawn one fully detached from the caller's stdio
+  - `MuxConnectionHost.cs`: the GUI's one shared `MuxClient` (warm-up, reconnect, 30 s back-off after a failed connect, detach on teardown)
+  - `MuxTerminalSessionFactory.cs` / `PersistentSessionFactory.cs` / `SessionPersistenceMode.cs`: local panes go through the mux when `SessionPersistence` is `KeepOnClose`; SSH panes and failures fall back to the default factory
+  - `MuxOrphans.cs` / `PaneDisposition.cs`: orphan adoption on launch; a user close kills the session, window teardown detaches
 
 **Non-responsibilities**
 - VT parsing (delegated to VT)
@@ -411,6 +424,7 @@ requires public test classes.
 **Invariants**
 - App is allowed to depend on all production assemblies; nothing depends on App except Cli and the App.Tests project (and Architecture.Tests, which references everything for inspection)
 - Renderer-side bugs ("the pixels look wrong") are diagnosed by chasing back through Rendering → VT, not by patching App
+- With `SessionPersistence` off no daemon is ever spawned; the daemon mode never initialises Avalonia; a daemon spawn never inherits the caller's std handles
 
 **Test authority**
 - `tests/Ntilde.App.Tests/` (the largest suite)

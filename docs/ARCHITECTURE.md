@@ -30,6 +30,8 @@ Cli ──► App ──► Platform ──► Pty ──► Replay ──► VT
             ├─► VT
             ├─► Pty
             ├─► Replay
+            ├─► Mux ──► Mux.Contracts  (leaf)
+            ├─► Mux.Contracts          (leaf)
             ├─► CommandAssist          (leaf)
             ├─► Backup                 (leaf)
             └─► AgentHost.Contracts    (leaf)
@@ -68,8 +70,8 @@ Concretely, from the `.csproj` graph:
 | `Ntilde.VtContract` | (leaf) | The machine-readable VT capability catalogue (`vt-capabilities.json`) and its strict schema validation |
 | `Ntilde.AgentHost.Contracts` | (leaf) | Wire protocol between the app's agent host and any external client: frames, discovery, source-generated JSON context |
 | `Ntilde.Mux.Contracts` | (leaf) | Multiplexer wire protocol: framing, frame kinds, binary payload codecs, source-generated JSON DTOs, error codes, version negotiation |
-| `Ntilde.Mux` | Pty, VT, Replay, Mux.Contracts | Multiplexer core: headless authoritative sessions (one parse thread each), server, client + `MuxClientSession : ITerminalSession`, in-memory transport. **Must not reference Platform, App, Avalonia or SkiaSharp** |
-| `Ntilde.App` | Platform, VT, Rendering, Pty, Replay, CommandAssist, Backup, AgentHost.Contracts | Avalonia UI shell: windows, controls, command palette, settings, themes, command-assist views, Agent Output panel |
+| `Ntilde.Mux` | Pty, VT, Replay, Mux.Contracts | Multiplexer core: headless authoritative sessions (one parse thread each), server, client + `MuxClientSession : ITerminalSession`, in-memory and local (named pipe / Unix socket) transports, the daemon host (`MuxDaemonHost`). **Must not reference Platform, App, Avalonia or SkiaSharp** |
+| `Ntilde.App` | Platform, VT, Rendering, Pty, Replay, CommandAssist, Backup, AgentHost.Contracts, Mux, Mux.Contracts | Avalonia UI shell: windows, controls, command palette, settings, themes, command-assist views, Agent Output panel. Also the `mux serve` daemon mode and the GUI's mux connection (`Shell/Mux/`, section 8.1) |
 | `Ntilde.McpServer` | AgentHost.Contracts, Backup, VtContract | stdio MCP server: repo/dev-companion tools, config validators, and the opt-in observe/act channel into live sessions. **Must not reference App, VT, Pty or Rendering** |
 | `Ntilde.Cli` | App | Headless CLI shim (`vt-report`, `--replay`, askpass, `backup` verbs) |
 | `Ntilde.Conformance` | VtContract | VT conformance matrix tool used by tests and CI |
@@ -196,6 +198,53 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - Buffer mutation (except via explicit APIs)
 - Rendering logic (Skia primitives in Rendering; Avalonia binding shell here is intentionally thin — though see Known Tech Debt)
 
+### 8.1 Persistent sessions: the mux daemon
+
+With `TerminalSettings.SessionPersistence = "KeepOnClose"` (default `"Off"`), local panes run their
+shells in a separate daemon process and survive window close, an app crash and a restart. The
+daemon is **a CLI mode of the app executable** (`Ntilde mux serve`), not a separate binary: the
+AOT bundle ships no `Ntilde.Cli`. `Program.cs` dispatches `mux` verbs before `AppLogger` and long
+before Avalonia, so the daemon never initialises a UI. The edge is App → `Ntilde.Mux` →
+`Ntilde.Mux.Contracts`; `Ntilde.Mux` still references nothing above Pty/VT/Replay.
+
+```
+ GUI (Ntilde.exe)                          daemon (Ntilde.exe mux serve)
+ ├─ MuxConnectionHost ── one MuxClient ──► NamedPipe / UDS ─► MuxDaemonHost
+ │    (warm at start, reconnect on demand)                     ├─ MuxServer (Phase 1)
+ ├─ MuxTerminalSessionFactory                                  │   └─ HeadlessTerminalSession × N
+ │    local → spawn/open MuxClientSession                      │        └─ RustPtySession → shell
+ │    SSH   → DefaultTerminalSessionFactory                    ├─ idle-exit + reaper timer
+ └─ TerminalPane ← MuxClientSession events                     └─ mux/mux-endpoint.json
+```
+
+- **Discovery.** `MuxDiscovery` (Mux.Contracts) resolves `<root>/mux/mux-endpoint.json` under
+  `NTILDE_APPDATA_ROOT` or the local app-data folder. The descriptor names the endpoint, pid and
+  process name; it counts as live only when that pid is alive under that name (pid-reuse guard).
+  The endpoint name carries a hash of the root, so two app-data roots (tests, portable installs)
+  never share a daemon.
+- **Lifecycle.** `MuxDaemonHost` holds a lock file, writes the descriptor, reaps exited sessions
+  that no client is attached to 60 s after exit, and exits 10 minutes after its last running
+  session and last connection are gone (`--idle-exit-minutes`, 0 = never). The `shutdown` method
+  (`ntilde mux kill-server`, the update path) kills every session and exits. Daemon death kills
+  its shells: there is no watchdog, as in tmux. The daemon logs to `logs/mux.log`.
+- **Launch.** `MuxDaemonLauncher` connects to a live descriptor or spawns `mux serve` fully
+  detached (all three stdio streams redirected and closed, inheritable std handles cleared on
+  Windows so a captured parent pipe never reaches the daemon), then polls the descriptor.
+  `MuxConnectionHost` keeps the GUI's single shared `MuxClient`; after a failed connect it backs
+  off for 30 s and panes fall back to a normal shell with a banner.
+- **Close semantics.** A user closing a pane or tab kills its session. Window teardown only
+  detaches (closes the connection). Saved sessions record each pane's mux session id, so the next
+  launch reattaches; running sessions nobody references are adopted as background tabs.
+- **Endpoint security.** The protocol has no authentication by design, and `spawn` runs arbitrary
+  commands, so the endpoint is local and same-user only:
+  - Windows: a named pipe created with `PipeOptions.CurrentUserOnly` (current-user ACL); the
+    client also connects with `CurrentUserOnly`, so a pipe squatted by another account is rejected.
+  - Unix: a socket in a directory that must be mode `0700` (created that way; an existing
+    directory with any other mode makes the listener refuse to start and name the path), and the
+    socket itself is `0600`. A stale socket is probe-connected before it is unlinked; a live one
+    means refuse.
+  - Never TCP.
+
 ---
 
 ## 9. CLI Shim — `Ntilde.Cli`
@@ -285,6 +334,7 @@ Adding a new layering invariant means adding a new fact. Reverting one of these 
 | `Ntilde.Platform.Tests` | Platform utilities + SSH; includes Docker-gated E2E (skipped without Docker) |
 | `Ntilde.App.Tests` | App-level integration — Avalonia-headless tests, replay regressions, golden PNG comparisons, command-assist |
 | `Ntilde.Architecture.Tests` | Layering and namespace rules (Section 12) |
+| `Ntilde.Mux.Tests` | Multiplexer contracts, transports, headless sessions, server/client, daemon host and scenario suites (scripted sessions; the real-daemon PtySmoke test lives in App.Tests) |
 | `Ntilde.Benchmarks` | BenchmarkDotNet perf benchmarks (Exe, not auto-discovered by `dotnet test`) |
 | `Ntilde.ExternalSuites` | Vttest and Native-SSH external scenario drivers (Exe) |
 
@@ -304,7 +354,7 @@ These are tracked in follow-up plans under `docs/plans/`:
 - **Buffer-snapshot recording.** Phase 5 removed `ITerminalSession.AttachBuffer` / `TakeSnapshot`. The byte-stream is still recorded; buffer snapshots at recording start/stop are gone. Re-introducing them as an orchestration helper (likely in `Replay` or `Platform`) is a small follow-up.
 - **`MainWindow.axaml.cs` is 8,755 LOC, `TerminalPane.axaml.cs` 5,029 LOC, `SettingsWindow.axaml.cs` 3,312 LOC** (measured 2026-09-03; each has grown 60-95% since this item was written, so the trend is the finding as much as the number). These code-behinds contain business logic that should live in services and view-models.
 - **`TerminalBuffer` is split across 10 partial files (~5K LOC).** Several of the partials (`WritePath`, `ReflowEngine`, `ThreadingAndInvalidation`, `TabStops`) want to be collaborators rather than partials.
-- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows);** the mux parser has no image decoder, so kitty images exist only in clients and are absent from a reattach snapshot (Phase 2).
+- **Mux snapshot capture holds the buffer read lock (~27 ms at 10k rows);** the mux parser has no image decoder, so Phase 2 turns inline images off in mux-backed panes (no image decoder, no native kitty graphics) rather than show images a reattach would lose.
 
 The 2026-05-28 architecture review (`docs/plans/2026-05-28-architecture-module-boundaries-review.md`) catalogs all of the above and ranks them by leverage.
 
