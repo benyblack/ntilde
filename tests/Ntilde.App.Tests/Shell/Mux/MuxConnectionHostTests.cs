@@ -84,6 +84,34 @@ public sealed class MuxConnectionHostTests
     }
 
     [Fact]
+    public async Task Dispose_flushes_frames_queued_before_it()
+    {
+        // A small pipe and a backlog of input ahead of the kill: the sender is still writing when
+        // Dispose runs. Closing without the flush would drop the kill (MainWindow's last-tab close).
+        using var mux = new MuxTestHost(pipeCapacityBytes: 16 * 1024);
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null);
+        MuxClient client = host.GetClient(TimeSpan.FromSeconds(5))!;
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        MuxClientSession session = client.OpenSession(id, "scripted");
+        string chunk = new('x', 16 * 1024);
+        for (int i = 0; i < 64; i++) session.SendInput(chunk);
+        session.Kill();
+
+        host.Dispose();
+
+        await TestWait.UntilAsync(() => !mux.Server.GetSessionIds().Contains(id), "the kill queued before Dispose reached the daemon");
+    }
+
+    [Fact]
+    public void Dispose_is_idempotent_and_safe_without_a_client()
+    {
+        var host = new MuxConnectionHost(ct => Task.FromException<MuxClient>(new MuxUnavailableException("none")), "test", null);
+        host.Dispose();
+        host.Dispose();
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
     public void GetClient_times_out_rather_than_blocking_forever()
     {
         using var host = new MuxConnectionHost(async ct => { await Task.Delay(Timeout.Infinite, ct); return null!; }, "test", null);

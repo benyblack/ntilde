@@ -1,0 +1,144 @@
+using System.Reflection;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using Ntilde.Controls;
+using Ntilde.Mux;
+using Ntilde.Mux.Tests.Support;
+using Ntilde.Shell;
+using Ntilde.Shell.Mux;
+using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
+
+namespace Ntilde.Tests.Core;
+
+/// <summary>
+/// Spec §9: a user closing a pane ends its shell; closing the window detaches and leaves every
+/// shell running in the daemon. The window's pane spawns into an in-memory MuxServer.
+/// </summary>
+/// <remarks>
+/// <see cref="TestAppDataRoot"/> is taken for its lifetime: closing a real MainWindow saves the
+/// session, which must not land in the developer's own profile (see MainWindowShellExitTests).
+/// </remarks>
+public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>, IDisposable
+{
+    private readonly MuxTestHost _mux = new();
+    private MuxConnectionHost? _host;
+
+    public void Dispose()
+    {
+        TestMainWindowFactory.DisposeCreatedWindows();
+        _host?.Dispose();
+        _mux.Dispose();
+    }
+
+    private MainWindow CreateWindow()
+    {
+        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        var factory = new MuxTerminalSessionFactory(_host, new RecordingSessionFactory(new FakeTerminalSession()), null);
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = factory,
+        });
+        Assert.Same(_host, window.MuxHost);
+        window.Show();
+        PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the first pane attached");
+        return window;
+    }
+
+    private static IReadOnlyList<TerminalPane> AllPanes(MainWindow w) => w.AllPanesForTest();
+
+    private static void PumpUntil(Func<bool> condition, string because, int ms = 10_000)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!condition())
+        {
+            if (sw.ElapsedMilliseconds > ms) Assert.Fail($"Timed out: {because}");
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(10);
+        }
+    }
+
+    [AvaloniaFact]
+    public void Window_close_detaches_and_the_session_keeps_running()
+    {
+        MainWindow window = CreateWindow();
+        Guid id = ((MuxClientSession)AllPanes(window).First().Session!).Id;
+
+        window.Close();
+
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.Contains(id, _mux.Server.GetSessionIds());
+        Assert.Null(_host!.CurrentClient); // the teardown closed the shared connection
+    }
+
+    [AvaloniaFact]
+    public void Closing_last_tab_kills_its_session_before_teardown()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)pane.Session!).Id;
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        // Closing the last tab closes the window too, and its teardown closes the connection
+        // right behind the kill: the kill must still reach the daemon.
+        var task = (Task<bool>)close.Invoke(window, [pane, true])!;
+
+        PumpUntil(() => task.IsCompleted, "the close finished");
+        Assert.Null(_host!.CurrentClient); // the window's teardown really did close the connection
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the session was killed");
+    }
+
+    [AvaloniaFact]
+    public void Teardown_twice_is_harmless()
+    {
+        MainWindow window = CreateWindow();
+        Guid id = ((MuxClientSession)AllPanes(window).First().Session!).Id;
+        var teardown = typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        teardown.Invoke(window, null);
+        teardown.Invoke(window, null);
+
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.Contains(id, _mux.Server.GetSessionIds());
+    }
+
+    [AvaloniaFact]
+    public void Close_confirmation_refreshes_the_daemons_child_process_state()
+    {
+        MainWindow window = CreateWindow();
+        var mux = (MuxClientSession)AllPanes(window).First().Session!;
+        _mux.Fake(mux.Id).HasActiveChildProcesses = true;
+
+        // Off the UI thread: never Wait() a mux task on the Avalonia dispatcher.
+        Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(mux, TimeSpan.FromSeconds(2)), TestContext.Current.CancellationToken)
+            .GetAwaiter().GetResult();
+
+        Assert.True(mux.HasActiveChildProcesses);
+    }
+
+    [AvaloniaFact]
+    public void Turning_persistence_off_swaps_the_factory_but_keeps_open_mux_panes_connected()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var settings = (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+        settings.SessionPersistence = SessionPersistenceMode.Off;
+
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+
+        Assert.Same(DefaultTerminalSessionFactory.Instance, pane.SessionFactory); // re-wired: Reconnect makes a normal session
+        Assert.Same(_host, window.MuxHost);
+        Assert.NotNull(_host!.CurrentClient);
+        Assert.True(((MuxClientSession)pane.Session!).IsAttached);
+    }
+
+    [AvaloniaFact]
+    public void Refresh_is_a_no_op_for_a_non_mux_session()
+    {
+        Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(new FakeTerminalSession(), TimeSpan.FromSeconds(1)), TestContext.Current.CancellationToken)
+            .GetAwaiter().GetResult();
+        Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(null, TimeSpan.FromSeconds(1)), TestContext.Current.CancellationToken)
+            .GetAwaiter().GetResult();
+    }
+}

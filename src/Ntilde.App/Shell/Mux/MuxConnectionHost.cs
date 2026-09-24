@@ -134,7 +134,15 @@ internal sealed class MuxConnectionHost : IDisposable
         }
     }
 
-    /// <summary>Closes the connection: the daemon detaches every session on it and keeps them running.</summary>
+    /// <summary>How long <see cref="Dispose"/> waits for the daemon to work through what is already queued.</summary>
+    public TimeSpan DisposeFlushTimeout { get; init; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Closes the connection: the daemon detaches every session on it and keeps them running.
+    /// First a bounded flush: closing drops frames still queued, and a pane closed just before the
+    /// window (the last tab) has queued a kill. The server reads frames in order, so a ping reply
+    /// means every earlier frame was handled. Waited inside Task.Run: no UI sync context captured.
+    /// </summary>
     public void Dispose()
     {
         MuxClient? client;
@@ -146,6 +154,23 @@ internal sealed class MuxConnectionHost : IDisposable
             _client = null;
         }
 
-        client?.Dispose();
+        if (client is null) return;
+        if (client.IsConnected)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(DisposeFlushTimeout);
+                if (!Task.Run(() => client.PingAsync(cts.Token)).Wait(DisposeFlushTimeout))
+                {
+                    _log?.Invoke($"[Mux] the multiplexer did not confirm pending requests within {DisposeFlushTimeout.TotalSeconds:0.#} s; closing anyway");
+                }
+            }
+            catch (AggregateException)
+            {
+                // A dead or cancelled connection: nothing more can be flushed.
+            }
+        }
+
+        client.Dispose();
     }
 }
