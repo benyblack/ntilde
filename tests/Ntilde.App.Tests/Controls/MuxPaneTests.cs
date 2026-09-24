@@ -211,9 +211,10 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void Disconnect_then_Enter_with_session_gone_spawns_fresh_with_lost_banner()
+    public void Disconnect_then_Enter_with_session_gone_spawns_fresh_and_raises_the_lost_notice()
     {
         MuxClientSession s = StartHostedPane();
+        var notices = RecordNotices();
         _host.CurrentClient!.Dispose();
         PumpUntil(() => BufferText(_pane!.Buffer!).Contains("[Multiplexer disconnected]"), "the banner is shown");
         _mux.Server.KillAllSessions();
@@ -221,7 +222,11 @@ public sealed class MuxPaneTests : IDisposable
         _pane!.Reconnect();
         var fresh = Assert.IsType<MuxClientSession>(_pane.Session);
         Assert.NotEqual(s.Id, fresh.Id);
-        PumpUntil(() => BufferText(_pane.Buffer!).Contains(TerminalPane.MuxPreviousLostBanner), "the lost banner is shown");
+        PumpUntil(() => notices.Count == 1, "the lost notice is raised");
+        Assert.Equal((TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), notices.Single());
+        // Never into the buffer: the new shell's first frame would paint over it.
+        Settle(fresh.Id);
+        Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, BufferText(_pane.Buffer!));
     }
 
     [AvaloniaFact]
@@ -248,25 +253,27 @@ public sealed class MuxPaneTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void An_unreachable_daemon_gives_a_local_session_and_the_unavailable_banner()
+    public void An_unreachable_daemon_gives_a_local_session_and_the_unavailable_notice()
     {
         using var deadHost = new MuxConnectionHost(_ => throw new MuxUnavailableException("down"), "x", null);
         _pane = new TerminalPane();
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
         _pane.SessionFactory = new MuxTerminalSessionFactory(deadHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
         { ConnectTimeout = TimeSpan.FromMilliseconds(300) };
+        var notices = RecordNotices();
         _pane.CreateAndWireParser();
         _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
         Assert.IsType<FakeTerminalSession>(_pane.Session);
         Dispatcher.UIThread.RunJobs();
-        Assert.Contains(TerminalPane.MuxUnavailableBanner, BufferText(_pane.Buffer!));
+        Assert.Equal((TerminalPane.MuxUnavailableNoticeTitle, TerminalPane.MuxUnavailableBanner), notices.Single());
+        Assert.DoesNotContain(TerminalPane.MuxUnavailableBanner, BufferText(_pane.Buffer!));
         Assert.False(_pane.TermView.DefersBufferResizeToSession);
         Assert.Null(_pane.MuxEndpoint);
     }
 
-    /// <summary>Final-fix item 10: a version mismatch keeps the constant banner and adds the kill-server hint as a second line.</summary>
+    /// <summary>Final-fix item 10: a version mismatch keeps the constant message and adds the kill-server hint as a second line.</summary>
     [AvaloniaFact]
-    public void A_version_mismatch_banner_adds_the_kill_server_hint()
+    public void A_version_mismatch_notice_adds_the_kill_server_hint()
     {
         using var mismatchHost = new MuxConnectionHost(
             _ => throw new MuxUnavailableException("different version", versionMismatch: true), "x", null);
@@ -274,27 +281,32 @@ public sealed class MuxPaneTests : IDisposable
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
         _pane.SessionFactory = new MuxTerminalSessionFactory(mismatchHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
         { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        var notices = RecordNotices();
         _pane.CreateAndWireParser();
         _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
         Dispatcher.UIThread.RunJobs();
 
-        string text = BufferText(_pane.Buffer!);
-        Assert.Contains(TerminalPane.MuxUnavailableBanner, text);
-        Assert.Contains("ntilde mux kill-server", text);
+        (string title, string message) = Assert.Single(notices);
+        Assert.Equal(TerminalPane.MuxUnavailableNoticeTitle, title);
+        Assert.Equal($"{TerminalPane.MuxUnavailableBanner}\n{TerminalPane.MuxVersionMismatchHint}", message);
+        Assert.Contains("ntilde mux kill-server", message);
+        Assert.DoesNotContain("kill-server", BufferText(_pane.Buffer!));
     }
 
     [AvaloniaFact]
-    public void A_plain_unavailable_banner_has_no_kill_server_hint()
+    public void A_plain_unavailable_notice_has_no_kill_server_hint()
     {
         using var deadHost = new MuxConnectionHost(_ => throw new MuxUnavailableException("down"), "x", null);
         _pane = new TerminalPane();
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
         _pane.SessionFactory = new MuxTerminalSessionFactory(deadHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
         { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        var notices = RecordNotices();
         _pane.CreateAndWireParser();
         _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
         Dispatcher.UIThread.RunJobs();
 
+        Assert.Equal(TerminalPane.MuxUnavailableBanner, Assert.Single(notices).Message);
         Assert.DoesNotContain("kill-server", BufferText(_pane.Buffer!));
     }
 
@@ -387,9 +399,11 @@ public sealed class MuxPaneTests : IDisposable
         _pane.SessionFactory = factory;
         int exited = 0;
         _pane.ProcessExited += (_, _) => exited++;
+        var notices = RecordNotices();
         _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
         _window.Show();
         PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer attach failed"), "the attach-failed banner is shown");
+        Assert.Empty(notices); // a failed attach shows its banner, not the lost notice
 
         var failed = Assert.IsType<MuxClientSession>(_pane.Session);
         Assert.True(failed.IsConnected);
@@ -404,7 +418,8 @@ public sealed class MuxPaneTests : IDisposable
         var fresh = Assert.IsType<MuxClientSession>(_pane.Session);
         Assert.NotEqual(failed.Id, fresh.Id);
         PumpUntil(() => fresh.IsAttached, "the fresh session attached");
-        PumpUntil(() => BufferText(_pane.Buffer!).Contains(TerminalPane.MuxPreviousLostBanner), "the lost banner is shown");
+        PumpUntil(() => notices.Count == 1, "the lost notice is raised");
+        Assert.Equal(TerminalPane.MuxPreviousLostBanner, notices.Single().Message);
         Assert.Same(fresh, _pane.TermView.SessionForTest);
         Assert.Equal(0, exited);
     }
@@ -444,6 +459,14 @@ public sealed class MuxPaneTests : IDisposable
             if (Interlocked.Increment(ref _calls) == 1) afterFirstCreate();
             return result;
         }
+    }
+
+    /// <summary>Records the current pane's PersistenceNotice events (raised on the UI thread).</summary>
+    private System.Collections.Generic.List<(string Title, string Message)> RecordNotices()
+    {
+        var notices = new System.Collections.Generic.List<(string Title, string Message)>();
+        _pane!.PersistenceNotice += (_, title, message) => notices.Add((title, message));
+        return notices;
     }
 
     private static string BufferText(TerminalBuffer buffer) => MuxTestText.VisibleText(buffer);

@@ -4656,6 +4656,7 @@ namespace Ntilde
             pane.ProcessExited -= OnPaneProcessExited;
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
             pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
+            pane.PersistenceNotice -= OnPanePersistenceNotice;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged += OnPaneWorkingDirectoryChanged;
@@ -4666,6 +4667,7 @@ namespace Ntilde
             pane.ProcessExited += OnPaneProcessExited;
             pane.LongCommandCompleted += OnPaneLongCommandCompleted;
             pane.PersistentSessionAttached += OnPanePersistentSessionAttached;
+            pane.PersistenceNotice += OnPanePersistenceNotice;
         }
 
         private void UnwirePane(TerminalPane pane)
@@ -4680,6 +4682,7 @@ namespace Ntilde
             pane.ProcessExited -= OnPaneProcessExited;
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
             pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
+            pane.PersistenceNotice -= OnPanePersistenceNotice;
         }
 
         private int _sessionSaveQueued; // 1 while a coalesced save is posted
@@ -4699,6 +4702,60 @@ namespace Ntilde
                 if (_teardownDone) return;
                 if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs);
             }, DispatcherPriority.Background);
+        }
+
+        // UI thread: notices raised since the coalesced toast was posted, keyed by title, in arrival order.
+        private readonly List<(string Title, string Message, int Count)> _pendingPersistenceNotices = [];
+
+        /// <summary>
+        /// A pane's session will not persist, or replaced a lost one. Shown as a toast rather than
+        /// written into the pane (its shell paints over local text). Several panes raising the same
+        /// notice at once - a restore after a daemon crash - coalesce into one toast.
+        /// </summary>
+        private void OnPanePersistenceNotice(TerminalPane pane, string title, string message)
+        {
+            _ = pane;
+            int index = _pendingPersistenceNotices.FindIndex(n => n.Title == title);
+            bool first = _pendingPersistenceNotices.Count == 0;
+            if (index < 0) _pendingPersistenceNotices.Add((title, message, 1));
+            else
+            {
+                (string t, string m, int c) = _pendingPersistenceNotices[index];
+                // A version-mismatch hint on any of them is worth keeping.
+                _pendingPersistenceNotices[index] = (t, message.Length > m.Length ? message : m, c + 1);
+            }
+
+            if (!first) return;
+            this.Dispatcher.Post(FlushPersistenceNotices, DispatcherPriority.Background);
+        }
+
+        private void FlushPersistenceNotices()
+        {
+            if (_pendingPersistenceNotices.Count == 0) return;
+            List<(string Title, string Message, int Count)> notices = [.. _pendingPersistenceNotices];
+            _pendingPersistenceNotices.Clear();
+            if (_teardownDone) return;
+
+            // One toast surface: the most recent kind wins its title, every kind keeps a line.
+            string title = notices[^1].Title;
+            string message = string.Join('\n', notices.Select(n => BuildPersistenceNoticeMessage(n.Title, n.Message, n.Count)));
+            ShowRecordingToast(title, message, filePath: null, folderPath: null, autoHide: true);
+        }
+
+        internal static string BuildPersistenceNoticeMessage(string title, string message, int count)
+        {
+            if (count <= 1) return message;
+            if (title == TerminalPane.MuxPreviousLostNoticeTitle)
+                return $"[{count} previous sessions were lost — started new shells]";
+            if (title == TerminalPane.MuxUnavailableNoticeTitle)
+            {
+                string hint = message.Contains(TerminalPane.MuxVersionMismatchHint, StringComparison.Ordinal)
+                    ? "\n" + TerminalPane.MuxVersionMismatchHint
+                    : string.Empty;
+                return $"[Multiplexer unavailable — {count} sessions will not persist]{hint}";
+            }
+
+            return $"{message} ({count} panes)";
         }
 
         /// <summary>

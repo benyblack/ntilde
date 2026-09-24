@@ -8,6 +8,7 @@ using Ntilde.Mux.Tests.Support;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
+using Ntilde.Tests.Shell.Mux;
 
 namespace Ntilde.Tests.Core;
 
@@ -273,6 +274,52 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => adopted.Session is MuxClientSession { IsAttached: true } m && m.Id == orphan, "the adopted tab attached to the orphan");
         List<Guid> ids = AllPanes(window).Select(p => p.Session).OfType<MuxClientSession>().Select(m => m.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
+    }
+
+    private static (bool Visible, string? Title, string? Message) Toast(MainWindow window) =>
+        (window.FindControl<Border>("RecordingToast")!.IsVisible,
+         window.FindControl<TextBlock>("RecordingToastTitle")!.Text,
+         window.FindControl<TextBlock>("RecordingToastMessage")!.Text);
+
+    /// <summary>
+    /// A pane that had to start a new shell in place of a lost one says so in a window toast - not in
+    /// its buffer, where the new shell's first frame would paint over it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_lost_previous_session_is_announced_as_a_toast_not_in_the_buffer()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        Guid old = ((MuxClientSession)pane.Session!).Id;
+        pane.MuxSessionIdToRestore = Guid.NewGuid(); // a daemon session that no longer exists
+
+        pane.Reconnect();
+
+        PumpUntil(() => Toast(window).Title == TerminalPane.MuxPreviousLostNoticeTitle, "the lost-session toast is shown");
+        var fresh = Assert.IsType<MuxClientSession>(pane.Session);
+        Assert.NotEqual(old, fresh.Id);
+        (bool visible, _, string? message) = Toast(window);
+        Assert.True(visible);
+        Assert.Equal(TerminalPane.MuxPreviousLostBanner, message);
+        Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, MuxTestText.VisibleText(pane.Buffer!));
+    }
+
+    [AvaloniaFact]
+    public void Notices_from_several_panes_at_once_coalesce_into_one_toast()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var handler = typeof(MainWindow).GetMethod("OnPanePersistenceNotice", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        Dispatcher.UIThread.RunJobs();
+
+        for (int i = 0; i < 3; i++)
+            handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+        Dispatcher.UIThread.RunJobs();
+
+        (bool visible, string? title, string? message) = Toast(window);
+        Assert.True(visible);
+        Assert.Equal(TerminalPane.MuxPreviousLostNoticeTitle, title);
+        Assert.Equal("[3 previous sessions were lost — started new shells]", message);
     }
 
     [AvaloniaFact]

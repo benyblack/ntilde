@@ -128,14 +128,16 @@ again. They run inside a small background process, the *multiplexer daemon*
 - **What closes a shell:** closing its pane or tab, or the shell exiting. Closing the *window*
   only detaches: the shells keep running in the daemon. A shell that has exited and has no
   window attached is cleaned up after 60 seconds.
-- **If the daemon cannot be reached:** the pane starts a normal shell instead and shows
+- **If the daemon cannot be reached:** the pane starts a normal shell instead and the window
+  shows a "Session not persistent" notification:
   `[Multiplexer unavailable — this session will not persist]`. Ntilde tries the daemon again
   for panes opened 30 seconds later. If the running daemon is from a different Ntilde version,
-  the banner adds a second line telling you to run `ntilde mux kill-server` to replace it.
+  the notification adds a second line telling you to run `ntilde mux kill-server` to replace it.
   If a running daemon goes away, attached panes show
   `[Multiplexer disconnected] [Press Enter to reconnect]`. Enter reconnects, starting a new
-  daemon if needed. When the old shell is gone the pane says
-  `[Previous session was lost — started a new shell]`.
+  daemon if needed. When the old shell is gone the window shows a "Previous session lost"
+  notification: `[Previous session was lost — started a new shell]`. When several panes hit
+  the same thing at once (e.g. restoring after the daemon crashed) they share one notification.
 - **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
 
   | Command | What it does |

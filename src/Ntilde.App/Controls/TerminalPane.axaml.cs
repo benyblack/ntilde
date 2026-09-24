@@ -3393,7 +3393,7 @@ namespace Ntilde.Controls
             // Reset for every session, not only mux ones: a reconnect can land on a local fallback,
             // and a stale flag would make every Enter reconnect.
             _muxConnectionLost = false;
-            string? muxBannerAfterAttach = null;
+            bool muxPreviousLost = false;
             _agentRegistration?.SetLifecycle(null);
             try
             {
@@ -3471,7 +3471,7 @@ namespace Ntilde.Controls
                 }
                 else
                 {
-                    Session = CreateLocalSession(request, out muxBannerAfterAttach);
+                    Session = CreateLocalSession(request, out muxPreviousLost);
                 }
 
                 TermView.SetSession(Session);
@@ -3543,17 +3543,22 @@ namespace Ntilde.Controls
             }
 
             WireReusedTermViewHandlers();
-            WireStreamOrderedSession(muxBannerAfterAttach);
+            WireStreamOrderedSession(muxPreviousLost);
         }
 
         /// <summary>
         /// The non-SSH spawn: through the persistent (mux) factory when there is one, else a plain
-        /// session. <paramref name="bannerAfterAttach"/> is what to write once a mux session has
-        /// attached, or null.
+        /// session. <paramref name="previousLost"/> is true when a mux session was started in place
+        /// of one that is gone; the notice is raised once it has attached.
         /// </summary>
-        private ITerminalSession CreateLocalSession(TerminalSessionRequest request, out string? bannerAfterAttach)
+        /// <remarks>
+        /// These notices are raised as <see cref="PersistenceNotice"/> (a window toast), never written
+        /// into the buffer: the new shell's ConPTY - or the daemon's parser - owns that screen and
+        /// paints its first frame over any local text.
+        /// </remarks>
+        private ITerminalSession CreateLocalSession(TerminalSessionRequest request, out bool previousLost)
         {
-            bannerAfterAttach = null;
+            previousLost = false;
             if (SessionFactory is not IPersistentSessionFactory persistent)
             {
                 return SessionFactory.Create(request);
@@ -3563,27 +3568,38 @@ namespace Ntilde.Controls
             MuxEndpoint = result.Endpoint;
             if (result.Outcome == PersistentSessionOutcome.Unavailable)
             {
-                WriteBanner(result.VersionMismatch
-                    ? $"\r\n\x1b[33m{MuxUnavailableBanner}\r\n{MuxVersionMismatchHint}\x1b[0m\r\n"
-                    : $"\r\n\x1b[33m{MuxUnavailableBanner}\x1b[0m\r\n");
+                TerminalLogger.Log($"[TerminalPane] multiplexer unavailable (version mismatch: {result.VersionMismatch}); starting a non-persistent session");
+                RaisePersistenceNotice(MuxUnavailableNoticeTitle, result.VersionMismatch
+                    ? $"{MuxUnavailableBanner}\n{MuxVersionMismatchHint}"
+                    : MuxUnavailableBanner);
             }
             else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
             {
-                // Written only after the attach: the snapshot would otherwise overwrite it.
-                bannerAfterAttach = $"\x1b[33m{MuxPreviousLostBanner}\x1b[0m\r\n";
+                // Raised only after the attach: a failed attach shows its own banner instead.
+                previousLost = true;
             }
 
             return result.Session;
+        }
+
+        /// <summary>Posts <see cref="PersistenceNotice"/> to this pane's UI thread.</summary>
+        private void RaisePersistenceNotice(string title, string message)
+        {
+            this.Dispatcher.Post(() =>
+            {
+                if (Volatile.Read(ref _disposed)) return;
+                PersistenceNotice?.Invoke(this, title, message);
+            });
         }
 
         /// <summary>
         /// A session that orders resizes in its stream resizes the buffer itself; the view only
         /// requests (spec §8). A mux session is then wired and attached, last.
         /// </summary>
-        private void WireStreamOrderedSession(string? muxBannerAfterAttach)
+        private void WireStreamOrderedSession(bool muxPreviousLost)
         {
             TermView.DefersBufferResizeToSession = Session is ITerminalSessionCapabilities { OrdersResizeInStream: true };
-            if (Session is MuxClientSession mux) WireMuxSession(mux, muxBannerAfterAttach);
+            if (Session is MuxClientSession mux) WireMuxSession(mux, muxPreviousLost);
         }
 
         /// <summary>
@@ -3602,6 +3618,14 @@ namespace Ntilde.Controls
         internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server' to replace it]";
         internal const string MuxPreviousLostBanner = "[Previous session was lost — started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
+        internal const string MuxUnavailableNoticeTitle = "Session not persistent";
+        internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
+
+        /// <summary>
+        /// Raised on the UI thread with (title, message) when this pane's session will not persist or
+        /// replaced a lost one. MainWindow shows it as a toast (never written into the buffer).
+        /// </summary>
+        internal event Action<TerminalPane, string, string>? PersistenceNotice;
 
         /// <summary>Set by SessionManager.RestorePaneTree: the daemon session this pane should reopen (consumed once).</summary>
         internal Guid? MuxSessionIdToRestore { get; set; }
@@ -3631,7 +3655,7 @@ namespace Ntilde.Controls
         /// subscribes the stream events, then attaches - so the snapshot cannot arrive before its
         /// handler exists (spec §8).
         /// </summary>
-        private void WireMuxSession(MuxClientSession mux, string? bannerAfterAttach)
+        private void WireMuxSession(MuxClientSession mux, bool previousLost)
         {
             CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true);
             float cw = TermView.Metrics.CellWidth, ch = TermView.Metrics.CellHeight;
@@ -3643,7 +3667,7 @@ namespace Ntilde.Controls
             // Disconnected can fire on any thread (even concurrently with a delivery); both marshal.
             mux.Disconnected += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxDisconnectedBanner));
             mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxDisconnectedBanner));
-            _ = AttachMuxAsync(mux, bannerAfterAttach);
+            _ = AttachMuxAsync(mux, previousLost);
         }
 
         /// <remarks>
@@ -3698,7 +3722,7 @@ namespace Ntilde.Controls
             // Deliberately NOT ProcessExited: MainWindow would apply ShellExitPolicy and may close the pane.
         }
 
-        private async Task AttachMuxAsync(MuxClientSession mux, string? bannerAfterAttach)
+        private async Task AttachMuxAsync(MuxClientSession mux, bool previousLost)
         {
             MuxPresentation presentation = BuildMuxPresentation(); // UI thread, before the first await
             int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, 50_000);
@@ -3708,7 +3732,12 @@ namespace Ntilde.Controls
                 this.Dispatcher.Post(() =>
                 {
                     if (!IsCurrentMux(mux)) return;
-                    if (bannerAfterAttach is not null) WriteBanner(bannerAfterAttach);
+                    if (previousLost)
+                    {
+                        TerminalLogger.Log($"[TerminalPane] previous multiplexer session was lost; started {mux.Id}");
+                        PersistenceNotice?.Invoke(this, MuxPreviousLostNoticeTitle, MuxPreviousLostBanner);
+                    }
+
                     PersistentSessionAttached?.Invoke(this);
                 });
             }
