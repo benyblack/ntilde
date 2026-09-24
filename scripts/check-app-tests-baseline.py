@@ -53,8 +53,9 @@ Usage: check-app-tests-baseline.py <trx-path> <allowlist-path> <min-executed>
   log-path      Optional. The captured `dotnet test` output for this lane, scanned for
                 runner-level aborts that never reach the trx.
   step-outcome  Optional. The test step's `steps.<id>.outcome` - success, failure, cancelled
-                or skipped - which is its result *before* continue-on-error rewrites it. An
-                empty value, or leaving it out for a local run, skips the exit-code check.
+                or skipped - which is its result *before* continue-on-error rewrites it.
+                Leaving it out (a local run) skips the exit-code check. Passing it empty is a
+                usage error (exit 2), because that is what a misspelt step id expands to.
 """
 
 import os
