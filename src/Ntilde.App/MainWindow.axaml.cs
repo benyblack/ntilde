@@ -238,6 +238,9 @@ namespace Ntilde
         private string? _recordingToastFolderPath;
         private string? _recordingToastFilePath;
         private Ntilde.Update.UpdateCoordinator? _updateCoordinator;
+
+        /// <summary>Test seam: installs a coordinator over a fake IUpdateService.</summary>
+        internal Ntilde.Update.UpdateCoordinator? UpdateCoordinatorForTest { set => _updateCoordinator = value; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
         // Guards the OnOpened wiring below against re-entry: quake mode's Hide()/Show() round
         // trip re-raises OnOpened (Avalonia clears _shown on Hide and ShowCore raises it again
@@ -4321,10 +4324,27 @@ namespace Ntilde
             _muxHost.WarmUp();
         }
 
-        /// <summary>Reuses a host kept from an earlier On period; only the first call builds one.</summary>
-        private Ntilde.Shell.Mux.MuxTerminalSessionFactory CreatePersistentSessionFactory()
+        /// <summary>Builds the daemon connection for KeepOnClose. A seam so a test can make it throw.</summary>
+        internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; set; } =
+            () => Ntilde.Shell.Mux.MuxConnectionHost.CreateDefault(AppLogger.Log);
+
+        /// <summary>
+        /// Reuses a host kept from an earlier On period; only the first call builds one. Building
+        /// it can throw (e.g. no Environment.ProcessPath to spawn the daemon from): that must not
+        /// crash startup or a settings save, so it logs and falls back to normal sessions.
+        /// </summary>
+        private Ntilde.Pty.ITerminalSessionFactory CreatePersistentSessionFactory()
         {
-            _muxHost ??= Ntilde.Shell.Mux.MuxConnectionHost.CreateDefault(AppLogger.Log);
+            try
+            {
+                _muxHost ??= MuxHostFactory();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] session persistence unavailable, using normal sessions: {ex.Message}");
+                return Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
+            }
+
             return new Ntilde.Shell.Mux.MuxTerminalSessionFactory(_muxHost, Ntilde.Shell.DefaultTerminalSessionFactory.Instance, AppLogger.Log);
         }
 
@@ -7826,6 +7846,7 @@ namespace Ntilde
             if (wantPersistent)
             {
                 _sessionFactory = CreatePersistentSessionFactory();
+                if (_sessionFactory is not Ntilde.Shell.Mux.MuxTerminalSessionFactory) return; // creation failed and was logged: nothing changed
                 _muxHost!.WarmUp();
             }
             else
@@ -8952,6 +8973,9 @@ namespace Ntilde
                 // degraded, not healthy. The message has to say "restart manually" rather than
                 // "try again", because carrying on in this state is not a supported outcome.
                 TerminalLogger.Log("Applying the staged update failed: " + ex);
+                // The window stays up and the user is told to close it: that close must run the
+                // teardown again (above all SaveSession), not hit PerformAppTeardown's one-shot guard.
+                _teardownDone = false;
                 ShowRecordingToast(
                     "Update could not be applied",
                     "The update was downloaded but could not be applied. Close Ntilde and start it again to finish updating.",

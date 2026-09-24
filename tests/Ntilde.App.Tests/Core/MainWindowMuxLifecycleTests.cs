@@ -134,6 +134,70 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     }
 
     [AvaloniaFact]
+    public void Persistence_is_off_by_default()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+        });
+
+        Assert.Null(window.MuxHost);
+        IReadOnlyList<TerminalPane> panes = AllPanes(window);
+        Assert.NotEmpty(panes);
+        Assert.All(panes, p => Assert.Same(DefaultTerminalSessionFactory.Instance, p.SessionFactory));
+    }
+
+    [AvaloniaFact]
+    public void A_host_that_cannot_be_built_falls_back_to_normal_sessions()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()),
+        });
+        TerminalPane pane = AllPanes(window).Single();
+        window.MuxHostFactory = () => throw new InvalidOperationException("no process path");
+        Settings(window).SessionPersistence = SessionPersistenceMode.KeepOnClose;
+
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+
+        Assert.Null(window.MuxHost);
+        Assert.IsNotType<MuxTerminalSessionFactory>(pane.SessionFactory);
+    }
+
+    [AvaloniaFact]
+    public void A_failed_update_apply_leaves_the_teardown_runnable_for_the_later_close()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()),
+        });
+        var coordinator = new Ntilde.Update.UpdateCoordinator(new ThrowingApplyUpdateService(), () => true, _ => { }, _ => { });
+        Assert.Equal(Ntilde.Update.UpdateCheckOutcome.UpdateReady,
+            Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken).GetAwaiter().GetResult());
+        window.UpdateCoordinatorForTest = coordinator;
+
+        typeof(MainWindow).GetMethod("ApplyStagedUpdate", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        Assert.True(File.Exists(AppPaths.SessionFilePath), "the apply's own teardown saved the session");
+        File.Delete(AppPaths.SessionFilePath);
+
+        // The user closes the window as the failure toast asks: the session is saved again.
+        typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        Assert.True(File.Exists(AppPaths.SessionFilePath), "the close after a failed update saved the session again");
+    }
+
+    private static TerminalSettings Settings(MainWindow window) =>
+        (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+
+    private sealed class ThrowingApplyUpdateService : Ntilde.Update.IUpdateService
+    {
+        public bool IsSupported => true;
+        public Task<Ntilde.Update.UpdateAvailability> CheckAndDownloadAsync(CancellationToken ct) => Task.FromResult(new Ntilde.Update.UpdateAvailability(true, "99.0.0"));
+        public void ApplyAndRestart() => throw new IOException("Update.exe is locked");
+    }
+
+    [AvaloniaFact]
     public void Refresh_is_a_no_op_for_a_non_mux_session()
     {
         Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(new FakeTerminalSession(), TimeSpan.FromSeconds(1)), TestContext.Current.CancellationToken)
