@@ -44,6 +44,7 @@
     <Compile Include="..\Ntilde.Mux.Tests\Support\ClientPaneModel.cs" Link="MuxSupport\ClientPaneModel.cs" />
     <Compile Include="..\Ntilde.Mux.Tests\Support\RawMuxConnection.cs" Link="MuxSupport\RawMuxConnection.cs" />
     <Compile Include="..\Ntilde.Mux.Tests\Support\MuxTestHost.cs" Link="MuxSupport\MuxTestHost.cs" />
+    <Compile Include="..\Ntilde.Mux.Tests\Support\ParserFaultInjection.cs" Link="MuxSupport\ParserFaultInjection.cs" />
     <Compile Include="..\Ntilde.VT.Tests\StateTransfer\TerminalStateAssert.cs" Link="MuxSupport\TerminalStateAssert.cs" />
   </ItemGroup>
 

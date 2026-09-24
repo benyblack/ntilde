@@ -1551,10 +1551,17 @@ namespace Ntilde.Shell
             _glyphTypeface = _typeface.GlyphTypeface;
         }
 
-        public void SetSession(ITerminalSession session)
+        /// <summary>
+        /// The session keystrokes, text, mouse reports and drops are sent to. Null stops all of it:
+        /// keys then go unhandled, so Enter bubbles to the pane's reconnect handler (a pane whose
+        /// multiplexer session is no longer attached uses this).
+        /// </summary>
+        public void SetSession(ITerminalSession? session)
         {
             _session = session;
         }
+
+        internal ITerminalSession? SessionForTest => _session;
 
         public event Action<int, int>? ScrollStateChanged;
         private int _scrollOffset = 0;

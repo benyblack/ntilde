@@ -1,12 +1,16 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Pty;
 using Ntilde.Shell.Mux;
 using Ntilde.Tests.Shell.Mux;
 using Ntilde.VT;
@@ -74,15 +78,24 @@ public sealed class MuxPaneTests : IDisposable
     /// calls InitializeSession itself (Reconnect): an unhosted TermView has a 0x0 grid, and
     /// InitializeSession returns early on that (see TerminalPaneSshDisconnectTests).
     /// </summary>
-    private MuxClientSession StartHostedPane()
+    private MuxClientSession StartHostedPane(ITerminalSessionFactory? factory = null)
     {
         _pane = new TerminalPane();
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
-        _pane.SessionFactory = _factory;
+        _pane.SessionFactory = factory ?? _factory;
         _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
         _window.Show();
         PumpUntil(() => _pane.Session is MuxClientSession { IsAttached: true }, "the hosted pane attached");
         return (MuxClientSession)_pane.Session!;
+    }
+
+    /// <summary>Enter through Avalonia's real input pipeline: focused TerminalView first, pane second.</summary>
+    private void PressEnter()
+    {
+        _pane!.TermView.Focus();
+        Assert.True(_pane.IsKeyboardFocusWithin);
+        _window!.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+        Dispatcher.UIThread.RunJobs();
     }
 
     private void Settle(Guid id)
@@ -182,7 +195,9 @@ public sealed class MuxPaneTests : IDisposable
         _host.CurrentClient!.Dispose();
         PumpUntil(() => BufferText(_pane!.Buffer!).Contains("[Multiplexer disconnected]"), "the banner is shown");
 
-        _pane!.Reconnect();
+        // A disconnected session still reports IsProcessRunning, so the view must not be the one
+        // that consumes Enter (it would send "\r" into a dead connection).
+        PressEnter();
         var again = Assert.IsType<MuxClientSession>(_pane.Session);
         Assert.Equal(s.Id, again.Id);
         PumpUntil(() => again.IsAttached, "reattached");
@@ -285,6 +300,77 @@ public sealed class MuxPaneTests : IDisposable
         PumpUntil(() => attached == 1, "PersistentSessionAttached fired");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, attached);
+    }
+
+    [AvaloniaFact]
+    public void A_failed_attach_shows_its_banner_stops_input_and_Enter_reconnects()
+    {
+        // The daemon loses the session between CreatePersistent and the pane's attach, so the attach
+        // gets an error reply over a connection that stays up: the session reports connected, not
+        // faulted, still running - ShouldReconnectOnEnter alone would say no.
+        var factory = new AfterFirstCreateFactory(_factory, () => _mux.Server.KillAllSessions());
+        _pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = factory;
+        int exited = 0;
+        _pane.ProcessExited += (_, _) => exited++;
+        _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
+        _window.Show();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer attach failed"), "the attach-failed banner is shown");
+
+        var failed = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.True(failed.IsConnected);
+        Assert.False(failed.IsFaulted);
+        Assert.True(failed.IsProcessRunning);
+        Assert.False(failed.IsAttached);
+        Assert.False(TerminalPane.ShouldReconnectOnEnter(failed));
+        Assert.Equal(0, exited);
+        Assert.Null(_pane.TermView.SessionForTest); // keystrokes, text and mouse no longer reach it
+
+        PressEnter();
+        var fresh = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.NotEqual(failed.Id, fresh.Id);
+        PumpUntil(() => fresh.IsAttached, "the fresh session attached");
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains(TerminalPane.MuxPreviousLostBanner), "the lost banner is shown");
+        Assert.Same(fresh, _pane.TermView.SessionForTest);
+        Assert.Equal(0, exited);
+    }
+
+    [AvaloniaFact]
+    public void Enter_on_a_faulted_session_kills_it_and_starts_a_fresh_one()
+    {
+        MuxClientSession s = StartHostedPane();
+        Guid old = s.Id;
+        HeadlessTerminalSession m = _mux.Mux(old);
+        ScriptedTerminalSession child = _mux.Fake(old);
+        Task.Run(() => m.MakeParserThrowOnReplyAsync()).GetAwaiter().GetResult();
+        child.Emit("\x1b[c"); // DA1: the reply throws inside the daemon's parser, which faults the session
+        PumpUntil(() => BufferText(_pane!.Buffer!).Contains("[Multiplexer disconnected]"), "the fault banner is shown");
+        Assert.True(s.IsFaulted);
+        Assert.True(s.IsConnected);
+
+        PressEnter();
+        var fresh = Assert.IsType<MuxClientSession>(_pane!.Session);
+        Assert.NotEqual(old, fresh.Id);
+        PumpUntil(() => fresh.IsAttached, "the fresh session attached");
+        PumpUntil(() => child.Disposed, "the faulted session's child was killed");
+        PumpUntil(() => { _mux.Server.ReapExitedSessions(TimeSpan.Zero); return !_mux.Server.GetSessionIds().Contains(old); },
+            "the killed session left the daemon");
+    }
+
+    /// <summary>Delegates to a real factory and runs an action right after the first CreatePersistent.</summary>
+    private sealed class AfterFirstCreateFactory(IPersistentSessionFactory inner, Action afterFirstCreate) : IPersistentSessionFactory
+    {
+        private int _calls;
+
+        public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session;
+
+        public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
+        {
+            PersistentSessionResult result = inner.CreatePersistent(request);
+            if (Interlocked.Increment(ref _calls) == 1) afterFirstCreate();
+            return result;
+        }
     }
 
     private static string BufferText(TerminalBuffer buffer) => MuxTestText.VisibleText(buffer);

@@ -3377,6 +3377,9 @@ namespace Ntilde.Controls
             string startingDir = profile?.StartingDirectory ?? "";
             Session = null;
             MuxEndpoint = null;
+            // Reset for every session, not only mux ones: a reconnect can land on a local fallback,
+            // and a stale flag would make every Enter reconnect.
+            _muxConnectionLost = false;
             string? muxBannerAfterAttach = null;
             _agentRegistration?.SetLifecycle(null);
             try
@@ -3597,7 +3600,6 @@ namespace Ntilde.Controls
             if (cw > 0) Parser!.CellWidth = cw;
             if (ch > 0) Parser!.CellHeight = ch;
 
-            _muxConnectionLost = false;
             mux.SnapshotReceived += snapshot => HandleMuxSnapshot(mux, snapshot);
             mux.StreamResize += (c, r) => HandleMuxStreamResize(mux, c, r);
             // Disconnected can fire on any thread (even concurrently with a delivery); both marshal.
@@ -3649,6 +3651,10 @@ namespace Ntilde.Controls
             if (!IsCurrentMux(source) || _muxConnectionLost) return;
             _muxConnectionLost = true;
             _muxReattachId = source.Id;
+            // Input must not reach a daemon session this pane is not showing (after a failed attach
+            // the connection is still up, and SendInput would deliver it). With no session the view
+            // leaves keys unhandled, so Enter reaches OnKeyDown's reconnect.
+            if (!source.IsAttached) TermView.SetSession(null);
             TerminalLogger.Log($"[TerminalPane] multiplexer connection lost for session {source.Id}");
             WriteBanner($"\r\n\x1b[90m{banner}\x1b[0m\r\n");
             // Deliberately NOT ProcessExited: MainWindow would apply ShellExitPolicy and may close the pane.
@@ -4322,7 +4328,9 @@ namespace Ntilde.Controls
             // Font Zoom - TBD
 
             // Reconnect if dead
-            if (ShouldReconnectOnEnter(Session) && e.Key == Key.Enter)
+            // _muxConnectionLost covers what the session cannot report itself: an attach that failed
+            // over a connection that is still up leaves a running, connected, never-attached session.
+            if ((_muxConnectionLost || ShouldReconnectOnEnter(Session)) && e.Key == Key.Enter)
             {
                 e.Handled = true;
                 Reconnect();
@@ -4346,6 +4354,11 @@ namespace Ntilde.Controls
                 UnregisterActiveSshSession(session);
                 Session = null;
                 _agentRegistration?.SetLifecycle(null);
+
+                // The daemon will never deliver a faulted session again and the factory will not
+                // reopen it, so detaching alone would leave its child running unattached forever
+                // (the reaper only collects exited sessions). End it; Enter then starts a fresh one.
+                if (session is MuxClientSession { IsFaulted: true, IsConnected: true } faulted) faulted.Kill();
                 session.Dispose();
             }
 
