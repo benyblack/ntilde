@@ -120,6 +120,8 @@ namespace Ntilde.Shell
         private int _colEdgesCount;
         private int _rowEdgesCount;
         private RenderPerfMetrics _framePerfMetrics;
+        // Set by Render() from the Avalonia lease; direct DrawTerminalInternal callers draw offscreen.
+        private string _renderBackend = RenderBackend.Offscreen;
         private long _frameAllocStartBytes;
         private int _frameOtherDrawCalls;
         private bool _collectFramePerfMetrics;
@@ -285,6 +287,7 @@ namespace Ntilde.Shell
 
             using var lease = leaseFeature.Lease();
             var canvas = lease.SkCanvas;
+            _renderBackend = RenderBackend.Describe(lease.GrContext);
 
             canvas.Save();
             using var snapshotToDispose = DrawTerminalInternal(canvas);
@@ -841,6 +844,7 @@ namespace Ntilde.Shell
                     _framePerfMetrics.DirtyCellsEstimated = dirtyCells;
                     _framePerfMetrics.FrameTimeMs = frameSw.Elapsed.TotalMilliseconds;
                     _framePerfMetrics.FrameIndex = RendererStatistics.TotalFrames;
+                    _framePerfMetrics.Backend = _renderBackend;
                 }
 
                 if (_showRenderHud)
@@ -875,7 +879,7 @@ namespace Ntilde.Shell
         private void DrawPerformanceHud(SKCanvas canvas, RenderPerfMetrics metrics, byte alpha)
         {
             float hudWidth = 280f;
-            float hudHeight = 90f;
+            float hudHeight = 106f;
             float padding = 10f;
             float margin = 10f;
 
@@ -919,6 +923,8 @@ namespace Ntilde.Shell
             canvas.DrawText($"Draws: {metrics.DrawCallsTotal} (Cache:{metrics.RowPictureCacheHits}/{metrics.RowPictureCacheMisses})", textX, textY, textPaint);
             textY += lineHeight;
             canvas.DrawText($"Atlas Builds: {metrics.AtlasAlphaGlyphs}/{metrics.AtlasColorGlyphs} | Mem: {metrics.AllocBytesThisFrame / 1024.0:F1} kb", textX, textY, textPaint);
+            textY += lineHeight;
+            canvas.DrawText($"Backend: {metrics.Backend ?? RenderBackend.Offscreen}", textX, textY, textPaint);
         }
 
         private void FlushBatches(SKCanvas canvas)
