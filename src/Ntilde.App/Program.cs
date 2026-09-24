@@ -26,7 +26,15 @@ class Program
             // argument as an unrecognised command line. Run() returns immediately for a
             // normal launch, and exits the process for a hook invocation. Harmless when the
             // app was not installed by Velopack (portable zip, winget, dev runs).
-            VelopackApp.Build().Run();
+            //
+            // Velopack also applies an already-downloaded update here by default. That must not
+            // happen behind a live multiplexer daemon: the in-app apply path asks before closing
+            // its sessions and shuts it down first, and this one would do neither (spec §9).
+            VelopackApp.Build()
+                .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(
+                    args,
+                    static () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadLiveDescriptor(Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), out _)))
+                .Run();
 
             if (VtReportCommand.IsSupportedCliMode(args))
             {
@@ -105,6 +113,20 @@ class Program
             System.IO.File.WriteAllText(AppPaths.StartupErrorFilePath, ex.ToString());
             throw;
         }
+    }
+
+    /// <summary>
+    /// Whether Velopack may apply a staged update while starting up. Never for a <c>mux</c> CLI mode
+    /// (the daemon, or a verb talking to it), and not for the GUI while a daemon is live: in both
+    /// cases the staged update waits for the in-app apply, which confirms and stops the daemon.
+    /// <paramref name="liveDaemon"/> is only asked for the GUI case, so CLI starts never read the disk.
+    /// </summary>
+    internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(liveDaemon);
+        if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args)) return false;
+        return !liveDaemon();
     }
 
     /// <summary>
