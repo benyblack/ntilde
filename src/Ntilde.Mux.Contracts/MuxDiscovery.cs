@@ -63,12 +63,14 @@ public static class MuxDiscovery
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         string dir = Path.GetDirectoryName(Path.GetFullPath(path))!;
-        Directory.CreateDirectory(dir);
+        CreatePrivateDirectory(dir);
         string temp = Path.Combine(dir, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         try
         {
             File.WriteAllText(temp, JsonSerializer.Serialize(descriptor, MuxJsonContext.Default.MuxEndpointDescriptor));
-            File.Move(temp, path, overwrite: true);
+            // Windows refuses to replace a file someone has open (MoveFileEx: access denied), even
+            // one opened with FILE_SHARE_DELETE; readers hold it for microseconds, so retry briefly.
+            RetryWhileBusy(() => File.Move(temp, path, overwrite: true));
         }
         catch
         {
@@ -85,7 +87,15 @@ public static class MuxDiscovery
         try
         {
             if (!File.Exists(path)) return false;
-            descriptor = JsonSerializer.Deserialize(File.ReadAllText(path), MuxJsonContext.Default.MuxEndpointDescriptor);
+            // Share Delete (and ReadWrite): on Windows a reader opened without FILE_SHARE_DELETE -
+            // File.ReadAllText's FileShare.Read - makes the owner's DeleteFile fail with a sharing
+            // violation and its atomic replace (File.Move overwrite) fail with access denied. The
+            // delete is best-effort, so kill-server's own polling could leave a descriptor naming a
+            // live pid behind and then wait for it to go away until it timed out (PR #489 CI).
+            // Unix unlink/rename ignore open handles, so this is a no-op there.
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            descriptor = JsonSerializer.Deserialize(reader.ReadToEnd(), MuxJsonContext.Default.MuxEndpointDescriptor);
             return descriptor is { Endpoint.Length: > 0 };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -120,8 +130,47 @@ public static class MuxDiscovery
     public static void DeleteDescriptorIfOwned(string path, int pid)
     {
         if (!TryReadDescriptor(path, out MuxEndpointDescriptor? d) || d.Pid != pid) return;
-        try { File.Delete(path); }
+        try { RetryWhileBusy(() => File.Delete(path)); }
         catch (IOException) { /* best effort: a stale descriptor is harmless (its pid is checked on read) */ }
         catch (UnauthorizedAccessException) { /* best effort, as above */ }
+    }
+
+    /// <summary>
+    /// Creates a missing descriptor directory owner-only (0700) off Windows. On Linux/macOS the
+    /// default socket endpoint lives in this same directory, and the daemon refuses to serve from
+    /// one that already exists with any other mode (UnixSocketMuxListener.EnsurePrivateDirectory) -
+    /// so a descriptor written first (a crashed daemon's leftover, a client, a test) must not
+    /// leave it at the umask default (typically 0755). An existing directory is left untouched:
+    /// judging it is the daemon's job, not a writer's. Windows has ACLs, not POSIX modes.
+    /// </summary>
+    private static void CreatePrivateDirectory(string dir)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(dir);
+            return;
+        }
+
+        if (Directory.Exists(dir)) return;
+        const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+        Directory.CreateDirectory(dir, OwnerOnly);
+        // CreateDirectory's mode is filtered by the umask, which can only remove bits: re-assert it.
+        File.SetUnixFileMode(dir, OwnerOnly);
+    }
+
+    private static void RetryWhileBusy(Action fileOperation)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                fileOperation();
+                return;
+            }
+            catch (Exception ex) when (attempt < 20 && OperatingSystem.IsWindows() && ex is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(10);
+            }
+        }
     }
 }

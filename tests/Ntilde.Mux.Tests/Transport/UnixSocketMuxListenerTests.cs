@@ -50,15 +50,24 @@ public sealed class UnixSocketMuxListenerTests : IDisposable
     public void Replaces_a_stale_socket_file_nobody_listens_on()
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets are the Linux/macOS transport.");
-        using (new UnixSocketMuxListener(SocketPath)) { }
-        // Leave a dead socket file behind (Dispose unlinks; recreate one by binding and not unlinking).
-        Directory.CreateDirectory(_dir);
+        using (new UnixSocketMuxListener(SocketPath)) { } // leaves the 0700 directory, and no socket
+        // A stale socket is what a crashed (SIGKILLed) daemon leaves: a socket inode at the path with
+        // nothing bound to it any more. Disposing a bound .NET Socket unlinks the path it bound, so
+        // bind a throwaway socket at a side path, rename its inode onto SocketPath, then dispose it:
+        // the dispose unlinks the (now empty) side path, and SocketPath keeps a real socket file
+        // whose owner is gone - connecting to it is refused, exactly as after a crash.
+        string sidePath = Path.Combine(_dir, "d.sock");
         using (var dead = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified))
         {
-            dead.Bind(new UnixDomainSocketEndPoint(SocketPath));
+            dead.Bind(new UnixDomainSocketEndPoint(sidePath));
+            File.Move(sidePath, SocketPath, overwrite: true); // rename(2): same inode, new name
         }
-        Assert.True(File.Exists(SocketPath));
+
+        Assert.True(File.Exists(SocketPath), "setup: the stale socket file should outlive its socket");
+        Assert.False(UnixSocketMuxListener.IsAlive(SocketPath), "setup: nothing may be listening on the stale socket");
+
         using var listener = new UnixSocketMuxListener(SocketPath); // must not throw
+        Assert.True(UnixSocketMuxListener.IsAlive(SocketPath), "the replacement listener should accept connections");
     }
 
     [Fact]

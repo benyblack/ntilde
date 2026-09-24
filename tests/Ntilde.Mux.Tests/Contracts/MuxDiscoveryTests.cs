@@ -81,6 +81,58 @@ public sealed class MuxDiscoveryTests : IDisposable
         Assert.False(File.Exists(DescriptorPath));
     }
 
+    /// <summary>
+    /// PR #489 CI regression: on Linux/macOS the socket lives in the descriptor's directory and the
+    /// daemon refuses one that already exists at any mode but 0700, so a descriptor written before
+    /// the daemon starts (a leftover, a client) must create that directory 0700, not 0755.
+    /// </summary>
+    [Fact]
+    public void Writing_a_descriptor_creates_a_missing_directory_owner_only_on_unix()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX directory modes are a Linux/macOS concern.");
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(42, "ntilde"));
+#pragma warning disable CA1416 // skipped on Windows above
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute,
+            File.GetUnixFileMode(Path.GetDirectoryName(DescriptorPath)!));
+#pragma warning restore CA1416
+    }
+
+    /// <summary>
+    /// PR #489 CI regression: kill-server polls the descriptor while the daemon deletes it. On
+    /// Windows a reader opened without FILE_SHARE_DELETE makes DeleteFile (and the atomic replace
+    /// in WriteDescriptor) fail with a sharing violation; the delete is best-effort, so the
+    /// descriptor stayed behind naming a live pid and kill-server waited out its full 5 s. Readers
+    /// must never block the owner's delete or replace. Unix unlink/rename ignore open handles, so
+    /// there this simply passes.
+    /// </summary>
+    [Fact]
+    public void A_concurrent_reader_never_blocks_the_owners_replace_or_delete()
+    {
+        using var stop = new CancellationTokenSource();
+        Directory.CreateDirectory(Path.GetDirectoryName(DescriptorPath)!);
+        var reader = new Thread(() =>
+        {
+            while (!stop.IsCancellationRequested) MuxDiscovery.TryReadDescriptor(DescriptorPath, out _);
+        })
+        { IsBackground = true };
+        reader.Start();
+        try
+        {
+            for (int i = 0; i < 300; i++)
+            {
+                MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(42, "ntilde"));
+                MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(42, "ntilde")); // replace over a live reader
+                MuxDiscovery.DeleteDescriptorIfOwned(DescriptorPath, pid: 42);
+                Assert.False(File.Exists(DescriptorPath), $"iteration {i}: the delete lost to a concurrent reader");
+            }
+        }
+        finally
+        {
+            stop.Cancel();
+            reader.Join();
+        }
+    }
+
     [Fact]
     public void Different_roots_get_different_endpoints()
     {

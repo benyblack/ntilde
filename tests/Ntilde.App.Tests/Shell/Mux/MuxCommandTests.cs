@@ -132,6 +132,9 @@ public sealed class MuxCommandTests : IDisposable
         Assert.Equal(0, code);
         Assert.Contains("Multiplexer stopped.", output);
         Assert.Equal(string.Empty, err);
+        // PR #489 CI: kill-server's own polling used to block the daemon's descriptor delete on
+        // Windows (sharing violation), leaving it behind so the 5 s wait timed out (~3% of runs).
+        Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)));
     }
 
     private static System.Diagnostics.Process StartLongRunningProcess()
