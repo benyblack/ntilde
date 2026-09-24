@@ -7290,7 +7290,7 @@ namespace Ntilde
 
         internal virtual void EnqueueTransferJob(TransferJob job)
         {
-            SftpService.Instance.AddJob(job);
+            SftpService.Instance.AddJob(job, Dispatcher);
             ShowTransferCenter();
         }
 

@@ -1,5 +1,6 @@
 using Ntilde.Shell;
 using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using Ntilde.Platform;
 using Ntilde.VT;
 using Ntilde.Platform.Ssh.Native;
@@ -489,10 +490,11 @@ public sealed class SftpServiceTests
 
         TransferState stateAfterAddReturns = TransferState.Failed;
         string statusAfterAddReturns = string.Empty;
+        Dispatcher uiDispatcher = Dispatcher.CurrentDispatcher;
 
         await Task.Run(() =>
         {
-            sut.AddJob(job);
+            sut.AddJob(job, uiDispatcher);
             stateAfterAddReturns = job.State;
             statusAfterAddReturns = job.StatusText;
         });
@@ -503,6 +505,108 @@ public sealed class SftpServiceTests
         Assert.Equal(TransferState.Running, job.State);
 
         interop.Release.Set();
+    }
+
+    // Progress (raised on the native callback thread) and completion (raised on the transfer
+    // worker) must be marshalled to the dispatcher the owner handed in, never to the
+    // Dispatcher.UIThread static read from those threads: whenever that static's backing field is
+    // null - which headless isolation makes it at every test boundary - the read makes the
+    // reading thread the UI thread (#81). The owner here is a second dispatcher on a thread of its
+    // own, so a regression that goes back to the static posts to the headless UI dispatcher
+    // instead and the owner's queue stays empty.
+    [AvaloniaFact]
+    public void RunJob_MarshalsProgressAndCompletionToTheOwnersDispatcher()
+    {
+        Guid profileId = Guid.Parse("5f0c8a52-6f7e-4a55-9a43-2c1b7de0a9e4");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Native",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default
+        });
+        var sshService = new SshConnectionService(store);
+        TerminalProfile profile = sshService.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        var sut = new SftpService(
+            new ProgressReportingNativeSshInterop(bytesDone: 512, bytesTotal: 2048),
+            settingsLoader: () => new TerminalSettings { Profiles = new List<TerminalProfile> { profile } },
+            sshServiceFactory: () => sshService);
+        var job = new TransferJob
+        {
+            SessionId = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            ProfileName = profile.Name,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\movie.mkv",
+            RemotePath = "/mnt/box/media/movies/movie.mkv",
+            State = TransferState.Running
+        };
+
+        var updates = new List<(int ThreadId, TransferState State, long BytesDone)>();
+        sut.JobUpdated += (_, updated) => updates.Add((Environment.CurrentManagedThreadId, updated.State, updated.BytesDone));
+
+        using var ownerReady = new ManualResetEventSlim(false);
+        using var workerDone = new ManualResetEventSlim(false);
+        Dispatcher? ownerDispatcher = null;
+        int ownerThreadId = 0;
+        Exception? ownerFailure = null;
+        var ownerThread = new Thread(() =>
+        {
+            try
+            {
+                // This thread's own dispatcher. The headless session already owns the UI slot,
+                // so this one does not take it.
+                ownerDispatcher = Dispatcher.CurrentDispatcher;
+                ownerThreadId = Environment.CurrentManagedThreadId;
+                ownerReady.Set();
+                Assert.True(workerDone.Wait(TimeSpan.FromSeconds(10)), "Transfer worker did not finish.");
+                ownerDispatcher.RunJobs();
+            }
+            catch (Exception ex)
+            {
+                ownerFailure = ex;
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "SftpServiceTests owner dispatcher"
+        };
+        ownerThread.Start();
+        Assert.True(ownerReady.Wait(TimeSpan.FromSeconds(10)), "Owner thread did not start.");
+
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                sut.RunJobAsync(job, ownerDispatcher!, CancellationToken.None).GetAwaiter().GetResult();
+            }
+            finally
+            {
+                workerDone.Set();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "SftpServiceTests transfer worker"
+        };
+        worker.Start();
+
+        Assert.True(worker.Join(TimeSpan.FromSeconds(10)), "Transfer worker did not finish.");
+        Assert.True(ownerThread.Join(TimeSpan.FromSeconds(10)), "Owner thread did not finish.");
+        Assert.Null(ownerFailure);
+        // Anything misrouted to the headless UI dispatcher would surface here as an extra update.
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(2, updates.Count);
+        Assert.All(updates, update => Assert.Equal(ownerThreadId, update.ThreadId));
+        Assert.Equal((TransferState.Running, 512L), (updates[0].State, updates[0].BytesDone));
+        Assert.Equal(TransferState.Completed, updates[1].State);
+        Assert.Equal(TransferState.Completed, job.State);
     }
 
     [Fact]
@@ -880,6 +984,35 @@ public sealed class SftpServiceTests
             CancellationToken = cancellationToken;
             return [];
         }
+
+        public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+        public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows) => throw new NotSupportedException();
+        public int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options) => throw new NotSupportedException();
+        public void WriteChannel(NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void SendChannelEof(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void CloseChannel(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void SubmitResponse(NovaSshSafeHandle sessionHandle, NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Close(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+    }
+
+    private sealed class ProgressReportingNativeSshInterop(long bytesDone, long bytesTotal) : INativeSshInterop
+    {
+        public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) => throw new NotSupportedException();
+
+        public void RunSftpTransfer(
+            NativeSshConnectionOptions connectionOptions,
+            NativeSftpTransferOptions transferOptions,
+            Action<NativeSftpTransferProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            progress?.Invoke(new NativeSftpTransferProgress { BytesDone = bytesDone, BytesTotal = bytesTotal });
+        }
+
+        public IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(
+            NativeSshConnectionOptions connectionOptions,
+            string remotePath,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
         public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
