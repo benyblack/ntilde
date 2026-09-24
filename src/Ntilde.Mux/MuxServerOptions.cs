@@ -53,5 +53,21 @@ public sealed class MuxServerOptions
     /// <summary>Per-session cap on input queued for a child that is not reading stdin (see <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/>).</summary>
     public long MaxQueuedInputBytes { get; init; } = 16L * 1024 * 1024;
 
+    /// <summary>
+    /// First pause after a failed accept (a transient pipe/socket error). Doubles per consecutive
+    /// failure up to <see cref="AcceptRetryMaxDelay"/>; a successful accept resets it.
+    /// </summary>
+    public TimeSpan AcceptRetryInitialDelay { get; init; } = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Cap on the pause between accept retries.</summary>
+    public TimeSpan AcceptRetryMaxDelay { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Consecutive accept failures after which the listener is taken to be permanently broken: the
+    /// accept loop stops and raises <see cref="MuxServer.AcceptLoopFaulted"/>, so the daemon exits
+    /// (releasing its lock and descriptor) instead of living on without accepting anyone.
+    /// </summary>
+    public int MaxConsecutiveAcceptFailures { get; init; } = 10;
+
     public Action<string>? Log { get; init; }
 }

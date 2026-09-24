@@ -65,10 +65,13 @@ public sealed class MuxDaemonHost : IDisposable
             Log($"[MuxDaemon] replacing a stale descriptor (pid {stale.Pid}, {stale.Endpoint})");
         }
 
+        // Before the server starts: a shutdown request or an accept-loop fault can arrive as soon as
+        // the accept thread runs, and one raised before these were attached would be lost.
+        _server.ShutdownRequested += OnShutdownRequested;
+        _server.AcceptLoopFaulted += OnAcceptLoopFaulted;
         try
         {
-            _server.Start(_options.ListenerFactory(_options.Endpoint));
-            _server.ShutdownRequested += OnShutdownRequested;
+            _server.Start(CreateListener());
             MuxDiscovery.WriteDescriptor(_options.DescriptorPath, new MuxEndpointDescriptor
             {
                 MinVersion = _server.Options.MinProtocolVersion,
@@ -80,16 +83,54 @@ public sealed class MuxDaemonHost : IDisposable
         }
         catch
         {
+            _server.ShutdownRequested -= OnShutdownRequested;
+            _server.AcceptLoopFaulted -= OnAcceptLoopFaulted;
             _server.Dispose();
             ReleaseLock();
             throw;
         }
 
-        _timer = new Timer(_ => Tick(), null, _options.TickInterval, _options.TickInterval);
+        // A stop that ran while this method was still writing the descriptor (the accept loop can
+        // fault, or a client ask for shutdown, the moment the server starts) must not leave a
+        // descriptor or a ticking timer behind it.
+        lock (_tickLock)
+        {
+            if (Volatile.Read(ref _stopping) != 0)
+            {
+                MuxDiscovery.DeleteDescriptorIfOwned(_options.DescriptorPath, _options.Pid);
+                return;
+            }
+
+            _timer = new Timer(_ => Tick(), null, _options.TickInterval, _options.TickInterval);
+        }
+
         Log($"[MuxDaemon] serving {_options.Endpoint} (pid {_options.Pid})");
     }
 
+    /// <summary>
+    /// The listener, with a socket-level failure reported as the <see cref="IOException"/> every
+    /// caller already handles ("endpoint in use / unusable"): a <see cref="System.Net.Sockets.SocketException"/>
+    /// is not one, and escaping as itself it crashed <c>mux serve</c> instead of exiting 1.
+    /// </summary>
+    private IMuxListener CreateListener()
+    {
+        try
+        {
+            return _options.ListenerFactory(_options.Endpoint);
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            throw new IOException($"Could not listen on {_options.Endpoint}: {ex.Message}", ex);
+        }
+    }
+
     private void OnShutdownRequested() => RequestStop("shutdown");
+
+    private void OnAcceptLoopFaulted(Exception? reason)
+    {
+        Log($"[MuxDaemon] the endpoint stopped accepting connections ({reason?.Message ?? "listener closed"}); stopping");
+        RequestStop("accept-failed");
+    }
 
     internal void TickForTest() => Tick();
 
@@ -149,6 +190,7 @@ public sealed class MuxDaemonHost : IDisposable
         {
             _timer?.Dispose();
             _server.ShutdownRequested -= OnShutdownRequested;
+            _server.AcceptLoopFaulted -= OnAcceptLoopFaulted;
             if (reason != "idle") _server.KillAllSessions();
             _server.Dispose();
             MuxDiscovery.DeleteDescriptorIfOwned(_options.DescriptorPath, _options.Pid);
@@ -166,14 +208,17 @@ public sealed class MuxDaemonHost : IDisposable
         }
     }
 
+    /// <remarks>
+    /// Closes the handle and deliberately leaves the file. On Linux/macOS the lock is an advisory
+    /// lock on the inode, not the name: unlocking and then unlinking lets a starter that opened the
+    /// old file just before the unlink lock that orphaned inode while a second starter creates and
+    /// locks a new file at the same path - two daemons, each "holding" the lock. The file is empty
+    /// and reused by every later start, so leaving it costs nothing.
+    /// </remarks>
     private void ReleaseLock()
     {
         FileStream? held = Interlocked.Exchange(ref _lock, null);
-        if (held is null) return;
-        held.Dispose();
-        try { File.Delete(LockPath); }
-        catch (IOException) { /* best effort: the lock is the open handle, not the file; a leftover file is reused */ }
-        catch (UnauthorizedAccessException) { /* best effort, as above */ }
+        held?.Dispose();
     }
 
     private void Log(string message)

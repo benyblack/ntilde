@@ -123,4 +123,30 @@ public sealed class MuxServerLifecycleTests
         client.Dispose();
         Assert.False(session.IsConnected);
     }
+
+    /// <summary>
+    /// PR #489 review 2, item 11: kill removed the session from the server but never disposed it,
+    /// leaving its queues, token source and threads' resources to the finalizer. It must be
+    /// disposed - and only after the terminal exit went out, so an attached client still sees Exited.
+    /// </summary>
+    [Fact]
+    public async Task Kill_disposes_the_session_after_attached_clients_saw_the_exit()
+    {
+        using var host = new MuxTestHost();
+        MuxClient killer = await host.ConnectClientAsync();
+        MuxClient watcher = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(killer);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(watcher, id);
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        pane.Session.OnExit += _ => exited.TrySetResult();
+        HeadlessTerminalSession session = host.Mux(id);
+
+        await killer.KillAsync(id, Ct);
+
+        await exited.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await TestWait.UntilAsync(() => session.IsDisposedForTest, "the killed session was disposed");
+        await TestWait.UntilAsync(() => !session.IsParseThreadAliveForTest && !session.IsInputThreadAliveForTest,
+            "the killed session's parse and input threads stopped");
+        Assert.DoesNotContain(id, host.Server.GetSessionIds());
+    }
 }

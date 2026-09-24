@@ -187,6 +187,10 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal bool IsInputThreadAliveForTest => _inputThread.IsAlive;
 
+    internal bool IsParseThreadAliveForTest => _parseThread.IsAlive;
+
+    internal bool IsDisposedForTest => Volatile.Read(ref _disposed) != 0;
+
     private long MaxQueuedInputBytes => MaxQueuedInputBytesForTest > 0 ? MaxQueuedInputBytesForTest : _maxQueuedInputBytes;
 
     /// <summary>

@@ -18,9 +18,10 @@ public sealed class MuxDaemonHostTests : IDisposable
         try { Directory.Delete(_root, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
-    private (MuxDaemonHost Host, MuxServer Server, MuxDaemonOptions Options) NewHost(TimeSpan? idle = null, int? pid = null)
+    private (MuxDaemonHost Host, MuxServer Server, MuxDaemonOptions Options) NewHost(
+        TimeSpan? idle = null, int? pid = null, MuxServerOptions? serverOptions = null, Func<string, IMuxListener>? listenerFactory = null)
     {
-        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        var server = new MuxServer(new ScriptedSessionFactory(), serverOptions ?? new MuxServerOptions { ForceConPtyFiltering = false });
         using Process self = Process.GetCurrentProcess();
         var options = new MuxDaemonOptions
         {
@@ -30,6 +31,7 @@ public sealed class MuxDaemonHostTests : IDisposable
             TickInterval = TimeSpan.FromMilliseconds(50),
             Pid = pid ?? Environment.ProcessId,
             ProcessName = self.ProcessName,
+            ListenerFactory = listenerFactory ?? MuxListeners.Create,
         };
         var host = new MuxDaemonHost(server, options);
         _owned.Add(host);
@@ -130,6 +132,69 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
         Assert.Equal(o.Endpoint, d.Endpoint);
         Assert.Equal(o.Pid, d.Pid);
+    }
+
+    /// <summary>
+    /// PR #489 review 2, item 1: a listener that keeps failing must stop the daemon - releasing its
+    /// lock and descriptor - rather than leave it running without accepting anyone.
+    /// </summary>
+    [Fact]
+    public async Task A_listener_that_keeps_failing_stops_the_host_with_accept_failed()
+    {
+        var serverOptions = new MuxServerOptions
+        {
+            ForceConPtyFiltering = false,
+            AcceptRetryInitialDelay = TimeSpan.FromMilliseconds(5),
+            AcceptRetryMaxDelay = TimeSpan.FromMilliseconds(20),
+            MaxConsecutiveAcceptFailures = 3,
+        };
+        var (host, _, o) = NewHost(serverOptions: serverOptions,
+            listenerFactory: _ => new MuxServerAcceptLoopTests.FailingListener(new InMemoryMuxListener(), failures: int.MaxValue));
+
+        host.Start();
+
+        Assert.Equal("accept-failed", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        Assert.False(File.Exists(o.DescriptorPath));
+        var (next, _, _) = NewHost(pid: Environment.ProcessId + 100_000);
+        next.Start(); // the lock was released
+    }
+
+    /// <summary>
+    /// PR #489 review 2, item 2: the lock file is never unlinked (unlock-then-unlink let two starters
+    /// lock different inodes on Linux/macOS), and a leftover one is simply reused by the next start.
+    /// </summary>
+    [Fact]
+    public void Stopping_leaves_the_lock_file_and_a_later_start_reuses_it()
+    {
+        var (first, _, o) = NewHost();
+        first.Start();
+        string lockPath = Path.Combine(Path.GetDirectoryName(o.DescriptorPath)!, "mux.lock");
+        first.RequestStop("test");
+        Assert.True(File.Exists(lockPath), "the lock file must outlive the daemon");
+
+        var (second, _, _) = NewHost(pid: Environment.ProcessId + 100_000);
+        second.Start();
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal(Environment.ProcessId + 100_000, d.Pid);
+        var (third, _, _) = NewHost(pid: Environment.ProcessId + 200_000);
+        Assert.Throws<MuxDaemonAlreadyRunningException>(third.Start); // the reused file still locks
+    }
+
+    /// <summary>
+    /// PR #489 review 2, item 3: a SocketException is not an IOException, so escaping the listener
+    /// factory as itself it crashed `mux serve` (and wrote the GUI's startup-error file) instead of
+    /// exiting 1. Start reports it as an IOException and releases the lock.
+    /// </summary>
+    [Fact]
+    public void A_socket_failure_creating_the_listener_surfaces_as_IOException_and_releases_the_lock()
+    {
+        var (host, _, o) = NewHost(listenerFactory: _ => throw new System.Net.Sockets.SocketException(98 /* EADDRINUSE */));
+
+        var ex = Assert.Throws<IOException>(host.Start);
+        Assert.IsType<System.Net.Sockets.SocketException>(ex.InnerException);
+        Assert.False(File.Exists(o.DescriptorPath));
+        var (next, _, _) = NewHost(pid: Environment.ProcessId + 100_000);
+        next.Start();
     }
 }
 
