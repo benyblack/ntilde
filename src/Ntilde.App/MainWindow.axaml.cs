@@ -241,6 +241,17 @@ namespace Ntilde
 
         /// <summary>Test seam: installs a coordinator over a fake IUpdateService.</summary>
         internal Ntilde.Update.UpdateCoordinator? UpdateCoordinatorForTest { set => _updateCoordinator = value; }
+
+        /// <summary>
+        /// Test seam: how <see cref="ApplyStagedUpdateAsync"/> checks for a live daemon before
+        /// applying an update. The default never spawns one - a daemon that is not already up
+        /// does not need to be asked about.
+        /// </summary>
+        internal Func<CancellationToken, Task<Ntilde.Mux.MuxClient?>> MuxProbeForUpdate { get; set; } =
+            ct => Ntilde.Shell.Mux.MuxDaemonLauncher.CreateDefault(AppLogger.Log).TryConnectExistingAsync(ct);
+
+        /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>
+        internal Func<string, Task<bool>> ConfirmSessionLossForUpdate { get; set; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
         // Guards the OnOpened wiring below against re-entry: quake mode's Hide()/Show() round
         // trip re-raises OnOpened (Avalonia clears _shown on Hide and ShowCore raises it again
@@ -3699,6 +3710,9 @@ namespace Ntilde
             ArgumentNullException.ThrowIfNull(services);
             _startup = services.Startup;
             _commandAssistServices = services.CommandAssist;
+            // Assigned here rather than as a field initializer: an instance method group cannot
+            // be referenced from a field initializer (CS0236, "this" isn't available yet).
+            ConfirmSessionLossForUpdate = ShowRunningProcessCloseConfirmationAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -9078,11 +9092,65 @@ namespace Ntilde
         /// for real reasons: a missing or locked <c>Update.exe</c>, or the update lock already
         /// held by another instance.
         /// </remarks>
-        private void ApplyStagedUpdate()
+        /// <summary>
+        /// The toast's Restart button and the palette/About entries all invoke this as a plain
+        /// <c>Action</c>, so it stays synchronous and fire-and-forget; <see cref="ApplyStagedUpdateAsync"/>
+        /// is the real body and guarantees it never lets an exception escape as an unobserved task fault.
+        /// </summary>
+        private void ApplyStagedUpdate() => _ = ApplyStagedUpdateAsync();
+
+        /// <summary>
+        /// Runs the shared app-teardown (session save, timers, global hotkey, agent host) before
+        /// handing off to the coordinator. The underlying restart terminates this process itself,
+        /// so <see cref="OnClosing"/> never runs for it - without doing the same teardown here
+        /// first, "taking the update" would silently drop the session, which is worse than just
+        /// quitting and relaunching by hand.
+        /// </summary>
+        /// <remarks>
+        /// The try/catch lives here rather than at the call sites so that BOTH entry points get
+        /// it: the toast's Restart button (a raw Click handler - an escaping exception there is
+        /// an unhandled exception on the UI thread, which kills the app with no explanation) and
+        /// the palette entry (whose <c>ExecuteCommand</c> try/catch would otherwise swallow the
+        /// failure without telling the user anything). <c>ApplyUpdatesAndRestart</c> can throw
+        /// for real reasons: a missing or locked <c>Update.exe</c>, or the update lock already
+        /// held by another instance.
+        ///
+        /// Before any of that, a live daemon is probed (spec §9): the new build must not start
+        /// beside a daemon of the old one - the protocol version range is the backstop, not the
+        /// mechanism. If it has running sessions, the user is asked to confirm the loss; declining
+        /// leaves everything untouched (no teardown, no apply). Confirming - or no daemon at all -
+        /// sends <c>shutdown</c> so no old-build daemon survives beside the new one, then proceeds
+        /// exactly as before.
+        /// </remarks>
+        internal async System.Threading.Tasks.Task ApplyStagedUpdateAsync()
         {
             if (_updateCoordinator is not { IsUpdateStaged: true })
             {
                 return;
+            }
+
+            try
+            {
+                using Ntilde.Mux.MuxClient? daemon = await MuxProbeForUpdate(CancellationToken.None);
+                if (daemon is not null)
+                {
+                    int running = (await daemon.ListSessionsAsync()).Count(s => s.Running);
+                    if (running > 0 && !await ConfirmSessionLossForUpdate(
+                            $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update."))
+                    {
+                        return;
+                    }
+
+                    try { await daemon.ShutdownServerAsync(); }
+                    catch (Exception ex) { AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}"); }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best-effort: a daemon that cannot be probed or listed is not one the update
+                // needs to wait on. Log and fall through to teardown + apply rather than leaving
+                // a staged update stuck forever over an unrelated mux failure.
+                AppLogger.Log($"[MainWindow] mux probe before update failed: {ex.Message}");
             }
 
             PerformAppTeardown();
