@@ -50,7 +50,7 @@ public static class MuxCommand
                 _ => Fail(stderr, Usage),
             };
         }
-        catch (Exception ex) when (ex is IOException or TimeoutException or MuxProtocolException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or TimeoutException or MuxProtocolException or UnauthorizedAccessException or MuxUnavailableException)
         {
             stderr.WriteLine($"mux: {ex.Message}");
             return 1;
@@ -167,11 +167,10 @@ public static class MuxCommand
         }
 
         // Wait for it to really be gone, so "kill-server && start" cannot race the old daemon.
-        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
-        while (DateTime.UtcNow < deadline && MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out _)) Thread.Sleep(50);
-        if (d is not null && d.Pid != Environment.ProcessId)
+        if (!MuxDaemonExit.WaitForExit(descriptorPath, d, TimeSpan.FromSeconds(5), Environment.ProcessId))
         {
-            while (DateTime.UtcNow < deadline && MuxDiscovery.IsProcessAlive(d.Pid, d.ProcessName)) Thread.Sleep(50);
+            stderr.WriteLine("Multiplexer did not stop within 5 s.");
+            return 1;
         }
 
         stdout.WriteLine("Multiplexer stopped.");

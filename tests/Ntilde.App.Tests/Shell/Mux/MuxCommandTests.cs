@@ -90,6 +90,61 @@ public sealed class MuxCommandTests : IDisposable
         Assert.Equal("shutdown", await _host!.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
     }
 
+    /// <summary>
+    /// Final-fix item 6: the daemon answered <c>shutdown</c> but its process is still alive after
+    /// the 5 s wait - kill-server must say so and fail, not report success. The in-process daemon
+    /// advertises a separate long-running child process as its pid, which never exits on its own.
+    /// </summary>
+    [Fact]
+    public void Kill_server_fails_when_the_daemon_process_outlives_the_wait()
+    {
+        using System.Diagnostics.Process stand_in = StartLongRunningProcess();
+        try
+        {
+            var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+            _host = new MuxDaemonHost(server, new MuxDaemonOptions
+            {
+                Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+                DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+                IdleExitAfter = TimeSpan.Zero,
+                Pid = stand_in.Id,
+                ProcessName = stand_in.ProcessName,
+            });
+            _host.Start();
+
+            var (code, output, err) = Run("mux", "kill-server");
+
+            Assert.Equal(1, code);
+            Assert.Contains("Multiplexer did not stop within 5 s.", err);
+            Assert.DoesNotContain("Multiplexer stopped.", output);
+        }
+        finally
+        {
+            try { stand_in.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    [Fact]
+    public void Kill_server_success_prints_stopped_and_exits_0()
+    {
+        StartDaemonWithOneSessionAsync().GetAwaiter().GetResult();
+        var (code, output, err) = Run("mux", "kill-server");
+        Assert.Equal(0, code);
+        Assert.Contains("Multiplexer stopped.", output);
+        Assert.Equal(string.Empty, err);
+    }
+
+    private static System.Diagnostics.Process StartLongRunningProcess()
+    {
+        var psi = OperatingSystem.IsWindows()
+            ? new System.Diagnostics.ProcessStartInfo("ping", "-n 60 127.0.0.1")
+            : new System.Diagnostics.ProcessStartInfo("sleep", "60");
+        psi.UseShellExecute = false;
+        psi.CreateNoWindow = true;
+        psi.RedirectStandardOutput = true;
+        return System.Diagnostics.Process.Start(psi)!;
+    }
+
     [Theory]
     [InlineData(new[] { "mux", "serve" }, 10, false)]
     [InlineData(new[] { "mux", "serve", "--idle-exit-minutes", "0" }, 0, false)]

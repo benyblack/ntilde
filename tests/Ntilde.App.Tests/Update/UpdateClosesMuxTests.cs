@@ -184,6 +184,78 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     }
 
     /// <summary>
+    /// Final-fix item 5: after <c>shutdown</c>, the apply waits for the daemon process named by the
+    /// descriptor to be gone (the apply replaces the executable it runs from), without blocking the
+    /// UI thread. The wait is gated here so the ordering is deterministic.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_apply_waits_for_the_daemon_to_exit_after_shutdown()
+    {
+        MainWindow window = CreateWindow();
+        FakeApplyUpdateService service = StageUpdate(window);
+        bool shutdownRaised = false;
+        _mux.Server.ShutdownRequested += () => shutdownRaised = true;
+        var descriptor = new MuxEndpointDescriptor { Endpoint = "test", Pid = 4242, ProcessName = "ntilde", MinVersion = 1, MaxVersion = 1 };
+        var exited = new TaskCompletionSource<bool>();
+        MuxEndpointDescriptor? waitedFor = null;
+        window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!;
+        window.MuxReadDescriptorForUpdate = () => descriptor;
+        window.MuxWaitForDaemonExitForUpdate = d => { waitedFor = d; return exited.Task; };
+
+        Task task = window.ApplyStagedUpdateAsync();
+        PumpUntil(() => waitedFor is not null, "the apply started waiting for the daemon to exit");
+
+        Assert.True(shutdownRaised, "shutdown was sent before the wait");
+        Assert.Same(descriptor, waitedFor);
+        Dispatcher.UIThread.RunJobs(); // the UI thread is free while the wait is pending
+        Assert.False(task.IsCompleted);
+        Assert.Equal(0, service.ApplyCount);
+
+        exited.SetResult(true);
+        PumpUntil(() => task.IsCompleted, "ApplyStagedUpdateAsync finished");
+        task.GetAwaiter().GetResult();
+        Assert.Equal(1, service.ApplyCount);
+    }
+
+    [AvaloniaFact]
+    public void No_descriptor_skips_the_exit_wait()
+    {
+        MainWindow window = CreateWindow();
+        FakeApplyUpdateService service = StageUpdate(window);
+        int waits = 0;
+        window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!;
+        window.MuxReadDescriptorForUpdate = () => null;
+        window.MuxWaitForDaemonExitForUpdate = _ => { waits++; return Task.FromResult(true); };
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.Equal(0, waits);
+        Assert.Equal(1, service.ApplyCount);
+    }
+
+    /// <summary>Final-fix item 11: the update's question is worded for the update, not for closing a pane.</summary>
+    [AvaloniaFact]
+    public void The_default_update_confirmation_is_worded_for_the_update()
+    {
+        MainWindow window = CreateWindow();
+
+        Task<bool> answer = window.ConfirmSessionLossForUpdate("2 multiplexed sessions will be closed by the update.");
+        Dispatcher.UIThread.RunJobs();
+
+        Avalonia.Controls.Window dialog = Assert.Single(window.OwnedWindows);
+        Assert.Equal("Apply Update", dialog.Title);
+        var buttons = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(dialog)
+            .OfType<Avalonia.Controls.Button>().Select(b => b.Content as string).ToList();
+        Assert.Contains("Close sessions and update", buttons);
+        Assert.Contains("Cancel", buttons);
+        Assert.DoesNotContain("Close Pane", buttons);
+
+        dialog.Close();
+        PumpUntil(() => answer.IsCompleted, "the dialog closed");
+        Assert.False(answer.Result); // closed without confirming
+    }
+
+    /// <summary>
     /// A daemon that answers the probe but errors the <c>listSessions</c> request leaves the
     /// session count unknown - there is nothing to confirm - but it is still a daemon of the old
     /// build that must not survive the update, so <c>shutdown</c> is still sent. Scripted with a

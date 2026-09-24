@@ -25,7 +25,9 @@ namespace Ntilde.Shell
             int payloadBytes = 0;
             try
             {
-                var session = CaptureSession(window, tabs);
+                // The startup session file is the one snapshot that names daemon sessions: the next
+                // launch reattaches to them (spec §9).
+                var session = CaptureSession(window, tabs, includeMuxIds: true);
 
                 var json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
                 payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
@@ -46,7 +48,42 @@ namespace Ntilde.Shell
             }
         }
 
-        public static NtildeSession CaptureSession(Window window, TabControl tabs)
+        /// <param name="includeMuxIds">
+        /// Only <see cref="SaveSession"/> passes true. Every other snapshot - a workspace, a template,
+        /// a bundle - is a layout to rebuild later, possibly elsewhere: carrying the daemon ids would
+        /// make loading it end the live shells it names and show "lost" on every rebuilt pane, and
+        /// would put this machine's daemon ids into exported bundles.
+        /// </param>
+        public static NtildeSession CaptureSession(Window window, TabControl tabs, bool includeMuxIds = false)
+        {
+            NtildeSession captured = CaptureSessionCore(window, tabs);
+            return includeMuxIds ? captured : WithoutMuxIds(captured);
+        }
+
+        /// <summary>
+        /// A deep copy of <paramref name="session"/> with every pane's MuxSessionId/MuxEndpoint cleared.
+        /// A copy, never in place: a capture can share PaneNodes with a restored tab's Tag (see the
+        /// placeholder fallback in <see cref="CaptureSessionCore"/>), which the startup save still needs.
+        /// </summary>
+        internal static NtildeSession WithoutMuxIds(NtildeSession session)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+            string json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
+            NtildeSession copy = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession) ?? new NtildeSession();
+
+            static void Clear(PaneNode? node)
+            {
+                if (node == null) return;
+                node.MuxSessionId = null;
+                node.MuxEndpoint = null;
+                foreach (PaneNode child in node.Children) Clear(child);
+            }
+
+            foreach (TabSession tab in copy.Tabs) Clear(tab.Root);
+            return copy;
+        }
+
+        private static NtildeSession CaptureSessionCore(Window window, TabControl tabs)
         {
             var session = new NtildeSession
             {

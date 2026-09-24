@@ -250,6 +250,18 @@ namespace Ntilde
         internal Func<CancellationToken, Task<Ntilde.Mux.MuxClient?>> MuxProbeForUpdate { get; set; } =
             ct => Ntilde.Shell.Mux.MuxDaemonLauncher.CreateDefault(AppLogger.Log).TryConnectExistingAsync(ct);
 
+        /// <summary>Test seam: the daemon's descriptor, read just before <c>shutdown</c> is sent for an update.</summary>
+        internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor?> MuxReadDescriptorForUpdate { get; set; } =
+            () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadDescriptor(Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), out var d) ? d : null;
+
+        /// <summary>
+        /// Test seam: after <c>shutdown</c> was sent for an update, completes with true once the daemon
+        /// named by the descriptor has exited, or false after 5 s. Runs off the UI thread.
+        /// </summary>
+        internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, Task<bool>> MuxWaitForDaemonExitForUpdate { get; set; } =
+            before => Task.Run(() => Ntilde.Shell.Mux.MuxDaemonExit.WaitForExit(
+                Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), before, TimeSpan.FromSeconds(5), Environment.ProcessId));
+
         /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>
         internal Func<string, Task<bool>> ConfirmSessionLossForUpdate { get; set; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
@@ -2858,6 +2870,10 @@ namespace Ntilde
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
 
+            // A workspace, template or bundle is a layout, not a live session: rebuilt panes start
+            // fresh shells. A snapshot saved before its ids were stripped at capture (or a bundle
+            // from elsewhere) must not make the rebuilt panes claim daemon sessions.
+            session = SessionManager.WithoutMuxIds(session);
             DisposeAllTabs(tabs);
             ResetTabCollections();
             SessionManager.RestoreSession(this, tabs, _settings, session);
@@ -3716,7 +3732,7 @@ namespace Ntilde
             _commandAssistServices = services.CommandAssist;
             // Assigned here rather than as a field initializer: an instance method group cannot
             // be referenced from a field initializer (CS0236, "this" isn't available yet).
-            ConfirmSessionLossForUpdate = ShowRunningProcessCloseConfirmationAsync;
+            ConfirmSessionLossForUpdate = ShowUpdateSessionLossConfirmationAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -6075,11 +6091,19 @@ namespace Ntilde
             return false;
         }
 
-        private async Task<bool> ShowRunningProcessCloseConfirmationAsync(string message)
+        private Task<bool> ShowRunningProcessCloseConfirmationAsync(string message) =>
+            ShowConfirmationDialogAsync("Close Running Pane", "A process is still running.", message, "Close Pane", 110);
+
+        /// <summary>The update path's question (spec §9): the pane-close wording would misname what the button does.</summary>
+        internal Task<bool> ShowUpdateSessionLossConfirmationAsync(string message) =>
+            ShowConfirmationDialogAsync("Apply Update", "Multiplexed sessions are still running.", message, "Close sessions and update", 190);
+
+        /// <summary>A modal Cancel / confirm question; true only when the confirm button was pressed.</summary>
+        private async Task<bool> ShowConfirmationDialogAsync(string title, string heading, string message, string confirmText, double confirmWidth)
         {
             bool confirmed = false;
 
-            var dialog = CreateThemedDialogWindow("Close Running Pane", 460, 190, canResize: false);
+            var dialog = CreateThemedDialogWindow(title, 460, 190, canResize: false);
 
             var messageBlock = new TextBlock
             {
@@ -6101,8 +6125,8 @@ namespace Ntilde
 
             var closeButton = new Button
             {
-                Content = "Close Pane",
-                Width = 110
+                Content = confirmText,
+                Width = confirmWidth
             };
             closeButton.Click += (_, __) =>
             {
@@ -6120,7 +6144,7 @@ namespace Ntilde
                     {
                         new TextBlock
                         {
-                            Text = "A process is still running.",
+                            Text = heading,
                             FontWeight = FontWeight.SemiBold
                         },
                         messageBlock,
@@ -9213,8 +9237,29 @@ namespace Ntilde
                             }
                         }
 
-                        try { await daemon.ShutdownServerAsync(); }
+                        // Read before the shutdown: the daemon deletes its descriptor on the way out,
+                        // and the pid in it is what says when the process is really gone.
+                        Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = null;
+                        try { before = MuxReadDescriptorForUpdate(); }
+                        catch (Exception ex) { AppLogger.Log($"[MainWindow] reading the mux descriptor before update failed: {ex.Message}"); }
+
+                        bool shutdownSent = false;
+                        try
+                        {
+                            await daemon.ShutdownServerAsync();
+                            shutdownSent = true;
+                        }
                         catch (Exception ex) { AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}"); }
+
+                        // As kill-server does: the apply replaces the executable the daemon runs from,
+                        // so let it finish exiting first. Awaited, never blocking the UI thread.
+                        if (shutdownSent && before is not null)
+                        {
+                            bool gone = false;
+                            try { gone = await MuxWaitForDaemonExitForUpdate(before); }
+                            catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
+                            if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; applying the update anyway");
+                        }
                     }
                 }
 

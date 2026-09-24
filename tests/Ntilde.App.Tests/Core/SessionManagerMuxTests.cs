@@ -62,6 +62,55 @@ public sealed class SessionManagerMuxTests : IClassFixture<TestAppDataRoot>
         restored.Dispose();
     }
 
+    /// <summary>
+    /// Final-fix item 3: only the startup session file names daemon sessions. A capture for a
+    /// workspace/template/bundle (the default) carries none - including the restored-placeholder
+    /// fallback path, whose shared Tag tree must not be mutated by the strip.
+    /// </summary>
+    [AvaloniaFact]
+    public void Only_the_session_file_capture_keeps_mux_ids()
+    {
+        Guid live = Guid.NewGuid(), placeholder = Guid.NewGuid();
+        var pane = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(
+            new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = live.ToString(), MuxEndpoint = "ep-1" }, new TerminalSettings()));
+        var restoredTab = new TabSession
+        {
+            Title = "deferred",
+            Root = new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = placeholder.ToString(), MuxEndpoint = "ep-1" },
+        };
+        var tabs = new Avalonia.Controls.TabControl();
+        tabs.Items.Add(new Avalonia.Controls.TabItem { Header = "Terminal", Content = pane });
+        tabs.Items.Add(new Avalonia.Controls.TabItem { Header = "deferred", Content = new Avalonia.Controls.Border(), Tag = restoredTab });
+        var window = new Avalonia.Controls.Window { Content = tabs };
+
+        NtildeSession forWorkspace = SessionManager.CaptureSession(window, tabs);
+        NtildeSession forSessionFile = SessionManager.CaptureSession(window, tabs, includeMuxIds: true);
+
+        Assert.All(forWorkspace.Tabs, t => { Assert.Null(t.Root!.MuxSessionId); Assert.Null(t.Root.MuxEndpoint); });
+        Assert.Equal(live.ToString("D"), forSessionFile.Tabs[0].Root!.MuxSessionId);
+        Assert.Equal(placeholder.ToString(), forSessionFile.Tabs[1].Root!.MuxSessionId);
+        Assert.Equal(placeholder.ToString(), restoredTab.Root.MuxSessionId); // the Tag tree is untouched
+        Assert.Equal("pwsh.exe", forWorkspace.Tabs[1].Root!.Command); // the rest of the layout survives
+        pane.Dispose();
+    }
+
+    [Fact]
+    public void A_bundle_export_embeds_no_mux_ids()
+    {
+        var session = new NtildeSession
+        {
+            Tabs = { new TabSession { Title = "t", Root = new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = Guid.NewGuid().ToString(), MuxEndpoint = "ep-1" } } },
+        };
+        string path = Path.Combine(AppPaths.RootDirectory, "bundle-" + Guid.NewGuid().ToString("N") + ".ntildews.json");
+
+        Assert.True(WorkspaceManager.ExportWorkspaceBundle("mux-strip", session, path));
+
+        string text = File.ReadAllText(path);
+        Assert.DoesNotContain("muxsessionid", text.ToLowerInvariant());
+        Assert.DoesNotContain("ep-1", text);
+        Assert.NotNull(session.Tabs[0].Root!.MuxSessionId); // the caller's snapshot is not mutated
+    }
+
     [AvaloniaFact]
     public void A_plain_pane_writes_no_mux_fields()
     {

@@ -99,6 +99,43 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the session was killed");
     }
 
+    /// <summary>
+    /// Final-fix item 3: a workspace/template/bundle is a layout. One that names a daemon session
+    /// (saved before capture stripped the ids, or brought in from elsewhere) must rebuild panes with
+    /// fresh shells - not claim the named session, and not print "lost".
+    /// </summary>
+    [AvaloniaFact]
+    public void Applying_a_snapshot_that_names_mux_sessions_starts_fresh_shells()
+    {
+        MainWindow window = CreateWindow();
+        Guid named = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            return await MuxTestHost.SpawnAsync(c);
+        }).GetAwaiter().GetResult();
+        var snapshot = new Ntilde.Pty.NtildeSession
+        {
+            Tabs =
+            {
+                new Ntilde.Pty.TabSession
+                {
+                    Title = "ws",
+                    Root = new Ntilde.Pty.PaneNode { Type = Ntilde.Pty.NodeType.Leaf, Command = "scripted", MuxSessionId = named.ToString("D"), MuxEndpoint = "test" },
+                },
+            },
+        };
+        var apply = typeof(MainWindow).GetMethod("ApplySessionSnapshot", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        apply.Invoke(window, [snapshot]);
+
+        PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the rebuilt pane attached");
+        var rebuilt = (MuxClientSession)AllPanes(window).Single().Session!;
+        Assert.NotEqual(named, rebuilt.Id);
+        Assert.Contains(named, _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(named).IsExited);
+        Assert.Equal("test", snapshot.Tabs[0].Root!.MuxEndpoint); // the caller's snapshot is not mutated
+    }
+
     [AvaloniaFact]
     public void Teardown_twice_is_harmless()
     {
