@@ -3472,6 +3472,12 @@ namespace Ntilde.Controls
                 else
                 {
                     Session = CreateLocalSession(request, out muxPreviousLost);
+                    if (Session is null)
+                    {
+                        // DaemonUnreachable: the shell this pane reopens is still in the daemon.
+                        // CreateLocalSession kept its id and wrote the retry banner; nothing to wire.
+                        return;
+                    }
                 }
 
                 TermView.SetSession(Session);
@@ -3556,7 +3562,7 @@ namespace Ntilde.Controls
         /// into the buffer: the new shell's ConPTY - or the daemon's parser - owns that screen and
         /// paints its first frame over any local text.
         /// </remarks>
-        private ITerminalSession CreateLocalSession(TerminalSessionRequest request, out bool previousLost)
+        private ITerminalSession? CreateLocalSession(TerminalSessionRequest request, out bool previousLost)
         {
             previousLost = false;
             if (SessionFactory is not IPersistentSessionFactory persistent)
@@ -3566,6 +3572,12 @@ namespace Ntilde.Controls
 
             PersistentSessionResult result = persistent.CreatePersistent(request);
             MuxEndpoint = result.Endpoint;
+            if (result.Outcome == PersistentSessionOutcome.DaemonUnreachable || result.Session is null)
+            {
+                EnterMuxUnreachable(request.ExistingMuxSessionId, result);
+                return null;
+            }
+
             if (result.Outcome == PersistentSessionOutcome.Unavailable)
             {
                 TerminalLogger.Log($"[TerminalPane] multiplexer unavailable (version mismatch: {result.VersionMismatch}); starting a non-persistent session");
@@ -3580,6 +3592,25 @@ namespace Ntilde.Controls
             }
 
             return result.Session;
+        }
+
+        /// <summary>
+        /// UI thread. A pane reopening a daemon session could not reach the daemon: no stand-in local
+        /// shell (it would bury the running one and lose its id). The id stays pending - so the
+        /// session file keeps naming it and orphan adoption does not claim it - and Enter retries.
+        /// Written into the buffer like the disconnect banner: no live session paints this screen.
+        /// </summary>
+        private void EnterMuxUnreachable(Guid? sessionId, PersistentSessionResult result)
+        {
+            MuxSessionIdToRestore = sessionId;
+            _muxConnectionLost = true;
+            // Keys must reach OnKeyDown's retry, not a previous (disposed) session the view still holds.
+            TermView.SetSession(null);
+            TerminalLogger.Log($"[TerminalPane] multiplexer not reachable for session {sessionId} ({result.Detail}); kept for a retry");
+            string banner = result.VersionMismatch
+                ? $"{MuxUnreachableBanner}\r\n{MuxVersionMismatchHint}"
+                : MuxUnreachableBanner;
+            WriteBanner($"\r\n\x1b[90m{banner}\x1b[0m\r\n");
         }
 
         /// <summary>Posts <see cref="PersistenceNotice"/> to this pane's UI thread.</summary>
@@ -3618,6 +3649,8 @@ namespace Ntilde.Controls
         internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server' to replace it]";
         internal const string MuxPreviousLostBanner = "[Previous session was lost — started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
+        internal const string MuxUnreachableBanner = "[Multiplexer not reachable — press Enter to retry]";
+        internal const string MuxSessionFailedBanner = "[Multiplexer session failed — press Enter to start a new shell]";
         internal const string MuxUnavailableNoticeTitle = "Session not persistent";
         internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
 
@@ -3666,7 +3699,9 @@ namespace Ntilde.Controls
             mux.StreamResize += (c, r) => HandleMuxStreamResize(mux, c, r);
             // Disconnected can fire on any thread (even concurrently with a delivery); both marshal.
             mux.Disconnected += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxDisconnectedBanner));
-            mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxDisconnectedBanner));
+            // A faulted session is gone for good (the daemon will not deliver it again): its own
+            // wording, and no reattach - Enter ends it and starts a new shell (see Reconnect).
+            mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxSessionFailedBanner, reattach: false));
             _ = AttachMuxAsync(mux, previousLost);
         }
 
@@ -3708,11 +3743,11 @@ namespace Ntilde.Controls
         }
 
         /// <summary>UI thread. The daemon or the connection is gone; the shell may still be running there.</summary>
-        private void HandleMuxConnectionLost(MuxClientSession source, string banner)
+        private void HandleMuxConnectionLost(MuxClientSession source, string banner, bool reattach = true)
         {
             if (!IsCurrentMux(source) || _muxConnectionLost) return;
             _muxConnectionLost = true;
-            _muxReattachId = source.Id;
+            _muxReattachId = reattach ? source.Id : null;
             // Input must not reach a daemon session this pane is not showing (after a failed attach
             // the connection is still up, and SendInput would deliver it). With no session the view
             // leaves keys unhandled, so Enter reaches OnKeyDown's reconnect.
@@ -4432,7 +4467,7 @@ namespace Ntilde.Controls
             LastExitCode = null;
             // A lost mux connection reopens the same daemon session (InitializeSessionCore consumes
             // _muxReattachId); its snapshot then replaces this banner along with the rest of the screen.
-            WriteBanner(_muxReattachId is null
+            WriteBanner(_muxReattachId is null && MuxSessionIdToRestore is null
                 ? "\r\n\x1b[90m[Reconnecting...]\x1b[0m\r\n"
                 : "\r\n\x1b[90m[Reattaching...]\x1b[0m\r\n");
             InitializeSession(ShellCommand, Profile, TermView.Cols, TermView.Rows, ShellArgs);

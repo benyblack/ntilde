@@ -89,6 +89,27 @@ public sealed class MuxTerminalSessionFactoryTests
     }
 
     /// <summary>
+    /// PR #489 review 2, item 4: a pane reopening a daemon session whose daemon cannot be reached
+    /// gets no session at all - not a stand-in local shell that would bury the running one and
+    /// lose its id. The plain Create contract, which cannot say "none", still falls back.
+    /// </summary>
+    [Fact]
+    public void Unreachable_daemon_with_an_existing_id_starts_nothing_and_says_DaemonUnreachable()
+    {
+        var fallback = new RecordingSessionFactory(new FakeTerminalSession());
+        using var host = new MuxConnectionHost(_ => throw new MuxUnavailableException("down"), "x", null);
+        var factory = new MuxTerminalSessionFactory(host, fallback, null) { ConnectTimeout = TimeSpan.FromMilliseconds(500) };
+
+        PersistentSessionResult r = factory.CreatePersistent(Local(Guid.NewGuid()));
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Null(fallback.LastRequest);
+        Assert.NotNull(r.Detail);
+        Assert.IsType<FakeTerminalSession>(factory.Create(Local(Guid.NewGuid())));
+    }
+
+    /// <summary>
     /// Final-fix item 1: a second GUI instance restores the same session file. A session another
     /// client is attached to must stay with that client - the second instance gets a fresh shell,
     /// reported as a plain spawn (nothing was lost).

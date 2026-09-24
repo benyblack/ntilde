@@ -336,7 +336,7 @@ public sealed class MuxPaneTests : IDisposable
     {
         public int Calls;
 
-        public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session;
+        public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session!;
 
         public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
         {
@@ -433,17 +433,76 @@ public sealed class MuxPaneTests : IDisposable
         ScriptedTerminalSession child = _mux.Fake(old);
         Task.Run(() => m.MakeParserThrowOnReplyAsync()).GetAwaiter().GetResult();
         child.Emit("\x1b[c"); // DA1: the reply throws inside the daemon's parser, which faults the session
-        PumpUntil(() => BufferText(_pane!.Buffer!).Contains("[Multiplexer disconnected]"), "the fault banner is shown");
+        // PR #489 review 2, item 7: its own wording - Enter does not "reconnect" to it, it ends it.
+        PumpUntil(() => BufferText(_pane!.Buffer!).Contains(TerminalPane.MuxSessionFailedBanner), "the session-failed banner is shown");
+        Assert.DoesNotContain("[Multiplexer disconnected]", BufferText(_pane!.Buffer!));
         Assert.True(s.IsFaulted);
         Assert.True(s.IsConnected);
+        var notices = RecordNotices();
 
         PressEnter();
         var fresh = Assert.IsType<MuxClientSession>(_pane!.Session);
         Assert.NotEqual(old, fresh.Id);
         PumpUntil(() => fresh.IsAttached, "the fresh session attached");
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(notices); // a deliberate new shell, not a "previous session lost"
         PumpUntil(() => child.Disposed, "the faulted session's child was killed");
         PumpUntil(() => { _mux.Server.ReapExitedSessions(TimeSpan.Zero); return !_mux.Server.GetSessionIds().Contains(old); },
             "the killed session left the daemon");
+    }
+
+    /// <summary>
+    /// PR #489 review 2, item 4: a restored pane whose daemon is slow or down used to get a fresh
+    /// non-persistent local shell and forget its id - the user's shell kept running in the daemon,
+    /// unreachable. Now: no local shell, a retry banner, the id kept; Enter reattaches once the
+    /// daemon answers.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_unreachable_daemon_on_restore_keeps_the_id_and_Enter_reattaches_it()
+    {
+        Guid id;
+        using (MuxClient seed = Task.Run(() => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, CancellationToken.None)).GetAwaiter().GetResult())
+        {
+            id = Task.Run(() => MuxTestHost.SpawnAsync(seed)).GetAwaiter().GetResult();
+        }
+
+        _mux.Fake(id).Emit("still running in the daemon\r\n");
+        bool reachable = false;
+        var fallback = new RecordingSessionFactory(new FakeTerminalSession());
+        using var gatedHost = new MuxConnectionHost(
+            ct => Volatile.Read(ref reachable)
+                ? MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)
+                : throw new MuxUnavailableException("daemon not ready"),
+            "test", null)
+        { FailureCooldown = TimeSpan.Zero };
+        var factory = new MuxTerminalSessionFactory(gatedHost, fallback, null) { ConnectTimeout = TimeSpan.FromSeconds(2) };
+
+        _pane = new TerminalPane { MuxSessionIdToRestore = id };
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = factory;
+        var notices = RecordNotices();
+        _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
+        _window.Show();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains(TerminalPane.MuxUnreachableBanner), "the not-reachable banner is shown");
+
+        Assert.Null(_pane.Session);                     // no stand-in local shell
+        Assert.Null(fallback.LastRequest);
+        Assert.Equal(id, _pane.MuxSessionIdToRestore);  // kept: saved with the session, retried on Enter
+        Assert.Empty(notices);                          // not the "will not persist" toast
+        Assert.Equal(id.ToString("D"), Ntilde.Shell.SessionManager.BuildPaneTree(_pane)!.MuxSessionId);
+
+        PressEnter(); // still unreachable: the banner again, the id still kept
+        Assert.Null(_pane.Session);
+        Assert.Equal(id, _pane.MuxSessionIdToRestore);
+
+        Volatile.Write(ref reachable, true);
+        PressEnter();
+        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.Equal(id, again.Id);
+        PumpUntil(() => again.IsAttached, "reattached");
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains("still running in the daemon"), "the reattach snapshot shows the daemon's screen");
+        Assert.Null(fallback.LastRequest);
+        Assert.Empty(notices);
     }
 
     /// <summary>Delegates to a real factory and runs an action right after the first CreatePersistent.</summary>
@@ -451,7 +510,7 @@ public sealed class MuxPaneTests : IDisposable
     {
         private int _calls;
 
-        public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session;
+        public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session!;
 
         public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
         {

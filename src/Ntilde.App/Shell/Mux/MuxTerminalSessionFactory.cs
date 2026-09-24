@@ -7,8 +7,10 @@ namespace Ntilde.Shell.Mux;
 /// <summary>
 /// Local panes → a session in the daemon (spawned, or reopened by id); SSH → <see cref="_fallback"/>.
 /// Returns the MuxClientSession UNATTACHED: the pane attaches after wiring its handlers, so no
-/// snapshot can be missed (spec §7). Never throws for a daemon problem: it falls back to a normal
-/// local session and reports <see cref="PersistentSessionOutcome.Unavailable"/>.
+/// snapshot can be missed (spec §7). Never throws for a daemon problem: a new pane falls back to a
+/// normal local session (<see cref="PersistentSessionOutcome.Unavailable"/>); a pane reopening a
+/// daemon session gets no session at all (<see cref="PersistentSessionOutcome.DaemonUnreachable"/>),
+/// because its shell is still in the daemon and a stand-in local shell would lose it.
 /// </summary>
 internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 {
@@ -26,7 +28,8 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan RpcTimeout { get; init; } = TimeSpan.FromSeconds(3);
 
-    public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session;
+    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen falls back here.</summary>
+    public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session ?? _fallback.Create(request);
 
     public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
     {
@@ -127,6 +130,12 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 
     private PersistentSessionResult Fallback(TerminalSessionRequest request, string why)
     {
+        if (request.ExistingMuxSessionId is Guid existing)
+        {
+            _log?.Invoke($"[Mux] multiplexer unavailable ({why}); session {existing} is kept for a retry, no local shell started");
+            return new(null, PersistentSessionOutcome.DaemonUnreachable, null, why);
+        }
+
         _log?.Invoke($"[Mux] multiplexer unavailable ({why}); this session will not persist");
         return new(_fallback.Create(request), PersistentSessionOutcome.Unavailable, null, why);
     }

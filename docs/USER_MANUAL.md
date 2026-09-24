@@ -128,16 +128,30 @@ again. They run inside a small background process, the *multiplexer daemon*
 - **What closes a shell:** closing its pane or tab, or the shell exiting. Closing the *window*
   only detaches: the shells keep running in the daemon. A shell that has exited and has no
   window attached is cleaned up after 60 seconds.
-- **If the daemon cannot be reached:** the pane starts a normal shell instead and the window
+- **If the daemon cannot be reached:** a *new* pane starts a normal shell instead and the window
   shows a "Session not persistent" notification:
   `[Multiplexer unavailable — this session will not persist]`. Ntilde tries the daemon again
   for panes opened 30 seconds later. If the running daemon is from a different Ntilde version,
   the notification adds a second line telling you to run `ntilde mux kill-server` to replace it.
+  A pane that is *reattaching* to a saved shell (at startup, say, while the daemon is slow to
+  answer) does not start a stand-in shell, because its shell may still be running in the daemon.
+  It shows `[Multiplexer not reachable — press Enter to retry]` and keeps the shell's id, so
+  Enter tries again and your session file still names the shell. (For a version mismatch the
+  same kill-server hint appears under it.)
   If a running daemon goes away, attached panes show
   `[Multiplexer disconnected] [Press Enter to reconnect]`. Enter reconnects, starting a new
   daemon if needed. When the old shell is gone the window shows a "Previous session lost"
   notification: `[Previous session was lost — started a new shell]`. When several panes hit
   the same thing at once (e.g. restoring after the daemon crashed) they share one notification.
+  If the daemon stops tracking a shell's screen (its terminal parser failed; `ntilde mux ls`
+  shows it as *faulted*), the pane shows
+  `[Multiplexer session failed — press Enter to start a new shell]`. That shell cannot be
+  shown again: Enter ends it and starts a new one.
+- **One pane per shell:** if a saved session names the same shell in two panes (for example a
+  hand-edited session file), only the first reattaches; the others start new shells.
+- **If the daemon's endpoint breaks:** the daemon retries a failing endpoint for about ten seconds,
+  then exits (logging why in `logs/mux.log`) rather than staying up unreachable. Its shells end
+  with it; Ntilde starts a fresh daemon the next time it needs one.
 - **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
 
   | Command | What it does |
