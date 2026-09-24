@@ -92,15 +92,27 @@ namespace Ntilde.Shell
                 }
                 if (imported.Count == 0) continue;
 
+                // A theme that cannot be written is logged and skipped rather than thrown: the
+                // settings window calls this from an async click handler that does not catch, and
+                // one bad scheme should not cost the rest of the file.
+                string lastWritten = "";
                 foreach (var theme in imported)
                 {
-                    string fileName = theme.Name.Replace(" ", "") + ".json";
-                    string targetPath = Path.Combine(_themesDirectory, fileName);
-                    string json = JsonSerializer.Serialize(theme, AppJsonContext.Default.TerminalTheme);
-                    File.WriteAllText(targetPath, json);
+                    string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
+                    try
+                    {
+                        string json = JsonSerializer.Serialize(theme, AppJsonContext.Default.TerminalTheme);
+                        File.WriteAllText(targetPath, json);
+                    }
+                    catch (Exception ex)
+                    {
+                        TerminalLogger.Warning($"[ThemeManager] Could not write imported theme {theme.Name} to {targetPath}: {ex.Message}");
+                        continue;
+                    }
                     _loadedThemes[theme.Name] = theme;
+                    lastWritten = theme.Name;
                 }
-                return imported[^1].Name;
+                return lastWritten;
             }
 
             TerminalLogger.Warning($"[ThemeManager] No theme importer recognised {filePath}");
@@ -128,8 +140,7 @@ namespace Ntilde.Shell
 
         public void SaveTheme(TerminalTheme theme)
         {
-            string fileName = theme.Name.Replace(" ", "").Replace("/", "_").Replace("\\", "_") + ".json";
-            string targetPath = Path.Combine(_themesDirectory, fileName);
+            string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
 
             try
             {
@@ -151,8 +162,7 @@ namespace Ntilde.Shell
 
             if (_loadedThemes.TryGetValue(name, out var theme))
             {
-                string fileName = theme.Name.Replace(" ", "").Replace("/", "_").Replace("\\", "_") + ".json";
-                string targetPath = Path.Combine(_themesDirectory, fileName);
+                string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
 
                 try
                 {
@@ -168,6 +178,18 @@ namespace Ntilde.Shell
                 }
             }
         }
+
+        // Backslash is not in the Unix invalid set, but SaveTheme always replaced it, so it stays
+        // replaced on every platform.
+        private static readonly char[] UnsafeFileNameChars = Path.GetInvalidFileNameChars().Append('\\').ToArray();
+
+        // The one place a theme's file name comes from. The name is free text from the theme's
+        // source, so it can hold a path separator or a character the file system rejects; import,
+        // save, and delete must all derive the same file name from it, or a file one of them
+        // writes is never found by another. Spaces are dropped as they always were, so existing
+        // theme files keep their names (the built-in "Solarized Dark" ships as SolarizedDark.json).
+        private static string ThemeFileName(string themeName) =>
+            new string(themeName.Replace(" ", "").Select(c => UnsafeFileNameChars.Contains(c) ? '_' : c).ToArray()) + ".json";
 
         private void ExtractBuiltInThemes()
         {

@@ -2,6 +2,7 @@ using Ntilde.Shell;
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Ntilde.VT;
 using Xunit;
 
@@ -138,6 +139,67 @@ namespace Ntilde.Tests
 
             Assert.Equal("", imported);
             Assert.Empty(Directory.GetFiles(_themesDirectory));
+        }
+
+        [Theory]
+        [InlineData("Foo/Bar")]
+        [InlineData(@"Foo\Bar")]
+        [InlineData("Foo:Bar")] // invalid in a Windows file name, where it would open an alternate data stream
+        public void ImportTheme_NameThatIsNotAPortableFileName_ReloadsAndDeletes(string name)
+        {
+            // A scheme name is free text, and the theme file is named after it, so import, reload,
+            // and delete must all agree on one safe spelling of it.
+            string source = WriteSource("scheme.json", new JsonObject
+            {
+                ["name"] = name,
+                ["background"] = "#101010",
+                ["foreground"] = "#E0E0E0",
+            }.ToJsonString());
+
+            string imported = new ThemeManager(_themesDirectory).ImportTheme(source);
+
+            Assert.Equal(name, imported);
+            var reloaded = new ThemeManager(_themesDirectory);
+            Assert.Contains(name, reloaded.GetAvailableThemes());
+            Assert.Equal(new TermColor(0x10, 0x10, 0x10), reloaded.GetTheme(name).Background);
+
+            reloaded.DeleteTheme(name);
+
+            Assert.Empty(Directory.GetFileSystemEntries(_themesDirectory));
+            Assert.DoesNotContain(name, new ThemeManager(_themesDirectory).GetAvailableThemes());
+        }
+
+        [Fact]
+        public void ImportTheme_SomeThemeFilesCannotBeWritten_ImportsTheRest()
+        {
+            // A directory parked on the target path makes the write fail on every platform.
+            Directory.CreateDirectory(Path.Combine(_themesDirectory, "Blocked.json"));
+            Directory.CreateDirectory(Path.Combine(_themesDirectory, "AlsoBlocked.json"));
+            string source = WriteSource("schemes.json", """
+                [
+                    { "name": "Blocked", "background": "#101010", "foreground": "#E0E0E0" },
+                    { "name": "Fine", "background": "#202020", "foreground": "#D0D0D0" },
+                    { "name": "AlsoBlocked", "background": "#303030", "foreground": "#C0C0C0" }
+                ]
+                """);
+
+            string imported = new ThemeManager(_themesDirectory).ImportTheme(source);
+
+            // A failure before "Fine" does not stop the import, and one after it is not reported.
+            Assert.Equal("Fine", imported);
+            Assert.Equal(new TermColor(0x20, 0x20, 0x20), new ThemeManager(_themesDirectory).GetTheme("Fine").Background);
+        }
+
+        [Fact]
+        public void ImportTheme_NoThemeFileCanBeWritten_ReturnsEmpty()
+        {
+            Directory.CreateDirectory(Path.Combine(_themesDirectory, "Blocked.json"));
+            string source = WriteSource("blocked.json", """
+                { "name": "Blocked", "background": "#101010", "foreground": "#E0E0E0" }
+                """);
+
+            // The settings window calls this from an async click handler that does not catch.
+            Assert.Equal("", new ThemeManager(_themesDirectory).ImportTheme(source));
         }
 
         private string WriteSource(string fileName, string content)
