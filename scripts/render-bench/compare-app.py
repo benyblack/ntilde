@@ -18,7 +18,13 @@ pa, pb = args[0], args[1]
 
 
 def load(p):
-    rows = [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
+    rows = []
+    for l in open(p, encoding="utf-8"):
+        try:
+            rows.append(json.loads(l))
+        except ValueError:
+            # The writer's last buffered line is cut off when the app exits.
+            pass
     return [r for r in rows if r.get("DirtyRows", 0) >= min_dirty]
 
 
