@@ -47,6 +47,22 @@ public sealed class SessionManagerMuxTests : IClassFixture<TestAppDataRoot>
     }
 
     [AvaloniaFact]
+    public void A_restored_pane_not_yet_spawned_keeps_its_mux_id()
+    {
+        // A hydrated deferred tab never shown (or an adopted background tab) has no Session yet: a
+        // save then must not drop the daemon session it will reattach to.
+        Guid id = Guid.NewGuid();
+        var saved = new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = id.ToString(), MuxEndpoint = "ep-1" };
+        var restored = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(saved, new TerminalSettings()));
+        Assert.Null(restored.Session);
+
+        PaneNode node = SessionManager.BuildPaneTree(restored)!;
+
+        Assert.Equal(id.ToString("D"), node.MuxSessionId);
+        restored.Dispose();
+    }
+
+    [AvaloniaFact]
     public void A_plain_pane_writes_no_mux_fields()
     {
         using var pane = new TerminalPane();

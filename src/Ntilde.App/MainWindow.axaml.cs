@@ -4686,32 +4686,54 @@ namespace Ntilde
 
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (_teardownDone) return;
-                    // A pane this window spawned can be listed between its spawn and its attach
-                    // (AttachedClients still 0). Its Session is assigned on this thread as soon as the
-                    // spawn returns, so by now every such pane names its id here.
-                    var live = new HashSet<Guid>(AllPanes().Select(p => p.Session).OfType<Ntilde.Mux.MuxClientSession>().Select(m => m.Id));
-                    int adopted = 0;
-                    foreach (Ntilde.Mux.Contracts.SessionSummary s in orphans)
+                    try
                     {
-                        if (live.Contains(s.SessionId)) continue;
-                        var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(s.Command), s.Arguments ?? string.Empty, _settings)
-                        {
-                            MuxSessionIdToRestore = s.SessionId,
-                        };
-                        AddTabWithPane(pane, string.IsNullOrWhiteSpace(s.Title) ? s.Command : s.Title);
-                        adopted++;
+                        AdoptOrphansOnUiThread(orphans);
                     }
-
-                    if (adopted == 0) return;
-                    AppLogger.Log($"[MainWindow] reattached {adopted} detached mux session(s)");
-                    ShowRecordingToast("Sessions restored", $"Reattached {adopted} detached session{(adopted == 1 ? "" : "s")}", null, null, autoHide: true);
+                    catch (Exception ex)
+                    {
+                        // Posted: nothing awaits this, so a throw would reach the dispatcher unhandled.
+                        AppLogger.Log($"[MainWindow] orphan adoption failed: {ex.Message}");
+                    }
                 });
             }
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] orphan adoption failed: {ex.Message}");
             }
+        }
+
+        /// <summary>UI thread. Opens each orphan in a background tab (selection and focus stay put).</summary>
+        private void AdoptOrphansOnUiThread(IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> orphans)
+        {
+            if (_teardownDone) return;
+            // A pane this window spawned can be listed between its spawn and its attach
+            // (AttachedClients still 0). Its Session is assigned on this thread as soon as the spawn
+            // returns, so by now every such pane names its id here. Pending ids count too.
+            var live = new HashSet<Guid>();
+            foreach (TerminalPane p in AllPanes())
+            {
+                if (p.Session is Ntilde.Mux.MuxClientSession m) live.Add(m.Id);
+                if (p.MuxSessionIdToRestore is Guid pending) live.Add(pending);
+            }
+
+            int adopted = 0;
+            foreach (Ntilde.Mux.Contracts.SessionSummary s in orphans)
+            {
+                if (!live.Add(s.SessionId)) continue;
+                var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(s.Command), s.Arguments ?? string.Empty, _settings)
+                {
+                    MuxSessionIdToRestore = s.SessionId,
+                };
+                // Background tab: it spawns (attaches) when first shown, and until then the session
+                // file keeps its id through MuxSessionIdToRestore.
+                AddTabWithPane(pane, string.IsNullOrWhiteSpace(s.Title) ? s.Command : s.Title, select: false);
+                adopted++;
+            }
+
+            if (adopted == 0) return;
+            AppLogger.Log($"[MainWindow] reattached {adopted} detached mux session(s)");
+            ShowRecordingToast("Sessions restored", $"Reattached {adopted} detached session{(adopted == 1 ? "" : "s")}", null, null, autoHide: true);
         }
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
@@ -6456,10 +6478,12 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Opens <paramref name="pane"/> (not yet wired or hosted) in a new selected tab. AddTab's
-        /// tail, shared with orphan adoption, which builds its pane around a daemon session.
+        /// Opens <paramref name="pane"/> (not yet wired or hosted) in a new tab. AddTab's tail, shared
+        /// with orphan adoption, which builds its pane around a daemon session and passes
+        /// <paramref name="select"/> false: the tab is added in the background, leaving the selected
+        /// tab, the current pane, the MRU order and focus where the user had them.
         /// </summary>
-        private void AddTabWithPane(TerminalPane pane, string title)
+        private void AddTabWithPane(TerminalPane pane, string title, bool select = true)
         {
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
@@ -6470,11 +6494,15 @@ namespace Ntilde
             var tabItem = new TabItem { Content = pane };
             ConfigureTabHeader(tabItem, title);
             tabs.Items.Add(tabItem);
-            tabs.SelectedItem = tabItem;
+            if (select) tabs.SelectedItem = tabItem;
             GetTabId(tabItem);
             GetOrCreateTabState(tabItem);
-            TouchTabMru(tabItem);
-            _currentPane = pane;
+            if (select)
+            {
+                TouchTabMru(tabItem);
+                _currentPane = pane;
+            }
+
             _activePaneByTab[tabItem] = pane;
             _paneOwnerTab[pane] = tabItem;
             AgentHost.AgentSessionRegistry.Instance.SetTabAssociation(pane.PaneId, GetPersistentTabId(tabItem));
@@ -6490,7 +6518,7 @@ namespace Ntilde
 
             // Fallback: Post anyway
             Dispatcher.UIThread.Post(() => UpdateTabVisuals(), DispatcherPriority.Input);
-            Dispatcher.UIThread.Post(() => pane.ActiveControl.Focus());
+            if (select) Dispatcher.UIThread.Post(() => pane.ActiveControl.Focus());
             UpdatePaneAutomationLabels();
             UpdateBroadcastIndicator();
             RefreshLayoutModelForTab(tabItem);

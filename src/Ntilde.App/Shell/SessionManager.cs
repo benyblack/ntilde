@@ -161,6 +161,14 @@ namespace Ntilde.Shell
                     leaf.MuxSessionId = mux.Id.ToString("D");
                     leaf.MuxEndpoint = pane.MuxEndpoint;
                 }
+                else if (pane.MuxSessionIdToRestore is Guid pending)
+                {
+                    // Not spawned yet (a hydrated tab never shown, an adopted tab not visited): the
+                    // daemon session is still this pane's. Dropping it here would make the next launch
+                    // start a fresh shell and adopt the old one as a duplicate orphan.
+                    leaf.MuxSessionId = pending.ToString("D");
+                    leaf.MuxEndpoint = pane.MuxEndpoint;
+                }
 
                 return leaf;
             }

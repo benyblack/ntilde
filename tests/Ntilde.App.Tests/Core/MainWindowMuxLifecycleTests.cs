@@ -1,4 +1,5 @@
 using System.Reflection;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Ntilde.Controls;
@@ -22,6 +23,15 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
 {
     private readonly MuxTestHost _mux = new();
     private MuxConnectionHost? _host;
+
+    /// <summary>
+    /// Each test starts with no saved session: the fixture's file would otherwise restore the previous
+    /// test's panes, naming mux sessions this test's MuxTestHost never had (order-dependent outcomes).
+    /// </summary>
+    public MainWindowMuxLifecycleTests()
+    {
+        if (File.Exists(AppPaths.SessionFilePath)) File.Delete(AppPaths.SessionFilePath);
+    }
 
     public void Dispose()
     {
@@ -218,10 +228,35 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => _mux.Mux(orphan).AttachedClients == 0, "the spawning client is gone");
 
         MainWindow window = CreateWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        TerminalPane ownPane = AllPanes(window).First(p => p.Session is MuxClientSession);
 
-        PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == orphan), "the orphan was adopted and attached");
-        // Adopted exactly once, and the window's own new pane was not mistaken for an orphan.
-        Assert.Single(AllPanes(window), p => p.Session is MuxClientSession m && m.Id == orphan);
+        PumpUntil(() => AllPanes(window).Any(p => p.MuxSessionIdToRestore == orphan), "the orphan was adopted");
+        // A background tab: selection stays on the window's own tab.
+        Assert.Same(ownPane, Assert.IsType<TabItem>(tabs.SelectedItem).Content);
+        Assert.Single(AllPanes(window), p => p.MuxSessionIdToRestore == orphan);
+        Assert.NotEqual(orphan, ((MuxClientSession)ownPane.Session!).Id);
+
+        // Until visited it has not spawned, yet the session file still names it (no duplicate next launch).
+        typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        Assert.Contains(orphan.ToString(), File.ReadAllText(AppPaths.SessionFilePath));
+    }
+
+    [AvaloniaFact]
+    public void An_adopted_tab_attaches_to_its_orphan_when_selected()
+    {
+        Guid orphan;
+        using (MuxClient c = Task.Run(() => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, default), TestContext.Current.CancellationToken).GetAwaiter().GetResult())
+            orphan = Task.Run(() => MuxTestHost.SpawnAsync(c), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+        MainWindow window = CreateWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        PumpUntil(() => AllPanes(window).Any(p => p.MuxSessionIdToRestore == orphan), "the orphan was adopted");
+        TerminalPane adopted = AllPanes(window).Single(p => p.MuxSessionIdToRestore == orphan);
+
+        tabs.SelectedItem = tabs.Items.OfType<TabItem>().Single(t => ReferenceEquals(t.Content, adopted));
+
+        PumpUntil(() => adopted.Session is MuxClientSession { IsAttached: true } m && m.Id == orphan, "the adopted tab attached to the orphan");
         List<Guid> ids = AllPanes(window).Select(p => p.Session).OfType<MuxClientSession>().Select(m => m.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
     }
