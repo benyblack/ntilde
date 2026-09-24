@@ -177,8 +177,17 @@ namespace Ntilde.Rendering
         {
             if (_pending.WrittenCount > 0)
             {
-                _stream.Write(_pending.WrittenSpan);
-                _pending.Clear();
+                try
+                {
+                    _stream.Write(_pending.WrittenSpan);
+                }
+                finally
+                {
+                    // Drop the batch even if the write threw partway: the failure path
+                    // (DisableUnsafe) flushes again, and re-sending the same bytes would
+                    // append duplicate frames after whatever partial write reached disk.
+                    _pending.Clear();
+                }
             }
             _stream.Flush();
             _pendingFramesSinceFlush = 0;
