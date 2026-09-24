@@ -1,4 +1,5 @@
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Transport;
 
 namespace Ntilde.Mux;
 
@@ -11,6 +12,11 @@ public sealed class MuxDaemonHost : IDisposable
     private readonly MuxServer _server;
     private readonly MuxDaemonOptions _options;
     private readonly TaskCompletionSource<string> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    // Serializes Tick's body against RequestStop's teardown: a slow ReapExitedSessions must finish
+    // (or never start) before KillAllSessions/server.Dispose() run, never overlap them. Monitor
+    // rather than SemaphoreSlim because the idle path calls RequestStop from inside Tick on the same
+    // thread, which a plain lock (Monitor is what `lock` compiles to) re-enters without deadlocking.
+    private readonly object _tickLock = new();
     private FileStream? _lock;
     private Timer? _timer;
     private long _idleSinceMs = -1;
@@ -27,7 +33,21 @@ public sealed class MuxDaemonHost : IDisposable
 
     public void Start()
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_options.DescriptorPath)!);
+        // On Linux/macOS the default socket endpoint lives in this same directory
+        // (MuxDiscovery.GetDefaultEndpoint), so it must come up 0700 from the start: a plain
+        // CreateDirectory would leave it at the default mode, and UnixSocketMuxListener's own
+        // EnsurePrivateDirectory would then find it already existing with the "wrong" mode and refuse
+        // to serve. Windows has no such requirement (ACLs, not POSIX modes).
+        string descriptorDir = Path.GetDirectoryName(_options.DescriptorPath)!;
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(descriptorDir);
+        }
+        else
+        {
+            UnixSocketMuxListener.EnsurePrivateDirectory(descriptorDir);
+        }
+
         try
         {
             _lock = new FileStream(LockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -73,35 +93,56 @@ public sealed class MuxDaemonHost : IDisposable
 
     private void Tick()
     {
+        // A tick already running (on the timer's own thread pool) skips this one rather than
+        // queuing up behind it - reaping/idle-checking twice in a row costs nothing once the first
+        // finishes on its own next firing.
+        if (!Monitor.TryEnter(_tickLock)) return;
         try
         {
-            int reaped = _server.ReapExitedSessions(_options.ReapGrace);
-            if (reaped > 0) Log($"[MuxDaemon] reaped {reaped} exited session(s)");
+            // RequestStop may have taken the lock and finished (or be about to) between the timer
+            // firing and this thread getting in; either way there is nothing left to tick.
+            if (Volatile.Read(ref _stopping) != 0) return;
 
-            if (_options.IdleExitAfter <= TimeSpan.Zero) return;
-            if (_server.RunningSessionCount != 0 || _server.ConnectionCount != 0)
+            try
             {
-                Interlocked.Exchange(ref _idleSinceMs, -1);
-                return;
+                int reaped = _server.ReapExitedSessions(_options.ReapGrace);
+                if (reaped > 0) Log($"[MuxDaemon] reaped {reaped} exited session(s)");
+
+                if (_options.IdleExitAfter <= TimeSpan.Zero) return;
+                if (_server.RunningSessionCount != 0 || _server.ConnectionCount != 0)
+                {
+                    Interlocked.Exchange(ref _idleSinceMs, -1);
+                    return;
+                }
+
+                long now = Environment.TickCount64;
+                long since = Interlocked.CompareExchange(ref _idleSinceMs, now, -1);
+                if (since == -1) since = now;
+                if (now - since >= (long)_options.IdleExitAfter.TotalMilliseconds && _server.TryBeginIdleShutdown())
+                {
+                    // Reentrant: RequestStop takes _tickLock too, and this thread already holds it.
+                    RequestStop("idle");
+                }
             }
-
-            long now = Environment.TickCount64;
-            long since = Interlocked.CompareExchange(ref _idleSinceMs, now, -1);
-            if (since == -1) since = now;
-            if (now - since >= (long)_options.IdleExitAfter.TotalMilliseconds && _server.TryBeginIdleShutdown())
+            catch (Exception ex)
             {
-                RequestStop("idle");
+                Log($"[MuxDaemon] tick failed: {ex}");
             }
         }
-        catch (Exception ex)
+        finally
         {
-            Log($"[MuxDaemon] tick failed: {ex}");
+            Monitor.Exit(_tickLock);
         }
     }
 
     public void RequestStop(string reason)
     {
         if (Interlocked.Exchange(ref _stopping, 1) != 0) return;
+
+        // Blocks until an in-flight Tick (reaping, or the idle check that called us) finishes, so
+        // KillAllSessions/server.Dispose() below never overlap ReapExitedSessions. Reentrant, since
+        // the idle path reaches here from inside Tick on this same thread already holding the lock.
+        Monitor.Enter(_tickLock);
         try
         {
             _timer?.Dispose();
@@ -118,6 +159,7 @@ public sealed class MuxDaemonHost : IDisposable
         }
         finally
         {
+            Monitor.Exit(_tickLock);
             _completion.TrySetResult(reason);
         }
     }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.Versioning;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Mux.Transport;
@@ -102,5 +103,45 @@ public sealed class MuxDaemonHostTests : IDisposable
         first.Start();
         var (second, _, _) = NewHost(pid: Environment.ProcessId + 100_000);
         Assert.Throws<MuxDaemonAlreadyRunningException>(second.Start);
+    }
+}
+
+/// <summary>
+/// Fix-round-1 regression: on Linux/macOS the default socket endpoint lives inside the same
+/// directory as the descriptor (<see cref="MuxDiscovery.GetDefaultEndpoint(string)"/>), so
+/// <see cref="MuxDaemonHost.Start"/> must create that directory 0700 itself - a plain
+/// <see cref="Directory.CreateDirectory(string)"/> would leave it at the default mode, and
+/// <c>UnixSocketMuxListener</c>'s own directory check would then find it already existing at the
+/// "wrong" mode and refuse to serve, so every fresh start would fail off-Windows.
+/// </summary>
+[UnsupportedOSPlatform("windows")]
+public sealed class MuxDaemonHostUnixDirectoryTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "nmxu" + Guid.NewGuid().ToString("N")[..8]);
+    private MuxDaemonHost? _host;
+
+    public void Dispose()
+    {
+        _host?.Dispose();
+        try { Directory.Delete(_root, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+
+    [Fact]
+    public void Start_on_a_fresh_root_succeeds_and_creates_the_mux_directory_0700()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "the 0700 socket directory is a Linux/macOS requirement.");
+
+        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        var options = new MuxDaemonOptions
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+        };
+        _host = new MuxDaemonHost(server, options);
+
+        _host.Start();
+
+        string dir = Path.GetDirectoryName(options.DescriptorPath)!;
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(dir));
     }
 }

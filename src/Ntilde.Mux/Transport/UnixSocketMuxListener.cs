@@ -52,7 +52,13 @@ public sealed class UnixSocketMuxListener : IMuxListener
         }
     }
 
-    private static void EnsurePrivateDirectory(string dir)
+    /// <summary>
+    /// Creates <paramref name="dir"/> 0700 if missing (re-asserting the mode in case umask or a
+    /// pre-existing parent weakened it), or refuses it if it already exists with any other mode -
+    /// shared with <see cref="MuxDaemonHost"/>, which must create this same directory for the
+    /// descriptor before the listener does (spec §4).
+    /// </summary>
+    internal static void EnsurePrivateDirectory(string dir)
     {
         if (!Directory.Exists(dir))
         {
