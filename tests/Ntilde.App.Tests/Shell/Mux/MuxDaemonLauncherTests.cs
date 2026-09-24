@@ -31,13 +31,14 @@ public sealed class MuxDaemonLauncherTests : IDisposable
 
     private sealed class NoopSpawner : IMuxDaemonSpawner { public int Spawns; public void Spawn() => Spawns++; }
 
-    internal MuxDaemonHost StartDaemon()
+    internal MuxDaemonHost StartDaemon(string? root = null)
     {
+        root ??= _root;
         var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
         var host = new MuxDaemonHost(server, new MuxDaemonOptions
         {
-            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
-            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(root),
+            DescriptorPath = MuxDiscovery.GetDescriptorPath(root),
             IdleExitAfter = TimeSpan.Zero,
         });
         host.Start();
@@ -130,13 +131,15 @@ public sealed class MuxDaemonLauncherTests : IDisposable
     [Fact]
     public async Task A_descriptor_naming_a_foreign_endpoint_is_not_connected_to()
     {
-        MuxDaemonHost real = StartDaemon();
+        // A daemon really is listening at the foreign endpoint: connecting would succeed.
+        string elsewhere = Path.Combine(_root, "elsewhere");
+        MuxDaemonHost real = StartDaemon(elsewhere);
         using var self = Process.GetCurrentProcess();
         var logs = new List<string>();
         // A live pid (ours), but an endpoint that is not this root's.
         MuxDiscovery.WriteDescriptor(MuxDiscovery.GetDescriptorPath(_root), new MuxEndpointDescriptor
         {
-            Endpoint = MuxDiscovery.GetDefaultEndpoint(Path.Combine(_root, "elsewhere")),
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(elsewhere),
             Pid = Environment.ProcessId,
             ProcessName = self.ProcessName,
             MinVersion = 1,
