@@ -539,6 +539,8 @@
     <ProjectReference Include="..\Ntilde.Pty\Ntilde.Pty.csproj" />
     <ProjectReference Include="..\Ntilde.Replay\Ntilde.Replay.csproj" />
     <ProjectReference Include="..\Ntilde.AgentHost.Contracts\Ntilde.AgentHost.Contracts.csproj" />
+    <ProjectReference Include="..\Ntilde.Mux\Ntilde.Mux.csproj" />
+    <ProjectReference Include="..\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
