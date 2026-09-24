@@ -34,17 +34,41 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
         if (request.Ssh is not null) return new(_fallback.Create(request), PersistentSessionOutcome.NotPersistent, null, null);
 
         MuxClient? client = Host.GetClient(ConnectTimeout);
-        if (client is null) return Fallback(request, "the multiplexer could not be reached");
+        if (client is null)
+        {
+            // A daemon of another protocol version is reachable but unusable: say so, and how to fix it.
+            if (Host.LastFailure is MuxUnavailableException { VersionMismatch: true } mismatch)
+            {
+                return Fallback(request, mismatch.Message) with { VersionMismatch = true };
+            }
+
+            return Fallback(request, "the multiplexer could not be reached");
+        }
 
         try
         {
             if (request.ExistingMuxSessionId is Guid existing)
             {
                 IReadOnlyList<SessionSummary> sessions = Rpc(ct => client.ListSessionsAsync(ct));
-                if (sessions.Any(s => s.SessionId == existing && s.Running && !s.Faulted))
+                SessionSummary? match = sessions.FirstOrDefault(s => s.SessionId == existing);
+                if (match is { Running: true, Faulted: false, AttachedClients: 0 })
                 {
                     return new(client.OpenSession(existing, request.Command, request.Arguments), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
                 }
+
+                if (match is { Running: true, Faulted: false })
+                {
+                    // Another client (a second window of this app) is showing it: taking it over would
+                    // pull a live shell out of that window. Leave it alone and start a new one - nothing
+                    // was lost, so no "lost" banner.
+                    _log?.Invoke($"[Mux] session {existing} is attached elsewhere; starting a new shell instead of taking it over");
+                    Guid own = Spawn(client, request);
+                    return new(client.OpenSession(own, request.Command, request.Arguments), PersistentSessionOutcome.Spawned, Host.Endpoint, null);
+                }
+
+                // A faulted session is still running in the daemon: nothing will ever reopen it, so
+                // end it now rather than leak its shell until the daemon exits.
+                if (match is { Running: true, Faulted: true }) KillQuietly(client, existing);
 
                 Guid fresh = Spawn(client, request);
                 return new(client.OpenSession(fresh, request.Command, request.Arguments), PersistentSessionOutcome.PreviousLost, Host.Endpoint, null);
@@ -76,6 +100,23 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     /// WaitAny, not Task.Wait: Wait throws AggregateException for a faulted task, which the
     /// caller's filter would not match; GetResult rethrows the original exception instead.
     /// </summary>
+    /// <summary>Best effort, bounded by <see cref="RpcTimeout"/>: a failure is logged, never thrown.</summary>
+    private void KillQuietly(MuxClient client, Guid id)
+    {
+        try
+        {
+            Rpc(async ct =>
+            {
+                await client.KillAsync(id, ct).ConfigureAwait(false);
+                return true;
+            });
+        }
+        catch (Exception ex) when (ex is MuxProtocolException or IOException or TimeoutException or InvalidOperationException or ObjectDisposedException or OperationCanceledException)
+        {
+            _log?.Invoke($"[Mux] could not end faulted session {id}: {ex.Message}");
+        }
+    }
+
     private T Rpc<T>(Func<CancellationToken, Task<T>> call)
     {
         using var cts = new CancellationTokenSource(RpcTimeout);

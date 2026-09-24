@@ -88,6 +88,79 @@ public sealed class MuxTerminalSessionFactoryTests
         Assert.NotNull(r.Detail);
     }
 
+    /// <summary>
+    /// Final-fix item 1: a second GUI instance restores the same session file. A session another
+    /// client is attached to must stay with that client - the second instance gets a fresh shell,
+    /// reported as a plain spawn (nothing was lost).
+    /// </summary>
+    [Fact]
+    public void A_session_attached_by_another_client_is_not_taken_over()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            ClientPaneModel other = Task.Run(async () =>
+            {
+                MuxClient c = await mux.ConnectClientAsync();
+                Guid id = await MuxTestHost.SpawnAsync(c);
+                return await MuxTestHost.AttachPaneAsync(c, id);
+            }).GetAwaiter().GetResult();
+            Guid theirs = other.Session.Id;
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(theirs));
+
+            Assert.Equal(PersistentSessionOutcome.Spawned, r.Outcome);
+            var mine = Assert.IsType<MuxClientSession>(r.Session);
+            Assert.NotEqual(theirs, mine.Id);
+            Assert.Contains(theirs, mux.Server.GetSessionIds());
+            Assert.Contains(mine.Id, mux.Server.GetSessionIds());
+            Assert.True(other.Session.IsAttached, "the other client's session is untouched");
+            Assert.False(mux.Fake(theirs).Disposed);
+        }
+    }
+
+    /// <summary>Final-fix item 4: a faulted session named by the restore is ended, not leaked, before the fresh spawn.</summary>
+    [Fact]
+    public void A_faulted_existing_session_is_killed_before_a_fresh_one_is_spawned()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            Guid old = Task.Run(async () =>
+            {
+                MuxClient c = await mux.ConnectClientAsync();
+                return await MuxTestHost.SpawnAsync(c);
+            }).GetAwaiter().GetResult();
+            ScriptedTerminalSession child = mux.Fake(old);
+            Task.Run(() => mux.Mux(old).MakeParserThrowOnReplyAsync()).GetAwaiter().GetResult();
+            child.Emit("\x1b[c"); // DA1: the reply throws inside the daemon's parser, which faults the session
+            TestWait.UntilAsync(() => mux.Mux(old).IsFaulted, "the session faulted", TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(old));
+
+            Assert.Equal(PersistentSessionOutcome.PreviousLost, r.Outcome);
+            Assert.NotEqual(old, Assert.IsType<MuxClientSession>(r.Session).Id);
+            TestWait.UntilAsync(() => child.Disposed, "the faulted session's child was killed", TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
+        }
+    }
+
+    /// <summary>Final-fix item 10: a daemon of another protocol version is reported as such, with the kill-server hint.</summary>
+    [Fact]
+    public void A_version_mismatch_falls_back_and_says_so()
+    {
+        var fallback = new RecordingSessionFactory(new FakeTerminalSession());
+        using var host = new MuxConnectionHost(
+            _ => throw new MuxUnavailableException($"different version. {MuxDaemonLauncher.KillServerHint}", versionMismatch: true), "x", null);
+        var factory = new MuxTerminalSessionFactory(host, fallback, null) { ConnectTimeout = TimeSpan.FromSeconds(2) };
+
+        PersistentSessionResult r = factory.CreatePersistent(Local());
+
+        Assert.Equal(PersistentSessionOutcome.Unavailable, r.Outcome);
+        Assert.True(r.VersionMismatch);
+        Assert.Contains("kill-server", r.Detail);
+        Assert.IsType<FakeTerminalSession>(r.Session);
+    }
+
     [Fact]
     public void Spawn_failure_on_the_daemon_falls_back()
     {

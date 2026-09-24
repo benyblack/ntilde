@@ -264,6 +264,75 @@ public sealed class MuxPaneTests : IDisposable
         Assert.Null(_pane.MuxEndpoint);
     }
 
+    /// <summary>Final-fix item 10: a version mismatch keeps the constant banner and adds the kill-server hint as a second line.</summary>
+    [AvaloniaFact]
+    public void A_version_mismatch_banner_adds_the_kill_server_hint()
+    {
+        using var mismatchHost = new MuxConnectionHost(
+            _ => throw new MuxUnavailableException("different version", versionMismatch: true), "x", null);
+        _pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = new MuxTerminalSessionFactory(mismatchHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
+        { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        _pane.CreateAndWireParser();
+        _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
+        Dispatcher.UIThread.RunJobs();
+
+        string text = BufferText(_pane.Buffer!);
+        Assert.Contains(TerminalPane.MuxUnavailableBanner, text);
+        Assert.Contains("ntilde mux kill-server", text);
+    }
+
+    [AvaloniaFact]
+    public void A_plain_unavailable_banner_has_no_kill_server_hint()
+    {
+        using var deadHost = new MuxConnectionHost(_ => throw new MuxUnavailableException("down"), "x", null);
+        _pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = new MuxTerminalSessionFactory(deadHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
+        { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        _pane.CreateAndWireParser();
+        _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.DoesNotContain("kill-server", BufferText(_pane.Buffer!));
+    }
+
+    /// <summary>
+    /// Final-fix item 12: a mux pane whose reconnect spawn fails (an early return out of
+    /// InitializeSessionCore) must not leave the view deferring buffer resizes to a session that is gone.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_failed_respawn_after_a_mux_session_stops_deferring_resizes()
+    {
+        var factory = new ThrowAfterFirstFactory(_factory);
+        MuxClientSession s = StartHostedPane(factory);
+        Assert.True(_pane!.TermView.DefersBufferResizeToSession);
+        _host.CurrentClient!.Dispose();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains("[Multiplexer disconnected]"), "the banner is shown");
+
+        _pane.Reconnect();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(factory.Calls >= 2, "the reconnect reached the factory");
+        Assert.False(_pane.TermView.DefersBufferResizeToSession);
+        Assert.NotSame(s, _pane.Session);
+    }
+
+    /// <summary>The first CreatePersistent goes to the real factory; every later one throws.</summary>
+    private sealed class ThrowAfterFirstFactory(IPersistentSessionFactory inner) : IPersistentSessionFactory
+    {
+        public int Calls;
+
+        public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session;
+
+        public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
+        {
+            if (Interlocked.Increment(ref Calls) == 1) return inner.CreatePersistent(request);
+            throw new InvalidOperationException("scripted spawn failure");
+        }
+    }
+
     [AvaloniaFact]
     public void A_real_exit_goes_through_the_normal_exit_path()
     {

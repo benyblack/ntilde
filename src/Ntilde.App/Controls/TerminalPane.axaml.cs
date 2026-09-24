@@ -3377,6 +3377,10 @@ namespace Ntilde.Controls
             string startingDir = profile?.StartingDirectory ?? "";
             Session = null;
             MuxEndpoint = null;
+            // Set again below only once a session is wired; every early return (a spawn that threw,
+            // a failed SSH connect) must leave the view resizing its own buffer, not waiting for a
+            // stream resize from a mux session that is gone.
+            TermView.DefersBufferResizeToSession = false;
             // Reset for every session, not only mux ones: a reconnect can land on a local fallback,
             // and a stale flag would make every Enter reconnect.
             _muxConnectionLost = false;
@@ -3463,7 +3467,9 @@ namespace Ntilde.Controls
                     MuxEndpoint = result.Endpoint;
                     if (result.Outcome == PersistentSessionOutcome.Unavailable)
                     {
-                        WriteBanner($"\r\n\x1b[33m{MuxUnavailableBanner}\x1b[0m\r\n");
+                        WriteBanner(result.VersionMismatch
+                            ? $"\r\n\x1b[33m{MuxUnavailableBanner}\r\n{MuxVersionMismatchHint}\x1b[0m\r\n"
+                            : $"\r\n\x1b[33m{MuxUnavailableBanner}\x1b[0m\r\n");
                     }
                     else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
                     {
@@ -3565,6 +3571,7 @@ namespace Ntilde.Controls
             => session is ITerminalSessionCapabilities { AnswersDeviceQueries: true };
 
         internal const string MuxUnavailableBanner = "[Multiplexer unavailable — this session will not persist]";
+        internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server' to replace it]";
         internal const string MuxPreviousLostBanner = "[Previous session was lost — started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
 

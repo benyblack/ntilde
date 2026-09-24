@@ -52,7 +52,8 @@ public static class MuxDiscovery
 
     private static string RootHash(string root)
     {
-        string full = Path.GetFullPath(root);
+        // Trimmed: "C:\x\" and "C:\x" are one root, and clients derive it back from the descriptor path.
+        string full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         if (OperatingSystem.IsWindows()) full = full.ToUpperInvariant(); // case-insensitive paths
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(full));
         return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();

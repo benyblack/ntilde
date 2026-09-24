@@ -18,6 +18,7 @@ internal sealed class MuxConnectionHost : IDisposable
     private Task<MuxClient>? _connecting;
     private int _connectAttempts;
     private long? _failedAtMs; // Environment.TickCount64 of the last failure; null = none, or cleared by a success
+    private Exception? _lastFailure;
 
     public MuxConnectionHost(Func<CancellationToken, Task<MuxClient>> connect, string? endpoint, Action<string>? log)
     {
@@ -41,6 +42,9 @@ internal sealed class MuxConnectionHost : IDisposable
     public TimeSpan FailureCooldown { get; init; } = TimeSpan.FromSeconds(30);
     public int ConnectAttempts => Volatile.Read(ref _connectAttempts);
     public MuxClient? CurrentClient { get { lock (_gate) return _client is { IsConnected: true } c ? c : null; } }
+
+    /// <summary>Why the most recent connection attempt failed (its base exception); null once one succeeds.</summary>
+    public Exception? LastFailure { get { lock (_gate) return _lastFailure; } }
 
     /// <summary>Starts connecting (spawning the daemon if needed) in the background. Idempotent; a no-op during the failure cooldown.</summary>
     public void WarmUp() => _ = StartConnecting();
@@ -66,22 +70,23 @@ internal sealed class MuxConnectionHost : IDisposable
 
             return attempt.Result;
         }
-        catch (AggregateException)
+        catch (AggregateException ex)
         {
             // Logged once by the attempt's own fault continuation. Recorded here as well so the very
             // next call is already inside the cooldown, whichever of the two runs first.
-            RecordFailure(attempt);
+            RecordFailure(attempt, ex.GetBaseException());
             return null;
         }
     }
 
     /// <summary>Starts the cooldown, unless <paramref name="attempt"/> is stale or a client came up meanwhile.</summary>
-    private void RecordFailure(Task<MuxClient> attempt)
+    private void RecordFailure(Task<MuxClient> attempt, Exception? reason = null)
     {
         lock (_gate)
         {
             if (!ReferenceEquals(attempt, _connecting) || _client is { IsConnected: true }) return;
             _failedAtMs = Environment.TickCount64;
+            if (reason is not null) _lastFailure = reason;
         }
     }
 
@@ -117,6 +122,7 @@ internal sealed class MuxConnectionHost : IDisposable
                     if (_disposed.IsCancellationRequested) { client.Dispose(); throw new ObjectDisposedException(nameof(MuxConnectionHost)); }
                     _client = client;
                     _failedAtMs = null;
+                    _lastFailure = null;
                 }
 
                 return client;
@@ -127,7 +133,7 @@ internal sealed class MuxConnectionHost : IDisposable
                 t =>
                 {
                     _log?.Invoke($"[Mux] connection failed: {t.Exception?.GetBaseException().Message}");
-                    RecordFailure(attempt);
+                    RecordFailure(attempt, t.Exception?.GetBaseException());
                 },
                 CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
             return attempt;
