@@ -130,14 +130,14 @@ namespace Ntilde.Shell
             return session;
         }
 
-        private static PaneNode? BuildPaneTree(Control? control)
+        internal static PaneNode? BuildPaneTree(Control? control)
         {
             if (control == null) return null;
 
             // Base case: Leaf Node (TerminalPane)
             if (control is TerminalPane pane)
             {
-                return new PaneNode
+                var leaf = new PaneNode
                 {
                     Type = NodeType.Leaf,
                     ProfileId = pane.Profile?.Id.ToString(),
@@ -153,6 +153,16 @@ namespace Ntilde.Shell
                     Command = string.IsNullOrWhiteSpace(pane.ShellCommand) ? null : pane.ShellCommand,
                     Arguments = pane.ShellArgs
                 };
+
+                // Spec §9: the daemon session this pane shows, so the next launch reattaches to it
+                // (and does not mistake it for an orphan).
+                if (pane.Session is Ntilde.Mux.MuxClientSession mux)
+                {
+                    leaf.MuxSessionId = mux.Id.ToString("D");
+                    leaf.MuxEndpoint = pane.MuxEndpoint;
+                }
+
+                return leaf;
             }
 
             // Recursive case: Grid (Split)
@@ -387,7 +397,7 @@ namespace Ntilde.Shell
             return local;
         }
 
-        private static Control? RestorePaneTree(PaneNode? node, TerminalSettings settings)
+        internal static Control? RestorePaneTree(PaneNode? node, TerminalSettings settings)
         {
             if (node == null) return null;
 
@@ -442,6 +452,13 @@ namespace Ntilde.Shell
                 if (!string.IsNullOrWhiteSpace(node.PaneId) && Guid.TryParse(node.PaneId, out var paneId))
                 {
                     pane.PaneId = paneId;
+                }
+
+                // Consumed once as ExistingMuxSessionId on the first spawn. With persistence off the
+                // default factory ignores it and the pane starts a normal shell.
+                if (Guid.TryParse(node.MuxSessionId, out Guid muxId))
+                {
+                    pane.MuxSessionIdToRestore = muxId;
                 }
 
                 StartupPerformanceTracker.Current?.TryMarkCheckpoint("SessionManager.RestorePaneTree.LeafCreated");

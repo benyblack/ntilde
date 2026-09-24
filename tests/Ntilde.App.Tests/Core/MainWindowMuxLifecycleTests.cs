@@ -198,6 +198,35 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     }
 
     [AvaloniaFact]
+    public void A_successful_attach_writes_the_session_file_with_the_mux_id()
+    {
+        MainWindow window = CreateWindow();
+        Guid id = ((MuxClientSession)AllPanes(window).First().Session!).Id;
+
+        // A crash right after launch must still know which daemon sessions are this window's.
+        PumpUntil(() => File.Exists(AppPaths.SessionFilePath) && File.ReadAllText(AppPaths.SessionFilePath).Contains(id.ToString()),
+            "the session file names the mux session");
+    }
+
+    [AvaloniaFact]
+    public void Orphaned_daemon_sessions_open_as_new_tabs_after_restore()
+    {
+        // An orphan: a running session the saved session file does not reference, with no client.
+        Guid orphan;
+        using (MuxClient c = Task.Run(() => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, default), TestContext.Current.CancellationToken).GetAwaiter().GetResult())
+            orphan = Task.Run(() => MuxTestHost.SpawnAsync(c), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        PumpUntil(() => _mux.Mux(orphan).AttachedClients == 0, "the spawning client is gone");
+
+        MainWindow window = CreateWindow();
+
+        PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == orphan), "the orphan was adopted and attached");
+        // Adopted exactly once, and the window's own new pane was not mistaken for an orphan.
+        Assert.Single(AllPanes(window), p => p.Session is MuxClientSession m && m.Id == orphan);
+        List<Guid> ids = AllPanes(window).Select(p => p.Session).OfType<MuxClientSession>().Select(m => m.Id).ToList();
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+    }
+
+    [AvaloniaFact]
     public void Refresh_is_a_no_op_for_a_non_mux_session()
     {
         Task.Run(() => MainWindow.RefreshPersistentSessionInfoAsync(new FakeTerminalSession(), TimeSpan.FromSeconds(1)), TestContext.Current.CancellationToken)

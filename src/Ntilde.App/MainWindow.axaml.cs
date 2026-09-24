@@ -2853,14 +2853,16 @@ namespace Ntilde
             SetupCommandPalette();
         }
 
-        private bool TryRestoreStartupSession(TabControl tabs)
+        private bool TryRestoreStartupSession(TabControl tabs, out NtildeSession? loadedSession)
         {
+            loadedSession = null;
             if (!SessionManager.TryLoadSavedSession(out NtildeSession? session) ||
                 session == null ||
                 session.Tabs.Count == 0)
             {
                 return false;
             }
+            loadedSession = session;
             _startup.Checkpoint("StartupRestore.AfterSessionLoad");
 
             try
@@ -3960,18 +3962,31 @@ namespace Ntilde
             var defaultProfile = _settings.Profiles.Find(p => p.Id == _settings.DefaultProfileId) ?? _settings.Profiles[0];
 
             // Attempt to restore session
+            NtildeSession? restoredSession = null;
             if (tabs != null)
             {
-                if (!TryRestoreStartupSession(tabs))
+                if (!TryRestoreStartupSession(tabs, out NtildeSession? loadedSession))
                 {
                     AddTab(defaultProfile);
                     _startup.CompleteWithoutRestore();
+                }
+                else
+                {
+                    restoredSession = loadedSession;
                 }
             }
             else
             {
                 AddTab(defaultProfile);
                 _startup.CompleteWithoutRestore();
+            }
+
+            // Spec §9 orphans. Runs whether or not a session was restored (a crash before the first
+            // save leaves no file at all). Only a restore that went ahead references anything: an
+            // aborted one reopens none of its panes, so their daemon sessions are orphans too.
+            if (_muxHost is { } startupMuxHost)
+            {
+                _ = AdoptOrphanedMuxSessionsAsync(startupMuxHost, Ntilde.Shell.Mux.MuxOrphans.CollectReferencedIds(restoredSession));
             }
 
             if (_startup.HasPendingDeferredRestore)
@@ -4349,7 +4364,9 @@ namespace Ntilde
         }
 
         /// <summary>Every pane in every tab, including a zoomed tab's stashed root.</summary>
-        internal IReadOnlyList<TerminalPane> AllPanesForTest() =>
+        internal IReadOnlyList<TerminalPane> AllPanesForTest() => AllPanes();
+
+        private List<TerminalPane> AllPanes() =>
             this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>().SelectMany(t => EnumeratePanes(GetLayoutRootForTab(t))).ToList() ?? [];
 
         /// <summary>
@@ -4604,6 +4621,7 @@ namespace Ntilde
             pane.BellReceived -= OnPaneBellReceived;
             pane.ProcessExited -= OnPaneProcessExited;
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
+            pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged += OnPaneWorkingDirectoryChanged;
@@ -4613,6 +4631,7 @@ namespace Ntilde
             pane.BellReceived += OnPaneBellReceived;
             pane.ProcessExited += OnPaneProcessExited;
             pane.LongCommandCompleted += OnPaneLongCommandCompleted;
+            pane.PersistentSessionAttached += OnPanePersistentSessionAttached;
         }
 
         private void UnwirePane(TerminalPane pane)
@@ -4626,6 +4645,73 @@ namespace Ntilde
             pane.BellReceived -= OnPaneBellReceived;
             pane.ProcessExited -= OnPaneProcessExited;
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
+            pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
+        }
+
+        private int _sessionSaveQueued; // 1 while a coalesced save is posted
+
+        /// <summary>
+        /// A crash right after launch must still know which daemon sessions are this window's
+        /// (spec §9): save the session file after each attach, coalesced into one Background pass.
+        /// </summary>
+        private void OnPanePersistentSessionAttached(TerminalPane pane)
+        {
+            _ = pane;
+            if (Interlocked.Exchange(ref _sessionSaveQueued, 1) == 1) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                Volatile.Write(ref _sessionSaveQueued, 0);
+                // After teardown the connection is gone; the teardown's own save is the last word.
+                if (_teardownDone) return;
+                if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs);
+            }, DispatcherPriority.Background);
+        }
+
+        /// <summary>
+        /// Spec §9 orphans: running daemon sessions with no attached client that the restored session
+        /// does not reference open as new tabs. The daemon is asked off the UI thread; nothing here
+        /// blocks it.
+        /// </summary>
+        private async Task AdoptOrphanedMuxSessionsAsync(Ntilde.Shell.Mux.MuxConnectionHost host, HashSet<Guid> referenced)
+        {
+            try
+            {
+                IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> orphans = await Task.Run(async () =>
+                {
+                    Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(10));
+                    if (client is null) return (IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>)[];
+                    return Ntilde.Shell.Mux.MuxOrphans.Select(await client.ListSessionsAsync().ConfigureAwait(false), referenced);
+                }).ConfigureAwait(false);
+                if (orphans.Count == 0) return;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_teardownDone) return;
+                    // A pane this window spawned can be listed between its spawn and its attach
+                    // (AttachedClients still 0). Its Session is assigned on this thread as soon as the
+                    // spawn returns, so by now every such pane names its id here.
+                    var live = new HashSet<Guid>(AllPanes().Select(p => p.Session).OfType<Ntilde.Mux.MuxClientSession>().Select(m => m.Id));
+                    int adopted = 0;
+                    foreach (Ntilde.Mux.Contracts.SessionSummary s in orphans)
+                    {
+                        if (live.Contains(s.SessionId)) continue;
+                        var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(s.Command), s.Arguments ?? string.Empty, _settings)
+                        {
+                            MuxSessionIdToRestore = s.SessionId,
+                        };
+                        AddTabWithPane(pane, string.IsNullOrWhiteSpace(s.Title) ? s.Command : s.Title);
+                        adopted++;
+                    }
+
+                    if (adopted == 0) return;
+                    AppLogger.Log($"[MainWindow] reattached {adopted} detached mux session(s)");
+                    ShowRecordingToast("Sessions restored", $"Reattached {adopted} detached session{(adopted == 1 ? "" : "s")}", null, null, autoHide: true);
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] orphan adoption failed: {ex.Message}");
+            }
         }
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
@@ -6366,12 +6452,23 @@ namespace Ntilde
                 return;
             }
 
-            var pane = new TerminalPane(profile, sshDiagnostics);
+            AddTabWithPane(new TerminalPane(profile, sshDiagnostics), profile.Name);
+        }
+
+        /// <summary>
+        /// Opens <paramref name="pane"/> (not yet wired or hosted) in a new selected tab. AddTab's
+        /// tail, shared with orphan adoption, which builds its pane around a daemon session.
+        /// </summary>
+        private void AddTabWithPane(TerminalPane pane, string title)
+        {
+            var tabs = this.FindControl<TabControl>("Tabs");
+            if (tabs == null) return;
+
             WirePane(pane);
 
             pane.ApplySettings(_settings);
             var tabItem = new TabItem { Content = pane };
-            ConfigureTabHeader(tabItem, profile.Name);
+            ConfigureTabHeader(tabItem, title);
             tabs.Items.Add(tabItem);
             tabs.SelectedItem = tabItem;
             GetTabId(tabItem);
