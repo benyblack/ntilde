@@ -246,6 +246,9 @@ namespace Ntilde.Shell
         private readonly INativeSshInterop _nativeInterop;
         private readonly Func<TerminalSettings> _settingsLoader;
         private readonly Func<SshConnectionService> _sshServiceFactory;
+        // The dispatcher Jobs belongs to: the one the last AddJob caller handed in. Null until then,
+        // which means nothing but the thread that built this service has touched Jobs.
+        private volatile Dispatcher? _jobsDispatcher;
 
         public ObservableCollection<TransferJob> Jobs { get; } = new();
 
@@ -264,9 +267,22 @@ namespace Ntilde.Shell
             _sshServiceFactory = sshServiceFactory ?? (() => new SshConnectionService());
         }
 
-        public void AddJob(TransferJob job)
+        /// <param name="uiDispatcher">
+        /// The caller's own dispatcher - an <see cref="Avalonia.AvaloniaObject"/>'s
+        /// <c>Dispatcher</c> - which the job's progress and completion are marshalled to from the
+        /// transfer worker and the native progress callback. Passed in rather than read from
+        /// <see cref="Dispatcher.UIThread"/> on those threads: that getter makes the calling
+        /// thread the UI thread whenever its backing field is null, which headless test isolation
+        /// does at every test boundary (#81; the full account is at
+        /// <c>TerminalPane.InitializeCommandAssist</c>). Nor is it captured once by this
+        /// singleton, which outlives every test's dispatcher.
+        /// </param>
+        public void AddJob(TransferJob job, Dispatcher uiDispatcher)
         {
             ArgumentNullException.ThrowIfNull(job);
+            ArgumentNullException.ThrowIfNull(uiDispatcher);
+
+            _jobsDispatcher = uiDispatcher;
 
             void initializeJob()
             {
@@ -275,13 +291,13 @@ namespace Ntilde.Shell
                 JobUpdated?.Invoke(this, job);
             }
 
-            if (Dispatcher.UIThread.CheckAccess())
+            if (uiDispatcher.CheckAccess())
             {
                 initializeJob();
             }
             else
             {
-                Dispatcher.UIThread
+                uiDispatcher
                     .InvokeAsync(initializeJob, DispatcherPriority.Send)
                     .GetAwaiter()
                     .GetResult();
@@ -291,7 +307,7 @@ namespace Ntilde.Shell
             _activeTransfers[job.Id] = cancellationTokenSource;
             // In a real implementation, we would start a queue worker here.
             // For v1, we'll start it immediately.
-            Task.Run(() => RunJobAsync(job, cancellationTokenSource.Token));
+            Task.Run(() => RunJobAsync(job, uiDispatcher, cancellationTokenSource.Token));
         }
 
         public bool CancelJob(Guid jobId)
@@ -329,7 +345,7 @@ namespace Ntilde.Shell
 
         public event EventHandler<TransferJob>? JobUpdated;
 
-        internal async Task RunJobAsync(TransferJob job, CancellationToken cancellationToken)
+        internal async Task RunJobAsync(TransferJob job, Dispatcher uiDispatcher, CancellationToken cancellationToken)
         {
             try
             {
@@ -344,7 +360,7 @@ namespace Ntilde.Shell
                 switch (SelectExecutionBackend(profile, job))
                 {
                     case SftpTransferBackend.NativeSftp:
-                        await RunNativeSftpJobAsync(job, profile, settings.Profiles, sshService, cancellationToken);
+                        await RunNativeSftpJobAsync(job, profile, settings.Profiles, sshService, uiDispatcher, cancellationToken);
                         break;
                     case SftpTransferBackend.ExternalScp:
                     default:
@@ -352,7 +368,7 @@ namespace Ntilde.Shell
                         break;
                 }
 
-                Dispatcher.UIThread.Post(() =>
+                uiDispatcher.Post(() =>
                 {
                     job.State = TransferState.Completed;
                     job.Progress = 1.0;
@@ -362,7 +378,7 @@ namespace Ntilde.Shell
             }
             catch (OperationCanceledException)
             {
-                Dispatcher.UIThread.Post(() =>
+                uiDispatcher.Post(() =>
                 {
                     job.State = TransferState.Canceled;
                     job.LastError = null;
@@ -372,7 +388,7 @@ namespace Ntilde.Shell
             }
             catch (Exception ex)
             {
-                Dispatcher.UIThread.Post(() =>
+                uiDispatcher.Post(() =>
                 {
                     job.State = TransferState.Failed;
                     job.LastError = ex.Message;
@@ -404,13 +420,14 @@ namespace Ntilde.Shell
                 }
             }
 
-            if (Dispatcher.UIThread.CheckAccess())
+            Dispatcher? jobsDispatcher = _jobsDispatcher;
+            if (jobsDispatcher == null || jobsDispatcher.CheckAccess())
             {
                 remove();
             }
             else
             {
-                Dispatcher.UIThread
+                jobsDispatcher
                     .InvokeAsync(remove, DispatcherPriority.Send)
                     .GetAwaiter()
                     .GetResult();
@@ -581,6 +598,7 @@ namespace Ntilde.Shell
             TerminalProfile profile,
             IReadOnlyList<TerminalProfile>? allProfiles,
             SshConnectionService sshService,
+            Dispatcher uiDispatcher,
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(job);
@@ -596,7 +614,8 @@ namespace Ntilde.Shell
                 passwordResolver: static transferProfile => (MainWindow.Vault ?? new VaultService()).GetSshPasswordForProfile(transferProfile),
                 sessionRegistry: ActiveSshSessionRegistry.Instance,
                 knownHostsFilePath: AppPaths.NativeKnownHostsFilePath,
-                progress: nativeProgress => Dispatcher.UIThread.Post(() =>
+                // Raised on the native library's callback thread.
+                progress: nativeProgress => uiDispatcher.Post(() =>
                 {
                     ApplyNativeTransferProgress(job, nativeProgress);
                     JobUpdated?.Invoke(this, job);
