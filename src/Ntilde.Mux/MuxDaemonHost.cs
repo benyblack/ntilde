@@ -57,10 +57,12 @@ public sealed class MuxDaemonHost : IDisposable
             throw new MuxDaemonAlreadyRunningException($"Another multiplexer owns {LockPath}: {ex.Message}");
         }
 
-        if (MuxDiscovery.TryReadLiveDescriptor(_options.DescriptorPath, out MuxEndpointDescriptor? other) && other.Pid != _options.Pid)
+        // The lock is the single-daemon guard. Holding it proves no other daemon owns this root, so a
+        // descriptor left behind is stale even if its pid is alive: a crashed daemon's pid can be
+        // reused by another process of the same name (the GUI itself is one). Overwritten below.
+        if (MuxDiscovery.TryReadDescriptor(_options.DescriptorPath, out MuxEndpointDescriptor? stale) && stale.Pid != _options.Pid)
         {
-            ReleaseLock();
-            throw new MuxDaemonAlreadyRunningException($"A multiplexer (pid {other.Pid}) is already running at {other.Endpoint}.");
+            Log($"[MuxDaemon] replacing a stale descriptor (pid {stale.Pid}, {stale.Endpoint})");
         }
 
         try

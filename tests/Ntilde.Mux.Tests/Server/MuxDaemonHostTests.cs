@@ -99,10 +99,37 @@ public sealed class MuxDaemonHostTests : IDisposable
     [Fact]
     public void A_second_host_on_the_same_root_refuses_to_start()
     {
+        // The lock file is what refuses it (the descriptor check that used to back it up is gone).
         var (first, _, _) = NewHost();
         first.Start();
         var (second, _, _) = NewHost(pid: Environment.ProcessId + 100_000);
         Assert.Throws<MuxDaemonAlreadyRunningException>(second.Start);
+    }
+
+    /// <summary>
+    /// Final-fix item 8: holding the lock proves no other daemon owns the root, so a leftover
+    /// descriptor is stale even when its pid is alive under the right process name (pid reuse; the
+    /// GUI is a process of the same name). It is overwritten, not obeyed.
+    /// </summary>
+    [Fact]
+    public void A_leftover_descriptor_naming_a_live_pid_is_overwritten_once_the_lock_is_held()
+    {
+        using Process self = Process.GetCurrentProcess();
+        var (host, _, o) = NewHost(pid: Environment.ProcessId + 100_000);
+        MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "left-behind",
+            Pid = Environment.ProcessId, // alive, and named like us
+            ProcessName = self.ProcessName,
+            MinVersion = 1,
+            MaxVersion = 1,
+        });
+
+        host.Start();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal(o.Endpoint, d.Endpoint);
+        Assert.Equal(o.Pid, d.Pid);
     }
 }
 
