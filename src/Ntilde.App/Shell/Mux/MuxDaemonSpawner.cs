@@ -55,10 +55,18 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
         if (OperatingSystem.IsWindows()) ClearStdHandleInheritance();
 
         using Process process = Process.Start(psi) ?? throw new InvalidOperationException("mux serve did not start.");
-        // Our ends of the three pipes: closed at once, so the daemon holds nothing of ours.
-        process.StandardInput.Close();
-        process.StandardOutput.Close();
-        process.StandardError.Close();
+        // Our ends of the three pipes: each closed independently, so one throwing (e.g. the child
+        // already exited and its end of the pipe is gone) never leaves another of ours open - that
+        // would be the exact hang class this class exists to prevent.
+        CloseQuietly(process.StandardInput.Close);
+        CloseQuietly(process.StandardOutput.Close);
+        CloseQuietly(process.StandardError.Close);
+    }
+
+    private static void CloseQuietly(Action close)
+    {
+        try { close(); }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException) { }
     }
 
     // With redirection, CreateProcess runs with bInheritHandles=TRUE and the child inherits every
