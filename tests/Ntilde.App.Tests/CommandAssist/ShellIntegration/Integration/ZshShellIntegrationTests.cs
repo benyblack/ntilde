@@ -142,6 +142,102 @@ public sealed class ZshShellIntegrationTests : IDisposable
             $"Bootstrap produced zsh-level errors:\n{string.Join("\n", offending)}");
     }
 
+    /// <summary>
+    /// Starts zsh the way production does on macOS (login + interactive), with the given user
+    /// startup files under the redirected HOME and the given extra environment.
+    /// </summary>
+    private HarnessResult RunLoginZsh(string stdin, IReadOnlyDictionary<string, string> homeFiles, IReadOnlyDictionary<string, string>? extraEnv = null)
+    {
+        string? zsh = ShellHarness.FindZsh();
+        if (zsh is null)
+        {
+            Assert.Skip("zsh not found on this system");
+        }
+
+        foreach (var (relativePath, content) in homeFiles)
+        {
+            string path = Path.Combine(_tempRoot, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, content + "\n");
+        }
+
+        var env = new Dictionary<string, string>
+        {
+            ["ZDOTDIR"] = Path.GetDirectoryName(_bootstrapPath)!,
+            ["HOME"] = _tempRoot,
+        };
+        if (extraEnv is not null)
+        {
+            foreach (var (k, v) in extraEnv) env[k] = v;
+        }
+
+        return ShellHarness.Run(zsh, "--no-global-rcs -il", stdin, env, TimeSpan.FromSeconds(20));
+    }
+
+    // The probe prints values the typed (echoed) command line cannot contain, so a match is
+    // the shell's answer and never the echo.
+    private const string StartupProbe =
+        "print -r -- \"RESULT:${ZDOTDIR-unset}:${NT_E-}:${NT_P-}:${NT_R-}:${NT_L-}:${__ntilde_zdotdir-gone}\"\nexit 0\n";
+
+    /// <summary>
+    /// The reported macOS bug: Homebrew's `brew shellenv` lives in ~/.zprofile, which zsh read
+    /// from our ZDOTDIR (where there was none), so a pane had no Homebrew on PATH.
+    /// </summary>
+    [Fact]
+    public void LoginShell_ReadsEveryUserStartupFile_AndLeavesZdotdirAsTheUserHadIt()
+    {
+        HarnessResult result = RunLoginZsh(StartupProbe, new Dictionary<string, string>
+        {
+            [".zshenv"] = "NT_E=env",
+            [".zprofile"] = "NT_P=profile",
+            [".zshrc"] = "NT_R=rc",
+            [".zlogin"] = "NT_L=login",
+        });
+
+        Assert.Contains("RESULT:unset:env:profile:rc:login:gone", result.Stdout);
+    }
+
+    [Fact]
+    public void LoginShell_ReadsStartupFilesFromTheUsersOwnZdotdir()
+    {
+        HarnessResult result = RunLoginZsh(
+            StartupProbe,
+            new Dictionary<string, string>
+            {
+                ["xdg/.zshenv"] = "NT_E=xdgenv",
+                ["xdg/.zprofile"] = "NT_P=xdgprofile",
+                ["xdg/.zshrc"] = "NT_R=xdgrc",
+            },
+            new Dictionary<string, string> { [ZshBootstrapBuilder.UserZdotdirVariable] = Path.Combine(_tempRoot, "xdg") });
+
+        Assert.Contains($"RESULT:{Path.Combine(_tempRoot, "xdg")}:xdgenv:xdgprofile:xdgrc::gone", result.Stdout);
+    }
+
+    [Fact]
+    public void LoginShell_FollowsAZdotdirTheUsersZshenvSets()
+    {
+        // The common XDG setup: ~/.zshenv exports ZDOTDIR=~/.config/zsh and everything else
+        // lives there.
+        HarnessResult result = RunLoginZsh(StartupProbe, new Dictionary<string, string>
+        {
+            [".zshenv"] = "NT_E=homeenv; export ZDOTDIR=\"$HOME/.config/zsh\"",
+            [".config/zsh/.zprofile"] = "NT_P=cfgprofile",
+            [".config/zsh/.zshrc"] = "NT_R=cfgrc",
+        });
+
+        Assert.Contains($"RESULT:{Path.Combine(_tempRoot, ".config/zsh")}:homeenv:cfgprofile:cfgrc::gone", result.Stdout);
+    }
+
+    [Fact]
+    public void LoginShell_KeepsTheIntegrationHooksAroundTheUsers()
+    {
+        HarnessResult result = RunLoginZsh(
+            "print -r -- \"HOOKS:${(j:,:)precmd_functions}\"\nexit 0\n",
+            new Dictionary<string, string> { [".zshrc"] = "user_hook() { :; }; precmd_functions+=(user_hook)" });
+
+        Assert.Contains("HOOKS:__ntilde_status_snapshot,user_hook,__ntilde_precmd", result.Stdout);
+    }
+
     [Fact]
     public void Bootstrap_EmitsCwdMarker_WhenWorkingDirectoryChanges()
     {

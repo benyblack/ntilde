@@ -87,6 +87,32 @@ namespace Ntilde.Pty
         }
 
         /// <summary>
+        /// The arguments to launch a local shell with, after the platform's login-shell convention:
+        /// on macOS a zsh launched with no arguments of its own gets <c>-l</c>.
+        /// </summary>
+        /// <remarks>
+        /// macOS terminals (Terminal.app, iTerm2) start every shell as a login shell, and the
+        /// platform is set up around that: a GUI app inherits launchd's bare
+        /// <c>/usr/bin:/bin:/usr/sbin:/sbin</c>, and PATH is only filled in by
+        /// <c>/etc/zprofile</c> (path_helper) and <c>~/.zprofile</c> (Homebrew's <c>brew shellenv</c>)
+        /// - both read by login shells only. A non-login zsh came up with no Homebrew on PATH.
+        ///
+        /// zsh only. bash is the obvious companion and must not get it: a login bash ignores
+        /// <c>--rcfile</c>, which is how its command-assist integration is injected. Linux is left
+        /// alone - its terminals conventionally start non-login shells and the desktop session has
+        /// already run the profile. Arguments the user configured are theirs: any at all and this
+        /// adds nothing.
+        /// </remarks>
+        public static string ApplyLoginShellConvention(string shell, string? arguments, bool isMacOS)
+        {
+            if (!string.IsNullOrWhiteSpace(arguments)) return arguments;
+            if (!isMacOS) return arguments ?? string.Empty;
+
+            string name = Path.GetFileName(Unquote(shell.Trim()));
+            return string.Equals(name, "zsh", StringComparison.Ordinal) ? "-l" : string.Empty;
+        }
+
+        /// <summary>
         /// True when <paramref name="path"/> exists and this account can execute it.
         /// </summary>
         /// <remarks>

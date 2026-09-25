@@ -16,10 +16,17 @@ public sealed class ZshShellIntegrationProvider : IShellIntegrationProvider
     /// so a resolution failure surfaces inside the caller's try/catch rather than at construction
     /// time.
     /// </param>
-    public ZshShellIntegrationProvider(Func<string> bootstrapDirectory)
+    /// <param name="getEnvironmentVariable">
+    /// Reads the environment the shell will inherit; defaults to the process environment. A seam
+    /// so the user's-own-ZDOTDIR handling is testable without mutating process state.
+    /// </param>
+    public ZshShellIntegrationProvider(Func<string> bootstrapDirectory, Func<string, string?>? getEnvironmentVariable = null)
     {
         _bootstrapDirectory = bootstrapDirectory;
+        _getEnvironmentVariable = getEnvironmentVariable ?? Environment.GetEnvironmentVariable;
     }
+
+    private readonly Func<string, string?> _getEnvironmentVariable;
 
     public bool CanIntegrate(string? shellKind, string? shellCommand)
     {
@@ -58,6 +65,17 @@ public sealed class ZshShellIntegrationProvider : IShellIntegrationProvider
         {
             ["ZDOTDIR"] = zdotdir
         };
+
+        // Our ZDOTDIR replaces the user's, so their own (an XDG setup's ~/.config/zsh) rides
+        // along for the shims to restore. Our own directory is not the user's: that is an
+        // Ntilde launched from inside an Ntilde pane mid-startup, and passing it would make the
+        // shims source themselves.
+        string? userZdotdir = _getEnvironmentVariable("ZDOTDIR");
+        if (userZdotdir is not null &&
+            !string.Equals(userZdotdir.TrimEnd('/'), zdotdir.TrimEnd('/'), StringComparison.Ordinal))
+        {
+            envOverrides[ZshBootstrapBuilder.UserZdotdirVariable] = userZdotdir;
+        }
 
         return new ShellIntegrationLaunchPlan(
             IsIntegrated: true,
