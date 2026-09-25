@@ -51,7 +51,8 @@ internal static partial class MuxDaemonProcess
             Log = Log,
         });
 
-        if (!TryStart(host, options.Foreground ? stderr : null, Log)) return 1;
+        // No separate stderr echo: in --foreground, Log already writes every line to stderr.
+        if (!TryStart(host, foregroundStderr: null, Log)) return 1;
 
         using PosixSignalRegistration term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; host.RequestStop("signal"); });
         using PosixSignalRegistration intr = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => { ctx.Cancel = true; host.RequestStop("signal"); });

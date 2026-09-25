@@ -21,6 +21,7 @@ public sealed class MuxDaemonHost : IDisposable
     private Timer? _timer;
     private long _idleSinceMs = -1;
     private int _stopping;
+    private int _startFailed;
 
     public MuxDaemonHost(MuxServer server, MuxDaemonOptions options)
     {
@@ -32,6 +33,21 @@ public sealed class MuxDaemonHost : IDisposable
     private string LockPath => Path.Combine(Path.GetDirectoryName(_options.DescriptorPath)!, "mux.lock");
 
     public void Start()
+    {
+        try
+        {
+            StartCore();
+        }
+        catch
+        {
+            // Every failure path below has already released what it took; this only tells a later
+            // Dispose/RequestStop that there is no running daemon to report stopping.
+            Volatile.Write(ref _startFailed, 1);
+            throw;
+        }
+    }
+
+    private void StartCore()
     {
         // On Linux/macOS the default socket endpoint lives in this same directory
         // (MuxDiscovery.GetDefaultEndpoint), so it must come up 0700 from the start: a plain
@@ -189,6 +205,14 @@ public sealed class MuxDaemonHost : IDisposable
     public void RequestStop(string reason)
     {
         if (Interlocked.Exchange(ref _stopping, 1) != 0) return;
+
+        // A Start that failed already released everything it took; logging "stopped" for a daemon
+        // that never served would only mislead whoever reads mux.log or the --foreground output.
+        if (Volatile.Read(ref _startFailed) != 0)
+        {
+            _completion.TrySetResult(reason);
+            return;
+        }
 
         // Blocks until an in-flight Tick (reaping, or the idle check that called us) finishes, so
         // KillAllSessions/server.Dispose() below never overlap ReapExitedSessions. Reentrant, since

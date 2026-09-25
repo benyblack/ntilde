@@ -110,6 +110,32 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.Throws<MuxDaemonAlreadyRunningException>(second.Start);
     }
 
+    [Fact]
+    public async Task A_host_whose_start_failed_does_not_report_a_stop_when_disposed()
+    {
+        // mux serve disposes the host after a refused start; "stopped (disposed)" for a daemon that
+        // never served read as if one had been running and was just shut down.
+        var (first, _, _) = NewHost();
+        first.Start();
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        using var second = new MuxDaemonHost(server, new MuxDaemonOptions
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+            IdleExitAfter = TimeSpan.Zero,
+            Pid = Environment.ProcessId + 100_000,
+            Log = log.Enqueue,
+        });
+        Assert.Throws<MuxDaemonAlreadyRunningException>(second.Start);
+
+        second.Dispose();
+
+        Assert.Equal("disposed", await second.Completion.WaitAsync(TimeSpan.FromSeconds(5), Ct));
+        Assert.DoesNotContain(log, line => line.Contains("stopped", StringComparison.Ordinal));
+        Assert.True(MuxDiscovery.TryReadLiveDescriptor(MuxDiscovery.GetDescriptorPath(_root), out _), "the running daemon's descriptor is untouched");
+    }
+
     /// <summary>
     /// Final-fix item 8: holding the lock proves no other daemon owns the root, so a leftover
     /// descriptor is stale even when its pid is alive under the right process name (pid reuse; the
