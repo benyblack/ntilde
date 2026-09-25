@@ -207,7 +207,7 @@ public sealed class ZshBootstrapBuilderTests : IDisposable
         string shim = Path.Combine(zshDir, name);
 
         Assert.True(File.Exists(shim), $"{name} shim missing");
-        Assert.Contains($"builtin source \"${{ZDOTDIR:-$HOME}}/{name}\"", File.ReadAllText(shim));
+        Assert.Contains($"builtin source \"${{ZDOTDIR-$HOME}}/{name}\"", File.ReadAllText(shim));
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public sealed class ZshBootstrapBuilderTests : IDisposable
     [Fact]
     public void LastStartupFile_LeavesTheUsersZdotdirAndForgetsShimState()
     {
-        const string forget = "builtin unset __ntilde_zdotdir __ntilde_user_zdotdir __ntilde_user_zdotdir_set";
+        const string forget = "builtin unset __ntilde_zdotdir __ntilde_user_zdotdir __ntilde_user_zdotdir_set __ntilde_user_zdotdir_exported";
 
         Assert.Contains(forget, ZshBootstrapBuilder.BuildZlogin());
         Assert.DoesNotContain("ZDOTDIR=\"$__ntilde_zdotdir\"", ZshBootstrapBuilder.BuildZlogin());

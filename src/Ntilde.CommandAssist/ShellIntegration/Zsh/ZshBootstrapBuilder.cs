@@ -33,12 +33,17 @@ public static class ZshBootstrapBuilder
 
     private const string nl = "\n";
 
-    // The user's ZDOTDIR goes back before each of their files is sourced.
+    // The user's ZDOTDIR goes back before each of their files is sourced - value AND export
+    // attribute. zsh reads the shell parameter, so `ZDOTDIR=~/.config/zsh` in ~/.zshenv without
+    // `export` is a valid setup, and restoring it exported would leak it to every child process.
+    // The unset first clears whatever attribute the shim's own value carried.
     private const string RestoreUserZdotdir =
+        "builtin unset ZDOTDIR" + nl +
         "if (( __ntilde_user_zdotdir_set )); then" + nl +
-        "    builtin export ZDOTDIR=\"$__ntilde_user_zdotdir\"" + nl +
-        "else" + nl +
-        "    builtin unset ZDOTDIR" + nl +
+        "    ZDOTDIR=\"$__ntilde_user_zdotdir\"" + nl +
+        "    if (( __ntilde_user_zdotdir_exported )); then" + nl +
+        "        builtin export ZDOTDIR" + nl +
+        "    fi" + nl +
         "fi" + nl;
 
     // ...and whatever the user's file left it as is what their next file is read from.
@@ -46,6 +51,11 @@ public static class ZshBootstrapBuilder
         "if [[ -n \"${ZDOTDIR+x}\" ]]; then" + nl +
         "    __ntilde_user_zdotdir_set=1" + nl +
         "    __ntilde_user_zdotdir=\"$ZDOTDIR\"" + nl +
+        "    if [[ \"${(t)ZDOTDIR}\" == *export* ]]; then" + nl +
+        "        __ntilde_user_zdotdir_exported=1" + nl +
+        "    else" + nl +
+        "        __ntilde_user_zdotdir_exported=0" + nl +
+        "    fi" + nl +
         "else" + nl +
         "    __ntilde_user_zdotdir_set=0" + nl +
         "fi" + nl;
@@ -54,11 +64,13 @@ public static class ZshBootstrapBuilder
     private const string PointZdotdirAtShim = "ZDOTDIR=\"$__ntilde_zdotdir\"" + nl;
 
     private const string ForgetShimState =
-        "builtin unset __ntilde_zdotdir __ntilde_user_zdotdir __ntilde_user_zdotdir_set" + nl;
+        "builtin unset __ntilde_zdotdir __ntilde_user_zdotdir __ntilde_user_zdotdir_set __ntilde_user_zdotdir_exported" + nl;
 
+    // `-`, not `:-`: zsh falls back to $HOME only when ZDOTDIR is UNSET. Set-but-empty makes it
+    // read /.zshenv and friends, and the shim must pick exactly the files zsh would.
     private static string SourceUserFile(string name) =>
-        $"if [[ -r \"${{ZDOTDIR:-$HOME}}/{name}\" ]]; then" + nl +
-        $"    builtin source \"${{ZDOTDIR:-$HOME}}/{name}\"" + nl +
+        $"if [[ -r \"${{ZDOTDIR-$HOME}}/{name}\" ]]; then" + nl +
+        $"    builtin source \"${{ZDOTDIR-$HOME}}/{name}\"" + nl +
         "fi" + nl;
 
     private static string Header(string name) =>
@@ -71,9 +83,12 @@ public static class ZshBootstrapBuilder
         $"if [[ -n \"${{{UserZdotdirVariable}+x}}\" ]]; then" + nl +
         "    __ntilde_user_zdotdir_set=1" + nl +
         $"    __ntilde_user_zdotdir=\"${UserZdotdirVariable}\"" + nl +
+        // It reached Ntilde through the environment, so it was exported.
+        "    __ntilde_user_zdotdir_exported=1" + nl +
         "else" + nl +
         "    __ntilde_user_zdotdir_set=0" + nl +
         "    __ntilde_user_zdotdir=\"\"" + nl +
+        "    __ntilde_user_zdotdir_exported=0" + nl +
         "fi" + nl +
         $"builtin unset {UserZdotdirVariable}" + nl +
         RestoreUserZdotdir +

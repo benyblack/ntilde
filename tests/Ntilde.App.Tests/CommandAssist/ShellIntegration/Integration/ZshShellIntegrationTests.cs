@@ -228,6 +228,39 @@ public sealed class ZshShellIntegrationTests : IDisposable
         Assert.Contains($"RESULT:{Path.Combine(_tempRoot, ".config/zsh")}:homeenv:cfgprofile:cfgrc::gone", result.Stdout);
     }
 
+    /// <summary>
+    /// zsh reads ZDOTDIR as a shell parameter, so setting it unexported is a valid setup; the
+    /// shims must not hand it back exported and leak it to every child process.
+    /// </summary>
+    [Fact]
+    public void LoginShell_KeepsAnUnexportedZdotdirUnexported()
+    {
+        HarnessResult result = RunLoginZsh(
+            "print -r -- \"KIND:${(t)ZDOTDIR}:$(env | grep -c '^ZDOTDIR=')\"\nexit 0\n",
+            new Dictionary<string, string>
+            {
+                [".zshenv"] = "ZDOTDIR=\"$HOME/.config/zsh\"",
+                [".config/zsh/.zshrc"] = "NT_R=cfgrc",
+            });
+
+        Assert.Contains("KIND:scalar:0", result.Stdout);
+    }
+
+    /// <summary>
+    /// zsh falls back to $HOME only for an UNSET ZDOTDIR; an empty one does not read ~/.zshrc,
+    /// and neither may the shims.
+    /// </summary>
+    [Fact]
+    public void LoginShell_AnEmptyUserZdotdirDoesNotFallBackToHome()
+    {
+        HarnessResult result = RunLoginZsh(
+            StartupProbe,
+            new Dictionary<string, string> { [".zshrc"] = "NT_R=homerc" },
+            new Dictionary<string, string> { [ZshBootstrapBuilder.UserZdotdirVariable] = "" });
+
+        Assert.Contains("RESULT::::::gone", result.Stdout);
+    }
+
     [Fact]
     public void LoginShell_KeepsTheIntegrationHooksAroundTheUsers()
     {
