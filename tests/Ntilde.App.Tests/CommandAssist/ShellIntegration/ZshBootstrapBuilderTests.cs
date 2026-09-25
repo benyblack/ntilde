@@ -191,6 +191,75 @@ public sealed class ZshBootstrapBuilderTests : IDisposable
         Assert.NotEqual(_tempRoot, Path.GetDirectoryName(path));
     }
 
+    /// <summary>
+    /// zsh reads every per-user startup file from $ZDOTDIR, so a directory holding only a .zshrc
+    /// silently dropped the user's ~/.zshenv, ~/.zprofile and ~/.zlogin -- on macOS, where
+    /// Homebrew's `brew shellenv` lives in ~/.zprofile, a pane had no Homebrew on PATH.
+    /// </summary>
+    [Theory]
+    [InlineData(".zshenv")]
+    [InlineData(".zprofile")]
+    [InlineData(".zshrc")]
+    [InlineData(".zlogin")]
+    public void WriteScript_ShimsEveryStartupFileAndEachSourcesTheUsersOwn(string name)
+    {
+        string zshDir = Path.GetDirectoryName(ZshBootstrapBuilder.WriteScript(_tempRoot))!;
+        string shim = Path.Combine(zshDir, name);
+
+        Assert.True(File.Exists(shim), $"{name} shim missing");
+        Assert.Contains($"builtin source \"${{ZDOTDIR-$HOME}}/{name}\"", File.ReadAllText(shim));
+    }
+
+    [Fact]
+    public void BuildScript_SourcesTheUsersZshrcFromTheirZdotdirNotAHardcodedHome()
+    {
+        string script = ZshBootstrapBuilder.BuildScript();
+
+        Assert.DoesNotContain(". \"$HOME/.zshrc\"", script);
+        // The user's .zshrc runs first; the integration after it, so its hooks land last.
+        int userRc = script.IndexOf("/.zshrc\"", StringComparison.Ordinal);
+        int hooks = script.IndexOf("precmd_functions+=(__ntilde_precmd)", StringComparison.Ordinal);
+        Assert.True(userRc > 0 && hooks > userRc);
+    }
+
+    [Fact]
+    public void Zshenv_ReadsTheUsersZdotdirFromTheHandoffVariableAndClearsIt()
+    {
+        string script = ZshBootstrapBuilder.BuildZshenv();
+
+        Assert.Contains($"\"${ZshBootstrapBuilder.UserZdotdirVariable}\"", script);
+        Assert.Contains($"builtin unset {ZshBootstrapBuilder.UserZdotdirVariable}", script);
+    }
+
+    /// <summary>
+    /// The last file zsh reads must leave the user's ZDOTDIR in place, or a nested zsh and the
+    /// user's own tooling would keep resolving startup files from our directory.
+    /// </summary>
+    [Fact]
+    public void LastStartupFile_LeavesTheUsersZdotdirAndForgetsShimState()
+    {
+        const string forget = "builtin unset __ntilde_zdotdir __ntilde_user_zdotdir __ntilde_user_zdotdir_set __ntilde_user_zdotdir_exported";
+
+        Assert.Contains(forget, ZshBootstrapBuilder.BuildZlogin());
+        Assert.DoesNotContain("ZDOTDIR=\"$__ntilde_zdotdir\"", ZshBootstrapBuilder.BuildZlogin());
+
+        // .zshrc is last for a non-login shell only; a login shell still reads .zlogin from us.
+        string zshrc = ZshBootstrapBuilder.BuildScript();
+        int loginBranch = zshrc.LastIndexOf("if [[ -o login ]]; then", StringComparison.Ordinal);
+        Assert.True(loginBranch > 0);
+        Assert.Contains(forget, zshrc[loginBranch..]);
+    }
+
+    [Fact]
+    public void Zshrc_MovesAHistfileTheGlobalZshrcDerivedFromOurZdotdir()
+    {
+        // macOS /etc/zshrc sets HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history while ZDOTDIR is ours.
+        string script = ZshBootstrapBuilder.BuildScript();
+
+        Assert.Contains("if [[ \"${HISTFILE-}\" == \"$__ntilde_zdotdir/.zsh_history\" ]]; then", script);
+        Assert.Contains("HISTFILE=\"${ZDOTDIR:-$HOME}/.zsh_history\"", script);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_tempRoot))

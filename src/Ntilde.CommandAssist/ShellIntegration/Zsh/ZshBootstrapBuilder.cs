@@ -3,20 +3,132 @@ using System.Text;
 
 namespace Ntilde.CommandAssist.ShellIntegration.Zsh;
 
+/// <summary>
+/// Writes the zsh startup files that inject command-assist integration.
+/// </summary>
+/// <remarks>
+/// Injection works by pointing <c>ZDOTDIR</c> at a directory of ours, and zsh reads EVERY
+/// per-user startup file from <c>$ZDOTDIR</c>: <c>.zshenv</c>, <c>.zprofile</c> (login),
+/// <c>.zshrc</c> (interactive), <c>.zlogin</c> (login). Shipping only a <c>.zshrc</c> meant the
+/// user's <c>~/.zshenv</c>, <c>~/.zprofile</c> and <c>~/.zlogin</c> were never read at all - on
+/// macOS that is where Homebrew's installer puts <c>brew shellenv</c>, so a pane came up with no
+/// <c>/opt/homebrew/bin</c> on PATH and every <c>brew</c>/<c>nvm</c> line in <c>~/.zshrc</c> failed.
+///
+/// So each of the four is a shim: it puts the user's <c>ZDOTDIR</c> back (or unsets it, when they
+/// had none), sources the user's file of the same name at top level - not from a function, where
+/// the user's <c>typeset</c>s would turn local - records whatever <c>ZDOTDIR</c> the user's file
+/// left behind (an XDG setup sets it in <c>~/.zshenv</c>), then points zsh back at us for the next
+/// file. The last file zsh reads (<c>.zshrc</c>, or <c>.zlogin</c> for a login shell) leaves the
+/// user's value in place, so nothing after startup - a nested zsh, the user's own tooling - ever
+/// sees our directory. The integration itself still runs right after the user's <c>.zshrc</c>, so
+/// its hooks land after the user's exactly as before.
+///
+/// The user's original <c>ZDOTDIR</c>, when they had one, arrives in
+/// <see cref="UserZdotdirVariable"/>; its absence means "unset", i.e. <c>$HOME</c>.
+/// </remarks>
 public static class ZshBootstrapBuilder
 {
+    /// <summary>Environment variable carrying the user's own <c>ZDOTDIR</c> into the shim.</summary>
+    public const string UserZdotdirVariable = "NTILDE_ZSH_USER_ZDOTDIR";
+
+    private const string nl = "\n";
+
+    // The user's ZDOTDIR goes back before each of their files is sourced - value AND export
+    // attribute. zsh reads the shell parameter, so `ZDOTDIR=~/.config/zsh` in ~/.zshenv without
+    // `export` is a valid setup, and restoring it exported would leak it to every child process.
+    // The unset first clears whatever attribute the shim's own value carried.
+    private const string RestoreUserZdotdir =
+        "builtin unset ZDOTDIR" + nl +
+        "if (( __ntilde_user_zdotdir_set )); then" + nl +
+        "    ZDOTDIR=\"$__ntilde_user_zdotdir\"" + nl +
+        "    if (( __ntilde_user_zdotdir_exported )); then" + nl +
+        "        builtin export ZDOTDIR" + nl +
+        "    fi" + nl +
+        "fi" + nl;
+
+    // ...and whatever the user's file left it as is what their next file is read from.
+    private const string CaptureUserZdotdir =
+        "if [[ -n \"${ZDOTDIR+x}\" ]]; then" + nl +
+        "    __ntilde_user_zdotdir_set=1" + nl +
+        "    __ntilde_user_zdotdir=\"$ZDOTDIR\"" + nl +
+        "    if [[ \"${(t)ZDOTDIR}\" == *export* ]]; then" + nl +
+        "        __ntilde_user_zdotdir_exported=1" + nl +
+        "    else" + nl +
+        "        __ntilde_user_zdotdir_exported=0" + nl +
+        "    fi" + nl +
+        "else" + nl +
+        "    __ntilde_user_zdotdir_set=0" + nl +
+        "fi" + nl;
+
+    // Hands the next startup file back to us.
+    private const string PointZdotdirAtShim = "ZDOTDIR=\"$__ntilde_zdotdir\"" + nl;
+
+    private const string ForgetShimState =
+        "builtin unset __ntilde_zdotdir __ntilde_user_zdotdir __ntilde_user_zdotdir_set __ntilde_user_zdotdir_exported" + nl;
+
+    // `-`, not `:-`: zsh falls back to $HOME only when ZDOTDIR is UNSET. Set-but-empty makes it
+    // read /.zshenv and friends, and the shim must pick exactly the files zsh would.
+    private static string SourceUserFile(string name) =>
+        $"if [[ -r \"${{ZDOTDIR-$HOME}}/{name}\" ]]; then" + nl +
+        $"    builtin source \"${{ZDOTDIR-$HOME}}/{name}\"" + nl +
+        "fi" + nl;
+
+    private static string Header(string name) =>
+        $"# Ntilde command-assist shim: $ZDOTDIR/{name}. Sources the user's own {name}" + nl +
+        "# from their ZDOTDIR (or $HOME); see ZshBootstrapBuilder for why." + nl;
+
+    public static string BuildZshenv() =>
+        Header(".zshenv") +
+        "__ntilde_zdotdir=\"$ZDOTDIR\"" + nl +
+        $"if [[ -n \"${{{UserZdotdirVariable}+x}}\" ]]; then" + nl +
+        "    __ntilde_user_zdotdir_set=1" + nl +
+        $"    __ntilde_user_zdotdir=\"${UserZdotdirVariable}\"" + nl +
+        // It reached Ntilde through the environment, so it was exported.
+        "    __ntilde_user_zdotdir_exported=1" + nl +
+        "else" + nl +
+        "    __ntilde_user_zdotdir_set=0" + nl +
+        "    __ntilde_user_zdotdir=\"\"" + nl +
+        "    __ntilde_user_zdotdir_exported=0" + nl +
+        "fi" + nl +
+        $"builtin unset {UserZdotdirVariable}" + nl +
+        RestoreUserZdotdir +
+        SourceUserFile(".zshenv") +
+        // A shell that reads nothing after .zshenv (a script, `zsh -c` never gets here) must
+        // not be left pointing at us.
+        "if [[ -o interactive || -o login ]]; then" + nl +
+        "    " + CaptureUserZdotdir.Replace(nl, nl + "    ").TrimEnd(' ') +
+        "    " + PointZdotdirAtShim +
+        "else" + nl +
+        "    " + ForgetShimState +
+        "fi" + nl;
+
+    public static string BuildZprofile() =>
+        Header(".zprofile") +
+        RestoreUserZdotdir +
+        SourceUserFile(".zprofile") +
+        CaptureUserZdotdir +
+        PointZdotdirAtShim;
+
+    public static string BuildZlogin() =>
+        Header(".zlogin") +
+        RestoreUserZdotdir +
+        SourceUserFile(".zlogin") +
+        ForgetShimState;
+
     public static string BuildScript()
     {
-        const string nl = "\n";
         var b = new StringBuilder();
         b.Append("#!/usr/bin/env zsh").Append(nl);
-        b.Append("# Ntilde command-assist bootstrap for zsh.").Append(nl);
-        b.Append("# Installed as $ZDOTDIR/.zshrc. ZDOTDIR is set so the user's").Append(nl);
-        b.Append("# ~/.zshrc is NOT auto-sourced; we source it explicitly first").Append(nl);
-        b.Append("# so customizations and PROMPT/PS1 stay owned by the user.").Append(nl);
-        b.Append("if [ -f \"$HOME/.zshrc\" ]; then").Append(nl);
-        b.Append("    . \"$HOME/.zshrc\"").Append(nl);
+        b.Append(Header(".zshrc"));
+        b.Append("# The integration below runs after the user's .zshrc so").Append(nl);
+        b.Append("# customizations and PROMPT/PS1 stay owned by the user.").Append(nl);
+        b.Append(RestoreUserZdotdir);
+        // The global zshrc ran while ZDOTDIR still pointed at us, and macOS's /etc/zshrc
+        // derives HISTFILE from it - which would keep the user's history in our directory.
+        b.Append("if [[ \"${HISTFILE-}\" == \"$__ntilde_zdotdir/.zsh_history\" ]]; then").Append(nl);
+        b.Append("    HISTFILE=\"${ZDOTDIR:-$HOME}/.zsh_history\"").Append(nl);
         b.Append("fi").Append(nl);
+        b.Append(SourceUserFile(".zshrc"));
         b.Append(nl);
         b.Append("typeset -g __ntilde_command_start_ms=\"\"").Append(nl);
         // Load zsh's native datetime module so $EPOCHREALTIME is available
@@ -121,19 +233,37 @@ public static class ZshBootstrapBuilder
         // is idempotent.
         b.Append("__ntilde_apply_prompt_mark").Append(nl);
         b.Append("__ntilde_emit_prompt_ready").Append(nl);
+        b.Append(nl);
+        // A login shell still has .zlogin to read, from us; otherwise this is the last file and
+        // the user's ZDOTDIR (restored above, or as their .zshrc left it) stays.
+        b.Append("if [[ -o login ]]; then").Append(nl);
+        b.Append("    ").Append(CaptureUserZdotdir.Replace(nl, nl + "    ").TrimEnd(' '));
+        b.Append("    ").Append(PointZdotdirAtShim);
+        b.Append("else").Append(nl);
+        b.Append("    ").Append(ForgetShimState);
+        b.Append("fi").Append(nl);
         return b.ToString();
     }
 
+    /// <summary>
+    /// Writes all four shims into a zsh-only subdirectory of <paramref name="targetDirectory"/>
+    /// and returns the path of the <c>.zshrc</c>, whose directory is the <c>ZDOTDIR</c> to launch
+    /// with.
+    /// </summary>
     public static string WriteScript(string targetDirectory)
     {
         // ZDOTDIR must point at a directory that only contains zsh startup
         // files; live next to other shells' bootstrap files would let zsh
         // mistakenly source .zshenv-like neighbors. Carve out a zsh-only
-        // subdirectory and write .zshrc into it.
+        // subdirectory and write the shims into it.
         string zshDir = Path.Combine(targetDirectory, "zsh");
         Directory.CreateDirectory(zshDir);
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        File.WriteAllText(Path.Combine(zshDir, ".zshenv"), BuildZshenv(), encoding);
+        File.WriteAllText(Path.Combine(zshDir, ".zprofile"), BuildZprofile(), encoding);
+        File.WriteAllText(Path.Combine(zshDir, ".zlogin"), BuildZlogin(), encoding);
         string path = Path.Combine(zshDir, ".zshrc");
-        File.WriteAllText(path, BuildScript(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.WriteAllText(path, BuildScript(), encoding);
         return path;
     }
 }

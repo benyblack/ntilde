@@ -49,6 +49,43 @@ public sealed class ZshShellIntegrationProviderTests
     }
 
     [Fact]
+    public void CreateLaunchPlan_WhenTheUserHasTheirOwnZdotdir_PassesItToTheShims()
+    {
+        var provider = new ZshShellIntegrationProvider(
+            () => BootstrapTestDirectory.ForCaller(),
+            name => name == "ZDOTDIR" ? "/Users/me/.config/zsh" : null);
+
+        ShellIntegrationLaunchPlan plan = provider.CreateLaunchPlan("/bin/zsh", shellArguments: null, workingDirectory: null);
+
+        Assert.Equal("/Users/me/.config/zsh", plan.EnvironmentOverrides![ZshBootstrapBuilder.UserZdotdirVariable]);
+    }
+
+    [Fact]
+    public void CreateLaunchPlan_WithoutAUserZdotdir_LeavesItUnsetForTheShims()
+    {
+        // Absent means "unset" to the shims, i.e. $HOME -- an empty value would not.
+        var provider = new ZshShellIntegrationProvider(() => BootstrapTestDirectory.ForCaller(), _ => null);
+
+        ShellIntegrationLaunchPlan plan = provider.CreateLaunchPlan("/bin/zsh", shellArguments: null, workingDirectory: null);
+
+        Assert.False(plan.EnvironmentOverrides!.ContainsKey(ZshBootstrapBuilder.UserZdotdirVariable));
+    }
+
+    [Fact]
+    public void CreateLaunchPlan_WhenInheritedZdotdirIsOurOwn_DoesNotPassItAsTheUsers()
+    {
+        // An Ntilde started from an Ntilde pane mid-startup inherits the shim directory; treating
+        // it as the user's would make the shims source themselves.
+        string root = BootstrapTestDirectory.ForCaller();
+        string ours = Path.GetDirectoryName(ZshBootstrapBuilder.WriteScript(root))!;
+        var provider = new ZshShellIntegrationProvider(() => root, name => name == "ZDOTDIR" ? ours + "/" : null);
+
+        ShellIntegrationLaunchPlan plan = provider.CreateLaunchPlan("/bin/zsh", shellArguments: null, workingDirectory: null);
+
+        Assert.False(plan.EnvironmentOverrides!.ContainsKey(ZshBootstrapBuilder.UserZdotdirVariable));
+    }
+
+    [Fact]
     public void CreateLaunchPlan_WithExistingUserArguments_PreservesThem()
     {
         var provider = new ZshShellIntegrationProvider(() => BootstrapTestDirectory.ForCaller());
