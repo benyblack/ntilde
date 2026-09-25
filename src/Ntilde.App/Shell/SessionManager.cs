@@ -25,7 +25,9 @@ namespace Ntilde.Shell
             int payloadBytes = 0;
             try
             {
-                var session = CaptureSession(window, tabs);
+                // The startup session file is the one snapshot that names daemon sessions: the next
+                // launch reattaches to them (spec §9).
+                var session = CaptureSession(window, tabs, includeMuxIds: true);
 
                 var json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
                 payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
@@ -46,7 +48,42 @@ namespace Ntilde.Shell
             }
         }
 
-        public static NtildeSession CaptureSession(Window window, TabControl tabs)
+        /// <param name="includeMuxIds">
+        /// Only <see cref="SaveSession"/> passes true. Every other snapshot - a workspace, a template,
+        /// a bundle - is a layout to rebuild later, possibly elsewhere: carrying the daemon ids would
+        /// make loading it end the live shells it names and show "lost" on every rebuilt pane, and
+        /// would put this machine's daemon ids into exported bundles.
+        /// </param>
+        public static NtildeSession CaptureSession(Window window, TabControl tabs, bool includeMuxIds = false)
+        {
+            NtildeSession captured = CaptureSessionCore(window, tabs);
+            return includeMuxIds ? captured : WithoutMuxIds(captured);
+        }
+
+        /// <summary>
+        /// A deep copy of <paramref name="session"/> with every pane's MuxSessionId/MuxEndpoint cleared.
+        /// A copy, never in place: a capture can share PaneNodes with a restored tab's Tag (see the
+        /// placeholder fallback in <see cref="CaptureSessionCore"/>), which the startup save still needs.
+        /// </summary>
+        internal static NtildeSession WithoutMuxIds(NtildeSession session)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+            string json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
+            NtildeSession copy = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession) ?? new NtildeSession();
+
+            static void Clear(PaneNode? node)
+            {
+                if (node == null) return;
+                node.MuxSessionId = null;
+                node.MuxEndpoint = null;
+                foreach (PaneNode child in node.Children) Clear(child);
+            }
+
+            foreach (TabSession tab in copy.Tabs) Clear(tab.Root);
+            return copy;
+        }
+
+        private static NtildeSession CaptureSessionCore(Window window, TabControl tabs)
         {
             var session = new NtildeSession
             {
@@ -130,14 +167,14 @@ namespace Ntilde.Shell
             return session;
         }
 
-        private static PaneNode? BuildPaneTree(Control? control)
+        internal static PaneNode? BuildPaneTree(Control? control)
         {
             if (control == null) return null;
 
             // Base case: Leaf Node (TerminalPane)
             if (control is TerminalPane pane)
             {
-                return new PaneNode
+                var leaf = new PaneNode
                 {
                     Type = NodeType.Leaf,
                     ProfileId = pane.Profile?.Id.ToString(),
@@ -153,6 +190,9 @@ namespace Ntilde.Shell
                     Command = string.IsNullOrWhiteSpace(pane.ShellCommand) ? null : pane.ShellCommand,
                     Arguments = pane.ShellArgs
                 };
+
+                WriteMuxIds(leaf, pane);
+                return leaf;
             }
 
             // Recursive case: Grid (Split)
@@ -326,7 +366,36 @@ namespace Ntilde.Shell
             var json = File.ReadAllText(SessionPath);
             payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
             session = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession);
+            if (session != null) DedupeMuxIds(session);
             return session != null;
+        }
+
+        /// <summary>
+        /// Leaves each daemon session id on at most one pane - the first in tab/tree order - and
+        /// clears it from the rest, in place. A hand-edited or merged session file can name one id
+        /// twice; the daemon opens a session for one client only, so the second pane's reopen used to
+        /// fail and show a misleading "multiplexer unavailable". The duplicates start fresh shells.
+        /// Done on the loaded session, before any tab is built: startup restore builds tabs lazily,
+        /// one at a time, so no per-tab pass could see the whole file.
+        /// </summary>
+        internal static void DedupeMuxIds(NtildeSession session)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+            var claimed = new HashSet<Guid>();
+
+            void Visit(PaneNode? node)
+            {
+                if (node == null) return;
+                if (Guid.TryParse(node.MuxSessionId, out Guid id) && !claimed.Add(id))
+                {
+                    node.MuxSessionId = null;
+                    node.MuxEndpoint = null;
+                }
+
+                foreach (PaneNode child in node.Children) Visit(child);
+            }
+
+            foreach (TabSession tab in session.Tabs) Visit(tab.Root);
         }
 
         // Single source of truth for how a leaf resolves to a profile at restore time.
@@ -387,7 +456,40 @@ namespace Ntilde.Shell
             return local;
         }
 
-        private static Control? RestorePaneTree(PaneNode? node, TerminalSettings settings)
+        /// <summary>
+        /// Spec §9: the daemon session <paramref name="pane"/> shows, so the next launch reattaches to
+        /// it (and does not mistake it for an orphan).
+        /// </summary>
+        private static void WriteMuxIds(PaneNode leaf, TerminalPane pane)
+        {
+            if (pane.Session is Ntilde.Mux.MuxClientSession mux)
+            {
+                leaf.MuxSessionId = mux.Id.ToString("D");
+                leaf.MuxEndpoint = pane.MuxEndpoint;
+            }
+            else if (pane.MuxSessionIdToRestore is Guid pending)
+            {
+                // Not spawned yet (a hydrated tab never shown, an adopted tab not visited): the
+                // daemon session is still this pane's. Dropping it here would make the next launch
+                // start a fresh shell and adopt the old one as a duplicate orphan.
+                leaf.MuxSessionId = pending.ToString("D");
+                leaf.MuxEndpoint = pane.MuxEndpoint;
+            }
+        }
+
+        /// <summary>
+        /// Consumed once as ExistingMuxSessionId on the first spawn. With persistence off the
+        /// default factory ignores it and the pane starts a normal shell.
+        /// </summary>
+        private static void ApplyRestoredMuxId(TerminalPane pane, PaneNode node)
+        {
+            if (Guid.TryParse(node.MuxSessionId, out Guid muxId))
+            {
+                pane.MuxSessionIdToRestore = muxId;
+            }
+        }
+
+        internal static Control? RestorePaneTree(PaneNode? node, TerminalSettings settings)
         {
             if (node == null) return null;
 
@@ -443,6 +545,8 @@ namespace Ntilde.Shell
                 {
                     pane.PaneId = paneId;
                 }
+
+                ApplyRestoredMuxId(pane, node);
 
                 StartupPerformanceTracker.Current?.TryMarkCheckpoint("SessionManager.RestorePaneTree.LeafCreated");
                 return pane;

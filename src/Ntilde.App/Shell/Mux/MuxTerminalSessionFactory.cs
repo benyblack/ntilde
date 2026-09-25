@@ -1,0 +1,142 @@
+using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
+using Ntilde.Pty;
+
+namespace Ntilde.Shell.Mux;
+
+/// <summary>
+/// Local panes → a session in the daemon (spawned, or reopened by id); SSH → <see cref="_fallback"/>.
+/// Returns the MuxClientSession UNATTACHED: the pane attaches after wiring its handlers, so no
+/// snapshot can be missed (spec §7). Never throws for a daemon problem: a new pane falls back to a
+/// normal local session (<see cref="PersistentSessionOutcome.Unavailable"/>); a pane reopening a
+/// daemon session gets no session at all (<see cref="PersistentSessionOutcome.DaemonUnreachable"/>),
+/// because its shell is still in the daemon and a stand-in local shell would lose it.
+/// </summary>
+internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
+{
+    private readonly ITerminalSessionFactory _fallback;
+    private readonly Action<string>? _log;
+
+    public MuxTerminalSessionFactory(MuxConnectionHost host, ITerminalSessionFactory fallback, Action<string>? log)
+    {
+        Host = host;
+        _fallback = fallback;
+        _log = log;
+    }
+
+    public MuxConnectionHost Host { get; }
+    public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(5);
+    public TimeSpan RpcTimeout { get; init; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen falls back here.</summary>
+    public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session ?? _fallback.Create(request);
+
+    public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Ssh is not null) return new(_fallback.Create(request), PersistentSessionOutcome.NotPersistent, null, null);
+
+        MuxClient? client = Host.GetClient(ConnectTimeout);
+        if (client is null)
+        {
+            // A daemon of another protocol version is reachable but unusable: say so, and how to fix it.
+            if (Host.LastFailure is MuxUnavailableException { VersionMismatch: true } mismatch)
+            {
+                return Fallback(request, mismatch.Message) with { VersionMismatch = true };
+            }
+
+            return Fallback(request, "the multiplexer could not be reached");
+        }
+
+        try
+        {
+            if (request.ExistingMuxSessionId is Guid existing)
+            {
+                IReadOnlyList<SessionSummary> sessions = Rpc(ct => client.ListSessionsAsync(ct));
+                SessionSummary? match = sessions.FirstOrDefault(s => s.SessionId == existing);
+                if (match is { Running: true, Faulted: false, AttachedClients: 0 })
+                {
+                    return new(client.OpenSession(existing, request.Command, request.Arguments), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
+                }
+
+                if (match is { Running: true, Faulted: false })
+                {
+                    // Another client (a second window of this app) is showing it: taking it over would
+                    // pull a live shell out of that window. Leave it alone and start a new one - nothing
+                    // was lost, so no "lost" banner.
+                    _log?.Invoke($"[Mux] session {existing} is attached elsewhere; starting a new shell instead of taking it over");
+                    Guid own = Spawn(client, request);
+                    return new(client.OpenSession(own, request.Command, request.Arguments), PersistentSessionOutcome.Spawned, Host.Endpoint, null);
+                }
+
+                // A faulted session is still running in the daemon: nothing will ever reopen it, so
+                // end it now rather than leak its shell until the daemon exits.
+                if (match is { Running: true, Faulted: true }) KillQuietly(client, existing);
+
+                Guid fresh = Spawn(client, request);
+                return new(client.OpenSession(fresh, request.Command, request.Arguments), PersistentSessionOutcome.PreviousLost, Host.Endpoint, null);
+            }
+
+            Guid spawned = Spawn(client, request);
+            return new(client.OpenSession(spawned, request.Command, request.Arguments), PersistentSessionOutcome.Spawned, Host.Endpoint, null);
+        }
+        catch (Exception ex) when (ex is MuxProtocolException or IOException or TimeoutException or InvalidOperationException or ObjectDisposedException or OperationCanceledException)
+        {
+            return Fallback(request, ex.Message);
+        }
+    }
+
+    private Guid Spawn(MuxClient client, TerminalSessionRequest r) => Rpc(ct => client.SpawnAsync(new SpawnParams
+    {
+        Command = r.Command,
+        Arguments = r.Arguments,
+        StartingDirectory = r.StartingDirectory,
+        Cols = r.Cols,
+        Rows = r.Rows,
+        EnvironmentOverrides = r.EnvironmentOverrides,
+        SkipPowerShellPostLaunchInit = r.SkipPowerShellPostLaunchInit,
+        Title = r.Command,
+    }, ct));
+
+    /// <summary>
+    /// Runs one request off the calling (UI) thread and waits at most <see cref="RpcTimeout"/>.
+    /// WaitAny, not Task.Wait: Wait throws AggregateException for a faulted task, which the
+    /// caller's filter would not match; GetResult rethrows the original exception instead.
+    /// </summary>
+    /// <summary>Best effort, bounded by <see cref="RpcTimeout"/>: a failure is logged, never thrown.</summary>
+    private void KillQuietly(MuxClient client, Guid id)
+    {
+        try
+        {
+            Rpc(async ct =>
+            {
+                await client.KillAsync(id, ct).ConfigureAwait(false);
+                return true;
+            });
+        }
+        catch (Exception ex) when (ex is MuxProtocolException or IOException or TimeoutException or InvalidOperationException or ObjectDisposedException or OperationCanceledException)
+        {
+            _log?.Invoke($"[Mux] could not end faulted session {id}: {ex.Message}");
+        }
+    }
+
+    private T Rpc<T>(Func<CancellationToken, Task<T>> call)
+    {
+        using var cts = new CancellationTokenSource(RpcTimeout);
+        Task<T> task = Task.Run(() => call(cts.Token));
+        if (Task.WaitAny([task], RpcTimeout + TimeSpan.FromMilliseconds(250)) < 0) throw new TimeoutException("The multiplexer did not answer in time.");
+        return task.GetAwaiter().GetResult();
+    }
+
+    private PersistentSessionResult Fallback(TerminalSessionRequest request, string why)
+    {
+        if (request.ExistingMuxSessionId is Guid existing)
+        {
+            _log?.Invoke($"[Mux] multiplexer unavailable ({why}); session {existing} is kept for a retry, no local shell started");
+            return new(null, PersistentSessionOutcome.DaemonUnreachable, null, why);
+        }
+
+        _log?.Invoke($"[Mux] multiplexer unavailable ({why}); this session will not persist");
+        return new(_fallback.Create(request), PersistentSessionOutcome.Unavailable, null, why);
+    }
+}

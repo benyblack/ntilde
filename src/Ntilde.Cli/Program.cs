@@ -26,6 +26,11 @@ internal static class Program
             return BackupCommand.Execute(args, Console.Out, Console.Error);
         }
 
+        if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args))
+        {
+            return Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
+        }
+
         Console.Error.WriteLine("Unsupported CLI mode.");
         return 2;
     }

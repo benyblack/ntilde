@@ -57,6 +57,9 @@ public static class MuxMethods
     public const string ExportFlight = "exportFlight";
     public const string Ping = "ping";
 
+    /// <summary>Request: the daemon kills every session and exits (spec §4). Additive.</summary>
+    public const string Shutdown = "shutdown";
+
     /// <summary>Notification (server → client).</summary>
     public const string Exited = "exited";
 

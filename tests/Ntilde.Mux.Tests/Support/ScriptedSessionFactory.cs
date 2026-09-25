@@ -7,6 +7,9 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
 {
     public ConcurrentQueue<TerminalSessionRequest> Requests { get; } = new();
     public bool FailNext { get; set; }
+
+    /// <summary>Every Create throws while set (unlike <see cref="FailNext"/>, which fails once).</summary>
+    public bool ThrowOnCreate { get; set; }
     public bool ProduceSessionsWithoutByteTap { get; set; }
     public NoTapTerminalSession? LastNoTapSession { get; private set; }
 
@@ -29,7 +32,7 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
             gate.Wait(TimeSpan.FromSeconds(30));
         }
 
-        if (FailNext)
+        if (FailNext || ThrowOnCreate)
         {
             FailNext = false;
             throw new InvalidOperationException("scripted spawn failure");

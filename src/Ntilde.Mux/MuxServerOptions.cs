@@ -50,5 +50,23 @@ public sealed class MuxServerOptions
     /// </summary>
     public long MaxFlightRecordingBytes { get; init; } = 32L * 1024 * 1024;
 
+    /// <summary>Per-session cap on input queued for a child that is not reading stdin (see <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/>).</summary>
+    public long MaxQueuedInputBytes { get; init; } = 16L * 1024 * 1024;
+
+    /// <summary>
+    /// First pause after a failed accept (a transient pipe/socket error). Doubles per consecutive
+    /// failure up to <see cref="AcceptRetryMaxDelay"/>; a successful accept resets it.
+    /// </summary>
+    public TimeSpan AcceptRetryInitialDelay { get; init; } = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Cap on the pause between accept retries.</summary>
+    public TimeSpan AcceptRetryMaxDelay { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// While accepts keep failing (the loop retries forever), at most one log line per this interval
+    /// after the first. <see cref="TimeSpan.Zero"/> logs every failure.
+    /// </summary>
+    public TimeSpan AcceptFailureLogInterval { get; init; } = TimeSpan.FromSeconds(30);
+
     public Action<string>? Log { get; init; }
 }

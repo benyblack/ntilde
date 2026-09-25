@@ -107,6 +107,85 @@ Panes allow you to split a single tab into multiple terminal windows.
 - **Broadcast Input:** `Ctrl+Shift+B` toggles sending keystrokes to *all* panes in the current tab simultaneously.
 - **Find/Search:** `Ctrl+Shift+F` opens the search overlay for the active pane.
 
+### 3.3 Persistent sessions (multiplexer)
+Local shells can keep running when Ntilde's window closes, and come back when Ntilde starts
+again. They run inside a small background process, the *multiplexer daemon*
+(`Ntilde mux serve`), which Ntilde starts on demand.
+
+- **Turning it on:** Settings → Appearance → *Scrollback* → **Keep shells running when the
+  window closes** → *Keep running*. The default is *Off*, and with it off no daemon is ever
+  started. The setting applies to panes opened after you save it. Panes that are already open
+  stay as they are.
+- **What persists:** local shells, with their screen and scrollback. They survive closing the
+  window, an Ntilde crash and a restart. On the next launch each saved pane reattaches to its
+  shell. A running shell that no saved pane refers to (for example one left over from a
+  crash) opens as a new background tab, and a toast reads "Reattached N detached sessions".
+- **A second Ntilde window** (a second instance started while the first is open) never takes
+  over shells the first one is showing: its panes start new shells instead.
+- **Workspaces, templates and bundles** save a layout, not live shells. Loading one starts new
+  shells in its panes, and exported bundles contain no session ids. Only Ntilde's own saved
+  session reattaches to running shells.
+- **What closes a shell:** closing its pane or tab, or the shell exiting. Closing the *window*
+  only detaches: the shells keep running in the daemon. A shell that has exited and has no
+  window attached is cleaned up after 60 seconds.
+- **If the daemon cannot be reached:** a *new* pane starts a normal shell instead and the window
+  shows a "Session not persistent" notification:
+  `[Multiplexer unavailable — this session will not persist]`. Ntilde tries the daemon again
+  for panes opened 30 seconds later. If the running daemon is from a different Ntilde version,
+  the notification adds a second line telling you to run `ntilde mux kill-server` to replace it.
+  A pane that is *reattaching* to a saved shell (at startup, say, while the daemon is slow to
+  answer) does not start a stand-in shell, because its shell may still be running in the daemon.
+  It shows `[Multiplexer not reachable — press Enter to retry]` and keeps the shell's id, so
+  Enter tries again and your session file still names the shell. (For a version mismatch the
+  same kill-server hint appears under it.)
+  If a running daemon goes away, attached panes show
+  `[Multiplexer disconnected] [Press Enter to reconnect]`. Enter reconnects, starting a new
+  daemon if needed. When the old shell is gone the window shows a "Previous session lost"
+  notification: `[Previous session was lost — started a new shell]`. When several panes hit
+  the same thing at once (e.g. restoring after the daemon crashed) they share one notification.
+  If the daemon stops tracking a shell's screen (its terminal parser failed; `ntilde mux ls`
+  shows it as *faulted*), the pane shows
+  `[Multiplexer session failed — press Enter to start a new shell]`. That shell cannot be
+  shown again: Enter ends it and starts a new one.
+- **One pane per shell:** if a saved session names the same shell in two panes (for example a
+  hand-edited session file), only the first reattaches; the others start new shells.
+- **If the daemon's endpoint breaks:** the daemon keeps retrying it (logging to `logs/mux.log`)
+  and keeps serving every window that is already connected, so their shells are never ended
+  because of it. Only when it has not accepted a connection for 60 seconds *and* no window is
+  connected - so nobody can reach its shells - does it exit, ending those shells. Ntilde then
+  starts a fresh daemon the next time it needs one.
+- **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
+
+  | Command | What it does |
+  |---|---|
+  | `ntilde mux ls` | Lists sessions: id, state (running / exited *code* / faulted), attached windows, size, title. |
+  | `ntilde mux ls --json` | The same list as JSON. |
+  | `ntilde mux kill <id>` | Ends one session. |
+  | `ntilde mux kill-server` | Ends every session and stops the daemon. Waits up to 5 seconds for it to exit; if it has not, prints "Multiplexer did not stop within 5 s." and exits with code 1. |
+
+  These commands never start a daemon. With none running they print "No multiplexer is
+  running." and exit with code 1. The daemon writes its log to `logs/mux.log` in Ntilde's
+  data folder.
+- **Limitations:**
+  - Local shells only. SSH panes work exactly as before and do not persist.
+  - Inline images (sixel, kitty graphics) are not shown in persistent panes.
+  - Applying an update closes persistent sessions. Ntilde asks first ("N multiplexed sessions
+    will be closed by the update", buttons *Close sessions and update* / *Cancel*) and leaves
+    the update unapplied if you decline. While a daemon is running, a downloaded update is not
+    applied automatically when Ntilde starts; apply it from the update toast or the command
+    palette so Ntilde can ask first.
+  - If the daemon crashes, or is killed, its shells are gone.
+  - A shell inherits the daemon's environment, not the window's. The daemon's environment is
+    the one Ntilde had when it first started the daemon.
+  - Turning the setting off does not stop sessions that are already running. Panes open with
+    normal shells from then on, and the next time Ntilde saves your session it forgets which
+    panes the running sessions belonged to. Use `ntilde mux kill-server` to end them.
+  - The daemon exits by itself 10 minutes after its last session and its last connection
+    close.
+- **Security:** the daemon listens only on a local endpoint that only your user account can
+  open (a per-user named pipe on Windows, a socket in a private `0700` folder on macOS and
+  Linux). It never opens a network port.
+
 ---
 
 ## 4. Command Assist

@@ -37,6 +37,9 @@ using Ntilde.Models;
 using Ntilde.Services.Ssh;
 using Ntilde.ViewModels.Ssh;
 using Ntilde.Pty;
+using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
+using Ntilde.Shell.Mux;
 
 namespace Ntilde.Controls
 {
@@ -3075,15 +3078,19 @@ namespace Ntilde.Controls
         /// anywhere to fall back on. Split into its own method so that invariant can be asserted
         /// without spinning up a shell; see <c>PaneParserWiringTests</c>.
         /// </remarks>
-        internal void CreateAndWireParser()
+        internal void CreateAndWireParser(bool? forceConPtyFiltering = null, bool muxBacked = false)
         {
             if (Buffer == null) return;
 
-            Parser = new AnsiParser(Buffer);
+            // A mux-backed pane parses the same bytes as the daemon's parser and must stay equal to
+            // it: same ConPTY filtering (from Welcome), and no image decoding - the mux parser has
+            // none, and decoding moves the cursor, so a decoding pane would diverge. Inline images
+            // are a documented v1 limit of persistent sessions.
+            Parser = new AnsiParser(Buffer, forceConPtyFiltering);
 
             // Inline images (sixel / iTerm2 / Kitty) decode to the SKBitmap handles the draw
             // operation renders; without a decoder those parser paths silently no-op.
-            Parser.ImageDecoder = new Ntilde.Rendering.SkiaImageDecoder();
+            Parser.ImageDecoder = CreateImageDecoder(muxBacked);
 
             // A device reply is text on the PTY that the keyboard path never produced: DA1, a DSR
             // cursor report, an answerback. Nothing here can promise the shell's line editor was not
@@ -3118,7 +3125,7 @@ namespace Ntilde.Controls
 
             // Native kitty graphics on Windows (ConPTY pass-through opt-in): a freshly-created
             // parser must match what ApplySettings will set, same reasoning as above.
-            Parser.AllowNativeKittyGraphics = _settings?.AllowNativeKittyGraphics ?? true;
+            Parser.AllowNativeKittyGraphics = AllowsNativeKittyGraphics(muxBacked);
 
             // Kitty t=f (file transport) reads happen through this delegate so the VT layer
             // never touches disk itself. Confinement: absolute paths only, must resolve under
@@ -3130,9 +3137,8 @@ namespace Ntilde.Controls
             // reading a same-named local file would fabricate frames (or just fail). Leaving
             // the delegate null makes t=f probes answer ERR, so remote clients fall back to
             // inline payloads, which are self-contained.
-            Parser.ReadFileBytes = Profile is { Type: ConnectionType.SSH }
-                ? null
-                : ReadKittyTransportFile;
+            // A mux-backed pane never decodes images (above), so it has nothing to read either.
+            Parser.ReadFileBytes = ResolveKittyFileReader(muxBacked);
 
             Parser.OnBell += () =>
             {
@@ -3339,6 +3345,17 @@ namespace Ntilde.Controls
             };
         }
 
+        private static Ntilde.Rendering.SkiaImageDecoder? CreateImageDecoder(bool muxBacked) =>
+            muxBacked ? null : new Ntilde.Rendering.SkiaImageDecoder();
+
+        private bool AllowsNativeKittyGraphics(bool muxBacked) =>
+            !muxBacked && (_settings?.AllowNativeKittyGraphics ?? true);
+
+        private Func<string, byte[]?>? ResolveKittyFileReader(bool muxBacked) =>
+            muxBacked || Profile is { Type: ConnectionType.SSH }
+                ? null
+                : ReadKittyTransportFile;
+
         /// Spawns the session and wires the handlers that depend on it. Split out of
         /// <c>InitializeSession</c> alongside <see cref="CreateAndWireParser"/>; no behaviour change.
         internal void InitializeSessionCore(string effectiveShell, string args, TerminalProfile? profile, int cols, int rows)
@@ -3368,6 +3385,15 @@ namespace Ntilde.Controls
 
             string startingDir = profile?.StartingDirectory ?? "";
             Session = null;
+            MuxEndpoint = null;
+            // Set again below only once a session is wired; every early return (a spawn that threw,
+            // a failed SSH connect) must leave the view resizing its own buffer, not waiting for a
+            // stream resize from a mux session that is gone.
+            TermView.DefersBufferResizeToSession = false;
+            // Reset for every session, not only mux ones: a reconnect can land on a local fallback,
+            // and a stale flag would make every Enter reconnect.
+            _muxConnectionLost = false;
+            bool muxPreviousLost = false;
             _agentRegistration?.SetLifecycle(null);
             try
             {
@@ -3423,7 +3449,8 @@ namespace Ntilde.Controls
                             DiagnosticsLevel: (int)_sshDiagnosticsLevel,
                             InteractionHandler: SshInteractionHandler,
                             NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
-                        : null);
+                        : null,
+                    ExistingMuxSessionId: TakeMuxSessionIdToRestore(isSsh));
 
                 if (isSsh)
                 {
@@ -3444,7 +3471,13 @@ namespace Ntilde.Controls
                 }
                 else
                 {
-                    Session = SessionFactory.Create(request);
+                    Session = CreateLocalSession(request, out muxPreviousLost);
+                    if (Session is null)
+                    {
+                        // DaemonUnreachable: the shell this pane reopens is still in the daemon.
+                        // CreateLocalSession kept its id and wrote the retry banner; nothing to wire.
+                        return;
+                    }
                 }
 
                 TermView.SetSession(Session);
@@ -3516,6 +3549,88 @@ namespace Ntilde.Controls
             }
 
             WireReusedTermViewHandlers();
+            WireStreamOrderedSession(muxPreviousLost);
+        }
+
+        /// <summary>
+        /// The non-SSH spawn: through the persistent (mux) factory when there is one, else a plain
+        /// session. <paramref name="previousLost"/> is true when a mux session was started in place
+        /// of one that is gone; the notice is raised once it has attached.
+        /// </summary>
+        /// <remarks>
+        /// These notices are raised as <see cref="PersistenceNotice"/> (a window toast), never written
+        /// into the buffer: the new shell's ConPTY - or the daemon's parser - owns that screen and
+        /// paints its first frame over any local text.
+        /// </remarks>
+        private ITerminalSession? CreateLocalSession(TerminalSessionRequest request, out bool previousLost)
+        {
+            previousLost = false;
+            if (SessionFactory is not IPersistentSessionFactory persistent)
+            {
+                return SessionFactory.Create(request);
+            }
+
+            PersistentSessionResult result = persistent.CreatePersistent(request);
+            MuxEndpoint = result.Endpoint;
+            if (result.Outcome == PersistentSessionOutcome.DaemonUnreachable || result.Session is null)
+            {
+                EnterMuxUnreachable(request.ExistingMuxSessionId, result);
+                return null;
+            }
+
+            if (result.Outcome == PersistentSessionOutcome.Unavailable)
+            {
+                TerminalLogger.Log($"[TerminalPane] multiplexer unavailable (version mismatch: {result.VersionMismatch}); starting a non-persistent session");
+                RaisePersistenceNotice(MuxUnavailableNoticeTitle, result.VersionMismatch
+                    ? $"{MuxUnavailableBanner}\n{MuxVersionMismatchHint}"
+                    : MuxUnavailableBanner);
+            }
+            else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
+            {
+                // Raised only after the attach: a failed attach shows its own banner instead.
+                previousLost = true;
+            }
+
+            return result.Session;
+        }
+
+        /// <summary>
+        /// UI thread. A pane reopening a daemon session could not reach the daemon: no stand-in local
+        /// shell (it would bury the running one and lose its id). The id stays pending - so the
+        /// session file keeps naming it and orphan adoption does not claim it - and Enter retries.
+        /// Written into the buffer like the disconnect banner: no live session paints this screen.
+        /// </summary>
+        private void EnterMuxUnreachable(Guid? sessionId, PersistentSessionResult result)
+        {
+            MuxSessionIdToRestore = sessionId;
+            _muxConnectionLost = true;
+            // Keys must reach OnKeyDown's retry, not a previous (disposed) session the view still holds.
+            TermView.SetSession(null);
+            TerminalLogger.Log($"[TerminalPane] multiplexer not reachable for session {sessionId} ({result.Detail}); kept for a retry");
+            string banner = result.VersionMismatch
+                ? $"{MuxUnreachableBanner}\r\n{MuxVersionMismatchHint}"
+                : MuxUnreachableBanner;
+            WriteBanner($"\r\n\x1b[90m{banner}\x1b[0m\r\n");
+        }
+
+        /// <summary>Posts <see cref="PersistenceNotice"/> to this pane's UI thread.</summary>
+        private void RaisePersistenceNotice(string title, string message)
+        {
+            this.Dispatcher.Post(() =>
+            {
+                if (Volatile.Read(ref _disposed)) return;
+                PersistenceNotice?.Invoke(this, title, message);
+            });
+        }
+
+        /// <summary>
+        /// A session that orders resizes in its stream resizes the buffer itself; the view only
+        /// requests (spec §8). A mux session is then wired and attached, last.
+        /// </summary>
+        private void WireStreamOrderedSession(bool muxPreviousLost)
+        {
+            TermView.DefersBufferResizeToSession = Session is ITerminalSessionCapabilities { OrdersResizeInStream: true };
+            if (Session is MuxClientSession mux) WireMuxSession(mux, muxPreviousLost);
         }
 
         /// <summary>
@@ -3529,6 +3644,169 @@ namespace Ntilde.Controls
         /// </remarks>
         private static bool SessionAnswersDeviceQueries(ITerminalSession? session)
             => session is ITerminalSessionCapabilities { AnswersDeviceQueries: true };
+
+        internal const string MuxUnavailableBanner = "[Multiplexer unavailable — this session will not persist]";
+        internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server' to replace it]";
+        internal const string MuxPreviousLostBanner = "[Previous session was lost — started a new shell]";
+        internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
+        internal const string MuxUnreachableBanner = "[Multiplexer not reachable — press Enter to retry]";
+        internal const string MuxSessionFailedBanner = "[Multiplexer session failed — press Enter to start a new shell]";
+        internal const string MuxUnavailableNoticeTitle = "Session not persistent";
+        internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
+
+        /// <summary>
+        /// Raised on the UI thread with (title, message) when this pane's session will not persist or
+        /// replaced a lost one. MainWindow shows it as a toast (never written into the buffer).
+        /// </summary>
+        internal event Action<TerminalPane, string, string>? PersistenceNotice;
+
+        /// <summary>Set by SessionManager.RestorePaneTree: the daemon session this pane should reopen (consumed once).</summary>
+        internal Guid? MuxSessionIdToRestore { get; set; }
+
+        /// <summary>The daemon endpoint the current session lives on; null when it is not persistent.</summary>
+        internal string? MuxEndpoint { get; private set; }
+
+        /// <summary>Raised on the UI thread after a mux session attached (MainWindow saves the session file).</summary>
+        internal event Action<TerminalPane>? PersistentSessionAttached;
+
+        private Guid? _muxReattachId;    // UI thread: set when the connection dropped, consumed by Reconnect
+        private bool _muxConnectionLost; // UI thread
+
+        /// <summary>An SSH pane never reopens a daemon session, and leaves any pending id unconsumed.</summary>
+        private Guid? TakeMuxSessionIdToRestore(bool isSsh) => isSsh ? null : TakeMuxSessionIdToRestore();
+
+        private Guid? TakeMuxSessionIdToRestore()
+        {
+            Guid? id = _muxReattachId ?? MuxSessionIdToRestore;
+            _muxReattachId = null;
+            MuxSessionIdToRestore = null;
+            return id;
+        }
+
+        /// <summary>
+        /// UI thread, after every other handler is wired: rebuilds the parser to match the daemon's,
+        /// subscribes the stream events, then attaches - so the snapshot cannot arrive before its
+        /// handler exists (spec §8).
+        /// </summary>
+        private void WireMuxSession(MuxClientSession mux, bool previousLost)
+        {
+            CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true);
+            float cw = TermView.Metrics.CellWidth, ch = TermView.Metrics.CellHeight;
+            if (cw > 0) Parser!.CellWidth = cw;
+            if (ch > 0) Parser!.CellHeight = ch;
+
+            mux.SnapshotReceived += snapshot => HandleMuxSnapshot(mux, snapshot);
+            mux.StreamResize += (c, r) => HandleMuxStreamResize(mux, c, r);
+            // Disconnected can fire on any thread (even concurrently with a delivery); both marshal.
+            mux.Disconnected += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxDisconnectedBanner));
+            // A faulted session is gone for good (the daemon will not deliver it again): its own
+            // wording, and no reattach - Enter ends it and starts a new shell (see Reconnect).
+            mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxSessionFailedBanner, reattach: false));
+            _ = AttachMuxAsync(mux, previousLost);
+        }
+
+        /// <remarks>
+        /// A delivery can run just after the session was disposed (MuxClientSession.Dispose does not
+        /// wait for one in progress), so every stream handler checks this first.
+        /// </remarks>
+        private bool IsCurrentMux(MuxClientSession source) => !Volatile.Read(ref _disposed) && ReferenceEquals(Session, source);
+
+        /// <summary>
+        /// Delivery thread (MuxClientRead). Restores here, under the buffer's own lock - never
+        /// marshalled to the UI thread and never blocking, because a cancelled attach can be waiting
+        /// on this handler. Internal for tests.
+        /// </summary>
+        internal void HandleMuxSnapshot(MuxClientSession source, TerminalStateSnapshot snapshot)
+        {
+            if (!IsCurrentMux(source) || Buffer is not { } buffer || Parser is not { } parser) return;
+            try
+            {
+                TerminalStateTransfer.Restore(buffer, parser, snapshot);
+            }
+            catch (Exception ex)
+            {
+                TerminalLogger.Log($"[TerminalPane] snapshot restore for {source.Id} failed: {ex.Message}");
+                return;
+            }
+
+            this.Dispatcher.Post(() => { if (IsCurrentMux(source)) TermView.NotifySessionResizedBuffer(); });
+            QueueOutputUiRefresh();
+        }
+
+        /// <summary>Delivery thread: the mux resized at this point in the stream; the pane follows exactly there.</summary>
+        private void HandleMuxStreamResize(MuxClientSession source, int cols, int rows)
+        {
+            if (!IsCurrentMux(source) || Buffer is not { } buffer) return;
+            buffer.Resize(cols, rows);
+            this.Dispatcher.Post(() => { if (IsCurrentMux(source)) TermView.NotifySessionResizedBuffer(); });
+            QueueOutputUiRefresh();
+        }
+
+        /// <summary>UI thread. The daemon or the connection is gone; the shell may still be running there.</summary>
+        private void HandleMuxConnectionLost(MuxClientSession source, string banner, bool reattach = true)
+        {
+            if (!IsCurrentMux(source) || _muxConnectionLost) return;
+            _muxConnectionLost = true;
+            _muxReattachId = reattach ? source.Id : null;
+            // Input must not reach a daemon session this pane is not showing (after a failed attach
+            // the connection is still up, and SendInput would deliver it). With no session the view
+            // leaves keys unhandled, so Enter reaches OnKeyDown's reconnect.
+            if (!source.IsAttached) TermView.SetSession(null);
+            TerminalLogger.Log($"[TerminalPane] multiplexer connection lost for session {source.Id}");
+            WriteBanner($"\r\n\x1b[90m{banner}\x1b[0m\r\n");
+            // Deliberately NOT ProcessExited: MainWindow would apply ShellExitPolicy and may close the pane.
+        }
+
+        private async Task AttachMuxAsync(MuxClientSession mux, bool previousLost)
+        {
+            MuxPresentation presentation = BuildMuxPresentation(); // UI thread, before the first await
+            int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, 50_000);
+            try
+            {
+                await mux.AttachAsync(scrollback, presentation).ConfigureAwait(false);
+                this.Dispatcher.Post(() =>
+                {
+                    if (!IsCurrentMux(mux)) return;
+                    if (previousLost)
+                    {
+                        TerminalLogger.Log($"[TerminalPane] previous multiplexer session was lost; started {mux.Id}");
+                        PersistenceNotice?.Invoke(this, MuxPreviousLostNoticeTitle, MuxPreviousLostBanner);
+                    }
+
+                    PersistentSessionAttached?.Invoke(this);
+                });
+            }
+            catch (Exception ex)
+            {
+                TerminalLogger.Log($"[TerminalPane] attach to {mux.Id} failed: {ex.Message}");
+                this.Dispatcher.Post(() => HandleMuxConnectionLost(mux,
+                    $"[Multiplexer attach failed: {SanitizeBannerValue(ex.Message)}] [Press Enter to reconnect]"));
+            }
+        }
+
+        /// <summary>
+        /// What the daemon's parser needs from this pane's presentation: grid, cell size in device
+        /// pixels (DIPs x effective render scaling - the unit in-band size reports use), the
+        /// profile-effective theme's default colours and the kitty keyboard gate.
+        /// </summary>
+        internal MuxPresentation BuildMuxPresentation()
+        {
+            double scale = TermView.EffectiveRenderScaling;
+            if (double.IsNaN(scale) || scale <= 0) scale = 1;
+            TerminalTheme? theme = _settings is null ? null : BuildEffectiveSettings(_settings).ActiveTheme;
+            int cols = TermView.Cols > 0 ? TermView.Cols : Buffer?.Cols ?? 80;
+            int rows = TermView.Rows > 0 ? TermView.Rows : Buffer?.Rows ?? 24;
+            return new MuxPresentation
+            {
+                Cols = cols,
+                Rows = rows,
+                CellWidthPx = (float)(TermView.Metrics.CellWidth * scale),
+                CellHeightPx = (float)(TermView.Metrics.CellHeight * scale),
+                DefaultFg = theme?.Foreground.ToUint(),
+                DefaultBg = theme?.Background.ToUint(),
+                KittyKeyboardEnabled = _settings?.EnableKittyKeyboardProtocol ?? true,
+            };
+        }
 
         /// <summary>
         /// Queues the after-output UI work — scrollbar extent, cursor visibility, and the
@@ -3647,6 +3925,9 @@ namespace Ntilde.Controls
                     Parser.CellWidth = cwMetric;
                     Parser.CellHeight = chMetric;
                 }
+
+                // The daemon's parser answers size reports, so it needs the new cell pixels too.
+                if (Session is MuxClientSession { IsAttached: true } mux) mux.UpdatePresentation(BuildMuxPresentation());
 
                 // Cell geometry just changed, so the agent-host's copy of this
                 // pane's render inputs is stale (A5 captureScreen).
@@ -3847,8 +4128,12 @@ namespace Ntilde.Controls
 
                 // Native kitty graphics on Windows (ConPTY pass-through opt-in): same live-sync
                 // reasoning as the kill switch above.
-                Parser.AllowNativeKittyGraphics = effectiveSettings.AllowNativeKittyGraphics;
+                // Never for a mux-backed parser: it must not decode what the daemon's parser does not.
+                Parser.AllowNativeKittyGraphics = Session is not MuxClientSession && effectiveSettings.AllowNativeKittyGraphics;
             }
+
+            // Theme colours, cell metrics and the kitty-keyboard gate live in the daemon's parser too.
+            if (Session is MuxClientSession { IsAttached: true } attachedMux) attachedMux.UpdatePresentation(BuildMuxPresentation());
 
             // Font family/size and shaping toggles just moved with the settings.
             UpdateAgentRenderParameters();
@@ -4145,7 +4430,9 @@ namespace Ntilde.Controls
             // Font Zoom - TBD
 
             // Reconnect if dead
-            if (ShouldReconnectOnEnter(Session) && e.Key == Key.Enter)
+            // _muxConnectionLost covers what the session cannot report itself: an attach that failed
+            // over a connection that is still up leaves a running, connected, never-attached session.
+            if ((_muxConnectionLost || ShouldReconnectOnEnter(Session)) && e.Key == Key.Enter)
             {
                 e.Handled = true;
                 Reconnect();
@@ -4169,17 +4456,33 @@ namespace Ntilde.Controls
                 UnregisterActiveSshSession(session);
                 Session = null;
                 _agentRegistration?.SetLifecycle(null);
+
+                // The daemon will never deliver a faulted session again and the factory will not
+                // reopen it, so detaching alone would leave its child running unattached forever
+                // (the reaper only collects exited sessions). End it; Enter then starts a fresh one.
+                if (session is MuxClientSession { IsFaulted: true, IsConnected: true } faulted) faulted.Kill();
                 session.Dispose();
             }
 
             LastExitCode = null;
-            WriteBanner("\r\n\x1b[90m[Reconnecting...]\x1b[0m\r\n");
+            // A lost mux connection reopens the same daemon session (InitializeSessionCore consumes
+            // _muxReattachId); its snapshot then replaces this banner along with the rest of the screen.
+            WriteBanner(_muxReattachId is null && MuxSessionIdToRestore is null
+                ? "\r\n\x1b[90m[Reconnecting...]\x1b[0m\r\n"
+                : "\r\n\x1b[90m[Reattaching...]\x1b[0m\r\n");
             InitializeSession(ShellCommand, Profile, TermView.Cols, TermView.Rows, ShellArgs);
         }
 
+        /// <remarks>
+        /// A mux session whose connection dropped (or whose daemon-side parser faulted) still reports
+        /// its process as running - it may well be, in the daemon - so it is named here explicitly.
+        /// </remarks>
         internal static bool ShouldReconnectOnEnter(ITerminalSession? session)
         {
-            return session == null || !session.IsProcessRunning;
+            return session == null
+                || !session.IsProcessRunning
+                || session is MuxClientSession { IsConnected: false }
+                || session is MuxClientSession { IsFaulted: true };
         }
 
         internal void ConfigureRemoteFilesSidebarForTest(IRemoteDirectoryBrowserService directoryBrowserService)

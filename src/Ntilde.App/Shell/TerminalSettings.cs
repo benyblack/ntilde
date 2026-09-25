@@ -100,6 +100,14 @@ namespace Ntilde.Shell
         /// is deliberately absent from TerminalPane.ApplySettings.
         /// </summary>
         public string AgentIndicatorTabRollup { get; set; } = "WritesOnly";
+        /// <summary>
+        /// "Off" (default) or "KeepOnClose": local shells run in the <c>ntilde mux</c> daemon and survive
+        /// closing the window, a crash and a restart (docs/USER_MANUAL.md, "Persistent sessions").
+        /// Unrecognised values behave as "Off" - a typo must never start a background daemon. Read by
+        /// MainWindow (which picks the session factory for new panes); the pane never reads it, so it is
+        /// deliberately absent from TerminalPane.ApplySettings.
+        /// </summary>
+        public string SessionPersistence { get; set; } = "Off";
         public System.Collections.Generic.Dictionary<string, string> Keybindings { get; set; } = new();
 
         // Title bar customization. Deltas only: an id absent here takes its TitleBarCatalog default,

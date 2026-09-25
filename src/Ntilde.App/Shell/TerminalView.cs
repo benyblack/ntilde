@@ -1010,9 +1010,13 @@ namespace Ntilde.Shell
                         int cols = (int)(Bounds.Width / _metrics.CellWidth);
                         int rows = (int)(Bounds.Height / _metrics.CellHeight);
 
-                        if (cols > 0 && rows > 0 && (cols != _buffer.Cols || rows != _buffer.Rows))
+                        bool fontGridChanged = DefersBufferResizeToSession
+                            ? GridDiffersFromLastSent(cols, rows)
+                            : (cols != _buffer.Cols || rows != _buffer.Rows);
+
+                        if (cols > 0 && rows > 0 && fontGridChanged)
                         {
-                            _buffer.Resize(cols, rows);
+                            if (!DefersBufferResizeToSession) _buffer.Resize(cols, rows);
                             ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
                             OnResize?.Invoke(cols, rows);
 
@@ -1028,7 +1032,7 @@ namespace Ntilde.Shell
                             // path would. That predates this change and is left alone here;
                             // recording what it actually dispatched is what keeps the field
                             // honest either way.
-                            RecordDispatchedGrid(cols, rows);
+                            RecordGridSent(cols, rows);
                         }
                     }
                 }
@@ -1547,10 +1551,17 @@ namespace Ntilde.Shell
             _glyphTypeface = _typeface.GlyphTypeface;
         }
 
-        public void SetSession(ITerminalSession session)
+        /// <summary>
+        /// The session keystrokes, text, mouse reports and drops are sent to. Null stops all of it:
+        /// keys then go unhandled, so Enter bubbles to the pane's reconnect handler (a pane whose
+        /// multiplexer session is no longer attached uses this).
+        /// </summary>
+        public void SetSession(ITerminalSession? session)
         {
             _session = session;
         }
+
+        internal ITerminalSession? SessionForTest => _session;
 
         public event Action<int, int>? ScrollStateChanged;
         private int _scrollOffset = 0;
@@ -1713,6 +1724,46 @@ namespace Ntilde.Shell
         // being on a grid it had never been given.
         private int _lastDispatchedCols = 0;
         private int _lastDispatchedRows = 0;
+
+        // Deferred mode (Phase 2 spec §8): the grid last *requested* via OnResize. The buffer is resized
+        // by the session (in stream order), so "did the grid change" compares against the request, and
+        // _lastDispatched* records only what the buffer actually became (NotifySessionResizedBuffer).
+        private int _lastRequestedCols;
+        private int _lastRequestedRows;
+
+        /// <summary>
+        /// Set by the pane for a session that orders resizes in its output stream: OnResize is then only a
+        /// request, and the buffer changes size when the session says so. Everything else in the view
+        /// reads the buffer's size under its lock at use time.
+        /// </summary>
+        internal bool DefersBufferResizeToSession { get; set; }
+
+        internal (int Cols, int Rows) LastRequestedGridForTest => (_lastRequestedCols, _lastRequestedRows);
+
+        private bool GridDiffersFromLastSent(int cols, int rows) => DefersBufferResizeToSession
+            ? cols != _lastRequestedCols || rows != _lastRequestedRows
+            : cols != _lastDispatchedCols || rows != _lastDispatchedRows;
+
+        /// <summary>After raising OnResize for (cols, rows): record the request, and the dispatch only if the buffer really is that size.</summary>
+        private void RecordGridSent(int cols, int rows)
+        {
+            _lastRequestedCols = cols;
+            _lastRequestedRows = rows;
+            if (!DefersBufferResizeToSession || (_buffer is { } b && b.Cols == cols && b.Rows == rows)) RecordDispatchedGrid(cols, rows);
+        }
+
+        /// <summary>UI thread: the session resized the buffer (snapshot restore or an in-stream resize).</summary>
+        internal void NotifySessionResizedBuffer()
+        {
+            Dispatcher.UIThread.VerifyAccess();
+            if (_buffer is not { } buffer) return;
+            RecordDispatchedGrid(buffer.Cols, buffer.Rows);
+            ResetMouseMotionTracking();
+            _rowCache.MaxEntries = Math.Max(buffer.Rows * 3, 50);
+            _rowCache.RequestClear();
+            ApplyScrollOffset(_scrollOffset, retireWheelTarget: true); // re-clamp against the new TotalLines/Rows
+            InvalidateBuffer();
+        }
 
         // Throttle resize: limit how often we send resize to PTY (interval-based, not debounce)
         private DateTime _lastPtyResizeTime = DateTime.MinValue;
@@ -1950,11 +2001,14 @@ namespace Ntilde.Shell
                     _pendingRows = rows;
 
                     // DISCRETE RESIZE: Only trigger actual resize when cell dimensions change
-                    bool dimensionsChanged = (cols != _lastDispatchedCols || rows != _lastDispatchedRows);
+                    bool dimensionsChanged = GridDiffersFromLastSent(cols, rows);
 
                     if (!_isReady)
                     {
                         _isReady = true;
+                        // No session is attached yet at first layout, so DefersBufferResizeToSession
+                        // is still false here regardless of what the pane will set once it is ready
+                        // (see Ready below); the initial grid always applies straight to the buffer.
                         if (_buffer != null) _buffer.Resize(cols, rows);
                         ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
                         Ready?.Invoke(cols, rows);
@@ -1964,7 +2018,7 @@ namespace Ntilde.Shell
 
                         // This path dispatches inline rather than through the throttle, so it
                         // records the dispatch itself.
-                        RecordDispatchedGrid(cols, rows);
+                        RecordGridSent(cols, rows);
                     }
 
                     if (dimensionsChanged)
@@ -2078,7 +2132,12 @@ namespace Ntilde.Shell
 
             _resizeDispatchCancelled = false;
 
-            if (cols == _lastDispatchedCols && rows == _lastDispatchedRows) return;
+            // Deferred mode compares against the last *requested* grid (GridDiffersFromLastSent),
+            // not the buffer's - the session may not have caught up to an earlier request yet.
+            // Routing through QueueResizeDispatch -> SendThrottledResize is what actually gives
+            // deferred mode its "raise OnResize and record the request, without touching the
+            // buffer" behaviour; both already branch on DefersBufferResizeToSession there.
+            if (!GridDiffersFromLastSent(cols, rows)) return;
 
             _pendingCols = cols;
             _pendingRows = rows;
@@ -2096,15 +2155,22 @@ namespace Ntilde.Shell
                     // CRITICAL ORDER: Resize buffer FIRST (synchronously, under lock)
                     // THEN notify PTY (triggers SIGWINCH, new output uses new size)
                     // This prevents race where PTY sends data for new dimensions while buffer is mid-reflow
-                    _buffer.Resize(_pendingCols, _pendingRows);
+                    //
+                    // Deferred mode (Phase 2 spec §8): a session that orders resizes in its stream
+                    // owns the buffer's size, so this becomes only a request - the buffer is resized
+                    // later, on the delivery thread, by NotifySessionResizedBuffer.
+                    if (!DefersBufferResizeToSession)
+                    {
+                        _buffer.Resize(_pendingCols, _pendingRows);
+                        _rowCache.MaxEntries = Math.Max(_pendingRows * 3, 50);
+                        _rowCache.RequestClear();
+                    }
 
                     // Recorded here, where the dispatch actually happens, and not where the grid
                     // was computed - see the field declarations and #432.
-                    RecordDispatchedGrid(_pendingCols, _pendingRows);
+                    RecordGridSent(_pendingCols, _pendingRows);
 
                     ResetMouseMotionTracking(); // Issue #269: grid reflowed, cell coords are stale.
-                    _rowCache.MaxEntries = Math.Max(_pendingRows * 3, 50);
-                    _rowCache.RequestClear();
                     OnResize?.Invoke(_pendingCols, _pendingRows);
                     if (_pendingResizeStartedAt != DateTime.MinValue)
                     {

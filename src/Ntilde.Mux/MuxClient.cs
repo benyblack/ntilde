@@ -110,6 +110,13 @@ public sealed class MuxClient : IDisposable
         RequestAsync(MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty, MuxJsonContext.Default.MuxEmpty, cancellationToken);
 
     /// <summary>
+    /// Asks the daemon to kill every session and exit (spec §4). Completes once the server has
+    /// acknowledged; the connection closes shortly after as the server tears down.
+    /// </summary>
+    public Task ShutdownServerAsync(CancellationToken cancellationToken = default) =>
+        RequestAsync(MuxMethods.Shutdown, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty, MuxJsonContext.Default.MuxEmpty, cancellationToken);
+
+    /// <summary>
     /// An unattached session. Wire its events, then call <see cref="MuxClientSession.AttachAsync"/>:
     /// nothing is raised before a handler can exist, so nothing needs buffering (spec §9.6).
     /// </summary>

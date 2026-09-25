@@ -20,6 +20,11 @@ public sealed class MuxServer : IDisposable
     private Thread? _acceptThread;
     private int _disposed;
 
+    // Serializes connection registration against TryBeginIdleShutdown (spec §4): a connection either
+    // registers before the idle check (which then refuses) or is refused after it.
+    private readonly object _lifecycleGate = new();
+    private bool _acceptingStopped;
+
     public MuxServer(ITerminalSessionFactory sessionFactory, MuxServerOptions? options = null)
     {
         _factory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
@@ -51,6 +56,10 @@ public sealed class MuxServer : IDisposable
         if (o.MaxCells <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxCells, "MaxCells must be positive.");
         if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");
         if (o.MaxFlightRecordingBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxFlightRecordingBytes, "MaxFlightRecordingBytes must be positive.");
+        if (o.MaxQueuedInputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxQueuedInputBytes, "MaxQueuedInputBytes must be positive.");
+        if (o.AcceptRetryInitialDelay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptRetryInitialDelay, "AcceptRetryInitialDelay must be positive.");
+        if (o.AcceptRetryMaxDelay < o.AcceptRetryInitialDelay) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptRetryMaxDelay, "AcceptRetryMaxDelay cannot be shorter than AcceptRetryInitialDelay.");
+        if (o.AcceptFailureLogInterval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptFailureLogInterval, "AcceptFailureLogInterval cannot be negative.");
         return o;
     }
 
@@ -60,6 +69,34 @@ public sealed class MuxServer : IDisposable
     public IReadOnlyCollection<Guid> GetSessionIds() => _sessions.Keys.ToArray();
 
     internal event Action<MuxServerConnection>? ConnectionClosed;
+
+    /// <summary>
+    /// A client sent <c>shutdown</c>. Raised on a thread-pool thread after the reply is queued; the
+    /// host is expected to kill every session and dispose the server. Handler exceptions are logged.
+    /// </summary>
+    public event Action? ShutdownRequested;
+
+    private long _acceptFailingSinceMs; // Environment.TickCount64 of the current failure streak's first failure; 0 = accepting fine
+
+    /// <summary>
+    /// How long accepting has been failing without a single success in between; null while it works.
+    /// The accept loop itself never gives up (see <c>AcceptLoop</c>); the host reads this to decide
+    /// when a daemon nobody can reach should exit.
+    /// </summary>
+    public TimeSpan? AcceptFailingFor
+    {
+        get
+        {
+            long since = Interlocked.Read(ref _acceptFailingSinceMs);
+            return since == 0 ? null : TimeSpan.FromMilliseconds(Math.Max(0, Environment.TickCount64 - since));
+        }
+    }
+
+    /// <summary>True once <see cref="TryBeginIdleShutdown"/> succeeded: new connections are refused.</summary>
+    public bool IsAcceptingStopped { get { lock (_lifecycleGate) return _acceptingStopped; } }
+
+    /// <summary>Sessions whose child has not exited (a snapshot).</summary>
+    public int RunningSessionCount => _sessions.Values.Count(s => !s.IsExited);
 
     /// <summary>Starts accepting on a dedicated thread. The server owns the listener from here on.</summary>
     public void Start(IMuxListener listener)
@@ -77,15 +114,82 @@ public sealed class MuxServer : IDisposable
     public void AcceptConnection(Stream stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        if (Volatile.Read(ref _disposed) != 0)
+        MuxServerConnection connection;
+        lock (_lifecycleGate)
         {
-            stream.Dispose();
-            return;
+            if (Volatile.Read(ref _disposed) != 0 || _acceptingStopped)
+            {
+                stream.Dispose();
+                return;
+            }
+
+            connection = new MuxServerConnection(this, stream);
+            _connections[connection.ConnectionId] = connection;
         }
 
-        var connection = new MuxServerConnection(this, stream);
-        _connections[connection.ConnectionId] = connection;
         connection.Start();
+    }
+
+    /// <summary>
+    /// Removes and disposes exited sessions nobody is attached to that exited at least
+    /// <paramref name="grace"/> ago (spec §4). Returns how many were reaped.
+    /// </summary>
+    public int ReapExitedSessions(TimeSpan grace)
+    {
+        long now = Environment.TickCount64;
+        long graceMs = (long)grace.TotalMilliseconds;
+        int reaped = 0;
+        foreach (HeadlessTerminalSession s in _sessions.Values)
+        {
+            if (!s.IsExited || s.AttachedClients != 0 || now - s.ExitedAtMs < graceMs) continue;
+
+            // Remove only this exact instance: never a session that replaced it under the same id.
+            if (_sessions.TryRemove(new KeyValuePair<Guid, HeadlessTerminalSession>(s.Id, s)))
+            {
+                s.Dispose();
+                reaped++;
+            }
+        }
+
+        return reaped;
+    }
+
+    /// <summary>
+    /// Stops accepting iff there is nothing to serve (no connection, no running session),
+    /// atomically with <see cref="AcceptConnection"/>: a connection either registered before (and
+    /// this returns false) or is refused after. Idempotent once it has succeeded.
+    /// </summary>
+    public bool TryBeginIdleShutdown()
+    {
+        lock (_lifecycleGate)
+        {
+            if (_acceptingStopped) return true;
+            if (!_connections.IsEmpty || RunningSessionCount != 0) return false;
+            _acceptingStopped = true;
+        }
+
+        _listener?.Dispose();
+        return true;
+    }
+
+    /// <summary>Kills and disposes every session (the <c>shutdown</c> path).</summary>
+    public void KillAllSessions()
+    {
+        foreach (Guid id in _sessions.Keys)
+        {
+            if (_sessions.TryRemove(id, out HeadlessTerminalSession? s))
+            {
+                try { s.Kill(); }
+                catch (Exception ex) { Log($"[MuxServer] kill {id} failed: {ex.Message}"); }
+                s.Dispose();
+            }
+        }
+    }
+
+    internal void RequestShutdown()
+    {
+        try { ShutdownRequested?.Invoke(); }
+        catch (Exception ex) { Log($"[MuxServer] ShutdownRequested handler threw: {ex}"); }
     }
 
     internal bool TryGetSession(Guid id, [NotNullWhen(true)] out HeadlessTerminalSession? session) =>
@@ -148,6 +252,7 @@ public sealed class MuxServer : IDisposable
                 Rows = p.Rows,
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
+                MaxQueuedInputBytes = Options.MaxQueuedInputBytes,
             });
         }
         catch (Exception ex)
@@ -198,6 +303,20 @@ public sealed class MuxServer : IDisposable
         }
 
         session.Kill();
+
+        // Kill queues the terminal exit behind whatever output is already queued, so attached
+        // clients still get Exited in stream order. Dispose (which cancels first and would drop that
+        // exit) only once the parse thread has worked through it: FlushAsync completes after the
+        // exit item was processed - or dropped, if the session stopped some other way meanwhile.
+        // Without this the removed session was never disposed: its queues, token source and child
+        // handle were left to the finalizer.
+        _ = session.FlushAsync().ContinueWith(
+            _ =>
+            {
+                try { session.Dispose(); }
+                catch (Exception ex) { Log($"[MuxServer] disposing killed session {id} failed: {ex.Message}"); }
+            },
+            CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
     }
 
     internal void OnConnectionClosed(MuxServerConnection connection)
@@ -233,24 +352,84 @@ public sealed class MuxServer : IDisposable
         _cts.Dispose();
     }
 
+    /// <summary>True once the loop's end is the server's own doing (Dispose, idle shutdown), not a fault.</summary>
+    private bool IsStoppingDeliberately
+    {
+        get
+        {
+            if (_cts.IsCancellationRequested || Volatile.Read(ref _disposed) != 0) return true;
+            lock (_lifecycleGate) return _acceptingStopped;
+        }
+    }
+
+    /// <summary>
+    /// A failed accept never ends the loop: it is logged (rate-limited) and retried after a doubling
+    /// pause, forever. Giving up here would strand shells a connected client is still using; whether
+    /// a daemon nobody can reach should exit is the host's call (<see cref="AcceptFailingFor"/>).
+    /// A listener that reports itself closed when we did not close it counts as a failure too.
+    /// </summary>
     private void AcceptLoop()
     {
-        try
+        CancellationToken token = _cts.Token;
+        TimeSpan delay = Options.AcceptRetryInitialDelay;
+        long failures = 0;
+        long lastLoggedMs = 0;
+        while (!token.IsCancellationRequested)
         {
-            while (!_cts.IsCancellationRequested)
+            Stream? stream;
+            Exception? failure = null;
+            try
             {
-                Stream? stream = _listener!.Accept(_cts.Token);
-                if (stream is null) return;
+                stream = _listener!.Accept(token);
+            }
+            catch (Exception) when (IsStoppingDeliberately)
+            {
+                // Dispose/idle shutdown tore the listener down under the accept: the normal end.
+                return;
+            }
+            catch (Exception ex)
+            {
+                stream = null;
+                failure = ex;
+            }
+
+            if (stream is null)
+            {
+                if (IsStoppingDeliberately) return;
+
+                failures++;
+                long now = Environment.TickCount64;
+                Interlocked.CompareExchange(ref _acceptFailingSinceMs, now, 0);
+                // The first failure of a streak in full, then at most one line per AcceptFailureLogInterval.
+                if (failures == 1 || now - lastLoggedMs >= (long)Options.AcceptFailureLogInterval.TotalMilliseconds)
+                {
+                    lastLoggedMs = now;
+                    Log(failure is null
+                        ? $"[MuxServer] the listener closed unexpectedly ({failures} failed accepts in a row); retrying"
+                        : $"[MuxServer] accept failed ({failures} in a row); retrying: {(failures == 1 ? failure.ToString() : failure.Message)}");
+                }
+
+                // Cancellable pause: Dispose must not wait out a backoff.
+                if (token.WaitHandle.WaitOne(delay)) return;
+                delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, Options.AcceptRetryMaxDelay.Ticks));
+                continue;
+            }
+
+            if (failures > 0) Log($"[MuxServer] accepting again after {failures} failed accepts");
+            failures = 0;
+            delay = Options.AcceptRetryInitialDelay;
+            Interlocked.Exchange(ref _acceptFailingSinceMs, 0);
+            try
+            {
                 AcceptConnection(stream);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // Dispose cancelled the token: the normal way this loop ends.
-        }
-        catch (Exception ex)
-        {
-            Log($"[MuxServer] accept loop terminated: {ex}");
+            catch (Exception ex)
+            {
+                // One connection that could not be set up is that connection's problem, not the loop's.
+                Log($"[MuxServer] setting up an accepted connection failed: {ex}");
+                try { stream.Dispose(); }
+                catch (Exception disposeEx) { Log($"[MuxServer] disposing that connection's stream failed: {disposeEx.Message}"); }
+            }
         }
     }
 }
