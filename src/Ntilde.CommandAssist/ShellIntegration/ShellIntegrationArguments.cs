@@ -19,6 +19,12 @@ namespace Ntilde.CommandAssist.ShellIntegration;
 /// The pane no longer stores the merged command line, which stops this happening again. This is
 /// for the sessions already on disk, which that fix cannot reach retroactively.
 ///
+/// bash had the same loop through its own injection, <c>--rcfile &lt;bootstrap&gt; -i</c>: the bash
+/// provider treats any <c>--rcfile</c> as the user's and backs off, so a restored pane replayed the
+/// stale bootstrap - in a session reported from macOS, one from before the Ntilde rebrand, under
+/// the old NovaTerminal data folder - with integration off, and re-saved it on every quit. Hence
+/// more than one bootstrap directory: the current one and the pre-rebrand one.
+///
 /// Deliberately narrow on both axes:
 /// <list type="bullet">
 /// <item>Only arguments identifiable as ours are dropped. A user's own <c>-File</c> or
@@ -32,6 +38,8 @@ public static class ShellIntegrationArguments
 {
     private const string BootstrapFileName = "command-assist-bootstrap.ps1";
 
+    private const string BashBootstrapFileName = "command-assist-bootstrap.bash";
+
     /// <summary>The sentinel the generated bootstrap uses to recognise its own prompt wrapper.</summary>
     private const string BootstrapSentinel = "__ntilde_prompt_wrapper";
 
@@ -42,6 +50,13 @@ public static class ShellIntegrationArguments
     /// Null or unresolvable means nothing can be proven ours, so nothing is dropped.
     /// </param>
     public static string StripInjected(string? arguments, string? bootstrapDirectory)
+        => StripInjected(arguments, new[] { bootstrapDirectory });
+
+    /// <param name="bootstrapDirectories">
+    /// Every directory this app has written its bootstrap into - the current one and the
+    /// pre-rebrand one. The same ownership rule as the single-directory overload applies to each.
+    /// </param>
+    public static string StripInjected(string? arguments, IReadOnlyList<string?> bootstrapDirectories)
     {
         if (string.IsNullOrEmpty(arguments))
         {
@@ -49,27 +64,53 @@ public static class ShellIntegrationArguments
         }
 
         List<(int Start, int Length)>? cuts = null;
+        bool strippedBashRcfile = false;
+        int consumedUntil = 0;
 
         foreach ((string token, int start, int length) in Tokenize(arguments))
         {
+            // Inside a value an earlier flag already claimed (a quoted bash path with spaces).
+            if (start < consumedUntil)
+            {
+                continue;
+            }
+
             bool isFile = IsFlag(token, "-File");
             bool isEncoded = IsFlag(token, "-EncodedCommand");
-            if (!isFile && !isEncoded)
+            // bash flags are case-sensitive; --RCFILE is not bash's option.
+            bool isRcfile = string.Equals(token, "--rcfile", StringComparison.Ordinal);
+            if (!isFile && !isEncoded && !isRcfile)
             {
                 continue;
             }
 
-            if (!TryNextToken(arguments, start + length, out string value, out int valueEnd))
+            string value;
+            int valueEnd;
+            if (isRcfile)
+            {
+                // The bash provider quotes a path containing spaces - "Application Support" is in
+                // every macOS one - so this value is read quote-aware; a space-split would see
+                // only `"/Users/me/Library/Application`.
+                if (!TryNextQuotedToken(arguments, start + length, out value, out valueEnd))
+                {
+                    continue;
+                }
+            }
+            else if (!TryNextToken(arguments, start + length, out value, out valueEnd))
             {
                 continue;
             }
 
-            bool ours = isFile
-                ? IsOurBootstrapPath(value, bootstrapDirectory)
-                : IsOurEncodedBootstrap(value);
+            consumedUntil = valueEnd;
+
+            bool ours = isEncoded
+                ? IsOurEncodedBootstrap(value)
+                : IsOurBootstrapPathInAny(value, bootstrapDirectories, isRcfile ? BashBootstrapFileName : BootstrapFileName);
 
             if (ours)
             {
+                strippedBashRcfile |= isRcfile;
+
                 // Swallow one adjacent delimiter with the pair, so removing it cannot leave a
                 // double space behind. That is what makes a post-hoc normalising pass
                 // unnecessary - and the previous global Replace("  ", " ") was re-spacing the
@@ -110,7 +151,27 @@ public static class ShellIntegrationArguments
 
         // No normalising pass: each cut already took its own delimiter, so what remains is
         // the user's spacing exactly as they wrote it.
-        return kept.ToString();
+        string result = kept.ToString();
+
+        // The bash provider appends ` -i` as the very last token whenever the user's own
+        // arguments had no interactive flag. Once its --rcfile is gone that -i is dropped too, so
+        // `--rcfile <ours> -i` becomes "" - what the user configured - rather than a lingering
+        // "-i" that no profile has. Dropping it cannot change behaviour even when the -i was the
+        // user's: bash attached to a terminal is interactive either way.
+        if (strippedBashRcfile)
+        {
+            if (result == "-i")
+            {
+                return string.Empty;
+            }
+
+            if (result.EndsWith(" -i", StringComparison.Ordinal))
+            {
+                return result[..^" -i".Length];
+            }
+        }
+
+        return result;
     }
 
     /// <summary>Yields each whitespace-delimited token with its span in the original string.</summary>
@@ -145,10 +206,49 @@ public static class ShellIntegrationArguments
         return true;
     }
 
+    /// <summary>
+    /// The next token, where a token that opens with <c>"</c> runs to the closing quote and is
+    /// returned without the quotes. An unterminated quote is not a token.
+    /// </summary>
+    private static bool TryNextQuotedToken(string s, int from, out string token, out int end)
+    {
+        int i = from;
+        while (i < s.Length && s[i] == ' ') i++;
+        if (i >= s.Length || s[i] != '"')
+        {
+            return TryNextToken(s, from, out token, out end);
+        }
+
+        int closing = s.IndexOf('"', i + 1);
+        if (closing < 0)
+        {
+            token = string.Empty;
+            end = from;
+            return false;
+        }
+
+        token = s[(i + 1)..closing];
+        end = closing + 1;
+        return true;
+    }
+
     private static bool IsFlag(string token, string flag)
         => string.Equals(token, flag, StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsOurBootstrapPath(string token, string? bootstrapDirectory)
+    private static bool IsOurBootstrapPathInAny(string token, IReadOnlyList<string?> bootstrapDirectories, string fileName)
+    {
+        foreach (string? directory in bootstrapDirectories)
+        {
+            if (IsOurBootstrapPath(token, directory, fileName))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsOurBootstrapPath(string token, string? bootstrapDirectory, string fileName)
     {
         if (string.IsNullOrWhiteSpace(bootstrapDirectory))
         {
@@ -168,7 +268,7 @@ public static class ShellIntegrationArguments
         {
             string candidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
             string ourLong = Path.TrimEndingDirectorySeparator(
-                Path.GetFullPath(Path.Combine(bootstrapDirectory, BootstrapFileName)));
+                Path.GetFullPath(Path.Combine(bootstrapDirectory, fileName)));
 
             if (SamePath(candidate, ourLong))
             {

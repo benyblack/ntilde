@@ -341,8 +341,47 @@ namespace Ntilde.Shell
             {
                 profile = settings.Profiles?.Find(p => p.Id == profileGuid);
             }
-            return profile;
+            return profile ?? FindLocalProfileRunningExactly(node, settings);
         }
+
+        /// <summary>
+        /// The local profile that launches exactly this leaf's command line, for a leaf saved
+        /// without a profile.
+        /// </summary>
+        /// <remarks>
+        /// A profile-less pane never gets its profile back on its own: it restores through the
+        /// raw-command fallback, still has no profile, and is saved with <c>ProfileId: null</c>
+        /// again - titled "Terminal", and outside every per-profile setting, on every launch.
+        /// When a profile would run the identical command line, launching it through that profile
+        /// runs the same thing, so this re-attaches it.
+        ///
+        /// Exact match only - command ordinal-equal, arguments equal after removing what we
+        /// injected - because anything looser picks a profile the user did not ask for. The
+        /// bundle-command confirmation shares this through <see cref="TryResolvePaneProfile"/>,
+        /// which is safe for the same reason: a leaf that resolves here spawns the user's own
+        /// profile, not the bundle's command line.
+        /// </remarks>
+        private static TerminalProfile? FindLocalProfileRunningExactly(PaneNode node, TerminalSettings settings)
+        {
+            string command = (node.Command ?? string.Empty).Trim();
+            if (command.Length == 0 || settings.Profiles == null)
+            {
+                return null;
+            }
+
+            string arguments = CleanRestoredArguments(node.Arguments).Trim();
+            return settings.Profiles.Find(p =>
+                p.Type == ConnectionType.Local &&
+                string.Equals((p.Command ?? string.Empty).Trim(), command, StringComparison.Ordinal) &&
+                string.Equals((p.Arguments ?? string.Empty).Trim(), arguments, StringComparison.Ordinal));
+        }
+
+        /// <summary>A leaf's saved arguments without the shell-integration bootstrap an older
+        /// version persisted into them - from this data folder or the pre-rebrand one.</summary>
+        private static string CleanRestoredArguments(string? arguments)
+            => ShellIntegrationArguments.StripInjected(
+                arguments,
+                new[] { AppPaths.CommandAssistDirectory, AppPaths.LegacyCommandAssistDirectory });
 
         /// <summary>
         /// Returns a profile whose command can be spawned on this machine, substituting the default
@@ -435,7 +474,7 @@ namespace Ntilde.Shell
                         // forever. That fix cannot reach sessions already on disk; this can.
                         commandSubstituted
                             ? ""
-                            : ShellIntegrationArguments.StripInjected(node.Arguments, AppPaths.CommandAssistDirectory),
+                            : CleanRestoredArguments(node.Arguments),
                         settings);
                 }
 
