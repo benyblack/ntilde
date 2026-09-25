@@ -138,6 +138,90 @@ public sealed class SessionManagerTests
         Assert.Equal(string.Empty, pane.ShellArgs);
     }
 
+    // Reported from macOS: a profile-less leaf saved `/bin/bash --rcfile "<NovaTerminal>/...bash" -i`.
+    // Restore passed it through (only PowerShell's injection was recognised), the bash provider took
+    // the --rcfile as the user's and turned integration off, and the stale bootstrap was re-saved on
+    // every quit.
+    [AvaloniaFact]
+    public void CreateRestoredTabContent_DropsAStalePreRebrandBashBootstrap()
+    {
+        var settings = new TerminalSettings();
+        var tabSession = new TabSession
+        {
+            Title = "Terminal",
+            Root = new PaneNode
+            {
+                Type = NodeType.Leaf,
+                // Runnable here, so the arguments are kept rather than dropped by substitution;
+                // no profile has this command line, so the raw-command path runs.
+                Command = ShellHelper.GetDefaultShell(),
+                Arguments = $"--rcfile \"{Path.Combine(AppPaths.LegacyCommandAssistDirectory, "command-assist-bootstrap.bash")}\" -i",
+                PaneId = Guid.NewGuid().ToString()
+            }
+        };
+        settings.Profiles.RemoveAll(p => p.Command == tabSession.Root.Command);
+
+        var pane = Assert.IsType<TerminalPane>(
+            SessionManager.CreateRestoredTabContent(tabSession, settings));
+
+        Assert.Equal(string.Empty, pane.ShellArgs);
+    }
+
+    // The same leaf was also saved with ProfileId: null, and a profile-less pane stays profile-less
+    // forever - it restores through the raw-command path and is saved without a profile again. When
+    // a profile runs the identical command line, the pane gets that profile back.
+    [AvaloniaFact]
+    public void CreateRestoredTabContent_ProfileLessLeaf_ReattachesTheProfileRunningTheSameCommand()
+    {
+        var bash = new TerminalProfile
+        {
+            Id = Guid.NewGuid(),
+            Name = "Bash",
+            Type = ConnectionType.Local,
+            Command = "/bin/bash",
+            Arguments = ""
+        };
+        var settings = new TerminalSettings { Profiles = new List<TerminalProfile> { bash } };
+        settings.DefaultProfileId = bash.Id;
+
+        var tabSession = new TabSession
+        {
+            Title = "Terminal",
+            Root = new PaneNode
+            {
+                Type = NodeType.Leaf,
+                ProfileId = null,
+                Command = "/bin/bash",
+                Arguments = $"--rcfile \"{Path.Combine(AppPaths.LegacyCommandAssistDirectory, "command-assist-bootstrap.bash")}\" -i",
+                PaneId = Guid.NewGuid().ToString()
+            }
+        };
+
+        var pane = Assert.IsType<TerminalPane>(
+            SessionManager.CreateRestoredTabContent(tabSession, settings));
+
+        // By id: on Windows /bin/bash is another platform's command, so restore hands the pane a
+        // substituted copy of the profile rather than the stored instance.
+        Assert.Equal(bash.Id, pane.Profile?.Id);
+    }
+
+    [Fact]
+    public void TryResolvePaneProfile_ProfileLessLeaf_OnlyMatchesAnIdenticalCommandLine()
+    {
+        var bash = new TerminalProfile { Id = Guid.NewGuid(), Name = "Bash", Type = ConnectionType.Local, Command = "/bin/bash", Arguments = "" };
+        var settings = new TerminalSettings { Profiles = new List<TerminalProfile> { bash } };
+
+        PaneNode Leaf(string command, string arguments) =>
+            new() { Type = NodeType.Leaf, Command = command, Arguments = arguments, PaneId = Guid.NewGuid().ToString() };
+
+        Assert.Same(bash, SessionManager.TryResolvePaneProfile(Leaf("/bin/bash", ""), settings));
+        // Different arguments are a different command line - including a user's own --rcfile.
+        Assert.Null(SessionManager.TryResolvePaneProfile(Leaf("/bin/bash", "--login"), settings));
+        Assert.Null(SessionManager.TryResolvePaneProfile(Leaf("/bin/bash", "--rcfile /tmp/rc -i"), settings));
+        Assert.Null(SessionManager.TryResolvePaneProfile(Leaf("/usr/local/bin/bash", ""), settings));
+        Assert.Null(SessionManager.TryResolvePaneProfile(Leaf("", ""), settings));
+    }
+
     // A profile-backed pane never reached the raw-command fallback, and normal capture writes a
     // ProfileId for every profile-backed pane - so the common shape of the bug was the uncovered
     // one. Opening Windows settings on Linux keeps the imported cmd.exe profile (validation only
