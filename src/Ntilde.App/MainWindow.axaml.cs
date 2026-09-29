@@ -6379,20 +6379,32 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// A user closed this pane: a mux shell must end, not linger detached in the daemon. Called on
-        /// the UI thread, never from the pool: Kill only enqueues a frame, and closing the last tab
-        /// closes the window right after, whose teardown closes the connection (after a bounded flush
-        /// of what is already queued). A kill posted from the pool could land after that and be dropped.
+        /// A user closed this pane: a mux shell must end. KillAsync (not the fire-and-forget Kill): its
+        /// reply means the kill landed, and the host waits for it on dispose, so closing the last tab
+        /// cannot drop it. Still enqueued synchronously on the UI thread (RequestAsync enqueues before
+        /// its first await). A session that already exited or lost its connection is left alone.
         /// </summary>
-        private static void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition)
+        private void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition)
         {
             if (disposition != Ntilde.Shell.Mux.PaneDisposition.EndSession || session is not Ntilde.Mux.MuxClientSession mux)
             {
                 return;
             }
 
-            try { mux.Kill(); }
-            catch (Exception ex) { TerminalLogger.Log($"[MainWindow] mux kill failed: {ex.Message}"); }
+            if (!mux.IsConnected || !mux.IsProcessRunning) return;
+
+            try
+            {
+                Task kill = mux.KillAsync();
+                _muxHost?.TrackPendingKill(kill);
+                _ = kill.ContinueWith(
+                    t => TerminalLogger.Log($"[MainWindow] mux kill of {mux.Id} failed: {t.Exception?.GetBaseException().Message}"),
+                    CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            }
+            catch (Exception ex)
+            {
+                TerminalLogger.Log($"[MainWindow] mux kill failed: {ex.Message}");
+            }
         }
 
         private void HandleSshQuickOpen(TerminalProfile profile, SshQuickOpenTarget target, SshDiagnosticsLevel diagnosticsLevel)

@@ -159,6 +159,27 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>How long <see cref="Dispose"/> waits for the daemon to work through what is already queued.</summary>
     public TimeSpan DisposeFlushTimeout { get; init; } = TimeSpan.FromSeconds(1);
 
+    private readonly List<Task> _pendingKills = new(); // guarded by _gate
+
+    /// <summary>How long <see cref="Dispose"/> waits for the replies of tracked kills (closing the last tab).</summary>
+    public TimeSpan KillFlushTimeout { get; init; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// A kill a user close sent (its reply means it landed). <see cref="Dispose"/> waits for these
+    /// first, so the last tab's kill cannot be dropped by the teardown right behind it (PR #489).
+    /// </summary>
+    public void TrackPendingKill(Task kill)
+    {
+        ArgumentNullException.ThrowIfNull(kill);
+        lock (_gate)
+        {
+            _pendingKills.RemoveAll(t => t.IsCompleted);
+            _pendingKills.Add(kill);
+        }
+    }
+
+    internal int PendingKillCountForTest { get { lock (_gate) return _pendingKills.Count(t => !t.IsCompleted); } }
+
     /// <summary>
     /// Closes the connection: the daemon detaches every session on it and keeps them running.
     /// First a bounded flush: closing drops frames still queued, and a pane closed just before the
@@ -182,6 +203,25 @@ internal sealed class MuxConnectionHost : IDisposable
         _disposed.Dispose();
 
         if (client is null) return;
+
+        Task[] kills;
+        lock (_gate) kills = _pendingKills.Where(t => !t.IsCompleted).ToArray();
+        if (kills.Length > 0 && client.IsConnected)
+        {
+            try
+            {
+                // Inside Task.Run like the ping below: no UI sync context is captured.
+                if (!Task.Run(() => Task.WhenAll(kills), CancellationToken.None).Wait(KillFlushTimeout, CancellationToken.None))
+                {
+                    _log?.Invoke($"[Mux] {kills.Length} kill(s) not confirmed within {KillFlushTimeout.TotalSeconds:0.#} s; closing anyway");
+                }
+            }
+            catch (AggregateException)
+            {
+                // A kill that failed was logged by whoever sent it; closing proceeds either way.
+            }
+        }
+
         if (client.IsConnected)
         {
             try

@@ -122,4 +122,41 @@ public sealed class MuxConnectionHostTests
         Assert.Null(host.GetClient(TimeSpan.FromMilliseconds(300)));
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(3));
     }
+
+    [Fact]
+    public void Dispose_waits_for_a_tracked_kill()
+    {
+        using var mux = new MuxTestHost();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null)
+        {
+            KillFlushTimeout = TimeSpan.FromSeconds(10),
+            DisposeFlushTimeout = TimeSpan.Zero,
+        };
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
+        var kill = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.TrackPendingKill(kill.Task);
+
+        Task dispose = Task.Run(host.Dispose, TestContext.Current.CancellationToken);
+
+        Assert.False(dispose.Wait(300, TestContext.Current.CancellationToken), "Dispose returned before the kill was confirmed");
+        kill.SetResult();
+        Assert.True(dispose.Wait(5_000, TestContext.Current.CancellationToken), "Dispose returned once the kill was confirmed");
+    }
+
+    [Fact]
+    public void Dispose_gives_up_on_an_unconfirmed_kill_after_the_timeout()
+    {
+        using var mux = new MuxTestHost();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null)
+        {
+            KillFlushTimeout = TimeSpan.FromMilliseconds(200),
+        };
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
+        host.TrackPendingKill(new TaskCompletionSource().Task); // never completes
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        host.Dispose();
+
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(4), $"Dispose took {sw.Elapsed}");
+    }
 }

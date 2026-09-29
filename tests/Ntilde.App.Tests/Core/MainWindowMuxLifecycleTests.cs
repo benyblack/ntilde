@@ -41,9 +41,12 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         _mux.Dispose();
     }
 
-    private MainWindow CreateWindow()
+    private MainWindow CreateWindow(TimeSpan? disposeFlush = null)
     {
-        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null)
+        {
+            DisposeFlushTimeout = disposeFlush ?? TimeSpan.FromSeconds(1),
+        };
         var factory = new MuxTerminalSessionFactory(_host, new RecordingSessionFactory(new FakeTerminalSession()), null);
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
@@ -98,6 +101,44 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => task.IsCompleted, "the close finished");
         Assert.Null(_host!.CurrentClient); // the window's teardown really did close the connection
         PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the session was killed");
+    }
+
+    /// <summary>
+    /// PR #489 follow-up: with no ping flush at all, the kill for the last closed tab must still land,
+    /// because the host now waits for the kill's own reply. (The deterministic RED for this change is
+    /// MuxConnectionHostTests.Dispose_waits_for_a_tracked_kill; before the fix this test fails only
+    /// when the fire-and-forget kill is still in the client's outbound queue at close, which is usual
+    /// but not guaranteed.)
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_last_tab_with_no_ping_flush_still_kills()
+    {
+        MainWindow window = CreateWindow(disposeFlush: TimeSpan.Zero);
+        TerminalPane pane = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)pane.Session!).Id;
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<bool>)close.Invoke(window, [pane, true])!;
+
+        PumpUntil(() => task.IsCompleted, "the close finished");
+        Assert.DoesNotContain(id, _mux.Server.GetSessionIds());
+    }
+
+    [AvaloniaFact]
+    public void A_close_of_an_exited_mux_pane_sends_no_kill()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var mux = (MuxClientSession)pane.Session!;
+        // Non-zero: under the default "Graceful" ShellExitPolicy the pane stays (exit 0 would close
+        // the last tab, and with it the window).
+        _mux.Fake(mux.Id).Exit(3);
+        PumpUntil(() => !mux.IsProcessRunning, "the pane saw the exit");
+
+        typeof(MainWindow).GetMethod("KillMuxSessionOnClose", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(window, [mux, PaneDisposition.EndSession]);
+
+        Assert.Equal(0, _host!.PendingKillCountForTest);
     }
 
     /// <summary>
