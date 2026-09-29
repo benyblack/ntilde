@@ -49,6 +49,53 @@ public sealed class SessionEventsClientTests
     }
 
     [Fact]
+    public async Task A_throwing_KilledElsewhere_handler_neither_drops_the_connection_nor_suppresses_OnExit()
+    {
+        using var host = new MuxTestHost();
+        var log = new ConcurrentQueue<string>();
+        MuxClient c1 = await host.ConnectClientAsync(new MuxClientOptions { Log = log.Enqueue });
+        MuxClient killer = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(c1);
+        ClientPaneModel p1 = await MuxTestHost.AttachPaneAsync(c1, id);
+        await MuxTestHost.AttachPaneAsync(killer, id);
+        int exits = 0;
+        int laterHandlerRan = 0;
+        p1.Session.KilledElsewhere += _ => throw new InvalidOperationException("handler boom");
+        p1.Session.KilledElsewhere += _ => Interlocked.Increment(ref laterHandlerRan);
+        p1.Session.OnExit += _ => Interlocked.Increment(ref exits);
+
+        await killer.KillAsync(id, Ct);
+
+        await TestWait.UntilAsync(() => Volatile.Read(ref exits) == 1, "OnExit still fired");
+        Assert.True(p1.Session.WasKilledElsewhere);
+        Assert.Equal(1, Volatile.Read(ref laterHandlerRan));
+        Assert.True(c1.IsConnected);
+        await c1.PingAsync(Ct);
+        Assert.Contains(log, line => line.Contains("handler boom", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_throwing_SessionChanged_handler_does_not_drop_the_connection()
+    {
+        using var host = new MuxTestHost();
+        var log = new ConcurrentQueue<string>();
+        MuxClient c1 = await host.ConnectClientAsync(new MuxClientOptions { Log = log.Enqueue });
+        MuxClient c2 = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(c1);
+        ClientPaneModel p1 = await MuxTestHost.AttachPaneAsync(c1, id);
+        p1.Session.SessionChanged += () => throw new InvalidOperationException("handler boom");
+
+        ClientPaneModel p2 = await MuxTestHost.AttachPaneAsync(c2, id);
+        await TestWait.UntilAsync(() => p1.Session.AttachedClients == 2, "the count arrived");
+        await c1.PingAsync(Ct);
+
+        p2.Session.Dispose();
+        await TestWait.UntilAsync(() => p1.Session.AttachedClients == 1, "later notifications still arrive");
+        Assert.True(c1.IsConnected);
+        Assert.Contains(log, line => line.Contains("handler boom", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task IfUnattached_races_between_clients_have_exactly_one_winner()
     {
         using var host = new MuxTestHost();

@@ -49,9 +49,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _recordingGeneration; // bumped by every Start/Stop; guarded by _recordingGate
     private int _flightRecording;
     private int _disposed;
-    private int _attachedClients = -1; // -1 = unknown (v1, or nothing heard yet)
-    private string? _title;
-    private string? _cwd;
+    private SharingState _sharing = SharingState.Unknown; // replaced whole, so a reader never sees a mix of two updates
     private int _killedElsewhere;
 
     internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
@@ -69,18 +67,25 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// <summary>True when the connection negotiated v2: <see cref="SessionChanged"/> and <see cref="KilledElsewhere"/> can fire.</summary>
     public bool SupportsSessionEvents => _client.ProtocolVersion >= MuxProtocol.SessionEventsVersion;
 
-    /// <summary>Clients attached to the session (this one included), from the last sessionChanged or <see cref="RefreshSharingAsync"/>; null = unknown.</summary>
+    /// <summary>
+    /// Clients attached to the session (this one included), from the last sessionChanged; null = unknown.
+    /// Always null on v1, where nothing would keep a cached count current: use the value
+    /// <see cref="RefreshSharingAsync"/> returns instead.
+    /// </summary>
     public int? AttachedClients
     {
         get
         {
-            int n = Volatile.Read(ref _attachedClients);
+            int n = Volatile.Read(ref _sharing).AttachedClients;
             return n < 0 ? null : n;
         }
     }
 
-    public string? Title => Volatile.Read(ref _title);
-    public string? Cwd => Volatile.Read(ref _cwd);
+    /// <summary>From the last sessionChanged (v2) or <see cref="RefreshSharingAsync"/> (v1); null = unknown.</summary>
+    public string? Title => Volatile.Read(ref _sharing).Title;
+
+    /// <summary>From the last sessionChanged (v2) or <see cref="RefreshSharingAsync"/> (v1); null = unknown.</summary>
+    public string? Cwd => Volatile.Read(ref _sharing).Cwd;
 
     /// <summary>Set, before <see cref="OnExit"/> fires, when another client killed the session (v2).</summary>
     public bool WasKilledElsewhere => Volatile.Read(ref _killedElsewhere) != 0;
@@ -152,17 +157,22 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     }
 
     /// <summary>
-    /// Reads the attached count (and title, cwd) from <c>listSessions</c>, which a v1 daemon answers too:
-    /// the close confirmation's source of truth. Returns null when the session is no longer listed.
+    /// Reads the attached count from <c>listSessions</c>, which a v1 daemon answers too: the close
+    /// confirmation's source of truth. Returns null when the session is no longer listed. On v1 it
+    /// also refreshes <see cref="Title"/> and <see cref="Cwd"/>, never <see cref="AttachedClients"/>
+    /// (which stays unknown there). On v2 it changes nothing: this reply completes on the thread pool
+    /// and could overwrite a newer sessionChanged the delivery thread has already applied.
     /// </summary>
     public async Task<int?> RefreshSharingAsync(CancellationToken cancellationToken = default)
     {
         IReadOnlyList<SessionSummary> sessions = await _client.ListSessionsAsync(cancellationToken).ConfigureAwait(false);
         SessionSummary? me = sessions.FirstOrDefault(s => s.SessionId == Id);
         if (me is null) return null;
-        Volatile.Write(ref _attachedClients, me.AttachedClients);
-        Volatile.Write(ref _title, me.Title);
-        Volatile.Write(ref _cwd, me.Cwd);
+        if (!SupportsSessionEvents && Volatile.Read(ref _disposed) == 0)
+        {
+            Volatile.Write(ref _sharing, SharingState.Unknown with { Title = me.Title, Cwd = me.Cwd });
+        }
+
         return me.AttachedClients;
     }
 
@@ -471,18 +481,32 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         if (Interlocked.Exchange(ref _exitNotified, 1) == 0) OnExit?.Invoke(exitCode);
     }
 
+    /// <remarks>
+    /// These two are advisory, so each handler is isolated and its failure only logged: one that threw
+    /// into the reader thread would end the connection for every session, and for a kill it would
+    /// also swallow the <c>exited</c> that follows, the one event the pane cannot do without.
+    /// </remarks>
     internal void DeliverSessionChanged(SessionChangedNotification changed)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
-        Volatile.Write(ref _attachedClients, Math.Max(0, changed.AttachedClients));
-        Volatile.Write(ref _title, changed.Title);
-        Volatile.Write(ref _cwd, changed.Cwd);
-        SessionChanged?.Invoke();
+        Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.Title, changed.Cwd));
+        if (SessionChanged is not { } handlers) return;
+        foreach (Action handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(); }
+            catch (Exception ex) { _client.SafeLog($"[MuxClient] a SessionChanged handler of session {Id} threw: {ex}"); }
+        }
     }
 
     internal void DeliverKilled(string byClientKind)
     {
-        if (Interlocked.Exchange(ref _killedElsewhere, 1) == 0) KilledElsewhere?.Invoke(byClientKind);
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (Interlocked.Exchange(ref _killedElsewhere, 1) != 0 || KilledElsewhere is not { } handlers) return;
+        foreach (Action<string> handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(byClientKind); }
+            catch (Exception ex) { _client.SafeLog($"[MuxClient] a KilledElsewhere handler of session {Id} threw: {ex}"); }
+        }
     }
 
     internal void DeliverFaulted(string message)
@@ -510,6 +534,12 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         }
 
         if (failures is not null) throw new AggregateException($"Disconnected handler(s) of session {Id} threw.", failures);
+    }
+
+    /// <summary>What sessionChanged reports, as one value. <see cref="AttachedClients"/> -1 = unknown.</summary>
+    private sealed record SharingState(int AttachedClients, string? Title, string? Cwd)
+    {
+        public static readonly SharingState Unknown = new(-1, null, null);
     }
 
     private void RefreshSessionInfoIfStale()

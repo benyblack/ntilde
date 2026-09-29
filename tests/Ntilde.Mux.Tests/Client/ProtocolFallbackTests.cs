@@ -9,6 +9,27 @@ public sealed class ProtocolFallbackTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
     private static MuxServerOptions V1Server => new() { MaxProtocolVersion = 1, ForceConPtyFiltering = false };
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task A_shared_attach_is_sent_in_the_exact_v1_shape(int negotiated)
+    {
+        // Shared travels as an absent member, never "mode": null or "shared": a v1 daemon sees the
+        // attach it has always seen, and a v2 daemon reads absence as shared.
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync(negotiated);
+        using MuxClient client = await connect;
+        MuxClientSession session = client.OpenSession(Guid.NewGuid());
+
+        _ = session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
+        MuxRequest request = await fake.ReadRequestAsync();
+
+        Assert.Equal(MuxMethods.Attach, request.Method);
+        System.Text.Json.JsonElement p = Assert.NotNull(request.Params);
+        Assert.DoesNotContain(p.EnumerateObject(), m => string.Equals(m.Name, "mode", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
     public async Task A_v2_client_refuses_a_non_shared_mode_on_a_v1_server_before_sending()
     {
@@ -44,6 +65,7 @@ public sealed class ProtocolFallbackTests
         Assert.Null(p1.Session.AttachedClients);
         Assert.Equal(0, Volatile.Read(ref changes));
         Assert.Equal(2, await p1.Session.RefreshSharingAsync(Ct));   // listSessions has the count in v1 too
+        Assert.Null(p1.Session.AttachedClients);                      // but nothing would keep a cached count current on v1
 
         await c2.KillAsync(id, Ct);
         await TestWait.UntilAsync(() => !p1.Session.IsProcessRunning, "c1 saw the exit");

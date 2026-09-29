@@ -353,7 +353,7 @@ public sealed class MuxClient : IDisposable
     /// The host's logger is arbitrary code, called here from catch clauses on the reader thread:
     /// a logger that throws (disk full, closed sink) must not turn a disconnect into a crash.
     /// </summary>
-    private void SafeLog(string message)
+    internal void SafeLog(string message)
     {
         try { _options.Log?.Invoke(message); }
         catch (Exception) { /* deliberately swallowed - see above */ }
