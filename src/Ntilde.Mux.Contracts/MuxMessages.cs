@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ntilde.Mux.Contracts;
 
@@ -85,6 +86,13 @@ public sealed record SessionSummary
     public int? ExitCode { get; init; }
     public int AttachedClients { get; init; }
     public bool Faulted { get; init; }
+
+    /// <summary>The last OSC 7 directory the mux parser saw; null when none (or a v1 daemon).</summary>
+    public string? Cwd { get; init; }
+
+    /// <summary>The detach that left the session with no subscribers was a user detach; cleared by the next attach. Startup adoption skips these.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // only when true: a v1 peer sees exactly the v1 shape
+    public bool DetachedByUser { get; init; }
 }
 
 public sealed record ListSessionsResult { public IReadOnlyList<SessionSummary> Sessions { get; init; } = []; }
@@ -94,6 +102,12 @@ public sealed record AttachParams
     public Guid SessionId { get; init; }
     public int MaxScrollbackRows { get; init; }
     public required MuxPresentation Presentation { get; init; }
+
+    /// <summary>
+    /// <see cref="MuxAttachModes"/> wire string; null (absent) = shared, the v1 shape. A string, not a
+    /// JSON enum: an unknown value then gets a request-level error rather than a malformed-params close.
+    /// </summary>
+    public string? Mode { get; init; }
 }
 
 public sealed record SessionIdParams { public Guid SessionId { get; init; } }
@@ -113,6 +127,12 @@ public sealed record DetachParams
     /// after it would silently remove the newer one. Null = detach unconditionally.
     /// </summary>
     public long? AttachRequestId { get; init; }
+
+    /// <summary>
+    /// True when the user detached on purpose ("Pane: Detach", or Detach in the shared-close prompt).
+    /// Null (absent) = an ordinary detach: the v1 shape. Clients send it only on v2 (spec §7.7).
+    /// </summary>
+    public bool? UserDetached { get; init; }
 }
 
 public sealed record ResizeParams
@@ -129,6 +149,9 @@ public sealed record SessionInfoResult
     public int? ExitCode { get; init; }
     public bool HasActiveChildProcesses { get; init; }
     public int? Pid { get; init; }
+    public string? Title { get; init; }
+    public string? Cwd { get; init; }
+    public int? AttachedClients { get; init; }
 }
 
 public sealed record StartRecordingParams
@@ -167,6 +190,22 @@ public sealed record FaultedNotification
 
     /// <summary>Human-readable reason, for logs and the pane's banner; not machine-parsed. May be absent.</summary>
     public string? Message { get; init; }
+}
+
+/// <summary>Params of <see cref="MuxMethods.SessionChanged"/>: the session's facts after the change.</summary>
+public sealed record SessionChangedNotification
+{
+    public Guid SessionId { get; init; }
+    public int AttachedClients { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public string? Cwd { get; init; }
+}
+
+/// <summary>Params of <see cref="MuxMethods.Killed"/>. <see cref="ByClientKind"/> is the killer's hello <c>clientKind</c>.</summary>
+public sealed record KilledNotification
+{
+    public Guid SessionId { get; init; }
+    public string ByClientKind { get; init; } = string.Empty;
 }
 
 /// <summary>

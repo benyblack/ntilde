@@ -22,10 +22,19 @@ public sealed class MuxClientHandshakeTests
     {
         using var host = new MuxTestHost();
         var ex = await Assert.ThrowsAsync<MuxProtocolException>(() =>
-            MuxClient.ConnectAsync(host.Listener.Connect(), new MuxClientOptions { MinProtocolVersion = 2, MaxProtocolVersion = 3 }, Ct));
+            MuxClient.ConnectAsync(host.Listener.Connect(), new MuxClientOptions { MinProtocolVersion = 3, MaxProtocolVersion = 4 }, Ct));
 
         Assert.Equal(MuxErrorCodes.VersionMismatch, ex.Code);
         await TestWait.UntilAsync(() => host.Server.ConnectionCount == 0, "the server drops the connection");
+    }
+
+    [Fact]
+    public async Task A_client_offering_2_to_3_negotiates_2_with_the_default_server()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = 2, MaxProtocolVersion = 3 });
+
+        Assert.Equal(2, client.ProtocolVersion);   // the old "disjoint" input is now a v2 connection
     }
 
     [Fact]

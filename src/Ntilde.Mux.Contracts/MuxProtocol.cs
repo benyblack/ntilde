@@ -7,7 +7,13 @@ namespace Ntilde.Mux.Contracts;
 public static class MuxProtocol
 {
     public const int MinSupportedVersion = 1;
-    public const int MaxSupportedVersion = 1;
+    public const int MaxSupportedVersion = 2;
+
+    /// <summary>
+    /// The first version with attach modes, <c>sessionChanged</c>, <c>killed</c> and
+    /// <c>session_attached</c> (Phase 3 spec §2). Every v2 behaviour checks this one constant.
+    /// </summary>
+    public const int SessionEventsVersion = 2;
 
     /// <summary>Largest payload a frame may announce. A 10k-row 80x24 snapshot measured 12.9 MB in Phase 0.</summary>
     public const int MaxFrameBytes = 64 * 1024 * 1024;
@@ -38,6 +44,9 @@ public static class MuxErrorCodes
     public const string ProtocolError = "protocol_error";
     public const string SpawnFailed = "spawn_failed";
     public const string Internal = "internal_error";
+
+    /// <summary>Refuses <see cref="MuxAttachMode.IfUnattached"/> when another interactive client is already attached.</summary>
+    public const string SessionAttached = "session_attached";
 }
 
 public static class MuxMethods
@@ -70,6 +79,12 @@ public static class MuxMethods
     /// Additive: a client that does not know it ignores it and simply sees the stream stop.
     /// </summary>
     public const string Faulted = "faulted";
+
+    /// <summary>Notification (server → v2 client): attached count, title or cwd changed; coalesced (Phase 3 spec §4).</summary>
+    public const string SessionChanged = "sessionChanged";
+
+    /// <summary>Notification (server → v2 client): another client killed the session; precedes its <see cref="Exited"/>.</summary>
+    public const string Killed = "killed";
 }
 
 public enum MuxFrameKind : byte

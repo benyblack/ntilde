@@ -23,12 +23,32 @@ public sealed class MuxServerHandshakeTests
         using var host = new MuxTestHost();
         RawMuxConnection raw = host.ConnectRaw();
 
-        raw.Request(MuxMethods.Hello, new HelloParams { MinVersion = 2, MaxVersion = 3 }, MuxJsonContext.Default.HelloParams);
+        raw.Request(MuxMethods.Hello, new HelloParams { MinVersion = 3, MaxVersion = 4 }, MuxJsonContext.Default.HelloParams);
         MuxResponse response = await raw.ReadResponseAsync();
 
         Assert.Equal(MuxErrorCodes.VersionMismatch, response.Error?.Code);
         Assert.True(await raw.IsClosedByPeerAsync());
         await TestWait.UntilAsync(() => host.Server.ConnectionCount == 0, "the server forgets the connection");
+    }
+
+    [Fact]
+    public async Task A_client_offering_2_to_3_gets_version_2_from_the_default_server()
+    {
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+
+        WelcomeResult welcome = await raw.HelloAsync(min: 2, max: 3);
+
+        Assert.Equal(2, welcome.Version);   // the old "disjoint" input is now a v2 handshake
+    }
+
+    [Fact]
+    public async Task A_v1_only_client_still_gets_version_1_from_the_default_server()
+    {
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+
+        Assert.Equal(1, (await raw.HelloAsync(min: 1, max: 1)).Version);
     }
 
     [Fact]
