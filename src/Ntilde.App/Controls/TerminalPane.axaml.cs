@@ -3783,8 +3783,9 @@ namespace Ntilde.Controls
             // wording, and no reattach - Enter ends it and starts a new shell (see Reconnect).
             mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxSessionFailedBanner, reattach: false));
             // Delivery thread; marshal. The attach itself changes the count, so a v2 daemon announces
-            // the initial sharing right after the snapshot.
-            mux.SessionChanged += () => this.Dispatcher.Post(() => { if (IsCurrentMux(mux)) ApplyMuxSharing(mux.AttachedClients); });
+            // the initial sharing right after the snapshot. One already posted when the connection
+            // dropped must not re-show the badge that the loss hid.
+            mux.SessionChanged += () => this.Dispatcher.Post(() => { if (IsCurrentMux(mux) && !_muxConnectionLost) ApplyMuxSharing(mux.AttachedClients); });
             _ = AttachMuxAsync(mux, previousLost);
         }
 

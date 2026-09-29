@@ -108,6 +108,24 @@ public sealed class MuxPaneSharingTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void The_indicator_hides_on_connection_loss_and_a_late_SessionChanged_does_not_bring_it_back()
+    {
+        MuxClientSession s = StartHostedPane();
+        AttachOther(s.Id);
+        PumpUntil(() => _pane!.MuxSharedIndicator.IsVisible, "the indicator appeared");
+
+        s.DeliverDisconnected("test: connection dropped");
+        PumpUntil(() => !_pane!.MuxSharedIndicator.IsVisible, "the indicator went away with the connection");
+
+        // A notification already in flight when the connection dropped is delivered afterwards.
+        s.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = s.Id, AttachedClients = 2 });
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.False(_pane!.MuxSharedIndicator.IsVisible);
+        Assert.Equal(0, _pane.MuxOtherClients);
+    }
+
+    [AvaloniaFact]
     public void The_exit_banner_says_the_shell_ended_elsewhere_after_a_foreign_kill()
     {
         MuxClientSession s = StartHostedPane();

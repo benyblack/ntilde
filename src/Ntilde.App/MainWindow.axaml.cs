@@ -127,6 +127,9 @@ namespace Ntilde
 
         /// <summary>Tab-label marker for "an agent is reading a pane in this tab".</summary>
         internal const string AgentWatchedGlyph = "\U0001F441";  // eye
+
+        /// <summary>Tab-label marker for "a pane in this tab is attached from another window too".</summary>
+        internal const string SharedGlyph = "⧉";  // two joined squares: one shell, several windows
         internal const double MinimumTabHeaderRightReserve = 440;
         internal const double MacOsTrafficLightReserve = 92;
         internal const double TabHeaderViewportPadding = 16;
@@ -162,6 +165,7 @@ namespace Ntilde
         private static readonly IBrush TabActivityChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
         private static readonly IBrush TabAgentWroteChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0xF0, 0xC0, 0x7A));
         private static readonly IBrush TabAgentWatchedChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x7F, 0xC3, 0xDC));
+        private static readonly IBrush TabSharedChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x4F, 0xB0, 0xD4));
         private bool _isVerticalTabStrip;
         internal bool IsVerticalTabStripActive => _isVerticalTabStrip;
 
@@ -265,6 +269,9 @@ namespace Ntilde
         /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>
         internal Func<string, Task<bool>> ConfirmSessionLossForUpdate { get; set; }
 
+        /// <summary>Shows the "Attach to session…" picker; null = cancelled. A seam so tests choose without a modal.</summary>
+        internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow>, Task<Guid?>> PickMuxSession { get; set; }
+
         /// <summary>Test seam: runs inside <see cref="PerformAppTeardown"/> right after its one-shot guard.</summary>
         internal Action? TeardownFaultForTest { get; set; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
@@ -322,6 +329,9 @@ namespace Ntilde
             public bool HasBell { get; set; }
             public DateTime LastBellUtc { get; set; }
             public AgentHost.AgentAttentionTier AgentTier { get; set; }
+
+            /// <summary>A pane in this tab shows a mux session other clients are attached to (spec §7.3).</summary>
+            public bool IsShared { get; set; }
             public TabStatusTracker Status { get; } = new();
             public TabTrackerStatus RenderedStatus { get; set; }
 
@@ -969,6 +979,7 @@ namespace Ntilde
             var activityChip = Chip("TabActivityChip", "•", TabActivityChipBrush);
             var agentWroteChip = Chip("TabAgentWroteChip", AgentWroteGlyph, TabAgentWroteChipBrush);
             var agentWatchedChip = Chip("TabAgentWatchedChip", AgentWatchedGlyph, TabAgentWatchedChipBrush);
+            var sharedChip = Chip("TabSharedChip", SharedGlyph, TabSharedChipBrush);
 
             var chipsColumn = new StackPanel
             {
@@ -980,6 +991,7 @@ namespace Ntilde
             chipsColumn.Children.Add(activityChip);
             chipsColumn.Children.Add(agentWroteChip);
             chipsColumn.Children.Add(agentWatchedChip);
+            chipsColumn.Children.Add(sharedChip);
 
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
             Grid.SetColumn(statusDot, 0);
@@ -2526,6 +2538,8 @@ namespace Ntilde
                 suffix += " " + AgentWatchedGlyph;
             }
 
+            if (state.IsShared) suffix += " " + SharedGlyph;
+
             return suffix;
         }
 
@@ -3736,6 +3750,7 @@ namespace Ntilde
             // Assigned here rather than as a field initializer: an instance method group cannot
             // be referenced from a field initializer (CS0236, "this" isn't available yet).
             ConfirmSessionLossForUpdate = ShowUpdateSessionLossConfirmationAsync;
+            PickMuxSession = ShowMuxSessionPickerAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -4201,6 +4216,14 @@ namespace Ntilde
                     e.Handled = true;
                     return;
                 }
+                // Unbound by default: inert until the user assigns a chord.
+                if (IsMuxPersistenceActive && IsShortcut(e, "attach_session", ""))
+                {
+                    RecordCommandUsage("attach_session");
+                    _ = AttachToMuxSessionAsync();
+                    e.Handled = true;
+                    return;
+                }
                 if (IsShortcut(e, "find", "Ctrl+F") || IsShortcut(e, "find_alt", "Ctrl+Shift+F"))
                 {
                     RecordCommandUsage("find");
@@ -4660,6 +4683,7 @@ namespace Ntilde
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
             pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
             pane.PersistenceNotice -= OnPanePersistenceNotice;
+            pane.MuxSharingChanged -= OnPaneMuxSharingChanged;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged += OnPaneWorkingDirectoryChanged;
@@ -4671,10 +4695,17 @@ namespace Ntilde
             pane.LongCommandCompleted += OnPaneLongCommandCompleted;
             pane.PersistentSessionAttached += OnPanePersistentSessionAttached;
             pane.PersistenceNotice += OnPanePersistenceNotice;
+            pane.MuxSharingChanged += OnPaneMuxSharingChanged;
         }
 
         private void UnwirePane(TerminalPane pane)
         {
+            // The pane stops reporting: re-derive its tab's marker once the layout has let it go.
+            if (pane.MuxOtherClients > 0 && ResolveOwningTabForPane(pane) is { } sharedTab)
+            {
+                this.Dispatcher.Post(() => RefreshTabSharedMarker(sharedTab), DispatcherPriority.Background);
+            }
+
             _paneOwnerTab.Remove(pane);
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged -= OnPaneWorkingDirectoryChanged;
@@ -4686,6 +4717,24 @@ namespace Ntilde
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
             pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
             pane.PersistenceNotice -= OnPanePersistenceNotice;
+            pane.MuxSharingChanged -= OnPaneMuxSharingChanged;
+        }
+
+        /// <summary>UI thread. A tab is marked shared while any of its panes has other clients attached.</summary>
+        private void OnPaneMuxSharingChanged(TerminalPane pane)
+        {
+            if (ResolveOwningTabForPane(pane) is { } tab) RefreshTabSharedMarker(tab);
+        }
+
+        private void RefreshTabSharedMarker(TabItem tab)
+        {
+            // A posted refresh can outlive its tab; recreating the closed tab's state would leak it.
+            if (this.FindControl<TabControl>("Tabs")?.Items.Contains(tab) != true) return;
+            TabRuntimeState state = GetOrCreateTabState(tab);
+            bool shared = EnumeratePanes(GetLayoutRootForTab(tab)).Any(p => p.MuxOtherClients > 0);
+            if (state.IsShared == shared) return;
+            state.IsShared = shared;
+            QueueTabVisualRefresh(tab);
         }
 
         private int _sessionSaveQueued; // 1 while a coalesced save is posted
@@ -4770,6 +4819,130 @@ namespace Ntilde
             }
 
             return $"{message} ({count} panes)";
+        }
+
+        /// <summary>
+        /// Session persistence is on for this window: the mux commands exist only then. The host
+        /// alone is not enough - it outlives an on→off flip for the mux panes still open, while the
+        /// factory follows the setting.
+        /// </summary>
+        private bool IsMuxPersistenceActive => _muxHost is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
+
+        /// <summary>
+        /// "Attach to session…" (spec §7.2). Lists the daemon's sessions off the UI thread, lets the
+        /// user pick one, and opens it in a new tab attached shared. A session this window already
+        /// shows is focused instead: one connection cannot hold two views of one session.
+        /// </summary>
+        internal async Task AttachToMuxSessionAsync()
+        {
+            if (!IsMuxPersistenceActive || _muxHost is not { } host) return;
+            IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions = await Task.Run(async () =>
+            {
+                Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(5));
+                if (client is null) return null;
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    return await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
+                {
+                    AppLogger.Log($"[MainWindow] listing mux sessions failed: {ex.Message}");
+                    return null;
+                }
+            });
+            if (_teardownDone) return;
+            if (sessions is null)
+            {
+                EnqueueNotice("Attach to session", "The multiplexer is not reachable.");
+                return;
+            }
+
+            // Pending ids count too: an adopted background tab has not attached (spawned) yet.
+            var openHere = new HashSet<Guid>();
+            foreach (TerminalPane p in AllPanes())
+            {
+                if (p.Session is Ntilde.Mux.MuxClientSession m) openHere.Add(m.Id);
+                if (p.MuxSessionIdToRestore is Guid pending) openHere.Add(pending);
+            }
+
+            IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows = Ntilde.Shell.Mux.MuxSessionPicker.BuildRows(sessions, openHere);
+            if (rows.Count == 0)
+            {
+                EnqueueNotice("Attach to session", "No sessions are running in the multiplexer.");
+                return;
+            }
+
+            Guid? chosen = await PickMuxSession(rows);
+            if (chosen is not Guid id || _teardownDone) return;
+            // Re-checked, not read from the row: the picker is modal, and a tab may have opened it meanwhile.
+            if (FocusPaneShowingMuxSession(id)) return;
+            if (sessions.FirstOrDefault(s => s.SessionId == id) is not { } summary) return;
+
+            var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(summary.Command), summary.Arguments ?? string.Empty, _settings)
+            {
+                MuxSessionIdToRestore = id,
+                MuxAttachSharedToRestore = true,
+            };
+            AddTabWithPane(pane, string.IsNullOrWhiteSpace(summary.Title) ? summary.Command : summary.Title, select: true);
+        }
+
+        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) <paramref name="id"/>; false when none does.</summary>
+        private bool FocusPaneShowingMuxSession(Guid id)
+        {
+            TerminalPane? pane = AllPanes().FirstOrDefault(p =>
+                (p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id);
+            if (pane is null) return false;
+            if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
+            UpdateActivePane(pane);
+            FocusPaneTerminal(pane, defer: true);
+            return true;
+        }
+
+        private async Task<Guid?> ShowMuxSessionPickerAsync(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
+        {
+            Guid? chosen = null;
+            var dialog = CreateThemedDialogWindow("Attach to Session", 640, 360, canResize: true);
+            var list = new ListBox { ItemsSource = rows.Select(r => r.Display).ToList(), SelectedIndex = 0, MaxHeight = 240 };
+            var attach = new Button { Content = "Attach", Width = 92 };
+            var cancel = new Button { Content = "Cancel", Width = 92 };
+            void Accept()
+            {
+                if (list.SelectedIndex < 0) return;
+                chosen = rows[list.SelectedIndex].SessionId;
+                dialog.Close();
+            }
+
+            attach.Click += (_, _) => Accept();
+            list.DoubleTapped += (_, _) => Accept();
+            cancel.Click += (_, _) => dialog.Close();
+            dialog.Content = new Border
+            {
+                Padding = new Thickness(16),
+                Child = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "Attach to a running session. It opens in a new tab and stays shared with its other windows.",
+                            TextWrapping = TextWrapping.Wrap,
+                        },
+                        list,
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Spacing = 8,
+                            Children = { cancel, attach },
+                        },
+                    },
+                },
+            };
+
+            await dialog.ShowDialog(this);
+            return chosen;
         }
 
         /// <summary>
@@ -5314,7 +5487,7 @@ namespace Ntilde
                 agent = string.Empty;
             }
 
-            return attention + agent;
+            return attention + agent + (state.IsShared ? " shared" : string.Empty);
         }
 
         private void UpdateTabAutomationLabels()
@@ -6807,7 +6980,7 @@ namespace Ntilde
             // the vertical replacement for the title-suffix attention markers (which the
             // display-label builder no longer appends in vertical mode).
             var markers = TabStatusPresentation.ResolveTabMarkers(
-                state.HasBell, state.HasActivity, state.AgentTier, _settings.AgentIndicatorTabRollup);
+                state.HasBell, state.HasActivity, state.AgentTier, _settings.AgentIndicatorTabRollup, state.IsShared);
             var dotVisual = TabStatusPresentation.ResolveTabDot(state.RenderedStatus, markers, state.HasRunningCommand);
 
             if (FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot") is { } dot)
@@ -6826,6 +6999,7 @@ namespace Ntilde
             SetChipVisibility(tab, "TabActivityChip", markers.Activity);
             SetChipVisibility(tab, "TabAgentWroteChip", markers.AgentWrote);
             SetChipVisibility(tab, "TabAgentWatchedChip", markers.AgentWatched);
+            SetChipVisibility(tab, "TabSharedChip", markers.Shared);
 
             // Preview recompute is gated behind a dirty flag + throttle: with several streaming
             // tabs, this visual-refresh pass can run many times a second, and each recompute is
@@ -7286,6 +7460,10 @@ namespace Ntilde
             CommandRegistry.Register("Pane: Toggle Zoom", "View", () => TogglePaneZoomForCurrentTab(), GetEffectiveShortcutBinding("toggle_pane_zoom", "Ctrl+Shift+Z"), "toggle_pane_zoom");
             CommandRegistry.Register("Pane: Toggle Broadcast Input (Tab)", "View", () => ToggleBroadcastForCurrentTab(), GetEffectiveShortcutBinding("toggle_broadcast_input", "Ctrl+Shift+B"), "toggle_broadcast_input");
             CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
+            if (IsMuxPersistenceActive)
+            {
+                CommandRegistry.Register("Attach to Session…", "Session", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
+            }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");
             CommandRegistry.Register("Focus Pane Right", "View", () => NavigatePane(MoveDirection.Right), "Alt+Right");
             CommandRegistry.Register("Focus Pane Up", "View", () => NavigatePane(MoveDirection.Up), "Alt+Up");
