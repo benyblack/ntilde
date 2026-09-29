@@ -16,11 +16,11 @@ public sealed class AttachModeTests
         return raw;
     }
 
-    private static long SendAttach(RawMuxConnection raw, Guid id, string? mode, MuxPresentation? presentation = null) =>
+    private static long SendAttach(RawMuxConnection raw, Guid id, string? mode, MuxPresentation? presentation = null, int maxScrollbackRows = 0) =>
         raw.Request(MuxMethods.Attach, new AttachParams
         {
             SessionId = id,
-            MaxScrollbackRows = 0,
+            MaxScrollbackRows = maxScrollbackRows,
             Presentation = presentation ?? MuxTestHost.DefaultPresentation,
             Mode = mode,
         }, MuxJsonContext.Default.AttachParams);
@@ -147,13 +147,80 @@ public sealed class AttachModeTests
         Assert.Empty(host.Fake(id).SentInput);
         Assert.Empty(host.Fake(id).Resizes);
         Assert.Equal((80, 24), (host.Mux(id).Cols, host.Mux(id).Rows));
-        Assert.Single(log, l => l.Contains("read-only", StringComparison.Ordinal) && l.Contains("input", StringComparison.Ordinal));
-        Assert.Single(log, l => l.Contains("read-only", StringComparison.Ordinal) && l.Contains("resize", StringComparison.Ordinal));
+        Assert.Single(log, l => l.Contains("dropping its input", StringComparison.Ordinal));
+        Assert.Single(log, l => l.Contains("dropping its resize", StringComparison.Ordinal));
 
         // An interactive attach on the same connection lifts it.
         Assert.Equal("snapshot", await ReadOutcomeAsync(ro, SendAttach(ro, id, null)));
         ro.Send(MuxFrames.Input(id, Encoding.UTF8.GetBytes("now")));
         await TestWait.UntilAsync(() => host.Fake(id).SentInput.Contains("now"), "input flows after an interactive attach");
+    }
+
+    /// <summary>Review fix 1a: the connection learns its read-only state from the attach's outcome, not from the request.</summary>
+    [Fact]
+    public async Task A_refused_IfUnattached_upgrade_leaves_the_observer_read_only()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        RawMuxConnection gui = await ConnectV2Async(host);
+        RawMuxConnection observer = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(gui, SendAttach(gui, id, null)));
+        Assert.Equal("snapshot", await ReadOutcomeAsync(observer, SendAttach(observer, id, MuxAttachModes.ReadOnly)));
+
+        Assert.Equal(MuxErrorCodes.SessionAttached, await ReadOutcomeAsync(observer, SendAttach(observer, id, MuxAttachModes.IfUnattached)));
+        observer.Send(MuxFrames.Input(id, Encoding.UTF8.GetBytes("typed")));
+        long resize = observer.Request(MuxMethods.Resize, new ResizeParams { SessionId = id, Cols = 90, Rows = 20 }, MuxJsonContext.Default.ResizeParams);
+        Assert.Equal("ok", await ReadOutcomeAsync(observer, resize));
+        await host.Mux(id).InvokeAsync(() => 0);
+        await TestWait.UntilAsync(() => host.Mux(id).QueuedInputBytes == 0, "the input writer is idle");
+
+        Assert.Empty(host.Fake(id).SentInput);
+        Assert.Empty(host.Fake(id).Resizes);
+        Assert.Equal((80, 24), (host.Mux(id).Cols, host.Mux(id).Rows));
+        Assert.Equal(2, host.Mux(id).AttachedClients);
+    }
+
+    /// <summary>Review fix 1b: a read-only re-attach that fails leaves an interactive client interactive.</summary>
+    [Fact]
+    public async Task A_failed_read_only_reattach_leaves_the_client_interactive()
+    {
+        using var host = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, MaxSnapshotBytes = 256 * 1024 });
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        host.Fake(id).Emit(string.Concat(Enumerable.Repeat(new string('x', 79) + "\r\n", 3000))); // scrollback far past the ceiling
+        await host.Mux(id).FlushAsync();
+        RawMuxConnection raw = await ConnectV2Async(host);
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(raw, SendAttach(raw, id, null)));   // the screen alone fits
+        Assert.Equal(MuxErrorCodes.SnapshotTooLarge, await ReadOutcomeAsync(raw, SendAttach(raw, id, MuxAttachModes.ReadOnly, maxScrollbackRows: 20_000)));
+
+        raw.Send(MuxFrames.Input(id, Encoding.UTF8.GetBytes("still")));
+        long resize = raw.Request(MuxMethods.Resize, new ResizeParams { SessionId = id, Cols = 90, Rows = 20 }, MuxJsonContext.Default.ResizeParams);
+        Assert.Equal("ok", await ReadOutcomeAsync(raw, resize));
+        await TestWait.UntilAsync(() => host.Fake(id).SentInput.Contains("still"), "input still flows");
+        await TestWait.UntilAsync(() => host.Fake(id).Resizes.Contains((90, 20)), "resizes still apply");
+        Assert.Equal(1, host.Mux(id).AttachedClients);
+    }
+
+    /// <summary>Review ruling 2: only an attach that took effect supersedes an older one.</summary>
+    [Fact]
+    public async Task A_detach_naming_an_attach_is_not_superseded_by_a_newer_refused_attach()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection b = await ConnectV2Async(host);
+        long first = SendAttach(a, id, null);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, first));
+        Assert.Equal("snapshot", await ReadOutcomeAsync(b, SendAttach(b, id, null)));
+        Assert.Equal(MuxErrorCodes.SessionAttached, await ReadOutcomeAsync(a, SendAttach(a, id, MuxAttachModes.IfUnattached)));
+
+        long detach = a.Request(MuxMethods.Detach, new DetachParams { SessionId = id, AttachRequestId = first }, MuxJsonContext.Default.DetachParams);
+        Assert.Equal("ok", await ReadOutcomeAsync(a, detach));
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.Equal(1, host.Mux(id).AttachedClients); // a's subscription from `first` is gone; b's remains
     }
 
     [Fact]
@@ -219,5 +286,33 @@ public sealed class AttachModeTests
 
         Assert.True(host.Mux(id).DetachedByUser);
         Assert.False(host.Server.TryBeginIdleShutdown()); // idle exit is unaffected: a running shell keeps the daemon
+    }
+
+    /// <summary>Review ruling 3: peeking with --read-only must not undo a deliberate detach, neither by attaching nor by leaving.</summary>
+    [Fact]
+    public async Task A_read_only_peek_does_not_clear_a_user_detach()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        RawMuxConnection gui = await ConnectV2Async(host);
+        RawMuxConnection peek = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(gui, SendAttach(gui, id, null)));
+        Assert.Equal("ok", await ReadOutcomeAsync(gui, gui.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams)));
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.True(host.Mux(id).DetachedByUser);
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(peek, SendAttach(peek, id, MuxAttachModes.ReadOnly)));
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.True(host.Mux(id).DetachedByUser);
+
+        peek.Dispose();
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 0, "the peek's connection was detached");
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.True(host.Mux(id).DetachedByUser);
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(gui, SendAttach(gui, id, null)));   // an interactive attach clears it
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.False(host.Mux(id).DetachedByUser);
     }
 }

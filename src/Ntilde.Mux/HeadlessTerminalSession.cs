@@ -49,6 +49,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Action<string>? _log;
     private readonly List<IMuxFrameSink> _subscribers = new(); // parse thread only
     private readonly HashSet<IMuxFrameSink> _readOnlySinks = new(); // parse thread only: subscribers attached ReadOnly
+    private readonly Dictionary<IMuxFrameSink, long> _attachRequestIds = new(); // parse thread only: each subscriber's latest successful attach
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private string _title;
@@ -166,7 +167,10 @@ public sealed class HeadlessTerminalSession : IDisposable
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
     public long StreamPosition => Interlocked.Read(ref _rawOffset);
 
-    /// <summary>The detach that left the session with no subscribers was a user detach (spec §7.7); the next attach clears it.</summary>
+    /// <summary>
+    /// The detach that left the session with no interactive subscribers was a user detach (spec §7.7);
+    /// the next interactive attach clears it. Read-only observers neither set nor clear it.
+    /// </summary>
     public bool DetachedByUser => Volatile.Read(ref _detachedByUser) != 0;
 
     /// <summary><see cref="Environment.TickCount64"/> when the mux saw the exit; 0 while running. Set before <see cref="IsExited"/>.</summary>
@@ -325,14 +329,23 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (!TryEnqueue(_control, item)) item.OnDropped!();
     }
 
-    internal void PostDetach(IMuxFrameSink sink, bool userDetached = false) =>
+    /// <summary>
+    /// <paramref name="attachRequestId"/> names the attach this detach undoes; if the sink has since
+    /// subscribed through a newer attach, the detach is stale and ignored. Decided here, not on the
+    /// connection: only the parse thread knows which attaches took effect, and a newer attach that was
+    /// refused or failed must not supersede anything.
+    /// </summary>
+    internal void PostDetach(IMuxFrameSink sink, bool userDetached = false, long? attachRequestId = null) =>
         EnqueueControl(() =>
         {
+            if (attachRequestId is long undone && _attachRequestIds.TryGetValue(sink, out long latest) && latest > undone) return;
             if (!_subscribers.Remove(sink)) return;
-            _readOnlySinks.Remove(sink);
+            bool wasReadOnly = _readOnlySinks.Contains(sink);
+            Forget(sink);
 
-            // Only the detach that empties the session decides; a connection closing is never a user detach.
-            if (_subscribers.Count == 0) Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
+            // Only the detach that leaves no interactive subscriber decides; a connection closing is
+            // never a user detach, and a read-only observer leaving decides nothing (spec §7.7).
+            if (!wasReadOnly && !HasOtherInteractiveSubscriber(sink)) Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
             PublishAttachedCount();
         });
 
@@ -582,8 +595,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
         if (terminal)
         {
-            _subscribers.Clear();
-            _readOnlySinks.Clear();
+            ForgetAll();
             PublishAttachedCount();
 
             // Cancel FIRST, same as Dispose and for the same reason: a producer parked in
@@ -596,7 +608,20 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
+    /// <summary>Every exit path reports the subscription that actually resulted (<see cref="IMuxFrameSink.OnSubscriptionState"/>).</summary>
     private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode)
+    {
+        try
+        {
+            ExecuteAttachCore(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes, mode);
+        }
+        finally
+        {
+            ReportSubscription(sink, _subscribers.Contains(sink), _readOnlySinks.Contains(sink));
+        }
+    }
+
+    private void ExecuteAttachCore(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode)
     {
         // A re-attach keeps the sink's existing subscription until its new snapshot is actually
         // enqueued: if this attempt fails (snapshot_too_large once the scrollback has grown), the
@@ -681,7 +706,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
             if (_subscribers.Remove(sink))
             {
-                _readOnlySinks.Remove(sink);
+                Forget(sink);
                 PublishAttachedCount();
             }
 
@@ -689,9 +714,17 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
-        if (readOnly) _readOnlySinks.Add(sink);
-        else _readOnlySinks.Remove(sink);
-        Volatile.Write(ref _detachedByUser, 0);
+        _attachRequestIds[sink] = requestId;
+        if (readOnly)
+        {
+            _readOnlySinks.Add(sink);
+        }
+        else
+        {
+            _readOnlySinks.Remove(sink);
+            Volatile.Write(ref _detachedByUser, 0); // a read-only peek must not undo a deliberate detach (spec §7.7)
+        }
+
         PublishAttachedCount();
         if (IsExited) Offer(sink, ExitedFrame());
     }
@@ -705,6 +738,31 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
 
         return false;
+    }
+
+    /// <summary>Parse thread only, for a sink just removed from <see cref="_subscribers"/>: drops its per-sink state and tells it.</summary>
+    private void Forget(IMuxFrameSink sink)
+    {
+        _readOnlySinks.Remove(sink);
+        _attachRequestIds.Remove(sink);
+        ReportSubscription(sink, subscribed: false, readOnly: false);
+    }
+
+    /// <summary>Parse thread only: every subscriber leaves at once (fault, terminal exit).</summary>
+    private void ForgetAll()
+    {
+        foreach (IMuxFrameSink sink in _subscribers) ReportSubscription(sink, subscribed: false, readOnly: false);
+        _subscribers.Clear();
+        _readOnlySinks.Clear();
+        _attachRequestIds.Clear();
+    }
+
+    private void ReportSubscription(IMuxFrameSink sink, bool subscribed, bool readOnly)
+    {
+        // The sink is arbitrary code on the parse thread (a connection in production); a throw must
+        // not abandon the item that called it halfway through its bookkeeping.
+        try { sink.OnSubscriptionState(Id, subscribed, readOnly); }
+        catch (Exception ex) { Log($"[Mux] session {Id}: reporting a subscription failed: {ex.Message}"); }
     }
 
     private void ApplyPresentation(MuxPresentation presentation)
@@ -761,7 +819,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                 {
                     IMuxFrameSink dropped = _subscribers[i];
                     _subscribers.RemoveAt(i);
-                    _readOnlySinks.Remove(dropped);
+                    Forget(dropped);
                     PublishAttachedCount();
                 }
             }
@@ -803,8 +861,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         finally
         {
-            _subscribers.Clear();
-            _readOnlySinks.Clear();
+            ForgetAll();
             PublishAttachedCount();
         }
     }

@@ -47,7 +47,7 @@ checks. Every change below is additive. The JSON context stays source-generated
 | Notification `killed` | `KilledNotification { SessionId, ByClientKind }`. Sent to every v2 subscriber except the killer, **before** that session's `exited`. |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach found another interactive client attached. |
 | `DetachParams.UserDetached` | New `bool?`. Null or absent means an ordinary detach, which is the v1 shape. `true` means the user detached on purpose ("Pane: Detach", or Detach in the shared-close prompt). The client sends it only when `Welcome.Version >= 2` (§7.7). |
-| `SessionSummary.DetachedByUser` | New `bool`, serialised only when true (`WhenWritingDefault`), so a v1 peer sees exactly the v1 shape. True while the session's last detach, the one that left it with no subscribers, was a user detach. Any later successful attach clears it (§7.7). |
+| `SessionSummary.DetachedByUser` | New `bool`, serialised only when true (`WhenWritingDefault`), so a v1 peer sees exactly the v1 shape. True while the session's last interactive detach, the one that left it with no interactive subscribers, was a user detach. Any later successful interactive attach clears it; read-only observers neither set nor clear it (§7.7). |
 
 `SessionSummary.Title` was already live: the Phase 1 parser already wires `OnTitleChanged`. Nothing
 changes there (see §11).
@@ -75,7 +75,10 @@ ExecuteAttach(sink, requestId, rows, presentation, maxBytes, mode):
                                  → reply session_attached; nothing changes
   mode != ReadOnly               → ApplyPresentation + ApplyResize (unchanged: latest wins)
   capture snapshot, enqueue      (unchanged)
-  subscribe sink; mark it read-only iff mode == ReadOnly; PublishAttachedCount
+  subscribe sink; mark it read-only iff mode == ReadOnly; remember requestId as the sink's
+                                 latest attach; mode != ReadOnly → clear DetachedByUser (§7.7)
+  every exit path above          → sink.OnSubscriptionState(id, subscribed, readOnly) with the
+                                   state that actually resulted
 ```
 
 - **Which clients block `IfUnattached`.** Only *interactive* subscribers other than the requester
@@ -84,13 +87,23 @@ ExecuteAttach(sink, requestId, rows, presentation, maxBytes, mode):
   `AttachedClients` still counts everyone.
 - **A read-only attach changes nothing about the session.** It does not resize and does not apply
   its presentation, so its snapshot is at the session's current size.
-- **Enforcement is at the connection's reader thread.** It keeps a `_readOnly` set of session ids
-  (reader-thread only), added on a read-only attach and removed on any other attach, a detach or a
-  kill. `Input` frames and `resize` requests for those sessions are dropped. The resize still gets
-  an empty reply, so a client never sees an error for it. The drop is logged once per (session,
-  kind). The session also skips geometry for the read-only sink. This is two independent layers,
-  but still not a security boundary: any same-user process can open a second, interactive
+- **The parse thread owns read-only state; the connection enforces it** (Task 7 review fix). The
+  reader thread cannot know an attach's outcome when it posts it, so it never records read-only
+  state itself. Instead `ExecuteAttach` reports the resulting subscription on every exit path
+  (refused, failed, subscribed) through `IMuxFrameSink.OnSubscriptionState(sessionId, subscribed,
+  readOnly)`, and every path that removes a subscriber (detach, a dropped sink, fault, terminal
+  exit) reports not-subscribed. The connection keeps the read-only session ids in a thread-safe set
+  that only those reports write. The reader thread only reads it: `Input` frames and `resize`
+  requests for those sessions are dropped. So a refused `IfUnattached` upgrade leaves an observer
+  read-only, and a failed read-only re-attach leaves an interactive client interactive. The resize
+  still gets an empty reply, so a client never sees an error for it. The drop is logged once per
+  (session, kind) per connection lifetime. The session also skips geometry for the read-only sink.
+  This is still not a security boundary: any same-user process can open a second, interactive
   connection.
+- **Supersession is decided on the parse thread too.** A detach naming an older attach
+  (`DetachParams.AttachRequestId`) is ignored only if the sink has since subscribed through a newer
+  attach that *succeeded*; a refused or failed newer attach supersedes nothing. The connection no
+  longer tracks the latest attach id.
 - **The concurrent-attach proof** (`AttachModeTests.IfUnattached_is_decided_on_the_parse_thread`):
   1. An `InvokeAsync` item parks the parse thread on a gate.
   2. Two clients on separate in-memory connections send `IfUnattached` attaches.
@@ -439,10 +452,13 @@ Adoption is kept only for shells orphaned by a crash.
 
 - **Wire.** `detach` gets an optional `userDetached: true` (§2). The client sends it only on v2
   (`MuxClientSession.Detach(userDetached: true)`); on a v1 connection it is dropped client-side.
-- **Server.** `HeadlessTerminalSession` keeps `DetachedByUser` on the parse thread. The detach that
-  empties the subscriber list decides it: a user detach sets it, any other (a plain detach, or a
-  connection closing, or a crash) leaves it `false`. A detach that leaves other subscribers attached
-  changes nothing. Any successful attach clears it. `SessionSummary.DetachedByUser` exposes it.
+- **Server.** `HeadlessTerminalSession` keeps `DetachedByUser` on the parse thread. The detach of
+  an interactive subscriber that leaves no interactive subscriber decides it: a user detach sets it,
+  any other (a plain detach, or a connection closing, or a crash) leaves it `false`. A detach that
+  leaves another interactive subscriber attached changes nothing. Any successful *interactive*
+  attach clears it. **Read-only observers neither set nor clear it** (Task 7 review ruling): peeking
+  with `ntilde mux attach --read-only`, and closing that peek, must not undo a deliberate detach.
+  `SessionSummary.DetachedByUser` exposes it.
 - **GUI.** `PaneDisposition.Detach` (the "Pane: Detach" command and the prompt's Detach) calls
   `Detach(userDetached: true)` on the UI thread before the pool dispose.
 - **Startup.** `MuxOrphans.Select` skips `DetachedByUser`. Once per launch, if the daemon has any

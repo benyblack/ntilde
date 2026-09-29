@@ -17,4 +17,15 @@ internal interface IMuxFrameSink
     /// <c>killed</c> (Phase 3 spec §2). Default false: a v1 peer - and the test recorder - never gets them.
     /// </summary>
     bool WantsSessionEvents => false;
+
+    /// <summary>
+    /// The session's parse thread reports this sink's subscription to it: after every attach (refused,
+    /// failed or subscribed - the state that actually resulted) and whenever the sink leaves (detach,
+    /// dropped, fault, terminal exit). The parse thread is the only writer of read-only state, so a
+    /// sink that enforces it (the connection drops input and resizes) must take it from here, never
+    /// from the request it sent. Must not block or throw. Default: ignored.
+    /// </summary>
+    void OnSubscriptionState(Guid sessionId, bool subscribed, bool readOnly)
+    {
+    }
 }
