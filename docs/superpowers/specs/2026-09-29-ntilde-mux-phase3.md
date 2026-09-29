@@ -47,7 +47,7 @@ checks. Every change below is additive. The JSON context stays source-generated
 | Notification `killed` | `KilledNotification { SessionId, ByClientKind }`. Sent to every v2 subscriber except the killer, **before** that session's `exited`. |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach found another interactive client attached. |
 | `DetachParams.UserDetached` | New `bool?`. Null or absent means an ordinary detach, which is the v1 shape. `true` means the user detached on purpose ("Pane: Detach", or Detach in the shared-close prompt). The client sends it only when `Welcome.Version >= 2` (§7.7). |
-| `SessionSummary.DetachedByUser` | New `bool`. True while the session's last detach, the one that left it with no subscribers, was a user detach. Any later successful attach clears it (§7.7). |
+| `SessionSummary.DetachedByUser` | New `bool`, serialised only when true (`WhenWritingDefault`), so a v1 peer sees exactly the v1 shape. True while the session's last detach, the one that left it with no subscribers, was a user detach. Any later successful attach clears it (§7.7). |
 
 `SessionSummary.Title` was already live: the Phase 1 parser already wires `OnTitleChanged`. Nothing
 changes there (see §11).
@@ -178,10 +178,9 @@ stdin/stdout is not a terminal.
    `ViewportCols = buffer.Cols` and scroll 0. The renderer is that buffer's only snapshot consumer,
    so the snapshot's dirty-span state is its own.
 2. **Status line.** It is shown when the client is read-only, or when the session grid is larger
-   than the console. It uses the last console row, in reverse video:
-   - `session is 120x40, this terminal is 80x24 — resize to fit`;
-   - `read-only · Ctrl+\ d to detach`;
-   - both combined, when both apply.
+   than the console. It uses the last console row, in reverse video, joining with ` · `:
+   `read-only` (when read-only), `session is 120x40, this terminal is 80x24 — resize to fit` (only
+   when the session grid exceeds the console), and always the detach hint (`Ctrl+\ d to detach`).
 
    `visibleRows = consoleRows - (status ? 1 : 0)` and `visibleCols = consoleCols`.
 3. **Clip window.**
@@ -448,7 +447,8 @@ Adoption is kept only for shells orphaned by a crash.
   `Detach(userDetached: true)` on the UI thread before the pool dispose.
 - **Startup.** `MuxOrphans.Select` skips `DetachedByUser`. Once per launch, if the daemon has any
   running `DetachedByUser` sessions, the window shows the toast "N detached shells are running —
-  Attach to session… to reopen them".
+  Attach to session… to reopen them" (singular for one: "1 detached shell is running — Attach to
+  session… to reopen it").
 - **CLI.** `mux ls` marks them: the state column reads `running, detached`, and `--json` carries
   `"detachedByUser": true`.
 - **Idle exit is unaffected.** The daemon still idles out only with no running session and no
@@ -530,7 +530,7 @@ key dispatch needs no special case.
 | `IfUnattached` race | `tests/Ntilde.Mux.Tests/Server/AttachModeTests.cs`: `IfUnattached_is_decided_on_the_parse_thread`, `IfUnattached_races_have_exactly_one_winner` |
 | `ReadOnly` drops input and resize | `AttachModeTests.ReadOnly_attach_does_not_resize_and_its_input_and_resize_are_dropped` |
 | `sessionChanged` coalescing and delivery | `tests/Ntilde.Mux.Tests/Headless/SessionEventsTests.cs` |
-| `killed` vs `exited` | `SessionEventsTests.Kill_sends_killed_before_exited_to_others_only`, `…natural_exit_sends_no_killed` |
+| `killed` vs `exited` | `SessionEventsTests.Kill_sends_killed_before_exited_to_other_v2_sinks_only`, `SessionEventsTests.A_natural_exit_sends_no_killed` |
 | v1 ↔ v2 fallbacks | `tests/Ntilde.Mux.Tests/Client/ProtocolFallbackTests.cs` |
 | Text client with a fake console | `tests/Ntilde.Mux.Tests/TextClient/*` (renderer, chord, session loop, restore on every path) |
 | Picker attaches shared, both equal the mux | `tests/Ntilde.App.Tests/Core/MainWindowMuxSharingTests.cs` |
@@ -540,7 +540,7 @@ key dispatch needs no special case.
 | Startup gate probe | `tests/Ntilde.App.Tests/Shell/Mux/MuxStartupProbeTests.cs` |
 | PtySmoke, two shared clients | `MuxDaemonSmokeTests.Two_clients_attached_shared_to_a_real_shell_see_the_same_marker` |
 | Architecture rows | `LayeringTests`, `NamespaceAlignmentTests`, `CliCommandDispatchTests` |
-| Detached shells stay detached (§7.7) | `AttachModeTests.A_user_detach_is_recorded_until_the_next_attach`, `ProtocolFallbackTests.UserDetached_is_not_sent_to_a_v1_daemon`, `MuxOrphansTests.User_detached_sessions_are_not_adopted`, `MainWindowMuxLifecycleTests.Detached_shells_are_announced_once_not_adopted`, `MainWindowMuxSharingTests.Detach_pane_marks_the_session_detached_by_user`, `MuxCommandTests.Ls_marks_user_detached_sessions` |
+| Detached shells stay detached (§7.7) | `AttachModeTests.A_user_detach_is_recorded_until_the_next_attach`, `ProtocolFallbackTests.UserDetached_is_not_sent_to_a_v1_daemon`, `MuxOrphansTests.User_detached_sessions_are_not_adopted_but_are_counted`, `MainWindowMuxLifecycleTests.Detached_shells_are_announced_once_not_adopted`, `MainWindowMuxSharingTests.Detach_pane_marks_the_session_detached_by_user`, `MuxCommandTests.Ls_marks_user_detached_sessions` |
 | No device query reaches the text client's stdout | `TextClientTests.Device_queries_in_the_stream_never_reach_the_console` |
 | Windows console hint | `MuxCommandTests.The_console_hint_is_printed_only_for_the_GUI_exe_on_a_parent_console`, `…Attach_help_names_the_cmd_workaround` |
 
@@ -576,6 +576,9 @@ key dispatch needs no special case.
     - `MuxServerHandshakeTests.Disjoint_ranges_are_refused_and_the_connection_closed` offered
       `2..3` against the default server, which overlaps after the bump. Its input moves to `3..4`;
       the assertion is unchanged.
+    - `MuxClientHandshakeTests.Disjoint_ranges_throw_version_mismatch_and_the_server_drops_the_connection`
+      has the same problem from the client side (found in pre-flight). Its input also moves to `3..4`,
+      and `A_client_offering_2_to_3_negotiates_2_with_the_default_server` pins the new meaning.
 
     None of these tests runs with persistence off. Each is paired, in the plan, with a named test
     that pins the new behaviour (Tasks 2, 6 and 10).

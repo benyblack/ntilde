@@ -81,6 +81,7 @@ Everything stays behind `TerminalSettings.SessionPersistence`.
 | `src/Ntilde.App/Shell/Shortcuts/ShortcutDefinition.cs`, `ShortcutBindingResolver.cs`, `ShortcutCatalog.cs`, `src/Ntilde.App/SettingsWindow.axaml.cs` | 11 | unbound entries |
 | `src/Ntilde.App/Controls/TerminalPane.axaml(.cs)`, `src/Ntilde.App/Shell/TabStatusPresentation.cs` | 10, 12 | notice; indicator; banner; focus grid |
 | `src/Ntilde.App/Shell/Mux/MuxSessionPicker.cs` (new) | 13 | picker rows |
+| `src/Ntilde.App/Shell/Mux/MuxOrphans.cs` | 10 | skip user-detached sessions; count them for the reminder toast |
 | `src/Ntilde.App/Shell/Mux/PaneDisposition.cs`, `SharedCloseChoice.cs` (new) | 14 | `Detach`; the close choice |
 | `src/Ntilde.VT/Export/AnsiCellWriter.cs` (new) | 15 | SGR/cell serializer over `RenderCellSnapshot` |
 | `src/Ntilde.Mux/TextClient/*` (new) | 16, 17, 18 | model, renderer, chord, client, console surfaces |
@@ -216,7 +217,7 @@ scripts/build.ps1 test tests/Ntilde.Architecture.Tests
 
 `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~MuxCommandTests"`
 
-Expected: a compile error (`MuxCommand.KillByPid` does not exist). With a stub `KillByPid` that returns 1, the three behavioural tests fail: the output says "mux: The running multiplexer (pid …) is a different version…", exit 1, no `--force` mention in the expected form, and the process survives.
+Expected: a compile error (`MuxCommand.KillByPid` does not exist). With a stub `KillByPid` that returns 1, the first two tests fail: no `--force` wording, and `--force` does not terminate the process. `The_pid_fallback_refuses…` and `Kill_server_rejects_unknown_options` are **guards**: they already pass against the stub, and today, respectively. They pin that the finished code keeps refusing.
 
 - [ ] **Step 3: Implement.** In `MuxCommand.cs`, change the usage line and `KillServer`, and add `KillByPid`:
 
@@ -1039,7 +1040,7 @@ In `MuxTerminalSessionFactory.CreatePersistent`, inside `if (request.ExistingMux
 - Modify: `src/Ntilde.Mux.Contracts/MuxMessages.cs`
 - Modify: `src/Ntilde.Mux.Contracts/MuxJsonContext.cs`
 - Test: `tests/Ntilde.Mux.Tests/Contracts/MuxJsonTests.cs`
-- Modify (input only): `tests/Ntilde.Mux.Tests/Server/MuxServerHandshakeTests.cs`
+- Modify (input only, plus replacement pins): `tests/Ntilde.Mux.Tests/Server/MuxServerHandshakeTests.cs`, `tests/Ntilde.Mux.Tests/Client/MuxClientHandshakeTests.cs`
 
 **Interfaces:**
 - Consumes: none new.
@@ -1156,7 +1157,8 @@ In `MuxTerminalSessionFactory.CreatePersistent`, inside `if (request.ExistingMux
 
         Assert.DoesNotContain("userDetached", plain, StringComparison.Ordinal);
         Assert.Equal("{\"sessionId\":\"00000000-0000-0000-0000-000000000005\",\"userDetached\":true}", user);
-        Assert.Equal(new SessionIdParams { SessionId = id }, System.Text.Json.JsonSerializer.Deserialize(user, MuxJsonContext.Default.SessionIdParams)); // a v1 server ignores it
+        DetachParams back = System.Text.Json.JsonSerializer.Deserialize(user, MuxJsonContext.Default.DetachParams)!;
+        Assert.Equal((id, (long?)null, (bool?)true), (back.SessionId, back.AttachRequestId, back.UserDetached)); // round-trips; a v1 server's DetachParams has no such member and skips it
     }
 
     [Fact]
@@ -1168,6 +1170,7 @@ In `MuxTerminalSessionFactory.CreatePersistent`, inside `if (request.ExistingMux
         Assert.Contains("\"detachedByUser\":true", json, StringComparison.Ordinal);
         Assert.True(System.Text.Json.JsonSerializer.Deserialize(json, MuxJsonContext.Default.SessionSummary)!.DetachedByUser);
         Assert.False(System.Text.Json.JsonSerializer.Deserialize("{\"sessionId\":\"00000000-0000-0000-0000-000000000006\"}", MuxJsonContext.Default.SessionSummary)!.DetachedByUser);
+        Assert.DoesNotContain("detachedByUser", System.Text.Json.JsonSerializer.Serialize(new SessionSummary { SessionId = Guid.NewGuid() }, MuxJsonContext.Default.SessionSummary), StringComparison.Ordinal); // false is never written
     }
 ```
 
@@ -1299,7 +1302,7 @@ public sealed record KilledNotification
 }
 ```
 
-Add the two detach-state members (spec §7.7):
+Add the two detach-state members (spec §7.7). `MuxMessages.cs` needs `using System.Text.Json.Serialization;` for the attribute:
 
 ```csharp
 public sealed record DetachParams
@@ -1318,6 +1321,7 @@ public sealed record SessionSummary
     // ... existing members, and Cwd ...
 
     /// <summary>The detach that left the session with no subscribers was a user detach; cleared by the next attach. Startup adoption skips these.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // only when true: a v1 peer sees exactly the v1 shape
     public bool DetachedByUser { get; init; }
 }
 ```
@@ -1331,6 +1335,25 @@ In `MuxJsonContext.cs`, add `[JsonSerializable(typeof(SessionChangedNotification
 ```
 
 The assertion (`version_mismatch`, connection closed) is unchanged. Spec §11 item 10 records this.
+
+**A fourth changed test (pre-flight B2).** `tests/Ntilde.Mux.Tests/Client/MuxClientHandshakeTests.cs` has `Disjoint_ranges_throw_version_mismatch_and_the_server_drops_the_connection`. It offers `2..3` to the default server, which now negotiates 2. Move its input only; the assertion is unchanged:
+
+```csharp
+            MuxClient.ConnectAsync(host.Listener.Connect(), new MuxClientOptions { MinProtocolVersion = 3, MaxProtocolVersion = 4 }, Ct));
+```
+
+Add its replacement pin to the same file:
+
+```csharp
+    [Fact]
+    public async Task A_client_offering_2_to_3_negotiates_2_with_the_default_server()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync(new MuxClientOptions { MinProtocolVersion = 2, MaxProtocolVersion = 3 });
+
+        Assert.Equal(2, client.ProtocolVersion);   // the old "disjoint" input is now a v2 connection
+    }
+```
 
 **The replacement pin (review note 1).** `Disjoint_ranges…` no longer covers "a client offering only newer versions" against the default server. Add a test to `MuxServerHandshakeTests` that pins what the same input now means:
 
@@ -1368,6 +1391,7 @@ The assertion (`version_mismatch`, connection closed) is unchanged. Spec §11 it
 - Modify: `src/Ntilde.Mux/IMuxFrameSink.cs`
 - Modify: `src/Ntilde.Mux/HeadlessTerminalSession.cs`
 - Modify: `src/Ntilde.Mux/MuxServerConnection.cs`
+- Modify: `src/Ntilde.Mux/MuxServer.cs` (Step 5b: `ListSessions` fills `DetachedByUser`)
 - Test: `tests/Ntilde.Mux.Tests/Server/AttachModeTests.cs`
 
 **Interfaces:**
@@ -2052,7 +2076,7 @@ Append to `MuxServerRequestTests`:
     }
 ```
 
-- [ ] **Step 3: Run them to see them fail.** `scripts/build.ps1 test tests/Ntilde.Mux.Tests --filter "FullyQualifiedName~SessionEventsTests|FullyQualifiedName~MuxServerRequestTests"` → a compile error first (`SessionChangedInterval`, `Cwd`, `Kill(sink, kind)`). With empty stubs, every event test times out, and the request test sees a null `Cwd`.
+- [ ] **Step 3: Run them to see them fail.** `scripts/build.ps1 test tests/Ntilde.Mux.Tests --filter "FullyQualifiedName~SessionEventsTests|FullyQualifiedName~MuxServerRequestTests"` → a compile error first (`SessionChangedInterval`, `Cwd`, `Kill(sink, kind)`). With empty stubs, the notification tests time out and the request test sees a null `Cwd`. `A_natural_exit_sends_no_killed` is a guard: it passes against the stubs, and pins that the finished code still sends no `killed` for a natural exit.
 
 - [ ] **Step 4: Implement the options.** In `HeadlessSessionOptions`:
 
@@ -2133,40 +2157,44 @@ Replace `PublishAttachedCount`, and add the change plumbing:
         _sessionChangePending = false;
         _lastSessionChangeSentMs = Environment.TickCount64;
         if (IsFaulted || !_subscribers.Exists(static s => s.WantsSessionEvents)) return;
+        if (BuildNotification(MuxMethods.SessionChanged, new SessionChangedNotification
+            {
+                SessionId = Id,
+                AttachedClients = _subscribers.Count,
+                Title = Title,
+                Cwd = Cwd,
+            }, MuxJsonContext.Default.SessionChangedNotification) is not { } frame) return;
 
-        MuxOutboundFrame frame;
+        Broadcast(frame, static sink => sink.WantsSessionEvents);
+    }
+
+    /// <summary>Never throws (parse thread): a notification that cannot be built is logged and skipped.</summary>
+    private MuxOutboundFrame? BuildNotification<T>(string method, T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
+    {
         try
         {
-            frame = MuxFrames.Notification(new MuxNotification
-            {
-                Method = MuxMethods.SessionChanged,
-                Params = MuxFrames.ToElement(new SessionChangedNotification
-                {
-                    SessionId = Id,
-                    AttachedClients = _subscribers.Count,
-                    Title = Title,
-                    Cwd = Cwd,
-                }, MuxJsonContext.Default.SessionChangedNotification),
-            });
+            return MuxFrames.Notification(new MuxNotification { Method = method, Params = MuxFrames.ToElement(value, typeInfo) });
         }
         catch (Exception ex)
         {
-            Log($"[Mux] session {Id}: building sessionChanged failed: {ex.Message}");
-            return;
+            Log($"[Mux] session {Id}: building {method} failed: {ex.Message}");
+            return null;
         }
-
-        BroadcastToSessionEventSinks(frame, except: null);
     }
+```
 
-    /// <summary>Parse thread only. Like <see cref="Broadcast"/>, but only to v2 sinks, optionally skipping one.</summary>
-    private void BroadcastToSessionEventSinks(MuxOutboundFrame frame, IMuxFrameSink? except)
+`Broadcast` gets an optional filter instead of a second, near-identical loop. Existing callers pass none and are unchanged:
+
+```csharp
+    /// <summary>Parse thread only. Offers <paramref name="frame"/> to every subscriber <paramref name="to"/> accepts (all when null); a refusing sink is dropped.</summary>
+    private void Broadcast(MuxOutboundFrame frame, Func<IMuxFrameSink, bool>? to = null)
     {
         try
         {
             for (int i = _subscribers.Count - 1; i >= 0; i--)
             {
                 IMuxFrameSink sink = _subscribers[i];
-                if (ReferenceEquals(sink, except) || !sink.WantsSessionEvents) continue;
+                if (to is not null && !to(sink)) continue;
                 if (!sink.TryEnqueue(frame))
                 {
                     _subscribers.RemoveAt(i);
@@ -2180,6 +2208,9 @@ Replace `PublishAttachedCount`, and add the change plumbing:
             frame.Release();
         }
     }
+```
+
+(Replace Task 7's `Broadcast` edit with this one; the `_readOnlySinks.Remove` is included.)
 ```
 
 Replace the body of `ParseLoop`'s `while (true)`:
@@ -2253,22 +2284,12 @@ Add `SendKilled`:
 ```csharp
     private void SendKilled()
     {
-        MuxOutboundFrame frame;
-        try
-        {
-            frame = MuxFrames.Notification(new MuxNotification
-            {
-                Method = MuxMethods.Killed,
-                Params = MuxFrames.ToElement(new KilledNotification { SessionId = Id, ByClientKind = Volatile.Read(ref _killedByKind) }, MuxJsonContext.Default.KilledNotification),
-            });
-        }
-        catch (Exception ex)
-        {
-            Log($"[Mux] session {Id}: building killed failed: {ex.Message}");
-            return;
-        }
+        if (BuildNotification(MuxMethods.Killed,
+                new KilledNotification { SessionId = Id, ByClientKind = Volatile.Read(ref _killedByKind) },
+                MuxJsonContext.Default.KilledNotification) is not { } frame) return;
 
-        BroadcastToSessionEventSinks(frame, except: Volatile.Read(ref _killedBy));
+        IMuxFrameSink? killer = Volatile.Read(ref _killedBy);
+        Broadcast(frame, sink => sink.WantsSessionEvents && !ReferenceEquals(sink, killer));
     }
 ```
 
@@ -2729,6 +2750,8 @@ In `MuxClientSession`, replace `Dispose` with:
 - Modify: `src/Ntilde.App/Controls/TerminalPane.axaml.cs`
 - Test: `tests/Ntilde.App.Tests/Shell/Mux/MuxTerminalSessionFactoryTests.cs`
 - Test: `tests/Ntilde.App.Tests/Controls/MuxPaneRestoreTests.cs`
+- Modify (Step 6b): `src/Ntilde.App/Shell/Mux/MuxOrphans.cs`, `src/Ntilde.App/MainWindow.axaml.cs` (`AdoptOrphanedMuxSessionsAsync`, `AnnounceDetachedShellsOnce`)
+- Test (Step 6b): `tests/Ntilde.App.Tests/Shell/Mux/MuxOrphansTests.cs`, `tests/Ntilde.App.Tests/Core/MainWindowMuxLifecycleTests.cs`
 
 **Interfaces:**
 - Consumes: `MuxClient.OpenSession(…, MuxAttachMode)`, `MuxClient.ProtocolVersion`, `MuxProtocol.SessionEventsVersion`, `MuxErrorCodes.SessionAttached` (Tasks 6 and 9), and `MuxCommandMatch` (Task 5). In tests: `MuxTestHost`, `ClientPaneModel`, `RecordingSessionFactory`, `FakeTerminalSession`, and `PaneSpawnTestHelpers.DisableShellIntegration`.
@@ -2926,7 +2949,9 @@ public sealed class MuxPaneRestoreTests : IDisposable
     /// <summary>Hosts a pane that reopens <paramref name="id"/>: an unhosted TermView has a 0x0 grid and would not spawn.</summary>
     private void ShowRestoringPane(Guid id, bool shared, List<(string Title, string Message)> notices)
     {
-        _pane = new TerminalPane();
+        // "scripted": the same program as the daemon session (MuxTestHost.SpawnAsync), so Task 5's
+        // command check lets the restore reach the IfUnattached attach instead of spawning fresh.
+        _pane = new TerminalPane("scripted");
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
         _pane.SessionFactory = _factory;
         _pane.MuxSessionIdToRestore = id;
@@ -3061,7 +3086,7 @@ In `PersistentSessionFactory.cs`:
             }
 ```
 
-(Task 5's command check moves into this block unchanged.)
+(Task 5's command check moves into this block unchanged. It deliberately runs **before** the v2 `IfUnattached` branch: a saved id that names another program is never attached at all, so a race is only ever lost over this pane's own shell.)
 
 - [ ] **Step 6: Implement the pane side** in `TerminalPane.axaml.cs`.
 
@@ -3221,13 +3246,15 @@ Run `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --fil
 Implement. In `MuxOrphans`:
 
 ```csharp
+    /// <summary>A running, healthy shell nobody shows.</summary>
+    private static bool IsUnshown(SessionSummary s) => s.Running && !s.Faulted && s.AttachedClients == 0;
+
     /// <summary>Crash orphans only: a shell the user detached on purpose stays detached (spec §7.7).</summary>
     public static IReadOnlyList<SessionSummary> Select(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
-        sessions.Where(s => s.Running && !s.Faulted && s.AttachedClients == 0 && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
+        sessions.Where(s => IsUnshown(s) && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
 
     /// <summary>Running shells the user detached and nobody shows: the once-per-launch reminder's count.</summary>
-    public static int CountUserDetached(IEnumerable<SessionSummary> sessions) =>
-        sessions.Count(s => s.Running && !s.Faulted && s.AttachedClients == 0 && s.DetachedByUser);
+    public static int CountUserDetached(IEnumerable<SessionSummary> sessions) => sessions.Count(s => IsUnshown(s) && s.DetachedByUser);
 ```
 
 In `MainWindow.AdoptOrphanedMuxSessionsAsync`, list once, and return both results from the `Task.Run`:
@@ -3450,7 +3477,7 @@ In `SettingsWindow.axaml.cs`, change the filter and the row label:
 ```
 
 Make these two call-site changes:
-- `RebuildShortcutRows` (the method that calls `FilterShortcutCatalogEntries(query)`) now calls `FilterShortcutCatalogEntries(query, Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence))`.
+- `PopulateShortcutBindingsPanel` (the method that calls `FilterShortcutCatalogEntries(query)`) now calls `FilterShortcutCatalogEntries(query, Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence))`.
 - The row description becomes `Text = $"{entry.Category} · {FormatScopeLabel(entry.Scope)} · {DescribeDefaultBinding(entry.DefaultBinding)}"`.
 
 - [ ] **Step 4: Run the tests again.** Run the same filter, plus `FullyQualifiedName~TitleBar|FullyQualifiedName~AssistShortcutBinding` → PASS.
@@ -3511,7 +3538,7 @@ The handler the pane wires is named, so it can be called directly: `TermView.Got
         }
 ```
 
-(This replaces the inline lambda of Step 4.)
+(Step 4 wires the handler to this method.)
 
 - **If the probe passes**, keep `Gaining_focus_takes_the_grid_back_from_another_client` as written.
 - **If it fails** (the headless host does not route focus), change that test's line `_pane.TermView.Focus();` to `_pane.HandleTermViewGotFocus();`, keep the probe as `[AvaloniaFact(Skip = "headless host does not raise GotFocus")]`, and **say so in the task report**. The window-activation path (`MainWindow.Activated → ReassertMuxGrid`) is then covered only by the manual checklist step 9.
@@ -3660,7 +3687,7 @@ public sealed class MuxPaneSharingTests : IDisposable
 
 - [ ] **Step 2: Run them to see them fail.** `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~MuxPaneSharingTests|FullyQualifiedName~TabStatusPresentationTests"` → compile errors: `MuxSharedIndicator`, `MuxOtherClients`, `MuxKilledElsewhereBanner` and `Shared` are missing.
 
-- [ ] **Step 3: Add the overlay.** In `TerminalPane.axaml`, add this beside `AgentOutputToggle`, in the same parent grid, `Grid.Row="0"`:
+- [ ] **Step 3: Add the overlay.** Colours: the agent segment it copies has no theme resources (its colours are literals in `TerminalPane.axaml` and `ApplyAgentAttention`), so the badge reuses the same literals. Check it on a light and a dark theme during manual step 9, and move both to theme resources together if either reads badly. In `TerminalPane.axaml`, add this beside `AgentOutputToggle`, in the same parent grid, `Grid.Row="0"`:
 
 ```xml
                     <!-- Phase 3 "shared with N" (spec §7.3). An overlay, deliberately not a StatusBar
@@ -3734,15 +3761,7 @@ Wire it up:
 
 - In `WireStreamOrderedSession`: `if (Session is MuxClientSession mux) WireMuxSession(mux, muxPreviousLost); else ApplyMuxSharing(null);`
 - In `HandleMuxConnectionLost`, after the guard: `ApplyMuxSharing(null);`
-- Replace the focus wiring `TermView.GotFocus += (s, e) => UpdateFocusVisuals(true);` with:
-
-  ```csharp
-            TermView.GotFocus += (s, e) =>
-            {
-                UpdateFocusVisuals(true);
-                ReassertMuxGrid();
-            };
-  ```
+- Replace the focus wiring `TermView.GotFocus += (s, e) => UpdateFocusVisuals(true);` with `TermView.GotFocus += (s, e) => HandleTermViewGotFocus();`, using the method from Step 0.
 
 - `WriteLocalExitBanner` gets its killed-elsewhere branch first:
 
@@ -3847,7 +3866,7 @@ public sealed class MuxSessionPickerTests
 }
 ```
 
-- [ ] **Step 2: Write the failing window tests.** This is the new file. Tasks 14 and 19 append to it.
+- [ ] **Step 2: Write the failing window tests.** This is the new file. Task 14 appends to it.
 
 ```csharp
 // tests/Ntilde.App.Tests/Core/MainWindowMuxSharingTests.cs
@@ -4194,7 +4213,7 @@ Register the palette command in `SetupCommandPalette`, after "Pane: Reconnect":
 ```csharp
             if (_muxHost is not null)
             {
-                CommandRegistry.Register("Session: Attach to Session…", "Session", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
+                CommandRegistry.Register("Attach to Session…", "Session", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
             }
 ```
 
@@ -5093,6 +5112,8 @@ public sealed class TextClientRendererTests
         TerminalBuffer outer = Outer(renderer.Render(80, 24), 80, 24);
 
         Assert.StartsWith("read-only", Rows(outer)[23], StringComparison.Ordinal);
+        Assert.Contains("d to detach", Rows(outer)[23], StringComparison.Ordinal);
+        Assert.DoesNotContain("resize", Rows(outer)[23], StringComparison.Ordinal); // the grids are equal: nothing to resize
     }
 
     [Fact]
@@ -5366,14 +5387,24 @@ public sealed class TextClientRenderer
         return sb.ToString();
     }
 
+    /// <summary>
+    /// The status row: shown when read-only or when the session grid exceeds the console. "Resize to
+    /// fit" appears only in the second case; the detach hint is always part of it.
+    /// </summary>
     private string? BuildStatus(int sessionCols, int sessionRows, int consoleCols, int consoleRows)
     {
-        bool tooBig = sessionCols > consoleCols || sessionRows > consoleRows - (ReadOnly ? 1 : 0);
+        bool tooBig = sessionCols > consoleCols || sessionRows > consoleRows;
         if (!tooBig && !ReadOnly) return null;
-        string size = string.Create(CultureInfo.InvariantCulture,
-            $"session is {sessionCols}x{sessionRows}, this terminal is {consoleCols}x{consoleRows} — resize to fit");
-        if (!ReadOnly) return size;
-        return tooBig ? "read-only · " + size : "read-only · Ctrl+\\ d to detach";
+        var parts = new List<string>(3);
+        if (ReadOnly) parts.Add("read-only");
+        if (tooBig)
+        {
+            parts.Add(string.Create(CultureInfo.InvariantCulture,
+                $"session is {sessionCols}x{sessionRows}, this terminal is {consoleCols}x{consoleRows} — resize to fit"));
+        }
+
+        parts.Add("Ctrl+\\ d to detach");
+        return string.Join(" · ", parts);
     }
 
     /// <summary>
@@ -6288,7 +6319,7 @@ public sealed class TextClientSession : IDisposable
             bool rawOk = rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
             bool restoredOk = restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
             stdout.WriteLine($"size before raw {before.Cols}x{before.Rows}, while raw {inRaw.Cols}x{inRaw.Rows}; raw mode {(rawOk ? "ok" : "NOT applied")}; restore {(restoredOk ? "ok" : "FAILED")}");
-            return rawOk && restoredOk && before == inRaw && before.Cols > 1 ? 0 : 1;
+            return ProbeVerdict(rawState, restoredState, before, inRaw) ? 0 : 1;
         }
     }
 
@@ -6302,6 +6333,43 @@ public sealed class TextClientSession : IDisposable
         return output;
     }
 ```
+
+The verdict is a pure function, so it gets a plain test (append to `MuxCommandTests`):
+
+```csharp
+    [Fact]
+    public void The_console_probe_verdict_needs_raw_applied_restored_and_a_stable_size()
+    {
+        const string raw = "speed 38400 baud; -icanon -isig -echo";
+        const string cooked = "speed 38400 baud; icanon isig echo";
+
+        Assert.True(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (80, 24)));
+        Assert.False(MuxCommand.ProbeVerdict(cooked, cooked, (80, 24), (80, 24)));   // raw mode not applied
+        Assert.False(MuxCommand.ProbeVerdict(raw, raw, (80, 24), (80, 24)));         // not restored
+        Assert.False(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (1, 1)));        // the size broke while raw
+        Assert.True(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30)));      // Windows: no stty
+    }
+
+    [Fact]
+    public void The_probe_verb_is_hidden_from_the_usage()
+    {
+        var (_, _, err) = Run("mux", "frobnicate");
+        Assert.DoesNotContain("probe-console", err, StringComparison.Ordinal);
+    }
+```
+
+In `ProbeConsole`, compute the result through it:
+
+```csharp
+    internal static bool ProbeVerdict(string? rawState, string? restoredState, (int Cols, int Rows) before, (int Cols, int Rows) inRaw)
+    {
+        bool rawOk = rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
+        bool restoredOk = restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
+        return rawOk && restoredOk && before == inRaw && before.Cols > 1;
+    }
+```
+
+and end `ProbeConsole` with `return ProbeVerdict(rawState, restoredState, before, inRaw) ? 0 : 1;`.
 
 3. Build (`scripts/build.sh build src/Ntilde.App`), and run the verb from a real terminal:
    - **Linux:** `./src/Ntilde.App/bin/Debug/net10.0/Ntilde mux probe-console`. WSL here has no `dotnet`, so use a Linux machine or VM with the SDK, or CI as below.
@@ -6944,7 +7012,7 @@ Add the verb:
             }
 
             using (console)
-            using (var textClient = new Ntilde.Mux.TextClientSession(client, id, console,
+            using (var textClient = new Ntilde.Mux.TextClient.TextClientSession(client, id, console,
                 new Ntilde.Mux.TextClient.TextClientOptions { ReadOnly = readOnly, HandleSignals = ConsoleFactoryForTest is null }))
             {
                 return textClient.Run(stderr);
@@ -7268,7 +7336,7 @@ This test needs every earlier task. RED before Task 9 is a compile error (no `Mu
     - A shell already open in this window is focused rather than opened twice.
     - The "shared with N" badge and the ⧉ tab marker.
   - **Detach versus close.**
-    - "Pane: Detach" leaves the shell running. Get it back with "Attach to session…"; it also reappears as a background tab at the next launch.
+    - "Pane: Detach" leaves the shell running. Get it back with "Attach to session…". It stays detached across restarts: a once-per-launch toast reminds you (see below).
     - Closing a pane ends its shell.
     - When other windows are attached, closing asks: Close (ends it for everyone) / Detach / Cancel.
     - A shell ended from another window shows `[Shell ended from another window]`.
