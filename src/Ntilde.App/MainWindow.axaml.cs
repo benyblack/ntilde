@@ -264,6 +264,9 @@ namespace Ntilde
 
         /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>
         internal Func<string, Task<bool>> ConfirmSessionLossForUpdate { get; set; }
+
+        /// <summary>Test seam: runs inside <see cref="PerformAppTeardown"/> right after its one-shot guard.</summary>
+        internal Action? TeardownFaultForTest { get; set; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
         // Guards the OnOpened wiring below against re-entry: quake mode's Hide()/Show() round
         // trip re-raises OnOpened (Avalonia clears _shown on Hide and ShowCore raises it again
@@ -8696,6 +8699,7 @@ namespace Ntilde
             // A second pass would re-save a session whose connection is already gone.
             if (_teardownDone) return;
             _teardownDone = true;
+            TeardownFaultForTest?.Invoke();
 
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs != null)
@@ -9247,7 +9251,25 @@ namespace Ntilde
                     return;
                 }
 
-                PerformAppTeardown();
+                try
+                {
+                    PerformAppTeardown();
+                }
+                catch (Exception ex)
+                {
+                    // Outside the apply try before (PR #489 follow-up): a throw here escaped this
+                    // fire-and-forget method as an unobserved task fault. Nothing is applied; the
+                    // window stays up and its own close must run the teardown again.
+                    TerminalLogger.Log("Tearing down before the update failed: " + ex);
+                    _teardownDone = false;
+                    ShowRecordingToast(
+                        "Update could not be applied",
+                        "The update was downloaded but could not be applied. Close Ntilde and start it again to finish updating.",
+                        null,
+                        null,
+                        autoHide: false);
+                    return;
+                }
 
                 try
                 {
