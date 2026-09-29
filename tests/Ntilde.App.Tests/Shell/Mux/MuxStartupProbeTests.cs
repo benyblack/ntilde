@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
@@ -47,16 +48,47 @@ public sealed class MuxStartupProbeTests : IDisposable
         Assert.False(File.Exists(DescriptorPath));
     }
 
+    /// <summary>
+    /// Scripted so it is deterministic on every OS: the real Windows check (below) only fires for a
+    /// real <see cref="TimeoutException"/> off a real connect, so this pins "busy" (pipe present) via
+    /// a stubbed <c>pipeExists</c> rather than relying on a pipe this test never actually created.
+    /// </summary>
     [Fact]
-    public void A_connect_that_times_out_counts_as_refused()
+    public void A_connect_that_times_out_counts_as_live_and_keeps_the_descriptor()
     {
         WriteRecycledPidDescriptor();
 
         bool live = MuxStartupProbe.IsDaemonLive(DescriptorPath, TimeSpan.FromMilliseconds(200),
-            (_, _) => throw new TimeoutException("scripted"));
+            (_, _) => throw new TimeoutException("scripted"), pipeExists: _ => true);
+
+        Assert.True(live);
+        Assert.True(File.Exists(DescriptorPath));
+    }
+
+    [Fact]
+    public void A_connect_that_times_out_with_no_pipe_present_is_refused_and_its_descriptor_is_deleted()
+    {
+        WriteRecycledPidDescriptor();
+
+        bool live = MuxStartupProbe.IsDaemonLive(DescriptorPath, TimeSpan.FromMilliseconds(200),
+            (_, _) => throw new TimeoutException("scripted"), pipeExists: _ => false);
 
         Assert.False(live);
         Assert.False(File.Exists(DescriptorPath));
+    }
+
+    [Fact]
+    public void The_default_pipe_lookup_finds_a_live_pipe_and_stops_finding_it_once_disposed()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "\\\\.\\pipe\\ enumeration is Windows-only.");
+
+        string pipeName = "ntilde-mux-test-" + Guid.NewGuid().ToString("N")[..8];
+        using (var server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1))
+        {
+            Assert.True(MuxStartupProbe.DefaultPipeExists(pipeName));
+        }
+
+        Assert.False(MuxStartupProbe.DefaultPipeExists(pipeName));
     }
 
     [Fact]
