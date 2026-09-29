@@ -213,6 +213,42 @@ public sealed class MuxServerRequestTests
         Assert.Equal("é\r", Assert.Single(host.Fake(id).SentInput));
     }
 
+    /// <summary>Reads frames (described as <see cref="RecordedFrame.Describe"/> does) up to and including the first that <paramref name="until"/> accepts.</summary>
+    private static async Task<List<string>> ReadUntilAsync(RawMuxConnection raw, Func<string, bool> until)
+    {
+        var seen = new List<string>();
+        while (true)
+        {
+            using MuxInboundFrame frame = await raw.ReadAsync() ?? throw new EndOfStreamException("The server closed the connection.");
+            string d = new RecordedFrame(frame.Kind, frame.Payload.ToArray()).Describe();
+            seen.Add(d);
+            if (until(d)) return seen;
+        }
+    }
+
+    [Fact]
+    public async Task A_kill_over_the_wire_tells_the_other_v2_connection_killed_before_exited_and_not_the_killer()
+    {
+        using var host = new MuxTestHost();
+        RawMuxConnection killer = host.ConnectRaw();
+        RawMuxConnection other = host.ConnectRaw();
+        Assert.Equal(2, (await killer.HelloAsync(1, 2)).Version);
+        Assert.Equal(2, (await other.HelloAsync(1, 2)).Version);
+        Guid id = await SpawnAsync(killer);
+        foreach (RawMuxConnection c in new[] { killer, other })
+        {
+            c.Request(MuxMethods.Attach, new AttachParams { SessionId = id, Presentation = MuxTestHost.DefaultPresentation }, MuxJsonContext.Default.AttachParams);
+            await ReadUntilAsync(c, d => d.StartsWith("Snapshot", StringComparison.Ordinal));
+        }
+
+        killer.Request(MuxMethods.Kill, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams);
+
+        List<string> otherSaw = await ReadUntilAsync(other, d => d.StartsWith("Exited", StringComparison.Ordinal));
+        Assert.Equal(["Killed:raw", "Exited:-1"], otherSaw.Where(d => d.StartsWith("Killed", StringComparison.Ordinal) || d.StartsWith("Exited", StringComparison.Ordinal)));
+        List<string> killerSaw = await ReadUntilAsync(killer, d => d.StartsWith("Exited", StringComparison.Ordinal));
+        Assert.DoesNotContain(killerSaw, d => d.StartsWith("Killed", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task List_and_session_info_carry_title_cwd_and_the_attached_count()
     {
@@ -227,8 +263,8 @@ public sealed class MuxServerRequestTests
         SessionInfoResult info = await pane.Session.RefreshSessionInfoAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("edit", s.Title);
-        Assert.EndsWith("app", s.Cwd, StringComparison.Ordinal);
+        Assert.Equal("/srv/app", s.Cwd);
         Assert.Equal(("edit", 1), (info.Title, info.AttachedClients));
-        Assert.EndsWith("app", info.Cwd, StringComparison.Ordinal);
+        Assert.Equal("/srv/app", info.Cwd);
     }
 }

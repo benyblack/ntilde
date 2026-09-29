@@ -557,13 +557,17 @@ public sealed class HeadlessTerminalSession : IDisposable
                 if (_sessionChangePending)
                 {
                     // The delayed flush: while a change is pending, wait at most until it is due. An
-                    // idle session wakes once, at the deadline - no timer, no thread pool (spec §4).
+                    // idle session wakes at the deadline - no timer, no thread pool (spec §4).
                     int wait = SessionChangeWaitMs();
-                    if (wait == 0 || BlockingCollection<WorkItem>.TryTakeFromAny(_queues, out item, wait, _cts.Token) < 0)
+                    if (wait == 0)
                     {
                         FlushSessionChanged();
                         continue;
                     }
+
+                    // A timed-out wait only re-checks the deadline: an OS wait can return up to a tick
+                    // before TickCount64 agrees the time is up, and flushing then would undercut the interval.
+                    if (BlockingCollection<WorkItem>.TryTakeFromAny(_queues, out item, wait, _cts.Token) < 0) continue;
                 }
                 else
                 {
@@ -993,21 +997,32 @@ public sealed class HeadlessTerminalSession : IDisposable
         return due <= 0 ? 0 : (int)Math.Min(due, int.MaxValue);
     }
 
-    /// <summary>Parse thread only. Sends the session's current facts to every v2 subscriber.</summary>
+    /// <summary>
+    /// Parse thread only. Sends the session's current facts to every v2 subscriber. The interval is
+    /// measured from AFTER the handover, not before the frame is built: building can take tens of
+    /// milliseconds (the first serialization, a loaded machine), and stamping first let the next
+    /// notification reach a sink less than one interval after this one.
+    /// </summary>
     private void FlushSessionChanged()
     {
         _sessionChangePending = false;
-        _lastSessionChangeSentMs = Environment.TickCount64;
-        if (IsFaulted || !_subscribers.Exists(static s => s.WantsSessionEvents)) return;
-        if (BuildNotification(MuxMethods.SessionChanged, new SessionChangedNotification
+        try
         {
-            SessionId = Id,
-            AttachedClients = _subscribers.Count,
-            Title = Title,
-            Cwd = Cwd,
-        }, MuxJsonContext.Default.SessionChangedNotification) is not { } frame) return;
+            if (IsFaulted || !_subscribers.Exists(static s => s.WantsSessionEvents)) return;
+            if (BuildNotification(MuxMethods.SessionChanged, new SessionChangedNotification
+            {
+                SessionId = Id,
+                AttachedClients = _subscribers.Count,
+                Title = Title,
+                Cwd = Cwd,
+            }, MuxJsonContext.Default.SessionChangedNotification) is not { } frame) return;
 
-        Broadcast(frame, static sink => sink.WantsSessionEvents);
+            Broadcast(frame, static sink => sink.WantsSessionEvents);
+        }
+        finally
+        {
+            _lastSessionChangeSentMs = Environment.TickCount64;
+        }
     }
 
     /// <summary>Parse thread only: <c>killed</c> goes to every v2 subscriber except the killer, which already knows.</summary>

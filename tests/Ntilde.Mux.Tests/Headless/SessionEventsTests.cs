@@ -56,7 +56,7 @@ public sealed class SessionEventsTests
             // Nothing else happens from here on: the last title must still arrive, flushed by the
             // parse loop's own bounded wait (no timer, no thread pool).
             await TestWait.UntilAsync(() => sink.SessionChanges.Count > 0 && sink.SessionChanges[^1].Title == "title-19",
-                "the trailing notification carries the last title", TimeSpan.FromSeconds(5));
+                "the trailing notification carries the last title", TimeSpan.FromSeconds(10)); // generous: only an upper bound, for a loaded machine
             long elapsedMs = sw.ElapsedMilliseconds;
 
             int allowed = 1 + (int)Math.Ceiling(elapsedMs / interval.TotalMilliseconds);
@@ -64,8 +64,9 @@ public sealed class SessionEventsTests
             IReadOnlyList<long> times = sink.SessionChangeTimesMs;
             for (int i = 1; i < times.Count; i++)
             {
-                // TickCount64 resolution is ~15 ms on Windows: allow that much jitter, never more.
-                Assert.True(times[i] - times[i - 1] >= interval.TotalMilliseconds - 20, $"notifications {i - 1} and {i} were {times[i] - times[i - 1]} ms apart");
+                // No jitter allowance: the sink stamps with the same clock (TickCount64) the session
+                // spaces its notifications by, so the bound holds exactly, however coarse the tick.
+                Assert.True(times[i] - times[i - 1] >= interval.TotalMilliseconds, $"notifications {i - 1} and {i} were {times[i] - times[i - 1]} ms apart");
             }
 
             int settled = sink.SessionChanges.Count;
@@ -87,9 +88,9 @@ public sealed class SessionEventsTests
             await TestWait.UntilAsync(() => sink.SessionChanges.Count > 0 && sink.SessionChanges[^1].Cwd is not null, "the cwd was announced");
             SessionChangedNotification last = sink.SessionChanges[^1];
             Assert.Equal("build", last.Title);
-            Assert.EndsWith("work", last.Cwd, StringComparison.Ordinal);
+            Assert.Equal("/tmp/work", last.Cwd);
             Assert.Equal("build", mux.Title);
-            Assert.EndsWith("work", mux.Cwd, StringComparison.Ordinal);
+            Assert.Equal("/tmp/work", mux.Cwd);
         }
     }
 
@@ -115,6 +116,39 @@ public sealed class SessionEventsTests
             Assert.DoesNotContain(killer.Described, d => d.StartsWith("Killed", StringComparison.Ordinal));
             Assert.Contains("Exited:-1", killer.Described);
             Assert.DoesNotContain(v1.Described, d => d.StartsWith("Killed", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public async Task A_shutdown_kill_names_no_client_and_sends_no_killed()
+    {
+        (HeadlessTerminalSession mux, _) = NewSession(TimeSpan.FromMilliseconds(50));
+        using (mux)
+        {
+            var sink = new RecordingFrameSink { WantsSessionEvents = true };
+            mux.PostAttach(sink, 1, 0, P, MuxProtocol.MaxFrameBytes);
+            await mux.InvokeAsync(() => 0);
+
+            mux.Kill();
+
+            await TestWait.UntilAsync(() => sink.Described.Contains("Exited:-1"), "the exit was announced");
+            Assert.DoesNotContain(sink.Described, d => d.StartsWith("Killed", StringComparison.Ordinal));
+        }
+    }
+
+    [Fact]
+    public async Task A_windows_osc7_path_reaches_the_mux_in_windows_shape()
+    {
+        (HeadlessTerminalSession mux, ScriptedTerminalSession fake) = NewSession(TimeSpan.FromMilliseconds(50));
+        using (mux)
+        {
+            var sink = new RecordingFrameSink { WantsSessionEvents = true };
+            mux.PostAttach(sink, 1, 0, P, MuxProtocol.MaxFrameBytes);
+            fake.Emit("\x1b]7;file://localhost/C:/Users/me/src%20dir\x07");
+
+            await TestWait.UntilAsync(() => sink.SessionChanges.Count > 0 && sink.SessionChanges[^1].Cwd is not null, "the cwd was announced");
+            Assert.Equal(@"C:\Users\me\src dir", sink.SessionChanges[^1].Cwd); // the shape is the path's, not the host platform's
+            Assert.Equal(@"C:\Users\me\src dir", mux.Cwd);
         }
     }
 
