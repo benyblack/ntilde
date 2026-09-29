@@ -46,6 +46,8 @@ checks. Every change below is additive. The JSON context stays source-generated
 | Notification `sessionChanged` | `SessionChangedNotification { SessionId, AttachedClients, Title, Cwd }`. Sent to every v2 client attached to the session when the attached count, the title or the cwd changes. Coalesced (§4). |
 | Notification `killed` | `KilledNotification { SessionId, ByClientKind }`. Sent to every v2 subscriber except the killer, **before** that session's `exited`. |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach found another interactive client attached. |
+| `DetachParams.UserDetached` | New `bool?`. Null or absent means an ordinary detach, which is the v1 shape. `true` means the user detached on purpose ("Pane: Detach", or Detach in the shared-close prompt). The client sends it only when `Welcome.Version >= 2` (§7.7). |
+| `SessionSummary.DetachedByUser` | New `bool`. True while the session's last detach, the one that left it with no subscribers, was a user detach. Any later successful attach clears it (§7.7). |
 
 `SessionSummary.Title` was already live: the Phase 1 parser already wires `OnTitleChanged`. Nothing
 changes there (see §11).
@@ -55,7 +57,7 @@ changes there (see §11).
 | Client ↔ server | Negotiated | Behaviour |
 |---|---|---|
 | v2 ↔ v2 | 2 | Everything below. |
-| v2 GUI ↔ v1 daemon | 1 | Spawn, attach (shared), detach and kill work as in Phase 2. The factory keeps the client-side `AttachedClients == 0` pre-check. `AttachAsync(IfUnattached / ReadOnly)` throws `MuxProtocolException(version_mismatch)` **on the client, before anything is sent**, because a v1 server would ignore `Mode` and silently share. `SessionChanged` and `KilledElsewhere` never fire, and `AttachedClients` stays null, so the indicator stays hidden. A kill from elsewhere shows the normal exit banner. The close prompt and the picker still work, because both read `listSessions`, which v1 has. |
+| v2 GUI ↔ v1 daemon | 1 | Spawn, attach (shared), detach and kill work as in Phase 2. `UserDetached` is never sent, and the v1 daemon has no `DetachedByUser`. **So a shell detached on purpose is re-adopted as a background tab at the next launch**, the Phase 2 behaviour, until the daemon is replaced by a v2 one. The factory keeps the client-side `AttachedClients == 0` pre-check. `AttachAsync(IfUnattached / ReadOnly)` throws `MuxProtocolException(version_mismatch)` **on the client, before anything is sent**, because a v1 server would ignore `Mode` and silently share. `SessionChanged` and `KilledElsewhere` never fire, and `AttachedClients` stays null, so the indicator stays hidden. A kill from elsewhere shows the normal exit banner. The close prompt and the picker still work, because both read `listSessions`, which v1 has. |
 | v2 text client ↔ v1 daemon | 1 | Shared attach works. `--read-only` exits 2 with "the running multiplexer is too old for --read-only; run 'ntilde mux kill-server' to replace it". |
 | v1 client ↔ v2 daemon | 1 | Unchanged. The server never sends `sessionChanged` or `killed` to it (`IMuxFrameSink.WantsSessionEvents` is false below v2). `Mode` is absent, which means `shared`. |
 
@@ -314,8 +316,20 @@ The app executable is a `WinExe`, and the self-contained AOT release does **not*
 - An interactive shell that does not wait for GUI programs (PowerShell, an interactive `cmd`)
   returns to its prompt and competes for the same console input. The documented invocation there is
   `cmd /c ntilde mux attach <id>` (cmd waits in `/c` mode) or
-  `Start-Process -Wait -NoNewWindow ntilde 'mux','attach','<id>'`. A console-subsystem launcher in
-  the release is open question 1.
+  `Start-Process -Wait -NoNewWindow ntilde 'mux','attach','<id>'`.
+- **Decided (user review):** Phase 3 accepts the `cmd /c` workaround, and does two cheap things:
+  - `ntilde mux attach --help` prints the attach usage including the `cmd /c ntilde mux attach <id>`
+    workaround (exit 0);
+  - on Windows, when `mux attach` runs as the GUI exe and `PrepareInteractive` attached it to a
+    **parent** console (not a console it allocated), one line goes to stderr **before** raw mode:
+    `mux: if keystrokes are lost, run via cmd /c ntilde mux attach <id>`. The decision is a pure
+    function, `MuxCommand.AttachConsoleHint(bool isWindows, bool attachedToParentConsole, string target)`,
+    which is unit-tested; `Ntilde.Cli.exe` never prints it.
+- **Phase 4:** the proper fix is a console-subsystem launcher named `ntilde.com` next to `ntilde.exe`
+  (the `devenv.com` / `code.cmd` pattern). PATHEXT prefers `.com`; the launcher `CreateProcess`-es
+  the exe with the same arguments, waits, and forwards the exit code. It is built in Phase 4 because
+  Phase 4 already adds a second AOT binary and its publish and packaging legs for the remote daemon,
+  so that infrastructure lands once.
 - On Linux and macOS the executable is an ordinary process with the terminal on fds 0–2.
 
 ## 7. GUI (`Ntilde.App`)
@@ -341,8 +355,9 @@ The app executable is a `WinExe`, and the self-contained AOT release does **not*
    outcome `AttachedElsewhere` (a fresh spawn) instead of `Spawned`, and the pane raises the same
    notice. The outcome is named in the brief and pinned by tests.
 
-Orphan adoption keeps `AttachedClients == 0` as its listing filter. Its panes go through the same
-`IfUnattached` restore path, so a second instance racing for an orphan cannot duplicate it.
+Orphan adoption keeps `AttachedClients == 0` as its listing filter, and now also skips
+`DetachedByUser` sessions (§7.7). Its panes go through the same `IfUnattached` restore path, so a
+second instance racing for an orphan cannot duplicate it.
 
 ### 7.2 "Attach to session…"
 
@@ -417,6 +432,27 @@ Orphan adoption keeps `AttachedClients == 0` as its listing filter. Its panes go
   (`TermView.Cols/Rows`) with the buffer's. When they differ it calls `mux.Resize(viewCols,
   viewRows)`. It is called from `TermView.GotFocus` and from `MainWindow.Activated` for the current
   pane, so the window the user is typing in wins.
+
+### 7.7 Deliberately detached shells stay detached (user review, decision 2)
+
+Adopting a deliberately detached shell back at the next launch defeats the point of detaching.
+Adoption is kept only for shells orphaned by a crash.
+
+- **Wire.** `detach` gets an optional `userDetached: true` (§2). The client sends it only on v2
+  (`MuxClientSession.Detach(userDetached: true)`); on a v1 connection it is dropped client-side.
+- **Server.** `HeadlessTerminalSession` keeps `DetachedByUser` on the parse thread. The detach that
+  empties the subscriber list decides it: a user detach sets it, any other (a plain detach, or a
+  connection closing, or a crash) leaves it `false`. A detach that leaves other subscribers attached
+  changes nothing. Any successful attach clears it. `SessionSummary.DetachedByUser` exposes it.
+- **GUI.** `PaneDisposition.Detach` (the "Pane: Detach" command and the prompt's Detach) calls
+  `Detach(userDetached: true)` on the UI thread before the pool dispose.
+- **Startup.** `MuxOrphans.Select` skips `DetachedByUser`. Once per launch, if the daemon has any
+  running `DetachedByUser` sessions, the window shows the toast "N detached shells are running —
+  Attach to session… to reopen them".
+- **CLI.** `mux ls` marks them: the state column reads `running, detached`, and `--json` carries
+  `"detachedByUser": true`.
+- **Idle exit is unaffected.** The daemon still idles out only with no running session and no
+  connection; a detached running shell keeps it alive exactly as any running shell does.
 
 ### 7.6 Unbound shortcut entries
 
@@ -504,6 +540,9 @@ key dispatch needs no special case.
 | Startup gate probe | `tests/Ntilde.App.Tests/Shell/Mux/MuxStartupProbeTests.cs` |
 | PtySmoke, two shared clients | `MuxDaemonSmokeTests.Two_clients_attached_shared_to_a_real_shell_see_the_same_marker` |
 | Architecture rows | `LayeringTests`, `NamespaceAlignmentTests`, `CliCommandDispatchTests` |
+| Detached shells stay detached (§7.7) | `AttachModeTests.A_user_detach_is_recorded_until_the_next_attach`, `ProtocolFallbackTests.UserDetached_is_not_sent_to_a_v1_daemon`, `MuxOrphansTests.User_detached_sessions_are_not_adopted`, `MainWindowMuxLifecycleTests.Detached_shells_are_announced_once_not_adopted`, `MainWindowMuxSharingTests.Detach_pane_marks_the_session_detached_by_user`, `MuxCommandTests.Ls_marks_user_detached_sessions` |
+| No device query reaches the text client's stdout | `TextClientTests.Device_queries_in_the_stream_never_reach_the_console` |
+| Windows console hint | `MuxCommandTests.The_console_hint_is_printed_only_for_the_GUI_exe_on_a_parent_console`, `…Attach_help_names_the_cmd_workaround` |
 
 ## 11. Differences from the brief
 
@@ -538,19 +577,25 @@ key dispatch needs no special case.
       `2..3` against the default server, which overlaps after the bump. Its input moves to `3..4`;
       the assertion is unchanged.
 
-    None of these tests runs with persistence off.
+    None of these tests runs with persistence off. Each is paired, in the plan, with a named test
+    that pins the new behaviour (Tasks 2, 6 and 10).
 11. **Exit code 2 covers every connection problem** for `mux attach`, including "no multiplexer
     running". The other verbs keep exit 1 for that, as specified in Phase 2.
 12. **`mux attach` also accepts a unique id prefix** (at least 4 characters) from `listSessions`.
 
-## 12. Open questions for the user
+## 12. Decisions and follow-ups
 
-1. **A console launcher for Windows releases.** The AOT bundle has no console-subsystem executable,
-   so `ntilde mux attach` from PowerShell needs `cmd /c` or `Start-Process -Wait -NoNewWindow`
-   (§6.7). Should Phase 4's install flow ship a tiny console `ntilde-cli.exe`? The alternative is to
-   live with the documented workaround.
-2. **Should a detached shell be adopted at the next launch?** Phase 2 adopts every unattached,
-   unreferenced running session as a background tab at startup. A shell the user deliberately
-   detached is exactly that, so it comes back as a tab the next time the GUI starts. The plan keeps
-   that ("never lose a shell"). The alternative is a daemon-side "detached on purpose" flag that
-   adoption skips.
+The two open questions were decided in the user's review (2026-09-29):
+
+1. **Windows console launcher:** Phase 3 documents the `cmd /c` workaround and prints a hint (§6.7).
+   An `ntilde.com` console launcher is built in Phase 4, where the second AOT binary's publish and
+   packaging legs land.
+2. **Deliberately detached shells:** they stay detached (§7.7). A once-per-launch toast and the
+   `mux ls` marker keep them from being forgotten.
+
+Follow-ups recorded for after Phase 3:
+
+- **Allow several subscribers per session on one connection.** Today `MuxClient.OpenSession`
+  refuses a second view of one id, so one window cannot show the same shell twice (a split of the
+  same shell is a legitimate later ask). It needs per-view subscriptions on the server side
+  (a subscriber key finer than the connection) and fan-out in `MuxClient`.

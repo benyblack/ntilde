@@ -34,6 +34,13 @@ Everything stays behind `TerminalSettings.SessionPersistence`.
 - **`ReadOnly` is not a security boundary.**
 - **`Ntilde.Mux` must not reference App/Avalonia.**
 - **Commit trailer:** `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
+- **The user's review of 2026-09-29 is binding, and is folded in:**
+  - deliberately detached shells stay detached (spec §7.7; Tasks 6, 7, 9, 10, 14, 18);
+  - the Windows console hint and `--help` workaround (spec §6.7; Task 18), with the `ntilde.com` launcher in Phase 4;
+  - replacement pins for the three changed tests (Tasks 2, 6, 10);
+  - the strict concurrent-attach test (Task 7) and the device-query test (Task 17);
+  - early verification of raw mode and focus (Task 18 Step 0, Task 12 Step 0);
+  - the follow-up "allow several subscribers per session on one connection" (spec §12).
 - **Line endings are CRLF.** Run `scripts/build.ps1 format whitespace --no-restore` before each commit.
 - **`TerminalPane` dispatch** uses `this.Dispatcher`, never `Dispatcher.UIThread` (#423).
 - **Repo gotchas that apply here:**
@@ -412,6 +419,10 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 Expected:
 - `A_write_blocked…` FAILS: `SentInput` is `"0123456789a"`, because the item was un-charged when taken.
 - The rewritten cap test FAILS at the first `Assert.Equal`: 0 instead of 10.
+
+**The replacement pin (review note 1).** The old test pinned decrement-on-take. Two tests pin the new behaviour:
+- `A_write_blocked_on_a_wedged_child_still_counts_against_the_cap` (above) pins that a write blocked in the child's `SendInput` still counts against the cap.
+- The rewritten `Input_beyond_the_byte_cap_is_dropped_not_queued_forever` pins that the charge is released only once the write returns.
 
 - [ ] **Step 4: Implement.** In `HeadlessTerminalSession.InputLoop`, move the decrement into a `finally` after the write:
 
@@ -1041,6 +1052,7 @@ In `MuxTerminalSessionFactory.CreatePersistent`, inside `if (request.ExistingMux
   - `AttachParams.Mode` (`string?`), `SessionSummary.Cwd` (`string?`), `SessionInfoResult.Title` / `.Cwd` (`string?`), `SessionInfoResult.AttachedClients` (`int?`)
   - `public sealed record SessionChangedNotification { Guid SessionId; int AttachedClients; string Title = ""; string? Cwd; }`
   - `public sealed record KilledNotification { Guid SessionId; string ByClientKind = ""; }`
+  - `DetachParams.UserDetached` (`bool?`; null = an ordinary detach, the v1 shape) and `SessionSummary.DetachedByUser` (`bool`). These are spec §7.7, from the user's review.
 
 - [ ] **Step 1: Write the failing tests** (append to `MuxJsonTests`)
 
@@ -1130,6 +1142,32 @@ In `MuxTerminalSessionFactory.CreatePersistent`, inside `if (request.ExistingMux
         Assert.Null(i.Title);
         Assert.Null(i.Cwd);
         Assert.Null(i.AttachedClients);
+    }
+```
+
+```csharp
+    [Fact]
+    public void A_user_detach_adds_one_optional_member_and_a_plain_detach_keeps_the_old_shape()
+    {
+        Guid id = new("00000000-0000-0000-0000-000000000005");
+
+        string plain = System.Text.Json.JsonSerializer.Serialize(new DetachParams { SessionId = id }, MuxJsonContext.Default.DetachParams);
+        string user = System.Text.Json.JsonSerializer.Serialize(new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
+
+        Assert.DoesNotContain("userDetached", plain, StringComparison.Ordinal);
+        Assert.Equal("{\"sessionId\":\"00000000-0000-0000-0000-000000000005\",\"userDetached\":true}", user);
+        Assert.Equal(new SessionIdParams { SessionId = id }, System.Text.Json.JsonSerializer.Deserialize(user, MuxJsonContext.Default.SessionIdParams)); // a v1 server ignores it
+    }
+
+    [Fact]
+    public void DetachedByUser_round_trips_and_defaults_to_false()
+    {
+        var s = new SessionSummary { SessionId = Guid.NewGuid(), DetachedByUser = true };
+        string json = System.Text.Json.JsonSerializer.Serialize(s, MuxJsonContext.Default.SessionSummary);
+
+        Assert.Contains("\"detachedByUser\":true", json, StringComparison.Ordinal);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize(json, MuxJsonContext.Default.SessionSummary)!.DetachedByUser);
+        Assert.False(System.Text.Json.JsonSerializer.Deserialize("{\"sessionId\":\"00000000-0000-0000-0000-000000000006\"}", MuxJsonContext.Default.SessionSummary)!.DetachedByUser);
     }
 ```
 
@@ -1261,6 +1299,29 @@ public sealed record KilledNotification
 }
 ```
 
+Add the two detach-state members (spec §7.7):
+
+```csharp
+public sealed record DetachParams
+{
+    // ... existing members ...
+
+    /// <summary>
+    /// True when the user detached on purpose ("Pane: Detach", or Detach in the shared-close prompt).
+    /// Null (absent) = an ordinary detach: the v1 shape. Clients send it only on v2 (spec §7.7).
+    /// </summary>
+    public bool? UserDetached { get; init; }
+}
+
+public sealed record SessionSummary
+{
+    // ... existing members, and Cwd ...
+
+    /// <summary>The detach that left the session with no subscribers was a user detach; cleared by the next attach. Startup adoption skips these.</summary>
+    public bool DetachedByUser { get; init; }
+}
+```
+
 In `MuxJsonContext.cs`, add `[JsonSerializable(typeof(SessionChangedNotification))]` and `[JsonSerializable(typeof(KilledNotification))]`.
 
 - [ ] **Step 4: Fix the one handshake test whose input the bump invalidates.** In `MuxServerHandshakeTests.Disjoint_ranges_are_refused_and_the_connection_closed`, the hello offered `2..3`. That overlaps the new default `1..2`. Change the input only:
@@ -1270,6 +1331,30 @@ In `MuxJsonContext.cs`, add `[JsonSerializable(typeof(SessionChangedNotification
 ```
 
 The assertion (`version_mismatch`, connection closed) is unchanged. Spec §11 item 10 records this.
+
+**The replacement pin (review note 1).** `Disjoint_ranges…` no longer covers "a client offering only newer versions" against the default server. Add a test to `MuxServerHandshakeTests` that pins what the same input now means:
+
+```csharp
+    [Fact]
+    public async Task A_client_offering_2_to_3_gets_version_2_from_the_default_server()
+    {
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+
+        WelcomeResult welcome = await raw.HelloAsync(min: 2, max: 3);
+
+        Assert.Equal(2, welcome.Version);   // the old "disjoint" input is now a v2 handshake
+    }
+
+    [Fact]
+    public async Task A_v1_only_client_still_gets_version_1_from_the_default_server()
+    {
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+
+        Assert.Equal(1, (await raw.HelloAsync(min: 1, max: 1)).Version);
+    }
+```
 
 - [ ] **Step 5: Run the whole Mux suite.** `scripts/build.ps1 test tests/Ntilde.Mux.Tests` → all PASS. A v2 server and a v2 client now negotiate 2, and no v2 behaviour exists yet. Then run `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~Mux"` → PASS.
 
@@ -1622,6 +1707,103 @@ Add the helper:
         }
     }
 ```
+
+- [ ] **Step 5a: The strictness note (review note 4).** `IfUnattached_is_decided_on_the_parse_thread` above is the required race:
+  - two **real** connections (`RawMuxConnection` over the in-memory transport, each with its own server reader thread) send their attach requests;
+  - both attach items queue in the session's control queue behind a gate item (`InvokeAsync` blocking on `gate`);
+  - `QueuedControlCount == 2` proves both are queued before either runs;
+  - releasing the gate makes the parse thread execute them back to back.
+
+  Keep it exactly that way. Do not "simplify" it into two sequential `await`ed attaches: that would test the connection, not the parse thread.
+
+- [ ] **Step 5b: User-detached state on the server (spec §7.7).** Add these failing tests to `AttachModeTests`:
+
+```csharp
+    [Fact]
+    public async Task A_user_detach_is_recorded_until_the_next_attach()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection b = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        Assert.Equal("snapshot", await ReadOutcomeAsync(b, SendAttach(b, id, null)));
+        long UserDetach(RawMuxConnection raw) =>
+            raw.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
+
+        // A user detach that leaves another client attached changes nothing ...
+        Assert.Equal("ok", await ReadOutcomeAsync(a, UserDetach(a)));
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.False(host.Mux(id).DetachedByUser);
+
+        // ... the detach that empties the session decides.
+        Assert.Equal("ok", await ReadOutcomeAsync(b, UserDetach(b)));
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.True(host.Mux(id).DetachedByUser);
+        Assert.True(Assert.Single(await spawner.ListSessionsAsync(TestContext.Current.CancellationToken), s => s.SessionId == id).DetachedByUser);
+
+        // A later attach clears it, and a connection closing afterwards (not a user detach) leaves it clear.
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        await host.Mux(id).InvokeAsync(() => 0);
+        Assert.False(host.Mux(id).DetachedByUser);
+        a.Dispose();
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 0, "the closed connection was detached");
+        Assert.False(host.Mux(id).DetachedByUser);
+    }
+
+    [Fact]
+    public async Task A_user_detached_running_shell_still_blocks_idle_exit()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        RawMuxConnection a = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        Assert.Equal("ok", await ReadOutcomeAsync(a, a.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams)));
+        spawner.Dispose();
+        a.Dispose();
+        await TestWait.UntilAsync(() => host.Server.ConnectionCount == 0, "every connection closed");
+
+        Assert.True(host.Mux(id).DetachedByUser);
+        Assert.False(host.Server.TryBeginIdleShutdown()); // idle exit is unaffected: a running shell keeps the daemon
+    }
+```
+
+Run `scripts/build.ps1 test tests/Ntilde.Mux.Tests --filter "FullyQualifiedName~AttachModeTests"` → compile error (`DetachedByUser` is missing). Then implement.
+
+In `HeadlessTerminalSession`:
+
+```csharp
+    private int _detachedByUser; // written on the parse thread only
+
+    /// <summary>The detach that left the session with no subscribers was a user detach (spec §7.7); the next attach clears it.</summary>
+    public bool DetachedByUser => Volatile.Read(ref _detachedByUser) != 0;
+
+    internal void PostDetach(IMuxFrameSink sink, bool userDetached = false) =>
+        EnqueueControl(() =>
+        {
+            if (!_subscribers.Remove(sink)) return;
+            _readOnlySinks.Remove(sink);
+            // Only the detach that empties the session decides; a connection closing is never a user detach.
+            if (_subscribers.Count == 0) Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
+            PublishAttachedCount();
+        });
+```
+
+In `ExecuteAttach`, next to the successful subscribe, add `Volatile.Write(ref _detachedByUser, 0);`.
+
+In `MuxServerConnection`'s `Detach` case, pass the flag:
+
+```csharp
+                        if (!superseded && _attached.Remove(p.SessionId) && _server.TryGetSession(p.SessionId, out HeadlessTerminalSession? s))
+                        {
+                            _readOnly.Remove(p.SessionId);
+                            s.PostDetach(this, p.UserDetached == true);
+                        }
+```
+
+In `MuxServer.ListSessions`, add `DetachedByUser = s.DetachedByUser,`. The idle gate (`TryBeginIdleShutdown`, `RunningSessionCount`) is **not** touched.
 
 - [ ] **Step 6: Run the tests again.** `scripts/build.ps1 test tests/Ntilde.Mux.Tests` → all PASS: the new class, and every existing suite unchanged.
 
@@ -2122,6 +2304,7 @@ Add `SendKilled`:
     - `bool SupportsSessionEvents`, `int? AttachedClients`, `string? Title`, `string? Cwd`, `bool WasKilledElsewhere`
     - `event Action? SessionChanged`, `event Action<string>? KilledElsewhere` (both on the delivery thread)
     - `Task<int?> RefreshSharingAsync(CancellationToken cancellationToken = default)`
+    - `void Detach(bool userDetached)`; `Dispose()` = `Detach(false)`. `UserDetached` is sent only on v2 (Step 4b).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2464,6 +2647,72 @@ Add the refresh and the deliveries:
 ```
 
 Extend the class `<remarks>` list of delivery-thread events with `SessionChanged` and `KilledElsewhere`.
+
+- [ ] **Step 4b: A user detach from the client, v2 only (spec §7.7).** Add these failing tests to `ProtocolFallbackTests`:
+
+```csharp
+    [Fact]
+    public async Task UserDetached_reaches_a_v2_daemon()
+    {
+        using var host = new MuxTestHost();
+        MuxClient c = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(c);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+
+        pane.Session.Detach(userDetached: true);
+
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 0, "the detach landed");
+        Assert.True(host.Mux(id).DetachedByUser);
+        Assert.False(pane.Session.IsAttached);
+        pane.Session.Dispose();                                  // a no-op after Detach
+    }
+
+    [Fact]
+    public async Task UserDetached_is_not_sent_to_a_v1_daemon()
+    {
+        // This server's code would honour the flag if it arrived; negotiating 1 must keep the client from sending it.
+        using var host = new MuxTestHost(V1Server);
+        MuxClient c = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(c);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+
+        pane.Session.Detach(userDetached: true);
+
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 0, "the detach landed");
+        Assert.False(host.Mux(id).DetachedByUser);
+    }
+```
+
+Implement. In `MuxClient`:
+
+```csharp
+    internal void Detach(MuxClientSession session, bool userDetached = false)
+    {
+        _sessions.TryRemove(new KeyValuePair<Guid, MuxClientSession>(session.Id, session));
+        // v2 only (spec §7.7): a v1 daemon has no DetachedByUser, so the member is simply not sent.
+        bool? flag = userDetached && ProtocolVersion >= MuxProtocol.SessionEventsVersion ? true : null;
+        PostRequest(MuxMethods.Detach, new DetachParams { SessionId = session.Id, UserDetached = flag }, MuxJsonContext.Default.DetachParams);
+    }
+```
+
+In `MuxClientSession`, replace `Dispose` with:
+
+```csharp
+    /// <summary>
+    /// Detaches, leaving the session running. <paramref name="userDetached"/> tells a v2 daemon the user
+    /// chose to, so startup adoption leaves it alone (spec §7.7). A later Dispose is a no-op.
+    /// </summary>
+    public void Detach(bool userDetached)
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        Interlocked.Exchange(ref _expectedOffset, -1);
+        _client.Detach(this, userDetached);
+    }
+
+    /// <summary>Detaches (an ordinary detach). The session keeps running in the mux; use <see cref="Kill"/> to end it.</summary>
+    /// <remarks>(the existing remarks on late deliveries, unchanged)</remarks>
+    public void Dispose() => Detach(userDetached: false);
+```
 
 - [ ] **Step 5: Run the tests again.** `scripts/build.ps1 test tests/Ntilde.Mux.Tests` → all PASS. `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~Mux"` → PASS. App uses `OpenSession(id, cmd, args)`, whose trailing optional parameter defaults to `Shared`.
 
@@ -2922,6 +3171,108 @@ In `AttachMuxAsync`, raise the notice on success and handle the refusal before t
 
 Add `using Ntilde.Mux.Contracts;` to `TerminalPane.axaml.cs` if it is not already there. It is needed for `MuxErrorCodes`, and `MuxAttachMode` is not used here.
 
+**The replacement pin (review note 1).** The old `A_session_attached_by_another_client_is_not_taken_over` pinned the client-side check on every daemon. The new behaviour is pinned by:
+- `On_v2_a_restore_opens_IfUnattached_and_the_attach_itself_refuses` (above): on v2 there is no client-side check, and the attach refuses atomically;
+- `MuxPaneRestoreTests.A_restore_that_loses_the_attach_race_starts_a_fresh_shell_and_says_so`: the user-visible result;
+- the rewritten test itself, now pinned to v1 and expecting `AttachedElsewhere`.
+
+- [ ] **Step 6b: Startup adoption skips deliberately detached shells, and says they exist (spec §7.7).** Add failing tests.
+
+```csharp
+// tests/Ntilde.App.Tests/Shell/Mux/MuxOrphansTests.cs (append; the file's helper builds summaries)
+    [Fact]
+    public void User_detached_sessions_are_not_adopted_but_are_counted()
+    {
+        var crashed = new SessionSummary { SessionId = Guid.NewGuid(), Running = true };
+        var detached = new SessionSummary { SessionId = Guid.NewGuid(), Running = true, DetachedByUser = true };
+        var exitedDetached = new SessionSummary { SessionId = Guid.NewGuid(), Running = false, DetachedByUser = true };
+
+        Assert.Equal([crashed.SessionId], MuxOrphans.Select([crashed, detached, exitedDetached], new HashSet<Guid>()).Select(s => s.SessionId));
+        Assert.Equal(1, MuxOrphans.CountUserDetached([crashed, detached, exitedDetached]));
+    }
+```
+
+```csharp
+// tests/Ntilde.App.Tests/Core/MainWindowMuxLifecycleTests.cs (append)
+    [AvaloniaFact]
+    public void Detached_shells_are_announced_once_not_adopted()
+    {
+        Guid detached = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+            pane.Session.Detach(userDetached: true);
+            await TestWait.UntilAsync(() => _mux.Mux(id).DetachedByUser, "the daemon recorded the user detach");
+            return id;
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+        MainWindow window = CreateWindow();
+
+        PumpUntil(() => Toast(window).Message == "1 detached shell is running — Attach to session… to reopen it", "the detached shell was announced");
+        Assert.DoesNotContain(AllPanes(window), p => p.MuxSessionIdToRestore == detached);
+        Assert.DoesNotContain(AllPanes(window), p => p.Session is MuxClientSession m && m.Id == detached);
+        Assert.Equal(0, _mux.Mux(detached).AttachedClients);
+    }
+```
+
+Run `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~MuxOrphansTests|FullyQualifiedName~Detached_shells"` → compile error, then FAIL (the session is adopted).
+
+Implement. In `MuxOrphans`:
+
+```csharp
+    /// <summary>Crash orphans only: a shell the user detached on purpose stays detached (spec §7.7).</summary>
+    public static IReadOnlyList<SessionSummary> Select(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
+        sessions.Where(s => s.Running && !s.Faulted && s.AttachedClients == 0 && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
+
+    /// <summary>Running shells the user detached and nobody shows: the once-per-launch reminder's count.</summary>
+    public static int CountUserDetached(IEnumerable<SessionSummary> sessions) =>
+        sessions.Count(s => s.Running && !s.Faulted && s.AttachedClients == 0 && s.DetachedByUser);
+```
+
+In `MainWindow.AdoptOrphanedMuxSessionsAsync`, list once, and return both results from the `Task.Run`:
+
+```csharp
+                (IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> orphans, int detached) = await Task.Run(async () =>
+                {
+                    Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(10));
+                    if (client is null) return ((IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>)[], 0);
+                    IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync().ConfigureAwait(false);
+                    return (Ntilde.Shell.Mux.MuxOrphans.Select(all, referenced), Ntilde.Shell.Mux.MuxOrphans.CountUserDetached(all));
+                }).ConfigureAwait(false);
+                if (orphans.Count == 0 && detached == 0) return;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        if (orphans.Count > 0) AdoptOrphansOnUiThread(orphans);
+                        if (detached > 0) AnnounceDetachedShellsOnce(detached);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Log($"[MainWindow] orphan adoption failed: {ex.Message}");
+                    }
+                });
+```
+
+```csharp
+        private bool _detachedShellsAnnounced; // UI thread: once per launch
+
+        /// <summary>So deliberately detached shells are not forgotten (spec §7.7): one toast per launch.</summary>
+        private void AnnounceDetachedShellsOnce(int count)
+        {
+            if (_detachedShellsAnnounced || _teardownDone) return;
+            _detachedShellsAnnounced = true;
+            string message = count == 1
+                ? "1 detached shell is running — Attach to session… to reopen it"
+                : $"{count} detached shells are running — Attach to session… to reopen them";
+            ShowRecordingToast("Detached shells", message, null, null, autoHide: true);
+        }
+```
+
+The existing `Toast(window)` helper in `MainWindowMuxLifecycleTests` reads the toast's title and message. The factory's restore path is unaffected: a pane whose saved id names a user-detached session still reattaches it `IfUnattached`, because the user opened that pane.
+
 - [ ] **Step 7: Run the tests again.** Run the same filter, plus `FullyQualifiedName~MuxPaneTests|FullyQualifiedName~MainWindowMuxLifecycleTests|FullyQualifiedName~PaneSessionFactoryTests` → PASS.
 
 - [ ] **Step 8: Commit** (format first): `feat(mux): exclusive restore by protocol, AttachShared, AttachedElsewhere notice`, with the trailer.
@@ -3129,6 +3480,41 @@ Make these two call-site changes:
     - the x:Named controls `MuxSharedIndicator` and `MuxSharedText`
   - `TabMarkerSet(…, bool Shared = false)`
   - `TabStatusPresentation.ResolveTabMarkers(…, bool isShared = false)`
+
+- [ ] **Step 0: Check first that the headless host observes focus (review note 5).** Before writing anything else, add this probe to `MuxPaneSharingTests` (the fixture is in Step 1) and run it:
+
+```csharp
+    [AvaloniaFact]
+    public void The_headless_host_raises_GotFocus_on_the_terminal_view()
+    {
+        StartHostedPane();
+        int got = 0;
+        _pane!.TermView.GotFocus += (_, _) => got++;
+        _decoy!.Focus();
+        Dispatcher.UIThread.RunJobs();
+
+        _pane.TermView.Focus();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(1, got);
+    }
+```
+
+The handler the pane wires is named, so it can be called directly: `TermView.GotFocus += (s, e) => HandleTermViewGotFocus();`, with
+
+```csharp
+        /// <summary>UI thread: the terminal gained keyboard focus (focus visuals, and the grid re-request of spec §7.5).</summary>
+        internal void HandleTermViewGotFocus()
+        {
+            UpdateFocusVisuals(true);
+            ReassertMuxGrid();
+        }
+```
+
+(This replaces the inline lambda of Step 4.)
+
+- **If the probe passes**, keep `Gaining_focus_takes_the_grid_back_from_another_client` as written.
+- **If it fails** (the headless host does not route focus), change that test's line `_pane.TermView.Focus();` to `_pane.HandleTermViewGotFocus();`, keep the probe as `[AvaloniaFact(Skip = "headless host does not raise GotFocus")]`, and **say so in the task report**. The window-activation path (`MainWindow.Activated → ReassertMuxGrid`) is then covered only by the manual checklist step 9.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -4291,6 +4677,41 @@ In the window's activation wiring (next to `this.Activated += (s, e) => FocusCur
 
 Update the `DisposeControlTree` `<param>` doc: "EndSession for a close; Detach for Pane: Detach and the shared prompt's Detach".
 
+- [ ] **Step 4b: A GUI detach is a user detach (spec §7.7).** Add this failing test to `MainWindowMuxSharingTests`:
+
+```csharp
+    [AvaloniaFact]
+    public void Detach_pane_marks_the_session_detached_by_user()
+    {
+        MainWindow window = CreateWindow();
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        theirs.Session.Dispose();                      // an ordinary detach: this window is now the last viewer
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the other instance left");
+        Assert.False(_mux.Mux(id).DetachedByUser);
+
+        Task<bool> detach = window.DetachPaneAsync(mine);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.True(_mux.Mux(id).DetachedByUser);
+        Assert.False(_mux.Mux(id).IsExited);
+    }
+```
+
+It fails with `DetachedByUser == false`, because the pool `Dispose` is an ordinary detach. Fix it in `DisposeControlTree`, right after `KillMuxSessionOnClose(session, effective);`:
+
+```csharp
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.Detach && session is Ntilde.Mux.MuxClientSession detaching)
+                {
+                    // A deliberate detach (the command, or the shared prompt's Detach): tell a v2 daemon, so the
+                    // next launch does not adopt it back (spec §7.7). On the UI thread; the pool Dispose below is then a no-op.
+                    detaching.Detach(userDetached: true);
+                }
+```
+
 - [ ] **Step 5: Run the tests again.** The same filter → PASS. Then the whole mux-adjacent set: `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~Mux|FullyQualifiedName~ShellExit|FullyQualifiedName~ClosePane|FullyQualifiedName~DeadPane"` → PASS, with no change in existing assertions.
 
 - [ ] **Step 6: Commit** (format first): `feat(mux): detach pane and a Close/Detach/Cancel prompt for shared shells`, with the trailer.
@@ -5399,6 +5820,42 @@ public sealed class TextClientTests
 
 (The type is `TextClientSession`, not `TextClient`: a type named like its own namespace, `Ntilde.Mux.TextClient`, would bind to the namespace from any code under `Ntilde.Mux.*`, the test projects included.)
 
+Add the device-query test to `TextClientTests` (review note 4). No device query, and no reply to one, may ever reach the text client's stdout. Add `using System.Text.RegularExpressions;` at the top.
+
+```csharp
+    [Fact]
+    public async Task Device_queries_in_the_stream_never_reach_the_console()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        MuxClient attacher = await host.ConnectClientAsync();
+        using var console = new FakeConsoleSurface(80, 24);
+        using var client = new TextClientSession(attacher, id, console);
+        Task<int> run = RunAsync(client);
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 1, "attached");
+
+        // DA1, CPR and XTGETTCAP ("TN"), as a program would send them.
+        host.Fake(id).Emit("before\r\n\x1b[c\x1b[6n\x1bP+q544e\x1b\\after\r\n");
+
+        await TestWait.UntilAsync(() => console.ScreenText().Contains("after", StringComparison.Ordinal), "the output after the queries was painted");
+        await TestWait.UntilAsync(() => host.Fake(id).SentInput.Count >= 2, "the mux answered DA and CPR itself");
+        string written = console.Output;
+
+        Assert.DoesNotContain("\x1b[c", written, StringComparison.Ordinal);            // DA request
+        Assert.DoesNotContain("\x1b[6n", written, StringComparison.Ordinal);           // CPR request
+        Assert.DoesNotContain("\x1bP", written, StringComparison.Ordinal);             // the XTGETTCAP request, and any DCS reply
+        Assert.DoesNotMatch(new Regex("\x1b\\[\\?[0-9;]*c"), written);                 // a DA reply
+        Assert.DoesNotMatch(new Regex("\x1b\\[[0-9]+;[0-9]+R"), written);              // a CPR reply
+        Assert.All(host.Fake(id).SentInput, reply => Assert.DoesNotContain(reply, written, StringComparison.Ordinal));
+
+        console.Type("\u001cd");
+        Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+    }
+```
+
+This passes by construction once the renderer exists: the renderer writes cells, never stream bytes, and the model discards its parser's replies. It is the regression guard the review asks for. Run it with the others in Step 7.
+
 - [ ] **Step 4: Run them to see them fail.** `scripts/build.ps1 test tests/Ntilde.Mux.Tests --filter "FullyQualifiedName~DetachChordTests|FullyQualifiedName~TextClientTests"` → compile errors: `DetachChord`, `TextClientSession`, `TextClientOptions` and `TextClientExit` are missing.
 
 - [ ] **Step 5: Implement the chord**
@@ -5787,6 +6244,81 @@ public sealed class TextClientSession : IDisposable
   - `public static void CliConsoleBindings.PrepareInteractive()`
   - usage line `ntilde mux attach <sessionId|prefix> [--read-only]`
   - CLI verbs connect with `ClientKind = "ntilde-cli"`, and `attach` with `"ntilde-attach"`
+
+- [ ] **Step 0: Verify raw mode and size on real Linux and macOS terminals FIRST (review note 5).** This is the riskiest assumption in the phase: `cfmakeraw` on an opaque `termios` buffer, and reading the size (the runtime's `TIOCGWINSZ` behind `Console.WindowWidth/Height`) while the terminal is raw. Check it in the task's first hour, before the CLI work.
+
+1. Write `UnixConsoleSurface`, `WindowsConsoleSurface` and `ConsoleSurfaces` exactly as in Steps 4–5 below.
+2. Add a hidden diagnostic verb to `MuxCommand`. It needs no daemon, is not in the usage text, and is kept afterwards for bug reports. Add `"probe-console" => ProbeConsole(stdout, stderr),` to the verb switch, and:
+
+```csharp
+    /// <summary>
+    /// Hidden diagnostic: raw mode in and out, and the size before and while raw. Exit 0 when raw mode
+    /// takes effect, is restored, and the size reads the same in both modes.
+    /// </summary>
+    private static int ProbeConsole(TextWriter stdout, TextWriter stderr)
+    {
+        Ntilde.Mux.TextClient.IConsoleSurface surface;
+        try
+        {
+            surface = Ntilde.Mux.TextClient.ConsoleSurfaces.Create();
+        }
+        catch (Ntilde.Mux.TextClient.ConsoleUnavailableException ex)
+        {
+            stderr.WriteLine($"mux: {ex.Message}");
+            return 2;
+        }
+
+        using (surface)
+        {
+            (int Cols, int Rows) before = surface.Size;
+            (int Cols, int Rows) inRaw;
+            string? rawState = null;
+            surface.EnterRawMode();
+            try
+            {
+                inRaw = surface.Size;
+                if (!OperatingSystem.IsWindows()) rawState = SttyState();
+            }
+            finally
+            {
+                surface.RestoreMode();
+            }
+
+            string? restoredState = OperatingSystem.IsWindows() ? null : SttyState();
+            bool rawOk = rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
+            bool restoredOk = restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
+            stdout.WriteLine($"size before raw {before.Cols}x{before.Rows}, while raw {inRaw.Cols}x{inRaw.Rows}; raw mode {(rawOk ? "ok" : "NOT applied")}; restore {(restoredOk ? "ok" : "FAILED")}");
+            return rawOk && restoredOk && before == inRaw && before.Cols > 1 ? 0 : 1;
+        }
+    }
+
+    /// <summary>`stty -a` on our own terminal: the child inherits stdin, which is the TTY.</summary>
+    private static string SttyState()
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("stty", "-a") { UseShellExecute = false, RedirectStandardOutput = true };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        string output = p.StandardOutput.ReadToEnd();
+        p.WaitForExit(5000);
+        return output;
+    }
+```
+
+3. Build (`scripts/build.sh build src/Ntilde.App`), and run the verb from a real terminal:
+   - **Linux:** `./src/Ntilde.App/bin/Debug/net10.0/Ntilde mux probe-console`. WSL here has no `dotnet`, so use a Linux machine or VM with the SDK, or CI as below.
+   - **macOS:** the same binary path on a Mac.
+   - **Without a local Mac (or Linux box):** ask the user before pushing anything. Then run the verb on the CI `ubuntu-latest` and `macos-latest` runners from a throwaway `workflow_dispatch` workflow on a scratch branch (never on the PR branch). Give it a TTY with `script`: `script -qec "./Ntilde mux probe-console" /dev/null` on Linux, and `script -q /dev/null ./Ntilde mux probe-console` on macOS. Delete the branch afterwards.
+4. Both must print `raw mode ok; restore ok` with equal sizes, and exit 0. Paste both outputs into the task report.
+
+**Fallbacks if it fails:**
+- **Raw mode not applied** (`cfmakeraw` missing or wrong on a libc): replace it with explicit per-platform flag clearing on the same buffer, at known offsets.
+  - Linux: `c_iflag` at 0, `c_lflag` at 12 (32-bit fields), `c_cc` at 17, `VMIN`=6, `VTIME`=5.
+  - macOS: `c_iflag` at 0, `c_lflag` at 24 (64-bit fields), `c_cc` at 32, `VMIN`=16, `VTIME`=17.
+  - Clear `ICANON|ECHO|ISIG|IEXTEN` and `IXON|ICRNL`, set VMIN=1 and VTIME=0.
+  - Pin it with the probe on both platforms.
+- **The size is wrong or throws while raw:**
+  - Linux: call `ioctl(1, TIOCGWINSZ=0x5413, out winsize)`. Declare it non-variadically; that is safe on Linux x64 and arm64.
+  - macOS: run `stty size` once per `SIGWINCH` and cache the result (variadic `ioctl` is unsafe on arm64).
+- Record which fallback shipped in the spec's §6.1 table row and in the PR.
 
 - [ ] **Step 1: Link the fake into App.Tests.** In `Ntilde.App.Tests.csproj`'s mux-support `ItemGroup`, add:
 
@@ -6488,6 +7020,7 @@ In `Program.cs`, replace the mux dispatch's console line:
             {
                 // serve is a daemon: it must not attach to the launching console (it detaches from it).
                 // attach is interactive: it needs a real console, allocated if the parent has none.
+                // (Step 6b replaces the first line with the AttachedToParentConsole assignment.)
                 if (Ntilde.Shell.Mux.MuxCommand.IsAttach(args)) CliConsoleBindings.PrepareInteractive();
                 else if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
                 Environment.ExitCode = Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
@@ -6496,6 +7029,121 @@ In `Program.cs`, replace the mux dispatch's console line:
 ```
 
 `src/Ntilde.Cli/Program.cs` is unchanged. It is a console executable and already dispatches `MuxCommand`, which the architecture row pins.
+
+- [ ] **Step 6b: The Windows console hint, `--help`, and the `mux ls` marker (review decisions 1 and 2).** Add these failing tests to `MuxCommandTests`:
+
+```csharp
+    [Theory]
+    [InlineData(true, true, true)]     // the GUI exe, attached to a parent console: the only case that shares the keyboard
+    [InlineData(true, false, false)]   // allocated its own console (Explorer), or Ntilde.Cli.exe
+    [InlineData(false, true, false)]   // not Windows
+    public void The_console_hint_is_printed_only_for_the_GUI_exe_on_a_parent_console(bool isWindows, bool attachedToParent, bool expected)
+    {
+        string? hint = MuxCommand.AttachConsoleHint(isWindows, attachedToParent, "abcd1234");
+
+        Assert.Equal(expected, hint is not null);
+        if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde mux attach abcd1234", hint);
+    }
+
+    [Fact]
+    public void Attach_help_names_the_cmd_workaround()
+    {
+        var (code, output, _) = Run("mux", "attach", "--help");
+
+        Assert.Equal(0, code);
+        Assert.Contains("cmd /c ntilde mux attach <id>", output, StringComparison.Ordinal);
+        Assert.Contains("Ctrl+\\ then d", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Ls_marks_user_detached_sessions()
+    {
+        Guid id = await StartDaemonWithOneSessionAsync();
+        using Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5));
+        using MuxClient c = await MuxClient.ConnectAsync(s, null, Ct);
+        MuxClientSession session = c.OpenSession(id, "scripted");
+        await session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
+
+        session.Detach(userDetached: true);
+
+        await TestWait.UntilAsync(() => Run("mux", "ls").Out.Contains("running, detached", StringComparison.Ordinal), "ls marks it");
+        Assert.Contains("\"detachedByUser\":true", Run("mux", "ls", "--json").Out, StringComparison.Ordinal);
+    }
+```
+
+Implement in `MuxCommand`:
+
+```csharp
+    private const string AttachUsage = """
+        Usage: ntilde mux attach <sessionId|prefix> [--read-only]
+
+          Shows a multiplexer session in this terminal. The id (or a unique prefix of at least
+          4 characters) comes from `ntilde mux ls`. Detach with Ctrl+\ then d; Ctrl+\ Ctrl+\ sends
+          a literal Ctrl+\. --read-only shows the session without sending input (a convenience,
+          not a security boundary). Exit codes: 0 detached, 1 the session ended, 2 an error.
+
+          Windows: from PowerShell, or any prompt that does not wait for GUI programs, run
+            cmd /c ntilde mux attach <id>
+          so the prompt does not compete for your keystrokes.
+        """;
+
+    /// <summary>Set by Program.cs: PrepareInteractive attached this (GUI) process to its parent's console.</summary>
+    internal static bool AttachedToParentConsole { get; set; }
+
+    /// <summary>
+    /// The review's decision 1: the GUI exe on a parent console shares the keyboard with a prompt that
+    /// does not wait for it. One line on stderr, before raw mode. Null when it does not apply.
+    /// </summary>
+    internal static string? AttachConsoleHint(bool isWindows, bool attachedToParentConsole, string target) =>
+        isWindows && attachedToParentConsole ? $"mux: if keystrokes are lost, run via cmd /c ntilde mux attach {target}" : null;
+```
+
+Then make four changes:
+
+1. **`Attach` takes `stdout`.** Change the verb arm to `"attach" => Attach(args, stdout, stderr, descriptorPath),` and the signature to `Attach(string[] args, TextWriter stdout, TextWriter stderr, string descriptorPath)`. Make this its first line:
+
+   ```csharp
+        if (args.Skip(2).Any(a => a is "--help" or "-h"))
+        {
+            stdout.WriteLine(AttachUsage);
+            return 0;
+        }
+   ```
+
+2. **The hint goes before the console surface is created,** and so before raw mode:
+
+   ```csharp
+            if (AttachConsoleHint(OperatingSystem.IsWindows(), AttachedToParentConsole, target) is { } hint) stderr.WriteLine(hint);
+   ```
+
+3. **`PrepareInteractive` returns whether it attached to a parent console,** and `Program.cs` records that:
+
+   ```csharp
+    /// <returns>True when this process attached to its parent's console (Windows): the keyboard may be shared.</returns>
+    public static bool PrepareInteractive()
+    {
+        bool attachedToParent = false;
+        if (OperatingSystem.IsWindows())
+        {
+            const int AttachParentProcess = -1;
+            attachedToParent = AttachConsole(AttachParentProcess);
+            if (!attachedToParent) _ = AllocConsole();
+        }
+
+        RebindOutputStream(Console.OpenStandardOutput, Console.SetOut);
+        RebindOutputStream(Console.OpenStandardError, Console.SetError);
+        return attachedToParent;
+    }
+   ```
+
+   ```csharp
+                if (Ntilde.Shell.Mux.MuxCommand.IsAttach(args)) Ntilde.Shell.Mux.MuxCommand.AttachedToParentConsole = CliConsoleBindings.PrepareInteractive();
+                else if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
+   ```
+
+   `Ntilde.Cli.exe` never sets it, so it never prints the hint.
+
+4. **`mux ls` marks user-detached sessions.** Widen the STATE column to 18 in both format strings (`{1,-18}`), and in `DescribeState` return `s.DetachedByUser ? "running, detached" : "running"` for a running session. `--json` already carries `detachedByUser`, because `SessionSummary` serialises it.
 
 - [ ] **Step 7: Run the tests again**
   - `scripts/build.ps1 test tests/Ntilde.App.Tests --blame-hang-timeout 5m --filter "FullyQualifiedName~MuxCommandTests"` → PASS.
@@ -6635,6 +7283,16 @@ This test needs every earlier task. RED before Task 9 is a compile error (no `Mu
   - **`ntilde mux kill-server --force`.** It replaces a daemon of another version. It terminates the verified daemon process, and its shells.
   - **Limits.** A v1 daemon (from before this version) keeps working for spawn, attach, detach and kill, but shows no sharing indicator, and `--read-only` needs a new daemon.
 
+  - **Detached shells stay detached (review decision 2).**
+    - A shell you detach on purpose, with "Pane: Detach" or Detach in the close prompt, is **not** reopened at the next launch.
+    - Once per launch, a toast says "N detached shells are running — Attach to session… to reopen them".
+    - `ntilde mux ls` marks them `running, detached`, and `--json` carries `"detachedByUser": true`.
+    - Shells orphaned by a crash are still reopened as background tabs.
+    - Against a daemon from before this version, a detached shell is reopened at the next launch until you replace the daemon with `ntilde mux kill-server --force`.
+  - **The Windows console hint (review decision 1).**
+    - `ntilde mux attach --help` shows the `cmd /c ntilde mux attach <id>` workaround.
+    - When the GUI executable attaches to your prompt's console, it prints "if keystrokes are lost, run via cmd /c …" before taking over the keyboard.
+    - A proper console launcher (`ntilde.com`) is planned for Phase 4.
 - [ ] **Step 2: `docs/ARCHITECTURE.md` §8.1.** Add:
   - **Protocol v2.** It is additive, with a negotiated range of 1..2. The items: `AttachParams.Mode` (shared / ifUnattached / readOnly), `SessionSummary.Cwd`, `sessionChanged` (coalesced to one per session per 100 ms by the parse loop's bounded wait), `killed` (before `exited`, never to the killer), and `session_attached`. Include the fallback matrix from spec §2.1.
   - **Attach modes.** `IfUnattached` is decided inside the attach item on the session's single parse thread, and read-only observers do not count. Read-only is enforced both by the session (no geometry) and by the connection (input and resize dropped). It is not a security boundary.
@@ -6723,6 +7381,11 @@ The four extensions (brief, "Report back" item 6):
     1. In B, run "Pane: Detach". The toast reads "Shell detached — Shell kept running — Attach to session… to get it back".
     2. A's badge disappears. A's shell is still usable.
     3. `ntilde mux ls` shows the session with 1 attached.
+10b. **A detached shell stays detached across a restart (review decision 2).**
+    1. With B's shell detached as in step 10, close window A too, which is an ordinary detach.
+    2. `ntilde mux ls` shows B's shell as `running, detached`.
+    3. Relaunch. B's detached shell is **not** reopened as a tab, and the toast says "1 detached shell is running — Attach to session… to reopen it".
+    4. "Attach to session…" reopens it. `ntilde mux ls` then shows it as `running` again.
 11. **Close in one window, with the prompt.**
     1. Attach B again.
     2. In A, close the pane (Ctrl+Shift+W). The prompt reads "1 other window is attached to this shell", with Cancel / Detach / Close (ends it).
