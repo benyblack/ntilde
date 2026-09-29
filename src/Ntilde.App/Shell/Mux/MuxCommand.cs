@@ -209,14 +209,18 @@ public static class MuxCommand
         }
 
         // Wait for it to really be gone, so "kill-server && start" cannot race the old daemon.
-        if (!MuxDaemonExit.WaitForExit(descriptorPath, d, TimeSpan.FromSeconds(5), Environment.ProcessId))
-        {
-            stderr.WriteLine("Multiplexer did not stop within 5 s.");
-            return 1;
-        }
+        if (!WaitForExitOrReport(descriptorPath, d, stderr)) return 1;
 
         stdout.WriteLine("Multiplexer stopped.");
         return 0;
+    }
+
+    /// <summary>Shared by <see cref="KillServer"/> and <see cref="KillByPid"/>: report and fail if the daemon is still there after 5 s.</summary>
+    private static bool WaitForExitOrReport(string descriptorPath, MuxEndpointDescriptor? before, TextWriter stderr)
+    {
+        if (MuxDaemonExit.WaitForExit(descriptorPath, before, TimeSpan.FromSeconds(5), Environment.ProcessId)) return true;
+        stderr.WriteLine("Multiplexer did not stop within 5 s.");
+        return false;
     }
 
     /// <summary>
@@ -247,6 +251,15 @@ public static class MuxCommand
         try
         {
             using System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(d.Pid);
+            // The live check above and this Kill are not atomic: the pid could have exited and been
+            // recycled for an unrelated process in between. Re-verify on this exact Process object,
+            // right before killing it, so that window never kills the wrong process.
+            if (!string.Equals(process.ProcessName, d.ProcessName, StringComparison.OrdinalIgnoreCase))
+            {
+                stderr.WriteLine($"pid {d.Pid} is no longer the multiplexer; nothing was terminated.");
+                return 1;
+            }
+
             process.Kill(entireProcessTree: true);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
@@ -255,11 +268,7 @@ public static class MuxCommand
             return 1;
         }
 
-        if (!MuxDaemonExit.WaitForExit(descriptorPath, d, TimeSpan.FromSeconds(5), Environment.ProcessId))
-        {
-            stderr.WriteLine("Multiplexer did not stop within 5 s.");
-            return 1;
-        }
+        if (!WaitForExitOrReport(descriptorPath, d, stderr)) return 1;
 
         MuxDiscovery.DeleteDescriptorIfOwned(descriptorPath, d.Pid);
         stdout.WriteLine($"Multiplexer (pid {d.Pid}) terminated.");
