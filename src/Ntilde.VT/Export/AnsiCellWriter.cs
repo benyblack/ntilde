@@ -35,18 +35,8 @@ namespace Ntilde.VT.Export
             {
                 RenderCellSnapshot cell = cells[col];
                 bool wide = cell.IsWide && !cell.IsWideContinuation;
-                string text;
-                int width;
-                if (cell.IsWideContinuation || (wide && col + 1 >= limit))
-                {
-                    text = " ";
-                    width = 1;
-                }
-                else
-                {
-                    text = cell.Text ?? (cell.Character == '\0' ? " " : cell.Character.ToString());
-                    width = wide ? 2 : 1;
-                }
+                bool clippedToSpace = cell.IsWideContinuation || (wide && col + 1 >= limit);
+                int width = clippedToSpace ? 1 : (wide ? 2 : 1);
 
                 if (!haveStyle || !SameStyle(current, cell))
                 {
@@ -55,7 +45,26 @@ namespace Ntilde.VT.Export
                     haveStyle = true;
                 }
 
-                sb.Append(text);
+                // Append the char directly rather than via cell.Text ?? cell.Character.ToString():
+                // this is the text client's repaint hot path, and .ToString() would allocate a new
+                // string for every plain (non-grapheme) cell in the row.
+                if (clippedToSpace)
+                {
+                    sb.Append(' ');
+                }
+                else if (cell.Text is not null)
+                {
+                    sb.Append(cell.Text);
+                }
+                else if (cell.Character == '\0')
+                {
+                    sb.Append(' ');
+                }
+                else
+                {
+                    sb.Append(cell.Character);
+                }
+
                 col += width;
             }
 

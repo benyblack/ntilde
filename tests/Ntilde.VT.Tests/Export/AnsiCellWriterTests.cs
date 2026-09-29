@@ -90,6 +90,28 @@ public sealed class AnsiCellWriterTests
     [InlineData("\x1b[38;5;123mx", "\x1b[0;38;5;123m")]
     [InlineData("\x1b[44mx", "\x1b[0;44m")]
     [InlineData("\x1b[2;9mx", "\x1b[0;2;9m")]
+    [InlineData("\x1b[5mx", "\x1b[0;5m")]
+    [InlineData("\x1b[8mx", "\x1b[0;8m")]
     public void Sgr_forms(string input, string expectedPrefix) =>
         Assert.StartsWith(expectedPrefix, WriteRow(Parse(input), 0, 1), StringComparison.Ordinal);
+
+    [Fact]
+    public void Multi_codepoint_graphemes_are_emitted_in_full_and_the_column_count_matches_their_display_width()
+    {
+        // Man+ZWJ+Woman: a ZWJ join sequence, one grapheme, 2 columns wide.
+        const string Family = "\U0001F468‍\U0001F469";
+        // 'e' + combining acute accent: one grapheme, 2 UTF-16 code units, but only 1 column wide.
+        const string EAcute = "é";
+        // Heavy black heart + VS16 (emoji presentation selector): one grapheme, 2 columns wide.
+        const string Heart = "❤️";
+
+        TerminalBuffer source = Parse(Family + EAcute + Heart, cols: 20, rows: 1);
+        using TerminalRenderSnapshot snap = source.CaptureRenderSnapshot(new RenderSnapshotRequest { ViewportRows = 1, ViewportCols = source.Cols }, out _);
+        var sb = new StringBuilder();
+
+        int written = AnsiCellWriter.AppendRow(sb, snap.RowsData.Array![0].Cells, maxCols: 5);
+
+        Assert.Equal(5, written);
+        Assert.Equal(AnsiCellWriter.Reset + Family + EAcute + Heart + AnsiCellWriter.Reset, sb.ToString());
+    }
 }
