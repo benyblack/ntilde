@@ -216,9 +216,9 @@ before Avalonia, so the daemon never initialises a UI. The edge is App → `Ntil
  │    SSH   → DefaultTerminalSessionFactory                    ├─ idle-exit + reaper timer
  └─ TerminalPane ← MuxClientSession events                     └─ mux/mux-endpoint.json
                                                                      ▲
- ntilde mux attach <id> (Ntilde.exe mux attach)                     │
- └─ TextClientSession ── its own MuxClient (shared / ifUnattached / readOnly) ──┘
-      renders from its own buffer; a second, independent connection (spec §6)
+ ntilde mux attach <id> (Ntilde.exe mux attach)                      │
+ └─ TextClientSession ── its own MuxClient ──────────────────────────┘
+      (mode: shared / ifUnattached / readOnly; renders from its own buffer, spec §6)
 ```
 
 - **Discovery.** `MuxDiscovery` (Mux.Contracts) resolves `<root>/mux/mux-endpoint.json` under

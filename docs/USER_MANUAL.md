@@ -236,9 +236,11 @@ the same screen and any of them can send input.
 
 #### Size
 
-The latest resize wins, from whichever attached window sent it last. The window you bring to the
-front takes the size back for every attached window. A read-only `ntilde mux attach --read-only`
-viewer never resizes the session.
+The latest resize wins, from whichever attached window sent it last. A window that is not in
+control — its own size does not match the shared grid — letterboxes: its content is clipped or
+padded to fit, rather than resizing the shared shell out from under whoever it just took the size
+from. It takes the size back when you focus or activate it, for every attached window. A read-only
+`ntilde mux attach --read-only` viewer never resizes the session.
 
 #### `ntilde mux attach <id|prefix> [--read-only]`
 
