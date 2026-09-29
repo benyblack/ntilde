@@ -53,6 +53,9 @@ public sealed class MuxServerOptions
     /// <summary>Per-session cap on input queued for a child that is not reading stdin (see <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/>).</summary>
     public long MaxQueuedInputBytes { get; init; } = 16L * 1024 * 1024;
 
+    /// <summary>Per-session bound on <c>sessionChanged</c> notifications (see <see cref="HeadlessSessionOptions.SessionChangedInterval"/>).</summary>
+    public TimeSpan SessionChangedInterval { get; init; } = TimeSpan.FromMilliseconds(100);
+
     /// <summary>
     /// First pause after a failed accept (a transient pipe/socket error). Doubles per consecutive
     /// failure up to <see cref="AcceptRetryMaxDelay"/>; a successful accept resets it.

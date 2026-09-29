@@ -212,4 +212,23 @@ public sealed class MuxServerRequestTests
 
         Assert.Equal("é\r", Assert.Single(host.Fake(id).SentInput));
     }
+
+    [Fact]
+    public async Task List_and_session_info_carry_title_cwd_and_the_attached_count()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
+        host.Fake(id).Emit("\x1b]2;edit\x07\x1b]7;file://localhost/srv/app\x07");
+        await host.SettleAsync(id, client);
+
+        SessionSummary s = Assert.Single(await client.ListSessionsAsync(TestContext.Current.CancellationToken));
+        SessionInfoResult info = await pane.Session.RefreshSessionInfoAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("edit", s.Title);
+        Assert.EndsWith("app", s.Cwd, StringComparison.Ordinal);
+        Assert.Equal(("edit", 1), (info.Title, info.AttachedClients));
+        Assert.EndsWith("app", info.Cwd, StringComparison.Ordinal);
+    }
 }

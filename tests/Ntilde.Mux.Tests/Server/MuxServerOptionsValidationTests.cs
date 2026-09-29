@@ -21,6 +21,7 @@ public sealed class MuxServerOptionsValidationTests
         "accept-delay-zero" => new MuxServerOptions { AcceptRetryInitialDelay = TimeSpan.Zero },
         "accept-max-below-initial" => new MuxServerOptions { AcceptRetryInitialDelay = TimeSpan.FromSeconds(3), AcceptRetryMaxDelay = TimeSpan.FromSeconds(2) },
         "accept-log-negative" => new MuxServerOptions { AcceptFailureLogInterval = TimeSpan.FromSeconds(-1) },
+        "session-changed-negative" => new MuxServerOptions { SessionChangedInterval = TimeSpan.FromMilliseconds(-1) },
         _ => throw new ArgumentOutOfRangeException(nameof(name)),
     };
 
@@ -39,6 +40,7 @@ public sealed class MuxServerOptionsValidationTests
     [InlineData("accept-delay-zero")]
     [InlineData("accept-max-below-initial")]
     [InlineData("accept-log-negative")]
+    [InlineData("session-changed-negative")]
     public void Nonsensical_options_are_refused_at_construction(string name)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MuxServer(new ScriptedSessionFactory(), Invalid(name)).Dispose());

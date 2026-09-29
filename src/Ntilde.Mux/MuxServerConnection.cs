@@ -468,7 +468,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     {
                         SessionIdParams p = Params(request, MuxJsonContext.Default.SessionIdParams);
                         _attached.Remove(p.SessionId);
-                        _server.Kill(p.SessionId);
+                        _server.Kill(p.SessionId, this, ClientKind);
                         ReplyEmpty(request);
                         break;
                     }
@@ -499,6 +499,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                             ExitCode = s.ExitCode,
                             HasActiveChildProcesses = !s.IsExited && s.Inner.HasActiveChildProcesses,
                             Pid = (s.Inner as RustPtySession)?.Pid,
+                            Title = s.Title,
+                            Cwd = s.Cwd,
+                            AttachedClients = s.AttachedClients,
                         }, MuxJsonContext.Default.SessionInfoResult);
                         break;
                     }

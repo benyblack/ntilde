@@ -57,6 +57,7 @@ public sealed class MuxServer : IDisposable
         if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");
         if (o.MaxFlightRecordingBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxFlightRecordingBytes, "MaxFlightRecordingBytes must be positive.");
         if (o.MaxQueuedInputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxQueuedInputBytes, "MaxQueuedInputBytes must be positive.");
+        if (o.SessionChangedInterval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.SessionChangedInterval, "SessionChangedInterval cannot be negative.");
         if (o.AcceptRetryInitialDelay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptRetryInitialDelay, "AcceptRetryInitialDelay must be positive.");
         if (o.AcceptRetryMaxDelay < o.AcceptRetryInitialDelay) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptRetryMaxDelay, "AcceptRetryMaxDelay cannot be shorter than AcceptRetryInitialDelay.");
         if (o.AcceptFailureLogInterval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptFailureLogInterval, "AcceptFailureLogInterval cannot be negative.");
@@ -253,6 +254,7 @@ public sealed class MuxServer : IDisposable
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,
+                SessionChangedInterval = Options.SessionChangedInterval,
             });
         }
         catch (Exception ex)
@@ -294,16 +296,17 @@ public sealed class MuxServer : IDisposable
             AttachedClients = s.AttachedClients,
             Faulted = s.IsFaulted,
             DetachedByUser = s.DetachedByUser,
+            Cwd = s.Cwd,
         }).ToArray();
 
-    internal void Kill(Guid id)
+    internal void Kill(Guid id, IMuxFrameSink? by = null, string? byClientKind = null)
     {
         if (!_sessions.TryRemove(id, out HeadlessTerminalSession? session))
         {
             throw new MuxRequestException(MuxErrorCodes.UnknownSession, $"No session {id}.");
         }
 
-        session.Kill();
+        session.Kill(by, byClientKind);
 
         // Kill queues the terminal exit behind whatever output is already queued, so attached
         // clients still get Exited in stream order. Dispose (which cancels first and would drop that

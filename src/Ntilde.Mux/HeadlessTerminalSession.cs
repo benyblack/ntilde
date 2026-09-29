@@ -53,6 +53,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private string _title;
+    private string? _cwd;
     private int _cols;
     private int _rows;
     private int _attached;
@@ -62,6 +63,18 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _disposed;
     private int _unsubscribed;
     private int _detachedByUser; // written on the parse thread only
+
+    // sessionChanged coalescing (spec §4), parse thread only: at most one per interval, the trailing
+    // one sent by the parse loop's own bounded wait (see ParseLoop).
+    private readonly long _sessionChangedIntervalMs;
+    private bool _sessionChangePending;
+    private long _lastSessionChangeSentMs = long.MinValue / 2;
+    private int _lastPublishedAttached;
+
+    // Kill(by, kind): written before the child is disposed, read by ProcessExit on the parse thread.
+    private IMuxFrameSink? _killedBy;
+    private string _killedByKind = string.Empty;
+    private int _killRequested;
 
     // Input writer (spec §4): SendInput runs on the connection reader thread; a child that stops
     // reading stdin would otherwise stall every session sharing that connection. One thread per
@@ -108,7 +121,19 @@ public sealed class HeadlessTerminalSession : IDisposable
             AllowNativeKittyGraphics = false,
         };
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
-        _parser.OnTitleChanged = title => Volatile.Write(ref _title, title);
+        _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
+        _parser.OnTitleChanged = title =>
+        {
+            if (title == _title) return; // a shell re-sending its title at every prompt is no change
+            Volatile.Write(ref _title, title);
+            MarkSessionChanged();
+        };
+        _parser.OnWorkingDirectoryChanged = cwd =>
+        {
+            if (cwd == _cwd) return;
+            Volatile.Write(ref _cwd, cwd);
+            MarkSessionChanged();
+        };
         _queues = [_control, _data];
         _onRawOutput = OnRawOutput;
         _onExit = code => TryEnqueue(_data, WorkItem.ForExit(code));
@@ -156,6 +181,10 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     public Guid Id { get; }
     public string Title => Volatile.Read(ref _title);
+
+    /// <summary>The last OSC 7 directory the mux parser saw; null until the shell reports one.</summary>
+    public string? Cwd => Volatile.Read(ref _cwd);
+
     public string Command { get; }
     public string? Arguments { get; }
     public bool ForceConPtyFiltering { get; }
@@ -374,10 +403,25 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     /// <summary>
     /// Ends the session. Clients learn it through Exited, in stream order after every byte already
-    /// queued; then the parse thread stops and unsubscribes.
+    /// queued; then the parse thread stops and unsubscribes. No client is named (the shutdown path),
+    /// so no <c>killed</c> is sent.
     /// </summary>
-    public void Kill()
+    public void Kill() => Kill(by: null, byClientKind: null);
+
+    /// <summary>
+    /// A client killed it: the other v2 subscribers get <c>killed</c> before <c>exited</c> (spec §5).
+    /// The killer is recorded BEFORE the child is disposed, because the child's own OnExit may be the
+    /// exit item that reaches the parse thread first.
+    /// </summary>
+    internal void Kill(IMuxFrameSink? by, string? byClientKind)
     {
+        if (byClientKind is not null)
+        {
+            Volatile.Write(ref _killedBy, by);
+            Volatile.Write(ref _killedByKind, byClientKind);
+            Volatile.Write(ref _killRequested, 1);
+        }
+
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
         TryEnqueue(_data, WorkItem.ForExit(null, terminal: true));
@@ -509,9 +553,26 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             while (true)
             {
-                BlockingCollection<WorkItem>.TakeFromAny(_queues, out WorkItem item, _cts.Token);
+                WorkItem item;
+                if (_sessionChangePending)
+                {
+                    // The delayed flush: while a change is pending, wait at most until it is due. An
+                    // idle session wakes once, at the deadline - no timer, no thread pool (spec §4).
+                    int wait = SessionChangeWaitMs();
+                    if (wait == 0 || BlockingCollection<WorkItem>.TryTakeFromAny(_queues, out item, wait, _cts.Token) < 0)
+                    {
+                        FlushSessionChanged();
+                        continue;
+                    }
+                }
+                else
+                {
+                    BlockingCollection<WorkItem>.TakeFromAny(_queues, out item, _cts.Token);
+                }
+
                 Execute(item);
                 if (item.Kind == WorkKind.Exit && item.Terminal) break;
+                if (_sessionChangePending && SessionChangeWaitMs() == 0) FlushSessionChanged();
             }
         }
         catch (OperationCanceledException)
@@ -590,7 +651,11 @@ public sealed class HeadlessTerminalSession : IDisposable
             Volatile.Write(ref _exitCode, code ?? _session.ExitCode ?? -1);
             Interlocked.Exchange(ref _exitedAtMs, Environment.TickCount64); // before _exited: a reaper that sees the exit sees its time
             Volatile.Write(ref _exited, 1);
-            if (_subscribers.Count > 0) Broadcast(ExitedFrame());
+            if (_subscribers.Count > 0)
+            {
+                if (Volatile.Read(ref _killRequested) != 0) SendKilled();
+                Broadcast(ExitedFrame());
+            }
         }
 
         if (terminal)
@@ -818,17 +883,19 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    private void Broadcast(MuxOutboundFrame frame)
+    /// <summary>Parse thread only. Offers <paramref name="frame"/> to every subscriber <paramref name="to"/> accepts (all when null); a refusing sink is dropped.</summary>
+    private void Broadcast(MuxOutboundFrame frame, Func<IMuxFrameSink, bool>? to = null)
     {
         try
         {
             for (int i = _subscribers.Count - 1; i >= 0; i--)
             {
-                if (!_subscribers[i].TryEnqueue(frame))
+                IMuxFrameSink sink = _subscribers[i];
+                if (to is not null && !to(sink)) continue;
+                if (!sink.TryEnqueue(frame))
                 {
-                    IMuxFrameSink dropped = _subscribers[i];
                     _subscribers.RemoveAt(i);
-                    Forget(dropped);
+                    Forget(sink);
                     PublishAttachedCount();
                 }
             }
@@ -900,7 +967,73 @@ public sealed class HeadlessTerminalSession : IDisposable
         finally { frame.Release(); }
     }
 
-    private void PublishAttachedCount() => Volatile.Write(ref _attached, _subscribers.Count);
+    /// <summary>
+    /// Parse thread only. A changed count is a session change (spec §4). Read-only observers count:
+    /// this is the number of connected clients, the same figure <c>listSessions</c> reports; only the
+    /// <c>IfUnattached</c> decision ignores them (<see cref="HasOtherInteractiveSubscriber"/>).
+    /// </summary>
+    private void PublishAttachedCount()
+    {
+        int count = _subscribers.Count;
+        Volatile.Write(ref _attached, count);
+        if (count != _lastPublishedAttached)
+        {
+            _lastPublishedAttached = count;
+            MarkSessionChanged();
+        }
+    }
+
+    /// <summary>Parse thread only (every caller runs inside an item: attach/detach, the parser's OSC callbacks).</summary>
+    private void MarkSessionChanged() => _sessionChangePending = true;
+
+    /// <summary>Milliseconds until a pending change may be sent; 0 = now.</summary>
+    private int SessionChangeWaitMs()
+    {
+        long due = _lastSessionChangeSentMs + _sessionChangedIntervalMs - Environment.TickCount64;
+        return due <= 0 ? 0 : (int)Math.Min(due, int.MaxValue);
+    }
+
+    /// <summary>Parse thread only. Sends the session's current facts to every v2 subscriber.</summary>
+    private void FlushSessionChanged()
+    {
+        _sessionChangePending = false;
+        _lastSessionChangeSentMs = Environment.TickCount64;
+        if (IsFaulted || !_subscribers.Exists(static s => s.WantsSessionEvents)) return;
+        if (BuildNotification(MuxMethods.SessionChanged, new SessionChangedNotification
+        {
+            SessionId = Id,
+            AttachedClients = _subscribers.Count,
+            Title = Title,
+            Cwd = Cwd,
+        }, MuxJsonContext.Default.SessionChangedNotification) is not { } frame) return;
+
+        Broadcast(frame, static sink => sink.WantsSessionEvents);
+    }
+
+    /// <summary>Parse thread only: <c>killed</c> goes to every v2 subscriber except the killer, which already knows.</summary>
+    private void SendKilled()
+    {
+        if (BuildNotification(MuxMethods.Killed,
+                new KilledNotification { SessionId = Id, ByClientKind = Volatile.Read(ref _killedByKind) },
+                MuxJsonContext.Default.KilledNotification) is not { } frame) return;
+
+        IMuxFrameSink? killer = Volatile.Read(ref _killedBy);
+        Broadcast(frame, sink => sink.WantsSessionEvents && !ReferenceEquals(sink, killer));
+    }
+
+    /// <summary>Never throws (parse thread): a notification that cannot be built is logged and skipped.</summary>
+    private MuxOutboundFrame? BuildNotification<T>(string method, T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
+    {
+        try
+        {
+            return MuxFrames.Notification(new MuxNotification { Method = method, Params = MuxFrames.ToElement(value, typeInfo) });
+        }
+        catch (Exception ex)
+        {
+            Log($"[Mux] session {Id}: building {method} failed: {ex.Message}");
+            return null;
+        }
+    }
 
     private void Unsubscribe()
     {

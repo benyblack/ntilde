@@ -16,4 +16,7 @@ public sealed class HeadlessSessionOptions
     /// is dropped rather than queued forever behind a child that has stopped reading (spec §4).
     /// </summary>
     public long MaxQueuedInputBytes { get; init; } = 16L * 1024 * 1024;
+
+    /// <summary>At most one sessionChanged per this interval; later changes collapse into one trailing notification (spec §4).</summary>
+    public TimeSpan SessionChangedInterval { get; init; } = TimeSpan.FromMilliseconds(100);
 }
