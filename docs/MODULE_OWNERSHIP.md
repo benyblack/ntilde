@@ -28,6 +28,11 @@ invariant changes.
   text) and `ShellMarkAnchorResolver` (mark → viewport row, for Command Assist's overlay anchor).
   Both live here rather than in `Ntilde.CommandAssist` because they are buffer arithmetic
   over VT types, which the layering tests forbid that assembly from referencing.
+- `Export/AnsiCellWriter.cs`: render-snapshot rows to positioned ANSI text; no I/O, no cursor
+  movement, no erase — the caller positions each row. Used by the mux text client's renderer
+  (`Ntilde.Mux.TextClient.TextClientRenderer`, Phase 3 spec §6.3), and kept deliberately separate
+  from `Export/TerminalExporter.cs`'s `ExportToAnsi`, whose exact whole-screen dump format the
+  "Export Snapshot (ANSI)" command relies on.
 
 **Invariants** (enforced by architecture tests and `tests/Ntilde.VT.Tests/`)
 - Deterministic parsing — same byte stream produces the same semantic ops
@@ -191,13 +196,17 @@ invariant changes.
 
 ## Ntilde.Mux (`src/Ntilde.Mux/`)
 
-**Namespace:** `Ntilde.Mux` (+ `.Transport`)
+**Namespace:** `Ntilde.Mux` (+ `.Transport`, `.TextClient`)
 **Depends on:** Pty, VT, Replay, Mux.Contracts
 
 **Owns**
 - Multiplexer core: headless authoritative sessions (one parse thread each), the server, the client (`MuxClientSession : ITerminalSession`), and an in-memory transport
 - Local transports (`Transport/`): `NamedPipeMuxListener`, `UnixSocketMuxListener`, `MuxListeners.Create` (the platform's listener) and `MuxEndpointConnector` (the client end)
 - The daemon host: `MuxDaemonHost` / `MuxDaemonOptions` (lock file, descriptor, reaper, idle exit, `shutdown`)
+- The `ntilde mux attach` text client (`TextClient/`, Phase 3 spec §6): `TextClientSession` (lifecycle,
+  threads, exit codes), `TextClientModel` (its own buffer + parser), `TextClientRenderer` (dirty-row
+  repaint), `DetachChord` (`Ctrl+\ d`), `IConsoleSurface` + `WindowsConsoleSurface` /
+  `UnixConsoleSurface`
 
 **Invariants**
 - **One parse thread per session** owns the headless parser and buffer, and control items run only between `Process()` calls
@@ -210,6 +219,17 @@ invariant changes.
 - **Endpoints are current-user only and never TCP:** a `CurrentUserOnly` pipe on Windows (the client checks it too); a `0600` socket in a `0700` directory elsewhere, and the listener refuses a directory with any other mode or a live socket at the path. The protocol has no authentication by design
 - Per-session input writer: `SendInput` and parser replies share one byte-capped (16 MiB) queue per session, so a child that stops reading stdin cannot stall the shared connection
 - Exited, unattached sessions are reaped after `ReapGrace` (60 s); the daemon exits after `IdleExitAfter` (10 min) with no running session and no connection
+- **Attach modes are decided on the parse thread.** `IfUnattached` is checked inside the same
+  attach control item that subscribes the sink, on the session's one parse thread — never on the
+  connection's reader thread — so two racing attaches resolve to exactly one winner (Phase 3 spec §3)
+- **`sessionChanged` coalescing lives in the parse loop, with no timer.** The bounded wait the
+  parse loop already does between `Process()` calls drives the trailing flush; no `Timer`,
+  `Task.Delay`, `ThreadPool` or `Task.Run` on this path
+- **The text client never relays raw output.** It renders every frame from its own
+  `CaptureRenderSnapshot`, so a device query (DA, CPR, XTGETTCAP) the shell emits is answered by
+  the model's parser and never reaches the terminal the client draws on
+- **Console modes are restored on every exit path.** Detach, session exit, kill, disconnect,
+  attach failure, a console write that throws, and a signal all reach `IConsoleSurface.RestoreMode()`
 
 **Test authority**
 - `tests/Ntilde.Mux.Tests/` (+ `MuxRealShellSmokeTests` and the real-daemon `MuxDaemonSmokeTests` in App.Tests)
@@ -410,11 +430,15 @@ requires public test classes.
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
 - Persistent sessions (`Shell/Mux/`, namespace `Ntilde.Shell.Mux`):
-  - `MuxCommand.cs` / `MuxDaemonProcess.cs`: the `ntilde mux serve|ls|kill|kill-server` CLI, dispatched from `Program.cs` before `AppLogger` and Avalonia; `serve` detaches from the console and hosts `MuxDaemonHost`, logging to `logs/mux.log`
+  - `MuxCommand.cs` / `MuxDaemonProcess.cs`: the `ntilde mux serve|ls|kill|kill-server|attach` CLI, dispatched from `Program.cs` before `AppLogger` and Avalonia; `serve` detaches from the console and hosts `MuxDaemonHost`, logging to `logs/mux.log`; `attach` hosts `Ntilde.Mux.TextClient.TextClientSession` (Phase 3 spec §6) and resolves an id or a ≥4-character hex prefix to a session
   - `MuxDaemonLauncher.cs` / `MuxDaemonSpawner.cs`: connect to a live daemon, or spawn one fully detached from the caller's stdio
   - `MuxConnectionHost.cs`: the GUI's one shared `MuxClient` (warm-up, reconnect, 30 s back-off after a failed connect, detach on teardown)
-  - `MuxTerminalSessionFactory.cs` / `PersistentSessionFactory.cs` / `SessionPersistenceMode.cs`: local panes go through the mux when `SessionPersistence` is `KeepOnClose`; SSH panes and failures fall back to the default factory
-  - `MuxOrphans.cs` / `PaneDisposition.cs`: orphan adoption on launch; a user close kills the session, window teardown detaches
+  - `MuxTerminalSessionFactory.cs` / `PersistentSessionFactory.cs` / `SessionPersistenceMode.cs`: local panes go through the mux when `SessionPersistence` is `KeepOnClose`; SSH panes and failures fall back to the default factory. Restore attaches `IfUnattached` on a v2 daemon (server-decided) or falls back to the pane's own `AttachedClients == 0` check on v1
+  - `MuxOrphans.cs` / `PaneDisposition.cs`: orphan adoption on launch (skips sessions with `DetachedByUser`, Phase 3 spec §7.7); a user close kills the session, window teardown detaches
+  - `MuxSessionPicker.cs`: the "Attach to Session…" picker's rows (title, command, cwd, size, attached count, running/exited), sorted running-first
+  - `MuxStartupProbe.cs`: whether a daemon descriptor is really live for the startup auto-apply gate — a connect timeout is not automatically a refusal (Windows named-pipe busy vs. gone), so a Windows timeout falls back to enumerating `\\.\pipe\`
+  - `MuxCommandMatch.cs`: whether a daemon session runs the program a restoring pane expects, compared by executable file name so a path difference alone does not start a spurious fresh shell
+  - `SharedCloseChoice.cs`: the shared-close prompt's three-way answer (Cancel / Close / Detach)
 
 **Non-responsibilities**
 - VT parsing (delegated to VT)

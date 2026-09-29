@@ -46,7 +46,7 @@ checks. Every change below is additive. The JSON context stays source-generated
 | Notification `sessionChanged` | `SessionChangedNotification { SessionId, AttachedClients, Title, Cwd }`. Sent to every v2 client attached to the session when the attached count, the title or the cwd changes. Coalesced (§4). |
 | Notification `killed` | `KilledNotification { SessionId, ByClientKind }`. Sent to every v2 subscriber except the killer, **before** that session's `exited`. |
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach found another interactive client attached. |
-| `DetachParams.UserDetached` | New `bool?`. Null or absent means an ordinary detach, which is the v1 shape. `true` means the user detached on purpose ("Pane: Detach", or Detach in the shared-close prompt). The client sends it only when `Welcome.Version >= 2` (§7.7). |
+| `DetachParams.UserDetached` | New `bool?`. Null or absent means an ordinary detach, which is the v1 shape. `true` means the user detached on purpose ("Pane: Detach", Detach in the shared-close prompt, or the text client's `Ctrl+\ d` chord — as shipped, Task 17 ruling). The client sends it only when `Welcome.Version >= 2` (§7.7). |
 | `SessionSummary.DetachedByUser` | New `bool`, serialised only when true (`WhenWritingDefault`), so a v1 peer sees exactly the v1 shape. True while the session's last interactive detach, the one that left it with no interactive subscribers, was a user detach. Any later successful interactive attach clears it; read-only observers neither set nor clear it (§7.7). |
 
 `SessionSummary.Title` was already live: the Phase 1 parser already wires `OnTitleChanged`. Nothing
@@ -272,6 +272,12 @@ passes through is sent as one `SendInput` per read, or dropped when read-only.
 The state survives across reads, so the chord may be split between two reads. A read of 0 (input
 closed) counts as a detach.
 
+**As shipped (Task 17 ruling):** `Cleanup` sends `detach` (unless the session already exited)
+regardless of which of these ended `Run`, but the `userDetached` flag it sends is `true` only when
+the chord is what triggered the stop; input closing or a signal send `false`. So only a
+chord-detached shell counts as deliberate for §7.7's purposes and is skipped by startup adoption;
+one left by input closing or a signal is still re-adopted.
+
 ### 6.5 Lifecycle, exit codes, restore
 
 `TextClientSession.Run(stderr)`:
@@ -390,8 +396,12 @@ second instance racing for an orphan cannot duplicate it.
   `MuxSessionIdToRestore = id` and `MuxAttachSharedToRestore = true`. That flows into
   `TerminalSessionRequest.AttachShared = true` (a new trailing optional positional), and the factory
   opens it `Shared` with outcome `Reattached`, running or exited. An exited session attaches and
-  shows its final screen and exit banner. A session that is gone or faulted spawns fresh with the
-  Phase 2 "previous session lost" notice.
+  shows its final screen and exit banner, and is **not** auto-closed by `ShellExitPolicy` (as
+  shipped, Task 13 ruling — the user asked to see it). **As shipped (Task 13 ruling):** a session
+  that is gone or faulted does **not** spawn a fresh shell — a fresh shell is not what was chosen.
+  The factory returns outcome `ShareEnded` with no session; the pane it would have opened closes
+  instead, and the window shows the "Attach to session" notification
+  `[The shell you chose has ended]`.
 - **A second ntilde instance** works unchanged: same app-data root, same daemon.
 
 ### 7.3 The "shared with N" indicator
