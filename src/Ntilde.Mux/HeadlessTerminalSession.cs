@@ -48,6 +48,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Action<int> _onExit;
     private readonly Action<string>? _log;
     private readonly List<IMuxFrameSink> _subscribers = new(); // parse thread only
+    private readonly HashSet<IMuxFrameSink> _readOnlySinks = new(); // parse thread only: subscribers attached ReadOnly
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private string _title;
@@ -59,6 +60,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _faulted;
     private int _disposed;
     private int _unsubscribed;
+    private int _detachedByUser; // written on the parse thread only
 
     // Input writer (spec §4): SendInput runs on the connection reader thread; a child that stops
     // reading stdin would otherwise stall every session sharing that connection. One thread per
@@ -163,6 +165,9 @@ public sealed class HeadlessTerminalSession : IDisposable
     public int? ExitCode => IsExited ? Volatile.Read(ref _exitCode) : null;
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
     public long StreamPosition => Interlocked.Read(ref _rawOffset);
+
+    /// <summary>The detach that left the session with no subscribers was a user detach (spec §7.7); the next attach clears it.</summary>
+    public bool DetachedByUser => Volatile.Read(ref _detachedByUser) != 0;
 
     /// <summary><see cref="Environment.TickCount64"/> when the mux saw the exit; 0 while running. Set before <see cref="IsExited"/>.</summary>
     public long ExitedAtMs => Interlocked.Read(ref _exitedAtMs);
@@ -308,22 +313,27 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (size is { } s) ApplyResize(s.Cols, s.Rows);
     }
 
-    internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
+    internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode = MuxAttachMode.Shared)
     {
         // Unlike PostResize/PostDetach, a dropped attach must still answer: the sink is a client
         // waiting on this specific requestId, and silence would leave it hung rather than told the
         // session is gone. OnDropped runs whether TryEnqueue refuses synchronously (below) or the
         // item is later found undelivered by DrainAfterStop.
         var item = WorkItem.ForAction(
-            () => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes),
+            () => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes, mode),
             onDropped: () => ReplySessionExited(sink, requestId));
         if (!TryEnqueue(_control, item)) item.OnDropped!();
     }
 
-    internal void PostDetach(IMuxFrameSink sink) =>
+    internal void PostDetach(IMuxFrameSink sink, bool userDetached = false) =>
         EnqueueControl(() =>
         {
-            if (_subscribers.Remove(sink)) PublishAttachedCount();
+            if (!_subscribers.Remove(sink)) return;
+            _readOnlySinks.Remove(sink);
+
+            // Only the detach that empties the session decides; a connection closing is never a user detach.
+            if (_subscribers.Count == 0) Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
+            PublishAttachedCount();
         });
 
     internal Task<T> InvokeAsync<T>(Func<T> func)
@@ -573,6 +583,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (terminal)
         {
             _subscribers.Clear();
+            _readOnlySinks.Clear();
             PublishAttachedCount();
 
             // Cancel FIRST, same as Dispose and for the same reason: a producer parked in
@@ -585,7 +596,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
+    private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode)
     {
         // A re-attach keeps the sink's existing subscription until its new snapshot is actually
         // enqueued: if this attempt fails (snapshot_too_large once the scrollback has grown), the
@@ -598,18 +609,33 @@ public sealed class HeadlessTerminalSession : IDisposable
             return;
         }
 
+        // Exclusivity is decided here, inside the one attach item on the one parse thread: every
+        // attach to this session from any connection runs serially on this thread, so nothing can
+        // subscribe between this check and the subscription below (Phase 3 spec §3).
+        if (mode == MuxAttachMode.IfUnattached && HasOtherInteractiveSubscriber(sink))
+        {
+            Reply(sink, requestId, MuxErrorCodes.SessionAttached, $"Session {Id} is attached to another client.");
+            return;
+        }
+
+        bool readOnly = mode == MuxAttachMode.ReadOnly;
+
         // Attaching is a resize to the attaching client's size (latest wins). The other clients get
         // the ResizeEvent; this one's snapshot already reflects it. Guarded like everything else in
-        // here: an attach must always be answered, never left to the client's request timeout.
-        try
+        // here: an attach must always be answered, never left to the client's request timeout. A
+        // read-only observer changes neither: its snapshot is at the session's current size.
+        if (!readOnly)
         {
-            ApplyPresentation(presentation);
-            ApplyResize(presentation.Cols, presentation.Rows);
-        }
-        catch (Exception ex)
-        {
-            Reply(sink, requestId, MuxErrorCodes.Internal, $"Preparing the attach failed: {ex.Message}");
-            return;
+            try
+            {
+                ApplyPresentation(presentation);
+                ApplyResize(presentation.Cols, presentation.Rows);
+            }
+            catch (Exception ex)
+            {
+                Reply(sink, requestId, MuxErrorCodes.Internal, $"Preparing the attach failed: {ex.Message}");
+                return;
+            }
         }
 
         byte[] json;
@@ -653,13 +679,32 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (!accepted)
         {
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
-            if (_subscribers.Remove(sink)) PublishAttachedCount();
+            if (_subscribers.Remove(sink))
+            {
+                _readOnlySinks.Remove(sink);
+                PublishAttachedCount();
+            }
+
             return;
         }
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
+        if (readOnly) _readOnlySinks.Add(sink);
+        else _readOnlySinks.Remove(sink);
+        Volatile.Write(ref _detachedByUser, 0);
         PublishAttachedCount();
         if (IsExited) Offer(sink, ExitedFrame());
+    }
+
+    /// <summary>Parse thread only. A read-only observer does not count: it must not make a GUI abandon its own shell (spec §3).</summary>
+    private bool HasOtherInteractiveSubscriber(IMuxFrameSink sink)
+    {
+        foreach (IMuxFrameSink s in _subscribers)
+        {
+            if (!ReferenceEquals(s, sink) && !_readOnlySinks.Contains(s)) return true;
+        }
+
+        return false;
     }
 
     private void ApplyPresentation(MuxPresentation presentation)
@@ -714,7 +759,9 @@ public sealed class HeadlessTerminalSession : IDisposable
             {
                 if (!_subscribers[i].TryEnqueue(frame))
                 {
+                    IMuxFrameSink dropped = _subscribers[i];
                     _subscribers.RemoveAt(i);
+                    _readOnlySinks.Remove(dropped);
                     PublishAttachedCount();
                 }
             }
@@ -757,6 +804,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         finally
         {
             _subscribers.Clear();
+            _readOnlySinks.Clear();
             PublishAttachedCount();
         }
     }

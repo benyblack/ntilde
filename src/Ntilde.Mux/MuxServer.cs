@@ -293,6 +293,7 @@ public sealed class MuxServer : IDisposable
             ExitCode = s.ExitCode,
             AttachedClients = s.AttachedClients,
             Faulted = s.IsFaulted,
+            DetachedByUser = s.DetachedByUser,
         }).ToArray();
 
     internal void Kill(Guid id)

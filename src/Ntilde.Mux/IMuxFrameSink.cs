@@ -11,4 +11,10 @@ internal interface IMuxFrameSink
     /// need not. Returning false means "drop me": the session unsubscribes the sink.
     /// </summary>
     bool TryEnqueue(MuxOutboundFrame frame);
+
+    /// <summary>
+    /// True when this peer negotiated protocol v2 or later and so understands <c>sessionChanged</c> and
+    /// <c>killed</c> (Phase 3 spec §2). Default false: a v1 peer - and the test recorder - never gets them.
+    /// </summary>
+    bool WantsSessionEvents => false;
 }
