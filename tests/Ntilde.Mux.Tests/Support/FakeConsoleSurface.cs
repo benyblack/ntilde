@@ -22,8 +22,14 @@ internal sealed class FakeConsoleSurface : IConsoleSurface
     public int EnterRawCount { get { lock (_gate) return _enterRaw; } }
     public int RestoreCount { get { lock (_gate) return _restore; } }
 
-    /// <summary>1-based: that <see cref="Write"/> call throws <see cref="IOException"/> (0 = never).</summary>
+    /// <summary>1-based: that <see cref="Write"/> call throws <see cref="WriteFailure"/> (0 = never).</summary>
     public int ThrowOnWriteNumber { get; set; }
+
+    /// <summary>What the scripted <see cref="Write"/> failure throws; an <see cref="IOException"/> by default.</summary>
+    public Func<Exception> WriteFailure { get; set; } = () => new IOException("scripted console failure");
+
+    /// <summary>When set, every <see cref="Read"/> throws it.</summary>
+    public Func<Exception>? ReadFailure { get; set; }
 
     /// <summary>Runs on the writing thread before each <see cref="Write"/> is recorded, outside the lock (it may block).</summary>
     public Action<string>? BeforeWrite { get; set; }
@@ -60,13 +66,14 @@ internal sealed class FakeConsoleSurface : IConsoleSurface
         lock (_gate)
         {
             _writes++;
-            if (ThrowOnWriteNumber > 0 && _writes == ThrowOnWriteNumber) throw new IOException("scripted console failure");
+            if (ThrowOnWriteNumber > 0 && _writes == ThrowOnWriteNumber) throw WriteFailure();
             _output.Append(text);
         }
     }
 
     public int Read(char[] buffer)
     {
+        if (ReadFailure is { } failure) throw failure();
         if (_pending.Length == 0)
         {
             try

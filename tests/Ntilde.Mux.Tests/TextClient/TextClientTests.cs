@@ -33,7 +33,8 @@ public sealed class TextClientTests
         Assert.False(console.IsRaw);
         Assert.StartsWith(TextClientRenderer.EnterSequence, console.Output, StringComparison.Ordinal);
         Assert.Contains(TextClientRenderer.LeaveSequence, console.Output, StringComparison.Ordinal);
-        Assert.EndsWith($"[detached from {id}]\r\n", console.Output, StringComparison.Ordinal);
+        // Nothing between the leave sequence and the exit line: no frame lands on the restored screen.
+        Assert.EndsWith(TextClientRenderer.LeaveSequence + $"[detached from {id}]\r\n", console.Output, StringComparison.Ordinal);
         await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 0, "the daemon saw the detach");
         Assert.False(host.Mux(id).IsExited);
     }
@@ -93,7 +94,7 @@ public sealed class TextClientTests
         host.Fake(id).Exit(7);
 
         Assert.Equal(1, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
-        Assert.EndsWith("[session exited with code 7]\r\n", console.Output, StringComparison.Ordinal);
+        Assert.EndsWith(TextClientRenderer.LeaveSequence + "[session exited with code 7]\r\n", console.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -222,6 +223,10 @@ public sealed class TextClientTests
     [InlineData("disconnect")]
     [InlineData("attach-failed")]
     [InlineData("write-throws")]
+    [InlineData("write-throws-non-io")]
+    [InlineData("enter-write-throws-non-io")]
+    [InlineData("leave-write-throws-non-io")]
+    [InlineData("read-throws-non-io")]
     [InlineData("signal")]
     public async Task Console_modes_are_restored_on_every_exit_path(string path)
     {
@@ -230,19 +235,44 @@ public sealed class TextClientTests
         Guid id = await MuxTestHost.SpawnAsync(spawner);
         MuxClient attacher = await host.ConnectClientAsync();
         using var console = new FakeConsoleSurface(80, 24);
-        if (path == "write-throws") console.ThrowOnWriteNumber = 2;   // #1 is the enter sequence, #2 the first frame
+        switch (path)
+        {
+            case "write-throws":
+                console.ThrowOnWriteNumber = 2;   // #1 is the enter sequence, #2 the first frame
+                break;
+            case "write-throws-non-io":           // on the render thread
+                console.ThrowOnWriteNumber = 2;
+                console.WriteFailure = () => new ScriptedConsoleFault();
+                break;
+            case "enter-write-throws-non-io":     // on the thread in Run, after EnterRawMode
+                console.ThrowOnWriteNumber = 1;
+                console.WriteFailure = () => new ScriptedConsoleFault();
+                break;
+            case "leave-write-throws-non-io":     // in the cleanup, just before RestoreMode
+                console.BeforeWrite = text =>
+                {
+                    if (text == TextClientRenderer.LeaveSequence) throw new ScriptedConsoleFault();
+                };
+                break;
+            case "read-throws-non-io":            // on the input thread
+                console.ReadFailure = () => new ScriptedConsoleFault();
+                break;
+        }
+
         Guid target = path == "attach-failed" ? Guid.NewGuid() : id;
         using var client = new TextClientSession(attacher, target, console);
+        var stderr = new StringWriter();
 
-        Task<int> run = RunAsync(client);
-        if (path is not ("attach-failed" or "write-throws"))
+        Task<int> run = Task.Run(() => client.Run(stderr), Ct);
+        bool failsByItself = path is "attach-failed" or "write-throws" or "write-throws-non-io" or "enter-write-throws-non-io" or "read-throws-non-io";
+        if (!failsByItself)
         {
             await TestWait.UntilAsync(() => console.IsRaw && host.Mux(id).AttachedClients == 1, "attached");
         }
 
         switch (path)
         {
-            case "detach": console.Type("\u001cd"); break;
+            case "detach" or "leave-write-throws-non-io": console.Type("\u001cd"); break;
             case "exit": host.Fake(id).Exit(0); break;
             case "killed": await spawner.KillAsync(id, Ct); break;
             case "disconnect": attacher.Dispose(); break;
@@ -252,13 +282,59 @@ public sealed class TextClientTests
         int code = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
 
         Assert.False(console.IsRaw, $"{path}: the console was left raw");
+        Assert.Equal(1, console.EnterRawCount);
         Assert.Equal(console.EnterRawCount, console.RestoreCount);
-        if (console.Output.Contains("\x1b[?1049h", StringComparison.Ordinal))
+        // (Except where the leave sequence's own write is the scripted failure.)
+        if (path != "leave-write-throws-non-io" && console.Output.Contains("\x1b[?1049h", StringComparison.Ordinal))
         {
             Assert.Contains("\x1b[?1049l", console.Output, StringComparison.Ordinal);
         }
 
-        Assert.Equal(path switch { "detach" or "signal" => 0, "exit" or "killed" => 1, _ => 2 }, code);
+        Assert.Equal(path switch { "detach" or "signal" or "leave-write-throws-non-io" => 0, "exit" or "killed" => 1, _ => 2 }, code);
+        switch (path)
+        {
+            case "attach-failed":
+                Assert.Equal(TextClientExit.AttachFailed, client.ExitReason);
+                Assert.StartsWith("mux: attach failed:", stderr.ToString(), StringComparison.Ordinal);
+                break;
+            case "write-throws":
+                Assert.Equal(TextClientExit.Error, client.ExitReason);
+                Assert.StartsWith("mux: scripted console failure", stderr.ToString(), StringComparison.Ordinal);
+                break;
+            case "write-throws-non-io" or "enter-write-throws-non-io" or "read-throws-non-io":
+                Assert.Equal(TextClientExit.Error, client.ExitReason);
+                Assert.StartsWith($"mux: {ScriptedConsoleFault.Text}", stderr.ToString(), StringComparison.Ordinal);
+                break;
+        }
+    }
+
+    [Theory]
+    [InlineData("chord", true)]
+    [InlineData("input-closed", false)]
+    [InlineData("signal", false)]
+    public async Task Only_the_chord_is_a_deliberate_detach(string how, bool expectedDetachedByUser)
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        MuxClient attacher = await host.ConnectClientAsync();
+        Assert.True(attacher.ProtocolVersion >= MuxProtocol.SessionEventsVersion);
+        using var console = new FakeConsoleSurface();
+        using var client = new TextClientSession(attacher, id, console);
+        Task<int> run = RunAsync(client);
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 1, "attached");
+
+        switch (how)
+        {
+            case "chord": console.Type("\u001cd"); break;
+            case "input-closed": console.Dispose(); break;
+            case "signal": client.RequestStop(TextClientExit.Detached, "signal"); break;
+        }
+
+        Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        SessionSummary summary = Assert.Single(await spawner.ListSessionsAsync(Ct), s => s.SessionId == id);
+        Assert.Equal(expectedDetachedByUser, summary.DetachedByUser);
     }
 
     [Fact]
@@ -289,5 +365,13 @@ public sealed class TextClientTests
 
         console.Type("\u001cd");
         Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+    }
+
+    /// <summary>Not an IOException, nor anything else the client names: the catch-all paths must handle it.</summary>
+    private sealed class ScriptedConsoleFault : Exception
+    {
+        public const string Text = "scripted non-IO console fault";
+
+        public ScriptedConsoleFault() : base(Text) { }
     }
 }

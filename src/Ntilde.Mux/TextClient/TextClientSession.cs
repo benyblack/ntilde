@@ -52,6 +52,7 @@ public sealed class TextClientSession : IDisposable
     private int _exitCode;
     private string? _killedBy;
     private volatile bool _stopping;
+    private volatile bool _chordDetached;
 
     public TextClientSession(MuxClient client, Guid sessionId, IConsoleSurface console, TextClientOptions? options = null)
     {
@@ -109,11 +110,11 @@ public sealed class TextClientSession : IDisposable
             _console.Write(TextClientRenderer.EnterSequence);
             entered = true;
 
-            (int cols, int rows) = _console.Size;
+            (int Cols, int Rows) attachedSize = (Math.Max(1, _console.Size.Cols), Math.Max(1, _console.Size.Rows));
             try
             {
                 // The outer terminal sends legacy keys and the mux answers queries: no kitty keyboard.
-                session.AttachAsync(mode, 0, new MuxPresentation { Cols = Math.Max(1, cols), Rows = Math.Max(1, rows), KittyKeyboardEnabled = false })
+                session.AttachAsync(mode, 0, new MuxPresentation { Cols = attachedSize.Cols, Rows = attachedSize.Rows, KittyKeyboardEnabled = false })
                     .GetAwaiter().GetResult();
             }
             catch (Exception ex) when (ex is MuxProtocolException or IOException or TimeoutException or ObjectDisposedException)
@@ -124,7 +125,7 @@ public sealed class TextClientSession : IDisposable
             if (ExitReason is null)
             {
                 MuxClientSession attached = session;
-                renderThread = new Thread(() => RenderLoop(attached, renderer)) { IsBackground = true, Name = "MuxAttachRender" };
+                renderThread = new Thread(() => RenderLoop(attached, renderer, attachedSize)) { IsBackground = true, Name = "MuxAttachRender" };
                 var inputThread = new Thread(() => InputLoop(attached)) { IsBackground = true, Name = "MuxAttachInput" };
                 Wake(); // the first frame
                 renderThread.Start();
@@ -133,26 +134,59 @@ public sealed class TextClientSession : IDisposable
 
             _done.Wait();
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or ConsoleUnavailableException)
+        catch (Exception ex)
         {
+            // Any failure (a console that throws Win32Exception, a bug) is exit 2 with the message,
+            // never an escaping exception: the finally below has already put the terminal back.
             RequestStop(TextClientExit.Error, ex.Message);
         }
         finally
         {
-            _stopping = true;
-            Wake();
-            renderThread?.Join(TimeSpan.FromSeconds(2)); // the only writer until now
-            _console.Resized -= Wake;
-            if (entered) TryWrite(TextClientRenderer.LeaveSequence);
-            _console.RestoreMode();
-            foreach (IDisposable registration in registrations) registration.Dispose();
-            model?.Dispose();
-
-            // A session that ended needs no detach; everything else leaves it running in the daemon.
-            if (session is not null && ExitReason is not TextClientExit.SessionExited) session.Dispose();
+            Cleanup(session, model, renderThread, entered, registrations);
         }
 
         return Report(stderr);
+    }
+
+    /// <summary>
+    /// Every step is guarded on its own: whatever throws, <see cref="IConsoleSurface.RestoreMode"/>
+    /// still runs, and so does the detach.
+    /// </summary>
+    private void Cleanup(MuxClientSession? session, TextClientModel? model, Thread? renderThread, bool entered, List<IDisposable> registrations)
+    {
+        _stopping = true;
+        Wake();
+
+        // The render thread is the only writer until now. If it is wedged (a console write that
+        // never returns), it rechecks _stopping before any later write, and the model it reads is
+        // left alone.
+        bool renderStopped = renderThread is null || renderThread.Join(TimeSpan.FromSeconds(2));
+        try
+        {
+            Guard(() => _console.Resized -= Wake);
+            if (entered) TryWrite(TextClientRenderer.LeaveSequence);
+        }
+        finally
+        {
+            Guard(_console.RestoreMode);
+        }
+
+        foreach (IDisposable registration in registrations) Guard(registration.Dispose);
+        if (renderStopped && model is not null) Guard(model.Dispose);
+
+        // A session that ended needs no detach; everything else leaves it running in the daemon.
+        // Only the chord is a deliberate detach (spec §7.7): input closing or a signal is not.
+        if (session is not null && ExitReason is not TextClientExit.SessionExited)
+        {
+            bool userDetached = _chordDetached;
+            Guard(() => session.Detach(userDetached));
+        }
+    }
+
+    private static void Guard(Action step)
+    {
+        try { step(); }
+        catch (Exception) { /* cleanup carries on: the next step (above all RestoreMode) must still run */ }
     }
 
     public void Dispose()
@@ -169,13 +203,14 @@ public sealed class TextClientSession : IDisposable
         catch (ObjectDisposedException) { /* a late delivery after Dispose */ }
     }
 
-    private void RenderLoop(MuxClientSession session, TextClientRenderer renderer)
+    /// <param name="attachedSize">The grid the attach sent, so a resize during the attach round trip still reaches the daemon.</param>
+    private void RenderLoop(MuxClientSession session, TextClientRenderer renderer, (int Cols, int Rows) attachedSize)
     {
         try
         {
             long intervalMs = (long)_options.RenderInterval.TotalMilliseconds;
             long lastRenderMs = long.MinValue / 2;
-            (int Cols, int Rows) lastSize = _console.Size;
+            (int Cols, int Rows) lastSize = attachedSize;
             while (!_stopping)
             {
                 _wake.WaitOne();
@@ -193,11 +228,14 @@ public sealed class TextClientSession : IDisposable
 
                 string output = renderer.Render(size.Cols, size.Rows);
                 lastRenderMs = Environment.TickCount64;
+                if (_stopping) break; // the leave sequence may be going out: no frame after it
                 if (output.Length > 0) _console.Write(output);
             }
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or ObjectDisposedException or UnauthorizedAccessException)
+        catch (Exception ex)
         {
+            // Every type: an exception escaping a thread kills the process before any finally or
+            // ProcessExit handler restores the console.
             RequestStop(TextClientExit.Error, ex.Message);
         }
     }
@@ -212,6 +250,7 @@ public sealed class TextClientSession : IDisposable
             while (!_stopping)
             {
                 int n = _console.Read(buffer);
+                if (_stopping) return;
                 if (n <= 0)
                 {
                     RequestStop(TextClientExit.Detached, "input closed");
@@ -223,13 +262,15 @@ public sealed class TextClientSession : IDisposable
                 if (pass.Length > 0 && !_options.ReadOnly) session.SendInput(pass.ToString());
                 if (detach)
                 {
+                    _chordDetached = true; // before the stop: Cleanup reads it once Run wakes
                     RequestStop(TextClientExit.Detached);
                     return;
                 }
             }
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or ObjectDisposedException)
+        catch (Exception ex)
         {
+            // Every type, as in RenderLoop: an escaping exception would leave the console raw.
             RequestStop(TextClientExit.Error, ex.Message);
         }
     }
@@ -264,7 +305,7 @@ public sealed class TextClientSession : IDisposable
     private void TryWrite(string text)
     {
         try { _console.Write(text); }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { /* the console is gone */ }
+        catch (Exception) { /* the console is gone; what follows (RestoreMode, the report) must still run */ }
     }
 
     private int Report(TextWriter stderr)
