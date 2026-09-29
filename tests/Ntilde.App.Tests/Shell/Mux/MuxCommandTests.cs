@@ -168,4 +168,98 @@ public sealed class MuxCommandTests : IDisposable
         Assert.False(MuxCommand.TryParseServe(["mux", "serve", .. extra], out _, out string? error));
         Assert.NotNull(error);
     }
+
+    /// <summary>A daemon of another protocol version: the handshake fails, only the pid can stop it.</summary>
+    private System.Diagnostics.Process StartForeignVersionDaemon()
+    {
+        System.Diagnostics.Process standIn = StartLongRunningProcess();
+        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions
+        {
+            MinProtocolVersion = 99,
+            MaxProtocolVersion = 99,
+            ForceConPtyFiltering = false,
+        });
+        _host = new MuxDaemonHost(server, new MuxDaemonOptions
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+            IdleExitAfter = TimeSpan.Zero,
+            Pid = standIn.Id,
+            ProcessName = standIn.ProcessName,
+        });
+        _host.Start();
+        return standIn;
+    }
+
+    [Fact]
+    public void Kill_server_against_another_protocol_version_names_the_pid_and_needs_force()
+    {
+        using System.Diagnostics.Process standIn = StartForeignVersionDaemon();
+        try
+        {
+            var (code, output, err) = Run("mux", "kill-server");
+
+            Assert.Equal(1, code);
+            Assert.Contains($"pid {standIn.Id}", err);
+            Assert.Contains("--force", err);
+            Assert.DoesNotContain("terminated", output);
+            Assert.False(standIn.HasExited);
+        }
+        finally
+        {
+            try { standIn.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    [Fact]
+    public void Kill_server_force_terminates_a_verified_daemon_of_another_version()
+    {
+        using System.Diagnostics.Process standIn = StartForeignVersionDaemon();
+        try
+        {
+            var (code, output, err) = Run("mux", "kill-server", "--force");
+
+            Assert.Equal(0, code);
+            Assert.Contains($"pid {standIn.Id}", output);
+            Assert.True(standIn.WaitForExit(10_000), "the daemon process was terminated");
+            Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)), "the stale descriptor is gone");
+            Assert.Equal(string.Empty, err);
+        }
+        finally
+        {
+            try { standIn.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    [Fact]
+    public void The_pid_fallback_refuses_a_process_whose_name_does_not_match()
+    {
+        using System.Diagnostics.Process standIn = StartLongRunningProcess();
+        try
+        {
+            string path = MuxDiscovery.GetDescriptorPath(_root);
+            MuxDiscovery.WriteDescriptor(path, new MuxEndpointDescriptor
+            {
+                MinVersion = 99,
+                MaxVersion = 99,
+                Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+                Pid = standIn.Id,
+                ProcessName = "not-the-daemon",   // a recycled pid
+            });
+            var o = new StringWriter();
+            var e = new StringWriter();
+
+            int code = MuxCommand.KillByPid(path, force: true, o, e);
+
+            Assert.Equal(1, code);
+            Assert.False(standIn.HasExited, "an unverified process is never killed");
+        }
+        finally
+        {
+            try { standIn.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    [Fact]
+    public void Kill_server_rejects_unknown_options() => Assert.Equal(2, Run("mux", "kill-server", "--bogus").Code);
 }

@@ -18,7 +18,7 @@ public static class MuxCommand
           ntilde mux serve [--idle-exit-minutes N] [--foreground]
           ntilde mux ls [--json]
           ntilde mux kill <sessionId>
-          ntilde mux kill-server
+          ntilde mux kill-server [--force]
         """;
 
     public static bool IsSupportedCliMode(string[] args)
@@ -188,12 +188,24 @@ public static class MuxCommand
 
     private static int KillServer(string[] args, TextWriter stdout, TextWriter stderr, string descriptorPath)
     {
-        if (args.Length != 2) return Fail(stderr, Usage);
-        MuxDiscovery.TryReadDescriptor(descriptorPath, out MuxEndpointDescriptor? d);
-        using (MuxClient? client = Connect(descriptorPath, stderr))
+        bool force = false;
+        foreach (string arg in args.Skip(2))
         {
+            if (arg != "--force") return Fail(stderr, Usage);
+            force = true;
+        }
+
+        MuxDiscovery.TryReadDescriptor(descriptorPath, out MuxEndpointDescriptor? d);
+        try
+        {
+            using MuxClient? client = Connect(descriptorPath, stderr);
             if (client is null) return 1;
             client.ShutdownServerAsync().GetAwaiter().GetResult();
+        }
+        catch (MuxUnavailableException ex) when (ex.VersionMismatch)
+        {
+            // It cannot be asked to stop: it does not speak our protocol (PR #489 follow-up).
+            return KillByPid(descriptorPath, force, stdout, stderr);
         }
 
         // Wait for it to really be gone, so "kill-server && start" cannot race the old daemon.
@@ -204,6 +216,53 @@ public static class MuxCommand
         }
 
         stdout.WriteLine("Multiplexer stopped.");
+        return 0;
+    }
+
+    /// <summary>
+    /// The version-mismatch fallback: terminate the daemon named by the descriptor, but only after
+    /// verifying that its pid is alive under the recorded process name (a recycled pid is never
+    /// killed), and only with <paramref name="force"/>. Never this process.
+    /// </summary>
+    internal static int KillByPid(string descriptorPath, bool force, TextWriter stdout, TextWriter stderr)
+    {
+        if (!MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d))
+        {
+            stderr.WriteLine("The multiplexer speaks a different protocol version, and its process could not be verified (pid and process name); nothing was terminated.");
+            return 1;
+        }
+
+        if (d.Pid == Environment.ProcessId)
+        {
+            stderr.WriteLine("Refusing to terminate this process.");
+            return 1;
+        }
+
+        if (!force)
+        {
+            stderr.WriteLine($"The running multiplexer (pid {d.Pid}) speaks a different protocol version. Re-run with --force to terminate it (this ends its sessions).");
+            return 1;
+        }
+
+        try
+        {
+            using System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(d.Pid);
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            stderr.WriteLine($"Could not terminate pid {d.Pid}: {ex.Message}");
+            return 1;
+        }
+
+        if (!MuxDaemonExit.WaitForExit(descriptorPath, d, TimeSpan.FromSeconds(5), Environment.ProcessId))
+        {
+            stderr.WriteLine("Multiplexer did not stop within 5 s.");
+            return 1;
+        }
+
+        MuxDiscovery.DeleteDescriptorIfOwned(descriptorPath, d.Pid);
+        stdout.WriteLine($"Multiplexer (pid {d.Pid}) terminated.");
         return 0;
     }
 

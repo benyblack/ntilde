@@ -17,7 +17,7 @@ public sealed class MuxUnavailableException : Exception
 /// <summary>Connect to the running daemon, or start one and connect (spec §6).</summary>
 internal sealed class MuxDaemonLauncher
 {
-    internal const string KillServerHint = "Run 'ntilde mux kill-server' to replace it (this closes its sessions).";
+    internal const string KillServerHint = "Run 'ntilde mux kill-server --force' to replace it (this closes its sessions).";
 
     private readonly string _descriptorPath;
     private readonly string _root;

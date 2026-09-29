@@ -3646,7 +3646,7 @@ namespace Ntilde.Controls
             => session is ITerminalSessionCapabilities { AnswersDeviceQueries: true };
 
         internal const string MuxUnavailableBanner = "[Multiplexer unavailable — this session will not persist]";
-        internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server' to replace it]";
+        internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server --force' to replace it]";
         internal const string MuxPreviousLostBanner = "[Previous session was lost — started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
         internal const string MuxUnreachableBanner = "[Multiplexer not reachable — press Enter to retry]";
