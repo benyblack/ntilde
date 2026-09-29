@@ -5993,13 +5993,16 @@ namespace Ntilde
         /// </summary>
         private async Task<Ntilde.Shell.Mux.SharedCloseChoice> DecidePaneCloseAsync(TerminalPane pane)
         {
+            // One budget for both daemon reads (the sharing count here, the child-process probe in
+            // ShouldClosePaneAsync): a stalled daemon costs a close about a second, not two.
+            var budget = System.Diagnostics.Stopwatch.StartNew();
             if (pane.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsAttached: true } mux)
             {
                 int? attached;
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                using var cts = new CancellationTokenSource(PaneCloseRefreshBudget);
                 try
                 {
-                    attached = await mux.RefreshSharingAsync(cts.Token).WaitAsync(TimeSpan.FromSeconds(1));
+                    attached = await mux.RefreshSharingAsync(cts.Token).WaitAsync(PaneCloseRefreshBudget);
                 }
                 catch (Exception ex) when (ex is TimeoutException or OperationCanceledException or Ntilde.Mux.Contracts.MuxProtocolException or ObjectDisposedException or IOException)
                 {
@@ -6021,8 +6024,14 @@ namespace Ntilde
                 }
             }
 
-            return await ShouldClosePaneAsync(pane) ? Ntilde.Shell.Mux.SharedCloseChoice.Close : Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
+            TimeSpan left = PaneCloseRefreshBudget - budget.Elapsed;
+            return await ShouldClosePaneAsync(pane, left > TimeSpan.Zero ? left : TimeSpan.Zero)
+                ? Ntilde.Shell.Mux.SharedCloseChoice.Close
+                : Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
         }
+
+        /// <summary>How long a pane close waits on the daemon, in total, before deciding on cached values.</summary>
+        private static readonly TimeSpan PaneCloseRefreshBudget = TimeSpan.FromSeconds(1);
 
         private async Task<Ntilde.Shell.Mux.SharedCloseChoice> ShowSharedCloseDialogAsync(int others)
         {
@@ -6068,11 +6077,15 @@ namespace Ntilde
         /// <summary>"Pane: Detach" (spec §7.4): the pane closes, the shell keeps running in the daemon.</summary>
         internal async Task<bool> DetachPaneAsync(TerminalPane pane)
         {
-            if (pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true })
+            if (pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true } mux)
             {
                 EnqueueNotice("Pane: Detach", "Only a persistent shell can be detached.");
                 return false;
             }
+
+            // Its shell already exited: nothing would keep running, so this is a plain close (which
+            // sends no kill for an exited shell) and no "kept running" toast.
+            if (!mux.IsProcessRunning) return await ClosePaneAsync(pane, skipConfirm: true);
 
             bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
             if (closed && !_teardownDone)
@@ -6083,11 +6096,12 @@ namespace Ntilde
             return closed;
         }
 
-        private async Task<bool> ShouldClosePaneAsync(TerminalPane pane)
+        /// <param name="refreshBudget">What is left of the close's daemon budget; zero decides on the cached probe.</param>
+        private async Task<bool> ShouldClosePaneAsync(TerminalPane pane, TimeSpan refreshBudget)
         {
             // A mux session's child-process flag is a cached daemon probe: refresh it (bounded)
             // so the decision below is not made on a stale answer.
-            await RefreshPersistentSessionInfoAsync(pane.Session, TimeSpan.FromSeconds(1));
+            if (refreshBudget > TimeSpan.Zero) await RefreshPersistentSessionInfoAsync(pane.Session, refreshBudget);
 
             if (ShouldAutoAcceptRunningPaneClose(
                 pane.IsProcessRunning,

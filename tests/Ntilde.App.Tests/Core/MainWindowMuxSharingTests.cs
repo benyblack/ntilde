@@ -454,6 +454,10 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
                 Assert.True(task.Result);
                 PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the daemon saw the detach");
                 Assert.False(_mux.Mux(id).IsExited);
+                // The other instance is still attached: only the detach that leaves nobody marks it
+                // (spec §7.7). The prompt's Detach sending the mark is pinned by
+                // Detach_in_the_shared_prompt_marks_the_session_detached_by_user.
+                Assert.False(_mux.Mux(id).DetachedByUser);
                 break;
             case SharedCloseChoice.Close:
                 Assert.True(task.Result);
@@ -582,5 +586,216 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
         Assert.True(_mux.Mux(id).DetachedByUser);
         Assert.False(_mux.Mux(id).IsExited);
+    }
+
+    /// <summary>Fix round 1: the real shared-close dialog, driven through its buttons (and its X).</summary>
+    [AvaloniaTheory]
+    [InlineData(1, "Cancel", "Cancel")]
+    [InlineData(2, "Detach", "Detach")]
+    [InlineData(1, "Close (ends it)", "Close")]
+    [InlineData(2, null, "Cancel")] // closed with X
+    public void The_default_shared_close_dialog_is_worded_and_maps_each_button(int others, string? button, string expectedName)
+    {
+        MainWindow window = CreateWindow();
+        SharedCloseChoice expected = Enum.Parse<SharedCloseChoice>(expectedName);
+
+        Task<SharedCloseChoice> answer = window.ConfirmSharedClose(others);
+        PumpUntil(() => window.OwnedWindows.Count == 1, "the dialog opened");
+
+        Window dialog = Assert.Single(window.OwnedWindows);
+        Assert.Equal("Close Shared Shell", dialog.Title);
+        var descendants = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(dialog).ToList();
+        string headline = others == 1 ? "1 other window is attached to this shell." : $"{others} other windows are attached to this shell.";
+        Assert.Contains(descendants.OfType<TextBlock>(), t => t.Text == headline);
+        List<Button> buttons = descendants.OfType<Button>().ToList();
+        Assert.Equal(["Cancel", "Detach", "Close (ends it)"], buttons.Select(b => b.Content as string));
+
+        if (button is null) dialog.Close();
+        else buttons.Single(b => b.Content as string == button).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+
+        PumpUntil(() => answer.IsCompleted, "the dialog closed");
+        Assert.Equal(expected, answer.Result);
+        Assert.Empty(window.OwnedWindows);
+    }
+
+    /// <summary>Fix round 1: a tab close whose shared pane is answered Detach keeps that shell; the tab's own pane is closed.</summary>
+    [AvaloniaFact]
+    public void Closing_a_split_tab_with_Detach_for_the_shared_pane_keeps_its_shell()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).PaneClosePolicy = "Force"; // the tab's own pane closes without a prompt
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        TabItem tab = TabOf(window, mine);
+        var before = AllPanes(window).ToHashSet();
+        typeof(MainWindow).GetProperty("_currentPane", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(window, mine);
+        typeof(MainWindow).GetMethod("SplitPane", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [Avalonia.Layout.Orientation.Horizontal]);
+        TerminalPane sibling = AllPanes(window).Single(p => !before.Contains(p));
+        PumpUntil(() => sibling.Session is MuxClientSession { IsAttached: true }, "the split pane attached");
+        Guid siblingId = ((MuxClientSession)sibling.Session!).Id;
+        int asked = 0;
+        window.ConfirmSharedClose = _ =>
+        {
+            asked++;
+            LeaveWhileThePromptIsOpen(theirs, id);
+            return Task.FromResult(SharedCloseChoice.Detach);
+        };
+
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("CloseTabAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [tab, false])!;
+        PumpUntil(() => close.IsCompleted, "the tab close finished");
+
+        Assert.True(close.Result);
+        Assert.Equal(1, asked); // only the shared pane asks
+        Assert.DoesNotContain(mine, AllPanes(window));
+        Assert.DoesNotContain(sibling, AllPanes(window));
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.True(_mux.Mux(id).DetachedByUser);
+        Assert.False(_mux.Mux(id).IsExited);
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(siblingId), "the tab's own pane was closed, its shell killed");
+    }
+
+    /// <summary>
+    /// Fix round 1: the prompt's Detach is a user detach (spec §7.7). The daemon marks only the detach
+    /// that leaves nobody attached, so the other instance leaves while the prompt is open.
+    /// </summary>
+    [AvaloniaFact]
+    public void Detach_in_the_shared_prompt_marks_the_session_detached_by_user()
+    {
+        MainWindow window = CreateWindow();
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        window.ConfirmSharedClose = _ =>
+        {
+            LeaveWhileThePromptIsOpen(theirs, id);
+            return Task.FromResult(SharedCloseChoice.Detach);
+        };
+
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [mine, false])!;
+        PumpUntil(() => close.IsCompleted, "the close finished");
+
+        Assert.True(close.Result);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.True(_mux.Mux(id).DetachedByUser);
+        Assert.False(_mux.Mux(id).IsExited);
+    }
+
+    /// <summary>
+    /// The other instance detaches (an ordinary detach) and the daemon has seen it. Runs inside the prompt
+    /// seam, on the UI thread: it waits on the server alone and never pumps the dispatcher.
+    /// </summary>
+    private void LeaveWhileThePromptIsOpen(ClientPaneModel theirs, Guid id)
+    {
+        theirs.Session.Dispose();
+        Assert.True(SpinWait.SpinUntil(() => _mux.Mux(id).AttachedClients == 1, 10_000), "the other instance left");
+    }
+
+    /// <summary>Fix round 1: a pane whose shell already exited has nothing to keep running; Detach closes it plainly.</summary>
+    [AvaloniaFact]
+    public void Detaching_a_pane_whose_shell_exited_closes_it_without_the_kept_running_toast()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).ShellExitPolicy = "Never"; // the dead pane stays for the command to act on
+        (_, ClientPaneModel theirs) = OtherInstance(); // keeps the exited session from being reaped
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        var mineSession = (MuxClientSession)mine.Session!;
+        _mux.Fake(id).Exit(0);
+        PumpUntil(() => !mineSession.IsProcessRunning, "the pane saw the exit");
+
+        Task<bool> detach = window.DetachPaneAsync(mine);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        Assert.True(detach.Result);
+        Assert.DoesNotContain(mine, AllPanes(window));
+        PumpFor(200);
+        Assert.NotEqual("Shell detached", Toast(window).Title);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the daemon saw the pane go");
+        Assert.False(_mux.Mux(id).DetachedByUser);
+    }
+
+    /// <summary>Fix round 1: detaching the last pane closes the window; the queued user detach survives the host's teardown.</summary>
+    [AvaloniaFact]
+    public void Detaching_the_last_pane_closes_the_window_and_the_shell_stays_detached_by_user()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)own.Session!).Id;
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the pane attached");
+
+        Task<bool> detach = window.DetachPaneAsync(own);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        Assert.True(detach.Result);
+        PumpUntil(() => !window.IsVisible, "the window closed with its last tab");
+        _host!.Dispose(); // the teardown's host flush, whether or not the close already ran it
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.Contains(id, _mux.Server.GetSessionIds());
+        Assert.True(_mux.Mux(id).DetachedByUser);
+        Assert.False(_mux.Mux(id).IsExited);
+    }
+
+    /// <summary>Fix round 1: a lone pane's close decision spends one daemon budget, not one per read.</summary>
+    [AvaloniaFact]
+    public void A_stalled_daemon_costs_a_lone_pane_close_one_budget()
+    {
+        var gate = new GatedStream(_mux.Listener.Connect());
+        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(gate, null, ct), "test", null);
+        MainWindow window = CreateWindowOn(_host);
+        Settings(window).PaneClosePolicy = "Force";
+        TerminalPane own = AllPanes(window).Single();
+        var decide = typeof(MainWindow).GetMethod("DecidePaneCloseAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        gate.Pause(); // nothing more reaches the daemon: both reads can only time out
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var task = (Task<SharedCloseChoice>)decide.Invoke(window, [own])!;
+            PumpUntil(() => task.IsCompleted, "the decision finished");
+            sw.Stop();
+
+            Assert.Equal(SharedCloseChoice.Close, task.Result);
+            Assert.InRange(sw.Elapsed, TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(1700)); // two budgets would be 2 s
+        }
+        finally
+        {
+            gate.Resume();
+        }
+    }
+
+    /// <summary>A client-side stream whose writes can be held back: a daemon that stopped reading.</summary>
+    private sealed class GatedStream(Stream inner) : Stream
+    {
+        private readonly ManualResetEventSlim _open = new(initialState: true);
+
+        public void Pause() => _open.Reset();
+        public void Resume() => _open.Set();
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { _open.Wait(); inner.Flush(); }
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override int Read(Span<byte> buffer) => inner.Read(buffer);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) { _open.Wait(); inner.Write(buffer, offset, count); }
+        public override void Write(ReadOnlySpan<byte> buffer) { _open.Wait(); inner.Write(buffer); }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _open.Set();
+                inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
     }
 }
