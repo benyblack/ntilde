@@ -395,7 +395,7 @@ public static class MuxCommand
     /// does not wait for it. One line on stderr, before raw mode. Null when it does not apply.
     /// </summary>
     internal static string? AttachConsoleHint(bool isWindows, bool attachedToParentConsole, string target) =>
-        isWindows && attachedToParentConsole ? $"mux: if keystrokes are lost, run via cmd /c ntilde mux attach {target}" : null;
+        isWindows && attachedToParentConsole ? $"mux: if keystrokes are lost, run via cmd /c ntilde mux attach {target} (ignore if already under cmd /c)" : null;
 
     /// <summary>A full id, or a unique prefix of at least 4 hex characters (dashes ignored).</summary>
     internal static bool TryResolveSession(string target, IReadOnlyList<SessionSummary> sessions, out Guid id, out string? why)
@@ -455,11 +455,14 @@ public static class MuxCommand
             (int Cols, int Rows) before = surface.Size;
             (int Cols, int Rows) inRaw;
             string? rawState = null;
+            bool? writeOk = null;
+            string writeNote = string.Empty;
             surface.EnterRawMode();
             try
             {
                 inRaw = surface.Size;
                 if (!OperatingSystem.IsWindows()) rawState = SttyState();
+                else writeOk = ProbeWindowsWrite((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface, out writeNote);
             }
             finally
             {
@@ -467,19 +470,46 @@ public static class MuxCommand
             }
 
             string? restoredState = OperatingSystem.IsWindows() ? null : SttyState();
-            bool rawOk = rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
-            bool restoredOk = restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
-            stdout.WriteLine($"size before raw {before.Cols}x{before.Rows}, while raw {inRaw.Cols}x{inRaw.Rows}; raw mode {(rawOk ? "ok" : "NOT applied")}; restore {(restoredOk ? "ok" : "FAILED")}");
-            return ProbeVerdict(rawState, restoredState, before, inRaw) ? 0 : 1;
+            string write = writeOk is null ? string.Empty : $"; write {(writeOk.Value ? "ok" : "FAILED")} ({writeNote})";
+            stdout.WriteLine($"size before raw {before.Cols}x{before.Rows}, while raw {inRaw.Cols}x{inRaw.Rows} ({(ProbeSizeStable(before, inRaw) ? "stable" : "UNSTABLE")}); "
+                + $"raw mode {(ProbeRawApplied(rawState) ? "ok" : "NOT applied")}; restore {(ProbeRestored(restoredState) ? "ok" : "FAILED")}{write}");
+            return ProbeVerdict(rawState, restoredState, before, inRaw, writeOk) ? 0 : 1;
         }
     }
 
-    internal static bool ProbeVerdict(string? rawState, string? restoredState, (int Cols, int Rows) before, (int Cols, int Rows) inRaw)
+    /// <summary>
+    /// Windows: a marker through the surface's own Write must advance the cursor by exactly its length.
+    /// It pins the UTF-16 marshalling of WriteConsoleW: marshalled as Ansi, a `ref char` goes through a
+    /// one-byte temporary and the console prints a different number of cells.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool ProbeWindowsWrite(Ntilde.Mux.TextClient.WindowsConsoleSurface surface, out string note)
     {
-        bool rawOk = rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
-        bool restoredOk = restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
-        return rawOk && restoredOk && before == inRaw && before.Cols > 1;
+        const string Marker = "mux probe-console \u00f1\u00df\u00e9: ";
+        surface.Write("\r");
+        (int Col, int Row)? from = surface.CursorPosition;
+        surface.Write(Marker);
+        (int Col, int Row)? to = surface.CursorPosition;
+        if (from is not { } a || to is not { } b)
+        {
+            note = "cursor unreadable";
+            return false;
+        }
+
+        note = $"cursor advanced {b.Col - a.Col} of {Marker.Length}";
+        return b.Row == a.Row && b.Col - a.Col == Marker.Length;
     }
+
+    internal static bool ProbeRawApplied(string? rawState) =>
+        rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
+
+    internal static bool ProbeRestored(string? restoredState) => restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
+
+    internal static bool ProbeSizeStable((int Cols, int Rows) before, (int Cols, int Rows) inRaw) => before == inRaw && before.Cols > 1;
+
+    /// <summary>The exit code's rule, built from the same helpers the printed line uses. <paramref name="writeOk"/>: null = not measured (Unix).</summary>
+    internal static bool ProbeVerdict(string? rawState, string? restoredState, (int Cols, int Rows) before, (int Cols, int Rows) inRaw, bool? writeOk) =>
+        ProbeRawApplied(rawState) && ProbeRestored(restoredState) && ProbeSizeStable(before, inRaw) && writeOk != false;
 
     /// <summary>`stty -a` on our own terminal: the child inherits stdin, which is the TTY.</summary>
     private static string SttyState()

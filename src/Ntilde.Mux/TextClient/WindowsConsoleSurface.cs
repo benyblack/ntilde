@@ -23,6 +23,8 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
     private uint _savedOut;
     private bool _raw;
     private volatile bool _disposed;
+    private int _handlesClosed;
+    private char? _pendingHigh;
 
     public WindowsConsoleSurface()
     {
@@ -75,14 +77,21 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
         }
     }
 
-    public void Write(string text)
+    /// <summary>The cursor in the screen buffer (0-based), or null when it cannot be read. For probe-console.</summary>
+    public (int Col, int Row)? CursorPosition =>
+        GetConsoleScreenBufferInfo(_out, out ConsoleScreenBufferInfo info) ? (info.CursorPosition.X, info.CursorPosition.Y) : null;
+
+    public void Write(string text) => WriteAll(_out, text);
+
+    /// <summary>The whole text through WriteConsoleW, as UTF-16 whatever the code page. Any console output handle.</summary>
+    internal static void WriteAll(nint output, string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         int offset = 0;
         while (offset < text.Length)
         {
             ReadOnlySpan<char> rest = text.AsSpan(offset);
-            if (!WriteConsoleW(_out, ref MemoryMarshal.GetReference(rest), (uint)rest.Length, out uint written, 0) || written == 0)
+            if (!WriteConsoleW(output, ref MemoryMarshal.GetReference(rest), (uint)rest.Length, out uint written, 0) || written == 0)
             {
                 throw new IOException($"WriteConsoleW failed ({Marshal.GetLastPInvokeError()}).");
             }
@@ -91,11 +100,36 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
         }
     }
 
+    /// <summary>
+    /// A trailing high surrogate is held back for the next read, so a pair split across two reads
+    /// never reaches the caller as a lone half. Input thread only.
+    /// </summary>
     public int Read(char[] buffer)
     {
         ArgumentNullException.ThrowIfNull(buffer);
         if (buffer.Length == 0) return 0;
-        return ReadConsoleW(_in, ref buffer[0], (uint)buffer.Length, out uint read, 0) ? (int)read : 0;
+        int start = 0;
+        if (_pendingHigh is char high)
+        {
+            buffer[0] = high;
+            _pendingHigh = null;
+            start = 1;
+        }
+
+        while (true)
+        {
+            if (start == buffer.Length) return start;
+            if (!ReadConsoleW(_in, ref buffer[start], (uint)(buffer.Length - start), out uint read, 0)) return start;
+            int n = start + (int)read;
+            if (n == 0 || !char.IsHighSurrogate(buffer[n - 1]) || buffer.Length < 2) return n;
+            if (n > 1)
+            {
+                _pendingHigh = buffer[n - 1];
+                return n - 1;
+            }
+
+            start = 1; // only the high half so far: wait for its low half
+        }
     }
 
     public void Dispose()
@@ -121,6 +155,8 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
 
     private void CloseHandles()
     {
+        // Once only: a second Dispose must not close handle values the OS may have reused since.
+        if (Interlocked.Exchange(ref _handlesClosed, 1) != 0) return;
         if (_in != -1 && _in != 0) _ = CloseHandle(_in);
         if (_out != -1 && _out != 0) _ = CloseHandle(_out);
     }
@@ -165,12 +201,15 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetConsoleMode(nint handle, uint mode);
 
-    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    // CharSet.Unicode is load-bearing: under the default (Ansi) a `char` is not blittable, so `ref char`
+    // is marshalled through a ONE-BYTE temporary - Write prints neighbouring memory and Read lets the
+    // API write the whole buffer into that byte. Pinned by WindowsConsoleSurfaceTests and probe-console.
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool WriteConsoleW(nint handle, ref char buffer, uint count, out uint written, nint reserved);
 
-    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ReadConsoleW(nint handle, ref char buffer, uint count, out uint read, nint control);

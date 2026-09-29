@@ -166,6 +166,27 @@ public sealed class TextClientRendererTests
         Assert.DoesNotContain("\x1b[?2004h", again, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// .NET's Console init writes terminfo smkx (DECKPAM, ESC =) to a TTY: left set, keypad keys would
+    /// reach the inner app as ESC O x. The model does not track the inner keypad mode, so the outer one
+    /// is held numeric on entry and on exit, and an inner DECKPAM is never relayed.
+    /// </summary>
+    [Fact]
+    public void The_outer_keypad_is_numeric_on_entry_and_exit_and_an_inner_DECKPAM_is_not_relayed()
+    {
+        Assert.StartsWith("\x1b[?1049h\x1b>", TextClientRenderer.EnterSequence, StringComparison.Ordinal);
+        Assert.EndsWith("\x1b>\x1b[?1049l", TextClientRenderer.LeaveSequence, StringComparison.Ordinal);
+
+        var s = new Session(80, 24);
+        var renderer = new TextClientRenderer(s.Buffer);
+        renderer.Render(80, 24);
+        s.Feed("\x1b=keypad app");
+        string frame = renderer.Render(80, 24);
+
+        Assert.Contains("keypad app", frame, StringComparison.Ordinal);
+        Assert.DoesNotContain("\x1b=", frame, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Mouse_modes_are_mirrored_only_while_unclipped()
     {

@@ -270,11 +270,12 @@ public sealed class MuxCommandTests : IDisposable
         const string raw = "speed 38400 baud; -icanon -isig -echo";
         const string cooked = "speed 38400 baud; icanon isig echo";
 
-        Assert.True(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (80, 24)));
-        Assert.False(MuxCommand.ProbeVerdict(cooked, cooked, (80, 24), (80, 24)));   // raw mode not applied
-        Assert.False(MuxCommand.ProbeVerdict(raw, raw, (80, 24), (80, 24)));         // not restored
-        Assert.False(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (1, 1)));        // the size broke while raw
-        Assert.True(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30)));      // Windows: no stty
+        Assert.True(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (80, 24), writeOk: null));
+        Assert.False(MuxCommand.ProbeVerdict(cooked, cooked, (80, 24), (80, 24), writeOk: null));   // raw mode not applied
+        Assert.False(MuxCommand.ProbeVerdict(raw, raw, (80, 24), (80, 24), writeOk: null));         // not restored
+        Assert.False(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (1, 1), writeOk: null));        // the size broke while raw
+        Assert.False(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30), writeOk: false));    // Windows: the marker did not print as written
+        Assert.True(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30), writeOk: true));     // Windows: no stty, the write measured
     }
 
     [Fact]
@@ -364,7 +365,7 @@ public sealed class MuxCommandTests : IDisposable
         string? hint = MuxCommand.AttachConsoleHint(isWindows, attachedToParent, "abcd1234");
 
         Assert.Equal(expected, hint is not null);
-        if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde mux attach abcd1234", hint);
+        if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde mux attach abcd1234 (ignore if already under cmd /c)", hint);
     }
 
     [Fact]

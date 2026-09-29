@@ -23,7 +23,7 @@ public sealed class UnixConsoleSurface : IConsoleSurface
 
     private readonly byte[] _saved = new byte[TermiosBytes];
     private readonly byte[] _readBytes = new byte[1024];
-    private readonly Decoder _decoder = Encoding.UTF8.GetDecoder();
+    private readonly TerminalInputDecoder _decoder = new();
     private readonly object _modeGate = new();
     private readonly PosixSignalRegistration _winch;
     private bool _raw;
@@ -34,6 +34,11 @@ public sealed class UnixConsoleSurface : IConsoleSurface
         {
             throw new ConsoleUnavailableException("mux attach needs an interactive terminal: stdin and stdout must be a TTY.");
         }
+
+        // The first size read initialises .NET's Console layer, which snapshots the termios it restores
+        // at exit (and around child processes). Done here, while the terminal is still cooked, so that
+        // snapshot can never be our raw mode.
+        _ = Size;
 
         _winch = PosixSignalRegistration.Create(PosixSignal.SIGWINCH, context =>
         {
@@ -103,7 +108,8 @@ public sealed class UnixConsoleSurface : IConsoleSurface
     public int Read(char[] buffer)
     {
         ArgumentNullException.ThrowIfNull(buffer);
-        int max = Math.Min(_readBytes.Length, buffer.Length); // UTF-8 never decodes to more chars than bytes
+        if (buffer.Length < 2) throw new ArgumentException("The buffer must hold a surrogate pair (2 chars).", nameof(buffer));
+        int max = TerminalInputDecoder.MaxBytes(buffer.Length, _readBytes.Length);
         while (true)
         {
             nint n = read(0, ref _readBytes[0], (nuint)max);
@@ -114,7 +120,7 @@ public sealed class UnixConsoleSurface : IConsoleSurface
             }
 
             if (n == 0) return 0;
-            int chars = _decoder.GetChars(_readBytes, 0, (int)n, buffer, 0, flush: false);
+            int chars = _decoder.Decode(_readBytes, (int)n, buffer);
             if (chars > 0) return chars; // a split UTF-8 sequence completes on the next read
         }
     }

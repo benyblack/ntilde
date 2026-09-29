@@ -19,11 +19,15 @@ namespace Ntilde.Mux.TextClient;
 /// </remarks>
 public sealed class TextClientRenderer
 {
-    /// <summary>Written once on attach: the outer terminal's alternate screen, cleared.</summary>
-    public const string EnterSequence = "\x1b[?1049h\x1b[H\x1b[2J";
+    /// <summary>
+    /// Written once on attach: the outer terminal's alternate screen, cleared, keypad numeric. DECKPNM
+    /// (<c>ESC &gt;</c>) because .NET's Console init writes terminfo <c>smkx</c> (DECKPAM) to a TTY, and
+    /// the model does not track the inner app's keypad mode: numeric is what a fresh shell expects.
+    /// </summary>
+    public const string EnterSequence = "\x1b[?1049h\x1b>\x1b[H\x1b[2J";
 
     /// <summary>Written on every exit path: plain SGR, cursor shown, modes off, back to the outer main screen.</summary>
-    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1049l";
+    public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b>\x1b[?1049l";
 
     private const string DetachHint = "Ctrl+\\ d to detach";
 
