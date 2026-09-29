@@ -729,7 +729,7 @@ namespace Ntilde.Controls
             SftpService.Instance.JobUpdated += Sftp_JobUpdated;
 
             // Wire up focus syncing
-            TermView.GotFocus += (s, e) => UpdateFocusVisuals(true);
+            TermView.GotFocus += (s, e) => HandleTermViewGotFocus();
             TermView.LostFocus += (s, e) => UpdateFocusVisuals(false);
             // Cached so DetachFromUiThread can remove it. As an uncached lambda it was the one
             // TermView handler left attached after disposal, which contradicted the claim that a
@@ -3647,6 +3647,7 @@ namespace Ntilde.Controls
         {
             TermView.DefersBufferResizeToSession = Session is ITerminalSessionCapabilities { OrdersResizeInStream: true };
             if (Session is MuxClientSession mux) WireMuxSession(mux, muxPreviousLost);
+            else ApplyMuxSharing(null);
         }
 
         /// <summary>
@@ -3671,6 +3672,45 @@ namespace Ntilde.Controls
         internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
         internal const string MuxAttachedElsewhereBanner = "[Your previous shell is open in another window — started a new shell]";
         internal const string MuxAttachedElsewhereNoticeTitle = "Previous shell in use";
+        internal const string MuxKilledElsewhereBanner = "[Shell ended from another window]";
+
+        /// <summary>UI thread: how many OTHER clients are attached to this pane's mux session (0 = not shared, or unknown).</summary>
+        internal int MuxOtherClients { get; private set; }
+
+        /// <summary>Raised on the UI thread when <see cref="MuxOtherClients"/> changes (MainWindow marks the tab).</summary>
+        internal event Action<TerminalPane>? MuxSharingChanged;
+
+        /// <summary>UI thread. Null (v1 daemon, disconnected, replaced session) hides the badge.</summary>
+        internal void ApplyMuxSharing(int? attachedClients)
+        {
+            int others = attachedClients is int n ? Math.Max(0, n - 1) : 0;
+            MuxSharedIndicator.IsVisible = others > 0;
+            MuxSharedText.Text = others > 0 ? $"shared with {others}" : string.Empty;
+            if (others == MuxOtherClients) return;
+            MuxOtherClients = others;
+            MuxSharingChanged?.Invoke(this);
+        }
+
+        /// <summary>
+        /// UI thread. Latest resize wins (spec §7.5): when another client has resized the shared
+        /// session, this view letterboxes; when it regains focus it asks for its own grid again, so the
+        /// window the user is typing in wins. A no-op when the grids already agree.
+        /// </summary>
+        internal void ReassertMuxGrid()
+        {
+            if (Session is not MuxClientSession { IsAttached: true } mux || Buffer is not { } buffer) return;
+            int cols = TermView.Cols, rows = TermView.Rows;
+            if (cols <= 0 || rows <= 0) return;
+            if (buffer.Cols == cols && buffer.Rows == rows) return;
+            mux.Resize(cols, rows);
+        }
+
+        /// <summary>UI thread: the terminal gained keyboard focus (focus visuals, and the grid re-request of spec §7.5).</summary>
+        internal void HandleTermViewGotFocus()
+        {
+            UpdateFocusVisuals(true);
+            ReassertMuxGrid();
+        }
 
         /// <summary>
         /// Raised on the UI thread with (title, message) when this pane's session will not persist or
@@ -3729,6 +3769,7 @@ namespace Ntilde.Controls
         /// </summary>
         private void WireMuxSession(MuxClientSession mux, bool previousLost)
         {
+            ApplyMuxSharing(null);
             CreateAndWireParser(mux.ForceConPtyFiltering, muxBacked: true);
             float cw = TermView.Metrics.CellWidth, ch = TermView.Metrics.CellHeight;
             if (cw > 0) Parser!.CellWidth = cw;
@@ -3741,6 +3782,9 @@ namespace Ntilde.Controls
             // A faulted session is gone for good (the daemon will not deliver it again): its own
             // wording, and no reattach - Enter ends it and starts a new shell (see Reconnect).
             mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxSessionFailedBanner, reattach: false));
+            // Delivery thread; marshal. The attach itself changes the count, so a v2 daemon announces
+            // the initial sharing right after the snapshot.
+            mux.SessionChanged += () => this.Dispatcher.Post(() => { if (IsCurrentMux(mux)) ApplyMuxSharing(mux.AttachedClients); });
             _ = AttachMuxAsync(mux, previousLost);
         }
 
@@ -3786,6 +3830,7 @@ namespace Ntilde.Controls
         {
             if (!IsCurrentMux(source) || _muxConnectionLost) return;
             _muxConnectionLost = true;
+            ApplyMuxSharing(null);
             _muxReattachId = reattach ? source.Id : null;
             _muxReattachShared = reattach && _muxSessionIsShare;
             // Input must not reach a daemon session this pane is not showing (after a failed attach
@@ -4719,6 +4764,13 @@ namespace Ntilde.Controls
         /// </summary>
         internal void WriteLocalExitBanner(int code)
         {
+            if (Session is MuxClientSession { WasKilledElsewhere: true })
+            {
+                // Another window (or `ntilde mux kill`) ended it (spec §7.5): say so, not "exited".
+                WriteBanner($"\r\n{MuxKilledElsewhereBanner}\r\n[Press Enter to restart]\r\n");
+                return;
+            }
+
             string exitCodeLine = code == 0
                 ? string.Empty
                 : $"[Exit code: {code}]\r\n";
