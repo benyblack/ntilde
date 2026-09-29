@@ -25,6 +25,13 @@ internal static class MuxOrphans
         foreach (PaneNode child in node.Children) Walk(child, ids);
     }
 
+    /// <summary>A running, healthy shell nobody shows.</summary>
+    private static bool IsUnshown(SessionSummary s) => s.Running && !s.Faulted && s.AttachedClients == 0;
+
+    /// <summary>Crash orphans only: a shell the user detached on purpose stays detached (spec §7.7).</summary>
     public static IReadOnlyList<SessionSummary> Select(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
-        sessions.Where(s => s.Running && !s.Faulted && s.AttachedClients == 0 && !referenced.Contains(s.SessionId)).ToList();
+        sessions.Where(s => IsUnshown(s) && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
+
+    /// <summary>Running shells the user detached and nobody shows: the once-per-launch reminder's count.</summary>
+    public static int CountUserDetached(IEnumerable<SessionSummary> sessions) => sessions.Count(s => IsUnshown(s) && s.DetachedByUser);
 }

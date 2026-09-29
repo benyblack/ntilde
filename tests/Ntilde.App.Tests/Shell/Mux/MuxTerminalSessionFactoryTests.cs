@@ -1,4 +1,5 @@
 using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Pty;
 using Ntilde.Shell.Mux;
@@ -11,13 +12,20 @@ public sealed class MuxTerminalSessionFactoryTests
     private static TerminalSessionRequest Local(Guid? existing = null) =>
         new("scripted", "", "", 80, 24, null, false, null, existing);
 
-    private static (MuxTestHost Mux, MuxTerminalSessionFactory Factory, RecordingSessionFactory Fallback) Build()
+    private static (MuxTestHost Mux, MuxTerminalSessionFactory Factory, RecordingSessionFactory Fallback) Build(MuxServerOptions? serverOptions = null)
     {
-        var mux = new MuxTestHost();
+        var mux = new MuxTestHost(serverOptions);
         var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test-endpoint", null);
         var fallback = new RecordingSessionFactory(new FakeTerminalSession());
         return (mux, new MuxTerminalSessionFactory(host, fallback, null), fallback);
     }
+
+    private static ClientPaneModel AttachOtherClient(MuxTestHost mux) => Task.Run(async () =>
+    {
+        MuxClient c = await mux.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(c);
+        return await MuxTestHost.AttachPaneAsync(c, id);
+    }).GetAwaiter().GetResult();
 
     [Fact]
     public void Local_request_spawns_an_unattached_mux_session()
@@ -110,33 +118,99 @@ public sealed class MuxTerminalSessionFactoryTests
     }
 
     /// <summary>
-    /// Final-fix item 1: a second GUI instance restores the same session file. A session another
-    /// client is attached to must stay with that client - the second instance gets a fresh shell,
-    /// reported as a plain spawn (nothing was lost).
+    /// Against a v1 daemon the factory keeps Phase 2's client-side check: a session another client is
+    /// attached to stays with it, and this instance gets a fresh shell - now reported as AttachedElsewhere.
     /// </summary>
     [Fact]
     public void A_session_attached_by_another_client_is_not_taken_over()
     {
-        var (mux, factory, _) = Build();
+        var (mux, factory, _) = Build(new MuxServerOptions { MaxProtocolVersion = 1, ForceConPtyFiltering = false });
         using (mux) using (factory.Host)
         {
-            ClientPaneModel other = Task.Run(async () =>
-            {
-                MuxClient c = await mux.ConnectClientAsync();
-                Guid id = await MuxTestHost.SpawnAsync(c);
-                return await MuxTestHost.AttachPaneAsync(c, id);
-            }).GetAwaiter().GetResult();
+            ClientPaneModel other = AttachOtherClient(mux);
             Guid theirs = other.Session.Id;
 
             PersistentSessionResult r = factory.CreatePersistent(Local(theirs));
 
-            Assert.Equal(PersistentSessionOutcome.Spawned, r.Outcome);
+            Assert.Equal(PersistentSessionOutcome.AttachedElsewhere, r.Outcome);
             var mine = Assert.IsType<MuxClientSession>(r.Session);
             Assert.NotEqual(theirs, mine.Id);
             Assert.Contains(theirs, mux.Server.GetSessionIds());
             Assert.Contains(mine.Id, mux.Server.GetSessionIds());
             Assert.True(other.Session.IsAttached, "the other client's session is untouched");
             Assert.False(mux.Fake(theirs).Disposed);
+        }
+    }
+
+    [Fact]
+    public void On_v2_a_restore_opens_IfUnattached_and_the_attach_itself_refuses()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            ClientPaneModel other = AttachOtherClient(mux);
+            Guid theirs = other.Session.Id;
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(theirs));
+
+            Assert.Equal(PersistentSessionOutcome.Reattached, r.Outcome);   // no client-side count check on v2
+            var mine = Assert.IsType<MuxClientSession>(r.Session);
+            Assert.Equal(theirs, mine.Id);
+            Assert.Equal(MuxAttachMode.IfUnattached, mine.AttachMode);
+            var ex = Assert.Throws<MuxProtocolException>(() =>
+                Task.Run(() => mine.AttachAsync(0, MuxTestHost.DefaultPresentation)).GetAwaiter().GetResult());
+            Assert.Equal(MuxErrorCodes.SessionAttached, ex.Code);
+            Assert.True(other.Session.IsAttached);
+        }
+    }
+
+    [Fact]
+    public void AttachShared_joins_a_session_another_client_holds()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            ClientPaneModel other = AttachOtherClient(mux);
+            Guid theirs = other.Session.Id;
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(theirs) with { AttachShared = true });
+
+            Assert.Equal(PersistentSessionOutcome.Reattached, r.Outcome);
+            var mine = Assert.IsType<MuxClientSession>(r.Session);
+            Assert.Equal((theirs, MuxAttachMode.Shared), (mine.Id, mine.AttachMode));
+            Task.Run(() => mine.AttachAsync(0, MuxTestHost.DefaultPresentation)).GetAwaiter().GetResult();
+            TestWait.UntilAsync(() => mux.Mux(theirs).AttachedClients == 2, "both attached").GetAwaiter().GetResult();
+        }
+    }
+
+    [Fact]
+    public void AttachShared_to_an_exited_session_still_attaches()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            ClientPaneModel other = AttachOtherClient(mux);   // keeps the exited session from being reaped
+            Guid theirs = other.Session.Id;
+            mux.Fake(theirs).Exit(4);
+            TestWait.UntilAsync(() => mux.Mux(theirs).IsExited, "the mux saw the exit").GetAwaiter().GetResult();
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(theirs) with { AttachShared = true });
+
+            Assert.Equal(PersistentSessionOutcome.Reattached, r.Outcome);
+            Assert.Equal(theirs, Assert.IsType<MuxClientSession>(r.Session).Id);
+        }
+    }
+
+    [Fact]
+    public void AttachShared_to_a_missing_session_spawns_fresh_and_says_the_previous_one_is_lost()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            PersistentSessionResult r = factory.CreatePersistent(Local(Guid.NewGuid()) with { AttachShared = true });
+
+            Assert.Equal(PersistentSessionOutcome.PreviousLost, r.Outcome);
+            Assert.Contains(Assert.IsType<MuxClientSession>(r.Session).Id, mux.Server.GetSessionIds());
         }
     }
 

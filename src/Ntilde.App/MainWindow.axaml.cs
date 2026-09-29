@@ -4770,19 +4770,23 @@ namespace Ntilde
         {
             try
             {
-                IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> orphans = await Task.Run(async () =>
+                (IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> orphans, int detached) = await Task.Run(async () =>
                 {
                     Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(10));
-                    if (client is null) return (IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>)[];
-                    return Ntilde.Shell.Mux.MuxOrphans.Select(await client.ListSessionsAsync().ConfigureAwait(false), referenced);
+                    if (client is null) return ((IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>)[], 0);
+                    IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync().ConfigureAwait(false);
+                    // A saved pane that names a detached shell reopens it itself: not counted as left behind.
+                    return (Ntilde.Shell.Mux.MuxOrphans.Select(all, referenced),
+                        Ntilde.Shell.Mux.MuxOrphans.CountUserDetached(all.Where(s => !referenced.Contains(s.SessionId))));
                 }).ConfigureAwait(false);
-                if (orphans.Count == 0) return;
+                if (orphans.Count == 0 && detached == 0) return;
 
                 Dispatcher.UIThread.Post(() =>
                 {
                     try
                     {
-                        AdoptOrphansOnUiThread(orphans);
+                        if (orphans.Count > 0) AdoptOrphansOnUiThread(orphans);
+                        if (detached > 0) AnnounceDetachedShellsOnce(detached);
                     }
                     catch (Exception ex)
                     {
@@ -4795,6 +4799,19 @@ namespace Ntilde
             {
                 AppLogger.Log($"[MainWindow] orphan adoption failed: {ex.Message}");
             }
+        }
+
+        private bool _detachedShellsAnnounced; // UI thread: once per launch
+
+        /// <summary>So deliberately detached shells are not forgotten (spec §7.7): one toast per launch.</summary>
+        private void AnnounceDetachedShellsOnce(int count)
+        {
+            if (_detachedShellsAnnounced || _teardownDone) return;
+            _detachedShellsAnnounced = true;
+            string message = count == 1
+                ? "1 detached shell is running — Attach to session… to reopen it"
+                : $"{count} detached shells are running — Attach to session… to reopen them";
+            ShowRecordingToast("Detached shells", message, null, null, autoHide: true);
         }
 
         /// <summary>UI thread. Opens each orphan in a background tab (selection and focus stay put).</summary>

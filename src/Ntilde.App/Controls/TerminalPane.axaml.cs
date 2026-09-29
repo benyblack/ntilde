@@ -3435,6 +3435,7 @@ namespace Ntilde.Controls
                 }
 
                 bool isSsh = profile != null && profile.Type == ConnectionType.SSH;
+                bool attachShared = TakeMuxAttachShared(isSsh); // before TakeMuxSessionIdToRestore clears the id
                 var request = new TerminalSessionRequest(
                     Command: effectiveShell,
                     Arguments: args,
@@ -3450,7 +3451,8 @@ namespace Ntilde.Controls
                             InteractionHandler: SshInteractionHandler,
                             NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
                         : null,
-                    ExistingMuxSessionId: TakeMuxSessionIdToRestore(isSsh));
+                    ExistingMuxSessionId: TakeMuxSessionIdToRestore(isSsh),
+                    AttachShared: attachShared);
 
                 if (isSsh)
                 {
@@ -3571,6 +3573,7 @@ namespace Ntilde.Controls
             }
 
             PersistentSessionResult result = persistent.CreatePersistent(request);
+            _muxSessionIsShare = request.AttachShared;
             MuxEndpoint = result.Endpoint;
             if (result.Outcome == PersistentSessionOutcome.DaemonUnreachable || result.Session is null)
             {
@@ -3589,6 +3592,11 @@ namespace Ntilde.Controls
             {
                 // Raised only after the attach: a failed attach shows its own banner instead.
                 previousLost = true;
+            }
+            else if (result.Outcome == PersistentSessionOutcome.AttachedElsewhere)
+            {
+                // v1: the factory's check found it attached elsewhere; said once the new shell attached.
+                _muxAttachedElsewhereNotice = true;
             }
 
             return result.Session;
@@ -3653,6 +3661,8 @@ namespace Ntilde.Controls
         internal const string MuxSessionFailedBanner = "[Multiplexer session failed — press Enter to start a new shell]";
         internal const string MuxUnavailableNoticeTitle = "Session not persistent";
         internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
+        internal const string MuxAttachedElsewhereBanner = "[Your previous shell is open in another window — started a new shell]";
+        internal const string MuxAttachedElsewhereNoticeTitle = "Previous shell in use";
 
         /// <summary>
         /// Raised on the UI thread with (title, message) when this pane's session will not persist or
@@ -3663,6 +3673,9 @@ namespace Ntilde.Controls
         /// <summary>Set by SessionManager.RestorePaneTree: the daemon session this pane should reopen (consumed once).</summary>
         internal Guid? MuxSessionIdToRestore { get; set; }
 
+        /// <summary>Set with <see cref="MuxSessionIdToRestore"/> by "Attach to session…": join it shared (consumed once).</summary>
+        internal bool MuxAttachSharedToRestore { get; set; }
+
         /// <summary>The daemon endpoint the current session lives on; null when it is not persistent.</summary>
         internal string? MuxEndpoint { get; private set; }
 
@@ -3671,6 +3684,24 @@ namespace Ntilde.Controls
 
         private Guid? _muxReattachId;    // UI thread: set when the connection dropped, consumed by Reconnect
         private bool _muxConnectionLost; // UI thread
+        private bool _muxAttachedElsewhereNotice; // UI thread: raise the notice once the replacement shell attached
+        private bool _muxSessionIsShare;          // UI thread: the current session was a deliberate share
+        private bool _muxReattachShared;          // UI thread: the lost session was a share, reattach it shared
+
+        /// <summary>
+        /// Whether the next spawn joins its session shared: a pending "Attach to session…" id, or the
+        /// reattach of a share whose connection dropped. Consumed with the id.
+        /// </summary>
+        private bool TakeMuxAttachShared(bool isSsh)
+        {
+            if (isSsh) return false;
+            bool shared = _muxReattachId is not null
+                ? _muxReattachShared
+                : MuxSessionIdToRestore is not null && MuxAttachSharedToRestore;
+            MuxAttachSharedToRestore = false;
+            _muxReattachShared = false;
+            return shared;
+        }
 
         /// <summary>An SSH pane never reopens a daemon session, and leaves any pending id unconsumed.</summary>
         private Guid? TakeMuxSessionIdToRestore(bool isSsh) => isSsh ? null : TakeMuxSessionIdToRestore();
@@ -3748,6 +3779,7 @@ namespace Ntilde.Controls
             if (!IsCurrentMux(source) || _muxConnectionLost) return;
             _muxConnectionLost = true;
             _muxReattachId = reattach ? source.Id : null;
+            _muxReattachShared = reattach && _muxSessionIsShare;
             // Input must not reach a daemon session this pane is not showing (after a failed attach
             // the connection is still up, and SendInput would deliver it). With no session the view
             // leaves keys unhandled, so Enter reaches OnKeyDown's reconnect.
@@ -3773,8 +3805,20 @@ namespace Ntilde.Controls
                         PersistenceNotice?.Invoke(this, MuxPreviousLostNoticeTitle, MuxPreviousLostBanner);
                     }
 
+                    if (_muxAttachedElsewhereNotice)
+                    {
+                        _muxAttachedElsewhereNotice = false;
+                        PersistenceNotice?.Invoke(this, MuxAttachedElsewhereNoticeTitle, MuxAttachedElsewhereBanner);
+                    }
+
                     PersistentSessionAttached?.Invoke(this);
                 });
+            }
+            catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.SessionAttached)
+            {
+                // The restore lost to another window, atomically on the daemon (spec §7.1): start fresh.
+                TerminalLogger.Log($"[TerminalPane] session {mux.Id} is attached in another window; starting a new shell");
+                this.Dispatcher.Post(() => RestartAfterAttachedElsewhere(mux));
             }
             catch (Exception ex)
             {
@@ -3782,6 +3826,16 @@ namespace Ntilde.Controls
                 this.Dispatcher.Post(() => HandleMuxConnectionLost(mux,
                     $"[Multiplexer attach failed: {SanitizeBannerValue(ex.Message)}] [Press Enter to reconnect]"));
             }
+        }
+
+        /// <summary>UI thread. Drops the refused session (a detach) and spawns a fresh shell; the notice follows its attach.</summary>
+        private void RestartAfterAttachedElsewhere(MuxClientSession source)
+        {
+            if (!IsCurrentMux(source)) return;
+            _muxReattachId = null;
+            MuxSessionIdToRestore = null;
+            _muxAttachedElsewhereNotice = true;
+            Reconnect();
         }
 
         /// <summary>

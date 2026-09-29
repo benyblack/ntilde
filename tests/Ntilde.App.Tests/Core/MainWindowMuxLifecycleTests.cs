@@ -375,4 +375,25 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.True(forNull.IsCompletedSuccessfully);
         Assert.Empty(fake.SentInput);
     }
+
+    [AvaloniaFact]
+    public void Detached_shells_are_announced_once_not_adopted()
+    {
+        Guid detached = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+            pane.Session.Detach(userDetached: true);
+            await TestWait.UntilAsync(() => _mux.Mux(id).DetachedByUser, "the daemon recorded the user detach");
+            return id;
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+        MainWindow window = CreateWindow();
+
+        PumpUntil(() => Toast(window).Message == "1 detached shell is running — Attach to session… to reopen it", "the detached shell was announced");
+        Assert.DoesNotContain(AllPanes(window), p => p.MuxSessionIdToRestore == detached);
+        Assert.DoesNotContain(AllPanes(window), p => p.Session is MuxClientSession m && m.Id == detached);
+        Assert.Equal(0, _mux.Mux(detached).AttachedClients);
+    }
 }

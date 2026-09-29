@@ -40,4 +40,15 @@ public sealed class MuxOrphansTests
             new HashSet<Guid> { referenced });
         Assert.Equal([orphan], result.Select(r => r.SessionId));
     }
+
+    [Fact]
+    public void User_detached_sessions_are_not_adopted_but_are_counted()
+    {
+        var crashed = new SessionSummary { SessionId = Guid.NewGuid(), Running = true };
+        var detached = new SessionSummary { SessionId = Guid.NewGuid(), Running = true, DetachedByUser = true };
+        var exitedDetached = new SessionSummary { SessionId = Guid.NewGuid(), Running = false, DetachedByUser = true };
+
+        Assert.Equal([crashed.SessionId], MuxOrphans.Select([crashed, detached, exitedDetached], new HashSet<Guid>()).Select(s => s.SessionId));
+        Assert.Equal(1, MuxOrphans.CountUserDetached([crashed, detached, exitedDetached]));
+    }
 }

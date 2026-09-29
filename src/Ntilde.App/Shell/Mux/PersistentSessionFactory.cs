@@ -19,6 +19,13 @@ internal enum PersistentSessionOutcome
     /// and the pane would forget its id. The pane keeps the id and offers a retry instead.
     /// </summary>
     DaemonUnreachable,
+
+    /// <summary>
+    /// A restore's session is held by another client (another window or instance): a fresh shell was
+    /// started, and the pane says so. On v2 the pane produces this after the attach itself refused
+    /// (session_attached); on v1 the factory's listSessions check does.
+    /// </summary>
+    AttachedElsewhere,
 }
 
 /// <param name="Session">The session to show; null only for <see cref="PersistentSessionOutcome.DaemonUnreachable"/>.</param>
