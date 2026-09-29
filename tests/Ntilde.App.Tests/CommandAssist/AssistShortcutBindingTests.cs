@@ -44,7 +44,7 @@ public sealed class AssistShortcutBindingTests
     [Fact]
     public void Catalog_KeepsPinOffTheCommandPaletteChord()
     {
-        IReadOnlyList<ShortcutCatalogEntry> entries = ShortcutCatalog.GetEntries();
+        IReadOnlyList<ShortcutCatalogEntry> entries = ShortcutCatalog.GetEntries(isMacOS: false);
 
         ShortcutCatalogEntry pin = Assert.Single(entries, entry => entry.CommandId == "command_assist_pin");
         ShortcutCatalogEntry palette = Assert.Single(entries, entry => entry.CommandId == "command_palette");
@@ -57,11 +57,13 @@ public sealed class AssistShortcutBindingTests
     /// Every default in the catalogue has to be unique, or the Settings shortcut editor reports a
     /// conflict on a file the user never touched. This is the check the new entries needed.
     /// </summary>
-    [Fact]
-    public void Catalog_HasNoConflictingDefaults()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Catalog_HasNoConflictingDefaults(bool isMacOS)
     {
         ShortcutBindingResolution resolution = ShortcutBindingResolver.Resolve(
-            ShortcutCatalog.GetDefinitions(),
+            ShortcutCatalog.GetDefinitions(isMacOS),
             overrides: null);
 
         Assert.True(
@@ -87,7 +89,7 @@ public sealed class AssistShortcutBindingTests
         };
 
         ShortcutBindingResolution resolution = ShortcutBindingResolver.Resolve(
-            ShortcutCatalog.GetDefinitions(),
+            ShortcutCatalog.GetDefinitions(isMacOS: false),
             overrides);
 
         Assert.True(resolution.IsValid);

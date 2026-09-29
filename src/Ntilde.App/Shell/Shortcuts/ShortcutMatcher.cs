@@ -28,6 +28,11 @@ public static class ShortcutMatcher
     public static string Format(Key key, KeyModifiers modifiers)
     {
         List<string> tokens = [];
+        if ((modifiers & KeyModifiers.Meta) != 0)
+        {
+            tokens.Add("Cmd");
+        }
+
         if ((modifiers & KeyModifiers.Control) != 0)
         {
             tokens.Add("Ctrl");
@@ -60,7 +65,7 @@ public static class ShortcutMatcher
             return false;
         }
 
-        KeyModifiers modifiers = e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift);
+        KeyModifiers modifiers = e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift | KeyModifiers.Meta);
         return e.Key == expected.Key && modifiers == expected.Modifiers;
     }
 
@@ -107,6 +112,9 @@ public static class ShortcutMatcher
             {
                 switch (token)
                 {
+                    case "Cmd":
+                        modifiers |= KeyModifiers.Meta;
+                        break;
                     case "Ctrl":
                         modifiers |= KeyModifiers.Control;
                         break;

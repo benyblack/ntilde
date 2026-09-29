@@ -504,7 +504,8 @@ namespace Ntilde
                 return custom;
             }
 
-            return fallback;
+            // Fallbacks are written with Ctrl; on macOS the default is the Cmd form.
+            return ShortcutPlatform.DefaultBinding(id, fallback);
         }
 
         internal static bool TryOpenCommandAssistHelp(TerminalPane? pane)

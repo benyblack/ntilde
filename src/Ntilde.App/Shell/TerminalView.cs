@@ -138,10 +138,38 @@ namespace Ntilde.Shell
 
         internal Func<Key, KeyModifiers, bool>? KeyDownInterceptor { get; set; }
 
+        /// <summary>
+        /// macOS clipboard conventions: Cmd+C copies, and Ctrl+C is always the interrupt. Off macOS,
+        /// Ctrl+C copies when there is a selection. Settable so tests can pin either behavior on any OS.
+        /// </summary>
+        internal bool UseMacOSClipboardChords { get; set; } = OperatingSystem.IsMacOS();
+
+        /// <summary>
+        /// True for Cmd+<paramref name="expected"/> with no other modifier, on macOS only.
+        /// </summary>
+        internal static bool IsMacClipboardChord(Key key, KeyModifiers modifiers, Key expected, bool isMacOS)
+        {
+            const KeyModifiers relevant = KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift | KeyModifiers.Meta;
+            return isMacOS && key == expected && (modifiers & relevant) == KeyModifiers.Meta;
+        }
+
         internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers)
         {
             if (KeyDownInterceptor?.Invoke(key, keyModifiers) == true)
             {
+                return true;
+            }
+
+            // Cmd+C is the macOS copy chord. It is consumed whether or not there is a selection -
+            // Cmd has no terminal encoding, so letting it fall through would send a bare 'c' (or
+            // a kitty CSI sequence) to the shell. The selection is kept, as in Terminal.app/iTerm2.
+            // Cmd+V is the "paste" binding's macOS default, dispatched by MainWindow.
+            if (IsMacClipboardChord(key, keyModifiers, Key.C, UseMacOSClipboardChords))
+            {
+                if (HasSelection())
+                {
+                    _ = CopySelectionToClipboard();
+                }
                 return true;
             }
 
@@ -254,7 +282,9 @@ namespace Ntilde.Shell
                 case Key.C:
                     if (isCtrl)
                     {
-                        if (HasSelection())
+                        // Copy-on-Ctrl+C is the Windows/Linux convenience. macOS copies with Cmd+C
+                        // (above), so there Ctrl+C is always the interrupt, selection or not.
+                        if (HasSelection() && !UseMacOSClipboardChords)
                         {
                             _ = CopySelectionToClipboard();
                             ClearSelection();
@@ -312,6 +342,7 @@ namespace Ntilde.Shell
         /// 2. Ctrl+C with an active selection is copy-to-clipboard, matching the behavior users
         ///    already have; without a selection it is a real Ctrl+C and the protocol encodes it
         ///    as CSI 99;5u (the spec explicitly notes Ctrl+C stops raising SIGINT in this mode).
+        ///    Not on macOS, where copy is Cmd+C and Ctrl+C is always the real key.
         /// </summary>
         private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, out string? sequence)
         {
@@ -322,7 +353,7 @@ namespace Ntilde.Shell
                 return false;
             }
 
-            if (key == Key.C && (keyModifiers & KeyModifiers.Control) != 0 && HasSelection())
+            if (key == Key.C && (keyModifiers & KeyModifiers.Control) != 0 && HasSelection() && !UseMacOSClipboardChords)
             {
                 return false;
             }

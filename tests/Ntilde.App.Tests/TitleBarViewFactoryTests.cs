@@ -1,3 +1,4 @@
+using Ntilde.Shell.Shortcuts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace Ntilde.Tests
         [Fact]
         public void Resolve_UsesTheShortcutCatalogDefault_WhenNoOverride()
         {
-            Assert.Equal("Ctrl+,", TitleBarShortcuts.Resolve("settings", null));
+            Assert.Equal(ShortcutPlatform.DefaultBinding("settings", "Ctrl+,"), TitleBarShortcuts.Resolve("settings", null));
         }
 
         [Fact]
@@ -34,7 +35,7 @@ namespace Ntilde.Tests
         {
             var keybindings = new Dictionary<string, string> { ["settings"] = "   " };
 
-            Assert.Equal("Ctrl+,", TitleBarShortcuts.Resolve("settings", keybindings));
+            Assert.Equal(ShortcutPlatform.DefaultBinding("settings", "Ctrl+,"), TitleBarShortcuts.Resolve("settings", keybindings));
         }
 
         [Fact]
@@ -142,7 +143,7 @@ namespace Ntilde.Tests
 
             TitleBarViewFactory.Populate(host, layout, null, AllHandlers(), newTab, _ => { });
 
-            Assert.Equal("New Tab (Ctrl+Shift+T)", ToolTip.GetTip(newTab));
+            Assert.Equal($"New Tab ({ShortcutPlatform.DefaultBinding("new_tab", "Ctrl+Shift+T")})", ToolTip.GetTip(newTab));
         }
 
         [AvaloniaFact]
@@ -280,7 +281,7 @@ namespace Ntilde.Tests
                 .OfType<Button>()
                 .Single(b => b.Name == TitleBarViewFactory.ButtonName("settings"));
 
-            Assert.Equal("Settings (Ctrl+,)", ToolTip.GetTip(settingsButton));
+            Assert.Equal($"Settings ({ShortcutPlatform.DefaultBinding("settings", "Ctrl+,")})", ToolTip.GetTip(settingsButton));
         }
 
         [AvaloniaFact]

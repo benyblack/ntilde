@@ -2034,8 +2034,45 @@ namespace Ntilde
             _titleBarDraft.SeedFrom(layout);
         }
 
+        /// <summary>
+        /// The Command Assist descriptions name their chords in prose. The XAML text is written with
+        /// the Windows/Linux defaults; this swaps in the binding actually in force, which differs on
+        /// macOS (Cmd+R, Cmd+Shift+S) and after a rebind.
+        /// </summary>
+        private void UpdateCommandAssistShortcutText()
+        {
+            string toggle = TitleBarShortcuts.Resolve("command_assist_toggle", _shortcutDraftBindings);
+            string history = TitleBarShortcuts.Resolve("command_assist_history", _shortcutDraftBindings);
+            string pin = TitleBarShortcuts.Resolve("command_assist_pin", _shortcutDraftBindings);
+
+            Replace("CommandAssistBubbleDesc", ("Ctrl+Space", toggle), ("Ctrl+R", history));
+            Replace("CommandAssistHistoryDesc", ("Ctrl+R", history));
+            Replace("CommandAssistSnippetsDesc", ("Ctrl+Shift+S", pin));
+
+            void Replace(string name, params (string Written, string Effective)[] chords)
+            {
+                if (this.FindControl<TextBlock>(name) is not TextBlock block)
+                {
+                    return;
+                }
+
+                // Tag keeps the XAML original so a second rebind replaces from the source text,
+                // not from the previous substitution.
+                block.Tag ??= block.Text;
+                string text = (string)block.Tag;
+                foreach ((string written, string effective) in chords)
+                {
+                    text = text.Replace(written, effective, StringComparison.Ordinal);
+                }
+
+                block.Text = text;
+            }
+        }
+
         private void RebuildTitleBarRows()
         {
+            UpdateCommandAssistShortcutText();
+
             var panel = this.FindControl<StackPanel>("TitleBarItemsPanel");
             if (panel == null)
             {
@@ -2437,7 +2474,7 @@ namespace Ntilde
 
         private static bool IsModifierKey(Key key)
         {
-            return key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift;
+            return key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin;
         }
 
         private string GetEffectiveShortcutBinding(ShortcutCatalogEntry entry)
@@ -2784,7 +2821,7 @@ namespace Ntilde
                 {
                     Text = CommandAssistSnippetStore == null
                         ? "Snippets are not available in this window."
-                        : "No snippets yet. Pin a suggestion with Ctrl+Shift+S, or add one here.",
+                        : $"No snippets yet. Pin a suggestion with {TitleBarShortcuts.Resolve("command_assist_pin", _shortcutDraftBindings)}, or add one here.",
                     Classes = { RowDescStyleClass },
                 });
                 return;
