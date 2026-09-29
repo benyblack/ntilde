@@ -62,12 +62,12 @@ public sealed class MuxTerminalSessionFactoryTests
         var (mux, factory, _) = Build();
         using (mux) using (factory.Host)
         {
-            var first = (MuxClientSession)factory.CreatePersistent(Local()).Session;
+            var first = Assert.IsType<MuxClientSession>(factory.CreatePersistent(Local()).Session);
             Guid id = first.Id;
             first.Dispose(); // detach, as a pane does on Reconnect
             PersistentSessionResult r = factory.CreatePersistent(Local(id));
             Assert.Equal(PersistentSessionOutcome.Reattached, r.Outcome);
-            Assert.Equal(id, ((MuxClientSession)r.Session).Id);
+            Assert.Equal(id, Assert.IsType<MuxClientSession>(r.Session).Id);
             Assert.Single(mux.Server.GetSessionIds());
         }
     }

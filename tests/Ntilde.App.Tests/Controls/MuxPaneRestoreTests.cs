@@ -11,15 +11,22 @@ namespace Ntilde.Tests.Controls;
 /// <summary>Phase 3 spec §7.1, §7.2: restore is exclusive by protocol; a deliberate share joins.</summary>
 public sealed class MuxPaneRestoreTests : IDisposable
 {
-    private readonly MuxTestHost _mux = new();
-    private readonly MuxConnectionHost _host;
-    private readonly MuxTerminalSessionFactory _factory;
+    private MuxTestHost _mux = null!;
+    private MuxConnectionHost _host = null!;
+    private MuxTerminalSessionFactory _factory = null!;
     private TerminalPane? _pane;
     private Avalonia.Controls.Window? _window;
 
-    public MuxPaneRestoreTests()
+    public MuxPaneRestoreTests() => StartDaemon(null);
+
+    /// <summary>Replaces the daemon (before anything used it): a test pinning the v1 path passes v1 options.</summary>
+    private void StartDaemon(MuxServerOptions? options)
     {
-        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        _host?.Dispose();
+        _mux?.Dispose();
+        _mux = new MuxTestHost(options);
+        MuxTestHost mux = _mux;
+        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null);
         _factory = new MuxTerminalSessionFactory(_host, new RecordingSessionFactory(new FakeTerminalSession()), null);
     }
 
@@ -72,6 +79,24 @@ public sealed class MuxPaneRestoreTests : IDisposable
     [AvaloniaFact]
     public void A_restore_that_loses_the_attach_race_starts_a_fresh_shell_and_says_so()
     {
+        ClientPaneModel other = AttachOtherClient();
+        Guid theirs = other.Session.Id;
+        var notices = new List<(string Title, string Message)>();
+
+        ShowRestoringPane(theirs, shared: false, notices);
+
+        PumpUntil(() => _pane!.Session is MuxClientSession { IsAttached: true } m && m.Id != theirs, "the pane attached a fresh shell");
+        PumpUntil(() => notices.Count > 0, "the notice was raised");
+        Assert.Equal((TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner), Assert.Single(notices));
+        Assert.True(other.Session.IsAttached);
+        Assert.Equal(1, _mux.Mux(theirs).AttachedClients);
+    }
+
+    /// <summary>Against a v1 daemon the factory's own check reports AttachedElsewhere; the pane says so after the fresh shell attached.</summary>
+    [AvaloniaFact]
+    public void On_v1_a_restore_of_a_session_shown_elsewhere_starts_a_fresh_shell_and_says_so()
+    {
+        StartDaemon(new MuxServerOptions { MaxProtocolVersion = 1, ForceConPtyFiltering = false });
         ClientPaneModel other = AttachOtherClient();
         Guid theirs = other.Session.Id;
         var notices = new List<(string Title, string Message)>();

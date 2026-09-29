@@ -396,4 +396,56 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.DoesNotContain(AllPanes(window), p => p.Session is MuxClientSession m && m.Id == detached);
         Assert.Equal(0, _mux.Mux(detached).AttachedClients);
     }
+
+    /// <summary>
+    /// Review fix: the adoption toast and the detached-shells reminder are raised in the same startup
+    /// job. Both go through the notice coalescer, so one toast carries both lines - neither replaces the other.
+    /// </summary>
+    [AvaloniaFact]
+    public void Startup_adoption_and_the_detached_reminder_share_one_toast()
+    {
+        Guid orphan;
+        using (MuxClient c = Task.Run(() => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, default), TestContext.Current.CancellationToken).GetAwaiter().GetResult())
+            orphan = Task.Run(() => MuxTestHost.SpawnAsync(c), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        PumpUntil(() => _mux.Mux(orphan).AttachedClients == 0, "the spawning client is gone");
+        Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+            pane.Session.Detach(userDetached: true);
+            await TestWait.UntilAsync(() => _mux.Mux(id).DetachedByUser, "the daemon recorded the user detach");
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+        MainWindow window = CreateWindow();
+
+        PumpUntil(() => AllPanes(window).Any(p => p.MuxSessionIdToRestore == orphan), "the orphan was adopted");
+        PumpUntil(() => Toast(window).Message?.Contains("detached shell is running", StringComparison.Ordinal) == true, "the reminder was shown");
+        string[] lines = Toast(window).Message!.Split('\n');
+        Assert.Contains("Reattached 1 detached session", lines);
+        Assert.Contains("1 detached shell is running — Attach to session… to reopen it", lines);
+    }
+
+    [AvaloniaFact]
+    public void The_detached_shells_reminder_is_shown_once_per_launch()
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs();
+
+        window.AnnounceDetachedShellsOnce(2);
+        window.AnnounceDetachedShellsOnce(3);
+        Dispatcher.UIThread.RunJobs();
+
+        // A second announcement would coalesce into the same line as "(2 panes)", or name 3.
+        Assert.Equal("2 detached shells are running — Attach to session… to reopen them", Toast(window).Message);
+    }
+
+    [AvaloniaFact]
+    public void Several_attached_elsewhere_notices_coalesce_into_a_plural_line()
+    {
+        Assert.Equal("[3 previous shells are open in another window — started new shells]",
+            MainWindow.BuildPersistenceNoticeMessage(TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner, 3));
+        Assert.Equal(TerminalPane.MuxAttachedElsewhereBanner,
+            MainWindow.BuildPersistenceNoticeMessage(TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner, 1));
+    }
 }

@@ -3573,8 +3573,16 @@ namespace Ntilde.Controls
             }
 
             PersistentSessionResult result = persistent.CreatePersistent(request);
-            _muxSessionIsShare = request.AttachShared;
+            // A share that fell back to a fresh spawn is this pane's own shell, not a share.
+            _muxSessionIsShare = request.AttachShared && result.Outcome == PersistentSessionOutcome.Reattached;
             MuxEndpoint = result.Endpoint;
+            if (result.Session is not MuxClientSession)
+            {
+                // No mux attach will follow to carry a pending "previous shell in use" notice; a later,
+                // unrelated attach must not raise it.
+                _muxAttachedElsewhereNotice = false;
+            }
+
             if (result.Outcome == PersistentSessionOutcome.DaemonUnreachable || result.Session is null)
             {
                 EnterMuxUnreachable(request.ExistingMuxSessionId, result);

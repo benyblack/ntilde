@@ -49,6 +49,15 @@ public sealed class MuxOrphansTests
         var exitedDetached = new SessionSummary { SessionId = Guid.NewGuid(), Running = false, DetachedByUser = true };
 
         Assert.Equal([crashed.SessionId], MuxOrphans.Select([crashed, detached, exitedDetached], new HashSet<Guid>()).Select(s => s.SessionId));
-        Assert.Equal(1, MuxOrphans.CountUserDetached([crashed, detached, exitedDetached]));
+        Assert.Equal(1, MuxOrphans.CountUserDetached([crashed, detached, exitedDetached], new HashSet<Guid>()));
+    }
+
+    [Fact]
+    public void A_detached_session_a_saved_pane_references_is_not_counted()
+    {
+        var detached = new SessionSummary { SessionId = Guid.NewGuid(), Running = true, DetachedByUser = true };
+        var referenced = new SessionSummary { SessionId = Guid.NewGuid(), Running = true, DetachedByUser = true };
+
+        Assert.Equal(1, MuxOrphans.CountUserDetached([detached, referenced], new HashSet<Guid> { referenced.SessionId }));
     }
 }

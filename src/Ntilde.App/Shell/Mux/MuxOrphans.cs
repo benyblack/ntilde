@@ -32,6 +32,12 @@ internal static class MuxOrphans
     public static IReadOnlyList<SessionSummary> Select(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
         sessions.Where(s => IsUnshown(s) && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
 
-    /// <summary>Running shells the user detached and nobody shows: the once-per-launch reminder's count.</summary>
-    public static int CountUserDetached(IEnumerable<SessionSummary> sessions) => sessions.Count(s => IsUnshown(s) && s.DetachedByUser);
+    /// <summary>
+    /// Running shells the user detached and nobody shows: the once-per-launch reminder's count. A
+    /// saved pane that names one reopens it itself, so it is not counted as left behind. (In the rare
+    /// case that pane's command no longer matches the session's, it spawns fresh instead and the
+    /// shell stays detached, uncounted this launch; the next launch counts it.)
+    /// </summary>
+    public static int CountUserDetached(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
+        sessions.Count(s => IsUnshown(s) && s.DetachedByUser && !referenced.Contains(s.SessionId));
 }

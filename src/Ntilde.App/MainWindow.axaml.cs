@@ -4712,12 +4712,21 @@ namespace Ntilde
 
         /// <summary>
         /// A pane's session will not persist, or replaced a lost one. Shown as a toast rather than
-        /// written into the pane (its shell paints over local text). Several panes raising the same
-        /// notice at once - a restore after a daemon crash - coalesce into one toast.
+        /// written into the pane (its shell paints over local text).
         /// </summary>
         private void OnPanePersistenceNotice(TerminalPane pane, string title, string message)
         {
             _ = pane;
+            EnqueueNotice(title, message);
+        }
+
+        /// <summary>
+        /// UI thread. The one way a session notice reaches the toast: everything raised together - panes
+        /// restoring after a daemon crash, startup adoption, the detached-shells reminder - merges into
+        /// one toast, one line per kind, instead of each ShowRecordingToast replacing the last.
+        /// </summary>
+        internal void EnqueueNotice(string title, string message)
+        {
             int index = _pendingPersistenceNotices.FindIndex(n => n.Title == title);
             bool first = _pendingPersistenceNotices.Count == 0;
             if (index < 0) _pendingPersistenceNotices.Add((title, message, 1));
@@ -4750,6 +4759,8 @@ namespace Ntilde
             if (count <= 1) return message;
             if (title == TerminalPane.MuxPreviousLostNoticeTitle)
                 return $"[{count} previous sessions were lost — started new shells]";
+            if (title == TerminalPane.MuxAttachedElsewhereNoticeTitle)
+                return $"[{count} previous shells are open in another window — started new shells]";
             if (title == TerminalPane.MuxUnavailableNoticeTitle)
             {
                 string hint = message.Contains(TerminalPane.MuxVersionMismatchHint, StringComparison.Ordinal)
@@ -4775,9 +4786,7 @@ namespace Ntilde
                     Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(10));
                     if (client is null) return ((IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>)[], 0);
                     IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync().ConfigureAwait(false);
-                    // A saved pane that names a detached shell reopens it itself: not counted as left behind.
-                    return (Ntilde.Shell.Mux.MuxOrphans.Select(all, referenced),
-                        Ntilde.Shell.Mux.MuxOrphans.CountUserDetached(all.Where(s => !referenced.Contains(s.SessionId))));
+                    return (Ntilde.Shell.Mux.MuxOrphans.Select(all, referenced), Ntilde.Shell.Mux.MuxOrphans.CountUserDetached(all, referenced));
                 }).ConfigureAwait(false);
                 if (orphans.Count == 0 && detached == 0) return;
 
@@ -4804,14 +4813,14 @@ namespace Ntilde
         private bool _detachedShellsAnnounced; // UI thread: once per launch
 
         /// <summary>So deliberately detached shells are not forgotten (spec §7.7): one toast per launch.</summary>
-        private void AnnounceDetachedShellsOnce(int count)
+        internal void AnnounceDetachedShellsOnce(int count)
         {
             if (_detachedShellsAnnounced || _teardownDone) return;
             _detachedShellsAnnounced = true;
             string message = count == 1
                 ? "1 detached shell is running — Attach to session… to reopen it"
                 : $"{count} detached shells are running — Attach to session… to reopen them";
-            ShowRecordingToast("Detached shells", message, null, null, autoHide: true);
+            EnqueueNotice("Detached shells", message);
         }
 
         /// <summary>UI thread. Opens each orphan in a background tab (selection and focus stay put).</summary>
@@ -4844,7 +4853,7 @@ namespace Ntilde
 
             if (adopted == 0) return;
             AppLogger.Log($"[MainWindow] reattached {adopted} detached mux session(s)");
-            ShowRecordingToast("Sessions restored", $"Reattached {adopted} detached session{(adopted == 1 ? "" : "s")}", null, null, autoHide: true);
+            EnqueueNotice("Sessions restored", $"Reattached {adopted} detached session{(adopted == 1 ? "" : "s")}");
         }
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
