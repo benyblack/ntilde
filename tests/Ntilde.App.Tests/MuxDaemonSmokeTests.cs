@@ -122,4 +122,73 @@ public sealed class MuxDaemonSmokeTests
     private static string ScreenText(ClientPaneModel pane) => MuxTestText.VisibleText(pane.Buffer);
 
     private static int CountMarker(ClientPaneModel pane) => ScreenText(pane).Split(Marker).Length - 1;
+
+    private const string SharedMarker = "mux-shared-marker";
+
+    private static int CountMarker(ClientPaneModel pane, string marker) => ScreenText(pane).Split(marker).Length - 1;
+
+    [Fact]
+    public async Task Two_clients_attached_shared_to_a_real_shell_see_the_same_marker()
+    {
+        using var root = new TestAppDataRoot();
+        string descriptorPath = MuxDiscovery.GetDescriptorPath(root.RootPath);
+        var presentation = MuxTestHost.DefaultPresentation with { Cols = 100, Rows = 30 };
+        var launcher = new MuxDaemonLauncher(descriptorPath, Spawner()) { SpawnTimeout = TimeSpan.FromSeconds(30) };
+        int? daemonPid = null, shellPid = null;
+        MuxClient? first = null, second = null;
+        try
+        {
+            first = await launcher.EnsureConnectedAsync(Ct);
+            second = await launcher.EnsureConnectedAsync(Ct);
+            Assert.NotSame(first, second);
+            Assert.Equal(2, first.ProtocolVersion);
+            Assert.True(MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d));
+            daemonPid = d.Pid;
+
+            string shell = ShellHelper.GetDefaultShell();
+            Guid id = await first.SpawnAsync(new SpawnParams
+            {
+                Command = shell,
+                Cols = 100,
+                Rows = 30,
+                SkipPowerShellPostLaunchInit = true,
+                Title = "shared-smoke",
+            }, Ct);
+            var a = new ClientPaneModel(first.OpenSession(id, shell));
+            await a.Session.AttachAsync(1000, presentation, Ct);
+            var b = new ClientPaneModel(second.OpenSession(id, shell, null, MuxAttachMode.Shared));
+            await b.Session.AttachAsync(1000, presentation, Ct);
+            shellPid = (await a.Session.RefreshSessionInfoAsync(Ct)).Pid;
+
+            await TestWait.UntilAsync(() => a.Session.AttachedClients == 2 && b.Session.AttachedClients == 2,
+                "both clients heard that they share the shell", TimeSpan.FromSeconds(15));
+            await TestWait.UntilAsync(() => ScreenText(a).Length > 0, "the shell drew a prompt", TimeSpan.FromSeconds(30));
+            await Task.Delay(500, Ct);
+            a.Session.SendInput($"echo {SharedMarker}\r");
+
+            // The typed command and its output: the marker appears twice, on both screens.
+            await TestWait.UntilAsync(() => CountMarker(a, SharedMarker) >= 2, "client A sees the marker", TimeSpan.FromSeconds(30));
+            await TestWait.UntilAsync(() => CountMarker(b, SharedMarker) >= 2, "client B sees the same marker", TimeSpan.FromSeconds(30));
+
+            // A restore-style attach is refused while both hold it: a restore would not duplicate this shell.
+            using (MuxClient third = await launcher.EnsureConnectedAsync(Ct))
+            {
+                using MuxClientSession c = third.OpenSession(id, shell, null, MuxAttachMode.IfUnattached);
+                var ex = await Assert.ThrowsAsync<MuxProtocolException>(() => c.AttachAsync(0, presentation, Ct));
+                Assert.Equal(MuxErrorCodes.SessionAttached, ex.Code);
+            }
+
+            await second.ShutdownServerAsync(Ct);
+            using Process daemon = Process.GetProcessById(daemonPid.Value);
+            Assert.True(daemon.WaitForExit(15_000), "the daemon exited");
+            if (shellPid is int sp) await TestWait.UntilAsync(() => !IsAlive(sp), "the shell is gone", TimeSpan.FromSeconds(15));
+        }
+        finally
+        {
+            first?.Dispose();
+            second?.Dispose();
+            if (daemonPid is int dp && IsAlive(dp)) { try { using var p = Process.GetProcessById(dp); p.Kill(entireProcessTree: true); } catch (Exception) { } }
+            if (shellPid is int sp && IsAlive(sp)) { try { using var p = Process.GetProcessById(sp); p.Kill(); } catch (Exception) { } }
+        }
+    }
 }
