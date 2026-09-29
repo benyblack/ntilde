@@ -11,14 +11,10 @@ public sealed record ShortcutDefinition
             throw new ArgumentException("Command id cannot be empty.", nameof(commandId));
         }
 
-        if (string.IsNullOrWhiteSpace(defaultBinding))
-        {
-            throw new ArgumentException("Default binding cannot be empty.", nameof(defaultBinding));
-        }
-
+        ArgumentNullException.ThrowIfNull(defaultBinding);
         CommandId = commandId;
         Scope = scope;
-        DefaultBinding = defaultBinding;
+        DefaultBinding = defaultBinding.Trim();
     }
 
     public string CommandId { get; }
@@ -26,4 +22,7 @@ public sealed record ShortcutDefinition
     public ShortcutScope Scope { get; }
 
     public string DefaultBinding { get; }
+
+    /// <summary>No default chord: reachable from the palette until the user binds one (Phase 3 spec §7.6).</summary>
+    public bool IsUnbound => DefaultBinding.Length == 0;
 }
