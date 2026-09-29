@@ -608,7 +608,11 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    /// <summary>Every exit path reports the subscription that actually resulted (<see cref="IMuxFrameSink.OnSubscriptionState"/>).</summary>
+    /// <summary>
+    /// Every exit path reports the subscription that actually resulted (<see cref="IMuxFrameSink.OnSubscriptionState"/>).
+    /// On success that repeats the report made just before the snapshot was enqueued; the report is
+    /// idempotent state, not an event, so the repeat is harmless and keeps one rule for every path.
+    /// </summary>
     private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode)
     {
         try
@@ -697,6 +701,11 @@ public sealed class HeadlessTerminalSession : IDisposable
             Reply(sink, requestId, MuxErrorCodes.Internal, $"Snapshot frame could not be built: {ex.Message}");
             return;
         }
+
+        // Reported BEFORE the snapshot is handed over: a client reacting to its snapshot must find the
+        // connection already enforcing (or no longer enforcing) read-only for its next input or resize.
+        // If the enqueue is refused, the finally in ExecuteAttach reports the real outcome afterwards.
+        ReportSubscription(sink, subscribed: true, readOnly);
 
         bool accepted;
         try { accepted = sink.TryEnqueue(frame); }

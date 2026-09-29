@@ -223,6 +223,48 @@ public sealed class AttachModeTests
         Assert.Equal(1, host.Mux(id).AttachedClients); // a's subscription from `first` is gone; b's remains
     }
 
+    /// <summary>
+    /// Review fix round 2: the sink learns its new read-only state before it is handed the snapshot,
+    /// so a client reacting to the snapshot never has its next input judged by the old state.
+    /// </summary>
+    [Fact]
+    public async Task The_subscription_state_is_reported_before_the_snapshot_is_enqueued()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        var sink = new OrderRecordingSink();
+        int maxBytes = MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes;
+
+        mux.PostAttach(sink, 1, 0, MuxTestHost.DefaultPresentation, maxBytes, MuxAttachMode.ReadOnly);
+        await mux.InvokeAsync(() => 0);
+        Assert.Equal(new[] { "state:True:True", "Snapshot:1" }, sink.Events.Take(2));
+
+        sink.Events.Clear();
+        mux.PostAttach(sink, 2, 0, MuxTestHost.DefaultPresentation, maxBytes, MuxAttachMode.Shared);
+        await mux.InvokeAsync(() => 0);
+        Assert.Equal(new[] { "state:True:False", "Snapshot:2" }, sink.Events.Take(2));
+    }
+
+    private sealed class OrderRecordingSink : IMuxFrameSink
+    {
+        public ConcurrentQueue<string> Events { get; } = new();
+
+        public bool TryEnqueue(MuxOutboundFrame frame)
+        {
+            if (frame.Kind == MuxFrameKind.Snapshot)
+            {
+                Assert.True(MuxFrames.TryParseSnapshot(frame.Bytes[MuxProtocol.FrameHeaderBytes..], out long rid, out _, out _, out _));
+                Events.Enqueue($"Snapshot:{rid}");
+            }
+
+            return true;
+        }
+
+        public void OnSubscriptionState(Guid sessionId, bool subscribed, bool readOnly) => Events.Enqueue($"state:{subscribed}:{readOnly}");
+    }
+
     [Fact]
     public async Task An_unknown_mode_is_a_request_error_and_the_connection_stays_open()
     {
