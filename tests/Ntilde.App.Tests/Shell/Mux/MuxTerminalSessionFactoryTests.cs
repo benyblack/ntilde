@@ -194,4 +194,26 @@ public sealed class MuxTerminalSessionFactoryTests
             Assert.NotNull(fallback.LastRequest);
         }
     }
+
+    /// <summary>PR #489 follow-up: a saved id whose daemon session runs another program is not reattached.</summary>
+    [Fact]
+    public void A_restore_whose_command_differs_spawns_fresh_and_leaves_the_session_alone()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            Guid theirs = Task.Run(async () =>
+            {
+                MuxClient c = await mux.ConnectClientAsync();
+                return await MuxTestHost.SpawnAsync(c);           // Command = "scripted"
+            }).GetAwaiter().GetResult();
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(theirs) with { Command = "other-shell" });
+
+            Assert.Equal(PersistentSessionOutcome.Spawned, r.Outcome);
+            Assert.NotEqual(theirs, Assert.IsType<MuxClientSession>(r.Session).Id);
+            Assert.Contains(theirs, mux.Server.GetSessionIds());
+            Assert.False(mux.Fake(theirs).Disposed);
+        }
+    }
 }

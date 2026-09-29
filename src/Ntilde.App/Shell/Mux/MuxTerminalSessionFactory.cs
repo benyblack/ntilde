@@ -54,6 +54,15 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             {
                 IReadOnlyList<SessionSummary> sessions = Rpc(ct => client.ListSessionsAsync(ct));
                 SessionSummary? match = sessions.FirstOrDefault(s => s.SessionId == existing);
+                if (match is { Running: true, Faulted: false } && !MuxCommandMatch.SameExecutable(match.Command, request.Command))
+                {
+                    // Not this pane's shell (a hand-edited or foreign session file): leave it running
+                    // untouched and start what the pane asked for. Nothing was lost, so no banner.
+                    _log?.Invoke($"[Mux] session {existing} runs '{match.Command}', not '{request.Command}'; starting a new shell instead of reattaching");
+                    Guid other = Spawn(client, request);
+                    return new(client.OpenSession(other, request.Command, request.Arguments), PersistentSessionOutcome.Spawned, Host.Endpoint, null);
+                }
+
                 if (match is { Running: true, Faulted: false, AttachedClients: 0 })
                 {
                     return new(client.OpenSession(existing, request.Command, request.Arguments), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
