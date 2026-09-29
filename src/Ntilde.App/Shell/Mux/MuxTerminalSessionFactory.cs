@@ -28,7 +28,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan RpcTimeout { get; init; } = TimeSpan.FromSeconds(3);
 
-    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen falls back here.</summary>
+    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen (or an ended share) falls back here.</summary>
     public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session ?? _fallback.Create(request);
 
     public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
@@ -58,13 +58,18 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                 if (request.AttachShared)
                 {
                     // A deliberate share: join whatever else is attached, running or exited (an exited
-                    // session shows its last screen and exit). Gone or faulted: a fresh shell.
+                    // session shows its last screen and exit). Gone or faulted: no shell at all - a
+                    // fresh one is not what the user chose.
                     if (match is { Faulted: false })
                     {
-                        return new(client.OpenSession(existing, request.Command, request.Arguments, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
+                        return new(client.OpenSession(existing, request.Command, request.Arguments, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, Host.Endpoint, null)
+                        {
+                            AlreadyExited = !match.Running,
+                        };
                     }
 
-                    return SpawnFresh(client, request, PersistentSessionOutcome.PreviousLost);
+                    _log?.Invoke($"[Mux] shared session {existing} is gone or faulted; nothing to attach");
+                    return new(null, PersistentSessionOutcome.ShareEnded, Host.Endpoint, "the shared session has ended");
                 }
 
                 if (match is { Running: true, Faulted: false } && !MuxCommandMatch.SameExecutable(match.Command, request.Command))

@@ -198,19 +198,40 @@ public sealed class MuxTerminalSessionFactoryTests
 
             Assert.Equal(PersistentSessionOutcome.Reattached, r.Outcome);
             Assert.Equal(theirs, Assert.IsType<MuxClientSession>(r.Session).Id);
+            Assert.True(r.AlreadyExited);
         }
     }
 
     [Fact]
-    public void AttachShared_to_a_missing_session_spawns_fresh_and_says_the_previous_one_is_lost()
+    public void AttachShared_to_a_running_session_is_not_marked_already_exited()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            Guid theirs = AttachOtherClient(mux).Session.Id;
+
+            PersistentSessionResult r = factory.CreatePersistent(Local(theirs) with { AttachShared = true });
+
+            Assert.Equal(PersistentSessionOutcome.Reattached, r.Outcome);
+            Assert.False(r.AlreadyExited);
+        }
+    }
+
+    /// <summary>
+    /// Task 13 review ruling (replaces the Task 10 pin that expected a fresh shell and PreviousLost):
+    /// a deliberate share of a session that is gone starts nothing - the user chose that shell.
+    /// </summary>
+    [Fact]
+    public void AttachShared_to_a_missing_session_starts_no_shell()
     {
         var (mux, factory, _) = Build();
         using (mux) using (factory.Host)
         {
             PersistentSessionResult r = factory.CreatePersistent(Local(Guid.NewGuid()) with { AttachShared = true });
 
-            Assert.Equal(PersistentSessionOutcome.PreviousLost, r.Outcome);
-            Assert.Contains(Assert.IsType<MuxClientSession>(r.Session).Id, mux.Server.GetSessionIds());
+            Assert.Equal(PersistentSessionOutcome.ShareEnded, r.Outcome);
+            Assert.Null(r.Session);
+            Assert.Empty(mux.Server.GetSessionIds());
         }
     }
 

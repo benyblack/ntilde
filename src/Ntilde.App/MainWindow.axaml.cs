@@ -4684,6 +4684,7 @@ namespace Ntilde
             pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
             pane.PersistenceNotice -= OnPanePersistenceNotice;
             pane.MuxSharingChanged -= OnPaneMuxSharingChanged;
+            pane.MuxShareEnded -= OnPaneMuxShareEnded;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged += OnPaneWorkingDirectoryChanged;
@@ -4696,6 +4697,7 @@ namespace Ntilde
             pane.PersistentSessionAttached += OnPanePersistentSessionAttached;
             pane.PersistenceNotice += OnPanePersistenceNotice;
             pane.MuxSharingChanged += OnPaneMuxSharingChanged;
+            pane.MuxShareEnded += OnPaneMuxShareEnded;
         }
 
         private void UnwirePane(TerminalPane pane)
@@ -4718,6 +4720,30 @@ namespace Ntilde
             pane.PersistentSessionAttached -= OnPanePersistentSessionAttached;
             pane.PersistenceNotice -= OnPanePersistenceNotice;
             pane.MuxSharingChanged -= OnPaneMuxSharingChanged;
+            pane.MuxShareEnded -= OnPaneMuxShareEnded;
+        }
+
+        /// <summary>
+        /// UI thread. "Attach to session…" chose a session that was gone by the time the pane attached:
+        /// say so and close the pane (it has no session, so the close kills nothing).
+        /// </summary>
+        private void OnPaneMuxShareEnded(TerminalPane pane)
+        {
+            EnqueueNotice(TerminalPane.MuxShareEndedNoticeTitle, TerminalPane.MuxShareEndedBanner);
+            _ = CloseEndedSharePaneAsync(pane);
+        }
+
+        private async Task CloseEndedSharePaneAsync(TerminalPane pane)
+        {
+            try
+            {
+                await ClosePaneAsync(pane, skipConfirm: true);
+            }
+            catch (Exception ex)
+            {
+                // Fire-and-forget: nothing else observes it. The pane's own banner stays as the fallback.
+                AppLogger.Log($"[MainWindow] closing a pane whose shared session ended failed: {ex.Message}");
+            }
         }
 
         /// <summary>UI thread. A tab is marked shared while any of its panes has other clients attached.</summary>
@@ -4851,6 +4877,19 @@ namespace Ntilde
                     return null;
                 }
             });
+            try
+            {
+                await OfferMuxSessionsAsync(sessions);
+            }
+            catch (Exception ex)
+            {
+                // Fire-and-forget from the palette and the shortcut: nothing else observes a throw.
+                AppLogger.Log($"[MainWindow] Attach to session failed: {ex.Message}");
+            }
+        }
+
+        private async Task OfferMuxSessionsAsync(IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions)
+        {
             if (_teardownDone) return;
             if (sessions is null)
             {
@@ -5144,7 +5183,9 @@ namespace Ntilde
             // ambiguous marker: a dead pane announces itself in the pane body instead. If a tab
             // marker is ever wanted, it needs its own state and its own reset, not this one.
 
-            if (!ShouldClosePaneOnExit(_settings.ShellExitPolicy, isSsh: false, exitCode))
+            // A share of a shell that had already exited reports that exit with its attach: the user
+            // opened it to look at, so it keeps its last screen whatever the policy says.
+            if (pane.MuxShareOfExitedSession || !ShouldClosePaneOnExit(_settings.ShellExitPolicy, isSsh: false, exitCode))
             {
                 pane.WriteLocalExitBanner(exitCode);
                 return;

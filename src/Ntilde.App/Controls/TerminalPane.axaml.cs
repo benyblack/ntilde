@@ -3478,6 +3478,7 @@ namespace Ntilde.Controls
                     {
                         // DaemonUnreachable: the shell this pane reopens is still in the daemon.
                         // CreateLocalSession kept its id and wrote the retry banner; nothing to wire.
+                        // ShareEnded: the chosen shell is gone; the window closes this pane.
                         return;
                     }
                 }
@@ -3575,12 +3576,19 @@ namespace Ntilde.Controls
             PersistentSessionResult result = persistent.CreatePersistent(request);
             // A share that fell back to a fresh spawn is this pane's own shell, not a share.
             _muxSessionIsShare = request.AttachShared && result.Outcome == PersistentSessionOutcome.Reattached;
+            MuxShareOfExitedSession = _muxSessionIsShare && result.AlreadyExited;
             MuxEndpoint = result.Endpoint;
             if (result.Session is not MuxClientSession)
             {
                 // No mux attach will follow to carry a pending "previous shell in use" notice; a later,
                 // unrelated attach must not raise it.
                 _muxAttachedElsewhereNotice = false;
+            }
+
+            if (result.Outcome == PersistentSessionOutcome.ShareEnded)
+            {
+                EnterMuxShareEnded(request.ExistingMuxSessionId);
+                return null;
             }
 
             if (result.Outcome == PersistentSessionOutcome.DaemonUnreachable || result.Session is null)
@@ -3629,6 +3637,24 @@ namespace Ntilde.Controls
             WriteBanner($"\r\n\x1b[90m{banner}\x1b[0m\r\n");
         }
 
+        /// <summary>
+        /// UI thread. A deliberate share's session was gone by the time this pane attached: no fresh
+        /// shell (the user chose that one), and the window closes the pane. The banner covers a pane
+        /// the window could not close; Enter there starts a new shell.
+        /// </summary>
+        private void EnterMuxShareEnded(Guid? sessionId)
+        {
+            _muxConnectionLost = true;
+            TermView.SetSession(null);
+            TerminalLogger.Log($"[TerminalPane] shared session {sessionId} has ended; nothing to attach");
+            WriteBanner($"\r\n\x1b[90m{MuxShareEndedBanner}\x1b[0m\r\n");
+            this.Dispatcher.Post(() =>
+            {
+                if (Volatile.Read(ref _disposed)) return;
+                MuxShareEnded?.Invoke(this);
+            });
+        }
+
         /// <summary>Posts <see cref="PersistenceNotice"/> to this pane's UI thread.</summary>
         private void RaisePersistenceNotice(string title, string message)
         {
@@ -3673,6 +3699,18 @@ namespace Ntilde.Controls
         internal const string MuxAttachedElsewhereBanner = "[Your previous shell is open in another window — started a new shell]";
         internal const string MuxAttachedElsewhereNoticeTitle = "Previous shell in use";
         internal const string MuxKilledElsewhereBanner = "[Shell ended from another window]";
+        internal const string MuxShareEndedBanner = "[The shell you chose has ended]";
+        internal const string MuxShareEndedNoticeTitle = "Attach to session";
+
+        /// <summary>Raised on the UI thread when a deliberate share found its session gone (MainWindow closes the pane).</summary>
+        internal event Action<TerminalPane>? MuxShareEnded;
+
+        /// <summary>
+        /// UI thread: the current session is a share of a shell that had already exited when it was
+        /// chosen. Its exit arrives with the attach, so MainWindow keeps the pane (last screen and exit
+        /// banner) instead of applying ShellExitPolicy. Reset by every new local session.
+        /// </summary>
+        internal bool MuxShareOfExitedSession { get; private set; }
 
         /// <summary>UI thread: how many OTHER clients are attached to this pane's mux session (0 = not shared, or unknown).</summary>
         internal int MuxOtherClients { get; private set; }
