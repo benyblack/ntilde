@@ -266,4 +266,16 @@ public class LayeringTests
 
     private static string Join(IEnumerable<string>? names)
         => names is null ? "(none)" : string.Join(", ", names);
+
+    [Fact]
+    public void The_text_client_stays_console_only()
+    {
+        var result = Types.InAssembly(Mux)
+            .That().ResideInNamespace("Ntilde.Mux.TextClient")
+            .Should()
+            .NotHaveDependencyOnAny("Avalonia", "SkiaSharp", "Ntilde.Platform", "Ntilde.Rendering", "Ntilde.Shell", "Ntilde.Controls")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, $"TextClient must stay console-only. Offenders: {Join(result.FailingTypeNames)}");
+    }
 }

@@ -130,4 +130,22 @@ public class CliCommandDispatchTests
             "an IsSupportedCliMode/Execute branch to App/Program.cs's Main, following the " +
             $"ReplayCommand precedent. Offenders: {string.Join(", ", undispatched)}");
     }
+
+    private static readonly string[] MuxAttachArgs = ["mux", "attach", "abcd"]; // CA1861
+
+    /// <summary>Phase 3: `mux attach` is interactive - both entry points must give it a real console (spec §6.7).</summary>
+    [Fact]
+    public void Mux_attach_gets_an_interactive_console_from_the_App_entry_point()
+    {
+        Type mux = App.GetType("Ntilde.Shell.Mux.MuxCommand", throwOnError: true)!;
+        MethodInfo isAttach = mux.GetMethod("IsAttach", CommandMemberFlags, StringArrayParameter)!;
+        Assert.True((bool)isAttach.Invoke(null, [MuxAttachArgs])!);
+
+        string program = File.ReadAllText(Path.Combine(RepoRoot(), "src/Ntilde.App/Program.cs"));
+        Assert.Contains("MuxCommand.IsAttach(", program, StringComparison.Ordinal);
+        Assert.Contains("CliConsoleBindings.PrepareInteractive(", program, StringComparison.Ordinal);
+
+        string cli = File.ReadAllText(Path.Combine(RepoRoot(), "src/Ntilde.Cli/Program.cs"));
+        Assert.Contains("MuxCommand.IsSupportedCliMode(", cli, StringComparison.Ordinal);
+    }
 }

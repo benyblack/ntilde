@@ -128,4 +128,19 @@ public class NamespaceAlignmentTests
         Assert.True(result.IsSuccessful,
             $"Wire types belong in Ntilde.Mux.Contracts. Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
+
+    [Fact]
+    public void Text_client_types_reside_in_the_TextClient_namespace()
+    {
+        var result = Types.InAssembly(LoadByName("Ntilde.Mux"))
+            .That().HaveNameEndingWith("ConsoleSurface")
+            .Or().HaveNameStartingWith("TextClient")
+            .Or().HaveName("DetachChord")
+            .Should()
+            .ResideInNamespace("Ntilde.Mux.TextClient")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Text client types belong in Ntilde.Mux.TextClient. Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
 }

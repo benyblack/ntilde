@@ -2,6 +2,7 @@ using System.Text.Json;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Mux.TextClient;
 using Ntilde.Shell.Mux;
 
 namespace Ntilde.Tests.Shell.Mux;
@@ -262,4 +263,132 @@ public sealed class MuxCommandTests : IDisposable
 
     [Fact]
     public void Kill_server_rejects_unknown_options() => Assert.Equal(2, Run("mux", "kill-server", "--bogus").Code);
+
+    [Fact]
+    public void The_console_probe_verdict_needs_raw_applied_restored_and_a_stable_size()
+    {
+        const string raw = "speed 38400 baud; -icanon -isig -echo";
+        const string cooked = "speed 38400 baud; icanon isig echo";
+
+        Assert.True(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (80, 24)));
+        Assert.False(MuxCommand.ProbeVerdict(cooked, cooked, (80, 24), (80, 24)));   // raw mode not applied
+        Assert.False(MuxCommand.ProbeVerdict(raw, raw, (80, 24), (80, 24)));         // not restored
+        Assert.False(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (1, 1)));        // the size broke while raw
+        Assert.True(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30)));      // Windows: no stty
+    }
+
+    [Fact]
+    public void The_probe_verb_is_hidden_from_the_usage()
+    {
+        var (_, _, err) = Run("mux", "frobnicate");
+        Assert.DoesNotContain("probe-console", err, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Attach_is_recognised()
+    {
+        Assert.True(MuxCommand.IsAttach(["mux", "attach", "abcd"]));
+        Assert.False(MuxCommand.IsAttach(["mux", "ls"]));
+        Assert.False(MuxCommand.IsAttach(["backup"]));
+    }
+
+    [Theory]
+    [InlineData("mux", "attach")]
+    [InlineData("mux", "attach", "abcd", "efgh")]
+    [InlineData("mux", "attach", "--bogus", "abcd")]
+    public void Bad_attach_arguments_are_exit_2(params string[] args) => Assert.Equal(2, Run(args).Code);
+
+    [Fact]
+    public void Attach_without_a_daemon_is_exit_2()
+    {
+        var (code, _, err) = Run("mux", "attach", Guid.NewGuid().ToString());
+        Assert.Equal(2, code);
+        Assert.Contains("No multiplexer is running", err);
+    }
+
+    [Fact]
+    public async Task Attach_to_an_unknown_session_is_exit_2()
+    {
+        await StartDaemonWithOneSessionAsync();
+        var (code, _, err) = Run("mux", "attach", Guid.NewGuid().ToString());
+        Assert.Equal(2, code);
+        Assert.Contains("No session", err);
+    }
+
+    [Fact]
+    public async Task Attach_by_prefix_renders_and_detaches_with_the_chord()
+    {
+        Guid id = await StartDaemonWithOneSessionAsync();
+        using var console = new FakeConsoleSurface(80, 24);
+        MuxCommand.ConsoleFactoryForTest = () => console;
+        try
+        {
+            Task<(int Code, string Out, string Err)> run = Task.Run(() => Run("mux", "attach", id.ToString("N")[..8]), Ct);
+            await TestWait.UntilAsync(() => console.IsRaw, "the text client took the console");
+            console.Type("\u001cd");
+
+            var (code, _, err) = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+            Assert.Equal(0, code);
+            Assert.Equal(string.Empty, err);
+            Assert.Contains($"[detached from {id}]", console.Output, StringComparison.Ordinal);
+            Assert.False(console.IsRaw);
+        }
+        finally
+        {
+            MuxCommand.ConsoleFactoryForTest = null;
+        }
+    }
+
+    [Fact]
+    public void A_session_prefix_must_be_unique_and_at_least_4_characters()
+    {
+        var a = new SessionSummary { SessionId = new Guid("abcd0000-0000-0000-0000-000000000001") };
+        var b = new SessionSummary { SessionId = new Guid("abcd0000-0000-0000-0000-000000000002") };
+
+        Assert.True(MuxCommand.TryResolveSession("abcd0000000000000000000000000001", [a, b], out Guid exact, out _));
+        Assert.Equal(a.SessionId, exact);
+        Assert.False(MuxCommand.TryResolveSession("abcd", [a, b], out _, out string? ambiguous));
+        Assert.Contains("matches 2", ambiguous);
+        Assert.False(MuxCommand.TryResolveSession("abc", [a, b], out _, out string? tooShort));
+        Assert.Contains("at least 4", tooShort);
+        Assert.True(MuxCommand.TryResolveSession("abcd0000-0000-0000-0000-000000000002", [a, b], out Guid full, out _));
+        Assert.Equal(b.SessionId, full);
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]     // the GUI exe, attached to a parent console: the only case that shares the keyboard
+    [InlineData(true, false, false)]   // allocated its own console (Explorer), or Ntilde.Cli.exe
+    [InlineData(false, true, false)]   // not Windows
+    public void The_console_hint_is_printed_only_for_the_GUI_exe_on_a_parent_console(bool isWindows, bool attachedToParent, bool expected)
+    {
+        string? hint = MuxCommand.AttachConsoleHint(isWindows, attachedToParent, "abcd1234");
+
+        Assert.Equal(expected, hint is not null);
+        if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde mux attach abcd1234", hint);
+    }
+
+    [Fact]
+    public void Attach_help_names_the_cmd_workaround()
+    {
+        var (code, output, _) = Run("mux", "attach", "--help");
+
+        Assert.Equal(0, code);
+        Assert.Contains("cmd /c ntilde mux attach <id>", output, StringComparison.Ordinal);
+        Assert.Contains("Ctrl+\\ then d", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Ls_marks_user_detached_sessions()
+    {
+        Guid id = await StartDaemonWithOneSessionAsync();
+        using Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5));
+        using MuxClient c = await MuxClient.ConnectAsync(s, null, Ct);
+        MuxClientSession session = c.OpenSession(id, "scripted");
+        await session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
+
+        session.Detach(userDetached: true);
+
+        await TestWait.UntilAsync(() => Run("mux", "ls").Out.Contains("running, detached", StringComparison.Ordinal), "ls marks it");
+        Assert.Contains("\"detachedByUser\":true", Run("mux", "ls", "--json").Out, StringComparison.Ordinal);
+    }
 }

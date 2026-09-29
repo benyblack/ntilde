@@ -77,7 +77,9 @@ class Program
             if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args))
             {
                 // serve is a daemon: it must not attach to the launching console (it detaches from it).
-                if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
+                // attach is interactive: it needs a real console, allocated if the parent has none.
+                if (Ntilde.Shell.Mux.MuxCommand.IsAttach(args)) Ntilde.Shell.Mux.MuxCommand.AttachedToParentConsole = CliConsoleBindings.PrepareInteractive();
+                else if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
                 Environment.ExitCode = Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
                 return;
             }
