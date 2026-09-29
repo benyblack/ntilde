@@ -183,8 +183,9 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// Closes the connection: the daemon detaches every session on it and keeps them running.
     /// First a bounded flush: closing drops frames still queued, and a pane closed just before the
-    /// window (the last tab) has queued a kill. The server reads frames in order, so a ping reply
-    /// means every earlier frame was handled. Waited inside Task.Run: no UI sync context captured.
+    /// window (the last tab) has queued a kill. One wait, not two: a tracked kill's own reply (or its
+    /// timeout) already tells us whether earlier frames landed, so the ping flush below runs only
+    /// when there was no kill to wait on. Waited inside Task.Run: no UI sync context captured.
     /// </summary>
     public void Dispose()
     {
@@ -222,7 +223,11 @@ internal sealed class MuxConnectionHost : IDisposable
             }
         }
 
-        if (client.IsConnected)
+        // One bounded wait, not two: when there were kills to wait on, a completed kill's reply
+        // already proves every earlier frame reached the daemon, and a timed-out wait already means
+        // the daemon is unresponsive - either way the ping flush below would only add its own wait
+        // on top for nothing. The ping flush only runs when there was no kill to wait on at all.
+        if (kills.Length == 0 && client.IsConnected)
         {
             try
             {

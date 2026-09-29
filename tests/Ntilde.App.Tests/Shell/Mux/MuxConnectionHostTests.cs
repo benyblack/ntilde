@@ -159,4 +159,31 @@ public sealed class MuxConnectionHostTests
 
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(4), $"Dispose took {sw.Elapsed}");
     }
+
+    /// <summary>
+    /// Review fix (Task 4, round 1): one bounded wait, not two. Before the fix, a pending kill that
+    /// never got a reply made Dispose wait KillFlushTimeout AND THEN the separate ping-flush wait
+    /// (DisposeFlushTimeout) on top - up to ~4s total with the production defaults. A kill's own
+    /// timeout already means the daemon is unresponsive, so the ping flush must be skipped entirely
+    /// whenever there was a kill to wait on, whether it completed or timed out.
+    /// </summary>
+    [Fact]
+    public void Dispose_does_not_also_run_the_ping_flush_after_waiting_on_a_kill()
+    {
+        using var mux = new MuxTestHost();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null)
+        {
+            KillFlushTimeout = TimeSpan.FromMilliseconds(300),
+            DisposeFlushTimeout = TimeSpan.FromSeconds(1),
+        };
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
+        host.TrackPendingKill(new TaskCompletionSource().Task); // an unresponsive daemon: never completes
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        host.Dispose();
+
+        // Would be up to ~1.3s (KillFlushTimeout + DisposeFlushTimeout) if the ping flush still ran
+        // after the kill wait timed out; asserting well under that pins the skip.
+        Assert.True(sw.Elapsed < TimeSpan.FromMilliseconds(900), $"Dispose took {sw.Elapsed}");
+    }
 }
