@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
-using System.Text.RegularExpressions;
 using Avalonia.Threading;
 using Avalonia.Media;
 using Avalonia.Controls.Shapes;
@@ -2083,11 +2082,26 @@ namespace Ntilde
             }
 
             // Longest first, so a chord that is a prefix of another cannot shadow it.
-            string pattern = string.Join("|", chords
-                .Select(chord => chord.Written)
-                .OrderByDescending(written => written.Length)
-                .Select(Regex.Escape));
-            return Regex.Replace(text, pattern, match => chords.First(chord => chord.Written == match.Value).Effective);
+            (string Written, string Effective)[] ordered = chords.OrderByDescending(chord => chord.Written.Length).ToArray();
+            var result = new System.Text.StringBuilder(text.Length);
+            int index = 0;
+            while (index < text.Length)
+            {
+                int start = index;
+                (string Written, string Effective) match = ordered.FirstOrDefault(
+                    chord => string.CompareOrdinal(text, start, chord.Written, 0, chord.Written.Length) == 0);
+                if (match.Written is null)
+                {
+                    result.Append(text[index]);
+                    index++;
+                    continue;
+                }
+
+                result.Append(match.Effective);
+                index += match.Written.Length;
+            }
+
+            return result.ToString();
         }
 
         private string FormatSnippetsEmptyHint() =>
