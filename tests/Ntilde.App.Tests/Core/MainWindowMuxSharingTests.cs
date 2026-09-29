@@ -21,6 +21,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
 {
     private readonly MuxTestHost _mux = new();
     private MuxConnectionHost? _host;
+    private readonly List<MuxConnectionHost> _otherHosts = [];
 
     public MainWindowMuxSharingTests()
     {
@@ -31,13 +32,27 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     {
         TestMainWindowFactory.DisposeCreatedWindows();
         _host?.Dispose();
+        foreach (MuxConnectionHost h in _otherHosts) h.Dispose();
         _mux.Dispose();
     }
 
     private MainWindow CreateWindow()
     {
         _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
-        var factory = new MuxTerminalSessionFactory(_host, new RecordingSessionFactory(new FakeTerminalSession()), null);
+        return CreateWindowOn(_host);
+    }
+
+    /// <summary>A second ntilde window with its own connection to the same daemon (another instance's GUI).</summary>
+    private MainWindow CreateOtherWindow()
+    {
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        _otherHosts.Add(host);
+        return CreateWindowOn(host);
+    }
+
+    private static MainWindow CreateWindowOn(MuxConnectionHost host)
+    {
+        var factory = new MuxTerminalSessionFactory(host, new RecordingSessionFactory(new FakeTerminalSession()), null);
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
@@ -378,5 +393,194 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         PumpUntil(() => direct.IsCompleted, "the command returned");
         PumpFor(200);
         Assert.Equal(1, picks);
+    }
+
+    [AvaloniaFact]
+    public void Detach_pane_keeps_the_shell_running_and_the_count_drops()
+    {
+        MainWindow window = CreateWindow();
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+
+        Task<bool> detach = window.DetachPaneAsync(mine);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        Assert.True(detach.Result);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the daemon saw the detach");
+        Assert.Contains(id, _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.DoesNotContain(mine, AllPanes(window));
+        // Notices are coalesced into one Background flush (EnqueueNotice), so the toast lands a pass later.
+        PumpUntil(() => Toast(window).Title == "Shell detached", "the detach toast is shown");
+        Assert.Equal("Shell kept running — Attach to session… to get it back", Toast(window).Message);
+        PumpUntil(() => theirs.Session.AttachedClients == 1, "the other instance heard it");
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Cancel")]
+    [InlineData("Detach")]
+    [InlineData("Close")]
+    public void Close_with_others_attached_prompts_and_each_choice_behaves(string choiceName)
+    {
+        SharedCloseChoice choice = Enum.Parse<SharedCloseChoice>(choiceName);
+        MainWindow window = CreateWindow();
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        var mineSession = (MuxClientSession)mine.Session!; // the pane lets go of it on close
+        int asked = -1;
+        window.ConfirmSharedClose = others =>
+        {
+            asked = others;
+            return Task.FromResult(choice);
+        };
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<bool>)close.Invoke(window, [mine, false])!;
+        PumpUntil(() => task.IsCompleted, "the close finished");
+
+        Assert.Equal(1, asked);
+        switch (choice)
+        {
+            case SharedCloseChoice.Cancel:
+                Assert.False(task.Result);
+                Assert.Contains(mine, AllPanes(window));
+                Assert.Equal(2, _mux.Mux(id).AttachedClients);
+                break;
+            case SharedCloseChoice.Detach:
+                Assert.True(task.Result);
+                PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the daemon saw the detach");
+                Assert.False(_mux.Mux(id).IsExited);
+                break;
+            case SharedCloseChoice.Close:
+                Assert.True(task.Result);
+                PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the shell was killed");
+                PumpUntil(() => theirs.Session.WasKilledElsewhere, "the other instance was told who ended it");
+                // The closer ended it: its own pane is never told "ended from another window".
+                PumpFor(200);
+                Assert.False(mineSession.WasKilledElsewhere);
+                Assert.DoesNotContain(TerminalPane.MuxKilledElsewhereBanner, MuxTestText.VisibleText(mine.Buffer!), StringComparison.Ordinal);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Review Focus 6 through two GUIs: a Close in one window reaches the other window's pane through its
+    /// real ProcessExited and ShellExitPolicy path, which says who ended it. The closing pane never says so.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_in_one_window_shows_ended_from_another_window_in_the_other()
+    {
+        MainWindow other = CreateOtherWindow();
+        Settings(other).ShellExitPolicy = "Graceful";
+        TerminalPane theirs = AllPanes(other).Single();
+        Guid id = ((MuxClientSession)theirs.Session!).Id;
+        MainWindow window = CreateWindow();
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both windows attached");
+        var mineSession = (MuxClientSession)mine.Session!; // the pane lets go of it on close
+        int asked = -1;
+        window.ConfirmSharedClose = others =>
+        {
+            asked = others;
+            return Task.FromResult(SharedCloseChoice.Close);
+        };
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<bool>)close.Invoke(window, [mine, false])!;
+        PumpUntil(() => task.IsCompleted, "the close finished");
+
+        Assert.True(task.Result);
+        Assert.Equal(1, asked);
+        PumpUntil(() => MuxTestText.VisibleText(theirs.Buffer!).Contains(TerminalPane.MuxKilledElsewhereBanner, StringComparison.Ordinal),
+            "the other window's pane says the shell was ended from another window");
+        Assert.Contains(theirs, AllPanes(other)); // Graceful and a kill's exit code -1: the pane stays
+        Assert.DoesNotContain(mine, AllPanes(window));
+        Assert.False(mineSession.WasKilledElsewhere);
+        Assert.DoesNotContain(TerminalPane.MuxKilledElsewhereBanner, MuxTestText.VisibleText(mine.Buffer!), StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public void A_lone_pane_is_decided_without_the_shared_prompt()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).PaneClosePolicy = "Force";
+        TerminalPane own = AllPanes(window).Single();
+        int asked = -1;
+        window.ConfirmSharedClose = others =>
+        {
+            asked = others;
+            return Task.FromResult(SharedCloseChoice.Cancel);
+        };
+        var decide = typeof(MainWindow).GetMethod("DecidePaneCloseAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<SharedCloseChoice>)decide.Invoke(window, [own])!;
+        PumpUntil(() => task.IsCompleted, "the decision finished");
+
+        Assert.Equal(SharedCloseChoice.Close, task.Result);
+        Assert.Equal(-1, asked);
+    }
+
+    [AvaloniaFact]
+    public void Killed_elsewhere_shows_the_ended_from_another_window_banner()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).ShellExitPolicy = "Graceful";
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+
+        Task.Run(() => other.KillAsync(id)).GetAwaiter().GetResult();
+
+        PumpUntil(() => MuxTestText.VisibleText(mine.Buffer!).Contains(TerminalPane.MuxKilledElsewhereBanner, StringComparison.Ordinal), "the banner is shown");
+        Assert.Contains(mine, AllPanes(window)); // Graceful and a kill's exit code -1: the pane stays
+    }
+
+    [AvaloniaFact]
+    public void Mux_commands_are_registered_with_persistence_on()
+    {
+        MainWindow window = CreateWindow();
+
+        typeof(MainWindow).GetMethod("SetupCommandPalette", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+
+        Assert.Contains(CommandRegistry.GetCommands(), c => c.Id == "attach_session");
+        Assert.Contains(CommandRegistry.GetCommands(), c => c.Id == "detach_pane");
+    }
+
+    [AvaloniaFact]
+    public void Mux_commands_are_not_registered_when_persistence_is_off()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+        });
+        Assert.Null(window.MuxHost);
+
+        typeof(MainWindow).GetMethod("SetupCommandPalette", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+
+        Assert.DoesNotContain(CommandRegistry.GetCommands(), c => c.Id is "attach_session" or "detach_pane");
+    }
+
+    [AvaloniaFact]
+    public void Detach_pane_marks_the_session_detached_by_user()
+    {
+        MainWindow window = CreateWindow();
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        theirs.Session.Dispose();                      // an ordinary detach: this window is now the last viewer
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the other instance left");
+        Assert.False(_mux.Mux(id).DetachedByUser);
+
+        Task<bool> detach = window.DetachPaneAsync(mine);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 0, "the daemon saw the detach");
+        Assert.True(_mux.Mux(id).DetachedByUser);
+        Assert.False(_mux.Mux(id).IsExited);
     }
 }

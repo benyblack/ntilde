@@ -272,6 +272,9 @@ namespace Ntilde
         /// <summary>Shows the "Attach to session…" picker; null = cancelled. A seam so tests choose without a modal.</summary>
         internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow>, Task<Guid?>> PickMuxSession { get; set; }
 
+        /// <summary>The shared-close prompt (spec §7.4), given how many other clients show the shell. A seam so tests answer without a modal.</summary>
+        internal Func<int, Task<Ntilde.Shell.Mux.SharedCloseChoice>> ConfirmSharedClose { get; set; }
+
         /// <summary>Test seam: runs inside <see cref="PerformAppTeardown"/> right after its one-shot guard.</summary>
         internal Action? TeardownFaultForTest { get; set; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
@@ -3751,6 +3754,7 @@ namespace Ntilde
             // be referenced from a field initializer (CS0236, "this" isn't available yet).
             ConfirmSessionLossForUpdate = ShowUpdateSessionLossConfirmationAsync;
             PickMuxSession = ShowMuxSessionPickerAsync;
+            ConfirmSharedClose = ShowSharedCloseDialogAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -3825,6 +3829,9 @@ namespace Ntilde
                 }, DispatcherPriority.Input);
             };
             this.Activated += (s, e) => FocusCurrentTerminal(defer: true);
+            // Spec §7.5, second half: back in this window, the focused mux pane's grid wins again
+            // over a size another client set meanwhile.
+            this.Activated += (_, _) => _currentPane?.ReassertMuxGrid();
             // Window activation feeds the agent attention machines' focus
             // signal (see PushAgentWindowVisibility). Deliberately separate
             // subscriptions rather than folded into the focus handler above:
@@ -4221,6 +4228,13 @@ namespace Ntilde
                 {
                     RecordCommandUsage("attach_session");
                     _ = AttachToMuxSessionAsync();
+                    e.Handled = true;
+                    return;
+                }
+                if (IsMuxPersistenceActive && IsShortcut(e, "detach_pane", ""))
+                {
+                    RecordCommandUsage("detach_pane");
+                    DetachActivePane();
                     e.Handled = true;
                     return;
                 }
@@ -5620,7 +5634,10 @@ namespace Ntilde
             await CloseTabAsync(selectedTab);
         }
 
-        private async Task<bool> CloseTabAsync(TabItem tab, bool skipProcessChecks = false)
+        private Task<bool> CloseTabAsync(TabItem tab, bool skipProcessChecks = false) =>
+            CloseTabCoreAsync(tab, skipProcessChecks, Ntilde.Shell.Mux.PaneDisposition.EndSession);
+
+        private async Task<bool> CloseTabCoreAsync(TabItem tab, bool skipProcessChecks, Ntilde.Shell.Mux.PaneDisposition requested)
         {
             if (_closeTabInProgress) return false;
             _closeTabInProgress = true;
@@ -5639,21 +5656,25 @@ namespace Ntilde
                 }
 
                 var layoutRoot = GetLayoutRootForTab(tab);
+                var detach = new HashSet<TerminalPane>();
                 if (!skipProcessChecks && layoutRoot != null)
                 {
                     foreach (var pane in EnumeratePanes(layoutRoot))
                     {
-                        if (!await ShouldClosePaneAsync(pane))
+                        Ntilde.Shell.Mux.SharedCloseChoice choice = await DecidePaneCloseAsync(pane);
+                        if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Cancel)
                         {
                             UpdateActivePane(pane);
                             FocusPaneTerminal(pane, defer: true);
                             return false;
                         }
+
+                        if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Detach) detach.Add(pane);
                     }
                 }
 
                 PublishPaneEvent(tab, ResolvePaneForTab(tab), PaneAuditEventKind.Close, "tab");
-                CloseTab(tab);
+                CloseTabCore(tab, requested, detach);
                 return true;
             }
             finally
@@ -5790,7 +5811,10 @@ namespace Ntilde
             });
         }
 
-        private void CloseTab(TabItem ti)
+        private void CloseTab(TabItem ti) => CloseTabCore(ti, Ntilde.Shell.Mux.PaneDisposition.EndSession, null);
+
+        /// <param name="detach">Panes the user chose to detach rather than close; they override <paramref name="disposition"/>.</param>
+        private void CloseTabCore(TabItem ti, Ntilde.Shell.Mux.PaneDisposition disposition, IReadOnlySet<TerminalPane>? detach)
         {
             if (_paneZoomStateByTab.ContainsKey(ti))
             {
@@ -5814,7 +5838,7 @@ namespace Ntilde
             _tabStateByTab.Remove(ti);
             _pendingVisualRefreshTabs.Remove(ti);
 
-            if (ti.Content is Control content) DisposeControlTree(content);
+            if (ti.Content is Control content) DisposeControlTree(content, disposition, detach);
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs != null)
             {
@@ -5846,7 +5870,10 @@ namespace Ntilde
         /// Returns true when the pane (or its tab) actually went away — callers use that to fall
         /// back to a banner when a protected tab or an in-flight close refuses.
         /// </summary>
-        private async Task<bool> ClosePaneAsync(TerminalPane pane, bool skipConfirm = false)
+        private Task<bool> ClosePaneAsync(TerminalPane pane, bool skipConfirm = false) =>
+            ClosePaneCoreAsync(pane, skipConfirm, Ntilde.Shell.Mux.PaneDisposition.EndSession);
+
+        private async Task<bool> ClosePaneCoreAsync(TerminalPane pane, bool skipConfirm, Ntilde.Shell.Mux.PaneDisposition requested)
         {
             if (_closePaneInProgress || pane == null) return false;
             _closePaneInProgress = true;
@@ -5882,10 +5909,17 @@ namespace Ntilde
                 // Agent-initiated and exit-driven closes bypass the confirmation dialog: an agent
                 // can't answer a modal, a dead shell has nothing left to lose, and an unattended
                 // prompt is the stuck state #311 is about.
-                if (!skipConfirm && !await ShouldClosePaneAsync(paneToClose))
+                Ntilde.Shell.Mux.PaneDisposition disposition = requested;
+                if (!skipConfirm)
                 {
-                    FocusPaneTerminal(paneToClose, defer: true);
-                    return false;
+                    Ntilde.Shell.Mux.SharedCloseChoice choice = await DecidePaneCloseAsync(paneToClose);
+                    if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Cancel)
+                    {
+                        FocusPaneTerminal(paneToClose, defer: true);
+                        return false;
+                    }
+
+                    if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Detach) disposition = Ntilde.Shell.Mux.PaneDisposition.Detach;
                 }
 
                 // Check if we are in a split (Parent is Grid with multiple children/splitter)
@@ -5931,7 +5965,7 @@ namespace Ntilde
                         }
 
                         // 5. Dispose the closed pane
-                        DisposeControlTree(paneToClose);
+                        DisposeControlTree(paneToClose, disposition);
 
                         // 6. Focus Sibling
                         FocusFirstPane(sibling);
@@ -5944,12 +5978,109 @@ namespace Ntilde
 
                 // Fallback: If not in a split, close the pane's own tab. paneTab is non-null from
                 // the early return above, so there is no null branch left to guard here.
-                return await CloseTabAsync(paneTab, skipProcessChecks: true);
+                return await CloseTabCoreAsync(paneTab, skipProcessChecks: true, disposition);
             }
             finally
             {
                 _closePaneInProgress = false;
             }
+        }
+
+        /// <summary>
+        /// Close, Detach or Cancel for one pane. A mux pane whose shell other clients also show asks the
+        /// three-way question first; the count comes from listSessions (bounded, works on v1 too).
+        /// Otherwise the Phase 2 decision (<see cref="ShouldClosePaneAsync"/>) stands.
+        /// </summary>
+        private async Task<Ntilde.Shell.Mux.SharedCloseChoice> DecidePaneCloseAsync(TerminalPane pane)
+        {
+            if (pane.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsAttached: true } mux)
+            {
+                int? attached;
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                try
+                {
+                    attached = await mux.RefreshSharingAsync(cts.Token).WaitAsync(TimeSpan.FromSeconds(1));
+                }
+                catch (Exception ex) when (ex is TimeoutException or OperationCanceledException or Ntilde.Mux.Contracts.MuxProtocolException or ObjectDisposedException or IOException)
+                {
+                    attached = mux.AttachedClients; // stale is acceptable
+                }
+
+                if (attached is int n && n > 1)
+                {
+                    try
+                    {
+                        return await ConfirmSharedClose(n - 1);
+                    }
+                    catch (Exception ex)
+                    {
+                        // A question that could not be asked is never read as "close it for everyone".
+                        AppLogger.Log($"[MainWindow] the shared-close prompt failed: {ex.Message}");
+                        return Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
+                    }
+                }
+            }
+
+            return await ShouldClosePaneAsync(pane) ? Ntilde.Shell.Mux.SharedCloseChoice.Close : Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
+        }
+
+        private async Task<Ntilde.Shell.Mux.SharedCloseChoice> ShowSharedCloseDialogAsync(int others)
+        {
+            var choice = Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
+            var dialog = CreateThemedDialogWindow("Close Shared Shell", 480, 200, canResize: false);
+            string who = others == 1 ? "1 other window is" : $"{others} other windows are";
+            var cancel = new Button { Content = "Cancel", Width = 92 };
+            var detach = new Button { Content = "Detach", Width = 92 };
+            var close = new Button { Content = "Close (ends it)", Width = 130 };
+            cancel.Click += (_, _) => { choice = Ntilde.Shell.Mux.SharedCloseChoice.Cancel; dialog.Close(); };
+            detach.Click += (_, _) => { choice = Ntilde.Shell.Mux.SharedCloseChoice.Detach; dialog.Close(); };
+            close.Click += (_, _) => { choice = Ntilde.Shell.Mux.SharedCloseChoice.Close; dialog.Close(); };
+            dialog.Content = new Border
+            {
+                Padding = new Thickness(16),
+                Child = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock { Text = $"{who} attached to this shell.", FontWeight = FontWeight.SemiBold },
+                        new TextBlock { Text = "Close ends the shell for every window. Detach closes only this pane and keeps the shell running.", TextWrapping = TextWrapping.Wrap },
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Spacing = 8,
+                            Children = { cancel, detach, close },
+                        },
+                    },
+                },
+            };
+
+            await dialog.ShowDialog(this);
+            return choice;
+        }
+
+        private void DetachActivePane()
+        {
+            if (_currentPane is { } pane) _ = DetachPaneAsync(pane);
+        }
+
+        /// <summary>"Pane: Detach" (spec §7.4): the pane closes, the shell keeps running in the daemon.</summary>
+        internal async Task<bool> DetachPaneAsync(TerminalPane pane)
+        {
+            if (pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true })
+            {
+                EnqueueNotice("Pane: Detach", "Only a persistent shell can be detached.");
+                return false;
+            }
+
+            bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
+            if (closed && !_teardownDone)
+            {
+                EnqueueNotice("Shell detached", "Shell kept running — Attach to session… to get it back");
+            }
+
+            return closed;
         }
 
         private async Task<bool> ShouldClosePaneAsync(TerminalPane pane)
@@ -6574,16 +6705,17 @@ namespace Ntilde
         }
 
         /// <param name="disposition">
-        /// Every caller today is user-initiated (a close), hence <see cref="Ntilde.Shell.Mux.PaneDisposition.EndSession"/>:
-        /// a mux shell is killed rather than left running detached in the daemon (spec §9).
+        /// EndSession for a close: a mux shell is killed rather than left running detached in the daemon
+        /// (spec §9). Detach for Pane: Detach and the shared prompt's Detach (Phase 3 spec §7.4).
         /// </param>
-        private void DisposeControlTree(Control control, Ntilde.Shell.Mux.PaneDisposition disposition = Ntilde.Shell.Mux.PaneDisposition.EndSession)
+        /// <param name="detach">Panes detached whatever <paramref name="disposition"/> says (a tab close's per-pane Detach answers).</param>
+        private void DisposeControlTree(Control control, Ntilde.Shell.Mux.PaneDisposition disposition = Ntilde.Shell.Mux.PaneDisposition.EndSession, IReadOnlySet<TerminalPane>? detach = null)
         {
             // All call sites are UI event paths, but marshal defensively: the UI-affine
             // detach below throws VerifyAccess off the UI thread.
             if (!Dispatcher.UIThread.CheckAccess())
             {
-                Dispatcher.UIThread.Post(() => DisposeControlTree(control, disposition));
+                Dispatcher.UIThread.Post(() => DisposeControlTree(control, disposition, detach));
                 return;
             }
 
@@ -6597,8 +6729,15 @@ namespace Ntilde
                 // catch, so a VerifyAccess throw aborted teardown before the session was
                 // disposed, leaking the PTY and its child shell.
                 var session = pane.DetachFromUiThread();
-                // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose).
-                KillMuxSessionOnClose(session, disposition);
+                Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
+                // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
+                KillMuxSessionOnClose(session, effective);
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.Detach && session is Ntilde.Mux.MuxClientSession detaching)
+                {
+                    // A deliberate detach (the command, or the shared prompt's Detach): tell a v2 daemon, so the
+                    // next launch does not adopt it back (spec §7.7). On the UI thread; the pool Dispose below is then a no-op.
+                    detaching.Detach(userDetached: true);
+                }
 
                 if (session != null)
                 {
@@ -6614,8 +6753,8 @@ namespace Ntilde
                     });
                 }
             }
-            else if (control is Panel panel) { foreach (var child in panel.Children) if (child is Control c) DisposeControlTree(c, disposition); }
-            else if (control is ContentPresenter cp && cp.Content is Control childContent) DisposeControlTree(childContent, disposition);
+            else if (control is Panel panel) { foreach (var child in panel.Children) if (child is Control c) DisposeControlTree(c, disposition, detach); }
+            else if (control is ContentPresenter cp && cp.Content is Control childContent) DisposeControlTree(childContent, disposition, detach);
         }
 
         /// <summary>
@@ -7504,6 +7643,7 @@ namespace Ntilde
             if (IsMuxPersistenceActive)
             {
                 CommandRegistry.Register("Attach to Session…", "Session", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
+                CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding("detach_pane", ""), "detach_pane");
             }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");
             CommandRegistry.Register("Focus Pane Right", "View", () => NavigatePane(MoveDirection.Right), "Alt+Right");
