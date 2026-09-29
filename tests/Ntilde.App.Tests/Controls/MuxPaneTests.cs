@@ -477,7 +477,9 @@ public sealed class MuxPaneTests : IDisposable
         { FailureCooldown = TimeSpan.Zero };
         var factory = new MuxTerminalSessionFactory(gatedHost, fallback, null) { ConnectTimeout = TimeSpan.FromSeconds(2) };
 
-        _pane = new TerminalPane { MuxSessionIdToRestore = id };
+        // "scripted": the same program MuxTestHost.SpawnAsync seeded above, or the new
+        // command-match check (correctly) refuses to reattach to it.
+        _pane = new TerminalPane("scripted") { MuxSessionIdToRestore = id };
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
         _pane.SessionFactory = factory;
         var notices = RecordNotices();
