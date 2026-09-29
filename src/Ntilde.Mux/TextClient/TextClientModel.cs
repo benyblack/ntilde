@@ -7,7 +7,7 @@ namespace Ntilde.Mux.TextClient;
 /// restore on snapshot, parse output, resize in stream - all on the client's delivery thread. The
 /// parser's replies are discarded: the mux has already answered every device query.
 /// </summary>
-public sealed class TextClientModel
+public sealed class TextClientModel : IDisposable
 {
     public TextClientModel(MuxClientSession session)
     {
@@ -31,6 +31,14 @@ public sealed class TextClientModel
 
     /// <summary>Raised on the delivery thread after every change to <see cref="Buffer"/>; the render thread's wake-up.</summary>
     public event Action? Changed;
+
+    /// <summary>Stops following the session; the buffer keeps its last state.</summary>
+    public void Dispose()
+    {
+        Session.SnapshotReceived -= OnSnapshot;
+        Session.OnOutputReceived -= OnOutput;
+        Session.StreamResize -= OnResize;
+    }
 
     private void OnSnapshot(TerminalStateSnapshot snapshot)
     {

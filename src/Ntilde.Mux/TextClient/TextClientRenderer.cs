@@ -25,6 +25,8 @@ public sealed class TextClientRenderer
     /// <summary>Written on every exit path: plain SGR, cursor shown, modes off, back to the outer main screen.</summary>
     public const string LeaveSequence = "\x1b[0m\x1b[?25h\x1b[?1l\x1b[?2004l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1049l";
 
+    private const string DetachHint = "Ctrl+\\ d to detach";
+
     private readonly TerminalBuffer _buffer;
     private bool _haveFrame;
     private int _lastConsoleCols, _lastConsoleRows, _lastSessionCols, _lastSessionRows, _lastTop;
@@ -39,7 +41,13 @@ public sealed class TextClientRenderer
     public bool ReadOnly { get; init; }
 
     /// <summary>The next <see cref="Render"/> repaints everything (console resized, or anything else invalidated the outer screen).</summary>
-    public void Invalidate() => _haveFrame = false;
+    /// <remarks>Also forgets every emitted mode, so the frame re-states them all after the outer terminal was reset.</remarks>
+    public void Invalidate()
+    {
+        _haveFrame = false;
+        _appCursor = _bracketed = _cursorVisible = _mouse1000 = _mouse1002 = _mouse1003 = _mouse1006 = null;
+        _lastCursor = (-1, -1);
+    }
 
     /// <summary>The bytes that bring the outer terminal up to date; empty when nothing changed.</summary>
     public string Render(int consoleCols, int consoleRows)
@@ -51,9 +59,11 @@ public sealed class TextClientRenderer
         int sessionRows = snap.ViewportRows;
         int sessionCols = snap.ViewportCols;
         string? status = BuildStatus(sessionCols, sessionRows, consoleCols, consoleRows);
-        int visibleRows = Math.Max(1, consoleRows - (status is null ? 0 : 1));
+        // A one-row console with a status line shows only the status line: it is what explains the
+        // missing session, and a session row would have to share its single row.
+        int visibleRows = consoleRows - (status is null ? 0 : 1);
         int visibleCols = consoleCols;
-        int top = Math.Clamp(snap.CursorRow - visibleRows + 1, 0, Math.Max(0, sessionRows - visibleRows));
+        int top = visibleRows == 0 ? 0 : Math.Clamp(snap.CursorRow - visibleRows + 1, 0, Math.Max(0, sessionRows - visibleRows));
         bool alt = _buffer.IsAltScreenActive;
 
         bool full = !_haveFrame
@@ -71,7 +81,7 @@ public sealed class TextClientRenderer
             for (int r = 0; r < rows; r++) AppendRow(sb, snap, top + r, r, visibleCols, clearFirst: false);
             if (status is not null)
             {
-                sb.Append(Cup(consoleRows, 1)).Append("\x1b[0;7m").Append(status.Length <= consoleCols ? status : status[..consoleCols]).Append(AnsiCellWriter.Reset);
+                sb.Append(Cup(consoleRows, 1)).Append("\x1b[0;7m").Append(status).Append(AnsiCellWriter.Reset);
             }
 
             painted = true;
@@ -83,6 +93,13 @@ public sealed class TextClientRenderer
             {
                 int row = spans[i].Row;
                 if (row >= top && row < top + visibleRows) dirtyRows.Add(row);
+            }
+
+            if (dirtyRows.Count > 0 && _cursorVisible == true)
+            {
+                // No cursor flickering along the repainted rows; it is shown again at its place below.
+                sb.Append("\x1b[?25l");
+                _cursorVisible = false;
             }
 
             foreach (int row in dirtyRows) AppendRow(sb, snap, row, row - top, visibleCols, clearFirst: true);
@@ -111,22 +128,29 @@ public sealed class TextClientRenderer
 
     /// <summary>
     /// The status row: shown when read-only or when the session grid exceeds the console. "Resize to
-    /// fit" appears only in the second case; the detach hint is always part of it.
+    /// fit" appears only in the second case; the detach hint is always part of it and is never the
+    /// part cut to fit the console width: the text before it is shortened with an ellipsis instead.
+    /// Every character is one column wide, so a length is a column count.
     /// </summary>
     private string? BuildStatus(int sessionCols, int sessionRows, int consoleCols, int consoleRows)
     {
+        const string Separator = " · ";
         bool tooBig = sessionCols > consoleCols || sessionRows > consoleRows;
         if (!tooBig && !ReadOnly) return null;
-        var parts = new List<string>(3);
-        if (ReadOnly) parts.Add("read-only");
-        if (tooBig)
+        string head = (ReadOnly, tooBig) switch
         {
-            parts.Add(string.Create(CultureInfo.InvariantCulture,
-                $"session is {sessionCols}x{sessionRows}, this terminal is {consoleCols}x{consoleRows} — resize to fit"));
-        }
+            (true, false) => "read-only",
+            (true, true) => "read-only" + Separator + SizeMismatch(),
+            _ => SizeMismatch(),
+        };
 
-        parts.Add("Ctrl+\\ d to detach");
-        return string.Join(" · ", parts);
+        if (head.Length + Separator.Length + DetachHint.Length <= consoleCols) return head + Separator + DetachHint;
+        int room = consoleCols - Separator.Length - DetachHint.Length;
+        if (room < 2) return DetachHint.Length <= consoleCols ? DetachHint : DetachHint[..consoleCols];
+        return head[..(room - 1)] + "…" + Separator + DetachHint;
+
+        string SizeMismatch() => string.Create(CultureInfo.InvariantCulture,
+            $"session is {sessionCols}x{sessionRows}, this terminal is {consoleCols}x{consoleRows} — resize to fit");
     }
 
     /// <summary>
