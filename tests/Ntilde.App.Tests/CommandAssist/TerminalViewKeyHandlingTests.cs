@@ -1,3 +1,6 @@
+using Avalonia.Input.Platform;
+using Avalonia.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using Ntilde.Shell;
@@ -466,6 +469,31 @@ public sealed class TerminalViewKeyHandlingTests
 
         session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
         Assert.True(view.HasSelection());
+    }
+
+    [AvaloniaFact]
+    public async Task MacOS_CmdCWithSelection_WritesTheSelectionToTheClipboard()
+    {
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var buffer = new TerminalBuffer(80, 24);
+        new AnsiParser(buffer).Process("hello world");
+        var view = new TerminalView { UseMacOSClipboardChords = true };
+        view.SetBuffer(buffer);
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+
+        // CopySelectionToClipboard reaches the clipboard through the view's TopLevel.
+        var window = new Window { Content = view, Width = 400, Height = 300 };
+        window.Show();
+        await window.Clipboard!.SetTextAsync("stale");
+        view.SetSelectionForTest(0, 0, 0, 4);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("hello", await window.Clipboard.TryGetTextAsync());
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
     }
 
     [AvaloniaFact]

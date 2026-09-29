@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
 using Avalonia.Threading;
 using Avalonia.Media;
 using Avalonia.Controls.Shapes;
@@ -46,6 +47,7 @@ namespace Ntilde
         private TerminalProfile? _selectedProfile;
         private System.Collections.Generic.List<TerminalProfile> _profilesList = new();
         private Dictionary<string, string> _shortcutDraftBindings = new(StringComparer.OrdinalIgnoreCase);
+        private TextBlock? _snippetsEmptyHint;
         private readonly TitleBarDraftState _titleBarDraft = new();
 
         // Shared style-class name (see SettingsWindow.axaml's "TextBlock.RowDesc" selector) used
@@ -2049,6 +2051,11 @@ namespace Ntilde
             Replace("CommandAssistHistoryDesc", ("Ctrl+R", history));
             Replace("CommandAssistSnippetsDesc", ("Ctrl+Shift+S", pin));
 
+            if (_snippetsEmptyHint != null)
+            {
+                _snippetsEmptyHint.Text = FormatSnippetsEmptyHint();
+            }
+
             void Replace(string name, params (string Written, string Effective)[] chords)
             {
                 if (this.FindControl<TextBlock>(name) is not TextBlock block)
@@ -2059,15 +2066,32 @@ namespace Ntilde
                 // Tag keeps the XAML original so a second rebind replaces from the source text,
                 // not from the previous substitution.
                 block.Tag ??= block.Text;
-                string text = (string)block.Tag;
-                foreach ((string written, string effective) in chords)
-                {
-                    text = text.Replace(written, effective, StringComparison.Ordinal);
-                }
-
-                block.Text = text;
+                block.Text = SubstituteChords((string)block.Tag, chords);
             }
         }
+
+        /// <summary>
+        /// Replaces each written chord with its effective binding in one pass over
+        /// <paramref name="text"/>, so a substituted binding is never itself matched as another
+        /// chord (toggle rebound to Ctrl+R must not then be rewritten as the history binding).
+        /// </summary>
+        internal static string SubstituteChords(string text, params (string Written, string Effective)[] chords)
+        {
+            if (chords.Length == 0)
+            {
+                return text;
+            }
+
+            // Longest first, so a chord that is a prefix of another cannot shadow it.
+            string pattern = string.Join("|", chords
+                .Select(chord => chord.Written)
+                .OrderByDescending(written => written.Length)
+                .Select(Regex.Escape));
+            return Regex.Replace(text, pattern, match => chords.First(chord => chord.Written == match.Value).Effective);
+        }
+
+        private string FormatSnippetsEmptyHint() =>
+            $"No snippets yet. Pin a suggestion with {TitleBarShortcuts.Resolve("command_assist_pin", _shortcutDraftBindings)}, or add one here.";
 
         private void RebuildTitleBarRows()
         {
@@ -2815,15 +2839,24 @@ namespace Ntilde
             panel.Children.Clear();
 
             IReadOnlyList<CommandSnippet> snippets = _snippetEditor?.Snippets ?? Array.Empty<CommandSnippet>();
+            _snippetsEmptyHint = null;
             if (snippets.Count == 0)
             {
-                panel.Children.Add(new TextBlock
+                var emptyText = new TextBlock
                 {
                     Text = CommandAssistSnippetStore == null
                         ? "Snippets are not available in this window."
-                        : $"No snippets yet. Pin a suggestion with {TitleBarShortcuts.Resolve("command_assist_pin", _shortcutDraftBindings)}, or add one here.",
+                        : FormatSnippetsEmptyHint(),
                     Classes = { RowDescStyleClass },
-                });
+                };
+
+                // Names the pin chord, so a rebind has to refresh it (UpdateCommandAssistShortcutText).
+                if (CommandAssistSnippetStore != null)
+                {
+                    _snippetsEmptyHint = emptyText;
+                }
+
+                panel.Children.Add(emptyText);
                 return;
             }
 
