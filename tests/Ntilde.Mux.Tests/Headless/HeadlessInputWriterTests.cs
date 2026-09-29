@@ -46,17 +46,43 @@ public sealed class HeadlessInputWriterTests
         MuxClient client = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(client);
         using var gate = new ManualResetEventSlim(false);
-        host.Fake(id).SendInputGate = gate;
+        ScriptedTerminalSession fake = host.Fake(id);
+        fake.SendInputGate = gate;
         HeadlessTerminalSession mux = host.Mux(id);
         mux.MaxQueuedInputBytesForTest = 1024;
-        mux.SendInput("first");                              // taken by the writer, which then blocks
-        await TestWait.UntilAsync(() => mux.QueuedInputBytes == 0, "the writer took the first item");
-        mux.SendInput(new string('x', 2000));                // over the cap: dropped
-        Assert.Equal(0, mux.QueuedInputBytes);
-        mux.SendInput("second");                             // under the cap: still queued behind the blocked write
-        Assert.Equal("second".Length * sizeof(char), mux.QueuedInputBytes);
+
+        mux.SendInput("first");
+        Assert.True(fake.SendInputEntered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "the writer is inside the first write");
+        Assert.Equal("first".Length * sizeof(char), mux.QueuedInputBytes);  // still charged while blocked
+        mux.SendInput(new string('x', 2000));                                // over the cap: dropped
+        Assert.Equal("first".Length * sizeof(char), mux.QueuedInputBytes);
+        mux.SendInput("second");                                             // under the cap: queued
+        Assert.Equal(("first".Length + "second".Length) * sizeof(char), mux.QueuedInputBytes);
+
         gate.Set();
-        await TestWait.UntilAsync(() => string.Concat(host.Fake(id).SentInput) == "firstsecond", "only the capped item was dropped");
+        await TestWait.UntilAsync(() => string.Concat(fake.SentInput) == "firstsecond", "only the capped item was dropped");
+        await TestWait.UntilAsync(() => mux.QueuedInputBytes == 0, "the cap is released once written");
+    }
+
+    [Fact]
+    public async Task A_write_blocked_on_a_wedged_child_still_counts_against_the_cap()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        using var gate = new ManualResetEventSlim(false);
+        ScriptedTerminalSession fake = host.Fake(id);
+        fake.SendInputGate = gate;
+        HeadlessTerminalSession mux = host.Mux(id);
+        mux.MaxQueuedInputBytesForTest = 20;                // exactly one 10-char string
+
+        mux.SendInput("0123456789");
+        Assert.True(fake.SendInputEntered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "the writer took it and is blocked");
+        mux.SendInput("a");                                  // the blocked write fills the cap: dropped
+
+        gate.Set();
+        await TestWait.UntilAsync(() => mux.QueuedInputBytes == 0, "the blocked write finished");
+        Assert.Equal("0123456789", string.Concat(fake.SentInput));
     }
 
     [Fact]

@@ -179,7 +179,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal int QueuedControlCount => _control.Count;
 
-    /// <summary>Bytes (UTF-16) queued for the input writer and not yet taken by it.</summary>
+    /// <summary>Bytes (UTF-16) queued for the input writer or being written by it.</summary>
     internal long QueuedInputBytes => Interlocked.Read(ref _queuedInputBytes);
 
     /// <summary>Tests only: overrides <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/> when positive.</summary>
@@ -243,7 +243,6 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             foreach (string text in _input.GetConsumingEnumerable(_cts.Token))
             {
-                Interlocked.Add(ref _queuedInputBytes, -(long)text.Length * sizeof(char));
                 try
                 {
                     _session.SendInput(text);
@@ -252,6 +251,13 @@ public sealed class HeadlessTerminalSession : IDisposable
                 catch (Exception ex)
                 {
                     Log($"[Mux] session {Id}: SendInput failed: {ex.Message}");
+                }
+                finally
+                {
+                    // Charged until the write returns (PR #489 follow-up): a write blocked on a child
+                    // that stopped reading is still input the child has not taken, and must count
+                    // against the cap - un-charging it on take let one more cap's worth queue behind it.
+                    Interlocked.Add(ref _queuedInputBytes, -(long)text.Length * sizeof(char));
                 }
             }
         }
