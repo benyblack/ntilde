@@ -803,6 +803,32 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         PumpUntil(() => MuxTestText.VisibleText(theirs.Buffer!).Contains("echoed-back", StringComparison.Ordinal), "the other window shows the shell's output");
     }
 
+    /// <summary>
+    /// Final review: an orphan adopted at startup that another instance attached first closes its tab:
+    /// no new shell, and no "previous shell is open in another window" toast.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_adopted_orphan_claimed_by_another_instance_closes_its_tab_quietly()
+    {
+        MainWindow window = CreateWindow();
+        (_, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        int sessionsBefore = _mux.Server.GetSessionIds().Count;
+        var adopt = typeof(MainWindow).GetMethod("AdoptOrphansOnUiThread", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        // Listed as unattached a moment ago; the other instance has attached it since.
+        adopt.Invoke(window, [new List<Ntilde.Mux.Contracts.SessionSummary> { new() { SessionId = id, Command = "scripted", Running = true } }]);
+        TerminalPane adopted = AllPanes(window).Single(p => p.MuxAdoptedOrphan);
+        window.FindControl<TabControl>("Tabs")!.SelectedItem = TabOf(window, adopted); // a background tab spawns when shown
+
+        PumpUntil(() => !AllPanes(window).Contains(adopted), "the adopted tab closed");
+        PumpFor(200);
+        Assert.NotEqual(TerminalPane.MuxAttachedElsewhereNoticeTitle, Toast(window).Title);
+        Assert.Equal(sessionsBefore, _mux.Server.GetSessionIds().Count);
+        Assert.True(theirs.Session.IsAttached);
+        Assert.Equal(1, _mux.Mux(id).AttachedClients);
+    }
+
     /// <summary>Final review: a shared shell that already exited has nothing a Close would end for anyone; no prompt.</summary>
     [AvaloniaFact]
     public void A_shared_pane_whose_shell_exited_is_closed_without_the_shared_prompt()

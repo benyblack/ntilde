@@ -4712,6 +4712,7 @@ namespace Ntilde
             pane.PersistenceNotice += OnPanePersistenceNotice;
             pane.MuxSharingChanged += OnPaneMuxSharingChanged;
             pane.MuxShareEnded += OnPaneMuxShareEnded;
+            pane.MuxAdoptionLost += OnPaneMuxAdoptionLost;
         }
 
         private void UnwirePane(TerminalPane pane)
@@ -4735,6 +4736,7 @@ namespace Ntilde
             pane.PersistenceNotice -= OnPanePersistenceNotice;
             pane.MuxSharingChanged -= OnPaneMuxSharingChanged;
             pane.MuxShareEnded -= OnPaneMuxShareEnded;
+            pane.MuxAdoptionLost -= OnPaneMuxAdoptionLost;
         }
 
         /// <summary>
@@ -4744,10 +4746,13 @@ namespace Ntilde
         private void OnPaneMuxShareEnded(TerminalPane pane)
         {
             EnqueueNotice(TerminalPane.MuxShareEndedNoticeTitle, TerminalPane.MuxShareEndedBanner);
-            _ = CloseEndedSharePaneAsync(pane);
+            _ = CloseSessionlessPaneAsync(pane, "whose shared session ended");
         }
 
-        private async Task CloseEndedSharePaneAsync(TerminalPane pane)
+        /// <summary>UI thread. An adopted orphan another instance claimed first: the tab goes quietly (it has no session).</summary>
+        private void OnPaneMuxAdoptionLost(TerminalPane pane) => _ = CloseSessionlessPaneAsync(pane, "whose adopted session is open elsewhere");
+
+        private async Task CloseSessionlessPaneAsync(TerminalPane pane, string which)
         {
             try
             {
@@ -4756,7 +4761,7 @@ namespace Ntilde
             catch (Exception ex)
             {
                 // Fire-and-forget: nothing else observes it. The pane's own banner stays as the fallback.
-                AppLogger.Log($"[MainWindow] closing a pane whose shared session ended failed: {ex.Message}");
+                AppLogger.Log($"[MainWindow] closing a pane {which} failed: {ex.Message}");
             }
         }
 
@@ -5070,6 +5075,7 @@ namespace Ntilde
                 var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(s.Command), s.Arguments ?? string.Empty, _settings)
                 {
                     MuxSessionIdToRestore = s.SessionId,
+                    MuxAdoptedOrphan = true,
                 };
                 // Background tab: it spawns (attaches) when first shown, and until then the session
                 // file keeps its id through MuxSessionIdToRestore.

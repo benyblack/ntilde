@@ -3701,6 +3701,17 @@ namespace Ntilde.Controls
         internal const string MuxKilledElsewhereBanner = "[Shell ended from another window]";
         internal const string MuxShareEndedBanner = "[The shell you chose has ended]";
         internal const string MuxShareEndedNoticeTitle = "Attach to session";
+        internal const string MuxAdoptionLostBanner = "[This shell is open in another window — press Enter to start a new shell]";
+
+        /// <summary>
+        /// Set by startup adoption (spec §9 orphans): this pane was opened only to show an orphaned
+        /// daemon session. Cleared once it attached. Losing the attach to another instance then closes
+        /// the pane instead of starting a new shell.
+        /// </summary>
+        internal bool MuxAdoptedOrphan { get; set; }
+
+        /// <summary>Raised on the UI thread when an adopted orphan was claimed by another instance first (MainWindow closes the pane).</summary>
+        internal event Action<TerminalPane>? MuxAdoptionLost;
 
         /// <summary>Raised on the UI thread when a deliberate share found its session gone (MainWindow closes the pane).</summary>
         internal event Action<TerminalPane>? MuxShareEnded;
@@ -3903,6 +3914,7 @@ namespace Ntilde.Controls
                         PersistenceNotice?.Invoke(this, MuxAttachedElsewhereNoticeTitle, MuxAttachedElsewhereBanner);
                     }
 
+                    MuxAdoptedOrphan = false; // it is this pane's shell now
                     PersistentSessionAttached?.Invoke(this);
                 });
             }
@@ -3926,8 +3938,32 @@ namespace Ntilde.Controls
             if (!IsCurrentMux(source)) return;
             _muxReattachId = null;
             MuxSessionIdToRestore = null;
+            if (MuxAdoptedOrphan)
+            {
+                GiveUpAdoptedOrphan(source);
+                return;
+            }
+
             _muxAttachedElsewhereNotice = true;
             Reconnect();
+        }
+
+        /// <summary>
+        /// UI thread. An adopted crash orphan was claimed by another instance first: that window shows
+        /// it now, and this tab only existed to show it. No new shell and no toast; the window closes
+        /// the pane. The banner covers a pane the window could not close, where Enter starts a new shell.
+        /// </summary>
+        private void GiveUpAdoptedOrphan(MuxClientSession source)
+        {
+            MuxAdoptedOrphan = false;
+            Session = null;
+            _agentRegistration?.SetLifecycle(null);
+            TermView.SetSession(null);
+            source.Dispose(); // a plain detach of an attach that never happened: never a kill
+            _muxConnectionLost = true;
+            TerminalLogger.Log($"[TerminalPane] adopted session {source.Id} is open in another window; closing this tab");
+            WriteBanner($"\r\n\x1b[90m{MuxAdoptionLostBanner}\x1b[0m\r\n");
+            MuxAdoptionLost?.Invoke(this);
         }
 
         /// <summary>

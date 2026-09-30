@@ -5,6 +5,7 @@ using Ntilde.Controls;
 using Ntilde.Mux;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Shell.Mux;
+using Ntilde.Tests.Shell.Mux;
 
 namespace Ntilde.Tests.Controls;
 
@@ -62,7 +63,7 @@ public sealed class MuxPaneRestoreTests : IDisposable
     }).GetAwaiter().GetResult();
 
     /// <summary>Hosts a pane that reopens <paramref name="id"/>: an unhosted TermView has a 0x0 grid and would not spawn.</summary>
-    private void ShowRestoringPane(Guid id, bool shared, List<(string Title, string Message)> notices)
+    private void ShowRestoringPane(Guid id, bool shared, List<(string Title, string Message)> notices, bool adoptedOrphan = false)
     {
         // "scripted": the same program as the daemon session (MuxTestHost.SpawnAsync), so Task 5's
         // command check lets the restore reach the IfUnattached attach instead of spawning fresh.
@@ -71,6 +72,7 @@ public sealed class MuxPaneRestoreTests : IDisposable
         _pane.SessionFactory = _factory;
         _pane.MuxSessionIdToRestore = id;
         _pane.MuxAttachSharedToRestore = shared;
+        _pane.MuxAdoptedOrphan = adoptedOrphan;
         _pane.PersistenceNotice += (_, title, message) => notices.Add((title, message));
         _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
         _window.Show();
@@ -88,6 +90,32 @@ public sealed class MuxPaneRestoreTests : IDisposable
         PumpUntil(() => _pane!.Session is MuxClientSession { IsAttached: true } m && m.Id != theirs, "the pane attached a fresh shell");
         PumpUntil(() => notices.Count > 0, "the notice was raised");
         Assert.Equal((TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner), Assert.Single(notices));
+        Assert.True(other.Session.IsAttached);
+        Assert.Equal(1, _mux.Mux(theirs).AttachedClients);
+    }
+
+    /// <summary>
+    /// Final review: an adopted crash orphan that another instance claimed first starts no shell and
+    /// raises no notice; it asks its window to close it, and the other client keeps the shell.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_adopted_orphan_that_loses_the_attach_race_starts_no_shell_and_asks_to_close()
+    {
+        ClientPaneModel other = AttachOtherClient();
+        Guid theirs = other.Session.Id;
+        var notices = new List<(string Title, string Message)>();
+        int lost = 0;
+
+        ShowRestoringPane(theirs, shared: false, notices, adoptedOrphan: true);
+        _pane!.MuxAdoptionLost += _ => lost++;
+
+        PumpUntil(() => lost > 0, "the pane gave the orphan up");
+        Assert.Null(_pane.Session);
+        Assert.False(_pane.MuxAdoptedOrphan);
+        PumpUntil(() => MuxTestText.VisibleText(_pane.Buffer!).Contains(TerminalPane.MuxAdoptionLostBanner, StringComparison.Ordinal), "the fallback banner is written");
+        Assert.Equal(1, lost);
+        Assert.Empty(notices);
+        Assert.Equal(theirs, Assert.Single(_mux.Server.GetSessionIds())); // no new shell
         Assert.True(other.Session.IsAttached);
         Assert.Equal(1, _mux.Mux(theirs).AttachedClients);
     }
