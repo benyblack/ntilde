@@ -79,6 +79,10 @@ public sealed class WindowsConsoleSurfaceTests
 
                 Inject(input, "\ude00z");
                 Assert.Equal("😀z", ReadOrFail(surface, input, chars));
+
+                // Raw mode has no end-of-file: Ctrl+Z is a char for the shell, not "input closed".
+                Inject(input, "\u001a");
+                Assert.Equal("\u001a", ReadOrFail(surface, input, chars));
             }
             finally
             {

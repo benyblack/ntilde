@@ -64,6 +64,9 @@ public sealed class TextClientSession : IDisposable
 
     public TextClientExit? ExitReason { get { lock (_gate) return _exit; } }
 
+    /// <summary>Test seam: runs just before the render thread starts; a throw leaves it created but never started.</summary>
+    internal Action? BeforeRenderStartForTest { get; set; }
+
     /// <summary>Any thread. The first reason wins.</summary>
     public void RequestStop(TextClientExit reason, string? detail = null)
     {
@@ -128,6 +131,7 @@ public sealed class TextClientSession : IDisposable
                 renderThread = new Thread(() => RenderLoop(attached, renderer, attachedSize)) { IsBackground = true, Name = "MuxAttachRender" };
                 var inputThread = new Thread(() => InputLoop(attached)) { IsBackground = true, Name = "MuxAttachInput" };
                 Wake(); // the first frame
+                BeforeRenderStartForTest?.Invoke();
                 renderThread.Start();
                 inputThread.Start();
             }
@@ -160,7 +164,9 @@ public sealed class TextClientSession : IDisposable
         // The render thread is the only writer until now. If it is wedged (a console write that
         // never returns), it rechecks _stopping before any later write, and the model it reads is
         // left alone.
-        bool renderStopped = renderThread is null || renderThread.Join(TimeSpan.FromSeconds(2));
+        // Guarded too: Join throws on a thread whose Start never happened.
+        bool renderStopped = renderThread is null;
+        if (renderThread is not null) Guard(() => renderStopped = renderThread.Join(TimeSpan.FromSeconds(2)));
         try
         {
             Guard(() => _console.Resized -= Wake);

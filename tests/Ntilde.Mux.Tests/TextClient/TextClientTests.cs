@@ -39,6 +39,26 @@ public sealed class TextClientTests
         Assert.False(host.Mux(id).IsExited);
     }
 
+    /// <summary>Final review: a render thread that never started makes Join throw; the console is still restored.</summary>
+    [Fact]
+    public async Task A_render_thread_that_never_started_still_restores_the_console()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        MuxClient attacher = await host.ConnectClientAsync();
+        using var console = new FakeConsoleSurface();
+        using var client = new TextClientSession(attacher, id, console)
+        {
+            BeforeRenderStartForTest = () => throw new InvalidOperationException("scripted: the render thread could not start"),
+        };
+
+        Assert.Equal(2, await RunAsync(client).WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        Assert.Equal(TextClientExit.Error, client.ExitReason);
+        Assert.False(console.IsRaw);
+        Assert.Equal(1, console.RestoreCount);
+    }
+
     [Fact]
     public async Task Typed_input_reaches_the_session_and_two_prefixes_send_one_literal()
     {

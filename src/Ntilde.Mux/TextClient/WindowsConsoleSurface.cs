@@ -102,34 +102,16 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
 
     /// <summary>
     /// A trailing high surrogate is held back for the next read, so a pair split across two reads
-    /// never reaches the caller as a lone half. Input thread only.
+    /// never reaches the caller as a lone half; 0 only when the console is gone (see
+    /// <see cref="ConsoleReadAssembler.Read"/>). Input thread only.
     /// </summary>
-    public int Read(char[] buffer)
+    public int Read(char[] buffer) => ConsoleReadAssembler.Read(buffer, ref _pendingHigh, ReadChunk);
+
+    private bool ReadChunk(char[] buffer, int offset, int count, out int read)
     {
-        ArgumentNullException.ThrowIfNull(buffer);
-        if (buffer.Length == 0) return 0;
-        int start = 0;
-        if (_pendingHigh is char high)
-        {
-            buffer[0] = high;
-            _pendingHigh = null;
-            start = 1;
-        }
-
-        while (true)
-        {
-            if (start == buffer.Length) return start;
-            if (!ReadConsoleW(_in, ref buffer[start], (uint)(buffer.Length - start), out uint read, 0)) return start;
-            int n = start + (int)read;
-            if (n == 0 || !char.IsHighSurrogate(buffer[n - 1]) || buffer.Length < 2) return n;
-            if (n > 1)
-            {
-                _pendingHigh = buffer[n - 1];
-                return n - 1;
-            }
-
-            start = 1; // only the high half so far: wait for its low half
-        }
+        bool ok = ReadConsoleW(_in, ref buffer[offset], (uint)count, out uint got, 0);
+        read = ok ? (int)got : 0;
+        return ok;
     }
 
     public void Dispose()
