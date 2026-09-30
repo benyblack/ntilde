@@ -3,6 +3,7 @@
              xmlns:core="clr-namespace:Ntilde.Shell"
              xmlns:ui="clr-namespace:Ntilde.UI"
              x:Class="Ntilde.App"
+             Name="Ntilde"
              RequestedThemeVariant="Dark">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 

@@ -8972,8 +8972,9 @@ namespace Ntilde
         /// update machinery stays here so a check started from About shares the coordinator, the
         /// in-flight guard and the announce-once state with the palette's manual check and the
         /// deferred startup check. Wiring is by property, the same way SettingsWindow is.
+        /// Also reached from the macOS application menu's "About Ntilde" (see App).
         /// </summary>
-        private async System.Threading.Tasks.Task ShowAboutWindowAsync()
+        internal async System.Threading.Tasks.Task ShowAboutWindowAsync()
         {
             var about = new UI.About.AboutWindow();
             about.RunUpdateCheck = () => CheckForUpdatesInteractiveAsync(about);

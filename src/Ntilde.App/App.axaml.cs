@@ -1,6 +1,7 @@
 using Ntilde.Shell;
 using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Ntilde.Platform;
@@ -13,6 +14,7 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        InstallMacAppMenu();
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -39,5 +41,25 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Without an explicit application menu, Avalonia's macOS default reads "About Avalonia"
+    /// and opens Avalonia's own dialog. Supplying one swaps in our About window; Avalonia still
+    /// appends the standard Services / Hide / Show All / Quit items after ours. It must be set
+    /// during Initialize: the native menu exporter reads the application menu once, and installs
+    /// its own default if none is present yet.
+    /// </summary>
+    private void InstallMacAppMenu()
+    {
+        if (!OperatingSystem.IsMacOS()) return;
+
+        var about = new NativeMenuItem("About Ntilde");
+        about.Click += async (_, _) =>
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: MainWindow main })
+                await main.ShowAboutWindowAsync();
+        };
+        NativeMenu.SetMenu(this, new NativeMenu { Items = { about } });
     }
 }
