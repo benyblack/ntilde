@@ -32,6 +32,22 @@ public sealed class ConsoleReadAssemblerTests
     }
 
     [Fact]
+    public void A_long_run_of_empty_reads_backs_off_only_past_the_threshold()
+    {
+        int empties = ConsoleReadAssembler.EmptyReadsBeforeBackoff + 3;
+        var results = Enumerable.Repeat((true, ""), empties).Append((true, "a")).ToArray();
+        var console = new ScriptedConsole(results);
+        char? pending = null;
+        var buffer = new char[16];
+        int backoffs = 0;
+
+        int n = ConsoleReadAssembler.Read(buffer, ref pending, console.Read, () => backoffs++);
+
+        Assert.Equal("a", new string(buffer, 0, n));
+        Assert.Equal(3, backoffs);
+    }
+
+    [Fact]
     public void Only_a_failed_read_means_input_closed()
     {
         var console = new ScriptedConsole((false, ""));

@@ -179,7 +179,7 @@ public sealed class MuxConnectionHostTests
             DisposeFlushTimeout = TimeSpan.FromSeconds(10),
         };
         Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
-        Assert.True(hello.IsCompletedSuccessfully);
+        Assert.True(hello.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)); // the fake completes only after its welcome write returns
         host.TrackPendingKill(new TaskCompletionSource().Task); // an unresponsive daemon: never completes
 
         var sw = System.Diagnostics.Stopwatch.StartNew();

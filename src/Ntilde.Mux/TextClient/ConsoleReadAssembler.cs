@@ -21,7 +21,11 @@ internal static class ConsoleReadAssembler
     /// and it must reach the shell. A TRUE read of zero chars is a wakeup with nothing typed (the
     /// console can end a read early, e.g. on a signal key); read again rather than detach.
     /// </remarks>
-    internal static int Read(char[] buffer, ref char? pendingHigh, ReadChunk readChunk)
+    /// <summary>Consecutive empty reads (nothing pending) retried at full speed before each retry backs off.</summary>
+    internal const int EmptyReadsBeforeBackoff = 64;
+
+    /// <param name="emptyReadBackoff">Runs before each retry past <see cref="EmptyReadsBeforeBackoff"/>; a 10 ms sleep by default. Tests count it.</param>
+    internal static int Read(char[] buffer, ref char? pendingHigh, ReadChunk readChunk, Action? emptyReadBackoff = null)
     {
         ArgumentNullException.ThrowIfNull(buffer);
         ArgumentNullException.ThrowIfNull(readChunk);
@@ -34,6 +38,7 @@ internal static class ConsoleReadAssembler
             start = 1;
         }
 
+        int emptyReads = 0;
         while (true)
         {
             if (start == buffer.Length) return start;
@@ -43,8 +48,19 @@ internal static class ConsoleReadAssembler
                 // Something is already in hand (a held-back high half): hand it over instead of waiting
                 // on a console that returned nothing.
                 if (start > 0) return start;
+
+                // An empty read is normally a one-off. A console that keeps returning them must not
+                // pin a core on the input thread, so a long run of them backs off between retries.
+                if (++emptyReads > EmptyReadsBeforeBackoff)
+                {
+                    if (emptyReadBackoff is null) Thread.Sleep(10);
+                    else emptyReadBackoff();
+                }
+
                 continue;
             }
+
+            emptyReads = 0;
 
             int n = start + read;
             if (!char.IsHighSurrogate(buffer[n - 1]) || buffer.Length < 2) return n;
