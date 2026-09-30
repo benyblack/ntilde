@@ -46,6 +46,7 @@ namespace Ntilde
         private TerminalProfile? _selectedProfile;
         private System.Collections.Generic.List<TerminalProfile> _profilesList = new();
         private Dictionary<string, string> _shortcutDraftBindings = new(StringComparer.OrdinalIgnoreCase);
+        private TextBlock? _snippetsEmptyHint;
         private readonly TitleBarDraftState _titleBarDraft = new();
 
         // Shared style-class name (see SettingsWindow.axaml's "TextBlock.RowDesc" selector) used
@@ -2034,8 +2035,82 @@ namespace Ntilde
             _titleBarDraft.SeedFrom(layout);
         }
 
+        /// <summary>
+        /// The Command Assist descriptions name their chords in prose. The XAML text is written with
+        /// the Windows/Linux defaults; this swaps in the binding actually in force, which differs on
+        /// macOS (Cmd+R, Cmd+Shift+S) and after a rebind.
+        /// </summary>
+        private void UpdateCommandAssistShortcutText()
+        {
+            string toggle = TitleBarShortcuts.Resolve("command_assist_toggle", _shortcutDraftBindings);
+            string history = TitleBarShortcuts.Resolve("command_assist_history", _shortcutDraftBindings);
+            string pin = TitleBarShortcuts.Resolve("command_assist_pin", _shortcutDraftBindings);
+
+            Replace("CommandAssistBubbleDesc", ("Ctrl+Space", toggle), ("Ctrl+R", history));
+            Replace("CommandAssistHistoryDesc", ("Ctrl+R", history));
+            Replace("CommandAssistSnippetsDesc", ("Ctrl+Shift+S", pin));
+
+            if (_snippetsEmptyHint != null)
+            {
+                _snippetsEmptyHint.Text = FormatSnippetsEmptyHint();
+            }
+
+            void Replace(string name, params (string Written, string Effective)[] chords)
+            {
+                if (this.FindControl<TextBlock>(name) is not TextBlock block)
+                {
+                    return;
+                }
+
+                // Tag keeps the XAML original so a second rebind replaces from the source text,
+                // not from the previous substitution.
+                block.Tag ??= block.Text;
+                block.Text = SubstituteChords((string)block.Tag, chords);
+            }
+        }
+
+        /// <summary>
+        /// Replaces each written chord with its effective binding in one pass over
+        /// <paramref name="text"/>, so a substituted binding is never itself matched as another
+        /// chord (toggle rebound to Ctrl+R must not then be rewritten as the history binding).
+        /// </summary>
+        internal static string SubstituteChords(string text, params (string Written, string Effective)[] chords)
+        {
+            if (chords.Length == 0)
+            {
+                return text;
+            }
+
+            // Longest first, so a chord that is a prefix of another cannot shadow it.
+            (string Written, string Effective)[] ordered = chords.OrderByDescending(chord => chord.Written.Length).ToArray();
+            var result = new System.Text.StringBuilder(text.Length);
+            int index = 0;
+            while (index < text.Length)
+            {
+                int start = index;
+                (string Written, string Effective) match = ordered.FirstOrDefault(
+                    chord => string.CompareOrdinal(text, start, chord.Written, 0, chord.Written.Length) == 0);
+                if (match.Written is null)
+                {
+                    result.Append(text[index]);
+                    index++;
+                    continue;
+                }
+
+                result.Append(match.Effective);
+                index += match.Written.Length;
+            }
+
+            return result.ToString();
+        }
+
+        private string FormatSnippetsEmptyHint() =>
+            $"No snippets yet. Pin a suggestion with {TitleBarShortcuts.Resolve("command_assist_pin", _shortcutDraftBindings)}, or add one here.";
+
         private void RebuildTitleBarRows()
         {
+            UpdateCommandAssistShortcutText();
+
             var panel = this.FindControl<StackPanel>("TitleBarItemsPanel");
             if (panel == null)
             {
@@ -2437,7 +2512,7 @@ namespace Ntilde
 
         private static bool IsModifierKey(Key key)
         {
-            return key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift;
+            return key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin;
         }
 
         private string GetEffectiveShortcutBinding(ShortcutCatalogEntry entry)
@@ -2778,15 +2853,24 @@ namespace Ntilde
             panel.Children.Clear();
 
             IReadOnlyList<CommandSnippet> snippets = _snippetEditor?.Snippets ?? Array.Empty<CommandSnippet>();
+            _snippetsEmptyHint = null;
             if (snippets.Count == 0)
             {
-                panel.Children.Add(new TextBlock
+                var emptyText = new TextBlock
                 {
                     Text = CommandAssistSnippetStore == null
                         ? "Snippets are not available in this window."
-                        : "No snippets yet. Pin a suggestion with Ctrl+Shift+S, or add one here.",
+                        : FormatSnippetsEmptyHint(),
                     Classes = { RowDescStyleClass },
-                });
+                };
+
+                // Names the pin chord, so a rebind has to refresh it (UpdateCommandAssistShortcutText).
+                if (CommandAssistSnippetStore != null)
+                {
+                    _snippetsEmptyHint = emptyText;
+                }
+
+                panel.Children.Add(emptyText);
                 return;
             }
 

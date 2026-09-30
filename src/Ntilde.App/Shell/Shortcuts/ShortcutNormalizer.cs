@@ -15,6 +15,7 @@ public static class ShortcutNormalizer
 
         shortcut = RewriteTrailingSymbolShortcut(shortcut.Trim());
 
+        bool hasCmd = false;
         bool hasCtrl = false;
         bool hasAlt = false;
         bool hasShift = false;
@@ -37,6 +38,22 @@ public static class ShortcutNormalizer
                 }
 
                 hasCtrl = true;
+                continue;
+            }
+
+            // Cmd on macOS; the Windows/Super key elsewhere. Avalonia reports both as Meta.
+            if (token.Equals("cmd", StringComparison.OrdinalIgnoreCase) ||
+                token.Equals("command", StringComparison.OrdinalIgnoreCase) ||
+                token.Equals("meta", StringComparison.OrdinalIgnoreCase) ||
+                token.Equals("super", StringComparison.OrdinalIgnoreCase) ||
+                token.Equals("win", StringComparison.OrdinalIgnoreCase))
+            {
+                if (hasCmd)
+                {
+                    throw new ArgumentException($"Shortcut '{shortcut}' repeats the Cmd modifier.", nameof(shortcut));
+                }
+
+                hasCmd = true;
                 continue;
             }
 
@@ -76,6 +93,11 @@ public static class ShortcutNormalizer
         }
 
         List<string> normalized = [];
+        if (hasCmd)
+        {
+            normalized.Add("Cmd");
+        }
+
         if (hasCtrl)
         {
             normalized.Add("Ctrl");

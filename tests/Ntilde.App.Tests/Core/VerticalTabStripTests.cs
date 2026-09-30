@@ -1,3 +1,4 @@
+using Ntilde.Shell.Shortcuts;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -1059,7 +1060,8 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
             {
                 RoutedEvent = InputElement.KeyDownEvent,
                 Key = Key.PageDown,
-                KeyModifiers = KeyModifiers.Control | KeyModifiers.Shift,
+                // The default is Ctrl+Shift+PageDown, Cmd+Shift+PageDown on macOS.
+                KeyModifiers = (ShortcutPlatform.IsMacOS ? KeyModifiers.Meta : KeyModifiers.Control) | KeyModifiers.Shift,
                 Source = window
             });
             Dispatcher.UIThread.RunJobs();

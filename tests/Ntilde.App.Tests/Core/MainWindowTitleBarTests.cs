@@ -1,3 +1,4 @@
+using Ntilde.Shell.Shortcuts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -308,7 +309,7 @@ public sealed class MainWindowTitleBarTests : IDisposable
 
         Assert.NotNull(tooltip);
         Assert.StartsWith("Tab List", tooltip, System.StringComparison.Ordinal);
-        Assert.Contains("Ctrl+Shift+O", tooltip, System.StringComparison.Ordinal);
+        Assert.Contains(ShortcutPlatform.DefaultBinding("open_tab_list", "Ctrl+Shift+O"), tooltip, System.StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -338,7 +339,7 @@ public sealed class MainWindowTitleBarTests : IDisposable
 
         Assert.NotNull(tooltip);
         Assert.Contains("hidden", tooltip, System.StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Ctrl+Shift+O", tooltip, System.StringComparison.Ordinal);
+        Assert.Contains(ShortcutPlatform.DefaultBinding("open_tab_list", "Ctrl+Shift+O"), tooltip, System.StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -370,7 +371,7 @@ public sealed class MainWindowTitleBarTests : IDisposable
 
         Assert.NotNull(tooltip);
         Assert.Contains("Ctrl+Alt+L", tooltip, System.StringComparison.Ordinal);
-        Assert.DoesNotContain("Ctrl+Shift+O", tooltip, System.StringComparison.Ordinal);
+        Assert.DoesNotContain(ShortcutPlatform.DefaultBinding("open_tab_list", "Ctrl+Shift+O"), tooltip, System.StringComparison.Ordinal);
         Assert.Contains("hidden", tooltip, System.StringComparison.OrdinalIgnoreCase);
     }
 

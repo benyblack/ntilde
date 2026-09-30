@@ -1,3 +1,6 @@
+using Avalonia.Input.Platform;
+using Avalonia.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using Ntilde.Shell;
@@ -433,12 +436,96 @@ public sealed class TerminalViewKeyHandlingTests
         view.SetBuffer(new TerminalBuffer(80, 24));
         view.SetSession(session.Object);
         view.ApplySettings(new TerminalSettings());
+        view.UseMacOSClipboardChords = false; // copy-on-Ctrl+C is the Windows/Linux convention
         view.SetSelectionForTest(0, 0, 0, 3);
 
         bool handled = view.HandleKeyDownCore(Key.C, KeyModifiers.Control);
 
         Assert.True(handled);
         session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+    }
+
+    private static (TerminalView View, Mock<ITerminalSession> Session) CreateMacOSView(bool disambiguate)
+    {
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var view = new TerminalView();
+        view.SetBuffer(disambiguate ? CreateDisambiguateBuffer() : new TerminalBuffer(80, 24));
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+        view.UseMacOSClipboardChords = true;
+        return (view, session);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MacOS_CmdCWithSelection_CopiesAndSendsNothing(bool disambiguate)
+    {
+        var (view, session) = CreateMacOSView(disambiguate);
+        view.SetSelectionForTest(0, 0, 0, 3);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+        Assert.True(view.HasSelection());
+    }
+
+    [AvaloniaFact]
+    public async Task MacOS_CmdCWithSelection_WritesTheSelectionToTheClipboard()
+    {
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var buffer = new TerminalBuffer(80, 24);
+        new AnsiParser(buffer).Process("hello world");
+        var view = new TerminalView { UseMacOSClipboardChords = true };
+        view.SetBuffer(buffer);
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+
+        // CopySelectionToClipboard reaches the clipboard through the view's TopLevel.
+        var window = new Window { Content = view, Width = 400, Height = 300 };
+        window.Show();
+        await window.Clipboard!.SetTextAsync("stale");
+        view.SetSelectionForTest(0, 0, 0, 4);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("hello", await window.Clipboard.TryGetTextAsync());
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+    }
+
+    [AvaloniaFact]
+    public void MacOS_CmdCWithoutSelection_IsSwallowed()
+    {
+        var (view, session) = CreateMacOSView(disambiguate: true);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+    }
+
+    [AvaloniaFact]
+    public void MacOS_CtrlCWithSelection_IsTheInterrupt()
+    {
+        var (view, session) = CreateMacOSView(disambiguate: false);
+        view.SetSelectionForTest(0, 0, 0, 3);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Control));
+
+        session.Verify(x => x.SendInput("\x03"), Times.Once);
+    }
+
+    [AvaloniaFact]
+    public void MacOS_Disambiguate_CtrlCWithSelection_IsEncodedNotCopied()
+    {
+        var (view, session) = CreateMacOSView(disambiguate: true);
+        view.SetSelectionForTest(0, 0, 0, 3);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Control));
+
+        session.Verify(x => x.SendInput("\x1b[99;5u"), Times.Once);
     }
 
     [AvaloniaFact]
@@ -467,6 +554,7 @@ public sealed class TerminalViewKeyHandlingTests
         view.SetBuffer(CreateDisambiguateBuffer());
         view.SetSession(session.Object);
         view.ApplySettings(new TerminalSettings());
+        view.UseMacOSClipboardChords = false; // copy-on-Ctrl+C is the Windows/Linux convention
         view.SetSelectionForTest(0, 0, 0, 3);
 
         bool handled = view.HandleKeyDownCore(Key.C, KeyModifiers.Control);
