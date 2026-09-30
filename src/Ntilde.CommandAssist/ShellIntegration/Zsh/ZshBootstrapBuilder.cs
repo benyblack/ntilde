@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text;
 
@@ -24,12 +25,21 @@ namespace Ntilde.CommandAssist.ShellIntegration.Zsh;
 /// its hooks land after the user's exactly as before.
 ///
 /// The user's original <c>ZDOTDIR</c>, when they had one, arrives in
-/// <see cref="UserZdotdirVariable"/>; its absence means "unset", i.e. <c>$HOME</c>.
+/// <see cref="UserZdotdirVariable"/>, and <see cref="UserZdotdirSetVariable"/> says whether it
+/// did. The flag is always passed: the PTY spawn can add variables but not remove inherited
+/// ones, so a stale <see cref="UserZdotdirVariable"/> in Ntilde's own environment must not be
+/// mistaken for the user's.
 /// </remarks>
 public static class ZshBootstrapBuilder
 {
     /// <summary>Environment variable carrying the user's own <c>ZDOTDIR</c> into the shim.</summary>
     public const string UserZdotdirVariable = "NTILDE_ZSH_USER_ZDOTDIR";
+
+    /// <summary>
+    /// Always passed, <c>1</c> or <c>0</c>: whether <see cref="UserZdotdirVariable"/> carries the
+    /// user's <c>ZDOTDIR</c> or is just inherited noise.
+    /// </summary>
+    public const string UserZdotdirSetVariable = "NTILDE_ZSH_USER_ZDOTDIR_SET";
 
     private const string nl = "\n";
 
@@ -80,7 +90,7 @@ public static class ZshBootstrapBuilder
     public static string BuildZshenv() =>
         Header(".zshenv") +
         "__ntilde_zdotdir=\"$ZDOTDIR\"" + nl +
-        $"if [[ -n \"${{{UserZdotdirVariable}+x}}\" ]]; then" + nl +
+        $"if [[ \"${{{UserZdotdirSetVariable}-}}\" == 1 ]]; then" + nl +
         "    __ntilde_user_zdotdir_set=1" + nl +
         $"    __ntilde_user_zdotdir=\"${UserZdotdirVariable}\"" + nl +
         // It reached Ntilde through the environment, so it was exported.
@@ -90,7 +100,7 @@ public static class ZshBootstrapBuilder
         "    __ntilde_user_zdotdir=\"\"" + nl +
         "    __ntilde_user_zdotdir_exported=0" + nl +
         "fi" + nl +
-        $"builtin unset {UserZdotdirVariable}" + nl +
+        $"builtin unset {UserZdotdirVariable} {UserZdotdirSetVariable}" + nl +
         RestoreUserZdotdir +
         SourceUserFile(".zshenv") +
         // A shell that reads nothing after .zshenv (a script, `zsh -c` never gets here) must
@@ -258,12 +268,30 @@ public static class ZshBootstrapBuilder
         // subdirectory and write the shims into it.
         string zshDir = Path.Combine(targetDirectory, "zsh");
         Directory.CreateDirectory(zshDir);
-        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-        File.WriteAllText(Path.Combine(zshDir, ".zshenv"), BuildZshenv(), encoding);
-        File.WriteAllText(Path.Combine(zshDir, ".zprofile"), BuildZprofile(), encoding);
-        File.WriteAllText(Path.Combine(zshDir, ".zlogin"), BuildZlogin(), encoding);
+        WriteAtomically(Path.Combine(zshDir, ".zshenv"), BuildZshenv());
+        WriteAtomically(Path.Combine(zshDir, ".zprofile"), BuildZprofile());
+        WriteAtomically(Path.Combine(zshDir, ".zlogin"), BuildZlogin());
         string path = Path.Combine(zshDir, ".zshrc");
-        File.WriteAllText(path, BuildScript(), encoding);
+        WriteAtomically(path, BuildScript());
         return path;
+    }
+
+    // Every pane launch rewrites the shims while other panes' zsh may be reading them.
+    // File.WriteAllText truncates in place, so a pane starting alongside another could read a
+    // half-written .zshenv, miss the ZDOTDIR handoff, and skip the user's startup files. Write
+    // beside the destination and rename over it: readers see the old file or the new one.
+    private static void WriteAtomically(string path, string contents)
+    {
+        string temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temp, contents, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.Move(temp, path, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(temp); } catch { }
+            throw;
+        }
     }
 }

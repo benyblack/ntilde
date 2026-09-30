@@ -208,7 +208,11 @@ public sealed class ZshShellIntegrationTests : IDisposable
                 ["xdg/.zprofile"] = "NT_P=xdgprofile",
                 ["xdg/.zshrc"] = "NT_R=xdgrc",
             },
-            new Dictionary<string, string> { [ZshBootstrapBuilder.UserZdotdirVariable] = Path.Combine(_tempRoot, "xdg") });
+            new Dictionary<string, string>
+            {
+                [ZshBootstrapBuilder.UserZdotdirVariable] = Path.Combine(_tempRoot, "xdg"),
+                [ZshBootstrapBuilder.UserZdotdirSetVariable] = "1",
+            });
 
         Assert.Contains($"RESULT:{Path.Combine(_tempRoot, "xdg")}:xdgenv:xdgprofile:xdgrc::gone", result.Stdout);
     }
@@ -256,9 +260,37 @@ public sealed class ZshShellIntegrationTests : IDisposable
         HarnessResult result = RunLoginZsh(
             StartupProbe,
             new Dictionary<string, string> { [".zshrc"] = "NT_R=homerc" },
-            new Dictionary<string, string> { [ZshBootstrapBuilder.UserZdotdirVariable] = "" });
+            new Dictionary<string, string>
+            {
+                [ZshBootstrapBuilder.UserZdotdirVariable] = "",
+                [ZshBootstrapBuilder.UserZdotdirSetVariable] = "1",
+            });
 
         Assert.Contains("RESULT::::::gone", result.Stdout);
+    }
+
+    /// <summary>
+    /// The PTY spawn cannot remove an inherited variable, so a stale handoff value in Ntilde's
+    /// own environment reaches the shell even when the user had no ZDOTDIR. Only the flag the
+    /// provider always sets may make the shims trust it.
+    /// </summary>
+    [Fact]
+    public void LoginShell_IgnoresAnInheritedHandoffValueTheProviderDidNotVouchFor()
+    {
+        HarnessResult result = RunLoginZsh(
+            StartupProbe,
+            new Dictionary<string, string>
+            {
+                [".zshrc"] = "NT_R=homerc",
+                ["elsewhere/.zshrc"] = "NT_R=elsewhere",
+            },
+            new Dictionary<string, string>
+            {
+                [ZshBootstrapBuilder.UserZdotdirVariable] = Path.Combine(_tempRoot, "elsewhere"),
+                [ZshBootstrapBuilder.UserZdotdirSetVariable] = "0",
+            });
+
+        Assert.Contains("RESULT:unset:::homerc::gone", result.Stdout);
     }
 
     [Fact]

@@ -58,17 +58,20 @@ public sealed class ZshShellIntegrationProviderTests
         ShellIntegrationLaunchPlan plan = provider.CreateLaunchPlan("/bin/zsh", shellArguments: null, workingDirectory: null);
 
         Assert.Equal("/Users/me/.config/zsh", plan.EnvironmentOverrides![ZshBootstrapBuilder.UserZdotdirVariable]);
+        Assert.Equal("1", plan.EnvironmentOverrides[ZshBootstrapBuilder.UserZdotdirSetVariable]);
     }
 
     [Fact]
     public void CreateLaunchPlan_WithoutAUserZdotdir_LeavesItUnsetForTheShims()
     {
-        // Absent means "unset" to the shims, i.e. $HOME -- an empty value would not.
+        // The flag is passed as 0 rather than left out: the spawn cannot remove an inherited
+        // handoff variable, so the shims need an explicit "no" to ignore one.
         var provider = new ZshShellIntegrationProvider(() => BootstrapTestDirectory.ForCaller(), _ => null);
 
         ShellIntegrationLaunchPlan plan = provider.CreateLaunchPlan("/bin/zsh", shellArguments: null, workingDirectory: null);
 
         Assert.False(plan.EnvironmentOverrides!.ContainsKey(ZshBootstrapBuilder.UserZdotdirVariable));
+        Assert.Equal("0", plan.EnvironmentOverrides[ZshBootstrapBuilder.UserZdotdirSetVariable]);
     }
 
     [Fact]

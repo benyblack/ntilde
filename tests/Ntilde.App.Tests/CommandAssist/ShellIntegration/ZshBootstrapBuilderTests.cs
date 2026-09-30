@@ -228,7 +228,7 @@ public sealed class ZshBootstrapBuilderTests : IDisposable
         string script = ZshBootstrapBuilder.BuildZshenv();
 
         Assert.Contains($"\"${ZshBootstrapBuilder.UserZdotdirVariable}\"", script);
-        Assert.Contains($"builtin unset {ZshBootstrapBuilder.UserZdotdirVariable}", script);
+        Assert.Contains($"builtin unset {ZshBootstrapBuilder.UserZdotdirVariable} {ZshBootstrapBuilder.UserZdotdirSetVariable}", script);
     }
 
     /// <summary>

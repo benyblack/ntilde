@@ -63,7 +63,8 @@ public sealed class ZshShellIntegrationProvider : IShellIntegrationProvider
 
         var envOverrides = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["ZDOTDIR"] = zdotdir
+            ["ZDOTDIR"] = zdotdir,
+            [ZshBootstrapBuilder.UserZdotdirSetVariable] = "0",
         };
 
         // Our ZDOTDIR replaces the user's, so their own (an XDG setup's ~/.config/zsh) rides
@@ -75,6 +76,7 @@ public sealed class ZshShellIntegrationProvider : IShellIntegrationProvider
             !string.Equals(userZdotdir.TrimEnd('/'), zdotdir.TrimEnd('/'), StringComparison.Ordinal))
         {
             envOverrides[ZshBootstrapBuilder.UserZdotdirVariable] = userZdotdir;
+            envOverrides[ZshBootstrapBuilder.UserZdotdirSetVariable] = "1";
         }
 
         return new ShellIntegrationLaunchPlan(
