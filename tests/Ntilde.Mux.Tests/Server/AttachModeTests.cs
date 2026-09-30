@@ -330,6 +330,32 @@ public sealed class AttachModeTests
         Assert.False(host.Server.TryBeginIdleShutdown()); // idle exit is unaffected: a running shell keeps the daemon
     }
 
+    /// <summary>Final review: listSessions tells a read-only peek apart from a client that shows the shell (orphan adoption needs it).</summary>
+    [Fact]
+    public async Task ListSessions_reports_interactive_clients_without_read_only_observers()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        RawMuxConnection gui = await ConnectV2Async(host);
+        RawMuxConnection peek = await ConnectV2Async(host);
+        async Task<(int Attached, int Interactive)> ListedAsync()
+        {
+            await host.Mux(id).InvokeAsync(() => 0);
+            SessionSummary s = Assert.Single(await spawner.ListSessionsAsync(TestContext.Current.CancellationToken), s => s.SessionId == id);
+            return (s.AttachedClients, s.InteractiveClients);
+        }
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(peek, SendAttach(peek, id, MuxAttachModes.ReadOnly)));
+        Assert.Equal((1, 0), await ListedAsync());
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(gui, SendAttach(gui, id, null)));
+        Assert.Equal((2, 1), await ListedAsync());
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(peek, SendAttach(peek, id, null))); // the peek re-attaches interactive
+        Assert.Equal((2, 2), await ListedAsync());
+    }
+
     /// <summary>Review ruling 3: peeking with --read-only must not undo a deliberate detach, neither by attaching nor by leaving.</summary>
     [Fact]
     public async Task A_read_only_peek_does_not_clear_a_user_detach()

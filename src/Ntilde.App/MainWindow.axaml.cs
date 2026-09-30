@@ -5017,7 +5017,8 @@ namespace Ntilde
                     Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(10));
                     if (client is null) return ((IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>)[], 0);
                     IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync().ConfigureAwait(false);
-                    return (Ntilde.Shell.Mux.MuxOrphans.Select(all, referenced), Ntilde.Shell.Mux.MuxOrphans.CountUserDetached(all, referenced));
+                    bool v2 = client.ProtocolVersion >= Ntilde.Mux.Contracts.MuxProtocol.SessionEventsVersion;
+                    return (Ntilde.Shell.Mux.MuxOrphans.Select(all, referenced, v2), Ntilde.Shell.Mux.MuxOrphans.CountUserDetached(all, referenced, v2));
                 }).ConfigureAwait(false);
                 if (orphans.Count == 0 && detached == 0) return;
 

@@ -85,6 +85,14 @@ public sealed record SessionSummary
     public bool Running { get; init; }
     public int? ExitCode { get; init; }
     public int AttachedClients { get; init; }
+
+    /// <summary>
+    /// <see cref="AttachedClients"/> without read-only observers (v2). Omitted when 0, so a v1 peer sees
+    /// exactly the v1 shape; a reader tells "0" from "not sent" by the negotiated version.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int InteractiveClients { get; init; }
+
     public bool Faulted { get; init; }
 
     /// <summary>The last OSC 7 directory the mux parser saw; null when none (or a v1 daemon).</summary>

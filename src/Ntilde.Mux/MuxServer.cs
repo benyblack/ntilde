@@ -294,6 +294,7 @@ public sealed class MuxServer : IDisposable
             Running = !s.IsExited,
             ExitCode = s.ExitCode,
             AttachedClients = s.AttachedClients,
+            InteractiveClients = s.InteractiveClients,
             Faulted = s.IsFaulted,
             DetachedByUser = s.DetachedByUser,
             Cwd = s.Cwd,

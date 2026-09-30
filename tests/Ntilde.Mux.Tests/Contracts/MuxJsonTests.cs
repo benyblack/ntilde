@@ -213,6 +213,16 @@ public sealed class MuxJsonTests
     }
 
     [Fact]
+    public void InteractiveClients_round_trips_and_zero_is_never_written()
+    {
+        string json = System.Text.Json.JsonSerializer.Serialize(new SessionSummary { SessionId = Guid.NewGuid(), AttachedClients = 3, InteractiveClients = 2 }, MuxJsonContext.Default.SessionSummary);
+
+        Assert.Contains("\"interactiveClients\":2", json, StringComparison.Ordinal);
+        Assert.Equal(2, System.Text.Json.JsonSerializer.Deserialize(json, MuxJsonContext.Default.SessionSummary)!.InteractiveClients);
+        Assert.DoesNotContain("interactiveClients", System.Text.Json.JsonSerializer.Serialize(new SessionSummary { SessionId = Guid.NewGuid(), AttachedClients = 1 }, MuxJsonContext.Default.SessionSummary), StringComparison.Ordinal); // the v1 shape
+    }
+
+    [Fact]
     public void DetachedByUser_round_trips_and_defaults_to_false()
     {
         var s = new SessionSummary { SessionId = Guid.NewGuid(), DetachedByUser = true };

@@ -25,12 +25,18 @@ internal static class MuxOrphans
         foreach (PaneNode child in node.Children) Walk(child, ids);
     }
 
-    /// <summary>A running, healthy shell nobody shows.</summary>
-    private static bool IsUnshown(SessionSummary s) => s.Running && !s.Faulted && s.AttachedClients == 0;
+    /// <summary>
+    /// A running, healthy shell nobody shows. A read-only viewer (<c>mux attach --read-only</c>) only
+    /// peeks: on v2, where <see cref="SessionSummary.InteractiveClients"/> is reported, it does not count.
+    /// A v1 daemon reports only the total.
+    /// </summary>
+    private static bool IsUnshown(SessionSummary s, bool reportsInteractive) =>
+        s.Running && !s.Faulted && (reportsInteractive ? s.InteractiveClients : s.AttachedClients) == 0;
 
     /// <summary>Crash orphans only: a shell the user detached on purpose stays detached (spec §7.7).</summary>
-    public static IReadOnlyList<SessionSummary> Select(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
-        sessions.Where(s => IsUnshown(s) && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
+    /// <param name="reportsInteractive">The daemon negotiated v2, so <see cref="SessionSummary.InteractiveClients"/> is meaningful.</param>
+    public static IReadOnlyList<SessionSummary> Select(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced, bool reportsInteractive = false) =>
+        sessions.Where(s => IsUnshown(s, reportsInteractive) && !s.DetachedByUser && !referenced.Contains(s.SessionId)).ToList();
 
     /// <summary>
     /// Running shells the user detached and nobody shows: the once-per-launch reminder's count. A
@@ -38,6 +44,7 @@ internal static class MuxOrphans
     /// case that pane's command no longer matches the session's, it spawns fresh instead and the
     /// shell stays detached, uncounted this launch; the next launch counts it.)
     /// </summary>
-    public static int CountUserDetached(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced) =>
-        sessions.Count(s => IsUnshown(s) && s.DetachedByUser && !referenced.Contains(s.SessionId));
+    /// <param name="reportsInteractive">The daemon negotiated v2, so <see cref="SessionSummary.InteractiveClients"/> is meaningful.</param>
+    public static int CountUserDetached(IEnumerable<SessionSummary> sessions, IReadOnlySet<Guid> referenced, bool reportsInteractive = false) =>
+        sessions.Count(s => IsUnshown(s, reportsInteractive) && s.DetachedByUser && !referenced.Contains(s.SessionId));
 }

@@ -48,6 +48,7 @@ checks. Every change below is additive. The JSON context stays source-generated
 | Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach found another interactive client attached. |
 | `DetachParams.UserDetached` | New `bool?`. Null or absent means an ordinary detach, which is the v1 shape. `true` means the user detached on purpose ("Pane: Detach", Detach in the shared-close prompt, or the text client's `Ctrl+\ d` chord — as shipped, Task 17 ruling). The client sends it only when `Welcome.Version >= 2` (§7.7). |
 | `SessionSummary.DetachedByUser` | New `bool`, serialised only when true (`WhenWritingDefault`), so a v1 peer sees exactly the v1 shape. True while the session's last interactive detach, the one that left it with no interactive subscribers, was a user detach. Any later successful interactive attach clears it; read-only observers neither set nor clear it (§7.7). |
+| `SessionSummary.InteractiveClients` | New `int` (added in the final review), serialised only when non-zero. `AttachedClients` without read-only observers, filled on the parse thread next to it. Startup adoption (§9 orphans) counts it on v2, so a read-only peek does not hide a crash orphan; against a v1 daemon it falls back to `AttachedClients`. |
 
 `SessionSummary.Title` was already live: the Phase 1 parser already wires `OnTitleChanged`. Nothing
 changes there (see §11).

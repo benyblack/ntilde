@@ -265,6 +265,7 @@ keeps a v1 peer's wire shape exactly the v1 shape.
 | `AttachParams.Mode` | `string?`: null/absent = `"shared"`, or `"ifUnattached"`, `"readOnly"` (`MuxAttachMode` enum, `MuxAttachModes.ToWire`/`TryParse`) |
 | `SessionSummary.Cwd` | the last OSC 7 directory the mux parser saw; null on a v1 daemon |
 | `SessionSummary.DetachedByUser` | true while the session's last interactive detach was deliberate; serialized only when true, so a v1 peer sees exactly the v1 shape |
+| `SessionSummary.InteractiveClients` | `AttachedClients` without read-only observers; serialized only when non-zero. Startup adoption reads it on v2, so a crash orphan someone peeks at with `--read-only` is still adopted; on v1 it falls back to `AttachedClients` |
 | `DetachParams.UserDetached` | `bool?`: true on a deliberate detach ("Pane: Detach", the shared-close prompt's Detach, the text client's `Ctrl+\ d` chord); absent/null is an ordinary detach |
 | Notification `sessionChanged` | attached-count, title or cwd changed; coalesced to at most one per session per 100 ms (§4 below); sent to v2 clients only |
 | Notification `killed` | sent to every v2 subscriber except the killer, before that session's `exited` |

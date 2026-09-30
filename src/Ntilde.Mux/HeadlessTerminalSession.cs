@@ -57,6 +57,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _cols;
     private int _rows;
     private int _attached;
+    private int _interactive;
     private int _exited;
     private int _exitCode;
     private int _faulted;
@@ -191,6 +192,9 @@ public sealed class HeadlessTerminalSession : IDisposable
     public int Cols => Volatile.Read(ref _cols);
     public int Rows => Volatile.Read(ref _rows);
     public int AttachedClients => Volatile.Read(ref _attached);
+
+    /// <summary><see cref="AttachedClients"/> without the read-only observers.</summary>
+    public int InteractiveClients => Volatile.Read(ref _interactive);
     public bool IsExited => Volatile.Read(ref _exited) != 0;
     public int? ExitCode => IsExited ? Volatile.Read(ref _exitCode) : null;
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
@@ -980,6 +984,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         int count = _subscribers.Count;
         Volatile.Write(ref _attached, count);
+        Volatile.Write(ref _interactive, count - _readOnlySinks.Count); // read-only sinks are always subscribers too
         if (count != _lastPublishedAttached)
         {
             _lastPublishedAttached = count;
