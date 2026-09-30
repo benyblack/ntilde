@@ -738,7 +738,11 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.False(_mux.Mux(id).IsExited);
     }
 
-    /// <summary>Fix round 1: a lone pane's close decision spends one daemon budget, not one per read.</summary>
+    /// <summary>
+    /// Fix round 1: a lone pane's close decision spends one daemon budget, not one per read. The sharing
+    /// read times out after the whole (one-second) budget, so the child-process read is handed what is
+    /// left of it: nothing, where a fresh budget per read would hand it a second full one.
+    /// </summary>
     [AvaloniaFact]
     public void A_stalled_daemon_costs_a_lone_pane_close_one_budget()
     {
@@ -752,18 +756,97 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         gate.Pause(); // nothing more reaches the daemon: both reads can only time out
         try
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
             var task = (Task<SharedCloseChoice>)decide.Invoke(window, [own])!;
             PumpUntil(() => task.IsCompleted, "the decision finished");
-            sw.Stop();
 
             Assert.Equal(SharedCloseChoice.Close, task.Result);
-            Assert.InRange(sw.Elapsed, TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(1700)); // two budgets would be 2 s
+            TimeSpan? second = window.LastPaneCloseRefreshBudgetForTest;
+            Assert.NotNull(second);
+            Assert.True(second <= TimeSpan.FromMilliseconds(100), $"the second read got {second}, not what was left of the one budget");
         }
         finally
         {
             gate.Resume();
         }
+    }
+
+    /// <summary>
+    /// Final review: an agent's close (no prompt it could answer) of a shell another window shows lets go
+    /// of it instead of ending it; the other window keeps a working shell.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_agent_close_of_a_shared_shell_detaches_and_the_other_window_keeps_it()
+    {
+        MainWindow other = CreateOtherWindow();
+        TerminalPane theirs = AllPanes(other).Single();
+        var theirSession = (MuxClientSession)theirs.Session!;
+        Guid id = theirSession.Id;
+        MainWindow window = CreateWindow();
+        TerminalPane mine = AttachShared(window, id);
+        var mineSession = (MuxClientSession)mine.Session!; // the pane lets go of it on close
+        PumpUntil(() => mineSession.AttachedClients == 2, "the pane knows the shell is shared");
+
+        Task<bool> close = ((Ntilde.AgentHost.IAgentActionExecutor)window).ClosePaneAsync(mine.PaneId);
+        PumpUntil(() => close.IsCompleted, "the agent's close finished");
+
+        Assert.True(close.Result);
+        Assert.DoesNotContain(mine, AllPanes(window));
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 1, "the daemon saw the pane go");
+        Assert.Contains(id, _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.False(_mux.Mux(id).DetachedByUser); // not a deliberate detach
+        Assert.False(theirSession.WasKilledElsewhere);
+
+        theirSession.SendInput("still-here");
+        PumpUntil(() => string.Concat(_mux.Fake(id).SentInput).Contains("still-here", StringComparison.Ordinal), "the other window's input reaches the shell");
+        _mux.Fake(id).Emit("echoed-back");
+        PumpUntil(() => MuxTestText.VisibleText(theirs.Buffer!).Contains("echoed-back", StringComparison.Ordinal), "the other window shows the shell's output");
+    }
+
+    /// <summary>Final review: a shared shell that already exited has nothing a Close would end for anyone; no prompt.</summary>
+    [AvaloniaFact]
+    public void A_shared_pane_whose_shell_exited_is_closed_without_the_shared_prompt()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).ShellExitPolicy = "Never"; // the dead pane stays for the close to act on
+        (_, ClientPaneModel theirs) = OtherInstance(); // keeps the exited session from being reaped
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        var mineSession = (MuxClientSession)mine.Session!;
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        _mux.Fake(id).Exit(0);
+        PumpUntil(() => !mineSession.IsProcessRunning, "the pane saw the exit");
+        int asked = -1;
+        window.ConfirmSharedClose = others =>
+        {
+            asked = others;
+            return Task.FromResult(SharedCloseChoice.Cancel);
+        };
+        var decide = typeof(MainWindow).GetMethod("DecidePaneCloseAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<SharedCloseChoice>)decide.Invoke(window, [mine])!;
+        PumpUntil(() => task.IsCompleted, "the decision finished");
+
+        Assert.Equal(-1, asked);
+        Assert.Equal(SharedCloseChoice.Close, task.Result);
+    }
+
+    /// <summary>Final review: a persistent pane that lost its daemon connection is not "not a persistent shell".</summary>
+    [AvaloniaFact]
+    public void Detaching_a_disconnected_persistent_pane_says_the_connection_was_lost()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        var session = (MuxClientSession)own.Session!;
+        _host!.Dispose();
+        PumpUntil(() => !session.IsConnected, "the connection is gone");
+
+        Task<bool> detach = window.DetachPaneAsync(own);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        Assert.False(detach.Result);
+        PumpUntil(() => Toast(window).Title == "Pane: Detach", "the detach notice is shown");
+        Assert.Equal("The multiplexer connection was lost.", Toast(window).Message);
     }
 
     /// <summary>A client-side stream whose writes can be held back: a daemon that stopped reading.</summary>
@@ -793,6 +876,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
             {
                 _open.Set();
                 inner.Dispose();
+                _open.Dispose();
             }
 
             base.Dispose(disposing);

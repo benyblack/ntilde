@@ -5921,6 +5921,16 @@ namespace Ntilde
 
                     if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Detach) disposition = Ntilde.Shell.Mux.PaneDisposition.Detach;
                 }
+                else if (requested == Ntilde.Shell.Mux.PaneDisposition.EndSession
+                    && paneToClose.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true, AttachedClients: > 1 })
+                {
+                    // An agent cannot answer the shared-close question, and skipping it must not end a shell
+                    // other windows are still using: this pane lets go and the shell keeps running for them.
+                    // Not a deliberate detach, so nothing is marked. AttachedClients is the cached v2 count
+                    // (always null on v1, which keeps the old close). An exit-driven close never gets here:
+                    // its shell is no longer running.
+                    disposition = Ntilde.Shell.Mux.PaneDisposition.Leave;
+                }
 
                 // Check if we are in a split (Parent is Grid with multiple children/splitter)
                 if (paneToClose.Parent is Grid parentGrid && parentGrid.Children.Count >= 2)
@@ -5996,7 +6006,7 @@ namespace Ntilde
             // One budget for both daemon reads (the sharing count here, the child-process probe in
             // ShouldClosePaneAsync): a stalled daemon costs a close about a second, not two.
             var budget = System.Diagnostics.Stopwatch.StartNew();
-            if (pane.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsAttached: true } mux)
+            if (pane.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsAttached: true, IsProcessRunning: true } mux)
             {
                 int? attached;
                 using var cts = new CancellationTokenSource(PaneCloseRefreshBudget);
@@ -6079,7 +6089,9 @@ namespace Ntilde
         {
             if (pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true } mux)
             {
-                EnqueueNotice("Pane: Detach", "Only a persistent shell can be detached.");
+                EnqueueNotice("Pane: Detach", pane.Session is Ntilde.Mux.MuxClientSession
+                    ? "The multiplexer connection was lost."
+                    : "Only a persistent shell can be detached.");
                 return false;
             }
 
@@ -6096,11 +6108,15 @@ namespace Ntilde
             return closed;
         }
 
+        /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
+        internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }
+
         /// <param name="refreshBudget">What is left of the close's daemon budget; zero decides on the cached probe.</param>
         private async Task<bool> ShouldClosePaneAsync(TerminalPane pane, TimeSpan refreshBudget)
         {
             // A mux session's child-process flag is a cached daemon probe: refresh it (bounded)
             // so the decision below is not made on a stale answer.
+            LastPaneCloseRefreshBudgetForTest = refreshBudget;
             if (refreshBudget > TimeSpan.Zero) await RefreshPersistentSessionInfoAsync(pane.Session, refreshBudget);
 
             if (ShouldAutoAcceptRunningPaneClose(
@@ -6746,11 +6762,12 @@ namespace Ntilde
                 Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
                 // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
                 KillMuxSessionOnClose(session, effective);
-                if (effective == Ntilde.Shell.Mux.PaneDisposition.Detach && session is Ntilde.Mux.MuxClientSession detaching)
+                if (effective != Ntilde.Shell.Mux.PaneDisposition.EndSession && session is Ntilde.Mux.MuxClientSession detaching)
                 {
                     // A deliberate detach (the command, or the shared prompt's Detach): tell a v2 daemon, so the
-                    // next launch does not adopt it back (spec §7.7). On the UI thread; the pool Dispose below is then a no-op.
-                    detaching.Detach(userDetached: true);
+                    // next launch does not adopt it back (spec §7.7). Leave is a plain detach. On the UI thread;
+                    // the pool Dispose below is then a no-op.
+                    detaching.Detach(userDetached: effective == Ntilde.Shell.Mux.PaneDisposition.Detach);
                 }
 
                 if (session != null)

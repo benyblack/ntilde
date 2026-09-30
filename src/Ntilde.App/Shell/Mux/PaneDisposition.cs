@@ -11,4 +11,10 @@ internal enum PaneDisposition
 
     /// <summary>"Pane: Detach" or the shared-close prompt's Detach: only the view goes, the daemon keeps the shell.</summary>
     Detach,
+
+    /// <summary>
+    /// An agent closed a pane whose shell other clients still show: only the view goes, like Detach, but
+    /// the daemon is not told it was deliberate.
+    /// </summary>
+    Leave,
 }
