@@ -7680,7 +7680,7 @@ namespace Ntilde
             CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
             if (IsMuxPersistenceActive)
             {
-                CommandRegistry.Register("Attach to Session…", "Session", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
+                CommandRegistry.Register("Session: Attach to Session…", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
                 CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding("detach_pane", ""), "detach_pane");
             }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");

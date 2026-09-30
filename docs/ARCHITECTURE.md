@@ -218,7 +218,7 @@ before Avalonia, so the daemon never initialises a UI. The edge is App → `Ntil
                                                                      ▲
  ntilde mux attach <id> (Ntilde.exe mux attach)                      │
  └─ TextClientSession ── its own MuxClient ──────────────────────────┘
-      (mode: shared / ifUnattached / readOnly; renders from its own buffer, spec §6)
+      (mode: shared, or readOnly with --read-only; renders from its own buffer, spec §6)
 ```
 
 - **Discovery.** `MuxDiscovery` (Mux.Contracts) resolves `<root>/mux/mux-endpoint.json` under

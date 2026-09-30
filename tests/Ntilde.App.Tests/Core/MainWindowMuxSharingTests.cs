@@ -552,6 +552,8 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
 
         Assert.Contains(CommandRegistry.GetCommands(), c => c.Id == "attach_session");
         Assert.Contains(CommandRegistry.GetCommands(), c => c.Id == "detach_pane");
+        // Named like its "Area: Action" neighbours and its shortcut-catalog entry, which is what the manual quotes.
+        Assert.Equal("Session: Attach to Session…", CommandRegistry.GetCommands().Single(c => c.Id == "attach_session").Title);
     }
 
     [AvaloniaFact]
