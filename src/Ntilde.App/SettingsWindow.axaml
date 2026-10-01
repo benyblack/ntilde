@@ -665,6 +665,24 @@
                                 </StackPanel>
                                 <CheckBox Name="LongCommandNotificationsToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Program notifications (OSC 9)"/>
+                                    <TextBlock Classes="RowDesc" Text="Show a toast when a program explicitly asks for one via OSC 9 (e.g. an AI CLI pinging that a long task finished). Suppressed while you're looking at the pane, like long command notifications."/>
+                                </StackPanel>
+                                <CheckBox Name="Osc9NotificationsToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Progress reporting (OSC 9;4)"/>
+                                    <TextBlock Classes="RowDesc" Text="Show per-tab progress and Windows taskbar progress when a program reports it via OSC 9;4 (e.g. an AI CLI's task progress)."/>
+                                </StackPanel>
+                                <CheckBox Name="Osc9ProgressReportingToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
                             <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,18,0,18"/>
 
                             <Grid ColumnDefinitions="*,360">

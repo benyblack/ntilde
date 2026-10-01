@@ -168,6 +168,17 @@ namespace Ntilde.Shell
         // In-app toast when a command that ran ≥30s finishes in an unfocused
         // pane (A2 PR4, absorbs ROADMAP §5.2). Off by default.
         public bool LongCommandNotificationsEnabled { get; set; } = false;
+        // In-app toast for an explicit OSC 9 desktop-notification sequence (#271),
+        // e.g. Claude Code's completion pings. Same focus policy as the long-command
+        // toast (suppressed when the pane is focused); the difference is that the
+        // program asked for the notification rather than the terminal inferring it.
+        // Off by default, matching LongCommandNotificationsEnabled.
+        public bool Osc9NotificationsEnabled { get; set; } = false;
+        // Per-tab progress + Windows taskbar progress from OSC 9;4 sequences (#271),
+        // e.g. Claude Code's terminalProgressBarEnabled. Purely ambient chrome —
+        // default on so tooling that reports progress just works; this exists as the
+        // off switch.
+        public bool Osc9ProgressReportingEnabled { get; set; } = true;
         // Governs the once-per-launch background update check (#91). Default on: an installed
         // build that never learns about a fix is worse than a single anonymous request to
         // GitHub's releases API 10 seconds after launch. Off stops all background traffic; the

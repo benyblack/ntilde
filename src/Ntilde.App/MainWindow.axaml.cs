@@ -86,6 +86,13 @@ namespace Ntilde
         private TerminalSettings _settings;
         private GlobalHotkey? _globalHotkey;
 
+        // Lazy. The first Apply can arrive from the startup SelectionChanged — before
+        // the window is shown, when TryGetPlatformHandle still returns null — so
+        // TaskbarProgress re-reads the handle on each init attempt rather than
+        // capturing it at construction.
+        private Ntilde.Shell.Native.TaskbarProgress? _taskbarProgress;
+        private Ntilde.Shell.Native.TaskbarProgress Taskbar => _taskbarProgress ??= new Ntilde.Shell.Native.TaskbarProgress(this);
+
         /// <summary>Test-only seam: the window's quake-mode hotkey, so a test can assert that
         /// OnOpened re-running keeps the one instance (inert under headless - no HWND to hook).</summary>
         internal GlobalHotkey? GlobalHotkeyForTest => _globalHotkey;
@@ -292,6 +299,14 @@ namespace Ntilde
             public TabPreviewTracker Preview { get; } = new();
             public bool PreviewDirty { get; set; }
             public DateTime LastPreviewUpdateUtc { get; set; }
+
+            /// <summary>Latest OSC 9;4 progress report from a pane in this tab (#271);
+            /// null = none. Last report wins — the common case is one reporting pane per tab.</summary>
+            public TerminalProgressReport? Progress { get; set; }
+
+            /// <summary>The pane whose report <see cref="Progress"/> came from, so a split's
+            /// other pane can keep reporting after this one withdraws or closes.</summary>
+            public TerminalPane? ProgressPane { get; set; }
         }
 
         internal enum TabHeaderPointerAction
@@ -902,12 +917,30 @@ namespace Ntilde
                 Margin = new Thickness(0, 2, 0, 0)
             };
 
+            // OSC 9;4 progress (#271): a thin bar under the preview line, hidden until
+            // UpdateVerticalTabExtras turns it on. ProgressBar (rather than hand-rolled
+            // track+fill) so star-sized width and the indeterminate animation come for
+            // free; not hit-testable so pointer presses stay on the header host, same
+            // contract as the chips.
+            var progressBar = new Avalonia.Controls.ProgressBar
+            {
+                Name = "TabProgressBar",
+                Height = 3,
+                MinWidth = 0,
+                Minimum = 0,
+                Maximum = 100,
+                IsVisible = false,
+                IsHitTestVisible = false,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+
             // Title BEFORE preview (and before the chips): FindTabHeaderTextBlock takes the
             // first TextBlock as the title, and UpdateTabVisuals rewrites that one with the
             // display label.
             var textColumn = new StackPanel { Orientation = Avalonia.Layout.Orientation.Vertical };
             textColumn.Children.Add(headerText);
             textColumn.Children.Add(previewText);
+            textColumn.Children.Add(progressBar);
 
             // Trailing status chips: the compact replacements for the attention-marker
             // suffixes that used to live inside the truncated title text (bell/activity/
@@ -2470,7 +2503,7 @@ namespace Ntilde
         /// preserving exactly the precedence and combination rules the old,
         /// inline version of this logic had in <c>BuildFullTabLabel</c>.
         /// </summary>
-        private static string GetAttentionMarkerSuffix(TabRuntimeState state)
+        private string GetAttentionMarkerSuffix(TabRuntimeState state)
         {
             string suffix = string.Empty;
 
@@ -2491,6 +2524,14 @@ namespace Ntilde
             {
                 suffix += " " + AgentWatchedGlyph;
             }
+
+            // OSC 9;4 progress (#271) rides the same trailing-suffix contract in
+            // horizontal mode (" 42%", " ✖ 42%", " ⋯"); vertical mode renders it as the
+            // header's thin bar instead (UpdateVerticalTabExtras). Gated at render time
+            // so the setting hides existing reports without discarding them — the stored
+            // report survives and reappears when the toggle comes back on.
+            suffix += TabProgressPresentation.FormatMarkerSuffix(
+                _settings.Osc9ProgressReportingEnabled ? state.Progress : null);
 
             return suffix;
         }
@@ -3872,6 +3913,8 @@ namespace Ntilde
                     UpdateBroadcastIndicator();
                     PopulateTabListMenu();
                     UpdateTabHeaderViewport();
+                    // The taskbar mirrors whichever tab is now selected (#271).
+                    RefreshTaskbarProgressFromSelection();
                     Dispatcher.UIThread.Post(EnsureSelectedTabHeaderVisible, DispatcherPriority.Background);
                     sw.Stop();
                     RendererStatistics.RecordTabSwitchTime(sw.ElapsedMilliseconds);
@@ -4523,6 +4566,8 @@ namespace Ntilde
             pane.BellReceived -= OnPaneBellReceived;
             pane.ProcessExited -= OnPaneProcessExited;
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
+            pane.OscNotificationReceived -= OnPaneOscNotification;
+            pane.ProgressReported -= OnPaneProgressReported;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged += OnPaneWorkingDirectoryChanged;
@@ -4532,10 +4577,15 @@ namespace Ntilde
             pane.BellReceived += OnPaneBellReceived;
             pane.ProcessExited += OnPaneProcessExited;
             pane.LongCommandCompleted += OnPaneLongCommandCompleted;
+            pane.OscNotificationReceived += OnPaneOscNotification;
+            pane.ProgressReported += OnPaneProgressReported;
         }
 
         private void UnwirePane(TerminalPane pane)
         {
+            // Before the owner map goes: a closing pane withdraws its tab progress so the
+            // bar/taskbar don't keep showing a dead report.
+            WithdrawPaneProgress(pane);
             _paneOwnerTab.Remove(pane);
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged -= OnPaneWorkingDirectoryChanged;
@@ -4545,6 +4595,8 @@ namespace Ntilde
             pane.BellReceived -= OnPaneBellReceived;
             pane.ProcessExited -= OnPaneProcessExited;
             pane.LongCommandCompleted -= OnPaneLongCommandCompleted;
+            pane.OscNotificationReceived -= OnPaneOscNotification;
+            pane.ProgressReported -= OnPaneProgressReported;
         }
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
@@ -4637,8 +4689,93 @@ namespace Ntilde
                 autoHide: true);
         }
 
+        private void OnPaneOscNotification(TerminalPane pane, string text)
+        {
+            // Same policy as the long-command toast — opt-in, suppressed while the user
+            // is looking at the pane. The difference is provenance: the program asked
+            // for this ping explicitly (OSC 9, #271 — e.g. Claude Code's completion
+            // notification) rather than the terminal inferring "long command finished".
+            if (!LongCommandNotificationPolicy.ShouldNotify(
+                    _settings.Osc9NotificationsEnabled,
+                    windowActive: IsActive,
+                    isCurrentPane: ReferenceEquals(pane, _currentPane)))
+            {
+                return;
+            }
+
+            ShowRecordingToast(
+                pane.GetBaseTabTitle(),
+                text,
+                filePath: null,
+                folderPath: null,
+                autoHide: true);
+        }
+
+        private void OnPaneProgressReported(TerminalPane pane, TerminalProgressReport? report)
+        {
+            var tab = ResolveOwningTabForPane(pane);
+            if (tab == null) return;
+
+            var state = GetOrCreateTabState(tab);
+            if (report is null)
+            {
+                // Withdraw only what this pane owns; a split's other pane may still be
+                // mid-report.
+                if (!ReferenceEquals(state.ProgressPane, pane)) return;
+                state.Progress = null;
+                state.ProgressPane = null;
+            }
+            else
+            {
+                state.Progress = report;
+                state.ProgressPane = pane;
+            }
+
+            QueueTabVisualRefresh(tab);
+            RefreshTaskbarProgressFromSelection();
+        }
+
+        /// <summary>A pane went away (closed or exited): drop its progress report so the
+        /// tab bar and taskbar don't keep advertising a dead operation.</summary>
+        private void WithdrawPaneProgress(TerminalPane pane)
+        {
+            var tab = ResolveOwningTabForPane(pane);
+            if (tab == null) return;
+
+            // Lookup, not GetOrCreateTabState: CloseTab removes the tab's state BEFORE
+            // the content dispose that unwires panes, so the create-on-miss path would
+            // re-add an empty state entry for a tab that is already on its way out.
+            if (!_tabStateByTab.TryGetValue(tab, out var state)) return;
+            if (!ReferenceEquals(state.ProgressPane, pane)) return;
+
+            state.Progress = null;
+            state.ProgressPane = null;
+            QueueTabVisualRefresh(tab);
+            RefreshTaskbarProgressFromSelection();
+        }
+
+        /// <summary>
+        /// The taskbar mirrors the SELECTED tab's OSC 9;4 progress (Windows shows one
+        /// state per window). Re-run on every progress edge, tab switch, and pane
+        /// removal; when the setting is off, this is what actively clears a state set
+        /// before the toggle.
+        /// </summary>
+        private void RefreshTaskbarProgressFromSelection()
+        {
+            TerminalProgressReport? report = null;
+            if (TryGetSelectedTab(out var tab))
+            {
+                report = GetOrCreateTabState(tab).Progress;
+            }
+
+            Taskbar.Apply(_settings.Osc9ProgressReportingEnabled ? report : null);
+        }
+
         private void OnPaneProcessExited(TerminalPane pane, int exitCode)
         {
+            // The pane's program is gone; its OSC 9;4 progress (if any) is stale.
+            WithdrawPaneProgress(pane);
+
             // SSH panes write their own [SSH session disconnected] banner in HandleSessionExit and
             // never auto-close, so there is nothing left to do for them here. This has to run
             // before the tab==null branch below: an SSH pane that has already left the logical
@@ -6453,6 +6590,28 @@ namespace Ntilde
             SetChipVisibility(tab, "TabAgentWroteChip", markers.AgentWrote);
             SetChipVisibility(tab, "TabAgentWatchedChip", markers.AgentWatched);
 
+            // OSC 9;4 progress (#271): geometry from the pure resolver; brush by kind —
+            // theme blue for normal, the attention amber for error, dim white for
+            // paused (matching the dot/chip palette conventions above). Gated at render
+            // time on the same setting as the taskbar, so an off switch hides existing
+            // reports without discarding them.
+            if (FindTabHeaderDescendant<Avalonia.Controls.ProgressBar>(tab.Header, "TabProgressBar") is { } progressBar)
+            {
+                var report = _settings.Osc9ProgressReportingEnabled ? state.Progress : null;
+                var (barVisible, barIndeterminate, barValue) = TabProgressPresentation.ResolveBar(report);
+                progressBar.IsVisible = barVisible;
+                if (barVisible)
+                {
+                    progressBar.IsIndeterminate = barIndeterminate;
+                    progressBar.Value = barValue;
+                    progressBar.Foreground = report is { Kind: TerminalProgressKind.Error }
+                        ? TabAttentionBrush
+                        : report is { Kind: TerminalProgressKind.Paused }
+                            ? TabActivityChipBrush
+                            : workingBrush;
+                }
+            }
+
             // Preview recompute is gated behind a dirty flag + throttle: with several streaming
             // tabs, this visual-refresh pass can run many times a second, and each recompute is
             // an O(rows*cols) grapheme walk under the buffer's read lock (contending with the
@@ -7702,6 +7861,9 @@ namespace Ntilde
                 ApplyTabLayout();
                 UpdateTransparencyHints();
                 ApplyAgentHostSettingsLive();
+                // A toggled-off Osc9ProgressReportingEnabled must clear a taskbar state
+                // set before the change (and vice versa).
+                RefreshTaskbarProgressFromSelection();
 
                 // Refresh Connection Manager if open
                 _connectionManagerWindow?.LoadProfiles(_sshConnectionService.GetConnectionProfiles());
