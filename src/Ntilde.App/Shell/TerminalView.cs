@@ -266,14 +266,17 @@ namespace Ntilde.Shell
                     return true;
 
                 default:
-                    if (isCtrl && !keyModifiers.HasFlag(KeyModifiers.Shift) && !keyModifiers.HasFlag(KeyModifiers.Alt))
+                    if (isCtrl)
                     {
-                        if (key >= Key.A && key <= Key.Z)
+                        // Ctrl+A..Z -> 0x01..0x1A, plus the Ctrl+punctuation/digit C0 rows
+                        // (Ctrl+\ -> FS, Ctrl+] -> GS, Ctrl+_ -> US, ...). Declines AltGr
+                        // (Ctrl+Alt) so composed text still arrives through OnTextInput. App
+                        // shortcuts on these chords never get here: MainWindow's tunnel handler
+                        // consumes them first.
+                        string? controlSequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, keyModifiers);
+                        if (controlSequence != null)
                         {
-                            // Ctrl+A = 1, Ctrl+Z = 26
-                            // ASCII Control Characters
-                            char ctrlChar = (char)(key - Key.A + 1);
-                            SendUserInput(ctrlChar.ToString());
+                            SendUserInput(controlSequence);
                             return true;
                         }
                     }
