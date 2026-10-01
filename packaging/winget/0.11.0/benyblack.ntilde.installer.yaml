@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
 PackageIdentifier: benyblack.ntilde
-PackageVersion: __VERSION__
+PackageVersion: 0.11.0
 
 # Ntilde releases ship as self-contained AOT bundles zipped per platform
 # (see .github/workflows/release.yml). There is no signed installer, so the
@@ -20,8 +20,8 @@ ArchiveBinariesDependOnPath: true
 
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/benyblack/ntilde/releases/download/v__VERSION__/ntilde-win-x64-v__VERSION__.zip
-    InstallerSha256: __SHA256__
+    InstallerUrl: https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-win-x64-v0.11.0.zip
+    InstallerSha256: A11280706D4B8D248D706EE18AD30D6C2F59CA75CEEC4FDE422C23B0177D761E
 
 ManifestType: installer
 ManifestVersion: 1.10.0
