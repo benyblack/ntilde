@@ -68,6 +68,10 @@ public sealed class MuxStartupProbeTests : IDisposable
     [Fact]
     public void A_connect_that_times_out_with_no_pipe_present_is_refused_and_its_descriptor_is_deleted()
     {
+        // Off Windows a timeout always counts as live (Unix socket refusals are immediate), so the
+        // pipeExists lookup is never consulted.
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "The pipe-absent check applies on Windows only.");
+
         WriteRecycledPidDescriptor();
 
         bool live = MuxStartupProbe.IsDaemonLive(DescriptorPath, TimeSpan.FromMilliseconds(200),
