@@ -122,4 +122,71 @@ public sealed class MuxConnectionHostTests
         Assert.Null(host.GetClient(TimeSpan.FromMilliseconds(300)));
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(3));
     }
+
+    [Fact]
+    public void Dispose_waits_for_a_tracked_kill()
+    {
+        using var mux = new MuxTestHost();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null)
+        {
+            KillFlushTimeout = TimeSpan.FromSeconds(10),
+            DisposeFlushTimeout = TimeSpan.Zero,
+        };
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
+        var kill = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.TrackPendingKill(kill.Task);
+
+        Task dispose = Task.Run(host.Dispose, TestContext.Current.CancellationToken);
+
+        Assert.False(dispose.Wait(300, TestContext.Current.CancellationToken), "Dispose returned before the kill was confirmed");
+        kill.SetResult();
+        Assert.True(dispose.Wait(5_000, TestContext.Current.CancellationToken), "Dispose returned once the kill was confirmed");
+    }
+
+    [Fact]
+    public void Dispose_gives_up_on_an_unconfirmed_kill_after_the_timeout()
+    {
+        using var mux = new MuxTestHost();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null)
+        {
+            KillFlushTimeout = TimeSpan.FromMilliseconds(200),
+        };
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
+        host.TrackPendingKill(new TaskCompletionSource().Task); // never completes
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        host.Dispose();
+
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(4), $"Dispose took {sw.Elapsed}");
+    }
+
+    /// <summary>
+    /// Review fix (Task 4, round 1): one bounded wait, not two. Before the fix, a pending kill that
+    /// never got a reply made Dispose wait KillFlushTimeout AND THEN the separate ping-flush wait
+    /// (DisposeFlushTimeout) on top - up to ~4s total with the production defaults. A kill's own
+    /// timeout already means the daemon is unresponsive, so the ping flush must be skipped entirely
+    /// whenever there was a kill to wait on, whether it completed or timed out. The daemon answers the
+    /// hello and nothing after it, so a ping flush could only run out its whole (long) timeout.
+    /// </summary>
+    [Fact]
+    public void Dispose_does_not_also_run_the_ping_flush_after_waiting_on_a_kill()
+    {
+        using var daemon = FakeMuxServerEnd.Create();
+        Task hello = daemon.AcceptHelloAsync();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "test", null)
+        {
+            KillFlushTimeout = TimeSpan.FromMilliseconds(300),
+            DisposeFlushTimeout = TimeSpan.FromSeconds(10),
+        };
+        Assert.NotNull(host.GetClient(TimeSpan.FromSeconds(5)));
+        Assert.True(hello.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)); // the fake completes only after its welcome write returns
+        host.TrackPendingKill(new TaskCompletionSource().Task); // an unresponsive daemon: never completes
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        host.Dispose();
+
+        // At least 10.3 s (KillFlushTimeout + DisposeFlushTimeout) if the ping flush still ran after
+        // the kill wait timed out; the margin to 5 s absorbs a slow CI machine.
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"Dispose took {sw.Elapsed}");
+    }
 }

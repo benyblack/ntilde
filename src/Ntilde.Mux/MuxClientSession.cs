@@ -15,8 +15,9 @@ namespace Ntilde.Mux;
 /// <remarks>
 /// <b>Which thread raises what.</b> The stream events - <see cref="SnapshotReceived"/>,
 /// <see cref="OnOutputReceived"/>, <see cref="StreamResize"/>, <see cref="OnExit"/> and
-/// <see cref="Faulted"/> - are raised on the owning <see cref="MuxClient"/>'s reader thread, one at a
-/// time and strictly in frame order. <see cref="Disconnected"/> is NOT confined to it: it fires on
+/// <see cref="Faulted"/> - and the session events <see cref="SessionChanged"/> and
+/// <see cref="KilledElsewhere"/> are raised on the owning <see cref="MuxClient"/>'s reader thread, one
+/// at a time and strictly in frame order. <see cref="Disconnected"/> is NOT confined to it: it fires on
 /// whichever thread notices the connection ending first - the reader thread (end of stream, a
 /// protocol error, a throwing handler), the sender thread (a failed write), or the thread that calls
 /// <see cref="MuxClient.Dispose"/> - and
@@ -48,14 +49,52 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     private int _recordingGeneration; // bumped by every Start/Stop; guarded by _recordingGate
     private int _flightRecording;
     private int _disposed;
+    private SharingState _sharing = SharingState.Unknown; // replaced whole, so a reader never sees a mix of two updates
+    private int _killedElsewhere;
 
-    internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments)
+    internal MuxClientSession(MuxClient client, Guid sessionId, string shellCommand, string? shellArguments, MuxAttachMode attachMode = MuxAttachMode.Shared)
     {
         _client = client;
         Id = sessionId;
         ShellCommand = shellCommand;
         ShellArguments = shellArguments;
+        AttachMode = attachMode;
     }
+
+    /// <summary>The mode <see cref="AttachAsync(int, MuxPresentation, CancellationToken)"/> uses (chosen by whoever opened the session).</summary>
+    public MuxAttachMode AttachMode { get; }
+
+    /// <summary>True when the connection negotiated v2: <see cref="SessionChanged"/> and <see cref="KilledElsewhere"/> can fire.</summary>
+    public bool SupportsSessionEvents => _client.ProtocolVersion >= MuxProtocol.SessionEventsVersion;
+
+    /// <summary>
+    /// Clients attached to the session (this one included), from the last sessionChanged; null = unknown.
+    /// Always null on v1, where nothing would keep a cached count current: use the value
+    /// <see cref="RefreshSharingAsync"/> returns instead.
+    /// </summary>
+    public int? AttachedClients
+    {
+        get
+        {
+            int n = Volatile.Read(ref _sharing).AttachedClients;
+            return n < 0 ? null : n;
+        }
+    }
+
+    /// <summary>From the last sessionChanged (v2) or <see cref="RefreshSharingAsync"/> (v1); null = unknown.</summary>
+    public string? Title => Volatile.Read(ref _sharing).Title;
+
+    /// <summary>From the last sessionChanged (v2) or <see cref="RefreshSharingAsync"/> (v1); null = unknown.</summary>
+    public string? Cwd => Volatile.Read(ref _sharing).Cwd;
+
+    /// <summary>Set, before <see cref="OnExit"/> fires, when another client killed the session (v2).</summary>
+    public bool WasKilledElsewhere => Volatile.Read(ref _killedElsewhere) != 0;
+
+    /// <summary>Delivery thread: <see cref="AttachedClients"/>, <see cref="Title"/> or <see cref="Cwd"/> changed.</summary>
+    public event Action? SessionChanged;
+
+    /// <summary>Delivery thread, before <see cref="OnExit"/>: another client killed the session; the argument is its client kind.</summary>
+    public event Action<string>? KilledElsewhere;
 
     public Guid Id { get; }
     public string ShellCommand { get; }
@@ -99,13 +138,42 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// <summary>True once <see cref="Faulted"/> has been raised.</summary>
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
 
-    /// <summary>Returns the snapshot's <c>StreamSeq</c>. <see cref="SnapshotReceived"/> has fired by then.</summary>
-    public Task<long> AttachAsync(int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken = default)
+    /// <summary>Attaches with <see cref="AttachMode"/>. Returns the snapshot's <c>StreamSeq</c>; <see cref="SnapshotReceived"/> has fired by then.</summary>
+    public Task<long> AttachAsync(int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken = default) =>
+        AttachAsync(AttachMode, maxScrollbackRows, presentation, cancellationToken);
+
+    /// <summary>
+    /// Attaches in <paramref name="mode"/>. <see cref="MuxAttachMode.IfUnattached"/> throws
+    /// <see cref="MuxProtocolException"/> with <see cref="MuxErrorCodes.SessionAttached"/> when another
+    /// interactive client holds the session. Any non-shared mode against a v1 daemon throws
+    /// <see cref="MuxErrorCodes.VersionMismatch"/> without sending anything.
+    /// </summary>
+    public Task<long> AttachAsync(MuxAttachMode mode, int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(presentation);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         _presentation = presentation;
-        return _client.AttachAsync(this, maxScrollbackRows, presentation, cancellationToken);
+        return _client.AttachAsync(this, mode, maxScrollbackRows, presentation, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads the attached count from <c>listSessions</c>, which a v1 daemon answers too: the close
+    /// confirmation's source of truth. Returns null when the session is no longer listed. On v1 it
+    /// also refreshes <see cref="Title"/> and <see cref="Cwd"/>, never <see cref="AttachedClients"/>
+    /// (which stays unknown there). On v2 it changes nothing: this reply completes on the thread pool
+    /// and could overwrite a newer sessionChanged the delivery thread has already applied.
+    /// </summary>
+    public async Task<int?> RefreshSharingAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<SessionSummary> sessions = await _client.ListSessionsAsync(cancellationToken).ConfigureAwait(false);
+        SessionSummary? me = sessions.FirstOrDefault(s => s.SessionId == Id);
+        if (me is null) return null;
+        if (!SupportsSessionEvents && Volatile.Read(ref _disposed) == 0)
+        {
+            Volatile.Write(ref _sharing, SharingState.Unknown with { Title = me.Title, Cwd = me.Cwd });
+        }
+
+        return me.AttachedClients;
     }
 
     public void SendInput(string input)
@@ -256,7 +324,18 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     public void Kill() => _client.PostRequest(MuxMethods.Kill, new SessionIdParams { SessionId = Id }, MuxJsonContext.Default.SessionIdParams);
 
-    /// <summary>Detaches. The session keeps running in the mux; use <see cref="Kill"/> to end it.</summary>
+    /// <summary>
+    /// Detaches, leaving the session running. <paramref name="userDetached"/> tells a v2 daemon the user
+    /// chose to, so startup adoption leaves it alone (spec §7.7). A later Dispose is a no-op.
+    /// </summary>
+    public void Detach(bool userDetached)
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        Interlocked.Exchange(ref _expectedOffset, -1);
+        _client.Detach(this, userDetached);
+    }
+
+    /// <summary>Detaches (an ordinary detach). The session keeps running in the mux; use <see cref="Kill"/> to end it.</summary>
     /// <remarks>
     /// Dispose does <b>not</b> wait for a delivery already in progress on the client's reader thread,
     /// so one <see cref="SnapshotReceived"/>, <see cref="OnOutputReceived"/> or
@@ -267,12 +346,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     /// harmless late event. What Dispose does guarantee: no new delivery starts after it returns, and
     /// the session never reports itself attached again.
     /// </remarks>
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
-        Interlocked.Exchange(ref _expectedOffset, -1);
-        _client.Detach(this);
-    }
+    public void Dispose() => Detach(userDetached: false);
 
     /// <summary>Test seam: how many DeliverSnapshot calls have returned (by any path).</summary>
     internal int DeliveryFinishedCountForTest => Volatile.Read(ref _deliveryFinishedCount);
@@ -407,6 +481,34 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         if (Interlocked.Exchange(ref _exitNotified, 1) == 0) OnExit?.Invoke(exitCode);
     }
 
+    /// <remarks>
+    /// These two are advisory, so each handler is isolated and its failure only logged: one that threw
+    /// into the reader thread would end the connection for every session, and for a kill it would
+    /// also swallow the <c>exited</c> that follows, the one event the pane cannot do without.
+    /// </remarks>
+    internal void DeliverSessionChanged(SessionChangedNotification changed)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.Title, changed.Cwd));
+        if (SessionChanged is not { } handlers) return;
+        foreach (Action handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(); }
+            catch (Exception ex) { _client.SafeLog($"[MuxClient] a SessionChanged handler of session {Id} threw: {ex}"); }
+        }
+    }
+
+    internal void DeliverKilled(string byClientKind)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        if (Interlocked.Exchange(ref _killedElsewhere, 1) != 0 || KilledElsewhere is not { } handlers) return;
+        foreach (Action<string> handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(byClientKind); }
+            catch (Exception ex) { _client.SafeLog($"[MuxClient] a KilledElsewhere handler of session {Id} threw: {ex}"); }
+        }
+    }
+
     internal void DeliverFaulted(string message)
     {
         // Detach locally: the stream has explicitly ended, so any frame still in flight for this
@@ -432,6 +534,12 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         }
 
         if (failures is not null) throw new AggregateException($"Disconnected handler(s) of session {Id} threw.", failures);
+    }
+
+    /// <summary>What sessionChanged reports, as one value. <see cref="AttachedClients"/> -1 = unknown.</summary>
+    private sealed record SharingState(int AttachedClients, string? Title, string? Cwd)
+    {
+        public static readonly SharingState Unknown = new(-1, null, null);
     }
 
     private void RefreshSessionInfoIfStale()

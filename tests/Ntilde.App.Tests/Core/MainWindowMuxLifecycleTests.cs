@@ -41,9 +41,12 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         _mux.Dispose();
     }
 
-    private MainWindow CreateWindow()
+    private MainWindow CreateWindow(TimeSpan? disposeFlush = null)
     {
-        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null)
+        {
+            DisposeFlushTimeout = disposeFlush ?? TimeSpan.FromSeconds(1),
+        };
         var factory = new MuxTerminalSessionFactory(_host, new RecordingSessionFactory(new FakeTerminalSession()), null);
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
@@ -98,6 +101,44 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => task.IsCompleted, "the close finished");
         Assert.Null(_host!.CurrentClient); // the window's teardown really did close the connection
         PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the session was killed");
+    }
+
+    /// <summary>
+    /// PR #489 follow-up: with no ping flush at all, the kill for the last closed tab must still land,
+    /// because the host now waits for the kill's own reply. (The deterministic RED for this change is
+    /// MuxConnectionHostTests.Dispose_waits_for_a_tracked_kill; before the fix this test fails only
+    /// when the fire-and-forget kill is still in the client's outbound queue at close, which is usual
+    /// but not guaranteed.)
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_last_tab_with_no_ping_flush_still_kills()
+    {
+        MainWindow window = CreateWindow(disposeFlush: TimeSpan.Zero);
+        TerminalPane pane = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)pane.Session!).Id;
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<bool>)close.Invoke(window, [pane, true])!;
+
+        PumpUntil(() => task.IsCompleted, "the close finished");
+        Assert.DoesNotContain(id, _mux.Server.GetSessionIds());
+    }
+
+    [AvaloniaFact]
+    public void A_close_of_an_exited_mux_pane_sends_no_kill()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var mux = (MuxClientSession)pane.Session!;
+        // Non-zero: under the default "Graceful" ShellExitPolicy the pane stays (exit 0 would close
+        // the last tab, and with it the window).
+        _mux.Fake(mux.Id).Exit(3);
+        PumpUntil(() => !mux.IsProcessRunning, "the pane saw the exit");
+
+        typeof(MainWindow).GetMethod("KillMuxSessionOnClose", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(window, [mux, PaneDisposition.EndSession]);
+
+        Assert.Equal(0, _host!.PendingKillCountForTest);
     }
 
     /// <summary>
@@ -322,6 +363,27 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.Equal("[3 previous sessions were lost — started new shells]", message);
     }
 
+    /// <summary>Task 22: the orphaned-daemon notice is shown at most once per window launch, however many panes fall back.</summary>
+    [AvaloniaFact]
+    public void The_orphaned_daemon_notice_is_shown_once_per_window()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var handler = typeof(MainWindow).GetMethod("OnPanePersistenceNotice", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        Dispatcher.UIThread.RunJobs();
+
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal((true, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner), Toast(window));
+
+        // A later pane (after the connection cooldown, say) raises it again: only the other notice shows.
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal((true, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Toast(window));
+    }
+
     [AvaloniaFact]
     public void Refresh_is_a_no_op_for_a_non_mux_session()
     {
@@ -333,5 +395,78 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.True(forFake.IsCompletedSuccessfully);
         Assert.True(forNull.IsCompletedSuccessfully);
         Assert.Empty(fake.SentInput);
+    }
+
+    [AvaloniaFact]
+    public void Detached_shells_are_announced_once_not_adopted()
+    {
+        Guid detached = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+            pane.Session.Detach(userDetached: true);
+            await TestWait.UntilAsync(() => _mux.Mux(id).DetachedByUser, "the daemon recorded the user detach");
+            return id;
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+        MainWindow window = CreateWindow();
+
+        PumpUntil(() => Toast(window).Message == "1 detached shell is running — Attach to session… to reopen it", "the detached shell was announced");
+        Assert.DoesNotContain(AllPanes(window), p => p.MuxSessionIdToRestore == detached);
+        Assert.DoesNotContain(AllPanes(window), p => p.Session is MuxClientSession m && m.Id == detached);
+        Assert.Equal(0, _mux.Mux(detached).AttachedClients);
+    }
+
+    /// <summary>
+    /// Review fix: the adoption toast and the detached-shells reminder are raised in the same startup
+    /// job. Both go through the notice coalescer, so one toast carries both lines - neither replaces the other.
+    /// </summary>
+    [AvaloniaFact]
+    public void Startup_adoption_and_the_detached_reminder_share_one_toast()
+    {
+        Guid orphan;
+        using (MuxClient c = Task.Run(() => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, default), TestContext.Current.CancellationToken).GetAwaiter().GetResult())
+            orphan = Task.Run(() => MuxTestHost.SpawnAsync(c), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        PumpUntil(() => _mux.Mux(orphan).AttachedClients == 0, "the spawning client is gone");
+        Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+            pane.Session.Detach(userDetached: true);
+            await TestWait.UntilAsync(() => _mux.Mux(id).DetachedByUser, "the daemon recorded the user detach");
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+        MainWindow window = CreateWindow();
+
+        PumpUntil(() => AllPanes(window).Any(p => p.MuxSessionIdToRestore == orphan), "the orphan was adopted");
+        PumpUntil(() => Toast(window).Message?.Contains("detached shell is running", StringComparison.Ordinal) == true, "the reminder was shown");
+        string[] lines = Toast(window).Message!.Split('\n');
+        Assert.Contains("Reattached 1 detached session", lines);
+        Assert.Contains("1 detached shell is running — Attach to session… to reopen it", lines);
+    }
+
+    [AvaloniaFact]
+    public void The_detached_shells_reminder_is_shown_once_per_launch()
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs();
+
+        window.AnnounceDetachedShellsOnce(2);
+        window.AnnounceDetachedShellsOnce(3);
+        Dispatcher.UIThread.RunJobs();
+
+        // A second announcement would coalesce into the same line as "(2 panes)", or name 3.
+        Assert.Equal("2 detached shells are running — Attach to session… to reopen them", Toast(window).Message);
+    }
+
+    [AvaloniaFact]
+    public void Several_attached_elsewhere_notices_coalesce_into_a_plural_line()
+    {
+        Assert.Equal("[3 previous shells are open in another window — started new shells]",
+            MainWindow.BuildPersistenceNoticeMessage(TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner, 3));
+        Assert.Equal(TerminalPane.MuxAttachedElsewhereBanner,
+            MainWindow.BuildPersistenceNoticeMessage(TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner, 1));
     }
 }

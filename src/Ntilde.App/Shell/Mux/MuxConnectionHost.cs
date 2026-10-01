@@ -159,11 +159,33 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>How long <see cref="Dispose"/> waits for the daemon to work through what is already queued.</summary>
     public TimeSpan DisposeFlushTimeout { get; init; } = TimeSpan.FromSeconds(1);
 
+    private readonly List<Task> _pendingKills = new(); // guarded by _gate
+
+    /// <summary>How long <see cref="Dispose"/> waits for the replies of tracked kills (closing the last tab).</summary>
+    public TimeSpan KillFlushTimeout { get; init; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// A kill a user close sent (its reply means it landed). <see cref="Dispose"/> waits for these
+    /// first, so the last tab's kill cannot be dropped by the teardown right behind it (PR #489).
+    /// </summary>
+    public void TrackPendingKill(Task kill)
+    {
+        ArgumentNullException.ThrowIfNull(kill);
+        lock (_gate)
+        {
+            _pendingKills.RemoveAll(t => t.IsCompleted);
+            _pendingKills.Add(kill);
+        }
+    }
+
+    internal int PendingKillCountForTest { get { lock (_gate) return _pendingKills.Count(t => !t.IsCompleted); } }
+
     /// <summary>
     /// Closes the connection: the daemon detaches every session on it and keeps them running.
     /// First a bounded flush: closing drops frames still queued, and a pane closed just before the
-    /// window (the last tab) has queued a kill. The server reads frames in order, so a ping reply
-    /// means every earlier frame was handled. Waited inside Task.Run: no UI sync context captured.
+    /// window (the last tab) has queued a kill. One wait, not two: a tracked kill's own reply (or its
+    /// timeout) already tells us whether earlier frames landed, so the ping flush below runs only
+    /// when there was no kill to wait on. Waited inside Task.Run: no UI sync context captured.
     /// </summary>
     public void Dispose()
     {
@@ -182,7 +204,30 @@ internal sealed class MuxConnectionHost : IDisposable
         _disposed.Dispose();
 
         if (client is null) return;
-        if (client.IsConnected)
+
+        Task[] kills;
+        lock (_gate) kills = _pendingKills.Where(t => !t.IsCompleted).ToArray();
+        if (kills.Length > 0 && client.IsConnected)
+        {
+            try
+            {
+                // Inside Task.Run like the ping below: no UI sync context is captured.
+                if (!Task.Run(() => Task.WhenAll(kills), CancellationToken.None).Wait(KillFlushTimeout, CancellationToken.None))
+                {
+                    _log?.Invoke($"[Mux] {kills.Length} kill(s) not confirmed within {KillFlushTimeout.TotalSeconds:0.#} s; closing anyway");
+                }
+            }
+            catch (AggregateException)
+            {
+                // A kill that failed was logged by whoever sent it; closing proceeds either way.
+            }
+        }
+
+        // One bounded wait, not two: when there were kills to wait on, a completed kill's reply
+        // already proves every earlier frame reached the daemon, and a timed-out wait already means
+        // the daemon is unresponsive - either way the ping flush below would only add its own wait
+        // on top for nothing. The ping flush only runs when there was no kill to wait on at all.
+        if (kills.Length == 0 && client.IsConnected)
         {
             try
             {

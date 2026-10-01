@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json.Serialization.Metadata;
@@ -23,20 +24,31 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     private readonly Thread _senderThread;
     private readonly object _gate = new();
     private readonly Queue<MuxOutboundFrame> _queue = new();
-    private readonly HashSet<Guid> _attached = new(); // reader thread only
 
     /// <summary>
-    /// Reader thread only: per session, the request id of the newest attach this connection posted
-    /// to the session. A detach naming an older attach (<see cref="DetachParams.AttachRequestId"/>)
-    /// arrives after that newer attach in the session's control queue and must not undo it.
+    /// Reader thread only: the close-time cleanup list - every session this connection has posted an
+    /// attach to and not plainly detached from. A superset of its subscriptions (a refused attach, or
+    /// one undone by a detach naming it, stays listed), which is harmless: a detach for a sink that is
+    /// not subscribed is a no-op on the session. It is kept on the reader thread rather than learned
+    /// from <see cref="OnSubscriptionState"/> because an attach can succeed on the parse thread just
+    /// as this connection closes; the detach posted from here queues behind it and so still undoes it.
+    /// Nothing else is decided from it: supersession and read-only state belong to the parse thread.
     /// </summary>
-    private readonly Dictionary<Guid, long> _latestAttach = new();
+    private readonly HashSet<Guid> _attached = new();
+
+    /// <summary>
+    /// Sessions this connection is subscribed to read-only. Written only by those sessions' parse
+    /// threads (<see cref="OnSubscriptionState"/>), each for its own key; read by the reader thread.
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, byte> _readOnlySessions = new();
+    private readonly HashSet<(Guid Session, string What)> _readOnlyDropLogged = new(); // reader thread only
     private long _queuedBytes;       // stream frames queued + in flight (everything but snapshots)
     private long _queuedSnapshotBytes; // snapshot frames queued + in flight
     private bool _closed;            // stream closed or closing now; nothing more is accepted
     private bool _closeAfterFlush;   // the queue ends with a final frame; the sender closes after it
     private int _version;
     private string? _closeReason;
+    private string _clientKind = string.Empty;
 
     /// <summary>
     /// The <c>shutdown</c> reply (reader writes, sender reads). The sender raises
@@ -65,6 +77,17 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     public Guid ConnectionId { get; } = Guid.NewGuid();
     public string? CloseReason => Volatile.Read(ref _closeReason);
     public int ProtocolVersion => Volatile.Read(ref _version);
+    public string ClientKind => Volatile.Read(ref _clientKind);
+
+    /// <summary>A v2 peer understands sessionChanged and killed (spec §2); a v1 peer never sees them.</summary>
+    public bool WantsSessionEvents => ProtocolVersion >= MuxProtocol.SessionEventsVersion;
+
+    /// <summary>Parse thread of <paramref name="sessionId"/>. The only writer of this connection's read-only state.</summary>
+    public void OnSubscriptionState(Guid sessionId, bool subscribed, bool readOnly)
+    {
+        if (subscribed && readOnly) _readOnlySessions.TryAdd(sessionId, 0);
+        else _readOnlySessions.TryRemove(sessionId, out _);
+    }
 
     private bool IsClosing
     {
@@ -372,6 +395,12 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "Input frame shorter than its session id.");
                 }
 
+                if (_readOnlySessions.ContainsKey(id))
+                {
+                    NoteReadOnlyDrop(id, "input");
+                    break;
+                }
+
                 // One Input frame is one whole SendInput string, so decoding it alone is lossless.
                 if (_server.TryGetSession(id, out HeadlessTerminalSession? session)) session.SendInput(Encoding.UTF8.GetString(utf8));
                 break;
@@ -391,6 +420,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             return;
         }
 
+        Volatile.Write(ref _clientKind, Clip(p.ClientKind ?? string.Empty));
         Volatile.Write(ref _version, chosen);
         Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering }, MuxJsonContext.Default.WelcomeResult);
     }
@@ -420,9 +450,16 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.Detach:
                     {
                         DetachParams p = Params(request, MuxJsonContext.Default.DetachParams);
-                        bool superseded = p.AttachRequestId is long undone
-                            && _latestAttach.TryGetValue(p.SessionId, out long latest) && latest > undone;
-                        if (!superseded && _attached.Remove(p.SessionId) && _server.TryGetSession(p.SessionId, out HeadlessTerminalSession? s)) s.PostDetach(this);
+
+                        // Whether a detach naming an older attach is stale is decided on the parse
+                        // thread, the only place that knows which attaches took effect. Only a plain
+                        // detach is sure to end the subscription, so only it drops the cleanup entry.
+                        if (_attached.Contains(p.SessionId) && _server.TryGetSession(p.SessionId, out HeadlessTerminalSession? s))
+                        {
+                            s.PostDetach(this, p.UserDetached == true, p.AttachRequestId);
+                        }
+
+                        if (p.AttachRequestId is null) _attached.Remove(p.SessionId);
                         ReplyEmpty(request);
                         break;
                     }
@@ -431,7 +468,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     {
                         SessionIdParams p = Params(request, MuxJsonContext.Default.SessionIdParams);
                         _attached.Remove(p.SessionId);
-                        _server.Kill(p.SessionId);
+                        _server.Kill(p.SessionId, this, ClientKind);
                         ReplyEmpty(request);
                         break;
                     }
@@ -439,6 +476,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.Resize:
                     {
                         ResizeParams p = Params(request, MuxJsonContext.Default.ResizeParams);
+                        if (_readOnlySessions.ContainsKey(p.SessionId))
+                        {
+                            NoteReadOnlyDrop(p.SessionId, "resize");
+                            ReplyEmpty(request);
+                            break;
+                        }
+
                         _server.RequireGeometry(p.Cols, p.Rows);
                         if (p.Presentation is { } presentation) _server.RequireGeometry(presentation.Cols, presentation.Rows);
                         Session(p.SessionId).PostResize(p.Cols, p.Rows, p.Presentation);
@@ -455,6 +499,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                             ExitCode = s.ExitCode,
                             HasActiveChildProcesses = !s.IsExited && s.Inner.HasActiveChildProcesses,
                             Pid = (s.Inner as RustPtySession)?.Pid,
+                            Title = s.Title,
+                            Cwd = s.Cwd,
+                            AttachedClients = s.AttachedClients,
                         }, MuxJsonContext.Default.SessionInfoResult);
                         break;
                     }
@@ -521,18 +568,30 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         AttachParams p = Params(request, MuxJsonContext.Default.AttachParams);
+        if (!MuxAttachModes.TryParse(p.Mode, out MuxAttachMode mode))
+        {
+            throw new MuxRequestException(MuxErrorCodes.ProtocolError, $"Unknown attach mode '{Clip(p.Mode ?? string.Empty)}'.");
+        }
+
         _server.RequireGeometry(p.Presentation.Cols, p.Presentation.Rows);
         HeadlessTerminalSession session = Session(p.SessionId);
         int rows = Math.Clamp(p.MaxScrollbackRows, 0, _server.Options.MaxAttachScrollbackRows);
         _attached.Add(p.SessionId);
 
-        // Only an attach that actually reaches the session supersedes older ones: one refused above
-        // (geometry, unknown session) never touched the subscription, so a detach for an older
-        // attach must still be honoured.
-        _latestAttach[p.SessionId] = request.Id;
+        // The reply - the Snapshot frame, or an error - comes from the parse thread, which also reports
+        // the resulting subscription (OnSubscriptionState). Read-only enforcement follows that report,
+        // never this request: a refused or failed attach leaves the connection as it was. Not a
+        // security boundary: any same-user process can open another, interactive connection.
+        session.PostAttach(this, request.Id, rows, p.Presentation, _server.Options.MaxSnapshotBytes, mode);
+    }
 
-        // The reply - the Snapshot frame, or an error - comes from the parse thread.
-        session.PostAttach(this, request.Id, rows, p.Presentation, _server.Options.MaxSnapshotBytes);
+    /// <summary>Reader thread. Once per (session, kind) per connection lifetime, so a client typing into a read-only view does not flood the log.</summary>
+    private void NoteReadOnlyDrop(Guid sessionId, string what)
+    {
+        if (_readOnlyDropLogged.Add((sessionId, what)))
+        {
+            SafeLog($"[MuxServer] connection {ConnectionId} ({ClientKind}) is read-only on session {sessionId}: dropping its {what} (logged once)");
+        }
     }
 
     private static T Params<T>(MuxRequest request, JsonTypeInfo<T> typeInfo) where T : class =>

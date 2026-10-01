@@ -45,4 +45,15 @@ public sealed class ShortcutCatalogTests
         Assert.Equal("Ctrl+Shift+PageUp", prev.DefaultBinding);
         Assert.Equal("Ctrl+Shift+PageDown", next.DefaultBinding);
     }
+
+    [Fact]
+    public void The_mux_entries_exist_with_no_default_chord()
+    {
+        ShortcutCatalogEntry attach = Assert.Single(ShortcutCatalog.GetEntries(), e => e.CommandId == "attach_session");
+        ShortcutCatalogEntry detach = Assert.Single(ShortcutCatalog.GetEntries(), e => e.CommandId == "detach_pane");
+
+        Assert.Equal(("Session: Attach to Session…", "", ShortcutScope.App, true), (attach.Title, attach.DefaultBinding, attach.Scope, attach.RequiresSessionPersistence));
+        Assert.Equal(("Pane: Detach", "", ShortcutScope.Pane, true), (detach.Title, detach.DefaultBinding, detach.Scope, detach.RequiresSessionPersistence));
+        Assert.All(ShortcutCatalog.GetDefinitions().Where(d => d.CommandId is "attach_session" or "detach_pane"), d => Assert.True(d.IsUnbound));
+    }
 }

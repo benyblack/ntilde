@@ -37,6 +37,9 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
     /// <summary>When set, SendInput blocks until it is signalled: a child that has stopped reading stdin.</summary>
     public ManualResetEventSlim? SendInputGate { get; set; }
 
+    /// <summary>Set on entry to every SendInput, before it waits on <see cref="SendInputGate"/>: the writer is inside a write.</summary>
+    public ManualResetEventSlim SendInputEntered { get; } = new(false);
+
     /// <summary>Makes Resize fail the way a native transport can (the PTY handle went bad).</summary>
     public bool ThrowOnResize { get; set; }
 
@@ -95,6 +98,7 @@ internal sealed class ScriptedTerminalSession : ITerminalSession, ITerminalByteO
 
     public void SendInput(string input)
     {
+        SendInputEntered.Set();
         if (ThrowOnSendInput) throw new InvalidOperationException("scripted SendInput failure");
         SendInputGate?.Wait();
         SentInput.Enqueue(input);

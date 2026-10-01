@@ -70,7 +70,7 @@ Concretely, from the `.csproj` graph:
 | `Ntilde.VtContract` | (leaf) | The machine-readable VT capability catalogue (`vt-capabilities.json`) and its strict schema validation |
 | `Ntilde.AgentHost.Contracts` | (leaf) | Wire protocol between the app's agent host and any external client: frames, discovery, source-generated JSON context |
 | `Ntilde.Mux.Contracts` | (leaf) | Multiplexer wire protocol: framing, frame kinds, binary payload codecs, source-generated JSON DTOs, error codes, version negotiation |
-| `Ntilde.Mux` | Pty, VT, Replay, Mux.Contracts | Multiplexer core: headless authoritative sessions (one parse thread each), server, client + `MuxClientSession : ITerminalSession`, in-memory and local (named pipe / Unix socket) transports, the daemon host (`MuxDaemonHost`). **Must not reference Platform, App, Avalonia or SkiaSharp** |
+| `Ntilde.Mux` | Pty, VT, Replay, Mux.Contracts | Multiplexer core: headless authoritative sessions (one parse thread each), server, client + `MuxClientSession : ITerminalSession`, in-memory and local (named pipe / Unix socket) transports, the daemon host (`MuxDaemonHost`), and the `ntilde mux attach` text client (`TextClient/`, section 8.1). **Must not reference Platform, App, Avalonia or SkiaSharp** |
 | `Ntilde.App` | Platform, VT, Rendering, Pty, Replay, CommandAssist, Backup, AgentHost.Contracts, Mux, Mux.Contracts | Avalonia UI shell: windows, controls, command palette, settings, themes, command-assist views, Agent Output panel. Also the `mux serve` daemon mode and the GUI's mux connection (`Shell/Mux/`, section 8.1) |
 | `Ntilde.McpServer` | AgentHost.Contracts, Backup, VtContract | stdio MCP server: repo/dev-companion tools, config validators, and the opt-in observe/act channel into live sessions. **Must not reference App, VT, Pty or Rendering** |
 | `Ntilde.Cli` | App | Headless CLI shim (`vt-report`, `--replay`, askpass, `backup` verbs) |
@@ -210,11 +210,15 @@ before Avalonia, so the daemon never initialises a UI. The edge is App → `Ntil
 ```
  GUI (Ntilde.exe)                          daemon (Ntilde.exe mux serve)
  ├─ MuxConnectionHost ── one MuxClient ──► NamedPipe / UDS ─► MuxDaemonHost
- │    (warm at start, reconnect on demand)                     ├─ MuxServer (Phase 1)
+ │    (warm at start, reconnect on demand)                     ├─ MuxServer (Phase 1/2)
  ├─ MuxTerminalSessionFactory                                  │   └─ HeadlessTerminalSession × N
  │    local → spawn/open MuxClientSession                      │        └─ RustPtySession → shell
  │    SSH   → DefaultTerminalSessionFactory                    ├─ idle-exit + reaper timer
  └─ TerminalPane ← MuxClientSession events                     └─ mux/mux-endpoint.json
+                                                                     ▲
+ ntilde mux attach <id> (Ntilde.exe mux attach)                      │
+ └─ TextClientSession ── its own MuxClient ──────────────────────────┘
+      (mode: shared, or readOnly with --read-only; renders from its own buffer, spec §6)
 ```
 
 - **Discovery.** `MuxDiscovery` (Mux.Contracts) resolves `<root>/mux/mux-endpoint.json` under
@@ -248,6 +252,81 @@ before Avalonia, so the daemon never initialises a UI. The edge is App → `Ntil
     socket itself is `0600`. A stale socket is probe-connected before it is unlinked; a live one
     means refuse.
   - Never TCP.
+
+#### Protocol v2
+
+Negotiated range 1..2 (`MuxProtocol.MinSupportedVersion` / `MaxSupportedVersion`);
+`MuxProtocol.SessionEventsVersion = 2` is the one feature gate every v2 behaviour checks. Every
+change is additive, and the source-generated JSON context (`WhenWritingNull` / `WhenWritingDefault`)
+keeps a v1 peer's wire shape exactly the v1 shape.
+
+| Item | v2 addition |
+|---|---|
+| `AttachParams.Mode` | `string?`: null/absent = `"shared"`, or `"ifUnattached"`, `"readOnly"` (`MuxAttachMode` enum, `MuxAttachModes.ToWire`/`TryParse`) |
+| `SessionSummary.Cwd` | the last OSC 7 directory the mux parser saw; null on a v1 daemon |
+| `SessionSummary.DetachedByUser` | true while the session's last interactive detach was deliberate; serialized only when true, so a v1 peer sees exactly the v1 shape |
+| `SessionSummary.InteractiveClients` | `AttachedClients` without read-only observers; serialized only when non-zero. Startup adoption reads it on v2, so a crash orphan someone peeks at with `--read-only` is still adopted; on v1 it falls back to `AttachedClients` |
+| `DetachParams.UserDetached` | `bool?`: true on a deliberate detach ("Pane: Detach", the shared-close prompt's Detach, the text client's `Ctrl+\ d` chord); absent/null is an ordinary detach |
+| Notification `sessionChanged` | attached-count, title or cwd changed; coalesced to at most one per session per 100 ms (§4 below); sent to v2 clients only |
+| Notification `killed` | sent to every v2 subscriber except the killer, before that session's `exited` |
+| Error `session_attached` | `MuxErrorCodes.SessionAttached`: an `IfUnattached` attach refused because another interactive client is already attached |
+
+Fallback matrix (spec §2.1):
+
+| Client ↔ server | Negotiated | Behaviour |
+|---|---|---|
+| v2 ↔ v2 | 2 | Everything above |
+| v2 GUI ↔ v1 daemon | 1 | Spawn, attach (shared), detach and kill work as in Phase 2. `UserDetached` is never sent and the daemon has no `DetachedByUser`, so a deliberately detached shell is re-adopted as a background tab at the next launch until the daemon is replaced. The factory keeps its client-side `AttachedClients == 0` pre-check, and refuses `IfUnattached`/`ReadOnly` on the client before sending anything (`version_mismatch`), rather than let a v1 server silently share |
+| v2 text client ↔ v1 daemon | 1 | Shared attach works; `--read-only` exits 2 ("too old for --read-only") |
+| v1 client ↔ v2 daemon | 1 | Unchanged: the server never sends `sessionChanged` or `killed` to a client that didn't negotiate v2 |
+
+#### Attach modes
+
+`IfUnattached` is decided inside the attach control item, on the session's own parse thread
+(`HeadlessTerminalSession.ExecuteAttach`) — the same thread every attach to that session runs on,
+serially, between `Process()` calls. Two attaches racing in from different connections still
+resolve to exactly one winner; there is no window between checking and subscribing. Read-only
+observers (the text client's `--read-only`) never count against `IfUnattached`, so a GUI can
+always reclaim its own shell on restart even while something is peeking at it; `AttachedClients`
+still counts everyone. A `ReadOnly` attach changes nothing about the session: no resize, no
+presentation applied, and its snapshot is taken at the session's current size. The parse thread is
+also the sole writer of each connection's read-only status, reported on every attach/detach exit
+path through `IMuxFrameSink.OnSubscriptionState(sessionId, subscribed, readOnly)`; the connection's
+reader thread only reads that state, to drop `Input` and `resize` requests from a read-only sink
+(the resize still gets an empty reply, so the client never sees an error). None of this is a
+security boundary: any same-user process can open a second, interactive connection.
+
+#### The text client (`Ntilde.Mux.TextClient`)
+
+`ntilde mux attach <id|prefix>` (spec §6) renders a session into whatever terminal it was run
+from, entirely from its own copy of the buffer — it never relays the raw byte stream:
+
+- `TextClientModel` holds its own `TerminalBuffer` and `AnsiParser`, fed by the same
+  `MuxClientSession` output stream a GUI pane would use.
+- `TextClientRenderer.Render(consoleCols, consoleRows)` does a dirty-row repaint over
+  `CaptureRenderSnapshot`, composing cursor moves, SGR and cell text itself; `AnsiCellWriter`
+  (`Ntilde.VT.Export`, deliberately separate from `TerminalExporter.ExportToAnsi`) turns snapshot
+  rows into positioned ANSI text with no I/O of its own.
+- A dedicated render thread and a dedicated input thread, besides the client's own delivery
+  (parse) thread — no thread-pool work on the output path.
+- `IConsoleSurface` abstracts the real terminal — `WindowsConsoleSurface` and `UnixConsoleSurface`
+  (tests use a fake) — and every exit path (detach, session exit, kill, disconnect, attach
+  failure, a console write that throws, a signal) runs `RestoreMode()`.
+- **It never relays device queries.** Because it renders from its own buffer, a DA, CPR or
+  XTGETTCAP request the shell emits is consumed by the model's parser and never reaches the
+  terminal the client is drawing on — the mux, not that outer terminal, answers it.
+- The outer alternate screen is entered once on attach (`TextClientRenderer.EnterSequence`) and
+  left once on every exit (`LeaveSequence`); an inner screen switch (main ↔ alt) repaints inside
+  that one outer alternate screen rather than toggling it again.
+- Getting a console on Windows: `CliConsoleBindings.PrepareInteractive` (called from `Program.cs`
+  before `mux attach` runs) attaches to the parent console if there is one, else allocates a new
+  one, before the text client opens `CONIN$`/`CONOUT$` itself. A GUI-subsystem process attached to
+  a caller's console can still lose keystrokes to a prompt that does not wait for it (PowerShell);
+  the user's review (decision 1) accepted the `cmd /c ntilde mux attach <id>` workaround for this
+  phase, documented in `mux attach --help` and printed as a one-line stderr hint before raw mode
+  when attached to a parent console. A console-subsystem launcher (`ntilde.com`, the devenv.com /
+  code.cmd pattern) is deferred to Phase 4, alongside the remote-daemon work that needs the same
+  second-binary packaging infrastructure.
 
 ---
 
@@ -338,7 +417,7 @@ Adding a new layering invariant means adding a new fact. Reverting one of these 
 | `Ntilde.Platform.Tests` | Platform utilities + SSH; includes Docker-gated E2E (skipped without Docker) |
 | `Ntilde.App.Tests` | App-level integration — Avalonia-headless tests, replay regressions, golden PNG comparisons, command-assist |
 | `Ntilde.Architecture.Tests` | Layering and namespace rules (Section 12) |
-| `Ntilde.Mux.Tests` | Multiplexer contracts, transports, headless sessions, server/client, daemon host and scenario suites (scripted sessions; the real-daemon PtySmoke test lives in App.Tests) |
+| `Ntilde.Mux.Tests` | Multiplexer contracts, transports, headless sessions, server/client, attach modes, `sessionChanged`/`killed` protocol v2 events, the text client (`TextClient/`), daemon host and scenario suites (scripted sessions; the real-daemon PtySmoke test lives in App.Tests) |
 | `Ntilde.Benchmarks` | BenchmarkDotNet perf benchmarks (Exe, not auto-discovered by `dotnet test`) |
 | `Ntilde.ExternalSuites` | Vttest and Native-SSH external scenario drivers (Exe) |
 

@@ -1999,9 +1999,15 @@ namespace Ntilde
             RefreshForwardsList();
         }
 
-        internal static IReadOnlyList<ShortcutCatalogEntry> FilterShortcutCatalogEntries(string query)
+        internal static IReadOnlyList<ShortcutCatalogEntry> FilterShortcutCatalogEntries(string query, bool sessionPersistence = true)
         {
             IEnumerable<ShortcutCatalogEntry> entries = ShortcutCatalog.GetEntries();
+            if (!sessionPersistence)
+            {
+                // With persistence off nothing mux-related exists: no command, no dispatch, no row.
+                entries = entries.Where(entry => !entry.RequiresSessionPersistence);
+            }
+
             if (!string.IsNullOrWhiteSpace(query))
             {
                 string trimmedQuery = query.Trim();
@@ -2018,6 +2024,9 @@ namespace Ntilde
                 .ThenBy(entry => entry.Title, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
+
+        internal static string DescribeDefaultBinding(string binding) =>
+            string.IsNullOrWhiteSpace(binding) ? "Default none" : $"Default {binding}";
 
         private void LoadTitleBarDraft()
         {
@@ -2252,7 +2261,9 @@ namespace Ntilde
 
             panel.Children.Clear();
             string? activeScope = null;
-            IReadOnlyList<ShortcutCatalogEntry> entries = FilterShortcutCatalogEntries(query);
+            IReadOnlyList<ShortcutCatalogEntry> entries = FilterShortcutCatalogEntries(
+                query,
+                Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence));
             foreach (ShortcutCatalogEntry entry in entries)
             {
                 string scopeLabel = FormatScopeLabel(entry.Scope);
@@ -2353,7 +2364,7 @@ namespace Ntilde
                                     },
                                     new TextBlock
                                     {
-                                        Text = $"{entry.Category} · {FormatScopeLabel(entry.Scope)} · Default {entry.DefaultBinding}",
+                                        Text = $"{entry.Category} · {FormatScopeLabel(entry.Scope)} · {DescribeDefaultBinding(entry.DefaultBinding)}",
                                         Classes = { RowDescStyleClass },
                                     },
                                 },

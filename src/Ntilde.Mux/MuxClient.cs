@@ -117,12 +117,12 @@ public sealed class MuxClient : IDisposable
         RequestAsync(MuxMethods.Shutdown, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty, MuxJsonContext.Default.MuxEmpty, cancellationToken);
 
     /// <summary>
-    /// An unattached session. Wire its events, then call <see cref="MuxClientSession.AttachAsync"/>:
+    /// An unattached session. Wire its events, then call <see cref="MuxClientSession.AttachAsync(int, MuxPresentation, CancellationToken)"/>:
     /// nothing is raised before a handler can exist, so nothing needs buffering (spec §9.6).
     /// </summary>
-    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null)
+    public MuxClientSession OpenSession(Guid sessionId, string shellCommand = "", string? shellArguments = null, MuxAttachMode attachMode = MuxAttachMode.Shared)
     {
-        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments);
+        var session = new MuxClientSession(this, sessionId, shellCommand, shellArguments, attachMode);
         if (!_sessions.TryAdd(sessionId, session))
         {
             throw new InvalidOperationException($"Session {sessionId} is already open on this client; dispose it first.");
@@ -148,11 +148,18 @@ public sealed class MuxClient : IDisposable
     /// cancellation that lost reports the attach that actually happened instead of contradicting
     /// the <see cref="MuxClientSession.SnapshotReceived"/> the pane has just handled.
     /// </remarks>
-    internal async Task<long> AttachAsync(MuxClientSession session, int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken)
+    internal async Task<long> AttachAsync(MuxClientSession session, MuxAttachMode mode, int maxScrollbackRows, MuxPresentation presentation, CancellationToken cancellationToken)
     {
+        // A v1 daemon ignores Mode and would silently share (spec §2.1): refuse here, before sending.
+        if (mode != MuxAttachMode.Shared && ProtocolVersion < MuxProtocol.SessionEventsVersion)
+        {
+            throw new MuxProtocolException(MuxErrorCodes.VersionMismatch,
+                $"Attach mode {mode} needs multiplexer protocol {MuxProtocol.SessionEventsVersion}; the running multiplexer speaks {ProtocolVersion}.");
+        }
+
         long id = Interlocked.Increment(ref _nextId);
         JsonElement p = MuxFrames.ToElement(
-            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation },
+            new AttachParams { SessionId = session.Id, MaxScrollbackRows = maxScrollbackRows, Presentation = presentation, Mode = MuxAttachModes.ToWire(mode) },
             MuxJsonContext.Default.AttachParams);
         var tcs = new TaskCompletionSource<MuxResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
@@ -215,10 +222,12 @@ public sealed class MuxClient : IDisposable
         PostRequest(MuxMethods.Resize, new ResizeParams { SessionId = sessionId, Cols = cols, Rows = rows, Presentation = presentation },
             MuxJsonContext.Default.ResizeParams);
 
-    internal void Detach(MuxClientSession session)
+    internal void Detach(MuxClientSession session, bool userDetached = false)
     {
         _sessions.TryRemove(new KeyValuePair<Guid, MuxClientSession>(session.Id, session));
-        PostRequest(MuxMethods.Detach, new DetachParams { SessionId = session.Id }, MuxJsonContext.Default.DetachParams);
+        // v2 only (spec §7.7): a v1 daemon has no DetachedByUser, so the member is simply not sent.
+        bool? flag = userDetached && ProtocolVersion >= MuxProtocol.SessionEventsVersion ? true : null;
+        PostRequest(MuxMethods.Detach, new DetachParams { SessionId = session.Id, UserDetached = flag }, MuxJsonContext.Default.DetachParams);
     }
 
     /// <summary>
@@ -344,7 +353,7 @@ public sealed class MuxClient : IDisposable
     /// The host's logger is arbitrary code, called here from catch clauses on the reader thread:
     /// a logger that throws (disk full, closed sink) must not turn a disconnect into a crash.
     /// </summary>
-    private void SafeLog(string message)
+    internal void SafeLog(string message)
     {
         try { _options.Log?.Invoke(message); }
         catch (Exception) { /* deliberately swallowed - see above */ }
@@ -413,6 +422,16 @@ public sealed class MuxClient : IDisposable
             // Session-level, never connection-level: only that session's stream ends.
             FaultedNotification faulted = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.FaultedNotification);
             if (_sessions.TryGetValue(faulted.SessionId, out MuxClientSession? session)) session.DeliverFaulted(faulted.Message ?? "The mux session faulted.");
+        }
+        else if (notification.Method == MuxMethods.SessionChanged)
+        {
+            SessionChangedNotification changed = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.SessionChangedNotification);
+            if (_sessions.TryGetValue(changed.SessionId, out MuxClientSession? session)) session.DeliverSessionChanged(changed);
+        }
+        else if (notification.Method == MuxMethods.Killed)
+        {
+            KilledNotification killed = MuxFrames.ParseParams(notification.Params, MuxJsonContext.Default.KilledNotification);
+            if (_sessions.TryGetValue(killed.SessionId, out MuxClientSession? session)) session.DeliverKilled(killed.ByClientKind);
         }
 
         // Unknown notifications are ignored: a newer server may send more than this client knows.

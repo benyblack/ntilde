@@ -28,7 +28,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan RpcTimeout { get; init; } = TimeSpan.FromSeconds(3);
 
-    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen falls back here.</summary>
+    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen (or an ended share) falls back here.</summary>
     public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session ?? _fallback.Create(request);
 
     public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
@@ -45,6 +45,11 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                 return Fallback(request, mismatch.Message) with { VersionMismatch = true };
             }
 
+            if (Host.LastFailure is MuxUnavailableException { OrphanedDaemon: true } orphaned)
+            {
+                return Fallback(request, orphaned.Message) with { OrphanedDaemon = true };
+            }
+
             return Fallback(request, "the multiplexer could not be reached");
         }
 
@@ -54,37 +59,71 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             {
                 IReadOnlyList<SessionSummary> sessions = Rpc(ct => client.ListSessionsAsync(ct));
                 SessionSummary? match = sessions.FirstOrDefault(s => s.SessionId == existing);
-                if (match is { Running: true, Faulted: false, AttachedClients: 0 })
+
+                if (request.AttachShared)
                 {
-                    return new(client.OpenSession(existing, request.Command, request.Arguments), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
+                    // A deliberate share: join whatever else is attached, running or exited (an exited
+                    // session shows its last screen and exit). Gone or faulted: no shell at all - a
+                    // fresh one is not what the user chose.
+                    if (match is { Faulted: false })
+                    {
+                        return new(client.OpenSession(existing, request.Command, request.Arguments, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, Host.Endpoint, null)
+                        {
+                            AlreadyExited = !match.Running,
+                        };
+                    }
+
+                    _log?.Invoke($"[Mux] shared session {existing} is gone or faulted; nothing to attach");
+                    return new(null, PersistentSessionOutcome.ShareEnded, Host.Endpoint, "the shared session has ended");
+                }
+
+                if (match is { Running: true, Faulted: false } && !MuxCommandMatch.SameExecutable(match.Command, request.Command))
+                {
+                    // Not this pane's shell (a hand-edited or foreign session file): leave it running
+                    // untouched and start what the pane asked for. Nothing was lost, so no banner.
+                    // Checked before the IfUnattached attach, so a lost race is only ever over this pane's own shell.
+                    _log?.Invoke($"[Mux] session {existing} runs '{match.Command}', not '{request.Command}'; starting a new shell instead of reattaching");
+                    return SpawnFresh(client, request, PersistentSessionOutcome.Spawned);
                 }
 
                 if (match is { Running: true, Faulted: false })
                 {
-                    // Another client (a second window of this app) is showing it: taking it over would
-                    // pull a live shell out of that window. Leave it alone and start a new one - nothing
-                    // was lost, so no "lost" banner.
+                    if (client.ProtocolVersion >= MuxProtocol.SessionEventsVersion)
+                    {
+                        // Exclusive by protocol: the attach itself refuses (session_attached) if another
+                        // interactive client holds it, decided on the daemon's parse thread (spec §3).
+                        // No client-side count check - two instances could both pass one.
+                        return new(client.OpenSession(existing, request.Command, request.Arguments, MuxAttachMode.IfUnattached), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
+                    }
+
+                    if (match.AttachedClients == 0)
+                    {
+                        return new(client.OpenSession(existing, request.Command, request.Arguments), PersistentSessionOutcome.Reattached, Host.Endpoint, null);
+                    }
+
+                    // v1: the Phase 2 check. Another client is showing it; leave it there.
                     _log?.Invoke($"[Mux] session {existing} is attached elsewhere; starting a new shell instead of taking it over");
-                    Guid own = Spawn(client, request);
-                    return new(client.OpenSession(own, request.Command, request.Arguments), PersistentSessionOutcome.Spawned, Host.Endpoint, null);
+                    return SpawnFresh(client, request, PersistentSessionOutcome.AttachedElsewhere);
                 }
 
                 // A faulted session is still running in the daemon: nothing will ever reopen it, so
                 // end it now rather than leak its shell until the daemon exits.
                 if (match is { Running: true, Faulted: true }) KillQuietly(client, existing);
 
-                Guid fresh = Spawn(client, request);
-                return new(client.OpenSession(fresh, request.Command, request.Arguments), PersistentSessionOutcome.PreviousLost, Host.Endpoint, null);
+                return SpawnFresh(client, request, PersistentSessionOutcome.PreviousLost);
             }
 
-            Guid spawned = Spawn(client, request);
-            return new(client.OpenSession(spawned, request.Command, request.Arguments), PersistentSessionOutcome.Spawned, Host.Endpoint, null);
+            return SpawnFresh(client, request, PersistentSessionOutcome.Spawned);
         }
         catch (Exception ex) when (ex is MuxProtocolException or IOException or TimeoutException or InvalidOperationException or ObjectDisposedException or OperationCanceledException)
         {
             return Fallback(request, ex.Message);
         }
     }
+
+    /// <summary>Spawns the pane's shell in the daemon and opens it (Shared: a new session has no other client).</summary>
+    private PersistentSessionResult SpawnFresh(MuxClient client, TerminalSessionRequest request, PersistentSessionOutcome outcome) =>
+        new(client.OpenSession(Spawn(client, request), request.Command, request.Arguments), outcome, Host.Endpoint, null);
 
     private Guid Spawn(MuxClient client, TerminalSessionRequest r) => Rpc(ct => client.SpawnAsync(new SpawnParams
     {

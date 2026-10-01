@@ -1,5 +1,6 @@
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Pty;
 
 namespace Ntilde.Mux.Tests.Server;
 
@@ -46,6 +47,32 @@ public sealed class MuxServerRequestTests
         Assert.Null(request.Ssh);
         SessionSummary summary = Assert.Single(MuxFrames.ParseParams(list.Result, MuxJsonContext.Default.ListSessionsResult).Sessions);
         Assert.Equal((id, "work", "pwsh", 100, 30, true, 0), (summary.SessionId, summary.Title, summary.Command, summary.Cols, summary.Rows, summary.Running, summary.AttachedClients));
+    }
+
+    [Fact]
+    public async Task Spawn_tells_the_shell_its_session_id_and_keeps_the_callers_environment()
+    {
+        // `ntilde mux attach` reads NTILDE_MUX_SESSION to refuse attaching a session to itself,
+        // which would copy the session's screen into that same screen in a loop.
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+        await raw.HelloAsync();
+
+        Guid withEnv = await SpawnAsync(raw, new SpawnParams
+        {
+            Command = "scripted",
+            Cols = 80,
+            Rows = 24,
+            EnvironmentOverrides = new Dictionary<string, string> { ["A"] = "1" },
+        });
+        Guid withoutEnv = await SpawnAsync(raw);
+
+        TerminalSessionRequest[] requests = host.Factory.Requests.ToArray();
+        Assert.Equal(2, requests.Length);
+        Assert.Equal(withEnv.ToString("D"), requests[0].EnvironmentOverrides![MuxServer.SessionEnvironmentVariable]);
+        Assert.Equal("1", requests[0].EnvironmentOverrides!["A"]);
+        Assert.Equal(withoutEnv.ToString("D"), Assert.Single(requests[1].EnvironmentOverrides!).Value);
+        Assert.Equal("NTILDE_MUX_SESSION", MuxServer.SessionEnvironmentVariable);
     }
 
     [Fact]
@@ -211,5 +238,60 @@ public sealed class MuxServerRequestTests
         await TestWait.UntilAsync(() => !host.Fake(id).SentInput.IsEmpty, "the input reached the session"); // via the session's input writer thread
 
         Assert.Equal("é\r", Assert.Single(host.Fake(id).SentInput));
+    }
+
+    /// <summary>Reads frames (described as <see cref="RecordedFrame.Describe"/> does) up to and including the first that <paramref name="until"/> accepts.</summary>
+    private static async Task<List<string>> ReadUntilAsync(RawMuxConnection raw, Func<string, bool> until)
+    {
+        var seen = new List<string>();
+        while (true)
+        {
+            using MuxInboundFrame frame = await raw.ReadAsync() ?? throw new EndOfStreamException("The server closed the connection.");
+            string d = new RecordedFrame(frame.Kind, frame.Payload.ToArray()).Describe();
+            seen.Add(d);
+            if (until(d)) return seen;
+        }
+    }
+
+    [Fact]
+    public async Task A_kill_over_the_wire_tells_the_other_v2_connection_killed_before_exited_and_not_the_killer()
+    {
+        using var host = new MuxTestHost();
+        RawMuxConnection killer = host.ConnectRaw();
+        RawMuxConnection other = host.ConnectRaw();
+        Assert.Equal(2, (await killer.HelloAsync(1, 2)).Version);
+        Assert.Equal(2, (await other.HelloAsync(1, 2)).Version);
+        Guid id = await SpawnAsync(killer);
+        foreach (RawMuxConnection c in new[] { killer, other })
+        {
+            c.Request(MuxMethods.Attach, new AttachParams { SessionId = id, Presentation = MuxTestHost.DefaultPresentation }, MuxJsonContext.Default.AttachParams);
+            await ReadUntilAsync(c, d => d.StartsWith("Snapshot", StringComparison.Ordinal));
+        }
+
+        killer.Request(MuxMethods.Kill, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams);
+
+        List<string> otherSaw = await ReadUntilAsync(other, d => d.StartsWith("Exited", StringComparison.Ordinal));
+        Assert.Equal(["Killed:raw", "Exited:-1"], otherSaw.Where(d => d.StartsWith("Killed", StringComparison.Ordinal) || d.StartsWith("Exited", StringComparison.Ordinal)));
+        List<string> killerSaw = await ReadUntilAsync(killer, d => d.StartsWith("Exited", StringComparison.Ordinal));
+        Assert.DoesNotContain(killerSaw, d => d.StartsWith("Killed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task List_and_session_info_carry_title_cwd_and_the_attached_count()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
+        host.Fake(id).Emit("\x1b]2;edit\x07\x1b]7;file://localhost/srv/app\x07");
+        await host.SettleAsync(id, client);
+
+        SessionSummary s = Assert.Single(await client.ListSessionsAsync(TestContext.Current.CancellationToken));
+        SessionInfoResult info = await pane.Session.RefreshSessionInfoAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("edit", s.Title);
+        Assert.Equal("/srv/app", s.Cwd);
+        Assert.Equal(("edit", 1), (info.Title, info.AttachedClients));
+        Assert.Equal("/srv/app", info.Cwd);
     }
 }

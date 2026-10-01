@@ -9,6 +9,12 @@ namespace Ntilde.Shell.Mux;
 /// <summary>The body of <c>ntilde mux serve</c> (spec §5). Never initialises Avalonia.</summary>
 internal static partial class MuxDaemonProcess
 {
+    /// <summary>
+    /// <c>mux serve</c>'s exit code when another daemon holds this root's lock (1 is any other start
+    /// failure). The launcher reads it: with no reachable daemon advertised, that one is orphaned.
+    /// </summary>
+    internal const int LockHeldExitCode = 3;
+
     public static int Run(MuxServeOptions options, TextWriter stderr)
     {
         // Controller ruling (Task 5 review): the launcher spawns us with our stdio redirected to
@@ -52,7 +58,7 @@ internal static partial class MuxDaemonProcess
         });
 
         // No separate stderr echo: in --foreground, Log already writes every line to stderr.
-        if (!TryStart(host, foregroundStderr: null, Log)) return 1;
+        if (!TryStart(host, foregroundStderr: null, Log, out int startExitCode)) return startExitCode;
 
         using PosixSignalRegistration term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; host.RequestStop("signal"); });
         using PosixSignalRegistration intr = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => { ctx.Cancel = true; host.RequestStop("signal"); });
@@ -65,10 +71,13 @@ internal static partial class MuxDaemonProcess
 
     /// <summary>
     /// Starts <paramref name="host"/>; a start failure is logged (and echoed to
-    /// <paramref name="foregroundStderr"/> when watched) and returns false - the caller exits 1.
+    /// <paramref name="foregroundStderr"/> when watched) and returns false - the caller exits with
+    /// <paramref name="failureExitCode"/>: <see cref="LockHeldExitCode"/> when another daemon owns the
+    /// lock, else 1.
     /// </summary>
-    internal static bool TryStart(MuxDaemonHost host, TextWriter? foregroundStderr, Action<string> log)
+    internal static bool TryStart(MuxDaemonHost host, TextWriter? foregroundStderr, Action<string> log, out int failureExitCode)
     {
+        failureExitCode = 0;
         try
         {
             host.Start();
@@ -78,6 +87,7 @@ internal static partial class MuxDaemonProcess
         {
             log($"[MuxDaemon] not starting: {ex.Message}");
             foregroundStderr?.WriteLine(ex.Message);
+            failureExitCode = ex is MuxDaemonAlreadyRunningException ? LockHeldExitCode : 1;
             return false;
         }
     }

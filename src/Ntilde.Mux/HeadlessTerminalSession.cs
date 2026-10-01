@@ -48,17 +48,34 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Action<int> _onExit;
     private readonly Action<string>? _log;
     private readonly List<IMuxFrameSink> _subscribers = new(); // parse thread only
+    private readonly HashSet<IMuxFrameSink> _readOnlySinks = new(); // parse thread only: subscribers attached ReadOnly
+    private readonly Dictionary<IMuxFrameSink, long> _attachRequestIds = new(); // parse thread only: each subscriber's latest successful attach
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private string _title;
+    private string? _cwd;
     private int _cols;
     private int _rows;
     private int _attached;
+    private int _interactive;
     private int _exited;
     private int _exitCode;
     private int _faulted;
     private int _disposed;
     private int _unsubscribed;
+    private int _detachedByUser; // written on the parse thread only
+
+    // sessionChanged coalescing (spec §4), parse thread only: at most one per interval, the trailing
+    // one sent by the parse loop's own bounded wait (see ParseLoop).
+    private readonly long _sessionChangedIntervalMs;
+    private bool _sessionChangePending;
+    private long _lastSessionChangeSentMs = long.MinValue / 2;
+    private int _lastPublishedAttached;
+
+    // Kill(by, kind): written before the child is disposed, read by ProcessExit on the parse thread.
+    private IMuxFrameSink? _killedBy;
+    private string _killedByKind = string.Empty;
+    private int _killRequested;
 
     // Input writer (spec §4): SendInput runs on the connection reader thread; a child that stops
     // reading stdin would otherwise stall every session sharing that connection. One thread per
@@ -105,7 +122,19 @@ public sealed class HeadlessTerminalSession : IDisposable
             AllowNativeKittyGraphics = false,
         };
         _parser.OnResponse = EnqueueInput; // through the writer too: the parse thread must never block on stdin
-        _parser.OnTitleChanged = title => Volatile.Write(ref _title, title);
+        _sessionChangedIntervalMs = (long)Math.Max(0, options.SessionChangedInterval.TotalMilliseconds);
+        _parser.OnTitleChanged = title =>
+        {
+            if (title == _title) return; // a shell re-sending its title at every prompt is no change
+            Volatile.Write(ref _title, title);
+            MarkSessionChanged();
+        };
+        _parser.OnWorkingDirectoryChanged = cwd =>
+        {
+            if (cwd == _cwd) return;
+            Volatile.Write(ref _cwd, cwd);
+            MarkSessionChanged();
+        };
         _queues = [_control, _data];
         _onRawOutput = OnRawOutput;
         _onExit = code => TryEnqueue(_data, WorkItem.ForExit(code));
@@ -153,16 +182,29 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     public Guid Id { get; }
     public string Title => Volatile.Read(ref _title);
+
+    /// <summary>The last OSC 7 directory the mux parser saw; null until the shell reports one.</summary>
+    public string? Cwd => Volatile.Read(ref _cwd);
+
     public string Command { get; }
     public string? Arguments { get; }
     public bool ForceConPtyFiltering { get; }
     public int Cols => Volatile.Read(ref _cols);
     public int Rows => Volatile.Read(ref _rows);
     public int AttachedClients => Volatile.Read(ref _attached);
+
+    /// <summary><see cref="AttachedClients"/> without the read-only observers.</summary>
+    public int InteractiveClients => Volatile.Read(ref _interactive);
     public bool IsExited => Volatile.Read(ref _exited) != 0;
     public int? ExitCode => IsExited ? Volatile.Read(ref _exitCode) : null;
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
     public long StreamPosition => Interlocked.Read(ref _rawOffset);
+
+    /// <summary>
+    /// The detach that left the session with no interactive subscribers was a user detach (spec §7.7);
+    /// the next interactive attach clears it. Read-only observers neither set nor clear it.
+    /// </summary>
+    public bool DetachedByUser => Volatile.Read(ref _detachedByUser) != 0;
 
     /// <summary><see cref="Environment.TickCount64"/> when the mux saw the exit; 0 while running. Set before <see cref="IsExited"/>.</summary>
     public long ExitedAtMs => Interlocked.Read(ref _exitedAtMs);
@@ -179,7 +221,7 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     internal int QueuedControlCount => _control.Count;
 
-    /// <summary>Bytes (UTF-16) queued for the input writer and not yet taken by it.</summary>
+    /// <summary>Bytes (UTF-16) queued for the input writer or being written by it.</summary>
     internal long QueuedInputBytes => Interlocked.Read(ref _queuedInputBytes);
 
     /// <summary>Tests only: overrides <see cref="HeadlessSessionOptions.MaxQueuedInputBytes"/> when positive.</summary>
@@ -243,7 +285,6 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             foreach (string text in _input.GetConsumingEnumerable(_cts.Token))
             {
-                Interlocked.Add(ref _queuedInputBytes, -(long)text.Length * sizeof(char));
                 try
                 {
                     _session.SendInput(text);
@@ -252,6 +293,13 @@ public sealed class HeadlessTerminalSession : IDisposable
                 catch (Exception ex)
                 {
                     Log($"[Mux] session {Id}: SendInput failed: {ex.Message}");
+                }
+                finally
+                {
+                    // Charged until the write returns (PR #489 follow-up): a write blocked on a child
+                    // that stopped reading is still input the child has not taken, and must count
+                    // against the cap - un-charging it on take let one more cap's worth queue behind it.
+                    Interlocked.Add(ref _queuedInputBytes, -(long)text.Length * sizeof(char));
                 }
             }
         }
@@ -302,22 +350,36 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (size is { } s) ApplyResize(s.Cols, s.Rows);
     }
 
-    internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
+    internal void PostAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode = MuxAttachMode.Shared)
     {
         // Unlike PostResize/PostDetach, a dropped attach must still answer: the sink is a client
         // waiting on this specific requestId, and silence would leave it hung rather than told the
         // session is gone. OnDropped runs whether TryEnqueue refuses synchronously (below) or the
         // item is later found undelivered by DrainAfterStop.
         var item = WorkItem.ForAction(
-            () => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes),
+            () => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes, mode),
             onDropped: () => ReplySessionExited(sink, requestId));
         if (!TryEnqueue(_control, item)) item.OnDropped!();
     }
 
-    internal void PostDetach(IMuxFrameSink sink) =>
+    /// <summary>
+    /// <paramref name="attachRequestId"/> names the attach this detach undoes; if the sink has since
+    /// subscribed through a newer attach, the detach is stale and ignored. Decided here, not on the
+    /// connection: only the parse thread knows which attaches took effect, and a newer attach that was
+    /// refused or failed must not supersede anything.
+    /// </summary>
+    internal void PostDetach(IMuxFrameSink sink, bool userDetached = false, long? attachRequestId = null) =>
         EnqueueControl(() =>
         {
-            if (_subscribers.Remove(sink)) PublishAttachedCount();
+            if (attachRequestId is long undone && _attachRequestIds.TryGetValue(sink, out long latest) && latest > undone) return;
+            if (!_subscribers.Remove(sink)) return;
+            bool wasReadOnly = _readOnlySinks.Contains(sink);
+            Forget(sink);
+
+            // Only the detach that leaves no interactive subscriber decides; a connection closing is
+            // never a user detach, and a read-only observer leaving decides nothing (spec §7.7).
+            if (!wasReadOnly && !HasOtherInteractiveSubscriber(sink)) Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
+            PublishAttachedCount();
         });
 
     internal Task<T> InvokeAsync<T>(Func<T> func)
@@ -345,10 +407,25 @@ public sealed class HeadlessTerminalSession : IDisposable
 
     /// <summary>
     /// Ends the session. Clients learn it through Exited, in stream order after every byte already
-    /// queued; then the parse thread stops and unsubscribes.
+    /// queued; then the parse thread stops and unsubscribes. No client is named (the shutdown path),
+    /// so no <c>killed</c> is sent.
     /// </summary>
-    public void Kill()
+    public void Kill() => Kill(by: null, byClientKind: null);
+
+    /// <summary>
+    /// A client killed it: the other v2 subscribers get <c>killed</c> before <c>exited</c> (spec §5).
+    /// The killer is recorded BEFORE the child is disposed, because the child's own OnExit may be the
+    /// exit item that reaches the parse thread first.
+    /// </summary>
+    internal void Kill(IMuxFrameSink? by, string? byClientKind)
     {
+        if (byClientKind is not null)
+        {
+            Volatile.Write(ref _killedBy, by);
+            Volatile.Write(ref _killedByKind, byClientKind);
+            Volatile.Write(ref _killRequested, 1);
+        }
+
         try { _session.Dispose(); }
         catch (Exception ex) { Log($"[Mux] session {Id}: disposing the child failed: {ex.Message}"); }
         TryEnqueue(_data, WorkItem.ForExit(null, terminal: true));
@@ -480,9 +557,30 @@ public sealed class HeadlessTerminalSession : IDisposable
         {
             while (true)
             {
-                BlockingCollection<WorkItem>.TakeFromAny(_queues, out WorkItem item, _cts.Token);
+                WorkItem item;
+                if (_sessionChangePending)
+                {
+                    // The delayed flush: while a change is pending, wait at most until it is due. An
+                    // idle session wakes at the deadline - no timer, no thread pool (spec §4).
+                    int wait = SessionChangeWaitMs();
+                    if (wait == 0)
+                    {
+                        FlushSessionChanged();
+                        continue;
+                    }
+
+                    // A timed-out wait only re-checks the deadline: an OS wait can return up to a tick
+                    // before TickCount64 agrees the time is up, and flushing then would undercut the interval.
+                    if (BlockingCollection<WorkItem>.TryTakeFromAny(_queues, out item, wait, _cts.Token) < 0) continue;
+                }
+                else
+                {
+                    BlockingCollection<WorkItem>.TakeFromAny(_queues, out item, _cts.Token);
+                }
+
                 Execute(item);
                 if (item.Kind == WorkKind.Exit && item.Terminal) break;
+                if (_sessionChangePending && SessionChangeWaitMs() == 0) FlushSessionChanged();
             }
         }
         catch (OperationCanceledException)
@@ -561,12 +659,16 @@ public sealed class HeadlessTerminalSession : IDisposable
             Volatile.Write(ref _exitCode, code ?? _session.ExitCode ?? -1);
             Interlocked.Exchange(ref _exitedAtMs, Environment.TickCount64); // before _exited: a reaper that sees the exit sees its time
             Volatile.Write(ref _exited, 1);
-            if (_subscribers.Count > 0) Broadcast(ExitedFrame());
+            if (_subscribers.Count > 0)
+            {
+                if (Volatile.Read(ref _killRequested) != 0) SendKilled();
+                Broadcast(ExitedFrame());
+            }
         }
 
         if (terminal)
         {
-            _subscribers.Clear();
+            ForgetAll();
             PublishAttachedCount();
 
             // Cancel FIRST, same as Dispose and for the same reason: a producer parked in
@@ -579,7 +681,24 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes)
+    /// <summary>
+    /// Every exit path reports the subscription that actually resulted (<see cref="IMuxFrameSink.OnSubscriptionState"/>).
+    /// On success that repeats the report made just before the snapshot was enqueued; the report is
+    /// idempotent state, not an event, so the repeat is harmless and keeps one rule for every path.
+    /// </summary>
+    private void ExecuteAttach(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode)
+    {
+        try
+        {
+            ExecuteAttachCore(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes, mode);
+        }
+        finally
+        {
+            ReportSubscription(sink, _subscribers.Contains(sink), _readOnlySinks.Contains(sink));
+        }
+    }
+
+    private void ExecuteAttachCore(IMuxFrameSink sink, long requestId, int maxScrollbackRows, MuxPresentation presentation, int maxSnapshotBytes, MuxAttachMode mode)
     {
         // A re-attach keeps the sink's existing subscription until its new snapshot is actually
         // enqueued: if this attempt fails (snapshot_too_large once the scrollback has grown), the
@@ -592,18 +711,33 @@ public sealed class HeadlessTerminalSession : IDisposable
             return;
         }
 
+        // Exclusivity is decided here, inside the one attach item on the one parse thread: every
+        // attach to this session from any connection runs serially on this thread, so nothing can
+        // subscribe between this check and the subscription below (Phase 3 spec §3).
+        if (mode == MuxAttachMode.IfUnattached && HasOtherInteractiveSubscriber(sink))
+        {
+            Reply(sink, requestId, MuxErrorCodes.SessionAttached, $"Session {Id} is attached to another client.");
+            return;
+        }
+
+        bool readOnly = mode == MuxAttachMode.ReadOnly;
+
         // Attaching is a resize to the attaching client's size (latest wins). The other clients get
         // the ResizeEvent; this one's snapshot already reflects it. Guarded like everything else in
-        // here: an attach must always be answered, never left to the client's request timeout.
-        try
+        // here: an attach must always be answered, never left to the client's request timeout. A
+        // read-only observer changes neither: its snapshot is at the session's current size.
+        if (!readOnly)
         {
-            ApplyPresentation(presentation);
-            ApplyResize(presentation.Cols, presentation.Rows);
-        }
-        catch (Exception ex)
-        {
-            Reply(sink, requestId, MuxErrorCodes.Internal, $"Preparing the attach failed: {ex.Message}");
-            return;
+            try
+            {
+                ApplyPresentation(presentation);
+                ApplyResize(presentation.Cols, presentation.Rows);
+            }
+            catch (Exception ex)
+            {
+                Reply(sink, requestId, MuxErrorCodes.Internal, $"Preparing the attach failed: {ex.Message}");
+                return;
+            }
         }
 
         byte[] json;
@@ -641,19 +775,69 @@ public sealed class HeadlessTerminalSession : IDisposable
             return;
         }
 
+        // Reported BEFORE the snapshot is handed over: a client reacting to its snapshot must find the
+        // connection already enforcing (or no longer enforcing) read-only for its next input or resize.
+        // If the enqueue is refused, the finally in ExecuteAttach reports the real outcome afterwards.
+        ReportSubscription(sink, subscribed: true, readOnly);
+
         bool accepted;
         try { accepted = sink.TryEnqueue(frame); }
         finally { frame.Release(); }
         if (!accepted)
         {
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
-            if (_subscribers.Remove(sink)) PublishAttachedCount();
+            if (_subscribers.Remove(sink))
+            {
+                Forget(sink);
+                PublishAttachedCount();
+            }
+
             return;
         }
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
+        _attachRequestIds[sink] = requestId;
+        if (readOnly)
+        {
+            _readOnlySinks.Add(sink);
+        }
+        else
+        {
+            _readOnlySinks.Remove(sink);
+            Volatile.Write(ref _detachedByUser, 0); // a read-only peek must not undo a deliberate detach (spec §7.7)
+        }
+
         PublishAttachedCount();
         if (IsExited) Offer(sink, ExitedFrame());
+    }
+
+    /// <summary>Parse thread only. A read-only observer does not count: it must not make a GUI abandon its own shell (spec §3).</summary>
+    private bool HasOtherInteractiveSubscriber(IMuxFrameSink sink) =>
+        _subscribers.Any(s => !ReferenceEquals(s, sink) && !_readOnlySinks.Contains(s));
+
+    /// <summary>Parse thread only, for a sink just removed from <see cref="_subscribers"/>: drops its per-sink state and tells it.</summary>
+    private void Forget(IMuxFrameSink sink)
+    {
+        _readOnlySinks.Remove(sink);
+        _attachRequestIds.Remove(sink);
+        ReportSubscription(sink, subscribed: false, readOnly: false);
+    }
+
+    /// <summary>Parse thread only: every subscriber leaves at once (fault, terminal exit).</summary>
+    private void ForgetAll()
+    {
+        foreach (IMuxFrameSink sink in _subscribers) ReportSubscription(sink, subscribed: false, readOnly: false);
+        _subscribers.Clear();
+        _readOnlySinks.Clear();
+        _attachRequestIds.Clear();
+    }
+
+    private void ReportSubscription(IMuxFrameSink sink, bool subscribed, bool readOnly)
+    {
+        // The sink is arbitrary code on the parse thread (a connection in production); a throw must
+        // not abandon the item that called it halfway through its bookkeeping.
+        try { sink.OnSubscriptionState(Id, subscribed, readOnly); }
+        catch (Exception ex) { Log($"[Mux] session {Id}: reporting a subscription failed: {ex.Message}"); }
     }
 
     private void ApplyPresentation(MuxPresentation presentation)
@@ -700,15 +884,19 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
     }
 
-    private void Broadcast(MuxOutboundFrame frame)
+    /// <summary>Parse thread only. Offers <paramref name="frame"/> to every subscriber <paramref name="to"/> accepts (all when null); a refusing sink is dropped.</summary>
+    private void Broadcast(MuxOutboundFrame frame, Func<IMuxFrameSink, bool>? to = null)
     {
         try
         {
             for (int i = _subscribers.Count - 1; i >= 0; i--)
             {
-                if (!_subscribers[i].TryEnqueue(frame))
+                IMuxFrameSink sink = _subscribers[i];
+                if (to is not null && !to(sink)) continue;
+                if (!sink.TryEnqueue(frame))
                 {
                     _subscribers.RemoveAt(i);
+                    Forget(sink);
                     PublishAttachedCount();
                 }
             }
@@ -750,7 +938,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         }
         finally
         {
-            _subscribers.Clear();
+            ForgetAll();
             PublishAttachedCount();
         }
     }
@@ -780,7 +968,85 @@ public sealed class HeadlessTerminalSession : IDisposable
         finally { frame.Release(); }
     }
 
-    private void PublishAttachedCount() => Volatile.Write(ref _attached, _subscribers.Count);
+    /// <summary>
+    /// Parse thread only. A changed count is a session change (spec §4). Read-only observers count:
+    /// this is the number of connected clients, the same figure <c>listSessions</c> reports; only the
+    /// <c>IfUnattached</c> decision ignores them (<see cref="HasOtherInteractiveSubscriber"/>).
+    /// </summary>
+    private void PublishAttachedCount()
+    {
+        int count = _subscribers.Count;
+        Volatile.Write(ref _attached, count);
+        Volatile.Write(ref _interactive, count - _readOnlySinks.Count); // read-only sinks are always subscribers too
+        if (count != _lastPublishedAttached)
+        {
+            _lastPublishedAttached = count;
+            MarkSessionChanged();
+        }
+    }
+
+    /// <summary>Parse thread only (every caller runs inside an item: attach/detach, the parser's OSC callbacks).</summary>
+    private void MarkSessionChanged() => _sessionChangePending = true;
+
+    /// <summary>Milliseconds until a pending change may be sent; 0 = now.</summary>
+    private int SessionChangeWaitMs()
+    {
+        long due = _lastSessionChangeSentMs + _sessionChangedIntervalMs - Environment.TickCount64;
+        return due <= 0 ? 0 : (int)Math.Min(due, int.MaxValue);
+    }
+
+    /// <summary>
+    /// Parse thread only. Sends the session's current facts to every v2 subscriber. The interval is
+    /// measured from AFTER the handover, not before the frame is built: building can take tens of
+    /// milliseconds (the first serialization, a loaded machine), and stamping first let the next
+    /// notification reach a sink less than one interval after this one.
+    /// </summary>
+    private void FlushSessionChanged()
+    {
+        _sessionChangePending = false;
+        try
+        {
+            if (IsFaulted || !_subscribers.Exists(static s => s.WantsSessionEvents)) return;
+            if (BuildNotification(MuxMethods.SessionChanged, new SessionChangedNotification
+            {
+                SessionId = Id,
+                AttachedClients = _subscribers.Count,
+                Title = Title,
+                Cwd = Cwd,
+            }, MuxJsonContext.Default.SessionChangedNotification) is not { } frame) return;
+
+            Broadcast(frame, static sink => sink.WantsSessionEvents);
+        }
+        finally
+        {
+            _lastSessionChangeSentMs = Environment.TickCount64;
+        }
+    }
+
+    /// <summary>Parse thread only: <c>killed</c> goes to every v2 subscriber except the killer, which already knows.</summary>
+    private void SendKilled()
+    {
+        if (BuildNotification(MuxMethods.Killed,
+                new KilledNotification { SessionId = Id, ByClientKind = Volatile.Read(ref _killedByKind) },
+                MuxJsonContext.Default.KilledNotification) is not { } frame) return;
+
+        IMuxFrameSink? killer = Volatile.Read(ref _killedBy);
+        Broadcast(frame, sink => sink.WantsSessionEvents && !ReferenceEquals(sink, killer));
+    }
+
+    /// <summary>Never throws (parse thread): a notification that cannot be built is logged and skipped.</summary>
+    private MuxOutboundFrame? BuildNotification<T>(string method, T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
+    {
+        try
+        {
+            return MuxFrames.Notification(new MuxNotification { Method = method, Params = MuxFrames.ToElement(value, typeInfo) });
+        }
+        catch (Exception ex)
+        {
+            Log($"[Mux] session {Id}: building {method} failed: {ex.Message}");
+            return null;
+        }
+    }
 
     private void Unsubscribe()
     {

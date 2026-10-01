@@ -38,6 +38,11 @@ namespace Ntilde.Pty
     /// Multiplexer session to reopen instead of spawning (Phase 2 reattach). Ignored by factories that
     /// do not multiplex. Null = spawn.
     /// </param>
+    /// <param name="AttachShared">
+    /// With <paramref name="ExistingMuxSessionId"/>: the user chose to share this session ("Attach to
+    /// session…"), so attach whatever else is attached to it. False (a restore) attaches only if no
+    /// other interactive client holds it. Ignored by factories that do not multiplex.
+    /// </param>
     public sealed record TerminalSessionRequest(
         string Command,
         string Arguments,
@@ -47,7 +52,8 @@ namespace Ntilde.Pty
         IReadOnlyDictionary<string, string>? EnvironmentOverrides,
         bool SkipPowerShellPostLaunchInit,
         SshSessionDescriptor? Ssh,
-        Guid? ExistingMuxSessionId = null);
+        Guid? ExistingMuxSessionId = null,
+        bool AttachShared = false);
 
     /// <summary>
     /// The SSH half of a <see cref="TerminalSessionRequest"/>, kept deliberately opaque.

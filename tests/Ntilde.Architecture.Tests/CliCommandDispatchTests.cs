@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 
 namespace Ntilde.Architecture.Tests;
 
@@ -129,5 +131,77 @@ public class CliCommandDispatchTests
             "bundle, so wiring a command into it alone leaves the command unreachable there). Add " +
             "an IsSupportedCliMode/Execute branch to App/Program.cs's Main, following the " +
             $"ReplayCommand precedent. Offenders: {string.Join(", ", undispatched)}");
+    }
+
+    private static readonly string[] MuxAttachArgs = ["mux", "attach", "abcd"]; // CA1861
+    private static readonly string[] MuxProbeConsoleArgs = ["mux", "probe-console"];
+    private static readonly string[] MuxLsArgs = ["mux", "ls"];
+
+    /// <summary>Phase 3: `mux attach` is interactive - both entry points must give it a real console (spec §6.7).</summary>
+    [Fact]
+    public void Mux_attach_gets_an_interactive_console_from_the_App_entry_point()
+    {
+        Type mux = App.GetType("Ntilde.Shell.Mux.MuxCommand", throwOnError: true)!;
+        MethodInfo? needsConsole = mux.GetMethod("NeedsInteractiveConsole", CommandMemberFlags, StringArrayParameter);
+        Assert.NotNull(needsConsole);
+        bool NeedsConsole(string[] args) => (bool)needsConsole.Invoke(null, [args])!;
+        Assert.True(NeedsConsole(MuxAttachArgs));
+        Assert.True(NeedsConsole(MuxProbeConsoleArgs));
+        Assert.False(NeedsConsole(MuxLsArgs));
+
+        // Main is an if-chain that cannot be invoked without running the CLI, so this reads its
+        // compiled call sequence rather than its source text: a call compiles to the same IL however
+        // it is spelled (qualified, aliased, reformatted), and a comment or string naming it compiles
+        // to nothing. Every PrepareInteractive call must sit under the helper: the nearest MuxCommand
+        // call before it, which is the branch condition, is NeedsInteractiveConsole.
+        MethodInfo main = App.GetType("Ntilde.Program", throwOnError: true)!
+            .GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        List<MethodBase> calls = CalledMethods(main);
+        int[] prepareSites = Enumerable.Range(0, calls.Count)
+            .Where(i => calls[i].Name == "PrepareInteractive" && calls[i].DeclaringType?.Name == "CliConsoleBindings")
+            .ToArray();
+        Assert.NotEmpty(prepareSites);
+        foreach (int site in prepareSites)
+        {
+            MethodBase? guard = calls.Take(site).LastOrDefault(m => m.DeclaringType == mux);
+            Assert.True(guard?.Name == "NeedsInteractiveConsole",
+                "App Program.Main must call CliConsoleBindings.PrepareInteractive only under " +
+                $"MuxCommand.NeedsInteractiveConsole(args); the guarding MuxCommand call is {guard?.Name ?? "<none>"}.");
+        }
+
+        string cli = File.ReadAllText(Path.Combine(RepoRoot(), "src/Ntilde.Cli/Program.cs"));
+        Assert.Contains("MuxCommand.IsSupportedCliMode(", cli, StringComparison.Ordinal);
+    }
+
+    private static readonly Dictionary<short, OpCode> OpCodesByValue = typeof(OpCodes)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Select(f => (OpCode)f.GetValue(null)!)
+        .ToDictionary(op => op.Value);
+
+    /// <summary>The methods <paramref name="method"/>'s body calls, in IL order.</summary>
+    private static List<MethodBase> CalledMethods(MethodInfo method)
+    {
+        byte[] il = method.GetMethodBody()!.GetILAsByteArray()!;
+        var calls = new List<MethodBase>();
+        int i = 0;
+        while (i < il.Length)
+        {
+            bool twoByte = il[i] == 0xFE;
+            short value = twoByte ? unchecked((short)(0xFE00 | il[i + 1])) : il[i];
+            i += twoByte ? 2 : 1;
+            OpCode op = OpCodesByValue[value];
+            if (op == OpCodes.Call || op == OpCodes.Callvirt)
+                calls.Add(method.Module.ResolveMethod(BitConverter.ToInt32(il, i))!);
+            i += op.OperandType switch
+            {
+                OperandType.InlineNone => 0,
+                OperandType.ShortInlineBrTarget or OperandType.ShortInlineI or OperandType.ShortInlineVar => 1,
+                OperandType.InlineVar => 2,
+                OperandType.InlineI8 or OperandType.InlineR => 8,
+                OperandType.InlineSwitch => 4 + (4 * BitConverter.ToInt32(il, i)),
+                _ => 4,
+            };
+        }
+        return calls;
     }
 }

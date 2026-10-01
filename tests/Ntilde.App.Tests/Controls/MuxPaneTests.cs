@@ -293,6 +293,48 @@ public sealed class MuxPaneTests : IDisposable
         Assert.DoesNotContain("kill-server", BufferText(_pane.Buffer!));
     }
 
+    /// <summary>Task 22: an orphaned daemon (lock held, nothing reachable) gets its own notice, and the local fallback stays.</summary>
+    [AvaloniaFact]
+    public void An_orphaned_daemon_gives_a_local_session_and_the_multiplexer_notice()
+    {
+        using var orphanHost = new MuxConnectionHost(
+            _ => throw new MuxUnavailableException("cannot be reached", orphanedDaemon: true), "x", null);
+        _pane = new TerminalPane();
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = new MuxTerminalSessionFactory(orphanHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
+        { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        var notices = RecordNotices();
+        _pane.CreateAndWireParser();
+        _pane.InitializeSessionCore("scripted", string.Empty, profile: null, cols: 80, rows: 24);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.IsType<FakeTerminalSession>(_pane.Session);
+        Assert.Equal((TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner), Assert.Single(notices));
+        Assert.Equal("Multiplexer", TerminalPane.MuxOrphanedNoticeTitle);
+    }
+
+    [AvaloniaFact]
+    public void A_restoring_pane_facing_an_orphaned_daemon_keeps_its_id_and_raises_the_multiplexer_notice()
+    {
+        // At launch most panes are restoring: the window must hear about the orphan from them too.
+        Guid id = Guid.NewGuid();
+        using var orphanHost = new MuxConnectionHost(
+            _ => throw new MuxUnavailableException("cannot be reached", orphanedDaemon: true), "x", null);
+        _pane = new TerminalPane("scripted") { MuxSessionIdToRestore = id };
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = new MuxTerminalSessionFactory(orphanHost, new RecordingSessionFactory(new FakeTerminalSession()), null)
+        { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        var notices = RecordNotices();
+        _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
+        _window.Show();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains(TerminalPane.MuxUnreachableBanner), "the not-reachable banner is shown");
+        PumpUntil(() => notices.Count > 0, "the notice is raised");
+
+        Assert.Null(_pane.Session);
+        Assert.Equal(id, _pane.MuxSessionIdToRestore);
+        Assert.Equal((TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner), Assert.Single(notices));
+    }
+
     [AvaloniaFact]
     public void A_plain_unavailable_notice_has_no_kill_server_hint()
     {
@@ -477,7 +519,9 @@ public sealed class MuxPaneTests : IDisposable
         { FailureCooldown = TimeSpan.Zero };
         var factory = new MuxTerminalSessionFactory(gatedHost, fallback, null) { ConnectTimeout = TimeSpan.FromSeconds(2) };
 
-        _pane = new TerminalPane { MuxSessionIdToRestore = id };
+        // "scripted": the same program MuxTestHost.SpawnAsync seeded above, or the new
+        // command-match check (correctly) refuses to reattach to it.
+        _pane = new TerminalPane("scripted") { MuxSessionIdToRestore = id };
         PaneSpawnTestHelpers.DisableShellIntegration(_pane);
         _pane.SessionFactory = factory;
         var notices = RecordNotices();

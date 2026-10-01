@@ -33,7 +33,8 @@ class Program
             VelopackApp.Build()
                 .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(
                     args,
-                    static () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadLiveDescriptor(Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), out _)))
+                    static () => Ntilde.Shell.Mux.MuxStartupProbe.IsDaemonLive(
+                        Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), TimeSpan.FromMilliseconds(200))))
                 .Run();
 
             if (VtReportCommand.IsSupportedCliMode(args))
@@ -76,7 +77,9 @@ class Program
             if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args))
             {
                 // serve is a daemon: it must not attach to the launching console (it detaches from it).
-                if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
+                // attach (and probe-console, which mirrors it) is interactive: it needs a real console, allocated if the parent has none.
+                if (Ntilde.Shell.Mux.MuxCommand.NeedsInteractiveConsole(args)) Ntilde.Shell.Mux.MuxCommand.AttachedToParentConsole = CliConsoleBindings.PrepareInteractive();
+                else if (!Ntilde.Shell.Mux.MuxCommand.IsServe(args)) CliConsoleBindings.Prepare();
                 Environment.ExitCode = Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
                 return;
             }
@@ -120,6 +123,8 @@ class Program
     /// (the daemon, or a verb talking to it), and not for the GUI while a daemon is live: in both
     /// cases the staged update waits for the in-app apply, which confirms and stops the daemon.
     /// <paramref name="liveDaemon"/> is only asked for the GUI case, so CLI starts never read the disk.
+    /// "Live" means a daemon that answers a 200 ms probe-connect, not merely a descriptor naming a
+    /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Shell.Mux.MuxStartupProbe"/>).
     /// </summary>
     internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon)
     {

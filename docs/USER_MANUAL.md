@@ -132,7 +132,8 @@ again. They run inside a small background process, the *multiplexer daemon*
   shows a "Session not persistent" notification:
   `[Multiplexer unavailable — this session will not persist]`. Ntilde tries the daemon again
   for panes opened 30 seconds later. If the running daemon is from a different Ntilde version,
-  the notification adds a second line telling you to run `ntilde mux kill-server` to replace it.
+  the notification adds a second line telling you to run `ntilde mux kill-server --force` to
+  replace it.
   A pane that is *reattaching* to a saved shell (at startup, say, while the daemon is slow to
   answer) does not start a stand-in shell, because its shell may still be running in the daemon.
   It shows `[Multiplexer not reachable — press Enter to retry]` and keeps the shell's id, so
@@ -154,6 +155,19 @@ again. They run inside a small background process, the *multiplexer daemon*
   because of it. Only when it has not accepted a connection for 60 seconds *and* no window is
   connected - so nobody can reach its shells - does it exit, ending those shells. Ntilde then
   starts a fresh daemon the next time it needs one.
+- **If the daemon's files are deleted while it runs** (for example the whole data folder): the
+  daemon rewrites its endpoint file `mux/mux-endpoint.json` within a second, so windows and
+  `ntilde mux` commands find it again. On macOS and Linux a deleted socket cannot be restored; the
+  daemon logs that it is unreachable until restarted. While it still holds its lock file but
+  cannot be found, a new window cannot start a daemon of its own (`ntilde mux serve` exits with
+  code 3: another multiplexer holds the lock), starts normal shells, and shows a *Multiplexer*
+  notification once:
+  `[Another multiplexer is running but cannot be reached. Shells in this window are not kept. Close other ntilde windows or end the old multiplexer.]`
+  (On macOS and Linux, deleting the whole `mux` folder also removes the lock file's name, so a new
+  window starts a fresh daemon instead; the old one keeps running unreachable, with its shells.)
+  To end an unreachable daemon, end the process whose pid `logs/mux.log` shows, or use
+  `ntilde mux kill-server --force` where it still applies (its endpoint file names a live daemon
+  this Ntilde cannot talk to).
 - **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
 
   | Command | What it does |
@@ -162,10 +176,12 @@ again. They run inside a small background process, the *multiplexer daemon*
   | `ntilde mux ls --json` | The same list as JSON. |
   | `ntilde mux kill <id>` | Ends one session. |
   | `ntilde mux kill-server` | Ends every session and stops the daemon. Waits up to 5 seconds for it to exit; if it has not, prints "Multiplexer did not stop within 5 s." and exits with code 1. |
+  | `ntilde mux kill-server --force` | Also stops a daemon this Ntilde cannot talk to at all (no protocol version in common), once its pid and process name are re-verified — see below. A daemon from the previous version still talks to it, so plain `kill-server` stops that one. |
+  | `ntilde mux attach <id\|prefix> [--read-only]` | Shows a session in this terminal — see below. |
 
   These commands never start a daemon. With none running they print "No multiplexer is
-  running." and exit with code 1. The daemon writes its log to `logs/mux.log` in Ntilde's
-  data folder.
+  running." and exit with code 1 (`attach` exits with code 2, its code for any connection
+  error). The daemon writes its log to `logs/mux.log` in Ntilde's data folder.
 - **Limitations:**
   - Local shells only. SSH panes work exactly as before and do not persist.
   - Inline images (sixel, kitty graphics) are not shown in persistent panes.
@@ -185,6 +201,111 @@ again. They run inside a small background process, the *multiplexer daemon*
 - **Security:** the daemon listens only on a local endpoint that only your user account can
   open (a per-user named pipe on Windows, a socket in a private `0700` folder on macOS and
   Linux). It never opens a network port.
+
+#### Sharing a shell between windows
+
+A persistent shell can be attached in more than one pane at once, so every attached window shows
+the same screen and any of them can send input.
+
+- **"Session: Attach to Session…"** in the command palette opens a picker. The entry appears only
+  while persistent sessions are on. It has no default shortcut; bind one under Settings →
+  Shortcuts (`attach_session`).
+- The picker lists every session the daemon knows about: title, command, folder, size, how many
+  windows are attached, and running (or exited *code*).
+- The chosen shell opens in a new tab — from this window, a second Ntilde window, or a second
+  instance. A "shared with N" badge appears over the pane and its tab carries a ⧉ marker. N counts
+  every *other* attached window, including a read-only `ntilde mux attach --read-only` viewer.
+- If that session is already open as a tab in this window, Ntilde focuses the existing tab instead
+  of opening a second copy of it — one session cannot be shown in two tabs of the same window yet.
+- An already-exited session can be attached too: it opens showing its last screen and the exit
+  banner, and nothing closes it for you.
+- If the session is gone by the time the attach completes (another window, or `ntilde mux kill`,
+  beat you to it), no shell is started: the tab closes, and an "Attach to session" notification
+  reads `[The shell you chose has ended]`.
+- **Restoring a shell at launch** is never a share: the pane only gets its shell back if no other
+  window has it open, and the daemon decides that. Otherwise Ntilde starts a fresh shell in that
+  pane and shows a "Previous shell in use" notification: `[Your previous shell is open in another
+  window — started a new shell]`. A crashed shell reopened automatically as a background tab that
+  another window claims first just closes its tab, with no new shell and no notification. Against
+  a daemon from before this version, Ntilde still makes that check on its own side first, the
+  Phase 2 behavior.
+
+#### Detach versus close
+
+- **"Pane: Detach"** (no default shortcut; bind `detach_pane` under Settings → Shortcuts) closes
+  only this pane and leaves the shell running in the daemon. Bring it back with "Attach to
+  session…".
+- Closing a pane or tab normally ends its shell.
+- When another window is attached to the same shell, closing asks **Close** (ends the shell for
+  every window), **Detach** (closes just this pane, keeps the shell running), or **Cancel**.
+- An agent closing a pane through MCP cannot answer that prompt, so when another window is
+  attached the pane detaches instead, and the shell keeps running for the other window.
+- A shell ended from another window shows `[Shell ended from another window]`.
+- **Detached shells stay detached.** A shell you detach on purpose — "Pane: Detach", Detach from
+  the close prompt, or **Ctrl+\ then d** in `ntilde mux attach` — is *not* reopened the next time
+  Ntilde starts; reopen it yourself with
+  "Attach to session…". Once per launch, if any such shells exist, a toast reads "N detached
+  shells are running — Attach to session… to reopen them" (singular for one: "1 detached shell is
+  running — Attach to session… to reopen it"). `ntilde mux ls` marks them `running, detached`, and
+  `--json` adds `"detachedByUser": true`. Shells orphaned by a crash are unaffected — they are
+  still reopened automatically as background tabs. Against a daemon from before this version, a
+  detached shell is still reopened at the next launch, until you replace the daemon: stop it with
+  `ntilde mux kill-server` (it still talks to this version, so no `--force` is needed) and Ntilde
+  starts a current one when it next needs one.
+
+#### Size
+
+The latest resize wins, from whichever attached window sent it last. A window that is not in
+control — its own size does not match the shared grid — letterboxes: its content is clipped or
+padded to fit, rather than resizing the shared shell out from under whoever it just took the size
+from. It takes the size back when you focus or activate it, for every attached window. A read-only
+`ntilde mux attach --read-only` viewer never resizes the session.
+
+#### `ntilde mux attach <id|prefix> [--read-only]`
+
+Shows a multiplexer session in this terminal, without going through the GUI.
+
+- `<id|prefix>` is the session id from `ntilde mux ls`, or a unique prefix of at least 4
+  characters.
+- It renders from its own copy of the session's screen, so the shell's own escape-sequence
+  queries (cursor position, device attributes, terminal capabilities) never reach the terminal
+  you ran `mux attach` from.
+- Detach with **Ctrl+\ then d**. Ctrl may stay held for the d (Ctrl+\ then Ctrl+D), as in GNU
+  screen; the one thing this costs is that a literal Ctrl+\ followed by Ctrl+D cannot be sent.
+  **Ctrl+\ Ctrl+\** sends a literal Ctrl+\, and a paste that contains Ctrl+\ then d (or Ctrl+D)
+  detaches the same way.
+- When the session is bigger than your terminal, the view is clipped and a status line reads
+  "session is WxH, this terminal is WxH — resize to fit", with the detach hint kept alongside it.
+- `--read-only` shows the session without sending input or resizing it, and the status line reads
+  "read-only". **This is a convenience, not a security boundary** — the endpoint has no
+  authentication beyond the same-user check, so anyone who can run programs as you can attach
+  normally anyway.
+- It refuses (exit code `2`) to attach to the session you are typing in: every shell the daemon
+  starts has `NTILDE_MUX_SESSION` set to its own session id, and attaching a session to itself
+  would loop. Attaching to a *different* session from inside one works.
+- Exit codes: `0` you detached, `1` the session exited or was killed, `2` a usage or connection
+  error.
+- On Windows, run it as `cmd /c ntilde mux attach <id>` from PowerShell: a plain PowerShell prompt
+  does not wait for a GUI-subsystem program and competes with it for the keyboard. `ntilde mux
+  attach --help` prints this workaround, and running it directly from a console prints a one-line
+  hint to the same effect before the terminal goes raw. A proper `ntilde.com` console launcher is
+  planned for Phase 4.
+
+#### `ntilde mux kill-server --force`
+
+Stops a daemon this Ntilde has no protocol version in common with — a much older or a newer one —
+once its pid and process name are re-verified against the endpoint descriptor, ending its shells.
+Without `--force` against such a daemon, `kill-server` reports the mismatch and exits 1 instead of
+guessing. A daemon from the previous version (v1) negotiates with this one, so a plain
+`kill-server` stops it and `--force` changes nothing.
+
+#### Limits
+
+- A daemon from before this version (v1) keeps working for spawn, attach, detach and kill, but
+  shows no sharing indicator, and `--read-only` needs a daemon from this version or later.
+  Deliberately detached shells are re-adopted at the next launch against a v1 daemon (see above).
+  A plain `ntilde mux kill-server` replaces it: it stops the v1 daemon, and the next launch
+  starts a current one.
 
 ---
 

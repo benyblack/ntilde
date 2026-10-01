@@ -439,6 +439,13 @@ namespace Ntilde.Pty
         }
 
         /// <summary>
+        /// A Unix helper such as <c>stty</c> as an absolute path, or null when it is not installed.
+        /// The entry point for other assemblies; the resolution rules live on
+        /// <c>RustPtySession.ResolveSystemTool</c>, which is internal to this one.
+        /// </summary>
+        public static string? ResolveSystemTool(string name) => RustPtySession.ResolveSystemTool(name);
+
+        /// <summary>
         /// The single definition of how <c>PATH</c> is split into candidate paths for
         /// <paramref name="command"/>, shared by <see cref="InPath"/> and by
         /// <c>RustPtySession.ResolveSystemTool</c> so the two cannot drift.

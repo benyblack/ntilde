@@ -7,6 +7,12 @@ namespace Ntilde.Shell.Mux;
 internal interface IMuxDaemonSpawner
 {
     void Spawn();
+
+    /// <summary>
+    /// The exit code of the daemon the latest <see cref="Spawn"/> started, once it has exited; null
+    /// while it runs, or when the spawner cannot tell.
+    /// </summary>
+    int? LastSpawnExitCode => null;
 }
 
 /// <summary>
@@ -18,6 +24,8 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
 {
     private readonly string _executable;
     private readonly IReadOnlyList<string> _leadingArgs;
+    private readonly object _gate = new();
+    private Process? _last; // the latest daemon started, kept to read its exit code; guarded by _gate
 
     public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs)
     {
@@ -86,13 +94,42 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
 
         if (OperatingSystem.IsWindows()) ClearStdHandleInheritance();
 
-        using Process process = Process.Start(psi) ?? throw new InvalidOperationException("mux serve did not start.");
+        Process process = Process.Start(psi) ?? throw new InvalidOperationException("mux serve did not start.");
         // Our ends of the three pipes: each closed independently, so one throwing (e.g. the child
         // already exited and its end of the pipe is gone) never leaves another of ours open - that
         // would be the exact hang class this class exists to prevent.
         CloseQuietly(process.StandardInput.Close);
         CloseQuietly(process.StandardOutput.Close);
         CloseQuietly(process.StandardError.Close);
+
+        // Kept (only the latest: one process handle) so the launcher can tell a daemon that refused
+        // to start because another holds the lock from one that is merely slow.
+        Process? previous;
+        lock (_gate)
+        {
+            previous = _last;
+            _last = process;
+        }
+
+        previous?.Dispose();
+    }
+
+    public int? LastSpawnExitCode
+    {
+        get
+        {
+            lock (_gate)
+            {
+                try
+                {
+                    return _last is { HasExited: true } p ? p.ExitCode : null;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+                {
+                    return null;
+                }
+            }
+        }
     }
 
     /// <summary>

@@ -110,4 +110,127 @@ public sealed class MuxJsonTests
             MuxFrames.ParseParams(null, MuxJsonContext.Default.SessionIdParams));
         Assert.Equal(MuxErrorCodes.ProtocolError, ex.Code);
     }
+
+    [Fact]
+    public void The_protocol_range_is_1_to_2()
+    {
+        Assert.Equal(1, MuxProtocol.MinSupportedVersion);
+        Assert.Equal(2, MuxProtocol.MaxSupportedVersion);
+        Assert.Equal(2, MuxProtocol.SessionEventsVersion);
+    }
+
+    [Fact]
+    public void A_shared_attach_keeps_the_v1_wire_shape()
+    {
+        var p = new AttachParams
+        {
+            SessionId = new Guid("00000000-0000-0000-0000-000000000003"),
+            MaxScrollbackRows = 10,
+            Presentation = new MuxPresentation { Cols = 80, Rows = 24 },
+            Mode = MuxAttachModes.ToWire(MuxAttachMode.Shared),
+        };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(p, MuxJsonContext.Default.AttachParams);
+
+        Assert.DoesNotContain("\"mode\"", json, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(MuxAttachMode.IfUnattached, "ifUnattached")]
+    [InlineData(MuxAttachMode.ReadOnly, "readOnly")]
+    public void Non_shared_modes_travel_as_strings(MuxAttachMode mode, string wire)
+    {
+        var p = new AttachParams { SessionId = Guid.NewGuid(), Presentation = new MuxPresentation { Cols = 80, Rows = 24 }, Mode = MuxAttachModes.ToWire(mode) };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(p, MuxJsonContext.Default.AttachParams);
+        AttachParams back = System.Text.Json.JsonSerializer.Deserialize(json, MuxJsonContext.Default.AttachParams)!;
+
+        Assert.Contains($"\"mode\":\"{wire}\"", json, StringComparison.Ordinal);
+        Assert.True(MuxAttachModes.TryParse(back.Mode, out MuxAttachMode parsed));
+        Assert.Equal(mode, parsed);
+    }
+
+    [Theory]
+    [InlineData(null, true, MuxAttachMode.Shared)]
+    [InlineData("shared", true, MuxAttachMode.Shared)]
+    [InlineData("ifUnattached", true, MuxAttachMode.IfUnattached)]
+    [InlineData("readOnly", true, MuxAttachMode.ReadOnly)]
+    [InlineData("ReadOnly", false, MuxAttachMode.Shared)]   // exact, like every other wire string
+    [InlineData("bogus", false, MuxAttachMode.Shared)]
+    public void Attach_modes_parse_exactly(string? wire, bool ok, MuxAttachMode expected)
+    {
+        Assert.Equal(ok, MuxAttachModes.TryParse(wire, out MuxAttachMode mode));
+        Assert.Equal(expected, mode);
+    }
+
+    [Fact]
+    public void The_session_changed_notification_round_trips_with_camel_case_params()
+    {
+        var n = new SessionChangedNotification { SessionId = Guid.NewGuid(), AttachedClients = 3, Title = "vim", Cwd = "/tmp" };
+        System.Text.Json.JsonElement e = MuxFrames.ToElement(n, MuxJsonContext.Default.SessionChangedNotification);
+
+        Assert.Contains("\"attachedClients\":3", e.GetRawText(), StringComparison.Ordinal);
+        Assert.Equal(n, MuxFrames.ParseParams(e, MuxJsonContext.Default.SessionChangedNotification));
+    }
+
+    [Fact]
+    public void The_killed_notification_round_trips_with_camel_case_params()
+    {
+        var n = new KilledNotification { SessionId = Guid.NewGuid(), ByClientKind = "ntilde-cli" };
+        System.Text.Json.JsonElement e = MuxFrames.ToElement(n, MuxJsonContext.Default.KilledNotification);
+
+        Assert.Contains("\"byClientKind\":\"ntilde-cli\"", e.GetRawText(), StringComparison.Ordinal);
+        Assert.Equal(n, MuxFrames.ParseParams(e, MuxJsonContext.Default.KilledNotification));
+    }
+
+    [Fact]
+    public void A_v1_summary_and_session_info_parse_with_the_new_fields_absent()
+    {
+        SessionSummary s = System.Text.Json.JsonSerializer.Deserialize(
+            "{\"sessionId\":\"00000000-0000-0000-0000-000000000004\",\"title\":\"t\",\"command\":\"pwsh\",\"cols\":80,\"rows\":24,\"running\":true,\"attachedClients\":1,\"faulted\":false}",
+            MuxJsonContext.Default.SessionSummary)!;
+        SessionInfoResult i = System.Text.Json.JsonSerializer.Deserialize(
+            "{\"running\":true,\"hasActiveChildProcesses\":false}", MuxJsonContext.Default.SessionInfoResult)!;
+
+        Assert.Null(s.Cwd);
+        Assert.Null(i.Title);
+        Assert.Null(i.Cwd);
+        Assert.Null(i.AttachedClients);
+    }
+
+    [Fact]
+    public void A_user_detach_adds_one_optional_member_and_a_plain_detach_keeps_the_old_shape()
+    {
+        Guid id = new("00000000-0000-0000-0000-000000000005");
+
+        string plain = System.Text.Json.JsonSerializer.Serialize(new DetachParams { SessionId = id }, MuxJsonContext.Default.DetachParams);
+        string user = System.Text.Json.JsonSerializer.Serialize(new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
+
+        Assert.DoesNotContain("userDetached", plain, StringComparison.Ordinal);
+        Assert.Equal("{\"sessionId\":\"00000000-0000-0000-0000-000000000005\",\"userDetached\":true}", user);
+        DetachParams back = System.Text.Json.JsonSerializer.Deserialize(user, MuxJsonContext.Default.DetachParams)!;
+        Assert.Equal((id, (long?)null, (bool?)true), (back.SessionId, back.AttachRequestId, back.UserDetached)); // round-trips; a v1 server's DetachParams has no such member and skips it
+    }
+
+    [Fact]
+    public void InteractiveClients_round_trips_and_zero_is_never_written()
+    {
+        string json = System.Text.Json.JsonSerializer.Serialize(new SessionSummary { SessionId = Guid.NewGuid(), AttachedClients = 3, InteractiveClients = 2 }, MuxJsonContext.Default.SessionSummary);
+
+        Assert.Contains("\"interactiveClients\":2", json, StringComparison.Ordinal);
+        Assert.Equal(2, System.Text.Json.JsonSerializer.Deserialize(json, MuxJsonContext.Default.SessionSummary)!.InteractiveClients);
+        Assert.DoesNotContain("interactiveClients", System.Text.Json.JsonSerializer.Serialize(new SessionSummary { SessionId = Guid.NewGuid(), AttachedClients = 1 }, MuxJsonContext.Default.SessionSummary), StringComparison.Ordinal); // the v1 shape
+    }
+
+    [Fact]
+    public void DetachedByUser_round_trips_and_defaults_to_false()
+    {
+        var s = new SessionSummary { SessionId = Guid.NewGuid(), DetachedByUser = true };
+        string json = System.Text.Json.JsonSerializer.Serialize(s, MuxJsonContext.Default.SessionSummary);
+
+        Assert.Contains("\"detachedByUser\":true", json, StringComparison.Ordinal);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize(json, MuxJsonContext.Default.SessionSummary)!.DetachedByUser);
+        Assert.False(System.Text.Json.JsonSerializer.Deserialize("{\"sessionId\":\"00000000-0000-0000-0000-000000000006\"}", MuxJsonContext.Default.SessionSummary)!.DetachedByUser);
+        Assert.DoesNotContain("detachedByUser", System.Text.Json.JsonSerializer.Serialize(new SessionSummary { SessionId = Guid.NewGuid() }, MuxJsonContext.Default.SessionSummary), StringComparison.Ordinal); // false is never written
+    }
 }

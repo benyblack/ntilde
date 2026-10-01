@@ -20,7 +20,7 @@ public sealed class MuxDaemonHostTests : IDisposable
 
     private (MuxDaemonHost Host, MuxServer Server, MuxDaemonOptions Options) NewHost(
         TimeSpan? idle = null, int? pid = null, MuxServerOptions? serverOptions = null, Func<string, IMuxListener>? listenerFactory = null,
-        TimeSpan? acceptFailureStopAfter = null)
+        TimeSpan? acceptFailureStopAfter = null, Action<string>? log = null, TimeSpan? tickInterval = null)
     {
         var server = new MuxServer(new ScriptedSessionFactory(), serverOptions ?? new MuxServerOptions { ForceConPtyFiltering = false });
         using Process self = Process.GetCurrentProcess();
@@ -29,11 +29,12 @@ public sealed class MuxDaemonHostTests : IDisposable
             Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
             DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
             IdleExitAfter = idle ?? TimeSpan.Zero,
-            TickInterval = TimeSpan.FromMilliseconds(50),
+            TickInterval = tickInterval ?? TimeSpan.FromMilliseconds(50),
             Pid = pid ?? Environment.ProcessId,
             ProcessName = self.ProcessName,
             ListenerFactory = listenerFactory ?? MuxListeners.Create,
             AcceptFailureStopAfter = acceptFailureStopAfter ?? TimeSpan.FromSeconds(60),
+            Log = log,
         };
         var host = new MuxDaemonHost(server, options);
         _owned.Add(host);
@@ -160,6 +161,108 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
         Assert.Equal(o.Endpoint, d.Endpoint);
         Assert.Equal(o.Pid, d.Pid);
+    }
+
+    /// <summary>
+    /// Task 22: the app-data root was deleted under a running daemon. Windows kept mux.lock (held
+    /// open) but deleted the descriptor, so the daemon ran on, unfindable, and every new start lost
+    /// the lock. The next tick puts the descriptor back.
+    /// </summary>
+    [Fact]
+    public void A_deleted_descriptor_is_rewritten_on_the_next_tick()
+    {
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var (host, _, o) = NewHost(log: log.Enqueue, tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? original));
+
+        File.Delete(o.DescriptorPath);
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadLiveDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal((original.Endpoint, original.Pid, original.ProcessName, original.MinVersion, original.MaxVersion), (d.Endpoint, d.Pid, d.ProcessName, d.MinVersion, d.MaxVersion));
+        Assert.Single(log, line => line.Contains("descriptor was missing; rewrote it", StringComparison.Ordinal));
+
+        host.TickForTest();
+        Assert.Single(log, line => line.Contains("rewrote it", StringComparison.Ordinal)); // an intact descriptor is left alone
+    }
+
+    [Fact]
+    public void A_descriptor_naming_another_live_daemon_is_left_alone()
+    {
+        // Cannot legitimately happen while this daemon holds the lock - but if it does, the other
+        // daemon's descriptor is not ours to replace. The test process plays that live daemon.
+        using Process self = Process.GetCurrentProcess();
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var (host, _, o) = NewHost(pid: Environment.ProcessId + 100_000, log: log.Enqueue, tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        var other = new MuxEndpointDescriptor
+        {
+            Endpoint = "another-daemon",
+            Pid = Environment.ProcessId,
+            ProcessName = self.ProcessName,
+            MinVersion = 1,
+            MaxVersion = 2,
+        };
+        MuxDiscovery.WriteDescriptor(o.DescriptorPath, other);
+
+        host.TickForTest();
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal(("another-daemon", Environment.ProcessId), (d.Endpoint, d.Pid));
+        Assert.Single(log, line => line.Contains($"names another live multiplexer (pid {Environment.ProcessId})", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_descriptor_naming_a_dead_pid_is_rewritten()
+    {
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var (host, _, o) = NewHost(log: log.Enqueue, tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "stale",
+            Pid = Environment.ProcessId + 100_000,
+            ProcessName = "not-running",
+            MinVersion = 1,
+            MaxVersion = 2,
+        });
+
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal((o.Endpoint, o.Pid), (d.Endpoint, d.Pid));
+    }
+
+    /// <summary>
+    /// Off Windows the whole mux directory can go (the lock is an advisory lock on an inode, not a
+    /// name), taking the socket with it: the directory comes back 0700 with the descriptor, and the
+    /// lost socket is reported once, since no descriptor makes it reachable again.
+    /// </summary>
+    [Fact]
+    [UnsupportedOSPlatform("windows")]
+    public void A_deleted_mux_directory_is_recreated_private_and_a_lost_socket_is_reported_once()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows cannot delete the directory while the daemon holds mux.lock in it.");
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var (host, _, o) = NewHost(log: log.Enqueue, tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        string dir = Path.GetDirectoryName(o.DescriptorPath)!;
+
+        Directory.Delete(dir, recursive: true);
+        host.TickForTest();
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadLiveDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal(o.Pid, d.Pid);
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(dir));
+        Assert.Single(log, line => line.Contains("descriptor was missing; rewrote it", StringComparison.Ordinal));
+        // A long temp root puts the socket outside this directory (MuxDiscovery's sun_path fallback).
+        if (Path.GetDirectoryName(o.Endpoint) == dir)
+        {
+            Assert.Single(log, line => line.Contains($"socket {o.Endpoint} is gone", StringComparison.Ordinal));
+        }
     }
 
     // PR #489 review 2, item 1 (controller rule): the accept loop retries forever; the host stops

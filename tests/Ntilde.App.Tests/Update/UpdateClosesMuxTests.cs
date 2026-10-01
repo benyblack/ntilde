@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Ntilde.Mux;
@@ -385,5 +386,28 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         public bool IsSupported => true;
         public Task<UpdateAvailability> CheckAndDownloadAsync(CancellationToken ct) => Task.FromResult(new UpdateAvailability(true, "99.0.0"));
         public void ApplyAndRestart() => throw new IOException("Update.exe is locked");
+    }
+
+    /// <summary>PR #489 follow-up: a teardown that throws must be reported, never an unobserved fault, and must not apply.</summary>
+    [AvaloniaFact]
+    public void A_teardown_that_throws_is_reported_and_the_update_is_not_applied()
+    {
+        MainWindow window = CreateWindow();
+        FakeApplyUpdateService service = StageUpdate(window);
+        window.MuxProbeForUpdate = _ => Task.FromResult<MuxClient?>(null);
+        window.TeardownFaultForTest = () => throw new InvalidOperationException("scripted teardown failure");
+
+        Task task = window.ApplyStagedUpdateAsync();
+        PumpUntil(() => task.IsCompleted, "ApplyStagedUpdateAsync finished");
+
+        Assert.True(task.IsCompletedSuccessfully, $"the apply path faulted: {task.Exception?.GetBaseException().Message}");
+        Assert.Equal(0, service.ApplyCount);
+        Assert.Equal("Update could not be applied", window.FindControl<Avalonia.Controls.TextBlock>("RecordingToastTitle")!.Text);
+
+        // The window is still up; its later close must run the whole teardown again (it saves the session).
+        window.TeardownFaultForTest = null;
+        if (File.Exists(AppPaths.SessionFilePath)) File.Delete(AppPaths.SessionFilePath);
+        typeof(MainWindow).GetMethod("PerformAppTeardown", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(window, null);
+        Assert.True(File.Exists(AppPaths.SessionFilePath));
     }
 }

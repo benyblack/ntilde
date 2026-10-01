@@ -12,6 +12,12 @@ namespace Ntilde.Mux;
 /// </summary>
 public sealed class MuxServer : IDisposable
 {
+    /// <summary>
+    /// Set in every spawned shell to its own session id ("D" format), so <c>ntilde mux attach</c>
+    /// run inside a session can refuse to attach to that same session (tmux's <c>$TMUX</c> check).
+    /// </summary>
+    public const string SessionEnvironmentVariable = "NTILDE_MUX_SESSION";
+
     private readonly ITerminalSessionFactory _factory;
     private readonly ConcurrentDictionary<Guid, HeadlessTerminalSession> _sessions = new();
     private readonly ConcurrentDictionary<Guid, MuxServerConnection> _connections = new();
@@ -57,6 +63,7 @@ public sealed class MuxServer : IDisposable
         if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");
         if (o.MaxFlightRecordingBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxFlightRecordingBytes, "MaxFlightRecordingBytes must be positive.");
         if (o.MaxQueuedInputBytes <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxQueuedInputBytes, "MaxQueuedInputBytes must be positive.");
+        if (o.SessionChangedInterval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.SessionChangedInterval, "SessionChangedInterval cannot be negative.");
         if (o.AcceptRetryInitialDelay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptRetryInitialDelay, "AcceptRetryInitialDelay must be positive.");
         if (o.AcceptRetryMaxDelay < o.AcceptRetryInitialDelay) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptRetryMaxDelay, "AcceptRetryMaxDelay cannot be shorter than AcceptRetryInitialDelay.");
         if (o.AcceptFailureLogInterval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(options), o.AcceptFailureLogInterval, "AcceptFailureLogInterval cannot be negative.");
@@ -218,9 +225,17 @@ public sealed class MuxServer : IDisposable
     {
         RequireGeometry(p.Cols, p.Rows);
 
+        // Chosen before the spawn so the shell can be told its own id; added to the caller's
+        // overrides, which the PTY layers on top of the daemon's environment.
+        Guid id = Guid.NewGuid();
+        var environment = p.EnvironmentOverrides is null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string>(p.EnvironmentOverrides);
+        environment[SessionEnvironmentVariable] = id.ToString("D");
+
         var request = new TerminalSessionRequest(
             p.Command, p.Arguments, p.StartingDirectory, p.Cols, p.Rows,
-            p.EnvironmentOverrides, p.SkipPowerShellPostLaunchInit, Ssh: null);
+            environment, p.SkipPowerShellPostLaunchInit, Ssh: null);
 
         ITerminalSession inner;
         try
@@ -239,7 +254,6 @@ public sealed class MuxServer : IDisposable
                 $"{inner.GetType().Name} does not expose raw output, so it cannot be multiplexed.");
         }
 
-        Guid id = Guid.NewGuid();
         HeadlessTerminalSession session;
         try
         {
@@ -253,6 +267,7 @@ public sealed class MuxServer : IDisposable
                 ForceConPtyFiltering = Options.ForceConPtyFiltering,
                 Log = Options.Log,
                 MaxQueuedInputBytes = Options.MaxQueuedInputBytes,
+                SessionChangedInterval = Options.SessionChangedInterval,
             });
         }
         catch (Exception ex)
@@ -292,17 +307,20 @@ public sealed class MuxServer : IDisposable
             Running = !s.IsExited,
             ExitCode = s.ExitCode,
             AttachedClients = s.AttachedClients,
+            InteractiveClients = s.InteractiveClients,
             Faulted = s.IsFaulted,
+            DetachedByUser = s.DetachedByUser,
+            Cwd = s.Cwd,
         }).ToArray();
 
-    internal void Kill(Guid id)
+    internal void Kill(Guid id, IMuxFrameSink? by = null, string? byClientKind = null)
     {
         if (!_sessions.TryRemove(id, out HeadlessTerminalSession? session))
         {
             throw new MuxRequestException(MuxErrorCodes.UnknownSession, $"No session {id}.");
         }
 
-        session.Kill();
+        session.Kill(by, byClientKind);
 
         // Kill queues the terminal exit behind whatever output is already queued, so attached
         // clients still get Exited in stream order. Dispose (which cancels first and would drop that
