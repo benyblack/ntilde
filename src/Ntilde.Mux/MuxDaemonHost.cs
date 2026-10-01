@@ -175,6 +175,13 @@ public sealed class MuxDaemonHost : IDisposable
     /// reached through a new file at that path, so there is no repair short of a restart: say so once
     /// per loss. (Re-binding would mean swapping the server's listener under a live accept loop.)
     /// </summary>
+    /// <remarks>
+    /// A successor daemon (started after the directory, and so the lock's name, was deleted) binds the
+    /// same default socket path, and <see cref="File.Exists(string)"/> cannot tell its socket from
+    /// ours. That is only safe because EnsureDescriptor's foreign-live-descriptor branch returns
+    /// before calling this: a successor writes its descriptor right after binding, so once its socket
+    /// exists this daemon stops looking at the path.
+    /// </remarks>
     private void CheckSocket()
     {
         if (OperatingSystem.IsWindows()) return;

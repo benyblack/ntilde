@@ -158,10 +158,16 @@ again. They run inside a small background process, the *multiplexer daemon*
 - **If the daemon's files are deleted while it runs** (for example the whole data folder): the
   daemon rewrites its endpoint file `mux/mux-endpoint.json` within a second, so windows and
   `ntilde mux` commands find it again. On macOS and Linux a deleted socket cannot be restored; the
-  daemon logs that it is unreachable until restarted. Until it can be found, a new window cannot
-  start a daemon of its own (`ntilde mux serve` exits with code 3: another multiplexer holds the
-  lock), starts normal shells, and shows a *Multiplexer* notification once:
+  daemon logs that it is unreachable until restarted. While it still holds its lock file but
+  cannot be found, a new window cannot start a daemon of its own (`ntilde mux serve` exits with
+  code 3: another multiplexer holds the lock), starts normal shells, and shows a *Multiplexer*
+  notification once:
   `[Another multiplexer is running but cannot be reached. Shells in this window are not kept. Close other ntilde windows or end the old multiplexer.]`
+  (On macOS and Linux, deleting the whole `mux` folder also removes the lock file's name, so a new
+  window starts a fresh daemon instead; the old one keeps running unreachable, with its shells.)
+  To end an unreachable daemon, end the process whose pid `logs/mux.log` shows, or use
+  `ntilde mux kill-server --force` where it still applies (its endpoint file names a live daemon
+  this Ntilde cannot talk to).
 - **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
 
   | Command | What it does |

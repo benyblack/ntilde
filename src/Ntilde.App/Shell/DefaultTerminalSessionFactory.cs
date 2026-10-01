@@ -62,6 +62,26 @@ public sealed class DefaultTerminalSessionFactory : ITerminalSessionFactory
             request.Arguments,
             request.StartingDirectory,
             skipPowerShellPostLaunchInit: request.SkipPowerShellPostLaunchInit,
-            environmentOverrides: request.EnvironmentOverrides);
+            environmentOverrides: MaskInheritedMuxSession(
+                request.EnvironmentOverrides,
+                Environment.GetEnvironmentVariable(Ntilde.Mux.MuxServer.SessionEnvironmentVariable)));
+    }
+
+    /// <summary>
+    /// A GUI started from inside a mux shell inherits that shell's NTILDE_MUX_SESSION, and its local
+    /// panes would pass it on: `mux attach` there would then refuse a session it is not inside. The
+    /// overrides can only add or replace, never remove (forkpty inherits the whole environment), so
+    /// it is blanked: an empty value names no session. A daemon spawn always carries its own value,
+    /// which is kept.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string>? MaskInheritedMuxSession(
+        IReadOnlyDictionary<string, string>? overrides, string? inherited)
+    {
+        const string Key = Ntilde.Mux.MuxServer.SessionEnvironmentVariable;
+        if (string.IsNullOrEmpty(inherited) || overrides?.ContainsKey(Key) == true) return overrides;
+
+        var masked = overrides is null ? new Dictionary<string, string>() : new Dictionary<string, string>(overrides);
+        masked[Key] = string.Empty;
+        return masked;
     }
 }

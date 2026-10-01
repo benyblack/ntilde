@@ -57,6 +57,28 @@ public sealed class MuxReview2Tests : IDisposable
         Assert.Contains(log, l => l.Contains("not starting", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Task 22 review: a GUI started inside a mux shell must not hand that shell's session id to its
+    /// local panes (overrides cannot unset a variable, so it is blanked); a daemon spawn's own id wins.
+    /// </summary>
+    [Fact]
+    public void An_inherited_mux_session_id_is_blanked_for_local_shells_but_a_daemon_spawns_own_id_is_kept()
+    {
+        const string Key = MuxServer.SessionEnvironmentVariable;
+        string inherited = Guid.NewGuid().ToString("D");
+
+        IReadOnlyDictionary<string, string>? none = DefaultTerminalSessionFactory.MaskInheritedMuxSession(null, inherited);
+        IReadOnlyDictionary<string, string>? withOthers = DefaultTerminalSessionFactory.MaskInheritedMuxSession(new Dictionary<string, string> { ["ZDOTDIR"] = "/z" }, inherited);
+        string own = Guid.NewGuid().ToString("D");
+        IReadOnlyDictionary<string, string>? daemon = DefaultTerminalSessionFactory.MaskInheritedMuxSession(new Dictionary<string, string> { [Key] = own }, inherited);
+
+        Assert.Equal(KeyValuePair.Create(Key, string.Empty), Assert.Single(none!));
+        Assert.Equal(("/z", string.Empty), (withOthers!["ZDOTDIR"], withOthers[Key]));
+        Assert.Equal(own, daemon![Key]);
+        Assert.False(Guid.TryParse(none![Key], out _)); // so `mux attach` treats the pane as inside no session
+        Assert.Null(DefaultTerminalSessionFactory.MaskInheritedMuxSession(null, null)); // nothing inherited: unchanged
+    }
+
     /// <summary>Task 22: "another multiplexer owns the lock" is its own exit code, which the launcher reads.</summary>
     [Fact]
     public void A_start_refused_by_the_lock_exits_with_the_lock_held_code()
