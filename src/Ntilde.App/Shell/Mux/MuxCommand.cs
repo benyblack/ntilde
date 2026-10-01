@@ -515,9 +515,11 @@ public static class MuxCommand
                 restoredState = $"{RestoreMismatch} {DescribeMode(modeBefore)} -> {DescribeMode(after)}";
             }
 
-            string write = writeOk is null ? string.Empty : $"; write {(writeOk.Value ? "ok" : "FAILED")} ({writeNote})";
+            string writeVerdict = writeOk == true ? "ok" : "FAILED";
+            string write = writeOk is null ? string.Empty : $"; write {writeVerdict} ({writeNote})";
             string windowsMode = OperatingSystem.IsWindows() ? $" ({rawState})" : string.Empty;
-            string keysNote = chord is null ? string.Empty : $"; keys {(chord.Value ? "chord detected" : $"NO chord within {ProbeKeysTimeout.TotalSeconds:0} s")}";
+            string chordVerdict = chord == true ? "chord detected" : $"NO chord within {ProbeKeysTimeout.TotalSeconds:0} s";
+            string keysNote = chord is null ? string.Empty : $"; keys {chordVerdict}";
             // Non-zero: something sharing this console switched it out of raw mode while the probe ran.
             if (chord is not null && OperatingSystem.IsWindows()) keysNote += $"; raw mode put back {((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface).RawModeReasserts} time(s)";
             stdout.WriteLine($"size before raw {before.Cols}x{before.Rows}, while raw {inRaw.Cols}x{inRaw.Rows} ({(ProbeSizeStable(before, inRaw) ? "stable" : "UNSTABLE")}); "
@@ -607,7 +609,11 @@ public static class MuxCommand
     /// <summary>`stty -a` on our own terminal: the child inherits stdin, which is the TTY.</summary>
     private static string SttyState()
     {
-        var psi = new System.Diagnostics.ProcessStartInfo("stty", "-a") { UseShellExecute = false, RedirectStandardOutput = true };
+        // Absolute path, never an implicit PATH search (csharpsquid:S4036). Missing stty reads as
+        // "raw mode NOT applied", a failed probe, rather than the Win32Exception a bare name threw.
+        string? stty = Ntilde.Pty.ShellHelper.ResolveSystemTool("stty");
+        if (stty is null) return "stty not found";
+        var psi = new System.Diagnostics.ProcessStartInfo(stty, "-a") { UseShellExecute = false, RedirectStandardOutput = true };
         using var p = System.Diagnostics.Process.Start(psi)!;
         string output = p.StandardOutput.ReadToEnd();
         p.WaitForExit(5000);
