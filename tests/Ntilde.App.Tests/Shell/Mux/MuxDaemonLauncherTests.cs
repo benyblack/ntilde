@@ -114,6 +114,82 @@ public sealed class MuxDaemonLauncherTests : IDisposable
         Assert.Equal(2, spawner.Spawns);
     }
 
+    /// <summary>
+    /// Task 22: a daemon holds the lock but nobody can find it (its descriptor was deleted). Every
+    /// spawned daemon exits "lock held"; after the one respawn that covers the idle-exit race, the
+    /// launcher says why instead of waiting out the spawn timeout as if the daemon were slow.
+    /// </summary>
+    [Fact]
+    public async Task Daemons_that_exit_lock_held_with_nothing_reachable_report_an_orphaned_daemon()
+    {
+        var spawner = new LockHeldSpawner(this, startFrom: int.MaxValue);
+        var launcher = new MuxDaemonLauncher(MuxDiscovery.GetDescriptorPath(_root), spawner)
+        {
+            SpawnTimeout = TimeSpan.FromSeconds(10),
+            RespawnAfter = TimeSpan.FromMilliseconds(200),
+        };
+        var sw = Stopwatch.StartNew();
+
+        var ex = await Assert.ThrowsAsync<MuxUnavailableException>(() => launcher.EnsureConnectedAsync(Ct));
+
+        Assert.True(ex.OrphanedDaemon);
+        Assert.False(ex.VersionMismatch);
+        Assert.Equal(2, spawner.Spawns);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"took {sw.Elapsed}: the spawn timeout was waited out");
+    }
+
+    [Fact]
+    public async Task A_lock_held_first_spawn_is_still_retried_and_the_retry_connects()
+    {
+        // The old daemon was idle-exiting when the first spawn tried the lock: not an orphan.
+        var spawner = new LockHeldSpawner(this, startFrom: 2);
+        var launcher = new MuxDaemonLauncher(MuxDiscovery.GetDescriptorPath(_root), spawner)
+        {
+            SpawnTimeout = TimeSpan.FromSeconds(5),
+            RespawnAfter = TimeSpan.FromMilliseconds(200),
+        };
+
+        using MuxClient client = await launcher.EnsureConnectedAsync(Ct);
+
+        await client.PingAsync(Ct);
+        Assert.Equal(2, spawner.Spawns);
+    }
+
+    [Fact]
+    public async Task A_spawner_that_cannot_report_exit_codes_keeps_the_old_timeout()
+    {
+        var launcher = new MuxDaemonLauncher(MuxDiscovery.GetDescriptorPath(_root), new NoopSpawner())
+        {
+            SpawnTimeout = TimeSpan.FromSeconds(1),
+            RespawnAfter = TimeSpan.FromMilliseconds(100),
+        };
+
+        var ex = await Assert.ThrowsAsync<MuxUnavailableException>(() => launcher.EnsureConnectedAsync(Ct));
+
+        Assert.False(ex.OrphanedDaemon);
+    }
+
+    /// <summary>Spawns before <paramref name="startFrom"/> "exit" lock held; that spawn and later ones start a daemon.</summary>
+    private sealed class LockHeldSpawner(MuxDaemonLauncherTests t, int startFrom) : IMuxDaemonSpawner
+    {
+        private int? _exitCode;
+        public int Spawns;
+        public int? LastSpawnExitCode => Volatile.Read(ref Spawns) == 0 ? null : _exitCode;
+
+        public void Spawn()
+        {
+            if (Interlocked.Increment(ref Spawns) >= startFrom)
+            {
+                _exitCode = null;
+                t.StartDaemon();
+            }
+            else
+            {
+                _exitCode = MuxDaemonProcess.LockHeldExitCode;
+            }
+        }
+    }
+
     /// <summary>First Spawn does nothing (the daemon it would start exits at once); the second starts one.</summary>
     private sealed class FailFirstSpawner(MuxDaemonLauncherTests t) : IMuxDaemonSpawner
     {

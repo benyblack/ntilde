@@ -50,10 +50,34 @@ public sealed class MuxReview2Tests : IDisposable
         var stderr = new StringWriter();
         var log = new List<string>();
 
-        Assert.False(MuxDaemonProcess.TryStart(host, stderr, log.Add));
+        Assert.False(MuxDaemonProcess.TryStart(host, stderr, log.Add, out int exitCode));
 
+        Assert.Equal(1, exitCode);
         Assert.Contains("Could not listen", stderr.ToString());
         Assert.Contains(log, l => l.Contains("not starting", StringComparison.Ordinal));
+    }
+
+    /// <summary>Task 22: "another multiplexer owns the lock" is its own exit code, which the launcher reads.</summary>
+    [Fact]
+    public void A_start_refused_by_the_lock_exits_with_the_lock_held_code()
+    {
+        MuxDaemonHost NewHost(int pid) => new(
+            new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false }),
+            new MuxDaemonOptions
+            {
+                Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+                DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+                IdleExitAfter = TimeSpan.Zero,
+                Pid = pid,
+            });
+        using MuxDaemonHost first = NewHost(Environment.ProcessId);
+        Assert.True(MuxDaemonProcess.TryStart(first, null, _ => { }, out _));
+        using MuxDaemonHost second = NewHost(Environment.ProcessId + 100_000);
+
+        Assert.False(MuxDaemonProcess.TryStart(second, null, _ => { }, out int exitCode));
+
+        Assert.Equal(MuxDaemonProcess.LockHeldExitCode, exitCode);
+        Assert.Equal(3, MuxDaemonProcess.LockHeldExitCode);
     }
 
     // ---- item 5: $APPIMAGE is only trusted when we really run from inside $APPDIR.

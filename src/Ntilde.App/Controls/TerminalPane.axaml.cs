@@ -3599,10 +3599,17 @@ namespace Ntilde.Controls
 
             if (result.Outcome == PersistentSessionOutcome.Unavailable)
             {
-                TerminalLogger.Log($"[TerminalPane] multiplexer unavailable (version mismatch: {result.VersionMismatch}); starting a non-persistent session");
-                RaisePersistenceNotice(MuxUnavailableNoticeTitle, result.VersionMismatch
-                    ? $"{MuxUnavailableBanner}\n{MuxVersionMismatchHint}"
-                    : MuxUnavailableBanner);
+                TerminalLogger.Log($"[TerminalPane] multiplexer unavailable (version mismatch: {result.VersionMismatch}, orphaned daemon: {result.OrphanedDaemon}); starting a non-persistent session");
+                if (result.OrphanedDaemon)
+                {
+                    RaisePersistenceNotice(MuxOrphanedNoticeTitle, MuxOrphanedBanner);
+                }
+                else
+                {
+                    RaisePersistenceNotice(MuxUnavailableNoticeTitle, result.VersionMismatch
+                        ? $"{MuxUnavailableBanner}\n{MuxVersionMismatchHint}"
+                        : MuxUnavailableBanner);
+                }
             }
             else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
             {
@@ -3635,6 +3642,8 @@ namespace Ntilde.Controls
                 ? $"{MuxUnreachableBanner}\r\n{MuxVersionMismatchHint}"
                 : MuxUnreachableBanner;
             WriteBanner($"\r\n\x1b[90m{banner}\x1b[0m\r\n");
+            // The banner offers a retry; only the window can say why retrying will not help yet.
+            if (result.OrphanedDaemon) RaisePersistenceNotice(MuxOrphanedNoticeTitle, MuxOrphanedBanner);
         }
 
         /// <summary>
@@ -3695,6 +3704,8 @@ namespace Ntilde.Controls
         internal const string MuxUnreachableBanner = "[Multiplexer not reachable — press Enter to retry]";
         internal const string MuxSessionFailedBanner = "[Multiplexer session failed — press Enter to start a new shell]";
         internal const string MuxUnavailableNoticeTitle = "Session not persistent";
+        internal const string MuxOrphanedNoticeTitle = "Multiplexer";
+        internal const string MuxOrphanedBanner = "[Another multiplexer is running but cannot be reached. Shells in this window are not kept. Close other ntilde windows or end the old multiplexer.]";
         internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
         internal const string MuxAttachedElsewhereBanner = "[Your previous shell is open in another window — started a new shell]";
         internal const string MuxAttachedElsewhereNoticeTitle = "Previous shell in use";

@@ -363,6 +363,27 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.Equal("[3 previous sessions were lost — started new shells]", message);
     }
 
+    /// <summary>Task 22: the orphaned-daemon notice is shown at most once per window launch, however many panes fall back.</summary>
+    [AvaloniaFact]
+    public void The_orphaned_daemon_notice_is_shown_once_per_window()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var handler = typeof(MainWindow).GetMethod("OnPanePersistenceNotice", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        Dispatcher.UIThread.RunJobs();
+
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal((true, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner), Toast(window));
+
+        // A later pane (after the connection cooldown, say) raises it again: only the other notice shows.
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal((true, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Toast(window));
+    }
+
     [AvaloniaFact]
     public void Refresh_is_a_no_op_for_a_non_mux_session()
     {

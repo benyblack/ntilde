@@ -43,6 +43,9 @@ internal sealed record PersistentSessionResult(ITerminalSession? Session, Persis
     /// <summary>Unavailable/DaemonUnreachable because the running daemon speaks another protocol version (the pane adds a kill-server hint).</summary>
     public bool VersionMismatch { get; init; }
 
+    /// <summary>Unavailable/DaemonUnreachable because a daemon holds the lock but cannot be reached (the pane raises its own notice).</summary>
+    public bool OrphanedDaemon { get; init; }
+
     /// <summary>A share of a session whose shell had already exited when it was listed: its exit arrives with the attach.</summary>
     public bool AlreadyExited { get; init; }
 }

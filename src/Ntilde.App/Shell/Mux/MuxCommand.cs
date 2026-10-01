@@ -10,7 +10,8 @@ internal sealed record MuxServeOptions(TimeSpan IdleExitAfter, bool Foreground);
 /// <summary>
 /// <c>ntilde mux serve|ls|kill|kill-server|attach</c> (spec §5, §6). Exit codes: 0 success, 1 the
 /// operation failed (including "no daemon running"), 2 the command line was wrong. <c>attach</c>
-/// differs: see <see cref="Attach"/>.
+/// differs: see <see cref="Attach"/>. <c>serve</c> exits <see cref="MuxDaemonProcess.LockHeldExitCode"/>
+/// (3) when another daemon owns this root's lock.
 /// </summary>
 public static class MuxCommand
 {

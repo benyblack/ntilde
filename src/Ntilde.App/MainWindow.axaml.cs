@@ -4811,8 +4811,18 @@ namespace Ntilde
         private void OnPanePersistenceNotice(TerminalPane pane, string title, string message)
         {
             _ = pane;
+            // Every pane that falls back raises it, and so does each retry after the connection
+            // cooldown: the user needs to hear it once per launch, not once per pane.
+            if (title == TerminalPane.MuxOrphanedNoticeTitle)
+            {
+                if (_muxOrphanedNoticeShown) return;
+                _muxOrphanedNoticeShown = true;
+            }
+
             EnqueueNotice(title, message);
         }
+
+        private bool _muxOrphanedNoticeShown; // UI thread
 
         /// <summary>
         /// UI thread. The one way a session notice reaches the toast: everything raised together - panes

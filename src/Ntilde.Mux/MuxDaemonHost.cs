@@ -22,6 +22,10 @@ public sealed class MuxDaemonHost : IDisposable
     private long _idleSinceMs = -1;
     private int _stopping;
     private int _startFailed;
+    // Tick state, touched only under _tickLock.
+    private int _foreignDescriptorPid;
+    private bool _socketLossReported;
+    private string? _descriptorFailure; // the last one logged, so a lasting failure is logged once
 
     public MuxDaemonHost(MuxServer server, MuxDaemonOptions options)
     {
@@ -87,14 +91,7 @@ public sealed class MuxDaemonHost : IDisposable
         try
         {
             _server.Start(CreateListener());
-            MuxDiscovery.WriteDescriptor(_options.DescriptorPath, new MuxEndpointDescriptor
-            {
-                MinVersion = _server.Options.MinProtocolVersion,
-                MaxVersion = _server.Options.MaxProtocolVersion,
-                Endpoint = _options.Endpoint,
-                Pid = _options.Pid,
-                ProcessName = _options.ProcessName,
-            });
+            MuxDiscovery.WriteDescriptor(_options.DescriptorPath, CreateDescriptor());
         }
         catch
         {
@@ -118,6 +115,78 @@ public sealed class MuxDaemonHost : IDisposable
         }
 
         Log($"[MuxDaemon] serving {_options.Endpoint} (pid {_options.Pid})");
+    }
+
+    private MuxEndpointDescriptor CreateDescriptor() => new()
+    {
+        MinVersion = _server.Options.MinProtocolVersion,
+        MaxVersion = _server.Options.MaxProtocolVersion,
+        Endpoint = _options.Endpoint,
+        Pid = _options.Pid,
+        ProcessName = _options.ProcessName,
+    };
+
+    /// <summary>
+    /// Inside Tick. The descriptor is how everyone finds this daemon, and it is a plain file: deleting
+    /// the app-data root removes it (on Windows the held mux.lock survives), leaving a daemon that
+    /// holds shells, so never idles out, that nobody can find, and whose lock refuses every new
+    /// daemon. Put it back. One naming another live daemon is left alone: that cannot happen while
+    /// we hold the lock, and if it somehow does, it is not ours to overwrite.
+    /// </summary>
+    private void EnsureDescriptor()
+    {
+        bool readable = MuxDiscovery.TryReadDescriptor(_options.DescriptorPath, out MuxEndpointDescriptor? current);
+        if (readable && current!.Pid == _options.Pid)
+        {
+            _foreignDescriptorPid = 0;
+            CheckSocket();
+            return;
+        }
+
+        if (readable && MuxDiscovery.IsProcessAlive(current!.Pid, current.ProcessName))
+        {
+            if (_foreignDescriptorPid != current.Pid)
+            {
+                _foreignDescriptorPid = current.Pid;
+                Log($"[MuxDaemon] the descriptor names another live multiplexer (pid {current.Pid}); leaving it alone");
+            }
+
+            return;
+        }
+
+        _foreignDescriptorPid = 0;
+        string dir = Path.GetDirectoryName(_options.DescriptorPath)!;
+        if (!Directory.Exists(dir))
+        {
+            // As at start: off Windows the socket lives here, so the directory must be 0700.
+            if (OperatingSystem.IsWindows()) Directory.CreateDirectory(dir);
+            else UnixSocketMuxListener.EnsurePrivateDirectory(dir);
+        }
+
+        MuxDiscovery.WriteDescriptor(_options.DescriptorPath, CreateDescriptor());
+        Log(readable
+            ? $"[MuxDaemon] the descriptor named pid {current!.Pid}, not this daemon; rewrote it"
+            : "[MuxDaemon] descriptor was missing; rewrote it");
+        CheckSocket();
+    }
+
+    /// <summary>
+    /// Off Windows the endpoint is a socket file, deleted with its directory. The listener cannot be
+    /// reached through a new file at that path, so there is no repair short of a restart: say so once
+    /// per loss. (Re-binding would mean swapping the server's listener under a live accept loop.)
+    /// </summary>
+    private void CheckSocket()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        if (File.Exists(_options.Endpoint))
+        {
+            _socketLossReported = false;
+            return;
+        }
+
+        if (_socketLossReported) return;
+        _socketLossReported = true;
+        Log($"[MuxDaemon] the endpoint socket {_options.Endpoint} is gone; this multiplexer (pid {_options.Pid}) cannot be reached until it is restarted");
     }
 
     /// <summary>
@@ -167,6 +236,18 @@ public sealed class MuxDaemonHost : IDisposable
             {
                 int reaped = _server.ReapExitedSessions(_options.ReapGrace);
                 if (reaped > 0) Log($"[MuxDaemon] reaped {reaped} exited session(s)");
+
+                // Its own catch: a descriptor that cannot be written must not skip the stop checks below.
+                try
+                {
+                    EnsureDescriptor();
+                    _descriptorFailure = null;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    if (_descriptorFailure != ex.Message) Log($"[MuxDaemon] could not restore the descriptor: {ex.Message}");
+                    _descriptorFailure = ex.Message;
+                }
 
                 if (ShouldStopForAcceptFailure())
                 {

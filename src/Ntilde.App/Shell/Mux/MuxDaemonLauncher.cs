@@ -8,10 +8,20 @@ public sealed class MuxUnavailableException : Exception
 {
     public MuxUnavailableException() : this("The multiplexer is unavailable.") { }
 
-    public MuxUnavailableException(string message, Exception? inner = null, bool versionMismatch = false) : base(message, inner) => VersionMismatch = versionMismatch;
+    public MuxUnavailableException(string message, Exception? inner = null, bool versionMismatch = false, bool orphanedDaemon = false) : base(message, inner)
+    {
+        VersionMismatch = versionMismatch;
+        OrphanedDaemon = orphanedDaemon;
+    }
 
     /// <summary>A daemon is running but speaks a protocol version this build does not: spawning another cannot help.</summary>
     public bool VersionMismatch { get; }
+
+    /// <summary>
+    /// A daemon holds this root's lock but cannot be reached (its descriptor or socket was deleted):
+    /// every new daemon exits with <see cref="MuxDaemonProcess.LockHeldExitCode"/>, so spawning cannot help.
+    /// </summary>
+    public bool OrphanedDaemon { get; }
 }
 
 /// <summary>Connect to the running daemon, or start one and connect (spec §6).</summary>
@@ -132,9 +142,21 @@ internal sealed class MuxDaemonLauncher
             cancellationToken.ThrowIfCancellationRequested();
             if (await TryConnectExistingAsync(cancellationToken).ConfigureAwait(false) is { } client) return client;
 
+            bool advertised = MuxDiscovery.TryReadLiveDescriptor(_descriptorPath, out _);
+            if (DateTime.UtcNow - spawnedAt >= RespawnAfter && _spawner.LastSpawnExitCode == MuxDaemonProcess.LockHeldExitCode && (respawned || advertised))
+            {
+                // Our daemon found the lock held, yet nothing answers: after the respawn (which covers
+                // an old daemon idle-exiting), or while the descriptor names one we just failed to
+                // connect to. A daemon whose descriptor or socket was deleted - more spawns cannot
+                // help, and waiting out the timeout would only hide why.
+                const string Message = "Another multiplexer is running but cannot be reached (it holds the lock, but its endpoint descriptor or socket is gone).";
+                _log?.Invoke($"[Mux] {Message}");
+                throw new MuxUnavailableException(Message, orphanedDaemon: true);
+            }
+
             // At most one extra spawn per call, and only once no daemon at all is advertised: a
             // live descriptor means one is up (or coming up) and a second would only lose the lock.
-            if (!respawned && DateTime.UtcNow - spawnedAt >= RespawnAfter && !MuxDiscovery.TryReadLiveDescriptor(_descriptorPath, out _))
+            if (!respawned && DateTime.UtcNow - spawnedAt >= RespawnAfter && !advertised)
             {
                 respawned = true;
                 _log?.Invoke("[Mux] the multiplexer has not come up; starting it again");

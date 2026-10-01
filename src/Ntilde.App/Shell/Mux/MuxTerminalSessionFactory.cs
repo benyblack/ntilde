@@ -45,6 +45,11 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                 return Fallback(request, mismatch.Message) with { VersionMismatch = true };
             }
 
+            if (Host.LastFailure is MuxUnavailableException { OrphanedDaemon: true } orphaned)
+            {
+                return Fallback(request, orphaned.Message) with { OrphanedDaemon = true };
+            }
+
             return Fallback(request, "the multiplexer could not be reached");
         }
 
