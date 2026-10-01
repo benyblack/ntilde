@@ -29,8 +29,9 @@ public static class MuxCommand
 
           Shows a multiplexer session in this terminal. The id (or a unique prefix of at least
           4 characters) comes from `ntilde mux ls`. Detach with Ctrl+\ then d (Ctrl may stay held);
-          Ctrl+\ Ctrl+\ sends a literal Ctrl+\. --read-only shows the session without sending input (a convenience,
-          not a security boundary). Exit codes: 0 detached, 1 the session ended, 2 an error.
+          Ctrl+\ Ctrl+\ sends a literal Ctrl+\. --read-only shows the session without sending
+          input (a convenience, not a security boundary). Exit codes: 0 detached, 1 the session
+          ended, 2 an error.
 
           Windows: from PowerShell, or any prompt that does not wait for GUI programs, run
             cmd /c ntilde mux attach <id>
@@ -511,7 +512,7 @@ public static class MuxCommand
             if (!OperatingSystem.IsWindows()) restoredState = SttyState();
             else if (((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface).InputMode is var after && after != modeBefore)
             {
-                restoredState = $"{RestoreMismatch} 0x{modeBefore:X4} -> 0x{after:X4}";
+                restoredState = $"{RestoreMismatch} {DescribeMode(modeBefore)} -> {DescribeMode(after)}";
             }
 
             string write = writeOk is null ? string.Empty : $"; write {(writeOk.Value ? "ok" : "FAILED")} ({writeNote})";
@@ -594,6 +595,8 @@ public static class MuxCommand
 
     internal static bool ProbeRestored(string? restoredState) =>
         restoredState is null || (!restoredState.Contains("-icanon", StringComparison.Ordinal) && !restoredState.Contains(RestoreMismatch, StringComparison.Ordinal));
+
+    private static string DescribeMode(uint? mode) => mode is uint m ? $"0x{m:X4}" : "unreadable";
 
     internal static bool ProbeSizeStable((int Cols, int Rows) before, (int Cols, int Rows) inRaw) => before == inRaw && before.Cols > 1;
 

@@ -12,6 +12,7 @@ public sealed class DetachChordTests
     [InlineData("ab\u001c\u0004", "ab", true)]          // Ctrl still held for the d: Ctrl+D detaches too, as in GNU screen
     [InlineData("\u0004", "\u0004", false)]              // Ctrl+D on its own is the shell's
     [InlineData("\u001c\u001c", "\u001c", false)]      // Ctrl+\ Ctrl+\ sends one literal Ctrl+\
+    [InlineData("\u001c\u001c\u0004", "\u001c\u0004", false)] // the way to send a literal Ctrl+\ then Ctrl+D
     [InlineData("\u001cx", "\u001cx", false)]          // anything else: nothing is lost
     [InlineData("\u001cdls", "", true)]                // input after the chord is not sent
     public void Feed(string input, string expectedPassThrough, bool expectedDetach)
