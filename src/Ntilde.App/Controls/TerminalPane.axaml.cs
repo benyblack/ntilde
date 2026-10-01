@@ -3369,6 +3369,9 @@ namespace Ntilde.Controls
 
                 if (profile == null || profile.Type != ConnectionType.SSH)
                 {
+                    // Like the launch plan below, a launch-time detail: applied after ShellArgs is
+                    // captured so the persisted arguments stay what the user configured.
+                    args = ShellHelper.ApplyLoginShellConvention(effectiveShell, args, OperatingSystem.IsMacOS());
                     ApplyShellIntegrationLaunchPlan(profile, ref effectiveShell, ref args, startingDir);
 
                     // ShellCommand/ShellArgs are deliberately NOT updated with the merged
