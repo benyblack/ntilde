@@ -812,15 +812,8 @@ public sealed class HeadlessTerminalSession : IDisposable
     }
 
     /// <summary>Parse thread only. A read-only observer does not count: it must not make a GUI abandon its own shell (spec §3).</summary>
-    private bool HasOtherInteractiveSubscriber(IMuxFrameSink sink)
-    {
-        foreach (IMuxFrameSink s in _subscribers)
-        {
-            if (!ReferenceEquals(s, sink) && !_readOnlySinks.Contains(s)) return true;
-        }
-
-        return false;
-    }
+    private bool HasOtherInteractiveSubscriber(IMuxFrameSink sink) =>
+        _subscribers.Any(s => !ReferenceEquals(s, sink) && !_readOnlySinks.Contains(s));
 
     /// <summary>Parse thread only, for a sink just removed from <see cref="_subscribers"/>: drops its per-sink state and tells it.</summary>
     private void Forget(IMuxFrameSink sink)

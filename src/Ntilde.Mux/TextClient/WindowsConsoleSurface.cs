@@ -19,7 +19,6 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
     private readonly nint _in;
     private readonly nint _out;
     private readonly object _modeGate = new();
-    private readonly Thread _sizePoll;
     private uint _savedIn;
     private uint _savedOut;
     private uint _rawIn;
@@ -40,8 +39,8 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
             throw new ConsoleUnavailableException("mux attach needs an interactive console.");
         }
 
-        _sizePoll = new Thread(PollSize) { IsBackground = true, Name = "MuxAttachSizePoll" };
-        _sizePoll.Start();
+        // Never joined: it exits on its own once Dispose sets _disposed.
+        new Thread(PollSize) { IsBackground = true, Name = "MuxAttachSizePoll" }.Start();
     }
 
     public event Action? Resized;

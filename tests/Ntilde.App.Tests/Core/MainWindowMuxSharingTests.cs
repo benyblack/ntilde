@@ -153,6 +153,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         TabItem tab = window.FindControl<TabControl>("Tabs")!.Items.OfType<TabItem>().Single(t => ReferenceEquals(t.Content, mine));
         PumpUntil(() => (ToolTip.GetTip((Control)tab.Header!) as string)?.Contains(MainWindow.SharedGlyph, StringComparison.Ordinal) == true,
             "the tab label carries the shared marker");
+        Assert.Contains(MainWindow.SharedGlyph, ToolTip.GetTip((Control)tab.Header!) as string ?? string.Empty, StringComparison.Ordinal);
     }
 
     [AvaloniaFact]

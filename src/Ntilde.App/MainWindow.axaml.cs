@@ -4224,16 +4224,16 @@ namespace Ntilde
                     return;
                 }
                 // Unbound by default: inert until the user assigns a chord.
-                if (IsMuxPersistenceActive && IsShortcut(e, "attach_session", ""))
+                if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.AttachSessionId, ""))
                 {
-                    RecordCommandUsage("attach_session");
+                    RecordCommandUsage(ShortcutCatalog.AttachSessionId);
                     _ = AttachToMuxSessionAsync();
                     e.Handled = true;
                     return;
                 }
-                if (IsMuxPersistenceActive && IsShortcut(e, "detach_pane", ""))
+                if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.DetachPaneId, ""))
                 {
-                    RecordCommandUsage("detach_pane");
+                    RecordCommandUsage(ShortcutCatalog.DetachPaneId);
                     DetachActivePane();
                     e.Handled = true;
                     return;
@@ -6052,9 +6052,8 @@ namespace Ntilde
             }
 
             TimeSpan left = PaneCloseRefreshBudget - budget.Elapsed;
-            return await ShouldClosePaneAsync(pane, left > TimeSpan.Zero ? left : TimeSpan.Zero)
-                ? Ntilde.Shell.Mux.SharedCloseChoice.Close
-                : Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
+            bool close = await ShouldClosePaneAsync(pane, left > TimeSpan.Zero ? left : TimeSpan.Zero);
+            return close ? Ntilde.Shell.Mux.SharedCloseChoice.Close : Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
         }
 
         /// <summary>How long a pane close waits on the daemon, in total, before deciding on cached values.</summary>
@@ -7690,8 +7689,8 @@ namespace Ntilde
             CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
             if (IsMuxPersistenceActive)
             {
-                CommandRegistry.Register("Session: Attach to Session…", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding("attach_session", ""), "attach_session");
-                CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding("detach_pane", ""), "detach_pane");
+                CommandRegistry.Register("Session: Attach to Session…", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.AttachSessionId, ""), ShortcutCatalog.AttachSessionId);
+                CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding(ShortcutCatalog.DetachPaneId, ""), ShortcutCatalog.DetachPaneId);
             }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");
             CommandRegistry.Register("Focus Pane Right", "View", () => NavigatePane(MoveDirection.Right), "Alt+Right");

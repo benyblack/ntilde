@@ -6,6 +6,9 @@ namespace Ntilde.Shell.Shortcuts;
 
 public static class ShortcutCatalog
 {
+    public const string AttachSessionId = "attach_session";
+    public const string DetachPaneId = "detach_pane";
+
     private static readonly IReadOnlyList<ShortcutCatalogEntry> Entries =
     [
         new("command_palette", "Command Palette", "General", ShortcutScope.App, "Ctrl+Shift+P"),
@@ -36,8 +39,8 @@ public static class ShortcutCatalog
         // Phase 3 multiplexer commands (spec §7.2, §7.4): palette-first, no default chord. Listed in
         // Settings only while session persistence is on, which is also the only time MainWindow
         // registers or dispatches them.
-        new("attach_session", "Session: Attach to Session…", "General", ShortcutScope.App, "", RequiresSessionPersistence: true),
-        new("detach_pane", "Pane: Detach", "General", ShortcutScope.Pane, "", RequiresSessionPersistence: true),
+        new(AttachSessionId, "Session: Attach to Session…", "General", ShortcutScope.App, "", RequiresSessionPersistence: true),
+        new(DetachPaneId, "Pane: Detach", "General", ShortcutScope.Pane, "", RequiresSessionPersistence: true),
         new("paste", "Paste", "Edit", ShortcutScope.Pane, "Ctrl+V"),
         new("command_assist_toggle", "Command Assist Toggle", "Command Assist", ShortcutScope.CommandAssist, "Ctrl+Space"),
         new("command_assist_help", "Command Assist Help", "Command Assist", ShortcutScope.CommandAssist, "Ctrl+Shift+H"),

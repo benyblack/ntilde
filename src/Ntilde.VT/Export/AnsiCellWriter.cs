@@ -36,7 +36,7 @@ namespace Ntilde.VT.Export
                 RenderCellSnapshot cell = cells[col];
                 bool wide = cell.IsWide && !cell.IsWideContinuation;
                 bool clippedToSpace = cell.IsWideContinuation || (wide && col + 1 >= limit);
-                int width = clippedToSpace ? 1 : (wide ? 2 : 1);
+                int width = wide && !clippedToSpace ? 2 : 1;
 
                 if (!haveStyle || !SameStyle(current, cell))
                 {
