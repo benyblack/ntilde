@@ -3583,7 +3583,6 @@ namespace Ntilde
         private bool TryMapBroadcastKey(KeyEventArgs e, TerminalBuffer? buffer, out string? sequence)
         {
             sequence = null;
-            bool isCtrl = (e.KeyModifiers & KeyModifiers.Control) != 0;
             bool isAlt = (e.KeyModifiers & KeyModifiers.Alt) != 0;
             bool isShift = (e.KeyModifiers & KeyModifiers.Shift) != 0;
 
@@ -3607,14 +3606,10 @@ namespace Ntilde
                 return true;
             }
 
-            if (isCtrl && !isShift && e.Key >= Key.A && e.Key <= Key.Z)
-            {
-                char ctrlChar = (char)(e.Key - Key.A + 1);
-                sequence = ctrlChar.ToString();
-                return true;
-            }
-
-            return false;
+            // Same legacy C0 table the focused pane's TerminalView sends (Ctrl+letters plus
+            // Ctrl+\, Ctrl+], Ctrl+_ and the digit row), so a broadcast Ctrl+\ reaches every pane.
+            sequence = TerminalInputModeEncoder.EncodeLegacyControlKey(e.Key, e.KeyModifiers);
+            return sequence != null;
         }
 
         private void BroadcastKeyToSiblingPanes(KeyEventArgs e)

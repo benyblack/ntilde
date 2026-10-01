@@ -355,6 +355,72 @@ namespace Ntilde.Shell
             return null;
         }
 
+        /// <summary>
+        /// Legacy Ctrl+key encoding: the C0 control character a Ctrl chord sends when no
+        /// keyboard protocol is active, or <c>null</c> when the chord has none.
+        ///
+        /// Ctrl+A..Z map to 0x01..0x1A (Shift excluded: Ctrl+Shift+letter is an app-shortcut
+        /// space). The punctuation and digit rows follow Xlib's XLookupString control mapping,
+        /// which xterm, VTE and Windows Terminal all send:
+        /// - NUL  0x00: Ctrl+@ (Ctrl+Shift+2), Ctrl+2, Ctrl+Space
+        /// - ESC  0x1B: Ctrl+[, Ctrl+3
+        /// - FS   0x1C: Ctrl+\, Ctrl+4
+        /// - GS   0x1D: Ctrl+], Ctrl+5
+        /// - RS   0x1E: Ctrl+^ (Ctrl+Shift+6), Ctrl+6
+        /// - US   0x1F: Ctrl+_ (Ctrl+Shift+-), Ctrl+7, Ctrl+/
+        /// - DEL  0x7F: Ctrl+8
+        ///
+        /// Without this, those chords were swallowed: Windows does put the control character in
+        /// WM_CHAR, but Avalonia drops control characters from TextInput, so the only way they
+        /// reach the PTY is by encoding them on KeyDown. Programs depend on them - Ctrl+\ is
+        /// SIGQUIT and the <c>ntilde mux attach</c> detach prefix, Ctrl+] is telnet's escape,
+        /// Ctrl+_ is readline/emacs undo, Ctrl+Space / Ctrl+@ is set-mark.
+        ///
+        /// Ctrl+Alt is declined: on Windows that is how AltGr arrives, and AltGr composes real
+        /// text on most non-US layouts (AltGr+8/9 are '[' and ']' on German) that must reach
+        /// TextInput - encoding it here would mark KeyDown handled and the character would be lost.
+        /// Meta chords are declined too.
+        ///
+        /// Layout limitation: <see cref="Key"/> is a US-layout virtual key, so the punctuation
+        /// rows match the key in that US position (the same assumption
+        /// <see cref="GetUnshiftedCodepoint"/> makes for the kitty protocol). On a layout where
+        /// '\' or ']' only exist behind AltGr, Ctrl+\ is not reachable this way - the same is
+        /// true in Windows Terminal. The digit forms (Ctrl+4, Ctrl+5, ...) work on every layout.
+        /// </summary>
+        public static string? EncodeLegacyControlKey(Key key, KeyModifiers modifiers)
+        {
+            if ((modifiers & KeyModifiers.Control) == 0 ||
+                (modifiers & (KeyModifiers.Alt | KeyModifiers.Meta)) != 0)
+            {
+                return null;
+            }
+
+            bool shift = (modifiers & KeyModifiers.Shift) != 0;
+
+            int code = shift
+                ? key switch
+                {
+                    Key.D2 => 0x00,        // Ctrl+@
+                    Key.D6 => 0x1E,        // Ctrl+^
+                    Key.OemMinus => 0x1F,  // Ctrl+_
+                    _ => -1
+                }
+                : key switch
+                {
+                    >= Key.A and <= Key.Z => key - Key.A + 1,
+                    Key.Space or Key.D2 => 0x00,
+                    Key.OemOpenBrackets or Key.D3 => 0x1B,
+                    Key.OemPipe or Key.OemBackslash or Key.D4 => 0x1C,
+                    Key.OemCloseBrackets or Key.D5 => 0x1D,
+                    Key.D6 => 0x1E,
+                    Key.D7 or Key.OemQuestion => 0x1F,
+                    Key.D8 => 0x7F,
+                    _ => -1
+                };
+
+            return code < 0 ? null : ((char)code).ToString();
+        }
+
         public static string? EncodeFocusChanged(ModeState? modes, bool isFocused)
         {
             if (modes?.IsFocusEventReporting != true)
