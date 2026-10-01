@@ -12,6 +12,12 @@ namespace Ntilde.Mux;
 /// </summary>
 public sealed class MuxServer : IDisposable
 {
+    /// <summary>
+    /// Set in every spawned shell to its own session id ("D" format), so <c>ntilde mux attach</c>
+    /// run inside a session can refuse to attach to that same session (tmux's <c>$TMUX</c> check).
+    /// </summary>
+    public const string SessionEnvironmentVariable = "NTILDE_MUX_SESSION";
+
     private readonly ITerminalSessionFactory _factory;
     private readonly ConcurrentDictionary<Guid, HeadlessTerminalSession> _sessions = new();
     private readonly ConcurrentDictionary<Guid, MuxServerConnection> _connections = new();
@@ -219,9 +225,17 @@ public sealed class MuxServer : IDisposable
     {
         RequireGeometry(p.Cols, p.Rows);
 
+        // Chosen before the spawn so the shell can be told its own id; added to the caller's
+        // overrides, which the PTY layers on top of the daemon's environment.
+        Guid id = Guid.NewGuid();
+        var environment = p.EnvironmentOverrides is null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string>(p.EnvironmentOverrides);
+        environment[SessionEnvironmentVariable] = id.ToString("D");
+
         var request = new TerminalSessionRequest(
             p.Command, p.Arguments, p.StartingDirectory, p.Cols, p.Rows,
-            p.EnvironmentOverrides, p.SkipPowerShellPostLaunchInit, Ssh: null);
+            environment, p.SkipPowerShellPostLaunchInit, Ssh: null);
 
         ITerminalSession inner;
         try
@@ -240,7 +254,6 @@ public sealed class MuxServer : IDisposable
                 $"{inner.GetType().Name} does not expose raw output, so it cannot be multiplexed.");
         }
 
-        Guid id = Guid.NewGuid();
         HeadlessTerminalSession session;
         try
         {

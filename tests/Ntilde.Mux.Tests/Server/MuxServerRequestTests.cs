@@ -1,5 +1,6 @@
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Pty;
 
 namespace Ntilde.Mux.Tests.Server;
 
@@ -46,6 +47,32 @@ public sealed class MuxServerRequestTests
         Assert.Null(request.Ssh);
         SessionSummary summary = Assert.Single(MuxFrames.ParseParams(list.Result, MuxJsonContext.Default.ListSessionsResult).Sessions);
         Assert.Equal((id, "work", "pwsh", 100, 30, true, 0), (summary.SessionId, summary.Title, summary.Command, summary.Cols, summary.Rows, summary.Running, summary.AttachedClients));
+    }
+
+    [Fact]
+    public async Task Spawn_tells_the_shell_its_session_id_and_keeps_the_callers_environment()
+    {
+        // `ntilde mux attach` reads NTILDE_MUX_SESSION to refuse attaching a session to itself,
+        // which would copy the session's screen into that same screen in a loop.
+        using var host = new MuxTestHost();
+        RawMuxConnection raw = host.ConnectRaw();
+        await raw.HelloAsync();
+
+        Guid withEnv = await SpawnAsync(raw, new SpawnParams
+        {
+            Command = "scripted",
+            Cols = 80,
+            Rows = 24,
+            EnvironmentOverrides = new Dictionary<string, string> { ["A"] = "1" },
+        });
+        Guid withoutEnv = await SpawnAsync(raw);
+
+        TerminalSessionRequest[] requests = host.Factory.Requests.ToArray();
+        Assert.Equal(2, requests.Length);
+        Assert.Equal(withEnv.ToString("D"), requests[0].EnvironmentOverrides![MuxServer.SessionEnvironmentVariable]);
+        Assert.Equal("1", requests[0].EnvironmentOverrides!["A"]);
+        Assert.Equal(withoutEnv.ToString("D"), Assert.Single(requests[1].EnvironmentOverrides!).Value);
+        Assert.Equal("NTILDE_MUX_SESSION", MuxServer.SessionEnvironmentVariable);
     }
 
     [Fact]

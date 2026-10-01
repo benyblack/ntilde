@@ -361,6 +361,14 @@ public static class MuxCommand
                 return 2;
             }
 
+            // The daemon names each shell's session in its environment. Drawing a session into its
+            // own terminal copies every frame into the screen being copied: a loop, not a view.
+            if (IsEnclosingSession(id, Environment.GetEnvironmentVariable(MuxServer.SessionEnvironmentVariable)))
+            {
+                stderr.WriteLine($"mux: you are inside session {id.ToString("N")[..8]} already; attaching to it from itself would loop. Use another terminal.");
+                return 2;
+            }
+
             if (readOnly && client.ProtocolVersion < MuxProtocol.SessionEventsVersion)
             {
                 stderr.WriteLine("mux: the running multiplexer is too old for --read-only; run 'ntilde mux kill-server' to replace it.");
@@ -396,6 +404,9 @@ public static class MuxCommand
     /// </summary>
     internal static string? AttachConsoleHint(bool isWindows, bool attachedToParentConsole, string target) =>
         isWindows && attachedToParentConsole ? $"mux: if keystrokes are lost, run via cmd /c ntilde mux attach {target} (ignore if already under cmd /c)" : null;
+
+    private static bool IsEnclosingSession(Guid target, string? enclosing) =>
+        Guid.TryParse(enclosing, out Guid inside) && inside == target;
 
     /// <summary>A full id, or a unique prefix of at least 4 hex characters (dashes ignored).</summary>
     internal static bool TryResolveSession(string target, IReadOnlyList<SessionSummary> sessions, out Guid id, out string? why)

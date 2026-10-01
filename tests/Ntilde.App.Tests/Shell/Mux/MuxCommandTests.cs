@@ -341,6 +341,62 @@ public sealed class MuxCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task Attach_from_inside_the_target_session_is_refused_before_any_console_is_touched()
+    {
+        // Drawing a session into its own terminal copies each frame into the screen it is copying:
+        // a feedback loop that blacked out the pane in manual testing.
+        Guid id = await StartDaemonWithOneSessionAsync();
+        bool surfaceCreated = false;
+        MuxCommand.ConsoleFactoryForTest = () =>
+        {
+            surfaceCreated = true;
+            return new FakeConsoleSurface(80, 24);
+        };
+        string? previous = Environment.GetEnvironmentVariable(MuxServer.SessionEnvironmentVariable);
+        Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, id.ToString("D"));
+        try
+        {
+            var (code, _, err) = Run("mux", "attach", id.ToString("N")[..8]);
+
+            Assert.Equal(2, code);
+            Assert.Equal(
+                $"mux: you are inside session {id.ToString("N")[..8]} already; attaching to it from itself would loop. Use another terminal." + Environment.NewLine,
+                err);
+            Assert.False(surfaceCreated);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, previous);
+            MuxCommand.ConsoleFactoryForTest = null;
+        }
+    }
+
+    [Fact]
+    public async Task Attach_from_inside_a_different_session_proceeds()
+    {
+        Guid id = await StartDaemonWithOneSessionAsync();
+        using var console = new FakeConsoleSurface(80, 24);
+        MuxCommand.ConsoleFactoryForTest = () => console;
+        string? previous = Environment.GetEnvironmentVariable(MuxServer.SessionEnvironmentVariable);
+        Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, Guid.NewGuid().ToString("D"));
+        try
+        {
+            Task<(int Code, string Out, string Err)> run = Task.Run(() => Run("mux", "attach", id.ToString()), Ct);
+            await TestWait.UntilAsync(() => console.IsRaw, "the text client took the console");
+            console.Type("\u001cd");
+
+            var (code, _, err) = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+            Assert.Equal(0, code);
+            Assert.Equal(string.Empty, err);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, previous);
+            MuxCommand.ConsoleFactoryForTest = null;
+        }
+    }
+
+    [Fact]
     public void A_session_prefix_must_be_unique_and_at_least_4_characters()
     {
         var a = new SessionSummary { SessionId = new Guid("abcd0000-0000-0000-0000-000000000001") };

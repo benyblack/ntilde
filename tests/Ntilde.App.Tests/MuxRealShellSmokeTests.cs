@@ -62,6 +62,52 @@ namespace Ntilde.Tests
             Assert.Empty(await client.ListSessionsAsync(ct));
         }
 
+        [Fact]
+        [Trait("Category", "PtySmoke")]
+        public async Task A_real_shell_spawned_through_the_mux_sees_its_session_id_in_the_environment()
+        {
+            // The production factory must hand the daemon's NTILDE_MUX_SESSION to the real child
+            // (ConPTY or forkpty), or `mux attach` cannot tell it is inside the session it targets.
+            var ct = TestContext.Current.CancellationToken;
+            string shell = ShellHelper.GetDefaultShell();
+            var listener = new InMemoryMuxListener();
+            using var server = new MuxServer(DefaultTerminalSessionFactory.Instance, new MuxServerOptions());
+            server.Start(listener);
+            using MuxClient client = await MuxClient.ConnectAsync(listener.Connect(), cancellationToken: ct);
+
+            Guid id = await client.SpawnAsync(new SpawnParams
+            {
+                Command = shell,
+                Cols = 120,
+                Rows = 24,
+                SkipPowerShellPostLaunchInit = true,
+                Title = "smoke-env",
+            }, ct);
+            using MuxClientSession session = client.OpenSession(id, shell);
+            var buffer = new TerminalBuffer(120, 24);
+            var parser = new AnsiParser(buffer, session.ForceConPtyFiltering) { ImageDecoder = null };
+            object gate = new();
+            session.SnapshotReceived += s => { lock (gate) TerminalStateTransfer.Restore(buffer, parser, s); };
+            session.OnOutputReceived += t => { lock (gate) parser.Process(t); };
+            session.StreamResize += (c, r) => { lock (gate) buffer.Resize(c, r); };
+            await session.AttachAsync(1000, new MuxPresentation { Cols = 120, Rows = 24, CellWidthPx = 9, CellHeightPx = 18 }, ct);
+
+            string Screen() { lock (gate) return string.Join('\n', BufferSnapshot.Capture(buffer).Lines); }
+
+            await WaitUntilAsync(() => Screen().Trim().Length > 0, TimeSpan.FromSeconds(30));
+            await Task.Delay(500, ct);
+            string lower = shell.ToLowerInvariant();
+            string echo = lower.EndsWith("cmd.exe", StringComparison.Ordinal) ? "echo %NTILDE_MUX_SESSION%"
+                : lower.Contains("powershell", StringComparison.Ordinal) || lower.Contains("pwsh", StringComparison.Ordinal) ? "echo $env:NTILDE_MUX_SESSION"
+                : "echo $NTILDE_MUX_SESSION";
+            session.SendInput(echo + "\r");
+
+            // The typed command names the variable, not its value, so the id on screen is the output.
+            await WaitUntilAsync(() => Screen().Contains(id.ToString("D"), StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(30));
+
+            await session.KillAsync(ct);
+        }
+
         private static int CountOf(string haystack, string needle)
         {
             int count = 0;

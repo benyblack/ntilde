@@ -265,6 +265,9 @@ Shows a multiplexer session in this terminal, without going through the GUI.
   "read-only". **This is a convenience, not a security boundary** — the endpoint has no
   authentication beyond the same-user check, so anyone who can run programs as you can attach
   normally anyway.
+- It refuses (exit code `2`) to attach to the session you are typing in: every shell the daemon
+  starts has `NTILDE_MUX_SESSION` set to its own session id, and attaching a session to itself
+  would loop. Attaching to a *different* session from inside one works.
 - Exit codes: `0` you detached, `1` the session exited or was killed, `2` a usage or connection
   error.
 - On Windows, run it as `cmd /c ntilde mux attach <id>` from PowerShell: a plain PowerShell prompt
