@@ -6,7 +6,8 @@ namespace Ntilde.Mux.TextClient;
 /// <summary>
 /// The process's console (spec §6.1, §6.7). Opens CONIN$/CONOUT$ itself, so it works in the WinExe
 /// after AttachConsole/AllocConsole, where the std handles are not set. Windows has no SIGWINCH: a
-/// dedicated background thread polls the size every 200 ms.
+/// dedicated background thread polls the size every 200 ms, and puts raw mode back if anything
+/// sharing the console (a shell, a hook, another console program) changed it meanwhile.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class WindowsConsoleSurface : IConsoleSurface
@@ -21,9 +22,12 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
     private readonly Thread _sizePoll;
     private uint _savedIn;
     private uint _savedOut;
+    private uint _rawIn;
+    private uint _rawOut;
     private bool _raw;
     private volatile bool _disposed;
     private int _handlesClosed;
+    private int _reasserts;
     private char? _pendingHigh;
 
     public WindowsConsoleSurface()
@@ -62,9 +66,27 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
                 throw new IOException($"SetConsoleMode failed ({Marshal.GetLastPInvokeError()}); this console may not support VT sequences.");
             }
 
+            _rawIn = input;
+            _rawOut = output;
             _raw = true;
         }
     }
+
+    /// <summary>How often raw mode had to be put back because something else changed it. For probe-console.</summary>
+    public int RawModeReasserts => Volatile.Read(ref _reasserts);
+
+    /// <summary>The console's input mode as it is now, or null when it cannot be read. For probe-console and tests.</summary>
+    public uint? InputMode => GetConsoleMode(_in, out uint mode) ? mode : null;
+
+    /// <summary>What the text client needs: no line editing, echo or Ctrl+C processing, and keys as VT sequences.</summary>
+    public static bool IsRawInputMode(uint mode) =>
+        (mode & (EnableLineInput | EnableEchoInput | EnableProcessedInput)) == 0 && (mode & EnableVirtualTerminalInput) != 0;
+
+    /// <summary>The input mode in stty's words (line input is icanon, processed input is isig), for probe-console.</summary>
+    public static string DescribeInputMode(uint mode) =>
+        $"input=0x{mode:X4} {Flag("icanon", EnableLineInput, mode)} {Flag("isig", EnableProcessedInput, mode)} {Flag("echo", EnableEchoInput, mode)} {Flag("vtinput", EnableVirtualTerminalInput, mode)}";
+
+    private static string Flag(string name, uint bit, uint mode) => (mode & bit) != 0 ? name : "-" + name;
 
     public void RestoreMode()
     {
@@ -109,6 +131,10 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
 
     private bool ReadChunk(char[] buffer, int offset, int count, out int read)
     {
+        // A read keeps the mode it starts in: begun in line mode, it holds every key (the chord too)
+        // until Enter, and no later SetConsoleMode frees it. So check right before each read; the poll
+        // only covers the time a read is already waiting.
+        ReassertRawMode();
         bool ok = ReadConsoleW(_in, ref buffer[offset], (uint)count, out uint got, 0);
         read = ok ? (int)got : 0;
         return ok;
@@ -128,10 +154,29 @@ public sealed class WindowsConsoleSurface : IConsoleSurface
         {
             Thread.Sleep(200);
             if (_disposed) return;
+            ReassertRawMode();
             (int Cols, int Rows) now = Size;
             if (now == last) continue;
             last = now;
             Resized?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// The console mode belongs to the console, not to us: any process attached to it can change it
+    /// while we run, and a line-mode console holds the detach chord until Enter. Under the gate, so
+    /// it never races <see cref="RestoreMode"/> into re-entering raw mode after the restore.
+    /// </summary>
+    private void ReassertRawMode()
+    {
+        lock (_modeGate)
+        {
+            if (!_raw || _disposed) return;
+            // Only what the client depends on is checked, so a flag the user toggles (QuickEdit) stays.
+            bool changed = false;
+            if (GetConsoleMode(_in, out uint input) && !IsRawInputMode(input)) changed |= SetConsoleMode(_in, _rawIn);
+            if (GetConsoleMode(_out, out uint output) && (output & EnableVirtualTerminalProcessing) == 0) changed |= SetConsoleMode(_out, _rawOut);
+            if (changed) Interlocked.Increment(ref _reasserts);
         }
     }
 

@@ -279,6 +279,20 @@ public sealed class MuxCommandTests : IDisposable
     }
 
     [Fact]
+    public void The_console_probe_reads_the_Windows_input_mode_back_instead_of_assuming_raw()
+    {
+        // DescribeInputMode's words: line input is icanon, processed input is isig.
+        const string raw = "input=0x03E0 -icanon -isig -echo vtinput";
+        const string noVt = "input=0x01E0 -icanon -isig -echo -vtinput";
+        const string cooked = "input=0x0992 icanon -isig -echo -vtinput";
+
+        Assert.True(MuxCommand.ProbeVerdict(raw, null, (120, 30), (120, 30), writeOk: true));
+        Assert.False(MuxCommand.ProbeVerdict(noVt, null, (120, 30), (120, 30), writeOk: true));   // keys would not arrive as VT
+        Assert.False(MuxCommand.ProbeVerdict(cooked, null, (120, 30), (120, 30), writeOk: true)); // line mode holds the chord until Enter
+        Assert.False(MuxCommand.ProbeVerdict(raw, MuxCommand.RestoreMismatch, (120, 30), (120, 30), writeOk: true));
+    }
+
+    [Fact]
     public void The_probe_verb_is_hidden_from_the_usage()
     {
         var (_, _, err) = Run("mux", "frobnicate");

@@ -14,6 +14,7 @@ public sealed class WindowsConsoleSurfaceTests
     private const uint GenericRead = 0x80000000, GenericWrite = 0x40000000, FileShareRead = 1, FileShareWrite = 2, OpenExisting = 3;
     private const uint ConsoleTextModeBuffer = 1;
     private const ushort KeyEvent = 1;
+    private const uint CookedInput = 0x01F7; // processed, line, echo, window, mouse, insert, QuickEdit, extended
 
     [Fact]
     public void Write_puts_the_exact_UTF16_text_into_a_console_screen_buffer()
@@ -27,6 +28,80 @@ public sealed class WindowsConsoleSurfaceTests
     {
         if (OperatingSystem.IsWindows()) ReadRoundTrip();
         else Assert.Skip("Windows console only");
+    }
+
+    [Theory]
+    [InlineData(0x03E0u, true)]  // what EnterRawMode leaves on a fresh conhost
+    [InlineData(0x0200u, true)]
+    [InlineData(0x0992u, false)] // line input on, VT input off
+    [InlineData(0x01F7u, false)] // a cooked prompt
+    [InlineData(0x01E0u, false)] // no line input, but no VT input either
+    [InlineData(0x0201u, false)] // Ctrl+C still processed
+    public void Raw_input_needs_line_echo_and_processing_off_and_VT_input_on(uint mode, bool raw)
+    {
+        if (OperatingSystem.IsWindows()) Assert.Equal(raw, WindowsConsoleSurface.IsRawInputMode(mode));
+        else Assert.Skip("Windows console only");
+    }
+
+    [Fact]
+    public void Raw_mode_is_put_back_when_something_sharing_the_console_resets_it()
+    {
+        if (OperatingSystem.IsWindows()) ReassertRoundTrip();
+        else Assert.Skip("Windows console only");
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void ReassertRoundTrip()
+    {
+        WindowsConsoleSurface surface;
+        try
+        {
+            surface = new WindowsConsoleSurface();
+        }
+        catch (ConsoleUnavailableException)
+        {
+            Assert.Skip("the test host has no console");
+            return;
+        }
+
+        nint input = CreateFileW("CONIN$", GenericRead | GenericWrite, FileShareRead | FileShareWrite, 0, OpenExisting, 0, 0);
+        try
+        {
+            surface.EnterRawMode();
+            try
+            {
+                Assert.True(GetConsoleMode(input, out uint entered));
+                Assert.True(WindowsConsoleSurface.IsRawInputMode(entered), $"after EnterRawMode: 0x{entered:X4}");
+
+                // What a shell or console program sharing the console does: cooked mode, line input on.
+                Assert.True(SetConsoleMode(input, CookedInput));
+                uint now = CookedInput;
+                var deadline = Environment.TickCount64 + 3000;
+                while (Environment.TickCount64 < deadline)
+                {
+                    Thread.Sleep(50);
+                    if (GetConsoleMode(input, out now) && WindowsConsoleSurface.IsRawInputMode(now)) break;
+                }
+
+                Assert.True(WindowsConsoleSurface.IsRawInputMode(now), $"still 0x{now:X4} after 3 s");
+                Assert.True(surface.RawModeReasserts >= 1);
+            }
+            finally
+            {
+                surface.RestoreMode();
+            }
+
+            // And never after the restore: the poll must not put raw mode back on a restored console.
+            Assert.True(GetConsoleMode(input, out uint restored));
+            Thread.Sleep(500);
+            Assert.True(GetConsoleMode(input, out uint later));
+            Assert.Equal(restored, later);
+        }
+        finally
+        {
+            _ = CloseHandle(input);
+            surface.Dispose();
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -83,6 +158,13 @@ public sealed class WindowsConsoleSurfaceTests
                 // Raw mode has no end-of-file: Ctrl+Z is a char for the shell, not "input closed".
                 Inject(input, "\u001a");
                 Assert.Equal("\u001a", ReadOrFail(surface, input, chars));
+
+                // A read keeps the mode it started in, so a read begun after something reset the console
+                // to line mode would hold the detach chord until Enter. Each read puts raw mode back
+                // first, without waiting for the size poll.
+                Assert.True(SetConsoleMode(input, CookedInput));
+                Inject(input, "\u001cd");
+                Assert.Equal("\u001cd", ReadOrFail(surface, input, chars));
             }
             finally
             {
@@ -105,7 +187,7 @@ public sealed class WindowsConsoleSurfaceTests
         reader.Start();
         if (!reader.Join(TimeSpan.FromSeconds(5)))
         {
-            Inject(input, "!!");
+            Inject(input, "!!\r"); // the Enter also releases a read stuck in line mode
             reader.Join(TimeSpan.FromSeconds(5));
             Assert.Fail("Read did not return the injected input.");
         }
@@ -159,6 +241,14 @@ public sealed class WindowsConsoleSurfaceTests
     [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool WriteConsoleInputW(nint handle, InputRecord[] records, uint length, out uint written);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetConsoleMode(nint handle, out uint mode);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetConsoleMode(nint handle, uint mode);
 
     [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

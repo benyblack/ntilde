@@ -55,6 +55,10 @@ public static class MuxCommand
     public static bool IsAttach(string[] args) =>
         IsSupportedCliMode(args) && args.Length > 1 && string.Equals(args[1], "attach", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Verbs that draw on and read from a console: attach, and probe-console, which must set the console up exactly as attach does.</summary>
+    public static bool NeedsInteractiveConsole(string[] args) =>
+        IsAttach(args) || (IsSupportedCliMode(args) && args.Length > 1 && string.Equals(args[1], "probe-console", StringComparison.OrdinalIgnoreCase));
+
     /// <param name="rootOverride">Test seam: app-data root. Null uses <see cref="MuxDiscovery.GetRootDirectory"/>.</param>
     public static int Execute(string[] args, TextWriter stdout, TextWriter stderr, string? rootOverride = null)
     {
@@ -73,7 +77,7 @@ public static class MuxCommand
                 "kill" => Kill(args, stdout, stderr, descriptorPath),
                 "kill-server" => KillServer(args, stdout, stderr, descriptorPath),
                 "attach" => Attach(args, stdout, stderr, descriptorPath),
-                "probe-console" => ProbeConsole(stdout, stderr),
+                "probe-console" => ProbeConsole(args, stdout, stderr),
                 _ => Fail(stderr, Usage),
             };
         }
@@ -445,12 +449,22 @@ public static class MuxCommand
         return false;
     }
 
+    /// <summary>In a probe's restored state: the Windows input mode after the restore differs from before raw mode.</summary>
+    internal const string RestoreMismatch = "restore-mismatch";
+
+    private static readonly TimeSpan ProbeKeysTimeout = TimeSpan.FromSeconds(20);
+
     /// <summary>
     /// Hidden diagnostic: raw mode in and out, and the size before and while raw. Exit 0 when raw mode
-    /// takes effect, is restored, and the size reads the same in both modes.
+    /// takes effect, is restored, and the size reads the same in both modes. On Windows the input mode
+    /// is read back, never assumed. <c>--keys</c> then echoes what each read returns, through the
+    /// attach's own chord, until Ctrl+\ then d (exit 0) or 20 s without it (exit 1).
     /// </summary>
-    private static int ProbeConsole(TextWriter stdout, TextWriter stderr)
+    private static int ProbeConsole(string[] args, TextWriter stdout, TextWriter stderr)
     {
+        bool keys = args.Length == 3 && string.Equals(args[2], "--keys", StringComparison.Ordinal);
+        if (args.Length > 2 && !keys) return Fail(stderr, "usage: ntilde mux probe-console [--keys]");
+
         Ntilde.Mux.TextClient.IConsoleSurface surface;
         try
         {
@@ -467,25 +481,47 @@ public static class MuxCommand
             (int Cols, int Rows) before = surface.Size;
             (int Cols, int Rows) inRaw;
             string? rawState = null;
+            string? restoredState = null;
             bool? writeOk = null;
+            bool? chord = null;
             string writeNote = string.Empty;
+            uint? modeBefore = OperatingSystem.IsWindows() ? ((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface).InputMode : null;
             surface.EnterRawMode();
             try
             {
                 inRaw = surface.Size;
-                if (!OperatingSystem.IsWindows()) rawState = SttyState();
-                else writeOk = ProbeWindowsWrite((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface, out writeNote);
+                if (!OperatingSystem.IsWindows())
+                {
+                    rawState = SttyState();
+                }
+                else
+                {
+                    var windows = (Ntilde.Mux.TextClient.WindowsConsoleSurface)surface;
+                    rawState = windows.InputMode is uint mode ? Ntilde.Mux.TextClient.WindowsConsoleSurface.DescribeInputMode(mode) : "input mode unreadable";
+                    writeOk = ProbeWindowsWrite(windows, out writeNote);
+                }
+
+                if (keys) chord = ProbeKeys(surface);
             }
             finally
             {
                 surface.RestoreMode();
             }
 
-            string? restoredState = OperatingSystem.IsWindows() ? null : SttyState();
+            if (!OperatingSystem.IsWindows()) restoredState = SttyState();
+            else if (((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface).InputMode is var after && after != modeBefore)
+            {
+                restoredState = $"{RestoreMismatch} 0x{modeBefore:X4} -> 0x{after:X4}";
+            }
+
             string write = writeOk is null ? string.Empty : $"; write {(writeOk.Value ? "ok" : "FAILED")} ({writeNote})";
+            string windowsMode = OperatingSystem.IsWindows() ? $" ({rawState})" : string.Empty;
+            string keysNote = chord is null ? string.Empty : $"; keys {(chord.Value ? "chord detected" : $"NO chord within {ProbeKeysTimeout.TotalSeconds:0} s")}";
+            // Non-zero: something sharing this console switched it out of raw mode while the probe ran.
+            if (chord is not null && OperatingSystem.IsWindows()) keysNote += $"; raw mode put back {((Ntilde.Mux.TextClient.WindowsConsoleSurface)surface).RawModeReasserts} time(s)";
             stdout.WriteLine($"size before raw {before.Cols}x{before.Rows}, while raw {inRaw.Cols}x{inRaw.Rows} ({(ProbeSizeStable(before, inRaw) ? "stable" : "UNSTABLE")}); "
-                + $"raw mode {(ProbeRawApplied(rawState) ? "ok" : "NOT applied")}; restore {(ProbeRestored(restoredState) ? "ok" : "FAILED")}{write}");
-            return ProbeVerdict(rawState, restoredState, before, inRaw, writeOk) ? 0 : 1;
+                + $"raw mode {(ProbeRawApplied(rawState) ? "ok" : "NOT applied")}{windowsMode}; restore {(ProbeRestored(restoredState) ? "ok" : "FAILED")}{write}{keysNote}");
+            return ProbeVerdict(rawState, restoredState, before, inRaw, writeOk) && chord != false ? 0 : 1;
         }
     }
 
@@ -512,10 +548,52 @@ public static class MuxCommand
         return b.Row == a.Row && b.Col - a.Col == Marker.Length;
     }
 
-    internal static bool ProbeRawApplied(string? rawState) =>
-        rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal));
+    /// <summary>
+    /// The keystrokes as the attach sees them: one line per read with each char in hex, fed through the
+    /// same <see cref="Ntilde.Mux.TextClient.DetachChord"/>. True when the chord completed in time.
+    /// </summary>
+    private static bool ProbeKeys(Ntilde.Mux.TextClient.IConsoleSurface surface)
+    {
+        surface.Write($"\r\nprobe-console: press keys; Ctrl+\\ then d ends it ({ProbeKeysTimeout.TotalSeconds:0} s)\r\n");
+        using var detected = new ManualResetEventSlim(false);
+        var reader = new Thread(() =>
+        {
+            var chord = new Ntilde.Mux.TextClient.DetachChord();
+            var ignored = new System.Text.StringBuilder();
+            char[] buffer = new char[256];
+            try
+            {
+                while (true)
+                {
+                    int n = surface.Read(buffer);
+                    if (n <= 0) return;
+                    surface.Write($"read {n}: {string.Join(' ', buffer.Take(n).Select(c => ((int)c).ToString("X2", System.Globalization.CultureInfo.InvariantCulture)))}\r\n");
+                    if (chord.Feed(buffer.AsSpan(0, n), ignored))
+                    {
+                        detected.Set();
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+            {
+                // the console went away: the timeout reports it
+            }
+        })
+        { IsBackground = true, Name = "MuxProbeKeys" };
+        reader.Start();
 
-    internal static bool ProbeRestored(string? restoredState) => restoredState is null || !restoredState.Contains("-icanon", StringComparison.Ordinal);
+        // A read still blocked at the timeout is abandoned: the thread is background and the process ends.
+        return detected.Wait(ProbeKeysTimeout);
+    }
+
+    /// <summary>stty's flags, or <see cref="Ntilde.Mux.TextClient.WindowsConsoleSurface.DescribeInputMode"/>'s on Windows, which adds vtinput.</summary>
+    internal static bool ProbeRawApplied(string? rawState) =>
+        rawState is null || (rawState.Contains("-icanon", StringComparison.Ordinal) && rawState.Contains("-isig", StringComparison.Ordinal)
+            && !rawState.Contains("-vtinput", StringComparison.Ordinal));
+
+    internal static bool ProbeRestored(string? restoredState) =>
+        restoredState is null || (!restoredState.Contains("-icanon", StringComparison.Ordinal) && !restoredState.Contains(RestoreMismatch, StringComparison.Ordinal));
 
     internal static bool ProbeSizeStable((int Cols, int Rows) before, (int Cols, int Rows) inRaw) => before == inRaw && before.Cols > 1;
 
