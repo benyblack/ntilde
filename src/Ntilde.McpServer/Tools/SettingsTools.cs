@@ -66,6 +66,8 @@ public static class SettingsTools
         | `AgentReplayExportEnabled` | bool | Default false. Sub-gate on top of the observe toggle: allows agents to export a session's recent output as a replay file (output + resizes only, never input). |
         | `AgentAccessActEnabled` | bool | Default false. Separate opt-in on top of observe: allows agents to type into, spawn, and close sessions. SSH sessions additionally require per-profile allowlisting. |
         | `LongCommandNotificationsEnabled` | bool | Default false. In-app toast when a command that ran ≥30s finishes in an unfocused pane. |
+        | `Osc9NotificationsEnabled` | bool | Default false. In-app toast for explicit OSC 9 desktop-notification sequences (#271) — e.g. an AI CLI pinging that a long task finished. Suppressed while the pane is focused, like `LongCommandNotificationsEnabled`. |
+        | `Osc9ProgressReportingEnabled` | bool | Default true. Per-tab progress bar + Windows taskbar progress from OSC 9;4 sequences (#271). Ambient chrome; this is the off switch. |
         | `AutomaticUpdateChecks` | bool | Default **true**. Background update check ~10s after launch, downloading quietly and applying on the next restart the user accepts. Off stops background traffic only — the palette's manual "Check for updates" still works. Ignored entirely unless the app was installed by the Velopack installer (portable zip, winget and dev runs have nothing to update). |
 
         ## Background
@@ -145,6 +147,8 @@ public static class SettingsTools
           "AgentReplayExportEnabled": false,
           "AgentAccessActEnabled": false,
           "LongCommandNotificationsEnabled": false,
+          "Osc9NotificationsEnabled": false,
+          "Osc9ProgressReportingEnabled": true,
           "AutomaticUpdateChecks": true,
           "Profiles": [
             { "Id": "00000000-0000-0000-0000-000000000001", "Name": "Command Prompt", "Command": "cmd.exe", "Type": 0 }
@@ -168,6 +172,7 @@ public static class SettingsTools
         "CommandAssistShellIntegrationEnabled", "CommandAssistPowerShellIntegrationEnabled",
         "ExperimentalNativeSshEnabled", "AgentAccessObserveEnabled", "AgentReplayExportEnabled",
         "AgentAccessActEnabled", "LongCommandNotificationsEnabled",
+        "Osc9NotificationsEnabled", "Osc9ProgressReportingEnabled",
         "AutomaticUpdateChecks",
     };
 
@@ -196,6 +201,7 @@ public static class SettingsTools
         "CommandAssistShellIntegrationEnabled", "CommandAssistPowerShellIntegrationEnabled",
         "ExperimentalNativeSshEnabled", "AgentAccessObserveEnabled", "AgentReplayExportEnabled",
         "AgentAccessActEnabled", "LongCommandNotificationsEnabled",
+        "Osc9NotificationsEnabled", "Osc9ProgressReportingEnabled",
         "AutomaticUpdateChecks",
         "Profiles", "DefaultProfileId", "TitleBarItems", "TitleBarOrder",
     };

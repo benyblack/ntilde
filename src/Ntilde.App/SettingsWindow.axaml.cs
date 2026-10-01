@@ -3007,6 +3007,10 @@ namespace Ntilde
             }
             var longCommandNotificationsToggle = this.FindControl<CheckBox>("LongCommandNotificationsToggle");
             if (longCommandNotificationsToggle != null) longCommandNotificationsToggle.IsChecked = _settings.LongCommandNotificationsEnabled;
+            var osc9NotificationsToggle = this.FindControl<CheckBox>("Osc9NotificationsToggle");
+            if (osc9NotificationsToggle != null) osc9NotificationsToggle.IsChecked = _settings.Osc9NotificationsEnabled;
+            var osc9ProgressReportingToggle = this.FindControl<CheckBox>("Osc9ProgressReportingToggle");
+            if (osc9ProgressReportingToggle != null) osc9ProgressReportingToggle.IsChecked = _settings.Osc9ProgressReportingEnabled;
             var automaticUpdateChecksToggle = this.FindControl<CheckBox>("AutomaticUpdateChecksToggle");
             if (automaticUpdateChecksToggle != null) automaticUpdateChecksToggle.IsChecked = _settings.AutomaticUpdateChecks;
             if (fontSizeInput != null) fontSizeInput.Value = (decimal)_settings.FontSize;
@@ -3301,6 +3305,10 @@ namespace Ntilde
             }
             var longCommandNotificationsToggle = this.FindControl<CheckBox>("LongCommandNotificationsToggle");
             if (longCommandNotificationsToggle != null) _settings.LongCommandNotificationsEnabled = longCommandNotificationsToggle.IsChecked == true;
+            var osc9NotificationsToggle = this.FindControl<CheckBox>("Osc9NotificationsToggle");
+            if (osc9NotificationsToggle != null) _settings.Osc9NotificationsEnabled = osc9NotificationsToggle.IsChecked == true;
+            var osc9ProgressReportingToggle = this.FindControl<CheckBox>("Osc9ProgressReportingToggle");
+            if (osc9ProgressReportingToggle != null) _settings.Osc9ProgressReportingEnabled = osc9ProgressReportingToggle.IsChecked == true;
             var automaticUpdateChecksToggle = this.FindControl<CheckBox>("AutomaticUpdateChecksToggle");
             if (automaticUpdateChecksToggle != null) _settings.AutomaticUpdateChecks = automaticUpdateChecksToggle.IsChecked == true;
 

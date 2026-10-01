@@ -162,6 +162,12 @@ namespace Ntilde.VT
         private const int Osc52MaxDecodedBytes = 1024 * 1024;
 
         /// <summary>
+        /// Length cap on OSC 9 notification text (issue #271): the host's toast stays a
+        /// compact single line, so longer text is flattened and elided with "…".
+        /// </summary>
+        private const int Osc9MaxNotificationChars = 200;
+
+        /// <summary>
         /// The legal xterm OSC 52 selection alphabet: c = clipboard, p = primary, q = secondary,
         /// s = select, 0-7 = cut buffers. Used to sanitize the targets string before it is echoed
         /// back in a query-denial reply - see <see cref="SanitizeEchoParameter"/>.
@@ -232,6 +238,25 @@ namespace Ntilde.VT
         public Action? OnBell { get; set; }
         public Action<string>? OnWorkingDirectoryChanged { get; set; }
         public Action<string>? OnTitleChanged { get; set; }
+
+        /// <summary>
+        /// Raised when an OSC 9 desktop-notification sequence (issue #271) arrives:
+        /// <c>OSC 9 ; text ST/BEL</c> (ConEmu-style, as emitted by Claude Code). The parser
+        /// only flattens and caps the text; whether to surface a notification (settings gate,
+        /// focus policy) and how to show it are the App layer's call — the same split as
+        /// <see cref="OnClipboardWrite"/>.
+        /// </summary>
+        public Action<string>? OnDesktopNotification { get; set; }
+
+        /// <summary>
+        /// Raised when an OSC 9;4 progress sequence (issue #271) arrives:
+        /// <c>OSC 9 ; 4 ; state [; progress] ST/BEL</c>. <paramref name="state"/> is the raw
+        /// integer: 0 removes the indication, 1 normal, 2 error, 3 indeterminate, 4 paused.
+        /// <paramref name="percent"/> is 0–100 (clamped), or <see langword="null"/> when the
+        /// sequence omitted it — legal for indeterminate. Where the progress renders (tab
+        /// header, taskbar) is the App layer's call.
+        /// </summary>
+        public Action<int, int?>? OnProgressReported { get; set; }
 
         /// <summary>
         /// Raised when an OSC 52 clipboard-write sequence (issue #268) decodes successfully:
@@ -2421,6 +2446,73 @@ namespace Ntilde.VT
                 {
                     OnWorkingDirectoryChanged?.Invoke(cwd);
                 }
+                return;
+            }
+
+            // OSC 9: desktop notification / progress reporting (issue #271, ConEmu-style;
+            // Claude Code emits both). Two shapes share the code:
+            //   OSC 9 ; <text>                -> desktop notification with that text
+            //   OSC 9 ; 4 ; <state> [; <pct>] -> progress: 0 removes, 1 normal, 2 error,
+            //      3 indeterminate, 4 paused; pct is 0-100 and may be omitted (null).
+            // The "4;" prefix is what distinguishes them: a bare "4" with no semicolon
+            // after it is notification text, not a progress payload (ConEmu requires the
+            // state parameter). The text is flattened to one line and capped so a
+            // misbehaving program cannot push a wall of text at the toast; everything
+            // else about showing either shape (settings, focus policy) is the App's
+            // call, same split as OSC 52.
+            if (code == "9")
+            {
+                if (data.StartsWith("4;", StringComparison.Ordinal))
+                {
+                    // state is mandatory; a payload without one (e.g. "4;") is dropped
+                    // rather than guessed at.
+                    string[] progressParts = data.Split(';');
+                    if (progressParts.Length >= 2 &&
+                        int.TryParse(progressParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int progressState))
+                    {
+                        int? percent = null;
+                        if (progressParts.Length >= 3 &&
+                            int.TryParse(progressParts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int rawPercent))
+                        {
+                            percent = Math.Clamp(rawPercent, 0, 100);
+                        }
+
+                        OnProgressReported?.Invoke(progressState, percent);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(data))
+                {
+                    // One line, no stray controls. BEL/0x9C/ESC terminate the sequence,
+                    // but anything else — TAB, NEL, other C0/C1 — reaches here and would
+                    // land in the host's toast verbatim. Every surviving control becomes
+                    // a space; CRLF collapses to one (the \r is dropped ahead of its \n).
+                    var textBuilder = new StringBuilder(data.Length);
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        char ch = data[i];
+                        if (ch == '\r' && i + 1 < data.Length && data[i + 1] == '\n')
+                        {
+                            continue;
+                        }
+
+                        textBuilder.Append(char.IsControl(ch) ? ' ' : ch);
+                    }
+
+                    string text = textBuilder.ToString().Trim();
+                    if (text.Length == 0)
+                    {
+                        // Controls-only payload: sanitization left nothing to say.
+                        return;
+                    }
+
+                    if (text.Length > Osc9MaxNotificationChars)
+                    {
+                        text = text[..(Osc9MaxNotificationChars - 1)] + "…";
+                    }
+
+                    OnDesktopNotification?.Invoke(text);
+                }
+
                 return;
             }
 

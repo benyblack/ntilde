@@ -116,6 +116,14 @@ namespace Ntilde.Controls
         public event Action<TerminalPane, int>? ProcessExited;
         /// <summary>A command ran at least <see cref="LongCommandNotificationPolicy.ThresholdSeconds"/>: (pane, command, exitCode, duration). Policy (setting, focus) is the window's call.</summary>
         public event Action<TerminalPane, string?, int?, TimeSpan>? LongCommandCompleted;
+        /// <summary>OSC 9 desktop-notification text arrived (issue #271). Whether to show it
+        /// (settings gate, focus policy) and how is the window's call — same split as
+        /// <see cref="LongCommandCompleted"/>.</summary>
+        public event Action<TerminalPane, string>? OscNotificationReceived;
+        /// <summary>An OSC 9;4 progress state arrived (issue #271); <see langword="null"/>
+        /// withdraws the pane's indication. Where it renders (tab header, taskbar) is the
+        /// window's call.</summary>
+        public event Action<TerminalPane, TerminalProgressReport?>? ProgressReported;
 
         private TerminalSettings? _settings;
         private bool _isUpdatingScroll = false;
@@ -3172,6 +3180,36 @@ namespace Ntilde.Controls
                 {
                     CurrentOscTitle = title;
                     TitleChanged?.Invoke(this, title);
+                });
+            };
+            Parser.OnDesktopNotification += text =>
+            {
+                this.Dispatcher.Post(() =>
+                {
+                    OscNotificationReceived?.Invoke(this, text);
+                });
+            };
+            Parser.OnProgressReported += (state, percent) =>
+            {
+                // State 0 is the ONLY withdrawal edge (Codex review, PR #500). An
+                // unknown/future state is ignored rather than mapped to a withdrawal:
+                // clearing a live indicator because the client speaks a dialect this
+                // build doesn't know would throw away real progress. FromOsc returns
+                // null for both, so the distinction is made here, before the post.
+                if (state == 0)
+                {
+                    this.Dispatcher.Post(() => ProgressReported?.Invoke(this, null));
+                    return;
+                }
+
+                if (TerminalProgressReport.FromOsc(state, percent) is not { } report)
+                {
+                    return;
+                }
+
+                this.Dispatcher.Post(() =>
+                {
+                    ProgressReported?.Invoke(this, report);
                 });
             };
             Parser.OnPromptReady += () =>
