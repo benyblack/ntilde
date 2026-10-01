@@ -28,8 +28,8 @@ public static class MuxCommand
         Usage: ntilde mux attach <sessionId|prefix> [--read-only]
 
           Shows a multiplexer session in this terminal. The id (or a unique prefix of at least
-          4 characters) comes from `ntilde mux ls`. Detach with Ctrl+\ then d; Ctrl+\ Ctrl+\ sends
-          a literal Ctrl+\. --read-only shows the session without sending input (a convenience,
+          4 characters) comes from `ntilde mux ls`. Detach with Ctrl+\ then d (Ctrl may stay held);
+          Ctrl+\ Ctrl+\ sends a literal Ctrl+\. --read-only shows the session without sending input (a convenience,
           not a security boundary). Exit codes: 0 detached, 1 the session ended, 2 an error.
 
           Windows: from PowerShell, or any prompt that does not wait for GUI programs, run

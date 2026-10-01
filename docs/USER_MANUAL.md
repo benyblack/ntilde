@@ -270,8 +270,10 @@ Shows a multiplexer session in this terminal, without going through the GUI.
 - It renders from its own copy of the session's screen, so the shell's own escape-sequence
   queries (cursor position, device attributes, terminal capabilities) never reach the terminal
   you ran `mux attach` from.
-- Detach with **Ctrl+\ then d**. **Ctrl+\ Ctrl+\** sends a literal Ctrl+\, and a paste that
-  contains Ctrl+\ then d detaches the same way.
+- Detach with **Ctrl+\ then d**. Ctrl may stay held for the d (Ctrl+\ then Ctrl+D), as in GNU
+  screen; the one thing this costs is that a literal Ctrl+\ followed by Ctrl+D cannot be sent.
+  **Ctrl+\ Ctrl+\** sends a literal Ctrl+\, and a paste that contains Ctrl+\ then d (or Ctrl+D)
+  detaches the same way.
 - When the session is bigger than your terminal, the view is clipped and a status line reads
   "session is WxH, this terminal is WxH — resize to fit", with the detach hint kept alongside it.
 - `--read-only` shows the session without sending input or resizing it, and the status line reads

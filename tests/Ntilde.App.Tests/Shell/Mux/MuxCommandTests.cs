@@ -445,7 +445,7 @@ public sealed class MuxCommandTests : IDisposable
 
         Assert.Equal(0, code);
         Assert.Contains("cmd /c ntilde mux attach <id>", output, StringComparison.Ordinal);
-        Assert.Contains("Ctrl+\\ then d", output, StringComparison.Ordinal);
+        Assert.Contains("Ctrl+\\ then d (Ctrl may stay held)", output, StringComparison.Ordinal);
     }
 
     [Fact]
