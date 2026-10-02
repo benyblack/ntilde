@@ -23,13 +23,18 @@
 #   scripts/run-sidecar.sh --skip-mcp-server    # app only; don't build/mirror the MCP server
 #   scripts/run-sidecar.sh --no-launch          # build + mirror only
 #   scripts/run-sidecar.sh --sidecar-root DIR   # override sidecar location
-#   scripts/run-sidecar.sh --framework net10.0  # override target framework
+#   scripts/run-sidecar.sh --framework net10.0  # which bin/<Configuration>/<tfm>/ to mirror
 #
 # Defaults can also come from the environment: NTILDE_SIDECAR_ROOT.
 
 set -euo pipefail
 
 configuration=Debug
+# Picks which bin/<Configuration>/<tfm>/ folder is mirrored; it is deliberately NOT passed to
+# the build as -f. Every project here has a single TargetFramework, and forcing one as a
+# global property makes the outer restore disagree with the nested BuildCliShim build
+# (NETSDK1064) - and leaves obj/ needing a fresh restore. Change it only alongside the
+# projects' own TargetFramework.
 target_framework=net10.0
 no_build=0
 skip_mcp=0
@@ -85,6 +90,12 @@ case "$configuration" in
     Debug|Release) ;;
     *) die "configuration must be Debug or Release, got '$configuration'" ;;
 esac
+
+# Absolute before anything is derived from it: the launch below cd's into the sidecar, so a
+# relative --sidecar-root would leave $exe and $log_file pointing nowhere - and the
+# backgrounded launch would fail after the script had already printed a PID.
+mkdir -p "$sidecar_root" || die "cannot create sidecar root: $sidecar_root"
+sidecar_root="$(cd "$sidecar_root" && pwd)"
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"

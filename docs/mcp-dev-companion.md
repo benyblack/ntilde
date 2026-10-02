@@ -78,8 +78,11 @@ not expand in PowerShell even on a command line.) VS Code is the exception — i
 performs its own `${env:...}` substitution.
 
 Because the mirror is refreshed on every sidecar-script invocation, it cannot go silently
-stale the way a hand-made copy does. It does lag while a client holds the server open — the
-script warns when it could not refresh, and restarting the MCP client picks up the new build.
+stale the way a hand-made copy does. The refresh happens only when the MCP server both builds
+and mirrors successfully, though: `-SkipMcpServer` / `--skip-mcp-server` leaves the existing
+copy untouched, and so does a failed MCP build (the script warns and still launches the app).
+It also lags while a client holds the server open — the script warns when it could not
+refresh, and restarting the MCP client picks up the new build.
 The repo stays buildable either way, which is the point.
 
 To run it by hand instead (it speaks stdio, so this is mainly a smoke check):

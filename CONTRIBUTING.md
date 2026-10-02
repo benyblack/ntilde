@@ -118,7 +118,7 @@ client must use that copy (#211).
 | `-SkipMcpServer` | `--skip-mcp-server` | App only; don't build or mirror the MCP server |
 | — | `--no-launch` | Build and mirror, but don't start the app |
 | `-SidecarRoot DIR` | `--sidecar-root DIR` (or `NTILDE_SIDECAR_ROOT`) | Use a different sidecar directory |
-| `-TargetFramework net10.0` | `-f` / `--framework net10.0` | Override the target framework |
+| `-TargetFramework net10.0` | `-f` / `--framework net10.0` | Which `bin/<Configuration>/<tfm>/` output to mirror. It does not change what gets built, so only change it after the projects' own `TargetFramework` has changed |
 
 The default sidecar root is `%LOCALAPPDATA%\ntilde-sidecar` on Windows and
 `~/.local/share/ntilde-sidecar` elsewhere (on macOS too). Both scripts use the
