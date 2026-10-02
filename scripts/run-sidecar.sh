@@ -35,8 +35,10 @@ no_build=0
 skip_mcp=0
 no_launch=0
 # Outside the repo so it never collides with bin/obj globbing, IDE watchers, or git status.
-# Same default as the .ps1 uses off-Windows, so both scripts share one sidecar.
-sidecar_root="${NTILDE_SIDECAR_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/ntilde-sidecar}"
+# Exactly the default the .ps1 uses off-Windows, so both scripts share one sidecar and the
+# documented MCP path holds. Deliberately not $XDG_DATA_HOME: the .ps1 doesn't read it, and
+# honouring it here alone would split the two scripts onto different directories.
+sidecar_root="${NTILDE_SIDECAR_ROOT:-$HOME/.local/share/ntilde-sidecar}"
 
 usage() {
     sed -n '/^# Usage:/,/^# Defaults/p' "$0" | sed 's/^# \{0,1\}//'
