@@ -113,21 +113,48 @@ mcp_dest_dir="$sidecar_root/McpServer/$configuration/$target_framework"
 
 # Mirrors $1 onto $2 (adds new, updates changed, deletes stale). Returns non-zero on failure
 # rather than exiting: callers decide whether a failed mirror is fatal.
+#
+# The mirror is staged in a sibling directory and swapped in only once it is complete, so a
+# failure (disk full, permissions, an interrupted copy) leaves the previous copy intact rather
+# than deleted or half-updated - a partial MCP mirror would otherwise be a broken server that
+# the caller only warns about. --link-dest keeps this cheap: files unchanged since the last
+# mirror are hard-linked from it instead of copied, which matters for a ~600 MB app output.
 sync_directory() {
     local from="$1" to="$2"
+    local staging="$to.staging.$$" previous="$to.previous.$$"
 
-    mkdir -p "$to" || return 1
+    mkdir -p "$(dirname "$to")" || return 1
+    rm -rf "$staging" || return 1
 
     if command -v rsync >/dev/null 2>&1; then
-        # Trailing slashes => mirror the contents of source into dest.
-        rsync -a --delete "$from/" "$to/"
-        return $?
+        local link_dest=()
+        # rsync resolves --link-dest relative to the destination, so pass it absolute.
+        [ -d "$to" ] && link_dest=(--link-dest="$(cd "$to" && pwd)")
+        # Trailing slashes => mirror the contents of source into staging.
+        if ! rsync -a ${link_dest[@]+"${link_dest[@]}"} "$from/" "$staging/"; then
+            rm -rf "$staging"
+            return 1
+        fi
+    else
+        # No rsync (minimal Linux images): a full copy. Not incremental, but correct.
+        if ! { mkdir -p "$staging" && cp -Rp "$from/." "$staging/"; }; then
+            rm -rf "$staging"
+            return 1
+        fi
     fi
 
-    # No rsync (minimal Linux images): clear dest and recopy. Not incremental, but correct.
-    # A failed removal must fail the mirror - reporting success with stale files left behind
-    # is the exact failure this script exists to prevent.
-    rm -rf "$to" && mkdir -p "$to" && cp -Rp "$from/." "$to/"
+    # Swap: move the old copy aside first so a failed rename can be rolled back. A process
+    # already running from the old copy keeps its open files; only the directory entry moves.
+    if [ -e "$to" ] && ! mv "$to" "$previous"; then
+        rm -rf "$staging"
+        return 1
+    fi
+    if ! mv "$staging" "$to"; then
+        [ -e "$previous" ] && mv "$previous" "$to"
+        rm -rf "$staging"
+        return 1
+    fi
+    rm -rf "$previous"
 }
 
 if [ "$no_build" -eq 0 ]; then
