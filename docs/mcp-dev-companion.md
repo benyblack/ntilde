@@ -48,19 +48,27 @@ output to stdout, which corrupts the JSON-RPC stream.
 long-lived process, so while it runs from the repo tree it holds
 `Ntilde.AgentHost.Contracts.dll` open, and *every* full repo build then fails with
 `MSB3027`/`MSB3021` on the McpServer copy step — whether or not the app is running.
-`scripts/run-sidecar.ps1` builds and mirrors the server to a fixed location outside the repo
-and prints the exact path to configure:
+The sidecar scripts build and mirror the server to a fixed location outside the repo and
+print the exact path to configure:
+
+```bash
+scripts/run-sidecar.sh                      # Linux / macOS: builds + mirrors app and MCP server, launches the app
+scripts/run-sidecar.sh --skip-mcp-server    # app only
+```
 
 ```powershell
-scripts/run-sidecar.ps1                     # builds + mirrors app and MCP server, launches the app
+scripts/run-sidecar.ps1                     # Windows: builds + mirrors app and MCP server, launches the app
 scripts/run-sidecar.ps1 -SkipMcpServer      # app only
 ```
+
+The full flag list for both scripts is in
+[CONTRIBUTING.md › Running a Dev Build (Sidecar)](../CONTRIBUTING.md#running-a-dev-build-sidecar).
 
 The script prints the exact path to configure. It lives at:
 
 ```
-%LOCALAPPDATA%\ntilde-sidecar\McpServer\<Configuration>\net10.0\Ntilde.McpServer.dll
-~/.local/share/ntilde-sidecar/McpServer/<Configuration>/net10.0/Ntilde.McpServer.dll
+%LOCALAPPDATA%\ntilde-sidecar\McpServer\<Configuration>\net10.0\Ntilde.McpServer.dll   # Windows
+~/.local/share/ntilde-sidecar/McpServer/<Configuration>/net10.0/Ntilde.McpServer.dll       # Linux / macOS
 ```
 
 **Paste the resolved absolute path into client config, not the `%LOCALAPPDATA%` form.** Most
@@ -69,9 +77,12 @@ environment-variable reference is taken literally and the DLL lookup fails. (`%V
 not expand in PowerShell even on a command line.) VS Code is the exception — its `mcp.json`
 performs its own `${env:...}` substitution.
 
-Because the mirror is refreshed on every `run-sidecar.ps1` invocation, it cannot go silently
-stale the way a hand-made copy does. It does lag while a client holds the server open — the
-script warns when it could not refresh, and restarting the MCP client picks up the new build.
+Because the mirror is refreshed on every sidecar-script invocation, it cannot go silently
+stale the way a hand-made copy does. The refresh happens only when the MCP server both builds
+and mirrors successfully, though: `-SkipMcpServer` / `--skip-mcp-server` leaves the existing
+copy untouched, and so does a failed MCP build (the script warns and still launches the app).
+It also lags while a client holds the server open — the script warns when it could not
+refresh, and restarting the MCP client picks up the new build.
 The repo stays buildable either way, which is the point.
 
 To run it by hand instead (it speaks stdio, so this is mainly a smoke check):
@@ -83,8 +94,10 @@ dotnet src/Ntilde.McpServer/bin/Release/net10.0/Ntilde.McpServer.dll
 
 ### Client configuration
 
-- Claude Code (substitute the path `run-sidecar.ps1` printed):
-  `claude mcp add ntilde -- dotnet "C:\Users\<you>\AppData\Local\ntilde-sidecar\McpServer\Debug\net10.0\Ntilde.McpServer.dll"`
+- Claude Code (substitute the path the sidecar script printed):
+  - Windows: `claude mcp add ntilde -- dotnet "C:\Users\<you>\AppData\Local\ntilde-sidecar\McpServer\Debug\net10.0\Ntilde.McpServer.dll"`
+  - Linux / macOS: `claude mcp add ntilde -- dotnet "$HOME/.local/share/ntilde-sidecar/McpServer/Debug/net10.0/Ntilde.McpServer.dll"`
+    (your shell expands `$HOME` here, so the client gets an absolute path)
 - Claude Desktop: [examples/mcp/claude_desktop_config.json](../examples/mcp/claude_desktop_config.json)
 - VS Code: [examples/mcp/vscode_mcp_config.json](../examples/mcp/vscode_mcp_config.json)
 

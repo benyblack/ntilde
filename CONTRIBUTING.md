@@ -87,6 +87,48 @@ would much rather answer a question early than reject a finished PR.
 
 ---
 
+## Running a Dev Build (Sidecar)
+
+To run the app while you keep building and testing, launch it through the
+sidecar script rather than from `src/Ntilde.App/bin/`:
+
+```bash
+scripts/run-sidecar.sh           # Linux / macOS
+```
+
+```powershell
+scripts\run-sidecar.ps1          # Windows (needs pwsh 7+)
+```
+
+Each run builds through the wrapper, mirrors the fresh output to a fixed
+directory outside the repo, and launches the app from that copy. The repo's
+`bin/` stays free for `build`/`test`, and because it is re-mirrored every time,
+the copy cannot go stale the way a hand-made one does. On Windows this is what
+stops the running app from locking its DLLs and failing your next build.
+
+It mirrors `Ntilde.McpServer` too, and prints the path to point your MCP client
+at. See [docs/mcp-dev-companion.md](docs/mcp-dev-companion.md) for why the
+client must use that copy (#211).
+
+| `run-sidecar.ps1` | `run-sidecar.sh` | Effect |
+|---|---|---|
+| *(default)* | *(default)* | Debug build, mirror app + MCP server, launch the app |
+| `-Configuration Release` | `-c Release` / `--configuration Release` | Build and mirror Release instead |
+| `-NoBuild` | `--no-build` | Skip the build; mirror the current output and launch |
+| `-SkipMcpServer` | `--skip-mcp-server` | App only; don't build or mirror the MCP server |
+| — | `--no-launch` | Build and mirror, but don't start the app |
+| `-SidecarRoot DIR` | `--sidecar-root DIR` (or `NTILDE_SIDECAR_ROOT`) | Use a different sidecar directory |
+| `-TargetFramework net10.0` | `-f` / `--framework net10.0` | Which `bin/<Configuration>/<tfm>/` output to mirror. It does not change what gets built, so only change it after the projects' own `TargetFramework` has changed |
+
+The default sidecar root is `%LOCALAPPDATA%\ntilde-sidecar` on Windows and
+`~/.local/share/ntilde-sidecar` elsewhere (on macOS too). Both scripts use the
+same location, so you can switch between them. Under it, the app lands in
+`<Configuration>/net10.0/` and the MCP server in `McpServer/<Configuration>/net10.0/`.
+The `.sh` script detaches the app and writes its stdout/stderr to
+`<sidecar-root>/sidecar-launch.log`.
+
+---
+
 ## The Shape of the Codebase
 
 Bytes flow **Pty → VT → Rendering**. The two rules that explain most of the
