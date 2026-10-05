@@ -32,7 +32,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 
     /// <summary>The local daemon only: a registry with no remote endpoints (existing callers and tests).</summary>
     public MuxTerminalSessionFactory(MuxConnectionHost local, ITerminalSessionFactory fallback, Action<string>? log)
-        : this(new MuxConnectionHosts(local, static _ => null), fallback, log)
+        : this(new MuxConnectionHosts(local, static _ => null, log), fallback, log)
     {
     }
 

@@ -4426,9 +4426,10 @@ namespace Ntilde
 
         /// <summary>
         /// Builds the connection for a remote endpoint the first time a pane uses it (Phase 4 spec §5), or
-        /// returns null to decline (the profile is gone, or does not persist remote sessions). Must only
-        /// build the host, never connect. A seam for tests; the default declines every endpoint until
-        /// remote hosts can be built from an SSH profile.
+        /// returns null to decline (the profile is gone, or does not persist remote sessions). Runs outside
+        /// the registry's lock, on whichever thread asked, and may race another ask for the same endpoint
+        /// (the loser is disposed unused): it may look things up, but must not connect. A seam for tests;
+        /// the default declines every endpoint until remote hosts can be built from an SSH profile.
         /// </summary>
         internal Func<Ntilde.Shell.Mux.MuxEndpointId, Ntilde.Shell.Mux.MuxConnectionHost?> RemoteMuxHostFactory { get; set; } = _ => null;
 
@@ -4442,7 +4443,7 @@ namespace Ntilde
             try
             {
                 // Through a lambda, not the delegate itself: a test may set the seam after construction.
-                _muxHosts ??= new Ntilde.Shell.Mux.MuxConnectionHosts(MuxHostFactory(), id => RemoteMuxHostFactory(id));
+                _muxHosts ??= new Ntilde.Shell.Mux.MuxConnectionHosts(MuxHostFactory(), id => RemoteMuxHostFactory(id), AppLogger.Log);
             }
             catch (Exception ex)
             {

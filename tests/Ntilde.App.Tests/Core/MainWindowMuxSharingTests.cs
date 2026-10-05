@@ -70,14 +70,20 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     private static TerminalSettings Settings(MainWindow window) =>
         (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
 
+    /// <summary>
+    /// Runs the dispatcher at least once, even when <paramref name="condition"/> already holds: a
+    /// caller (CreateWindow) whose condition came true on another thread must not return with the
+    /// window's startup jobs - its deferred terminal focus among them - still queued behind it.
+    /// </summary>
     private static void PumpUntil(Func<bool> condition, string because, int ms = 10_000)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        Dispatcher.UIThread.RunJobs();
         while (!condition())
         {
             if (sw.ElapsedMilliseconds > ms) Assert.Fail($"Timed out: {because}");
-            Dispatcher.UIThread.RunJobs();
             Thread.Sleep(10);
+            Dispatcher.UIThread.RunJobs();
         }
     }
 
@@ -680,10 +686,20 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.Empty(window.OwnedWindows);
     }
 
+    /// <summary>
+    /// Keyboard focus is global: a key pressed on the dialog goes to whatever element has focus, so a
+    /// MainWindow terminal that took focus after the dialog opened (its deferred FocusNow jobs, queued
+    /// at Input and Loaded priority by Loaded/Activated/OnOpened) would swallow it. Callers drain the
+    /// window's startup jobs before showing the dialog; the precondition below says so plainly if a
+    /// later change queues another, instead of a timeout waiting for a dialog that never saw the key.
+    /// </summary>
     private static void PressKey(Window dialog, PhysicalKey key)
     {
         dialog.Show();
         Dispatcher.UIThread.RunJobs();
+        IInputElement? focused = dialog.FocusManager?.GetFocusedElement();
+        Assert.True(focused is null || TopLevel.GetTopLevel(focused as Avalonia.Visual) == dialog,
+            $"the dialog must own keyboard focus before the key press, but {focused?.GetType().Name} in another window has it");
         dialog.KeyPressQwerty(key, RawInputModifiers.None);
         Dispatcher.UIThread.RunJobs();
     }
@@ -695,6 +711,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     public void Picker_Enter_attaches_and_Escape_cancels(bool enter)
     {
         MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
         Guid id = Guid.NewGuid();
         var rows = new[] { new MuxSessionPickerRow(id, "t", "scripted", null, 80, 24, 1, true, null, false) };
         (Window dialog, Task<Guid?> result) = window.BuildMuxSessionPickerWindow(rows);
@@ -712,6 +729,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     public void Shared_close_Enter_detaches_and_Escape_cancels(bool enter)
     {
         MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
         (Window dialog, Task<SharedCloseChoice> result) = window.BuildSharedCloseWindow(1);
 
         PressKey(dialog, enter ? PhysicalKey.Enter : PhysicalKey.Escape);

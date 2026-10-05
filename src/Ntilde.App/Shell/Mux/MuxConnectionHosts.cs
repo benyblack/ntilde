@@ -9,6 +9,7 @@ namespace Ntilde.Shell.Mux;
 internal sealed class MuxConnectionHosts : IDisposable
 {
     private readonly Func<MuxEndpointId, MuxConnectionHost?> _createRemote;
+    private readonly Action<string>? _log;
     private readonly object _gate = new();
     private readonly Dictionary<MuxEndpointId, MuxConnectionHost> _remotes = new(); // guarded by _gate
     private readonly List<MuxConnectionHost> _remoteOrder = new();                  // guarded by _gate; creation order
@@ -17,16 +18,21 @@ internal sealed class MuxConnectionHosts : IDisposable
     /// <param name="local">The local daemon's host; owned from now on (disposed by <see cref="Dispose"/>).</param>
     /// <param name="createRemote">
     /// Builds the host for a remote endpoint, or returns null to decline (the profile is gone, or it does
-    /// not persist remote sessions). Called under this registry's lock, at most once per endpoint it
-    /// accepts, so it must only build the host - never connect, and never call back into this registry.
-    /// A decline is not remembered: the profile or its flag can change, so the next ask asks again.
+    /// not persist remote sessions). Called outside this registry's lock, on whichever thread asked, so it
+    /// may do real work (look the profile up, work out how to launch) and may call <see cref="TryGet"/>; it
+    /// must not connect, and must not ask <see cref="GetOrCreate"/> for the endpoint it is building. Two
+    /// threads asking at once can both build one: the first to register wins, and the other host is
+    /// disposed unused. A decline is not remembered: the profile or its flag can change, so the next ask
+    /// asks again.
     /// </param>
-    public MuxConnectionHosts(MuxConnectionHost local, Func<MuxEndpointId, MuxConnectionHost?> createRemote)
+    /// <param name="log">Where a remote host's failed dispose is reported (it never stops the others, or the local one).</param>
+    public MuxConnectionHosts(MuxConnectionHost local, Func<MuxEndpointId, MuxConnectionHost?> createRemote, Action<string>? log = null)
     {
         ArgumentNullException.ThrowIfNull(local);
         ArgumentNullException.ThrowIfNull(createRemote);
         Local = local;
         _createRemote = createRemote;
+        _log = log;
     }
 
     public MuxConnectionHost Local { get; }
@@ -39,12 +45,32 @@ internal sealed class MuxConnectionHosts : IDisposable
         {
             if (_disposed) return null;
             if (_remotes.TryGetValue(id, out MuxConnectionHost? existing)) return existing;
-            MuxConnectionHost? created = _createRemote(id);
-            if (created is null) return null;
-            _remotes.Add(id, created);
-            _remoteOrder.Add(created);
-            return created;
         }
+
+        // Outside the lock: a creator that marshals to the UI thread must not deadlock against a
+        // UI-thread TryGet waiting on this lock.
+        MuxConnectionHost? created = _createRemote(id);
+        if (created is null) return null;
+
+        MuxConnectionHost? winner;
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                winner = null;
+            }
+            else if (!_remotes.TryGetValue(id, out winner))
+            {
+                _remotes.Add(id, created);
+                _remoteOrder.Add(created);
+                return created;
+            }
+        }
+
+        // Another thread registered one first, or the registry was disposed meanwhile: this host was
+        // never handed out to anyone, and never connected (creators do not connect).
+        DisposeQuietly(created);
+        return winner;
     }
 
     /// <summary>The host for <paramref name="id"/> if one exists; never builds one.</summary>
@@ -66,8 +92,10 @@ internal sealed class MuxConnectionHosts : IDisposable
     /// <summary>
     /// Disposes every host; each flushes its own tracked kills first (MuxConnectionHost.Dispose). The
     /// remote hosts go together, in parallel, so the wait is the slowest one's flush rather than their
-    /// sum (each is bounded by its own KillFlushTimeout); the local host goes last. Waited inside
-    /// Task.Run like each host's own flush: no UI sync context is captured.
+    /// sum (each is bounded by its own KillFlushTimeout); the local host goes last. A remote host that
+    /// fails to dispose is logged and skipped: it must not stop the others, the local host, or the
+    /// window's teardown this runs in. Waited inside Task.Run like each host's own flush: no UI sync
+    /// context is captured.
     /// </summary>
     public void Dispose()
     {
@@ -83,12 +111,24 @@ internal sealed class MuxConnectionHosts : IDisposable
         {
             if (remotes.Length > 0)
             {
-                Task.WaitAll(remotes.Select(host => Task.Run(host.Dispose, CancellationToken.None)).ToArray());
+                Task.WaitAll(remotes.Select(host => Task.Run(() => DisposeQuietly(host), CancellationToken.None)).ToArray());
             }
         }
         finally
         {
             Local.Dispose();
+        }
+    }
+
+    private void DisposeQuietly(MuxConnectionHost host)
+    {
+        try
+        {
+            host.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"[Mux] closing the connection to {host.Policy.DisplayName} ({host.Endpoint}) failed: {ex.Message}");
         }
     }
 }
