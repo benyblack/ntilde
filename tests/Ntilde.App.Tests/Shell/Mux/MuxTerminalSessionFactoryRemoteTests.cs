@@ -308,6 +308,89 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Assert.Null(PersistenceNoticeAction.ForRemoteFailure(null, _profile.Id, _ => { }));
     }
 
+    /// <summary>
+    /// Controller ruling over spec §7.5: when SSH itself failed, a plain SSH session would only fail - or
+    /// prompt - again. A new tab gets no session, and the pane offers a retry.
+    /// </summary>
+    [Fact]
+    public void A_new_tab_whose_ssh_connect_fails_shows_a_retry_not_plain_ssh()
+    {
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+
+        PersistentSessionResult r = _factory.CreatePersistent(Ssh());
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Null(_fallback.LastRequest);
+        Assert.Equal(RemoteFailureKind.SshFailed, r.RemoteFailure!.Kind);
+        Assert.Equal(r.RemoteFailure.Reason, r.Detail);
+        Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
+        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, _ => { }));
+    }
+
+    /// <summary>An unclassified failure - the connect did not finish in time - is treated as an SSH failure: no plain SSH.</summary>
+    [Fact]
+    public void A_new_tab_whose_connect_does_not_finish_shows_a_retry_not_plain_ssh()
+    {
+        _remote.Script = FakeRemoteScript.Silent; // a prompt nobody answers
+        var factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null) { ConnectTimeout = TimeSpan.FromMilliseconds(300) };
+
+        PersistentSessionResult r = factory.CreatePersistent(Ssh());
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Null(r.RemoteFailure);
+        Assert.Null(_fallback.LastRequest);
+        Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
+        Assert.NotNull(r.Detail);
+    }
+
+    [Fact]
+    public void A_new_tab_whose_connection_cannot_be_set_up_shows_a_retry_not_plain_ssh()
+    {
+        MuxConnectionHosts hosts = Own(new MuxConnectionHosts(_local, _ => throw new InvalidOperationException("no transport for this profile")));
+        var factory = new MuxTerminalSessionFactory(hosts, _fallback, Resolve, log: null);
+
+        PersistentSessionResult r = factory.CreatePersistent(Ssh());
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Null(r.RemoteFailure);
+        Assert.Null(_fallback.LastRequest);
+        Assert.Equal((Endpoint, "nova@fake-host", "no transport for this profile"), (r.Endpoint, r.HostDisplayName, r.Detail));
+    }
+
+    /// <summary>The SSH link works and only ntilde-mux does not: a new tab still opens, as plain SSH, with the notice.</summary>
+    [Theory]
+    [InlineData(nameof(RemoteFailureKind.Unsupported))]
+    [InlineData(nameof(RemoteFailureKind.VersionMismatch))]
+    [InlineData(nameof(RemoteFailureKind.ProxyFailed))]
+    public void When_ssh_works_but_ntilde_mux_does_not_a_new_tab_falls_back_to_plain_ssh(string kind)
+    {
+        MuxTerminalSessionFactory factory = _factory;
+        switch (Enum.Parse<RemoteFailureKind>(kind))
+        {
+            case RemoteFailureKind.Unsupported:
+                _remote.Script = new FakeRemoteScript(Stderr: "sh: 1: /home/nova/.local/share/ntilde/bin/ntilde-mux: Exec format error\n", ExitCode: 126);
+                break;
+            case RemoteFailureKind.ProxyFailed:
+                _remote.Script = new FakeRemoteScript(Stderr: "mux: The multiplexer did not come up within 10 s.\n", ExitCode: 1);
+                break;
+            default:
+                (factory, _) = Build(Own(new FakeRemoteHost(serverOptions: new MuxServerOptions { ForceConPtyFiltering = false, MinProtocolVersion = 3, MaxProtocolVersion = 4 })));
+                break;
+        }
+
+        TerminalSessionRequest request = Ssh();
+        PersistentSessionResult r = factory.CreatePersistent(request);
+
+        Assert.Equal(PersistentSessionOutcome.Unavailable, r.Outcome);
+        Assert.IsType<FakeTerminalSession>(r.Session);
+        Assert.Same(request, _fallback.LastRequest);
+        Assert.Equal(kind, r.RemoteFailure!.Kind.ToString());
+        Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
+    }
+
     [Fact]
     public void A_remote_that_cannot_be_reached_on_a_reopen_keeps_its_id_and_names_its_endpoint()
     {

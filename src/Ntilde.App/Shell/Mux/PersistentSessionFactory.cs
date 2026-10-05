@@ -18,6 +18,8 @@ internal enum PersistentSessionOutcome
     /// used. No session is created (<see cref="PersistentSessionResult.Session"/> is null): a local
     /// fallback shell would hide the fact that the user's shell is still running in the daemon,
     /// and the pane would forget its id. The pane keeps the id and offers a retry instead.
+    /// Also a new remote tab whose SSH connect failed, or failed unclassified: it has no id to keep, and a
+    /// plain SSH stand-in would only fail again (a controller ruling over Phase 4 spec §7.5).
     /// </summary>
     DaemonUnreachable,
 

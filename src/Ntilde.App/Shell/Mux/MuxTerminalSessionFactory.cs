@@ -21,6 +21,14 @@ namespace Ntilde.Shell.Mux;
 /// which the pane persists as PaneNode.MuxEndpoint; a remote endpoint's results also carry its host's
 /// name and, when the connect failed, its classified failure.
 /// </summary>
+/// <remarks>
+/// A deviation from spec §7.5, by controller ruling: a new remote tab falls back to plain SSH only when
+/// SSH worked and ntilde-mux did not (NotInstalled, Unsupported, VersionMismatch, ProxyFailed, or a
+/// request that failed once connected). When the SSH connect itself failed (SshFailed), or the failure
+/// is unclassified (the connect did not finish in time, the connection could not be set up), it gets no
+/// session - <see cref="PersistentSessionOutcome.DaemonUnreachable"/> with no id - and the pane offers a
+/// retry: a plain SSH session would only fail again, or prompt again.
+/// </remarks>
 internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 {
     private readonly ITerminalSessionFactory _fallback;
@@ -101,6 +109,15 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     /// minutes, the time a user may take over an SSH password or host-key prompt), and those prompts are
     /// shown through the UI thread: a UI-thread caller would block the very dialog it waits on until the
     /// timeout (Phase 4 spec §7.4). A local request waits at most the local daemon's few seconds.
+    /// <para>
+    /// A remote request whose SSH connect failed (<see cref="RemoteFailureKind.SshFailed"/>), or failed
+    /// unclassified (<see cref="PersistentSessionResult.RemoteFailure"/> null: no answer in time, or the
+    /// connection could not be set up), gets <see cref="PersistentSessionOutcome.DaemonUnreachable"/> and no
+    /// session even when it names no existing session - a deviation from spec §7.5, which falls a new tab
+    /// back to plain SSH; by controller ruling that happens only when SSH itself worked. The result still
+    /// names the endpoint and the host, so the pane can show "[&lt;host&gt; not reachable - press Enter to
+    /// retry]".
+    /// </para>
     /// </remarks>
     public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
     {
@@ -123,7 +140,23 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     private PersistentSessionResult CreateRemote(TerminalSessionRequest request, Guid profileId, SshProfile profile)
     {
         MuxEndpointId endpoint = MuxEndpointId.ForSsh(profileId);
-        if (Hosts.GetOrCreate(endpoint) is not { } host)
+        MuxConnectionHost? host;
+        try
+        {
+            host = Hosts.GetOrCreate(endpoint);
+        }
+        catch (Exception ex)
+        {
+            // The connection could not even be set up (the window's creator threw): nothing is known
+            // to work, so - as for an SSH failure - no plain SSH stand-in, and the pane offers a retry.
+            _log?.Invoke($"[Mux] could not set up the connection for {endpoint} ({ex.Message}); no session started, the tab offers a retry");
+            return new(null, PersistentSessionOutcome.DaemonUnreachable, endpoint.ToString(), ex.Message)
+            {
+                HostDisplayName = RemoteMuxConnector.DisplayNameOf(profile),
+            };
+        }
+
+        if (host is null)
         {
             // Declined after all: the profile changed since the check above, or the window is closing.
             _log?.Invoke($"[Mux] no connection for {endpoint}; this SSH session will not persist");
@@ -155,7 +188,18 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             {
                 // The connect's classified failure (spec §7.1): its kind decides what the notice offers.
                 RemoteMuxFailure? failure = (host.LastFailure as RemoteMuxUnavailableException)?.Failure;
-                return Fallback(target, request, failure?.Reason ?? "ntilde-mux could not be reached") with { RemoteFailure = failure };
+                string why = failure?.Reason ?? "ntilde-mux could not be reached";
+
+                // Controller ruling, a deviation from spec §7.5: plain SSH only when SSH itself worked
+                // and only ntilde-mux did not. An SSH failure - or one nobody classified (a connect
+                // that did not finish in time) - gives no session, even for a new tab: a plain SSH
+                // session would only fail again, or prompt again. The pane offers a retry instead.
+                if (failure is null or { Kind: RemoteFailureKind.SshFailed })
+                {
+                    return Unreachable(target, request.ExistingMuxSessionId, why) with { RemoteFailure = failure };
+                }
+
+                return Fallback(target, request, why) with { RemoteFailure = failure };
             }
 
             // A daemon of another protocol version is reachable but unusable: say so, and how to fix it.
@@ -336,13 +380,21 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     /// </summary>
     private PersistentSessionResult Fallback(Target target, TerminalSessionRequest request, string why)
     {
-        if (request.ExistingMuxSessionId is Guid existing)
-        {
-            _log?.Invoke($"[Mux] multiplexer unavailable on {target.Name} ({why}); session {existing} is kept for a retry, no session started");
-            return new(null, PersistentSessionOutcome.DaemonUnreachable, target.Name, why);
-        }
+        if (request.ExistingMuxSessionId is Guid existing) return Unreachable(target, existing, why);
 
         _log?.Invoke($"[Mux] multiplexer unavailable on {target.Name} ({why}); this session will not persist");
         return new(_fallback.Create(request), PersistentSessionOutcome.Unavailable, target.Remote is null ? null : target.Name, why);
+    }
+
+    /// <summary>
+    /// No session at all, and the pane offers a retry. A reopen keeps its id; a new remote tab whose
+    /// SSH connect failed has none to keep (see <see cref="CreatePersistent"/>).
+    /// </summary>
+    private PersistentSessionResult Unreachable(Target target, Guid? existing, string why)
+    {
+        _log?.Invoke(existing is Guid id
+            ? $"[Mux] multiplexer unavailable on {target.Name} ({why}); session {id} is kept for a retry, no session started"
+            : $"[Mux] multiplexer unavailable on {target.Name} ({why}); no session started, the tab offers a retry");
+        return new(null, PersistentSessionOutcome.DaemonUnreachable, target.Name, why);
     }
 }
