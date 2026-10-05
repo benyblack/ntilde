@@ -7,18 +7,19 @@ using Ntilde.Mux.TextClient;
 namespace Ntilde.Mux.Cli;
 
 /// <summary>
-/// The mux verbs <c>serve|ls|kill|kill-server|attach</c> (Phase 2 spec §5, §6), hosted by whichever
+/// The mux verbs <c>serve|ls|kill|kill-server|attach</c> (Phase 2 spec §5, §6) and, for the standalone
+/// <c>ntilde-mux</c>, <c>proxy --stdio</c> and <c>--version</c> (Phase 4 spec §8.1), hosted by whichever
 /// executable supplies a <see cref="MuxCliHost"/> (Phase 4 spec §6.2): the App's <c>ntilde mux</c>
 /// and the standalone <c>ntilde-mux</c>. Exit codes: 0 success, 1 the operation failed (including "no
 /// daemon running"), 2 the command line was wrong - an unknown verb, or one the host does not offer.
-/// <c>attach</c> differs: see <see cref="Attach"/>. <c>serve</c> exits
-/// <see cref="MuxServeHost.LockHeldExitCode"/> (3) when another daemon owns this root's lock. Writes
-/// only to the writers it is handed, never to the console itself.
+/// <c>attach</c> and <c>proxy</c> differ: see <see cref="Attach"/> and <see cref="MuxProxyExitCodes"/>.
+/// <c>serve</c> exits <see cref="MuxServeHost.LockHeldExitCode"/> (3) when another daemon owns this
+/// root's lock. Writes text only to the writers it is handed, never to the console itself; the one
+/// exception is <c>proxy</c>, whose stdin and stdout are the raw console streams it pumps.
 /// </summary>
 public static class MuxCli
 {
-    // The verbs Execute dispatches. Proxy and Version join this table with their implementations
-    // (Phase 4 spec §8.1, §12.1); until then they read as unknown, whatever the host offers.
+    // The verbs Execute dispatches. --version is a verb spelled as a flag: ntilde-mux --version.
     private static readonly (string Name, MuxCliVerbs Verb)[] VerbNames =
     [
         ("serve", MuxCliVerbs.Serve),
@@ -27,20 +28,39 @@ public static class MuxCli
         ("kill-server", MuxCliVerbs.KillServer),
         ("attach", MuxCliVerbs.Attach),
         ("probe-console", MuxCliVerbs.ProbeConsole),
+        ("proxy", MuxCliVerbs.Proxy),
+        ("version", MuxCliVerbs.Version),
+        ("--version", MuxCliVerbs.Version),
     ];
 
-    // The multi-line texts below are raw literals, so they carry the source file's line endings: CRLF
-    // in every checkout (.gitattributes). Both are normalised to the platform's newline where they are
-    // built, so ntilde-mux on Linux prints \n, the same as the WriteLine that ends them.
-    private static string Usage(MuxCliHost host) => $"""
-        Usage:
-          {host.UsagePrefix} serve [--idle-exit-minutes N] [--foreground]
-          {host.UsagePrefix} ls [--json]
-          {host.UsagePrefix} kill <sessionId>
-          {host.UsagePrefix} kill-server [--force]
-          {host.UsagePrefix} attach <sessionId|prefix> [--read-only]
-        """.ReplaceLineEndings();
+    // One usage line per verb, listed only when the host offers it. probe-console, a diagnostic, is
+    // never listed. The App's set prints exactly the text it always has (its tests pin it).
+    private static readonly (MuxCliVerbs Verb, string Line)[] UsageLines =
+    [
+        (MuxCliVerbs.Serve, "serve [--idle-exit-minutes N] [--foreground]"),
+        (MuxCliVerbs.Ls, "ls [--json]"),
+        (MuxCliVerbs.Kill, "kill <sessionId>"),
+        (MuxCliVerbs.KillServer, "kill-server [--force]"),
+        (MuxCliVerbs.Attach, "attach <sessionId|prefix> [--read-only]"),
+        (MuxCliVerbs.Proxy, "proxy --stdio"),
+        (MuxCliVerbs.Version, "--version [--json]"),
+    ];
 
+    /// <summary>Lines joined by the platform's newline, the same as the WriteLine that ends them.</summary>
+    private static string Usage(MuxCliHost host)
+    {
+        var usage = new System.Text.StringBuilder("Usage:");
+        foreach ((MuxCliVerbs verb, string line) in UsageLines)
+        {
+            if ((host.Verbs & verb) == verb) usage.Append(Environment.NewLine).Append("  ").Append(host.UsagePrefix).Append(' ').Append(line);
+        }
+
+        return usage.ToString();
+    }
+
+    // A raw literal, so it carries the source file's line endings: CRLF in every checkout
+    // (.gitattributes). Normalised to the platform's newline here, so ntilde-mux on Linux prints \n,
+    // the same as the WriteLine that ends it.
     private static string AttachUsage(MuxCliHost host) => $"""
         Usage: {host.UsagePrefix} attach <sessionId|prefix> [--read-only]
 
@@ -96,6 +116,8 @@ public static class MuxCli
                 MuxCliVerbs.KillServer => KillServer(verbArgs, stdout, stderr, descriptorPath, host),
                 MuxCliVerbs.Attach => Attach(verbArgs, stdout, stderr, descriptorPath, host),
                 MuxCliVerbs.ProbeConsole => ProbeConsole(verbArgs, stdout, stderr, host),
+                MuxCliVerbs.Proxy => Proxy(verbArgs, stderr, host),
+                MuxCliVerbs.Version => Version(verbArgs, stdout, stderr, host),
                 _ => Fail(stderr, Usage(host)),
             };
         }
@@ -169,6 +191,37 @@ public static class MuxCli
         }
 
         return MuxServeHost.Run(options, host.Paths, host.SessionFactory(), stderr);
+    }
+
+    /// <summary>
+    /// <c>proxy --stdio</c> (Phase 4 spec §8.1): sshd's exec channel to this host's daemon, spawned on
+    /// demand. Its stdout is the channel, so everything it says - the usage, the launcher's log - goes
+    /// to stderr. The raw standard streams, not Console.In/Out: bytes, unbuffered and undecoded. They
+    /// are not disposed here: the pump may still be blocked reading stdin, and the process exit closes
+    /// both.
+    /// </summary>
+    private static int Proxy(string[] verbArgs, TextWriter stderr, MuxCliHost host)
+    {
+        if (verbArgs.Length != 2 || !string.Equals(verbArgs[1], "--stdio", StringComparison.Ordinal)) return Fail(stderr, Usage(host));
+
+        void Log(string line) => stderr.WriteLine($"[ntilde-mux] {line}");
+        return MuxProxyCommand.Run(Console.OpenStandardInput(), Console.OpenStandardOutput(), stderr,
+            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths).EnsureEndpointStreamAsync(ct));
+    }
+
+    /// <summary><c>--version [--json]</c>: one line, plain or <see cref="MuxVersionInfo"/> as JSON.</summary>
+    private static int Version(string[] verbArgs, TextWriter stdout, TextWriter stderr, MuxCliHost host)
+    {
+        bool json = false;
+        foreach (string arg in verbArgs.Skip(1))
+        {
+            if (arg != "--json") return Fail(stderr, Usage(host));
+            json = true;
+        }
+
+        MuxVersionInfo info = MuxVersionInfo.Current(host.Version);
+        stdout.WriteLine(json ? JsonSerializer.Serialize(info, MuxCliJsonContext.Default.MuxVersionInfo) : info.ToDisplayString());
+        return 0;
     }
 
     private static MuxClient? Connect(string descriptorPath, TextWriter stderr)

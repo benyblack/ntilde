@@ -101,8 +101,11 @@ public sealed class MuxCliTests : IDisposable
     [InlineData("probe-console", MuxCliVerbs.ProbeConsole, true)]
     [InlineData("kill", MuxCliVerbs.KillServer, false)]   // a verb the host does not offer
     [InlineData("frobnicate", Offered, false)]
-    [InlineData("proxy", MuxCliVerbs.Proxy, false)]       // declared, not implemented yet: unknown until it is
-    [InlineData("version", MuxCliVerbs.Version, false)]
+    [InlineData("proxy", MuxCliVerbs.Proxy, true)]
+    [InlineData("proxy", Offered, false)]                 // the App's ntilde mux does not offer it
+    [InlineData("version", MuxCliVerbs.Version, true)]
+    [InlineData("--version", MuxCliVerbs.Version, true)]  // ntilde-mux --version: the flag is the verb
+    [InlineData("--version", Offered, false)]
     public void Known_verbs_are_the_implemented_ones_the_host_offers(string verb, MuxCliVerbs verbs, bool known) =>
         Assert.Equal(known, MuxCli.IsKnownVerb(verb, verbs));
 
@@ -115,8 +118,36 @@ public sealed class MuxCliTests : IDisposable
 
         Assert.Equal(2, code);
         Assert.Equal(string.Empty, output);
-        Assert.Equal(Run().Err, err);
+        Assert.Equal(Run(Host(MuxCliVerbs.Ls)).Err, err);   // that host's usage, which names only ls
+        Assert.DoesNotContain("kill-server", err, StringComparison.Ordinal);
         Assert.Equal(0, Run(Host(MuxCliVerbs.Ls), "ls").Code);   // the daemon was left alone
+    }
+
+    /// <summary>
+    /// Phase 4 spec §6.2: the usage lists what the host offers. ntilde-mux adds proxy and --version;
+    /// the App's set prints exactly what it always has (its own tests pin that text); probe-console,
+    /// a diagnostic, is never listed.
+    /// </summary>
+    [Fact]
+    public void The_usage_lists_only_the_verbs_the_host_offers()
+    {
+        string standalone = Run(Host(Offered | MuxCliVerbs.Proxy | MuxCliVerbs.Version)).Err.ReplaceLineEndings("\n");
+        string appSet = Run(Host(Offered)).Err.ReplaceLineEndings("\n");
+
+        Assert.Equal("""
+            Usage:
+              ntilde-mux serve [--idle-exit-minutes N] [--foreground]
+              ntilde-mux ls [--json]
+              ntilde-mux kill <sessionId>
+              ntilde-mux kill-server [--force]
+              ntilde-mux attach <sessionId|prefix> [--read-only]
+              ntilde-mux proxy --stdio
+              ntilde-mux --version [--json]
+
+            """.ReplaceLineEndings("\n"), standalone);
+        Assert.DoesNotContain("proxy", appSet, StringComparison.Ordinal);
+        Assert.DoesNotContain("--version", appSet, StringComparison.Ordinal);
+        Assert.DoesNotContain("probe-console", standalone, StringComparison.Ordinal);
     }
 
     [Fact]
