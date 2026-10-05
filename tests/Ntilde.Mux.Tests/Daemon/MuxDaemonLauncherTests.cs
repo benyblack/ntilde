@@ -99,9 +99,16 @@ public sealed class MuxDaemonLauncherTests : IDisposable
         _owned.Add(dropper);
         var dropping = new Thread(() =>
         {
-            while (dropper.Accept(CancellationToken.None) is { } accepted) accepted.Dispose();
+            try
+            {
+                while (dropper.Accept(CancellationToken.None) is { } accepted) accepted.Dispose();
+            }
+            catch (IOException)
+            {
+                // A broken accept ends the dropping; the launcher then finds nothing and spawns.
+            }
         })
-        { IsBackground = true };
+        { IsBackground = true, Name = "MuxDropper" };
         dropping.Start();
         using var self = Process.GetCurrentProcess();
         MuxDiscovery.WriteDescriptor(MuxDiscovery.GetDescriptorPath(_root), new MuxEndpointDescriptor
@@ -112,7 +119,7 @@ public sealed class MuxDaemonLauncherTests : IDisposable
             MinVersion = 1,
             MaxVersion = 1,
         });
-        var spawner = new ReplacingSpawner(this, dropper);
+        var spawner = new ReplacingSpawner(this, dropper, dropping);
 
         using MuxClient client = await Launcher(spawner).EnsureConnectedAsync(Ct);
 
@@ -120,14 +127,20 @@ public sealed class MuxDaemonLauncherTests : IDisposable
         Assert.Equal(1, spawner.Spawns);
     }
 
-    /// <summary>Stops <paramref name="old"/> (the daemon that was tearing down), then starts a real one.</summary>
-    private sealed class ReplacingSpawner(MuxDaemonLauncherTests t, IMuxListener old) : IMuxDaemonSpawner
+    /// <summary>
+    /// Stops <paramref name="old"/> (the daemon that was tearing down), then starts a real one on the
+    /// same endpoint. Dispose only cancels: the pipe instance an in-flight Accept holds is closed on
+    /// <paramref name="accepting"/>'s thread, and a new listener's FirstPipeInstance fails while it is
+    /// open - so the accept thread is joined first (Accept closes its instance before returning null).
+    /// </summary>
+    private sealed class ReplacingSpawner(MuxDaemonLauncherTests t, IMuxListener old, Thread accepting) : IMuxDaemonSpawner
     {
         public int Spawns;
         public void Spawn()
         {
             Interlocked.Increment(ref Spawns);
             old.Dispose();
+            Assert.True(accepting.Join(TimeSpan.FromSeconds(5)), "the old listener's accept thread did not stop within 5 s");
             t.StartDaemon();
         }
     }

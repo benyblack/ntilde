@@ -55,9 +55,15 @@ public sealed class MuxDaemonLauncher
     public TimeSpan RespawnAfter { get; init; } = TimeSpan.FromSeconds(1);
 
     /// <param name="serveArguments">What the spawned executable is given to serve: <c>["mux","serve"]</c> for the GUI's exe.</param>
-    /// <param name="paths">The daemon's root; null = <see cref="MuxPaths.Default"/>.</param>
-    public static MuxDaemonLauncher CreateDefault(Action<string>? log, IReadOnlyList<string> serveArguments, MuxPaths? paths = null) =>
-        new((paths ?? MuxPaths.Default()).DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments), log: log);
+    /// <param name="paths">The daemon's root, where the launcher looks and the spawned daemon serves; null = <see cref="MuxPaths.Default"/>.</param>
+    public static MuxDaemonLauncher CreateDefault(Action<string>? log, IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
+    {
+        MuxPaths p = paths ?? MuxPaths.Default();
+        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p.Root), log: log);
+    }
+
+    /// <summary>Test seam: the spawner this launcher starts daemons with.</summary>
+    internal IMuxDaemonSpawner SpawnerForTest => _spawner;
 
     public async Task<MuxClient?> TryConnectExistingAsync(CancellationToken cancellationToken) =>
         (await TryConnectExistingCoreAsync(hello: true, cancellationToken).ConfigureAwait(false))?.Client;
