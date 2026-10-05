@@ -166,6 +166,14 @@ public sealed class TextClientRendererTests
         Assert.DoesNotContain("\x1b[?2004h", again, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Enter_turns_autowrap_off_and_leave_turns_it_on()
+    {
+        Assert.Contains("\x1b[?7l", TextClientRenderer.EnterSequence, StringComparison.Ordinal);
+        Assert.Contains("\x1b[?7h", TextClientRenderer.LeaveSequence, StringComparison.Ordinal);
+        Assert.EndsWith("\x1b[?1049l", TextClientRenderer.LeaveSequence, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// .NET's Console init writes terminfo smkx (DECKPAM, ESC =) to a TTY: left set, keypad keys would
     /// reach the inner app as ESC O x. The model does not track the inner keypad mode, so the outer one
@@ -174,8 +182,8 @@ public sealed class TextClientRendererTests
     [Fact]
     public void The_outer_keypad_is_numeric_on_entry_and_exit_and_an_inner_DECKPAM_is_not_relayed()
     {
-        Assert.StartsWith("\x1b[?1049h\x1b>", TextClientRenderer.EnterSequence, StringComparison.Ordinal);
-        Assert.EndsWith("\x1b>\x1b[?1049l", TextClientRenderer.LeaveSequence, StringComparison.Ordinal);
+        Assert.StartsWith("\x1b[?1049h\x1b[?7l\x1b>", TextClientRenderer.EnterSequence, StringComparison.Ordinal);
+        Assert.EndsWith("\x1b>\x1b[?7h\x1b[?1049l", TextClientRenderer.LeaveSequence, StringComparison.Ordinal);
 
         var s = new Session(80, 24);
         var renderer = new TextClientRenderer(s.Buffer);
