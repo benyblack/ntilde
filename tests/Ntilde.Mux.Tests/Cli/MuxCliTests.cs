@@ -32,16 +32,16 @@ public sealed class MuxCliTests : IDisposable
 
     private MuxCliHost Host(MuxCliVerbs verbs = Offered, ITerminalSessionFactory? sessions = null, Action? prepareForegroundConsole = null,
         bool isGuiExecutable = false, bool attachedToParentConsole = false) => new()
-    {
-        Paths = new MuxPaths(_root),
-        UsagePrefix = Prefix,
-        ServeArguments = ["serve"],
-        SessionFactory = () => sessions ?? new ScriptedSessionFactory(),
-        Verbs = verbs,
-        PrepareForegroundConsole = prepareForegroundConsole,
-        IsGuiExecutable = isGuiExecutable,
-        AttachedToParentConsole = attachedToParentConsole,
-    };
+        {
+            Paths = new MuxPaths(_root),
+            UsagePrefix = Prefix,
+            ServeArguments = ["serve"],
+            SessionFactory = () => sessions ?? new ScriptedSessionFactory(),
+            Verbs = verbs,
+            PrepareForegroundConsole = prepareForegroundConsole,
+            IsGuiExecutable = isGuiExecutable,
+            AttachedToParentConsole = attachedToParentConsole,
+        };
 
     private async Task<Guid> StartDaemonWithOneSessionAsync()
     {

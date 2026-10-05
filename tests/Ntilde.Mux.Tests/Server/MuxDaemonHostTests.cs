@@ -235,7 +235,11 @@ public sealed class MuxDaemonHostTests : IDisposable
         File.Delete(o.DescriptorPath);
         host.BeforeDescriptorWriteForTest = () => MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
         {
-            Endpoint = "foreign", Pid = Environment.ProcessId + 100_000, ProcessName = self.ProcessName, MinVersion = 1, MaxVersion = 2,
+            Endpoint = "foreign",
+            Pid = Environment.ProcessId + 100_000,
+            ProcessName = self.ProcessName,
+            MinVersion = 1,
+            MaxVersion = 2,
         });
 
         host.TickForTest();
@@ -252,11 +256,19 @@ public sealed class MuxDaemonHostTests : IDisposable
         host.Start();
         MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
         {
-            Endpoint = "stale", Pid = Environment.ProcessId + 100_000, ProcessName = "not-running", MinVersion = 1, MaxVersion = 2,
+            Endpoint = "stale",
+            Pid = Environment.ProcessId + 100_000,
+            ProcessName = "not-running",
+            MinVersion = 1,
+            MaxVersion = 2,
         });
         host.BeforeDescriptorWriteForTest = () => MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
         {
-            Endpoint = "newer", Pid = Environment.ProcessId + 100_001, ProcessName = "not-running", MinVersion = 1, MaxVersion = 2,
+            Endpoint = "newer",
+            Pid = Environment.ProcessId + 100_001,
+            ProcessName = "not-running",
+            MinVersion = 1,
+            MaxVersion = 2,
         });
 
         host.TickForTest();
