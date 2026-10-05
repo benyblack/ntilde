@@ -1669,6 +1669,290 @@ jobs:
           if-no-files-found: ignore
 
   # ===========================================================================
+  # ntilde-mux, the remote multiplexer (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
+  # §2 decision 1, §10.2). What a remote host runs is ONE NativeAOT file per RID with
+  # rusty_pty linked in statically (DirectPInvoke + librusty_pty.a), and no other job builds
+  # that shape: everything else builds the App, which loads the shared library. Each leg
+  # builds the staticlib, publishes (IL2026/IL3050 are errors in the project), asserts the
+  # single file and, on Linux, the glibc 2.35 floor, then runs it: --version --json, and a
+  # foreground daemon that `ls` reaches and `kill-server` stops.
+  #
+  # The Linux legs run in ubuntu:22.04 for linux_packaging_build's reason - whatever links
+  # the binary IS its glibc floor - and copy that job's container recipe line for line (apt
+  # list, checksum-verified SDK, pinned and checksum-verified rustup-init); read its comments
+  # before changing any of it. scripts/docker-publish-mux-daemon.sh is the same recipe, for a
+  # local run. macOS needs no container: setup-dotnet and dtolnay/rust-toolchain, as
+  # release.yml's build_native/publish_aot. osx-arm64 is the leg only CI can prove; should
+  # its static link ever fail, that RID alone falls back to shipping {exe, librusty_pty.dylib}
+  # (spec §2 decision 1) - a decision for a PR, not something this job quietly tolerates.
+  #
+  # Gated by aot_gate_detect: what can change the App's AOT bundle can change this one.
+  # ===========================================================================
+  mux_daemon_aot:
+    name: ntilde-mux AOT (${{ matrix.rid }})
+    needs: aot_gate_detect
+    if: needs.aot_gate_detect.outputs.run == 'true'
+    runs-on: ${{ matrix.os }}
+    # An empty image (the macOS leg) runs the job on the runner itself.
+    container: ${{ matrix.container }}
+    # bash on every leg: a container job's inline `run:` blocks otherwise get `sh` (dash on
+    # this image), which has no pipefail, `[[ ]]` or `<<<` - see linux_packaging_build. The
+    # macOS runner's bash is 3.2, so nothing below uses bash 4 syntax.
+    defaults:
+      run:
+        shell: bash
+    # Cold container: apt + SDK download + rustup + one crate + an ILC link. linux_packaging_build
+    # does all of that and much more in 60.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: linux-x64,   os: ubuntu-latest,    container: ubuntu:22.04 }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm, container: ubuntu:22.04 }
+          - { rid: osx-arm64,   os: macos-latest,     container: '' }
+    steps:
+      # MUST precede actions/checkout in the container: a bare ubuntu:22.04 has no git, and
+      # checkout silently degrades to a REST tarball without it. The list is publish_linux's
+      # (release.yml), identical on purpose; per-package reasons are in linux_packaging_build.
+      - name: Install container toolchain
+        if: matrix.container != ''
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y \
+            ca-certificates curl git unzip zstd jq \
+            clang zlib1g-dev binutils file imagemagick squashfs-tools \
+            fontconfig libfreetype6 x11-utils \
+            libicu70 libssl3
+          echo "--- container identity (the glibc floor this lane pins) ---"
+          head -2 /etc/os-release
+          sed -n '1p' <<<"$(ldd --version)"
+
+      - uses: actions/checkout@v4
+
+      # Keyed per RID: the payload is a different architecture's SDK on each Linux leg.
+      - name: Cache .NET SDK (container)
+        if: matrix.container != ''
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet
+          key: dotnet-sdk-container-ubuntu2204-${{ matrix.rid }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-container-ubuntu2204-${{ matrix.rid }}-
+
+      # linux_packaging_build's step, unchanged: the tarball named by global.json, verified
+      # against its published .sha512 before anything is extracted.
+      - name: Install .NET SDK (container; version pinned by global.json)
+        if: matrix.container != ''
+        run: |
+          set -euo pipefail
+          sdk_version="$(jq -re '.sdk.version' global.json)"
+          case "$(uname -m)" in
+            x86_64)  sdk_rid=linux-x64 ;;
+            aarch64) sdk_rid=linux-arm64 ;;
+            *) echo "no pinned .NET SDK download for architecture $(uname -m)" >&2; exit 1 ;;
+          esac
+          tarball="dotnet-sdk-${sdk_version}-${sdk_rid}.tar.gz"
+          base_url="https://builds.dotnet.microsoft.com/dotnet/Sdk/${sdk_version}"
+          if [[ -d "$HOME/.dotnet/sdk/$sdk_version" ]]; then
+            echo "SDK $sdk_version already present in \$HOME/.dotnet (cache hit); skipping download"
+          else
+            curl --proto '=https' --tlsv1.2 -sSfL -o "/tmp/$tarball"        "$base_url/$tarball"
+            curl --proto '=https' --tlsv1.2 -sSfL -o "/tmp/$tarball.sha512" "$base_url/$tarball.sha512"
+            expected="$(awk 'NR==1 { print tolower($1) }' "/tmp/$tarball.sha512")"
+            [[ "$expected" =~ ^[0-9a-f]{128}$ ]] \
+              || { echo "::error::$tarball.sha512 is not a SHA-512 hex digest (got '${expected:0:80}') - refusing to install an unverified SDK" >&2; exit 1; }
+            actual="$(sha512sum "/tmp/$tarball" | awk '{ print tolower($1) }')"
+            if [[ "$expected" != "$actual" ]]; then
+              echo "::error::sha512 mismatch for $tarball" >&2
+              echo "  expected: $expected" >&2
+              echo "  actual:   $actual" >&2
+              exit 1
+            fi
+            echo "sha512 verified for $tarball: $actual"
+            mkdir -p "$HOME/.dotnet"
+            tar -xzf "/tmp/$tarball" -C "$HOME/.dotnet"
+            [[ -x "$HOME/.dotnet/dotnet" && -d "$HOME/.dotnet/sdk/$sdk_version" ]] \
+              || { echo "::error::extracted SDK has no dotnet/sdk/$sdk_version - wrong payload shape" >&2; exit 1; }
+          fi
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          echo "DOTNET_ROOT=$HOME/.dotnet" >> "$GITHUB_ENV"
+
+      - name: Setup .NET (macOS)
+        if: matrix.container == ''
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verify dotnet is on PATH
+        run: |
+          set -euo pipefail
+          command -v dotnet
+          dotnet --version
+
+      # linux_packaging_build's step, unchanged: rustup-init pinned by version and verified
+      # against its published SHA256 before it runs (a bare image has no rustup for
+      # dtolnay/rust-toolchain to drive).
+      - name: Install Rust (container)
+        if: matrix.container != ''
+        run: |
+          set -euo pipefail
+          RUSTUP_VERSION=1.29.1
+          triple="$(uname -m)-unknown-linux-gnu"
+          base_url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${triple}"
+          curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init "${base_url}/rustup-init"
+          curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init.sha256 "${base_url}/rustup-init.sha256"
+          (cd /tmp && sha256sum -c rustup-init.sha256)
+          chmod +x /tmp/rustup-init
+          /tmp/rustup-init -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install Rust (macOS)
+        if: matrix.container == ''
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Verify cargo is on PATH
+        run: |
+          set -euo pipefail
+          command -v cargo
+          cargo --version
+          rustc --version
+
+      - name: Rust incremental build cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src/Ntilde.App/native
+
+      # crate-type = ["cdylib", "staticlib"]: the .a is what the publish below links.
+      - name: Build librusty_pty.a
+        run: |
+          set -euo pipefail
+          cd src/Ntilde.App/native
+          cargo build --release --locked
+          ls -la target/release/librusty_pty.a
+
+      # -p:TrimmerSingleWarn=false so ILC names every offending call site, as aot_gate does.
+      - name: Publish ntilde-mux
+        env:
+          RID: ${{ matrix.rid }}
+          DOTNET_CLI_USE_MSBUILD_SERVER: '0'
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.Mux.Daemon/Ntilde.Mux.Daemon.csproj -c "$CONFIGURATION" -r "$RID" \
+            -nodeReuse:false -p:TrimmerSingleWarn=false -o "artifacts/mux-daemon/$RID"
+
+      # One file: rusty_pty is inside the executable, not beside it. StripSymbols' sidecar
+      # (ntilde-mux.dbg on Linux, ntilde-mux.dSYM on macOS) is the only other thing allowed,
+      # and nothing ships it.
+      - name: Assert a single file
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          pub="artifacts/mux-daemon/$RID"
+          ls -la "$pub"
+          rm -rf "$pub/ntilde-mux.dbg" "$pub/ntilde-mux.dSYM"
+          listing="$(ls -A "$pub")"
+          if [[ "$listing" != "ntilde-mux" ]]; then
+            echo "::error::expected exactly ntilde-mux in $pub; found: $(tr '\n' ' ' <<<"$listing")" >&2
+            exit 1
+          fi
+
+      # The highest symbol version the binary asks of glibc must not pass the floor the
+      # container pins, compared as versions (sort -V), not as strings.
+      - name: Assert the glibc floor (Linux)
+        if: matrix.container != ''
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          bin="artifacts/mux-daemon/$RID/ntilde-mux"
+          ldd "$bin"
+          glibc_max="$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
+          echo "highest GLIBC_ symbol version: $glibc_max"
+          if [[ "$(printf '%s\n' "$glibc_max" GLIBC_2.35 | sort -V | tail -1)" != "GLIBC_2.35" ]]; then
+            echo "::error::ntilde-mux needs $glibc_max, above the GLIBC_2.35 floor (ubuntu:22.04)" >&2
+            exit 1
+          fi
+
+      # From a pristine root, as on a fresh remote host. The descriptor is
+      # <root>/mux/mux-endpoint.json (MuxDiscovery), written once the daemon listens; `ls`
+      # exits 1 when it reaches no daemon, so its 0 proves the round trip.
+      - name: Smoke (--version, serve, ls, kill-server)
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          bin="$PWD/artifacts/mux-daemon/$RID/ntilde-mux"
+          version_json="$("$bin" --version --json)"
+          echo "$version_json"
+          grep -q '"protocolMax":2' <<<"$version_json" \
+            || { echo "::error::--version --json does not report protocolMax 2" >&2; exit 1; }
+
+          NTILDE_APPDATA_ROOT="$(mktemp -d)"
+          export NTILDE_APPDATA_ROOT
+          descriptor="$NTILDE_APPDATA_ROOT/mux/mux-endpoint.json"
+          serve_log="$RUNNER_TEMP/ntilde-mux-serve.log"
+          "$bin" serve --foreground --idle-exit-minutes 0 >"$serve_log" 2>&1 &
+          serve_pid=$!
+          # Whatever happens below, no daemon outlives the step, and its log is printed.
+          finish() {
+            status=$?
+            if kill -0 "$serve_pid" 2>/dev/null; then kill -9 "$serve_pid" 2>/dev/null || true; fi
+            echo "---- serve --foreground log ----"
+            cat "$serve_log" || true
+            exit "$status"
+          }
+          trap finish EXIT
+
+          for _ in $(seq 1 60); do
+            [[ -f "$descriptor" ]] && break
+            kill -0 "$serve_pid" 2>/dev/null || break
+            sleep 0.5
+          done
+          [[ -f "$descriptor" ]] || { echo "::error::serve wrote no descriptor within 30 s" >&2; exit 1; }
+
+          "$bin" ls
+          "$bin" kill-server
+
+          for _ in $(seq 1 40); do
+            kill -0 "$serve_pid" 2>/dev/null || break
+            sleep 0.5
+          done
+          if kill -0 "$serve_pid" 2>/dev/null; then
+            echo "::error::serve was still running 20 s after kill-server" >&2
+            exit 1
+          fi
+          serve_status=0
+          wait "$serve_pid" || serve_status=$?
+          if [[ "$serve_status" -ne 0 ]]; then
+            echo "::error::serve exited $serve_status after kill-server" >&2
+            exit 1
+          fi
+
+      - name: Report the size
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          bin="artifacts/mux-daemon/$RID/ntilde-mux"
+          if [[ "$(uname -s)" == "Darwin" ]]; then size="$(stat -f%z "$bin")"; else size="$(du -b "$bin" | cut -f1)"; fi
+          echo "ntilde-mux ($RID): $size bytes"
+          echo "ntilde-mux ($RID): $size bytes" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ntilde-mux
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntilde-mux-${{ matrix.rid }}
+          path: artifacts/mux-daemon/${{ matrix.rid }}/ntilde-mux
+          if-no-files-found: error
+          retention-days: 14
+
+  # ===========================================================================
   # Linux packaging: dry run + smoke gate (#91 Linux leg). Two callers of the same
   # scripts release.yml uses, so packaging breaks land on a PR rather than on a tag.
   #
