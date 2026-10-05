@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Ntilde.Mux;
 using Ntilde.Mux.Transport;
 using Ntilde.Platform.Ssh.Exec;
@@ -45,6 +46,9 @@ internal sealed class RemoteMuxConnector : IDisposable
     private readonly Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> _transportFor;
     private readonly Action<string>? _log;
     private readonly object _gate = new();
+    // Each connected client's own channel: a disconnect is classified by the channel under that client,
+    // never by whichever attempt happens to be the latest by then.
+    private readonly ConditionalWeakTable<MuxClient, OwnedChannel> _channels = new();
     private OwnedChannel? _latest; // guarded by _gate: the channel of the most recent attempt
     private bool _disposed;        // guarded by _gate
 
@@ -165,6 +169,7 @@ internal sealed class RemoteMuxConnector : IDisposable
             throw await FailAsync(channel, prompts, ex, host).ConfigureAwait(false);
         }
 
+        _channels.AddOrUpdate(client, channel);
         // Ends the channel once the client is done with it, whoever ends the client.
         client.Disconnected += _ => channel.EndAsync();
         if (!client.IsConnected) _ = channel.EndAsync();
@@ -177,15 +182,32 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// disconnect. Null when no channel was started yet, when its exit status is unknown (it was killed,
     /// or the native transport failed), or when it has not ended within the wait.
     /// </summary>
-    public async Task<int?> LastExitAsync(TimeSpan wait)
+    public Task<int?> LastExitAsync(TimeSpan wait)
     {
         OwnedChannel? latest;
         lock (_gate) latest = _latest;
-        if (latest is null) return null;
+        return ExitOfAsync(latest, wait);
+    }
+
+    /// <summary>
+    /// How the channel under <paramref name="client"/> ended, as <see cref="LastExitAsync(TimeSpan)"/> says it:
+    /// what a disconnect of that client is classified by (Phase 4 spec §7.3). Unlike the latest channel, it
+    /// cannot be another attempt's - one started meanwhile, or a superseded one that registered late. Null as
+    /// well when <paramref name="client"/> is not one of this connector's.
+    /// </summary>
+    public Task<int?> ExitAsync(MuxClient client, TimeSpan wait)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        return ExitOfAsync(_channels.TryGetValue(client, out OwnedChannel? channel) ? channel : null, wait);
+    }
+
+    private static async Task<int?> ExitOfAsync(OwnedChannel? channel, TimeSpan wait)
+    {
+        if (channel is null) return null;
 
         try
         {
-            return await latest.Channel.Completion.WaitAsync(wait).ConfigureAwait(false);
+            return await channel.Channel.Completion.WaitAsync(wait).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {

@@ -247,6 +247,25 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal(FakeRemoteHost.LinkLostExitCode, await connector.LastExitAsync(Patient));
     }
 
+    /// <summary>
+    /// Review fix: a disconnect is classified by the lost client's own channel. By then a new attempt may
+    /// have started, and the latest channel is that one, still running.
+    /// </summary>
+    [Fact]
+    public async Task ExitAsync_reads_the_lost_clients_own_channel_not_the_latest()
+    {
+        RemoteMuxConnector connector = Connector();
+        MuxClient stopped = Own(await connector.ConnectAsync(Ct));
+        Task<string?> gone = WhenDisconnected(stopped);
+        _remote.StopDaemon();
+        await gone;
+
+        Own(await connector.ConnectAsync(Ct));   // a new attempt, before the loss was classified
+
+        Assert.Equal(MuxProxyExitCodes.DaemonClosed, await connector.ExitAsync(stopped, Patient));
+        Assert.Null(await connector.LastExitAsync(TimeSpan.FromMilliseconds(50)));   // the latest is the new, running channel
+    }
+
     [Fact]
     public async Task LastExitAsync_is_null_before_any_channel_and_while_the_channel_runs()
     {

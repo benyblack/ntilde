@@ -1,3 +1,4 @@
+using Ntilde.Mux;
 using Ntilde.Mux.Cli;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
@@ -29,7 +30,7 @@ internal static class RemoteMuxHostFactory
     /// format) sent in every hello, and the secrets its user-started attempts remember. Each attempt
     /// reads the profile again, and builds its transport through <paramref name="transportFor"/>, told
     /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). The host tells a stopped daemon from a
-    /// lost link by the proxy's exit status (<see cref="ClassifyDisconnectAsync"/>).
+    /// lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).
     /// </remarks>
     /// <param name="resolveProfile">The SSH profile store's lookup.</param>
     /// <param name="transportFor">Builds one attempt's transport (<see cref="CreateTransport"/> in the app).</param>
@@ -73,21 +74,22 @@ internal static class RemoteMuxHostFactory
         return new MuxConnectionHost((attempt, ct) => connector.ConnectAsync(attempt.Interactive, ct), id.ToString(), log, policy)
         {
             Connector = connector,
-            ClassifyDisconnect = _ => ClassifyDisconnectAsync(connector),
+            ClassifyDisconnect = client => ClassifyDisconnectAsync(connector, client),
             Scheduler = scheduler ?? SystemMuxTimerScheduler.Instance,
         };
     }
 
     /// <summary>
-    /// Why the connection ended (Phase 4 spec §7.3), from how the proxy's channel did: exit 3
+    /// Why <paramref name="client"/>'s connection ended (Phase 4 spec §7.3), from how the proxy's channel
+    /// under it did (<see cref="RemoteMuxConnector.ExitAsync"/>): exit 3
     /// (<see cref="MuxProxyExitCodes.DaemonClosed"/>) means the daemon closed it and its sessions are gone.
     /// Anything else - ssh's 255, a channel that was killed or failed natively (no status), no status within
     /// a second - is a lost link.
     /// </summary>
-    internal static async Task<MuxDisconnectKind> ClassifyDisconnectAsync(RemoteMuxConnector connector)
+    internal static async Task<MuxDisconnectKind> ClassifyDisconnectAsync(RemoteMuxConnector connector, MuxClient client)
     {
         ArgumentNullException.ThrowIfNull(connector);
-        int? exit = await connector.LastExitAsync(DisconnectExitWait).ConfigureAwait(false);
+        int? exit = await connector.ExitAsync(client, DisconnectExitWait).ConfigureAwait(false);
         return exit == MuxProxyExitCodes.DaemonClosed ? MuxDisconnectKind.DaemonStopped : MuxDisconnectKind.LinkLost;
     }
 

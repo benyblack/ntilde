@@ -59,13 +59,17 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         return TestWait.UntilAsync(() => Environment.TickCount64 > last, "the clock moved past the last frame", Patient);
     }
 
-    /// <summary>A host over a fake daemon that answers only the hello: the test sends every other frame itself.</summary>
-    private async Task<(MuxConnectionHost Host, MuxClient Client)> OverFakeDaemonAsync(FakeMuxServerEnd daemon, MuxClientOptions? options = null)
+    /// <summary>
+    /// A host over a fake daemon that answers only the hello: the test sends every other frame itself.
+    /// <paramref name="ping"/> replaces the liveness ping, so the test decides when and how each one ends.
+    /// </summary>
+    private async Task<(MuxConnectionHost Host, MuxClient Client)> OverFakeDaemonAsync(FakeMuxServerEnd daemon, Func<MuxClient, CancellationToken, Task>? ping = null)
     {
         Task hello = daemon.AcceptHelloAsync();
-        MuxConnectionHost host = Own(new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, options, ct), "remote", null, MuxHostPolicy.Remote("box"))
+        MuxConnectionHost host = Own(new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
         {
             Scheduler = _clock,
+            Ping = ping ?? ((client, ct) => client.PingAsync(ct)),
         });
         MuxClient client = host.GetClient(Patient)!;
         await hello.WaitAsync(Patient, Ct);
@@ -75,11 +79,33 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     /// <summary>Output for a session nobody opened: the client drops it, but it is a frame that arrived. Returns once it has.</summary>
     private static async Task SendOutputAsync(FakeMuxServerEnd daemon, MuxClient client, long seq)
     {
-        await ClockPastLastFrameAsync(client);
-        long before = Environment.TickCount64; // later than every earlier frame's stamp: only this one can reach it
-        daemon.Raw.Send(MuxFrames.Output(Guid.Empty, seq, "x"u8));
-        await TestWait.UntilAsync(() => client.LastReceivedTicks >= before, "the output arrived", Patient);
+        MuxOutboundFrame frame = MuxFrames.Output(Guid.Empty, seq, "x"u8);
+        byte[] bytes = frame.Bytes.ToArray();
+        frame.Release();
+        await SendBytesAsync(daemon, client, bytes);
     }
+
+    /// <summary>Raw bytes from the daemon - a whole frame, or part of one. Returns once the client has read them.</summary>
+    private static async Task SendBytesAsync(FakeMuxServerEnd daemon, MuxClient client, byte[] bytes)
+    {
+        await ClockPastLastFrameAsync(client);
+        long before = Environment.TickCount64; // later than every earlier stamp: only these bytes can reach it
+        daemon.Raw.WriteRaw(bytes);
+        await TestWait.UntilAsync(() => client.LastReceivedTicks >= before, "the bytes arrived", Patient);
+    }
+
+    /// <summary>A host over the in-memory daemon whose disconnect classification the test holds open, then decides.</summary>
+    private MuxConnectionHost WithHeldClassification(MuxTestHost mux, TaskCompletionSource classifying, Task<MuxDisconnectKind> verdict) =>
+        Own(new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+            ClassifyDisconnect = _ =>
+            {
+                classifying.TrySetResult();
+                return verdict;
+            },
+            ClassifyTimeout = Patient,
+        });
 
     /// <summary>
     /// Lets the reconnect loop's attempts run out one by one: waits for its next wait to be scheduled, then
@@ -233,25 +259,76 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.False(client.IsConnected);
     }
 
-    /// <summary>The ping's request gives up on its own (the client's request timeout) while frames keep arriving: busy, not dead.</summary>
+    /// <summary>
+    /// Review fix: a snapshot is one frame of up to tens of MiB, and over a slow link it can take longer than
+    /// the timeout to arrive. Every read that brings bytes counts, so the link stays up while it trickles in.
+    /// </summary>
     [Fact]
-    public async Task A_ping_whose_request_times_out_on_a_busy_link_is_sent_again_not_dropped()
+    public async Task A_single_large_frame_arriving_slowly_keeps_the_link_alive()
     {
         using var daemon = FakeMuxServerEnd.Create();
-        (MuxConnectionHost host, MuxClient client) = await OverFakeDaemonAsync(daemon, new MuxClientOptions { RequestTimeout = TimeSpan.FromSeconds(2) });
+        (MuxConnectionHost host, MuxClient client) = await OverFakeDaemonAsync(daemon);
         var events = new HostEvents(host);
         await ClockPastLastFrameAsync(client);
         _clock.Advance(TimeSpan.FromSeconds(15));
-        Assert.Equal(MuxMethods.Ping, (await daemon.ReadRequestAsync().WaitAsync(Patient, Ct)).Method);
+        Assert.Equal(MuxMethods.Ping, (await daemon.ReadRequestAsync().WaitAsync(Patient, Ct)).Method);   // its answer would come after the frame
+        MuxOutboundFrame snapshotSized = MuxFrames.Output(Guid.Empty, 1, new byte[4096]);
+        byte[] frame = snapshotSized.Bytes.ToArray();
+        snapshotSized.Release();
+        int quarter = frame.Length / 4;
 
-        await SendOutputAsync(daemon, client, 1);
-        await TestWait.UntilAsync(() => _clock.PendingCount == 1, "the ping's request timed out and its timeout was cancelled", Patient);
+        for (int slice = 0; slice < 3; slice++)   // 30 s for three quarters of one frame
+        {
+            await SendBytesAsync(daemon, client, frame.AsSpan(slice * quarter, quarter).ToArray());
+            await ClockPastLastFrameAsync(client);
+            _clock.Advance(TimeSpan.FromSeconds(10));
+            Assert.Equal(2, _clock.PendingCount);   // the next tick, and the ping's next slice: not dropped
+        }
 
-        Assert.True(client.IsConnected);
-        _clock.Advance(TimeSpan.FromSeconds(15));
-        Assert.Equal(MuxMethods.Ping, (await daemon.ReadRequestAsync().WaitAsync(Patient, Ct)).Method);   // pinged again
         Assert.True(client.IsConnected);
         Assert.Empty(events.Seen);
+
+        _clock.Advance(TimeSpan.FromSeconds(10));   // the rest never comes
+        await events.WaitForAsync("lost");
+
+        Assert.Equal(new[] { "lost:ping timeout" }, events.Seen);
+    }
+
+    /// <summary>
+    /// The ping's own request gives up (the client's request timeout) while frames keep arriving: busy, not
+    /// dead, and the next tick pings again. The same failure on a silent link drops it.
+    /// </summary>
+    [Fact]
+    public async Task A_failed_ping_on_a_busy_link_is_sent_again_and_on_a_silent_link_drops_it()
+    {
+        using var daemon = FakeMuxServerEnd.Create();
+        var pings = new ConcurrentQueue<TaskCompletionSource>();
+        (MuxConnectionHost host, MuxClient client) = await OverFakeDaemonAsync(daemon, (_, _) =>
+        {
+            var ping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            pings.Enqueue(ping);
+            return ping.Task;
+        });
+        var events = new HostEvents(host);
+        await ClockPastLastFrameAsync(client);
+        _clock.Advance(TimeSpan.FromSeconds(15));
+        await TestWait.UntilAsync(() => pings.Count == 1, "the first ping went out", Patient);
+
+        await SendOutputAsync(daemon, client, 1);   // the link is busy...
+        pings.ElementAt(0).SetException(new TimeoutException("The request timed out."));   // ...when the ping's request gives up
+        await TestWait.UntilAsync(() => _clock.PendingCount == 1, "the failed ping was let go, its timeout cancelled", Patient);
+
+        Assert.True(client.IsConnected);
+        Assert.Empty(events.Seen);
+
+        await ClockPastLastFrameAsync(client);
+        _clock.Advance(TimeSpan.FromSeconds(15));
+        await TestWait.UntilAsync(() => pings.Count == 2, "the next tick pinged again", Patient);
+        pings.ElementAt(1).SetException(new TimeoutException("The request timed out."));   // and nothing arrived meanwhile
+        await events.WaitForAsync("lost");
+
+        Assert.Equal(new[] { "lost:ping failed" }, events.Seen);
+        Assert.False(client.IsConnected);
     }
 
     [Fact]
@@ -288,10 +365,14 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         await events.WaitForAsync("lost");
 
         host.KillWhenConnected(closed);   // the user closes that tab now
+        bool? sentBeforeReconnected = null;
+        host.Reconnected += _ => sentBeforeReconnected = host.PendingKillCountForTest > 0 || !_remote.Server.GetSessionIds().Contains(closed);
 
         Assert.Contains(closed, _remote.Server.GetSessionIds());
         _clock.Advance(FirstRetry);
         await events.WaitForAsync("reconnected");
+        await host.EventsForTest.WaitAsync(Patient, Ct);
+        Assert.True(sentBeforeReconnected);   // panes reattaching on Reconnected go after the kill
         await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the queued kill reached the daemon", Patient);
         Assert.Contains(kept, _remote.Server.GetSessionIds());
     }
@@ -546,17 +627,159 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         var events = new HostEvents(host);
         MuxClient client = host.GetClient(Patient)!;
 
+        Assert.Null(host.WatchedClientForTest);   // no Disconnected handler, no liveness
         Assert.Equal(0, _clock.PendingCount);
         _clock.Advance(TimeSpan.FromMinutes(1));
         Assert.Equal(0, client.PendingRequestCount);   // never pinged
         Assert.True(client.IsConnected);
 
         client.Dispose();
-        await Task.Delay(50, Ct);   // what would be a remote host's classification
+        await host.ClassificationForTest.WaitAsync(Patient, Ct);   // none ran: it is the completed placeholder
+        await host.EventsForTest.WaitAsync(Patient, Ct);
 
         Assert.False(host.IsReconnecting);
         Assert.Equal(0, _clock.PendingCount);
         Assert.Empty(events.Seen);
+    }
+
+    /// <summary>
+    /// A user's Enter reconnects while the loss is still being classified: the panes still hear the loss,
+    /// then at once that the connection is back - in that order, and with no loop.
+    /// </summary>
+    [Fact]
+    public async Task A_connection_back_before_its_loss_is_classified_raises_lost_then_reconnected_without_a_loop()
+    {
+        using var mux = new MuxTestHost();
+        var classifying = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var verdict = new TaskCompletionSource<MuxDisconnectKind>(TaskCreationOptions.RunContinuationsAsynchronously);
+        MuxConnectionHost host = WithHeldClassification(mux, classifying, verdict.Task);
+        var events = new HostEvents(host);
+        MuxClient first = host.GetClient(Patient)!;
+
+        first.Dispose();   // the connection ends...
+        await classifying.Task.WaitAsync(Patient, Ct);
+        MuxClient second = host.GetClient(Patient)!;   // ...and Enter reconnects before anyone knows why
+        verdict.SetResult(MuxDisconnectKind.LinkLost);
+        await host.ClassificationForTest.WaitAsync(Patient, Ct);
+        await host.EventsForTest.WaitAsync(Patient, Ct);
+
+        Assert.Equal(new[] { "lost:client_disposed", "reconnected" }, events.Seen);
+        Assert.Same(second, events.LastReconnected);
+        Assert.False(host.IsReconnecting);
+        Assert.Equal(1, _clock.PendingCount);   // the new client's liveness tick, and no loop
+        Assert.True(Logged("already back"));
+    }
+
+    [Fact]
+    public async Task Dispose_during_a_classification_raises_nothing_and_starts_no_loop()
+    {
+        using var mux = new MuxTestHost();
+        var classifying = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var verdict = new TaskCompletionSource<MuxDisconnectKind>(TaskCreationOptions.RunContinuationsAsynchronously);
+        MuxConnectionHost host = WithHeldClassification(mux, classifying, verdict.Task);
+        var events = new HostEvents(host);
+        host.GetClient(Patient)!.Dispose();
+        await classifying.Task.WaitAsync(Patient, Ct);
+
+        host.Dispose();
+        verdict.SetResult(MuxDisconnectKind.LinkLost);
+        await host.ClassificationForTest.WaitAsync(Patient, Ct);
+        await host.EventsForTest.WaitAsync(Patient, Ct);
+
+        Assert.Empty(events.Seen);
+        Assert.False(host.IsReconnecting);
+        Assert.Equal(0, _clock.PendingCount);
+    }
+
+    /// <summary>
+    /// Review fix (ruling 2): an automatic attempt that ends needing the user just after a user's Enter
+    /// superseded it does not give up - the user's attempt is running, and the panes must not flash the
+    /// give-up banner meanwhile.
+    /// </summary>
+    [Fact]
+    public async Task A_superseded_automatic_attempt_that_needs_the_user_does_not_give_up_under_a_user_retry()
+    {
+        using var userAnswered = new ManualResetEventSlim(initialState: true);
+        using var abortedChannelEnds = new ManualResetEventSlim();
+        var abortedChannelEnding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        MuxConnectionHost host = Create((_, request) =>
+        {
+            if (!request.Interactive) return new PasswordPromptTransport(request.Prompts, abortedChannelEnding, abortedChannelEnds);
+            _remote.OnStart = _ => userAnswered.Wait();   // the user, at a prompt
+            return _remote;
+        });
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+        userAnswered.Reset();
+
+        _clock.Advance(FirstRetry);   // the automatic attempt ends at a password prompt, and its channel is slow to close
+        await abortedChannelEnding.Task.WaitAsync(Patient, Ct);
+        Task<MuxClient?> enter = Task.Run(() => host.GetClient(Patient), Ct);   // Enter supersedes it, and waits on the user
+        await TestWait.UntilAsync(() => _remote.StartCount == 2, "the user's attempt started", Patient);
+        abortedChannelEnds.Set();   // the superseded attempt now fails: NeedsUser
+        await TestWait.UntilAsync(() => Logged("superseded") || Logged("stopped reconnecting"), "its failure was handled", Patient);
+
+        Assert.False(Logged("stopped reconnecting"));
+        Assert.True(host.IsReconnecting);
+        userAnswered.Set();
+        Assert.True((await enter.WaitAsync(Patient, Ct))?.IsConnected);
+        await events.WaitForAsync("reconnected");
+        await host.EventsForTest.WaitAsync(Patient, Ct);
+        Assert.Equal(new[] { "lost:disconnected", "reconnected" }, events.Seen);
+    }
+
+    /// <summary>
+    /// An automatic attempt's transport as the native backend behaves on a password-only host: the password
+    /// prompt has nobody to answer it, so the attempt ends the session there (the connector then fails it
+    /// NeedsUser). Its channel is as slow to close as the test says.
+    /// </summary>
+    private sealed class PasswordPromptTransport(ISshInteractionHandler prompts, TaskCompletionSource ending, ManualResetEventSlim ends) : ISshExecTransport
+    {
+        public string DisplayName => "nova@fake-host";
+
+        public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
+        {
+            try
+            {
+                prompts.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch (RemoteMuxPromptAbortedException)
+            {
+                // Nothing to answer with: the session closes at the prompt.
+            }
+
+            return new AbortedChannel(ending, ends);
+        }
+
+        private sealed class AbortedChannel(TaskCompletionSource ending, ManualResetEventSlim ends) : ISshExecChannel
+        {
+            public Stream Stdout { get; } = new FailingStream();
+            public Stream Stdin { get; } = Stream.Null;
+            public string StderrTail => string.Empty;
+            public Task<int?> Completion { get; } = Task.FromResult<int?>(null);
+
+            public void Dispose()
+            {
+                ending.TrySetResult();
+                ends.Wait();
+            }
+        }
+
+        private sealed class FailingStream : Stream
+        {
+            public override bool CanRead => true;
+            public override bool CanSeek => false;
+            public override bool CanWrite => false;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+            public override int Read(byte[] buffer, int offset, int count) => throw new SshExecTransportException("SSH to nova@fake-host failed: the session closed at a prompt", "the session closed at a prompt");
+            public override void Flush() { }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        }
     }
 
     /// <summary>What a host raised, in order.</summary>

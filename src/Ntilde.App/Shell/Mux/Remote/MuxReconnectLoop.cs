@@ -118,6 +118,30 @@ internal sealed class MuxReconnectLoop : IDisposable
         RunAttempt(run);
     }
 
+    /// <summary>
+    /// A user's request that already runs an attempt of its own (<see cref="MuxConnectionHost.GetClient"/>):
+    /// that attempt is the loop's attempt now. The pending wait is cancelled, <paramref name="attempt"/>'s
+    /// outcome counts as the loop's attempt, and the backoff starts over. Unlike <see cref="TryNow()"/> it starts
+    /// nothing itself, so a user's attempt that has already finished costs no extra connect: its outcome just
+    /// schedules the first wait again. While an attempt of the loop's is in flight, only the backoff is reset.
+    /// </summary>
+    public void TryNow(Task<bool> attempt)
+    {
+        ArgumentNullException.ThrowIfNull(attempt);
+        int run;
+        lock (_gate)
+        {
+            if (!_running) return;
+            _nextBackoff = 0;
+            if (_inFlight) return;
+            CancelPendingLocked();
+            _inFlight = true;
+            run = _run;
+        }
+
+        Follow(run, attempt);
+    }
+
     public void Dispose()
     {
         lock (_gate)
@@ -184,6 +208,11 @@ internal sealed class MuxReconnectLoop : IDisposable
             attempt = Task.FromException<bool>(ex);
         }
 
+        Follow(run, attempt);
+    }
+
+    private void Follow(int run, Task<bool> attempt)
+    {
         // Synchronously when it already completed; otherwise on the thread that completes it (the host's
         // connect, on the pool), where scheduling the next wait is all there is to do.
         _ = attempt.ContinueWith(done => OnAttemptDone(run, done), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);

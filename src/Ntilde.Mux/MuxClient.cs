@@ -19,7 +19,8 @@ public sealed class MuxClient : IDisposable
     /// <summary>Disconnect reason when the transport simply went away: not an error code, so not in MuxErrorCodes.</summary>
     private const string ReasonDisconnected = "disconnected";
 
-    private readonly Stream _stream;
+    private readonly Stream _stream;  // the connection: the sender writes it, and closing it ends the reader
+    private readonly Stream _inbound; // what the reader reads: _stream, stamping LastReceivedTicks as bytes arrive
     private readonly MuxClientOptions _options;
     private readonly Thread _readerThread;
     private readonly Thread _senderThread;
@@ -39,11 +40,12 @@ public sealed class MuxClient : IDisposable
     private long _nextId;
     private int _disconnected;
     private string? _disconnectReason;
-    private long _lastReceivedTicks; // written by the reader thread only
+    private long _lastReceivedTicks; // written by the reader thread only (through _inbound)
 
     private MuxClient(Stream stream, MuxClientOptions options)
     {
         _stream = stream;
+        _inbound = new ProgressStampingStream(stream, this);
         _options = options;
         _lastReceivedTicks = Environment.TickCount64;
         _readerThread = new Thread(ReadLoop) { IsBackground = true, Name = "MuxClientRead" };
@@ -62,11 +64,12 @@ public sealed class MuxClient : IDisposable
     public event Action<string?>? Disconnected;
 
     /// <summary>
-    /// <see cref="Environment.TickCount64"/> when the last inbound frame of any kind arrived - a reply, a
-    /// notification, output - or when the connection was made, before any. Proof that the link is alive even
-    /// while a request's own reply waits behind a large frame: a remote host's liveness ping counts it
-    /// (Phase 4 spec §7.2). Public because that host lives in another assembly; it costs the reader one
-    /// volatile write per frame.
+    /// <see cref="Environment.TickCount64"/> when inbound bytes last arrived - part of any frame, a reply, a
+    /// notification, output - or when the connection was made, before any. Stamped on every read that
+    /// brings bytes, not once a frame is complete: a single large frame (a snapshot of up to tens of MiB)
+    /// trickling in over a slow link proves the link alive while it arrives. A remote host's liveness ping
+    /// counts it while its own answer waits behind such a frame (Phase 4 spec §7.2). Public because that host
+    /// lives in another assembly; it costs the reader one volatile write per read.
     /// </summary>
     public long LastReceivedTicks => Volatile.Read(ref _lastReceivedTicks);
 
@@ -334,9 +337,8 @@ public sealed class MuxClient : IDisposable
         {
             while (true)
             {
-                MuxInboundFrame? frame = MuxFrameReader.Read(_stream);
+                MuxInboundFrame? frame = MuxFrameReader.Read(_inbound);
                 if (frame is null) break;
-                Volatile.Write(ref _lastReceivedTicks, Environment.TickCount64);
                 using (frame)
                 {
                     Dispatch(frame);
@@ -568,6 +570,41 @@ public sealed class MuxClient : IDisposable
                 try { handler(finalReason); }
                 catch (Exception ex) { SafeLog($"[MuxClient] a Disconnected handler threw: {ex}"); }
             }
+        }
+    }
+
+    /// <summary>
+    /// The connection's read side for the reader: each read that brings bytes stamps
+    /// <see cref="LastReceivedTicks"/> - one volatile write, no allocation. It does not own the connection:
+    /// <see cref="OnDisconnected"/> closes that.
+    /// </summary>
+    private sealed class ProgressStampingStream(Stream inner, MuxClient owner) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => Stamp(inner.Read(buffer, offset, count));
+
+        public override int Read(Span<byte> buffer) => Stamp(inner.Read(buffer));
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            Stamp(await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false));
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        private int Stamp(int read)
+        {
+            if (read > 0) Volatile.Write(ref owner._lastReceivedTicks, Environment.TickCount64);
+            return read;
         }
     }
 }

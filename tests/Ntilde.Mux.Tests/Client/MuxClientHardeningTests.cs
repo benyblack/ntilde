@@ -69,6 +69,34 @@ public sealed class MuxClientHardeningTests
         Assert.True(client.IsConnected);
     }
 
+    /// <summary>
+    /// A snapshot is one frame of up to tens of MiB: over a slow link it arrives for longer than a liveness
+    /// timeout. The stamp moves with the bytes, while the reader is still inside the frame.
+    /// </summary>
+    [Fact]
+    public async Task LastReceivedTicks_moves_while_a_frame_is_still_arriving()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        MuxOutboundFrame frame = MuxFrames.Output(Guid.NewGuid(), 1, new byte[1024]);
+        byte[] bytes = frame.Bytes.ToArray();
+        frame.Release();
+
+        int middle = bytes.Length / 2;
+
+        foreach ((int start, int end) in new[] { (0, middle), (middle, bytes.Length) })   // half a frame at a time
+        {
+            long previous = client.LastReceivedTicks;
+            await TestWait.UntilAsync(() => Environment.TickCount64 > previous, "the clock moved on");
+            fake.Raw.WriteRaw(bytes.AsSpan(start, end - start));
+            await TestWait.UntilAsync(() => client.LastReceivedTicks > previous, $"bytes {start}-{end} were stamped");
+        }
+
+        Assert.True(client.IsConnected);   // the two halves made one valid frame
+    }
+
     [Fact]
     public async Task A_snapshot_racing_Dispose_does_not_reattach_the_disposed_session()
     {

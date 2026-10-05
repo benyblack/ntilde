@@ -132,6 +132,29 @@ public sealed class MuxReconnectLoopTests
         Assert.InRange(_clock.NextDueIn!.Value, TimeSpan.FromSeconds(0.8), TimeSpan.FromSeconds(1.2));
     }
 
+    /// <summary>Review fix: a user's attempt that already finished is followed, not repeated - no extra connect.</summary>
+    [Fact]
+    public void TryNow_with_a_users_finished_attempt_starts_nothing_and_resets_the_backoff()
+    {
+        using MuxReconnectLoop loop = Loop();
+        loop.Start();
+        AdvanceUntilAttempt(4);
+        Assert.True(_clock.NextDueIn > TimeSpan.FromSeconds(12));
+
+        loop.TryNow(Task.FromResult(false));   // the user's attempt, already failed
+
+        Assert.Equal(4, Attempts);   // the loop started no attempt of its own
+        Assert.Equal(1, _clock.PendingCount);
+        Assert.InRange(_clock.NextDueIn!.Value, TimeSpan.FromSeconds(0.8), TimeSpan.FromSeconds(1.2));
+
+        loop.TryNow(Task.FromResult(true));   // and one that connected
+
+        Assert.False(loop.IsRunning);
+        Assert.Equal(0, _clock.PendingCount);
+        Assert.Equal(4, Attempts);
+        Assert.Equal(0, Volatile.Read(ref _abandoned));
+    }
+
     [Fact]
     public void A_successful_attempt_stops_the_loop_without_abandoning()
     {
