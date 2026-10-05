@@ -15,5 +15,8 @@ internal sealed record MuxHostPolicy(TimeSpan ConnectTimeout, TimeSpan FailureCo
 {
     public static readonly MuxHostPolicy Local = new(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(3), false, "this computer");
 
-    public static MuxHostPolicy Remote(string displayName) => new(TimeSpan.FromSeconds(120), TimeSpan.Zero, TimeSpan.FromSeconds(10), true, displayName);
+    /// <summary>A remote host's <see cref="ConnectTimeout"/>: long enough for the user to answer an SSH prompt.</summary>
+    public static readonly TimeSpan RemoteConnectTimeout = TimeSpan.FromSeconds(120);
+
+    public static MuxHostPolicy Remote(string displayName) => new(RemoteConnectTimeout, TimeSpan.Zero, TimeSpan.FromSeconds(10), true, displayName);
 }
