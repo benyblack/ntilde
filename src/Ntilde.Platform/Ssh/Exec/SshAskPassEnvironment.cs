@@ -35,6 +35,23 @@ public static class SshAskPassEnvironment
     public const string PlaceholderDisplay = "ntilde";
 
     /// <summary>
+    /// Leaves an ssh started with <paramref name="environment"/> no askpass to prompt through: for a batch
+    /// mode exec, which must fail rather than prompt. <c>BatchMode=yes</c> alone is not enough, because a
+    /// ProxyJump hop's ssh does not inherit it, and on a desktop the user's own <c>SSH_ASKPASS</c> would
+    /// then put a dialog up. So <c>SSH_ASKPASS</c> is removed and <c>SSH_ASKPASS_REQUIRE=never</c> stops
+    /// OpenSSH 8.4 and later; <c>DISPLAY</c> is removed too, since an older client with no tty uses
+    /// askpass whenever <c>DISPLAY</c> is set, falling back to its compiled-in helper.
+    /// </summary>
+    public static void Suppress(IDictionary<string, string?> environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+
+        environment.Remove(AskPassVariable);
+        environment.Remove(DisplayVariable);
+        environment[AskPassRequireVariable] = "never";
+    }
+
+    /// <summary>
     /// Points <paramref name="environment"/> (a <c>ProcessStartInfo.Environment</c>) at
     /// <paramref name="helperPath"/> for <paramref name="profile"/>. An inherited <c>SSH_ASKPASS</c>
     /// is replaced; an inherited non-empty <c>DISPLAY</c> is kept.

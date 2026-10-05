@@ -267,11 +267,13 @@ public sealed class OpenSshExecTransportProcessTests
     }
 
     /// <summary>
-    /// A batch-mode transport is for attempts nobody is waiting on: ssh gets BatchMode=yes, and the
-    /// askpass helper is not wired up even when one is given, so nothing can put a dialog up.
+    /// A batch-mode transport is for attempts nobody is waiting on: ssh gets BatchMode=yes, our askpass
+    /// helper is not wired up even when one is given, and any askpass ssh would inherit from the user's
+    /// environment is switched off too - a ProxyJump hop's ssh does not inherit BatchMode, and on a
+    /// desktop with a system askpass it could otherwise put a dialog up.
     /// </summary>
     [Fact]
-    public void Batch_mode_runs_ssh_with_BatchMode_yes_and_without_askpass()
+    public void Batch_mode_runs_ssh_with_BatchMode_yes_and_no_askpass_at_all()
     {
         string[] plan = ["-F", "cfg", "alias"];
         var batch = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", plan, askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { }, batchMode: true);
@@ -283,7 +285,9 @@ public sealed class OpenSshExecTransportProcessTests
         Assert.False(interactive.BatchMode);
         Assert.Equal(OpenSshExecCommandLine.Build([], plan, "true", batchMode: true), startInfo.ArgumentList);
         Assert.False(startInfo.Environment.ContainsKey(SshAskPassEnvironment.ModeVariable));
-        Assert.False(startInfo.Environment.ContainsKey("SSH_ASKPASS_REQUIRE"));
+        Assert.False(startInfo.Environment.ContainsKey(SshAskPassEnvironment.AskPassVariable));
+        Assert.False(startInfo.Environment.ContainsKey(SshAskPassEnvironment.DisplayVariable));
+        Assert.Equal("never", startInfo.Environment[SshAskPassEnvironment.AskPassRequireVariable]);
         Assert.Equal("/opt/ntilde/ntilde", interactive.CreateStartInfo("true").Environment["SSH_ASKPASS"]);
     }
 

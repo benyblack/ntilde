@@ -5,9 +5,11 @@ namespace Ntilde.Tests.Shell.Mux.Remote;
 
 /// <summary>
 /// A remote host's prompts (Phase 4 ruling: automatic reconnects are non-interactive). A user-started
-/// attempt may ask the user, and a password or passphrase it used successfully is remembered in memory
-/// for the host's lifetime. An automatic attempt never asks: it answers from that memory, accepts only a
-/// host key already trusted, and cancels everything else so it fails quietly.
+/// attempt may ask the user, and a password or passphrase that got a connection in is remembered in
+/// memory for the host's lifetime. An automatic attempt never asks: it answers from that memory, accepts
+/// only a host key already trusted, and cancels everything else so it fails quietly. A remembered secret
+/// that may have been refused is forgotten, never replayed (review fix round 1): the native layer asks
+/// for a password once, then falls to keyboard-interactive, so "asked again" never happens.
 /// </summary>
 public sealed class RemoteMuxInteractionHandlerTests
 {
@@ -21,6 +23,9 @@ public sealed class RemoteMuxInteractionHandlerTests
         KeyboardPrompts = [new SshKeyboardPrompt("Verification code:", echo: false)],
     };
 
+    private static SshInteractionRequest Secret(string kind) =>
+        Enum.Parse<SshInteractionKind>(kind) == SshInteractionKind.Password ? Password : Passphrase;
+
     private static SshInteractionRequest HostKey(string fingerprint) => new()
     {
         Kind = SshInteractionKind.UnknownHostKey,
@@ -33,25 +38,32 @@ public sealed class RemoteMuxInteractionHandlerTests
     private static RemoteMuxInteractionHandler Handler(ISshInteractionHandler? user) =>
         new(user, request => request.Fingerprint == "SHA256:trusted");
 
-    [Fact]
-    public async Task A_secret_used_by_a_successful_attempt_answers_later_automatic_attempts_without_asking()
+    /// <summary>The user's next answer to <paramref name="prompt"/>, remembered as a successful user-started attempt leaves it.</summary>
+    private static async Task RememberAsync(RemoteMuxInteractionHandler handler, SshInteractionRequest prompt)
     {
-        var user = new ScriptedUser(SshInteractionResponse.FromSecret("hunter2"), SshInteractionResponse.FromSecret("key-pass"));
+        RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: true);
+        await attempt.HandleAsync(prompt, Ct);
+        attempt.Succeeded();
+        Assert.True(handler.Remembers(prompt.Kind));
+    }
+
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.Password))]
+    [InlineData(nameof(SshInteractionKind.Passphrase))]
+    public async Task A_secret_that_got_a_connection_in_answers_later_automatic_attempts_without_asking(string kind)
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("hunter2"));
         RemoteMuxInteractionHandler handler = Handler(user);
         RemoteMuxInteractionHandler.Attempt first = handler.BeginAttempt(interactive: true);
-        Assert.Equal("hunter2", (await first.HandleAsync(Password, Ct)).Secret);
-        Assert.Equal("key-pass", (await first.HandleAsync(Passphrase, Ct)).Secret);
+        Assert.Equal("hunter2", (await first.HandleAsync(Secret(kind), Ct)).Secret);
         first.Succeeded();
 
-        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false);
-        SshInteractionResponse password = await automatic.HandleAsync(Password, Ct);
-        SshInteractionResponse passphrase = await automatic.HandleAsync(Passphrase, Ct);
+        SshInteractionResponse replayed = await handler.BeginAttempt(interactive: false).HandleAsync(Secret(kind), Ct);
 
-        Assert.Equal("hunter2", password.Secret);
-        Assert.False(password.IsCanceled);
-        Assert.False(password.RememberPasswordInVault);   // memory only: never written anywhere
-        Assert.Equal("key-pass", passphrase.Secret);
-        Assert.Equal(2, user.Asked.Count);
+        Assert.Equal("hunter2", replayed.Secret);
+        Assert.False(replayed.IsCanceled);
+        Assert.False(replayed.RememberPasswordInVault);   // memory only: never written anywhere
+        Assert.Single(user.Asked);
     }
 
     [Fact]
@@ -112,39 +124,123 @@ public sealed class RemoteMuxInteractionHandlerTests
         Assert.True((await handler.BeginAttempt(interactive: false).HandleAsync(Keyboard, Ct)).IsCanceled);
     }
 
-    [Fact]
-    public async Task Asked_again_after_a_remembered_answer_means_it_was_wrong_so_it_is_forgotten_and_cancelled()
+    /// <summary>
+    /// Review fix round 1, the native shape: rusty_ssh asks for the password once, then tries
+    /// keyboard-interactive, then fails. After a server-side password change, the remembered password is
+    /// refused, the automatic attempt cancels keyboard-interactive and fails SshFailed: the connector
+    /// calls <see cref="RemoteMuxInteractionHandler.Attempt.Refused"/>, and the next user attempt asks.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.Password))]
+    [InlineData(nameof(SshInteractionKind.Passphrase))]
+    public async Task A_remembered_secret_is_forgotten_when_the_attempt_that_offered_it_fails_auth(string kind)
     {
-        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("old")));
-        RemoteMuxInteractionHandler.Attempt first = handler.BeginAttempt(interactive: true);
-        await first.HandleAsync(Password, Ct);
-        first.Succeeded();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromSecret("new"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        await RememberAsync(handler, Secret(kind));
 
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false);
-        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
-        SshInteractionResponse again = await automatic.HandleAsync(Password, Ct);   // the server refused it
+        Assert.Equal("old", (await automatic.HandleAsync(Secret(kind), Ct)).Secret);
+        Assert.True((await automatic.HandleAsync(Keyboard, Ct)).IsCanceled);
+        automatic.Refused();
 
-        Assert.True(again.IsCanceled);
+        Assert.False(handler.Remembers(Secret(kind).Kind));
+        Assert.Equal("new", (await handler.BeginAttempt(interactive: true).HandleAsync(Secret(kind), Ct)).Secret);
+        Assert.Equal(2, user.Asked.Count);
+    }
+
+    /// <summary>
+    /// The remembered password was refused, and keyboard-interactive then got the user in. The stale
+    /// password must not be committed again, and goes: it is not what got the connection in.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.Password))]
+    [InlineData(nameof(SshInteractionKind.Passphrase))]
+    public async Task A_remembered_secret_followed_by_another_auth_prompt_is_forgotten_even_when_the_attempt_succeeds(string kind)
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromKeyboardResponses("new"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        await RememberAsync(handler, Secret(kind));
+
+        RemoteMuxInteractionHandler.Attempt retry = handler.BeginAttempt(interactive: true);
+        Assert.Equal("old", (await retry.HandleAsync(Secret(kind), Ct)).Secret);   // no dialog
+        Assert.Equal(new[] { "new" }, (await retry.HandleAsync(Keyboard, Ct)).KeyboardResponses);
+        retry.Succeeded();
+
+        Assert.False(handler.Remembers(Secret(kind).Kind));
+    }
+
+    [Fact]
+    public async Task A_user_answer_followed_by_another_auth_prompt_is_not_remembered()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typo"), SshInteractionResponse.FromKeyboardResponses("code"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: true);
+
+        await attempt.HandleAsync(Password, Ct);
+        await attempt.HandleAsync(Keyboard, Ct);
+        attempt.Succeeded();
+
         Assert.False(handler.Remembers(SshInteractionKind.Password));
     }
 
     [Fact]
-    public async Task An_interactive_attempt_offers_the_remembered_secret_first_and_asks_once_it_is_refused()
+    public async Task A_remembered_secret_is_not_offered_twice_to_the_same_hop()
     {
         var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromSecret("new"));
         RemoteMuxInteractionHandler handler = Handler(user);
-        RemoteMuxInteractionHandler.Attempt first = handler.BeginAttempt(interactive: true);
-        await first.HandleAsync(Password, Ct);
-        first.Succeeded();
+        await RememberAsync(handler, Password);
 
         RemoteMuxInteractionHandler.Attempt retry = handler.BeginAttempt(interactive: true);
-        Assert.Equal("old", (await retry.HandleAsync(Password, Ct)).Secret);   // no dialog
-        Assert.Single(user.Asked);
-        Assert.Equal("new", (await retry.HandleAsync(Password, Ct)).Secret);   // refused: now the user
+        Assert.Equal("old", (await retry.HandleAsync(Password, Ct)).Secret);
+        Assert.Equal("new", (await retry.HandleAsync(Password, Ct)).Secret);   // asked again: the user, not "old" again
         retry.Succeeded();
 
         Assert.Equal(2, user.Asked.Count);
         Assert.Equal("new", (await handler.BeginAttempt(interactive: false).HandleAsync(Password, Ct)).Secret);
+    }
+
+    /// <summary>
+    /// A host-key prompt starts the next hop's connection, so the answers before it got the previous hop
+    /// in: one key's passphrase, asked by each hop of a jump chain, is offered to each and kept.
+    /// </summary>
+    [Fact]
+    public async Task A_passphrase_is_offered_to_every_hop_and_kept()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("key-pass"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        await RememberAsync(handler, Passphrase);
+
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, passwordsReplayable: false);
+        Assert.True((await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct)).IsAccepted);   // the jump host
+        Assert.Equal("key-pass", (await automatic.HandleAsync(Passphrase, Ct)).Secret);
+        Assert.True((await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct)).IsAccepted);   // the target
+        Assert.Equal("key-pass", (await automatic.HandleAsync(Passphrase, Ct)).Secret);
+        automatic.Succeeded();
+
+        Assert.True(handler.Remembers(SshInteractionKind.Passphrase));
+        Assert.Single(user.Asked);
+    }
+
+    /// <summary>
+    /// Review fix round 1: a native password prompt does not say which hop asks, and each hop asks the
+    /// same "Password:", so across a jump chain a remembered password could reach the jump host. A profile
+    /// with jump hops therefore never remembers or replays a password.
+    /// </summary>
+    [Fact]
+    public async Task With_jump_hops_a_password_is_neither_remembered_nor_replayed()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("pw"), SshInteractionResponse.FromSecret("other"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        await RememberAsync(handler, Password);   // remembered while the profile had no jump hop
+
+        RemoteMuxInteractionHandler.Attempt viaJumpHost = handler.BeginAttempt(interactive: true, passwordsReplayable: false);
+        Assert.False(handler.Remembers(SshInteractionKind.Password));   // dropped as soon as hops appear
+        Assert.Equal("other", (await viaJumpHost.HandleAsync(Password, Ct)).Secret);
+        viaJumpHost.Succeeded();
+
+        Assert.False(handler.Remembers(SshInteractionKind.Password));
+        Assert.True((await handler.BeginAttempt(interactive: false, passwordsReplayable: false).HandleAsync(Password, Ct)).IsCanceled);
     }
 
     [Fact]
@@ -160,17 +256,16 @@ public sealed class RemoteMuxInteractionHandlerTests
     }
 
     [Fact]
-    public async Task Forget_drops_every_remembered_secret_and_a_late_success_does_not_bring_it_back()
+    public async Task Forget_drops_every_remembered_secret_and_a_late_success_does_not_bring_one_back()
     {
-        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("p"), SshInteractionResponse.FromSecret("q")));
-        RemoteMuxInteractionHandler.Attempt first = handler.BeginAttempt(interactive: true);
-        await first.HandleAsync(Password, Ct);
-        await first.HandleAsync(Passphrase, Ct);
-        first.Succeeded();
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(
+            SshInteractionResponse.FromSecret("p"), SshInteractionResponse.FromSecret("q"), SshInteractionResponse.FromSecret("late")));
+        await RememberAsync(handler, Password);
+        await RememberAsync(handler, Passphrase);
         RemoteMuxInteractionHandler.Attempt late = handler.BeginAttempt(interactive: true);
-        await late.HandleAsync(Password, Ct);   // answered from memory
 
         handler.Forget();
+        Assert.Equal("late", (await late.HandleAsync(Password, Ct)).Secret);   // memory is empty: the user
         late.Succeeded();
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));

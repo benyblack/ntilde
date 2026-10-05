@@ -26,6 +26,29 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Equal("NTILDE_SSH_ASKPASS_PROFILE_PORT", SshAskPassEnvironment.ProfilePortVariable);
     }
 
+    /// <summary>
+    /// Inherited askpass settings - a desktop's own helper, a DISPLAY that makes a pre-8.4 ssh use the
+    /// compiled-in default helper - all go, and SSH_ASKPASS_REQUIRE=never stops 8.4 and later outright.
+    /// </summary>
+    [Fact]
+    public void Suppress_leaves_ssh_no_way_to_prompt_and_keeps_the_rest()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["SSH_ASKPASS"] = "/usr/lib/ssh/x11-ssh-askpass",
+            ["SSH_ASKPASS_REQUIRE"] = "prefer",
+            ["DISPLAY"] = ":0",
+            ["PATH"] = "/usr/bin",
+        };
+
+        SshAskPassEnvironment.Suppress(environment);
+
+        Assert.False(environment.ContainsKey("SSH_ASKPASS"));
+        Assert.False(environment.ContainsKey("DISPLAY"));
+        Assert.Equal("never", environment["SSH_ASKPASS_REQUIRE"]);
+        Assert.Equal("/usr/bin", environment["PATH"]);
+    }
+
     [Fact]
     public void Apply_sets_every_variable()
     {

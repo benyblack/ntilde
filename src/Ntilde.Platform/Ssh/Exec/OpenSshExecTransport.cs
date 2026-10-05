@@ -116,7 +116,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         return channel;
     }
 
-    /// <summary>The process to start: ssh itself (no shell), all three streams piped, askpass when there is a helper.</summary>
+    /// <summary>The process to start: ssh itself (no shell), all three streams piped, askpass when there is a helper and no askpass at all in batch mode.</summary>
     internal ProcessStartInfo CreateStartInfo(string remoteCommand)
     {
         var startInfo = new ProcessStartInfo
@@ -134,7 +134,12 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             startInfo.ArgumentList.Add(argument);
         }
 
-        if (_askPassHelperPath is not null)
+        if (BatchMode)
+        {
+            // Nothing this ssh starts - a ProxyJump hop's ssh among them - may prompt either.
+            SshAskPassEnvironment.Suppress(startInfo.Environment);
+        }
+        else if (_askPassHelperPath is not null)
         {
             SshAskPassEnvironment.Apply(startInfo.Environment, _askPassHelperPath, _profile);
         }

@@ -98,12 +98,17 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// <param name="interactive">False for an attempt nobody is waiting on: nothing may prompt.</param>
     /// <exception cref="RemoteMuxUnavailableException">The attempt failed; its channel has been ended.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled; the channel is being ended.</exception>
+    /// <exception cref="ObjectDisposedException">The connector was disposed, before or during the start; a channel started meanwhile is being ended.</exception>
     public async Task<MuxClient> ConnectAsync(bool interactive, CancellationToken ct)
     {
+        lock (_gate) ObjectDisposedException.ThrowIf(_disposed, this);
+
         SshProfile profile = _profile();
         string host = DisplayNameOf(profile);
         string command = RemoteMuxCommand.Proxy(profile.MuxOptions ?? new SshMuxOptions());
-        RemoteMuxInteractionHandler.Attempt prompts = Prompts.BeginAttempt(interactive);
+        // A native password prompt does not say which hop asks: with jump hops, a remembered password
+        // could reach the jump host, so none is remembered or replayed.
+        RemoteMuxInteractionHandler.Attempt prompts = Prompts.BeginAttempt(interactive, passwordsReplayable: profile.JumpHops is not { Count: > 0 });
 
         ISshExecChannel started;
         try
@@ -125,7 +130,19 @@ internal sealed class RemoteMuxConnector : IDisposable
         }
 
         var channel = new OwnedChannel(started, host, _log);
-        lock (_gate) _latest = channel;
+        bool disposedMeanwhile;
+        lock (_gate)
+        {
+            disposedMeanwhile = _disposed;
+            if (!disposedMeanwhile) _latest = channel;
+        }
+
+        if (disposedMeanwhile)
+        {
+            // Dispose already ran and ended whatever channel it knew of; this one is ours to end.
+            _ = channel.EndAsync();
+            throw new ObjectDisposedException(nameof(RemoteMuxConnector));
+        }
 
         MuxClient client;
         try
@@ -145,7 +162,7 @@ internal sealed class RemoteMuxConnector : IDisposable
         }
         catch (Exception ex)
         {
-            throw await FailAsync(channel, ex, host).ConfigureAwait(false);
+            throw await FailAsync(channel, prompts, ex, host).ConfigureAwait(false);
         }
 
         // Ends the channel once the client is done with it, whoever ends the client.
@@ -194,7 +211,7 @@ internal sealed class RemoteMuxConnector : IDisposable
         _ = latest?.EndAsync();
     }
 
-    private async Task<RemoteMuxUnavailableException> FailAsync(OwnedChannel channel, Exception error, string host)
+    private async Task<RemoteMuxUnavailableException> FailAsync(OwnedChannel channel, RemoteMuxInteractionHandler.Attempt prompts, Exception error, string host)
     {
         await channel.EndAsync().ConfigureAwait(false);
 
@@ -210,6 +227,14 @@ internal sealed class RemoteMuxConnector : IDisposable
 
         string captured = (error as MuxProxyHandshakeException)?.CapturedText ?? string.Empty;
         RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, captured, channel.Channel.StderrTail, error, host);
+        if (failure.Kind == RemoteFailureKind.SshFailed)
+        {
+            // SSH itself failed - auth, or the connection before the command ran - so a remembered
+            // secret this attempt offered may be what the server refused: forget it rather than replay
+            // it on every reconnect. A failure after auth (NotInstalled, Unsupported, ProxyFailed) keeps it.
+            prompts.Refused();
+        }
+
         _log?.Invoke($"[RemoteMux] {host}: {failure.Kind} (exit {(exitCode is { } code ? code.ToString(System.Globalization.CultureInfo.InvariantCulture) : "unknown")}): {failure.Reason}");
         return new RemoteMuxUnavailableException(failure, error);
     }

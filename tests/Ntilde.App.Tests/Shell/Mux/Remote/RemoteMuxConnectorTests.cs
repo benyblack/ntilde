@@ -308,6 +308,136 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         Assert.False(connector.Prompts.Remembers(SshInteractionKind.Password));
     }
+
+    /// <summary>
+    /// Review fix round 1, with the native auth shape: rusty_ssh asks for the password once, falls to
+    /// keyboard-interactive, then fails. Once the server's password changes, the automatic attempt's
+    /// remembered password is refused, keyboard-interactive is cancelled, the attempt fails SshFailed -
+    /// and the stale password is forgotten, so the next user attempt asks instead of replaying it.
+    /// </summary>
+    [Fact]
+    public async Task A_remembered_password_the_server_refuses_is_forgotten_and_the_next_user_attempt_asks()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromSecret("new"));
+        var prompts = new RemoteMuxInteractionHandler(user, _ => false);
+        string serverPassword = "old";
+        var offered = new List<string>();
+        var connector = Own(new RemoteMuxConnector(
+            () => Profile(),
+            (_, request) =>
+            {
+                _remote.OnStart = _ =>
+                {
+                    SshInteractionResponse password = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
+                    lock (offered) offered.Add(password.IsCanceled ? "<cancelled>" : password.Secret);
+                    if (password.Secret == serverPassword)
+                    {
+                        _remote.Script = null;
+                        return;
+                    }
+
+                    request.Prompts.HandleAsync(KeyboardPrompt, CancellationToken.None).GetAwaiter().GetResult();
+                    _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                };
+                return _remote;
+            },
+            prompts,
+            "i",
+            null));
+        Own(await connector.ConnectAsync(Ct));   // the user types "old": it works, and is remembered
+        serverPassword = "new";                   // changed on the server
+
+        var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(RemoteFailureKind.SshFailed, refused.Failure.Kind);
+        Assert.False(prompts.Remembers(SshInteractionKind.Password));
+        Own(await connector.ConnectAsync(Ct));
+        Assert.Equal(new[] { "old", "old", "new" }, offered);
+        Assert.Equal(2, user.Asked.Count);
+        Assert.All(user.Asked, request => Assert.Equal(SshInteractionKind.Password, request.Kind));
+    }
+
+    /// <summary>Review fix round 1: a failure after auth (the binary is missing) does not cost the remembered password.</summary>
+    [Fact]
+    public async Task A_failure_after_auth_keeps_the_remembered_password()
+    {
+        var prompts = new RemoteMuxInteractionHandler(new ScriptedUser(SshInteractionResponse.FromSecret("pw")), _ => false);
+        var connector = Own(new RemoteMuxConnector(
+            () => Profile(),
+            (_, request) =>
+            {
+                _remote.OnStart = _ => request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
+                return _remote;
+            },
+            prompts,
+            "i",
+            null));
+        Own(await connector.ConnectAsync(Ct));
+        _remote.Script = FakeRemoteScript.NotInstalledDash;
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(RemoteFailureKind.NotInstalled, failed.Failure.Kind);
+        Assert.True(prompts.Remembers(SshInteractionKind.Password));
+    }
+
+    /// <summary>
+    /// Review fix round 1: native password prompts do not say which hop asks, so a profile with a jump
+    /// host never remembers or replays a password - its automatic attempts fail quietly, and Enter asks.
+    /// </summary>
+    [Fact]
+    public async Task With_a_jump_host_a_password_is_neither_remembered_nor_replayed()
+    {
+        SshProfile profile = Profile();
+        profile.JumpHops.Add(new SshJumpHop { Host = "bastion", User = "nova", Port = 22 });
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("pw"));
+        var answers = new List<SshInteractionResponse>();
+        var connector = Own(new RemoteMuxConnector(
+            () => profile,
+            (_, request) =>
+            {
+                _remote.OnStart = _ => answers.Add(request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult());
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(user, _ => false),
+            "i",
+            null));
+
+        Own(await connector.ConnectAsync(Ct));
+
+        Assert.False(connector.Prompts.Remembers(SshInteractionKind.Password));
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+        Assert.Equal("pw", answers[0].Secret);
+        Assert.True(answers[1].IsCanceled);
+        Assert.Single(user.Asked);
+    }
+
+    [Fact]
+    public async Task A_disposed_connector_does_not_connect()
+    {
+        RemoteMuxConnector connector = Connector();
+        connector.Dispose();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => connector.ConnectAsync(Ct));
+        Assert.Equal(0, _remote.StartCount);
+    }
+
+    [Fact]
+    public async Task A_channel_started_while_the_connector_is_disposed_is_ended()
+    {
+        RemoteMuxConnector connector = Connector();
+        _remote.OnStart = _ => connector.Dispose();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => connector.ConnectAsync(Ct));
+
+        await _remote.LastChannel!.Disposed.WaitAsync(Patient, Ct);
+    }
+
+    private static SshInteractionRequest KeyboardPrompt { get; } = new()
+    {
+        Kind = SshInteractionKind.KeyboardInteractive,
+        KeyboardPrompts = [new SshKeyboardPrompt("Password: ", echo: false)],
+    };
 }
 
 /// <summary>A user at the prompt dialogs: answers from a script, in order, and records what was asked.</summary>
