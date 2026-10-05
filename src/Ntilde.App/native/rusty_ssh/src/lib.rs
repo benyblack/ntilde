@@ -99,6 +99,10 @@ pub enum NovaSshEventKind {
     PasswordPrompt = 4,
     PassphrasePrompt = 5,
     KeyboardInteractivePrompt = 6,
+    /// The main channel's command or shell reported its exit code. status_code carries the code
+    /// (the u32 from the wire, cast to i32); the JSON payload is `{"exit_status": n}`. A control
+    /// event. In exec mode (nova_ssh_exec) it is always queued before Closed; a command killed by
+    /// a signal reports none, so the session closes without one.
     ExitStatus = 7,
     Error = 8,
     Closed = 9,
@@ -109,6 +113,12 @@ pub enum NovaSshEventKind {
     /// status_code carries the channel id; the JSON payload carries the addresses, so the managed
     /// side can match the connection to its forward rule and dial the local destination.
     ForwardChannelIncoming = 13,
+    /// Exec mode only (spec §8.3): bytes the remote command wrote to stderr, which SSH carries as
+    /// extended data of type 1 on the main channel. Binary payload; status_code carries the type
+    /// code (always 1). Data-bearing: charged against MAX_QUEUED_EVENT_BYTES together with Data,
+    /// since both streams share one channel window. A shell session never emits it: there the PTY
+    /// merges stderr into the terminal stream, and any extended data still arrives as Data.
+    ExtendedData = 14,
 }
 
 #[repr(u32)]
@@ -145,10 +155,15 @@ pub const NOVA_SSH_RESULT_REMOTE_FORWARD_FAILED: c_int = -9;
 /// NOVA_SSH_RESULT_WOULD_BLOCK rather than growing the queue without limit.
 const MAX_QUEUED_FORWARD_WRITE_BYTES: usize = 1024 * 1024;
 
-/// Ceiling on data-bearing payload bytes (Data, ForwardChannelData) queued toward the managed
-/// poll loop. At the ceiling the channel readers park in `queue_data_event` instead of reading
-/// on; an unread russh channel stops having its window replenished, so SSH flow control makes
-/// the *remote* hold the stream rather than this process buffering it (#173 item 1).
+/// Ceiling on data-bearing payload bytes (Data, ExtendedData, ForwardChannelData) queued toward
+/// the managed poll loop. At the ceiling the channel readers park in `queue_data_event` instead
+/// of reading on; an unread russh channel stops having its window replenished, so SSH flow
+/// control makes the *remote* hold the stream rather than this process buffering it (#173 item 1).
+///
+/// An exec session's stderr (ExtendedData) shares the budget with its stdout rather than getting
+/// its own: both ride the main channel's single SSH window, so a separate cap could not hold one
+/// stream back without the other anyway, and a command flooding stderr must push back on the
+/// remote exactly as one flooding stdout does.
 ///
 /// Sized above the SSH channel window (2 MiB in this russh config) so a healthy poll loop can
 /// never trip it — even a full window arriving during one idle poll gap fits — while a stalled
@@ -332,6 +347,10 @@ struct QueuedResponse {
 
 enum WorkerCommand {
     Write(Vec<u8>),
+    /// EOF on the main channel: for an exec session, the remote command's stdin is finished.
+    /// Sent at most once; the worker drops later Writes rather than putting data on the wire
+    /// after an EOF.
+    SendEof,
     Resize {
         cols: u16,
         rows: u16,
@@ -383,6 +402,21 @@ struct ConnectConfig {
     bash_cwd_bootstrap: Option<String>,
     zsh_cwd_bootstrap: Option<String>,
     fish_cwd_bootstrap: Option<String>,
+}
+
+/// What the target session's main channel runs. The entry point picks it (nova_ssh_connect or
+/// nova_ssh_exec), and run_session hands it to establish_session and the main loop.
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum SessionMode {
+    /// The interactive terminal: optional login-shell detection, a PTY, then the cwd-bootstrap
+    /// startup command or a plain shell. Its parameters (term, size, shell kind, bootstraps) stay
+    /// on ConnectConfig, where the FFI arguments deliver them.
+    Shell,
+    /// One remote command with no PTY and no shell detection (spec §8.3). Stdout arrives as Data,
+    /// stderr as ExtendedData and the exit code as ExitStatus; stdin goes in through
+    /// nova_ssh_write and ends with nova_ssh_send_eof. The session lasts exactly as long as the
+    /// command's channel.
+    Exec { command: String },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -764,7 +798,8 @@ impl SharedState {
     /// events are few and tiny, and a queue full of stalled terminal output must not be able
     /// to hold back the very events that let the managed side notice and act.
     ///
-    /// Data-bearing events (Data, ForwardChannelData) go through `queue_data_event` instead.
+    /// Data-bearing events (Data, ExtendedData, ForwardChannelData) go through `queue_data_event`
+    /// instead.
     fn queue_event(&self, event: QueuedEvent) {
         if *self.closed.lock().unwrap_or_else(|e| e.into_inner()) {
             return;
@@ -860,7 +895,9 @@ impl SharedState {
             Some(event) => {
                 if matches!(
                     event.kind,
-                    NovaSshEventKind::Data | NovaSshEventKind::ForwardChannelData
+                    NovaSshEventKind::Data
+                        | NovaSshEventKind::ExtendedData
+                        | NovaSshEventKind::ForwardChannelData
                 ) {
                     // Saturating on purpose: FFI tests (and any future direct caller) can queue a
                     // data-kind event through queue_event without the budget accounting, and an
@@ -1039,51 +1076,110 @@ impl client::Handler for TransferClientHandler {
     }
 }
 
+/// Starts an interactive SSH session: a PTY shell on the target, reached through the jump chain
+/// in `args`. Returns a non-zero handle at once, or 0 when `args` is rejected (null, a missing
+/// host or user, invalid UTF-8, malformed jump-hop JSON); there is no error string. The connect,
+/// the host-key and auth prompts, the terminal output, and any failure all arrive later as poll
+/// events, ending with Closed. The handle stays valid until nova_ssh_close, which must be called
+/// exactly once whatever happened.
 #[unsafe(no_mangle)]
 pub extern "C" fn nova_ssh_connect(args: *const NovaSshConnectArgs) -> usize {
+    ffi_guard(0, || match ConnectConfig::from_args(args) {
+        Some(config) => spawn_session(config, SessionMode::Shell),
+        None => 0,
+    })
+}
+
+/// Starts an exec session (spec §8.3): the same connect, jump chain, host-key and auth prompts as
+/// nova_ssh_connect, then `command` runs on the target with no PTY and no shell detection. The
+/// remote user's login shell interprets `command`, exactly as `ssh host -- command` would.
+///
+/// Returns a non-zero handle, or 0 when `args` is rejected (as for nova_ssh_connect) or `command`
+/// is null, blank, or not UTF-8. `command` is passed verbatim: unlike the connect strings, it is
+/// not trimmed. `args`' terminal and shell fields (cols, rows, term, remote_shell_kind,
+/// shell_detection_command, the cwd bootstraps) are validated but unused.
+///
+/// The session's poll events are those of nova_ssh_connect, plus:
+/// - Data: the command's stdout;
+/// - ExtendedData (14): its stderr, status_code 1;
+/// - ExitStatus (7): its exit code in status_code, always before Closed. A command killed by a
+///   signal reports no exit code, so the session closes without one.
+///
+/// nova_ssh_write feeds the command's stdin and nova_ssh_send_eof ends it. nova_ssh_resize is
+/// accepted and ignored: there is no PTY to resize. The session ends when the command's channel
+/// closes. A server that refuses to run the command fails the session with an Error event, then
+/// Closed. Release the handle with nova_ssh_close, exactly once.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_exec(args: *const NovaSshConnectArgs, command: *const c_char) -> usize {
     ffi_guard(0, || {
-        let config = match ConnectConfig::from_args(args) {
-            Some(config) => config,
-            None => return 0,
+        let Some(command) = read_exec_command(command) else {
+            return 0;
         };
 
-        let shared = Arc::new(SharedState::new());
-        let (command_tx, command_rx) = mpsc::unbounded_channel();
-        let worker_shared = shared.clone();
-        let worker_config = config.clone();
-        let worker = thread::spawn(move || {
-            if let Err(error) = run_session(worker_config, worker_shared.clone(), command_rx) {
-                worker_shared.queue_event(QueuedEvent {
-                    kind: NovaSshEventKind::Error,
-                    payload: serde_json::to_vec(&ErrorPayload {
-                        message: &error.to_string(),
-                    })
-                    .unwrap_or_default(),
-                    status_code: -1,
-                    flags: NOVA_SSH_EVENT_FLAG_JSON,
-                });
-            }
+        match ConnectConfig::from_args(args) {
+            Some(config) => spawn_session(config, SessionMode::Exec { command }),
+            None => 0,
+        }
+    })
+}
 
+/// Sends EOF on the session's main channel: for an exec session, the end of the remote command's
+/// stdin, which is what lets a command reading stdin (`cat`, `ntilde-mux proxy --stdio`) finish.
+/// Returns NOVA_SSH_RESULT_OK once queued, NOVA_SSH_RESULT_CLOSED if the session has already
+/// ended, or NOVA_SSH_RESULT_INVALID_ARGUMENT for an unknown or closed handle.
+///
+/// Idempotent: the worker sends EOF at most once. nova_ssh_write data queued before the call is
+/// written before the EOF; data written after it is dropped, never sent after the EOF.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_send_eof(handle: usize) -> c_int {
+    ffi_guard(NOVA_SSH_RESULT_PANIC, || {
+        let session = match registry_get(handle) {
+            Some(s) => s,
+            None => return NOVA_SSH_RESULT_INVALID_ARGUMENT,
+        };
+
+        send_command(&session, WorkerCommand::SendEof)
+    })
+}
+
+/// Spawns the session worker for either entry point and registers its handle. The worker queues
+/// any failure as an Error event, then always queues Closed, so every handle ends the same way.
+fn spawn_session(config: ConnectConfig, mode: SessionMode) -> usize {
+    let shared = Arc::new(SharedState::new());
+    let (command_tx, command_rx) = mpsc::unbounded_channel();
+    let worker_shared = shared.clone();
+    let worker = thread::spawn(move || {
+        if let Err(error) = run_session(config, mode, worker_shared.clone(), command_rx) {
             worker_shared.queue_event(QueuedEvent {
-                kind: NovaSshEventKind::Closed,
-                payload: serde_json::to_vec(&ClosedPayload {
-                    reason: "session-ended",
+                kind: NovaSshEventKind::Error,
+                payload: serde_json::to_vec(&ErrorPayload {
+                    message: &error.to_string(),
                 })
                 .unwrap_or_default(),
-                status_code: 0,
+                status_code: -1,
                 flags: NOVA_SSH_EVENT_FLAG_JSON,
             });
-            worker_shared.mark_closed();
+        }
+
+        worker_shared.queue_event(QueuedEvent {
+            kind: NovaSshEventKind::Closed,
+            payload: serde_json::to_vec(&ClosedPayload {
+                reason: "session-ended",
+            })
+            .unwrap_or_default(),
+            status_code: 0,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
         });
+        worker_shared.mark_closed();
+    });
 
-        let session = NovaSshSession {
-            shared,
-            command_tx: Mutex::new(Some(command_tx)),
-            worker: Mutex::new(Some(worker)),
-        };
+    let session = NovaSshSession {
+        shared,
+        command_tx: Mutex::new(Some(command_tx)),
+        worker: Mutex::new(Some(worker)),
+    };
 
-        registry_insert(session) as usize
-    })
+    registry_insert(session) as usize
 }
 
 #[unsafe(no_mangle)]
@@ -1701,14 +1797,15 @@ fn zsh_login_startup() -> &'static str {
     "if [ -f ~/.zprofile ]; then source ~/.zprofile; fi"
 }
 
-fn append_bounded_shell_detection_output(output: &mut Vec<u8>, data: &[u8]) -> bool {
-    let remaining = SHELL_DETECTION_MAX_OUTPUT_BYTES.saturating_sub(output.len());
+/// Appends what fits of `data` under `limit` bytes; true once `output` is full.
+fn append_bounded_output(output: &mut Vec<u8>, data: &[u8], limit: usize) -> bool {
+    let remaining = limit.saturating_sub(output.len());
     if remaining == 0 {
         return true;
     }
 
     output.extend_from_slice(&data[..data.len().min(remaining)]);
-    output.len() >= SHELL_DETECTION_MAX_OUTPUT_BYTES
+    output.len() >= limit
 }
 
 fn build_startup_command(shell_kind: RemoteShellKind, config: &ConnectConfig) -> Option<String> {
@@ -1737,6 +1834,8 @@ fn build_startup_command(shell_kind: RemoteShellKind, config: &ConnectConfig) ->
     }
 }
 
+/// Runs the configured detection command over run_exec_collect and maps its stdout to a shell
+/// kind, keeping detection's 3 s and 4096-byte bounds. Any error means "unknown" to the caller.
 async fn detect_login_shell<H>(
     session: &mut client::Handle<H>,
     command: &str,
@@ -1744,49 +1843,116 @@ async fn detect_login_shell<H>(
 where
     H: client::Handler + Send + 'static,
 {
+    let collected = run_exec_collect(
+        session,
+        command,
+        SHELL_DETECTION_MAX_OUTPUT_BYTES,
+        SHELL_DETECTION_TIMEOUT,
+    )
+    .await?;
+
+    Ok(detect_login_shell_output_to_kind(
+        String::from_utf8_lossy(&collected.stdout).as_ref(),
+    ))
+}
+
+/// What run_exec_collect gathered from one command.
+#[derive(Debug, Default)]
+struct ExecCollected {
+    /// At most the collection limit; reaching it ends the collection early.
+    stdout: Vec<u8>,
+    /// At most the collection limit; reaching it does not end anything.
+    stderr: Vec<u8>,
+    /// None when the command died on a signal, or the collection ended before a status came.
+    exit_status: Option<u32>,
+}
+
+/// Where collect_exec_output reads channel messages from: the live channel in production, a
+/// scripted queue in tests, so the collector's ending rules are testable without a server.
+trait ChannelMessageSource {
+    async fn next_message(&mut self) -> Option<ChannelMsg>;
+}
+
+impl ChannelMessageSource for russh::Channel<client::Msg> {
+    async fn next_message(&mut self) -> Option<ChannelMsg> {
+        self.wait().await
+    }
+}
+
+/// The one private exec primitive: runs `command` on a fresh session channel of an established
+/// session, with no PTY, and collects its output under `limit` bytes per stream and a `timeout`.
+/// The channel is closed afterwards however collection ended. The exec-mode main loop
+/// (SessionMode::Exec) is the streaming counterpart for commands that outlive establishment.
+async fn run_exec_collect<H>(
+    session: &mut client::Handle<H>,
+    command: &str,
+    limit: usize,
+    timeout: Duration,
+) -> anyhow::Result<ExecCollected>
+where
+    H: client::Handler + Send + 'static,
+{
     let mut channel = session.channel_open_session().await?;
     channel.exec(true, command).await?;
 
-    let detection_result = tokio::time::timeout(SHELL_DETECTION_TIMEOUT, async {
-        let mut output = Vec::new();
+    let collected = collect_exec_output(&mut channel, limit, timeout).await;
+    let _ = channel.close().await;
+    collected
+}
+
+/// Reads a command's channel until its answer is complete:
+/// - the channel closes (or the session drops it);
+/// - stdout fills `limit`, when the caller already has all it will use;
+/// - or both EOF and the exit status (or exit signal) have arrived, in either order. OpenSSH
+///   sends the status after the EOF, so stopping at EOF would lose it.
+///
+/// A timeout before EOF is an error: the output may be cut short. A timeout after EOF returns
+/// what was read, since the output was complete and only the status is missing. That keeps
+/// detection's old answer, which ended at EOF, for a server that never sends a status.
+async fn collect_exec_output(
+    source: &mut impl ChannelMessageSource,
+    limit: usize,
+    timeout: Duration,
+) -> anyhow::Result<ExecCollected> {
+    let mut collected = ExecCollected::default();
+    let mut eof = false;
+    let mut exited = false;
+
+    let finished = tokio::time::timeout(timeout, async {
         loop {
-            match channel.wait().await {
+            match source.next_message().await {
                 Some(ChannelMsg::Data { data }) => {
-                    if append_bounded_shell_detection_output(&mut output, data.as_ref()) {
-                        break;
+                    if append_bounded_output(&mut collected.stdout, data.as_ref(), limit) {
+                        return;
                     }
                 }
-                Some(ChannelMsg::ExtendedData { .. }) => {}
-                Some(ChannelMsg::ExitStatus { .. })
-                | Some(ChannelMsg::ExitSignal { .. })
-                | Some(ChannelMsg::Success)
-                | Some(ChannelMsg::Failure)
-                | Some(ChannelMsg::WindowAdjusted { .. })
-                | Some(ChannelMsg::XonXoff { .. })
-                | Some(ChannelMsg::Open { .. })
-                | Some(ChannelMsg::OpenFailure(_)) => {}
-                Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => break,
-                Some(ChannelMsg::RequestPty { .. })
-                | Some(ChannelMsg::RequestShell { .. })
-                | Some(ChannelMsg::Exec { .. })
-                | Some(ChannelMsg::Signal { .. })
-                | Some(ChannelMsg::RequestSubsystem { .. })
-                | Some(ChannelMsg::RequestX11 { .. })
-                | Some(ChannelMsg::SetEnv { .. })
-                | Some(ChannelMsg::WindowChange { .. })
-                | Some(ChannelMsg::AgentForward { .. })
-                | Some(_) => {}
+                Some(ChannelMsg::ExtendedData { data, ext: 1 }) => {
+                    append_bounded_output(&mut collected.stderr, data.as_ref(), limit);
+                }
+                Some(ChannelMsg::ExitStatus { exit_status }) => {
+                    collected.exit_status = Some(exit_status);
+                    exited = true;
+                }
+                Some(ChannelMsg::ExitSignal { .. }) => exited = true,
+                Some(ChannelMsg::Eof) => eof = true,
+                Some(ChannelMsg::Close) | None => return,
+                Some(_) => {}
+            }
+
+            if eof && exited {
+                return;
             }
         }
-
-        detect_login_shell_output_to_kind(String::from_utf8_lossy(&output).as_ref())
     })
     .await;
 
-    let _ = channel.close().await;
-    match detection_result {
-        Ok(shell_kind) => Ok(shell_kind),
-        Err(_) => Err(anyhow::anyhow!("shell detection timed out")),
+    match finished {
+        Ok(()) => Ok(collected),
+        Err(_) if eof => Ok(collected),
+        Err(_) => Err(anyhow::anyhow!(
+            "remote command timed out after {}s",
+            timeout.as_secs()
+        )),
     }
 }
 
@@ -1858,6 +2024,22 @@ fn read_c_arg(value: *const c_char) -> CArg {
                 CArg::Value(trimmed.to_owned())
             }
         }
+    }
+}
+
+/// nova_ssh_exec's command: required and UTF-8 like any connect string (#121's rule), but taken
+/// verbatim instead of trimmed. It is shell text for the remote, and trimming could change what
+/// runs, for example a trailing escaped space.
+fn read_exec_command(value: *const c_char) -> Option<String> {
+    if value.is_null() {
+        return None;
+    }
+
+    let text = unsafe { CStr::from_ptr(value) }.to_str().ok()?;
+    if text.trim().is_empty() {
+        None
+    } else {
+        Some(text.to_owned())
     }
 }
 
@@ -3126,17 +3308,19 @@ where
     .map_err(Into::into)
 }
 
-/// Establishes the SSH session up to a ready shell channel: the jump chain hop by hop,
-/// TCP connect (bounded by TCP_CONNECT_TIMEOUT), handshake, auth, shell detection,
-/// PTY + shell/exec setup. Runs inside run_session's select! race against
-/// SharedState::wait_closed, so it must not consume `command_rx`. The jump handles are
-/// returned so every tunnel in the chain outlives establishment.
+/// Establishes the SSH session up to a ready main channel: the jump chain hop by hop,
+/// TCP connect (bounded by TCP_CONNECT_TIMEOUT), handshake, auth, then by `mode` either
+/// shell detection + PTY + shell/startup-command (open_shell_channel) or a bare exec of the
+/// command. Runs inside run_session's select! race against SharedState::wait_closed, so it
+/// must not consume `command_rx`. The jump handles are returned so every tunnel in the chain
+/// outlives establishment.
 ///
 /// Each hop is a full SSH session in its own right — its own handshake, its own host-key
 /// verification through the shared prompt machinery, its own authentication — nested over a
 /// direct-tcpip channel of the previous hop, exactly as OpenSSH treats a `-J` chain.
 async fn establish_session(
     config: &ConnectConfig,
+    mode: &SessionMode,
     shared: &Arc<SharedState>,
     client_config: Arc<client::Config>,
     forward_channels: ForwardChannels,
@@ -3205,10 +3389,31 @@ async fn establish_session(
     )
     .await?;
 
+    let channel = match mode {
+        SessionMode::Shell => open_shell_channel(config, &mut session).await?,
+        SessionMode::Exec { command } => {
+            // No detection and no PTY (spec §8.3). The exec request's reply arrives in the main
+            // loop, where a refusal fails the session (main_channel_step).
+            let channel = session.channel_open_session().await?;
+            channel.exec(true, command.as_str()).await?;
+            channel
+        }
+    };
+
+    Ok((jump_sessions, session, channel))
+}
+
+/// The interactive terminal's main channel: login-shell detection when the shell kind is Auto and
+/// a detection command is configured, a PTY, then the cwd-bootstrap startup command for the
+/// detected shell, or a plain login shell when there is none.
+async fn open_shell_channel(
+    config: &ConnectConfig,
+    session: &mut client::Handle<NovaClientHandler>,
+) -> anyhow::Result<russh::Channel<client::Msg>> {
     let effective_shell_kind = if config.remote_shell_kind != RemoteShellKind::Auto {
         config.remote_shell_kind
     } else if let Some(command) = config.shell_detection_command.as_deref() {
-        match detect_login_shell(&mut session, command).await {
+        match detect_login_shell(session, command).await {
             Ok(shell_kind) => shell_kind,
             Err(_) => RemoteShellKind::Auto,
         }
@@ -3216,7 +3421,7 @@ async fn establish_session(
         RemoteShellKind::Auto
     };
 
-    let mut channel = session.channel_open_session().await?;
+    let channel = session.channel_open_session().await?;
     channel
         .request_pty(
             true,
@@ -3234,11 +3439,12 @@ async fn establish_session(
         channel.request_shell(true).await?;
     }
 
-    Ok((jump_sessions, session, channel))
+    Ok(channel)
 }
 
 fn run_session(
     config: ConnectConfig,
+    mode: SessionMode,
     shared: Arc<SharedState>,
     mut command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
 ) -> anyhow::Result<()> {
@@ -3256,7 +3462,7 @@ fn run_session(
         // on user interaction (host-key and password prompts), and mark_closed already
         // unblocks those via wait_for_response.
         let (jump_sessions, mut session, mut channel) = tokio::select! {
-            result = establish_session(&config, &shared, client_config.clone(), forward_channels.clone()) => result?,
+            result = establish_session(&config, &mode, &shared, client_config.clone(), forward_channels.clone()) => result?,
             _ = shared.wait_closed() => {
                 // Closed while connecting: exit cleanly; nova_ssh_close is joining us.
                 return Ok(());
@@ -3275,12 +3481,24 @@ fn run_session(
         });
 
         let mut pending_command: Option<WorkerCommand> = None;
+        // Set by the first SendEof. Writes after it are dropped: data after an EOF is a protocol
+        // violation the server may answer by tearing the channel down, losing the exit status.
+        let mut eof_sent = false;
+        let has_pty = mode == SessionMode::Shell;
         loop {
             tokio::select! {
                 command = next_worker_command(&mut pending_command, &mut command_rx) => {
                     match command {
                         Some(WorkerCommand::Write(data)) => {
-                            channel.data(&data[..]).await?;
+                            if !eof_sent {
+                                channel.data(&data[..]).await?;
+                            }
+                        }
+                        Some(WorkerCommand::SendEof) => {
+                            if !eof_sent {
+                                eof_sent = true;
+                                channel.eof().await?;
+                            }
                         }
                         Some(WorkerCommand::Resize { cols, rows }) => {
                             let (cols, rows, pending_resize_command) = coalesce_pending_resize_commands(
@@ -3290,7 +3508,10 @@ fn run_session(
                             );
                             pending_command = pending_resize_command;
 
-                            channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                            // An exec channel has no PTY, so there is nothing to resize.
+                            if has_pty {
+                                channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                            }
                         }
                         Some(WorkerCommand::OpenDirectTcpIp {
                             host_to_connect,
@@ -3339,51 +3560,30 @@ fn run_session(
                         }
                         Some(WorkerCommand::Close) | None => {
                             close_all_forward_channels(&forward_channels).await;
-                            let _ = channel.eof().await;
+                            if !eof_sent {
+                                let _ = channel.eof().await;
+                            }
                             let _ = channel.close().await;
                             break;
                         }
                     }
                 }
                 message = channel.wait() => {
-                    match message {
-                        // Both data arms park on the byte budget. While parked, this loop reads
-                        // nothing further — including WorkerCommands — which is intended: the
-                        // budget only fills when the managed poll loop has stopped draining, and
-                        // an unread channel is what makes SSH flow control throttle the remote.
-                        // A close still gets through, via queue_data_event's is_closed check.
-                        Some(ChannelMsg::Data { data }) => {
-                            if !shared.queue_data_event(QueuedEvent {
-                                kind: NovaSshEventKind::Data,
-                                payload: data.to_vec(),
-                                status_code: 0,
-                                flags: NOVA_SSH_EVENT_FLAG_BINARY,
-                            }).await {
+                    match main_channel_step(&mode, message)? {
+                        // Data-bearing events park on the byte budget. While parked, this loop
+                        // reads nothing further — including WorkerCommands — which is intended:
+                        // the budget only fills when the managed poll loop has stopped draining,
+                        // and an unread channel is what makes SSH flow control throttle the
+                        // remote. A close still gets through, via queue_data_event's is_closed
+                        // check.
+                        MainChannelStep::Data(event) => {
+                            if !shared.queue_data_event(event).await {
                                 break;
                             }
                         }
-                        Some(ChannelMsg::ExtendedData { data, .. }) => {
-                            if !shared.queue_data_event(QueuedEvent {
-                                kind: NovaSshEventKind::Data,
-                                payload: data.to_vec(),
-                                status_code: 0,
-                                flags: NOVA_SSH_EVENT_FLAG_BINARY,
-                            }).await {
-                                break;
-                            }
-                        }
-                        Some(ChannelMsg::ExitStatus { exit_status }) => {
-                            shared.queue_event(QueuedEvent {
-                                kind: NovaSshEventKind::ExitStatus,
-                                payload: serde_json::to_vec(&ExitStatusPayload { exit_status })?,
-                                status_code: exit_status as i32,
-                                flags: NOVA_SSH_EVENT_FLAG_JSON,
-                            });
-                        }
-                        Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => {
-                            break;
-                        }
-                        _ => {}
+                        MainChannelStep::Control(event) => shared.queue_event(event),
+                        MainChannelStep::Continue => {}
+                        MainChannelStep::End => break,
                     }
                 }
             }
@@ -3401,6 +3601,75 @@ fn run_session(
                 .await;
         }
         Ok(())
+    })
+}
+
+/// What the session worker does with one message from the main channel.
+enum MainChannelStep {
+    /// A data-bearing event, queued through queue_data_event so it parks on the byte budget.
+    Data(QueuedEvent),
+    /// A control event, queued at once and never gated.
+    Control(QueuedEvent),
+    /// Nothing to report; keep reading.
+    Continue,
+    /// The main channel is finished. The worker ends the session, which queues Closed.
+    End,
+}
+
+/// Maps one main-channel message to the worker's next step. Pure, so both modes' event encoding
+/// is testable without a server.
+///
+/// Shell mode keeps its long-standing mapping: stderr arrives merged into Data, since a PTY
+/// already merges it, and EOF ends the session.
+///
+/// Exec mode (spec §8.3):
+/// - stdout becomes Data, and stderr (extended data type 1) becomes ExtendedData. Other extended
+///   data types are undefined (RFC 4254 §5.2) and dropped, as OpenSSH's client drops them.
+/// - The remote's EOF does not end the session. OpenSSH sends exit-status after EOF, so stopping
+///   there would lose the exit code. The session ends when the channel closes.
+/// - An exit signal queues nothing: the command has no exit code, and the managed side reads
+///   Closed without an ExitStatus as exactly that.
+/// - A channel Failure fails the session. The exec request is the only want-reply request on an
+///   exec channel, so a Failure is the server refusing the command. Ignoring it would leave the
+///   session connected with nothing ever running.
+fn main_channel_step(
+    mode: &SessionMode,
+    message: Option<ChannelMsg>,
+) -> anyhow::Result<MainChannelStep> {
+    let exec = matches!(mode, SessionMode::Exec { .. });
+    let binary = |kind: NovaSshEventKind, payload: Vec<u8>, status_code: i32| QueuedEvent {
+        kind,
+        payload,
+        status_code,
+        flags: NOVA_SSH_EVENT_FLAG_BINARY,
+    };
+
+    Ok(match message {
+        Some(ChannelMsg::Data { data }) => {
+            MainChannelStep::Data(binary(NovaSshEventKind::Data, data.to_vec(), 0))
+        }
+        Some(ChannelMsg::ExtendedData { data, ext }) if exec => {
+            if ext == 1 {
+                MainChannelStep::Data(binary(NovaSshEventKind::ExtendedData, data.to_vec(), 1))
+            } else {
+                MainChannelStep::Continue
+            }
+        }
+        Some(ChannelMsg::ExtendedData { data, .. }) => {
+            MainChannelStep::Data(binary(NovaSshEventKind::Data, data.to_vec(), 0))
+        }
+        Some(ChannelMsg::ExitStatus { exit_status }) => MainChannelStep::Control(QueuedEvent {
+            kind: NovaSshEventKind::ExitStatus,
+            payload: serde_json::to_vec(&ExitStatusPayload { exit_status })?,
+            status_code: exit_status as i32,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
+        }),
+        Some(ChannelMsg::Failure) if exec => {
+            anyhow::bail!("the server refused to run the command")
+        }
+        Some(ChannelMsg::Eof) if exec => MainChannelStep::Continue,
+        Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => MainChannelStep::End,
+        Some(_) => MainChannelStep::Continue,
     })
 }
 
@@ -4619,7 +4888,8 @@ mod tests {
     fn append_bounded_shell_detection_output_truncates_at_limit() {
         let mut output = vec![b'x'; SHELL_DETECTION_MAX_OUTPUT_BYTES - 2];
 
-        let reached_limit = append_bounded_shell_detection_output(&mut output, b"abcd");
+        let reached_limit =
+            append_bounded_output(&mut output, b"abcd", SHELL_DETECTION_MAX_OUTPUT_BYTES);
 
         assert!(reached_limit);
         assert_eq!(SHELL_DETECTION_MAX_OUTPUT_BYTES, output.len());
@@ -6298,5 +6568,929 @@ mod remote_forward_request_tests {
 
         responder.join().expect("responder must not panic");
         assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+    }
+}
+
+/// Exec mode (spec §8.3) without a server: how the main channel's messages become poll events in
+/// each mode, the collector under detect_login_shell, and the argument contract of the two new FFI
+/// entry points. The round trip against a live server is exec_session_e2e_tests' job.
+#[cfg(test)]
+mod exec_mode_tests {
+    use super::*;
+
+    fn exec_mode() -> SessionMode {
+        SessionMode::Exec {
+            command: "ntilde-mux proxy --stdio".to_owned(),
+        }
+    }
+
+    fn step(mode: &SessionMode, message: ChannelMsg) -> MainChannelStep {
+        main_channel_step(mode, Some(message)).expect("this message must not fail the session")
+    }
+
+    fn expect_data(step: MainChannelStep) -> QueuedEvent {
+        match step {
+            MainChannelStep::Data(event) => event,
+            _ => panic!("expected a data-bearing event"),
+        }
+    }
+
+    fn expect_control(step: MainChannelStep) -> QueuedEvent {
+        match step {
+            MainChannelStep::Control(event) => event,
+            _ => panic!("expected a control event"),
+        }
+    }
+
+    fn exit_signal() -> ChannelMsg {
+        ChannelMsg::ExitSignal {
+            signal_name: russh::Sig::KILL,
+            core_dumped: false,
+            error_message: String::new(),
+            lang_tag: String::new(),
+        }
+    }
+
+    /// The managed NativeSshEventKind mirrors these by value. Renumbering one would silently
+    /// reroute every event of that kind on the C# side, so the new kind is appended, never
+    /// slotted in.
+    #[test]
+    fn event_kind_numbers_are_stable_and_extended_data_is_appended() {
+        let expected = [
+            (NovaSshEventKind::None, 0),
+            (NovaSshEventKind::Connected, 1),
+            (NovaSshEventKind::Data, 2),
+            (NovaSshEventKind::HostKeyPrompt, 3),
+            (NovaSshEventKind::PasswordPrompt, 4),
+            (NovaSshEventKind::PassphrasePrompt, 5),
+            (NovaSshEventKind::KeyboardInteractivePrompt, 6),
+            (NovaSshEventKind::ExitStatus, 7),
+            (NovaSshEventKind::Error, 8),
+            (NovaSshEventKind::Closed, 9),
+            (NovaSshEventKind::ForwardChannelData, 10),
+            (NovaSshEventKind::ForwardChannelEof, 11),
+            (NovaSshEventKind::ForwardChannelClosed, 12),
+            (NovaSshEventKind::ForwardChannelIncoming, 13),
+            (NovaSshEventKind::ExtendedData, 14),
+        ];
+
+        for (kind, value) in expected {
+            assert_eq!(value, kind as u32, "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn exec_mode_reports_stderr_as_the_extended_data_kind() {
+        let event = expect_data(step(
+            &exec_mode(),
+            ChannelMsg::ExtendedData {
+                data: b"warning: low disk\n".to_vec().into(),
+                ext: 1,
+            },
+        ));
+
+        assert_eq!(NovaSshEventKind::ExtendedData, event.kind);
+        assert_eq!(b"warning: low disk\n".to_vec(), event.payload);
+        assert_eq!(
+            1, event.status_code,
+            "status_code carries the extended-data type code"
+        );
+        assert_eq!(NOVA_SSH_EVENT_FLAG_BINARY, event.flags);
+    }
+
+    #[test]
+    fn exec_mode_reports_stdout_as_the_existing_data_kind() {
+        let event = expect_data(step(
+            &exec_mode(),
+            ChannelMsg::Data {
+                data: b"NTILDE-MUX-PROXY 1 42\n".to_vec().into(),
+            },
+        ));
+
+        assert_eq!(NovaSshEventKind::Data, event.kind);
+        assert_eq!(b"NTILDE-MUX-PROXY 1 42\n".to_vec(), event.payload);
+        assert_eq!(0, event.status_code);
+        assert_eq!(NOVA_SSH_EVENT_FLAG_BINARY, event.flags);
+    }
+
+    #[test]
+    fn exec_mode_reports_the_exit_status_as_a_control_event() {
+        let event = expect_control(step(
+            &exec_mode(),
+            ChannelMsg::ExitStatus { exit_status: 7 },
+        ));
+
+        assert_eq!(NovaSshEventKind::ExitStatus, event.kind);
+        assert_eq!(7, event.status_code);
+        assert_eq!(NOVA_SSH_EVENT_FLAG_JSON, event.flags);
+        assert_eq!(
+            serde_json::json!({ "exit_status": 7 }),
+            serde_json::from_slice::<serde_json::Value>(&event.payload).unwrap(),
+            "the same encoding the shell path has always used"
+        );
+    }
+
+    /// OpenSSH sends the command's EOF, then exit-status, then close. A loop that ended at EOF,
+    /// as the shell path does, would drop the exit code of nearly every command.
+    #[test]
+    fn exec_mode_keeps_reading_past_eof_and_ends_when_the_channel_closes() {
+        assert!(matches!(
+            step(&exec_mode(), ChannelMsg::Eof),
+            MainChannelStep::Continue
+        ));
+        assert!(matches!(
+            step(&exec_mode(), ChannelMsg::Close),
+            MainChannelStep::End
+        ));
+        assert!(matches!(
+            main_channel_step(&exec_mode(), None).unwrap(),
+            MainChannelStep::End
+        ));
+    }
+
+    /// Extended data other than stderr is undefined (RFC 4254 §5.2), and OpenSSH's client drops
+    /// it too. A signal death has no status to report: the managed side sees Closed without an
+    /// ExitStatus, which it reads as "no exit code".
+    #[test]
+    fn exec_mode_drops_non_stderr_extended_data_and_exit_signals() {
+        assert!(matches!(
+            step(
+                &exec_mode(),
+                ChannelMsg::ExtendedData {
+                    data: b"?".to_vec().into(),
+                    ext: 2,
+                }
+            ),
+            MainChannelStep::Continue
+        ));
+        assert!(matches!(
+            step(&exec_mode(), exit_signal()),
+            MainChannelStep::Continue
+        ));
+    }
+
+    /// The exec request is the only want-reply request on an exec channel, so a Failure is the
+    /// server refusing the command. Left alone, the session would sit connected and silent.
+    #[test]
+    fn exec_mode_fails_the_session_when_the_server_refuses_the_command() {
+        let error = match main_channel_step(&exec_mode(), Some(ChannelMsg::Failure)) {
+            Err(error) => error,
+            Ok(_) => panic!("a refused exec must fail the session"),
+        };
+        assert!(error.to_string().contains("refused"), "{error}");
+    }
+
+    /// The shell path is unchanged: the PTY merges stderr into the terminal stream, so extended
+    /// data keeps arriving as Data and a shell session never emits the exec-only kind.
+    #[test]
+    fn shell_mode_keeps_stderr_in_the_data_stream_and_ends_at_eof() {
+        let event = expect_data(step(
+            &SessionMode::Shell,
+            ChannelMsg::ExtendedData {
+                data: b"oops\n".to_vec().into(),
+                ext: 1,
+            },
+        ));
+        assert_eq!(NovaSshEventKind::Data, event.kind);
+        assert_eq!(0, event.status_code);
+
+        let exit = expect_control(step(
+            &SessionMode::Shell,
+            ChannelMsg::ExitStatus { exit_status: 130 },
+        ));
+        assert_eq!(NovaSshEventKind::ExitStatus, exit.kind);
+        assert_eq!(130, exit.status_code);
+
+        assert!(matches!(
+            step(&SessionMode::Shell, ChannelMsg::Eof),
+            MainChannelStep::End
+        ));
+        assert!(matches!(
+            step(&SessionMode::Shell, ChannelMsg::Failure),
+            MainChannelStep::Continue
+        ));
+    }
+
+    /// Stdout and stderr share one SSH channel window, so a parked stderr producer holds the
+    /// remote exactly as a parked stdout producer does. Polling must release what admission
+    /// charged, or the counter leaks until every producer parks forever.
+    #[tokio::test(start_paused = true)]
+    async fn stderr_events_share_the_data_budget_and_release_it_when_polled() {
+        let shared = SharedState::new();
+        let event = expect_data(step(
+            &exec_mode(),
+            ChannelMsg::ExtendedData {
+                data: vec![b'e'; 100].into(),
+                ext: 1,
+            },
+        ));
+
+        assert!(shared.queue_data_event(event).await);
+        assert_eq!(
+            queued_data_event_cost(100),
+            shared.queued_data_bytes.load(Ordering::Acquire)
+        );
+
+        match shared.take_event_if_fits(usize::MAX) {
+            EventRead::Ready(event) => assert_eq!(NovaSshEventKind::ExtendedData, event.kind),
+            _ => panic!("the stderr event must pop"),
+        }
+        assert_eq!(0, shared.queued_data_bytes.load(Ordering::Acquire));
+    }
+
+    /// Yields its script in order and then goes quiet forever, so a collector that is still
+    /// waiting runs into its timeout instead of a convenient end of stream.
+    struct ScriptedChannel(VecDeque<ChannelMsg>);
+
+    impl ScriptedChannel {
+        fn new(messages: Vec<ChannelMsg>) -> Self {
+            Self(messages.into())
+        }
+    }
+
+    impl ChannelMessageSource for ScriptedChannel {
+        async fn next_message(&mut self) -> Option<ChannelMsg> {
+            match self.0.pop_front() {
+                Some(message) => Some(message),
+                None => std::future::pending().await,
+            }
+        }
+    }
+
+    fn data(bytes: &[u8]) -> ChannelMsg {
+        ChannelMsg::Data {
+            data: bytes.to_vec().into(),
+        }
+    }
+
+    fn stderr(bytes: &[u8]) -> ChannelMsg {
+        ChannelMsg::ExtendedData {
+            data: bytes.to_vec().into(),
+            ext: 1,
+        }
+    }
+
+    const COLLECT_TIMEOUT: Duration = Duration::from_secs(3);
+
+    #[tokio::test(start_paused = true)]
+    async fn collect_bounds_each_stream_and_stops_once_stdout_is_full() {
+        // No Eof and no Close in the script: only a full stdout can end this collection in time.
+        let mut channel = ScriptedChannel::new(vec![
+            stderr(b"eeeeeeeeeeee"),
+            data(b"abcdef"),
+            data(b"ghijkl"),
+        ]);
+
+        let collected = collect_exec_output(&mut channel, 8, COLLECT_TIMEOUT)
+            .await
+            .expect("a full stdout is a complete collection");
+
+        assert_eq!(b"abcdefgh".to_vec(), collected.stdout);
+        assert_eq!(b"eeeeeeee".to_vec(), collected.stderr);
+        assert_eq!(None, collected.exit_status);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn collect_waits_past_eof_for_the_exit_status() {
+        let mut channel = ScriptedChannel::new(vec![
+            data(b"/bin/bash\n"),
+            ChannelMsg::Eof,
+            ChannelMsg::ExitStatus { exit_status: 0 },
+        ]);
+
+        let collected = collect_exec_output(&mut channel, 4096, COLLECT_TIMEOUT)
+            .await
+            .expect("EOF plus an exit status is a complete collection");
+
+        assert_eq!(b"/bin/bash\n".to_vec(), collected.stdout);
+        assert_eq!(Some(0), collected.exit_status);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn collect_finishes_when_the_exit_status_precedes_eof() {
+        let mut channel = ScriptedChannel::new(vec![
+            ChannelMsg::ExitStatus { exit_status: 3 },
+            data(b"late output"),
+            ChannelMsg::Eof,
+        ]);
+
+        let collected = collect_exec_output(&mut channel, 4096, COLLECT_TIMEOUT)
+            .await
+            .expect("an exit status plus EOF is a complete collection");
+
+        assert_eq!(b"late output".to_vec(), collected.stdout);
+        assert_eq!(Some(3), collected.exit_status);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn collect_ends_on_close_and_ignores_non_stderr_extended_data() {
+        let mut channel = ScriptedChannel::new(vec![
+            ChannelMsg::ExtendedData {
+                data: b"?".to_vec().into(),
+                ext: 2,
+            },
+            ChannelMsg::Close,
+        ]);
+
+        let collected = collect_exec_output(&mut channel, 4096, COLLECT_TIMEOUT)
+            .await
+            .expect("a closed channel is a complete collection");
+
+        assert!(collected.stderr.is_empty());
+        assert_eq!(None, collected.exit_status);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn collect_after_eof_treats_a_signal_death_as_finished_without_a_status() {
+        let mut channel = ScriptedChannel::new(vec![ChannelMsg::Eof, exit_signal()]);
+
+        let collected = collect_exec_output(&mut channel, 4096, COLLECT_TIMEOUT)
+            .await
+            .expect("EOF plus a signal is a complete collection");
+
+        assert_eq!(None, collected.exit_status);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn collect_timing_out_before_eof_is_an_error() {
+        let mut channel = ScriptedChannel::new(vec![data(b"partial")]);
+
+        assert!(
+            collect_exec_output(&mut channel, 4096, COLLECT_TIMEOUT)
+                .await
+                .is_err(),
+            "output that never finished must not pass for a complete answer"
+        );
+    }
+
+    /// Detection used to return the moment EOF arrived. Waiting past EOF for the exit status must
+    /// not turn a server that never reports one into a detection failure: the output was already
+    /// complete.
+    #[tokio::test(start_paused = true)]
+    async fn collect_timing_out_after_eof_keeps_the_complete_output() {
+        let mut channel = ScriptedChannel::new(vec![data(b"zsh\n"), ChannelMsg::Eof]);
+
+        let collected = collect_exec_output(&mut channel, 4096, COLLECT_TIMEOUT)
+            .await
+            .expect("stdout is complete at EOF");
+
+        assert_eq!(b"zsh\n".to_vec(), collected.stdout);
+        assert_eq!(None, collected.exit_status);
+    }
+
+    fn exec_args(host: &CString, user: &CString) -> NovaSshConnectArgs {
+        NovaSshConnectArgs {
+            host: host.as_ptr(),
+            user: user.as_ptr(),
+            port: 22,
+            cols: 0,
+            rows: 0,
+            term: ptr::null(),
+            identity_file: ptr::null(),
+            jump_hops_json: ptr::null(),
+            keepalive_interval_seconds: 0,
+            keepalive_count_max: 0,
+            remote_shell_kind: 0,
+            shell_detection_command: ptr::null(),
+            bash_cwd_bootstrap: ptr::null(),
+            zsh_cwd_bootstrap: ptr::null(),
+            fish_cwd_bootstrap: ptr::null(),
+            use_agent: 0,
+        }
+    }
+
+    /// Every case must be refused before a worker exists: an accepted one would start dialling.
+    #[test]
+    fn exec_refuses_missing_or_invalid_arguments_without_a_handle() {
+        let host = CString::new("exec.invalid").unwrap();
+        let user = CString::new("nova").unwrap();
+        let command = CString::new("true").unwrap();
+        let blank = CString::new(" \t ").unwrap();
+        let invalid = CString::new(&b"printf \xC3\x28"[..]).unwrap();
+        let args = exec_args(&host, &user);
+
+        assert_eq!(0, nova_ssh_exec(ptr::null(), command.as_ptr()), "null args");
+        assert_eq!(0, nova_ssh_exec(&args, ptr::null()), "a null command");
+        assert_eq!(0, nova_ssh_exec(&args, blank.as_ptr()), "a blank command");
+        assert_eq!(
+            0,
+            nova_ssh_exec(&args, invalid.as_ptr()),
+            "a command that is not UTF-8 must be refused, not mangled"
+        );
+
+        let no_host = NovaSshConnectArgs {
+            host: ptr::null(),
+            ..args
+        };
+        assert_eq!(
+            0,
+            nova_ssh_exec(&no_host, command.as_ptr()),
+            "arguments nova_ssh_connect would refuse"
+        );
+    }
+
+    /// Connect arguments are trimmed; a command is not. Whitespace inside quotes at either end is
+    /// part of what the remote shell runs.
+    #[test]
+    fn exec_command_crosses_the_ffi_verbatim() {
+        let command = CString::new(" printf '%s' 'tail ' ").unwrap();
+
+        assert_eq!(
+            Some(" printf '%s' 'tail ' ".to_owned()),
+            read_exec_command(command.as_ptr())
+        );
+    }
+
+    #[test]
+    fn send_eof_validates_the_handle_and_reports_a_finished_worker() {
+        assert_eq!(NOVA_SSH_RESULT_INVALID_ARGUMENT, nova_ssh_send_eof(0));
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            nova_ssh_send_eof(usize::MAX)
+        );
+
+        let handle = registry_insert(stub_session()) as usize;
+        assert_eq!(
+            NOVA_SSH_RESULT_CLOSED,
+            nova_ssh_send_eof(handle),
+            "a session whose worker is gone is closed, not invalid"
+        );
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            nova_ssh_send_eof(handle),
+            "a closed handle"
+        );
+    }
+
+    #[test]
+    fn send_eof_reaches_the_worker_as_its_own_command() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let handle = registry_insert(NovaSshSession {
+            shared: Arc::new(SharedState::new()),
+            command_tx: Mutex::new(Some(tx)),
+            worker: Mutex::new(None),
+        }) as usize;
+
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_send_eof(handle));
+        assert!(matches!(rx.try_recv(), Ok(WorkerCommand::SendEof)));
+
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+    }
+}
+
+/// Exec and shell sessions end to end through the FFI, against an in-process russh server: the
+/// poll / prompt / response loop the managed side runs, so the exec ABI is proven before any C#
+/// binds to it. The server records what the client asked of it (PTY, shell, exec commands, stdin,
+/// EOFs), so the tests pin the requests as well as the events.
+#[cfg(test)]
+mod exec_session_e2e_tests {
+    use super::*;
+    use russh::ChannelId;
+    use russh::server::{Auth, Msg as ServerMsg, Session as ServerSession};
+    use std::time::Instant;
+
+    const PASSWORD: &str = "hunter2";
+    const PROXY_COMMAND: &str = "ntilde-mux proxy --stdio";
+    const DETECT_COMMAND: &str = "detect-login-shell";
+    const REFUSED_COMMAND: &str = "refuse-me";
+
+    #[derive(Default)]
+    struct ServerSeen {
+        exec_commands: Vec<String>,
+        pty_requested: bool,
+        shell_requested: bool,
+        stdin: Vec<u8>,
+        eof_count: usize,
+        data_after_eof: bool,
+    }
+
+    type SeenLog = Arc<Mutex<ServerSeen>>;
+
+    fn lock(seen: &SeenLog) -> std::sync::MutexGuard<'_, ServerSeen> {
+        seen.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    struct TestServer {
+        seen: SeenLog,
+    }
+
+    /// Ends a channel the way OpenSSH does when the command exits: EOF, then exit-status, then
+    /// close. The exit status after the EOF is exactly what a loop that stopped at EOF loses.
+    fn finish(
+        session: &mut ServerSession,
+        channel: ChannelId,
+        code: u32,
+    ) -> Result<(), russh::Error> {
+        session.eof(channel)?;
+        session.exit_status_request(channel, code)?;
+        session.close(channel)
+    }
+
+    /// A terminal that prints a prompt, complains on stderr, and exits.
+    fn run_shell(session: &mut ServerSession, channel: ChannelId) -> Result<(), russh::Error> {
+        session.data(channel, b"prompt$ ".to_vec())?;
+        session.extended_data(channel, 1, b"oops\n".to_vec())?;
+        finish(session, channel, 0)
+    }
+
+    impl russh::server::Handler for TestServer {
+        type Error = russh::Error;
+
+        async fn auth_password(
+            &mut self,
+            _user: &str,
+            password: &str,
+        ) -> Result<Auth, Self::Error> {
+            Ok(if password == PASSWORD {
+                Auth::Accept
+            } else {
+                Auth::reject()
+            })
+        }
+
+        async fn channel_open_session(
+            &mut self,
+            _channel: russh::Channel<ServerMsg>,
+            _session: &mut ServerSession,
+        ) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
+        async fn pty_request(
+            &mut self,
+            channel: ChannelId,
+            _term: &str,
+            _col_width: u32,
+            _row_height: u32,
+            _pix_width: u32,
+            _pix_height: u32,
+            _modes: &[(russh::Pty, u32)],
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            lock(&self.seen).pty_requested = true;
+            session.channel_success(channel)
+        }
+
+        async fn shell_request(
+            &mut self,
+            channel: ChannelId,
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            lock(&self.seen).shell_requested = true;
+            session.channel_success(channel)?;
+            run_shell(session, channel)
+        }
+
+        async fn exec_request(
+            &mut self,
+            channel: ChannelId,
+            data: &[u8],
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            let command = String::from_utf8_lossy(data).into_owned();
+            lock(&self.seen).exec_commands.push(command.clone());
+
+            if command == REFUSED_COMMAND {
+                return session.channel_failure(channel);
+            }
+
+            session.channel_success(channel)?;
+            if command == DETECT_COMMAND {
+                session.data(channel, b"/usr/bin/bash\n".to_vec())?;
+                session.extended_data(channel, 1, b"motd noise\n".to_vec())?;
+                finish(session, channel, 0)
+            } else if command.starts_with("sh -lc ") {
+                // The cwd-bootstrap startup command a detected bash gets instead of a plain shell.
+                run_shell(session, channel)
+            } else {
+                // The proxy stand-in: announce itself on stdout, warn on stderr, echo stdin until EOF.
+                session.data(channel, b"ready\n".to_vec())?;
+                session.extended_data(channel, 1, b"warn\n".to_vec())
+            }
+        }
+
+        async fn data(
+            &mut self,
+            channel: ChannelId,
+            data: &[u8],
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            {
+                let mut seen = lock(&self.seen);
+                if seen.eof_count > 0 {
+                    seen.data_after_eof = true;
+                }
+                seen.stdin.extend_from_slice(data);
+            }
+            session.data(channel, data.to_vec())
+        }
+
+        async fn channel_eof(
+            &mut self,
+            channel: ChannelId,
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            lock(&self.seen).eof_count += 1;
+            finish(session, channel, 7)
+        }
+    }
+
+    /// Deterministic, like the agent tests' key: uniqueness is irrelevant here.
+    fn host_key() -> ssh_key::PrivateKey {
+        ssh_key::PrivateKey::from(ssh_key::private::Ed25519Keypair::from_seed(&[9u8; 32]))
+    }
+
+    /// Serves one connection on a loopback port, on its own thread and runtime: the client's
+    /// worker blocks its thread on prompts, and a shared runtime would starve the server.
+    fn start_server() -> (u16, SeenLog) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("loopback must bind");
+        let port = listener.local_addr().expect("bound address").port();
+        listener
+            .set_nonblocking(true)
+            .expect("tokio needs a non-blocking listener");
+        let seen = SeenLog::default();
+        let handler = TestServer { seen: seen.clone() };
+
+        thread::spawn(move || {
+            let runtime = Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("server runtime");
+            runtime.block_on(async move {
+                let listener = tokio::net::TcpListener::from_std(listener).expect("tokio listener");
+                let Ok((stream, _)) = listener.accept().await else {
+                    return;
+                };
+                let config = Arc::new(russh::server::Config {
+                    keys: vec![host_key()],
+                    ..Default::default()
+                });
+                if let Ok(running) = russh::server::run_stream(config, stream, handler).await {
+                    let _ = running.await;
+                }
+            });
+        });
+
+        (port, seen)
+    }
+
+    fn loopback_args(
+        host: &CString,
+        user: &CString,
+        port: u16,
+        shell_detection_command: &CString,
+        bash_cwd_bootstrap: &CString,
+    ) -> NovaSshConnectArgs {
+        NovaSshConnectArgs {
+            host: host.as_ptr(),
+            user: user.as_ptr(),
+            port,
+            cols: 80,
+            rows: 24,
+            term: ptr::null(),
+            identity_file: ptr::null(),
+            jump_hops_json: ptr::null(),
+            keepalive_interval_seconds: 0,
+            keepalive_count_max: 0,
+            remote_shell_kind: 0,
+            shell_detection_command: shell_detection_command.as_ptr(),
+            bash_cwd_bootstrap: bash_cwd_bootstrap.as_ptr(),
+            zsh_cwd_bootstrap: ptr::null(),
+            fish_cwd_bootstrap: ptr::null(),
+            use_agent: 0,
+        }
+    }
+
+    #[derive(Debug)]
+    struct Recorded {
+        kind: u32,
+        payload: Vec<u8>,
+        status_code: i32,
+        flags: u32,
+    }
+
+    fn respond(handle: usize, kind: NovaSshResponseKind, payload: &[u8]) {
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_submit_response(handle, kind as u32, payload.as_ptr(), payload.len())
+        );
+    }
+
+    /// Polls `handle` until Closed, as the managed poll loop does: accepts the host key, answers
+    /// the password prompt, and shows every event to `on_event` before recording it.
+    fn drive(handle: usize, mut on_event: impl FnMut(&Recorded)) -> Vec<Recorded> {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let mut buffer = vec![0u8; 64 * 1024];
+        let mut events: Vec<Recorded> = Vec::new();
+        loop {
+            assert!(
+                Instant::now() < deadline,
+                "the session must reach Closed; got {events:?}"
+            );
+
+            let mut header = NovaSshEvent::default();
+            let rc = nova_ssh_poll_event(handle, &mut header, buffer.as_mut_ptr(), buffer.len());
+            if rc == NOVA_SSH_RESULT_OK {
+                thread::sleep(Duration::from_millis(2));
+                continue;
+            }
+            assert_eq!(NOVA_SSH_RESULT_EVENT_READY, rc);
+
+            let event = Recorded {
+                kind: header.kind,
+                payload: buffer[..header.payload_len as usize].to_vec(),
+                status_code: header.status_code,
+                flags: header.flags,
+            };
+            if event.kind == NovaSshEventKind::HostKeyPrompt as u32 {
+                respond(
+                    handle,
+                    NovaSshResponseKind::HostKeyDecision,
+                    br#"{"accept":true}"#,
+                );
+            } else if event.kind == NovaSshEventKind::PasswordPrompt as u32 {
+                let answer = format!(r#"{{"text":"{PASSWORD}"}}"#);
+                respond(handle, NovaSshResponseKind::Password, answer.as_bytes());
+            }
+
+            on_event(&event);
+            let closed = event.kind == NovaSshEventKind::Closed as u32;
+            events.push(event);
+            if closed {
+                return events;
+            }
+        }
+    }
+
+    fn payloads_of(events: &[Recorded], kind: NovaSshEventKind) -> Vec<u8> {
+        events
+            .iter()
+            .filter(|event| event.kind == kind as u32)
+            .flat_map(|event| event.payload.clone())
+            .collect()
+    }
+
+    fn has(events: &[Recorded], kind: NovaSshEventKind) -> bool {
+        events.iter().any(|event| event.kind == kind as u32)
+    }
+
+    #[test]
+    fn exec_session_round_trips_stdin_stdout_stderr_and_the_exit_status() {
+        let (port, seen) = start_server();
+        let host = CString::new("127.0.0.1").unwrap();
+        let user = CString::new("tester").unwrap();
+        // Set on purpose: exec mode must not run shell detection even when it is configured.
+        let detect = CString::new(DETECT_COMMAND).unwrap();
+        let bootstrap = CString::new("echo boot").unwrap();
+        let args = loopback_args(&host, &user, port, &detect, &bootstrap);
+        let command = CString::new(PROXY_COMMAND).unwrap();
+
+        let handle = nova_ssh_exec(&args, command.as_ptr());
+        assert_ne!(0, handle);
+
+        let mut stdout = Vec::new();
+        let mut eof_sent = false;
+        let events = drive(handle, |event| {
+            if event.kind == NovaSshEventKind::Connected as u32 {
+                assert_eq!(
+                    NOVA_SSH_RESULT_OK,
+                    nova_ssh_write(handle, b"ping\n".as_ptr(), 5)
+                );
+            } else if event.kind == NovaSshEventKind::Data as u32 {
+                stdout.extend_from_slice(&event.payload);
+                if !eof_sent && stdout.ends_with(b"ping\n") {
+                    eof_sent = true;
+                    assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_send_eof(handle));
+                    // The follow-ups race the worker finishing the session (the server answers
+                    // the first EOF by closing), so CLOSED is as acceptable as OK. What they must
+                    // not do is reach the wire: the server's log below says so.
+                    let again = nova_ssh_send_eof(handle);
+                    assert!(matches!(again, NOVA_SSH_RESULT_OK | NOVA_SSH_RESULT_CLOSED));
+                    let late = nova_ssh_write(handle, b"late".as_ptr(), 4);
+                    assert!(matches!(late, NOVA_SSH_RESULT_OK | NOVA_SSH_RESULT_CLOSED));
+                }
+            }
+        });
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert_eq!(
+            b"ready\nping\n".to_vec(),
+            stdout,
+            "stdout is Data, with no stderr in it"
+        );
+        for event in events
+            .iter()
+            .filter(|event| event.kind == NovaSshEventKind::ExtendedData as u32)
+        {
+            assert_eq!(1, event.status_code);
+            assert_eq!(NOVA_SSH_EVENT_FLAG_BINARY, event.flags);
+        }
+        assert_eq!(
+            b"warn\n".to_vec(),
+            payloads_of(&events, NovaSshEventKind::ExtendedData)
+        );
+
+        let exit_index = events
+            .iter()
+            .position(|event| event.kind == NovaSshEventKind::ExitStatus as u32)
+            .expect("the exit status must survive arriving after the server's EOF");
+        let exit = &events[exit_index];
+        assert_eq!(7, exit.status_code);
+        assert_eq!(NOVA_SSH_EVENT_FLAG_JSON, exit.flags);
+        assert_eq!(
+            serde_json::json!({ "exit_status": 7 }),
+            serde_json::from_slice::<serde_json::Value>(&exit.payload).unwrap()
+        );
+        assert_eq!(
+            Some(NovaSshEventKind::Closed as u32),
+            events.last().map(|event| event.kind)
+        );
+        assert!(
+            exit_index < events.len() - 1,
+            "ExitStatus is queued before Closed"
+        );
+
+        let seen = lock(&seen);
+        assert_eq!(
+            vec![PROXY_COMMAND.to_owned()],
+            seen.exec_commands,
+            "no shell detection"
+        );
+        assert!(!seen.pty_requested, "exec mode must not request a PTY");
+        assert!(!seen.shell_requested);
+        assert_eq!(b"ping\n".to_vec(), seen.stdin);
+        assert_eq!(
+            1, seen.eof_count,
+            "EOF goes out once however often it is asked for"
+        );
+        assert!(
+            !seen.data_after_eof,
+            "stdin written after EOF must be dropped"
+        );
+    }
+
+    /// The shell path through the same server: detect_login_shell, now over run_exec_collect,
+    /// still reads the login shell (the bash startup command proves it), and the PTY session
+    /// keeps stderr in its Data stream.
+    #[test]
+    fn shell_session_detects_its_shell_over_exec_and_never_emits_the_exec_only_kind() {
+        let (port, seen) = start_server();
+        let host = CString::new("127.0.0.1").unwrap();
+        let user = CString::new("tester").unwrap();
+        let detect = CString::new(DETECT_COMMAND).unwrap();
+        let bootstrap = CString::new("echo boot").unwrap();
+        let args = loopback_args(&host, &user, port, &detect, &bootstrap);
+
+        let handle = nova_ssh_connect(&args);
+        assert_ne!(0, handle);
+        let events = drive(handle, |_| {});
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::ExtendedData), "{events:?}");
+        assert_eq!(
+            b"prompt$ oops\n".to_vec(),
+            payloads_of(&events, NovaSshEventKind::Data)
+        );
+
+        let seen = lock(&seen);
+        assert!(seen.pty_requested);
+        assert_eq!(2, seen.exec_commands.len(), "{:?}", seen.exec_commands);
+        assert_eq!(DETECT_COMMAND, seen.exec_commands[0]);
+        assert!(
+            seen.exec_commands[1].contains("exec bash --rcfile"),
+            "detection must have read bash: {:?}",
+            seen.exec_commands[1]
+        );
+    }
+
+    #[test]
+    fn a_refused_exec_fails_the_session_with_an_error_before_closed() {
+        let (port, _seen) = start_server();
+        let host = CString::new("127.0.0.1").unwrap();
+        let user = CString::new("tester").unwrap();
+        let detect = CString::new(DETECT_COMMAND).unwrap();
+        let bootstrap = CString::new("echo boot").unwrap();
+        let args = loopback_args(&host, &user, port, &detect, &bootstrap);
+        let command = CString::new(REFUSED_COMMAND).unwrap();
+
+        let handle = nova_ssh_exec(&args, command.as_ptr());
+        assert_ne!(0, handle);
+        let events = drive(handle, |_| {});
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+
+        let error = events
+            .iter()
+            .find(|event| event.kind == NovaSshEventKind::Error as u32)
+            .expect("a refused command must surface as an Error event");
+        let message = String::from_utf8_lossy(&error.payload);
+        assert!(message.contains("refused"), "{message}");
+        assert!(!has(&events, NovaSshEventKind::ExitStatus));
+        assert_eq!(
+            Some(NovaSshEventKind::Closed as u32),
+            events.last().map(|event| event.kind)
+        );
     }
 }
