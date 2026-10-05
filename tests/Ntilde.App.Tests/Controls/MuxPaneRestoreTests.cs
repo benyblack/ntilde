@@ -75,7 +75,7 @@ public sealed class MuxPaneRestoreTests : IDisposable
         _pane.MuxSessionIdToRestore = id;
         _pane.MuxAttachSharedToRestore = shared;
         _pane.MuxAdoptedOrphan = adoptedOrphan;
-        _pane.PersistenceNotice += (_, title, message) => notices.Add((title, message));
+        _pane.PersistenceNotice += (_, title, message, _) => notices.Add((title, message));
         _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
         _window.Show();
     }
@@ -172,7 +172,7 @@ public sealed class MuxPaneRestoreTests : IDisposable
         var restored = Assert.IsType<TerminalPane>(Ntilde.Shell.SessionManager.RestorePaneTree(node, new TerminalSettings()));
         PaneSpawnTestHelpers.DisableShellIntegration(restored);
         restored.SessionFactory = _factory;
-        restored.PersistenceNotice += (_, title, message) => notices.Add((title, message));
+        restored.PersistenceNotice += (_, title, message, _) => notices.Add((title, message));
         _pane = restored;
         _window = new Avalonia.Controls.Window { Content = restored, Width = 900, Height = 500 };
         _window.Show();

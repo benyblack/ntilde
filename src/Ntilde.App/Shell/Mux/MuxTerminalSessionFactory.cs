@@ -1,33 +1,54 @@
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Daemon;
+using Ntilde.Platform.Ssh.Models;
 using Ntilde.Pty;
+using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Shell.Mux;
 
 /// <summary>
-/// Local panes → a session in the daemon (spawned, or reopened by id); SSH → <see cref="_fallback"/>.
+/// Local panes → a session in the local daemon (spawned, or reopened by id). SSH panes whose profile
+/// persists remote sessions (<see cref="SshMuxOptions.PersistRemoteSessions"/>) → a session in that
+/// profile's remote daemon (Phase 4 spec §7.5). Every other SSH pane → <see cref="_fallback"/>.
 /// Returns the MuxClientSession UNATTACHED: the pane attaches after wiring its handlers, so no
 /// snapshot can be missed (spec §7). Never throws for a daemon problem: a new pane falls back to a
-/// normal local session (<see cref="PersistentSessionOutcome.Unavailable"/>); a pane reopening a
-/// daemon session gets no session at all (<see cref="PersistentSessionOutcome.DaemonUnreachable"/>),
-/// because its shell is still in the daemon and a stand-in local shell would lose it.
+/// normal session - a local shell, or for a remote endpoint a plain SSH session
+/// (<see cref="PersistentSessionOutcome.Unavailable"/>); a pane reopening a daemon session gets no
+/// session at all (<see cref="PersistentSessionOutcome.DaemonUnreachable"/>), because its shell is
+/// still in the daemon and a stand-in would lose it.
 /// Every result that names a daemon session carries its <see cref="MuxEndpointId"/> (Phase 4 spec §5),
-/// which the pane persists as PaneNode.MuxEndpoint.
+/// which the pane persists as PaneNode.MuxEndpoint; a remote endpoint's results also carry its host's
+/// name and, when the connect failed, its classified failure.
 /// </summary>
 internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 {
     private readonly ITerminalSessionFactory _fallback;
+    private readonly Func<Guid, SshProfile?> _resolveProfile;
     private readonly Action<string>? _log;
     private readonly TimeSpan? _connectTimeout; // set: overrides every host's policy (tests)
     private readonly TimeSpan? _rpcTimeout;     // set: overrides every host's policy (tests)
 
-    public MuxTerminalSessionFactory(MuxConnectionHosts hosts, ITerminalSessionFactory fallback, Action<string>? log)
+    /// <param name="hosts">One connection host per endpoint; the window owns and disposes it.</param>
+    /// <param name="fallback">Serves what no daemon does: a new pane whose daemon failed, and every SSH pane that is not persisted.</param>
+    /// <param name="resolveProfile">
+    /// The SSH profile store's lookup. An SSH request goes to a remote daemon only when its profile has
+    /// <see cref="SshMuxOptions.PersistRemoteSessions"/> (<see cref="RoutesRemote"/>).
+    /// </param>
+    public MuxTerminalSessionFactory(MuxConnectionHosts hosts, ITerminalSessionFactory fallback, Func<Guid, SshProfile?> resolveProfile, Action<string>? log)
     {
         ArgumentNullException.ThrowIfNull(hosts);
+        ArgumentNullException.ThrowIfNull(resolveProfile);
         Hosts = hosts;
         _fallback = fallback;
+        _resolveProfile = resolveProfile;
         _log = log;
+    }
+
+    /// <summary>No SSH profile is persisted: every SSH request goes to <paramref name="fallback"/>.</summary>
+    public MuxTerminalSessionFactory(MuxConnectionHosts hosts, ITerminalSessionFactory fallback, Action<string>? log)
+        : this(hosts, fallback, static _ => null, log)
+    {
     }
 
     /// <summary>The local daemon only: a registry with no remote endpoints (existing callers and tests).</summary>
@@ -56,19 +77,67 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
         init => _rpcTimeout = value;
     }
 
-    /// <summary>The plain factory contract has no "no session" answer: an unreachable reopen (or an ended share) falls back here.</summary>
+    /// <summary>
+    /// Whether <paramref name="request"/> goes to a remote daemon (Phase 4 spec §7.4's routing predicate):
+    /// an SSH request whose profile exists and has <see cref="SshMuxOptions.PersistRemoteSessions"/>. Such a
+    /// request may wait minutes for its connection: see <see cref="CreatePersistent"/>.
+    /// </summary>
+    public bool RoutesRemote(TerminalSessionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return request.Ssh is { } ssh && PersistedProfile(ssh.ProfileId) is not null;
+    }
+
+    /// <summary>
+    /// The plain factory contract has no "no session" answer: an unreachable reopen (or an ended share) falls back here.
+    /// As with <see cref="CreatePersistent"/>, a request that <see cref="RoutesRemote"/> must not be made on the UI thread.
+    /// </summary>
     public ITerminalSession Create(TerminalSessionRequest request) => CreatePersistent(request).Session ?? _fallback.Create(request);
 
+    /// <summary>The session for <paramref name="request"/>, and what became of its persistence.</summary>
+    /// <remarks>
+    /// A remote request (<see cref="RoutesRemote"/>) must not be made on the UI thread. It waits for its
+    /// connection for up to the remote host's connect timeout (<see cref="MuxHostPolicy.Remote"/>: two
+    /// minutes, the time a user may take over an SSH password or host-key prompt), and those prompts are
+    /// shown through the UI thread: a UI-thread caller would block the very dialog it waits on until the
+    /// timeout (Phase 4 spec §7.4). A local request waits at most the local daemon's few seconds.
+    /// </remarks>
     public PersistentSessionResult CreatePersistent(TerminalSessionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.Ssh is { } ssh && PersistedProfile(ssh.ProfileId) is { } profile) return CreateRemote(request, ssh.ProfileId, profile);
         if (request.Ssh is not null) return new(_fallback.Create(request), PersistentSessionOutcome.NotPersistent, null, null);
 
         return CreateOn(TargetFor(Hosts.Local, MuxEndpointId.Local), request);
     }
 
-    /// <summary>The endpoint a request goes to, its host, and the waits that host's policy gives it.</summary>
-    private readonly record struct Target(MuxConnectionHost Host, MuxEndpointId Endpoint, TimeSpan ConnectTimeout, TimeSpan RpcTimeout)
+    /// <summary>The profile, when it persists its remote sessions; null when it is gone or does not.</summary>
+    private SshProfile? PersistedProfile(Guid profileId) =>
+        _resolveProfile(profileId) is { MuxOptions.PersistRemoteSessions: true } profile ? profile : null;
+
+    /// <summary>
+    /// Phase 4 spec §7.5: the request goes to its profile's remote daemon, through that endpoint's host -
+    /// built on first use and then shared by every pane of the profile, so they share one connection and
+    /// one set of prompts. Every result names the endpoint and its host.
+    /// </summary>
+    private PersistentSessionResult CreateRemote(TerminalSessionRequest request, Guid profileId, SshProfile profile)
+    {
+        MuxEndpointId endpoint = MuxEndpointId.ForSsh(profileId);
+        if (Hosts.GetOrCreate(endpoint) is not { } host)
+        {
+            // Declined after all: the profile changed since the check above, or the window is closing.
+            _log?.Invoke($"[Mux] no connection for {endpoint}; this SSH session will not persist");
+            return new(_fallback.Create(request), PersistentSessionOutcome.NotPersistent, null, null);
+        }
+
+        return CreateOn(TargetFor(host, endpoint) with { Remote = profile }, request) with { HostDisplayName = host.Policy.DisplayName };
+    }
+
+    /// <summary>
+    /// The endpoint a request goes to, its host, and the waits that host's policy gives it. <see cref="Remote"/>
+    /// is a remote endpoint's SSH profile; null for the local daemon.
+    /// </summary>
+    private readonly record struct Target(MuxConnectionHost Host, MuxEndpointId Endpoint, TimeSpan ConnectTimeout, TimeSpan RpcTimeout, SshProfile? Remote = null)
     {
         public string Name => Endpoint.ToString();
     }
@@ -82,6 +151,13 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
         MuxClient? client = host.GetClient(target.ConnectTimeout);
         if (client is null)
         {
+            if (target.Remote is not null)
+            {
+                // The connect's classified failure (spec §7.1): its kind decides what the notice offers.
+                RemoteMuxFailure? failure = (host.LastFailure as RemoteMuxUnavailableException)?.Failure;
+                return Fallback(target, request, failure?.Reason ?? "ntilde-mux could not be reached") with { RemoteFailure = failure };
+            }
+
             // A daemon of another protocol version is reachable but unusable: say so, and how to fix it.
             if (host.LastFailure is MuxUnavailableException { VersionMismatch: true } mismatch)
             {
@@ -110,7 +186,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                     // fresh one is not what the user chose.
                     if (match is { Faulted: false })
                     {
-                        return new(client.OpenSession(existing, request.Command, request.Arguments, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null)
+                        return new(Open(target, client, existing, request, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null)
                         {
                             AlreadyExited = !match.Running,
                         };
@@ -120,11 +196,22 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                     return new(null, PersistentSessionOutcome.ShareEnded, target.Name, "the shared session has ended");
                 }
 
-                if (match is { Running: true, Faulted: false } && !MuxCommandMatch.SameExecutable(match.Command, request.Command))
+                if (request.ReattachAfterDrop && match is { Running: true, Faulted: false })
+                {
+                    // Phase 4 spec §7.4: the pane is taking back its own session after its connection
+                    // dropped. That dead connection may still hold it (a daemon without the hello's
+                    // eviction keeps it attached until TCP notices), so an exclusive attach would be
+                    // refused by this pane's own ghost. A session gone meanwhile falls through to PreviousLost.
+                    return new(Open(target, client, existing, request, MuxAttachMode.Shared), PersistentSessionOutcome.Reattached, target.Name, null);
+                }
+
+                if (target.Remote is null && match is { Running: true, Faulted: false } && !MuxCommandMatch.SameExecutable(match.Command, request.Command))
                 {
                     // Not this pane's shell (a hand-edited or foreign session file): leave it running
                     // untouched and start what the pane asked for. Nothing was lost, so no banner.
                     // Checked before the IfUnattached attach, so a lost race is only ever over this pane's own shell.
+                    // Local only: a remote session runs the remote default shell, which the GUI never
+                    // knows (Phase 4 spec §7.5).
                     _log?.Invoke($"[Mux] session {existing} runs '{match.Command}', not '{request.Command}'; starting a new shell instead of reattaching");
                     return SpawnFresh(target, client, request, PersistentSessionOutcome.Spawned);
                 }
@@ -136,12 +223,12 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                         // Exclusive by protocol: the attach itself refuses (session_attached) if another
                         // interactive client holds it, decided on the daemon's parse thread (spec §3).
                         // No client-side count check - two instances could both pass one.
-                        return new(client.OpenSession(existing, request.Command, request.Arguments, MuxAttachMode.IfUnattached), PersistentSessionOutcome.Reattached, target.Name, null);
+                        return new(Open(target, client, existing, request, MuxAttachMode.IfUnattached), PersistentSessionOutcome.Reattached, target.Name, null);
                     }
 
                     if (match.AttachedClients == 0)
                     {
-                        return new(client.OpenSession(existing, request.Command, request.Arguments), PersistentSessionOutcome.Reattached, target.Name, null);
+                        return new(Open(target, client, existing, request), PersistentSessionOutcome.Reattached, target.Name, null);
                     }
 
                     // v1: the Phase 2 check. Another client is showing it; leave it there.
@@ -166,19 +253,49 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 
     /// <summary>Spawns the pane's shell in the daemon and opens it (Shared: a new session has no other client).</summary>
     private static PersistentSessionResult SpawnFresh(Target target, MuxClient client, TerminalSessionRequest request, PersistentSessionOutcome outcome) =>
-        new(client.OpenSession(Spawn(target, client, request), request.Command, request.Arguments), outcome, target.Name, null);
+        new(Open(target, client, Spawn(target, client, request), request), outcome, target.Name, null);
 
-    private static Guid Spawn(Target target, MuxClient client, TerminalSessionRequest r) => Rpc(target, ct => client.SpawnAsync(new SpawnParams
-    {
-        Command = r.Command,
-        Arguments = r.Arguments,
-        StartingDirectory = r.StartingDirectory,
-        Cols = r.Cols,
-        Rows = r.Rows,
-        EnvironmentOverrides = r.EnvironmentOverrides,
-        SkipPowerShellPostLaunchInit = r.SkipPowerShellPostLaunchInit,
-        Title = r.Command,
-    }, ct));
+    /// <summary>
+    /// Opens <paramref name="id"/> unattached. Locally the session reports the pane's command line as its
+    /// shell; a remote one runs the remote default shell, which the GUI does not know, so it reports none.
+    /// </summary>
+    private static MuxClientSession Open(Target target, MuxClient client, Guid id, TerminalSessionRequest request, MuxAttachMode mode = MuxAttachMode.Shared) =>
+        target.Remote is null
+            ? client.OpenSession(id, request.Command, request.Arguments, mode)
+            : client.OpenSession(id, string.Empty, null, mode);
+
+    private static Guid Spawn(Target target, MuxClient client, TerminalSessionRequest r) => Rpc(target, ct => client.SpawnAsync(SpawnParamsFor(target, r), ct));
+
+    /// <summary>
+    /// Locally: the pane's own command line, with its shell-integration environment. On a remote daemon
+    /// (Phase 4 spec §7.5): its default login shell (an empty command, spec §3), started in the profile's
+    /// working directory and titled with the profile's name. Nothing of this machine's environment goes
+    /// there - the bootstrap variables name files on this machine. OSC 133 comes from the remote
+    /// shell-integration installer, as for plain SSH, and the daemon sets NTILDE_MUX_SESSION itself (§7.4).
+    /// </summary>
+    private static SpawnParams SpawnParamsFor(Target target, TerminalSessionRequest r) => target.Remote is { } profile
+        ? new SpawnParams
+        {
+            Command = string.Empty,
+            Arguments = string.Empty,
+            StartingDirectory = profile.WorkingDirectory ?? string.Empty, // a profile file may leave it out
+            Cols = r.Cols,
+            Rows = r.Rows,
+            EnvironmentOverrides = null,
+            SkipPowerShellPostLaunchInit = false,
+            Title = profile.Name,
+        }
+        : new SpawnParams
+        {
+            Command = r.Command,
+            Arguments = r.Arguments,
+            StartingDirectory = r.StartingDirectory,
+            Cols = r.Cols,
+            Rows = r.Rows,
+            EnvironmentOverrides = r.EnvironmentOverrides,
+            SkipPowerShellPostLaunchInit = r.SkipPowerShellPostLaunchInit,
+            Title = r.Command,
+        };
 
     /// <summary>Best effort, bounded by the target's RPC timeout: a failure is logged, never thrown.</summary>
     private void KillQuietly(Target target, MuxClient client, Guid id)
@@ -213,18 +330,19 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     }
 
     /// <summary>
-    /// A reopen keeps its id for a retry, and so its endpoint: the pane writes both back. A new pane's
-    /// local fallback shell lives on no endpoint.
+    /// A reopen keeps its id for a retry, and so its endpoint: the pane writes both back. A new pane gets
+    /// the fallback factory's session: for a local request a local shell, which lives on no endpoint; for a
+    /// remote one a plain SSH session, whose result still names the endpoint it was meant for (spec §7.5).
     /// </summary>
     private PersistentSessionResult Fallback(Target target, TerminalSessionRequest request, string why)
     {
         if (request.ExistingMuxSessionId is Guid existing)
         {
-            _log?.Invoke($"[Mux] multiplexer unavailable ({why}); session {existing} is kept for a retry, no local shell started");
+            _log?.Invoke($"[Mux] multiplexer unavailable on {target.Name} ({why}); session {existing} is kept for a retry, no session started");
             return new(null, PersistentSessionOutcome.DaemonUnreachable, target.Name, why);
         }
 
-        _log?.Invoke($"[Mux] multiplexer unavailable ({why}); this session will not persist");
-        return new(_fallback.Create(request), PersistentSessionOutcome.Unavailable, null, why);
+        _log?.Invoke($"[Mux] multiplexer unavailable on {target.Name} ({why}); this session will not persist");
+        return new(_fallback.Create(request), PersistentSessionOutcome.Unavailable, target.Remote is null ? null : target.Name, why);
     }
 }

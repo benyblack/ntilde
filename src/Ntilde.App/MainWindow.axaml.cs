@@ -241,6 +241,7 @@ namespace Ntilde
         private readonly DispatcherTimer _recordingToastTimer = new() { Interval = TimeSpan.FromSeconds(6) };
         private string? _recordingToastFolderPath;
         private string? _recordingToastFilePath;
+        private PersistenceNoticeAction? _recordingToastAction; // UI thread: what the toast's action button runs, while it is shown
         private Ntilde.Update.UpdateCoordinator? _updateCoordinator;
 
         /// <summary>Test seam: installs a coordinator over a fake IUpdateService.</summary>
@@ -4016,6 +4017,12 @@ namespace Ntilde
                 recordingToastOpenFolder.Click += (_, __) => OpenRecordingToastFolder();
             }
 
+            var recordingToastAction = this.FindControl<Button>("RecordingToastAction");
+            if (recordingToastAction != null)
+            {
+                recordingToastAction.Click += (_, __) => RunRecordingToastAction();
+            }
+
             // Global Focus Tracking
             this.AddHandler(GotFocusEvent, (s, e) =>
             {
@@ -4437,6 +4444,20 @@ namespace Ntilde
         internal Func<Ntilde.Shell.Mux.MuxEndpointId, Ntilde.Shell.Mux.MuxConnectionHost?> RemoteMuxHostFactory { get; set; } = _ => null;
 
         /// <summary>
+        /// Opens the ntilde-mux install flow (Phase 4 spec §9) for an SSH profile's id. Null until the install
+        /// dialog exists (Task 23); while it is null, no notice offers an install or update.
+        /// </summary>
+        internal Action<Guid>? OpenRemoteMuxInstall { get; set; }
+
+        /// <summary>
+        /// The action a persisted SSH tab's notice offers for <paramref name="failure"/> (spec §7.5): the install
+        /// flow for <paramref name="profileId"/> when ntilde-mux is missing or outdated, and only while
+        /// <see cref="OpenRemoteMuxInstall"/> is set; otherwise null.
+        /// </summary>
+        internal PersistenceNoticeAction? RemoteMuxNoticeAction(Ntilde.Shell.Mux.Remote.RemoteMuxFailure? failure, Guid profileId) =>
+            PersistenceNoticeAction.ForRemoteFailure(failure, profileId, OpenRemoteMuxInstall);
+
+        /// <summary>
         /// The production <see cref="RemoteMuxHostFactory"/> (Phase 4 spec §7.1): the profile from the SSH
         /// store, and per attempt a transport by the profile's backend - OpenSSH from its launch plan with
         /// the askpass helper (batch mode for automatic attempts), or native with this window's prompts.
@@ -4844,11 +4865,14 @@ namespace Ntilde
         // UI thread: notices raised since the coalesced toast was posted, keyed by title, in arrival order.
         private readonly List<(string Title, string Message, int Count)> _pendingPersistenceNotices = [];
 
+        // UI thread: the last action raised with those notices; the merged toast offers it (Phase 4 spec §7.5).
+        private PersistenceNoticeAction? _pendingNoticeAction;
+
         /// <summary>
         /// A pane's session will not persist, or replaced a lost one. Shown as a toast rather than
-        /// written into the pane (its shell paints over local text).
+        /// written into the pane (its shell paints over local text), with the notice's action, if any.
         /// </summary>
-        private void OnPanePersistenceNotice(TerminalPane pane, string title, string message)
+        private void OnPanePersistenceNotice(TerminalPane pane, string title, string message, PersistenceNoticeAction? action)
         {
             _ = pane;
             // Every pane that falls back raises it, and so does each retry after the connection
@@ -4859,7 +4883,7 @@ namespace Ntilde
                 _muxOrphanedNoticeShown = true;
             }
 
-            EnqueueNotice(title, message);
+            EnqueueNotice(title, message, action);
         }
 
         private bool _muxOrphanedNoticeShown; // UI thread
@@ -4867,10 +4891,12 @@ namespace Ntilde
         /// <summary>
         /// UI thread. The one way a session notice reaches the toast: everything raised together - panes
         /// restoring after a daemon crash, startup adoption, the detached-shells reminder - merges into
-        /// one toast, one line per kind, instead of each ShowRecordingToast replacing the last.
+        /// one toast, one line per kind, instead of each ShowRecordingToast replacing the last. The toast
+        /// has one action button, so the merged toast offers the last non-null <paramref name="action"/>.
         /// </summary>
-        internal void EnqueueNotice(string title, string message)
+        internal void EnqueueNotice(string title, string message, PersistenceNoticeAction? action = null)
         {
+            if (action is not null) _pendingNoticeAction = action;
             int index = _pendingPersistenceNotices.FindIndex(n => n.Title == title);
             bool first = _pendingPersistenceNotices.Count == 0;
             if (index < 0) _pendingPersistenceNotices.Add((title, message, 1));
@@ -4890,12 +4916,16 @@ namespace Ntilde
             if (_pendingPersistenceNotices.Count == 0) return;
             List<(string Title, string Message, int Count)> notices = [.. _pendingPersistenceNotices];
             _pendingPersistenceNotices.Clear();
+            PersistenceNoticeAction? action = _pendingNoticeAction;
+            _pendingNoticeAction = null;
             if (_teardownDone) return;
 
-            // One toast surface: the most recent kind wins its title, every kind keeps a line.
+            // One toast surface: the most recent kind wins its title, every kind keeps a line. A toast
+            // that offers an action stays until the user takes it or closes it: an offer that vanished
+            // after a few seconds could not be taken at all.
             string title = notices[^1].Title;
             string message = string.Join('\n', notices.Select(n => BuildPersistenceNoticeMessage(n.Title, n.Message, n.Count)));
-            ShowRecordingToast(title, message, filePath: null, folderPath: null, autoHide: true);
+            ShowRecordingToast(title, message, filePath: null, folderPath: null, autoHide: action is null, action);
         }
 
         internal static string BuildPersistenceNoticeMessage(string title, string message, int count)
@@ -9517,7 +9547,11 @@ namespace Ntilde
             return notification.RecordingsDirectory;
         }
 
-        private void ShowRecordingToast(string title, string message, string? filePath, string? folderPath, bool autoHide)
+        /// <param name="action">
+        /// The toast's one generic action button (Phase 4 spec §7.5), shown only when there is one: a
+        /// click hides the toast and runs it. Every toast without one hides the button.
+        /// </param>
+        private void ShowRecordingToast(string title, string message, string? filePath, string? folderPath, bool autoHide, PersistenceNoticeAction? action = null)
         {
             var toast = this.FindControl<Border>("RecordingToast");
             var titleBlock = this.FindControl<TextBlock>("RecordingToastTitle");
@@ -9529,6 +9563,7 @@ namespace Ntilde
 
             _recordingToastFilePath = filePath;
             _recordingToastFolderPath = folderPath;
+            _recordingToastAction = action;
             titleBlock.Text = title;
             messageBlock.Text = message;
 
@@ -9539,6 +9574,13 @@ namespace Ntilde
             if (openFolderButton != null)
             {
                 openFolderButton.IsVisible = folderPath != null || filePath != null;
+            }
+
+            var actionButton = this.FindControl<Button>("RecordingToastAction");
+            if (actionButton != null)
+            {
+                actionButton.Content = action?.Label;
+                actionButton.IsVisible = action != null;
             }
 
             toast.IsVisible = true;
@@ -9553,10 +9595,29 @@ namespace Ntilde
         private void HideRecordingToast()
         {
             _recordingToastTimer.Stop();
+            // A hidden toast offers nothing: a stray click must not run an action it no longer shows.
+            _recordingToastAction = null;
             var toast = this.FindControl<Border>("RecordingToast");
             if (toast != null)
             {
                 toast.IsVisible = false;
+            }
+        }
+
+        /// <summary>UI thread. The toast's action button: the toast goes first, then its action runs.</summary>
+        private void RunRecordingToastAction()
+        {
+            PersistenceNoticeAction? action = _recordingToastAction;
+            HideRecordingToast();
+            if (action is null) return;
+            try
+            {
+                action.Run();
+            }
+            catch (Exception ex)
+            {
+                // A click handler's throw would take the app down; the action's own UI is the place to say more.
+                AppLogger.Log($"[MainWindow] the toast action '{action.Label}' failed: {ex.Message}");
             }
         }
 

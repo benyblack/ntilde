@@ -43,6 +43,12 @@ namespace Ntilde.Pty
     /// session…"), so attach whatever else is attached to it. False (a restore) attaches only if no
     /// other interactive client holds it. Ignored by factories that do not multiplex.
     /// </param>
+    /// <param name="ReattachAfterDrop">
+    /// With <paramref name="ExistingMuxSessionId"/>: the pane's connection to the multiplexer dropped and
+    /// came back, and the pane is reopening the session it was showing. It is opened shared, because the
+    /// pane's own dead connection may still hold it; a session that ended meanwhile is replaced by a fresh
+    /// one. Ignored by factories that do not multiplex.
+    /// </param>
     public sealed record TerminalSessionRequest(
         string Command,
         string Arguments,
@@ -53,7 +59,8 @@ namespace Ntilde.Pty
         bool SkipPowerShellPostLaunchInit,
         SshSessionDescriptor? Ssh,
         Guid? ExistingMuxSessionId = null,
-        bool AttachShared = false);
+        bool AttachShared = false,
+        bool ReattachAfterDrop = false);
 
     /// <summary>
     /// The SSH half of a <see cref="TerminalSessionRequest"/>, kept deliberately opaque.

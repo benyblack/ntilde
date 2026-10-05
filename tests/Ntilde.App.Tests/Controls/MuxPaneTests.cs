@@ -569,7 +569,7 @@ public sealed class MuxPaneTests : IDisposable
     private System.Collections.Generic.List<(string Title, string Message)> RecordNotices()
     {
         var notices = new System.Collections.Generic.List<(string Title, string Message)>();
-        _pane!.PersistenceNotice += (_, title, message) => notices.Add((title, message));
+        _pane!.PersistenceNotice += (_, title, message, _) => notices.Add((title, message));
         return notices;
     }
 

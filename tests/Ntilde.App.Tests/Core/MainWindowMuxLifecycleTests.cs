@@ -410,7 +410,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Dispatcher.UIThread.RunJobs();
 
         for (int i = 0; i < 3; i++)
-            handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+            handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner, null]);
         Dispatcher.UIThread.RunJobs();
 
         (bool visible, string? title, string? message) = Toast(window);
@@ -428,14 +428,14 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         var handler = typeof(MainWindow).GetMethod("OnPanePersistenceNotice", BindingFlags.NonPublic | BindingFlags.Instance)!;
         Dispatcher.UIThread.RunJobs();
 
-        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
-        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner, null]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner, null]);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal((true, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner), Toast(window));
 
         // A later pane (after the connection cooldown, say) raises it again: only the other notice shows.
-        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
-        handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner, null]);
+        handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner, null]);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal((true, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Toast(window));
     }

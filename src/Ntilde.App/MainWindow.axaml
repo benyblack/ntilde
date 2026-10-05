@@ -327,6 +327,11 @@
                             HorizontalAlignment="Right"
                             Margin="0,10,0,0"
                             Spacing="8">
+                    <!-- One generic action (Phase 4 spec 7.5), e.g. "Install ntilde-mux...": label and
+                         visibility are set per toast by ShowRecordingToast, the click is wired in code. -->
+                    <Button Name="RecordingToastAction"
+                            IsVisible="False"
+                            Focusable="False"/>
                     <Button Name="RecordingToastOpenFolder"
                             Content="Open folder"
                             Focusable="False"/>

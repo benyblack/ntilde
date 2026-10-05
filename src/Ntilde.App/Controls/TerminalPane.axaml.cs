@@ -3664,13 +3664,13 @@ namespace Ntilde.Controls
             });
         }
 
-        /// <summary>Posts <see cref="PersistenceNotice"/> to this pane's UI thread.</summary>
-        private void RaisePersistenceNotice(string title, string message)
+        /// <summary>Posts <see cref="PersistenceNotice"/> to this pane's UI thread, with the action its toast offers, if any.</summary>
+        private void RaisePersistenceNotice(string title, string message, PersistenceNoticeAction? action = null)
         {
             this.Dispatcher.Post(() =>
             {
                 if (Volatile.Read(ref _disposed)) return;
-                PersistenceNotice?.Invoke(this, title, message);
+                PersistenceNotice?.Invoke(this, title, message, action);
             });
         }
 
@@ -3713,6 +3713,19 @@ namespace Ntilde.Controls
         internal const string MuxShareEndedBanner = "[The shell you chose has ended]";
         internal const string MuxShareEndedNoticeTitle = "Attach to session";
         internal const string MuxAdoptionLostBanner = "[This shell is open in another window — press Enter to start a new shell]";
+
+        /// <summary>Phase 4 spec §7.5: a persisted SSH tab whose remote ntilde-mux could not be used.</summary>
+        internal const string RemoteMuxUnavailableNoticeTitle = "Persistent SSH unavailable";
+
+        /// <summary>The notice's action when the remote has no ntilde-mux (<c>RemoteFailureKind.NotInstalled</c>).</summary>
+        internal const string RemoteMuxInstallActionLabel = "Install ntilde-mux\u2026";
+
+        /// <summary>The notice's action when the remote ntilde-mux speaks another protocol (<c>RemoteFailureKind.VersionMismatch</c>).</summary>
+        internal const string RemoteMuxUpdateActionLabel = "Update ntilde-mux\u2026";
+
+        /// <summary>The <see cref="RemoteMuxUnavailableNoticeTitle"/> notice's line: the host the tab is on, and why it will not persist.</summary>
+        internal static string RemoteMuxUnavailableMessage(string host, string reason) =>
+            $"[{host}: {reason} \u2014 this tab will not survive a disconnect]";
 
         /// <summary>
         /// Set by startup adoption (spec §9 orphans): this pane was opened only to show an orphaned
@@ -3776,10 +3789,11 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
-        /// Raised on the UI thread with (title, message) when this pane's session will not persist or
-        /// replaced a lost one. MainWindow shows it as a toast (never written into the buffer).
+        /// Raised on the UI thread with (title, message, action) when this pane's session will not persist
+        /// or replaced a lost one. MainWindow shows it as a toast (never written into the buffer); a
+        /// non-null action is the toast's button (Phase 4 spec §7.5: "Install ntilde-mux…").
         /// </summary>
-        internal event Action<TerminalPane, string, string>? PersistenceNotice;
+        internal event Action<TerminalPane, string, string, PersistenceNoticeAction?>? PersistenceNotice;
 
         /// <summary>Set by SessionManager.RestorePaneTree: the daemon session this pane should reopen (consumed once).</summary>
         internal Guid? MuxSessionIdToRestore { get; set; }
@@ -3924,13 +3938,13 @@ namespace Ntilde.Controls
                     if (previousLost)
                     {
                         TerminalLogger.Log($"[TerminalPane] previous multiplexer session was lost; started {mux.Id}");
-                        PersistenceNotice?.Invoke(this, MuxPreviousLostNoticeTitle, MuxPreviousLostBanner);
+                        PersistenceNotice?.Invoke(this, MuxPreviousLostNoticeTitle, MuxPreviousLostBanner, null);
                     }
 
                     if (_muxAttachedElsewhereNotice)
                     {
                         _muxAttachedElsewhereNotice = false;
-                        PersistenceNotice?.Invoke(this, MuxAttachedElsewhereNoticeTitle, MuxAttachedElsewhereBanner);
+                        PersistenceNotice?.Invoke(this, MuxAttachedElsewhereNoticeTitle, MuxAttachedElsewhereBanner, null);
                     }
 
                     MuxAdoptedOrphan = false; // it is this pane's shell now
