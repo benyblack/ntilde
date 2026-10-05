@@ -584,7 +584,7 @@ public sealed class NewSshConnectionViewModelTests
     [InlineData("", "0.11.0", "ntilde-mux not installed")]
     [InlineData("0.11.0", "0.11.0", "ntilde-mux 0.11.0 installed")]
     [InlineData("0.11.0", "0.11.0+abc123", "ntilde-mux 0.11.0 installed")]
-    [InlineData("0.10.0", "0.11.0+abc123", "ntilde-mux 0.10.0 installed — this app is 0.11.0")]
+    [InlineData("0.10.0", "0.11.0+abc123", "ntilde-mux 0.10.0 installed \u2014 this app is 0.11.0")]
     public void RemoteMuxStatusText_Describe(string installed, string app, string expected)
     {
         Assert.Equal(expected, Ntilde.Shell.Mux.RemoteMuxStatusText.Describe(installed, app));
@@ -598,7 +598,7 @@ public sealed class NewSshConnectionViewModelTests
 
         vm.RemoteDaemonVersion = "0.10.0";
 
-        Assert.Equal("ntilde-mux 0.10.0 installed — this app is 0.11.0", vm.RemoteDaemonStatusText);
+        Assert.Equal("ntilde-mux 0.10.0 installed \u2014 this app is 0.11.0", vm.RemoteDaemonStatusText);
         Assert.False(vm.InstallRemoteMuxCommand.CanExecute(null));
     }
 

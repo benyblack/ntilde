@@ -15,7 +15,7 @@ public static class RemoteMuxStatusText
         }
 
         string app = StripBuildMetadata(appVersion);
-        return string.Equals(installed, app, StringComparison.Ordinal)
+        return app.Length == 0 || string.Equals(installed, app, StringComparison.Ordinal)
             ? $"ntilde-mux {installed} installed"
             : $"ntilde-mux {installed} installed — this app is {app}";
     }

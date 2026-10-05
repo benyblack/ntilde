@@ -167,7 +167,7 @@
                         <CheckBox IsChecked="{Binding PersistRemoteSessions}"
                                   Content="Keep remote sessions running (ntilde-mux)" />
                         <TextBlock Text="{Binding RemoteDaemonStatusText}" Opacity="0.7" TextWrapping="Wrap" />
-                        <Button Content="Install ntilde-mux on this host…"
+                        <Button Content="Install ntilde-mux on this host&#x2026;"
                                 Command="{Binding InstallRemoteMuxCommand}"
                                 HorizontalAlignment="Left" />
                     </StackPanel>

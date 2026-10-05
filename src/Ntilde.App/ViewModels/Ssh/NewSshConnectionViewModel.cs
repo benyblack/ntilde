@@ -1,5 +1,4 @@
 using Ntilde.Shell;
-using Ntilde.Shell.Mux;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,9 +6,10 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Windows.Input;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using Ntilde.Platform;
+using Ntilde.Shell.Mux;
 using Ntilde.VT;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
