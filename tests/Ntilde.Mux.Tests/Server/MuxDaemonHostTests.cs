@@ -226,6 +226,46 @@ public sealed class MuxDaemonHostTests : IDisposable
     }
 
     [Fact]
+    public void Repair_does_not_overwrite_a_descriptor_written_meanwhile_when_it_was_missing()
+    {
+        using Process self = Process.GetCurrentProcess();
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var (host, _, o) = NewHost(log: log.Enqueue, tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        File.Delete(o.DescriptorPath);
+        host.BeforeDescriptorWriteForTest = () => MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "foreign", Pid = Environment.ProcessId + 100_000, ProcessName = self.ProcessName, MinVersion = 1, MaxVersion = 2,
+        });
+
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal("foreign", d.Endpoint);
+        Assert.Single(log, line => line.Contains("descriptor written by another daemon meanwhile; leaving it", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Repair_does_not_overwrite_a_descriptor_changed_meanwhile_when_it_named_a_dead_pid()
+    {
+        var (host, _, o) = NewHost(tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "stale", Pid = Environment.ProcessId + 100_000, ProcessName = "not-running", MinVersion = 1, MaxVersion = 2,
+        });
+        host.BeforeDescriptorWriteForTest = () => MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "newer", Pid = Environment.ProcessId + 100_001, ProcessName = "not-running", MinVersion = 1, MaxVersion = 2,
+        });
+
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal("newer", d.Endpoint);
+    }
+
+    [Fact]
     public void A_descriptor_naming_a_dead_pid_is_rewritten()
     {
         var log = new System.Collections.Concurrent.ConcurrentQueue<string>();

@@ -97,8 +97,19 @@ public static class MuxDiscovery
         }
     }
 
-    public static bool TryReadDescriptor(string path, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor)
+    public static bool TryReadDescriptor(string path, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor) =>
+        TryReadDescriptorText(path, out _, out descriptor);
+
+    /// <summary>
+    /// <see cref="TryReadDescriptor"/> that also hands back the raw file text it parsed, so a caller
+    /// that decides from the descriptor can later replace it only if the text is still that exact
+    /// text (<see cref="TryReplaceDescriptorIfUnchanged"/>). <paramref name="text"/> is null when the
+    /// file is missing or unreadable, and set (even when the result is false) when the file was read
+    /// but did not parse to a usable descriptor.
+    /// </summary>
+    public static bool TryReadDescriptorText(string path, out string? text, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor)
     {
+        text = null;
         descriptor = null;
         try
         {
@@ -111,7 +122,8 @@ public static class MuxDiscovery
             // Unix unlink/rename ignore open handles, so this is a no-op there.
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = new StreamReader(stream);
-            descriptor = JsonSerializer.Deserialize(reader.ReadToEnd(), MuxJsonContext.Default.MuxEndpointDescriptor);
+            text = reader.ReadToEnd();
+            descriptor = JsonSerializer.Deserialize(text, MuxJsonContext.Default.MuxEndpointDescriptor);
             return descriptor is { Endpoint.Length: > 0 };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -119,6 +131,56 @@ public static class MuxDiscovery
             descriptor = null;
             return false;
         }
+    }
+
+    /// <summary>
+    /// Writes the descriptor only if nothing is at <paramref name="path"/>: a temp file, then a move
+    /// that refuses to overwrite. False (temp deleted) when another writer got there first.
+    /// </summary>
+    public static bool TryWriteDescriptorIfAbsent(string path, MuxEndpointDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        string dir = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        CreatePrivateDirectory(dir);
+        string temp = Path.Combine(dir, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllText(temp, JsonSerializer.Serialize(descriptor, MuxJsonContext.Default.MuxEndpointDescriptor));
+            File.Move(temp, path, overwrite: false);
+            return true;
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            DeleteQuietly(temp);
+            return false;
+        }
+        catch
+        {
+            DeleteQuietly(temp);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Replaces the descriptor only if the file still holds exactly <paramref name="expectedContent"/>
+    /// (re-read with the same share flags as <see cref="TryReadDescriptor"/>). False when it changed
+    /// or vanished meanwhile. A narrow compare-then-swap, not a lock: it shrinks the window between
+    /// a caller's judgement and its write down to this re-read.
+    /// </summary>
+    public static bool TryReplaceDescriptorIfUnchanged(string path, string expectedContent, MuxEndpointDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(expectedContent);
+        TryReadDescriptorText(path, out string? now, out _);
+        if (now is null || !string.Equals(now, expectedContent, StringComparison.Ordinal)) return false;
+        WriteDescriptor(path, descriptor);
+        return true;
+    }
+
+    private static void DeleteQuietly(string temp)
+    {
+        try { File.Delete(temp); }
+        catch (IOException) { /* best effort: a leftover .tmp is harmless */ }
+        catch (UnauthorizedAccessException) { /* best effort, as above */ }
     }
 
     /// <summary>Readable, and its pid is alive under the recorded process name and start time (guards pid reuse).</summary>

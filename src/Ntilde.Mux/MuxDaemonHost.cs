@@ -136,7 +136,7 @@ public sealed class MuxDaemonHost : IDisposable
     /// </summary>
     private void EnsureDescriptor()
     {
-        bool readable = MuxDiscovery.TryReadDescriptor(_options.DescriptorPath, out MuxEndpointDescriptor? current);
+        bool readable = MuxDiscovery.TryReadDescriptorText(_options.DescriptorPath, out string? currentText, out MuxEndpointDescriptor? current);
         if (readable && current!.Pid == _options.Pid)
         {
             _foreignDescriptorPid = 0;
@@ -164,7 +164,19 @@ public sealed class MuxDaemonHost : IDisposable
             else UnixSocketMuxListener.EnsurePrivateDirectory(dir);
         }
 
-        MuxDiscovery.WriteDescriptor(_options.DescriptorPath, CreateDescriptor());
+        // Another daemon (or a tool) may write the descriptor between the judgement above and here:
+        // create-new for a missing file, compare-then-replace for a stale one, never a blind overwrite.
+        BeforeDescriptorWriteForTest?.Invoke();
+        MuxEndpointDescriptor mine = CreateDescriptor();
+        bool wrote = currentText is null
+            ? MuxDiscovery.TryWriteDescriptorIfAbsent(_options.DescriptorPath, mine)
+            : MuxDiscovery.TryReplaceDescriptorIfUnchanged(_options.DescriptorPath, currentText, mine);
+        if (!wrote)
+        {
+            Log("[Mux] descriptor written by another daemon meanwhile; leaving it");
+            return;
+        }
+
         Log(readable
             ? $"[MuxDaemon] the descriptor named pid {current!.Pid}, not this daemon; rewrote it"
             : "[MuxDaemon] descriptor was missing; rewrote it");
@@ -227,6 +239,9 @@ public sealed class MuxDaemonHost : IDisposable
         && _server.ConnectionCount == 0;
 
     internal void TickForTest() => Tick();
+
+    /// <summary>Test seam: runs between EnsureDescriptor's decision to repair and its write.</summary>
+    internal Action? BeforeDescriptorWriteForTest { get; set; }
 
     private void Tick()
     {
