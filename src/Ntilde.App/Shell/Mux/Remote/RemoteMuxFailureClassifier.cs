@@ -24,7 +24,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 126 → <see cref="RemoteFailureKind.Unsupported"/>, with the last stderr line;</item>
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
-/// exits only 0, 1, 2 or 3 (spec §8.1) and a shell that cannot run it exits 126 or 127;</item>
+/// exits only 0, 1, 2 or 3 (spec §8.1) and a shell that cannot run it exits 126 or 127. For an automatic
+/// attempt, a refusal (<c>Permission denied</c>) is <see cref="RemoteFailureKind.NeedsUser"/> instead, with
+/// the same reason: in batch mode ssh tried only what needs no answer, so signing in needs the user;</item>
 /// <item>anything else → <see cref="RemoteFailureKind.ProxyFailed"/>, with the exception's message
 /// (the handshake's carries what the remote side printed) and the last stderr line, where the proxy
 /// reports a daemon it could not reach.</item>
@@ -44,7 +46,8 @@ internal static class RemoteMuxFailureClassifier
     /// <param name="stderr">The channel's stderr tail.</param>
     /// <param name="error">What the attempt ended with.</param>
     /// <param name="host">The host, for the version-mismatch reason (<c>user@host</c>).</param>
-    public static RemoteMuxFailure Classify(int? exitCode, string capturedStdout, string stderr, Exception? error, string? host = null)
+    /// <param name="automatic">The attempt was automatic: nobody could be asked, and OpenSSH ran in batch mode.</param>
+    public static RemoteMuxFailure Classify(int? exitCode, string capturedStdout, string stderr, Exception? error, string? host = null, bool automatic = false)
     {
         capturedStdout ??= string.Empty;
         stderr ??= string.Empty;
@@ -79,7 +82,10 @@ internal static class RemoteMuxFailureClassifier
 
         if (exitCode == 255)
         {
-            return new RemoteMuxFailure(RemoteFailureKind.SshFailed, Quote(lastStderrLine ?? "ssh exited with code 255"));
+            // Batch mode tried keys and the agent only; refused, it is a password or a passphrase away, which
+            // only the user can give. Retrying on a timer would only knock again (Task 20 ruling).
+            bool refused = automatic && Lines(stderr).Any(line => line.Contains("Permission denied", StringComparison.Ordinal));
+            return new RemoteMuxFailure(refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed, Quote(lastStderrLine ?? "ssh exited with code 255"));
         }
 
         string reason = error?.Message is { Length: > 0 } errorMessage ? errorMessage : "The ntilde-mux proxy failed";

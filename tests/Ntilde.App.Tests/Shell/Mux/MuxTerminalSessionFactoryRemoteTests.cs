@@ -299,6 +299,7 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     [InlineData(nameof(RemoteFailureKind.Unsupported), null)]
     [InlineData(nameof(RemoteFailureKind.SshFailed), null)]
     [InlineData(nameof(RemoteFailureKind.ProxyFailed), null)]
+    [InlineData(nameof(RemoteFailureKind.NeedsUser), null)]
     public void Only_a_missing_or_outdated_ntilde_mux_offers_an_action(string kind, string? label)
     {
         var failure = new RemoteMuxFailure(Enum.Parse<RemoteFailureKind>(kind), "why");
@@ -343,6 +344,59 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Assert.Null(_fallback.LastRequest);
         Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
         Assert.NotNull(r.Detail);
+    }
+
+    /// <summary>
+    /// Task 20's ruling: signing in needed an answer nobody gave (no window to ask through here). Like an
+    /// SSH failure, a plain SSH session would only ask again: no session, and the pane offers a retry.
+    /// </summary>
+    [Fact]
+    public void A_new_tab_whose_sign_in_needs_the_user_shows_a_retry_not_plain_ssh()
+    {
+        MuxConnectionHosts hosts = Own(new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, request) =>
+        {
+            _remote.OnStart = _ =>
+            {
+                try
+                {
+                    request.Prompts.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
+                }
+                catch (RemoteMuxPromptAbortedException ex)
+                {
+                    // As the native channel does: the session closes without answering.
+                    _remote.Script = FakeRemoteScript.NativeFailure($"the native session failed: {ex.Message}");
+                }
+            };
+            return _remote;
+        }, log: null)));
+        var factory = new MuxTerminalSessionFactory(hosts, _fallback, Resolve, log: null);
+
+        PersistentSessionResult r = factory.CreatePersistent(Ssh());
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Null(_fallback.LastRequest);
+        Assert.Equal(RemoteFailureKind.NeedsUser, r.RemoteFailure!.Kind);
+        Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
+    }
+
+    /// <summary>
+    /// Task 20's ruling: an attempt that does not finish is unclassified even after an earlier one failed
+    /// classified - a blackholed host must not be reported as the earlier attempt's missing binary.
+    /// </summary>
+    [Fact]
+    public void A_new_tab_whose_connect_does_not_finish_after_a_classified_failure_shows_a_retry()
+    {
+        _remote.Script = FakeRemoteScript.NotInstalledDash;
+        Assert.Equal(PersistentSessionOutcome.Unavailable, _factory.CreatePersistent(Ssh()).Outcome);
+        _remote.Script = FakeRemoteScript.Silent;
+        var factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null) { ConnectTimeout = TimeSpan.FromMilliseconds(300) };
+
+        PersistentSessionResult r = factory.CreatePersistent(Ssh());
+
+        Assert.Equal(PersistentSessionOutcome.DaemonUnreachable, r.Outcome);
+        Assert.Null(r.Session);
+        Assert.Null(r.RemoteFailure);
     }
 
     [Fact]

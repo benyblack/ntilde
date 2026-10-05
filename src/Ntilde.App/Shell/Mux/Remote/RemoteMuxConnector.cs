@@ -226,16 +226,16 @@ internal sealed class RemoteMuxConnector : IDisposable
         }
 
         string captured = (error as MuxProxyHandshakeException)?.CapturedText ?? string.Empty;
-        RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, captured, channel.Channel.StderrTail, error, host);
+        RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, captured, channel.Channel.StderrTail, error, host, automatic: !prompts.Interactive);
         if (prompts.AbortedPrompt is { } aborted)
         {
-            // We ended it at auth, rather than send the server an empty answer: a quiet SSH failure that
-            // says why, so the reconnect loop keeps backing off and Enter is the way in.
+            // We ended it at auth, rather than send the server an empty answer: a quiet failure that says
+            // why, marked NeedsUser so the reconnect loop stops instead of knocking again, and Enter is the way in.
             string needs = aborted == SshInteractionKind.KeyboardInteractive ? "keyboard-interactive input" : "a password";
-            failure = new RemoteMuxFailure(RemoteFailureKind.SshFailed, $"signing in to {host} needs {needs}, which an automatic reconnect does not ask for");
+            failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs {needs}, which an automatic reconnect does not ask for");
         }
 
-        if (failure.Kind == RemoteFailureKind.SshFailed)
+        if (failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser)
         {
             // SSH itself failed - auth, or the connection before the command ran - so a remembered
             // secret this attempt offered may be what the server refused: forget it rather than replay

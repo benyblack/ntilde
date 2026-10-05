@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Daemon;
+using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Shell.Mux;
 
@@ -21,8 +22,21 @@ internal readonly record struct MuxConnectAttempt(bool Interactive);
 /// <see cref="GetClient"/> is synchronous because ITerminalSessionFactory.Create is, and runs on
 /// the UI thread: it waits inside Task.Run so no UI sync context is ever captured.
 /// </summary>
+/// <remarks>
+/// A remote host (<see cref="MuxHostPolicy.IsRemote"/>) also looks after its connection (Phase 4 spec §7.2,
+/// §7.3). After each successful connect it pings the client every <see cref="LivenessInterval"/>, since a
+/// dropped link is silent until TCP notices, and handles the client's <see cref="MuxClient.Disconnected"/>: a
+/// stopped daemon raises <see cref="DaemonStopped"/>; a lost link raises <see cref="ConnectionLost"/> and
+/// starts a <see cref="MuxReconnectLoop"/>, whose success raises <see cref="Reconnected"/>. Kills asked for
+/// while it is down (<see cref="KillWhenConnected"/>) are sent after the next connect. All of it runs on
+/// <see cref="Scheduler"/> timers and pool continuations, never on a client's delivery thread and never as a
+/// polling loop. A local host does none of this: its behaviour is what it has always been.
+/// </remarks>
 internal sealed class MuxConnectionHost : IDisposable
 {
+    /// <summary>How long a remote host waits to learn why its connection ended (ssh's exit status) before calling it a lost link.</summary>
+    private static readonly TimeSpan ClassifyWait = TimeSpan.FromSeconds(1);
+
     private readonly Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> _connect;
     private readonly Action<string>? _log;
     private readonly object _gate = new();
@@ -32,9 +46,23 @@ internal sealed class MuxConnectionHost : IDisposable
     private readonly CancellationToken _disposedToken;
     private MuxClient? _client;
     private Task<MuxClient>? _connecting;
+    private AttemptState? _connectingState; // what _connecting was started as
     private int _connectAttempts;
     private long? _failedAtMs; // Environment.TickCount64 of the last failure; null = none, or cleared by a success
     private Exception? _lastFailure;
+    private readonly List<Guid> _queuedKills = new(); // guarded by _gate: KillWhenConnected while there was no connection
+
+    // A remote host's watch over its connection (Phase 4 spec §7.2, §7.3), all guarded by _gate.
+    private MuxClient? _watched;        // the client of the last successful connect: pinged, and its end handled
+    private MuxClient? _lost;           // the watched client whose end is being handled: once, however it is reported
+    private MuxClient? _droppedByPing;  // the client the liveness ping dropped ...
+    private string? _droppedReason;     // ... and why, which its Disconnected cannot say ("client_disposed")
+    private IDisposable? _livenessTick;
+    private IDisposable? _pingTimeout;
+    private CancellationTokenSource? _ping; // the ping in flight; null when none
+    private MuxReconnectLoop? _loop;
+    private Episode _episode;
+    private Task _events = Task.CompletedTask; // the events, raised one at a time in the order they were queued
 
     /// <summary>The local daemon's host: <see cref="MuxHostPolicy.Local"/>.</summary>
     public MuxConnectionHost(Func<CancellationToken, Task<MuxClient>> connect, string? endpoint, Action<string>? log)
@@ -100,7 +128,12 @@ internal sealed class MuxConnectionHost : IDisposable
     public int ConnectAttempts => Volatile.Read(ref _connectAttempts);
     public MuxClient? CurrentClient { get { lock (_gate) return _client is { IsConnected: true } c ? c : null; } }
 
-    /// <summary>Why the most recent connection attempt failed (its base exception); null once one succeeds.</summary>
+    /// <summary>
+    /// Why the most recent connection attempt failed (its base exception); null once one succeeds, and null
+    /// from the moment a new attempt starts - an attempt that has not failed (yet) has no reason, and an
+    /// earlier attempt's must not be read for it. The failure cooldown starts no attempt, so through it this
+    /// still says why the last one failed.
+    /// </summary>
     public Exception? LastFailure { get { lock (_gate) return _lastFailure; } }
 
     /// <summary>Starts connecting (spawning the daemon if needed) in the background. Idempotent; a no-op during the failure cooldown.</summary>
@@ -119,9 +152,16 @@ internal sealed class MuxConnectionHost : IDisposable
     /// succeed) - never blocks past the timeout. Either failure starts <see cref="FailureCooldown"/>,
     /// during which this returns null at once so a dead daemon costs one wait, not one per pane.
     /// </summary>
+    /// <remarks>
+    /// It is the user's request: it never joins an automatic attempt, but supersedes it with an
+    /// interactive one (see <see cref="TryStartConnecting"/>). On a remote host that is reconnecting it is
+    /// also the loop's attempt, now: the loop joins it, and its backoff starts over (Phase 4 spec §7.3).
+    /// This is how Enter in a pane retries at once.
+    /// </remarks>
     public MuxClient? GetClient(TimeSpan timeout)
     {
         if (!TryStartConnecting(interactive: true, out Task<MuxClient>? attempt)) return CurrentClient;
+        if (Policy.IsRemote) TryReconnectNow();
         try
         {
             // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
@@ -161,59 +201,551 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// The in-flight or just-finished attempt in <paramref name="attempt"/>; false when a live client
     /// already exists, during the failure cooldown, or once the host is disposed. A new attempt is
-    /// started as <paramref name="interactive"/> says; joining one in flight keeps what it was started as.
+    /// started as <paramref name="interactive"/> says; joining one in flight keeps what it was started as,
+    /// except that an interactive request never joins an automatic attempt (Phase 4 ruling): that attempt
+    /// may not prompt, so the user would wait on an attempt that can only fail for want of the password
+    /// they are there to type. It is superseded instead - cancelled, and whatever it still connects thrown
+    /// away - and an interactive one starts.
     /// </summary>
     private bool TryStartConnecting(bool interactive, [NotNullWhen(true)] out Task<MuxClient>? attempt)
     {
         attempt = null;
-        lock (_gate)
+        CancellationTokenSource? superseded = null;
+        try
         {
-            if (_disposed.IsCancellationRequested) return false;
-            if (_client is { IsConnected: true }) return false;
-            // Before the in-flight check: a caller that already timed out on the running attempt must
-            // not make the next pane wait on it again.
-            if (InCooldown()) return false;
-            // Every concurrent caller must join the same attempt: one daemon spawn, one client.
-            if (_connecting is { IsCompleted: false })
+            lock (_gate)
             {
-                attempt = _connecting;
-                return true;
-            }
-
-            if (_connecting is { IsCompletedSuccessfully: true } done && done.Result.IsConnected && _client is null)
-            {
-                _client = done.Result;
-                return false;
-            }
-
-            _client = null;
-            Interlocked.Increment(ref _connectAttempts);
-            CancellationToken token = _disposedToken;
-            var purpose = new MuxConnectAttempt(interactive);
-            _connecting = Task.Run(async () =>
-            {
-                MuxClient client = await _connect(purpose, token).ConfigureAwait(false);
-                lock (_gate)
+                if (_disposed.IsCancellationRequested) return false;
+                if (_client is { IsConnected: true }) return false;
+                // Before the in-flight check: a caller that already timed out on the running attempt must
+                // not make the next pane wait on it again.
+                if (InCooldown()) return false;
+                // Every concurrent caller must join the same attempt: one daemon spawn, one client.
+                if (_connecting is { IsCompleted: false })
                 {
-                    if (_disposed.IsCancellationRequested) { client.Dispose(); throw new ObjectDisposedException(nameof(MuxConnectionHost)); }
-                    _client = client;
-                    _failedAtMs = null;
-                    _lastFailure = null;
+                    if (!interactive || _connectingState is not { Interactive: false } automatic)
+                    {
+                        attempt = _connecting;
+                        return true;
+                    }
+
+                    automatic.Superseded = true;
+                    superseded = automatic.Cancellation;
                 }
 
-                return client;
-            }, token);
-            Task<MuxClient> started = _connecting;
-            // Covers WarmUp too, whose failure nothing awaits: log the reason once, start the cooldown.
-            _ = started.ContinueWith(
-                t =>
+                if (_connecting is { IsCompletedSuccessfully: true } done && done.Result.IsConnected && _client is null)
                 {
-                    _log?.Invoke($"[Mux] connection failed: {t.Exception?.GetBaseException().Message}");
-                    RecordFailure(started, t.Exception?.GetBaseException());
-                },
-                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-            attempt = started;
+                    _client = done.Result;
+                    return false;
+                }
+
+                _client = null;
+                // A new attempt has no failure yet; an earlier attempt's classified one must not be read for
+                // it (a later timeout is unclassified). The cooldown above starts no attempt, so it keeps it.
+                _lastFailure = null;
+                Interlocked.Increment(ref _connectAttempts);
+                // An automatic attempt gets a cancellation of its own, so that a user's request can supersede it;
+                // linked, so that Dispose still cancels it. A user's attempt keeps the host's.
+                var state = new AttemptState(interactive, interactive ? null : CancellationTokenSource.CreateLinkedTokenSource(_disposedToken));
+                CancellationToken token = state.Cancellation?.Token ?? _disposedToken;
+                var purpose = new MuxConnectAttempt(interactive);
+                _connecting = Task.Run(async () =>
+                {
+                    MuxClient client = await _connect(purpose, token).ConfigureAwait(false);
+                    bool takenOver;
+                    lock (_gate)
+                    {
+                        if (_disposed.IsCancellationRequested) { client.Dispose(); throw new ObjectDisposedException(nameof(MuxConnectionHost)); }
+                        takenOver = state.Superseded;
+                        if (!takenOver)
+                        {
+                            _client = client;
+                            _failedAtMs = null;
+                            _lastFailure = null;
+                        }
+                    }
+
+                    if (takenOver)
+                    {
+                        // A user's request took over: its interactive attempt connects instead.
+                        client.Dispose();
+                        throw new OperationCanceledException(token);
+                    }
+
+                    OnConnected(client);
+                    return client;
+                }, token);
+                _connectingState = state;
+                Task<MuxClient> started = _connecting;
+                // Covers WarmUp too, whose failure nothing awaits: log the reason once, start the cooldown.
+                _ = started.ContinueWith(
+                    t =>
+                    {
+                        _log?.Invoke($"[Mux] connection failed: {t.Exception?.GetBaseException().Message}");
+                        RecordFailure(started, t.Exception?.GetBaseException());
+                    },
+                    CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                if (state.Cancellation is { } own)
+                {
+                    // Released with the attempt, and with it its link to the host's token.
+                    _ = started.ContinueWith(_ => own.Dispose(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                }
+
+                attempt = started;
+                return true;
+            }
+        }
+        finally
+        {
+            // Outside the lock: cancelling runs the superseded attempt's callbacks (the connector ends its channel).
+            CancelQuietly(superseded);
+        }
+    }
+
+    private void CancelQuietly(CancellationTokenSource? source)
+    {
+        if (source is null) return;
+        try
+        {
+            source.Cancel();
+        }
+        catch (AggregateException ex)
+        {
+            // A callback registered on it threw: what was cancelled is cancelled all the same.
+            _log?.Invoke($"[Mux] cancelling failed: {ex.GetBaseException().Message}");
+        }
+        catch (ObjectDisposedException)
+        {
+            // The attempt already ended, and released it.
+        }
+    }
+
+    /// <summary>What one connect attempt was started as.</summary>
+    private sealed class AttemptState(bool interactive, CancellationTokenSource? cancellation)
+    {
+        public bool Interactive { get; } = interactive;
+
+        /// <summary>An automatic attempt's own cancellation, linked to the host's disposal; null for a user's.</summary>
+        public CancellationTokenSource? Cancellation { get; } = cancellation;
+
+        /// <summary>A user's request took over: whatever this attempt still connects is thrown away. Guarded by the host's lock.</summary>
+        public bool Superseded { get; set; }
+    }
+
+    /// <summary>Where a remote host is between losing its link and getting it back (Phase 4 spec §7.3).</summary>
+    private enum Episode
+    {
+        /// <summary>Connected, connecting for the first time, or after <see cref="MuxConnectionHost.DaemonStopped"/>: nothing to get back.</summary>
+        None,
+
+        /// <summary><see cref="MuxConnectionHost.ConnectionLost"/> was raised and the loop runs.</summary>
+        Reconnecting,
+
+        /// <summary><see cref="MuxConnectionHost.ReconnectAbandoned"/> was raised: the loop stopped, and only a user's request reconnects.</summary>
+        Abandoned,
+    }
+
+    /// <summary>
+    /// A remote host's connection was lost - a ping timeout, ssh's exit 255, the channel's EOF, a native
+    /// disconnect (Phase 4 spec §7.3) - and the host reconnects on its own: <see cref="IsReconnecting"/> is
+    /// true from now on. The argument is the reason, for logs.
+    /// </summary>
+    /// <remarks>
+    /// Every event of this host is raised on a pool thread, one at a time and in the order of what caused it
+    /// (<see cref="ConnectionLost"/> always before the <see cref="Reconnected"/> that ends that loss), never
+    /// under the host's lock, and not once the host is disposed. A handler must not block - the next event
+    /// waits for it - and must not wait on <see cref="GetClient"/>.
+    /// </remarks>
+    public event Action<string>? ConnectionLost;
+
+    /// <summary>
+    /// The connection is back after <see cref="ConnectionLost"/>, with this client: through the loop, or
+    /// through a user's request (<see cref="GetClient"/>) while the loop ran or after it gave up. Once per
+    /// loss. The kills queued meanwhile (<see cref="KillWhenConnected"/>) were sent first. Not raised for a
+    /// connect after <see cref="DaemonStopped"/>.
+    /// </summary>
+    public event Action<MuxClient>? Reconnected;
+
+    /// <summary>
+    /// The loop stopped without a connection: its <see cref="MuxReconnectLoop.Budget"/> ran out, or signing in
+    /// needs the user (<see cref="RemoteFailureKind.NeedsUser"/>), which another automatic attempt cannot
+    /// give. The kills queued meanwhile were dropped. <see cref="GetClient"/> still reconnects, and then
+    /// raises <see cref="Reconnected"/>.
+    /// </summary>
+    public event Action? ReconnectAbandoned;
+
+    /// <summary>
+    /// The remote daemon closed the connection (the proxy exited 3): its sessions are gone, and the host does
+    /// not reconnect on its own. <see cref="GetClient"/> connects again, to a new daemon.
+    /// </summary>
+    public event Action? DaemonStopped;
+
+    /// <summary>The reconnect loop runs: after <see cref="ConnectionLost"/>, until <see cref="Reconnected"/> or <see cref="ReconnectAbandoned"/>.</summary>
+    public bool IsReconnecting { get { lock (_gate) return _episode == Episode.Reconnecting; } }
+
+    /// <summary>
+    /// A remote host's disconnect classifier (Phase 4 spec §7.3): <see cref="MuxDisconnectKind.DaemonStopped"/>
+    /// when the proxy exited 3. Waited for at most a second; null, a throw or no answer in time all mean
+    /// <see cref="MuxDisconnectKind.LinkLost"/>. <see cref="RemoteMuxHostFactory"/> sets it.
+    /// </summary>
+    internal Func<MuxClient, Task<MuxDisconnectKind>>? ClassifyDisconnect { get; init; }
+
+    /// <summary>The clock of a remote host's liveness ping and reconnect loop.</summary>
+    internal IMuxTimerScheduler Scheduler { get; init; } = SystemMuxTimerScheduler.Instance;
+
+    /// <summary>How often a remote host pings its client (Phase 4 spec §7.2).</summary>
+    internal TimeSpan LivenessInterval { get; init; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>How long a ping may go unanswered before the client is dropped as dead (Phase 4 spec §7.2).</summary>
+    internal TimeSpan LivenessTimeout { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Kills <paramref name="sessionId"/> on this host's daemon - a tab the user closed - at once when
+    /// connected, otherwise right after the next successful connect, whatever starts it: sent with
+    /// <see cref="MuxClient.KillAsync"/> and tracked like <see cref="TrackPendingKill"/> (Review Focus 1: a
+    /// remote tab closed while its link is down must not orphan its shell). A kill whose connection closes
+    /// before the daemon answers is queued again. Queued kills are dropped, with a log line, when the
+    /// reconnect loop gives up (<see cref="ReconnectAbandoned"/>) or the host is disposed.
+    /// </summary>
+    public void KillWhenConnected(Guid sessionId)
+    {
+        MuxClient? live = null;
+        bool disposed;
+        lock (_gate)
+        {
+            disposed = _disposed.IsCancellationRequested;
+            if (!disposed)
+            {
+                live = _client is { IsConnected: true } c ? c : null;
+                if (live is null && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
+            }
+        }
+
+        if (disposed)
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping the kill of session {sessionId}: the host is closed");
+        }
+        else if (live is null)
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: not connected; the kill of session {sessionId} is sent once connected");
+        }
+        else
+        {
+            SendKill(live, sessionId);
+        }
+    }
+
+    private void SendKill(MuxClient client, Guid sessionId)
+    {
+        Task kill;
+        try
+        {
+            kill = client.KillAsync(sessionId);
+        }
+        catch (Exception ex)
+        {
+            kill = Task.FromException(ex);
+        }
+
+        TrackPendingKill(kill);
+        _ = kill.ContinueWith(
+            t => OnKillFailed(sessionId, t.Exception!.GetBaseException()),
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+    }
+
+    private void OnKillFailed(Guid sessionId, Exception error)
+    {
+        if (error is IOException && !_disposed.IsCancellationRequested)
+        {
+            // The connection closed before the daemon answered, so the kill may never have arrived: again
+            // on the next connection. A second kill of a session already gone only fails.
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: the connection closed before session {sessionId} was killed; trying again once connected");
+            KillWhenConnected(sessionId);
+            return;
+        }
+
+        _log?.Invoke($"[Mux] {Policy.DisplayName}: killing session {sessionId} failed: {error.Message}");
+    }
+
+    private Guid[] DrainQueuedKillsLocked()
+    {
+        Guid[] kills = _queuedKills.ToArray();
+        _queuedKills.Clear();
+        return kills;
+    }
+
+    private void LogDroppedKills(Guid[] dropped, string why)
+    {
+        if (dropped.Length == 0) return;
+        _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping {dropped.Length} queued kill(s) ({string.Join(", ", dropped)}): {why}; those sessions keep running");
+    }
+
+    /// <summary>
+    /// After every successful connect, on the attempt's own pool thread: the queued kills go out, and a remote
+    /// host starts watching the client - liveness timer, <see cref="MuxClient.Disconnected"/> - and ends a
+    /// loss in progress with <see cref="Reconnected"/>.
+    /// </summary>
+    private void OnConnected(MuxClient client)
+    {
+        Guid[] kills;
+        string? note = null;
+        lock (_gate)
+        {
+            if (_disposed.IsCancellationRequested) return; // Dispose closes it
+            kills = DrainQueuedKillsLocked();
+            if (Policy.IsRemote)
+            {
+                _watched = client;
+                _lost = null;
+                _droppedByPing = null;
+                _droppedReason = null;
+                StopWatchingLocked();
+                _livenessTick = Scheduler.Schedule(LivenessInterval, () => OnLivenessTick(client));
+                if (_episode != Episode.None)
+                {
+                    _episode = Episode.None;
+                    _loop?.Stop();
+                    RaiseLocked(nameof(Reconnected), () => Invoke(nameof(Reconnected), Reconnected, client));
+                    note = $"[Mux] {Policy.DisplayName}: reconnected";
+                }
+            }
+        }
+
+        if (note is not null) _log?.Invoke(note);
+        if (Policy.IsRemote)
+        {
+            client.Disconnected += reason => OnWatchedClientDisconnected(client, reason);
+            if (!client.IsConnected) OnWatchedClientDisconnected(client, client.DisconnectReason);
+        }
+
+        foreach (Guid sessionId in kills) SendKill(client, sessionId);
+    }
+
+    /// <summary>
+    /// The watched client's <see cref="MuxClient.Disconnected"/>, raised on whichever thread ended it - its
+    /// reader, its sender, a Dispose caller (the ping's timeout, this host's Dispose) - so nothing here
+    /// blocks: telling why waits up to a second for ssh's exit status, and does so on the pool.
+    /// </summary>
+    private void OnWatchedClientDisconnected(MuxClient client, string? reason)
+    {
+        string why;
+        lock (_gate)
+        {
+            if (_disposed.IsCancellationRequested || !ReferenceEquals(client, _watched) || ReferenceEquals(client, _lost)) return;
+            _lost = client;
+            StopWatchingLocked();
+            why = ReferenceEquals(client, _droppedByPing) && _droppedReason is { } dropped ? dropped : reason ?? "disconnected";
+        }
+
+        _ = Task.Run(() => OnConnectionEndedAsync(client, why), CancellationToken.None);
+    }
+
+    private async Task OnConnectionEndedAsync(MuxClient client, string reason)
+    {
+        MuxDisconnectKind kind = MuxDisconnectKind.LinkLost;
+        if (ClassifyDisconnect is { } classify)
+        {
+            try
+            {
+                kind = await classify(client).WaitAsync(ClassifyWait).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                // Not known in time: a lost link.
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke($"[Mux] {Policy.DisplayName}: could not tell why the connection ended ({ex.Message}); treating it as a lost link");
+            }
+        }
+
+        string note;
+        lock (_gate)
+        {
+            if (_disposed.IsCancellationRequested) return;
+            if (kind == MuxDisconnectKind.DaemonStopped)
+            {
+                RaiseLocked(nameof(DaemonStopped), () => Invoke(nameof(DaemonStopped), DaemonStopped));
+                note = $"[Mux] {Policy.DisplayName}: ntilde-mux closed the connection ({reason}); its sessions ended, and the host does not reconnect until asked";
+            }
+            else
+            {
+                RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
+                if (!ReferenceEquals(client, _watched))
+                {
+                    // A newer connection came up while this one was being classified (a user's request):
+                    // the connection is back already, and no loop is needed.
+                    if (_watched is { IsConnected: true } back) RaiseLocked(nameof(Reconnected), () => Invoke(nameof(Reconnected), Reconnected, back));
+                    note = $"[Mux] {Policy.DisplayName}: connection lost ({reason}), and already back";
+                }
+                else
+                {
+                    _episode = Episode.Reconnecting;
+                    (_loop ??= new MuxReconnectLoop(Scheduler, ReconnectAttemptAsync, () => GiveUp($"no connection within {MuxReconnectLoop.Budget.TotalMinutes:0} min"))).Start();
+                    note = $"[Mux] {Policy.DisplayName}: connection lost ({reason}); reconnecting";
+                }
+            }
+        }
+
+        _log?.Invoke(note);
+    }
+
+    /// <summary>
+    /// The loop's attempt (Phase 4 spec §7.3): the host's normal connect, automatic, joining whatever attempt
+    /// is in flight - a user's included. Success is handled where every connect is (<see cref="OnConnected"/>).
+    /// </summary>
+    private async Task<bool> ReconnectAttemptAsync()
+    {
+        Task<MuxClient>? attempt = TryStartAutomaticAttempt();
+        if (attempt is null) return CurrentClient is not null;
+
+        try
+        {
+            await attempt.ConfigureAwait(false);
             return true;
+        }
+        catch (RemoteMuxUnavailableException ex) when (ex.Failure.Kind == RemoteFailureKind.NeedsUser)
+        {
+            // Ruling: another automatic attempt cannot sign in either - it would only knock again.
+            GiveUp($"signing in needs the user: {ex.Failure.Reason}");
+            return false;
+        }
+        catch (Exception)
+        {
+            return false; // logged by the attempt itself; the loop backs off
+        }
+    }
+
+    /// <summary>A user's request while the loop runs: the loop attempts now, joining it (spec §7.3).</summary>
+    private void TryReconnectNow()
+    {
+        MuxReconnectLoop? loop;
+        lock (_gate) loop = _episode == Episode.Reconnecting ? _loop : null;
+        loop?.TryNow();
+    }
+
+    private void GiveUp(string why)
+    {
+        Guid[] dropped;
+        lock (_gate)
+        {
+            if (_disposed.IsCancellationRequested || _episode != Episode.Reconnecting) return;
+            _episode = Episode.Abandoned;
+            _loop?.Stop();
+            dropped = DrainQueuedKillsLocked();
+            RaiseLocked(nameof(ReconnectAbandoned), () => Invoke(nameof(ReconnectAbandoned), ReconnectAbandoned));
+        }
+
+        _log?.Invoke($"[Mux] {Policy.DisplayName}: stopped reconnecting: {why}");
+        LogDroppedKills(dropped, "the host stopped reconnecting");
+    }
+
+    /// <summary>
+    /// A liveness tick, on the scheduler's thread (Phase 4 spec §7.2): schedules the next tick and sends a
+    /// ping, unless the previous one is still unanswered. The ping is sent from the pool - on a stalled link
+    /// the client's send queue may be full, and sending would block - and its timeout is a timer of its own.
+    /// </summary>
+    private void OnLivenessTick(MuxClient client)
+    {
+        CancellationTokenSource ping;
+        lock (_gate)
+        {
+            if (_disposed.IsCancellationRequested || !ReferenceEquals(client, _watched) || ReferenceEquals(client, _lost) || !client.IsConnected) return;
+            _livenessTick = Scheduler.Schedule(LivenessInterval, () => OnLivenessTick(client));
+            if (_ping is not null) return; // the previous ping is still unanswered: skip this tick
+            ping = _ping = new CancellationTokenSource();
+            _pingTimeout = Scheduler.Schedule(LivenessTimeout, () => OnPingTimedOut(client, ping));
+        }
+
+        _ = Task.Run(() => client.PingAsync(ping.Token), CancellationToken.None)
+            .ContinueWith(t => OnPingDone(client, ping, t), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+    }
+
+    /// <summary>The ping went unanswered: the link is dead. The client is dropped on the pool, which raises its Disconnected ("ping timeout").</summary>
+    private void OnPingTimedOut(MuxClient client, CancellationTokenSource ping)
+    {
+        lock (_gate)
+        {
+            if (!ReferenceEquals(ping, _ping)) return; // answered meanwhile, or no longer watched
+            _ping = null;
+            _pingTimeout = null;
+            _droppedByPing = client;
+            _droppedReason = "ping timeout";
+        }
+
+        _log?.Invoke($"[Mux] {Policy.DisplayName}: no answer to a ping within {LivenessTimeout.TotalSeconds:0.#} s; dropping the connection");
+        CancelQuietly(ping);
+        _ = Task.Run(client.Dispose, CancellationToken.None);
+    }
+
+    /// <summary>On the pool: an answer resets the clock; a failure drops the client as the timeout does.</summary>
+    private void OnPingDone(MuxClient client, CancellationTokenSource ping, Task result)
+    {
+        lock (_gate)
+        {
+            if (!ReferenceEquals(ping, _ping)) return; // timed out (handled there), or no longer watched
+            _ping = null;
+            _pingTimeout?.Dispose();
+            _pingTimeout = null;
+            if (result.IsCompletedSuccessfully || !client.IsConnected) return; // closed: its own Disconnected says why
+            _droppedByPing = client;
+            _droppedReason = "ping failed";
+        }
+
+        _log?.Invoke($"[Mux] {Policy.DisplayName}: a ping failed ({result.Exception?.GetBaseException().Message}); dropping the connection");
+        client.Dispose();
+    }
+
+    /// <summary>Stops the liveness timer and forgets a ping in flight (its completion then finds itself stale).</summary>
+    private void StopWatchingLocked()
+    {
+        _livenessTick?.Dispose();
+        _livenessTick = null;
+        _pingTimeout?.Dispose();
+        _pingTimeout = null;
+        _ping = null;
+    }
+
+    /// <summary>
+    /// Queues an event behind those queued before it. Called under the lock, with the change it reports,
+    /// so the events go out in the order of the changes; raised on the pool, never under the lock.
+    /// </summary>
+    private void RaiseLocked(string name, Action raise)
+    {
+        _events = _events.ContinueWith(
+            _ =>
+            {
+                if (_disposed.IsCancellationRequested) return;
+                try
+                {
+                    raise();
+                }
+                catch (Exception ex)
+                {
+                    _log?.Invoke($"[Mux] raising {name} failed: {ex}");
+                }
+            },
+            CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+    }
+
+    /// <summary>Calls each handler in turn: one that throws is logged, and neither stops the rest nor reaches the host.</summary>
+    private void Invoke(string name, Action? handlers)
+    {
+        if (handlers is null) return;
+        foreach (Action handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(); }
+            catch (Exception ex) { _log?.Invoke($"[Mux] a {name} handler threw: {ex}"); }
+        }
+    }
+
+    private void Invoke<T>(string name, Action<T>? handlers, T argument)
+    {
+        if (handlers is null) return;
+        foreach (Action<T> handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try { handler(argument); }
+            catch (Exception ex) { _log?.Invoke($"[Mux] a {name} handler threw: {ex}"); }
         }
     }
 
@@ -247,17 +779,29 @@ internal sealed class MuxConnectionHost : IDisposable
     /// window (the last tab) has queued a kill. One wait, not two: a tracked kill's own reply (or its
     /// timeout) already tells us whether earlier frames landed, so the ping flush below runs only
     /// when there was no kill to wait on. Waited inside Task.Run: no UI sync context captured.
+    /// A remote host's loop and liveness timers stop first; the attempt in flight - one blocked in ssh,
+    /// waiting on a prompt, included - is cancelled, and its transport kills ssh or closes the native
+    /// session (Review Focus 5). Kills still queued for a connection are dropped, with a log line.
     /// </summary>
     public void Dispose()
     {
         MuxClient? client;
+        MuxReconnectLoop? loop;
+        Guid[] dropped;
         lock (_gate)
         {
             if (_disposed.IsCancellationRequested) return;
             _disposed.Cancel();
             client = _client;
             _client = null;
+            loop = _loop;
+            _episode = Episode.None;
+            StopWatchingLocked();
+            dropped = DrainQueuedKillsLocked();
         }
+
+        loop?.Dispose();
+        LogDroppedKills(dropped, "the host is closing");
 
         // Safe to dispose now: the disposed checks above and in the connect attempt read
         // IsCancellationRequested (valid after Dispose), and the attempt holds the token captured in

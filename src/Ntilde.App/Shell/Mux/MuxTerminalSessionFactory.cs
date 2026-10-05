@@ -24,7 +24,7 @@ namespace Ntilde.Shell.Mux;
 /// <remarks>
 /// A deviation from spec §7.5, by controller ruling: a new remote tab falls back to plain SSH only when
 /// SSH worked and ntilde-mux did not (NotInstalled, Unsupported, VersionMismatch, ProxyFailed, or a
-/// request that failed once connected). When the SSH connect itself failed (SshFailed), or the failure
+/// request that failed once connected). When the SSH connect itself failed (SshFailed, or NeedsUser), or the failure
 /// is unclassified (the connect did not finish in time, the connection could not be set up), it gets no
 /// session - <see cref="PersistentSessionOutcome.DaemonUnreachable"/> with no id - and the pane offers a
 /// retry: a plain SSH session would only fail again, or prompt again.
@@ -110,7 +110,8 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     /// shown through the UI thread: a UI-thread caller would block the very dialog it waits on until the
     /// timeout (Phase 4 spec §7.4). A local request waits at most the local daemon's few seconds.
     /// <para>
-    /// A remote request whose SSH connect failed (<see cref="RemoteFailureKind.SshFailed"/>), or failed
+    /// A remote request whose SSH connect failed (<see cref="RemoteFailureKind.SshFailed"/>, or
+    /// <see cref="RemoteFailureKind.NeedsUser"/>: signing in needed an answer nobody gave), or failed
     /// unclassified (<see cref="PersistentSessionResult.RemoteFailure"/> null: no answer in time, or the
     /// connection could not be set up), gets <see cref="PersistentSessionOutcome.DaemonUnreachable"/> and no
     /// session even when it names no existing session - a deviation from spec §7.5, which falls a new tab
@@ -191,10 +192,11 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
                 string why = failure?.Reason ?? "ntilde-mux could not be reached";
 
                 // Controller ruling, a deviation from spec §7.5: plain SSH only when SSH itself worked
-                // and only ntilde-mux did not. An SSH failure - or one nobody classified (a connect
-                // that did not finish in time) - gives no session, even for a new tab: a plain SSH
-                // session would only fail again, or prompt again. The pane offers a retry instead.
-                if (failure is null or { Kind: RemoteFailureKind.SshFailed })
+                // and only ntilde-mux did not. An SSH failure - a sign-in that needs the user included
+                // (NeedsUser), or one nobody classified (a connect that did not finish in time) - gives
+                // no session, even for a new tab: a plain SSH session would only fail again, or prompt
+                // again. The pane offers a retry instead.
+                if (failure is null or { Kind: RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser })
                 {
                     return Unreachable(target, request.ExistingMuxSessionId, why) with { RemoteFailure = failure };
                 }

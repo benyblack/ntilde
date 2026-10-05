@@ -135,6 +135,23 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "ssh: connect to host fake-host port 22: Connection refused"), ex.Failure);
     }
 
+    /// <summary>
+    /// Task 20's ruling: an automatic attempt runs ssh in batch mode, so a refusal means a password or a
+    /// passphrase is needed - the user, not another try. A user's attempt refused the same way failed SSH.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_attempt_ssh_refused_needs_the_user_and_a_user_attempt_is_an_ssh_failure()
+    {
+        _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+        RemoteMuxConnector connector = Connector();
+
+        var automatic = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var user = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
+
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "nova@fake-host: Permission denied (publickey,password)."), automatic.Failure);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "nova@fake-host: Permission denied (publickey,password)."), user.Failure);
+    }
+
     [Fact]
     public async Task A_native_transport_failure_is_SshFailed_with_the_native_message()
     {
@@ -313,7 +330,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// <summary>
     /// Review fix round 1, with the native auth shape: rusty_ssh asks for the password once, falls to
     /// keyboard-interactive, then fails. Once the server's password changes, the automatic attempt's
-    /// remembered password is refused, keyboard-interactive is cancelled, the attempt fails SshFailed -
+    /// remembered password is refused, keyboard-interactive is not answered, the attempt fails NeedsUser -
     /// and the stale password is forgotten, so the next user attempt asks instead of replaying it.
     /// </summary>
     [Fact]
@@ -359,7 +376,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
 
-        Assert.Equal(RemoteFailureKind.SshFailed, refused.Failure.Kind);
+        Assert.Equal(RemoteFailureKind.NeedsUser, refused.Failure.Kind);
         Assert.False(prompts.Remembers(SshInteractionKind.Password));
         Own(await connector.ConnectAsync(Ct));
         Assert.Equal(new[] { "old", "old", "new" }, offered);
@@ -430,7 +447,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         Assert.False(connector.Prompts.Remembers(SshInteractionKind.Password));
         var automatic = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
-        Assert.Equal(RemoteFailureKind.SshFailed, automatic.Failure.Kind);
+        Assert.Equal(RemoteFailureKind.NeedsUser, automatic.Failure.Kind);
         Assert.Equal(new[] { "pw", "<aborted>" }, answers);
         Assert.Single(user.Asked);
     }
@@ -482,7 +499,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// no remembered password must not answer the password prompt at all - a cancel would reach the
     /// server as an empty password, a failed login on every reconnect. The session is closed instead (in
     /// rusty_ssh the close wakes the pending prompt with no answer, and auth stops before sending
-    /// anything), and the attempt fails quietly as SshFailed.
+    /// anything), and the attempt fails quietly as NeedsUser (Task 20's ruling: the marker the reconnect
+    /// loop stops on).
     /// </summary>
     [Fact]
     public async Task An_automatic_native_attempt_with_nothing_remembered_never_answers_the_password_prompt()
@@ -496,7 +514,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Empty(interop.Submissions);
         Assert.Equal(1, interop.Closes);
         Assert.Empty(user.Asked);
-        Assert.Equal(RemoteFailureKind.SshFailed, failed.Failure.Kind);
+        Assert.Equal(RemoteFailureKind.NeedsUser, failed.Failure.Kind);
         Assert.Equal("signing in to nova@fake-host needs a password, which an automatic reconnect does not ask for", failed.Failure.Reason);
     }
 

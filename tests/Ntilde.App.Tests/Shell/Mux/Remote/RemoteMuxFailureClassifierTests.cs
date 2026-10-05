@@ -54,6 +54,25 @@ public sealed class RemoteMuxFailureClassifierTests
         Assert.Equal(reason, failure.Reason);
     }
 
+    /// <summary>
+    /// Ruling 1 of Task 20: an automatic attempt runs OpenSSH in batch mode, which tries only what needs no
+    /// answer. Refused, it needs the user (a password, a key's passphrase): the reconnect loop stops there
+    /// rather than knock again every 30 s. A user's attempt refused the same way is an SSH failure.
+    /// </summary>
+    [Theory]
+    [InlineData(true, 255, "nova@x: Permission denied (publickey,password).\r\n", nameof(RemoteFailureKind.NeedsUser))]
+    [InlineData(true, 255, "Warning: Permanently added 'x' (ED25519) to the list of known hosts.\r\nnova@x: Permission denied (publickey).\r\n", nameof(RemoteFailureKind.NeedsUser))]
+    [InlineData(false, 255, "nova@x: Permission denied (publickey,password).\r\n", nameof(RemoteFailureKind.SshFailed))]
+    [InlineData(true, 255, "ssh: connect to host x port 22: Connection refused\r\n", nameof(RemoteFailureKind.SshFailed))]
+    [InlineData(true, 126, "sh: 1: " + Binary + ": Permission denied\n", nameof(RemoteFailureKind.Unsupported))]
+    public void An_automatic_attempt_that_ssh_refused_needs_the_user(bool automatic, int exitCode, string stderr, string kind)
+    {
+        RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, Handshake("ended"), "nova@x", automatic);
+
+        Assert.Equal(Enum.Parse<RemoteFailureKind>(kind), failure.Kind);
+        Assert.Equal(RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, Handshake("ended"), "nova@x").Reason, failure.Reason);
+    }
+
     [Fact]
     public void Version_mismatch_names_the_daemons_protocols_and_the_apps()
     {

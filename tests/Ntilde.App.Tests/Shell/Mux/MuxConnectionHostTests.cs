@@ -72,6 +72,24 @@ public sealed class MuxConnectionHostTests
         await TestWait.UntilAsync(() => logs.Any(l => l.Contains("daemon will not start", StringComparison.Ordinal)), "failure reason logged");
     }
 
+    /// <summary>
+    /// Task 20's ruling clears the last failure when a new attempt starts. The cooldown starts none, so a
+    /// local host still reports why through it - the factory's version-mismatch and orphan notices read it.
+    /// </summary>
+    [Fact]
+    public void A_local_host_keeps_its_failure_through_the_cooldown()
+    {
+        int attempts = 0;
+        using var host = new MuxConnectionHost(_ => { Interlocked.Increment(ref attempts); throw new MuxUnavailableException("nope"); }, "test", null);
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
+        Exception failure = Assert.IsType<MuxUnavailableException>(host.LastFailure);
+
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
+
+        Assert.Equal(1, Volatile.Read(ref attempts));
+        Assert.Same(failure, host.LastFailure);
+    }
+
     [Fact]
     public void A_GetClient_that_times_out_also_enters_the_cooldown()
     {
@@ -204,7 +222,10 @@ public sealed class MuxConnectionHostTests
         {
             attempts.Enqueue(attempt);
             return MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct);
-        }, "test", null, MuxHostPolicy.Remote("box"));
+        }, "test", null, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = new Remote.FakeMuxTimerScheduler(),   // a remote host's own reconnect loop waits for this clock
+        };
 
         host.GetClient(TimeSpan.FromSeconds(5))!.Dispose();
         (await host.TryStartAutomaticAttempt()!.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Dispose();

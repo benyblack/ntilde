@@ -1,3 +1,4 @@
+using Ntilde.Mux.Cli;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
@@ -14,6 +15,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// </summary>
 internal static class RemoteMuxHostFactory
 {
+    /// <summary>How long a disconnect waits for the channel's exit status; the host caps its classification at this too.</summary>
+    private static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// The host for <paramref name="id"/>, or null to decline: the local endpoint (not this factory's), a
     /// profile that is gone, or one that does not persist remote sessions
@@ -24,18 +28,21 @@ internal static class RemoteMuxHostFactory
     /// <see cref="RemoteMuxConnector"/> for its whole life: a fresh client instance id (a Guid in N
     /// format) sent in every hello, and the secrets its user-started attempts remember. Each attempt
     /// reads the profile again, and builds its transport through <paramref name="transportFor"/>, told
-    /// whether a user is waiting (<see cref="MuxConnectAttempt"/>).
+    /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). The host tells a stopped daemon from a
+    /// lost link by the proxy's exit status (<see cref="ClassifyDisconnectAsync"/>).
     /// </remarks>
     /// <param name="resolveProfile">The SSH profile store's lookup.</param>
     /// <param name="transportFor">Builds one attempt's transport (<see cref="CreateTransport"/> in the app).</param>
     /// <param name="log">The host's, the connector's and the mux client's log.</param>
     /// <param name="userPrompts">The window's prompt handler, for the native backend's user-started attempts.</param>
+    /// <param name="scheduler">The clock of the host's liveness ping and reconnect loop; <see cref="SystemMuxTimerScheduler.Instance"/> when null.</param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
         Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> transportFor,
         Action<string>? log,
-        ISshInteractionHandler? userPrompts = null)
+        ISshInteractionHandler? userPrompts = null,
+        IMuxTimerScheduler? scheduler = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -66,7 +73,22 @@ internal static class RemoteMuxHostFactory
         return new MuxConnectionHost((attempt, ct) => connector.ConnectAsync(attempt.Interactive, ct), id.ToString(), log, policy)
         {
             Connector = connector,
+            ClassifyDisconnect = _ => ClassifyDisconnectAsync(connector),
+            Scheduler = scheduler ?? SystemMuxTimerScheduler.Instance,
         };
+    }
+
+    /// <summary>
+    /// Why the connection ended (Phase 4 spec §7.3), from how the proxy's channel did: exit 3
+    /// (<see cref="MuxProxyExitCodes.DaemonClosed"/>) means the daemon closed it and its sessions are gone.
+    /// Anything else - ssh's 255, a channel that was killed or failed natively (no status), no status within
+    /// a second - is a lost link.
+    /// </summary>
+    internal static async Task<MuxDisconnectKind> ClassifyDisconnectAsync(RemoteMuxConnector connector)
+    {
+        ArgumentNullException.ThrowIfNull(connector);
+        int? exit = await connector.LastExitAsync(DisconnectExitWait).ConfigureAwait(false);
+        return exit == MuxProxyExitCodes.DaemonClosed ? MuxDisconnectKind.DaemonStopped : MuxDisconnectKind.LinkLost;
     }
 
     /// <summary>

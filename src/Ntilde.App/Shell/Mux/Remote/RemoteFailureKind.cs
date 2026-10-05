@@ -21,6 +21,15 @@ internal enum RemoteFailureKind
 
     /// <summary>Anything else: the proxy ran but never greeted, or the connection broke during the hello.</summary>
     ProxyFailed,
+
+    /// <summary>
+    /// Signing in needs an answer nobody was asked for - a password, keyboard-interactive input, a key's
+    /// passphrase - because the attempt was automatic (or there was no window to ask through): the native
+    /// backend ended it at the prompt, or OpenSSH in batch mode was refused. An SSH failure in kind, but not
+    /// one another automatic try can fix: the reconnect loop stops on it (Phase 4 spec §7.3, by ruling), and
+    /// Enter - an interactive attempt - is the way back.
+    /// </summary>
+    NeedsUser,
 }
 
 /// <summary>A classified remote failure: its <paramref name="Kind"/>, and the text the user should see.</summary>
