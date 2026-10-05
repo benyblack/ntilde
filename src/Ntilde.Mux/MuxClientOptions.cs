@@ -7,6 +7,8 @@ public sealed class MuxClientOptions
     public int MinProtocolVersion { get; init; } = MuxProtocol.MinSupportedVersion;
     public int MaxProtocolVersion { get; init; } = MuxProtocol.MaxSupportedVersion;
     public string ClientKind { get; init; } = "ntilde";
+    /// <summary>Sent in the hello so a reconnect evicts its dead twin on the daemon; null opts out (spec §2.5).</summary>
+    public string? ClientInstanceId { get; init; }
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public MuxAttachLimits AttachLimits { get; init; } = new();
     public Action<string>? Log { get; init; }

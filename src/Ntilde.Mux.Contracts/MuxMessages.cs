@@ -38,6 +38,14 @@ public sealed record HelloParams
     public int MinVersion { get; init; }
     public int MaxVersion { get; init; }
     public string ClientKind { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Phase 4 (spec §2.5, additive; an older daemon ignores it): a stable id of the GUI instance.
+    /// A hello carrying the same id as a live connection closes that connection first - after an SSH
+    /// link drops, the daemon still holds the old half-open one with the GUI's sinks attached. Null
+    /// never evicts; longer than 64 characters is ignored.
+    /// </summary>
+    public string? ClientInstanceId { get; init; }
 }
 
 public sealed record WelcomeResult

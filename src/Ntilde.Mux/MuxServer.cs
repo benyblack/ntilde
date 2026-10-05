@@ -337,6 +337,23 @@ public sealed class MuxServer : IDisposable
             CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
     }
 
+    /// <summary>
+    /// Closes every other live connection that announced <paramref name="instanceId"/> (spec §2.5): the
+    /// dead half-open twins of a reconnecting client. Takes no lock - <c>_connections</c> enumerates
+    /// lock-free and <see cref="MuxServerConnection.Abort"/> takes only the victim's own gate - and
+    /// uses the normal close path, so the twin's reader detaches its sinks exactly as for a dropped
+    /// connection and the sessions keep running.
+    /// </summary>
+    internal void EvictTwins(MuxServerConnection keep, string instanceId)
+    {
+        foreach (MuxServerConnection other in _connections.Values)
+        {
+            if (ReferenceEquals(other, keep) || other.ClientInstanceId != instanceId) continue;
+            Log($"[MuxServer] connection {other.ConnectionId} superseded by {keep.ConnectionId} (same client instance).");
+            other.Abort("superseded by a reconnect of the same client");
+        }
+    }
+
     internal void OnConnectionClosed(MuxServerConnection connection)
     {
         _connections.TryRemove(connection.ConnectionId, out _);

@@ -73,7 +73,7 @@ public sealed class MuxClient : IDisposable
         {
             WelcomeResult welcome = await client.RequestAsync(
                 MuxMethods.Hello,
-                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind },
+                new HelloParams { MinVersion = options.MinProtocolVersion, MaxVersion = options.MaxProtocolVersion, ClientKind = options.ClientKind, ClientInstanceId = options.ClientInstanceId },
                 MuxJsonContext.Default.HelloParams,
                 MuxJsonContext.Default.WelcomeResult,
                 cancellationToken).ConfigureAwait(false);

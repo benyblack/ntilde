@@ -79,6 +79,12 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     public int ProtocolVersion => Volatile.Read(ref _version);
     public string ClientKind => Volatile.Read(ref _clientKind);
 
+    internal const int MaxClientInstanceIdLength = 64;
+    private string? _clientInstanceId;
+
+    /// <summary>The hello's <c>clientInstanceId</c> once this connection has welcomed with one; null otherwise.</summary>
+    public string? ClientInstanceId => Volatile.Read(ref _clientInstanceId);
+
     /// <summary>A v2 peer understands sessionChanged and killed (spec §2); a v1 peer never sees them.</summary>
     public bool WantsSessionEvents => ProtocolVersion >= MuxProtocol.SessionEventsVersion;
 
@@ -421,6 +427,22 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         Volatile.Write(ref _clientKind, Clip(p.ClientKind ?? string.Empty));
+
+        // Evict before welcome (spec §2.5), and record our own id only afterwards: two twins hello-ing
+        // at once then cannot each see the other as live and both die.
+        if (p.ClientInstanceId is { } instanceId)
+        {
+            if (instanceId.Length > MaxClientInstanceIdLength)
+            {
+                SafeLog($"[MuxServer] connection {ConnectionId}: ignoring a clientInstanceId of {instanceId.Length} characters (limit {MaxClientInstanceIdLength}).");
+            }
+            else
+            {
+                _server.EvictTwins(this, instanceId);
+                Volatile.Write(ref _clientInstanceId, instanceId);
+            }
+        }
+
         Volatile.Write(ref _version, chosen);
         Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering }, MuxJsonContext.Default.WelcomeResult);
     }
