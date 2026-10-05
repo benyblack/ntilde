@@ -1,9 +1,9 @@
 using Ntilde.Mux.Contracts;
 
-namespace Ntilde.Shell.Mux;
+namespace Ntilde.Mux.Daemon;
 
 /// <summary>After a <c>shutdown</c> request: wait until the daemon is really gone (kill-server, the update path).</summary>
-internal static class MuxDaemonExit
+public static class MuxDaemonExit
 {
     /// <summary>
     /// Blocks (call it off the UI thread) until no live descriptor is advertised and, when

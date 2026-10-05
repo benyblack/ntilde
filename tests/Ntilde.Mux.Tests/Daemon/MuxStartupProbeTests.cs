@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Net.Sockets;
-using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
-using Ntilde.Shell.Mux;
 
-namespace Ntilde.Tests.Shell.Mux;
+namespace Ntilde.Mux.Tests.Daemon;
 
 public sealed class MuxStartupProbeTests : IDisposable
 {

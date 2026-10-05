@@ -1,8 +1,7 @@
-using System.Linq;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Transport;
 
-namespace Ntilde.Shell.Mux;
+namespace Ntilde.Mux.Daemon;
 
 /// <summary>
 /// Whether a multiplexer daemon is really listening, for the startup auto-apply gate
@@ -23,7 +22,7 @@ namespace Ntilde.Shell.Mux;
 /// <see cref="UnauthorizedAccessException"/> means something else owns that endpoint, which is
 /// still live from this probe's point of view.
 /// </summary>
-internal static class MuxStartupProbe
+public static class MuxStartupProbe
 {
     public static bool IsDaemonLive(string descriptorPath, TimeSpan connectTimeout,
         Func<string, TimeSpan, Stream>? connect = null, Func<string, bool>? pipeExists = null,

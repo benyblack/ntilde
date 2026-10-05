@@ -252,7 +252,7 @@ namespace Ntilde
         /// does not need to be asked about.
         /// </summary>
         internal Func<CancellationToken, Task<Ntilde.Mux.MuxClient?>> MuxProbeForUpdate { get; set; } =
-            ct => Ntilde.Shell.Mux.MuxDaemonLauncher.CreateDefault(AppLogger.Log).TryConnectExistingAsync(ct);
+            ct => Ntilde.Mux.Daemon.MuxDaemonLauncher.CreateDefault(AppLogger.Log, Ntilde.Shell.Mux.MuxCommand.ServeArguments).TryConnectExistingAsync(ct);
 
         /// <summary>Test seam: the daemon's descriptor, read just before <c>shutdown</c> is sent for an update.</summary>
         internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor?> MuxReadDescriptorForUpdate { get; set; } =
@@ -263,7 +263,7 @@ namespace Ntilde
         /// named by the descriptor has exited, or false after 5 s. Runs off the UI thread.
         /// </summary>
         internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, Task<bool>> MuxWaitForDaemonExitForUpdate { get; set; } =
-            before => Task.Run(() => Ntilde.Shell.Mux.MuxDaemonExit.WaitForExit(
+            before => Task.Run(() => Ntilde.Mux.Daemon.MuxDaemonExit.WaitForExit(
                 Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), before, TimeSpan.FromSeconds(5), Environment.ProcessId));
 
         /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>

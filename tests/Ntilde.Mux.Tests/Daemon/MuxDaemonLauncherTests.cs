@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
-using Ntilde.Shell.Mux;
+using Ntilde.Mux.Transport;
 
-namespace Ntilde.Tests.Shell.Mux;
+namespace Ntilde.Mux.Tests.Daemon;
 
 public sealed class MuxDaemonLauncherTests : IDisposable
 {
@@ -64,6 +64,72 @@ public sealed class MuxDaemonLauncherTests : IDisposable
         using MuxClient client = await Launcher(spawner).EnsureConnectedAsync(Ct);
         await client.PingAsync(Ct);
         Assert.Equal(1, spawner.Spawns);
+    }
+
+    /// <summary>
+    /// Phase 4 spec §6.2: the proxy relays a client's own hello, so the launcher must hand over the
+    /// connection untouched. A hello sent by the launcher would make the test's hello the second one,
+    /// which the server answers with a protocol error and a close.
+    /// </summary>
+    [Fact]
+    public async Task EnsureEndpointStreamAsync_returns_a_raw_stream_without_a_hello()
+    {
+        var spawner = new InProcessSpawner(this);
+
+        (Stream stream, MuxEndpointDescriptor descriptor) = await Launcher(spawner).EnsureEndpointStreamAsync(Ct);
+        using var raw = new RawMuxConnection(stream);
+
+        WelcomeResult welcome = await raw.HelloAsync();
+        Assert.Equal(1, welcome.Version);
+        Assert.Equal(1, spawner.Spawns);
+        Assert.Equal(MuxDiscovery.GetDefaultEndpoint(_root), descriptor.Endpoint);
+        Assert.Equal(Environment.ProcessId, descriptor.Pid);
+    }
+
+    /// <summary>
+    /// The idle-exit race (final-fix item 7), one step earlier: a daemon tearing down can still accept
+    /// a connection, then drop it before answering the hello. EnsureConnected treats that daemon as
+    /// absent and spawns one, as before Phase 4 - it is not a failure (the GUI would give up on the
+    /// multiplexer for its cooldown).
+    /// </summary>
+    [Fact]
+    public async Task EnsureConnected_treats_a_daemon_that_drops_the_hello_as_absent_and_spawns()
+    {
+        IMuxListener dropper = MuxListeners.Create(MuxDiscovery.GetDefaultEndpoint(_root));
+        _owned.Add(dropper);
+        var dropping = new Thread(() =>
+        {
+            while (dropper.Accept(CancellationToken.None) is { } accepted) accepted.Dispose();
+        })
+        { IsBackground = true };
+        dropping.Start();
+        using var self = Process.GetCurrentProcess();
+        MuxDiscovery.WriteDescriptor(MuxDiscovery.GetDescriptorPath(_root), new MuxEndpointDescriptor
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            Pid = Environment.ProcessId,
+            ProcessName = self.ProcessName,
+            MinVersion = 1,
+            MaxVersion = 1,
+        });
+        var spawner = new ReplacingSpawner(this, dropper);
+
+        using MuxClient client = await Launcher(spawner).EnsureConnectedAsync(Ct);
+
+        await client.PingAsync(Ct);
+        Assert.Equal(1, spawner.Spawns);
+    }
+
+    /// <summary>Stops <paramref name="old"/> (the daemon that was tearing down), then starts a real one.</summary>
+    private sealed class ReplacingSpawner(MuxDaemonLauncherTests t, IMuxListener old) : IMuxDaemonSpawner
+    {
+        public int Spawns;
+        public void Spawn()
+        {
+            Interlocked.Increment(ref Spawns);
+            old.Dispose();
+            t.StartDaemon();
+        }
     }
 
     [Fact]
@@ -185,7 +251,7 @@ public sealed class MuxDaemonLauncherTests : IDisposable
             }
             else
             {
-                _exitCode = MuxDaemonProcess.LockHeldExitCode;
+                _exitCode = MuxServeHost.LockHeldExitCode;
             }
         }
     }

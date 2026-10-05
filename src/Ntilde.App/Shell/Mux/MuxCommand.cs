@@ -2,15 +2,14 @@ using System.Globalization;
 using System.Text.Json;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 
 namespace Ntilde.Shell.Mux;
-
-internal sealed record MuxServeOptions(TimeSpan IdleExitAfter, bool Foreground);
 
 /// <summary>
 /// <c>ntilde mux serve|ls|kill|kill-server|attach</c> (spec §5, §6). Exit codes: 0 success, 1 the
 /// operation failed (including "no daemon running"), 2 the command line was wrong. <c>attach</c>
-/// differs: see <see cref="Attach"/>. <c>serve</c> exits <see cref="MuxDaemonProcess.LockHeldExitCode"/>
+/// differs: see <see cref="Attach"/>. <c>serve</c> exits <see cref="MuxServeHost.LockHeldExitCode"/>
 /// (3) when another daemon owns this root's lock.
 /// </summary>
 public static class MuxCommand
@@ -37,6 +36,9 @@ public static class MuxCommand
             cmd /c ntilde mux attach <id>
           so the prompt does not compete for your keystrokes.
         """;
+
+    /// <summary>What makes this executable serve: the daemon launcher spawns <c>&lt;exe&gt; mux serve</c> (Phase 4 spec §6.4).</summary>
+    internal static readonly IReadOnlyList<string> ServeArguments = ["mux", "serve"];
 
     /// <summary>Set by Program.cs: PrepareInteractive attached this (GUI) process to its parent's console.</summary>
     internal static bool AttachedToParentConsole { get; set; }
@@ -68,12 +70,13 @@ public static class MuxCommand
         ArgumentNullException.ThrowIfNull(stderr);
         if (args.Length < 2) return Fail(stderr, Usage);
 
-        string descriptorPath = MuxDiscovery.GetDescriptorPath(rootOverride ?? MuxDiscovery.GetRootDirectory());
+        var paths = new MuxPaths(rootOverride ?? MuxDiscovery.GetRootDirectory());
+        string descriptorPath = paths.DescriptorPath;
         try
         {
             return args[1].ToLowerInvariant() switch
             {
-                "serve" => Serve(args, stderr),
+                "serve" => Serve(args, stderr, paths),
                 "ls" => List(args, stdout, stderr, descriptorPath),
                 "kill" => Kill(args, stdout, stderr, descriptorPath),
                 "kill-server" => KillServer(args, stdout, stderr, descriptorPath),
@@ -133,7 +136,7 @@ public static class MuxCommand
         return true;
     }
 
-    private static int Serve(string[] args, TextWriter stderr)
+    private static int Serve(string[] args, TextWriter stderr, MuxPaths paths)
     {
         if (!TryParseServe(args, out MuxServeOptions options, out string? error)) return Fail(stderr, error + Environment.NewLine + Usage);
 
@@ -149,7 +152,8 @@ public static class MuxCommand
             if (wasConsoleError) stderr = Console.Error;
         }
 
-        return MuxDaemonProcess.Run(options, stderr);
+        // The GUI's own daemon keeps the GUI's session factory, so local behaviour cannot change (Phase 4 spec §6.3).
+        return MuxServeHost.Run(options, paths, DefaultTerminalSessionFactory.Instance, stderr);
     }
 
     private static MuxClient? Connect(string descriptorPath, TextWriter stderr)

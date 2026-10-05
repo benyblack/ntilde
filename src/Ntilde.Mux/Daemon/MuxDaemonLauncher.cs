@@ -1,8 +1,7 @@
-using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Transport;
 
-namespace Ntilde.Shell.Mux;
+namespace Ntilde.Mux.Daemon;
 
 public sealed class MuxUnavailableException : Exception
 {
@@ -19,15 +18,15 @@ public sealed class MuxUnavailableException : Exception
 
     /// <summary>
     /// A daemon holds this root's lock but cannot be reached (its descriptor or socket was deleted):
-    /// every new daemon exits with <see cref="MuxDaemonProcess.LockHeldExitCode"/>, so spawning cannot help.
+    /// every new daemon exits with <see cref="MuxServeHost.LockHeldExitCode"/>, so spawning cannot help.
     /// </summary>
     public bool OrphanedDaemon { get; }
 }
 
-/// <summary>Connect to the running daemon, or start one and connect (spec §6).</summary>
-internal sealed class MuxDaemonLauncher
+/// <summary>Connect to the running daemon, or start one and connect (Phase 2 spec §6; Phase 4 spec §6.2).</summary>
+public sealed class MuxDaemonLauncher
 {
-    internal const string KillServerHint = "Run 'ntilde mux kill-server --force' to replace it (this closes its sessions).";
+    public const string KillServerHint = "Run 'ntilde mux kill-server --force' to replace it (this closes its sessions).";
 
     private readonly string _descriptorPath;
     private readonly string _root;
@@ -55,10 +54,24 @@ internal sealed class MuxDaemonLauncher
     /// </summary>
     public TimeSpan RespawnAfter { get; init; } = TimeSpan.FromSeconds(1);
 
-    public static MuxDaemonLauncher CreateDefault(Action<string>? log) =>
-        new(MuxDiscovery.GetDescriptorPath(), ProcessMuxDaemonSpawner.CreateDefault(), log: log);
+    /// <param name="serveArguments">What the spawned executable is given to serve: <c>["mux","serve"]</c> for the GUI's exe.</param>
+    /// <param name="paths">The daemon's root; null = <see cref="MuxPaths.Default"/>.</param>
+    public static MuxDaemonLauncher CreateDefault(Action<string>? log, IReadOnlyList<string> serveArguments, MuxPaths? paths = null) =>
+        new((paths ?? MuxPaths.Default()).DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments), log: log);
 
-    public async Task<MuxClient?> TryConnectExistingAsync(CancellationToken cancellationToken)
+    public async Task<MuxClient?> TryConnectExistingAsync(CancellationToken cancellationToken) =>
+        (await TryConnectExistingCoreAsync(hello: true, cancellationToken).ConfigureAwait(false))?.Client;
+
+    /// <summary>One connection: the stream, the descriptor it came from, and the client when the hello was sent.</summary>
+    private readonly record struct Attempt(Stream Stream, MuxEndpointDescriptor Descriptor, MuxClient? Client);
+
+    /// <summary>
+    /// One try at the advertised daemon: its endpoint connected and, with <paramref name="hello"/>,
+    /// greeted. Null when no trusted daemon is advertised or the connect or the hello fails (logged):
+    /// that daemon then counts as absent, as one tearing down after its idle exit does. A version
+    /// mismatch throws instead - another spawn cannot help.
+    /// </summary>
+    private async Task<Attempt?> TryConnectExistingCoreAsync(bool hello, CancellationToken cancellationToken)
     {
         if (!MuxDiscovery.TryReadLiveDescriptor(_descriptorPath, out MuxEndpointDescriptor? d)) return null;
         if (!IsTrustedEndpoint(d.Endpoint, _root, out string? why))
@@ -70,7 +83,8 @@ internal sealed class MuxDaemonLauncher
         try
         {
             Stream stream = await Task.Run(() => MuxEndpointConnector.Connect(d.Endpoint, ConnectTimeout), cancellationToken).ConfigureAwait(false);
-            return await MuxClient.ConnectAsync(stream, _clientOptions, cancellationToken).ConfigureAwait(false);
+            if (!hello) return new Attempt(stream, d, null);
+            return new Attempt(stream, d, await MuxClient.ConnectAsync(stream, _clientOptions, cancellationToken).ConfigureAwait(false));
         }
         catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.VersionMismatch)
         {
@@ -91,12 +105,12 @@ internal sealed class MuxDaemonLauncher
     /// so its directory must also still be private (0700), as the listener made it - otherwise
     /// someone else may have put a socket there.
     /// </summary>
-    internal static bool IsTrustedEndpoint(string endpoint, string root, out string? why)
+    public static bool IsTrustedEndpoint(string endpoint, string root, out string? reason)
     {
         string expected = MuxDiscovery.GetDefaultEndpoint(root);
         if (!string.Equals(endpoint, expected, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
         {
-            why = $"its endpoint {endpoint} is not this profile's {expected}";
+            reason = $"its endpoint {endpoint} is not this profile's {expected}";
             return false;
         }
 
@@ -111,24 +125,44 @@ internal sealed class MuxDaemonLauncher
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                why = $"its socket directory could not be checked: {ex.Message}";
+                reason = $"its socket directory could not be checked: {ex.Message}";
                 return false;
             }
 
             if (mode != Private)
             {
-                why = $"its socket directory {dir} has mode {Convert.ToString((int)mode, 8)}, expected 700";
+                reason = $"its socket directory {dir} has mode {Convert.ToString((int)mode, 8)}, expected 700";
                 return false;
             }
         }
 
-        why = null;
+        reason = null;
         return true;
     }
 
-    public async Task<MuxClient> EnsureConnectedAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// The daemon's endpoint, connected, spawning the daemon on demand - but no hello: the caller
+    /// speaks first. <c>ntilde-mux proxy</c> (Phase 4 spec §8.1) relays its client's own hello over it.
+    /// </summary>
+    public async Task<(Stream Stream, MuxEndpointDescriptor Descriptor)> EnsureEndpointStreamAsync(CancellationToken cancellationToken)
     {
-        if (await TryConnectExistingAsync(cancellationToken).ConfigureAwait(false) is { } existing) return existing;
+        Attempt connected = await EnsureAsync(hello: false, cancellationToken).ConfigureAwait(false);
+        return (connected.Stream, connected.Descriptor);
+    }
+
+    /// <summary>
+    /// <see cref="EnsureEndpointStreamAsync"/> plus the hello, sent on each attempt: a daemon that
+    /// drops the connection before answering it (one tearing down after its idle exit) counts as
+    /// absent, as it always has. A version mismatch is a <see cref="MuxUnavailableException"/> with
+    /// <see cref="MuxUnavailableException.VersionMismatch"/> and the kill-server hint, and nothing
+    /// more is spawned.
+    /// </summary>
+    public async Task<MuxClient> EnsureConnectedAsync(CancellationToken cancellationToken) =>
+        (await EnsureAsync(hello: true, cancellationToken).ConfigureAwait(false)).Client!;
+
+    private async Task<Attempt> EnsureAsync(bool hello, CancellationToken cancellationToken)
+    {
+        if (await TryConnectExistingCoreAsync(hello, cancellationToken).ConfigureAwait(false) is { } existing) return existing;
 
         _log?.Invoke("[Mux] starting the multiplexer daemon");
         try { _spawner.Spawn(); }
@@ -140,10 +174,10 @@ internal sealed class MuxDaemonLauncher
         while (DateTime.UtcNow < deadline)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (await TryConnectExistingAsync(cancellationToken).ConfigureAwait(false) is { } client) return client;
+            if (await TryConnectExistingCoreAsync(hello, cancellationToken).ConfigureAwait(false) is { } connected) return connected;
 
             bool advertised = MuxDiscovery.TryReadLiveDescriptor(_descriptorPath, out _);
-            if (DateTime.UtcNow - spawnedAt >= RespawnAfter && _spawner.LastSpawnExitCode == MuxDaemonProcess.LockHeldExitCode && (respawned || advertised))
+            if (DateTime.UtcNow - spawnedAt >= RespawnAfter && _spawner.LastSpawnExitCode == MuxServeHost.LockHeldExitCode && (respawned || advertised))
             {
                 // Our daemon found the lock held, yet nothing answers: after the respawn (which covers
                 // an old daemon idle-exiting), or while the descriptor names one we just failed to

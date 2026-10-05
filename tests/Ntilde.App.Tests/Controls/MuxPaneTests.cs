@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Pty;
 using Ntilde.Shell.Mux;

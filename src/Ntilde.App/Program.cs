@@ -33,7 +33,7 @@ class Program
             VelopackApp.Build()
                 .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(
                     args,
-                    static () => Ntilde.Shell.Mux.MuxStartupProbe.IsDaemonLive(
+                    static () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(
                         Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), TimeSpan.FromMilliseconds(200))))
                 .Run();
 
@@ -124,7 +124,7 @@ class Program
     /// cases the staged update waits for the in-app apply, which confirms and stops the daemon.
     /// <paramref name="liveDaemon"/> is only asked for the GUI case, so CLI starts never read the disk.
     /// "Live" means a daemon that answers a 200 ms probe-connect, not merely a descriptor naming a
-    /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Shell.Mux.MuxStartupProbe"/>).
+    /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>).
     /// </summary>
     internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon)
     {

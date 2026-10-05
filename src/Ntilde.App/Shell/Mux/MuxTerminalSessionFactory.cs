@@ -1,5 +1,6 @@
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Pty;
 
 namespace Ntilde.Shell.Mux;

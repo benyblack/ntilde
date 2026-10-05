@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 
 namespace Ntilde.Shell.Mux;
 
@@ -34,7 +35,7 @@ internal sealed class MuxConnectionHost : IDisposable
 
     public static MuxConnectionHost CreateDefault(Action<string>? log)
     {
-        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(log);
+        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(log, MuxCommand.ServeArguments);
         return new MuxConnectionHost(launcher.EnsureConnectedAsync, MuxDiscovery.GetDefaultEndpoint(), log);
     }
 

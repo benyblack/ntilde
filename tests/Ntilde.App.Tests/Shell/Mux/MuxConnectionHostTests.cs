@@ -1,4 +1,5 @@
 using Ntilde.Mux;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Shell.Mux;
 

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Pty;
 using Ntilde.Shell.Mux;
@@ -26,7 +27,7 @@ public sealed class MuxDaemonSmokeTests
     {
         string dir = AppContext.BaseDirectory;
         string apphost = Path.Combine(dir, OperatingSystem.IsWindows() ? "Ntilde.exe" : "Ntilde");
-        if (File.Exists(apphost)) return new ProcessMuxDaemonSpawner(apphost, []);
+        if (File.Exists(apphost)) return new ProcessMuxDaemonSpawner(apphost, [], ["mux", "serve"]);
 
         string dll = Path.Combine(dir, "Ntilde.dll");
         string? dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
@@ -35,7 +36,7 @@ public sealed class MuxDaemonSmokeTests
             Assert.Fail($"No way to start the daemon: no apphost at {apphost}, and DOTNET_HOST_PATH ('{dotnet}') or {dll} is missing.");
         }
 
-        return new ProcessMuxDaemonSpawner(dotnet!, [dll]);
+        return new ProcessMuxDaemonSpawner(dotnet!, [dll], ["mux", "serve"]);
     }
 
     [Fact]
