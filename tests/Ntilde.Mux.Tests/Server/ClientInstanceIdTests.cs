@@ -15,6 +15,21 @@ public sealed class ClientInstanceIdTests
         return tcs.Task.WaitAsync(SafetyTimeout);
     }
 
+    private static async Task WaitForConnectionCountAsync(MuxTestHost host, int expected)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        cts.CancelAfter(SafetyTimeout);
+        while (host.Server.ConnectionCount != expected)
+        {
+            if (cts.IsCancellationRequested)
+            {
+                Assert.Fail($"ConnectionCount stayed {host.Server.ConnectionCount}, expected {expected}.");
+            }
+
+            await Task.Delay(5, CancellationToken.None);
+        }
+    }
+
     [Fact]
     public async Task A_reconnect_with_the_same_instance_id_evicts_the_dead_twin()
     {
@@ -31,6 +46,9 @@ public sealed class ClientInstanceIdTests
         Assert.False(a.IsConnected);
         Assert.True(b.IsConnected);
 
+        // A's server-side reader posts its detaches in its finally, before the connection leaves the
+        // registry: wait for that, then flush the parse thread so the posted detach has run.
+        await WaitForConnectionCountAsync(host, 1);
         await host.SettleAsync(id, b);
         Assert.Equal(0, host.Mux(id).AttachedClients); // B has not attached; A's sink is gone
         Assert.False(host.Mux(id).IsExited);           // the session itself kept running
