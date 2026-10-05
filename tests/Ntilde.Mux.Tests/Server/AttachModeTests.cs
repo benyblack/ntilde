@@ -44,6 +44,43 @@ public sealed class AttachModeTests
         }
     }
 
+    private static long SendUserDetach(RawMuxConnection raw, Guid id, long? attachRequestId = null) =>
+        raw.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true, AttachRequestId = attachRequestId }, MuxJsonContext.Default.DetachParams);
+
+    private static long SendResize(RawMuxConnection raw, Guid id, int cols, int rows) =>
+        raw.Request(MuxMethods.Resize, new ResizeParams { SessionId = id, Cols = cols, Rows = rows }, MuxJsonContext.Default.ResizeParams);
+
+    /// <summary>
+    /// The harness for a sink dropped for refusing a frame before its own detach runs (Task 13b).
+    /// It parks the parse thread and lets <paramref name="queueBehindPark"/> queue items behind it.
+    /// It then closes <paramref name="closing"/> and waits until the server has closed that
+    /// connection too, so from then on it refuses every frame. After checking that exactly
+    /// <paramref name="queuedAfterClose"/> items wait (the close path may have added a detach), it
+    /// releases the parse thread and waits until all of them have run.
+    /// </summary>
+    private static async Task ParkQueueCloseReleaseAsync(MuxTestHost host, Guid id, RawMuxConnection closing, int queuedAfterClose, Func<Task> queueBehindPark)
+    {
+        HeadlessTerminalSession mux = host.Mux(id);
+        using var gate = new ManualResetEventSlim(false);
+        Task<int> parked = mux.InvokeAsync(() => { gate.Wait(TimeSpan.FromSeconds(30)); return 0; });
+        try
+        {
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread took the parking item");
+            await queueBehindPark();
+            int connections = host.Server.ConnectionCount;
+            closing.Dispose();
+            await TestWait.UntilAsync(() => host.Server.ConnectionCount == connections - 1, "the connection closed: it refuses every frame now");
+            Assert.Equal(queuedAfterClose, mux.QueuedControlCount);
+        }
+        finally
+        {
+            gate.Set();
+        }
+
+        await parked;
+        await mux.InvokeAsync(() => 0);
+    }
+
     /// <summary>
     /// The pinned race (review note 4): two real connections, each with its own server reader thread,
     /// both get their attach item into the session's control queue while the parse thread is parked,
@@ -334,9 +371,8 @@ public sealed class AttachModeTests
     /// The race behind the one arm64 failure of the test above. A client that detaches and hangs up
     /// has its detach queued (posted before the "ok"), but an item queued ahead of it broadcasts
     /// after the connection has closed, so the broadcast drops the sink. The detach then finds no
-    /// subscription to end, and it must still decide DetachedByUser. Here the broadcast is another
-    /// client's resize (its ResizeEvent). The parse thread is parked so the resize and the detach
-    /// are both queued, in that order, before the connection closes.
+    /// subscription to end, and it must still decide DetachedByUser. Here the item ahead of the
+    /// detach is another client's resize, which broadcasts a ResizeEvent.
     /// </summary>
     [Fact]
     public async Task A_user_detach_still_decides_when_a_resize_broadcast_drops_the_closed_connection_first()
@@ -349,29 +385,15 @@ public sealed class AttachModeTests
         RawMuxConnection other = await ConnectV2Async(host);
         Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
         await mux.InvokeAsync(() => 0); // the attach item, and the sessionChanged at its tail, are done
-        using var gate = new ManualResetEventSlim(false);
 
-        Task<int> parked = mux.InvokeAsync(() => { gate.Wait(TimeSpan.FromSeconds(30)); return 0; });
-        try
+        await ParkQueueCloseReleaseAsync(host, id, closing: a, queuedAfterClose: 2, async () =>
         {
-            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread took the parking item");
-            long resize = other.Request(MuxMethods.Resize, new ResizeParams { SessionId = id, Cols = 100, Rows = 30 }, MuxJsonContext.Default.ResizeParams);
-            Assert.Equal("ok", await ReadOutcomeAsync(other, resize)); // posted: its ResizeEvent goes to every subscriber
-            long detach = a.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
-            Assert.Equal("ok", await ReadOutcomeAsync(a, detach));     // posted behind the resize
-            Assert.Equal(2, mux.QueuedControlCount);
-            a.Dispose();
-            await TestWait.UntilAsync(() => host.Server.ConnectionCount == 2, "a's connection closed: it refuses every frame now");
-        }
-        finally
-        {
-            gate.Set();
-        }
+            Assert.Equal("ok", await ReadOutcomeAsync(other, SendResize(other, id, 100, 30)));
+            Assert.Equal("ok", await ReadOutcomeAsync(a, SendUserDetach(a, id))); // posted behind the resize
+        });
 
-        await parked;
-        await mux.InvokeAsync(() => 0);
-
-        Assert.Equal((100, 30), (mux.Cols, mux.Rows)); // the resize ran first and broadcast to the closed connection
+        // The resize ran ahead of the detach, and a broadcast to the closed connection dropped it.
+        Assert.Equal((100, 30), (mux.Cols, mux.Rows));
         Assert.Equal(0, mux.AttachedClients);
         Assert.True(mux.DetachedByUser);
     }
@@ -392,32 +414,132 @@ public sealed class AttachModeTests
         RawMuxConnection peek = await ConnectV2Async(host);
         Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
         await mux.InvokeAsync(() => 0);
-        using var gate = new ManualResetEventSlim(false);
+        long peekAttach = 0;
 
-        Task<int> parked = mux.InvokeAsync(() => { gate.Wait(TimeSpan.FromSeconds(30)); return 0; });
-        long peekAttach;
-        try
+        await ParkQueueCloseReleaseAsync(host, id, closing: a, queuedAfterClose: 2, async () =>
         {
-            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread took the parking item");
             peekAttach = SendAttach(peek, id, MuxAttachModes.ReadOnly);
             await TestWait.UntilAsync(() => mux.QueuedControlCount == 1, "the peek's attach is queued");
-            long detach = a.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
-            Assert.Equal("ok", await ReadOutcomeAsync(a, detach)); // posted behind the peek's attach
-            Assert.Equal(2, mux.QueuedControlCount);
-            a.Dispose();
-            await TestWait.UntilAsync(() => host.Server.ConnectionCount == 2, "a's connection closed: it refuses every frame now");
-        }
-        finally
-        {
-            gate.Set();
-        }
+            Assert.Equal("ok", await ReadOutcomeAsync(a, SendUserDetach(a, id))); // posted behind the peek's attach
+        });
 
-        await parked;
         Assert.Equal("snapshot", await ReadOutcomeAsync(peek, peekAttach));
-        await mux.InvokeAsync(() => 0);
-
         Assert.Equal((1, 0), (mux.AttachedClients, mux.InteractiveClients)); // only the peek is left
         Assert.True(mux.DetachedByUser);
+    }
+
+    /// <summary>
+    /// Task 13b review (i), the common case: a connection that dies without a user detach
+    /// (client_too_slow, a failed write, a crash) is dropped by a broadcast. Its close-time detach
+    /// then decides, and that detach is not a user detach.
+    /// </summary>
+    [Fact]
+    public async Task A_dropped_connection_whose_own_detach_is_its_close_is_not_detached_by_user()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection other = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        await mux.InvokeAsync(() => 0);
+
+        // Two items: the resize, then the plain detach that a's close path posts behind it.
+        await ParkQueueCloseReleaseAsync(host, id, closing: a, queuedAfterClose: 2, async () =>
+            Assert.Equal("ok", await ReadOutcomeAsync(other, SendResize(other, id, 100, 30))));
+
+        Assert.Equal(0, mux.AttachedClients);
+        Assert.False(mux.DetachedByUser);
+    }
+
+    /// <summary>
+    /// Task 13b review (ii): an interactive attach that lands between the drop and the dropped
+    /// sink's late user detach has already decided. The late detach changes nothing, and the new
+    /// client stays attached.
+    /// </summary>
+    [Fact]
+    public async Task An_interactive_attach_after_the_drop_leaves_the_late_user_detach_no_say()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection b = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        await mux.InvokeAsync(() => 0);
+        long bAttach = 0;
+
+        await ParkQueueCloseReleaseAsync(host, id, closing: a, queuedAfterClose: 3, async () =>
+        {
+            Assert.Equal("ok", await ReadOutcomeAsync(b, SendResize(b, id, 100, 30))); // drops a, the last interactive sink
+            bAttach = SendAttach(b, id, null);
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 2, "b's interactive attach is queued");
+            Assert.Equal("ok", await ReadOutcomeAsync(a, SendUserDetach(a, id))); // a's user detach comes last
+        });
+
+        Assert.Equal("snapshot", await ReadOutcomeAsync(b, bAttach));
+        Assert.Equal((1, 1), (mux.AttachedClients, mux.InteractiveClients));
+        Assert.False(mux.DetachedByUser);
+    }
+
+    /// <summary>
+    /// Task 13b review (iii): a read-only observer that is dropped records nothing, so even its user
+    /// detach decides nothing (spec §7.7: observers neither set nor clear the flag).
+    /// </summary>
+    [Fact]
+    public async Task A_dropped_read_only_observer_decides_nothing_even_through_a_user_detach()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        RawMuxConnection peek = await ConnectV2Async(host);
+        RawMuxConnection other = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(peek, SendAttach(peek, id, MuxAttachModes.ReadOnly)));
+        await mux.InvokeAsync(() => 0);
+        Assert.False(mux.DetachedByUser);
+
+        await ParkQueueCloseReleaseAsync(host, id, closing: peek, queuedAfterClose: 2, async () =>
+        {
+            Assert.Equal("ok", await ReadOutcomeAsync(other, SendResize(other, id, 100, 30)));
+            Assert.Equal("ok", await ReadOutcomeAsync(peek, SendUserDetach(peek, id)));
+        });
+
+        Assert.Equal(0, mux.AttachedClients);
+        Assert.False(mux.DetachedByUser);
+    }
+
+    /// <summary>
+    /// Task 13b review (iv): a user detach that names an attach the dropped subscription had already
+    /// superseded is stale, as it would be for a live subscriber, and is ignored. A detach naming an
+    /// attach does not end the connection's cleanup entry, so the close path then posts the plain
+    /// detach that decides.
+    /// </summary>
+    [Fact]
+    public async Task A_stale_user_detach_after_the_drop_is_ignored()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection other = await ConnectV2Async(host);
+        long first = SendAttach(a, id, null);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, first));
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null))); // supersedes `first`
+        await mux.InvokeAsync(() => 0);
+
+        // Three items: the resize, the stale user detach, then the plain detach from a's close path.
+        await ParkQueueCloseReleaseAsync(host, id, closing: a, queuedAfterClose: 3, async () =>
+        {
+            Assert.Equal("ok", await ReadOutcomeAsync(other, SendResize(other, id, 100, 30)));
+            Assert.Equal("ok", await ReadOutcomeAsync(a, SendUserDetach(a, id, attachRequestId: first)));
+        });
+
+        Assert.Equal(0, mux.AttachedClients);
+        Assert.False(mux.DetachedByUser);
     }
 
     /// <summary>Final review: listSessions tells a read-only peek apart from a client that shows the shell (orphan adoption needs it).</summary>

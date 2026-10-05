@@ -61,6 +61,9 @@ public sealed class MuxClient : IDisposable
 
     internal bool IsOnDeliveryThread => Thread.CurrentThread == _readerThread;
 
+    /// <summary>Tests: requests sent (or still queued to send) whose reply has not arrived yet.</summary>
+    internal int PendingRequestCount => _pending.Count;
+
     /// <summary>What an attaching session may adopt: consulted by <see cref="MuxClientSession.DeliverResize"/> too, since a resize is just as capable of demanding an oversize buffer as an attach's snapshot.</summary>
     internal MuxAttachLimits AttachLimits => _options.AttachLimits;
 

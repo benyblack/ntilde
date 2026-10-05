@@ -72,6 +72,10 @@ public sealed class HeadlessTerminalSession : IDisposable
     // Parse thread only: the interactive subscriber whose drop for refusing a frame left no interactive
     // subscriber, with its latest attach, until its own detach says what kind of departure that was
     // (spec §7.7). See DropRefusingSink and DecideForDroppedSink.
+    // Accepted residual: a sink dropped this way stops counting as an interactive subscriber at once,
+    // before its detach has run. When two interactive clients leave within one parse item (one is
+    // dropped while the other's detach is still queued), the decision goes to whichever departure the
+    // session processes last. That need not match the order in which the two detaches were queued.
     private (IMuxFrameSink Sink, long AttachRequestId)? _undecidedDrop;
 
     // sessionChanged coalescing (spec §4), parse thread only: at most one per interval, the trailing
