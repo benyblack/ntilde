@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -59,18 +58,23 @@ public static class MuxDiscovery
 
     private const string RuntimeDirEnvVar = "XDG_RUNTIME_DIR";
 
-    private static string SanitizedUser()
+    internal static string SanitizedUser()
     {
         string sanitized = string.Concat(Environment.UserName.ToLowerInvariant().Where(char.IsAsciiLetterOrDigit));
         return sanitized.Length == 0 ? "user" : sanitized;
     }
 
-    private static string RootHash(string root)
+    /// <summary>
+    /// The first 4 bytes of the root's SHA-256, in hex. <see cref="Sha256"/>, not
+    /// <c>System.Security.Cryptography.SHA256</c>: on Linux the latter is OpenSSL, loaded at run time,
+    /// which the standalone ntilde-mux must not need (Phase 4 spec §2 decision 1). Same bytes either way.
+    /// </summary>
+    internal static string RootHash(string root)
     {
         // Trimmed: "C:\x\" and "C:\x" are one root, and clients derive it back from the descriptor path.
         string full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         if (OperatingSystem.IsWindows()) full = full.ToUpperInvariant(); // case-insensitive paths
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(full));
+        byte[] hash = Sha256.Hash(Encoding.UTF8.GetBytes(full));
         return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
     }
 

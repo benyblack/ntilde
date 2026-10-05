@@ -13,4 +13,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- An assembly attribute, not a reference: the leaf rule above still holds. For the managed
+         Sha256 and the endpoint-hash pieces of MuxDiscovery, which are internal. -->
+    <InternalsVisibleTo Include="Ntilde.Mux.Tests" />
+  </ItemGroup>
+
 </Project>
