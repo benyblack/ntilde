@@ -342,7 +342,11 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
                 Enabled = profile.MuxOptions.Enabled,
                 ControlMasterAuto = profile.MuxOptions.ControlMasterAuto,
                 ControlPath = profile.MuxOptions.ControlPath,
-                ControlPersistSeconds = profile.MuxOptions.ControlPersistSeconds
+                ControlPersistSeconds = profile.MuxOptions.ControlPersistSeconds,
+                PersistRemoteSessions = profile.MuxOptions.PersistRemoteSessions,
+                RemoteDaemonPath = profile.MuxOptions.RemoteDaemonPath,
+                RemoteDaemonVersion = profile.MuxOptions.RemoteDaemonVersion,
+                RemoteDaemonRid = profile.MuxOptions.RemoteDaemonRid
             },
             ServerAliveIntervalSeconds = profile.ServerAliveIntervalSeconds,
             ServerAliveCountMax = profile.ServerAliveCountMax,

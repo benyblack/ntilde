@@ -632,7 +632,11 @@ public sealed class SshConnectionService
             Enabled = mux.Enabled,
             ControlMasterAuto = mux.ControlMasterAuto,
             ControlPath = mux.ControlPath,
-            ControlPersistSeconds = mux.ControlPersistSeconds
+            ControlPersistSeconds = mux.ControlPersistSeconds,
+            PersistRemoteSessions = mux.PersistRemoteSessions,
+            RemoteDaemonPath = mux.RemoteDaemonPath,
+            RemoteDaemonVersion = mux.RemoteDaemonVersion,
+            RemoteDaemonRid = mux.RemoteDaemonRid
         };
     }
 }

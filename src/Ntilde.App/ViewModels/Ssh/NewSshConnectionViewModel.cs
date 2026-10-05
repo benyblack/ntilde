@@ -1,10 +1,13 @@
 using Ntilde.Shell;
+using Ntilde.Shell.Mux;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Windows.Input;
 using System.Runtime.CompilerServices;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -42,6 +45,11 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     private int _keepAliveCountMax = 3;
     private bool _enableMux;
     private int _controlPersistSeconds = 90;
+    private bool _persistRemoteSessions;
+    private string _remoteDaemonPath = string.Empty;
+    private string _remoteDaemonVersion = string.Empty;
+    private string _remoteDaemonRid = string.Empty;
+    private string _appVersion = ResolveAppVersion();
     private string _extraSshArgs = string.Empty;
     private bool _connectAfterSave;
     private bool _experimentalNativeSshEnabled;
@@ -217,6 +225,64 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     {
         get => _controlPersistSeconds;
         set => SetField(ref _controlPersistSeconds, value);
+    }
+
+    /// <summary>
+    /// Phase 4: tabs of this profile run inside ntilde-mux on the remote host and survive disconnects.
+    /// Deliberately independent of <see cref="EnableMux"/> and NOT part of <see cref="BackendWarning"/>:
+    /// it is not an OpenSSH client feature.
+    /// </summary>
+    public bool PersistRemoteSessions
+    {
+        get => _persistRemoteSessions;
+        set => SetField(ref _persistRemoteSessions, value);
+    }
+
+    /// <summary>Recorded by the install flow; carried through the editor so a save never drops it.</summary>
+    public string RemoteDaemonVersion
+    {
+        get => _remoteDaemonVersion;
+        set
+        {
+            if (SetField(ref _remoteDaemonVersion, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(RemoteDaemonStatusText));
+            }
+        }
+    }
+
+    /// <summary>The app version the status line compares against; settable for tests.</summary>
+    public string AppVersion
+    {
+        get => _appVersion;
+        set
+        {
+            if (SetField(ref _appVersion, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(RemoteDaemonStatusText));
+            }
+        }
+    }
+
+    public string RemoteDaemonStatusText => RemoteMuxStatusText.Describe(RemoteDaemonVersion, AppVersion);
+
+    /// <summary>Wired by the install flow in a later task; until then it can never execute.</summary>
+    public ICommand InstallRemoteMuxCommand { get; set; } = DisabledCommand.Instance;
+
+    private static string ResolveAppVersion() =>
+        Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? Assembly.GetEntryAssembly()?.GetName().Version?.ToString()
+        ?? string.Empty;
+
+    private sealed class DisabledCommand : ICommand
+    {
+        public static readonly DisabledCommand Instance = new();
+
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
+
+        public bool CanExecute(object? parameter) => false;
+
+        public void Execute(object? parameter) { }
     }
 
     public string ExtraSshArgs
@@ -420,7 +486,11 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
             {
                 Enabled = EnableMux,
                 ControlMasterAuto = true,
-                ControlPersistSeconds = EnableMux ? controlPersistSeconds : 0
+                ControlPersistSeconds = EnableMux ? controlPersistSeconds : 0,
+                PersistRemoteSessions = PersistRemoteSessions,
+                RemoteDaemonPath = _remoteDaemonPath,
+                RemoteDaemonVersion = RemoteDaemonVersion,
+                RemoteDaemonRid = _remoteDaemonRid
             },
             ServerAliveIntervalSeconds = keepAliveInterval,
             ServerAliveCountMax = keepAliveCountMax,
@@ -522,6 +592,10 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
         KeepAliveCountMax = sshProfile.ServerAliveCountMax > 0 ? sshProfile.ServerAliveCountMax : 3;
         EnableMux = sshProfile.MuxOptions.Enabled;
         ControlPersistSeconds = sshProfile.MuxOptions.ControlPersistSeconds >= 0 ? sshProfile.MuxOptions.ControlPersistSeconds : 90;
+        PersistRemoteSessions = sshProfile.MuxOptions.PersistRemoteSessions;
+        _remoteDaemonPath = sshProfile.MuxOptions.RemoteDaemonPath ?? string.Empty;
+        _remoteDaemonRid = sshProfile.MuxOptions.RemoteDaemonRid ?? string.Empty;
+        RemoteDaemonVersion = sshProfile.MuxOptions.RemoteDaemonVersion ?? string.Empty;
         ExtraSshArgs = sshProfile.ExtraSshArgs ?? string.Empty;
         RemoteShellKind = sshProfile.RemoteShellKind;
     }

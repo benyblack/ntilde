@@ -551,4 +551,67 @@ public sealed class NewSshConnectionViewModelTests
         Assert.Contains(nameof(NewSshConnectionViewModel.BackendWarning), raised);
         Assert.Equal(string.Empty, vm.BackendWarning);
     }
+
+    [Fact]
+    public void PersistRemoteSessions_AndInstallMetadata_SurviveApplyAndToSshProfile()
+    {
+        var source = new SshProfile
+        {
+            Id = Guid.NewGuid(),
+            Name = "p",
+            Host = "p.internal",
+            MuxOptions = new SshMuxOptions
+            {
+                PersistRemoteSessions = true,
+                RemoteDaemonPath = "/opt/ntilde-mux",
+                RemoteDaemonVersion = "0.11.0",
+                RemoteDaemonRid = "linux-arm64"
+            }
+        };
+        var vm = new NewSshConnectionViewModel();
+
+        vm.ApplySshProfile(source);
+        SshProfile result = vm.ToSshProfile();
+
+        Assert.True(vm.PersistRemoteSessions);
+        Assert.True(result.MuxOptions.PersistRemoteSessions);
+        Assert.Equal("/opt/ntilde-mux", result.MuxOptions.RemoteDaemonPath);
+        Assert.Equal("0.11.0", result.MuxOptions.RemoteDaemonVersion);
+        Assert.Equal("linux-arm64", result.MuxOptions.RemoteDaemonRid);
+    }
+
+    [Theory]
+    [InlineData("", "0.11.0", "ntilde-mux not installed")]
+    [InlineData("0.11.0", "0.11.0", "ntilde-mux 0.11.0 installed")]
+    [InlineData("0.11.0", "0.11.0+abc123", "ntilde-mux 0.11.0 installed")]
+    [InlineData("0.10.0", "0.11.0+abc123", "ntilde-mux 0.10.0 installed — this app is 0.11.0")]
+    public void RemoteMuxStatusText_Describe(string installed, string app, string expected)
+    {
+        Assert.Equal(expected, Ntilde.Shell.Mux.RemoteMuxStatusText.Describe(installed, app));
+    }
+
+    [Fact]
+    public void RemoteDaemonStatusText_TracksVersionAndInstallCommandIsDisabled()
+    {
+        var vm = new NewSshConnectionViewModel { AppVersion = "0.11.0" };
+        Assert.Equal("ntilde-mux not installed", vm.RemoteDaemonStatusText);
+
+        vm.RemoteDaemonVersion = "0.10.0";
+
+        Assert.Equal("ntilde-mux 0.10.0 installed — this app is 0.11.0", vm.RemoteDaemonStatusText);
+        Assert.False(vm.InstallRemoteMuxCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void BackendWarning_NativeProfileWithOnlyPersistRemoteSessions_HasNoMuxWarning()
+    {
+        var vm = new NewSshConnectionViewModel
+        {
+            BackendKind = SshBackendKind.Native,
+            ExperimentalNativeSshEnabled = true,
+            PersistRemoteSessions = true
+        };
+
+        Assert.Equal(string.Empty, vm.BackendWarning);
+    }
 }
