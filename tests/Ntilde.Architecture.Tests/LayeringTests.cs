@@ -312,6 +312,54 @@ public class LayeringTests
             $"ntilde-mux must stay headless and App-free. Offenders: {Join(result.FailingTypeNames)}");
     }
 
+    // Hoisted for CA1861. On Linux these reach OpenSSL, which .NET - NativeAOT included - loads at
+    // run time: hashes, HMAC, random numbers and certificates through System.Security.Cryptography
+    // (and its facades), TLS through System.Net.Security and HttpClient. ldd shows no such
+    // dependency, and a remote host may have no libssl.so at all; ntilde-mux aborted at `serve` on
+    // debian:12-slim until MuxDiscovery's endpoint hash moved to the managed Sha256.
+    private static readonly string[] OpenSslBackedAssemblyPrefixes =
+        ["System.Security.Cryptography", "System.Net.Security", "System.Net.Http"];
+
+    // Hoisted for CA1861: what the walk below must at least reach.
+    private static readonly string[] MuxDaemonClosureFloor =
+        ["ntilde-mux", "Ntilde.Mux", "Ntilde.Mux.Contracts", "Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay"];
+
+    /// <summary>
+    /// Phase 4 spec §2 decision 1 and the Task 12 ruling: ntilde-mux needs libc and nothing else, so
+    /// nothing it runs may reference an assembly that loads OpenSSL. The Ntilde assemblies it runs are
+    /// walked from its own references rather than listed, so a dependency added later is covered too.
+    /// </summary>
+    [Fact]
+    public void Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly()
+    {
+        var closure = new Dictionary<string, Assembly>(StringComparer.Ordinal);
+        var pending = new Queue<Assembly>();
+        pending.Enqueue(MuxDaemon);
+        while (pending.Count > 0)
+        {
+            Assembly asm = pending.Dequeue();
+            if (!closure.TryAdd(asm.GetName().Name ?? string.Empty, asm)) continue;
+            foreach (AssemblyName reference in asm.GetReferencedAssemblies())
+            {
+                if (reference.Name?.StartsWith("Ntilde", StringComparison.Ordinal) == true && !closure.ContainsKey(reference.Name))
+                    pending.Enqueue(Assembly.Load(reference));
+            }
+        }
+
+        Assert.All(MuxDaemonClosureFloor, name => Assert.Contains(name, closure.Keys));
+
+        string[] offenders = closure
+            .SelectMany(entry => entry.Value.GetReferencedAssemblies()
+                .Select(r => r.Name ?? string.Empty)
+                .Where(n => OpenSslBackedAssemblyPrefixes.Any(p => n.StartsWith(p, StringComparison.Ordinal)))
+                .Select(n => $"{entry.Key} -> {n}"))
+            .ToArray();
+
+        Assert.True(offenders.Length == 0,
+            "ntilde-mux must run on libc alone, and these load OpenSSL on Linux (a managed replacement is " +
+            $"what MuxDiscovery's Sha256 is for): {Join(offenders)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {

@@ -1840,10 +1840,10 @@ jobs:
   #
   # ci.yml's mux_daemon_aot leg for leg, plus -p:Version and the upload. The Linux legs use
   # publish_linux's ubuntu:22.04 recipe line for line (the glibc floor), and every leg builds
-  # librusty_pty.a itself - one small crate - so the job needs nothing but the release to
-  # upload to. The binary is ONE file per RID, rusty_pty linked in statically (spec §2
-  # decision 1); should the osx-arm64 static link ever fail, that RID alone falls back to
-  # {exe, librusty_pty.dylib}, and this job is where that change would land.
+  # librusty_pty.a itself - one small crate - so it needs no native artifact: only the release
+  # to upload to and a green release_tests. The binary is ONE file per RID, rusty_pty linked
+  # in statically (spec §2 decision 1); should the osx-arm64 static link ever fail, that RID
+  # alone falls back to {exe, librusty_pty.dylib}, and this job is where that change would land.
   # ===========================================================================
   publish_mux_daemon:
     name: Publish ntilde-mux (${{ matrix.rid }})
@@ -1856,7 +1856,9 @@ jobs:
       run:
         shell: bash
     timeout-minutes: 45
-    needs: [release_metadata, create_release]
+    # release_tests as well, like every other job that publishes assets (publish_aot,
+    # publish_linux): a release whose tests failed gets no ntilde-mux assets either (#156).
+    needs: [release_metadata, create_release, release_tests]
     permissions:
       contents: write
     strategy:
@@ -1888,13 +1890,16 @@ jobs:
         with:
           ref: ${{ needs.release_metadata.outputs.checkout_ref }}
 
+      # A prefix of its own (`dotnet-sdk-mux-container-`), as in ci.yml's mux_daemon_aot: no other
+      # job's restore-keys can then match these keys, and these restore-keys match no other job's
+      # (publish_linux's would-be identical key included).
       - name: Cache .NET SDK (container)
         if: matrix.container != '' && needs.release_metadata.outputs.cache_trusted == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-container-ubuntu2204-${{ matrix.rid }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-container-ubuntu2204-${{ matrix.rid }}-
+          key: dotnet-sdk-mux-container-ubuntu2204-${{ matrix.rid }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-mux-container-ubuntu2204-${{ matrix.rid }}-
 
       # publish_linux's step, unchanged: the tarball named by global.json, verified against its
       # published .sha512 before anything is extracted. Its comment there has the reasoning.

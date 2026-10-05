@@ -1734,14 +1734,18 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      # Keyed per RID: the payload is a different architecture's SDK on each Linux leg.
+      # Keyed per RID: the payload is a different architecture's SDK on each Linux leg. And a
+      # prefix of its own, `dotnet-sdk-mux-container-`: under `dotnet-sdk-container-ubuntu2204-`
+      # these keys would match linux_packaging_build's restore-keys, so on any exact-key miss that
+      # x64 job could restore this job's linux-arm64 SDK, find sdk/<version> present, skip the
+      # download and die on an exec-format error - and keep dying, since a failed job saves nothing.
       - name: Cache .NET SDK (container)
         if: matrix.container != ''
         uses: actions/cache@v4
         with:
           path: ~/.dotnet
-          key: dotnet-sdk-container-ubuntu2204-${{ matrix.rid }}-${{ hashFiles('global.json') }}
-          restore-keys: dotnet-sdk-container-ubuntu2204-${{ matrix.rid }}-
+          key: dotnet-sdk-mux-container-ubuntu2204-${{ matrix.rid }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-mux-container-ubuntu2204-${{ matrix.rid }}-
 
       # linux_packaging_build's step, unchanged: the tarball named by global.json, verified
       # against its published .sha512 before anything is extracted.

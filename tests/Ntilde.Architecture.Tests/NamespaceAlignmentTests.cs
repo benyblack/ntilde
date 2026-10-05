@@ -164,14 +164,35 @@ public class NamespaceAlignmentTests
     }
 
     /// <summary>
-    /// The reverse of the row above: no other assembly - the leaves, the App, CommandAssist - puts a
-    /// type, public or not, under <c>Ntilde.MuxDaemon</c>. A string-prefix rule for
-    /// <c>Ntilde.Mux</c> would let <c>Ntilde.Mux</c> itself do so unnoticed.
+    /// Every Ntilde production assembly beside these tests - all this project references, directly or
+    /// not, found by enumerating the output directory rather than listed, so a project added later is
+    /// covered without an edit here. ntilde-mux itself and test assemblies are left out.
+    /// </summary>
+    private static string[] OtherProductionAssemblies() =>
+        Directory.EnumerateFiles(AppContext.BaseDirectory, "Ntilde*.dll")
+            .Select(path => AssemblyName.GetAssemblyName(path).Name ?? string.Empty)
+            .Where(name => name.Length > 0
+                && !string.Equals(name, MuxDaemonAssembly, StringComparison.OrdinalIgnoreCase)
+                && !name.EndsWith(".Tests", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+    /// <summary>
+    /// The reverse of the row above: no other assembly puts a type, public or not, under
+    /// <c>Ntilde.MuxDaemon</c>. A string-prefix rule for <c>Ntilde.Mux</c> would let
+    /// <c>Ntilde.Mux</c> itself do so unnoticed.
     /// </summary>
     [Fact]
     public void No_other_assembly_uses_the_MuxDaemon_namespace()
     {
-        foreach (string asmName in LeafAssemblies.Append("Ntilde").Append("Ntilde.CommandAssist"))
+        string[] others = OtherProductionAssemblies();
+
+        // Pins the enumeration, so a changed output layout cannot turn this into a check over nothing:
+        // the App, both console tools and every leaf must be among them.
+        Assert.All(LeafAssemblies.Append("Ntilde").Append("Ntilde.CommandAssist").Append("Ntilde.Cli").Append("Ntilde.Conformance"),
+            name => Assert.Contains(name, others));
+
+        foreach (string asmName in others)
         {
             var result = Types.InAssembly(LoadByName(asmName))
                 .Should()
