@@ -30,7 +30,7 @@ public sealed record MuxVersionInfo(string Version, int ProtocolMin, int Protoco
 /// Source-generated JSON for the CLI's own output, reflection-free (Native AOT). camelCase, as
 /// <see cref="MuxJsonContext"/>: <c>{"version","protocolMin","protocolMax","rid","path"}</c>.
 /// </summary>
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, WriteIndented = false)]
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, WriteIndented = false, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(MuxVersionInfo))]
 public sealed partial class MuxCliJsonContext : JsonSerializerContext
 {

@@ -25,13 +25,16 @@ public sealed class MuxProxyTests : IDisposable
 
     public void Dispose()
     {
-        for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
+        IDisposable[] owned;
+        lock (_owned) owned = _owned.ToArray();
+        for (int i = owned.Length - 1; i >= 0; i--) owned[i].Dispose();
         try { Directory.Delete(_root, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
+    // Called from the test thread and, via InProcessSpawner.Spawn -> StartDaemon, the proxy's thread.
     private T Own<T>(T disposable) where T : IDisposable
     {
-        _owned.Add(disposable);
+        lock (_owned) _owned.Add(disposable);
         return disposable;
     }
 

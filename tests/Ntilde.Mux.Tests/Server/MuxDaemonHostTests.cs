@@ -322,6 +322,9 @@ public sealed class MuxDaemonHostTests : IDisposable
 
     private static readonly TimeSpan ShortWindow = TimeSpan.FromMilliseconds(300);
 
+    /// <summary>Environment.TickCount64's granularity is up to ~16 ms (the Windows timer tick), so a lower bound taken from it is only good to that.</summary>
+    private static readonly TimeSpan TickCountResolution = TimeSpan.FromMilliseconds(16);
+
     /// <summary>(a) Accept fails continuously while a client stays connected: the host keeps running.</summary>
     [Fact]
     public async Task Failing_accepts_with_a_client_connected_never_stop_the_host()
@@ -350,12 +353,16 @@ public sealed class MuxDaemonHostTests : IDisposable
         var listener = new MuxServerAcceptLoopTests.ScriptedListener(new InMemoryMuxListener(), _ => true);
         var (host, _, o) = NewHost(serverOptions: MuxServerAcceptLoopTests.FastRetry(), listenerFactory: _ => listener,
             acceptFailureStopAfter: ShortWindow);
-        var sw = Stopwatch.StartNew();
+        // The host measures the window with Environment.TickCount64 (MuxServer.AcceptFailingFor), so
+        // this measures with the same clock, started before Start (the failure streak begins after it).
+        // A Stopwatch is a different clock and read ~1 ms "early" against it on Linux (the old flake).
+        long startedMs = Environment.TickCount64;
 
         host.Start();
 
         Assert.Equal("accept-failed", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
-        Assert.True(sw.Elapsed >= ShortWindow, $"stopped after {sw.Elapsed}, before the {ShortWindow} window");
+        TimeSpan elapsed = TimeSpan.FromMilliseconds(Environment.TickCount64 - startedMs);
+        Assert.True(elapsed >= ShortWindow - TickCountResolution, $"stopped after {elapsed}, before the {ShortWindow} window");
         Assert.True(listener.Failed > 3, "the loop kept retrying until the host gave up");
         Assert.False(File.Exists(o.DescriptorPath));
         var (next, _, _) = NewHost(pid: Environment.ProcessId + 100_000);

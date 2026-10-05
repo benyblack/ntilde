@@ -14,7 +14,9 @@ public sealed class MuxDaemonLauncherTests : IDisposable
 
     public void Dispose()
     {
-        for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
+        IDisposable[] owned;
+        lock (_owned) owned = _owned.ToArray();
+        for (int i = owned.Length - 1; i >= 0; i--) owned[i].Dispose();
         try { Directory.Delete(_root, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
@@ -42,7 +44,7 @@ public sealed class MuxDaemonLauncherTests : IDisposable
             IdleExitAfter = TimeSpan.Zero,
         });
         host.Start();
-        _owned.Add(host);
+        lock (_owned) _owned.Add(host); // the launcher's spawner calls this off the test thread
         return host;
     }
 
@@ -96,7 +98,7 @@ public sealed class MuxDaemonLauncherTests : IDisposable
     public async Task EnsureConnected_treats_a_daemon_that_drops_the_hello_as_absent_and_spawns()
     {
         IMuxListener dropper = MuxListeners.Create(MuxDiscovery.GetDefaultEndpoint(_root));
-        _owned.Add(dropper);
+        lock (_owned) _owned.Add(dropper);
         var dropping = new Thread(() =>
         {
             try

@@ -75,6 +75,18 @@ public sealed class StdioMuxTransportTests
     }
 
     [Fact]
+    public async Task A_stream_disposed_mid_scan_throws_the_handshake_exception_with_the_captured_text()
+    {
+        using var stdout = new DisposedAfterStream(Utf8("bash: connection noise\n"));
+
+        var ex = await Assert.ThrowsAsync<MuxProxyHandshakeException>(
+            () => StdioMuxTransport.ConnectAsync(stdout, new MemoryStream(), Patient, Ct));
+
+        Assert.IsType<ObjectDisposedException>(ex.InnerException);
+        Assert.Contains("bash: connection noise", ex.CapturedText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task More_than_64KiB_of_noise_throws()
     {
         // The remote stdout stays open: only the bound can end this scan.
@@ -231,6 +243,29 @@ public sealed class StdioMuxTransportTests
 
         Assert.Equal(2048, escaped.Length);
         Assert.EndsWith("TAIL", escaped, StringComparison.Ordinal);
+    }
+
+    /// <summary>Returns its bytes once, then throws <see cref="ObjectDisposedException"/>: a channel closed under a pending read.</summary>
+    private sealed class DisposedAfterStream(byte[] noise) : Stream
+    {
+        private bool _served;
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            ObjectDisposedException.ThrowIf(_served, this); // "disposed" once its noise has been read
+            _served = true;
+            noise.CopyTo(buffer, offset);
+            return noise.Length;
+        }
     }
 
     /// <summary>Returns at most one byte per read: a preamble that arrives a byte at a time.</summary>

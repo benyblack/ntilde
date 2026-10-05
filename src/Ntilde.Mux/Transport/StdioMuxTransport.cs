@@ -99,9 +99,10 @@ public static class StdioMuxTransport
             // Bounded by the deadline even when the stream ignores cancellation (a synchronous pipe's
             // ReadAsync does): such a read is abandoned, and its fault, if it ever faults, observed.
             int read;
-            Task<int> pending = remoteStdout.ReadAsync(buffer.AsMemory(length, ChunkBytes), linked.Token).AsTask();
+            Task<int>? pending = null;
             try
             {
+                pending = remoteStdout.ReadAsync(buffer.AsMemory(length, ChunkBytes), linked.Token).AsTask();
                 read = await pending.WaitAsync(linked.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
@@ -116,7 +117,7 @@ public static class StdioMuxTransport
                 Observe(pending);
                 throw;
             }
-            catch (IOException ex)
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException)
             {
                 throw new MuxProxyHandshakeException($"Reading the remote output failed ({ex.Message})", Escape(buffer.AsSpan(0, length)), ex);
             }
@@ -147,8 +148,8 @@ public static class StdioMuxTransport
     }
 
     /// <summary>An abandoned read may still fault when the caller closes the stream: observed, so it is not an unobserved task exception.</summary>
-    private static void Observe(Task<int> read) =>
-        _ = read.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+    private static void Observe(Task<int>? read) =>
+        _ = read?.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     private enum ScanResult
