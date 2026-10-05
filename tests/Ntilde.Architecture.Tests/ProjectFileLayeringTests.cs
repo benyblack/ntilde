@@ -216,6 +216,24 @@ public class ProjectFileLayeringTests
         Assert.Equal(MuxDependencies, refs);
     }
 
+    // Same CA1861 reasoning as VtOnly.
+    private static readonly string[] MuxOnly = ["Ntilde.Mux"];
+
+    /// <summary>
+    /// Phase 4 spec §10.1, §12.4: the remote <c>ntilde-mux</c> is <c>Ntilde.Mux</c> plus a <c>Main</c>.
+    /// A second edge - Platform for an SSH helper, the App for a path - would pull the GUI's
+    /// dependencies into a binary that ships as one small file per RID, and a package would add a
+    /// reflection surface the AOT publish has to prove safe all over again. The IL sibling is
+    /// <c>LayeringTests.MuxDaemon_references_only_Mux</c>.
+    /// </summary>
+    [Fact]
+    public void MuxDaemon_only_references_Mux()
+    {
+        const string daemonCsproj = "src/Ntilde.Mux.Daemon/Ntilde.Mux.Daemon.csproj";
+        Assert.Equal(MuxOnly, ProjectReferences(daemonCsproj));
+        Assert.Empty(PackageReferences(daemonCsproj));
+    }
+
     /// <summary>
     /// #310: panes must be hosted by the sideloaded ConPTY host, not the OS conhost.exe.
     /// portable-pty only uses it when a <c>conpty.dll</c> sits next to the executable, and that

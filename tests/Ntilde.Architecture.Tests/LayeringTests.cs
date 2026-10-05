@@ -15,9 +15,19 @@ public class LayeringTests
     private static Assembly MuxContracts => typeof(global::Ntilde.Mux.Contracts.MuxProtocol).Assembly;
     private static Assembly Mux => typeof(global::Ntilde.Mux.Transport.InMemoryMuxListener).Assembly;
 
+    // The standalone remote daemon (Phase 4 spec §10.1). Its only type, Program, is internal, so the
+    // assembly is loaded by name; this project's ProjectReference puts ntilde-mux.dll beside the tests.
+    private static Assembly MuxDaemon => Assembly.Load("ntilde-mux");
+
     // Hoisted for CA1861.
     private static readonly string[] MuxApprovedNtildeReferences =
         ["Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay", "Ntilde.Mux.Contracts"];
+
+    // Hoisted for CA1861. Ntilde.Pty is here although the csproj may not reference it
+    // (ProjectFileLayeringTests.MuxDaemon_only_references_Mux): Ntilde.Mux's own public API names it -
+    // MuxCliHost.SessionFactory is a Func<ITerminalSessionFactory> - so the compiler records the
+    // assembly the moment Program fills that property in. It arrives through Mux, never on its own edge.
+    private static readonly string[] MuxDaemonApprovedNtildeReferences = ["Ntilde.Mux", "Ntilde.Pty"];
 
     [Fact]
     public void Vt_must_be_a_leaf_assembly()
@@ -273,10 +283,39 @@ public class LayeringTests
         Assert.True(offenders.Length == 0, $"Mux references unapproved assemblies: {Join(offenders)}");
     }
 
+    /// <summary>
+    /// The IL sibling of <c>ProjectFileLayeringTests.MuxDaemon_only_references_Mux</c> (Phase 4 spec
+    /// §12.4): <c>ntilde-mux</c> is the verbs of <c>Ntilde.Mux.Cli</c> and nothing else, so it may
+    /// reach no UI, App or Platform type - neither by an emitted reference nor by naming one.
+    /// </summary>
+    [Fact]
+    public void MuxDaemon_references_only_Mux()
+    {
+        string[] ntildeReferences = MuxDaemon.GetReferencedAssemblies()
+            .Select(r => r.Name ?? string.Empty)
+            .Where(n => n.StartsWith("Ntilde", StringComparison.Ordinal))
+            .ToArray();
+
+        // Pins the edge itself, so a Program that stopped calling into Mux cannot pass vacuously.
+        Assert.Contains("Ntilde.Mux", ntildeReferences);
+        string[] offenders = ntildeReferences.Where(n => !MuxDaemonApprovedNtildeReferences.Contains(n)).ToArray();
+        Assert.True(offenders.Length == 0, $"ntilde-mux references unapproved assemblies: {Join(offenders)}");
+
+        var result = Types.InAssembly(MuxDaemon)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "Avalonia", "SkiaSharp", "Ntilde.Platform", "Ntilde.Rendering", "Ntilde.Shell",
+                "Ntilde.Controls", "Ntilde.CommandAssist", "Ntilde.AgentHost")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"ntilde-mux must stay headless and App-free. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux, MuxDaemon })
         {
             var result = Types.InAssembly(asm)
                 .Should()

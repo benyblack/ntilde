@@ -129,6 +129,61 @@ public class NamespaceAlignmentTests
             $"Wire types belong in Ntilde.Mux.Contracts. Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 
+    // The standalone ntilde-mux (Phase 4 spec §10.1). Its assembly is named for the executable, so
+    // the prefix it owns cannot be derived from the name the way a leaf's is above.
+    private const string MuxDaemonAssembly = "ntilde-mux";
+    private const string MuxDaemonNamespace = "Ntilde.MuxDaemon";
+
+    /// <summary>
+    /// <c>ntilde-mux</c> owns <c>Ntilde.MuxDaemon</c>. Not filtered to public types: its one type,
+    /// <c>Program</c>, is internal, so a public filter would check nothing. Compiler-generated types
+    /// are excluded for the reason given on <see cref="App_may_only_use_the_CommandAssist_prefix_for_Views"/>,
+    /// and through reflection rather than NetArchTest: the list a collection expression synthesizes
+    /// (<c>&lt;&gt;z__ReadOnlySingleElementList`1</c>, in the global namespace) carries the attribute,
+    /// but its nested <c>Enumerator</c> does not, so only a walk up the declaring types finds it.
+    /// </summary>
+    [Fact]
+    public void MuxDaemon_types_reside_in_the_MuxDaemon_namespace()
+    {
+        static bool CompilerGenerated(Type? t) =>
+            t is not null && (t.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false) || CompilerGenerated(t.DeclaringType));
+
+        Type[] own = LoadByName(MuxDaemonAssembly).GetTypes()
+            .Where(t => !CompilerGenerated(t) && t.Namespace != "System.Runtime.CompilerServices")
+            .ToArray();
+
+        // Pins the selection itself, so a rename cannot turn this into a check over nothing.
+        Assert.Contains(own, t => t.FullName == MuxDaemonNamespace + ".Program");
+
+        string[] offenders = own
+            .Where(t => t.Namespace != MuxDaemonNamespace && t.Namespace?.StartsWith(MuxDaemonNamespace + ".", StringComparison.Ordinal) != true)
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+        Assert.True(offenders.Length == 0,
+            $"{MuxDaemonAssembly} types not in {MuxDaemonNamespace}.*: {string.Join(", ", offenders)}");
+    }
+
+    /// <summary>
+    /// The reverse of the row above: no other assembly - the leaves, the App, CommandAssist - puts a
+    /// type, public or not, under <c>Ntilde.MuxDaemon</c>. A string-prefix rule for
+    /// <c>Ntilde.Mux</c> would let <c>Ntilde.Mux</c> itself do so unnoticed.
+    /// </summary>
+    [Fact]
+    public void No_other_assembly_uses_the_MuxDaemon_namespace()
+    {
+        foreach (string asmName in LeafAssemblies.Append("Ntilde").Append("Ntilde.CommandAssist"))
+        {
+            var result = Types.InAssembly(LoadByName(asmName))
+                .Should()
+                .NotResideInNamespaceStartingWith(MuxDaemonNamespace)
+                .GetResult();
+
+            Assert.True(result.IsSuccessful,
+                $"{asmName} must not use the {MuxDaemonNamespace} namespace, which {MuxDaemonAssembly} owns. " +
+                $"Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        }
+    }
+
     [Fact]
     public void Text_client_types_reside_in_the_TextClient_namespace()
     {

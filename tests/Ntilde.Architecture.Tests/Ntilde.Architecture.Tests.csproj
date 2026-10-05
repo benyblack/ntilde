@@ -31,5 +31,6 @@
     <ProjectReference Include="..\..\src\Ntilde.AgentHost.Contracts\Ntilde.AgentHost.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux\Ntilde.Mux.csproj" />
+    <ProjectReference Include="..\..\src\Ntilde.Mux.Daemon\Ntilde.Mux.Daemon.csproj" />
   </ItemGroup>
 </Project>

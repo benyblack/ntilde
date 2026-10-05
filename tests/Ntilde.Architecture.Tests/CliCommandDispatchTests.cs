@@ -173,6 +173,24 @@ public class CliCommandDispatchTests
         Assert.Contains("MuxCommand.IsSupportedCliMode(", cli, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Phase 4 spec §12.4: <c>ntilde-mux</c> has no verbs of its own. Its <c>Main</c> hands every
+    /// argument to <c>Ntilde.Mux.Cli.MuxCli.Execute</c>, so a verb added there reaches the remote binary
+    /// and the App's <c>ntilde mux</c> alike, and the two cannot drift into separate dispatch tables.
+    /// The compiled call is the evidence; the source line only says where to look when it fails.
+    /// </summary>
+    [Fact]
+    public void Mux_daemon_dispatches_every_verb_through_MuxCli()
+    {
+        string program = File.ReadAllText(Path.Combine(RepoRoot(), "src/Ntilde.Mux.Daemon/Program.cs"));
+        Assert.Contains("MuxCli.Execute(", program, StringComparison.Ordinal);
+
+        MethodInfo main = Assembly.Load("ntilde-mux").GetType("Ntilde.MuxDaemon.Program", throwOnError: true)!
+            .GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        Assert.Contains(CalledMethods(main),
+            m => m.Name == "Execute" && m.DeclaringType?.FullName == "Ntilde.Mux.Cli.MuxCli");
+    }
+
     private static readonly Dictionary<short, OpCode> OpCodesByValue = typeof(OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
         .Select(f => (OpCode)f.GetValue(null)!)

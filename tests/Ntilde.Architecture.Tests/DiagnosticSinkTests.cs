@@ -22,11 +22,16 @@ public class DiagnosticSinkTests
 {
     /// <summary>
     /// Projects whose product *is* stdout. Console writes here are correct and must not be "fixed".
+    /// <c>Ntilde.Mux.Daemon</c> is the standalone <c>ntilde-mux</c> (Phase 4 spec §12.4). The verbs it
+    /// hosts live in <c>Ntilde.Mux/Cli</c>, which is library code - its text goes to the writers it is
+    /// handed, never through <c>Console.Write*</c> - so that directory stays under the rule. The match
+    /// is on the whole directory name, so <c>src/Ntilde.Mux/Daemon</c> is not exempted by this entry.
     /// </summary>
     private static readonly string[] ConsoleToolProjects =
     [
         "Ntilde.Cli",
         "Ntilde.Conformance",
+        "Ntilde.Mux.Daemon",
     ];
 
     /// <summary>
