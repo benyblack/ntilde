@@ -6,6 +6,7 @@ using Ntilde.Mux.Transport;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.Native;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
 
@@ -336,8 +337,17 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                         return;
                     }
 
-                    request.Prompts.HandleAsync(KeyboardPrompt, CancellationToken.None).GetAwaiter().GetResult();
-                    _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                    try
+                    {
+                        request.Prompts.HandleAsync(KeyboardPrompt, CancellationToken.None).GetAwaiter().GetResult();
+                        _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                    }
+                    catch (RemoteMuxPromptAbortedException ex)
+                    {
+                        // An automatic attempt has nothing to answer with: the native channel closes the
+                        // session without answering (see the native tests below), and SSH fails.
+                        _remote.Script = FakeRemoteScript.NativeFailure($"the native session failed: {ex.Message}");
+                    }
                 };
                 return _remote;
             },
@@ -391,12 +401,25 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         SshProfile profile = Profile();
         profile.JumpHops.Add(new SshJumpHop { Host = "bastion", User = "nova", Port = 22 });
         var user = new ScriptedUser(SshInteractionResponse.FromSecret("pw"));
-        var answers = new List<SshInteractionResponse>();
+        var answers = new List<string>();
         var connector = Own(new RemoteMuxConnector(
             () => profile,
             (_, request) =>
             {
-                _remote.OnStart = _ => answers.Add(request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult());
+                _remote.OnStart = _ =>
+                {
+                    try
+                    {
+                        answers.Add(request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret);
+                        _remote.Script = null;
+                    }
+                    catch (RemoteMuxPromptAbortedException ex)
+                    {
+                        // As the native channel does: the session closes without answering.
+                        answers.Add("<aborted>");
+                        _remote.Script = FakeRemoteScript.NativeFailure($"the native session failed: {ex.Message}");
+                    }
+                };
                 return _remote;
             },
             new RemoteMuxInteractionHandler(user, _ => false),
@@ -406,9 +429,9 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Own(await connector.ConnectAsync(Ct));
 
         Assert.False(connector.Prompts.Remembers(SshInteractionKind.Password));
-        Own(await connector.ConnectAsync(interactive: false, Ct));
-        Assert.Equal("pw", answers[0].Secret);
-        Assert.True(answers[1].IsCanceled);
+        var automatic = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        Assert.Equal(RemoteFailureKind.SshFailed, automatic.Failure.Kind);
+        Assert.Equal(new[] { "pw", "<aborted>" }, answers);
         Assert.Single(user.Asked);
     }
 
@@ -431,6 +454,68 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         await Assert.ThrowsAsync<ObjectDisposedException>(() => connector.ConnectAsync(Ct));
 
         await _remote.LastChannel!.Disposed.WaitAsync(Patient, Ct);
+    }
+
+    private static SshProfile NativeProfile()
+    {
+        SshProfile profile = Profile();
+        profile.BackendKind = SshBackendKind.Native;
+        return profile;
+    }
+
+    private static RemoteMuxConnector NativeConnector(PromptingNativeSshInterop interop, ISshInteractionHandler? user) =>
+        new(
+            NativeProfile,
+            (profile, request) => RemoteMuxHostFactory.CreateTransport(
+                profile,
+                request,
+                _ => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+                () => interop,
+                askPassHelperPath: null,
+                log: _ => { }),
+            new RemoteMuxInteractionHandler(user, _ => false),
+            "i",
+            null);
+
+    /// <summary>
+    /// Review fix round 2, end to end through the real native exec transport: an automatic attempt with
+    /// no remembered password must not answer the password prompt at all - a cancel would reach the
+    /// server as an empty password, a failed login on every reconnect. The session is closed instead (in
+    /// rusty_ssh the close wakes the pending prompt with no answer, and auth stops before sending
+    /// anything), and the attempt fails quietly as SshFailed.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_native_attempt_with_nothing_remembered_never_answers_the_password_prompt()
+    {
+        var interop = new PromptingNativeSshInterop(PromptingNativeSshInterop.PasswordPrompt);
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("never asked"));
+        RemoteMuxConnector connector = Own(NativeConnector(interop, user));
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Empty(interop.Submissions);
+        Assert.Equal(1, interop.Closes);
+        Assert.Empty(user.Asked);
+        Assert.Equal(RemoteFailureKind.SshFailed, failed.Failure.Kind);
+        Assert.Equal("signing in to nova@fake-host needs a password, which an automatic reconnect does not ask for", failed.Failure.Reason);
+    }
+
+    /// <summary>The same prompt on a user-started attempt: the user's answer is what is submitted.</summary>
+    [Fact]
+    public async Task A_user_native_attempt_submits_the_typed_password()
+    {
+        var interop = new PromptingNativeSshInterop(PromptingNativeSshInterop.PasswordPrompt);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new ScriptedUser(SshInteractionResponse.FromSecret("pw"))));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+
+        Task<MuxClient> connecting = connector.ConnectAsync(interactive: true, cts.Token);
+        await TestWait.UntilAsync(() => interop.Submissions.Count > 0, "the password was submitted");
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => connecting);
+        (NativeSshResponseKind kind, string payload) = Assert.Single(interop.Submissions);
+        Assert.Equal(NativeSshResponseKind.Password, kind);
+        Assert.Equal("""{"text":"pw"}""", payload);
     }
 
     private static SshInteractionRequest KeyboardPrompt { get; } = new()

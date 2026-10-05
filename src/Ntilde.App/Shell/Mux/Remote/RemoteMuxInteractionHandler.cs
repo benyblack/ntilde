@@ -117,12 +117,25 @@ internal sealed class RemoteMuxInteractionHandler
     /// poll thread waits for each answer).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Each secret answered is tracked. Another auth prompt after it (password, passphrase,
-    /// keyboard-interactive) means it did not get that hop in, so it is superseded: never remembered,
-    /// and, if it came from memory, forgotten - and not offered again in this attempt. A host-key prompt
+    /// keyboard-interactive) means it did not get that hop in, so it is superseded: never remembered and,
+    /// if it came from memory, forgotten at once and not offered again in this attempt. A host-key prompt
     /// after it means the next hop's connection has begun, so it did get its hop in: it is proven, and the
     /// same secret may be offered to the next hop. <see cref="Succeeded"/> remembers what was not
-    /// superseded; <see cref="Refused"/> forgets everything this attempt offered from memory.
+    /// superseded; <see cref="Refused"/>, unless the attempt succeeded, forgets everything it offered from
+    /// memory.
+    /// </para>
+    /// <para>
+    /// With nobody to ask (an automatic attempt, or no window handler) and nothing remembered, a password
+    /// prompt or a keyboard-interactive prompt with questions is not answered: <see cref="HandleAsync"/>
+    /// throws <see cref="RemoteMuxPromptAbortedException"/>. A cancel would not do: the native layer
+    /// submits it as an empty password or empty answers, which the server counts as a failed login - on
+    /// every reconnect, until fail2ban or a lockout steps in. A thrown handler instead makes the native
+    /// exec channel close the session without answering (its documented contract), and closing wakes
+    /// rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A passphrase
+    /// is still cancelled: it only unlocks a local key, and nothing reaches the server.
+    /// </para>
     /// </remarks>
     internal sealed class Attempt : ISshInteractionHandler
     {
@@ -131,6 +144,8 @@ internal sealed class RemoteMuxInteractionHandler
         private readonly int _generation;
         private readonly object _gate = new();
         private readonly List<Answer> _answers = []; // guarded by _gate; in the order given
+        private bool _succeeded;                     // guarded by _gate
+        private SshInteractionKind? _abortedPrompt;  // guarded by _gate
 
         internal Attempt(RemoteMuxInteractionHandler owner, bool interactive, bool passwordsReplayable, int generation)
         {
@@ -143,8 +158,15 @@ internal sealed class RemoteMuxInteractionHandler
         /// <summary>True when a user is waiting on this attempt: prompts may reach them.</summary>
         public bool Interactive { get; }
 
+        /// <summary>The prompt this attempt refused to answer, ending the connection; null when it answered every one.</summary>
+        public SshInteractionKind? AbortedPrompt
+        {
+            get { lock (_gate) return _abortedPrompt; }
+        }
+
         private ISshInteractionHandler? User => Interactive ? _owner._user : null;
 
+        /// <exception cref="RemoteMuxPromptAbortedException">Nobody to ask and nothing to answer a password or keyboard-interactive prompt with.</exception>
         public async Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -159,7 +181,10 @@ internal sealed class RemoteMuxInteractionHandler
                     return SshInteractionResponse.FromSecret(remembered);
                 }
 
-                if (User is not { } user) return SshInteractionResponse.Cancel();
+                if (User is not { } user)
+                {
+                    return kind == SshInteractionKind.Password ? throw Abort(kind) : SshInteractionResponse.Cancel();
+                }
 
                 SshInteractionResponse response = await user.HandleAsync(request, cancellationToken).ConfigureAwait(false);
                 if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
@@ -172,38 +197,61 @@ internal sealed class RemoteMuxInteractionHandler
 
             if (User is { } asked) return await asked.HandleAsync(request, cancellationToken).ConfigureAwait(false);
 
-            // Nobody to ask: a known host key only, nothing else.
-            return IsHostKeyPrompt(kind) && _owner._isTrustedHostKey(request)
-                ? SshInteractionResponse.AcceptHostKey()
+            if (IsHostKeyPrompt(kind))
+            {
+                // Nobody to ask: a known host key only. A cancel is submitted as a rejection, which ends
+                // the connection before any credential is sent.
+                return _owner._isTrustedHostKey(request) ? SshInteractionResponse.AcceptHostKey() : SshInteractionResponse.Cancel();
+            }
+
+            // A keyboard-interactive round with questions has no answer here; one with none (some servers
+            // send an empty round last) is answered with nothing, as the protocol expects.
+            return kind == SshInteractionKind.KeyboardInteractive && request.KeyboardPrompts.Count > 0
+                ? throw Abort(kind)
                 : SshInteractionResponse.Cancel();
         }
 
         /// <summary>
         /// The connection got past auth (the remote command runs): every secret that was not followed by
         /// another auth prompt got its hop in, so the host remembers it - unless the host forgot everything
-        /// since this attempt began. A remembered secret that was followed by one is forgotten.
+        /// since this attempt began. From now on <see cref="Refused"/> changes nothing.
         /// </summary>
         public void Succeeded()
         {
             List<Answer> answers;
-            lock (_gate) answers = [.. _answers];
+            lock (_gate)
+            {
+                _succeeded = true;
+                answers = [.. _answers];
+            }
 
-            HashSet<(SshInteractionKind, string)> kept = [.. answers.Where(a => a.State != AnswerState.Superseded).Select(a => (a.Kind, a.Secret))];
             _owner.Settle(
                 _generation,
-                forget: answers.Where(a => a.State == AnswerState.Superseded && a.FromMemory && !kept.Contains((a.Kind, a.Secret))).Select(a => (a.Kind, a.Secret)),
+                forget: [],
                 remember: answers.Where(a => a.State != AnswerState.Superseded && !a.FromMemory).Select(a => (a.Kind, a.Secret)));
         }
 
         /// <summary>
         /// The attempt failed SSH (auth, or the connection before the command ran): every secret it offered
-        /// from memory may be the reason, so each is forgotten. The next user attempt asks instead.
+        /// from memory may be the reason, so each is forgotten, and the next user attempt asks instead. A
+        /// no-op once the attempt <see cref="Succeeded"/>: past the greeting, what it offered got it in.
         /// </summary>
         public void Refused()
         {
             List<Answer> answers;
-            lock (_gate) answers = [.. _answers];
+            lock (_gate)
+            {
+                if (_succeeded) return;
+                answers = [.. _answers];
+            }
+
             _owner.Settle(_generation, forget: answers.Where(a => a.FromMemory).Select(a => (a.Kind, a.Secret)), remember: []);
+        }
+
+        private RemoteMuxPromptAbortedException Abort(SshInteractionKind kind)
+        {
+            lock (_gate) _abortedPrompt ??= kind;
+            return new RemoteMuxPromptAbortedException(kind);
         }
 
         private bool IsRememberable(SshInteractionKind kind) => kind != SshInteractionKind.Password || _passwordsReplayable;
@@ -222,17 +270,23 @@ internal sealed class RemoteMuxInteractionHandler
 
         /// <summary>
         /// A new prompt arrived: the answers still open are proven when it starts the next hop (a host key),
-        /// and superseded when it is another auth prompt on the same hop.
+        /// and superseded when it is another auth prompt on the same hop. A superseded answer that came from
+        /// memory is forgotten at once, so however this attempt ends, it is not replayed.
         /// </summary>
         private void Advance(bool newHop)
         {
+            List<(SshInteractionKind, string)> refused = [];
             lock (_gate)
             {
                 foreach (Answer answer in _answers)
                 {
-                    if (answer.State == AnswerState.Open) answer.State = newHop ? AnswerState.Proven : AnswerState.Superseded;
+                    if (answer.State != AnswerState.Open) continue;
+                    answer.State = newHop ? AnswerState.Proven : AnswerState.Superseded;
+                    if (answer.State == AnswerState.Superseded && answer.FromMemory) refused.Add((answer.Kind, answer.Secret));
                 }
             }
+
+            if (refused.Count > 0) _owner.Settle(_generation, forget: refused, remember: []);
         }
 
         private void Track(Answer answer)
@@ -257,4 +311,23 @@ internal sealed class RemoteMuxInteractionHandler
             public AnswerState State { get; set; } = AnswerState.Open;
         }
     }
+}
+
+/// <summary>
+/// An attempt with nobody to ask (an automatic reconnect) had nothing to answer a password or
+/// keyboard-interactive prompt with, so it ended the connection rather than send an empty answer, which
+/// the server would count as a failed login. The native exec channel turns it into its transport failure.
+/// </summary>
+internal sealed class RemoteMuxPromptAbortedException(SshInteractionKind prompt)
+    : Exception($"no answer for the {Describe(prompt)} prompt without a user to ask; the connection was ended without answering it")
+{
+    /// <summary>The prompt left unanswered.</summary>
+    public SshInteractionKind Prompt { get; } = prompt;
+
+    internal static string Describe(SshInteractionKind prompt) => prompt switch
+    {
+        SshInteractionKind.KeyboardInteractive => "keyboard-interactive",
+        SshInteractionKind.Passphrase => "passphrase",
+        _ => "password",
+    };
 }

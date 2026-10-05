@@ -282,6 +282,34 @@ public sealed class NativeSshExecTransportTests
         });
     }
 
+    /// <summary>
+    /// A handler with no answer to give (an automatic reconnect with no remembered password) aborts by
+    /// throwing. The prompt then gets no response at all - a cancel would be submitted as an empty
+    /// password, a failed login on the server - and the session is closed instead: rusty_ssh's pending
+    /// wait_for_response returns None on the close, so its auth stops before sending anything.
+    /// </summary>
+    [Fact]
+    public async Task A_handler_that_throws_aborts_the_session_without_answering_the_prompt()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(ScriptedNativeSshInterop.PasswordPrompt(), ScriptedNativeSshInterop.Stdout("never read"));
+        var handler = new ThrowingInteractionHandler(new InvalidOperationException("nobody to ask"));
+
+        using ISshExecChannel channel = Start(interop, handler);
+
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Empty(interop.Submissions);
+        Assert.Equal(1, interop.CloseCount);
+        var failure = await Assert.ThrowsAsync<SshExecTransportException>(() => ReadToEndAsync(channel.Stdout));
+        Assert.Contains("nobody to ask", failure.NativeMessage, StringComparison.Ordinal);
+    }
+
+    private sealed class ThrowingInteractionHandler(Exception error) : ISshInteractionHandler
+    {
+        public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken) =>
+            Task.FromException<SshInteractionResponse>(error);
+    }
+
     // --- Stdin -----------------------------------------------------------------------------------
 
     [Fact]

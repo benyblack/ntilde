@@ -1,4 +1,5 @@
 using Ntilde.Platform.Ssh.Interactions;
+using Ntilde.Platform.Ssh.Native;
 using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Tests.Shell.Mux.Remote;
@@ -74,7 +75,7 @@ public sealed class RemoteMuxInteractionHandlerTests
         await failed.HandleAsync(Password, Ct);
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));
-        Assert.True((await handler.BeginAttempt(interactive: false).HandleAsync(Password, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => handler.BeginAttempt(interactive: false).HandleAsync(Password, Ct));
     }
 
     [Fact]
@@ -83,11 +84,54 @@ public sealed class RemoteMuxInteractionHandlerTests
         var user = new ScriptedUser(SshInteractionResponse.FromSecret("x"), SshInteractionResponse.AcceptHostKey());
         RemoteMuxInteractionHandler.Attempt automatic = Handler(user).BeginAttempt(interactive: false);
 
-        Assert.True((await automatic.HandleAsync(Password, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Password, Ct));
         Assert.True((await automatic.HandleAsync(Passphrase, Ct)).IsCanceled);
-        Assert.True((await automatic.HandleAsync(Keyboard, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
         Assert.True((await automatic.HandleAsync(HostKey("SHA256:new"), Ct)).IsCanceled);
         Assert.Empty(user.Asked);
+    }
+
+    /// <summary>
+    /// Review fix round 2: a cancelled password or keyboard-interactive prompt is submitted as an empty
+    /// answer, which the server counts as a failed login - on every reconnect. With nothing to answer, an
+    /// automatic attempt aborts instead: the native channel then closes the session without answering
+    /// (NativeSshExecTransport's contract), and rusty_ssh stops before sending anything.
+    /// </summary>
+    [Fact]
+    public async Task With_nothing_to_answer_a_password_or_keyboard_prompt_aborts_the_attempt_instead_of_sending_an_empty_answer()
+    {
+        RemoteMuxInteractionHandler.Attempt password = Handler(new ScriptedUser()).BeginAttempt(interactive: false);
+        RemoteMuxInteractionHandler.Attempt keyboard = Handler(new ScriptedUser()).BeginAttempt(interactive: false);
+
+        var passwordAbort = await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => password.HandleAsync(Password, Ct));
+        var keyboardAbort = await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => keyboard.HandleAsync(Keyboard, Ct));
+
+        Assert.Equal(SshInteractionKind.Password, passwordAbort.Prompt);
+        Assert.Equal(SshInteractionKind.Password, password.AbortedPrompt);
+        Assert.Equal(SshInteractionKind.KeyboardInteractive, keyboardAbort.Prompt);
+        Assert.Equal(SshInteractionKind.KeyboardInteractive, keyboard.AbortedPrompt);
+    }
+
+    /// <summary>
+    /// What still gets an empty answer: a passphrase (it only unlocks a local key; nothing reaches the
+    /// server) and a keyboard-interactive round with no questions (an empty reply is the protocol's own).
+    /// An untrusted host key is cancelled, which the native layer submits as a rejection.
+    /// </summary>
+    [Fact]
+    public async Task A_passphrase_an_empty_keyboard_round_and_an_untrusted_host_key_are_still_answered()
+    {
+        RemoteMuxInteractionHandler.Attempt automatic = Handler(new ScriptedUser()).BeginAttempt(interactive: false);
+        var noQuestions = new SshInteractionRequest { Kind = SshInteractionKind.KeyboardInteractive };
+
+        SshInteractionResponse passphrase = await automatic.HandleAsync(Passphrase, Ct);
+        SshInteractionResponse keyboard = await automatic.HandleAsync(noQuestions, Ct);
+        SshInteractionResponse hostKey = await automatic.HandleAsync(HostKey("SHA256:unknown"), Ct);
+
+        Assert.True(passphrase.IsCanceled);
+        Assert.Empty(keyboard.KeyboardResponses);
+        Assert.Equal("""{"accept":false}""", System.Text.Encoding.UTF8.GetString(
+            NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.HostKeyDecision, hostKey)));
+        Assert.Null(automatic.AbortedPrompt);
     }
 
     /// <summary>
@@ -120,8 +164,8 @@ public sealed class RemoteMuxInteractionHandlerTests
         attempt.Succeeded();
 
         Assert.Equal(2, user.Asked.Count);
-        // A one-time code is never replayed.
-        Assert.True((await handler.BeginAttempt(interactive: false).HandleAsync(Keyboard, Ct)).IsCanceled);
+        // A one-time code is never replayed: an automatic attempt ends instead.
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => handler.BeginAttempt(interactive: false).HandleAsync(Keyboard, Ct));
     }
 
     /// <summary>
@@ -141,7 +185,7 @@ public sealed class RemoteMuxInteractionHandlerTests
 
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false);
         Assert.Equal("old", (await automatic.HandleAsync(Secret(kind), Ct)).Secret);
-        Assert.True((await automatic.HandleAsync(Keyboard, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
         automatic.Refused();
 
         Assert.False(handler.Remembers(Secret(kind).Kind));
@@ -240,7 +284,8 @@ public sealed class RemoteMuxInteractionHandlerTests
         viaJumpHost.Succeeded();
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));
-        Assert.True((await handler.BeginAttempt(interactive: false, passwordsReplayable: false).HandleAsync(Password, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(
+            () => handler.BeginAttempt(interactive: false, passwordsReplayable: false).HandleAsync(Password, Ct));
     }
 
     [Fact]
@@ -277,8 +322,42 @@ public sealed class RemoteMuxInteractionHandlerTests
     {
         RemoteMuxInteractionHandler.Attempt attempt = Handler(user: null).BeginAttempt(interactive: true);
 
-        Assert.True((await attempt.HandleAsync(Password, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => attempt.HandleAsync(Password, Ct));
         Assert.True((await attempt.HandleAsync(HostKey("SHA256:trusted"), Ct)).IsAccepted);
         Assert.True((await attempt.HandleAsync(HostKey("SHA256:new"), Ct)).IsCanceled);
+    }
+
+    /// <summary>
+    /// Review fix round 2: a remembered secret followed by another auth prompt is forgotten at once, not
+    /// only when the attempt ends - an attempt that then dies some other way (a dialog timing out ends as
+    /// ProxyFailed) must not leave it for one more replay.
+    /// </summary>
+    [Fact]
+    public async Task A_superseded_remembered_secret_is_forgotten_at_once()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromKeyboardResponses("code"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: true);
+        Assert.Equal("old", (await attempt.HandleAsync(Password, Ct)).Secret);
+
+        await attempt.HandleAsync(Keyboard, Ct);
+
+        Assert.False(handler.Remembers(SshInteractionKind.Password));
+    }
+
+    /// <summary>Review fix round 2: once the greeting arrived, what the attempt offered got it in; a later failure (the hello) does not make it wrong.</summary>
+    [Fact]
+    public async Task Refused_after_Succeeded_forgets_nothing()
+    {
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("pw")));
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt attempt = handler.BeginAttempt(interactive: false);
+        Assert.Equal("pw", (await attempt.HandleAsync(Password, Ct)).Secret);
+        attempt.Succeeded();
+
+        attempt.Refused();
+
+        Assert.True(handler.Remembers(SshInteractionKind.Password));
     }
 }

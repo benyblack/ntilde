@@ -34,7 +34,12 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     /// <param name="interop">The native layer (<see cref="NativeSshInterop"/>).</param>
     /// <param name="interactionHandler">
     /// Answers host-key, password, passphrase and keyboard-interactive prompts, from the known-hosts store
-    /// and the vault or by asking the user. With none, every prompt is refused.
+    /// and the vault or by asking the user. With none, every prompt is refused. A handler with no answer to
+    /// give may throw instead: the prompt then gets no response at all, the session is closed, and the
+    /// channel fails as a transport failure carrying the exception's message. Refusing would not be the
+    /// same: a refused password or keyboard-interactive prompt is submitted as an empty answer, which the
+    /// server counts as a failed login. Closing wakes rusty_ssh's pending prompt with no answer
+    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there.
     /// </param>
     /// <param name="optionsFactory">
     /// Builds the connection options. Production passes <see cref="NativeSshConnectionOptionsFactory.Create(SshProfile)"/>,
