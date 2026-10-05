@@ -361,6 +361,25 @@ public sealed class MuxCliTests : IDisposable
         }
     }
 
+    /// <summary>The hint names the host's own command (`ntilde-mux ...` on a remote host), not the App's `ntilde mux ...`.</summary>
+    [Fact]
+    public void A_version_mismatch_hint_names_the_hosts_own_kill_server_command()
+    {
+        using System.Diagnostics.Process standIn = StartForeignVersionDaemon();
+        try
+        {
+            var (code, _, err) = Run("ls");
+
+            Assert.Equal(1, code);
+            Assert.Contains("ntilde-mux kill-server --force", err, StringComparison.Ordinal);
+            Assert.DoesNotContain("ntilde mux", err, StringComparison.Ordinal);
+        }
+        finally
+        {
+            try { standIn.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
     [Fact]
     public void Kill_server_force_terminates_a_verified_daemon_of_another_version()
     {

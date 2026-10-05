@@ -206,7 +206,7 @@ public static class MuxCli
 
         void Log(string line) => stderr.WriteLine($"[ntilde-mux] {line}");
         return MuxProxyCommand.Run(Console.OpenStandardInput(), Console.OpenStandardOutput(), stderr,
-            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths).EnsureEndpointStreamAsync(ct));
+            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths, KillServerCommand(host)).EnsureEndpointStreamAsync(ct));
     }
 
     /// <summary><c>--version [--json]</c>: one line, plain or <see cref="MuxVersionInfo"/> as JSON.</summary>
@@ -224,9 +224,13 @@ public static class MuxCli
         return 0;
     }
 
-    private static MuxClient? Connect(string descriptorPath, TextWriter stderr)
+    /// <summary>The command a failure's hint tells the user to run: this host's own, not the App's.</summary>
+    private static string KillServerCommand(MuxCliHost host) => $"{host.UsagePrefix} kill-server --force";
+
+    private static MuxClient? Connect(string descriptorPath, TextWriter stderr, MuxCliHost host)
     {
-        var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-cli" });
+        var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-cli" },
+            killServerCommand: KillServerCommand(host));
         MuxClient? client = launcher.TryConnectExistingAsync(CancellationToken.None).GetAwaiter().GetResult();
         if (client is null) stderr.WriteLine("No multiplexer is running.");
         return client;
@@ -238,7 +242,7 @@ public static class MuxCli
     {
         bool json = verbArgs.Skip(1).Any(a => a == "--json");
         if (verbArgs.Skip(1).Any(a => a != "--json")) return Fail(stderr, Usage(host));
-        using MuxClient? client = Connect(descriptorPath, stderr);
+        using MuxClient? client = Connect(descriptorPath, stderr, host);
         if (client is null) return 1;
 
         IReadOnlyList<SessionSummary> sessions = client.ListSessionsAsync().GetAwaiter().GetResult();
@@ -276,7 +280,7 @@ public static class MuxCli
     private static int Kill(string[] verbArgs, TextWriter stdout, TextWriter stderr, string descriptorPath, MuxCliHost host)
     {
         if (verbArgs.Length != 2 || !Guid.TryParse(verbArgs[1], out Guid id)) return Fail(stderr, Usage(host));
-        using MuxClient? client = Connect(descriptorPath, stderr);
+        using MuxClient? client = Connect(descriptorPath, stderr, host);
         if (client is null) return 1;
         try
         {
@@ -304,7 +308,7 @@ public static class MuxCli
         MuxDiscovery.TryReadDescriptor(descriptorPath, out MuxEndpointDescriptor? d);
         try
         {
-            using MuxClient? client = Connect(descriptorPath, stderr);
+            using MuxClient? client = Connect(descriptorPath, stderr, host);
             if (client is null) return 1;
             client.ShutdownServerAsync().GetAwaiter().GetResult();
         }
@@ -418,7 +422,8 @@ public static class MuxCli
         MuxClient? client;
         try
         {
-            var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-attach" });
+            var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-attach" },
+                killServerCommand: KillServerCommand(host));
             client = launcher.TryConnectExistingAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
         catch (Exception ex) when (IsReportableFailure(ex))

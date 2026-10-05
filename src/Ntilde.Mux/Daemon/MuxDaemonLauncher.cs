@@ -26,16 +26,23 @@ public sealed class MuxUnavailableException : Exception
 /// <summary>Connect to the running daemon, or start one and connect (Phase 2 spec §6; Phase 4 spec §6.2).</summary>
 public sealed class MuxDaemonLauncher
 {
-    public const string KillServerHint = "Run 'ntilde mux kill-server --force' to replace it (this closes its sessions).";
+    /// <summary>What the hint tells the user to run when the App is the host (<c>ntilde mux</c>).</summary>
+    public const string DefaultKillServerCommand = "ntilde mux kill-server --force";
+
+    /// <summary>The hint for <see cref="DefaultKillServerCommand"/>; a standalone host builds its own from its command.</summary>
+    public const string KillServerHint = "Run '" + DefaultKillServerCommand + "' to replace it (this closes its sessions).";
 
     private readonly string _descriptorPath;
+    private readonly string _killServerHint;
     private readonly string _root;
     private readonly IMuxDaemonSpawner _spawner;
     private readonly MuxClientOptions _clientOptions;
     private readonly Action<string>? _log;
 
-    public MuxDaemonLauncher(string descriptorPath, IMuxDaemonSpawner spawner, MuxClientOptions? clientOptions = null, Action<string>? log = null)
+    public MuxDaemonLauncher(string descriptorPath, IMuxDaemonSpawner spawner, MuxClientOptions? clientOptions = null, Action<string>? log = null,
+        string killServerCommand = DefaultKillServerCommand)
     {
+        _killServerHint = $"Run '{killServerCommand}' to replace it (this closes its sessions).";
         _descriptorPath = descriptorPath;
         // <root>/mux/mux-endpoint.json (MuxDiscovery.GetDescriptorPath).
         _root = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(descriptorPath))!)!;
@@ -56,10 +63,13 @@ public sealed class MuxDaemonLauncher
 
     /// <param name="serveArguments">What the spawned executable is given to serve: <c>["mux","serve"]</c> for the GUI's exe.</param>
     /// <param name="paths">The daemon's root, where the launcher looks and the spawned daemon serves; null = <see cref="MuxPaths.Default"/>.</param>
-    public static MuxDaemonLauncher CreateDefault(Action<string>? log, IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
+    /// <param name="killServerCommand">The command the version-mismatch hint names: the host's own.</param>
+    public static MuxDaemonLauncher CreateDefault(Action<string>? log, IReadOnlyList<string> serveArguments, MuxPaths? paths = null,
+        string killServerCommand = DefaultKillServerCommand)
     {
         MuxPaths p = paths ?? MuxPaths.Default();
-        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p.Root), log: log);
+        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p.Root), log: log,
+            killServerCommand: killServerCommand);
     }
 
     /// <summary>Test seam: the spawner this launcher starts daemons with.</summary>
@@ -94,7 +104,7 @@ public sealed class MuxDaemonLauncher
         }
         catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.VersionMismatch)
         {
-            string message = $"The running multiplexer (pid {d.Pid}) is a different version: {ex.Message} {KillServerHint}";
+            string message = $"The running multiplexer (pid {d.Pid}) is a different version: {ex.Message} {_killServerHint}";
             _log?.Invoke($"[Mux] {message}");
             throw new MuxUnavailableException(message, ex, versionMismatch: true);
         }
