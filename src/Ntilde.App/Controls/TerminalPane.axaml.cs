@@ -3483,38 +3483,7 @@ namespace Ntilde.Controls
                     }
                 }
 
-                TermView.SetSession(Session);
-                ITerminalSession session = Session;
-                session.OnExit += code =>
-                {
-                    this.Dispatcher.Post(() =>
-                    {
-                        HandleSessionExit(session, code);
-                    });
-                };
-                RegisterActiveSshSession(session, profile);
-                UpdateCommandAssistContext();
-
-                // Publish the PTY lifecycle to the registration (the endpoint's
-                // sweep probes only this published reference, never the pane).
-                if (_agentRegistration is { } agentReg)
-                {
-                    agentReg.SetLifecycle(session);
-
-                    // Seed the first child-process sample, but OFF the UI thread:
-                    // ProbeHasActiveChildProcesses() is a full OS process-table scan
-                    // (CreateToolhelp32Snapshot on Windows, a pgrep spawn elsewhere) —
-                    // blocking I/O that would jank tab creation. It is thread-safe, so
-                    // run the probe on a background thread and post only the Sweep back
-                    // to the UI thread. The endpoint's 1 s sweep corrects it regardless.
-                    Task.Run(() =>
-                    {
-                        var hasChildren = agentReg.ProbeHasActiveChildProcesses();
-                        this.Dispatcher.Post(
-                            () => agentReg.StatusMachine.Sweep(hasChildren),
-                            DispatcherPriority.Background);
-                    });
-                }
+                WireSessionLifecycle(Session, profile);
             }
             catch (Exception ex)
             {
@@ -3524,8 +3493,58 @@ namespace Ntilde.Controls
                 return;
             }
 
+            if (Session is not { } spawned) return; // every path above that leaves none returned already
+            WireSessionStream(spawned, muxPreviousLost);
+        }
+
+        /// <summary>
+        /// UI thread, right after <paramref name="session"/> became <see cref="Session"/>: the view sends
+        /// to it, its exit reaches <see cref="HandleSessionExit"/>, and the registries hear about it.
+        /// </summary>
+        private void WireSessionLifecycle(ITerminalSession session, TerminalProfile? profile)
+        {
+            TermView.SetSession(session);
+            session.OnExit += code =>
+            {
+                this.Dispatcher.Post(() =>
+                {
+                    HandleSessionExit(session, code);
+                });
+            };
+            RegisterActiveSshSession(session, profile);
+            UpdateCommandAssistContext();
+
+            // Publish the PTY lifecycle to the registration (the endpoint's
+            // sweep probes only this published reference, never the pane).
+            if (_agentRegistration is { } agentReg)
+            {
+                agentReg.SetLifecycle(session);
+
+                // Seed the first child-process sample, but OFF the UI thread:
+                // ProbeHasActiveChildProcesses() is a full OS process-table scan
+                // (CreateToolhelp32Snapshot on Windows, a pgrep spawn elsewhere) —
+                // blocking I/O that would jank tab creation. It is thread-safe, so
+                // run the probe on a background thread and post only the Sweep back
+                // to the UI thread. The endpoint's 1 s sweep corrects it regardless.
+                Task.Run(() =>
+                {
+                    var hasChildren = agentReg.ProbeHasActiveChildProcesses();
+                    this.Dispatcher.Post(
+                        () => agentReg.StatusMachine.Sweep(hasChildren),
+                        DispatcherPriority.Background);
+                });
+            }
+        }
+
+        /// <summary>
+        /// UI thread, after <see cref="WireSessionLifecycle"/>: the session's output reaches the parser, the
+        /// parser's replies reach the session (unless it answers them itself), and a mux session is wired
+        /// and attached, last (spec §8).
+        /// </summary>
+        private void WireSessionStream(ITerminalSession session, bool muxPreviousLost)
+        {
             // Wire up Output
-            Session.OnOutputReceived += text =>
+            session.OnOutputReceived += text =>
             {
                 Parser.Process(text);
 
@@ -3547,7 +3566,7 @@ namespace Ntilde.Controls
             {
                 Parser.OnResponse += response =>
                 {
-                    Session.SendInput(response);
+                    Session?.SendInput(response);
                 };
             }
 
@@ -3573,7 +3592,18 @@ namespace Ntilde.Controls
                 return SessionFactory.Create(request);
             }
 
-            PersistentSessionResult result = persistent.CreatePersistent(request);
+            return ApplyPersistentResult(request, persistent.CreatePersistent(request), out previousLost);
+        }
+
+        /// <summary>
+        /// UI thread. What a <see cref="IPersistentSessionFactory"/> result means for this pane, local or
+        /// remote (Phase 4 spec §7.4): its share and endpoint state, the banner or notice it calls for, and
+        /// the session to wire - null when there is none to wire (unreachable, or a share that ended).
+        /// <paramref name="previousLost"/> as for <see cref="CreateLocalSession"/>.
+        /// </summary>
+        private ITerminalSession? ApplyPersistentResult(TerminalSessionRequest request, PersistentSessionResult result, out bool previousLost)
+        {
+            previousLost = false;
             // A share that fell back to a fresh spawn is this pane's own shell, not a share.
             _muxSessionIsShare = request.AttachShared && result.Outcome == PersistentSessionOutcome.Reattached;
             MuxShareOfExitedSession = _muxSessionIsShare && result.AlreadyExited;
