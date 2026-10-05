@@ -108,6 +108,22 @@ public sealed class MuxPaneSharingTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void A_read_only_peer_does_not_show_the_badge()
+    {
+        MuxClientSession s = StartHostedPane();
+
+        // Two attached, one of them a read-only observer: nobody else is typing into this shell.
+        s.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = s.Id, AttachedClients = 2, InteractiveClients = 1 });
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(_pane!.MuxSharedIndicator.IsVisible);
+        Assert.Equal(0, _pane.MuxOtherClients);
+
+        s.DeliverSessionChanged(new Ntilde.Mux.Contracts.SessionChangedNotification { SessionId = s.Id, AttachedClients = 2, InteractiveClients = 2 });
+        PumpUntil(() => _pane.MuxSharedIndicator.IsVisible, "an interactive peer shows the badge");
+        Assert.Equal("shared with 1", _pane.MuxSharedText.Text);
+    }
+
+    [AvaloniaFact]
     public void The_indicator_hides_on_connection_loss_and_a_late_SessionChanged_does_not_bring_it_back()
     {
         MuxClientSession s = StartHostedPane();

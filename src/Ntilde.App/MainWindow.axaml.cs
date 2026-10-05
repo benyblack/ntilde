@@ -5939,12 +5939,12 @@ namespace Ntilde
                     if (choice == Ntilde.Shell.Mux.SharedCloseChoice.Detach) disposition = Ntilde.Shell.Mux.PaneDisposition.Detach;
                 }
                 else if (requested == Ntilde.Shell.Mux.PaneDisposition.EndSession
-                    && paneToClose.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true, AttachedClients: > 1 })
+                    && paneToClose.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true, InteractiveOthers: > 0 })
                 {
                     // An agent cannot answer the shared-close question, and skipping it must not end a shell
                     // other windows are still using: this pane lets go and the shell keeps running for them.
-                    // Not a deliberate detach, so nothing is marked. AttachedClients is the cached v2 count
-                    // (always null on v1, which keeps the old close). An exit-driven close never gets here:
+                    // Not a deliberate detach, so nothing is marked. InteractiveOthers is the cached v2 count,
+                    // read-only observers excluded (always null on v1, which keeps the old close). An exit-driven close never gets here:
                     // its shell is no longer running.
                     disposition = Ntilde.Shell.Mux.PaneDisposition.Leave;
                 }
@@ -6025,18 +6025,18 @@ namespace Ntilde
             var budget = System.Diagnostics.Stopwatch.StartNew();
             if (pane.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsAttached: true, IsProcessRunning: true } mux)
             {
-                int? attached;
+                int? interactive; // clients that can type, this one included
                 using var cts = new CancellationTokenSource(PaneCloseRefreshBudget);
                 try
                 {
-                    attached = await mux.RefreshSharingAsync(cts.Token).WaitAsync(PaneCloseRefreshBudget);
+                    interactive = await mux.RefreshSharingAsync(cts.Token).WaitAsync(PaneCloseRefreshBudget);
                 }
                 catch (Exception ex) when (ex is TimeoutException or OperationCanceledException or Ntilde.Mux.Contracts.MuxProtocolException or ObjectDisposedException or IOException)
                 {
-                    attached = mux.AttachedClients; // stale is acceptable
+                    interactive = mux.InteractiveOthers + 1; // stale is acceptable
                 }
 
-                if (attached is int n && n > 1)
+                if (interactive is int n && n > 1)
                 {
                     try
                     {

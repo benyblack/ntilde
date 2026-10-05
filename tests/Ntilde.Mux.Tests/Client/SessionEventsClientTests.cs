@@ -26,6 +26,25 @@ public sealed class SessionEventsClientTests
     }
 
     [Fact]
+    public async Task InteractiveOthers_excludes_read_only_peers_and_falls_back_to_AttachedClients()
+    {
+        using var host = new MuxTestHost();
+        MuxClient c1 = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(c1);
+        MuxClientSession s = (await MuxTestHost.AttachPaneAsync(c1, id)).Session;
+        await TestWait.UntilAsync(() => s.AttachedClients == 1, "the first count arrived");
+        Assert.Equal(0, s.InteractiveOthers);
+
+        s.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, AttachedClients = 2, InteractiveClients = 1 });
+        Assert.Equal(1, s.InteractiveClients);
+        Assert.Equal(0, s.InteractiveOthers);
+
+        s.DeliverSessionChanged(new SessionChangedNotification { SessionId = id, AttachedClients = 2 }); // no InteractiveClients: fallback
+        Assert.Null(s.InteractiveClients);
+        Assert.Equal(1, s.InteractiveOthers);
+    }
+
+    [Fact]
     public async Task KilledElsewhere_precedes_OnExit_and_the_killer_is_not_told()
     {
         using var host = new MuxTestHost();

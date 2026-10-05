@@ -3740,10 +3740,13 @@ namespace Ntilde.Controls
         /// <summary>Raised on the UI thread when <see cref="MuxOtherClients"/> changes (MainWindow marks the tab).</summary>
         internal event Action<TerminalPane>? MuxSharingChanged;
 
-        /// <summary>UI thread. Null (v1 daemon, disconnected, replaced session) hides the badge.</summary>
-        internal void ApplyMuxSharing(int? attachedClients)
+        /// <summary>
+        /// UI thread. <paramref name="interactiveOthers"/> is <see cref="MuxClientSession.InteractiveOthers"/>:
+        /// read-only observers are not counted. Null (unknown, disconnected, replaced session) hides the badge.
+        /// </summary>
+        internal void ApplyMuxSharing(int? interactiveOthers)
         {
-            int others = attachedClients is int n ? Math.Max(0, n - 1) : 0;
+            int others = interactiveOthers is int n ? Math.Max(0, n) : 0;
             MuxSharedIndicator.IsVisible = others > 0;
             MuxSharedText.Text = others > 0 ? $"shared with {others}" : string.Empty;
             if (others == MuxOtherClients) return;
@@ -3845,7 +3848,7 @@ namespace Ntilde.Controls
             // Delivery thread; marshal. The attach itself changes the count, so a v2 daemon announces
             // the initial sharing right after the snapshot. One already posted when the connection
             // dropped must not re-show the badge that the loss hid.
-            mux.SessionChanged += () => this.Dispatcher.Post(() => { if (IsCurrentMux(mux) && !_muxConnectionLost) ApplyMuxSharing(mux.AttachedClients); });
+            mux.SessionChanged += () => this.Dispatcher.Post(() => { if (IsCurrentMux(mux) && !_muxConnectionLost) ApplyMuxSharing(mux.InteractiveOthers); });
             _ = AttachMuxAsync(mux, previousLost);
         }
 

@@ -81,6 +81,34 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         }
     }
 
+    /// <summary>
+    /// <see cref="AttachedClients"/> without the read-only observers, from the last sessionChanged;
+    /// null = unknown (v1, or a daemon that does not send it).
+    /// </summary>
+    public int? InteractiveClients
+    {
+        get
+        {
+            int n = Volatile.Read(ref _sharing).InteractiveClients;
+            return n < 0 ? null : n;
+        }
+    }
+
+    /// <summary>
+    /// Other clients that can type into the session: what every GUI consumer (badge, close decisions)
+    /// counts. <see cref="InteractiveClients"/> minus this one when known, else <see cref="AttachedClients"/>
+    /// minus this one (an older daemon cannot tell observers apart); floored at 0; null when both are unknown.
+    /// </summary>
+    public int? InteractiveOthers
+    {
+        get
+        {
+            SharingState s = Volatile.Read(ref _sharing);
+            int n = s.InteractiveClients >= 0 ? s.InteractiveClients : s.AttachedClients;
+            return n < 0 ? null : Math.Max(0, n - 1);
+        }
+    }
+
     /// <summary>From the last sessionChanged (v2) or <see cref="RefreshSharingAsync"/> (v1); null = unknown.</summary>
     public string? Title => Volatile.Read(ref _sharing).Title;
 
@@ -157,8 +185,9 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     }
 
     /// <summary>
-    /// Reads the attached count from <c>listSessions</c>, which a v1 daemon answers too: the close
-    /// confirmation's source of truth. Returns null when the session is no longer listed. On v1 it
+    /// Reads the interactive client count (this one included) from <c>listSessions</c>, which a v1 daemon
+    /// answers too: the close confirmation's source of truth. On v1, which cannot tell read-only
+    /// observers apart, that is the attached count. Returns null when the session is no longer listed. On v1 it
     /// also refreshes <see cref="Title"/> and <see cref="Cwd"/>, never <see cref="AttachedClients"/>
     /// (which stays unknown there). On v2 it changes nothing: this reply completes on the thread pool
     /// and could overwrite a newer sessionChanged the delivery thread has already applied.
@@ -173,7 +202,8 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
             Volatile.Write(ref _sharing, SharingState.Unknown with { Title = me.Title, Cwd = me.Cwd });
         }
 
-        return me.AttachedClients;
+        // v2 reports who can type (InteractiveClients is omitted when 0); v1 cannot tell observers apart.
+        return SupportsSessionEvents ? me.InteractiveClients : me.AttachedClients;
     }
 
     public void SendInput(string input)
@@ -489,7 +519,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
     internal void DeliverSessionChanged(SessionChangedNotification changed)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
-        Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.Title, changed.Cwd));
+        Volatile.Write(ref _sharing, new SharingState(Math.Max(0, changed.AttachedClients), changed.InteractiveClients is int ic ? Math.Max(0, ic) : -1, changed.Title, changed.Cwd));
         if (SessionChanged is not { } handlers) return;
         foreach (Action handler in Delegate.EnumerateInvocationList(handlers))
         {
@@ -536,10 +566,10 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
         if (failures is not null) throw new AggregateException($"Disconnected handler(s) of session {Id} threw.", failures);
     }
 
-    /// <summary>What sessionChanged reports, as one value. <see cref="AttachedClients"/> -1 = unknown.</summary>
-    private sealed record SharingState(int AttachedClients, string? Title, string? Cwd)
+    /// <summary>What sessionChanged reports, as one value. <see cref="AttachedClients"/> and <see cref="InteractiveClients"/> -1 = unknown.</summary>
+    private sealed record SharingState(int AttachedClients, int InteractiveClients, string? Title, string? Cwd)
     {
-        public static readonly SharingState Unknown = new(-1, null, null);
+        public static readonly SharingState Unknown = new(-1, -1, null, null);
     }
 
     private void RefreshSessionInfoIfStale()

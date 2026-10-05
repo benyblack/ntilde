@@ -508,6 +508,63 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.DoesNotContain(TerminalPane.MuxKilledElsewhereBanner, MuxTestText.VisibleText(mine.Buffer!), StringComparison.Ordinal);
     }
 
+    /// <summary>Another instance watching <paramref name="id"/> read-only: attached, but nobody typing.</summary>
+    private ClientPaneModel WatchReadOnly(Guid id) => Task.Run(async () =>
+    {
+        MuxClient c = await _mux.ConnectClientAsync();
+        MuxClientSession s = c.OpenSession(id, "scripted", null, Ntilde.Mux.Contracts.MuxAttachMode.ReadOnly);
+        var model = new ClientPaneModel(s);
+        await s.AttachAsync(0, MuxTestHost.DefaultPresentation);
+        return model;
+    }).GetAwaiter().GetResult();
+
+    /// <summary>Phase 4 carry-over 9: a read-only observer is not "another window" worth a shared-close prompt.</summary>
+    [AvaloniaFact]
+    public void Closing_a_pane_watched_read_only_does_not_prompt()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).PaneClosePolicy = "Force";
+        TerminalPane own = AllPanes(window).Single();
+        var session = (MuxClientSession)own.Session!;
+        Guid id = session.Id;
+        ClientPaneModel watcher = WatchReadOnly(id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "the observer attached");
+        int asked = -1;
+        window.ConfirmSharedClose = others =>
+        {
+            asked = others;
+            return Task.FromResult(SharedCloseChoice.Cancel);
+        };
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<bool>)close.Invoke(window, [own, false])!;
+        PumpUntil(() => task.IsCompleted, "the close finished");
+
+        Assert.Equal(-1, asked);
+        Assert.True(task.Result);
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the shell was ended, as for a lone pane");
+        GC.KeepAlive(watcher);
+    }
+
+    [AvaloniaFact]
+    public void Agent_close_with_only_a_read_only_peer_kills()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        var session = (MuxClientSession)own.Session!;
+        Guid id = session.Id;
+        ClientPaneModel watcher = WatchReadOnly(id);
+        PumpUntil(() => session.AttachedClients == 2 && session.InteractiveOthers is not null, "the pane knows the observer is there");
+        Assert.Equal(0, session.InteractiveOthers);
+
+        Task<bool> close = ((Ntilde.AgentHost.IAgentActionExecutor)window).ClosePaneAsync(own.PaneId);
+        PumpUntil(() => close.IsCompleted, "the agent's close finished");
+
+        Assert.True(close.Result);
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the shell was ended, not left running for an observer");
+        GC.KeepAlive(watcher);
+    }
+
     [AvaloniaFact]
     public void A_lone_pane_is_decided_without_the_shared_prompt()
     {
