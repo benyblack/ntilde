@@ -9,10 +9,12 @@ public sealed class OpenSshExecCommandLineTests
 
     private static readonly string[] ProxyArgv =
     [
-        "-T", "-o", "ClearAllForwardings=yes", "-o", "BatchMode=no",
+        "-T", "-o", "ClearAllForwardings=yes", "-o", "BatchMode=no", "-o", "ControlMaster=no",
         "-F", @"C:\cfg\ntilde_ssh_config", "ntilde_0123abcd",
         "--", "ntilde-mux proxy --stdio",
     ];
+
+    private const int ExecOptionCount = 7;
 
     [Fact]
     public void Build_wraps_the_plan_in_the_exec_options_and_ends_with_the_command()
@@ -40,7 +42,70 @@ public sealed class OpenSshExecCommandLineTests
 
         IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
 
-        Assert.Equal(plan, argv.Skip(5).Take(plan.Length));
+        Assert.Equal(plan, argv.Skip(ExecOptionCount).Take(plan.Length));
+    }
+
+    [Fact]
+    public void ControlMaster_no_precedes_the_plan_so_it_beats_the_generated_configs_ControlMaster_auto()
+    {
+        // First value wins in ssh: ahead of -F and of ExtraSshArgs, this exec never becomes a master.
+        string[] plan = [.. Plan, "-o", "ControlMaster=auto"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
+
+        int ours = IndexOfPair(argv, "-o", "ControlMaster=no");
+        Assert.True(ours >= 0, "ControlMaster=no is missing");
+        Assert.True(ours < IndexOfPair(argv, "-F", Plan[1]));
+        Assert.True(ours < IndexOfPair(argv, "-o", "ControlMaster=auto"));
+    }
+
+    [Theory]
+    [InlineData("-t")]
+    [InlineData("-tt")]
+    [InlineData("-ttt")]
+    [InlineData("-T")]
+    public void A_pty_flag_in_the_plans_extra_arguments_is_dropped_and_logged(string flag)
+    {
+        string[] plan = [.. Plan, flag, "-o", "ConnectTimeout=5"];
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-o", "ConnectTimeout=5", "--", "true"];
+        Assert.Equal(expected, argv);
+        string line = Assert.Single(log);
+        Assert.Contains($"'{flag}'", line, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("-tv")]
+    [InlineData("-vt")]
+    [InlineData("-t5")]
+    public void Clustered_flags_are_not_parsed(string flag)
+    {
+        string[] plan = [.. Plan, flag];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
+
+        Assert.Contains(flag, argv);
+    }
+
+    [Fact]
+    public void The_remote_command_is_never_filtered()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "-t");
+
+        Assert.Equal("-t", argv[^1]);
+    }
+
+    private static int IndexOfPair(IReadOnlyList<string> argv, string option, string value)
+    {
+        for (int i = 0; i + 1 < argv.Count; i++)
+        {
+            if (argv[i] == option && argv[i + 1] == value) return i;
+        }
+
+        return -1;
     }
 
     [Fact]

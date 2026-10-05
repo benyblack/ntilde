@@ -7,9 +7,10 @@ namespace Ntilde.Platform.Ssh.Exec;
 /// <see cref="SshExec.RunAsync"/> (§9).
 /// </summary>
 /// <remarks>
-/// <see cref="IDisposable.Dispose"/> ends the command and must not hang: it sends EOF, gives the
-/// command a short grace period to exit, then stops it. A reader blocked on <see cref="Stdout"/>
-/// returns once the channel is disposed.
+/// <see cref="IDisposable.Dispose"/> ends the command and never hangs, but it may block for several
+/// seconds: it sends EOF, waits a grace period for the command to exit, then stops it and waits for
+/// it to go. Never call it on the UI thread. A reader blocked on <see cref="Stdout"/> returns once the
+/// channel is disposed.
 /// </remarks>
 public interface ISshExecChannel : IDisposable
 {

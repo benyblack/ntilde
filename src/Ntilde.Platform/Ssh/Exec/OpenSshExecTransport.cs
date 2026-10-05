@@ -39,7 +39,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         string? askPassHelperPath,
         IReadOnlyList<string>? diagnosticsArguments = null,
         Action<string>? log = null)
-        : this(profile, sshExecutablePath, ArgumentsFor(planArguments, diagnosticsArguments), askPassHelperPath, log)
+        : this(profile, sshExecutablePath, ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log), askPassHelperPath, log)
     {
     }
 
@@ -88,6 +88,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             throw;
         }
 
+        _log(string.Create(CultureInfo.InvariantCulture, $"[OpenSshExec] {DisplayName}: ssh started (pid {process.Id})"));
         var channel = new OpenSshExecChannel(process, DisplayName, _log);
         if (ct.IsCancellationRequested)
         {
@@ -125,12 +126,13 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         return startInfo;
     }
 
-    private static Func<string, IReadOnlyList<string>> ArgumentsFor(IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments)
+    private static Func<string, IReadOnlyList<string>> ArgumentsFor(
+        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log)
     {
         ArgumentNullException.ThrowIfNull(planArguments);
         string[] plan = [.. planArguments];
         string[] diagnostics = diagnosticsArguments is null ? [] : [.. diagnosticsArguments];
-        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command);
+        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log);
     }
 }
 
@@ -192,6 +194,7 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
     /// <see cref="ExitGrace"/> for that, then the process tree is stopped. Only then is stdout
     /// released: on Windows, closing a pipe's read end does not wake a read pending on it - the
     /// writer's exit does - so a reader blocked on <see cref="Stdout"/> (the mux client's) returns.
+    /// Blocks for up to <see cref="ExitGrace"/> plus the stop's bounded wait: never on the UI thread.
     /// </summary>
     public void Dispose() => Close(ExitGrace);
 
@@ -222,8 +225,22 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
         }
     }
 
+    /// <summary>The exit code of a process <see cref="Process.Kill(bool)"/> stopped: TerminateProcess's -1 on Windows, 128 + SIGKILL elsewhere.</summary>
+    internal static int KilledExitCode => OperatingSystem.IsWindows() ? -1 : 128 + 9;
+
+    /// <summary>
+    /// What <see cref="Completion"/> reports for <paramref name="exitCode"/>: null only when the channel
+    /// issued a kill and the process ended the way a kill ends it. A process that exited on its own in
+    /// the moment before the kill landed - the kill then throws, or on Windows quietly does nothing -
+    /// keeps its real code: a daemon-stopped 3 (§7.3) must not read as unknown.
+    /// </summary>
+    internal static int? ReportedExitCode(int exitCode, bool killIssued) =>
+        killIssued && exitCode == KilledExitCode ? null : exitCode;
+
     private void Stop()
     {
+        // Set before the kill, not after: the exit the kill causes may be observed on another thread
+        // before Kill even returns. ReportedExitCode then tells a kill from a natural exit by its code.
         _stoppedByChannel = true;
         try
         {
@@ -231,10 +248,16 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
             _process.Kill(entireProcessTree: true);
             _log($"[OpenSshExec] {_displayName}: ssh did not exit on EOF; stopped it");
         }
-        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or AggregateException)
+        catch (InvalidOperationException ex)
         {
-            // It exited meanwhile, or part of its tree could not be stopped: its pipes close either way
-            // once it is gone, and the wait after this is bounded.
+            // It exited on its own first: nothing was stopped.
+            _stoppedByChannel = false;
+            _log($"[OpenSshExec] {_displayName}: ssh exited before it was stopped ({ex.Message})");
+        }
+        catch (Exception ex) when (ex is Win32Exception or AggregateException)
+        {
+            // Part of its tree could not be stopped. Its pipes close once it is gone, and the wait
+            // after this is bounded.
             _log($"[OpenSshExec] {_displayName}: stopping ssh: {ex.Message}");
         }
     }
@@ -262,11 +285,11 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
             if (_closed) _process.Dispose();
         }
 
-        bool stopped = _stoppedByChannel;
-        _log(stopped
+        int? reported = ReportedExitCode(exitCode, _stoppedByChannel);
+        _log(reported is null
             ? $"[OpenSshExec] {_displayName}: ssh stopped by the channel"
             : string.Create(CultureInfo.InvariantCulture, $"[OpenSshExec] {_displayName}: ssh exited with {exitCode}"));
-        return stopped ? null : exitCode;
+        return reported;
     }
 
     private void DrainStderr(Stream stderr)
@@ -348,9 +371,17 @@ internal sealed class ProcessStdinStream : Stream
         await _pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public override void Flush() => _pipe.Flush();
+    /// <summary>
+    /// A no-op, disposed or not: every write has already been flushed, so there is never anything to
+    /// flush. Not touching the pipe means a writer racing the channel's Dispose
+    /// (<c>DuplexStdioStream</c> flushes after each write) sees at most its write fail, never its flush.
+    /// </summary>
+    public override void Flush()
+    {
+    }
 
-    public override Task FlushAsync(CancellationToken cancellationToken) => _pipe.FlushAsync(cancellationToken);
+    /// <inheritdoc cref="Flush"/>
+    public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 

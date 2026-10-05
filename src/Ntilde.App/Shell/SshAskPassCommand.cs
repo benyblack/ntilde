@@ -44,7 +44,7 @@ internal static class SshAskPassCommand
             string prompt = GetPrompt(args);
             TerminalProfile profile = CreateProfileFromEnvironment();
 
-            if (IsPasswordPrompt(prompt))
+            if (IsTargetPasswordPrompt(prompt, profile))
             {
                 string? vaultPassword = new VaultService().GetSshPasswordForProfile(profile);
                 if (!string.IsNullOrEmpty(vaultPassword))
@@ -121,6 +121,46 @@ internal static class SshAskPassCommand
     private static bool IsPasswordPrompt(string prompt)
     {
         return prompt.Contains("password", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="prompt"/> asks for the password of the profile's own target: the only
+    /// prompt the profile's vault password may answer, or be remembered from.
+    /// </summary>
+    /// <remarks>
+    /// Every ssh the transport starts inherits the askpass environment, including the <c>ssh -W</c>
+    /// that ProxyJump runs for each hop. Answering any "password" prompt would hand the target's
+    /// password to a jump host (and fail the jump's own auth), so the prompt must name the target,
+    /// as OpenSSH writes it, anchored at the start where only ssh - never a server - writes:
+    /// <list type="bullet">
+    /// <item>password auth: <c>&lt;user&gt;@&lt;host&gt;'s password: </c>;</item>
+    /// <item>keyboard-interactive (OpenSSH 8.4+): <c>(&lt;user&gt;@&lt;host&gt;) </c> then the server's
+    /// own text, which must ask for a password.</item>
+    /// </list>
+    /// ssh writes the host as the config's HostName, lowercased, hence the case-insensitive match.
+    /// A profile with no user (ssh then uses the local account) or no host never auto-fills.
+    /// </remarks>
+    internal static bool IsTargetPasswordPrompt(string prompt, TerminalProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(prompt);
+        ArgumentNullException.ThrowIfNull(profile);
+
+        string user = profile.SshUser?.Trim() ?? string.Empty;
+        string host = profile.SshHost?.Trim() ?? string.Empty;
+        if (user.Length == 0 || host.Length == 0)
+        {
+            return false;
+        }
+
+        string target = $"{user}@{host}";
+        if (prompt.StartsWith(target + "'s password", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        string keyboardInteractive = $"({target}) ";
+        return prompt.StartsWith(keyboardInteractive, StringComparison.OrdinalIgnoreCase) &&
+               prompt.AsSpan(keyboardInteractive.Length).Contains("password", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSecretPrompt(string prompt)
@@ -220,7 +260,8 @@ internal static class SshAskPassCommand
             _rememberPassword = new CheckBox
             {
                 Content = "Remember password",
-                IsVisible = IsPasswordPrompt(_state.Prompt) && _state.Profile.Id != Guid.Empty
+                // Only the target's password is the profile's: a jump host's must not be stored as it.
+                IsVisible = IsTargetPasswordPrompt(_state.Prompt, _state.Profile) && _state.Profile.Id != Guid.Empty
             };
 
             Content = BuildContent();

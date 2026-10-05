@@ -1,6 +1,9 @@
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Models;
 
@@ -32,11 +35,13 @@ public sealed class OpenSshExecTransportProcessTests
 
     private static OpenSshExecTransport ShellTransport(string? askPassHelperPath = null)
     {
-        (string shell, string[] leading) = OperatingSystem.IsWindows()
-            ? (Environment.GetEnvironmentVariable("ComSpec") is { Length: > 0 } comSpec ? comSpec : "cmd.exe", new[] { "/d", "/c" })
-            : ("/bin/sh", new[] { "-c" });
+        (string shell, string[] leading) = Shell();
         return new OpenSshExecTransport(Profile(), shell, command => [.. leading, command], askPassHelperPath, log: _ => { });
     }
+
+    private static (string Shell, string[] Leading) Shell() => OperatingSystem.IsWindows()
+        ? (Environment.GetEnvironmentVariable("ComSpec") is { Length: > 0 } comSpec ? comSpec : "cmd.exe", new[] { "/d", "/c" })
+        : ("/bin/sh", new[] { "-c" });
 
     private static string Pick(string windows, string unix) => OperatingSystem.IsWindows() ? windows : unix;
 
@@ -112,12 +117,75 @@ public sealed class OpenSshExecTransportProcessTests
     [Fact]
     public async Task Dispose_after_stdin_eof_lets_the_process_finish_and_keeps_its_exit_code()
     {
-        ISshExecChannel channel = ShellTransport().Start(Pick("findstr x >nul & exit /b 4", "cat >/dev/null; exit 4"), CancellationToken.None);
+        // 3 is the proxy's "daemon closed the connection" (§7.3): it must never read as unknown.
+        ISshExecChannel channel = ShellTransport().Start(Pick("findstr x >nul & exit /b 3", "cat >/dev/null; exit 3"), CancellationToken.None);
 
         channel.Dispose();
 
         // Not killed (that would be null): closing stdin was enough, within the grace period.
-        Assert.Equal(4, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Equal(3, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void A_kill_reads_as_unknown_but_an_exit_that_beat_the_kill_keeps_its_code()
+    {
+        // The race in Dispose: the grace period ran out, and the process exited on its own just
+        // before the kill landed (the kill then throws, or on Windows silently does nothing). The
+        // status is told apart by its code; a process test cannot hit that window deterministically.
+        Assert.Null(OpenSshExecChannel.ReportedExitCode(OpenSshExecChannel.KilledExitCode, killIssued: true));
+        Assert.Equal(3, OpenSshExecChannel.ReportedExitCode(3, killIssued: true));
+        Assert.Equal(0, OpenSshExecChannel.ReportedExitCode(0, killIssued: true));
+        Assert.Equal(255, OpenSshExecChannel.ReportedExitCode(255, killIssued: false));
+        Assert.Equal(OpenSshExecChannel.KilledExitCode, OpenSshExecChannel.ReportedExitCode(OpenSshExecChannel.KilledExitCode, killIssued: false));
+    }
+
+    [Fact]
+    public void Cancellation_while_starting_stops_the_process_before_Start_throws()
+    {
+        using var cts = new CancellationTokenSource();
+        var log = new ConcurrentQueue<string>();
+        (string shell, string[] leading) = Shell();
+
+        // The argv seam runs after Start's own token check and before the spawn: cancelling there is
+        // exactly "cancelled while starting", with no timing involved.
+        var transport = new OpenSshExecTransport(Profile(), shell, command =>
+        {
+            cts.Cancel();
+            return [.. leading, command];
+        }, askPassHelperPath: null, log: log.Enqueue);
+
+        Assert.ThrowsAny<OperationCanceledException>(() => transport.Start(Pick("ping -n 60 127.0.0.1 >nul", "sleep 60"), cts.Token));
+
+        int pid = log.Select(line => Regex.Match(line, @"\(pid (\d+)\)")).Where(m => m.Success)
+            .Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)).Single();
+        Assert.True(HasExited(pid), $"pid {pid} is still running after a cancelled Start");
+        Assert.Contains(log, line => line.Contains("stopped it", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_pty_flag_in_ExtraSshArgs_never_reaches_ssh_and_is_logged()
+    {
+        var log = new List<string>();
+        var transport = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["-F", "cfg", "alias", "-tt"], askPassHelperPath: null, log: log.Add);
+
+        ProcessStartInfo startInfo = transport.CreateStartInfo("ntilde-mux proxy --stdio");
+
+        Assert.DoesNotContain("-tt", startInfo.ArgumentList);
+        Assert.Contains(log, line => line.Contains("'-tt'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Stdin_flush_is_a_no_op_once_disposed()
+    {
+        // DuplexStdioStream flushes after every write; a writer racing Dispose must see at most the
+        // write fail, never the flush.
+        var stdin = new ProcessStdinStream(new MemoryStream());
+
+        stdin.Dispose();
+
+        Assert.Null(Record.Exception(stdin.Flush));
+        Assert.Null(await Record.ExceptionAsync(() => stdin.FlushAsync(TestContext.Current.CancellationToken)));
+        Assert.Throws<ObjectDisposedException>(() => stdin.Write("x"u8));
     }
 
     [Fact]
@@ -205,6 +273,19 @@ public sealed class OpenSshExecTransportProcessTests
 
         Assert.Equal("alice@example.com", new OpenSshExecTransport(Profile(), "ssh", ["alias"], null).DisplayName);
         Assert.Equal("example.com", new OpenSshExecTransport(bare, "ssh", ["alias"], null).DisplayName);
+    }
+
+    private static bool HasExited(int pid)
+    {
+        try
+        {
+            using Process process = Process.GetProcessById(pid);
+            return process.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return true; // no such process
+        }
     }
 
     private static string MissingExecutable() =>
