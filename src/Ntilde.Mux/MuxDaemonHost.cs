@@ -124,6 +124,7 @@ public sealed class MuxDaemonHost : IDisposable
         Endpoint = _options.Endpoint,
         Pid = _options.Pid,
         ProcessName = _options.ProcessName,
+        StartTime = _options.StartTimeUtcTicks,
     };
 
     /// <summary>

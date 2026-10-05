@@ -228,4 +228,11 @@ public sealed record MuxEndpointDescriptor
     public required string Endpoint { get; init; }
     public int Pid { get; init; }
     public required string ProcessName { get; init; }
+    /// <summary>
+    /// The daemon's start time as UTC ticks. A recycled pid can carry the same process name (another
+    /// ntilde, say), so the name alone cannot prove the process is still this daemon; a start time
+    /// that differs by a second or more can. Absent from descriptors written by older daemons.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? StartTime { get; init; }
 }

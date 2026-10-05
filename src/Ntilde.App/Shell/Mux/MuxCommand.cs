@@ -264,7 +264,10 @@ public static class MuxCommand
     /// </summary>
     internal static int KillByPid(string descriptorPath, bool force, TextWriter stdout, TextWriter stderr)
     {
-        if (!MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d))
+        // Name-only liveness here: the start time is checked below, on the Process object that is
+        // about to be killed, so a recycled pid gets the specific "no longer the multiplexer" answer.
+        if (!MuxDiscovery.TryReadDescriptor(descriptorPath, out MuxEndpointDescriptor? d)
+            || !MuxDiscovery.IsProcessAlive(d.Pid, d.ProcessName))
         {
             stderr.WriteLine("The multiplexer speaks a different protocol version, and its process could not be verified (pid and process name); nothing was terminated.");
             return 1;
@@ -289,6 +292,14 @@ public static class MuxCommand
             // recycled for an unrelated process in between. Re-verify on this exact Process object,
             // right before killing it, so that window never kills the wrong process.
             if (!string.Equals(process.ProcessName, d.ProcessName, StringComparison.OrdinalIgnoreCase))
+            {
+                stderr.WriteLine($"pid {d.Pid} is no longer the multiplexer; nothing was terminated.");
+                return 1;
+            }
+
+            // The name alone does not tell a recycled pid from the daemon (another ntilde, say):
+            // the start time recorded in the descriptor does.
+            if (!MuxDiscovery.StartTimeMatches(process, d.StartTime))
             {
                 stderr.WriteLine($"pid {d.Pid} is no longer the multiplexer; nothing was terminated.");
                 return 1;

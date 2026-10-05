@@ -121,25 +121,46 @@ public static class MuxDiscovery
         }
     }
 
-    /// <summary>Readable, and its pid is alive under the recorded process name (guards pid reuse).</summary>
+    /// <summary>Readable, and its pid is alive under the recorded process name and start time (guards pid reuse).</summary>
     public static bool TryReadLiveDescriptor(string path, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor)
     {
-        if (TryReadDescriptor(path, out descriptor) && IsProcessAlive(descriptor.Pid, descriptor.ProcessName)) return true;
+        if (TryReadDescriptor(path, out descriptor) && IsProcessAlive(descriptor.Pid, descriptor.ProcessName, descriptor.StartTime)) return true;
         descriptor = null;
         return false;
     }
 
-    public static bool IsProcessAlive(int pid, string processName)
+    public static bool IsProcessAlive(int pid, string processName, long? startTimeUtcTicks = null)
     {
         if (pid <= 0) return false;
         try
         {
             using Process process = Process.GetProcessById(pid);
-            return !process.HasExited && string.Equals(process.ProcessName, processName, StringComparison.OrdinalIgnoreCase);
+            return !process.HasExited
+                && string.Equals(process.ProcessName, processName, StringComparison.OrdinalIgnoreCase)
+                && StartTimeMatches(process, startTimeUtcTicks);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// True when <paramref name="startTimeUtcTicks"/> is null (an older descriptor) or the process
+    /// started within a second of it. A start time that cannot be read also answers true: this check
+    /// only ever refuses, so the conservative answer is "no evidence against".
+    /// </summary>
+    public static bool StartTimeMatches(Process process, long? startTimeUtcTicks)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        if (startTimeUtcTicks is not long expected) return true;
+        try
+        {
+            return Math.Abs(process.StartTime.ToUniversalTime().Ticks - expected) < TimeSpan.TicksPerSecond;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            return true;
         }
     }
 

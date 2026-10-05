@@ -56,6 +56,17 @@ public sealed class MuxDaemonHostTests : IDisposable
     }
 
     [Fact]
+    public void Daemon_descriptor_records_the_start_time()
+    {
+        var (host, _, o) = NewHost();
+        host.Start();
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        using Process self = Process.GetCurrentProcess();
+        Assert.NotNull(d.StartTime);
+        Assert.True(Math.Abs(d.StartTime!.Value - self.StartTime.ToUniversalTime().Ticks) < TimeSpan.TicksPerSecond);
+    }
+
+    [Fact]
     public async Task Shutdown_request_stops_the_host_and_deletes_the_descriptor()
     {
         var (host, _, o) = NewHost();

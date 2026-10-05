@@ -110,6 +110,7 @@ public sealed class MuxCommandTests : IDisposable
                 IdleExitAfter = TimeSpan.Zero,
                 Pid = stand_in.Id,
                 ProcessName = stand_in.ProcessName,
+                StartTimeUtcTicks = stand_in.StartTime.ToUniversalTime().Ticks,
             });
             _host.Start();
 
@@ -187,6 +188,7 @@ public sealed class MuxCommandTests : IDisposable
             IdleExitAfter = TimeSpan.Zero,
             Pid = standIn.Id,
             ProcessName = standIn.ProcessName,
+            StartTimeUtcTicks = standIn.StartTime.ToUniversalTime().Ticks,
         });
         _host.Start();
         return standIn;
@@ -254,6 +256,37 @@ public sealed class MuxCommandTests : IDisposable
 
             Assert.Equal(1, code);
             Assert.False(standIn.HasExited, "an unverified process is never killed");
+        }
+        finally
+        {
+            try { standIn.Kill(); } catch (InvalidOperationException) { }
+        }
+    }
+
+    [Fact]
+    public void Force_refuses_a_pid_whose_start_time_changed()
+    {
+        using System.Diagnostics.Process standIn = StartLongRunningProcess();
+        try
+        {
+            string path = MuxDiscovery.GetDescriptorPath(_root);
+            MuxDiscovery.WriteDescriptor(path, new MuxEndpointDescriptor
+            {
+                MinVersion = 99,
+                MaxVersion = 99,
+                Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+                Pid = standIn.Id,
+                ProcessName = standIn.ProcessName,
+                StartTime = standIn.StartTime.ToUniversalTime().Ticks + TimeSpan.FromSeconds(5).Ticks,   // a recycled pid
+            });
+            var o = new StringWriter();
+            var e = new StringWriter();
+
+            int code = MuxCommand.KillByPid(path, force: true, o, e);
+
+            Assert.Equal(1, code);
+            Assert.Contains("is no longer the multiplexer", e.ToString());
+            Assert.False(standIn.HasExited, "a process started at another time is never killed");
         }
         finally
         {

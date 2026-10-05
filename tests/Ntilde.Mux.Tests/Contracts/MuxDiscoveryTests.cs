@@ -52,6 +52,41 @@ public sealed class MuxDiscoveryTests : IDisposable
     }
 
     [Fact]
+    public void A_descriptor_whose_start_time_differs_is_not_alive()
+    {
+        using Process self = Process.GetCurrentProcess();
+        long real = self.StartTime.ToUniversalTime().Ticks;
+        Assert.True(MuxDiscovery.IsProcessAlive(self.Id, self.ProcessName, real));
+        Assert.True(MuxDiscovery.IsProcessAlive(self.Id, self.ProcessName, null));
+        Assert.False(MuxDiscovery.IsProcessAlive(self.Id, self.ProcessName, real + TimeSpan.FromSeconds(5).Ticks));
+    }
+
+    [Fact]
+    public void A_live_descriptor_read_rejects_a_recycled_pid_by_start_time()
+    {
+        using Process self = Process.GetCurrentProcess();
+        long real = self.StartTime.ToUniversalTime().Ticks;
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(self.Id, self.ProcessName) with { StartTime = real });
+        Assert.True(MuxDiscovery.TryReadLiveDescriptor(DescriptorPath, out _));
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(self.Id, self.ProcessName) with { StartTime = real + TimeSpan.FromSeconds(5).Ticks });
+        Assert.False(MuxDiscovery.TryReadLiveDescriptor(DescriptorPath, out _));
+    }
+
+    [Fact]
+    public void Descriptor_round_trips_start_time_and_omits_it_when_null()
+    {
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(123, "ntilde") with { StartTime = 638_000_000_000_000_000L });
+        Assert.True(MuxDiscovery.TryReadDescriptor(DescriptorPath, out MuxEndpointDescriptor? back));
+        Assert.Equal(638_000_000_000_000_000L, back.StartTime);
+        Assert.Contains("startTime", File.ReadAllText(DescriptorPath));
+
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(123, "ntilde"));
+        Assert.True(MuxDiscovery.TryReadDescriptor(DescriptorPath, out back));
+        Assert.Null(back.StartTime);
+        Assert.DoesNotContain("startTime", File.ReadAllText(DescriptorPath), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void A_dead_pid_is_not_live()
     {
         using Process p = Process.Start(new ProcessStartInfo(OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh",

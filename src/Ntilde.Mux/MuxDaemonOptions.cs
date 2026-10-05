@@ -22,12 +22,27 @@ public sealed class MuxDaemonOptions
     public Func<string, IMuxListener> ListenerFactory { get; init; } = MuxListeners.Create;
     public int Pid { get; init; } = Environment.ProcessId;
     public string ProcessName { get; init; } = CurrentProcessName();
+    /// <summary>This process's start time (UTC ticks), recorded in the descriptor so a recycled pid is never mistaken for the daemon.</summary>
+    public long? StartTimeUtcTicks { get; init; } = CurrentStartTimeUtcTicks();
     public Action<string>? Log { get; init; }
 
     private static string CurrentProcessName()
     {
         using Process p = Process.GetCurrentProcess();
         return p.ProcessName;
+    }
+
+    private static long? CurrentStartTimeUtcTicks()
+    {
+        try
+        {
+            using Process p = Process.GetCurrentProcess();
+            return p.StartTime.ToUniversalTime().Ticks;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        {
+            return null;
+        }
     }
 }
 
