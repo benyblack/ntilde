@@ -59,6 +59,35 @@ public sealed class OpenSshExecCommandLineTests
         Assert.True(ours < IndexOfPair(argv, "-o", "ControlMaster=auto"));
     }
 
+    /// <summary>
+    /// An automatic reconnect must never prompt (Phase 4 ruling: those attempts are non-interactive).
+    /// The first value of an ssh option wins, so batch mode replaces the BatchMode=no token in place:
+    /// appending BatchMode=yes after it would be ignored.
+    /// </summary>
+    [Fact]
+    public void Batch_mode_replaces_BatchMode_no_with_yes_in_the_same_place()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "ntilde-mux proxy --stdio", batchMode: true);
+
+        string[] expected = [.. ProxyArgv];
+        expected[Array.IndexOf(expected, "BatchMode=no")] = "BatchMode=yes";
+        Assert.Equal(expected, argv);
+        Assert.DoesNotContain("BatchMode=no", argv);
+    }
+
+    [Fact]
+    public void Batch_mode_still_precedes_a_BatchMode_in_the_plans_extra_arguments()
+    {
+        string[] plan = [.. Plan, "-o", "BatchMode=no"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", batchMode: true);
+
+        int ours = IndexOfPair(argv, "-o", "BatchMode=yes");
+        Assert.True(ours >= 0, "BatchMode=yes is missing");
+        Assert.True(ours < IndexOfPair(argv, "-F", Plan[1]));
+        Assert.True(ours < IndexOfPair(argv, "-o", "BatchMode=no"));
+    }
+
     [Theory]
     [InlineData("-t")]
     [InlineData("-tt")]

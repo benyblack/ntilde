@@ -266,6 +266,27 @@ public sealed class OpenSshExecTransportProcessTests
         Assert.False(unhelped.Environment.ContainsKey("SSH_ASKPASS_REQUIRE"));
     }
 
+    /// <summary>
+    /// A batch-mode transport is for attempts nobody is waiting on: ssh gets BatchMode=yes, and the
+    /// askpass helper is not wired up even when one is given, so nothing can put a dialog up.
+    /// </summary>
+    [Fact]
+    public void Batch_mode_runs_ssh_with_BatchMode_yes_and_without_askpass()
+    {
+        string[] plan = ["-F", "cfg", "alias"];
+        var batch = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", plan, askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { }, batchMode: true);
+        var interactive = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", plan, askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { });
+
+        ProcessStartInfo startInfo = batch.CreateStartInfo("true");
+
+        Assert.True(batch.BatchMode);
+        Assert.False(interactive.BatchMode);
+        Assert.Equal(OpenSshExecCommandLine.Build([], plan, "true", batchMode: true), startInfo.ArgumentList);
+        Assert.False(startInfo.Environment.ContainsKey(SshAskPassEnvironment.ModeVariable));
+        Assert.False(startInfo.Environment.ContainsKey("SSH_ASKPASS_REQUIRE"));
+        Assert.Equal("/opt/ntilde/ntilde", interactive.CreateStartInfo("true").Environment["SSH_ASKPASS"]);
+    }
+
     [Fact]
     public void DisplayName_is_user_at_host_or_the_bare_host()
     {

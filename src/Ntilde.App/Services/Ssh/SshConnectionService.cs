@@ -18,6 +18,9 @@ public sealed class SshLaunchDetails
     public required string ConfigPath { get; init; }
     public required string Alias { get; init; }
     public required string CommandLine { get; init; }
+
+    /// <summary>The launch plan's arguments as argv: <c>["-F", cfg, alias, ...ExtraSshArgs, ...diagnostics]</c>.</summary>
+    public IReadOnlyList<string> PlanArguments { get; init; } = [];
 }
 
 public sealed class SshConnectionService
@@ -256,7 +259,8 @@ public sealed class SshConnectionService
             SshPath = plan.SshExecutablePath,
             ConfigPath = plan.ConfigFilePath,
             Alias = plan.Alias,
-            CommandLine = commandText
+            CommandLine = commandText,
+            PlanArguments = plan.Arguments
         };
     }
 

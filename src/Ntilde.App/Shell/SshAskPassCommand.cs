@@ -26,6 +26,38 @@ internal static class SshAskPassCommand
     internal const string ProfileHostEnvironmentVariable = SshAskPassEnvironment.ProfileHostVariable;
     internal const string ProfilePortEnvironmentVariable = SshAskPassEnvironment.ProfilePortVariable;
 
+    /// <summary>The app's own executable name, without its extension: the GUI answers askpass too (Program.cs).</summary>
+    private const string AppExecutableName = "Ntilde";
+
+    /// <summary>The CLI shim built next to the app (BuildCliShim), which answers askpass the same way.</summary>
+    private const string CliExecutableName = "Ntilde.Cli";
+
+    /// <summary>
+    /// The askpass helper an OpenSSH exec channel names (Phase 4 spec §8.2), for this process: see
+    /// <see cref="LocateHelper(string?, string, Func{string, bool})"/>.
+    /// </summary>
+    internal static string? LocateHelper() => LocateHelper(Environment.ProcessPath, AppContext.BaseDirectory, File.Exists);
+
+    /// <summary>
+    /// The running app itself when <paramref name="processPath"/> is the ntilde executable; otherwise (a
+    /// dev build under a test host, say) <c>Ntilde.Cli</c> in <paramref name="baseDirectory"/> when it
+    /// exists; otherwise null, and ssh cannot prompt.
+    /// </summary>
+    internal static string? LocateHelper(string? processPath, string baseDirectory, Func<string, bool> fileExists)
+    {
+        ArgumentNullException.ThrowIfNull(fileExists);
+
+        if (!string.IsNullOrEmpty(processPath)
+            && string.Equals(Path.GetFileNameWithoutExtension(processPath), AppExecutableName, StringComparison.OrdinalIgnoreCase))
+        {
+            return processPath;
+        }
+
+        if (string.IsNullOrEmpty(baseDirectory)) return null;
+        string cli = Path.Combine(baseDirectory, OperatingSystem.IsWindows() ? CliExecutableName + ".exe" : CliExecutableName);
+        return fileExists(cli) ? cli : null;
+    }
+
     public static bool IsSupportedCliMode(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);

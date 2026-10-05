@@ -3778,6 +3778,9 @@ namespace Ntilde
             _commandPaletteUsage = new Dictionary<string, CommandPaletteUsageEntry>(_commandPaletteUsageStore.Load(), StringComparer.OrdinalIgnoreCase);
             _sshConnectionService = new SshConnectionService();
             _sshInteractionService = new SshInteractionService(() => this, ApplyThemeToDialogWindow);
+            // Read through a lambda when an endpoint is first used, so this (or a test's later
+            // replacement) is in place before any pane can ask for a remote host.
+            RemoteMuxHostFactory = CreateRemoteMuxHost;
             _sshLegacyMigrationService = new SshLegacyProfileMigrationService();
 
             if (_sshLegacyMigrationService.MigrateLegacyProfiles(_settings))
@@ -4428,10 +4431,29 @@ namespace Ntilde
         /// Builds the connection for a remote endpoint the first time a pane uses it (Phase 4 spec §5), or
         /// returns null to decline (the profile is gone, or does not persist remote sessions). Runs outside
         /// the registry's lock, on whichever thread asked, and may race another ask for the same endpoint
-        /// (the loser is disposed unused): it may look things up, but must not connect. A seam for tests;
-        /// the default declines every endpoint until remote hosts can be built from an SSH profile.
+        /// (the loser is disposed unused): it may look things up, but must not connect. The constructor
+        /// sets <see cref="CreateRemoteMuxHost"/>; a seam for tests.
         /// </summary>
         internal Func<Ntilde.Shell.Mux.MuxEndpointId, Ntilde.Shell.Mux.MuxConnectionHost?> RemoteMuxHostFactory { get; set; } = _ => null;
+
+        /// <summary>
+        /// The production <see cref="RemoteMuxHostFactory"/> (Phase 4 spec §7.1): the profile from the SSH
+        /// store, and per attempt a transport by the profile's backend - OpenSSH from its launch plan with
+        /// the askpass helper (batch mode for automatic attempts), or native with this window's prompts.
+        /// </summary>
+        private Ntilde.Shell.Mux.MuxConnectionHost? CreateRemoteMuxHost(Ntilde.Shell.Mux.MuxEndpointId id) =>
+            Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.Create(
+                id,
+                _sshConnectionService.GetStoredProfile,
+                (profile, request) => Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.CreateTransport(
+                    profile,
+                    request,
+                    p => _sshConnectionService.BuildLaunchDetails(p.Id, SshDiagnosticsLevel.None),
+                    static () => new Ntilde.Platform.Ssh.Native.NativeSshInterop(),
+                    SshAskPassCommand.LocateHelper(),
+                    AppLogger.Log),
+                AppLogger.Log,
+                _sshInteractionService);
 
         /// <summary>
         /// Reuses the hosts kept from an earlier On period; only the first call builds them. Building

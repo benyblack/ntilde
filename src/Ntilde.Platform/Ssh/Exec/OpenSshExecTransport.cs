@@ -10,7 +10,9 @@ namespace Ntilde.Platform.Ssh.Exec;
 /// <summary>
 /// Runs a remote command through the system OpenSSH client (Phase 4 spec §8.2):
 /// <c>ssh -T -o ClearAllForwardings=yes -o BatchMode=no &lt;plan&gt; -- &lt;command&gt;</c>, with
-/// redirected stdio, no window and no shell, and prompts sent to the askpass helper.
+/// redirected stdio, no window and no shell, and prompts sent to the askpass helper. In batch mode
+/// (<see cref="BatchMode"/>, for automatic reconnects) it is <c>BatchMode=yes</c> and there is no
+/// askpass: ssh fails rather than prompt.
 /// </summary>
 /// <remarks>
 /// <see cref="Start"/> returns once ssh is running: connect and auth happen in ssh, while the caller
@@ -32,14 +34,20 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// <param name="askPassHelperPath">The askpass helper (the ntilde executable), or null for none: ssh then cannot prompt.</param>
     /// <param name="diagnosticsArguments">ssh's verbosity flags; they go first.</param>
     /// <param name="log">Where start and exit are logged; <see cref="TerminalLogger.Log(string)"/> by default.</param>
+    /// <param name="batchMode">
+    /// True for an attempt nobody is waiting on (an automatic reconnect): ssh runs with
+    /// <c>BatchMode=yes</c> and without askpass, so it fails instead of prompting. Keys, the agent and
+    /// an existing ControlMaster still work.
+    /// </param>
     public OpenSshExecTransport(
         SshProfile profile,
         string sshExecutablePath,
         IReadOnlyList<string> planArguments,
         string? askPassHelperPath,
         IReadOnlyList<string>? diagnosticsArguments = null,
-        Action<string>? log = null)
-        : this(profile, sshExecutablePath, ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log), askPassHelperPath, log)
+        Action<string>? log = null,
+        bool batchMode = false)
+        : this(profile, sshExecutablePath, ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, batchMode), askPassHelperPath, log, batchMode)
     {
     }
 
@@ -52,7 +60,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         string executablePath,
         Func<string, IReadOnlyList<string>> buildArguments,
         string? askPassHelperPath,
-        Action<string>? log)
+        Action<string>? log,
+        bool batchMode = false)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
@@ -61,12 +70,18 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         _profile = profile;
         _executablePath = executablePath;
         _buildArguments = buildArguments;
-        _askPassHelperPath = string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
+        // Batch mode never prompts, so it has no use for a helper; leaving it out means no dialog can
+        // appear even if a future ssh consulted askpass despite BatchMode.
+        _askPassHelperPath = batchMode || string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
         _log = log ?? TerminalLogger.Log;
+        BatchMode = batchMode;
     }
 
     public string DisplayName =>
         string.IsNullOrWhiteSpace(_profile.User) ? _profile.Host : $"{_profile.User}@{_profile.Host}";
+
+    /// <summary>True when ssh runs with <c>BatchMode=yes</c> and no askpass: it never prompts.</summary>
+    public bool BatchMode { get; }
 
     public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
     {
@@ -75,7 +90,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
 
         ProcessStartInfo startInfo = CreateStartInfo(remoteCommand);
         _log($"[OpenSshExec] {DisplayName}: {startInfo.FileName} {SshArgBuilder.SanitizeForLog(SshArgBuilder.BuildCommandLine(startInfo.ArgumentList))}"
-            + (_askPassHelperPath is null ? " (no askpass helper: ssh cannot prompt)" : string.Empty));
+            + (BatchMode ? " (batch mode: ssh will not prompt)"
+                : _askPassHelperPath is null ? " (no askpass helper: ssh cannot prompt)" : string.Empty));
 
         var process = new Process { StartInfo = startInfo };
         try
@@ -127,12 +143,12 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     }
 
     private static Func<string, IReadOnlyList<string>> ArgumentsFor(
-        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log)
+        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, bool batchMode)
     {
         ArgumentNullException.ThrowIfNull(planArguments);
         string[] plan = [.. planArguments];
         string[] diagnostics = diagnosticsArguments is null ? [] : [.. diagnosticsArguments];
-        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log);
+        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, batchMode);
     }
 }
 

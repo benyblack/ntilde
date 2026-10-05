@@ -6,6 +6,15 @@ using Ntilde.Mux.Daemon;
 namespace Ntilde.Shell.Mux;
 
 /// <summary>
+/// What one connect attempt is for (Phase 4 ruling: automatic reconnects are non-interactive).
+/// <see cref="Interactive"/> is true when a user is waiting on it - a pane's spawn, Enter, the warm-up -
+/// and the connect may prompt (an SSH password). False for an attempt the host starts on its own (the
+/// reconnect loop, <see cref="MuxConnectionHost.TryStartAutomaticAttempt"/>): it must fail rather than
+/// put a dialog up.
+/// </summary>
+internal readonly record struct MuxConnectAttempt(bool Interactive);
+
+/// <summary>
 /// The GUI's one connection to one daemon (spec §6): the local daemon, or since Phase 4 one remote
 /// endpoint (Phase 4 spec §5; <see cref="MuxConnectionHosts"/> holds one per endpoint). Every pane's
 /// MuxClientSession on that daemon shares it.
@@ -14,7 +23,7 @@ namespace Ntilde.Shell.Mux;
 /// </summary>
 internal sealed class MuxConnectionHost : IDisposable
 {
-    private readonly Func<CancellationToken, Task<MuxClient>> _connect;
+    private readonly Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> _connect;
     private readonly Action<string>? _log;
     private readonly object _gate = new();
     private readonly CancellationTokenSource _disposed = new();
@@ -34,7 +43,17 @@ internal sealed class MuxConnectionHost : IDisposable
     }
 
     public MuxConnectionHost(Func<CancellationToken, Task<MuxClient>> connect, string? endpoint, Action<string>? log, MuxHostPolicy policy)
+        : this(IgnoringTheAttempt(connect), endpoint, log, policy)
     {
+    }
+
+    /// <summary>
+    /// A host whose connect function is told what each attempt is for (<see cref="MuxConnectAttempt"/>):
+    /// a remote host's connector must not prompt when nobody is waiting.
+    /// </summary>
+    public MuxConnectionHost(Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> connect, string? endpoint, Action<string>? log, MuxHostPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(connect);
         ArgumentNullException.ThrowIfNull(policy);
         _connect = connect;
         Endpoint = endpoint;
@@ -49,6 +68,19 @@ internal sealed class MuxConnectionHost : IDisposable
         MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(log, MuxCommand.ServeArguments);
         return new MuxConnectionHost(launcher.EnsureConnectedAsync, MuxDiscovery.GetDefaultEndpoint(), log);
     }
+
+    private static Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> IgnoringTheAttempt(Func<CancellationToken, Task<MuxClient>> connect)
+    {
+        ArgumentNullException.ThrowIfNull(connect);
+        return (_, ct) => connect(ct);
+    }
+
+    /// <summary>
+    /// What the connect function keeps for this host's whole life - a remote host's
+    /// <c>RemoteMuxConnector</c>, with the secrets it remembers - disposed last by <see cref="Dispose"/>,
+    /// after the client.
+    /// </summary>
+    internal IDisposable? Connector { get; init; }
 
     /// <summary>
     /// The transport address, for logs (the local pipe or socket name). Not the pane's persisted
@@ -72,7 +104,14 @@ internal sealed class MuxConnectionHost : IDisposable
     public Exception? LastFailure { get { lock (_gate) return _lastFailure; } }
 
     /// <summary>Starts connecting (spawning the daemon if needed) in the background. Idempotent; a no-op during the failure cooldown.</summary>
-    public void WarmUp() => _ = TryStartConnecting(out _);
+    public void WarmUp() => _ = TryStartConnecting(interactive: true, out _);
+
+    /// <summary>
+    /// Starts an attempt nobody is waiting on - the reconnect loop's - or joins the one in flight, which
+    /// keeps whatever it was started as. Non-interactive (<see cref="MuxConnectAttempt"/>): it must fail
+    /// rather than prompt. Null when a live client exists, during the failure cooldown, or once disposed.
+    /// </summary>
+    internal Task<MuxClient>? TryStartAutomaticAttempt() => TryStartConnecting(interactive: false, out Task<MuxClient>? attempt) ? attempt : null;
 
     /// <summary>
     /// The live client, joining the in-flight attempt or starting a new one. Null when the attempt
@@ -82,7 +121,7 @@ internal sealed class MuxConnectionHost : IDisposable
     /// </summary>
     public MuxClient? GetClient(TimeSpan timeout)
     {
-        if (!TryStartConnecting(out Task<MuxClient>? attempt)) return CurrentClient;
+        if (!TryStartConnecting(interactive: true, out Task<MuxClient>? attempt)) return CurrentClient;
         try
         {
             // Not cancelled by Dispose on purpose: Dispose cancels the attempt itself, which then
@@ -121,9 +160,10 @@ internal sealed class MuxConnectionHost : IDisposable
 
     /// <summary>
     /// The in-flight or just-finished attempt in <paramref name="attempt"/>; false when a live client
-    /// already exists, during the failure cooldown, or once the host is disposed.
+    /// already exists, during the failure cooldown, or once the host is disposed. A new attempt is
+    /// started as <paramref name="interactive"/> says; joining one in flight keeps what it was started as.
     /// </summary>
-    private bool TryStartConnecting([NotNullWhen(true)] out Task<MuxClient>? attempt)
+    private bool TryStartConnecting(bool interactive, [NotNullWhen(true)] out Task<MuxClient>? attempt)
     {
         attempt = null;
         lock (_gate)
@@ -149,9 +189,10 @@ internal sealed class MuxConnectionHost : IDisposable
             _client = null;
             Interlocked.Increment(ref _connectAttempts);
             CancellationToken token = _disposedToken;
+            var purpose = new MuxConnectAttempt(interactive);
             _connecting = Task.Run(async () =>
             {
-                MuxClient client = await _connect(token).ConfigureAwait(false);
+                MuxClient client = await _connect(purpose, token).ConfigureAwait(false);
                 lock (_gate)
                 {
                     if (_disposed.IsCancellationRequested) { client.Dispose(); throw new ObjectDisposedException(nameof(MuxConnectionHost)); }
@@ -223,8 +264,20 @@ internal sealed class MuxConnectionHost : IDisposable
         // the constructor, never _disposed.Token.
         _disposed.Dispose();
 
-        if (client is null) return;
+        try
+        {
+            if (client is not null) FlushAndClose(client);
+        }
+        finally
+        {
+            // Last: the client's flush above still runs over what the connector owns (a remote host's
+            // exec channel), and its Disconnected is what ends that channel.
+            Connector?.Dispose();
+        }
+    }
 
+    private void FlushAndClose(MuxClient client)
+    {
         Task[] kills;
         lock (_gate) kills = _pendingKills.Where(t => !t.IsCompleted).ToArray();
         if (kills.Length > 0 && client.IsConnected)

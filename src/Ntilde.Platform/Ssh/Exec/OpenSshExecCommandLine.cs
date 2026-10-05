@@ -7,7 +7,7 @@ namespace Ntilde.Platform.Ssh.Exec;
 public static class OpenSshExecCommandLine
 {
     /// <summary>
-    /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no, -o ControlMaster=no, ...plan, --, command]</c>,
+    /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no|yes, -o ControlMaster=no, ...plan, --, command]</c>,
     /// with any PTY request (<c>-t</c>, <c>-tt</c>, <c>-T</c>) dropped from the plan.
     /// </summary>
     /// <remarks>
@@ -18,7 +18,10 @@ public static class OpenSshExecCommandLine
     /// logged). Only standalone tokens are recognised; clustered flags are not parsed.</item>
     /// <item><c>ClearAllForwardings=yes</c>: the profile's forwards do not ride the mux channel
     /// (they belong to its interactive sessions), matching the native transport.</item>
-    /// <item><c>BatchMode=no</c>: prompts stay possible; they reach the user through askpass.</item>
+    /// <item><c>BatchMode=no</c>: prompts stay possible; they reach the user through askpass. With
+    /// <paramref name="batchMode"/> it is <c>BatchMode=yes</c> in the same place instead, so ssh never
+    /// prompts at all: for an attempt nobody is waiting on (an automatic reconnect). Replaced, not
+    /// appended, because ssh keeps an option's first value.</item>
     /// <item><c>ControlMaster=no</c>: a profile with connection sharing (<c>ControlMaster auto</c> in
     /// the generated config) still reuses an existing master, but this hidden ssh never becomes one.
     /// Were it the master, a visible tab of the same profile would multiplex through it, and the
@@ -34,11 +37,13 @@ public static class OpenSshExecCommandLine
     /// <param name="planArguments"><c>SshLaunchPlanner</c>'s output: <c>["-F", cfg, alias, ...ExtraSshArgs]</c>.</param>
     /// <param name="remoteCommand">The command line the remote shell runs.</param>
     /// <param name="log">Told about each PTY token dropped from the plan.</param>
+    /// <param name="batchMode">True for <c>BatchMode=yes</c>: ssh fails instead of prompting.</param>
     public static IReadOnlyList<string> Build(
         IReadOnlyList<string> diagnosticsArguments,
         IReadOnlyList<string> planArguments,
         string remoteCommand,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        bool batchMode = false)
     {
         ArgumentNullException.ThrowIfNull(diagnosticsArguments);
         ArgumentNullException.ThrowIfNull(planArguments);
@@ -46,7 +51,7 @@ public static class OpenSshExecCommandLine
 
         var argv = new List<string>(diagnosticsArguments.Count + planArguments.Count + 9);
         argv.AddRange(diagnosticsArguments);
-        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", "BatchMode=no", "-o", "ControlMaster=no"]);
+        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", batchMode ? "BatchMode=yes" : "BatchMode=no", "-o", "ControlMaster=no"]);
         foreach (string argument in planArguments)
         {
             if (IsPtyRequest(argument))

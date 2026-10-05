@@ -190,4 +190,90 @@ public sealed class MuxConnectionHostTests
         // the kill wait timed out; the margin to 5 s absorbs a slow CI machine.
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"Dispose took {sw.Elapsed}");
     }
+
+    /// <summary>
+    /// Phase 4 ruling: a remote host's automatic reconnects must never prompt, while a user's request
+    /// may. The connect function is told which kind of attempt it serves.
+    /// </summary>
+    [Fact]
+    public async Task GetClient_and_WarmUp_attempt_interactively_and_an_automatic_attempt_does_not()
+    {
+        using var mux = new MuxTestHost();
+        var attempts = new System.Collections.Concurrent.ConcurrentQueue<MuxConnectAttempt>();
+        using var host = new MuxConnectionHost((attempt, ct) =>
+        {
+            attempts.Enqueue(attempt);
+            return MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct);
+        }, "test", null, MuxHostPolicy.Remote("box"));
+
+        host.GetClient(TimeSpan.FromSeconds(5))!.Dispose();
+        (await host.TryStartAutomaticAttempt()!.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)).Dispose();
+        host.WarmUp();
+        await TestWait.UntilAsync(() => host.CurrentClient is not null, "the warm-up connected");
+
+        Assert.Equal(new[] { true, false, true }, attempts.Select(a => a.Interactive));
+    }
+
+    [Fact]
+    public async Task An_automatic_attempt_joins_the_one_in_flight_and_is_null_once_connected_or_disposed()
+    {
+        using var mux = new MuxTestHost();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int connects = 0;
+        var host = new MuxConnectionHost(async (attempt, ct) =>
+        {
+            Interlocked.Increment(ref connects);
+            await release.Task.WaitAsync(ct);
+            return await MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct);
+        }, "test", null, MuxHostPolicy.Remote("box"));
+
+        host.WarmUp();
+        Task<MuxClient>? joined = host.TryStartAutomaticAttempt();
+        release.SetResult();
+
+        Assert.NotNull(joined);
+        MuxClient client = await joined.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Same(client, host.CurrentClient);
+        Assert.Equal(1, Volatile.Read(ref connects));
+        Assert.Null(host.TryStartAutomaticAttempt());   // connected: nothing to attempt
+
+        host.Dispose();
+        Assert.Null(host.TryStartAutomaticAttempt());
+    }
+
+    [Fact]
+    public void Dispose_disposes_the_connector_last_with_or_without_a_client()
+    {
+        using var mux = new MuxTestHost();
+        var order = new List<string>();
+        var connected = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null)
+        {
+            Connector = new DisposeProbe(() => { lock (order) order.Add("connector"); }),
+        };
+        MuxClient client = connected.GetClient(TimeSpan.FromSeconds(5))!;
+        client.Disconnected += _ => { lock (order) order.Add("client"); };
+        var idleConnector = new DisposeProbe(() => { });
+        var idle = new MuxConnectionHost(_ => Task.FromException<MuxClient>(new MuxUnavailableException("none")), "test", null)
+        {
+            Connector = idleConnector,
+        };
+
+        connected.Dispose();
+        idle.Dispose();
+        idle.Dispose();
+
+        Assert.Equal(new[] { "client", "connector" }, order);
+        Assert.Equal(1, idleConnector.Disposals);
+    }
+
+    private sealed class DisposeProbe(Action onDispose) : IDisposable
+    {
+        public int Disposals { get; private set; }
+
+        public void Dispose()
+        {
+            Disposals++;
+            onDispose();
+        }
+    }
 }
