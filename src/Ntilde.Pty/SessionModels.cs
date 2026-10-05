@@ -67,6 +67,14 @@ namespace Ntilde.Pty
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MuxEndpoint { get; set; }
+
+        /// <summary>
+        /// True when the pane joined <see cref="MuxSessionId"/> as a deliberate share (Phase 4 spec §4,
+        /// carry-over 3): the next launch attaches shared too, rather than exclusively and losing the
+        /// race to the window that still holds it. Omitted when false, so older files load unchanged.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool MuxShared { get; set; }
     }
 
     public class WorkspaceBundlePackage

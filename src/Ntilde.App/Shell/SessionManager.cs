@@ -76,6 +76,7 @@ namespace Ntilde.Shell
                 if (node == null) return;
                 node.MuxSessionId = null;
                 node.MuxEndpoint = null;
+                node.MuxShared = false;
                 foreach (PaneNode child in node.Children) Clear(child);
             }
 
@@ -466,6 +467,7 @@ namespace Ntilde.Shell
             {
                 leaf.MuxSessionId = mux.Id.ToString("D");
                 leaf.MuxEndpoint = pane.MuxEndpoint;
+                leaf.MuxShared = pane.MuxSessionIsShare;
             }
             else if (pane.MuxSessionIdToRestore is Guid pending)
             {
@@ -474,6 +476,7 @@ namespace Ntilde.Shell
                 // start a fresh shell and adopt the old one as a duplicate orphan.
                 leaf.MuxSessionId = pending.ToString("D");
                 leaf.MuxEndpoint = pane.MuxEndpoint;
+                leaf.MuxShared = pane.MuxAttachSharedToRestore;
             }
         }
 
@@ -486,6 +489,7 @@ namespace Ntilde.Shell
             if (Guid.TryParse(node.MuxSessionId, out Guid muxId))
             {
                 pane.MuxSessionIdToRestore = muxId;
+                pane.MuxAttachSharedToRestore = node.MuxShared;
             }
         }
 

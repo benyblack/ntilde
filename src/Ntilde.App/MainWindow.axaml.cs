@@ -4699,6 +4699,7 @@ namespace Ntilde
             pane.PersistenceNotice -= OnPanePersistenceNotice;
             pane.MuxSharingChanged -= OnPaneMuxSharingChanged;
             pane.MuxShareEnded -= OnPaneMuxShareEnded;
+            pane.MuxAdoptionLost -= OnPaneMuxAdoptionLost;
 
             pane.RequestRemoteFilesSidebarTransfer += OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged += OnPaneWorkingDirectoryChanged;
@@ -4969,11 +4970,25 @@ namespace Ntilde
 
         private async Task<Guid?> ShowMuxSessionPickerAsync(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
         {
+            (Window dialog, Task<Guid?> result) = BuildMuxSessionPickerWindow(rows);
+            await dialog.ShowDialog(this);
+            return await result;
+        }
+
+        /// <summary>
+        /// The "Attach to Session" dialog, not yet shown; the task completes with the chosen session
+        /// (null: cancelled) when the window closes. Enter attaches, Escape cancels. Separate from
+        /// <see cref="ShowMuxSessionPickerAsync"/> so a headless test can show it and press keys.
+        /// </summary>
+        internal (Window Window, Task<Guid?> Result) BuildMuxSessionPickerWindow(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
+        {
             Guid? chosen = null;
             var dialog = CreateThemedDialogWindow("Attach to Session", 640, 360, canResize: true);
             var list = new ListBox { ItemsSource = rows.Select(r => r.Display).ToList(), SelectedIndex = 0, MaxHeight = 240 };
-            var attach = new Button { Content = "Attach", Width = 92 };
-            var cancel = new Button { Content = "Cancel", Width = 92 };
+            var attach = new Button { Content = "Attach", Width = 92, IsDefault = true };
+            var cancel = new Button { Content = "Cancel", Width = 92, IsCancel = true };
+            var closed = new TaskCompletionSource<Guid?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            dialog.Closed += (_, _) => closed.TrySetResult(chosen);
             void Accept()
             {
                 if (list.SelectedIndex < 0) return;
@@ -5009,8 +5024,7 @@ namespace Ntilde
                 },
             };
 
-            await dialog.ShowDialog(this);
-            return chosen;
+            return (dialog, closed.Task);
         }
 
         /// <summary>
@@ -6061,12 +6075,30 @@ namespace Ntilde
 
         private async Task<Ntilde.Shell.Mux.SharedCloseChoice> ShowSharedCloseDialogAsync(int others)
         {
+            (Window dialog, Task<Ntilde.Shell.Mux.SharedCloseChoice> result) = BuildSharedCloseWindow(others);
+            await dialog.ShowDialog(this);
+            return await result;
+        }
+
+        /// <summary>
+        /// The shared-close dialog, not yet shown; the task completes with the choice (Cancel when the
+        /// window is dismissed) when it closes. Enter detaches, Escape cancels, and Close (which ends
+        /// the shell for everyone) is never the default. Separate from <see cref="ShowSharedCloseDialogAsync"/>
+        /// so a headless test can show it and press keys.
+        /// </summary>
+        internal (Window Window, Task<Ntilde.Shell.Mux.SharedCloseChoice> Result) BuildSharedCloseWindow(int others)
+        {
             var choice = Ntilde.Shell.Mux.SharedCloseChoice.Cancel;
             var dialog = CreateThemedDialogWindow("Close Shared Shell", 480, 200, canResize: false);
             string who = others == 1 ? "1 other window is" : $"{others} other windows are";
-            var cancel = new Button { Content = "Cancel", Width = 92 };
-            var detach = new Button { Content = "Detach", Width = 92 };
+            var cancel = new Button { Content = "Cancel", Width = 92, IsCancel = true };
+            var detach = new Button { Content = "Detach", Width = 92, IsDefault = true };
             var close = new Button { Content = "Close (ends it)", Width = 130 };
+            var closed = new TaskCompletionSource<Ntilde.Shell.Mux.SharedCloseChoice>(TaskCreationOptions.RunContinuationsAsynchronously);
+            dialog.Closed += (_, _) => closed.TrySetResult(choice);
+            // Detach holds focus, not Cancel: a focused button takes Enter for itself before IsDefault
+            // is consulted, so a focused Cancel would make Enter cancel. Close is never focused.
+            dialog.Opened += (_, _) => detach.Focus();
             cancel.Click += (_, _) => { choice = Ntilde.Shell.Mux.SharedCloseChoice.Cancel; dialog.Close(); };
             detach.Click += (_, _) => { choice = Ntilde.Shell.Mux.SharedCloseChoice.Detach; dialog.Close(); };
             close.Click += (_, _) => { choice = Ntilde.Shell.Mux.SharedCloseChoice.Close; dialog.Close(); };
@@ -6091,8 +6123,7 @@ namespace Ntilde
                 },
             };
 
-            await dialog.ShowDialog(this);
-            return choice;
+            return (dialog, closed.Task);
         }
 
         private void DetachActivePane()

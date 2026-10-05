@@ -3797,6 +3797,7 @@ namespace Ntilde.Controls
         private bool _muxConnectionLost; // UI thread
         private bool _muxAttachedElsewhereNotice; // UI thread: raise the notice once the replacement shell attached
         private bool _muxSessionIsShare;          // UI thread: the current session was a deliberate share
+        internal bool MuxSessionIsShare => _muxSessionIsShare;
         private bool _muxReattachShared;          // UI thread: the lost session was a share, reattach it shared
 
         /// <summary>
