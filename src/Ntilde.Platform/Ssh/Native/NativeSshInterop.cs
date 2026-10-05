@@ -39,6 +39,28 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        return StartSession(options, command: null);
+    }
+
+    public NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        // The native layer rejects these too, but only as a bare 0 handle; here they get a reason.
+        ArgumentException.ThrowIfNullOrWhiteSpace(command);
+        ValidateConnectionOptions(options);
+
+        return StartSession(options, command);
+    }
+
+    /// <summary>
+    /// Marshals <paramref name="options"/> into the connect args and starts the session: a PTY shell
+    /// (nova_ssh_connect) when <paramref name="command"/> is null, else an exec session running it
+    /// (nova_ssh_exec), which reads the same args and ignores their terminal and shell fields.
+    /// </summary>
+    private static NovaSshSafeHandle StartSession(NativeSshConnectionOptions options, string? command)
+    {
+        IntPtr commandPtr = IntPtr.Zero;
         IntPtr hostPtr = IntPtr.Zero;
         IntPtr userPtr = IntPtr.Zero;
         IntPtr termPtr = IntPtr.Zero;
@@ -50,6 +72,12 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         try
         {
+            if (command is not null)
+            {
+                // Verbatim: the native side does not trim it, and the remote login shell interprets it.
+                commandPtr = Marshal.StringToCoTaskMemUTF8(command);
+            }
+
             hostPtr = Marshal.StringToCoTaskMemUTF8(options.Host);
             userPtr = Marshal.StringToCoTaskMemUTF8(options.User);
             termPtr = Marshal.StringToCoTaskMemUTF8(options.Term);
@@ -109,7 +137,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                     UseAgent = options.UseAgent ? 1u : 0u
                 };
 
-                NovaSshSafeHandle handle = NativeMethods.nova_ssh_connect(in args);
+                NovaSshSafeHandle handle = command is null
+                    ? NativeMethods.nova_ssh_connect(in args)
+                    : NativeMethods.nova_ssh_exec(in args, commandPtr);
                 if (handle.IsInvalid)
                 {
                     handle.Dispose();
@@ -125,6 +155,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
         finally
         {
+            FreeUtf8(commandPtr);
             FreeUtf8(hostPtr);
             FreeUtf8(userPtr);
             FreeUtf8(termPtr);
@@ -570,6 +601,29 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             }
 
             throw new InvalidOperationException($"Native SSH channel close failed with result {rc}.");
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    public void SendEof(NovaSshSafeHandle sessionHandle)
+    {
+        if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed)
+        {
+            return;
+        }
+
+        try
+        {
+            // CLOSED: the session already ended, so its stdin has nobody left to end.
+            int rc = NativeMethods.nova_ssh_send_eof(sessionHandle);
+            if (rc is ResultOk or ResultInvalidArgument or ResultClosed)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException($"Native SSH EOF failed with result {rc}.");
         }
         catch (ObjectDisposedException)
         {
@@ -1038,6 +1092,12 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     {
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_connect")]
         public static extern NovaSshSafeHandle nova_ssh_connect(in NativeConnectArgs args);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_exec")]
+        public static extern NovaSshSafeHandle nova_ssh_exec(in NativeConnectArgs args, IntPtr command);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_send_eof")]
+        public static extern int nova_ssh_send_eof(NovaSshSafeHandle session);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_poll_event")]
         public static extern int nova_ssh_poll_event(NovaSshSafeHandle session, out NativeEventHeader @event, byte[] payload, nuint payloadCapacity);

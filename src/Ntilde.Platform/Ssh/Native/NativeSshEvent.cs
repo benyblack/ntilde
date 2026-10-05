@@ -17,6 +17,12 @@ public enum NativeSshEventKind
     PasswordPrompt = 4,
     PassphrasePrompt = 5,
     KeyboardInteractivePrompt = 6,
+
+    /// <summary>
+    /// The remote command's exit code, in StatusCode; queued before <see cref="Closed"/>. A shell
+    /// session and an exec session (Phase 4 spec §8.3) both report it. Absent when the command died
+    /// of a signal, so Closed without it means "no exit status".
+    /// </summary>
     ExitStatus = 7,
     Error = 8,
     Closed = 9,
@@ -30,7 +36,14 @@ public enum NativeSshEventKind
     /// arrived on and its originator, so the forward session can match it to a rule and dial the
     /// local destination.
     /// </summary>
-    ForwardChannelIncoming = 13
+    ForwardChannelIncoming = 13,
+
+    /// <summary>
+    /// An exec session's stderr (Phase 4 spec §8.3): raw bytes, StatusCode 1 (the SSH extended-data
+    /// type for stderr). Only exec sessions send it; a shell session's stderr arrives in
+    /// <see cref="Data"/> through its PTY.
+    /// </summary>
+    ExtendedData = 14
 }
 
 public enum NativeSshResponseKind
@@ -62,6 +75,10 @@ public sealed class NativeSshEvent
 
     public static NativeSshEvent Data(byte[] payload) =>
         new(NativeSshEventKind.Data, payload, flags: NativeSshEventFlags.Binary);
+
+    /// <summary>Stderr bytes from an exec session, as the native layer queues them (StatusCode 1, binary).</summary>
+    public static NativeSshEvent ExtendedData(byte[] payload) =>
+        new(NativeSshEventKind.ExtendedData, payload, 1, NativeSshEventFlags.Binary);
 
     public static NativeSshEvent ExitStatus(int statusCode, byte[]? payload = null) =>
         new(NativeSshEventKind.ExitStatus, payload ?? Array.Empty<byte>(), statusCode, NativeSshEventFlags.Json);

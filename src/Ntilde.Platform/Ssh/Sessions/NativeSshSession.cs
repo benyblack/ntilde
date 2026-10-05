@@ -24,11 +24,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
     private readonly Ntilde.Pty.Utf8ChunkDecoder _utf8Decoder = new();
     private readonly Action<string> _log;
     private readonly NativeSshMetrics _metrics = new();
-    private readonly Guid _profileId;
-    private readonly string _profileName;
-    private readonly string _profileUser;
-    private readonly string _profileHost;
-    private bool _allowVaultPasswordReuse;
+    private readonly NativeSshPromptResponder _promptResponder;
     private readonly object _exitHandlerGate = new();
     private readonly object _outputHandlerGate = new();
     // Serializes actual handler invocation so the first-subscriber replay
@@ -96,11 +92,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         _log = log ?? TerminalLogger.Log;
         _interop = interop ?? new NativeSshInterop();
         _interactionHandler = interactionHandler;
-        _profileId = profile.Id;
-        _profileName = profile.Name;
-        _profileUser = profile.User;
-        _profileHost = profile.Host;
-        _allowVaultPasswordReuse = profile.Id != Guid.Empty;
+        _promptResponder = new NativeSshPromptResponder(profile, sessionId: Id);
 
         // Settings this backend cannot honor are named in the terminal, not silently dropped —
         // the no-silent-degradation contract. Both drive the OpenSSH client (a ControlMaster
@@ -118,7 +110,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         }
 
         JumpHostConnectPlan connectPlan = JumpHostConnectPlan.Create(profile);
-        NativeSshConnectionOptions connectionOptions = CreateConnectionOptions(connectPlan, profile, cols, rows);
+        NativeSshConnectionOptions connectionOptions = NativeSshConnectionOptionsFactory.Create(connectPlan, profile, cols, rows);
         _log($"[NativeSshSession] backend=native path={_jumpHostConnector.DescribePath(connectPlan)} target={connectionOptions.User}@{connectionOptions.Host}:{connectionOptions.Port}");
         _sessionHandle = _interop.Connect(connectionOptions);
 
@@ -356,60 +348,6 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         recorder.Dispose();
     }
 
-    private NativeSshConnectionOptions CreateConnectionOptions(
-        JumpHostConnectPlan connectPlan,
-        SshProfile profile,
-        int cols,
-        int rows)
-    {
-        NativeSshConnectionOptions baseOptions = _jumpHostConnector.CreateConnectionOptions(connectPlan, profile, cols, rows);
-        RemoteShellKind remoteShellKind = profile.RemoteShellKind;
-
-        return new NativeSshConnectionOptions
-        {
-            Host = baseOptions.Host,
-            User = baseOptions.User,
-            Port = baseOptions.Port,
-            Cols = baseOptions.Cols,
-            Rows = baseOptions.Rows,
-            Term = baseOptions.Term,
-            Password = baseOptions.Password,
-            IdentityFilePath = baseOptions.IdentityFilePath,
-            UseAgent = baseOptions.UseAgent,
-            KnownHostsFilePath = baseOptions.KnownHostsFilePath,
-            JumpHops = baseOptions.JumpHops,
-            KeepAliveIntervalSeconds = baseOptions.KeepAliveIntervalSeconds,
-            KeepAliveCountMax = baseOptions.KeepAliveCountMax,
-            RemoteShellKind = remoteShellKind,
-            ShellDetectionCommand = remoteShellKind == RemoteShellKind.Auto
-                ? "sh -lc 'printf \"%s\" \"${SHELL##*/}\"' 2>/dev/null"
-                : null,
-            BashCwdBootstrap = string.Join(
-                "\n",
-                "__ntilde_emit_cwd() {",
-                "  printf '\\033]7;%s\\007' \"$PWD\"",
-                "}",
-                "PROMPT_COMMAND=\"__ntilde_emit_cwd${PROMPT_COMMAND:+;$PROMPT_COMMAND}\""),
-            ZshCwdBootstrap = string.Join(
-                "\n",
-                "autoload -Uz add-zsh-hook",
-                "__ntilde_emit_cwd() {",
-                "  printf '\\033]7;%s\\007' \"$PWD\"",
-                "}",
-                "add-zsh-hook precmd __ntilde_emit_cwd"),
-            FishCwdBootstrap = string.Join(
-                "\n",
-                "functions -q fish_prompt; and functions -c fish_prompt __ntilde_original_fish_prompt",
-                "function fish_prompt",
-                "    printf '\\033]7;%s\\007' \"$PWD\"",
-                "    if functions -q __ntilde_original_fish_prompt",
-                "        __ntilde_original_fish_prompt",
-                "    end",
-                "end")
-        };
-    }
-
-
     public void Dispose()
     {
         StopRecording();
@@ -581,22 +519,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
             _metrics.MarkAuthenticationPromptStarted();
         }
 
-        SshInteractionRequest request = WithProfileContext(NativeSshInteractionJson.ParseRequest(nextEvent.Kind, nextEvent.Payload));
-        SshInteractionResponse response = _interactionHandler == null
-            ? SshInteractionResponse.Cancel()
-            : await _interactionHandler.HandleAsync(request, _pollCts.Token).ConfigureAwait(false);
-
-        NativeSshResponseKind responseKind = nextEvent.Kind switch
-        {
-            NativeSshEventKind.HostKeyPrompt => NativeSshResponseKind.HostKeyDecision,
-            NativeSshEventKind.PasswordPrompt => NativeSshResponseKind.Password,
-            NativeSshEventKind.PassphrasePrompt => NativeSshResponseKind.Passphrase,
-            NativeSshEventKind.KeyboardInteractivePrompt => NativeSshResponseKind.KeyboardInteractive,
-            _ => throw new InvalidOperationException($"Unsupported interaction event '{nextEvent.Kind}'.")
-        };
-
-        byte[] payload = NativeSshInteractionJson.BuildResponsePayload(responseKind, response);
-        _interop.SubmitResponse(_sessionHandle, responseKind, payload);
+        await _promptResponder.RespondAsync(nextEvent, _interop, _sessionHandle!, _interactionHandler, _pollCts.Token).ConfigureAwait(false);
 
         if (nextEvent.Kind == NativeSshEventKind.HostKeyPrompt)
         {
@@ -606,41 +529,6 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         {
             _metrics.MarkAuthenticationPromptCompleted();
         }
-    }
-
-    private SshInteractionRequest WithProfileContext(SshInteractionRequest request)
-    {
-        if (_profileId == Guid.Empty)
-        {
-            return request;
-        }
-
-        SshInteractionRequest requestWithContext = new()
-        {
-            Kind = request.Kind,
-            SessionId = Id,
-            ProfileId = _profileId,
-            ProfileName = _profileName,
-            ProfileUser = _profileUser,
-            ProfileHost = _profileHost,
-            AllowVaultPasswordReuse = request.Kind == SshInteractionKind.Password && _allowVaultPasswordReuse && _profileId != Guid.Empty,
-            RememberPasswordInVault = request.Kind == SshInteractionKind.Password && _profileId != Guid.Empty,
-            Host = request.Host,
-            Port = request.Port,
-            Algorithm = request.Algorithm,
-            Fingerprint = request.Fingerprint,
-            Prompt = request.Prompt,
-            Name = request.Name,
-            Instructions = request.Instructions,
-            KeyboardPrompts = request.KeyboardPrompts
-        };
-
-        if (request.Kind == SshInteractionKind.Password)
-        {
-            _allowVaultPasswordReuse = false;
-        }
-
-        return requestWithContext;
     }
 
     private void TryNotifyExit(int exitCode)

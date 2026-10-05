@@ -14,7 +14,11 @@ namespace Ntilde.Platform.Ssh.Exec;
 /// </remarks>
 public interface ISshExecChannel : IDisposable
 {
-    /// <summary>The remote command's stdout, read side.</summary>
+    /// <summary>
+    /// The remote command's stdout, read side. When the transport itself failed (the native backend
+    /// reports connect, auth and connection loss this way), the read after the last byte throws
+    /// <see cref="SshExecTransportException"/> instead of returning 0.
+    /// </summary>
     Stream Stdout { get; }
 
     /// <summary>The remote command's stdin, write side. Every write is delivered at once; disposing it sends EOF.</summary>
@@ -33,7 +37,7 @@ public interface ISshExecChannel : IDisposable
 
 /// <summary>
 /// A way to run a command on one SSH host (Phase 4 spec §8): the OpenSSH client
-/// (<see cref="OpenSshExecTransport"/>) or the native backend.
+/// (<see cref="OpenSshExecTransport"/>) or the native backend (<see cref="NativeSshExecTransport"/>).
 /// </summary>
 public interface ISshExecTransport
 {
