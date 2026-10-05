@@ -40,6 +40,35 @@ public sealed class MuxClientHardeningTests
         Assert.True(client.IsConnected);
     }
 
+    /// <summary>
+    /// Phase 4 spec §7.2, by ruling: a remote host's liveness ping counts any inbound frame as proof of
+    /// life, so every frame - a reply, or output for a session this client never opened - is stamped.
+    /// </summary>
+    [Fact]
+    public async Task LastReceivedTicks_is_stamped_for_every_inbound_frame_of_any_kind()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        long beforeConnect = Environment.TickCount64;
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+        Assert.True(client.LastReceivedTicks >= beforeConnect);
+
+        foreach (Func<MuxOutboundFrame> frame in new Func<MuxOutboundFrame>[]
+        {
+            () => MuxFrames.Output(Guid.NewGuid(), 1, "x"u8),
+            () => MuxFrames.Notification(new MuxNotification { Method = "unknown" }),
+        })
+        {
+            long previous = client.LastReceivedTicks;
+            await TestWait.UntilAsync(() => Environment.TickCount64 > previous, "the clock moved on");
+            fake.Raw.Send(frame());
+            await TestWait.UntilAsync(() => client.LastReceivedTicks > previous, "the frame was stamped");
+        }
+
+        Assert.True(client.IsConnected);
+    }
+
     [Fact]
     public async Task A_snapshot_racing_Dispose_does_not_reattach_the_disposed_session()
     {

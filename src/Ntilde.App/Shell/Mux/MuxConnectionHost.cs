@@ -60,6 +60,7 @@ internal sealed class MuxConnectionHost : IDisposable
     private IDisposable? _livenessTick;
     private IDisposable? _pingTimeout;
     private CancellationTokenSource? _ping; // the ping in flight; null when none
+    private long _pingSliceStart;           // Environment.TickCount64 when the ping's current timeout slice began
     private MuxReconnectLoop? _loop;
     private Episode _episode;
     private Task _events = Task.CompletedTask; // the events, raised one at a time in the order they were queued
@@ -369,8 +370,8 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// The loop stopped without a connection: its <see cref="MuxReconnectLoop.Budget"/> ran out, or signing in
     /// needs the user (<see cref="RemoteFailureKind.NeedsUser"/>), which another automatic attempt cannot
-    /// give. The kills queued meanwhile were dropped. <see cref="GetClient"/> still reconnects, and then
-    /// raises <see cref="Reconnected"/>.
+    /// give. <see cref="GetClient"/> still reconnects, and then raises <see cref="Reconnected"/>; the kills
+    /// queued meanwhile are kept, and go out with that connect.
     /// </summary>
     public event Action? ReconnectAbandoned;
 
@@ -396,7 +397,10 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>How often a remote host pings its client (Phase 4 spec §7.2).</summary>
     internal TimeSpan LivenessInterval { get; init; } = TimeSpan.FromSeconds(15);
 
-    /// <summary>How long a ping may go unanswered before the client is dropped as dead (Phase 4 spec §7.2).</summary>
+    /// <summary>
+    /// How long a ping may go unanswered, with no other frame arriving either, before the client is dropped as
+    /// dead (Phase 4 spec §7.2). While frames keep arriving the ping waits on, one such slice at a time.
+    /// </summary>
     internal TimeSpan LivenessTimeout { get; init; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
@@ -404,8 +408,9 @@ internal sealed class MuxConnectionHost : IDisposable
     /// connected, otherwise right after the next successful connect, whatever starts it: sent with
     /// <see cref="MuxClient.KillAsync"/> and tracked like <see cref="TrackPendingKill"/> (Review Focus 1: a
     /// remote tab closed while its link is down must not orphan its shell). A kill whose connection closes
-    /// before the daemon answers is queued again. Queued kills are dropped, with a log line, when the
-    /// reconnect loop gives up (<see cref="ReconnectAbandoned"/>) or the host is disposed.
+    /// before the daemon answers is queued again. Queued kills outlive the reconnect loop giving up
+    /// (<see cref="ReconnectAbandoned"/>): a later connect - a user's Enter - still sends them (controller
+    /// ruling). They are dropped, with a log line, only when the host is disposed.
     /// </summary>
     public void KillWhenConnected(Guid sessionId)
     {
@@ -624,20 +629,23 @@ internal sealed class MuxConnectionHost : IDisposable
         loop?.TryNow();
     }
 
+    /// <summary>
+    /// The loop stops for good (its budget, or a sign-in only the user can do). Queued kills stay queued: the
+    /// user meant to end those shells, and a later connect (Enter) still delivers them (controller ruling).
+    /// </summary>
     private void GiveUp(string why)
     {
-        Guid[] dropped;
+        int queued;
         lock (_gate)
         {
             if (_disposed.IsCancellationRequested || _episode != Episode.Reconnecting) return;
             _episode = Episode.Abandoned;
             _loop?.Stop();
-            dropped = DrainQueuedKillsLocked();
+            queued = _queuedKills.Count;
             RaiseLocked(nameof(ReconnectAbandoned), () => Invoke(nameof(ReconnectAbandoned), ReconnectAbandoned));
         }
 
-        _log?.Invoke($"[Mux] {Policy.DisplayName}: stopped reconnecting: {why}");
-        LogDroppedKills(dropped, "the host stopped reconnecting");
+        _log?.Invoke($"[Mux] {Policy.DisplayName}: stopped reconnecting: {why}" + (queued > 0 ? $"; {queued} queued kill(s) wait for the next connection" : string.Empty));
     }
 
     /// <summary>
@@ -645,6 +653,12 @@ internal sealed class MuxConnectionHost : IDisposable
     /// ping, unless the previous one is still unanswered. The ping is sent from the pool - on a stalled link
     /// the client's send queue may be full, and sending would block - and its timeout is a timer of its own.
     /// </summary>
+    /// <remarks>
+    /// The link is declared dead only when no inbound frame of any kind arrived for a whole
+    /// <see cref="LivenessTimeout"/> while the ping was out (<see cref="MuxClient.LastReceivedTicks"/>, by
+    /// controller ruling, after spec §7.2's "any reply resets the clock"). A ping queued behind a large
+    /// snapshot on a slow link is late, not lost: while output keeps arriving, its timeout waits another slice.
+    /// </remarks>
     private void OnLivenessTick(MuxClient client)
     {
         CancellationTokenSource ping;
@@ -654,6 +668,7 @@ internal sealed class MuxConnectionHost : IDisposable
             _livenessTick = Scheduler.Schedule(LivenessInterval, () => OnLivenessTick(client));
             if (_ping is not null) return; // the previous ping is still unanswered: skip this tick
             ping = _ping = new CancellationTokenSource();
+            _pingSliceStart = Environment.TickCount64;
             _pingTimeout = Scheduler.Schedule(LivenessTimeout, () => OnPingTimedOut(client, ping));
         }
 
@@ -661,12 +676,23 @@ internal sealed class MuxConnectionHost : IDisposable
             .ContinueWith(t => OnPingDone(client, ping, t), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
     }
 
-    /// <summary>The ping went unanswered: the link is dead. The client is dropped on the pool, which raises its Disconnected ("ping timeout").</summary>
+    /// <summary>
+    /// The ping's timeout slice ended without its answer. Frames arrived during the slice: the link is busy,
+    /// not dead - another slice. None did: the link is dead, and the client is dropped on the pool, which
+    /// raises its Disconnected ("ping timeout").
+    /// </summary>
     private void OnPingTimedOut(MuxClient client, CancellationTokenSource ping)
     {
         lock (_gate)
         {
             if (!ReferenceEquals(ping, _ping)) return; // answered meanwhile, or no longer watched
+            if (client.LastReceivedTicks >= _pingSliceStart)
+            {
+                _pingSliceStart = Environment.TickCount64;
+                _pingTimeout = Scheduler.Schedule(LivenessTimeout, () => OnPingTimedOut(client, ping));
+                return;
+            }
+
             _ping = null;
             _pingTimeout = null;
             _droppedByPing = client;
@@ -678,7 +704,10 @@ internal sealed class MuxConnectionHost : IDisposable
         _ = Task.Run(client.Dispose, CancellationToken.None);
     }
 
-    /// <summary>On the pool: an answer resets the clock; a failure drops the client as the timeout does.</summary>
+    /// <summary>
+    /// On the pool: an answer resets the clock. A failure - the request's own timeout, say - drops the client
+    /// as the timeout does, unless frames are still arriving: then the next tick pings again.
+    /// </summary>
     private void OnPingDone(MuxClient client, CancellationTokenSource ping, Task result)
     {
         lock (_gate)
@@ -688,6 +717,7 @@ internal sealed class MuxConnectionHost : IDisposable
             _pingTimeout?.Dispose();
             _pingTimeout = null;
             if (result.IsCompletedSuccessfully || !client.IsConnected) return; // closed: its own Disconnected says why
+            if (client.LastReceivedTicks >= _pingSliceStart) return; // frames still arrive: busy, not dead
             _droppedByPing = client;
             _droppedReason = "ping failed";
         }

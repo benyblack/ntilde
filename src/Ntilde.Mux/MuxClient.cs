@@ -39,11 +39,13 @@ public sealed class MuxClient : IDisposable
     private long _nextId;
     private int _disconnected;
     private string? _disconnectReason;
+    private long _lastReceivedTicks; // written by the reader thread only
 
     private MuxClient(Stream stream, MuxClientOptions options)
     {
         _stream = stream;
         _options = options;
+        _lastReceivedTicks = Environment.TickCount64;
         _readerThread = new Thread(ReadLoop) { IsBackground = true, Name = "MuxClientRead" };
         _senderThread = new Thread(SendLoop) { IsBackground = true, Name = "MuxClientSend" };
         _senderThread.Start();
@@ -58,6 +60,15 @@ public sealed class MuxClient : IDisposable
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
     public event Action<string?>? Disconnected;
+
+    /// <summary>
+    /// <see cref="Environment.TickCount64"/> when the last inbound frame of any kind arrived - a reply, a
+    /// notification, output - or when the connection was made, before any. Proof that the link is alive even
+    /// while a request's own reply waits behind a large frame: a remote host's liveness ping counts it
+    /// (Phase 4 spec §7.2). Public because that host lives in another assembly; it costs the reader one
+    /// volatile write per frame.
+    /// </summary>
+    public long LastReceivedTicks => Volatile.Read(ref _lastReceivedTicks);
 
     internal bool IsOnDeliveryThread => Thread.CurrentThread == _readerThread;
 
@@ -325,6 +336,7 @@ public sealed class MuxClient : IDisposable
             {
                 MuxInboundFrame? frame = MuxFrameReader.Read(_stream);
                 if (frame is null) break;
+                Volatile.Write(ref _lastReceivedTicks, Environment.TickCount64);
                 using (frame)
                 {
                     Dispatch(frame);
