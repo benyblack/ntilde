@@ -61,6 +61,7 @@ internal sealed class MuxConnectionHost : IDisposable
     private long _pingSliceStart;           // Environment.TickCount64 when the ping's current timeout slice began
     private MuxReconnectLoop? _loop;
     private Episode _episode;
+    private bool _daemonStopped;        // DaemonStopped was raised and nothing has connected since: its sessions are gone
     private Task _events = Task.CompletedTask; // the events, raised one at a time in the order they were queued
     private Task _classification = Task.CompletedTask; // the latest disconnect classification (tests wait on it)
 
@@ -376,7 +377,8 @@ internal sealed class MuxConnectionHost : IDisposable
 
     /// <summary>
     /// The remote daemon closed the connection (the proxy exited 3): its sessions are gone, and the host does
-    /// not reconnect on its own. <see cref="GetClient"/> connects again, to a new daemon.
+    /// not reconnect on its own. <see cref="GetClient"/> connects again, to a new daemon. Kills queued for its
+    /// sessions are dropped, and none is recorded until that connect (<see cref="KillWhenConnected"/>).
     /// </summary>
     public event Action? DaemonStopped;
 
@@ -434,11 +436,17 @@ internal sealed class MuxConnectionHost : IDisposable
     /// prompts, and runs off the caller's thread, which may be the UI thread): the kill goes out if keys, an
     /// agent or a remembered secret let it in. If that attempt fails the kill stays queued for any later
     /// connect (controller ruling, Task 21 review).
+    /// <para>
+    /// After <see cref="DaemonStopped"/>, until the next successful connect, a kill is neither recorded nor
+    /// connected for: that daemon's sessions ended with it, and a connect now would only start a new daemon. The
+    /// kills queued when it stopped are dropped then, for the same reason.
+    /// </para>
     /// </remarks>
     public void KillWhenConnected(Guid sessionId)
     {
         MuxClient? live = null;
         bool disposed;
+        bool moot = false;
         bool idle = false;
         lock (_gate)
         {
@@ -446,14 +454,20 @@ internal sealed class MuxConnectionHost : IDisposable
             if (!disposed)
             {
                 live = _client is { IsConnected: true } c ? c : null;
-                if (live is null && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
-                idle = live is null && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
+                // After DaemonStopped, until the next connect: the session went with that daemon (controller ruling).
+                moot = live is null && _daemonStopped;
+                if (live is null && !moot && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
+                idle = live is null && !moot && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
             }
         }
 
         if (disposed)
         {
             _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping the kill of session {sessionId}: the host is closed");
+        }
+        else if (moot)
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: not killing session {sessionId}: the daemon stopped, and its sessions ended with it");
         }
         else if (live is null)
         {
@@ -529,6 +543,7 @@ internal sealed class MuxConnectionHost : IDisposable
             // No longer the host's client (it dropped, and a new attempt started, before this ran): nothing to
             // watch, and the queued kills wait for that attempt.
             if (!ReferenceEquals(client, _client)) return;
+            _daemonStopped = false; // a daemon is up again: kills are worth recording from here on
             kills = DrainQueuedKillsLocked();
             if (Policy.IsRemote)
             {
@@ -607,6 +622,7 @@ internal sealed class MuxConnectionHost : IDisposable
         }
 
         string note;
+        Guid[] moot = [];
         lock (_gate)
         {
             if (_disposed.IsCancellationRequested) return;
@@ -614,6 +630,13 @@ internal sealed class MuxConnectionHost : IDisposable
             {
                 RaiseLocked(nameof(DaemonStopped), () => Invoke(nameof(DaemonStopped), DaemonStopped));
                 note = $"[Mux] {Policy.DisplayName}: ntilde-mux closed the connection ({reason}); its sessions ended, and the host does not reconnect until asked";
+                if (ReferenceEquals(client, _watched))
+                {
+                    // Its sessions went with it: a kill queued for one has nothing left to end, and delivering it would
+                    // start a new daemon for nothing (controller ruling). Until the next connect, none is recorded.
+                    _daemonStopped = true;
+                    moot = DrainQueuedKillsLocked();
+                }
             }
             else
             {
@@ -635,6 +658,10 @@ internal sealed class MuxConnectionHost : IDisposable
         }
 
         _log?.Invoke(note);
+        if (moot.Length > 0)
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping {moot.Length} queued kills: the daemon stopped, and its sessions ended with it ({string.Join(", ", moot)})");
+        }
     }
 
     /// <summary>

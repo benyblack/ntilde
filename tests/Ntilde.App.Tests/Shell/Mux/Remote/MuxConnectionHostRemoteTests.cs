@@ -465,6 +465,78 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Equal(2, _remote.StartCount);
     }
 
+    /// <summary>
+    /// Controller ruling: a stopped daemon's sessions ended with it. The kills queued for them are dropped when the
+    /// host learns it stopped - delivering them would only start a new daemon - and a later connect sends nothing.
+    /// </summary>
+    [Fact]
+    public async Task Daemon_stopped_drops_the_kills_queued_for_its_sessions()
+    {
+        MuxTestHost mux = Own(new MuxTestHost());
+        var classifying = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var verdict = new TaskCompletionSource<MuxDisconnectKind>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool reachable = true;
+        MuxConnectionHost host = Own(new MuxConnectionHost(
+            ct => Volatile.Read(ref reachable) ? MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct) : throw new IOException("unreachable"),
+            "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+            ClassifyDisconnect = _ =>
+            {
+                classifying.TrySetResult();
+                return verdict.Task;
+            },
+            ClassifyTimeout = Patient,
+        });
+        var events = new HostEvents(host);
+        MuxClient client = host.GetClient(Patient)!;
+        Guid closed = await MuxTestHost.SpawnAsync(client);
+        Volatile.Write(ref reachable, false);
+        client.Dispose(); // the connection ends; why is not known yet
+        await classifying.Task.WaitAsync(Patient, Ct);
+        host.KillWhenConnected(closed); // queued; the idle host's own attempt cannot get through
+        await TestWait.UntilAsync(() => host.LastFailure is not null, "the host's own attempt failed", Patient);
+
+        verdict.SetResult(MuxDisconnectKind.DaemonStopped);
+        await events.WaitForAsync("daemon-stopped");
+        await host.ClassificationForTest.WaitAsync(Patient, Ct);
+
+        Assert.True(Logged("dropping 1 queued kills: the daemon stopped"));
+        // This daemon did not really stop, so a kept kill would land on the next connect: none does.
+        Volatile.Write(ref reachable, true);
+        MuxClient again = host.GetClient(Patient)!;
+        await again.PingAsync(Ct); // anything sent on connect has been handled by now
+        Assert.Contains(closed, mux.Server.GetSessionIds());
+    }
+
+    /// <summary>Controller ruling: after DaemonStopped, until something connects, a kill is not recorded and starts no connect.</summary>
+    [Fact]
+    public async Task A_kill_after_the_daemon_stopped_records_nothing_and_starts_nothing()
+    {
+        MuxConnectionHost host = Create();
+        var events = new HostEvents(host);
+        Guid gone = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
+        _remote.StopDaemon();
+        await events.WaitForAsync("daemon-stopped");
+
+        host.KillWhenConnected(gone); // the tab of a shell that ended with its daemon is closed
+
+        Assert.True(Logged($"not killing session {gone}: the daemon stopped"));
+        Assert.False(Logged("connecting to send the kill"));
+        Assert.Equal(1, _remote.StartCount);
+
+        // A connect (a pane's Enter) brings up a new daemon, and from then on kills count again.
+        MuxClient again = host.GetClient(Patient)!;
+        Assert.Equal(2, _remote.StartCount);
+        Guid fresh = await MuxTestHost.SpawnAsync(again);
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+        host.KillWhenConnected(fresh);
+        Assert.True(Logged($"the kill of session {fresh} is sent once connected"));
+        _clock.Advance(FirstRetry);
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(fresh), "the kill went out on the new daemon", Patient);
+    }
+
     /// <summary>Controller ruling: the user meant to end that shell, so its kill outlives the loop giving up.</summary>
     [Fact]
     public async Task A_kill_queued_while_down_outlives_a_give_up_and_goes_out_on_the_next_connect()
