@@ -69,6 +69,11 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _unsubscribed;
     private int _detachedByUser; // written on the parse thread only
 
+    // Parse thread only: the interactive subscriber whose drop for refusing a frame left no interactive
+    // subscriber, with its latest attach, until its own detach says what kind of departure that was
+    // (spec §7.7). See DropRefusingSink and DecideForDroppedSink.
+    private (IMuxFrameSink Sink, long AttachRequestId)? _undecidedDrop;
+
     // sessionChanged coalescing (spec §4), parse thread only: at most one per interval, the trailing
     // one sent by the parse loop's own bounded wait (see ParseLoop).
     private readonly long _sessionChangedIntervalMs;
@@ -406,7 +411,12 @@ public sealed class HeadlessTerminalSession : IDisposable
         EnqueueControl(() =>
         {
             if (attachRequestId is long undone && _attachRequestIds.TryGetValue(sink, out long latest) && latest > undone) return;
-            if (!_subscribers.Remove(sink)) return;
+            if (!_subscribers.Remove(sink))
+            {
+                DecideForDroppedSink(sink, userDetached, attachRequestId);
+                return;
+            }
+
             bool wasReadOnly = _readOnlySinks.Contains(sink);
             Forget(sink);
 
@@ -820,12 +830,7 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (!accepted)
         {
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
-            if (_subscribers.Remove(sink))
-            {
-                Forget(sink);
-                PublishAttachedCount();
-            }
-
+            if (_subscribers.Remove(sink)) DropRefusingSink(sink);
             return;
         }
 
@@ -844,6 +849,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             _readOnlySinks.Remove(sink);
             _kittyBySink[sink] = presentation.KittyKeyboardEnabled;
             Volatile.Write(ref _detachedByUser, 0); // a read-only peek must not undo a deliberate detach (spec §7.7)
+            _undecidedDrop = null;                  // decided: a dropped sink's late detach no longer has a say
         }
 
         RecomputeKitty();
@@ -866,6 +872,39 @@ public sealed class HeadlessTerminalSession : IDisposable
         _attachRequestIds.Remove(sink);
         if (_kittyBySink.Remove(sink)) RecomputeKitty();
         ReportSubscription(sink, subscribed: false, readOnly: false);
+    }
+
+    /// <summary>
+    /// Parse thread only, for a sink just removed from <see cref="_subscribers"/> because it refused a
+    /// frame (a broadcast, or its own re-attach's snapshot). A connection refuses once it has closed,
+    /// and that is not a detach. If this removal left no interactive subscriber, it is the departure
+    /// that decides <see cref="DetachedByUser"/>, but it cannot say whether the user meant it. The
+    /// sink's own detach can (<see cref="DecideForDroppedSink"/>), so the decision waits for it.
+    /// </summary>
+    private void DropRefusingSink(IMuxFrameSink sink)
+    {
+        bool wasInteractive = !_readOnlySinks.Contains(sink);
+        long attachRequestId = _attachRequestIds.GetValueOrDefault(sink);
+        Forget(sink);
+        if (wasInteractive && !HasOtherInteractiveSubscriber(sink)) _undecidedDrop = (sink, attachRequestId);
+        PublishAttachedCount();
+    }
+
+    /// <summary>
+    /// Parse thread only: a detach for a sink that is no longer subscribed. A client that detaches
+    /// and then hangs up posts its detach before it closes, but an item queued ahead of the detach
+    /// can broadcast after the close and drop the sink first (<see cref="DropRefusingSink"/>). If that
+    /// drop emptied the session, this detach is the one that says what kind of departure it was: a
+    /// user detach sets <see cref="DetachedByUser"/>, and the connection's own close-time detach
+    /// leaves it clear (spec §7.7). A detach naming an attach the dropped subscription had superseded
+    /// is stale, as it would have been for a live subscriber.
+    /// </summary>
+    private void DecideForDroppedSink(IMuxFrameSink sink, bool userDetached, long? attachRequestId)
+    {
+        if (_undecidedDrop is not { } drop || !ReferenceEquals(drop.Sink, sink)) return;
+        if (attachRequestId is long undone && drop.AttachRequestId > undone) return;
+        _undecidedDrop = null;
+        Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
     }
 
     /// <summary>
@@ -979,8 +1018,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                 if (!sink.TryEnqueue(frame))
                 {
                     _subscribers.RemoveAt(i);
-                    Forget(sink);
-                    PublishAttachedCount();
+                    DropRefusingSink(sink);
                 }
             }
         }

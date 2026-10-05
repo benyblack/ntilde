@@ -330,6 +330,96 @@ public sealed class AttachModeTests
         Assert.False(host.Server.TryBeginIdleShutdown()); // idle exit is unaffected: a running shell keeps the daemon
     }
 
+    /// <summary>
+    /// The race behind the one arm64 failure of the test above. A client that detaches and hangs up
+    /// has its detach queued (posted before the "ok"), but an item queued ahead of it broadcasts
+    /// after the connection has closed, so the broadcast drops the sink. The detach then finds no
+    /// subscription to end, and it must still decide DetachedByUser. Here the broadcast is another
+    /// client's resize (its ResizeEvent). The parse thread is parked so the resize and the detach
+    /// are both queued, in that order, before the connection closes.
+    /// </summary>
+    [Fact]
+    public async Task A_user_detach_still_decides_when_a_resize_broadcast_drops_the_closed_connection_first()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection other = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        await mux.InvokeAsync(() => 0); // the attach item, and the sessionChanged at its tail, are done
+        using var gate = new ManualResetEventSlim(false);
+
+        Task<int> parked = mux.InvokeAsync(() => { gate.Wait(TimeSpan.FromSeconds(30)); return 0; });
+        try
+        {
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread took the parking item");
+            long resize = other.Request(MuxMethods.Resize, new ResizeParams { SessionId = id, Cols = 100, Rows = 30 }, MuxJsonContext.Default.ResizeParams);
+            Assert.Equal("ok", await ReadOutcomeAsync(other, resize)); // posted: its ResizeEvent goes to every subscriber
+            long detach = a.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
+            Assert.Equal("ok", await ReadOutcomeAsync(a, detach));     // posted behind the resize
+            Assert.Equal(2, mux.QueuedControlCount);
+            a.Dispose();
+            await TestWait.UntilAsync(() => host.Server.ConnectionCount == 2, "a's connection closed: it refuses every frame now");
+        }
+        finally
+        {
+            gate.Set();
+        }
+
+        await parked;
+        await mux.InvokeAsync(() => 0);
+
+        Assert.Equal((100, 30), (mux.Cols, mux.Rows)); // the resize ran first and broadcast to the closed connection
+        Assert.Equal(0, mux.AttachedClients);
+        Assert.True(mux.DetachedByUser);
+    }
+
+    /// <summary>
+    /// The same race with the broadcast CI hit: the sessionChanged flushed at the tail of an attach
+    /// item. Here it is a read-only peek's attach, which neither sets nor clears DetachedByUser, so
+    /// the user's detach is still the one that decides.
+    /// </summary>
+    [Fact]
+    public async Task A_user_detach_still_decides_when_a_sessionChanged_broadcast_drops_the_closed_connection_first()
+    {
+        using var host = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, SessionChangedInterval = TimeSpan.Zero });
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        HeadlessTerminalSession mux = host.Mux(id);
+        RawMuxConnection a = await ConnectV2Async(host);
+        RawMuxConnection peek = await ConnectV2Async(host);
+        Assert.Equal("snapshot", await ReadOutcomeAsync(a, SendAttach(a, id, null)));
+        await mux.InvokeAsync(() => 0);
+        using var gate = new ManualResetEventSlim(false);
+
+        Task<int> parked = mux.InvokeAsync(() => { gate.Wait(TimeSpan.FromSeconds(30)); return 0; });
+        long peekAttach;
+        try
+        {
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 0, "the parse thread took the parking item");
+            peekAttach = SendAttach(peek, id, MuxAttachModes.ReadOnly);
+            await TestWait.UntilAsync(() => mux.QueuedControlCount == 1, "the peek's attach is queued");
+            long detach = a.Request(MuxMethods.Detach, new DetachParams { SessionId = id, UserDetached = true }, MuxJsonContext.Default.DetachParams);
+            Assert.Equal("ok", await ReadOutcomeAsync(a, detach)); // posted behind the peek's attach
+            Assert.Equal(2, mux.QueuedControlCount);
+            a.Dispose();
+            await TestWait.UntilAsync(() => host.Server.ConnectionCount == 2, "a's connection closed: it refuses every frame now");
+        }
+        finally
+        {
+            gate.Set();
+        }
+
+        await parked;
+        Assert.Equal("snapshot", await ReadOutcomeAsync(peek, peekAttach));
+        await mux.InvokeAsync(() => 0);
+
+        Assert.Equal((1, 0), (mux.AttachedClients, mux.InteractiveClients)); // only the peek is left
+        Assert.True(mux.DetachedByUser);
+    }
+
     /// <summary>Final review: listSessions tells a read-only peek apart from a client that shows the shell (orphan adoption needs it).</summary>
     [Fact]
     public async Task ListSessions_reports_interactive_clients_without_read_only_observers()
