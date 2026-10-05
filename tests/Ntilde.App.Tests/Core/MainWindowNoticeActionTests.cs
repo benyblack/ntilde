@@ -105,6 +105,31 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
         Assert.Equal("update", Assert.Single(ran));
     }
 
+    /// <summary>
+    /// Task 21 (the Task 19 note): remote notices are merged per host and reason, not per title, so the toast's
+    /// one action is always offered next to its own message - never under another host's line.
+    /// </summary>
+    [AvaloniaFact]
+    public void Remote_notices_of_two_hosts_keep_their_own_lines_and_the_action_stays_with_its_message()
+    {
+        MainWindow window = CreateWindow();
+        var ran = new List<string>();
+        // The first host's line is the longer one: merged by title, the toast showed it with the second host's action.
+        string alpha = TerminalPane.RemoteMuxUnavailableMessage("someone@alpha.example.com", "ntilde-mux is not installed");
+        string beta = TerminalPane.RemoteMuxUnavailableMessage("nova@beta", "ntilde-mux speaks protocol 3-4");
+
+        window.EnqueueNotice(TerminalPane.RemoteMuxUnavailableNoticeTitle, alpha, new PersistenceNoticeAction("Install ntilde-mux\u2026", () => ran.Add("alpha")));
+        window.EnqueueNotice(TerminalPane.RemoteMuxUnavailableNoticeTitle, alpha, new PersistenceNoticeAction("Install ntilde-mux\u2026", () => ran.Add("alpha")));
+        window.EnqueueNotice(TerminalPane.RemoteMuxUnavailableNoticeTitle, beta, new PersistenceNoticeAction("Update ntilde-mux\u2026", () => ran.Add("beta")));
+        Dispatcher.UIThread.RunJobs();
+
+        string[] lines = Toast(window).Message!.Split('\n');
+        Assert.Equal(new[] { $"{alpha} (2 panes)", beta }, lines);
+        Assert.Equal("Update ntilde-mux\u2026", ActionButton(window).Content);
+        Click(ActionButton(window));
+        Assert.Equal("beta", Assert.Single(ran));
+    }
+
     /// <summary>The whole path: the pane raises its notice with an action, and the window's toast offers it.</summary>
     [AvaloniaFact]
     public void A_pane_notice_brings_its_action_to_the_toast()

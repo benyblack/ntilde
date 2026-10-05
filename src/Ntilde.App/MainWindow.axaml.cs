@@ -4494,7 +4494,14 @@ namespace Ntilde
                 return Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
             }
 
-            return new Ntilde.Shell.Mux.MuxTerminalSessionFactory(_muxHosts, Ntilde.Shell.DefaultTerminalSessionFactory.Instance, AppLogger.Log);
+            // The SSH profile store, through a lambda: this runs before _sshConnectionService is assigned
+            // (Task 19's note), and a profile's PersistRemoteSessions is read at each spawn. Panes make
+            // their remote requests off the UI thread (TerminalPane.RunOffUiThread, Phase 4 spec §7.4).
+            return new Ntilde.Shell.Mux.MuxTerminalSessionFactory(
+                _muxHosts,
+                Ntilde.Shell.DefaultTerminalSessionFactory.Instance,
+                id => _sshConnectionService?.GetStoredProfile(id),
+                AppLogger.Log);
         }
 
         /// <summary>Every pane in every tab, including a zoomed tab's stashed root.</summary>
@@ -4747,6 +4754,8 @@ namespace Ntilde
             pane.CommandAssistServices = _commandAssistServices;
             pane.SessionFactory = _sessionFactory;
             pane.SshInteractionHandler = _sshInteractionService;
+            // A method group: OpenRemoteMuxInstall is read when a notice is raised, not now.
+            pane.RemoteNoticeAction = RemoteMuxNoticeAction;
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged -= OnPaneWorkingDirectoryChanged;
             pane.TitleChanged -= OnPaneTitleChanged;
@@ -4862,8 +4871,9 @@ namespace Ntilde
             }, DispatcherPriority.Background);
         }
 
-        // UI thread: notices raised since the coalesced toast was posted, keyed by title, in arrival order.
-        private readonly List<(string Title, string Message, int Count)> _pendingPersistenceNotices = [];
+        // UI thread: notices raised since the coalesced toast was posted, keyed by title (a remote notice by title
+        // and message, see EnqueueNotice), in arrival order.
+        private readonly List<(string Key, string Title, string Message, int Count)> _pendingPersistenceNotices = [];
 
         // UI thread: the last action raised with those notices; the merged toast offers it (Phase 4 spec §7.5).
         private PersistenceNoticeAction? _pendingNoticeAction;
@@ -4894,17 +4904,24 @@ namespace Ntilde
         /// one toast, one line per kind, instead of each ShowRecordingToast replacing the last. The toast
         /// has one action button, so the merged toast offers the last non-null <paramref name="action"/>.
         /// </summary>
+        /// <remarks>
+        /// A remote notice (<see cref="TerminalPane.RemoteMuxUnavailableNoticeTitle"/>) is one line per message - per
+        /// host and reason - not per title: merged by title, the longer of two hosts' lines was shown with the other
+        /// host's action (the Task 19 note), so the button could install on a host its line did not name. Each
+        /// action's own line is now always in the toast; panes of one host and reason still merge ("(n panes)").
+        /// </remarks>
         internal void EnqueueNotice(string title, string message, PersistenceNoticeAction? action = null)
         {
             if (action is not null) _pendingNoticeAction = action;
-            int index = _pendingPersistenceNotices.FindIndex(n => n.Title == title);
+            string key = title == TerminalPane.RemoteMuxUnavailableNoticeTitle ? $"{title}\n{message}" : title;
+            int index = _pendingPersistenceNotices.FindIndex(n => n.Key == key);
             bool first = _pendingPersistenceNotices.Count == 0;
-            if (index < 0) _pendingPersistenceNotices.Add((title, message, 1));
+            if (index < 0) _pendingPersistenceNotices.Add((key, title, message, 1));
             else
             {
-                (string t, string m, int c) = _pendingPersistenceNotices[index];
+                (string k, string t, string m, int c) = _pendingPersistenceNotices[index];
                 // A version-mismatch hint on any of them is worth keeping.
-                _pendingPersistenceNotices[index] = (t, message.Length > m.Length ? message : m, c + 1);
+                _pendingPersistenceNotices[index] = (k, t, message.Length > m.Length ? message : m, c + 1);
             }
 
             if (!first) return;
@@ -4914,7 +4931,7 @@ namespace Ntilde
         private void FlushPersistenceNotices()
         {
             if (_pendingPersistenceNotices.Count == 0) return;
-            List<(string Title, string Message, int Count)> notices = [.. _pendingPersistenceNotices];
+            List<(string Key, string Title, string Message, int Count)> notices = [.. _pendingPersistenceNotices];
             _pendingPersistenceNotices.Clear();
             PersistenceNoticeAction? action = _pendingNoticeAction;
             _pendingNoticeAction = null;
@@ -4996,10 +5013,12 @@ namespace Ntilde
                 return;
             }
 
-            // Pending ids count too: an adopted background tab has not attached (spawned) yet.
+            // Pending ids count too: an adopted background tab has not attached (spawned) yet. The local
+            // daemon's panes only: one id on two daemons is two sessions (Phase 4 spec §5).
             var openHere = new HashSet<Guid>();
             foreach (TerminalPane p in AllPanes())
             {
+                if (!ShowsLocalMuxEndpoint(p)) continue;
                 if (p.Session is Ntilde.Mux.MuxClientSession m) openHere.Add(m.Id);
                 if (p.MuxSessionIdToRestore is Guid pending) openHere.Add(pending);
             }
@@ -5025,11 +5044,17 @@ namespace Ntilde
             AddTabWithPane(pane, string.IsNullOrWhiteSpace(summary.Title) ? summary.Command : summary.Title, select: true);
         }
 
-        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) <paramref name="id"/>; false when none does.</summary>
+        /// <summary>
+        /// The pane's daemon session (shown or pending) is on the local daemon, the one "Attach to session…", orphan
+        /// adoption and the teardown count speak of (Phase 4 spec §5): a remote pane's id names another daemon's session.
+        /// </summary>
+        private static bool ShowsLocalMuxEndpoint(TerminalPane pane) => Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).IsLocal;
+
+        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) local <paramref name="id"/>; false when none does.</summary>
         private bool FocusPaneShowingMuxSession(Guid id)
         {
-            TerminalPane? pane = AllPanes().FirstOrDefault(p =>
-                (p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id);
+            TerminalPane? pane = AllPanes().FirstOrDefault(p => ShowsLocalMuxEndpoint(p)
+                && ((p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id));
             if (pane is null) return false;
             if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
             UpdateActivePane(pane);
@@ -5155,9 +5180,11 @@ namespace Ntilde
             // A pane this window spawned can be listed between its spawn and its attach
             // (AttachedClients still 0). Its Session is assigned on this thread as soon as the spawn
             // returns, so by now every such pane names its id here. Pending ids count too.
+            // Local panes only: a remote pane's id is another daemon's session (Phase 4 spec §5).
             var live = new HashSet<Guid>();
             foreach (TerminalPane p in AllPanes())
             {
+                if (!ShowsLocalMuxEndpoint(p)) continue;
                 if (p.Session is Ntilde.Mux.MuxClientSession m) live.Add(m.Id);
                 if (p.MuxSessionIdToRestore is Guid pending) live.Add(pending);
             }
@@ -5184,6 +5211,13 @@ namespace Ntilde
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
         {
+            if (srcPane.IsPersistentRemoteTab)
+            {
+                // Phase 4 spec §8.4: no native SSH session stands behind a persisted remote tab; say so, do nothing else.
+                EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesUnavailableMessage);
+                return;
+            }
+
             _ = InitiateSidebarSftpTransfer(srcPane, request.Direction, request.Kind, request.RemotePath);
         }
 
@@ -6878,6 +6912,10 @@ namespace Ntilde
                 Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
                 // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
                 KillMuxSessionOnClose(session, effective, pane.MuxEndpoint);
+                if (session is not Ntilde.Mux.MuxClientSession)
+                {
+                    KillPendingRemoteMuxSessionOnClose(pane.MuxSessionIdToRestore, effective, pane.MuxEndpoint);
+                }
                 if (effective != Ntilde.Shell.Mux.PaneDisposition.EndSession && session is Ntilde.Mux.MuxClientSession detaching)
                 {
                     // A deliberate detach (the command, or the shared prompt's Detach): tell a v2 daemon, so the
@@ -6918,14 +6956,23 @@ namespace Ntilde
                 return;
             }
 
-            if (!mux.IsConnected || !mux.IsProcessRunning) return;
+            if (!mux.IsProcessRunning) return;
+            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint);
+            if (!mux.IsConnected)
+            {
+                // Review Focus 1: a remote tab closed while its link is down. The user meant to end that shell, and
+                // nobody can adopt a remote one: its host sends the kill once connected again. A local session whose
+                // connection is gone is left to orphan adoption, as before.
+                if (!endpoint.IsLocal) _muxHosts?.TryGet(endpoint)?.KillWhenConnected(mux.Id);
+                return;
+            }
 
             try
             {
                 Task kill = mux.KillAsync();
                 // The session's own connection is the one whose teardown must wait for this reply. Its
                 // host exists: the factory built it to open the session. TryGet, never build one here.
-                _muxHosts?.TryGet(Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint))?.TrackPendingKill(kill);
+                _muxHosts?.TryGet(endpoint)?.TrackPendingKill(kill);
                 _ = kill.ContinueWith(
                     t => TerminalLogger.Log($"[MainWindow] mux kill of {mux.Id} failed: {t.Exception?.GetBaseException().Message}"),
                     CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
@@ -6934,6 +6981,20 @@ namespace Ntilde
             {
                 TerminalLogger.Log($"[MainWindow] mux kill failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Review Focus 1, for a remote pane closed with no session of its own: its id is still pending - a connect
+        /// or reattach in flight, a reattach that failed, a restore that could not reach the host. The user meant
+        /// to end that shell too, and nobody can adopt a remote one, so its host kills it once connected. A local
+        /// pending id is left to orphan adoption, as before. TryGet: a host that was never built has nothing to send.
+        /// </summary>
+        private void KillPendingRemoteMuxSessionOnClose(Guid? pendingId, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
+        {
+            if (disposition != Ntilde.Shell.Mux.PaneDisposition.EndSession || pendingId is not Guid id) return;
+            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint);
+            if (endpoint.IsLocal) return;
+            _muxHosts?.TryGet(endpoint)?.KillWhenConnected(id);
         }
 
         private void HandleSshQuickOpen(TerminalProfile profile, SshQuickOpenTarget target, SshDiagnosticsLevel diagnosticsLevel)
@@ -9256,7 +9317,8 @@ namespace Ntilde
 
             if (_muxHosts is { } muxHosts)
             {
-                int kept = _paneOwnerTab.Keys.Count(p => p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true });
+                // Local panes only: the log line points at `ntilde mux ls`, which lists the local daemon.
+                int kept = _paneOwnerTab.Keys.Count(p => ShowsLocalMuxEndpoint(p) && p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true });
                 // Explicit detach: closing each connection makes its daemon drop this client's
                 // subscriptions and keep every shell running. Panes are deliberately not disposed
                 // (that would kill them). Each host flushes what is already queued first, so a kill
