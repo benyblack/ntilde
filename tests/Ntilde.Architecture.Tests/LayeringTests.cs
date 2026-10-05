@@ -235,6 +235,31 @@ public class LayeringTests
             $"Mux must stay headless. Offenders: {Join(result.FailingTypeNames)}");
     }
 
+    /// <summary>
+    /// Phase 4 spec §6, §12.4: the daemon core and the verbs moved out of the App so the standalone
+    /// <c>ntilde-mux</c>, which references only Ntilde.Mux, can host them. Each executable injects its
+    /// paths, shells and console; none of it may reach back into the App or Platform.
+    /// </summary>
+    [Fact]
+    public void Mux_daemon_and_cli_namespaces_have_no_app_or_platform_dependency()
+    {
+        PredicateList DaemonAndCli() =>
+            Types.InAssembly(Mux).That().ResideInNamespace("Ntilde.Mux.Daemon").Or().ResideInNamespace("Ntilde.Mux.Cli");
+
+        // Pins the selection itself, so a namespace rename cannot turn this into a check over nothing.
+        Type[] selected = DaemonAndCli().GetTypes().ToArray();
+        Assert.Contains(typeof(global::Ntilde.Mux.Daemon.MuxServeHost), selected);
+        Assert.Contains(typeof(global::Ntilde.Mux.Cli.MuxCli), selected);
+
+        var result = DaemonAndCli()
+            .Should()
+            .NotHaveDependencyOnAny("Ntilde.Shell", "Ntilde.Platform", "Avalonia")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Mux.Daemon and Mux.Cli must not depend on the App or Platform. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
     /// <summary>The emitted-reference edge, which catches a dependency no type names yet.</summary>
     [Fact]
     public void Mux_references_only_approved_ntilde_assemblies()

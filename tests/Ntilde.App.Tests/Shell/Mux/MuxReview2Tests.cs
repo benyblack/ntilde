@@ -1,23 +1,14 @@
-using System.Net.Sockets;
 using Ntilde.Mux;
 using Ntilde.Pty;
 using Ntilde.Shell;
-using Ntilde.Shell.Mux;
 
 namespace Ntilde.Tests.Shell.Mux;
 
 /// <summary>PR #489 review 2: the app-side pieces that have no better home.</summary>
 public sealed class MuxReview2Tests
 {
-    // ---- item 3: a SocketException must end a verb with exit 1, not crash it (serve's half: Ntilde.Mux.Tests' MuxDaemonReviewTests).
-
-    [Fact]
-    public void A_socket_exception_is_a_reportable_verb_failure()
-    {
-        Assert.True(MuxCommand.IsReportableFailure(new SocketException(98)));
-        Assert.True(MuxCommand.IsReportableFailure(new IOException("x")));
-        Assert.False(MuxCommand.IsReportableFailure(new InvalidOperationException("a bug")));
-    }
+    // ---- item 3 (a SocketException must end a verb with exit 1, not crash it) moved with the verbs:
+    // Ntilde.Mux.Tests' MuxCliTests, and serve's half MuxDaemonReviewTests.
 
     /// <summary>
     /// Task 22 review: a GUI started inside a mux shell must not hand that shell's session id to its
