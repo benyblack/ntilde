@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Transport;
 
 namespace Ntilde.Mux;
@@ -22,8 +23,8 @@ public sealed class MuxDaemonOptions
     public Func<string, IMuxListener> ListenerFactory { get; init; } = MuxListeners.Create;
     public int Pid { get; init; } = Environment.ProcessId;
     public string ProcessName { get; init; } = CurrentProcessName();
-    /// <summary>This process's start time (UTC ticks), recorded in the descriptor so a recycled pid is never mistaken for the daemon.</summary>
-    public long? StartTimeUtcTicks { get; init; } = CurrentStartTimeUtcTicks();
+    /// <summary>This process's start token (<see cref="MuxDiscovery.GetProcessStartToken"/>), recorded in the descriptor so a recycled pid is never mistaken for the daemon.</summary>
+    public long? StartToken { get; init; } = CurrentStartToken();
     public Action<string>? Log { get; init; }
 
     private static string CurrentProcessName()
@@ -32,17 +33,10 @@ public sealed class MuxDaemonOptions
         return p.ProcessName;
     }
 
-    private static long? CurrentStartTimeUtcTicks()
+    private static long? CurrentStartToken()
     {
-        try
-        {
-            using Process p = Process.GetCurrentProcess();
-            return p.StartTime.ToUniversalTime().Ticks;
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
-        {
-            return null;
-        }
+        using Process p = Process.GetCurrentProcess();
+        return MuxDiscovery.GetProcessStartToken(p);
     }
 }
 

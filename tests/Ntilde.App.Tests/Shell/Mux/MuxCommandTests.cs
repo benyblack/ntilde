@@ -110,7 +110,7 @@ public sealed class MuxCommandTests : IDisposable
                 IdleExitAfter = TimeSpan.Zero,
                 Pid = stand_in.Id,
                 ProcessName = stand_in.ProcessName,
-                StartTimeUtcTicks = stand_in.StartTime.ToUniversalTime().Ticks,
+                StartToken = MuxDiscovery.GetProcessStartToken(stand_in),
             });
             _host.Start();
 
@@ -188,7 +188,7 @@ public sealed class MuxCommandTests : IDisposable
             IdleExitAfter = TimeSpan.Zero,
             Pid = standIn.Id,
             ProcessName = standIn.ProcessName,
-            StartTimeUtcTicks = standIn.StartTime.ToUniversalTime().Ticks,
+            StartToken = MuxDiscovery.GetProcessStartToken(standIn),
         });
         _host.Start();
         return standIn;
@@ -277,7 +277,8 @@ public sealed class MuxCommandTests : IDisposable
                 Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
                 Pid = standIn.Id,
                 ProcessName = standIn.ProcessName,
-                StartTime = standIn.StartTime.ToUniversalTime().Ticks + TimeSpan.FromSeconds(5).Ticks,   // a recycled pid
+                // a recycled pid: one tick off on Linux (exact compare), 5 s off elsewhere (1 s tolerance)
+                StartTime = MuxDiscovery.GetProcessStartToken(standIn)!.Value + (OperatingSystem.IsLinux() ? 1 : TimeSpan.FromSeconds(5).Ticks),
             });
             var o = new StringWriter();
             var e = new StringWriter();

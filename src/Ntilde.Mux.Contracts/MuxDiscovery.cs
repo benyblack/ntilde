@@ -129,7 +129,7 @@ public static class MuxDiscovery
         return false;
     }
 
-    public static bool IsProcessAlive(int pid, string processName, long? startTimeUtcTicks = null)
+    public static bool IsProcessAlive(int pid, string processName, long? startToken = null)
     {
         if (pid <= 0) return false;
         try
@@ -137,7 +137,7 @@ public static class MuxDiscovery
             using Process process = Process.GetProcessById(pid);
             return !process.HasExited
                 && string.Equals(process.ProcessName, processName, StringComparison.OrdinalIgnoreCase)
-                && StartTimeMatches(process, startTimeUtcTicks);
+                && StartTimeMatches(process, startToken);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
         {
@@ -146,22 +146,51 @@ public static class MuxDiscovery
     }
 
     /// <summary>
-    /// True when <paramref name="startTimeUtcTicks"/> is null (an older descriptor) or the process
-    /// started within a second of it. A start time that cannot be read also answers true: this check
-    /// only ever refuses, so the conservative answer is "no evidence against".
+    /// True when <paramref name="startToken"/> is null (an older descriptor) or the process's own
+    /// token matches it: exactly on Linux, within a second elsewhere. A token that cannot be read
+    /// also answers true: this check only ever refuses, so the conservative answer is "no evidence against".
     /// </summary>
-    public static bool StartTimeMatches(Process process, long? startTimeUtcTicks)
+    public static bool StartTimeMatches(Process process, long? startToken)
     {
         ArgumentNullException.ThrowIfNull(process);
-        if (startTimeUtcTicks is not long expected) return true;
+        if (startToken is not long expected) return true;
+        if (GetProcessStartToken(process) is not long actual) return true;
+        return OperatingSystem.IsLinux() ? actual == expected : Math.Abs(actual - expected) < TimeSpan.TicksPerSecond;
+    }
+
+    /// <summary>
+    /// A process start token that survives clock steps. Linux: the /proc starttime field (clock ticks
+    /// since boot), because .NET derives <see cref="Process.StartTime"/> there from the current wall
+    /// clock, which an NTP step or VM resync shifts. Elsewhere: UTC ticks of <see cref="Process.StartTime"/>.
+    /// Null when it cannot be read. Only ever compared with a token taken on the same host.
+    /// </summary>
+    public static long? GetProcessStartToken(Process process)
+    {
+        ArgumentNullException.ThrowIfNull(process);
         try
         {
-            return Math.Abs(process.StartTime.ToUniversalTime().Ticks - expected) < TimeSpan.TicksPerSecond;
+            if (OperatingSystem.IsLinux())
+                return ParseLinuxStartTicks(File.ReadAllText($"/proc/{process.Id}/stat"));
+            return process.StartTime.ToUniversalTime().Ticks;
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException or IOException or UnauthorizedAccessException)
         {
-            return true;
+            return null;
         }
+    }
+
+    /// <summary>
+    /// Field 22 (starttime) of a /proc/pid/stat line. The comm field (2) may hold spaces and
+    /// parentheses, so parse from the LAST ')': what follows starts at field 3 (state), making
+    /// starttime index 19. Null when the line is malformed.
+    /// </summary>
+    public static long? ParseLinuxStartTicks(string stat)
+    {
+        ArgumentNullException.ThrowIfNull(stat);
+        int close = stat.LastIndexOf(')');
+        if (close < 0) return null;
+        string[] fields = stat[(close + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return fields.Length > 19 && long.TryParse(fields[19], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long ticks) ? ticks : null;
     }
 
     public static void DeleteDescriptorIfOwned(string path, int pid)

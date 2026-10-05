@@ -63,7 +63,7 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
         using Process self = Process.GetCurrentProcess();
         Assert.NotNull(d.StartTime);
-        Assert.True(Math.Abs(d.StartTime!.Value - self.StartTime.ToUniversalTime().Ticks) < TimeSpan.TicksPerSecond);
+        Assert.Equal(MuxDiscovery.GetProcessStartToken(self), d.StartTime);
     }
 
     [Fact]
