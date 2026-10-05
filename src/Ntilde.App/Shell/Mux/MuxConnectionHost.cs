@@ -28,7 +28,8 @@ internal readonly record struct MuxConnectAttempt(bool Interactive);
 /// dropped link is silent until TCP notices, and handles the client's <see cref="MuxClient.Disconnected"/>: a
 /// stopped daemon raises <see cref="DaemonStopped"/>; a lost link raises <see cref="ConnectionLost"/> and
 /// starts a <see cref="MuxReconnectLoop"/>, whose success raises <see cref="Reconnected"/>. Kills asked for
-/// while it is down (<see cref="KillWhenConnected"/>) are sent after the next connect. All of it runs on
+/// while it is down (<see cref="KillWhenConnected"/>) are sent after the next connect, which an idle host
+/// starts itself (one automatic attempt). All of it runs on
 /// <see cref="Scheduler"/> timers and pool continuations, never on a client's delivery thread and never as a
 /// polling loop. A local host does none of this: its behaviour is what it has always been.
 /// </remarks>
@@ -426,10 +427,19 @@ internal sealed class MuxConnectionHost : IDisposable
     /// (<see cref="ReconnectAbandoned"/>): a later connect - a user's Enter - still sends them (controller
     /// ruling). They are dropped, with a log line, only when the host is disposed.
     /// </summary>
+    /// <remarks>
+    /// A remote host that is idle - no live client, no attempt in flight, no reconnect loop running - would
+    /// otherwise hold the kill until something else connects, which may be never: a restored tab closed
+    /// before it was ever shown is the only user of its host. So it starts one automatic attempt (it never
+    /// prompts, and runs off the caller's thread, which may be the UI thread): the kill goes out if keys, an
+    /// agent or a remembered secret let it in. If that attempt fails the kill stays queued for any later
+    /// connect (controller ruling, Task 21 review).
+    /// </remarks>
     public void KillWhenConnected(Guid sessionId)
     {
         MuxClient? live = null;
         bool disposed;
+        bool idle = false;
         lock (_gate)
         {
             disposed = _disposed.IsCancellationRequested;
@@ -437,6 +447,7 @@ internal sealed class MuxConnectionHost : IDisposable
             {
                 live = _client is { IsConnected: true } c ? c : null;
                 if (live is null && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
+                idle = live is null && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
             }
         }
 
@@ -446,7 +457,10 @@ internal sealed class MuxConnectionHost : IDisposable
         }
         else if (live is null)
         {
-            _log?.Invoke($"[Mux] {Policy.DisplayName}: not connected; the kill of session {sessionId} is sent once connected");
+            _log?.Invoke(idle
+                ? $"[Mux] {Policy.DisplayName}: not connected; connecting to send the kill of session {sessionId}"
+                : $"[Mux] {Policy.DisplayName}: not connected; the kill of session {sessionId} is sent once connected");
+            if (idle) _ = TryStartAutomaticAttempt();
         }
         else
         {

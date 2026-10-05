@@ -388,6 +388,83 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(id), "the kill reached the daemon", Patient);
     }
 
+    /// <summary>A shell already running on the remote daemon, started without an exec channel of this host's.</summary>
+    private async Task<Guid> SpawnWithoutAnExecAsync()
+    {
+        (Stream stream, _) = await _remote.ConnectDaemonAsync(Ct);
+        using MuxClient client = await MuxClient.ConnectAsync(stream, null, Ct);
+        return await MuxTestHost.SpawnAsync(client);
+    }
+
+    /// <summary>
+    /// Task 21 review (Review Focus 1): a restored tab closed before it was shown is the only user of its host,
+    /// which has never connected. Its kill must not wait for a connect nobody will start: the host starts one
+    /// automatic attempt - no prompt, for a tab the user already closed - and the kill goes out with it.
+    /// </summary>
+    [Fact]
+    public async Task A_kill_on_an_idle_remote_host_starts_one_automatic_attempt_to_deliver_it()
+    {
+        var attempts = new ConcurrentQueue<bool>();
+        MuxConnectionHost host = Create((_, request) =>
+        {
+            attempts.Enqueue(request.Interactive);
+            return _remote;
+        });
+        Guid closed = await SpawnWithoutAnExecAsync();
+        Guid kept = await SpawnWithoutAnExecAsync();
+        Assert.Equal(0, _remote.StartCount);
+
+        host.KillWhenConnected(closed); // on the caller's thread: it only starts the attempt
+
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the kill reached the daemon", Patient);
+        Assert.Equal(new[] { false }, attempts);
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Contains(kept, _remote.Server.GetSessionIds());
+        Assert.NotNull(host.CurrentClient);
+    }
+
+    /// <summary>The automatic attempt could not get in (a password nobody is there to type): the kill waits for any later connect.</summary>
+    [Fact]
+    public async Task A_kill_whose_automatic_attempt_fails_stays_queued_for_the_next_connect()
+    {
+        MuxConnectionHost host = Create();
+        Guid closed = await SpawnWithoutAnExecAsync();
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+
+        host.KillWhenConnected(closed);
+
+        await TestWait.UntilAsync(() => host.LastFailure is not null, "the automatic attempt failed", Patient);
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Equal(0, _clock.PendingCount); // one attempt, not a loop
+        Assert.Contains(closed, _remote.Server.GetSessionIds());
+        Assert.False(Logged("dropping"));
+
+        _remote.Script = null;
+        Assert.NotNull(host.GetClient(Patient)); // a pane's connect, say
+
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the queued kill reached the daemon", Patient);
+    }
+
+    /// <summary>A kill while the loop runs leaves the connecting to the loop: no attempt of its own.</summary>
+    [Fact]
+    public async Task A_kill_while_reconnecting_starts_no_attempt_of_its_own()
+    {
+        MuxConnectionHost host = Create();
+        var events = new HostEvents(host);
+        Guid closed = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        host.KillWhenConnected(closed);
+
+        Assert.True(Logged($"the kill of session {closed} is sent once connected"));
+        Assert.False(Logged("connecting to send the kill")); // decided, and logged, before KillWhenConnected returns
+        Assert.Equal(1, _remote.StartCount);
+        _clock.Advance(FirstRetry);
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the kill went out with the loop's connect", Patient);
+        Assert.Equal(2, _remote.StartCount);
+    }
+
     /// <summary>Controller ruling: the user meant to end that shell, so its kill outlives the loop giving up.</summary>
     [Fact]
     public async Task A_kill_queued_while_down_outlives_a_give_up_and_goes_out_on_the_next_connect()

@@ -47,6 +47,7 @@ public sealed class MuxRemotePaneTests : IDisposable
     private readonly MuxConnectionHosts _hosts;
     private readonly MuxTerminalSessionFactory _factory;
     private readonly ConcurrentQueue<int> _factoryThreads = new();
+    private readonly ConcurrentQueue<Exception> _offUiFailures = new(); // a test's own assertion that failed off the UI thread
     private readonly List<(string Title, string Message, PersistenceNoticeAction? Action)> _notices = [];
     private readonly List<Window> _windows = [];
     private readonly List<TerminalPane> _panes = [];
@@ -82,11 +83,22 @@ public sealed class MuxRemotePaneTests : IDisposable
 
     private SshProfile? Resolve(Guid id) => id == _sshProfile.Id ? _sshProfile : null;
 
-    /// <summary>The factory call, on a pool thread whose id is recorded: the pane's default is the same Task.Run.</summary>
+    /// <summary>
+    /// The factory call, on a pool thread whose id is recorded. A test's assertion that fails in there is kept, and
+    /// <see cref="PumpUntil"/> rethrows it: it would otherwise only fault the call and surface as a timeout.
+    /// </summary>
     private Task<PersistentSessionResult> OffUiThread(Func<PersistentSessionResult> create) => Task.Run(() =>
     {
         _factoryThreads.Enqueue(Environment.CurrentManagedThreadId);
-        return create();
+        try
+        {
+            return create();
+        }
+        catch (Exception ex) when (ex is Xunit.Sdk.IAssertionException)
+        {
+            _offUiFailures.Enqueue(ex);
+            throw;
+        }
     });
 
     /// <summary>
@@ -126,14 +138,14 @@ public sealed class MuxRemotePaneTests : IDisposable
         return pane;
     }
 
-    private static MuxClientSession Attached(TerminalPane pane)
+    private MuxClientSession Attached(TerminalPane pane)
     {
         PumpUntil(() => pane.Session is MuxClientSession { IsAttached: true }, "the remote pane attached");
         return (MuxClientSession)pane.Session!;
     }
 
     /// <summary>Waits until <paramref name="pane"/> shows <paramref name="id"/> again, through a session other than <paramref name="before"/>.</summary>
-    private static MuxClientSession Reattached(TerminalPane pane, Guid id, MuxClientSession before)
+    private MuxClientSession Reattached(TerminalPane pane, Guid id, MuxClientSession before)
     {
         PumpUntil(() => pane.Session is MuxClientSession { IsAttached: true } m && !ReferenceEquals(m, before), "the pane reattached");
         var again = (MuxClientSession)pane.Session!;
@@ -141,11 +153,12 @@ public sealed class MuxRemotePaneTests : IDisposable
         return again;
     }
 
-    private static void PumpUntil(Func<bool> condition, string because, int timeoutMs = 20_000)
+    private void PumpUntil(Func<bool> condition, string because, int timeoutMs = 20_000)
     {
         var sw = Stopwatch.StartNew();
         while (!condition())
         {
+            if (_offUiFailures.TryPeek(out Exception? failure)) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
             if (sw.ElapsedMilliseconds > timeoutMs) Assert.Fail($"Timed out waiting until {because}.");
             Dispatcher.UIThread.RunJobs();
             Thread.Sleep(10);
@@ -198,7 +211,7 @@ public sealed class MuxRemotePaneTests : IDisposable
 
     private static void PressEnter(TerminalPane pane) => Press(pane, Key.Enter, PhysicalKey.Enter, "\r");
 
-    private static void ShowsBanner(TerminalPane pane, string banner) =>
+    private void ShowsBanner(TerminalPane pane, string banner) =>
         PumpUntil(() => Text(pane).Contains(banner, StringComparison.Ordinal), $"the pane shows {banner}");
 
     /// <summary>Raises one of the host's events as the host does, on a pool thread: the pane must decide from its own state.</summary>
@@ -626,5 +639,103 @@ public sealed class MuxRemotePaneTests : IDisposable
         pane.Dispose();
 
         Assert.Null(field.GetValue(host));
+    }
+
+    /// <summary>
+    /// Task 21 review: a pane at the daemon-stopped banner waits for its own Enter. A later link of the host (another
+    /// pane's Enter brought it up) dropping and coming back is not its loss, and must not start a shell it did not ask for.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_pane_at_the_daemon_stopped_banner_waits_for_its_own_enter()
+    {
+        TerminalPane waiting = ShowPane();
+        Attached(waiting);
+        TerminalPane other = ShowPane();
+        MuxClientSession otherFirst = Attached(other);
+        _remote.StopDaemon();
+        ShowsBanner(waiting, TerminalPane.RemoteDaemonStoppedBanner(Host));
+        ShowsBanner(other, TerminalPane.RemoteDaemonStoppedBanner(Host));
+        PressEnter(other); // a fresh shell on a new daemon
+        PumpUntil(() => other.Session is MuxClientSession { IsAttached: true } m && m.Id != otherFirst.Id, "the other pane started a fresh shell");
+        MuxClientSession otherFresh = (MuxClientSession)other.Session!;
+        int generation = waiting.RemoteConnectGenerationForTest;
+        string before = Text(waiting);
+
+        _remote.CutLink(); // the new link drops ...
+        ShowsBanner(other, TerminalPane.RemoteReconnectingBanner(Host));
+        _clock.Advance(FirstRetry); // ... and comes back
+        Reattached(other, otherFresh.Id, otherFresh);
+        Assert.True(RemoteHost.EventsForTest.Wait(Patient, Ct));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(generation, waiting.RemoteConnectGenerationForTest); // no reattach, no fresh shell
+        Assert.Equal(before, Text(waiting));                               // and no reconnecting banner
+        Assert.Null(waiting.TermView.SessionForTest);
+    }
+
+    /// <summary>
+    /// Task 21 review: the profile stopped persisting between the route and the factory call. Plain SSH stands in,
+    /// and - as for any plain SSH pane - the id stays pending on its own endpoint.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_not_persistent_result_keeps_the_restore_id_on_its_endpoint()
+    {
+        Guid id = Guid.NewGuid();
+        TerminalPane pane = ShowPane(restore: id, offUi: create => OffUiThread(() =>
+        {
+            _sshProfile.MuxOptions.PersistRemoteSessions = false; // turned off while the route was being decided
+            return create();
+        }));
+
+        PumpUntil(() => pane.Session is FakeTerminalSession, "plain SSH stood in");
+        Ntilde.Pty.PaneNode node = SessionManager.BuildPaneTree(pane)!;
+        Assert.Equal((id.ToString("D"), Endpoint), (node.MuxSessionId, node.MuxEndpoint));
+        Assert.False(pane.IsPersistentRemoteTab);
+    }
+
+    /// <summary>Task 21 review: a dropped remote session respawned as plain SSH (persistence switched off) stays saved.</summary>
+    [AvaloniaFact]
+    public void A_dropped_remote_session_respawned_as_plain_ssh_stays_saved()
+    {
+        TerminalPane pane = ShowPane();
+        MuxClientSession first = Attached(pane);
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        pane.SessionFactory = _fallback; // what turning persistence off does to every pane
+        pane.Reconnect();
+
+        Assert.IsType<FakeTerminalSession>(pane.Session);
+        Ntilde.Pty.PaneNode node = SessionManager.BuildPaneTree(pane)!;
+        Assert.Equal((first.Id.ToString("D"), Endpoint), (node.MuxSessionId, node.MuxEndpoint));
+    }
+
+    /// <summary>Task 21 review: a plain SSH spawn is not routed again inside the factory, where a flipped flag would connect on the UI thread.</summary>
+    [AvaloniaFact]
+    public void A_plain_ssh_spawn_goes_straight_to_the_fallback()
+    {
+        _sshProfile.MuxOptions.PersistRemoteSessions = false;
+        var flipping = new FlipOnFirstLookup(_sshProfile);
+        TerminalPane pane = ShowPane(configure: p => p.SessionFactory = new MuxTerminalSessionFactory(_hosts, _fallback, flipping.Resolve, log: null));
+
+        PumpUntil(() => pane.Session is FakeTerminalSession, "plain SSH started");
+        Assert.Equal(0, _remote.StartCount); // the flag came on after the route was decided: still plain SSH, no remote connect
+        Assert.True(flipping.Flipped);
+    }
+
+    /// <summary>The first lookup sees the profile without the flag; the flag is switched on right after it.</summary>
+    private sealed class FlipOnFirstLookup(SshProfile profile)
+    {
+        private int _lookups;
+
+        public bool Flipped => Volatile.Read(ref _lookups) > 0;
+
+        public SshProfile? Resolve(Guid id)
+        {
+            if (id != profile.Id) return null;
+            SshProfile seen = new() { Id = profile.Id, Name = profile.Name, Host = profile.Host, User = profile.User, MuxOptions = new SshMuxOptions { PersistRemoteSessions = profile.MuxOptions.PersistRemoteSessions } };
+            if (Interlocked.Increment(ref _lookups) == 1) profile.MuxOptions.PersistRemoteSessions = true;
+            return seen;
+        }
     }
 }

@@ -6946,7 +6946,8 @@ namespace Ntilde
         /// A user closed this pane: a mux shell must end. KillAsync (not the fire-and-forget Kill): its
         /// reply means the kill landed, and the host waits for it on dispose, so closing the last tab
         /// cannot drop it. Still enqueued synchronously on the UI thread (RequestAsync enqueues before
-        /// its first await). A session that already exited or lost its connection is left alone.
+        /// its first await). A session that already exited is left alone, and so is a local one whose
+        /// connection is gone; a remote one goes through its host whatever its connection says.
         /// </summary>
         /// <param name="muxEndpoint">The pane's <see cref="TerminalPane.MuxEndpoint"/>: its own endpoint's host tracks the kill (Phase 4 spec §5).</param>
         private void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
@@ -6958,14 +6959,18 @@ namespace Ntilde
 
             if (!mux.IsProcessRunning) return;
             Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint);
-            if (!mux.IsConnected)
+            if (!endpoint.IsLocal)
             {
-                // Review Focus 1: a remote tab closed while its link is down. The user meant to end that shell, and
-                // nobody can adopt a remote one: its host sends the kill once connected again. A local session whose
-                // connection is gone is left to orphan adoption, as before.
-                if (!endpoint.IsLocal) _muxHosts?.TryGet(endpoint)?.KillWhenConnected(mux.Id);
+                // Review Focus 1: the user meant to end that shell, and nobody can adopt a remote one. Always through
+                // its host: sent at once (and tracked) while connected, else queued for the next connect - and queued
+                // again if the connection closes before the daemon answers. A dead link can still look connected
+                // until the liveness ping notices, and a kill sent into it straight from here would only be logged.
+                RemoteMuxHostFor(endpoint)?.KillWhenConnected(mux.Id);
                 return;
             }
+
+            // A local session whose connection is gone is left to orphan adoption, as before.
+            if (!mux.IsConnected) return;
 
             try
             {
@@ -6984,17 +6989,36 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Review Focus 1, for a remote pane closed with no session of its own: its id is still pending - a connect
-        /// or reattach in flight, a reattach that failed, a restore that could not reach the host. The user meant
-        /// to end that shell too, and nobody can adopt a remote one, so its host kills it once connected. A local
-        /// pending id is left to orphan adoption, as before. TryGet: a host that was never built has nothing to send.
+        /// Review Focus 1, for a remote pane closed with no session of its own: its id is still pending - a restored
+        /// tab never shown, a connect or reattach in flight, a reattach that failed, a restore that could not reach
+        /// the host. The user meant to end that shell too, and nobody can adopt a remote one, so its host kills it -
+        /// connecting for it if nothing else is (<see cref="Ntilde.Shell.Mux.MuxConnectionHost.KillWhenConnected"/>).
+        /// A local pending id is left to orphan adoption, as before.
         /// </summary>
         private void KillPendingRemoteMuxSessionOnClose(Guid? pendingId, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
         {
             if (disposition != Ntilde.Shell.Mux.PaneDisposition.EndSession || pendingId is not Guid id) return;
             Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint);
             if (endpoint.IsLocal) return;
-            _muxHosts?.TryGet(endpoint)?.KillWhenConnected(id);
+            RemoteMuxHostFor(endpoint)?.KillWhenConnected(id);
+        }
+
+        /// <summary>
+        /// The remote endpoint's host, built if no pane has used it yet - a restored tab closed before it was shown,
+        /// or before its own factory call got that far (the creator only constructs; it never connects). Null when
+        /// the profile is gone or no longer persists its sessions, or the window is closing.
+        /// </summary>
+        private Ntilde.Shell.Mux.MuxConnectionHost? RemoteMuxHostFor(Ntilde.Shell.Mux.MuxEndpointId endpoint)
+        {
+            try
+            {
+                return _muxHosts?.GetOrCreate(endpoint);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] no connection for {endpoint} to send a kill on: {ex.Message}");
+                return null;
+            }
         }
 
         private void HandleSshQuickOpen(TerminalProfile profile, SshQuickOpenTarget target, SshDiagnosticsLevel diagnosticsLevel)

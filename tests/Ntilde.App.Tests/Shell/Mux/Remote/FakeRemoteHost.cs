@@ -112,9 +112,11 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             _channels.Add(channel);
+            // Under the lock: a Dispose racing this start must never find a channel whose remote side has not begun
+            // (it joins that thread). Begin only starts the thread.
+            channel.Begin();
         }
 
-        channel.Begin();
         return channel;
     }
 

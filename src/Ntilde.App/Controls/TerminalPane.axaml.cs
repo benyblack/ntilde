@@ -3472,6 +3472,14 @@ namespace Ntilde.Controls
                     ? persistent
                     : null;
                 bool plainSsh = isSsh && remote is null;
+                if (plainSsh && _muxReattachId is Guid dropped)
+                {
+                    // A remote pane's dropped session, now respawning as plain SSH (its profile stopped persisting):
+                    // the id stays pending where the session file reads it.
+                    MuxSessionIdToRestore ??= dropped;
+                    _muxReattachId = null;
+                }
+
                 bool attachShared = TakeMuxAttachShared(plainSsh); // before TakeMuxSessionIdToRestore clears the id
                 Guid? existingMuxSessionId = TakeMuxSessionIdToRestore(plainSsh);
                 request = request with
@@ -3499,7 +3507,10 @@ namespace Ntilde.Controls
                 {
                     try
                     {
-                        Session = SessionFactory.Create(request);
+                        // Plain SSH, decided above: a mux factory is not asked to route it again here, on the UI thread.
+                        Session = SessionFactory is MuxTerminalSessionFactory muxFactory
+                            ? muxFactory.CreateNotPersistent(request)
+                            : SessionFactory.Create(request);
                         ShellCommand = Session.ShellCommand;
                         ShellArgs = string.Empty;
                     }
@@ -3826,6 +3837,14 @@ namespace Ntilde.Controls
             try
             {
                 session = ApplyPersistentResult(request, result, out previousLost);
+                if (result.Endpoint is null)
+                {
+                    // NotPersistent: the profile stopped persisting after the route was chosen (or the window is
+                    // closing), and plain SSH stood in. As for any plain SSH pane, the id stays pending on its endpoint.
+                    MuxSessionIdToRestore = request.ExistingMuxSessionId;
+                    MuxEndpoint = MuxEndpointId.ForSsh(request.Ssh!.ProfileId).ToString();
+                }
+
                 Session = session;
                 if (session is null) return; // unreachable: the banner, and the id kept, were done there
                 ShellCommand = session.ShellCommand;
@@ -3934,10 +3953,12 @@ namespace Ntilde.Controls
             switch (hostEvent)
             {
                 case RemoteHostEvent.ConnectionLost:
-                    if (ownSessionDropped && !_muxReconnecting) EnterRemoteReconnecting();
+                    // Not while Enter is armed: a later link (another pane's Enter) dropping is not this pane's loss.
+                    if (ownSessionDropped && !_muxReconnecting && !_muxConnectionLost) EnterRemoteReconnecting();
                     break;
                 case RemoteHostEvent.DaemonStopped:
-                    if (ownSessionDropped || _muxReconnecting) EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName));
+                    // Its sessions are gone with it: no Reconnected brings this one back, only the user's Enter.
+                    if (ownSessionDropped || _muxReconnecting) EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName), reattachOnReconnect: false);
                     break;
                 case RemoteHostEvent.ReconnectAbandoned:
                     if (_muxReconnecting) EnterRemoteWaitingForEnter(RemoteAbandonedBanner(_remoteHostName));
@@ -3985,12 +4006,13 @@ namespace Ntilde.Controls
         /// <summary>
         /// UI thread. Nothing will bring the session back on its own - the loop gave up, the daemon stopped, or a
         /// reattach failed with the link up (Review Focus 2) - so Enter does (<see cref="OnKeyDown"/>, <see cref="Reconnect"/>).
-        /// The id is kept.
+        /// The id is kept. <paramref name="reattachOnReconnect"/>: the host's Reconnected (a give-up ended by any Enter)
+        /// still brings this pane back too; false after a stopped daemon, whose sessions went with it.
         /// </summary>
-        private void EnterRemoteWaitingForEnter(string banner)
+        private void EnterRemoteWaitingForEnter(string banner, bool reattachOnReconnect = true)
         {
             if (Session is MuxClientSession mux && MuxSessionIdToRestore is null) _muxReattachId = mux.Id;
-            _muxReattachAfterDrop = true;
+            _muxReattachAfterDrop = reattachOnReconnect;
             _muxReconnecting = false;
             _muxConnectionLost = true;
             TermView.SetSession(null);
@@ -4165,7 +4187,12 @@ namespace Ntilde.Controls
         /// Runs a remote factory call (Phase 4 spec §7.4) off the UI thread: it may wait minutes on its
         /// connection, behind SSH prompts that are shown through the UI thread. A seam for tests.
         /// </summary>
-        internal Func<Func<PersistentSessionResult>, Task<PersistentSessionResult>> RunOffUiThread { get; set; } = f => Task.Run(f);
+        /// <remarks>
+        /// Long-running by default: each call can block its thread for the remote connect timeout (two minutes), and
+        /// several panes restoring at once must not hold pool threads the connection itself needs.
+        /// </remarks>
+        internal Func<Func<PersistentSessionResult>, Task<PersistentSessionResult>> RunOffUiThread { get; set; } =
+            f => Task.Factory.StartNew(f, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
         /// <summary>
         /// The action a remote notice offers for its failure (spec §7.5: "Install ntilde-mux…"), from the
@@ -4339,7 +4366,11 @@ namespace Ntilde.Controls
             // Delivery thread; marshal. The attach itself changes the count, so a v2 daemon announces
             // the initial sharing right after the snapshot. One already posted when the connection
             // dropped must not re-show the badge that the loss hid.
-            mux.SessionChanged += () => this.Dispatcher.Post(() => { if (IsCurrentMux(mux) && !_muxConnectionLost) ApplyMuxSharing(mux.InteractiveOthers); });
+            // A remote drop sets neither flag until its host speaks, hence the connection check too.
+            mux.SessionChanged += () => this.Dispatcher.Post(() =>
+            {
+                if (IsCurrentMux(mux) && !_muxConnectionLost && !_muxReconnecting && mux.IsConnected) ApplyMuxSharing(mux.InteractiveOthers);
+            });
             _ = AttachMuxAsync(mux, previousLost);
         }
 

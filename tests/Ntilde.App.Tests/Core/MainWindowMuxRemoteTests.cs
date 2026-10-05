@@ -43,6 +43,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     private readonly FakeMuxTimerScheduler _clock = new();
     private readonly SshProfile _sshProfile = RemoteMuxConnectorTests.Profile();
     private MuxConnectionHost? _local;
+    private MuxConnectionHosts? _hosts;
 
     public MainWindowMuxRemoteTests()
     {
@@ -56,6 +57,8 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     public void Dispose()
     {
         TestMainWindowFactory.DisposeCreatedWindows();
+        // The window's hosts, remote ones included: closing a remote pane above can start a host's connect for its kill.
+        _hosts?.Dispose();
         _local?.Dispose();
         _remote.Dispose();
         _localMux.Dispose();
@@ -66,15 +69,26 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
     private SshProfile? Resolve(Guid id) => id == _sshProfile.Id ? _sshProfile : null;
 
+    private int _uiThread;
+    private int _factoryCallsOffUi; // CreatePersistent resolves the profile once, first: one per remote factory call
+
+    /// <summary>The factory's own lookup, counting the calls made off the UI thread (the panes' remote factory calls).</summary>
+    private SshProfile? FactoryResolve(Guid id)
+    {
+        if (Environment.CurrentManagedThreadId != Volatile.Read(ref _uiThread)) Interlocked.Increment(ref _factoryCallsOffUi);
+        return Resolve(id);
+    }
+
     /// <summary>The app's wiring over the test's daemons: the local one in memory, the remote one behind <see cref="_remote"/>.</summary>
     private MainWindow CreateWindow()
     {
+        Volatile.Write(ref _uiThread, Environment.CurrentManagedThreadId);
         _local = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_localMux.Listener.Connect(), null, ct), "test", null)
         {
             DisposeFlushTimeout = TimeSpan.FromSeconds(1),
         };
-        var hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, _) => _remote, log: null, userPrompts: null, scheduler: _clock));
-        var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), Resolve, null);
+        var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, _) => _remote, log: null, userPrompts: null, scheduler: _clock));
+        var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
@@ -91,10 +105,32 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         PaneNode root = leaves.Length == 1
             ? leaves[0]
             : new PaneNode { Type = NodeType.Split, SplitOrientation = 0, Children = [.. leaves] };
-        var session = new NtildeSession { Tabs = { new TabSession { Title = "remote", Root = root } } };
+        SaveTabs(root);
+    }
+
+    /// <summary>A session file with one tab per root, the first selected: the others restore in the background, unshown.</summary>
+    private static void SaveTabs(params PaneNode[] roots)
+    {
+        var session = new NtildeSession { ActiveTabIndex = 0 };
+        foreach (PaneNode root in roots) session.Tabs.Add(new TabSession { Title = $"tab {session.Tabs.Count}", Root = root });
         Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.SessionFilePath)!);
         File.WriteAllText(AppPaths.SessionFilePath, JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession));
     }
+
+    private static PaneNode LocalLeaf() => new() { Type = NodeType.Leaf, Command = "scripted" };
+
+    private MuxConnectionHost? RemoteHostOf(MainWindow window) => window.MuxHosts!.TryGet(MuxEndpointId.ForSsh(_sshProfile.Id));
+
+    private static Task<bool> Close(MainWindow window, TerminalPane pane) =>
+        (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [pane, true])!;
+
+    /// <summary>Waits until <paramref name="id"/> is gone from the remote daemon, moving the clock on whenever the host's loop is waiting.</summary>
+    private void KillLands(MuxConnectionHost host, Guid id, string because) => PumpUntil(() =>
+    {
+        if (host.IsReconnecting) _clock.Advance(FirstRetry);
+        _remote.Server.ReapExitedSessions(TimeSpan.Zero);
+        return !_remote.Server.GetSessionIds().Contains(id);
+    }, because);
 
     /// <summary>An SSH pane of the persisted profile, as the window saved it: reopening <paramref name="id"/> on the remote daemon.</summary>
     private PaneNode RemoteLeaf(Guid id) => new()
@@ -171,10 +207,16 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     {
         Guid[] ids = SpawnOnRemote(3);
         SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]), RemoteLeaf(ids[2]));
+        // The first exec start is held until all three factory calls are under way, so the later two meet the first
+        // one's connect in flight (an SSH prompt being answered, in real life) and must join it, not start their own.
+        bool overlapped = false;
+        _remote.OnStart = _ => overlapped |= SpinWait.SpinUntil(() => Volatile.Read(ref _factoryCallsOffUi) >= 3, Patient);
 
         MainWindow window = CreateWindow();
 
         PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 3, "all three panes reattached");
+        Assert.True(overlapped, "the three factory calls overlapped the held connect");
+        Assert.Equal(3, Volatile.Read(ref _factoryCallsOffUi));
         Assert.Equal(1, _remote.StartCount);
         Assert.Equal(ids.Order(), RemotePanes(window).Select(p => p.Session!.Id).Order());
         Assert.All(RemotePanes(window), p => Assert.Equal(MuxAttachMode.IfUnattached, ((MuxClientSession)p.Session!).AttachMode));
@@ -208,6 +250,62 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         }, "the queued kill ended the closed pane's shell");
         PumpUntil(() => staying.Session is MuxClientSession { IsAttached: true } m && !ReferenceEquals(m, stayingSession), "the other pane reattached");
         Assert.Equal(ids[1], staying.Session!.Id);
+        Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
+    /// Task 21 review, Review Focus 1: a link that died silently still looks connected until the liveness ping
+    /// notices. A tab closed then must not lose its kill to that dead connection: the host sends it again once
+    /// connected.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_remote_pane_on_a_silently_dead_link_still_kills_it()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]));
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes reattached");
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        MuxClient client = host.CurrentClient!;
+        TerminalPane closing = RemotePanes(window).Single(p => p.Session!.Id == ids[0]);
+
+        _remote.StallLink(); // nothing gets through any more, and nothing says so
+        PumpUntil(() => Environment.TickCount64 > client.LastReceivedTicks, "the clock moved past the last frame"); // the ping's slice starts after it
+        Task<bool> close = Close(window, closing);
+        PumpUntil(() => close.IsCompleted, "the pane closed");
+        Assert.True(close.Result);
+        Assert.True(client.IsConnected); // the close saw a connected session
+
+        _clock.Advance(TimeSpan.FromSeconds(15)); // the liveness ping goes out ...
+        _clock.Advance(TimeSpan.FromSeconds(10)); // ... and is not answered: the dead link is dropped
+
+        KillLands(host, ids[0], "the kill reached the daemon over the new connection");
+        Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
+    /// Task 21 review, Review Focus 1: a restored remote tab that was never shown has no connection - nothing of
+    /// that profile has connected - yet closing it must still end its shell, which nobody could adopt.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_never_shown_restored_remote_tab_kills_its_shell()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        SaveTabs(LocalLeaf(), RemoteLeaf(ids[0]));
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Count == 1, "the background tab was restored");
+        TerminalPane unshown = RemotePanes(window).Single();
+        Assert.Null(unshown.Session);
+        Assert.Equal(ids[0], unshown.MuxSessionIdToRestore);
+        Assert.Null(RemoteHostOf(window)); // no pane of this profile has asked for a connection
+        Assert.Equal(0, _remote.StartCount);
+
+        Task<bool> close = Close(window, unshown);
+        PumpUntil(() => close.IsCompleted, "the tab closed");
+        Assert.True(close.Result);
+
+        KillLands(RemoteHostOf(window)!, ids[0], "the kill reached the daemon");
+        Assert.Equal(1, _remote.StartCount); // the host connected for it, once
         Assert.Contains(ids[1], _remote.Server.GetSessionIds());
     }
 

@@ -108,6 +108,17 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     }
 
     /// <summary>
+    /// The fallback's session, for an SSH request the caller already found does not route remote (plain SSH):
+    /// not routed again, so a profile that starts persisting meanwhile can never make the caller - the UI
+    /// thread - wait on a remote connection (Phase 4 spec §7.4).
+    /// </summary>
+    public ITerminalSession CreateNotPersistent(TerminalSessionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return _fallback.Create(request);
+    }
+
+    /// <summary>
     /// The plain factory contract has no "no session" answer: an unreachable reopen (or an ended share) falls back here.
     /// As with <see cref="CreatePersistent"/>, a request that <see cref="RoutesRemote"/> must not be made on the UI thread.
     /// </summary>
