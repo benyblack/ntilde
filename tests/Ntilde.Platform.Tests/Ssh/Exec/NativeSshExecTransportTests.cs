@@ -43,6 +43,43 @@ public sealed class NativeSshExecTransportTests
         return Encoding.UTF8.GetString(buffer.ToArray());
     }
 
+    private const int ChunkBytes = 1024 * 1024;
+
+    /// <summary>Queues one-MiB stdout chunks, four past what fills the stdout queue; returns how many.</summary>
+    private static int EnqueueChunksPastThePauseThreshold(ScriptedNativeSshInterop interop, out int chunksToFill)
+    {
+        chunksToFill = (int)(NativeSshExecChannel.StdoutPauseThresholdBytes / ChunkBytes);
+        int chunks = chunksToFill + 4;
+        for (int i = 0; i < chunks; i++)
+        {
+            interop.Enqueue(NativeSshEvent.Data(Enumerable.Repeat((byte)i, ChunkBytes).ToArray()));
+        }
+
+        return chunks;
+    }
+
+    /// <summary>One synchronous <see cref="Stream.Read(Span{byte})"/> on a dedicated thread, as the mux client reads.</summary>
+    private static (Thread Reader, Task<string> Read) StartSynchronousRead(Stream stdout)
+    {
+        var result = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reader = new Thread(() =>
+        {
+            try
+            {
+                byte[] buffer = new byte[64];
+                int read = stdout.Read(buffer);
+                result.TrySetResult(Encoding.UTF8.GetString(buffer, 0, read));
+            }
+            catch (Exception ex)
+            {
+                result.TrySetException(ex);
+            }
+        })
+        { IsBackground = true, Name = "TestSyncReader" };
+        reader.Start();
+        return (reader, result.Task);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition, string what)
     {
         DateTime deadline = DateTime.UtcNow + Bound;
@@ -177,8 +214,9 @@ public sealed class NativeSshExecTransportTests
 
         IOException failure = await Assert.ThrowsAnyAsync<IOException>(() =>
             channel.Stdout.ReadAsync(buffer, TestContext.Current.CancellationToken).AsTask().WaitAsync(Bound, TestContext.Current.CancellationToken));
-        Assert.IsType<SshExecTransportException>(failure);
+        SshExecTransportException transportFailure = Assert.IsType<SshExecTransportException>(failure);
         Assert.Contains("the server refused to run the command", failure.Message, StringComparison.Ordinal);
+        Assert.Equal("the server refused to run the command", transportFailure.NativeMessage);
 
         Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
         Assert.Contains("the server refused to run the command", channel.StderrTail, StringComparison.Ordinal);
@@ -325,20 +363,127 @@ public sealed class NativeSshExecTransportTests
         Assert.Equal(0, await blockedRead.WaitAsync(Bound, TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task Disposing_the_channel_while_the_poll_thread_waits_on_a_full_queue_frees_it_and_keeps_the_exit_code()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        int chunks = EnqueueChunksPastThePauseThreshold(interop, out int chunksToFill);
+        interop.Enqueue(NativeSshEvent.ExitStatus(0), ScriptedNativeSshInterop.Closed());
+        ISshExecChannel channel = Start(interop);
+        await WaitUntilAsync(() => interop.Dequeued >= chunksToFill, "the queue to fill");
+
+        await Task.Run(channel.Dispose, TestContext.Current.CancellationToken)
+            .WaitAsync(NativeSshExecChannel.ExitGrace + NativeSshExecChannel.StopWait + Bound, TestContext.Current.CancellationToken);
+
+        // Abandoning stdout woke the parked poll thread, which dropped the rest and reached Closed
+        // within the grace period. Had it stayed parked, the channel would have stopped it: null.
+        Assert.Equal(0, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Equal(chunks + 2, interop.Dequeued);
+        Assert.Equal(1, interop.CloseCount);
+        Assert.False(interop.PollThread!.IsAlive);
+    }
+
+    [Fact]
+    public async Task Disposing_the_channel_during_a_pending_prompt_cancels_the_handler_and_records_no_failure()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(ScriptedNativeSshInterop.HostKeyPrompt());
+        var handler = new PendingInteractionHandler();
+        ISshExecChannel channel = Start(interop, handler);
+        await handler.Request.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        await Task.Run(channel.Dispose, TestContext.Current.CancellationToken)
+            .WaitAsync(NativeSshExecChannel.ExitGrace + NativeSshExecChannel.StopWait + Bound, TestContext.Current.CancellationToken);
+
+        Assert.True(handler.Token.IsCancellationRequested);
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Empty(interop.Submissions);
+        Assert.DoesNotContain("native ssh", channel.StderrTail, StringComparison.Ordinal);
+        Assert.Equal(0, channel.Stdout.Read(new byte[16])); // the end, and no transport failure to throw
+        Assert.Equal(1, interop.CloseCount);
+        Assert.False(interop.PollThread!.IsAlive);
+    }
+
+    // --- Synchronous reads (the mux client's read thread) ----------------------------------------
+
+    [Fact]
+    public async Task A_synchronous_read_waiting_on_an_empty_queue_is_woken_by_the_poll_threads_data()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        using ISshExecChannel channel = Start(interop);
+        (Thread reader, Task<string> read) = StartSynchronousRead(channel.Stdout);
+        await WaitUntilAsync(() => reader.ThreadState.HasFlag(ThreadState.WaitSleepJoin), "the reader to wait");
+
+        interop.Enqueue(ScriptedNativeSshInterop.Stdout("frame"));
+
+        Assert.Equal("frame", await read.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Disposing_stdout_releases_a_waiting_synchronous_read_and_the_command_runs_on()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        using ISshExecChannel channel = Start(interop);
+        (Thread reader, Task<string> read) = StartSynchronousRead(channel.Stdout);
+        await WaitUntilAsync(() => reader.ThreadState.HasFlag(ThreadState.WaitSleepJoin), "the reader to wait");
+
+        channel.Stdout.Dispose();
+
+        Assert.Equal(string.Empty, await read.WaitAsync(Bound, TestContext.Current.CancellationToken));
+
+        // Nobody reads stdout any more: the poll thread drops it and carries on to the exit.
+        interop.Enqueue(ScriptedNativeSshInterop.Stdout(new string('x', 1024)), NativeSshEvent.ExitStatus(5), ScriptedNativeSshInterop.Closed());
+        Assert.Equal(5, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Throws<ObjectDisposedException>(() => channel.Stdout.Read(new byte[16]));
+    }
+
+    [Fact]
+    public async Task A_failing_poll_ends_the_channel_with_a_transport_failure()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(ScriptedNativeSshInterop.Stdout("before"));
+        using ISshExecChannel channel = Start(interop);
+        byte[] buffer = new byte[64];
+        Assert.Equal(6, await channel.Stdout.ReadAsync(buffer, TestContext.Current.CancellationToken).AsTask().WaitAsync(Bound, TestContext.Current.CancellationToken));
+
+        interop.PollFailure = new InvalidOperationException("Native SSH poll failed with result -7.");
+
+        SshExecTransportException failure = await Assert.ThrowsAsync<SshExecTransportException>(() =>
+            channel.Stdout.ReadAsync(buffer, TestContext.Current.CancellationToken).AsTask().WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Contains("Native SSH poll failed with result -7.", failure.NativeMessage, StringComparison.Ordinal);
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Contains("Native SSH poll failed with result -7.", channel.StderrTail, StringComparison.Ordinal);
+        Assert.Equal(1, interop.CloseCount);
+    }
+
+    // --- SshExec over the native transport -------------------------------------------------------
+
+    [Fact]
+    public async Task SshExec_returns_a_native_connection_failure_as_a_result_as_it_does_OpenSSHs_255()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(
+            ScriptedNativeSshInterop.Connected(),
+            ScriptedNativeSshInterop.Stdout("motd\n"),
+            ScriptedNativeSshInterop.Error("authentication failed"),
+            ScriptedNativeSshInterop.Closed());
+
+        SshExecResult result = await SshExec.RunAsync(Transport(interop), "uname -sm", ReadOnlyMemory<byte>.Empty, null, Bound, CancellationToken.None)
+            .WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Null(result.ExitCode);
+        Assert.Equal("motd\n", result.Stdout);
+        Assert.Contains("authentication failed", result.Stderr, StringComparison.Ordinal);
+        Assert.Equal(1, interop.CloseCount);
+    }
+
     // --- Backpressure ----------------------------------------------------------------------------
 
     [Fact]
     public async Task A_consumer_that_stops_reading_stops_the_polling_and_reading_resumes_it()
     {
-        const int Chunk = 1024 * 1024;
-        int chunksToFill = (int)(NativeSshExecChannel.StdoutPauseThresholdBytes / Chunk);
-        int chunks = chunksToFill + 4;
         var interop = new ScriptedNativeSshInterop();
-        for (int i = 0; i < chunks; i++)
-        {
-            interop.Enqueue(NativeSshEvent.Data(Enumerable.Repeat((byte)i, Chunk).ToArray()));
-        }
-
+        int chunks = EnqueueChunksPastThePauseThreshold(interop, out int chunksToFill);
         interop.Enqueue(NativeSshEvent.ExitStatus(0), ScriptedNativeSshInterop.Closed());
 
         using ISshExecChannel channel = Start(interop);
@@ -354,9 +499,9 @@ public sealed class NativeSshExecTransportTests
         using var drained = new MemoryStream();
         await channel.Stdout.CopyToAsync(drained, TestContext.Current.CancellationToken).WaitAsync(Bound, TestContext.Current.CancellationToken);
 
-        Assert.Equal((long)chunks * Chunk, drained.Length);
+        Assert.Equal((long)chunks * ChunkBytes, drained.Length);
         byte[] bytes = drained.ToArray();
-        Assert.All(Enumerable.Range(0, chunks), i => Assert.Equal((byte)i, bytes[(long)i * Chunk]));
+        Assert.All(Enumerable.Range(0, chunks), i => Assert.Equal((byte)i, bytes[(long)i * ChunkBytes]));
         Assert.Equal(0, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
     }
 
@@ -408,8 +553,12 @@ public sealed class NativeSshExecTransportTests
 
         public Task<SshInteractionRequest> Request => _request.Task;
 
+        /// <summary>The token the handler was given: the channel cancels it when it stops.</summary>
+        public CancellationToken Token { get; private set; }
+
         public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
         {
+            Token = cancellationToken;
             _request.TrySetResult(request);
             return _response.Task.WaitAsync(cancellationToken);
         }

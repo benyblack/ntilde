@@ -18,15 +18,23 @@ public static class SshExec
     private const int StdoutBufferBytes = 16 * 1024;
 
     /// <summary>
-    /// Runs <paramref name="command"/>: starts it (off the calling thread - a native transport blocks
-    /// in <see cref="ISshExecTransport.Start"/> during connect and auth), writes
-    /// <paramref name="stdin"/> in <see cref="StdinChunkBytes"/> chunks, sends EOF, reads stdout to the
-    /// end and returns the exit status with the stderr tail.
+    /// Runs <paramref name="command"/>: starts it (off the calling thread, since
+    /// <see cref="ISshExecTransport.Start"/> may block), writes <paramref name="stdin"/> in
+    /// <see cref="StdinChunkBytes"/> chunks, sends EOF, reads stdout to the end and returns the exit
+    /// status with the stderr tail.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Stdout is read while stdin is written, so a command that echoes its input cannot deadlock on a
     /// full pipe. A command that stops reading its stdin (it exited, or failed first) is not an error
     /// here: the write ends, and its exit status and stderr say what happened.
+    /// </para>
+    /// <para>
+    /// A failed SSH connection is a result, not an exception, whichever transport ran it. OpenSSH
+    /// reports one as exit 255 with ssh's message on stderr. The native transport reports one as an
+    /// <see cref="SshExecTransportException"/> from stdout; that becomes a null exit code, the stdout
+    /// read before it, and the native message in <see cref="SshExecResult.Stderr"/>.
+    /// </para>
     /// </remarks>
     /// <param name="stdinProgress">Receives the total bytes written after each chunk; none for empty stdin.</param>
     /// <param name="timeout">The whole run, start included (<see cref="Timeout.InfiniteTimeSpan"/> for no limit).</param>
@@ -62,16 +70,28 @@ public static class SshExec
             throw TimeoutFor(transport, timeout);
         }
 
-        Task<byte[]>? stdoutTask = null;
+        Task<StdoutCapture>? stdoutTask = null;
         bool completed = false;
         try
         {
             stdoutTask = Task.Run(() => ReadCappedAsync(channel.Stdout, token), CancellationToken.None);
             await WriteStdinAsync(channel.Stdin, stdin, stdinProgress, token).ConfigureAwait(false);
-            byte[] stdout = await stdoutTask.WaitAsync(token).ConfigureAwait(false);
+            StdoutCapture stdout = await stdoutTask.WaitAsync(token).ConfigureAwait(false);
             int? exitCode = await channel.Completion.WaitAsync(token).ConfigureAwait(false);
             completed = true;
-            return new SshExecResult(exitCode, Encoding.UTF8.GetString(stdout), channel.StderrTail);
+
+            string stderr = channel.StderrTail;
+            if (stdout.TransportFailure is { } failure)
+            {
+                // As OpenSSH's 255 reads: no exit status of the command's own, and the reason on stderr.
+                exitCode = null;
+                if (!stderr.Contains(failure.NativeMessage, StringComparison.Ordinal))
+                {
+                    stderr = $"{stderr}{failure.NativeMessage}\n";
+                }
+            }
+
+            return new SshExecResult(exitCode, Encoding.UTF8.GetString(stdout.Bytes), stderr);
         }
         catch (OperationCanceledException) when (TimedOut())
         {
@@ -127,16 +147,29 @@ public static class SshExec
         CloseQuietly(stdin);
     }
 
-    private static async Task<byte[]> ReadCappedAsync(Stream stdout, CancellationToken token)
+    /// <summary>Stdout up to <see cref="MaxStdoutBytes"/>, and the transport failure that ended it, if one did.</summary>
+    private readonly record struct StdoutCapture(byte[] Bytes, SshExecTransportException? TransportFailure);
+
+    private static async Task<StdoutCapture> ReadCappedAsync(Stream stdout, CancellationToken token)
     {
         using var kept = new MemoryStream();
         byte[] buffer = new byte[StdoutBufferBytes];
         while (true)
         {
-            int read = await stdout.ReadAsync(buffer, token).ConfigureAwait(false);
+            int read;
+            try
+            {
+                read = await stdout.ReadAsync(buffer, token).ConfigureAwait(false);
+            }
+            catch (SshExecTransportException ex)
+            {
+                // The connection failed after (or before) this much output: a result, as for OpenSSH.
+                return new StdoutCapture(kept.ToArray(), ex);
+            }
+
             if (read == 0)
             {
-                return kept.ToArray();
+                return new StdoutCapture(kept.ToArray(), null);
             }
 
             // Past the cap the rest is still read, so the command never blocks on a full pipe.

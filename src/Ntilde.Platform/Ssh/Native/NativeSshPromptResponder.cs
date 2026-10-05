@@ -40,12 +40,6 @@ internal sealed class NativeSshPromptResponder
         _allowVaultPasswordReuse = profile.Id != Guid.Empty;
     }
 
-    public static bool IsPrompt(NativeSshEventKind kind) =>
-        kind is NativeSshEventKind.HostKeyPrompt
-            or NativeSshEventKind.PasswordPrompt
-            or NativeSshEventKind.PassphrasePrompt
-            or NativeSshEventKind.KeyboardInteractivePrompt;
-
     /// <summary>
     /// Asks <paramref name="handler"/> about <paramref name="promptEvent"/> and submits its answer. With no
     /// handler, the answer is a cancel. The native session waits for the answer, so its caller should

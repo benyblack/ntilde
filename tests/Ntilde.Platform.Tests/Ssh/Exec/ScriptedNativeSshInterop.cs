@@ -28,6 +28,9 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     /// <summary>Thrown from <see cref="Exec"/> instead of returning <see cref="Handle"/>.</summary>
     public Exception? ExecFailure { get; set; }
 
+    /// <summary>Thrown from the next <see cref="PollEvent"/> once set, as the real interop throws on a failed poll.</summary>
+    public Exception? PollFailure { get; set; }
+
     /// <summary>Runs on every <see cref="SendEof"/>: a command that ends on stdin's EOF queues its exit here.</summary>
     public Action<ScriptedNativeSshInterop>? OnSendEof { get; set; }
 
@@ -106,6 +109,10 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     {
         Volatile.Write(ref _pollThread, Thread.CurrentThread);
         Interlocked.Increment(ref _polls);
+        if (PollFailure is { } failure)
+        {
+            throw failure;
+        }
 
         // As the real interop: a closed handle has no events.
         if (sessionHandle.IsClosed || !_events.TryDequeue(out NativeSshEvent? next))

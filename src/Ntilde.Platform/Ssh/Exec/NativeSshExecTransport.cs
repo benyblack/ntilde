@@ -1,6 +1,4 @@
-using System.Buffers;
 using System.Globalization;
-using System.IO.Pipelines;
 using System.Text;
 using System.Text.Json;
 using Ntilde.Platform.Ssh.Interactions;
@@ -68,6 +66,10 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     /// Starts <paramref name="remoteCommand"/> and returns its channel at once. Connect and auth have not
     /// happened yet: see the class remarks.
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The command is blank, or the profile cannot be connected to: a blank host or user, or a jump hop
+    /// without a host. <see cref="ArgumentOutOfRangeException"/> for a port outside 1-65535.
+    /// </exception>
     /// <exception cref="InvalidOperationException">The native layer rejected the connection options.</exception>
     public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
     {
@@ -109,11 +111,18 @@ public sealed class NativeSshExecTransport : ISshExecTransport
 
 /// <summary>
 /// A native exec session as an <see cref="ISshExecChannel"/>. One dedicated thread polls the session's
-/// handle; nothing else polls it. That thread routes stdout into a bounded pipe behind
-/// <see cref="Stdout"/>, stderr into <see cref="StderrTail"/>, prompts to the interaction handler, and
-/// the exit status and the close into <see cref="Completion"/>.
+/// handle; nothing else polls it. That thread routes stdout into a <see cref="BoundedChunkQueue"/>
+/// behind <see cref="Stdout"/>, stderr into <see cref="StderrTail"/>, prompts to the interaction
+/// handler, and the exit status and the close into <see cref="Completion"/>.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The output path has no thread-pool work. The poll thread queues each stdout chunk and wakes a
+/// synchronous <see cref="Stream.Read(Span{byte})"/> (the mux client's read thread) directly, so
+/// remote output keeps flowing while the pool is starved. Only an asynchronous read that finds the
+/// queue empty waits on a pool thread. Those reads are the proxy handshake and one-shot
+/// <see cref="SshExec"/> commands; neither is on the output path.
+/// </para>
 /// <para>
 /// Backpressure: past <see cref="StdoutPauseThresholdBytes"/> unread, the poll thread waits for the
 /// reader and stops polling meanwhile. rusty_ssh's queue then fills to its 4 MiB budget, its worker
@@ -133,14 +142,15 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     internal static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(2);
 
     /// <summary>How long a closed session's poll thread may take to stop.</summary>
-    private static readonly TimeSpan StopWait = TimeSpan.FromSeconds(2);
+    internal static readonly TimeSpan StopWait = TimeSpan.FromSeconds(2);
 
     private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(10);
 
     /// <summary>Unread stdout at which the poll thread stops and waits for the reader.</summary>
     internal const long StdoutPauseThresholdBytes = 16L * 1024 * 1024;
 
-    private const long StdoutResumeThresholdBytes = StdoutPauseThresholdBytes / 2;
+    /// <summary>Unread stdout at which a waiting poll thread resumes.</summary>
+    internal const long StdoutResumeThresholdBytes = StdoutPauseThresholdBytes / 2;
 
     private const int StderrTailBytes = 8192;
 
@@ -149,10 +159,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     private readonly ISshInteractionHandler? _interactionHandler;
     private readonly string _displayName;
     private readonly Action<string> _log;
-    private readonly Pipe _stdoutPipe = new(new PipeOptions(
-        pauseWriterThreshold: StdoutPauseThresholdBytes,
-        resumeWriterThreshold: StdoutResumeThresholdBytes,
-        useSynchronizationContext: false));
+    private readonly BoundedChunkQueue _stdoutQueue = new(StdoutPauseThresholdBytes, StdoutResumeThresholdBytes);
     private readonly StdoutStream _stdout;
     private readonly StdinStream _stdin;
     private readonly BoundedTail _stderrTail = new(StderrTailBytes);
@@ -163,7 +170,6 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     private NovaSshSafeHandle? _handle;
     private volatile string? _failure;
     private volatile bool _ended;
-    private volatile bool _discardStdout;
     private int _closing;
 
     // Poll thread only.
@@ -183,7 +189,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         _interactionHandler = interactionHandler;
         _displayName = displayName;
         _log = log;
-        _stdout = new StdoutStream(this, _stdoutPipe.Reader);
+        _stdout = new StdoutStream(this, _stdoutQueue);
         _stdin = new StdinStream(this);
         Completion = _completion.Task;
 
@@ -199,9 +205,10 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     /// <summary>
     /// Ends the command without hanging. It sends stdin's EOF, which ends a command reading its stdin
     /// (the proxy exits 0 on it), and gives the command up to <see cref="ExitGrace"/> to end. Then it
-    /// closes the session, which drops the connection, and waits up to 2 s for the poll thread. A
-    /// reader blocked on <see cref="Stdout"/> returns. Stdout that arrives after this call is dropped.
-    /// Blocks for up to <see cref="ExitGrace"/> plus the stop's bounded wait, so never call it on the UI thread.
+    /// closes the session, which drops the connection, and waits up to <see cref="StopWait"/> for the
+    /// poll thread. A reader blocked on <see cref="Stdout"/> returns. Stdout that arrives after this
+    /// call is dropped. Blocks for up to <see cref="ExitGrace"/> plus <see cref="StopWait"/>, so never
+    /// call it on the UI thread.
     /// </summary>
     public void Dispose() => Close(ExitGrace);
 
@@ -216,19 +223,24 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         }
 
         _stdin.Dispose();
-        AbandonStdout();
+
+        // Nobody will read what comes after this. A poll thread parked on a full queue moves on, and
+        // keeps polling (dropping stdout) until Closed.
+        _stdoutQueue.Abandon();
 
         if (!_pollThread.Join(grace))
         {
-            _log($"[NativeSshExec] {_displayName}: the command did not end on EOF; closing the session");
+            Log(grace == TimeSpan.Zero
+                ? $"[NativeSshExec] {_displayName}: start cancelled; closing the session"
+                : $"[NativeSshExec] {_displayName}: the command did not end on EOF; closing the session");
             _stop.Cancel();
             CloseHandle();
             if (!_pollThread.Join(StopWait))
             {
                 // Stuck in an interaction handler that ignores its cancellation. The session is
-                // closed regardless; release the reader rather than leave it on a pipe nobody completes.
-                _log($"[NativeSshExec] {_displayName}: the poll thread did not stop; releasing stdout");
-                _stdout.Release();
+                // closed regardless; release the reader rather than leave it on a queue nobody completes.
+                Log($"[NativeSshExec] {_displayName}: the poll thread did not stop; releasing stdout");
+                _stdoutQueue.Release();
                 return;
             }
         }
@@ -237,19 +249,12 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         _stop.Dispose();
     }
 
-    /// <summary>Nobody will read stdout from now on: drop what still comes, and stop waiting on a full pipe.</summary>
-    internal void AbandonStdout()
-    {
-        _discardStdout = true;
-        _stdoutPipe.Writer.CancelPendingFlush();
-    }
-
     /// <summary>At the end of stdout: the transport's failure, if it reported one.</summary>
     internal void ThrowIfTransportFailed()
     {
         if (_failure is { } failure)
         {
-            throw new SshExecTransportException($"SSH to {_displayName} failed: {failure}");
+            throw new SshExecTransportException($"SSH to {_displayName} failed: {failure}", failure);
         }
     }
 
@@ -293,13 +298,12 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         }
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
         {
-            _log($"[NativeSshExec] {_displayName}: sending EOF: {ex.Message}");
+            Log($"[NativeSshExec] {_displayName}: sending EOF: {ex.Message}");
         }
     }
 
     private void PollLoop()
     {
-        PipeWriter stdout = _stdoutPipe.Writer;
         bool closedByServer = false;
         try
         {
@@ -321,10 +325,12 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 switch (next.Kind)
                 {
                     case NativeSshEventKind.Connected:
-                        _log($"[NativeSshExec] {_displayName}: connected; the command is starting");
+                        Log($"[NativeSshExec] {_displayName}: connected; the command is starting");
                         break;
                     case NativeSshEventKind.Data:
-                        WriteStdout(stdout, next.Payload);
+                        // The payload is a fresh array per event, so the queue takes it without a copy.
+                        // Past the pause threshold this waits for the reader (see the class remarks).
+                        _stdoutQueue.Enqueue(next.Payload, _stop.Token);
                         break;
                     case NativeSshEventKind.ExtendedData:
                         _stderrTail.Append(next.Payload);
@@ -365,25 +371,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         }
         finally
         {
-            Finish(stdout, closedByServer);
-        }
-    }
-
-    private void WriteStdout(PipeWriter stdout, byte[] payload)
-    {
-        if (_discardStdout || payload.Length == 0)
-        {
-            return;
-        }
-
-        // Past the pause threshold this waits for the reader (see the class remarks). The wait ends
-        // when the reader catches up, when it is gone (IsCompleted), or when the channel closes
-        // (AbandonStdout cancels it).
-        ValueTask<FlushResult> flush = stdout.WriteAsync(payload);
-        FlushResult result = flush.IsCompletedSuccessfully ? flush.Result : flush.AsTask().GetAwaiter().GetResult();
-        if (result.IsCompleted)
-        {
-            _discardStdout = true;
+            Finish(closedByServer);
         }
     }
 
@@ -391,28 +379,29 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     {
         _failure ??= message;
         _stderrTail.Append(Encoding.UTF8.GetBytes($"native ssh: {message}\n"));
-        _log($"[NativeSshExec] {_displayName}: {message} (failure={NativeSshFailureClassifier.Classify(message).Kind})");
+        Log($"[NativeSshExec] {_displayName}: {message} (failure={NativeSshFailureClassifier.Classify(message).Kind})");
     }
 
     /// <summary>
     /// The end of the session, in order: the failure and the end are recorded first, so a reader that
-    /// sees stdout's EOF also sees them. Then the handle closes and <see cref="Completion"/> resolves,
-    /// with <see cref="StderrTail"/> complete.
+    /// sees stdout's end also sees them. Then the handle closes and <see cref="Completion"/> resolves,
+    /// with <see cref="StderrTail"/> complete. The log comes last, so it cannot hold anything up.
     /// </summary>
-    private void Finish(PipeWriter stdout, bool closedByServer)
+    private void Finish(bool closedByServer)
     {
         _ended = true;
-        stdout.Complete();
+        _stdoutQueue.Complete();
         CloseHandle();
 
         int? exitCode = _exitCode;
+        _completion.TrySetResult(exitCode);
+
         string outcome = !closedByServer
             ? "stopped by the channel"
             : exitCode is { } code
                 ? string.Create(CultureInfo.InvariantCulture, $"exited with {code}")
                 : "ended without an exit status (a signal, or the connection was lost)";
-        _log($"[NativeSshExec] {_displayName}: {outcome}");
-        _completion.TrySetResult(exitCode);
+        Log($"[NativeSshExec] {_displayName}: {outcome}");
     }
 
     private void CloseHandle()
@@ -422,6 +411,22 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         {
             // nova_ssh_close, exactly once: the SafeHandle defers it past a poll or write in flight.
             _interop.Close(handle);
+        }
+    }
+
+    /// <summary>
+    /// Logs without letting the logger's failure escape: on the poll thread, an exception thrown past
+    /// the loop's handler would end the process.
+    /// </summary>
+    private void Log(string message)
+    {
+        try
+        {
+            _log(message);
+        }
+        catch (Exception)
+        {
+            // Diagnostics only.
         }
     }
 
@@ -453,20 +458,19 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     }
 
     /// <summary>
-    /// The read side of the stdout pipe. At the pipe's end it reports the transport's failure, if
-    /// there was one, as an <see cref="SshExecTransportException"/>; otherwise it returns 0.
+    /// The read side of the stdout queue. At its end it reports the transport's failure, if there was
+    /// one, as an <see cref="SshExecTransportException"/>; otherwise it returns 0.
     /// </summary>
     private sealed class StdoutStream : Stream
     {
         private readonly NativeSshExecChannel _channel;
-        private readonly PipeReader _reader;
+        private readonly BoundedChunkQueue _queue;
         private volatile bool _disposed;
-        private volatile bool _released;
 
-        public StdoutStream(NativeSshExecChannel channel, PipeReader reader)
+        public StdoutStream(NativeSshExecChannel channel, BoundedChunkQueue queue)
         {
             _channel = channel;
-            _reader = reader;
+            _queue = queue;
         }
 
         public override bool CanRead => !_disposed;
@@ -475,36 +479,22 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         public override long Length => throw new NotSupportedException();
         public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
-        /// <summary>Ends the stream for its reader: a pending read returns 0, and so does every read after.</summary>
-        public void Release()
-        {
-            _released = true;
-            _reader.CancelPendingRead();
-        }
-
         public override int Read(byte[] buffer, int offset, int count)
         {
             ValidateBufferArguments(buffer, offset, count);
             return Read(buffer.AsSpan(offset, count));
         }
 
+        /// <summary>The mux client's read: blocks on the queue's monitor, woken by the poll thread itself.</summary>
         public override int Read(Span<byte> buffer)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (buffer.IsEmpty || _released)
+            if (buffer.IsEmpty)
             {
                 return 0;
             }
 
-            while (true)
-            {
-                ValueTask<ReadResult> pending = _reader.ReadAsync();
-                ReadResult result = pending.IsCompletedSuccessfully ? pending.Result : pending.AsTask().GetAwaiter().GetResult();
-                if (TryConsume(result, buffer, out int read))
-                {
-                    return read;
-                }
-            }
+            return AtEnd(_queue.Read(buffer, CancellationToken.None));
         }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -513,51 +503,47 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
             return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
         }
 
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Completes synchronously when bytes are queued or stdout has ended. Otherwise it waits on a pool
+        /// thread, and <paramref name="cancellationToken"/> ends that wait.
+        /// </summary>
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (buffer.IsEmpty || _released)
+            if (cancellationToken.IsCancellationRequested)
             {
-                return 0;
+                return ValueTask.FromCanceled<int>(cancellationToken);
             }
 
-            while (true)
+            if (buffer.IsEmpty)
             {
-                ReadResult result = await _reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-                if (TryConsume(result, buffer.Span, out int read))
+                return ValueTask.FromResult(0);
+            }
+
+            try
+            {
+                if (_queue.TryRead(buffer.Span, out int read))
                 {
-                    return read;
+                    return ValueTask.FromResult(AtEnd(read));
                 }
             }
+            catch (Exception ex)
+            {
+                return ValueTask.FromException<int>(ex);
+            }
+
+            return new ValueTask<int>(Task.Run(() => AtEnd(_queue.Read(buffer.Span, cancellationToken)), CancellationToken.None));
         }
 
-        private bool TryConsume(ReadResult result, Span<byte> destination, out int read)
+        /// <summary>A 0 from the queue is the end: the transport's failure, unless the reader was released.</summary>
+        private int AtEnd(int read)
         {
-            ReadOnlySequence<byte> data = result.Buffer;
-            read = 0;
-            if (result.IsCanceled)
-            {
-                // Only Release cancels a read: this stream was disposed, or the channel was.
-                _reader.AdvanceTo(data.Start);
-                return true;
-            }
-
-            if (!data.IsEmpty)
-            {
-                read = (int)Math.Min(data.Length, destination.Length);
-                data.Slice(0, read).CopyTo(destination);
-                _reader.AdvanceTo(data.GetPosition(read));
-                return true;
-            }
-
-            _reader.AdvanceTo(data.End);
-            if (result.IsCompleted)
+            if (read == 0 && !_queue.IsReleased)
             {
                 _channel.ThrowIfTransportFailed();
-                return true;
             }
 
-            return false;
+            return read;
         }
 
         public override void Flush()
@@ -571,18 +557,15 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
         /// <summary>
-        /// The reader is done: a read pending on another thread returns 0, and the poll thread drops
-        /// the stdout still to come instead of waiting for room. The pipe's reader is not completed
-        /// here, because a read may still be in flight on another thread; the pipe is collected with
-        /// the channel.
+        /// The reader is done. The queued stdout is dropped, a read in progress on another thread
+        /// returns 0, and the poll thread drops later stdout instead of waiting for room.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
             if (disposing && !_disposed)
             {
                 _disposed = true;
-                _channel.AbandonStdout();
-                Release();
+                _queue.Release();
             }
 
             base.Dispose(disposing);

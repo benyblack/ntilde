@@ -45,8 +45,12 @@ public interface ISshExecTransport
     string DisplayName { get; }
 
     /// <summary>
-    /// Connects and starts <paramref name="remoteCommand"/>. Blocks during connect/auth (prompts go to
-    /// askpass or the interaction handler); never call on the UI thread.
+    /// Starts <paramref name="remoteCommand"/>. It may block while it starts, so never call it on the
+    /// UI thread. It may also return before connect and auth are done; both transports do. Their
+    /// prompts then go to askpass or the interaction handler, and a failure surfaces through the
+    /// channel: OpenSSH's as <see cref="ISshExecChannel.Completion"/> 255 with ssh's message in
+    /// <see cref="ISshExecChannel.StderrTail"/>, and the native transport's as an
+    /// <see cref="SshExecTransportException"/> from <see cref="ISshExecChannel.Stdout"/>.
     /// </summary>
     /// <remarks>
     /// <paramref name="ct"/> covers the start only: cancelled before or while starting, the command
