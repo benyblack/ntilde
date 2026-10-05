@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
@@ -7,7 +8,7 @@ namespace Ntilde.Tests.Shell.Mux;
 
 /// <summary>
 /// The App's adapter over <c>Ntilde.Mux.Cli</c> (Phase 4 spec §6.4): dispatch, the usage text it
-/// must keep byte for byte, the console hint, and the root override reaching serve. The verbs
+/// must keep, the console hint, and the root override reaching serve. The verbs
 /// themselves are tested where they live, in Ntilde.Mux.Tests' <c>MuxCliTests</c>.
 /// </summary>
 public sealed class MuxCommandTests : IDisposable
@@ -39,8 +40,11 @@ public sealed class MuxCommandTests : IDisposable
     }
 
     // The App's text before the verbs moved to Ntilde.Mux.Cli (Phase 4 Task 9), copied verbatim from
-    // the old MuxCommand: the adapter must print it byte for byte.
-    private const string PreMoveUsage = """
+    // the old MuxCommand. The adapter prints it with the platform's newline throughout: on Windows
+    // that is the old output byte for byte (these literals carry the checkout's CRLF, as the old ones
+    // did); elsewhere the old output had that CRLF inside the text, which the CLI now normalises. The
+    // comparisons below are exact, so a stray \r on Linux fails them.
+    private const string PreMoveUsageLiteral = """
         Usage:
           ntilde mux serve [--idle-exit-minutes N] [--foreground]
           ntilde mux ls [--json]
@@ -49,7 +53,10 @@ public sealed class MuxCommandTests : IDisposable
           ntilde mux attach <sessionId|prefix> [--read-only]
         """;
 
-    private const string PreMoveAttachUsage = """
+    private static readonly string PreMoveUsage = PreMoveUsageLiteral.ReplaceLineEndings();
+    private static readonly string PreMoveAttachUsage = PreMoveAttachUsageLiteral.ReplaceLineEndings();
+
+    private const string PreMoveAttachUsageLiteral = """
         Usage: ntilde mux attach <sessionId|prefix> [--read-only]
 
           Shows a multiplexer session in this terminal. The id (or a unique prefix of at least
@@ -157,6 +164,10 @@ public sealed class MuxCommandTests : IDisposable
     {
         // serve runs in this process: keep what it rebinds - the console writers (--foreground binds
         // the console), the PTY log sink, ConPTY's passthrough switch - from leaking into later tests.
+        // The binding also attaches this process to its parent's console on Windows (AttachConsole(-1)).
+        // A test host normally has none, and left attached, every later ConPTY spawn in this process
+        // would take the passthrough path (rusty_pty's host_has_real_console: GetConsoleWindow() != 0).
+        bool hadConsoleWindow = OperatingSystem.IsWindows() && GetConsoleWindow() != IntPtr.Zero;
         TextWriter consoleOut = Console.Out, consoleError = Console.Error;
         Action<Ntilde.Pty.PtyLogLevel, string>? ptySink = Ntilde.Pty.PtyLogger.Sink;
         string? noPassthrough = Environment.GetEnvironmentVariable("NTILDE_PTY_NO_PASSTHROUGH");
@@ -182,6 +193,20 @@ public sealed class MuxCommandTests : IDisposable
             Console.SetError(consoleError);
             Ntilde.Pty.PtyLogger.Sink = ptySink;
             Environment.SetEnvironmentVariable("NTILDE_PTY_NO_PASSTHROUGH", noPassthrough);
+            // Undo only what serve did - a console window that was not there before. A console the
+            // host already had, with or without a window, is left alone.
+            if (OperatingSystem.IsWindows() && !hadConsoleWindow && GetConsoleWindow() != IntPtr.Zero) FreeConsole();
         }
+
+        if (OperatingSystem.IsWindows()) Assert.Equal(hadConsoleWindow, GetConsoleWindow() != IntPtr.Zero);
     }
+
+    [DllImport("kernel32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern IntPtr GetConsoleWindow();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FreeConsole();
 }

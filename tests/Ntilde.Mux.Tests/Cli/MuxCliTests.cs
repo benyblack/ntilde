@@ -75,8 +75,23 @@ public sealed class MuxCliTests : IDisposable
     {
         var (_, _, err) = Run();
 
-        Assert.StartsWith("Usage:" + Environment.NewLine + "  ntilde-mux serve [--idle-exit-minutes N] [--foreground]", err, StringComparison.Ordinal);
+        Assert.StartsWith("Usage:\n  ntilde-mux serve [--idle-exit-minutes N] [--foreground]", err.ReplaceLineEndings("\n"), StringComparison.Ordinal);
         Assert.DoesNotContain("ntilde mux", err, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The usage and the attach help are raw literals, which carry the source's CRLF in every checkout:
+    /// what is printed must use the platform's newline throughout, as the WriteLine ending it does.
+    /// </summary>
+    [Fact]
+    public void Usage_and_help_use_the_platform_newline()
+    {
+        string usage = Run().Err;
+        string help = Run("attach", "--help").Out;
+
+        Assert.Equal(usage.ReplaceLineEndings(), usage);
+        Assert.Equal(help.ReplaceLineEndings(), help);
+        Assert.Contains(Environment.NewLine + "  ntilde-mux ls [--json]" + Environment.NewLine, usage, StringComparison.Ordinal);
     }
 
     [Theory]

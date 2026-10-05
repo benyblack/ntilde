@@ -29,6 +29,9 @@ public static class MuxCli
         ("probe-console", MuxCliVerbs.ProbeConsole),
     ];
 
+    // The multi-line texts below are raw literals, so they carry the source file's line endings: CRLF
+    // in every checkout (.gitattributes). Both are normalised to the platform's newline where they are
+    // built, so ntilde-mux on Linux prints \n, the same as the WriteLine that ends them.
     private static string Usage(MuxCliHost host) => $"""
         Usage:
           {host.UsagePrefix} serve [--idle-exit-minutes N] [--foreground]
@@ -36,7 +39,7 @@ public static class MuxCli
           {host.UsagePrefix} kill <sessionId>
           {host.UsagePrefix} kill-server [--force]
           {host.UsagePrefix} attach <sessionId|prefix> [--read-only]
-        """;
+        """.ReplaceLineEndings();
 
     private static string AttachUsage(MuxCliHost host) => $"""
         Usage: {host.UsagePrefix} attach <sessionId|prefix> [--read-only]
@@ -50,7 +53,7 @@ public static class MuxCli
           Windows: from PowerShell, or any prompt that does not wait for GUI programs, run
             cmd /c {host.UsagePrefix} attach <id>
           so the prompt does not compete for your keystrokes.
-        """;
+        """.ReplaceLineEndings();
 
     /// <summary>Test seam: the console `attach` draws on. Null = the real terminal (ConsoleSurfaces.Create).</summary>
     internal static Func<IConsoleSurface>? ConsoleFactoryForTest { get; set; }
