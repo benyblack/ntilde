@@ -160,6 +160,13 @@ public sealed record SessionInfoResult
     public string? Title { get; init; }
     public string? Cwd { get; init; }
     public int? AttachedClients { get; init; }
+
+    /// <summary>
+    /// <see cref="AttachedClients"/> without read-only observers (Phase 4 spec §3, carry-over 9). The
+    /// server fills it for a v2 peer only and null is never written, so a v1 peer sees the v1 shape.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InteractiveClients { get; init; }
 }
 
 public sealed record StartRecordingParams
@@ -205,6 +212,14 @@ public sealed record SessionChangedNotification
 {
     public Guid SessionId { get; init; }
     public int AttachedClients { get; init; }
+
+    /// <summary>
+    /// <see cref="AttachedClients"/> without read-only observers (Phase 4 spec §3, carry-over 9). 0 is
+    /// written; null is not, so null on receipt means an older daemon that does not send it.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InteractiveClients { get; init; }
+
     public string Title { get; init; } = string.Empty;
     public string? Cwd { get; init; }
 }

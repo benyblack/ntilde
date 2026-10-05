@@ -485,7 +485,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
 
                         _server.RequireGeometry(p.Cols, p.Rows);
                         if (p.Presentation is { } presentation) _server.RequireGeometry(presentation.Cols, presentation.Rows);
-                        Session(p.SessionId).PostResize(p.Cols, p.Rows, p.Presentation);
+                        Session(p.SessionId).PostResize(this, p.Cols, p.Rows, p.Presentation); // named: its kitty flag is this client's own
                         ReplyEmpty(request);
                         break;
                     }
@@ -502,6 +502,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                             Title = s.Title,
                             Cwd = s.Cwd,
                             AttachedClients = s.AttachedClients,
+                            InteractiveClients = ProtocolVersion >= MuxProtocol.SessionEventsVersion ? s.InteractiveClients : null, // v2 only: a v1 peer sees the v1 shape
                         }, MuxJsonContext.Default.SessionInfoResult);
                         break;
                     }
