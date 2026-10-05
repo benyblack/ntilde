@@ -36,7 +36,10 @@ internal enum PersistentSessionOutcome
 }
 
 /// <param name="Session">The session to show; null only for <see cref="PersistentSessionOutcome.DaemonUnreachable"/> and <see cref="PersistentSessionOutcome.ShareEnded"/>.</param>
-/// <param name="Endpoint">The daemon endpoint the session lives on (persisted as PaneNode.MuxEndpoint); null when not persistent.</param>
+/// <param name="Endpoint">
+/// The <see cref="MuxEndpointId"/> (as its string) of the daemon the session - or, for DaemonUnreachable
+/// and ShareEnded, the named session - lives on; persisted as PaneNode.MuxEndpoint. Null when not persistent.
+/// </param>
 /// <param name="Detail">Why the outcome is Unavailable or DaemonUnreachable, for the log.</param>
 internal sealed record PersistentSessionResult(ITerminalSession? Session, PersistentSessionOutcome Outcome, string? Endpoint, string? Detail)
 {

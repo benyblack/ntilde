@@ -310,12 +310,17 @@ namespace Ntilde
         // Not readonly: it follows the SessionPersistence setting (ApplySettingsWindowResult).
         private Ntilde.Pty.ITerminalSessionFactory _sessionFactory;
 
-        // The one daemon connection every mux pane shares (spec §6); null while persistence has
-        // never been on. Outlives a switch back to Off so the mux panes already open keep working.
-        private Ntilde.Shell.Mux.MuxConnectionHost? _muxHost;
+        // One daemon connection per endpoint, shared by every mux pane on it (spec §6, Phase 4 spec §5):
+        // the local daemon's, plus a remote one per SSH endpoint once a pane uses it. Null while
+        // persistence has never been on. Outlives a switch back to Off so the mux panes already open
+        // keep working.
+        private Ntilde.Shell.Mux.MuxConnectionHosts? _muxHosts;
 
-        /// <summary>The daemon connection, when session persistence is (or was) on. Tests, startup reattach, updates.</summary>
-        internal Ntilde.Shell.Mux.MuxConnectionHost? MuxHost => _muxHost;
+        /// <summary>The local daemon connection, when session persistence is (or was) on. Tests, startup reattach, updates.</summary>
+        internal Ntilde.Shell.Mux.MuxConnectionHost? MuxHost => _muxHosts?.Local;
+
+        /// <summary>Every endpoint's connection (Phase 4 spec §5); null while persistence has never been on.</summary>
+        internal Ntilde.Shell.Mux.MuxConnectionHosts? MuxHosts => _muxHosts;
 
         private sealed class PaneZoomState
         {
@@ -4043,9 +4048,10 @@ namespace Ntilde
             // Spec §9 orphans. Runs whether or not a session was restored (a crash before the first
             // save leaves no file at all). Only a restore that went ahead references anything: an
             // aborted one reopens none of its panes, so their daemon sessions are orphans too.
-            if (_muxHost is { } startupMuxHost)
+            // The local daemon only: a remote endpoint's sessions are not adopted (Phase 4 spec §5).
+            if (_muxHosts is { } startupMuxHosts)
             {
-                _ = AdoptOrphanedMuxSessionsAsync(startupMuxHost, Ntilde.Shell.Mux.MuxOrphans.CollectReferencedIds(restoredSession));
+                _ = AdoptOrphanedMuxSessionsAsync(startupMuxHosts.Local, Ntilde.Shell.Mux.MuxOrphans.CollectReferencedIds(restoredSession));
             }
 
             if (_startup.HasPendingDeferredRestore)
@@ -4396,7 +4402,7 @@ namespace Ntilde
         {
             if (injected is Ntilde.Shell.Mux.MuxTerminalSessionFactory mux)
             {
-                _muxHost = mux.Host;
+                _muxHosts = mux.Hosts;
                 return mux;
             }
 
@@ -4406,27 +4412,37 @@ namespace Ntilde
                 : Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
         }
 
+        /// <summary>Only the local daemon is warmed: a remote endpoint connects when a pane first needs it.</summary>
         private void StartMuxWarmupOnce()
         {
-            if (_muxWarmupStarted || _muxHost is null) return;
+            if (_muxWarmupStarted || _muxHosts is null) return;
             _muxWarmupStarted = true;
-            _muxHost.WarmUp();
+            _muxHosts.Local.WarmUp();
         }
 
-        /// <summary>Builds the daemon connection for KeepOnClose. A seam so a test can make it throw.</summary>
+        /// <summary>Builds the local daemon connection for KeepOnClose. A seam so a test can make it throw.</summary>
         internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; set; } =
             () => Ntilde.Shell.Mux.MuxConnectionHost.CreateDefault(AppLogger.Log);
 
         /// <summary>
-        /// Reuses a host kept from an earlier On period; only the first call builds one. Building
-        /// it can throw (e.g. no Environment.ProcessPath to spawn the daemon from): that must not
-        /// crash startup or a settings save, so it logs and falls back to normal sessions.
+        /// Builds the connection for a remote endpoint the first time a pane uses it (Phase 4 spec §5), or
+        /// returns null to decline (the profile is gone, or does not persist remote sessions). Must only
+        /// build the host, never connect. A seam for tests; the default declines every endpoint until
+        /// remote hosts can be built from an SSH profile.
+        /// </summary>
+        internal Func<Ntilde.Shell.Mux.MuxEndpointId, Ntilde.Shell.Mux.MuxConnectionHost?> RemoteMuxHostFactory { get; set; } = _ => null;
+
+        /// <summary>
+        /// Reuses the hosts kept from an earlier On period; only the first call builds them. Building
+        /// the local host can throw (e.g. no Environment.ProcessPath to spawn the daemon from): that
+        /// must not crash startup or a settings save, so it logs and falls back to normal sessions.
         /// </summary>
         private Ntilde.Pty.ITerminalSessionFactory CreatePersistentSessionFactory()
         {
             try
             {
-                _muxHost ??= MuxHostFactory();
+                // Through a lambda, not the delegate itself: a test may set the seam after construction.
+                _muxHosts ??= new Ntilde.Shell.Mux.MuxConnectionHosts(MuxHostFactory(), id => RemoteMuxHostFactory(id));
             }
             catch (Exception ex)
             {
@@ -4434,7 +4450,7 @@ namespace Ntilde
                 return Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
             }
 
-            return new Ntilde.Shell.Mux.MuxTerminalSessionFactory(_muxHost, Ntilde.Shell.DefaultTerminalSessionFactory.Instance, AppLogger.Log);
+            return new Ntilde.Shell.Mux.MuxTerminalSessionFactory(_muxHosts, Ntilde.Shell.DefaultTerminalSessionFactory.Instance, AppLogger.Log);
         }
 
         /// <summary>Every pane in every tab, including a zoomed tab's stashed root.</summary>
@@ -4882,7 +4898,7 @@ namespace Ntilde
         /// alone is not enough - it outlives an on→off flip for the mux panes still open, while the
         /// factory follows the setting.
         /// </summary>
-        private bool IsMuxPersistenceActive => _muxHost is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
+        private bool IsMuxPersistenceActive => _muxHosts is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
 
         /// <summary>
         /// "Attach to session…" (spec §7.2). Lists the daemon's sessions off the UI thread, lets the
@@ -4891,7 +4907,7 @@ namespace Ntilde
         /// </summary>
         internal async Task AttachToMuxSessionAsync()
         {
-            if (!IsMuxPersistenceActive || _muxHost is not { } host) return;
+            if (!IsMuxPersistenceActive || _muxHosts?.Local is not { } host) return;
             IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions = await Task.Run(async () =>
             {
                 Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(5));
@@ -6808,7 +6824,7 @@ namespace Ntilde
                 var session = pane.DetachFromUiThread();
                 Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
                 // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
-                KillMuxSessionOnClose(session, effective);
+                KillMuxSessionOnClose(session, effective, pane.MuxEndpoint);
                 if (effective != Ntilde.Shell.Mux.PaneDisposition.EndSession && session is Ntilde.Mux.MuxClientSession detaching)
                 {
                     // A deliberate detach (the command, or the shared prompt's Detach): tell a v2 daemon, so the
@@ -6841,7 +6857,8 @@ namespace Ntilde
         /// cannot drop it. Still enqueued synchronously on the UI thread (RequestAsync enqueues before
         /// its first await). A session that already exited or lost its connection is left alone.
         /// </summary>
-        private void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition)
+        /// <param name="muxEndpoint">The pane's <see cref="TerminalPane.MuxEndpoint"/>: its own endpoint's host tracks the kill (Phase 4 spec §5).</param>
+        private void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
         {
             if (disposition != Ntilde.Shell.Mux.PaneDisposition.EndSession || session is not Ntilde.Mux.MuxClientSession mux)
             {
@@ -6853,7 +6870,9 @@ namespace Ntilde
             try
             {
                 Task kill = mux.KillAsync();
-                _muxHost?.TrackPendingKill(kill);
+                // The session's own connection is the one whose teardown must wait for this reply. Its
+                // host exists: the factory built it to open the session. TryGet, never build one here.
+                _muxHosts?.TryGet(Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint))?.TrackPendingKill(kill);
                 _ = kill.ContinueWith(
                     t => TerminalLogger.Log($"[MainWindow] mux kill of {mux.Id} failed: {t.Exception?.GetBaseException().Message}"),
                     CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
@@ -8558,7 +8577,7 @@ namespace Ntilde
             {
                 _sessionFactory = CreatePersistentSessionFactory();
                 if (_sessionFactory is not Ntilde.Shell.Mux.MuxTerminalSessionFactory) return; // creation failed and was logged: nothing changed
-                _muxHost!.WarmUp();
+                _muxHosts!.Local.WarmUp();
             }
             else
             {
@@ -9182,14 +9201,15 @@ namespace Ntilde
                 SessionManager.SaveSession(this, tabs);
             }
 
-            if (_muxHost is { } muxHost)
+            if (_muxHosts is { } muxHosts)
             {
                 int kept = _paneOwnerTab.Keys.Count(p => p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true });
-                // Explicit detach: closing the connection makes the daemon drop this client's
+                // Explicit detach: closing each connection makes its daemon drop this client's
                 // subscriptions and keep every shell running. Panes are deliberately not disposed
-                // (that would kill them). Dispose flushes what is already queued first, so a kill
-                // from a pane closed just before (the last tab) still reaches the daemon.
-                muxHost.Dispose();
+                // (that would kill them). Each host flushes what is already queued first, so a kill
+                // from a pane closed just before (the last tab) still reaches its daemon. The remote
+                // hosts go first, together; the local one last (Phase 4 spec §5).
+                muxHosts.Dispose();
                 if (kept > 0) AppLogger.Log($"[MainWindow] {kept} session(s) kept running; `ntilde mux ls` lists them");
             }
             _recordingToastTimer.Stop();

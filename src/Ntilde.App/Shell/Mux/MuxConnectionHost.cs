@@ -6,7 +6,9 @@ using Ntilde.Mux.Daemon;
 namespace Ntilde.Shell.Mux;
 
 /// <summary>
-/// The GUI's one connection to the daemon (spec §6). Every pane's MuxClientSession shares it.
+/// The GUI's one connection to one daemon (spec §6): the local daemon, or since Phase 4 one remote
+/// endpoint (Phase 4 spec §5; <see cref="MuxConnectionHosts"/> holds one per endpoint). Every pane's
+/// MuxClientSession on that daemon shares it.
 /// <see cref="GetClient"/> is synchronous because ITerminalSessionFactory.Create is, and runs on
 /// the UI thread: it waits inside Task.Run so no UI sync context is ever captured.
 /// </summary>
@@ -25,11 +27,20 @@ internal sealed class MuxConnectionHost : IDisposable
     private long? _failedAtMs; // Environment.TickCount64 of the last failure; null = none, or cleared by a success
     private Exception? _lastFailure;
 
+    /// <summary>The local daemon's host: <see cref="MuxHostPolicy.Local"/>.</summary>
     public MuxConnectionHost(Func<CancellationToken, Task<MuxClient>> connect, string? endpoint, Action<string>? log)
+        : this(connect, endpoint, log, MuxHostPolicy.Local)
     {
+    }
+
+    public MuxConnectionHost(Func<CancellationToken, Task<MuxClient>> connect, string? endpoint, Action<string>? log, MuxHostPolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
         _connect = connect;
         Endpoint = endpoint;
         _log = log;
+        Policy = policy;
+        FailureCooldown = policy.FailureCooldown;
         _disposedToken = _disposed.Token;
     }
 
@@ -39,13 +50,21 @@ internal sealed class MuxConnectionHost : IDisposable
         return new MuxConnectionHost(launcher.EnsureConnectedAsync, MuxDiscovery.GetDefaultEndpoint(), log);
     }
 
+    /// <summary>
+    /// The transport address, for logs (the local pipe or socket name). Not the pane's persisted
+    /// endpoint: that is a <see cref="MuxEndpointId"/> (Phase 4 spec §5).
+    /// </summary>
     public string? Endpoint { get; }
+
+    /// <summary>Timeouts and cooldown for this endpoint (Phase 4 spec §5). The factory reads its waits from here.</summary>
+    public MuxHostPolicy Policy { get; }
 
     /// <summary>
     /// After a failed attempt (or a GetClient that timed out on one), how long GetClient answers
     /// null at once instead of blocking the UI again (spec §10.6: block only on first use).
+    /// <see cref="MuxHostPolicy.FailureCooldown"/> unless set here (tests).
     /// </summary>
-    public TimeSpan FailureCooldown { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan FailureCooldown { get; init; }
     public int ConnectAttempts => Volatile.Read(ref _connectAttempts);
     public MuxClient? CurrentClient { get { lock (_gate) return _client is { IsConnected: true } c ? c : null; } }
 

@@ -403,7 +403,7 @@ public sealed class MuxPaneTests : IDisposable
     {
         MuxClientSession first = StartPane();
         Guid id = first.Id;
-        Assert.Equal("test", _pane!.MuxEndpoint);
+        Assert.Equal("local", _pane!.MuxEndpoint); // the endpoint identity (Phase 4 spec §5), not the host's label
         _pane.Dispose();
 
         _pane = new TerminalPane { MuxSessionIdToRestore = id };

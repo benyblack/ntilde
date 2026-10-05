@@ -4,12 +4,14 @@ using Ntilde.Pty;
 namespace Ntilde.Shell.Mux;
 
 /// <summary>
-/// Daemon sessions no restored pane will reopen - the GUI crashed before it wrote the session file
-/// (spec §9). Computed from the SAVED session tree, not live panes: restored panes have not attached
-/// yet, and deferred tabs have no panes at all.
+/// Local daemon sessions no restored pane will reopen - the GUI crashed before it wrote the session
+/// file (spec §9). Computed from the SAVED session tree, not live panes: restored panes have not
+/// attached yet, and deferred tabs have no panes at all. Local only (Phase 4 spec §5): remote
+/// endpoints' sessions are never adopted or counted.
 /// </summary>
 internal static class MuxOrphans
 {
+    /// <summary>The ids the saved panes on the local endpoint reference; a pane on a remote endpoint is skipped.</summary>
     public static HashSet<Guid> CollectReferencedIds(NtildeSession? session)
     {
         var ids = new HashSet<Guid>();
@@ -21,7 +23,7 @@ internal static class MuxOrphans
     private static void Walk(PaneNode? node, HashSet<Guid> ids)
     {
         if (node is null) return;
-        if (Guid.TryParse(node.MuxSessionId, out Guid id)) ids.Add(id);
+        if (Guid.TryParse(node.MuxSessionId, out Guid id) && MuxEndpointId.Parse(node.MuxEndpoint).IsLocal) ids.Add(id);
         foreach (PaneNode child in node.Children) Walk(child, ids);
     }
 

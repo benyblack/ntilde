@@ -3787,8 +3787,12 @@ namespace Ntilde.Controls
         /// <summary>Set with <see cref="MuxSessionIdToRestore"/> by "Attach to session…": join it shared (consumed once).</summary>
         internal bool MuxAttachSharedToRestore { get; set; }
 
-        /// <summary>The daemon endpoint the current session lives on; null when it is not persistent.</summary>
-        internal string? MuxEndpoint { get; private set; }
+        /// <summary>
+        /// The endpoint (a <see cref="MuxEndpointId"/> string, Phase 4 spec §5) the current session lives on,
+        /// or the pending <see cref="MuxSessionIdToRestore"/> lives on; null when neither is persistent. Set by
+        /// SessionManager.RestorePaneTree with the id, so a pane saved before it ever spawned writes it back.
+        /// </summary>
+        internal string? MuxEndpoint { get; set; }
 
         /// <summary>Raised on the UI thread after a mux session attached (MainWindow saves the session file).</summary>
         internal event Action<TerminalPane>? PersistentSessionAttached;
