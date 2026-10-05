@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Avalonia.Themes.Fluent;
 using Ntilde.Shell;
 using Ntilde.Platform;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.VT;
 
 namespace Ntilde;
@@ -15,12 +16,15 @@ namespace Ntilde;
 internal static class SshAskPassCommand
 {
     internal const string ModeFlag = "--ssh-askpass";
-    internal const string ModeEnvironmentVariable = "NTILDE_SSH_ASKPASS";
-    internal const string ProfileIdEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_ID";
-    internal const string ProfileNameEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_NAME";
-    internal const string ProfileUserEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_USER";
-    internal const string ProfileHostEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_HOST";
-    internal const string ProfilePortEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_PORT";
+
+    // The environment contract lives with the side that sets it (the exec transport, Phase 4 spec
+    // §8.2); these names stay so the helper reads exactly what the transport writes.
+    internal const string ModeEnvironmentVariable = SshAskPassEnvironment.ModeVariable;
+    internal const string ProfileIdEnvironmentVariable = SshAskPassEnvironment.ProfileIdVariable;
+    internal const string ProfileNameEnvironmentVariable = SshAskPassEnvironment.ProfileNameVariable;
+    internal const string ProfileUserEnvironmentVariable = SshAskPassEnvironment.ProfileUserVariable;
+    internal const string ProfileHostEnvironmentVariable = SshAskPassEnvironment.ProfileHostVariable;
+    internal const string ProfilePortEnvironmentVariable = SshAskPassEnvironment.ProfilePortVariable;
 
     public static bool IsSupportedCliMode(string[] args)
     {

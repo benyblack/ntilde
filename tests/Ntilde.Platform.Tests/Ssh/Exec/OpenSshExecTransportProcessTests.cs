@@ -1,0 +1,212 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Text;
+using Ntilde.Platform.Ssh.Exec;
+using Ntilde.Platform.Ssh.Models;
+
+namespace Ntilde.Platform.Tests.Ssh.Exec;
+
+/// <summary>
+/// <see cref="OpenSshExecTransport"/>'s process plumbing (Phase 4 spec §8.2), against a real process.
+/// </summary>
+/// <remarks>
+/// The stand-in for ssh is the platform shell, through the transport's internal argv seam: ssh's fixed
+/// layout (<c>-T -o … &lt;plan&gt; -- &lt;command&gt;</c>) is not something a shell can run - <c>cmd.exe</c>
+/// tries to execute <c>--</c>, and <c>sh</c> rejects <c>-T</c> - so the seam swaps only the argument list
+/// and everything else (redirection, environment, the stderr thread, the channel) is the production
+/// path. The argv itself is pinned by <see cref="OpenSshExecCommandLineTests"/> and
+/// <see cref="CreateStartInfo_runs_ssh_directly_with_the_exec_argv_and_every_stream_piped"/>.
+/// </remarks>
+public sealed class OpenSshExecTransportProcessTests
+{
+    private static readonly TimeSpan Bound = TimeSpan.FromSeconds(30);
+
+    private static SshProfile Profile() => new()
+    {
+        Id = Guid.Parse("531619ce-5685-4f74-9538-daf8a194ec39"),
+        Name = "Prod",
+        User = "alice",
+        Host = "example.com",
+        Port = 2200,
+    };
+
+    private static OpenSshExecTransport ShellTransport(string? askPassHelperPath = null)
+    {
+        (string shell, string[] leading) = OperatingSystem.IsWindows()
+            ? (Environment.GetEnvironmentVariable("ComSpec") is { Length: > 0 } comSpec ? comSpec : "cmd.exe", new[] { "/d", "/c" })
+            : ("/bin/sh", new[] { "-c" });
+        return new OpenSshExecTransport(Profile(), shell, command => [.. leading, command], askPassHelperPath, log: _ => { });
+    }
+
+    private static string Pick(string windows, string unix) => OperatingSystem.IsWindows() ? windows : unix;
+
+    private static async Task<string> ReadToEndAsync(Stream stream)
+    {
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer, TestContext.Current.CancellationToken);
+        return Encoding.UTF8.GetString(buffer.ToArray());
+    }
+
+    [Fact]
+    public async Task Pipes_stdio_and_reports_the_exit_code()
+    {
+        using ISshExecChannel channel = ShellTransport().Start(Pick("findstr x & exit /b 5", "grep x; exit 5"), CancellationToken.None);
+
+        channel.Stdin.Write("x\n"u8);
+        channel.Stdin.Dispose();
+        string stdout = await ReadToEndAsync(channel.Stdout).WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Contains("x", stdout, StringComparison.Ordinal);
+        Assert.Equal(5, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Stdin_writes_reach_the_process_without_a_flush_or_eof()
+    {
+        // The process reads one line and exits; stdin stays open. A small write that sat in a
+        // stdin buffer would leave it waiting forever - and a mux frame is a small write.
+        using ISshExecChannel channel = ShellTransport().Start(Pick("set /p line= & exit /b 9", "read line; exit 9"), CancellationToken.None);
+
+        channel.Stdin.Write("x\r\n"u8);
+
+        Assert.Equal(9, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Stderr_lands_in_the_tail_before_Completion_reports_ssh_failure_255()
+    {
+        using ISshExecChannel channel = ShellTransport().Start(Pick("echo oops 1>&2 & exit /b 255", "echo oops >&2; exit 255"), CancellationToken.None);
+
+        Assert.Equal(255, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        Assert.Contains("oops", channel.StderrTail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_chatty_stderr_never_blocks_the_process_and_the_tail_keeps_the_last_8_KiB()
+    {
+        using ISshExecChannel channel = ShellTransport().Start(
+            Pick(
+                "(for /l %i in (1,1,3000) do @echo line%i 1>&2) & exit /b 3",
+                "i=1; while [ $i -le 3000 ]; do echo line$i >&2; i=$((i+1)); done; exit 3"),
+            CancellationToken.None);
+
+        Assert.Equal(3, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        string tail = channel.StderrTail;
+        Assert.InRange(Encoding.UTF8.GetByteCount(tail), 4096, 8192);
+        Assert.EndsWith("line3000", tail.TrimEnd(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Askpass_environment_reaches_the_process()
+    {
+        using ISshExecChannel channel = ShellTransport(askPassHelperPath: "/opt/ntilde/ntilde").Start(
+            Pick("echo %SSH_ASKPASS_REQUIRE%:%NTILDE_SSH_ASKPASS_PROFILE_HOST%", "echo \"$SSH_ASKPASS_REQUIRE:$NTILDE_SSH_ASKPASS_PROFILE_HOST\""),
+            CancellationToken.None);
+        channel.Stdin.Dispose();
+
+        string stdout = await ReadToEndAsync(channel.Stdout).WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Contains("force:example.com", stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Dispose_after_stdin_eof_lets_the_process_finish_and_keeps_its_exit_code()
+    {
+        ISshExecChannel channel = ShellTransport().Start(Pick("findstr x >nul & exit /b 4", "cat >/dev/null; exit 4"), CancellationToken.None);
+
+        channel.Dispose();
+
+        // Not killed (that would be null): closing stdin was enough, within the grace period.
+        Assert.Equal(4, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Dispose_unblocks_a_reader_blocked_on_stdout_of_a_long_running_process()
+    {
+        ISshExecChannel channel = ShellTransport().Start(Pick("ping -n 60 127.0.0.1 >nul", "sleep 60"), CancellationToken.None);
+        var readerDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reader = new Thread(() =>
+        {
+            try { _ = channel.Stdout.Read(new byte[64]); }
+            catch (Exception ex) when (ex is IOException or ObjectDisposedException) { /* a closed pipe is a return too */ }
+            readerDone.SetResult();
+        })
+        { IsBackground = true, Name = "ExecTestReader" };
+        reader.Start();
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        Assert.False(readerDone.Task.IsCompleted, "the reader should be blocked on a silent process");
+
+        var clock = Stopwatch.StartNew();
+        channel.Dispose();
+        Task first = await Task.WhenAny(readerDone.Task, Task.Delay(Bound, TestContext.Current.CancellationToken));
+
+        Assert.Same(readerDone.Task, first);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(15), $"the reader returned only after {clock.Elapsed}");
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void Start_with_a_cancelled_token_starts_nothing()
+    {
+        var transport = new OpenSshExecTransport(Profile(), MissingExecutable(), ["-F", "cfg", "alias"], askPassHelperPath: null, log: _ => { });
+
+        // A missing executable would throw Win32Exception if Start got as far as spawning it.
+        Assert.ThrowsAny<OperationCanceledException>(() => transport.Start("true", new CancellationToken(canceled: true)));
+    }
+
+    [Fact]
+    public void Start_of_a_missing_ssh_throws()
+    {
+        var transport = new OpenSshExecTransport(Profile(), MissingExecutable(), ["-F", "cfg", "alias"], askPassHelperPath: null, log: _ => { });
+
+        Assert.Throws<Win32Exception>(() => transport.Start("true", CancellationToken.None));
+    }
+
+    [Fact]
+    public void CreateStartInfo_runs_ssh_directly_with_the_exec_argv_and_every_stream_piped()
+    {
+        string[] plan = ["-F", "/home/u/.config/ntilde/ssh_config", "ntilde_0123"];
+        var transport = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", plan, askPassHelperPath: null, diagnosticsArguments: ["-v"], log: _ => { });
+
+        ProcessStartInfo startInfo = transport.CreateStartInfo("ntilde-mux proxy --stdio");
+
+        Assert.Equal("/usr/bin/ssh", startInfo.FileName);
+        Assert.Equal(OpenSshExecCommandLine.Build(["-v"], plan, "ntilde-mux proxy --stdio"), startInfo.ArgumentList);
+        Assert.Equal(string.Empty, startInfo.Arguments);
+        Assert.False(startInfo.UseShellExecute);
+        Assert.True(startInfo.RedirectStandardInput);
+        Assert.True(startInfo.RedirectStandardOutput);
+        Assert.True(startInfo.RedirectStandardError);
+        Assert.True(startInfo.CreateNoWindow);
+    }
+
+    [Fact]
+    public void CreateStartInfo_applies_askpass_only_when_a_helper_is_given()
+    {
+        var withHelper = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["-F", "cfg", "alias"], askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { });
+        var withoutHelper = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["-F", "cfg", "alias"], askPassHelperPath: null, log: _ => { });
+
+        ProcessStartInfo helped = withHelper.CreateStartInfo("true");
+        ProcessStartInfo unhelped = withoutHelper.CreateStartInfo("true");
+
+        Assert.Equal("/opt/ntilde/ntilde", helped.Environment["SSH_ASKPASS"]);
+        Assert.Equal("force", helped.Environment["SSH_ASKPASS_REQUIRE"]);
+        Assert.Equal("1", helped.Environment[SshAskPassEnvironment.ModeVariable]);
+        Assert.Equal("531619ce-5685-4f74-9538-daf8a194ec39", helped.Environment[SshAskPassEnvironment.ProfileIdVariable]);
+        Assert.Equal("2200", helped.Environment[SshAskPassEnvironment.ProfilePortVariable]);
+        Assert.False(unhelped.Environment.ContainsKey(SshAskPassEnvironment.ModeVariable));
+        Assert.False(unhelped.Environment.ContainsKey("SSH_ASKPASS_REQUIRE"));
+    }
+
+    [Fact]
+    public void DisplayName_is_user_at_host_or_the_bare_host()
+    {
+        var bare = new SshProfile { Host = "example.com" };
+
+        Assert.Equal("alice@example.com", new OpenSshExecTransport(Profile(), "ssh", ["alias"], null).DisplayName);
+        Assert.Equal("example.com", new OpenSshExecTransport(bare, "ssh", ["alias"], null).DisplayName);
+    }
+
+    private static string MissingExecutable() =>
+        Path.Combine(Path.GetTempPath(), "ntilde-missing-" + Guid.NewGuid().ToString("N"), OperatingSystem.IsWindows() ? "ssh.exe" : "ssh");
+}
