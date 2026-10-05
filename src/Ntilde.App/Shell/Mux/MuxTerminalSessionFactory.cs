@@ -97,6 +97,17 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     }
 
     /// <summary>
+    /// The remote host a request that <see cref="RoutesRemote"/> goes to, as the user knows it (<c>user@host</c>,
+    /// what its results' <see cref="PersistentSessionResult.HostDisplayName"/> will say): for the pane's banner
+    /// before the first result is back (Phase 4 spec §7.4). Null when the request does not route remote.
+    /// </summary>
+    public string? RemoteHostDisplayName(TerminalSessionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return request.Ssh is { } ssh && PersistedProfile(ssh.ProfileId) is { } profile ? RemoteMuxConnector.DisplayNameOf(profile) : null;
+    }
+
+    /// <summary>
     /// The plain factory contract has no "no session" answer: an unreachable reopen (or an ended share) falls back here.
     /// As with <see cref="CreatePersistent"/>, a request that <see cref="RoutesRemote"/> must not be made on the UI thread.
     /// </summary>

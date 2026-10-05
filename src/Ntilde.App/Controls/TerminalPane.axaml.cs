@@ -40,6 +40,7 @@ using Ntilde.Pty;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Shell.Mux;
+using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Controls
 {
@@ -1141,6 +1142,13 @@ namespace Ntilde.Controls
             if (_remoteFilesSidebarViewModel.IsOpen)
             {
                 CloseRemoteFilesSidebar();
+                return;
+            }
+
+            if (IsPersistentRemoteTab)
+            {
+                // Phase 4 spec §8.4: no native SSH session stands behind this tab, so there is nothing to browse.
+                RaisePersistenceNotice(RemoteFilesUnavailableNoticeTitle, RemoteFilesUnavailableMessage);
                 return;
             }
 
@@ -3385,7 +3393,8 @@ namespace Ntilde.Controls
 
             string startingDir = profile?.StartingDirectory ?? "";
             Session = null;
-            MuxEndpoint = null;
+            // MuxEndpoint is reset below, once it is known whether a pending id stays pending (a plain
+            // SSH pane's does, and the endpoint must go on naming it: Phase 4 spec §5).
             // Set again below only once a session is wired; every early return (a spawn that threw,
             // a failed SSH connect) must leave the view resizing its own buffer, not waiting for a
             // stream resize from a mux session that is gone.
@@ -3393,6 +3402,11 @@ namespace Ntilde.Controls
             // Reset for every session, not only mux ones: a reconnect can land on a local fallback,
             // and a stale flag would make every Enter reconnect.
             _muxConnectionLost = false;
+            _muxReconnecting = false;
+            _remoteInputHintShown = false;
+            // A remote result still on its way belongs to the spawn this one replaces (Phase 4 spec §7.4).
+            _remoteConnecting = false;
+            _remoteGen++;
             bool muxPreviousLost = false;
             _agentRegistration?.SetLifecycle(null);
             try
@@ -3435,7 +3449,6 @@ namespace Ntilde.Controls
                 }
 
                 bool isSsh = profile != null && profile.Type == ConnectionType.SSH;
-                bool attachShared = TakeMuxAttachShared(isSsh); // before TakeMuxSessionIdToRestore clears the id
                 var request = new TerminalSessionRequest(
                     Command: effectiveShell,
                     Arguments: args,
@@ -3450,9 +3463,37 @@ namespace Ntilde.Controls
                             DiagnosticsLevel: (int)_sshDiagnosticsLevel,
                             InteractionHandler: SshInteractionHandler,
                             NativeSshEnabled: _settings?.ExperimentalNativeSshEnabled ?? false)
-                        : null,
-                    ExistingMuxSessionId: TakeMuxSessionIdToRestore(isSsh),
-                    AttachShared: attachShared);
+                        : null);
+
+                // Phase 4 spec §7.4: an SSH pane whose profile persists its remote sessions goes to that
+                // profile's remote daemon, and takes its pending id as a local pane does. Any other SSH
+                // pane is plain SSH and leaves the id pending.
+                MuxTerminalSessionFactory? remote = isSsh && SessionFactory is MuxTerminalSessionFactory persistent && persistent.RoutesRemote(request)
+                    ? persistent
+                    : null;
+                bool plainSsh = isSsh && remote is null;
+                bool attachShared = TakeMuxAttachShared(plainSsh); // before TakeMuxSessionIdToRestore clears the id
+                Guid? existingMuxSessionId = TakeMuxSessionIdToRestore(plainSsh);
+                request = request with
+                {
+                    ExistingMuxSessionId = existingMuxSessionId,
+                    AttachShared = attachShared,
+                    // Its own dropped session: its dead connection may still hold it, so take it back shared.
+                    ReattachAfterDrop = remote is not null && existingMuxSessionId is not null && _muxReattachAfterDrop,
+                };
+
+                // The endpoint names a pending id while one is left; otherwise the new session sets it.
+                if (MuxSessionIdToRestore is null) MuxEndpoint = null;
+                if (remote is null)
+                {
+                    _muxReattachAfterDrop = false;
+                    FollowRemoteHost(null);
+                }
+                else
+                {
+                    BeginRemoteSession(remote, request, profile!);
+                    return;
+                }
 
                 if (isSsh)
                 {
@@ -3511,7 +3552,8 @@ namespace Ntilde.Controls
                     HandleSessionExit(session, code);
                 });
             };
-            RegisterActiveSshSession(session, profile);
+            // Phase 4 spec §8.4: a session on a remote daemon is no native SSH session (no SFTP, no forwards).
+            if (session is not MuxClientSession) RegisterActiveSshSession(session, profile);
             UpdateCommandAssistContext();
 
             // Publish the PTY lifecycle to the registration (the endpoint's
@@ -3623,11 +3665,20 @@ namespace Ntilde.Controls
 
             if (result.Outcome == PersistentSessionOutcome.DaemonUnreachable || result.Session is null)
             {
-                EnterMuxUnreachable(request.ExistingMuxSessionId, result);
+                if (result.HostDisplayName is { } host) EnterRemoteUnreachable(request, result, host);
+                else EnterMuxUnreachable(request.ExistingMuxSessionId, result);
                 return null;
             }
 
-            if (result.Outcome == PersistentSessionOutcome.Unavailable)
+            if (result.Outcome == PersistentSessionOutcome.Unavailable && result.HostDisplayName is { } remoteHost)
+            {
+                // Phase 4 spec §7.5: SSH worked and the remote ntilde-mux did not; plain SSH stands in, and the
+                // notice says on which host and why - with the install flow when that would fix it.
+                string reason = result.RemoteFailure?.Reason ?? result.Detail ?? "ntilde-mux could not be used";
+                TerminalLogger.Log($"[TerminalPane] persistent SSH unavailable on {remoteHost} ({reason}); starting plain SSH");
+                RaisePersistenceNotice(RemoteMuxUnavailableNoticeTitle, RemoteMuxUnavailableMessage(remoteHost, reason), RemoteNoticeActionFor(request, result));
+            }
+            else if (result.Outcome == PersistentSessionOutcome.Unavailable)
             {
                 TerminalLogger.Log($"[TerminalPane] multiplexer unavailable (version mismatch: {result.VersionMismatch}, orphaned daemon: {result.OrphanedDaemon}); starting a non-persistent session");
                 if (result.OrphanedDaemon)
@@ -3675,6 +3726,332 @@ namespace Ntilde.Controls
             // The banner offers a retry; only the window can say why retrying will not help yet.
             if (result.OrphanedDaemon) RaisePersistenceNotice(MuxOrphanedNoticeTitle, MuxOrphanedBanner);
         }
+
+        /// <summary>
+        /// UI thread. No session from the remote daemon (Phase 4 spec §7.5): the id the request named is kept
+        /// (none for a new tab whose SSH connect failed - the Task 19 ruling), and Enter retries. A reattach after
+        /// a drop that failed goes back to where the host is (Review Focus 2): into the loop while it still runs,
+        /// else to the Enter banner - never to no session and no banner.
+        /// </summary>
+        private void EnterRemoteUnreachable(TerminalSessionRequest request, PersistentSessionResult result, string host)
+        {
+            MuxSessionIdToRestore = request.ExistingMuxSessionId;
+            TermView.SetSession(null);
+            TerminalLogger.Log($"[TerminalPane] no session from {host} for {request.ExistingMuxSessionId?.ToString() ?? "a new tab"} ({result.Detail}); kept for a retry");
+            if (request.ReattachAfterDrop && request.ExistingMuxSessionId is not null)
+            {
+                _muxReattachAfterDrop = true;
+                if (_remoteHost?.Host.IsReconnecting == true) EnterRemoteReconnecting();
+                else EnterRemoteWaitingForEnter(RemoteAbandonedBanner(host));
+                return;
+            }
+
+            _muxReattachAfterDrop = false;
+            _muxConnectionLost = true;
+            WriteBanner($"\r\n\x1b[90m{RemoteUnreachableBanner(SanitizeBannerValue(host))}\x1b[0m\r\n");
+            // SSH worked and only ntilde-mux did not: the toast says why, with the install flow when that
+            // fixes it. A failed SSH connect needs no toast: the banner already says the host is not reachable.
+            if (result.RemoteFailure is { Kind: not (RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser) } failure)
+            {
+                RaisePersistenceNotice(RemoteMuxUnavailableNoticeTitle, RemoteMuxUnavailableMessage(host, failure.Reason), RemoteNoticeActionFor(request, result));
+            }
+        }
+
+        /// <summary>The window's action for a remote result's notice (spec §7.5), for the profile the request named.</summary>
+        private PersistenceNoticeAction? RemoteNoticeActionFor(TerminalSessionRequest request, PersistentSessionResult result) =>
+            request.Ssh is { } ssh ? RemoteNoticeAction?.Invoke(result.RemoteFailure, ssh.ProfileId) : null;
+
+        /// <summary>
+        /// UI thread. Phase 4 spec §7.4: the factory call for a remote request runs off the UI thread - it can
+        /// wait minutes for its connection, behind SSH prompts that need the UI thread - and its result is applied
+        /// back here by <see cref="CompleteRemoteSession"/>, unless a later spawn (or the pane's disposal) made it stale.
+        /// </summary>
+        private void BeginRemoteSession(MuxTerminalSessionFactory factory, TerminalSessionRequest request, TerminalProfile profile)
+        {
+            int generation = _remoteGen;
+            _remoteHostName = factory.RemoteHostDisplayName(request) ?? profile.Name;
+            _remoteConnecting = true;
+            // Until the result is back the id is still this pane's: a save meanwhile writes it, with its endpoint.
+            MuxSessionIdToRestore = request.ExistingMuxSessionId;
+            MuxEndpoint = MuxEndpointId.ForSsh(request.Ssh!.ProfileId).ToString();
+            TermView.SetSession(null); // a previous, disposed session must not get keys meanwhile
+            WriteBanner($"\r\n\x1b[90m{RemoteConnectingBanner(SanitizeBannerValue(_remoteHostName))}\x1b[0m\r\n");
+
+            Task<PersistentSessionResult> work;
+            try
+            {
+                work = RunOffUiThread(() => factory.CreatePersistent(request));
+            }
+            catch (Exception ex)
+            {
+                work = Task.FromException<PersistentSessionResult>(ex);
+            }
+
+            work.ContinueWith(
+                done => this.Dispatcher.Post(() => CompleteRemoteSession(generation, factory, request, profile, done)),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+
+        /// <summary>
+        /// UI thread. A remote factory call is back. A stale one (a later spawn, or a disposed pane) is discarded;
+        /// otherwise its result goes through the same handling as a local one (<see cref="ApplyPersistentResult"/>),
+        /// and its session is wired as <see cref="InitializeSessionCore"/> wires one.
+        /// </summary>
+        private void CompleteRemoteSession(int generation, MuxTerminalSessionFactory factory, TerminalSessionRequest request, TerminalProfile profile, Task<PersistentSessionResult> work)
+        {
+            PersistentSessionResult? result = work.IsCompletedSuccessfully ? work.Result : null;
+            if (generation != _remoteGen || Volatile.Read(ref _disposed))
+            {
+                DiscardRemoteResult(result);
+                return;
+            }
+
+            _remoteConnecting = false;
+            if (result is null)
+            {
+                // As a plain SSH spawn that threw (the plain SSH stand-in can): the banner says why, the id stays
+                // pending, and Enter retries.
+                string why = work.Exception?.GetBaseException().Message ?? "the connection attempt was cancelled";
+                TerminalLogger.Log($"[TerminalPane] remote session for '{profile.Name}' failed: {why}");
+                WriteBanner($"\r\n[ERROR] SSH Connection Failed: {SanitizeBannerValue(why)}\r\n");
+                return;
+            }
+
+            MuxSessionIdToRestore = null; // consumed by this result (an unreachable one keeps it again)
+            MuxEndpointId endpoint = MuxEndpointId.Parse(result.Endpoint);
+            FollowRemoteHost(endpoint.IsLocal ? null : factory.Hosts.TryGet(endpoint));
+
+            ITerminalSession? session;
+            bool previousLost;
+            try
+            {
+                session = ApplyPersistentResult(request, result, out previousLost);
+                Session = session;
+                if (session is null) return; // unreachable: the banner, and the id kept, were done there
+                ShellCommand = session.ShellCommand;
+                ShellArgs = string.Empty;
+                WireSessionLifecycle(session, profile);
+            }
+            catch (Exception ex)
+            {
+                TerminalLogger.Log($"[TerminalPane] wiring the remote session for '{profile.Name}' failed: {ex.Message}");
+                WriteBanner($"\r\n[ERROR] SSH Connection Failed: {SanitizeBannerValue(ex.Message)}\r\n");
+                return;
+            }
+
+            WireSessionStream(session, previousLost);
+        }
+
+        /// <summary>
+        /// Any thread. A remote result nobody will show: its session is let go off the UI thread (a plain SSH
+        /// stand-in's dispose may block). A shell started for that result alone - not the one an id reopened -
+        /// has nobody left to show it, so it is ended rather than left running unseen on the remote.
+        /// </summary>
+        private static void DiscardRemoteResult(PersistentSessionResult? result)
+        {
+            if (result?.Session is not { } session) return;
+            bool startedForIt = result.Outcome is not PersistentSessionOutcome.Reattached;
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    if (startedForIt && session is MuxClientSession mux) mux.Kill();
+                    session.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    TerminalLogger.Log($"[TerminalPane] discarding a stale remote session failed: {ex.Message}");
+                }
+            });
+        }
+
+        /// <summary>UI thread. Follows <paramref name="host"/>'s events (null: none), dropping the previous host's.</summary>
+        private void FollowRemoteHost(MuxConnectionHost? host)
+        {
+            if (ReferenceEquals(host, _remoteHost?.Host)) return;
+            _remoteHost?.Dispose();
+            _remoteHost = host is null ? null : new RemoteHostSubscription(this, host);
+        }
+
+        private enum RemoteHostEvent
+        {
+            ConnectionLost,
+            Reconnected,
+            ReconnectAbandoned,
+            DaemonStopped,
+        }
+
+        /// <summary>
+        /// One remote host's events, as this pane follows them (Phase 4 spec §7.4). They arrive on the pool, one
+        /// at a time; each is posted to the UI thread, where <see cref="OnRemoteHostEvent"/> acts only while this is
+        /// still the pane's subscription.
+        /// </summary>
+        private sealed class RemoteHostSubscription : IDisposable
+        {
+            private readonly Action<string> _lost;
+            private readonly Action<MuxClient> _reconnected;
+            private readonly Action _abandoned;
+            private readonly Action _stopped;
+
+            public RemoteHostSubscription(TerminalPane pane, MuxConnectionHost host)
+            {
+                Host = host;
+                _lost = _ => pane.PostRemoteHostEvent(this, RemoteHostEvent.ConnectionLost);
+                _reconnected = _ => pane.PostRemoteHostEvent(this, RemoteHostEvent.Reconnected);
+                _abandoned = () => pane.PostRemoteHostEvent(this, RemoteHostEvent.ReconnectAbandoned);
+                _stopped = () => pane.PostRemoteHostEvent(this, RemoteHostEvent.DaemonStopped);
+                host.ConnectionLost += _lost;
+                host.Reconnected += _reconnected;
+                host.ReconnectAbandoned += _abandoned;
+                host.DaemonStopped += _stopped;
+            }
+
+            public MuxConnectionHost Host { get; }
+
+            public void Dispose()
+            {
+                Host.ConnectionLost -= _lost;
+                Host.Reconnected -= _reconnected;
+                Host.ReconnectAbandoned -= _abandoned;
+                Host.DaemonStopped -= _stopped;
+            }
+        }
+
+        /// <summary>Pool thread (the host's event chain): never blocks it.</summary>
+        private void PostRemoteHostEvent(RemoteHostSubscription source, RemoteHostEvent hostEvent) =>
+            this.Dispatcher.Post(() => OnRemoteHostEvent(source, hostEvent));
+
+        /// <summary>
+        /// UI thread. The host's events name no client (Task 20), so the pane decides from its own state: a loss
+        /// or a stop matters only while its own session's connection is the one gone; a reconnect only while it
+        /// waits to take its dropped session back, and not while its own attempt (an Enter) is running - the
+        /// Reconnected that follows that attempt is a duplicate.
+        /// </summary>
+        private void OnRemoteHostEvent(RemoteHostSubscription source, RemoteHostEvent hostEvent)
+        {
+            if (Volatile.Read(ref _disposed) || !ReferenceEquals(source, _remoteHost) || _remoteConnecting) return;
+            bool ownSessionDropped = Session is MuxClientSession { IsConnected: false };
+            switch (hostEvent)
+            {
+                case RemoteHostEvent.ConnectionLost:
+                    if (ownSessionDropped && !_muxReconnecting) EnterRemoteReconnecting();
+                    break;
+                case RemoteHostEvent.DaemonStopped:
+                    if (ownSessionDropped || _muxReconnecting) EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName));
+                    break;
+                case RemoteHostEvent.ReconnectAbandoned:
+                    if (_muxReconnecting) EnterRemoteWaitingForEnter(RemoteAbandonedBanner(_remoteHostName));
+                    break;
+                case RemoteHostEvent.Reconnected:
+                    if (AwaitsRemoteReattach()) ReattachAfterReconnect();
+                    break;
+            }
+        }
+
+        /// <summary>UI thread: this pane's dropped session is waiting to be taken back (in the loop, or at an Enter banner).</summary>
+        private bool AwaitsRemoteReattach() =>
+            _muxReattachAfterDrop
+            && (_muxReconnecting || _muxConnectionLost)
+            && (_muxReattachId ?? MuxSessionIdToRestore) is not null
+            && Session is not MuxClientSession { IsConnected: true };
+
+        /// <summary>
+        /// UI thread. The link is back (Phase 4 spec §7.4): the factory runs again, off the UI thread, for this pane's
+        /// own session, opened Shared. Its snapshot then replaces the screen and the banners with it; a session gone
+        /// meanwhile takes the PreviousLost path.
+        /// </summary>
+        private void ReattachAfterReconnect()
+        {
+            TerminalLogger.Log($"[TerminalPane] {_remoteHostName} is back; reattaching {_muxReattachId ?? MuxSessionIdToRestore}");
+            Reconnect();
+        }
+
+        /// <summary>
+        /// UI thread. The host lost the link and its loop runs (Phase 4 spec §7.4): the banner under the last screen,
+        /// keys stop reaching the session, and what is typed is dropped (<see cref="OnKeyDown"/>).
+        /// </summary>
+        private void EnterRemoteReconnecting()
+        {
+            if (Session is MuxClientSession mux) _muxReattachId = mux.Id;
+            _muxReattachAfterDrop = true;
+            _muxReconnecting = true;
+            _muxConnectionLost = false;
+            _remoteInputHintShown = false;
+            TermView.SetSession(null);
+            ApplyMuxSharing(null);
+            WriteBanner($"\r\n\x1b[90m{RemoteReconnectingBanner(SanitizeBannerValue(_remoteHostName))}\x1b[0m\r\n");
+        }
+
+        /// <summary>
+        /// UI thread. Nothing will bring the session back on its own - the loop gave up, the daemon stopped, or a
+        /// reattach failed with the link up (Review Focus 2) - so Enter does (<see cref="OnKeyDown"/>, <see cref="Reconnect"/>).
+        /// The id is kept.
+        /// </summary>
+        private void EnterRemoteWaitingForEnter(string banner)
+        {
+            if (Session is MuxClientSession mux && MuxSessionIdToRestore is null) _muxReattachId = mux.Id;
+            _muxReattachAfterDrop = true;
+            _muxReconnecting = false;
+            _muxConnectionLost = true;
+            TermView.SetSession(null);
+            ApplyMuxSharing(null);
+            WriteBanner($"\r\n\x1b[90m{SanitizeBannerValue(banner)}\x1b[0m\r\n");
+        }
+
+        /// <summary>
+        /// UI thread. A remote session's connection dropped. The host says within a second what that was - a lost
+        /// link (its loop) or a stopped daemon - and its event shows the banner; until then the pane only stops
+        /// sending to the dead connection and remembers what to reattach (an Enter meanwhile reattaches at once).
+        /// </summary>
+        private void HandleRemoteMuxDisconnected(MuxClientSession source)
+        {
+            if (!IsCurrentMux(source) || _muxConnectionLost || _muxReconnecting) return;
+            _muxReattachId = source.Id;
+            _muxReattachAfterDrop = true;
+            ApplyMuxSharing(null);
+            TermView.SetSession(null);
+            TerminalLogger.Log($"[TerminalPane] connection to {_remoteHostName} lost for session {source.Id}");
+        }
+
+        /// <summary>
+        /// UI thread. Review Focus 2: a remote attach failed (an attach RPC timeout, a session gone between the open
+        /// and the attach). Back into the loop while the host is in it, else the Enter banner - never no session
+        /// and no banner.
+        /// </summary>
+        private void HandleRemoteAttachFailed(MuxClientSession source, Exception error)
+        {
+            if (!IsCurrentMux(source) || _muxConnectionLost || _muxReconnecting) return;
+            TerminalLogger.Log($"[TerminalPane] attach to {source.Id} on {_remoteHostName} failed: {error.Message}");
+            if (_remoteHost?.Host.IsReconnecting == true) EnterRemoteReconnecting();
+            else
+            {
+                _muxReattachId = source.Id;
+                EnterRemoteWaitingForEnter(RemoteAbandonedBanner(_remoteHostName));
+            }
+        }
+
+        /// <summary>UI thread: the first key dropped in a reconnect episode says so, once.</summary>
+        private void NoteRemoteInputDropped()
+        {
+            if (_remoteInputHintShown) return;
+            _remoteInputHintShown = true;
+            WriteBanner($"\r\n\x1b[90m{RemoteInputDroppedHint}\x1b[0m\r\n");
+        }
+
+        /// <summary>
+        /// UI thread: Enter while the host's loop runs. Not sent, and no reattach of its own: the host tries at once
+        /// (a user's GetClient is the loop's attempt now, and its backoff starts over - Task 20), off the UI thread
+        /// because it may prompt. Its Reconnected then brings this pane back.
+        /// </summary>
+        private void RetryRemoteNow()
+        {
+            if (_remoteHost?.Host is not { } host) return;
+            TerminalLogger.Log($"[TerminalPane] Enter while reconnecting to {_remoteHostName}: trying now");
+            _ = Task.Run(() => host.GetClient(host.Policy.ConnectTimeout));
+        }
+
+        /// <summary>UI thread: whether the current session is on a remote daemon whose host this pane follows.</summary>
+        private bool FollowsRemoteSession => _remoteHost is not null && !MuxEndpointId.Parse(MuxEndpoint).IsLocal;
 
         /// <summary>
         /// UI thread. A deliberate share's session was gone by the time this pane attached: no fresh
@@ -3756,6 +4133,52 @@ namespace Ntilde.Controls
         /// <summary>The <see cref="RemoteMuxUnavailableNoticeTitle"/> notice's line: the host the tab is on, and why it will not persist.</summary>
         internal static string RemoteMuxUnavailableMessage(string host, string reason) =>
             $"[{host}: {reason} \u2014 this tab will not survive a disconnect]";
+
+        /// <summary>Phase 4 spec §7.4: while a remote pane's factory call runs off the UI thread.</summary>
+        internal static string RemoteConnectingBanner(string host) => $"[Connecting to {host}\u2026]";
+
+        /// <summary>Phase 4 spec §7.4: the host lost the link and its reconnect loop runs; the last screen stays.</summary>
+        internal static string RemoteReconnectingBanner(string host) => $"[Connection to {host} lost \u2014 reconnecting\u2026]";
+
+        /// <summary>Phase 4 spec §7.4: written once per reconnect episode, for the first key dropped in it.</summary>
+        internal const string RemoteInputDroppedHint = "[Input is not sent while reconnecting]";
+
+        /// <summary>Phase 4 spec §7.4: the loop gave up (or a reattach failed with the link up); Enter reattaches.</summary>
+        internal static string RemoteAbandonedBanner(string host) => $"[Connection to {host} lost] [Press Enter to reconnect]";
+
+        /// <summary>Phase 4 spec §7.4: the remote daemon closed the connection; Enter reconnects to a new one.</summary>
+        internal static string RemoteDaemonStoppedBanner(string host) => $"[ntilde-mux on {host} stopped] [Press Enter to reconnect]";
+
+        /// <summary>Phase 4 spec §7.5: no session could be had from the remote daemon; the id (if any) is kept, and Enter retries.</summary>
+        internal static string RemoteUnreachableBanner(string host) => $"[{host} not reachable \u2014 press Enter to retry]";
+
+        /// <summary>Phase 4 spec §8.4: the remote-files sidebar on a persisted remote tab (title of the toast).</summary>
+        internal const string RemoteFilesUnavailableNoticeTitle = "Remote Files";
+
+        /// <summary>Phase 4 spec §8.4: the toast's line.</summary>
+        internal const string RemoteFilesUnavailableMessage = "Not available on a persistent remote tab";
+
+        /// <summary>Tests: bumped by every (re)spawn; a remote result that comes back under an older one is stale.</summary>
+        internal int RemoteConnectGenerationForTest => _remoteGen;
+
+        /// <summary>
+        /// Runs a remote factory call (Phase 4 spec §7.4) off the UI thread: it may wait minutes on its
+        /// connection, behind SSH prompts that are shown through the UI thread. A seam for tests.
+        /// </summary>
+        internal Func<Func<PersistentSessionResult>, Task<PersistentSessionResult>> RunOffUiThread { get; set; } = f => Task.Run(f);
+
+        /// <summary>
+        /// The action a remote notice offers for its failure (spec §7.5: "Install ntilde-mux…"), from the
+        /// window, which reads its install flow at call time; null offers none.
+        /// </summary>
+        internal Func<RemoteMuxFailure?, Guid, PersistenceNoticeAction?>? RemoteNoticeAction { get; set; }
+
+        /// <summary>
+        /// UI thread. This pane is (or is about to be) a session on a remote daemon (Phase 4 spec §8.4): not a
+        /// native SSH session, so no remote-files sidebar or SFTP. False for the plain SSH session that stands
+        /// in when the remote ntilde-mux could not be used.
+        /// </summary>
+        internal bool IsPersistentRemoteTab => !MuxEndpointId.Parse(MuxEndpoint).IsLocal && Session is null or MuxClientSession;
 
         /// <summary>
         /// Set by startup adoption (spec §9 orphans): this pane was opened only to show an orphaned
@@ -3848,13 +4271,23 @@ namespace Ntilde.Controls
         internal bool MuxSessionIsShare => _muxSessionIsShare;
         private bool _muxReattachShared;          // UI thread: the lost session was a share, reattach it shared
 
+        // Phase 4 spec §7.4, a pane on a remote daemon. All UI thread.
+        private int _remoteGen;                     // bumped by every (re)spawn: a remote result of an older one is stale
+        private bool _remoteConnecting;             // the remote factory call of _remoteGen is in flight
+        private bool _muxReconnecting;              // the host's reconnect loop runs for this pane's lost session
+        private bool _remoteInputHintShown;         // RemoteInputDroppedHint written in this episode
+        private bool _muxReattachAfterDrop;         // the pending id is this pane's own dropped session: reattach it Shared
+        private string _remoteHostName = string.Empty; // user@host, for the banners
+        private RemoteHostSubscription? _remoteHost; // the host whose events this pane follows
+
         /// <summary>
         /// Whether the next spawn joins its session shared: a pending "Attach to session…" id, or the
         /// reattach of a share whose connection dropped. Consumed with the id.
         /// </summary>
-        private bool TakeMuxAttachShared(bool isSsh)
+        /// <param name="plainSsh">An SSH pane that does not go to a remote daemon: it consumes nothing.</param>
+        private bool TakeMuxAttachShared(bool plainSsh)
         {
-            if (isSsh) return false;
+            if (plainSsh) return false;
             bool shared = _muxReattachId is not null
                 ? _muxReattachShared
                 : MuxSessionIdToRestore is not null && MuxAttachSharedToRestore;
@@ -3863,8 +4296,11 @@ namespace Ntilde.Controls
             return shared;
         }
 
-        /// <summary>An SSH pane never reopens a daemon session, and leaves any pending id unconsumed.</summary>
-        private Guid? TakeMuxSessionIdToRestore(bool isSsh) => isSsh ? null : TakeMuxSessionIdToRestore();
+        /// <summary>
+        /// A plain SSH pane (one whose profile does not persist remote sessions, Phase 4 spec §7.6) never reopens a
+        /// daemon session, and leaves any pending id unconsumed - on its endpoint, so the next save writes both back.
+        /// </summary>
+        private Guid? TakeMuxSessionIdToRestore(bool plainSsh) => plainSsh ? null : TakeMuxSessionIdToRestore();
 
         private Guid? TakeMuxSessionIdToRestore()
         {
@@ -3889,8 +4325,14 @@ namespace Ntilde.Controls
 
             mux.SnapshotReceived += snapshot => HandleMuxSnapshot(mux, snapshot);
             mux.StreamResize += (c, r) => HandleMuxStreamResize(mux, c, r);
-            // Disconnected can fire on any thread (even concurrently with a delivery); both marshal.
-            mux.Disconnected += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxDisconnectedBanner));
+            // Disconnected can fire on any thread (even concurrently with a delivery); both marshal. A remote
+            // session's host says what the drop was (Phase 4 spec §7.4), and its event shows the banner.
+            bool remote = FollowsRemoteSession;
+            mux.Disconnected += _ => this.Dispatcher.Post(() =>
+            {
+                if (remote) HandleRemoteMuxDisconnected(mux);
+                else HandleMuxConnectionLost(mux, MuxDisconnectedBanner);
+            });
             // A faulted session is gone for good (the daemon will not deliver it again): its own
             // wording, and no reattach - Enter ends it and starts a new shell (see Reconnect).
             mux.Faulted += _ => this.Dispatcher.Post(() => HandleMuxConnectionLost(mux, MuxSessionFailedBanner, reattach: false));
@@ -3959,12 +4401,14 @@ namespace Ntilde.Controls
         {
             MuxPresentation presentation = BuildMuxPresentation(); // UI thread, before the first await
             int scrollback = Math.Clamp(_settings?.MaxHistory ?? 10_000, 0, 50_000);
+            bool remote = FollowsRemoteSession;
             try
             {
                 await mux.AttachAsync(scrollback, presentation).ConfigureAwait(false);
                 this.Dispatcher.Post(() =>
                 {
                     if (!IsCurrentMux(mux)) return;
+                    _muxReattachAfterDrop = false; // the drop (if any) is over: this session is shown again
                     if (previousLost)
                     {
                         TerminalLogger.Log($"[TerminalPane] previous multiplexer session was lost; started {mux.Id}");
@@ -3990,8 +4434,11 @@ namespace Ntilde.Controls
             catch (Exception ex)
             {
                 TerminalLogger.Log($"[TerminalPane] attach to {mux.Id} failed: {ex.Message}");
-                this.Dispatcher.Post(() => HandleMuxConnectionLost(mux,
-                    $"[Multiplexer attach failed: {SanitizeBannerValue(ex.Message)}] [Press Enter to reconnect]"));
+                this.Dispatcher.Post(() =>
+                {
+                    if (remote) HandleRemoteAttachFailed(mux, ex);
+                    else HandleMuxConnectionLost(mux, $"[Multiplexer attach failed: {SanitizeBannerValue(ex.Message)}] [Press Enter to reconnect]");
+                });
             }
         }
 
@@ -4674,6 +5121,23 @@ namespace Ntilde.Controls
             // Copy/Paste (Ctrl+Shift+C/V) - TBD
             // Font Zoom - TBD
 
+            // Phase 4 spec §7.4. A remote connect is in flight (it may be waiting on a prompt): keys have nowhere
+            // to go, and another Enter would only join it. While the host's loop reconnects, input is dropped,
+            // never queued - the first key of the episode says so - and Enter tries the host at once.
+            if (_remoteConnecting)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (_muxReconnecting)
+            {
+                e.Handled = true;
+                if (e.Key == Key.Enter) RetryRemoteNow();
+                else if (!IsModifierKey(e.Key)) NoteRemoteInputDropped();
+                return;
+            }
+
             // Reconnect if dead
             // _muxConnectionLost covers what the session cannot report itself: an attach that failed
             // over a connection that is still up leaves a running, connected, never-attached session.
@@ -4690,6 +5154,9 @@ namespace Ntilde.Controls
 
             base.OnKeyDown(e);
         }
+
+        private static bool IsModifierKey(Key key) => key is Key.LeftShift or Key.RightShift or Key.LeftCtrl or Key.RightCtrl
+            or Key.LeftAlt or Key.RightAlt or Key.LWin or Key.RWin;
 
         public void Reconnect()
         {
@@ -4968,8 +5435,10 @@ namespace Ntilde.Controls
         {
             base.OnAttachedToVisualTree(e);
 
-            // Fallback: Ensure session is initialized if it wasn't yet (e.g. nested split timing)
-            if (Session == null)
+            // Fallback: Ensure session is initialized if it wasn't yet (e.g. nested split timing). Not while a
+            // remote connect is in flight, or the host's loop is getting this pane's session back: both end in a
+            // session of their own, and a re-parent (a split, a zoom) must not start another connect.
+            if (Session == null && !_remoteConnecting && !_muxReconnecting)
             {
                 InitializeSession(ShellCommand, Profile, TermView.Cols, TermView.Rows);
             }
@@ -5019,6 +5488,10 @@ namespace Ntilde.Controls
             }
 
             CloseRemoteFilesSidebar();
+
+            // A remote result still on its way finds the pane disposed and lets its session go (Phase 4 spec §7.4);
+            // the host's events stop reaching it now.
+            FollowRemoteHost(null);
 
             // Cancels any suggestion pass still in flight. Without this a debounced pass
             // outlives the pane that owns it and publishes into a surface that is being torn
