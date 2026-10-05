@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Net.Sockets;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
@@ -93,6 +94,66 @@ public sealed class MuxStartupProbeTests : IDisposable
         }
 
         Assert.False(MuxStartupProbe.DefaultPipeExists(pipeName));
+    }
+
+    [Theory]
+    [InlineData(SocketError.ConnectionRefused, true, true)]
+    [InlineData(SocketError.AccessDenied, true, false)]
+    [InlineData(SocketError.TryAgain, true, false)]
+    [InlineData(SocketError.AddressFamilyNotSupported, true, false)]
+    public void Only_a_refusal_or_a_missing_socket_is_a_genuine_refusal(SocketError code, bool fileExists, bool expected)
+    {
+        var ex = new IOException("x", new SocketException((int)code));
+        Assert.Equal(expected, MuxStartupProbe.IsGenuineRefusal(ex, "/e", isWindows: false, _ => fileExists));
+    }
+
+    [Fact]
+    public void A_plain_IOException_is_a_refusal_only_when_the_socket_file_is_missing()
+    {
+        var ex = new IOException("x");
+        Assert.False(MuxStartupProbe.IsGenuineRefusal(ex, "/e", isWindows: false, _ => true));
+        Assert.True(MuxStartupProbe.IsGenuineRefusal(ex, "/e", isWindows: false, _ => false));
+    }
+
+    [Fact]
+    public void On_Windows_only_FileNotFound_is_a_genuine_refusal()
+    {
+        Assert.True(MuxStartupProbe.IsGenuineRefusal(new FileNotFoundException(), "e", isWindows: true, _ => true));
+        Assert.False(MuxStartupProbe.IsGenuineRefusal(new IOException("x"), "e", isWindows: true, _ => false));
+        Assert.False(MuxStartupProbe.IsGenuineRefusal(
+            new IOException("x", new SocketException((int)SocketError.ConnectionRefused)), "e", isWindows: true, _ => false));
+    }
+
+    [Theory]
+    [InlineData(SocketError.ConnectionRefused, true, false, false)]
+    [InlineData(SocketError.AccessDenied, true, true, true)]
+    [InlineData(SocketError.TryAgain, true, true, true)]
+    [InlineData(SocketError.AddressFamilyNotSupported, true, true, true)]
+    public void Only_a_refusal_deletes_the_descriptor(SocketError code, bool fileExists, bool expectedLive, bool expectedKept)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix socket semantics; the pure function is covered on every OS.");
+        WriteRecycledPidDescriptor();
+
+        bool live = MuxStartupProbe.IsDaemonLive(DescriptorPath, TimeSpan.FromMilliseconds(200),
+            (_, _) => throw new IOException("x", new SocketException((int)code)), fileExists: _ => fileExists);
+
+        Assert.Equal(expectedLive, live);
+        Assert.Equal(expectedKept, File.Exists(DescriptorPath));
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    public void A_plain_IOException_deletes_the_descriptor_only_when_the_socket_is_missing(bool fileExists, bool expectedLive, bool expectedKept)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix socket semantics; the pure function is covered on every OS.");
+        WriteRecycledPidDescriptor();
+
+        bool live = MuxStartupProbe.IsDaemonLive(DescriptorPath, TimeSpan.FromMilliseconds(200),
+            (_, _) => throw new IOException("x"), fileExists: _ => fileExists);
+
+        Assert.Equal(expectedLive, live);
+        Assert.Equal(expectedKept, File.Exists(DescriptorPath));
     }
 
     [Fact]
