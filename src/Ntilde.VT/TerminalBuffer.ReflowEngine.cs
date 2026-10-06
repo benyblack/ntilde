@@ -13,7 +13,6 @@ namespace Ntilde.VT
             private readonly SavedCursorStates _savedCursors;
             private TerminalRow[] _viewport;
             private ScrollbackPages _scrollback;
-            private readonly List<TerminalRow> _history;
             private readonly List<TerminalImage> _images;
             // Pruned images retire their handles through the owning buffer's queue; the
             // reflow works on a copy of the list reference, so it needs the buffer back-reference.
@@ -47,7 +46,6 @@ namespace Ntilde.VT
                 _scrollback = source._scrollback;
                 _commandStartMark = _observedCommandStartMark = source.CommandStartMark;
                 _commandOutputStartMark = _observedCommandOutputStartMark = source.CommandOutputStartMark;
-                _history = new List<TerminalRow>(_scrollback.Count + source.Rows);
                 _maxScrollbackBytes = source.MaxScrollbackBytes;
                 _images = source._images;
                 _source = source;
@@ -165,31 +163,33 @@ namespace Ntilde.VT
                 return _getGraphemeWidth(textElement);
             }
 
+            // Streams the reflow one logical line at a time. It used to materialise the whole
+            // scrollback four times over - a TerminalRow copy of every old row, one (cell, grapheme,
+            // link) entry per cell in a pooled scratch array sized rows x the wider width (rounded up
+            // to a power of two by the pool, and retained by it afterwards), a TerminalRow per
+            // re-wrapped row, and the rebuilt pages: about 1 GB per pane at 100k lines. Now old
+            // scrollback rows are read in place through one reused row, only the logical line being
+            // assembled is buffered, and re-wrapped history rows go straight into the new pages
+            // through one reused row. Only lines that start in the old viewport - at most a screen's
+            // worth - become TerminalRow objects, because they may become the new viewport.
             private void Reflow(int oldCols, int oldRows, int newCols, int newRows)
             {
-                TerminalRow[]? allPhysicalRows = null;
-                // The hyperlink travels alongside the extended grapheme, not separately: both are
-                // column-keyed side tables, and reflow re-columns everything. Before #164 item 2a
-                // this tuple had no Hyperlink field, so hyperlinks were read out of the old rows
-                // (see the GetHyperlinkMap call below) and then silently dropped here - which made
-                // GetHyperlinkMap() on every flowed row unconditionally null, and lost every OSC 8
-                // link on any resize.
-                (TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink)[]? logicalCells = null;
-
                 try
                 {
                     if (newCols <= 0 || newRows <= 0) return;
 
+                    int oldScrollbackCount = _scrollback.Count;
+
                     // 1. Capture Cursor Content Pre-Resize
-                    int absCursorPhysicalIdx = _scrollback.Count + _cursorRow;
+                    int absCursorPhysicalIdx = oldScrollbackCount + _cursorRow;
                     int cursorLogicalIdx = -1;
                     int cursorInLogicalOffset = -1;
 
-                    int absMainSavedIdx = _scrollback.Count + _savedCursors.Main.Row;
+                    int absMainSavedIdx = oldScrollbackCount + _savedCursors.Main.Row;
                     int mainSavedLogicalIdx = -1;
                     int mainSavedInLogicalOffset = -1;
 
-                    int absAltSavedIdx = _scrollback.Count + _savedCursors.Alt.Row;
+                    int absAltSavedIdx = oldScrollbackCount + _savedCursors.Alt.Row;
                     int altSavedLogicalIdx = -1;
                     int altSavedInLogicalOffset = -1;
 
@@ -225,80 +225,280 @@ namespace Ntilde.VT
                     }
 
                     int vpRowsToTake = lastActiveVpRow + 1;
-                    int totalPhysRows = _scrollback.Count + vpRowsToTake;
+                    int totalPhysRows = oldScrollbackCount + vpRowsToTake;
 
-                    // Rent array to avoid LOH/large allocation
-                    allPhysicalRows = System.Buffers.ArrayPool<TerminalRow>.Shared.Rent(totalPhysRows);
+                    // Logical lines that start before this physical row are history: every row they
+                    // flow into stays in the scrollback. Lines from here on are the old viewport's.
+                    int splitPhysIndex = oldScrollbackCount;
+
+                    // Image anchoring has always let the last logical line run to the end of the
+                    // TerminalRow[] the previous implementation rented for the physical rows - the
+                    // pool's bucket size, the next power of two that is at least 16 - so an image
+                    // parked below the content anchored to that line only within that range and
+                    // otherwise kept its coordinates. Reproduced exactly: which stray images move
+                    // is a behaviour question, not part of making the reflow stream.
+                    int lastLineEnd = totalPhysRows == 0
+                        ? 0
+                        : (int)System.Numerics.BitOperations.RoundUpToPowerOf2((uint)Math.Max(totalPhysRows, 16));
 
                     // 3. Metadata-Aware Logical Reconstruction
-                    var logicalCellsPool = System.Buffers.ArrayPool<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink)>.Shared;
-                    int maxLogicalCells = totalPhysRows * Math.Max(oldCols, newCols) + 1000;
-                    logicalCells = logicalCellsPool.Rent(maxLogicalCells);
-                    int logicalCellsCount = 0;
+                    // The hyperlink travels alongside the extended grapheme, not separately: both are
+                    // column-keyed side tables, and reflow re-columns everything (#164 item 2a).
+                    var line = new (TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink)[Math.Max(oldCols, newCols) * 2 + 16];
+                    int lineLen = 0;
+                    int lineStartPhys = -1;
+                    int logicalIdx = 0;
 
-                    var logicalLines = new List<(int StartIdx, int Length, bool IsWrapped, int StartPhysIdx)>(totalPhysRows);
-
-                    // Fill rented array
-                    for (int i = 0; i < _scrollback.Count; i++)
+                    // Main-screen images still to be anchored, and where the flow puts each one.
+                    // Alt-screen images use viewport-relative CellY and must not be anchored to (and
+                    // repositioned by) main logical lines.
+                    var unanchoredImages = new List<TerminalImage>();
+                    foreach (var img in _images)
                     {
-                        var rowCells = _scrollback.GetRow(i);
-                        var row = new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
-                        rowCells.CopyTo(row.Cells);
-                        row.IsWrapped = _scrollback.IsRowWrapped(i);
-                        // Restore extended graphemes and hyperlinks from the paged scrollback side-channel.
-                        _scrollback.GetExtendedTextMap(i)?.ForEach((col, text) => row.SetExtendedText(col, text));
-                        _scrollback.GetHyperlinkMap(i)?.ForEach((col, link) => row.SetHyperlink(col, link));
-                        allPhysicalRows[i] = row;
+                        if (img != null && !img.IsAltScreenImage) unanchoredImages.Add(img);
                     }
-                    for (int i = 0; i < vpRowsToTake; i++)
+                    var imagePlacements = new List<(TerminalImage Image, int NewY, int NewX)>();
+                    var lineAnchors = new List<(TerminalImage Image, int OffsetInLogicalLine)>();
+
+                    // 5. Distribution state
+                    var newScrollback = new ScrollbackPages(newCols, _sharedPagePool, _maxScrollbackBytes);
+                    var activeRows = new List<TerminalRow>();
+                    var historyRow = new TerminalRow(newCols, Theme.Foreground, Theme.Background);
+                    var scrollbackRow = new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
+                    var def = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
+                    int flowedRows = 0;
+                    int historyRowCount = 0; // Tracks physical rows generated from original history
+
+                    int newCursorPhysRow = -1;
+                    int newCursorPhysCol = -1;
+                    int newMainSavedPhysRow = -1;
+                    int newMainSavedPhysCol = -1;
+                    int newAltSavedPhysRow = -1;
+                    int newAltSavedPhysCol = -1;
+                    int newCommandStartPhysRow = -1;
+                    int newCommandStartPhysCol = -1;
+                    int newOutputStartPhysRow = -1;
+                    int newOutputStartPhysCol = -1;
+
+                    void EnsureLineCapacity(int needed)
                     {
-                        if (i < actualVpLen) allPhysicalRows[_scrollback.Count + i] = _viewport[i];
-                        else allPhysicalRows[_scrollback.Count + i] = new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
+                        if (needed <= line.Length) return;
+                        Array.Resize(ref line, Math.Max(needed, line.Length * 2));
                     }
 
-                    int currentLogStart = -1;
-                    int currentStartPhys = -1;
+                    // A flowed row of a history line goes straight into the new pages; the pages
+                    // keep the side-table maps by reference, so the reused row gets fresh ones.
+                    void EmitRow(TerminalRow row, bool isHistory)
+                    {
+                        if (isHistory)
+                        {
+                            newScrollback.AppendRow(row.Cells, row.IsWrapped, row.GetExtendedTextMap(), row.GetHyperlinkMap());
+                            row.ClearExtendedText();
+                            row.ClearHyperlinks();
+                            row.IsWrapped = false;
+                        }
+                        else
+                        {
+                            activeRows.Add(row);
+                        }
+                        flowedRows++;
+                    }
 
-                    // Iterate using totalPhysRows count
+                    // Re-wraps the logical line assembled in `line` at newCols. endPhysExclusive is
+                    // where the next line starts; the last line extends to the end of the buffer.
+                    void FlowLine(int i, int lineCount, int startPhys, int endPhysExclusive)
+                    {
+                        bool isHistory = startPhys < splitPhysIndex;
+                        int startFlowIndex = flowedRows;
+
+                        // 5b. Anchor Images to Logical Positions
+                        lineAnchors.Clear();
+                        for (int k = unanchoredImages.Count - 1; k >= 0; k--)
+                        {
+                            var img = unanchoredImages[k];
+                            if (img.CellY >= startPhys && img.CellY < endPhysExclusive)
+                            {
+                                int rowOffset = img.CellY - startPhys;
+                                lineAnchors.Add((img, rowOffset * oldCols + img.CellX));
+                                unanchoredImages.RemoveAt(k);
+                            }
+                        }
+
+                        if (lineCount == 0)
+                        {
+                            // If this is the WIPED prompt, place cursor here
+                            if (i == cursorLogicalIdx) { newCursorPhysRow = flowedRows; newCursorPhysCol = 0; }
+                            if (i == mainSavedLogicalIdx) { newMainSavedPhysRow = flowedRows; newMainSavedPhysCol = 0; }
+                            if (i == altSavedLogicalIdx) { newAltSavedPhysRow = flowedRows; newAltSavedPhysCol = 0; }
+                            if (i == commandStartLogicalIdx) { newCommandStartPhysRow = flowedRows; newCommandStartPhysCol = 0; }
+                            if (i == outputStartLogicalIdx) { newOutputStartPhysRow = flowedRows; newOutputStartPhysCol = 0; }
+                            if (isHistory)
+                            {
+                                for (int c = 0; c < newCols; c++) historyRow.Cells[c] = def;
+                                EmitRow(historyRow, isHistory: true);
+                            }
+                            else
+                            {
+                                EmitRow(new TerminalRow(newCols, Theme.Foreground, Theme.Background), isHistory: false);
+                            }
+                        }
+                        else
+                        {
+                            int processed = 0;
+                            while (processed < lineCount)
+                            {
+                                int remaining = lineCount - processed;
+                                int take = Math.Min(remaining, newCols);
+
+                                // Prevent splitting a wide character across lines
+                                if (take < remaining && take > 0 && line[processed + take - 1].Cell.IsWide)
+                                {
+                                    take--; // This row will end with a space, wide char moves to next row
+                                }
+
+                                // If take is 0 but we have remaining (newCols is 1 and we have a wide char),
+                                // we're forced to just take it and let it be clipped, otherwise infinite loop.
+                                if (take == 0 && remaining > 0) take = 1;
+
+                                // Mapping
+                                if (i == cursorLogicalIdx)
+                                {
+                                    if (cursorInLogicalOffset >= processed && cursorInLogicalOffset < processed + newCols)
+                                    {
+                                        newCursorPhysRow = flowedRows;
+                                        newCursorPhysCol = cursorInLogicalOffset - processed;
+                                    }
+                                    else if (cursorInLogicalOffset == processed + newCols && remaining == newCols)
+                                    {
+                                        newCursorPhysRow = flowedRows;
+                                        newCursorPhysCol = newCols;
+                                    }
+                                }
+
+                                if (i == mainSavedLogicalIdx)
+                                {
+                                    if (mainSavedInLogicalOffset >= processed && mainSavedInLogicalOffset < processed + newCols)
+                                    {
+                                        newMainSavedPhysRow = flowedRows;
+                                        newMainSavedPhysCol = mainSavedInLogicalOffset - processed;
+                                    }
+                                }
+
+                                if (i == altSavedLogicalIdx)
+                                {
+                                    if (altSavedInLogicalOffset >= processed && altSavedInLogicalOffset < processed + newCols)
+                                    {
+                                        newAltSavedPhysRow = flowedRows;
+                                        newAltSavedPhysCol = altSavedInLogicalOffset - processed;
+                                    }
+                                }
+
+                                if (i == commandStartLogicalIdx)
+                                {
+                                    if (commandStartInLogicalOffset >= processed && commandStartInLogicalOffset < processed + newCols)
+                                    {
+                                        newCommandStartPhysRow = flowedRows;
+                                        newCommandStartPhysCol = commandStartInLogicalOffset - processed;
+                                    }
+                                }
+
+                                if (i == outputStartLogicalIdx)
+                                {
+                                    if (outputStartInLogicalOffset >= processed && outputStartInLogicalOffset < processed + newCols)
+                                    {
+                                        newOutputStartPhysRow = flowedRows;
+                                        newOutputStartPhysCol = outputStartInLogicalOffset - processed;
+                                    }
+                                }
+
+                                var row = isHistory ? historyRow : new TerminalRow(newCols, Theme.Foreground, Theme.Background);
+                                for (int c = 0; c < take; c++)
+                                {
+                                    var entry = line[processed + c];
+                                    row.Cells[c] = entry.Cell;
+                                    row.SetExtendedText(c, entry.ExtendedText);
+                                    row.SetHyperlink(c, entry.Hyperlink);
+                                }
+
+                                // Style-Aware Padding
+                                // We use TRUE default style for padding, NOT the last character's style.
+                                // This prevents "Background Leakage" (e.g. blue/green bars) when resizing.
+                                for (int c = take; c < newCols; c++) row.Cells[c] = def;
+
+                                row.IsWrapped = remaining > newCols;
+                                EmitRow(row, isHistory);
+                                processed += take;
+                            }
+                        }
+
+                        // If this line belongs to history (before viewport start), add its generated rows to count
+                        if (isHistory)
+                        {
+                            historyRowCount += flowedRows - startFlowIndex;
+                        }
+
+                        foreach (var (image, offsetInLine) in lineAnchors)
+                        {
+                            imagePlacements.Add((image, startFlowIndex + (offsetInLine / newCols), offsetInLine % newCols));
+                        }
+                    }
+
                     for (int i = 0; i < totalPhysRows; i++)
                     {
-                        var physRow = allPhysicalRows[i];
-
-                        if (currentLogStart == -1)
+                        TerminalRow physRow;
+                        if (i < oldScrollbackCount)
                         {
-                            currentLogStart = logicalCellsCount;
-                            currentStartPhys = i;
+                            // Read the paged row in place: its cells into the one reused row, its side
+                            // tables borrowed (the reflow only reads them).
+                            _scrollback.GetRow(i).CopyTo(scrollbackRow.Cells);
+                            scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(i);
+                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(i), _scrollback.GetHyperlinkMap(i));
+                            physRow = scrollbackRow;
                         }
+                        else
+                        {
+                            int vpRow = i - oldScrollbackCount;
+                            physRow = vpRow < actualVpLen ? _viewport[vpRow] : new TerminalRow(oldCols, Theme.Foreground, Theme.Background);
+                        }
+
+                        if (lineStartPhys == -1)
+                        {
+                            lineStartPhys = i;
+                            lineLen = 0;
+                        }
+
+                        // One physical row adds at most its own cells plus a right-prompt fill up to newCols.
+                        EnsureLineCapacity(lineLen + physRow.Cells.Length + newCols + 4);
 
                         // Cursor Tracking
                         if (i == absCursorPhysicalIdx)
                         {
-                            cursorLogicalIdx = logicalLines.Count;
-                            cursorInLogicalOffset = (logicalCellsCount - currentLogStart) + _cursorCol;
+                            cursorLogicalIdx = logicalIdx;
+                            cursorInLogicalOffset = lineLen + _cursorCol;
                         }
 
                         if (i == absMainSavedIdx)
                         {
-                            mainSavedLogicalIdx = logicalLines.Count;
-                            mainSavedInLogicalOffset = (logicalCellsCount - currentLogStart) + _savedCursors.Main.Col;
+                            mainSavedLogicalIdx = logicalIdx;
+                            mainSavedInLogicalOffset = lineLen + _savedCursors.Main.Col;
                         }
 
                         if (i == absAltSavedIdx)
                         {
-                            altSavedLogicalIdx = logicalLines.Count;
-                            altSavedInLogicalOffset = (logicalCellsCount - currentLogStart) + _savedCursors.Alt.Col;
+                            altSavedLogicalIdx = logicalIdx;
+                            altSavedInLogicalOffset = lineLen + _savedCursors.Alt.Col;
                         }
 
                         if (i == absCommandStartIdx && _commandStartMark is ShellIntegrationMark cs)
                         {
-                            commandStartLogicalIdx = logicalLines.Count;
-                            commandStartInLogicalOffset = (logicalCellsCount - currentLogStart) + cs.Column;
+                            commandStartLogicalIdx = logicalIdx;
+                            commandStartInLogicalOffset = lineLen + cs.Column;
                         }
 
                         if (i == absOutputStartIdx && _commandOutputStartMark is ShellIntegrationMark os)
                         {
-                            outputStartLogicalIdx = logicalLines.Count;
-                            outputStartInLogicalOffset = (logicalCellsCount - currentLogStart) + os.Column;
+                            outputStartLogicalIdx = logicalIdx;
+                            outputStartInLogicalOffset = lineLen + os.Column;
                         }
 
                         int validLen = physRow.Cells.Length;
@@ -342,16 +542,16 @@ namespace Ntilde.VT
                                         if (ch != ' ' && ch != '\0')
                                         {
                                             // Vertical bars, corners, etc.
-                                            // U+2500 to U+257F are Box Drawing. 
+                                            // U+2500 to U+257F are Box Drawing.
                                             // U+2580 to U+259F are Block Elements (Full Block, Shades, etc.) used for scrollbars/shadows.
                                             // U+FF00 to U+FFEF are Halfwidth and Fullwidth Forms (includes Fullwidth Pipe U+FF5C).
                                             // '|' is standard vertical bar (U+007C).
                                             // '+' and '-' can be ASCII borders.
                                             // '>' is often used by MC to indicate horizontal scroll overflow.
                                             if (ch == '|' || ch == '+' || ch == '-' || ch == '>' ||
-                                               (ch >= '\u2500' && ch <= '\u257F') ||
-                                               (ch >= '\u2580' && ch <= '\u259F') ||
-                                               (ch >= '\uFF00' && ch <= '\uFFEF'))
+                                               (ch >= '─' && ch <= '╿') ||
+                                               (ch >= '▀' && ch <= '▟') ||
+                                               (ch >= '＀' && ch <= '￯'))
                                             {
                                                 ignoreWrap = true;
                                             }
@@ -359,7 +559,7 @@ namespace Ntilde.VT
                                             // These are text characters, so we can't protect them globally (would break text wrapping).
                                             // However, in TUI headers, they typically have a specific background color.
                                             // Also protect Arrows '↑' (U+2191) and '↓' (U+2193) which are sometimes used as sort indicators.
-                                            else if ((ch == ']' || ch == '[' || ch == '^' || ch == '\u2191' || ch == '\u2193') && !c.IsDefaultBackground)
+                                            else if ((ch == ']' || ch == '[' || ch == '^' || ch == '↑' || ch == '↓') && !c.IsDefaultBackground)
                                             {
                                                 ignoreWrap = true;
                                             }
@@ -509,14 +709,14 @@ namespace Ntilde.VT
                                 // Extract Left+Middle
                                 for (int k = 0; k < gapStart; k++)
                                 {
-                                    logicalCells[logicalCellsCount++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                    line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
                                 }
 
                                 // Calculate new position
                                 int rightBlockWidth = rightEnd - rightStart + 1;
                                 int newRightPos = newCols - rightBlockWidth;
 
-                                int currentPos = logicalCellsCount - currentLogStart; // This is effectively gapStart
+                                int currentPos = lineLen; // This is effectively gapStart
 
                                 if (newRightPos > currentPos + 2 && (newRightPos + rightBlockWidth) <= newCols)
                                 {
@@ -524,28 +724,28 @@ namespace Ntilde.VT
                                     var spaceFill = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
                                     for (int s = currentPos; s < newRightPos; s++)
                                     {
-                                        logicalCells[logicalCellsCount++] = (spaceFill, null, null);
+                                        line[lineLen++] = (spaceFill, null, null);
                                     }
                                     // Add right content
                                     for (int k = rightStart; k <= rightEnd; k++)
                                     {
-                                        logicalCells[logicalCellsCount++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                        line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
                                     }
                                 }
                                 else
                                 {
                                     // Truncate/Squish
                                     var spaceFill = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
-                                    logicalCells[logicalCellsCount++] = (spaceFill, null, null);
-                                    logicalCells[logicalCellsCount++] = (spaceFill, null, null);
+                                    line[lineLen++] = (spaceFill, null, null);
+                                    line[lineLen++] = (spaceFill, null, null);
 
-                                    int available = newCols - (logicalCellsCount - currentLogStart);
+                                    int available = newCols - lineLen;
                                     if (available > 0)
                                     {
                                         int take = Math.Min(available, rightBlockWidth);
                                         int startOffset = rightBlockWidth - take;
                                         for (int k = rightStart + startOffset; k <= rightEnd; k++)
-                                            logicalCells[logicalCellsCount++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                            line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
                                     }
                                 }
                                 isSparseRowRepositioned = true;
@@ -557,212 +757,27 @@ namespace Ntilde.VT
                         if (!isSparseRowRepositioned)
                         {
                             for (int k = 0; k < validLen; k++)
-                                logicalCells[logicalCellsCount++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
+                                line[lineLen++] = (physRow.Cells[k], physRow.GetExtendedText(k), physRow.GetHyperlink(k));
                         }
 
                         if (!physRow.IsWrapped || ignoreWrap)
                         {
-                            logicalLines.Add((currentLogStart, logicalCellsCount - currentLogStart, false, currentStartPhys));
-                            currentLogStart = -1;
+                            FlowLine(logicalIdx, lineLen, lineStartPhys, i == totalPhysRows - 1 ? lastLineEnd : i + 1);
+                            logicalIdx++;
+                            lineStartPhys = -1;
                         }
                     }
 
-                    if (currentLogStart != -1)
+                    if (lineStartPhys != -1)
                     {
-                        logicalLines.Add((currentLogStart, logicalCellsCount - currentLogStart, true, currentStartPhys));
-                    }
-                    // 5. Distribution logic
-                    _scrollback.Clear();
-                    _viewport = new TerminalRow[newRows];
-                    // Pre-allocate for the typical case of 1.2x expansion due to wrapping
-                    var allFlowedRows = new List<TerminalRow>((int)(logicalLines.Count * 1.2));
-
-                    int newCursorPhysRow = -1;
-                    int newCursorPhysCol = -1;
-                    int newMainSavedPhysRow = -1;
-                    int newMainSavedPhysCol = -1;
-                    int newAltSavedPhysRow = -1;
-                    int newAltSavedPhysCol = -1;
-                    int newCommandStartPhysRow = -1;
-                    int newCommandStartPhysCol = -1;
-                    int newOutputStartPhysRow = -1;
-                    int newOutputStartPhysCol = -1;
-                    int historyRowCount = 0; // Tracks physical rows generated from original history
-                    var newStartFlowIndices = new int[logicalLines.Count];
-
-                    // 5b. Anchor Images to Logical Positions before Reflow
-                    var imageAnchors = new List<(TerminalImage Image, int LogicalLineIdx, int OffsetInLogicalLine)>();
-                    for (int imgIdx = 0; imgIdx < _images.Count; imgIdx++)
-                    {
-                        var img = _images[imgIdx];
-                        if (img == null) continue;
-                        // Reflow operates on main-screen content (scrollback + main
-                        // viewport). Alt-screen images use viewport-relative CellY and
-                        // must not be anchored to (and repositioned by) main logical lines.
-                        if (img.IsAltScreenImage) continue;
-
-                        // Find which logical line contains img.CellY
-                        for (int idx = 0; idx < logicalLines.Count; idx++)
-                        {
-                            var start = logicalLines[idx].StartPhysIdx;
-                            var end = (idx + 1 < logicalLines.Count) ? logicalLines[idx + 1].StartPhysIdx : allPhysicalRows.Length;
-                            if (img.CellY >= start && img.CellY < end)
-                            {
-                                int rowOffset = img.CellY - start;
-                                int offsetInLine = rowOffset * oldCols + img.CellX;
-                                imageAnchors.Add((img, idx, offsetInLine));
-                                break;
-                            }
-                        }
-                    }
-
-                    // Identify the logical line index that starts the viewport
-                    // The first viewport row in 'allPhysicalRows' was at index 'oldScrollbackCount'
-                    // We need to find the first logical line that includes 'oldScrollbackCount' or higher.
-                    int firstViewportLogicalIdx = logicalLines.Count; // Default to end
-                    int oldScrollbackCount = absCursorPhysicalIdx - _cursorRow; // Re-derive or pass in? 
-                                                                                // Better to capture oldScrollbackCount at the start of Reflow.
-                                                                                // But we can infer it: absCursorPhysicalIdx is _scrollback.Count + _cursorRow.
-                                                                                // So _scrollback.Count = absCursorPhysicalIdx - _cursorRow.
-                                                                                // Wait, absCursorPhysicalIdx is calculated using CURRENT _cursorRow and _scrollback.Count.
-                                                                                // So yes, that works.
-                    int splitPhysIndex = absCursorPhysicalIdx - _cursorRow;
-
-                    // Find first logical line that starts at or after splitPhysIndex
-                    for (int i = 0; i < logicalLines.Count; i++)
-                    {
-                        if (logicalLines[i].StartPhysIdx >= splitPhysIndex)
-                        {
-                            firstViewportLogicalIdx = i;
-                            break;
-                        }
-                    }
-
-                    for (int i = 0; i < logicalLines.Count; i++)
-                    {
-                        var lineInfo = logicalLines[i];
-                        int lineStart = lineInfo.StartIdx;
-                        int lineCount = lineInfo.Length;
-
-                        // Track start of this logical line in flowed rows
-                        int startFlowIndex = allFlowedRows.Count;
-
-                        if (lineCount == 0)
-                        {
-                            // If this is the WIPED prompt, place cursor here
-                            if (i == cursorLogicalIdx) { newCursorPhysRow = allFlowedRows.Count; newCursorPhysCol = 0; }
-                            if (i == mainSavedLogicalIdx) { newMainSavedPhysRow = allFlowedRows.Count; newMainSavedPhysCol = 0; }
-                            if (i == altSavedLogicalIdx) { newAltSavedPhysRow = allFlowedRows.Count; newAltSavedPhysCol = 0; }
-                            if (i == commandStartLogicalIdx) { newCommandStartPhysRow = allFlowedRows.Count; newCommandStartPhysCol = 0; }
-                            if (i == outputStartLogicalIdx) { newOutputStartPhysRow = allFlowedRows.Count; newOutputStartPhysCol = 0; }
-                            allFlowedRows.Add(new TerminalRow(newCols, Theme.Foreground, Theme.Background));
-                        }
-                        else
-                        {
-                            int processed = 0;
-                            while (processed < lineCount)
-                            {
-                                int remaining = lineCount - processed;
-                                int take = Math.Min(remaining, newCols);
-
-                                // Prevent splitting a wide character across lines
-                                if (take < remaining && take > 0 && logicalCells[lineStart + processed + take - 1].Cell.IsWide)
-                                {
-                                    take--; // This row will end with a space, wide char moves to next row
-                                }
-
-                                // If take is 0 but we have remaining (newCols is 1 and we have a wide char),
-                                // we're forced to just take it and let it be clipped, otherwise infinite loop.
-                                if (take == 0 && remaining > 0) take = 1;
-
-                                // Mapping
-                                if (i == cursorLogicalIdx)
-                                {
-                                    if (cursorInLogicalOffset >= processed && cursorInLogicalOffset < processed + newCols)
-                                    {
-                                        newCursorPhysRow = allFlowedRows.Count;
-                                        newCursorPhysCol = cursorInLogicalOffset - processed;
-                                    }
-                                    else if (cursorInLogicalOffset == processed + newCols && remaining == newCols)
-                                    {
-                                        newCursorPhysRow = allFlowedRows.Count;
-                                        newCursorPhysCol = newCols;
-                                    }
-                                }
-
-                                if (i == mainSavedLogicalIdx)
-                                {
-                                    if (mainSavedInLogicalOffset >= processed && mainSavedInLogicalOffset < processed + newCols)
-                                    {
-                                        newMainSavedPhysRow = allFlowedRows.Count;
-                                        newMainSavedPhysCol = mainSavedInLogicalOffset - processed;
-                                    }
-                                }
-
-                                if (i == altSavedLogicalIdx)
-                                {
-                                    if (altSavedInLogicalOffset >= processed && altSavedInLogicalOffset < processed + newCols)
-                                    {
-                                        newAltSavedPhysRow = allFlowedRows.Count;
-                                        newAltSavedPhysCol = altSavedInLogicalOffset - processed;
-                                    }
-                                }
-
-                                if (i == commandStartLogicalIdx)
-                                {
-                                    if (commandStartInLogicalOffset >= processed && commandStartInLogicalOffset < processed + newCols)
-                                    {
-                                        newCommandStartPhysRow = allFlowedRows.Count;
-                                        newCommandStartPhysCol = commandStartInLogicalOffset - processed;
-                                    }
-                                }
-
-                                if (i == outputStartLogicalIdx)
-                                {
-                                    if (outputStartInLogicalOffset >= processed && outputStartInLogicalOffset < processed + newCols)
-                                    {
-                                        newOutputStartPhysRow = allFlowedRows.Count;
-                                        newOutputStartPhysCol = outputStartInLogicalOffset - processed;
-                                    }
-                                }
-
-                                var row = new TerminalRow(newCols, Theme.Foreground, Theme.Background);
-                                for (int c = 0; c < take; c++)
-                                {
-                                    var entry = logicalCells[lineStart + processed + c];
-                                    row.Cells[c] = entry.Cell;
-                                    row.SetExtendedText(c, entry.ExtendedText);
-                                    row.SetHyperlink(c, entry.Hyperlink);
-                                }
-
-                                // Style-Aware Padding
-                                if (take < newCols)
-                                {
-                                    // We use TRUE default style for padding, NOT the last character's style.
-                                    // This prevents "Background Leakage" (e.g. blue/green bars) when resizing.
-                                    var def = new TerminalCell(' ', Theme.Foreground, Theme.Background, false, false, true, true);
-                                    for (int c = take; c < newCols; c++) row.Cells[c] = def;
-                                }
-
-                                if (remaining > newCols) row.IsWrapped = true;
-                                allFlowedRows.Add(row);
-                                processed += take;
-                            }
-                        }
-
-                        // If this line belongs to history (before viewport start), add its generated rows to count
-                        if (i < firstViewportLogicalIdx)
-                        {
-                            historyRowCount += (allFlowedRows.Count - startFlowIndex);
-                        }
-
-                        newStartFlowIndices[i] = startFlowIndex;
+                        FlowLine(logicalIdx, lineLen, lineStartPhys, lastLineEnd);
+                        logicalIdx++;
                     }
 
                     // 6. Final Layout (Anchor-to-Top of Viewport)
                     // We want _scrollback to contain AT LEAST 'historyRowCount'.
                     // But if the remaining lines (viewport content) > newRows, we must push some of them to SB (Shrink).
-                    int total = allFlowedRows.Count;
+                    int total = flowedRows;
 
                     // Base split: Everything that was history stays history.
                     int sbCount = historyRowCount;
@@ -778,22 +793,23 @@ namespace Ntilde.VT
                     sbCount = Math.Clamp(sbCount, 0, total);
                     int vpCount = total - sbCount;
 
-                    // Create new ScrollbackPages instance
-                    var newScrollback = new ScrollbackPages(newCols, _sharedPagePool, _maxScrollbackBytes);
-
-                    for (int i = 0; i < sbCount; i++)
+                    // History rows are already in the new pages; the viewport's overflow follows them.
+                    int overflowRows = sbCount - historyRowCount;
+                    for (int i = 0; i < overflowRows; i++)
                     {
                         // Carry each reflowed row's side tables into the rebuilt
                         // scrollback; extended graphemes must survive reflow.
                         newScrollback.AppendRow(
-                            allFlowedRows[i].Cells,
-                            allFlowedRows[i].IsWrapped,
-                            allFlowedRows[i].GetExtendedTextMap(),
-                            allFlowedRows[i].GetHyperlinkMap());
+                            activeRows[i].Cells,
+                            activeRows[i].IsWrapped,
+                            activeRows[i].GetExtendedTextMap(),
+                            activeRows[i].GetHyperlinkMap());
                     }
 
                     int discardedRows = (int)newScrollback.TotalRowsEvicted;
+                    var oldScrollback = _scrollback;
                     _scrollback = newScrollback;
+                    oldScrollback.Clear();
 
                     // Re-anchor the shell-integration marks now that the new store exists: the
                     // rebuild reads _scrollback.Generation, which must be the *new* epoch. A mark
@@ -805,8 +821,9 @@ namespace Ntilde.VT
 
                     // Fill viewport
                     // If vpCount < newRows (Growth), we will have empty space at the bottom (Top Anchoring).
+                    _viewport = new TerminalRow[newRows];
                     int vIdx = 0;
-                    for (int i = 0; i < vpCount; i++) _viewport[vIdx++] = allFlowedRows[sbCount + i]; // Offset by updated sbCount
+                    for (int i = 0; i < vpCount; i++) _viewport[vIdx++] = activeRows[overflowRows + i];
 
                     // Pad remaining viewport rows (at the BOTTOM now)
                     while (vIdx < newRows)
@@ -817,18 +834,11 @@ namespace Ntilde.VT
                     // 7. Restore Cursor
                     if (newCursorPhysRow != -1)
                     {
-                        // newCursorPhysRow is absolute index in allFlowedRows
-                        // We need to map it to viewport relative.
-                        // It might be in scrollback now!
+                        // newCursorPhysRow counts every flowed row; it may be in scrollback now.
                         if (newCursorPhysRow < sbCount)
                         {
-                            // Cursor pushed to scrollback?
-                            // We must clamp it to 0? Or keep it?
-                            // TerminalBuffer usually keeps cursor in Viewport.
-                            // But if we shrank so much the cursor is gone... 
-                            // We forcibly scroll? Or just clamp to top?
+                            // Cursor pushed to scrollback: clamp to the top of the viewport.
                             _cursorRow = 0;
-                            // _scrollOffset adjustment would be needed here to keep it in view, but simplest is clamp.
                         }
                         else
                         {
@@ -843,18 +853,18 @@ namespace Ntilde.VT
                     }
 
                     // 8. Reposition Images
-                    for (int i = _images.Count - 1; i >= 0; i--)
+                    if (imagePlacements.Count > 0)
                     {
-                        var img = _images[i];
-                        if (img == null) continue;
+                        var placementByImage = new Dictionary<TerminalImage, (int NewY, int NewX)>(ReferenceEqualityComparer.Instance);
+                        foreach (var (image, newY, newX) in imagePlacements) placementByImage[image] = (newY, newX);
 
-                        // Find anchor
-                        var anchor = imageAnchors.FirstOrDefault(a => a.Image == img);
-                        if (anchor.Image != null && anchor.LogicalLineIdx >= 0 && anchor.LogicalLineIdx < newStartFlowIndices.Length)
+                        for (int i = _images.Count - 1; i >= 0; i--)
                         {
-                            int newY = newStartFlowIndices[anchor.LogicalLineIdx] + (anchor.OffsetInLogicalLine / newCols);
-                            img.CellY = newY - discardedRows;
-                            img.CellX = anchor.OffsetInLogicalLine % newCols;
+                            var img = _images[i];
+                            if (img == null || !placementByImage.TryGetValue(img, out var placement)) continue;
+
+                            img.CellY = placement.NewY - discardedRows;
+                            img.CellX = placement.NewX;
 
                             // Prune if shifted out of history bounds
                             if (img.CellY + img.CellHeight < 0)
@@ -882,7 +892,7 @@ namespace Ntilde.VT
                     // 8. Conditional Cursor Row Clearing (REFINED)
                     // Clear ONLY truly empty padding rows on horizontal resize, not actual wrapped content.
                     // This prevents duplication in CMD while preserving oh-my-posh sparse prompts in PowerShell.
-                    // 
+                    //
                     // Rationale:
                     // - Horizontal resize: Width changes cause line rewrapping. Some shells may duplicate prompts.
                     // - We only clear rows that are confirmed empty, not rows with actual content.
@@ -934,15 +944,6 @@ namespace Ntilde.VT
                     for (int i = 0; i < newRows; i++) _viewport[i] = new TerminalRow(newCols, Theme.Foreground, Theme.Background);
                     _cursorRow = 0;
                     _cursorCol = 0;
-                }
-                finally
-                {
-                    // Return the pooled arrays. clearArray: true because the rows hold cell
-                    // structs with string references; not clearing would pin them in the pool.
-                    if (allPhysicalRows is not null)
-                        System.Buffers.ArrayPool<TerminalRow>.Shared.Return(allPhysicalRows, clearArray: true);
-                    if (logicalCells is not null)
-                        System.Buffers.ArrayPool<(TerminalCell Cell, string? ExtendedText, Links.Hyperlink? Hyperlink)>.Shared.Return(logicalCells, clearArray: true);
                 }
             }
         }
