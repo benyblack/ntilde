@@ -95,9 +95,10 @@ internal static class RemoteMuxHostFactory
     /// <summary>
     /// Why <paramref name="client"/>'s connection ended (Phase 4 spec §7.3), from how the proxy's channel
     /// under it did (<see cref="RemoteMuxConnector.ExitAsync"/>): exit 3
-    /// (<see cref="MuxProxyExitCodes.DaemonClosed"/>) means the daemon closed it and its sessions are gone.
-    /// Anything else - ssh's 255, a channel that was killed or failed natively (no status), no status within
-    /// a second - is a lost link.
+    /// (<see cref="MuxProxyExitCodes.DaemonClosed"/>) means the daemon's process is gone, its sessions with it.
+    /// Anything else is a lost link: 4 (<see cref="MuxProxyExitCodes.ConnectionClosed"/>), a daemon that dropped
+    /// this connection but runs on with its sessions (codex D1); ssh's 255; a channel that was killed or failed
+    /// natively (no status); no status within a second.
     /// </summary>
     internal static async Task<MuxDisconnectKind> ClassifyDisconnectAsync(RemoteMuxConnector connector, MuxClient client)
     {

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Ntilde.Mux;
+using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Platform.Ssh.Exec;
@@ -350,6 +351,38 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         // Enter: the proxy brings up a new daemon.
         MuxClient? again = host.GetClient(Patient);
         Assert.True(again?.IsConnected);
+    }
+
+    /// <summary>
+    /// Codex D1: a daemon that drops this host's connection but runs on - here another connection with the host's
+    /// client instance id replaces it; a client too slow to keep up goes the same way - makes the proxy exit 4,
+    /// not 3. That is a lost link: the host reconnects, the daemon's sessions are still there, and a kill queued
+    /// meanwhile is kept and delivered, not dropped as a stopped daemon's would be.
+    /// </summary>
+    [Fact]
+    public async Task A_connection_the_daemon_drops_while_it_runs_on_is_a_lost_link()
+    {
+        MuxConnectionHost host = Create();
+        var events = new HostEvents(host);
+        MuxClient first = host.GetClient(Patient)!;
+        Guid kept = await MuxTestHost.SpawnAsync(first);
+        Guid closed = await MuxTestHost.SpawnAsync(first);
+        RemoteMuxConnector connector = Assert.IsType<RemoteMuxConnector>(host.Connector);
+
+        (Stream stream, _) = await _remote.ConnectDaemonAsync(Ct);
+        using MuxClient twin = await MuxClient.ConnectAsync(stream, new MuxClientOptions { ClientInstanceId = connector.ClientInstanceId }, Ct);
+        await events.WaitForAsync("lost");
+        host.KillWhenConnected(closed);
+
+        Assert.Equal(MuxProxyExitCodes.ConnectionClosed, await connector.ExitAsync(first, Patient));
+        Assert.Equal(MuxDisconnectKind.LinkLost, await RemoteMuxHostFactory.ClassifyDisconnectAsync(connector, first));
+        Assert.True(host.IsReconnecting);
+        _clock.Advance(FirstRetry);
+        await events.WaitForAsync("reconnected");
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the kept kill reached the daemon", Patient);
+        Assert.Contains(kept, _remote.Server.GetSessionIds());
+        Assert.DoesNotContain("daemon-stopped", events.Seen);
+        Assert.False(Logged("dropping"));
     }
 
     /// <summary>Review Focus 1: a remote tab closed while its link is down still ends its shell.</summary>

@@ -430,9 +430,12 @@ it).
   `SshFailed`, `ProxyFailed` or `NeedsUser`, and the pane's notice and action follow from the kind.
 - **The proxy** (`ntilde-mux proxy --stdio`, `Ntilde.Mux.Cli.MuxProxyCommand`) connects to the
   host-local daemon or spawns one (`MuxDaemonLauncher.EnsureEndpointStreamAsync`), writes the
-  preamble, then copies bytes on two dedicated threads. It exits 0 when stdin ends, 3 when the
-  daemon closed the connection, 1 when it could not reach or spawn a daemon, and 2 on a usage
-  error. Its stdout carries nothing but the preamble and frames. Every `ntilde-mux` verb serves and
+  preamble, then copies bytes on two dedicated threads. It exits 0 when stdin ends; 3 when the
+  daemon side ended and the daemon's process is gone (pid, name and start token, waited for up to
+  1.5 s, since a stopping daemon closes its connections before it exits); 4 when the daemon dropped
+  this connection but runs on (a client too slow, or evicted by its twin) or stdout could not be
+  written; 1 when it could not reach or spawn a daemon; and 2 on a usage error. Its stdout carries
+  nothing but the preamble and frames. Every `ntilde-mux` verb serves and
   looks under `ntilde-mux`'s own root (`MuxPaths.Standalone`: `~/.local/share/ntilde/ntilde-mux` on
   Linux, `~/Library/Application Support/ntilde/ntilde-mux` on macOS), never the GUI's: on a host that
   also runs the GUI, a remote client would otherwise reach the GUI's daemon (whose session factory

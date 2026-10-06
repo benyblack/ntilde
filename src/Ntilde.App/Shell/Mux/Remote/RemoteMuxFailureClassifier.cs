@@ -24,7 +24,7 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 126 → <see cref="RemoteFailureKind.Unsupported"/>, with the last stderr line;</item>
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
-/// exits only 0, 1, 2 or 3 (spec §8.1) and a shell that cannot run it exits 126 or 127. For an automatic
+/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. For an automatic
 /// attempt, a refusal (<c>Permission denied</c>) is <see cref="RemoteFailureKind.NeedsUser"/> instead, with
 /// the same reason: in batch mode ssh tried only what needs no answer, so signing in needs the user;</item>
 /// <item>anything else → <see cref="RemoteFailureKind.ProxyFailed"/>, with the exception's message

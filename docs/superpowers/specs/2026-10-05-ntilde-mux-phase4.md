@@ -322,10 +322,10 @@ therefore pings its client every 15 s with a 10 s timeout, from one `System.Thre
 
 On `Disconnected`, the remote host classifies the loss:
 
-- **The proxy exited with code 3 (the daemon closed the connection).** The host raises
+- **The proxy exited with code 3 (the daemon's process is gone; §8.1).** The host raises
   `DaemonStopped`, and there is no automatic retry.
-- **Anything else** (ping timeout, SSH exit 255, channel EOF, native disconnect). The host raises
-  `ConnectionLost` and starts the loop.
+- **Anything else** (ping timeout, SSH exit 255, the proxy's exit 4 for a connection a live daemon
+  dropped, channel EOF, native disconnect). The host raises `ConnectionLost` and starts the loop.
 
 The loop:
 
@@ -427,7 +427,13 @@ change to the toast that recordings and notices already share.
    `Console.OpenStandardInput/Output` streams with 64 KiB buffers. The proxy never parses a frame.
 4. **When either side closes:**
    - **stdin EOF:** shut down the socket's send side, close the socket and exit **0**;
-   - **socket EOF or error:** flush and close stdout, and exit **3**;
+   - **socket EOF or error:** flush and close stdout and the socket. Then exit **3** once the daemon's
+     process is gone (`MuxDiscovery.IsProcessAlive` with the descriptor's pid, process name and start
+     token, so a recycled pid does not count), asked every 50 ms for up to 1.5 s, since a daemon that
+     stops closes its connections first and exits a moment later; exit **4** when it still runs at the
+     end of that wait (it dropped this connection: a newer one with the same client instance id, or a
+     client too slow to keep up);
+   - **stdout cannot be written** (the preamble or a frame): close both, and exit **4**, never 3;
    - **could not reach or spawn the daemon:** `mux: …` on stderr, exit **1**;
    - **usage error:** exit **2**.
 5. Stdout carries nothing but the preamble and frames. Diagnostics go to stderr, and the daemon logs
@@ -981,6 +987,22 @@ review; the section they change is named first.
 - **§7.3 A loss is classified by the lost client's own channel**, waiting at most 1 s for its exit
   code, and a host clears its last failure when a new attempt starts, so a stale `NotInstalled`
   cannot label a later timeout.
+- **§8.1, §7.3 The proxy exits 3 only when the daemon's process is gone; a connection a live daemon
+  drops exits 4** (codex D1). A live daemon ends single connections too and keeps their sessions: it
+  drops a client too slow to keep up (`client_too_slow`, plausible on a slow link with heavy output),
+  and a hello with the same `ClientInstanceId` evicts the older connection. The proxy exited 3 for
+  those as well, and the host read `DaemonStopped`: no automatic reconnect, the wrong banner, and its
+  queued kills dropped, so a later close orphaned the remote shell. Now, once the daemon side ends, the
+  proxy closes stdout at once (the client sees the end without delay), then asks whether the
+  descriptor's daemon still runs (`MuxDiscovery.IsProcessAlive` with its pid, process name and start
+  token), every 50 ms for up to 1.5 s: gone is 3, still running is `MuxProxyExitCodes.ConnectionClosed`
+  (4). A stdout that cannot be written, at the preamble or later, is 4 too: nobody reads the code, and
+  it says nothing about the daemon. The host counts every code but 3 as a lost link, as before. The
+  1.5 s fits inside the 2 s the exec channels give a command to exit once their stdin closed; the
+  host's 1 s classification cap is unchanged, so a daemon that takes longer than that to exit after
+  closing its connections is read as a lost link, and the reconnect starts a new daemon, where each
+  pane's reattach finds its session gone (`PreviousLost`). `MuxProxyCommand.Run` takes the liveness
+  check as an optional parameter, for tests whose daemon runs in their own process.
 - **Queued kills** survive `ReconnectAbandoned` (budget or `NeedsUser`) and are sent, before
   `Reconnected` is raised, on any later connect, a user's Enter included: the user's intent to end
   those shells still stands. They are dropped, with a log line, on `DaemonStopped` (the daemon's

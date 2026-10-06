@@ -142,8 +142,9 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
     }
 
     /// <summary>
-    /// The daemon exits: its sessions end, and every proxy connected to it exits 3 (spec §8.1). The next
-    /// proxy starts a new daemon, as the real one spawns <c>ntilde-mux serve</c> on demand.
+    /// The daemon exits: its sessions end, and every proxy connected to it exits 3 (spec §8.1): its process is
+    /// gone before its connections close (<see cref="IsDaemonRunning"/>). The next proxy starts a new daemon, as
+    /// the real one spawns <c>ntilde-mux serve</c> on demand.
     /// </summary>
     public void StopDaemon()
     {
@@ -171,6 +172,15 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
 
         foreach (FakeRemoteChannel channel in channels) channel.Dispose();
         StopDaemon();
+    }
+
+    /// <summary>
+    /// The proxy's liveness check (codex D1): the daemon <paramref name="descriptor"/> names still runs until
+    /// <see cref="StopDaemon"/>. Its process is this test's, so the real check would always say it runs.
+    /// </summary>
+    internal bool IsDaemonRunning(MuxEndpointDescriptor descriptor)
+    {
+        lock (_gate) return ReferenceEquals(descriptor, _descriptor);
     }
 
     /// <summary>The proxy's <c>MuxDaemonLauncher.EnsureEndpointStreamAsync</c>: this host's daemon, started on demand.</summary>
@@ -375,7 +385,7 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
             }
             else
             {
-                exitCode = MuxProxyCommand.Run(_proxyStdin, _remoteStdout, _stderr, _host.ConnectDaemonAsync);
+                exitCode = MuxProxyCommand.Run(_proxyStdin, _remoteStdout, _stderr, _host.ConnectDaemonAsync, _host.IsDaemonRunning);
             }
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException)

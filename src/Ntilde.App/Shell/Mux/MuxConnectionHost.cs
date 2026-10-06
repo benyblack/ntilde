@@ -386,7 +386,7 @@ internal sealed class MuxConnectionHost : IDisposable
     public event Action? ReconnectAbandoned;
 
     /// <summary>
-    /// The remote daemon closed the connection (the proxy exited 3): its sessions are gone, and the host does
+    /// The remote daemon stopped (the proxy exited 3: its process is gone): its sessions are gone, and the host does
     /// not reconnect on its own. <see cref="GetClient"/> connects again, to a new daemon. Kills queued for its
     /// sessions are dropped, and none is recorded until that connect (<see cref="KillWhenConnected"/>).
     /// </summary>

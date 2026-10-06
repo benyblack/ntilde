@@ -132,11 +132,68 @@ public sealed class MuxProxyTests : IDisposable
         Assert.Equal(string.Empty, proxy.Stderr);
     }
 
+    /// <summary>
+    /// A daemon that stops (kill-server, its idle exit, an update's shutdown) closes its connections first and
+    /// exits a moment later. The proxy waits for that exit (codex D1), so its 3 still says the daemon is gone. The
+    /// in-process daemon's process is this test's, so its liveness is the test's to say.
+    /// </summary>
     [Fact]
-    public async Task Daemon_closing_exits_3()
+    public async Task Daemon_closing_exits_3_once_its_process_is_gone()
     {
         MuxDaemonHost daemon = StartDaemon();
+        long exitedAt = long.MaxValue; // Environment.TickCount64 from which the daemon's process is gone
+        ProxyRun proxy = Own(new ProxyRun(ConnectThroughLauncher(new NoSpawner()), isDaemonAlive: _ => Environment.TickCount64 < Volatile.Read(ref exitedAt)));
+        StdioMuxConnection connection = await proxy.ConnectAsync();
+        MuxClient client = Own(await MuxClient.ConnectAsync(connection.Stream, null, Ct));
+        await client.PingAsync(Ct);
+
+        daemon.Dispose();                                                   // closes the connections...
+        Volatile.Write(ref exitedAt, Environment.TickCount64 + 300);        // ...and the process exits a moment later
+
+        await TestWait.UntilAsync(() => !client.IsConnected, "the client saw the proxy's stdout close");
+        Assert.Equal(MuxProxyExitCodes.DaemonClosed, await proxy.Exit.WaitAsync(Patient, Ct));
+    }
+
+    /// <summary>
+    /// Codex D1: a live daemon ends one connection too and keeps its sessions - here a newer connection with the same
+    /// client instance id replaces it, as a reconnect does (a client too slow to keep up is dropped the same way).
+    /// The daemon did not stop, so the proxy says 4, not 3. The real liveness check: the descriptor's pid, name and
+    /// start token are this process's.
+    /// </summary>
+    [Fact]
+    public async Task A_daemon_that_drops_this_connection_but_runs_on_exits_4()
+    {
+        StartDaemon();
         ProxyRun proxy = Own(new ProxyRun(ConnectThroughLauncher(new NoSpawner())));
+        StdioMuxConnection connection = await proxy.ConnectAsync();
+        MuxClient client = Own(await MuxClient.ConnectAsync(connection.Stream, new MuxClientOptions { ClientInstanceId = "gui-1" }, Ct));
+        Guid id = await MuxTestHost.SpawnAsync(client);
+
+        MuxClient twin = Own(await MuxClient.ConnectAsync(
+            MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5)),
+            new MuxClientOptions { ClientInstanceId = "gui-1" },
+            Ct));
+
+        Assert.Equal(MuxProxyExitCodes.ConnectionClosed, await proxy.Exit.WaitAsync(Patient, Ct));
+        await TestWait.UntilAsync(() => !client.IsConnected, "the client saw the proxy's stdout close");
+        Assert.Contains(await twin.ListSessionsAsync(Ct), s => s.SessionId == id && s.Running);
+    }
+
+    /// <summary>
+    /// Codex D1: the liveness check is the descriptor's pid, name and start token, so a process that took the pid
+    /// since does not count as the daemon: its connection ending is a stopped daemon, 3.
+    /// </summary>
+    [Fact]
+    public async Task A_recycled_pid_is_a_daemon_that_is_gone()
+    {
+        MuxDaemonHost daemon = StartDaemon();
+        Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> launcher = ConnectThroughLauncher(new NoSpawner());
+        ProxyRun proxy = Own(new ProxyRun(async ct =>
+        {
+            (Stream stream, MuxEndpointDescriptor descriptor) = await launcher(ct);
+            // This process's pid and name, with another start token: someone else's process now.
+            return (stream, descriptor with { StartTime = (descriptor.StartTime ?? 0) + TimeSpan.FromSeconds(5).Ticks });
+        }));
         StdioMuxConnection connection = await proxy.ConnectAsync();
         MuxClient client = Own(await MuxClient.ConnectAsync(connection.Stream, null, Ct));
         await client.PingAsync(Ct);
@@ -144,7 +201,37 @@ public sealed class MuxProxyTests : IDisposable
         daemon.Dispose();
 
         Assert.Equal(MuxProxyExitCodes.DaemonClosed, await proxy.Exit.WaitAsync(Patient, Ct));
-        await TestWait.UntilAsync(() => !client.IsConnected, "the client saw the proxy's stdout close");
+    }
+
+    /// <summary>
+    /// Codex D1: a stdout that can no longer be written means nobody reads the exit code, and it says nothing about
+    /// the daemon: never 3, even with the daemon's process gone.
+    /// </summary>
+    [Fact]
+    public async Task A_stdout_that_cannot_be_written_never_exits_3()
+    {
+        StartDaemon();
+        FailingStdout? stdout = null;
+        ProxyRun proxy = Own(new ProxyRun(ConnectThroughLauncher(new NoSpawner()), isDaemonAlive: _ => false, wrapStdout: s => stdout = new FailingStdout(s)));
+        StdioMuxConnection connection = await proxy.ConnectAsync();   // the preamble got through
+        stdout!.Fail = true;                                           // nobody reads stdout from here on
+
+        Task<MuxClient> hello = MuxClient.ConnectAsync(connection.Stream, null, Ct);   // the daemon's welcome cannot be written
+
+        Assert.Equal(MuxProxyExitCodes.ConnectionClosed, await proxy.Exit.WaitAsync(Patient, Ct));
+        await Assert.ThrowsAnyAsync<Exception>(() => hello.WaitAsync(Patient, Ct));
+    }
+
+    /// <summary>Codex D1: the same for the preamble, the first write.</summary>
+    [Fact]
+    public void A_stdout_closed_before_the_preamble_never_exits_3()
+    {
+        StartDaemon();
+        var stdout = new FailingStdout(new MemoryStream()) { Fail = true };
+
+        int code = MuxProxyCommand.Run(new MemoryStream(), stdout, new StringWriter(), ConnectThroughLauncher(new NoSpawner()), isDaemonAlive: _ => false);
+
+        Assert.Equal(MuxProxyExitCodes.ConnectionClosed, code);
     }
 
     [Theory]
@@ -250,6 +337,45 @@ public sealed class MuxProxyTests : IDisposable
     }
 
     /// <summary>
+    /// A stdout whose reader can go away: once <see cref="Fail"/> is set, a write fails as a write into a pipe
+    /// nobody reads does.
+    /// </summary>
+    private sealed class FailingStdout(Stream inner) : Stream
+    {
+        private volatile bool _fail;
+
+        public bool Fail { get => _fail; set => _fail = value; }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (_fail) throw new IOException("The pipe is being closed.");
+            inner.Write(buffer, offset, count);
+        }
+
+        public override void Flush()
+        {
+            if (_fail) throw new IOException("The pipe is being closed.");
+            inner.Flush();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
     /// One <see cref="MuxProxyCommand.Run"/> on a thread of its own, as sshd runs <c>ntilde-mux proxy
     /// --stdio</c>: its stdin and stdout are real anonymous pipes, and the test holds their other ends.
     /// </summary>
@@ -260,16 +386,22 @@ public sealed class MuxProxyTests : IDisposable
         private readonly StringWriter _stderr = new();
         private readonly TaskCompletionSource<int> _exit = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public ProxyRun(Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> connectDaemon)
+        /// <param name="isDaemonAlive">The proxy's liveness check; null for the real one.</param>
+        /// <param name="wrapStdout">Wraps the proxy's stdout, to fail its writes.</param>
+        public ProxyRun(
+            Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> connectDaemon,
+            Func<MuxEndpointDescriptor, bool>? isDaemonAlive = null,
+            Func<Stream, Stream>? wrapStdout = null)
         {
             ClientStdin = new AnonymousPipeServerStream(PipeDirection.Out);
             ClientStdout = new AnonymousPipeServerStream(PipeDirection.In);
             _proxyStdin = new AnonymousPipeClientStream(PipeDirection.In, ClientStdin.ClientSafePipeHandle);
             _proxyStdout = new AnonymousPipeClientStream(PipeDirection.Out, ClientStdout.ClientSafePipeHandle);
+            Stream proxyStdout = wrapStdout?.Invoke(_proxyStdout) ?? _proxyStdout;
             TextWriter stderr = TextWriter.Synchronized(_stderr);
             var thread = new Thread(() =>
             {
-                try { _exit.TrySetResult(MuxProxyCommand.Run(_proxyStdin, _proxyStdout, stderr, connectDaemon)); }
+                try { _exit.TrySetResult(MuxProxyCommand.Run(_proxyStdin, proxyStdout, stderr, connectDaemon, isDaemonAlive)); }
                 catch (Exception ex) { _exit.TrySetException(ex); }
             })
             { IsBackground = true, Name = "TestMuxProxy" };

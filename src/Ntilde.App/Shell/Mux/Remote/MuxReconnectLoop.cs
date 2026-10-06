@@ -9,7 +9,7 @@ internal enum MuxDisconnectKind
     /// </summary>
     LinkLost,
 
-    /// <summary>The proxy exited 3: the daemon closed the connection, and its sessions are gone. No automatic retry.</summary>
+    /// <summary>The proxy exited 3: the daemon's process is gone, and its sessions with it. No automatic retry.</summary>
     DaemonStopped,
 }
 
