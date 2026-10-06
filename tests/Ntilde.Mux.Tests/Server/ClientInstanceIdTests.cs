@@ -37,6 +37,9 @@ public sealed class ClientInstanceIdTests
         MuxClient a = await host.ConnectClientAsync(new MuxClientOptions { ClientInstanceId = "x" });
         Guid id = await MuxTestHost.SpawnAsync(a);
         await MuxTestHost.AttachPaneAsync(a, id);
+        // The parse thread hands the attach snapshot over before it publishes the count, so the reply can
+        // reach the client first: flush the parse thread before reading the count.
+        await host.SettleAsync(id, a);
         Assert.Equal(1, host.Mux(id).AttachedClients);
 
         Task<string?> aDisconnected = WhenDisconnected(a);
@@ -54,6 +57,7 @@ public sealed class ClientInstanceIdTests
         Assert.False(host.Mux(id).IsExited);           // the session itself kept running
 
         await MuxTestHost.AttachPaneAsync(b, id);
+        await host.SettleAsync(id, b);
         Assert.Equal(1, host.Mux(id).AttachedClients);
     }
 
