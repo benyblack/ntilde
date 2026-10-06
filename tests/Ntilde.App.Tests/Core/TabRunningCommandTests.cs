@@ -28,11 +28,18 @@ namespace Ntilde.Tests.Core;
 /// developer's real app data), snapshot the registry before creating the
 /// window, and diff afterwards to isolate the registration this window added.
 ///
+/// The tests do not drive that registration's status machine. The pane runs a
+/// real shell whose prompt (OSC 133;A) or exit reaches the same machine from the
+/// parse thread, so a test's Running could be cleared before RefreshTabStatuses
+/// read it. They drive a stand-in instead: a registration no pane feeds, given the
+/// real one's tab association, while the real one is moved to a tab that does not
+/// exist.
+///
 /// Registry cleanup mirrors production CloseTab: Window.Close() alone never
 /// disposes panes (the real close path runs DisposeControlTree →
 /// TerminalPane.DetachFromUiThread → Unregister), so the finally block
-/// unregisters the diffed registration explicitly. Without that, the driven
-/// status machine would stay reachable through the shared registry forever.
+/// unregisters the diffed registration (and the stand-in) explicitly. Without
+/// that, both would stay reachable through the shared registry forever.
 /// </summary>
 public sealed class TabRunningCommandTests : IDisposable
 {
@@ -79,6 +86,7 @@ public sealed class TabRunningCommandTests : IDisposable
         Directory.CreateDirectory(tempRoot);
 
         AgentSessionRegistration? registration = null;
+        AgentSessionRegistration? standIn = null;
         try
         {
             Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
@@ -91,7 +99,24 @@ public sealed class TabRunningCommandTests : IDisposable
             var added = AgentSessionRegistry.Instance.GetRegistrations().Except(before).ToArray();
             registration = Assert.Single(added);
 
-            body(window, registration);
+            // The stand-in takes over the tab association AddTab gave the real pane. The
+            // real pane's shell can still signal its own machine, but that machine no
+            // longer maps to a tab of this window. Without this the first test failed on
+            // ubuntu-24.04-arm (CI run 37112556269): Running held at the assert, then was
+            // gone by the refresh.
+            Guid tabId = Assert.NotNull(registration.TabId);
+            standIn = new AgentSessionRegistration(
+                paneId: Guid.NewGuid(),
+                buffer: registration.Buffer,
+                title: "stand-in",
+                profileName: "Terminal",
+                kind: "local",
+                isActive: false);
+            Assert.True(AgentSessionRegistry.Instance.Register(standIn));
+            Assert.True(AgentSessionRegistry.Instance.SetTabAssociation(standIn.PaneId, tabId));
+            Assert.True(AgentSessionRegistry.Instance.SetTabAssociation(registration.PaneId, Guid.NewGuid()));
+
+            body(window, standIn);
         }
         finally
         {
@@ -99,6 +124,10 @@ public sealed class TabRunningCommandTests : IDisposable
             // Unregister; Window.Close() alone never does, so do the unregister half
             // explicitly. This also retires whatever status the test drove the
             // machine to: an unregistered pane's machine is reachable by nobody.
+            if (standIn != null)
+            {
+                AgentSessionRegistry.Instance.Unregister(standIn.PaneId);
+            }
             if (registration != null)
             {
                 AgentSessionRegistry.Instance.Unregister(registration.PaneId);
@@ -120,7 +149,7 @@ public sealed class TabRunningCommandTests : IDisposable
             var tabB = AddPlainVerticalTab(window);
 
             // The mapping the aggregation relies on: AddTab associated the pane's
-            // registration with tab A's persistent id.
+            // registration with tab A's persistent id (the stand-in inherited it).
             Assert.Equal(window.GetPersistentTabId(tabA), registration.TabId);
 
             // Baseline: nothing is running, both tabs flag false after a pass.
