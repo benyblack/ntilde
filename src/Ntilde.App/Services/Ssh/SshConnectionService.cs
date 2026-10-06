@@ -2,8 +2,10 @@ using Ntilde.Shell;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Ntilde.Mux.Cli;
 using Ntilde.Platform;
 using Ntilde.VT;
+using Ntilde.Shell.Mux.Remote;
 using Ntilde.Platform.Ssh.Launch;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.OpenSsh;
@@ -109,6 +111,40 @@ public sealed class SshConnectionService
 
         _profileStore.SaveProfile(merged);
         return _profileStore.GetProfile(merged.Id) ?? merged;
+    }
+
+    /// <summary>
+    /// Records an ntilde-mux install (Phase 4 spec §9 step 4) in the stored profile, and nothing else: the daemon's
+    /// path, version and RID (<see cref="RemoteMuxInstaller.Record"/>), and
+    /// <see cref="SshMuxOptions.PersistRemoteSessions"/> when <paramref name="turnOnPersistRemoteSessions"/> - never off.
+    /// </summary>
+    /// <remarks>
+    /// It saves the store's own copy of the profile as it is now, so every other field stays as stored. Neither
+    /// <see cref="SaveProfile(NewSshConnectionViewModel)"/> nor <see cref="SaveConnectionProfile"/> can do that: the
+    /// first normalizes the profile as the editor does (a custom ControlPath dropped, ControlPersistSeconds zeroed
+    /// with ControlMaster off, the default auth mode made Agent), and the second maps every field from a runtime
+    /// profile and never writes the mux options at all.
+    /// </remarks>
+    /// <returns>The saved profile; null when it is no longer stored, and then nothing is saved.</returns>
+    internal SshProfile? RecordRemoteMuxInstall(Guid profileId, MuxVersionInfo installed, bool turnOnPersistRemoteSessions)
+    {
+        ArgumentNullException.ThrowIfNull(installed);
+
+        SshProfile? stored = _profileStore.GetProfile(profileId); // a copy: the store clones what it hands out
+        if (stored is null)
+        {
+            return null;
+        }
+
+        stored.MuxOptions ??= new SshMuxOptions();
+        RemoteMuxInstaller.Record(stored.MuxOptions, installed);
+        if (turnOnPersistRemoteSessions)
+        {
+            stored.MuxOptions.PersistRemoteSessions = true;
+        }
+
+        _profileStore.SaveProfile(stored);
+        return _profileStore.GetProfile(profileId) ?? stored;
     }
 
     // Legacy overload retained for compatibility while settings/profile separation lands.

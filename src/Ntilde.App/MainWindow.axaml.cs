@@ -4477,11 +4477,18 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// The editor's install: saves the pending edits first - the install runs over the profile's stored host,
-        /// auth and backend - then shows the dialog. After a success the editor gets what was recorded (its status
-        /// line follows) and the profile is saved again, through the same <see cref="SshConnectionService.SaveProfile(NewSshConnectionViewModel)"/>
-        /// the editor uses. An editor that does not validate shows why, and opens nothing.
+        /// The editor's install: saves the pending edits first, through the editor's own
+        /// <see cref="SshConnectionService.SaveProfile(NewSshConnectionViewModel)"/> - the install runs over the
+        /// profile's stored host, auth and backend - then shows the dialog. An editor that does not validate shows
+        /// why, and opens nothing.
         /// </summary>
+        /// <remarks>
+        /// After a success only the four mux fields change, in the store
+        /// (<see cref="SshConnectionService.RecordRemoteMuxInstall"/>) and in the editor
+        /// (<see cref="NewSshConnectionViewModel.ApplyRemoteMuxInstall"/>, whose status line follows). The editor is not
+        /// saved a second time: anything in it the first save did not write stays the user's to save or discard.
+        /// (The dialog is modal over the editor, so nothing can be typed meanwhile, but the flow does not rely on it.)
+        /// </remarks>
         internal async Task InstallRemoteMuxFromEditorAsync(NewSshConnectionViewModel vm, Window editor)
         {
             if (!vm.Validate()) return;
@@ -4501,18 +4508,26 @@ namespace Ntilde
             vm.ProfileId = saved.Id;
             RefreshProfileUIs();
 
+            bool wasPersisting = saved.MuxOptions.PersistRemoteSessions;
             Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult? result = await ShowRemoteMuxInstall(editor, saved);
-            if (result is not { Success: true }) return;
+            if (result is not { Success: true, Installed: { } installed }) return;
 
+            // The dialog recorded the install in `saved`; the editor takes those four fields, whatever happens below.
             vm.ApplyRemoteMuxInstall(saved.MuxOptions);
             try
             {
-                _sshConnectionService.SaveProfile(vm);
+                bool turnOn = !wasPersisting && saved.MuxOptions.PersistRemoteSessions;
+                if (_sshConnectionService.RecordRemoteMuxInstall(saved.Id, installed, turnOn) is null)
+                {
+                    vm.ValidationError = "ntilde-mux was installed, but this connection is no longer saved; Save keeps it.";
+                    return;
+                }
+
                 RefreshProfileUIs();
             }
             catch (Exception ex)
             {
-                vm.ValidationError = $"ntilde-mux was installed, but saving the connection failed: {ex.Message}";
+                vm.ValidationError = $"ntilde-mux was installed, but recording it in the connection failed: {ex.Message}";
             }
         }
 
@@ -4521,8 +4536,9 @@ namespace Ntilde
 
         /// <summary>
         /// The toast's install (spec §7.5, §9): the stored profile, the dialog over this window, and after a success
-        /// what was recorded saved through the editor's path - the profile as stored now, with the install applied
-        /// (<see cref="NewSshConnectionViewModel.ApplyRemoteMuxInstall"/>).
+        /// only the four mux fields recorded in the profile as stored then
+        /// (<see cref="SshConnectionService.RecordRemoteMuxInstall"/>): the user never opened it, so nothing else of
+        /// it may change.
         /// </summary>
         private async Task OpenRemoteMuxInstallForProfileAsync(Guid profileId)
         {
@@ -4535,15 +4551,17 @@ namespace Ntilde
                     return;
                 }
 
+                bool wasPersisting = profile.MuxOptions.PersistRemoteSessions;
                 Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult? result = await ShowRemoteMuxInstall(this, profile);
-                if (result is not { Success: true }) return;
+                if (result is not { Success: true, Installed: { } installed }) return;
 
-                // Read again: the connection may have been edited while the dialog was open.
-                Ntilde.Platform.Ssh.Models.SshProfile current = _sshConnectionService.GetStoredProfile(profileId) ?? profile;
-                var vm = new NewSshConnectionViewModel();
-                vm.ApplySshProfile(current);
-                vm.ApplyRemoteMuxInstall(profile.MuxOptions);
-                _sshConnectionService.SaveProfile(vm);
+                bool turnOn = !wasPersisting && profile.MuxOptions.PersistRemoteSessions;
+                if (_sshConnectionService.RecordRemoteMuxInstall(profileId, installed, turnOn) is null)
+                {
+                    EnqueueNotice("Install ntilde-mux", "ntilde-mux was installed, but its SSH connection was deleted meanwhile.");
+                    return;
+                }
+
                 RefreshProfileUIs();
             }
             catch (Exception ex)

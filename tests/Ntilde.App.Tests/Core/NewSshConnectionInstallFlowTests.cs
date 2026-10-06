@@ -176,6 +176,95 @@ public sealed class NewSshConnectionInstallFlowTests : IClassFixture<TestAppData
         Assert.Equal(("toast-flow", "toast-host", "nova", 2222), (stored.Name, stored.Host, stored.User, stored.Port));
     }
 
+    /// <summary>
+    /// Fix round 1: recording an install changes only the four mux fields. Saved through the editor's view model, the
+    /// toast path dropped a custom ControlPath, zeroed ControlPersistSeconds with ControlMaster off, and rewrote the
+    /// auth mode and working directory - silently, in a profile the user never opened.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_toast_install_changes_nothing_in_the_profile_but_the_four_mux_fields()
+    {
+        var original = new SshProfile
+        {
+            Name = "keep-everything",
+            GroupPath = "Servers/Prod",
+            Notes = "do not touch",
+            AccentColor = "#336699",
+            Tags = ["db", "favorite"],
+            Host = "keep-host",
+            User = "nova",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default,
+            RememberPasswordInVault = true,
+            JumpHops = [new SshJumpHop { Host = "bastion", User = "jump", Port = 2201 }],
+            Forwards = [new PortForward { Kind = PortForwardKind.Local, BindAddress = "127.0.0.1", SourcePort = 8080, DestinationHost = "svc", DestinationPort = 80 }],
+            MuxOptions = new SshMuxOptions
+            {
+                Enabled = false,
+                ControlMasterAuto = false,
+                ControlPath = "/tmp/cm-%C",
+                ControlPersistSeconds = 600,
+                PersistRemoteSessions = true,
+            },
+            ServerAliveIntervalSeconds = 45,
+            ServerAliveCountMax = 7,
+            ExtraSshArgs = "-o LogLevel=ERROR",
+            WorkingDirectory = "/srv/app",
+            RemoteShellKind = Ntilde.Platform.RemoteShellKind.Fish,
+            AllowAgentAccess = true,
+        };
+        new Ntilde.Platform.Ssh.Storage.JsonSshProfileStore().SaveProfile(original);
+        string before = WithoutTheInstall(Stored(original.Id)!);
+        MainWindow window = CreateWindow();
+        window.ShowRemoteMuxInstall = InstallingDialog([], keepRunning: false);
+
+        window.OpenRemoteMuxInstall!(original.Id);
+        PumpUntil(() => Stored(original.Id)?.MuxOptions.RemoteDaemonVersion == "0.11.0", "the install was recorded");
+
+        SshProfile after = Stored(original.Id)!;
+        Assert.Equal(before, WithoutTheInstall(after));
+        Assert.Equal((InstalledPath, "linux-x64", true), (after.MuxOptions.RemoteDaemonPath, after.MuxOptions.RemoteDaemonRid, after.MuxOptions.PersistRemoteSessions));
+    }
+
+    /// <summary>
+    /// Fix round 1: the editor's install saves the pending edits once, before the dialog; afterwards it records only
+    /// the mux fields - in the store and in the editor - so anything typed since stays the editor's to save or discard.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_editor_s_install_records_only_the_mux_fields_and_keeps_unsaved_edits()
+    {
+        MainWindow window = CreateWindow();
+        var vm = new NewSshConnectionViewModel { HostName = "fake-host", UserName = "nova", Notes = "saved", BackendKind = SshBackendKind.OpenSsh, AppVersion = "0.11.0" };
+        window.WireRemoteMuxInstall(vm, window);
+        Func<Window, SshProfile, Task<RemoteMuxInstallResult?>> install = InstallingDialog([], keepRunning: true);
+        window.ShowRemoteMuxInstall = (owner, profile) =>
+        {
+            vm.Notes = "typed after the save"; // an edit the dialog's save must not write
+            return install(owner, profile);
+        };
+
+        vm.InstallRemoteMuxCommand.Execute(null);
+        PumpUntil(() => vm.RemoteDaemonStatusText == "ntilde-mux 0.11.0 installed", "the status line refreshed");
+
+        SshProfile stored = Stored(vm.ProfileId!.Value)!;
+        Assert.Equal("saved", stored.Notes);
+        Assert.Equal(("0.11.0", InstalledPath, "linux-x64", true), (stored.MuxOptions.RemoteDaemonVersion, stored.MuxOptions.RemoteDaemonPath, stored.MuxOptions.RemoteDaemonRid, stored.MuxOptions.PersistRemoteSessions));
+        Assert.Equal("typed after the save", vm.Notes);
+        Assert.True(vm.PersistRemoteSessions);
+    }
+
+    /// <summary>The stored profile's JSON with the four fields an install records blanked.</summary>
+    private static string WithoutTheInstall(SshProfile profile)
+    {
+        var options = new System.Text.Json.JsonSerializerOptions { TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver() };
+        SshProfile copy = System.Text.Json.JsonSerializer.Deserialize<SshProfile>(System.Text.Json.JsonSerializer.Serialize(profile, options), options)!;
+        copy.MuxOptions.RemoteDaemonPath = string.Empty;
+        copy.MuxOptions.RemoteDaemonVersion = string.Empty;
+        copy.MuxOptions.RemoteDaemonRid = string.Empty;
+        copy.MuxOptions.PersistRemoteSessions = false;
+        return System.Text.Json.JsonSerializer.Serialize(copy, options);
+    }
+
     [AvaloniaFact]
     public void The_toast_action_for_a_deleted_profile_opens_no_dialog()
     {
