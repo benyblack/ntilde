@@ -106,20 +106,20 @@ internal static partial class RemoteHostProbe
                 };
 
             case "Linux":
-            {
-                string? rid = machine switch
                 {
-                    "x86_64" => MuxDaemonRid.LinuxX64,
-                    "aarch64" or "arm64" => MuxDaemonRid.LinuxArm64,
-                    _ => null,
-                };
-                if (rid is null)
-                {
-                    return new RemoteHostRefusal($"Linux on {Quote(machine)} is not supported");
-                }
+                    string? rid = machine switch
+                    {
+                        "x86_64" => MuxDaemonRid.LinuxX64,
+                        "aarch64" or "arm64" => MuxDaemonRid.LinuxArm64,
+                        _ => null,
+                    };
+                    if (rid is null)
+                    {
+                        return new RemoteHostRefusal($"Linux on {Quote(machine)} is not supported");
+                    }
 
-                return CheckGlibc(libcLine) ?? (RemoteHostProbeOutcome)new RemoteHostFacts(rid, homeDirectory);
-            }
+                    return CheckGlibc(libcLine) ?? (RemoteHostProbeOutcome)new RemoteHostFacts(rid, homeDirectory);
+                }
 
             default:
                 return new RemoteHostRefusal($"{Quote(kernel)} is not supported");
