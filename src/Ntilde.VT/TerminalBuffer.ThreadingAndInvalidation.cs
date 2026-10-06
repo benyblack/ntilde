@@ -127,10 +127,15 @@ namespace Ntilde.VT
         /// <see cref="ExitWriteLockIfNeeded"/>), <c>false</c> if the write lock was already held
         /// (the caller acquired nothing and must NOT release it).
         /// </returns>
+        // S7133 wants a lock released in the method that took it. This helper exists to take the
+        // lock *for* its caller, which releases it through ExitWriteLockIfNeeded - the pattern
+        // every write path in the buffer uses - so the rule's premise does not hold here.
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Bug", "S7133:Locks should be released within the same method",
+            Justification = "Acquires on behalf of the caller, which releases via ExitWriteLockIfNeeded.")]
         private bool EnterWriteLockIfNeeded()
         {
             if (Lock.IsWriteLockHeld) return false;
-            Lock.EnterWriteLock();
+            AcquireWriteLock();
             return true;
         }
 
@@ -139,9 +144,53 @@ namespace Ntilde.VT
             if (lockTaken) rwLock.ExitWriteLock();
         }
 
+        /// <summary>
+        /// Set by the host to bracket a write-lock wait that has to block: called on the waiting
+        /// thread before it blocks, and the scope it returns is disposed once the wait is over.
+        /// <c>null</c>, or a <c>null</c> scope, leaves the wait as the thread would make it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A thread waiting for the write lock is a <i>waiting writer</i>, and
+        /// <see cref="System.Threading.ReaderWriterLockSlim"/> admits no new reader while there is
+        /// one. On a Win32 UI thread the wait dispatches sent messages, so a WM_PAINT delivered
+        /// during it ran TerminalView.Render on top of the waiting frame, and Render's read lock
+        /// queued behind that same frame - which could not resume until Render returned. Ntilde.App
+        /// sets this to make that wait dispatch nothing. The policy and its native wait belong to
+        /// the host; what the buffer owns is that every blocking write wait passes through here
+        /// (<see cref="AcquireWriteLock"/>, WriteLockReentrancyTests).
+        /// </para>
+        /// <para>
+        /// Only the write side has this. A waiting reader keeps nobody out, so whatever a read
+        /// wait dispatches can still take either lock once the current writer finishes.
+        /// </para>
+        /// </remarks>
+        public static Func<IDisposable?>? BlockingWriteWaitScope { get; set; }
+
+        /// <summary>
+        /// Takes the write lock. Every write-lock acquisition in the buffer goes through here, so
+        /// that a wait which has to block runs inside <see cref="BlockingWriteWaitScope"/>.
+        /// </summary>
+        private void AcquireWriteLock()
+        {
+            // Uncontended there is nothing to wait for, so the host need not be involved: a zero
+            // timeout returns before the lock spins or blocks on its event.
+            if (Lock.TryEnterWriteLock(0)) return;
+
+            var waitScope = BlockingWriteWaitScope?.Invoke();
+            try
+            {
+                Lock.EnterWriteLock();
+            }
+            finally
+            {
+                waitScope?.Dispose();
+            }
+        }
+
         public void EnterBatchWrite()
         {
-            Lock.EnterWriteLock();
+            AcquireWriteLock();
             _batchWriteDepth++;
         }
 

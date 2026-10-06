@@ -37,7 +37,8 @@ invariant changes.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
 - **Lock re-entrancy contract:** `Lock` is a non-recursive `ReaderWriterLockSlim`. `EnterReadLockIfNeeded()` returns `false` (and acquires nothing) when a read *or* write lock is already held. `EnterWriteLockIfNeeded()` returns `false` only when a *write* lock is already held — calling it while holding a read lock throws `LockRecursionException` (upgrading is not supported), it does **not** return `false`. Both return `true` when they actually acquired the lock. The returned `bool` says *whether this call took the lock* — callers must pass it to the matching `Exit…IfNeeded(..., lockTaken)` and must **not** unlock when it is `false`. Treating a `false` return as "lock acquired" double-unlocks (or unlocks a caller's outer lock).
 - **`GetRowAbsolute()` null contract:** returns `null` for any absolute row that has no persistent `TerminalRow` — including **paged-out scrollback rows** (scrollback lives in `ScrollbackPages`, not as row objects), out-of-range rows, and negative indices. To read scrollback content use the cell/grapheme accessors (`GetCellAbsolute`, `GetGraphemeAbsolute`), which page it in; callers that assume a non-null row for scrollback indices will NRE.
-- No OS, PTY, rendering, or UI logic in this assembly (`Vt_must_be_a_leaf_assembly` arch test)
+- **Blocking write waits go through the host's scope:** every write-lock acquisition goes through `AcquireWriteLock()`, and one that has to block runs inside `TerminalBuffer.BlockingWriteWaitScope` when the host has set it. VT owns the routing (`WriteLockReentrancyTests`); the policy - a UI thread's wait must not dispatch messages - and its native wait belong to App.
+- No OS, PTY, rendering, or UI logic in this assembly (`Vt_must_be_a_leaf_assembly` arch test), and no native interop (`Vt_declares_no_native_interop`)
 - All types in `Ntilde.VT.*` namespace (`Leaf_assembly_types_reside_in_its_own_namespace`, `NamespaceAlignmentTests.cs`)
 
 **Test authority**
@@ -362,6 +363,7 @@ requires public test classes.
 - Startup orchestration (seven `Startup*.cs` files in `Shell/`)
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
+- The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 **Non-responsibilities**
 - VT parsing (delegated to VT)

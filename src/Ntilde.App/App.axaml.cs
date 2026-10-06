@@ -15,6 +15,10 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
         InstallMacAppMenu();
+
+        // Before any window exists: the UI thread must never pump messages while it waits for a
+        // terminal buffer's write lock, or a paint can deadlock against its own resize.
+        Ntilde.Shell.Native.NonPumpingSynchronizationContext.Register();
     }
 
     public override void OnFrameworkInitializationCompleted()
