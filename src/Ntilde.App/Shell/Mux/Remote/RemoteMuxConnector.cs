@@ -19,7 +19,12 @@ namespace Ntilde.Shell.Mux.Remote;
 /// own blend, which the store may not hold, so OpenSSH plans it without the shared generated config, which a save can
 /// rewrite under it. False until the host first took a client.
 /// </param>
-internal sealed record RemoteMuxTransportRequest(bool Interactive, ISshInteractionHandler Prompts, bool Pinned = false);
+/// <param name="Retargeted">
+/// Pinned, and the profile now names another destination (codex D2, final round): OpenSSH must neither use nor create
+/// a connection-sharing master for this attempt. The master's ControlPath is keyed by the profile id, so one a plain
+/// tab opened to the profile's new host would carry the pinned attempt there.
+/// </param>
+internal sealed record RemoteMuxTransportRequest(bool Interactive, ISshInteractionHandler Prompts, bool Pinned = false, bool Retargeted = false);
 
 /// <summary>
 /// Connects to the <c>ntilde-mux</c> daemon on one SSH host (Phase 4 spec §7.1): runs
@@ -125,7 +130,7 @@ internal sealed class RemoteMuxConnector : IDisposable
     {
         lock (_gate) ObjectDisposedException.ThrowIf(_disposed, this);
 
-        (SshProfile profile, bool pinned) = ProfileForAttempt();
+        (SshProfile profile, bool pinned, bool retargeted) = ProfileForAttempt();
         string host = DisplayNameOf(profile);
         string command = RemoteMuxCommand.Proxy(profile.MuxOptions ?? new SshMuxOptions());
         // A native password prompt does not say which hop asks: with jump hops, a remembered password
@@ -137,7 +142,8 @@ internal sealed class RemoteMuxConnector : IDisposable
         {
             // Start may block (ssh launching), and the transport is built here because building it may
             // too (OpenSSH plans its config file): both off the calling thread.
-            started = await Task.Run(() => _transportFor(profile, new RemoteMuxTransportRequest(interactive, prompts, pinned)).Start(command, ct), ct)
+            var request = new RemoteMuxTransportRequest(interactive, prompts, pinned, retargeted);
+            started = await Task.Run(() => _transportFor(profile, request).Start(command, ct), ct)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -235,28 +241,31 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// live connection. So does the install metadata (<see cref="SshMuxOptions.RemoteDaemonPath"/>,
     /// <see cref="SshMuxOptions.RemoteDaemonVersion"/>, <see cref="SshMuxOptions.RemoteDaemonRid"/>), but only while the
     /// profile still names the pinned destination: one recorded for another host (an absolute path under another home)
-    /// would not exist on this one, so the last seen for this one is kept. The first attempt to find the profile
+    /// would not exist on this one, so the last seen for this one is kept. Such an attempt is also retargeted: it must not
+    /// share an ssh master (<see cref="RemoteMuxTransportRequest.Retargeted"/>). The first attempt to find the profile
     /// pointing elsewhere logs it.
     /// </summary>
-    private (SshProfile Profile, bool Pinned) ProfileForAttempt()
+    private (SshProfile Profile, bool Pinned, bool Retargeted) ProfileForAttempt()
     {
         SshProfile current = _profile();
         SshProfile attempt = SshConnectionService.CloneProfile(current);
         SshProfile pinned;
-        bool retargeted = false;
+        bool retargeted;
+        bool firstRetarget = false;
         lock (_gate)
         {
-            if (_pinned is null) return (attempt, false);
+            if (_pinned is null) return (attempt, false, false);
             pinned = _pinned;
-            if (SameDestination(pinned, current))
+            retargeted = !SameDestination(pinned, current);
+            if (retargeted)
             {
-                CopyInstallMetadata(from: current, to: pinned);   // what this destination has now, for when the profile moves
+                CopyInstallMetadata(from: pinned, to: attempt);
+                firstRetarget = !_retargetLogged;
+                _retargetLogged = true;
             }
             else
             {
-                CopyInstallMetadata(from: pinned, to: attempt);
-                retargeted = !_retargetLogged;
-                _retargetLogged = true;
+                CopyInstallMetadata(from: current, to: pinned);   // what this destination has now, for when the profile moves
             }
 
             attempt.Host = pinned.Host;
@@ -265,12 +274,12 @@ internal sealed class RemoteMuxConnector : IDisposable
             attempt.JumpHops = [.. pinned.JumpHops.Select(hop => new SshJumpHop { Host = hop.Host, User = hop.User, Port = hop.Port })];
         }
 
-        if (retargeted)
+        if (firstRetarget)
         {
             _log?.Invoke($"[RemoteMux] {current.Name}: the profile's host, port, user or jump hosts changed; this connection keeps {TargetOf(attempt)} until its tabs close");
         }
 
-        return (attempt, true);
+        return (attempt, true, retargeted);
     }
 
     private static void CopyInstallMetadata(SshProfile from, SshProfile to)
@@ -307,8 +316,9 @@ internal sealed class RemoteMuxConnector : IDisposable
     }
 
     /// <summary>
-    /// How the most recent attempt's channel ended - its exit status (3: the daemon closed the
-    /// connection; 255: OpenSSH lost the link) - waiting at most <paramref name="wait"/> for it after a
+    /// How the most recent attempt's channel ended - its exit status (3: the daemon's process is gone;
+    /// 4, <see cref="Ntilde.Mux.Cli.MuxProxyExitCodes.ConnectionClosed"/>: the daemon dropped this connection but
+    /// runs on; 255: OpenSSH lost the link) - waiting at most <paramref name="wait"/> for it after a
     /// disconnect. Null when no channel was started yet, when its exit status is unknown (it was killed,
     /// or the native transport failed), or when it has not ended within the wait.
     /// </summary>

@@ -332,6 +332,64 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         Assert.Equal(new[] { false, false, true }, pinned);
     }
 
+    /// <summary>
+    /// Codex D2, final round: a pinned attempt is retargeted - must share no ssh master - only while the profile names
+    /// another destination than the pinned one; an unedited pinned attempt keeps sharing as before.
+    /// </summary>
+    [Fact]
+    public async Task A_pinned_attempt_is_retargeted_only_while_the_profile_names_another_destination()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b");
+        SshProfile first = RemoteMuxConnectorTests.Profile();
+        SshProfile current = first;
+        var requests = new List<(bool Pinned, bool Retargeted)>();
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(first.Id),
+            _ => current,
+            (profile, request) =>
+            {
+                lock (requests) requests.Add((request.Pinned, request.Retargeted));
+                return profile.Host == "host-b" ? otherHost : _remote;
+            },
+            log: null)!);
+        await CutAsync(host.GetClient(Patient)!);
+        await CutAsync(host.GetClient(Patient)!);                         // unedited
+        current = RemoteMuxConnectorTests.Edited(first, host: "host-b");
+        Assert.NotNull(host.GetClient(Patient));                          // edited: still the first host
+
+        Assert.Equal(new[] { (false, false), (true, false), (true, true) }, requests);
+        Assert.Equal(0, otherHost.StartCount);
+    }
+
+    /// <summary>
+    /// Codex D2, final round: a retargeted attempt's ssh gets <c>-o ControlPath=none</c> ahead of the plan's own options
+    /// - first value wins - so the block's <c>ControlPath</c>, keyed by the profile id, cannot lead it to a master a
+    /// plain tab opened to the profile's new host. Any other attempt's plan is unchanged.
+    /// </summary>
+    [Fact]
+    public void A_retargeted_attempt_uses_and_creates_no_ssh_master()
+    {
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+        SshLaunchDetails launch = new()
+        {
+            SshPath = "/usr/bin/ssh",
+            ConfigPath = "none",
+            Alias = "ntilde_0123",
+            CommandLine = "/usr/bin/ssh -F none ntilde_0123",
+            PlanArguments = ["-F", "none", "ntilde_0123", "-o", "ControlMaster auto", "-o", "ControlPath /home/me/.ssh/mux/cm_0123"],
+        };
+
+        IReadOnlyList<string> retargeted = RemoteMuxHostFactory.PlanArgumentsFor(launch, new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false), Pinned: true, Retargeted: true));
+        IReadOnlyList<string> unedited = RemoteMuxHostFactory.PlanArgumentsFor(launch, new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false), Pinned: true));
+
+        string[] expected = ["-o", "ControlPath=none", .. launch.PlanArguments];
+        Assert.Equal(expected, retargeted);
+        Assert.Equal(launch.PlanArguments, unedited);
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], retargeted, "ntilde-mux proxy --stdio");
+        int none = Enumerable.Range(0, argv.Count).First(i => argv[i] == "ControlPath=none");
+        Assert.True(none < argv.ToList().IndexOf("ControlPath /home/me/.ssh/mux/cm_0123"), "ControlPath=none must come first: ssh keeps an option's first value");
+    }
+
     /// <summary>Residual R4: the transport plans OpenSSH as the request says - pinned or not.</summary>
     [Fact]
     public void An_OpenSSH_transport_is_planned_pinned_only_when_the_request_says_so()

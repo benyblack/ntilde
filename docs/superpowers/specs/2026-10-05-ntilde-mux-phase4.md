@@ -1029,6 +1029,9 @@ review; the section they change is named first.
     `/proc/self/fd` or `/dev/fd`; a pipe's two ends share an inode - is pointed at `/dev/null` with
     `dup2`, never `close`, which would let a later open take fd 1 or 2. A file fd 0 also refers to (a
     terminal, a socket carrying stdin too) is left alone. Nothing is written to stdout or stderr after.
+    An inode of 0 is no identity (macOS TCP sockets and kqueues report it), and the helper does nothing
+    where it cannot read `struct stat` at those offsets: anything but linux-x64, linux-arm64 and
+    osx-arm64 (osx-x64's plain `fstat` fills the legacy struct). Final round.
   - **The native transport ends stdout at the command's EOF.** rusty_ssh read past an exec channel's EOF
     (exit-status follows it) and ended stdout only at the channel's close, which sshd sends after the
     proxy exits, so the native backend still saw the drop 1.5 s late. Exec mode now queues the EOF as a
@@ -1044,7 +1047,9 @@ review; the section they change is named first.
   - **When.** Until the host takes a client, each attempt reads the profile, so a typo fixed applies to
     the next one. The pin is taken when the host takes the client (`MuxConnectionHost.ClientAccepted` →
     `RemoteMuxConnector.Accept`), not when an attempt's hello is done: an automatic attempt that got in
-    just as a user's request superseded it is thrown away, and its target must not stick (R5).
+    just as a user's request superseded it is thrown away, and its target must not stick (R5). The host
+    calls it under its lock, together with taking the client, so no attempt can start in between and
+    plan unpinned (final round); the connector never takes the host's lock and does not block there.
   - **What.** Only where to connect is pinned: host, port, user and the jump chain (each hop's host,
     port, user). Every attempt is a copy of the profile as it is now with those written over it
     (`RemoteMuxConnector.ProfileForAttempt`), so how to sign in - backend, identity file and
@@ -1074,6 +1079,15 @@ review; the section they change is named first.
     win; `ssh -G` resolves it as `-F <generated>` does (ProxyJump, IdentityFile, IdentitiesOnly, User,
     Port, ControlPath, ControlPersist; `ControlMaster=no` still first). It writes nothing to the shared
     file, which every other launch compiles from the store.
+  - **No shared master after a retarget** (final round). The block's `ControlPath` is keyed by the
+    profile id, and `ControlMaster=no` still uses a live master there, so with connection sharing on, a
+    pinned attempt whose profile now names another host could ride a master a plain tab opened to that
+    host and run the proxy there. While the profile names another destination than the pinned one, the
+    attempt is retargeted (`RemoteMuxTransportRequest.Retargeted`) and its ssh gets `-o ControlPath=none`
+    ahead of the plan (`RemoteMuxHostFactory.PlanArgumentsFor`; ssh keeps the first value, which `ssh -G`
+    shows), so it neither uses nor creates a master. An unedited pinned attempt keeps the block's
+    ControlPath. Not yet covered (a ruled follow-up): ExtraSshArgs that move the destination after the
+    pin (`-p`, `-l`, `-J`, `-o HostName`).
   - The Docker E2E drops the link by network disconnect only when its probe saw the published port come
     back unchanged, since a moved port would no longer be followed.
 - **Queued kills** survive `ReconnectAbandoned` (budget or `NeedsUser`) and are sent, before

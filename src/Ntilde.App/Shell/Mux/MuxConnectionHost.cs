@@ -124,7 +124,8 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// Told each client this host takes as its own, before anything else happens on it; never a client the host throws
     /// away (an automatic attempt's that a user's request superseded). A remote host's connector pins the SSH
-    /// destination there (<c>RemoteMuxConnector.Accept</c>; codex D2, residual R5).
+    /// destination there (<c>RemoteMuxConnector.Accept</c>; codex D2, residual R5). Called under the host's lock, so it
+    /// must not take that lock, block, or call back into the host.
     /// </summary>
     internal Action<MuxClient>? ClientAccepted { get; init; }
 
@@ -280,6 +281,10 @@ internal sealed class MuxConnectionHost : IDisposable
                             _client = client;
                             _failedAtMs = null;
                             _lastFailure = null;
+                            // Under the lock, with _client: no attempt can start between the host taking the client
+                            // and the connector pinning its destination (a client that drops at once would otherwise
+                            // let a pane's next attempt plan unpinned). The connector never takes this lock, nor blocks.
+                            ClientAccepted?.Invoke(client);
                         }
                     }
 
@@ -290,7 +295,6 @@ internal sealed class MuxConnectionHost : IDisposable
                         throw new OperationCanceledException(token);
                     }
 
-                    ClientAccepted?.Invoke(client);
                     OnConnected(client);
                     return client;
                 }, token);

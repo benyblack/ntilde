@@ -148,8 +148,9 @@ user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCH
 - **Native** (`NativeSshExecTransport`) uses rusty_ssh's exec mode: `nova_ssh_exec(args, command)`
   takes the same hop, auth and prompt path as a shell session (jump chains, identity files, agent,
   known hosts, keepalive), then opens a session channel and `exec`s the command with no PTY and no
-  shell detection. Stdout arrives as `Data` events, stderr as `ExtendedData`, the exit status as
-  `ExitStatus` before `Closed`, and `nova_ssh_send_eof` ends stdin. (The login-shell detection of
+  shell detection. Stdout arrives as `Data` events, stderr as `ExtendedData`, the command's EOF as
+  `Eof` (kind 15; `NativeSshExecTransport` ends stdout there, without waiting for the command to
+  exit), the exit status as `ExitStatus` before `Closed`, and `nova_ssh_send_eof` ends stdin. (The login-shell detection of
   a shell session runs a short exec through `run_exec_collect`, of which exec mode is the streaming
   counterpart.) An exec connection is its own connection: it lives exactly as long as its channel
   and never shares a pane's.

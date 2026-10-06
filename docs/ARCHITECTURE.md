@@ -516,7 +516,9 @@ deadline; the installer uses it.
 
 - **OpenSSH** (`OpenSshExecTransport`): `ssh` from `SshLaunchPlanner.PlanFor(profile)`
   (`-F <generated config> <alias>`, or, once the host's destination is pinned, `-F none <alias>` with
-  the attempt profile's block as `-o` options), plus `-o ControlMaster=no` (the hidden exec never becomes a
+  the attempt profile's block as `-o` options, behind `-o ControlPath=none` while the profile names
+  another destination than the pinned one, so no master keyed by the profile id can carry it to the
+  new host), plus `-o ControlMaster=no` (the hidden exec never becomes a
   master a visible tab then rides on), `-T -o ClearAllForwardings=yes`, `-o BatchMode=no|yes` and
   `-- <command>`. The profile's extra arguments are read with ssh's own getopt rules
   (`OpenSshExecCommandLine.SshOptionLetters`: clusters, an option's argument never scanned, options on

@@ -111,6 +111,7 @@ public sealed class OpenSshExecCommandLineSshTests
                 IdentityFilePath = Path.Combine(root, "id key"),
                 JumpHops = { new SshJumpHop { Host = "bastion.example", User = "ops", Port = 2200 } },
                 ExtraSshArgs = "-o ServerAliveInterval=7",
+                MuxOptions = new SshMuxOptions { Enabled = true },   // connection sharing: the block names a ControlPath
             };
             store.SaveProfile(new SshProfile { Id = snapshot.Id, Host = "second.example", User = "other" });
 
@@ -127,6 +128,15 @@ public sealed class OpenSshExecCommandLineSshTests
             Assert.EndsWith("id key", resolved.GetValueOrDefault("identityfile") ?? string.Empty, StringComparison.Ordinal);
             Assert.Equal("7", resolved.GetValueOrDefault("serveraliveinterval"));   // the extra argument wins, as over a config file
             Assert.Equal("false", resolved.GetValueOrDefault("controlmaster"));
+            Assert.EndsWith($"cm_{snapshot.Id:N}", resolved.GetValueOrDefault("controlpath") ?? string.Empty, StringComparison.Ordinal);
+
+            // Codex D2, final round: a retargeted attempt puts -o ControlPath=none ahead of the plan (RemoteMuxHostFactory.
+            // PlanArgumentsFor). ssh keeps the first value, so the block's ControlPath goes, and with it any master: ssh -G
+            // prints no controlpath for none.
+            IReadOnlyList<string> retargeted = OpenSshExecCommandLine.Build([], ["-o", "ControlPath=none", .. plan.Arguments], "ntilde-mux proxy --stdio");
+            Dictionary<string, string> unshared = ResolvedConfiguration(ssh!, [.. retargeted.Take(retargeted.Count - 2)]);
+            Assert.False(unshared.ContainsKey("controlpath"), $"controlpath {unshared.GetValueOrDefault("controlpath")}");
+            Assert.Equal("first.example", unshared.GetValueOrDefault("hostname"));
         }
         finally
         {

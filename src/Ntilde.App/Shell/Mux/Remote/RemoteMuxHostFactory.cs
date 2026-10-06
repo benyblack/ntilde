@@ -174,10 +174,24 @@ internal static class RemoteMuxHostFactory
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
-            launch.PlanArguments,
+            PlanArgumentsFor(launch, request),
             request.Interactive ? askPassHelperPath : null,
             diagnosticsArguments: null,
             log,
             batchMode: !request.Interactive);
+    }
+
+    /// <summary>
+    /// The plan's arguments for one OpenSSH attempt. A retargeted one (<see cref="RemoteMuxTransportRequest.Retargeted"/>)
+    /// gets <c>-o ControlPath=none</c> in front (codex D2, final round): its block's ControlPath is keyed by the profile
+    /// id, and <c>ControlMaster=no</c> still uses a live master there - one a plain tab may have opened to the profile's
+    /// new host, which would run the proxy there. ssh keeps an option's first value, so it neither uses nor creates a
+    /// master. Every other attempt's plan, an unedited pinned one's included, is unchanged.
+    /// </summary>
+    internal static IReadOnlyList<string> PlanArgumentsFor(SshLaunchDetails launch, RemoteMuxTransportRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(launch);
+        ArgumentNullException.ThrowIfNull(request);
+        return request.Retargeted ? ["-o", "ControlPath=none", .. launch.PlanArguments] : launch.PlanArguments;
     }
 }
