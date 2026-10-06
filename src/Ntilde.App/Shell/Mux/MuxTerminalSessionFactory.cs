@@ -85,6 +85,9 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
         init => _rpcTimeout = value;
     }
 
+    /// <summary>The id a remote spawn asks its daemon for (codex E1): a new <see cref="Guid"/> each time; tests choose it.</summary>
+    internal Func<Guid> NewRemoteSessionId { get; init; } = Guid.NewGuid;
+
     /// <summary>
     /// Whether <paramref name="request"/> goes to a remote daemon (Phase 4 spec §7.4's routing predicate):
     /// an SSH request whose profile exists and has <see cref="SshMuxOptions.PersistRemoteSessions"/>. Such a
@@ -321,8 +324,57 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     }
 
     /// <summary>Spawns the pane's shell in the daemon and opens it (Shared: a new session has no other client).</summary>
-    private static PersistentSessionResult SpawnFresh(Target target, MuxClient client, TerminalSessionRequest request, PersistentSessionOutcome outcome) =>
-        new(Open(target, client, Spawn(target, client, request), request), outcome, target.Name, null);
+    /// <remarks>
+    /// On a remote daemon the factory chooses the session's id (codex E1). Nothing adopts a remote session (adoption is
+    /// local-only), so a shell the daemon started for a spawn whose reply was lost - the link dropped, or the request
+    /// timed out - would run on with no tab to close it. The id lets the factory end it anyway: whenever the spawn may
+    /// have reached the daemon and no pane got the session, its kill is queued on the host before this throws on to
+    /// the caller's fallback (plain SSH, as before). That is every failure of the spawn except the daemon's own error
+    /// reply, which means it started nothing (and, refusing an id in use, names a session that is not ours to end), and
+    /// every failure after the reply - the open - before the pane owns the session. The host's tracked kill path
+    /// delivers it once connected and a release waits for it (final review F1); if the daemon never started the
+    /// session, the kill fails as unknown_session, which the host logs and drops. A local spawn names no id: local
+    /// orphans are adopted.
+    /// </remarks>
+    private PersistentSessionResult SpawnFresh(Target target, MuxClient client, TerminalSessionRequest request, PersistentSessionOutcome outcome)
+    {
+        if (target.Remote is null) return new(Open(target, client, Spawn(target, client, request, requestedId: null), request), outcome, target.Name, null);
+
+        Guid chosen = NewRemoteSessionId();
+        Guid? unowned = chosen; // a session that may run on the daemon with no pane to own it
+        bool answered = false;
+        try
+        {
+            Guid id;
+            try
+            {
+                id = Spawn(target, client, request, chosen);
+            }
+            catch (MuxProtocolException)
+            {
+                unowned = null; // the daemon's error reply: it started nothing
+                throw;
+            }
+
+            unowned = id; // the id the daemon used: one older than SpawnParams.SessionId picks its own
+            answered = true;
+            return new(Open(target, client, id, request), outcome, target.Name, null);
+        }
+        catch (Exception)
+        {
+            if (unowned is Guid orphan) EndUnowned(target, orphan, answered);
+            throw;
+        }
+    }
+
+    /// <summary>Queues the kill of a remote session no pane owns (see <see cref="SpawnFresh"/>), before the fallback is returned.</summary>
+    private void EndUnowned(Target target, Guid id, bool answered)
+    {
+        _log?.Invoke(answered
+            ? $"[Mux] {target.Host.Policy.DisplayName}: session {id} was started but no pane took it; it will be ended once connected"
+            : $"[Mux] {target.Host.Policy.DisplayName}: a spawn's reply was lost; session {id} will be ended once connected");
+        target.Host.KillWhenConnected(id);
+    }
 
     /// <summary>
     /// Opens <paramref name="id"/> unattached. Locally the session reports the pane's command line as its
@@ -333,7 +385,8 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
             ? client.OpenSession(id, request.Command, request.Arguments, mode)
             : client.OpenSession(id, string.Empty, null, mode);
 
-    private static Guid Spawn(Target target, MuxClient client, TerminalSessionRequest r) => Rpc(target, ct => client.SpawnAsync(SpawnParamsFor(target, r), ct));
+    private static Guid Spawn(Target target, MuxClient client, TerminalSessionRequest r, Guid? requestedId) =>
+        Rpc(target, ct => client.SpawnAsync(SpawnParamsFor(target, r), requestedId, ct));
 
     /// <summary>
     /// Locally: the pane's own command line, with its shell-integration environment. On a remote daemon

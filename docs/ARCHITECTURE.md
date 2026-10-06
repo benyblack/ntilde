@@ -457,6 +457,12 @@ it).
   the half-open connection a drop leaves behind neither keeps the session "shared with 1" nor blocks
   an `IfUnattached` restore. Ids over 64 characters are ignored; a Phase 3 daemon ignores the field,
   which is why a reattach after a drop always opens `Shared`.
+- **Spawn ids.** A remote spawn names its session's id (`SpawnParams.SessionId`, a new GUID per spawn),
+  since nothing adopts a remote session: when the spawn may have reached the daemon but its pane got no
+  session - the reply was lost to a dropped link or a timeout, or the open after it failed - the factory
+  queues that id's kill on the host (`KillWhenConnected`) before the tab falls back to plain SSH. The
+  daemon's own error reply queues none. The server refuses an id that is not a non-empty "D" GUID
+  (`protocol_error`) or is in use (`session_exists`, leaving that session alone); local spawns name none.
 - **Liveness.** A dropped link is silent until TCP notices, which can take tens of minutes. Every 15 s
   a remote host pings; the link is dead when no inbound byte arrives within 10 s of the ping. Any
   byte counts, so a ping queued behind a large snapshot on a slow link does not cut a healthy

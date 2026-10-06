@@ -78,6 +78,18 @@ public sealed record SpawnParams
     public IReadOnlyDictionary<string, string>? EnvironmentOverrides { get; init; }
     public bool SkipPowerShellPostLaunchInit { get; init; }
     public string Title { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Phase 4 (spec §3, codex E1; additive): the id the new session takes, in the "D" form, chosen by the
+    /// client so that a spawn whose reply is lost still names a session the client can end. Null (absent):
+    /// the daemon picks one, as before. A string, not a <see cref="Guid"/>, for the reason
+    /// <see cref="AttachParams.Mode"/> is one: a malformed value then gets a request-level error
+    /// (<c>protocol_error</c>) rather than a malformed-params close of the whole connection. An id the
+    /// daemon already has is refused (<see cref="MuxErrorCodes.SessionExists"/>). A daemon older than this
+    /// member skips it (unknown members are ignored) and picks its own: the reply always carries the id used.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SessionId { get; init; }
 }
 
 public sealed record SpawnResult { public Guid SessionId { get; init; } }

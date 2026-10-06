@@ -359,4 +359,33 @@ public sealed class MuxTerminalSessionFactoryTests
             Assert.False(mux.Fake(theirs).Disposed);
         }
     }
+
+    /// <summary>
+    /// Codex E1 changes the remote spawn only: a local one names no session id (local orphans are adopted), so the
+    /// request on the wire is exactly what it was, and the daemon picks the id.
+    /// </summary>
+    [Fact]
+    public async Task A_local_spawn_names_no_session_id()
+    {
+        using var daemon = FakeMuxServerEnd.Create();
+        using var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "test-endpoint", null);
+        var factory = new MuxTerminalSessionFactory(host, new RecordingSessionFactory(new FakeTerminalSession()), null)
+        {
+            NewRemoteSessionId = () => throw new InvalidOperationException("a local spawn chooses no id"),
+        };
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
+        Task<PersistentSessionResult> pending = Task.Run(() => factory.CreatePersistent(Local()), ct);
+        await daemon.AcceptHelloAsync(version: MuxProtocol.MaxSupportedVersion);
+        MuxRequest spawn = await daemon.ReadRequestAsync();
+        Guid picked = Guid.NewGuid();
+        daemon.Reply(spawn.Id, new SpawnResult { SessionId = picked }, MuxJsonContext.Default.SpawnResult);
+        PersistentSessionResult r = await pending.WaitAsync(TimeSpan.FromSeconds(30), ct);
+
+        Assert.Equal(MuxMethods.Spawn, spawn.Method);
+        Assert.False(spawn.Params!.Value.TryGetProperty("sessionId", out _), spawn.Params.Value.GetRawText());
+        Assert.Null(MuxFrames.ParseParams(spawn.Params, MuxJsonContext.Default.SpawnParams).SessionId);
+        Assert.Equal(PersistentSessionOutcome.Spawned, r.Outcome);
+        Assert.Equal(picked, Assert.IsType<MuxClientSession>(r.Session).Id);
+    }
 }

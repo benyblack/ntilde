@@ -226,8 +226,12 @@ public sealed class MuxServer : IDisposable
         RequireGeometry(p.Cols, p.Rows);
 
         // Chosen before the spawn so the shell can be told its own id; added to the caller's
-        // overrides, which the PTY layers on top of the daemon's environment.
-        Guid id = Guid.NewGuid();
+        // overrides, which the PTY layers on top of the daemon's environment. The caller may choose
+        // it (codex E1): never one in use, and the check comes before a shell is started. Two
+        // spawns racing for one id both pass it; the publish below decides between them.
+        Guid id = p.SessionId is { } requested ? RequestedSessionId(requested) : Guid.NewGuid();
+        if (_sessions.ContainsKey(id)) throw SessionExists(id);
+
         var environment = p.EnvironmentOverrides is null
             ? new Dictionary<string, string>()
             : new Dictionary<string, string>(p.EnvironmentOverrides);
@@ -280,7 +284,13 @@ public sealed class MuxServer : IDisposable
             throw new MuxRequestException(MuxErrorCodes.SpawnFailed, $"The session could not be multiplexed: {ex.Message}");
         }
 
-        _sessions[id] = session;
+        if (!_sessions.TryAdd(id, session))
+        {
+            // A spawn naming the same id got there first: never replace its session. This one's child
+            // has no other owner, so it ends here (Dispose ends the child) - as the shutdown race below.
+            session.Dispose();
+            throw SessionExists(id);
+        }
 
         // Dispose may have run while the factory was spawning (it sets _disposed before it sweeps
         // _sessions). Checked after publishing, so there is no gap: either Dispose's sweep sees
@@ -294,6 +304,21 @@ public sealed class MuxServer : IDisposable
 
         return id;
     }
+
+    /// <summary>
+    /// A spawn's <see cref="SpawnParams.SessionId"/> as an id: the wire's "D" form, as every other id on it, and not
+    /// the empty Guid (what a missing id reads as elsewhere, so a kill missing its id could name it). Anything else is
+    /// refused as the request's own error - an invalid argument, like an impossible geometry - never by closing the
+    /// connection every other pane shares.
+    /// </summary>
+    private static Guid RequestedSessionId(string requested) =>
+        Guid.TryParseExact(requested, "D", out Guid id) && id != Guid.Empty
+            ? id
+            : throw new MuxRequestException(MuxErrorCodes.ProtocolError,
+                $"sessionId must be a non-empty GUID in the \"D\" form (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx); got {requested.Length} characters that are not.");
+
+    private static MuxRequestException SessionExists(Guid id) =>
+        new(MuxErrorCodes.SessionExists, $"Session {id} already exists; this spawn is refused and that session left as it is.");
 
     internal SessionSummary[] ListSessions() =>
         _sessions.Values.Select(s => new SessionSummary

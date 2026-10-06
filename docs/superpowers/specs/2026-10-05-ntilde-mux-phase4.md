@@ -98,6 +98,8 @@ Everything stays behind `TerminalSettings.SessionPersistence` plus a new per-pro
 | `SessionChangedNotification.InteractiveClients` | New `int?`, written only when non-null. Carry-over 9. |
 | `SessionInfoResult.InteractiveClients` | New `int?`. Carry-over 9. |
 | `SpawnParams.Command` empty | Means "the daemon's default login shell". Only `ntilde-mux` daemons (`LocalShellSessionFactory`, §6.3) give it that meaning. The GUI's own daemon would refuse it (its `DefaultTerminalSessionFactory` hands it to rusty_pty), so it must never be asked: local spawns always carry a command, and `ntilde-mux` serves a root of its own (§15, final review F3), so a remote client never reaches the GUI's daemon, even on a host that runs both. |
+| `SpawnParams.SessionId` | New `string?`, written only when non-null: the id the new session takes, in the "D" form (codex E1, §15). A remote spawn names one so that a spawn whose reply is lost still names a session the GUI can end; the GUI's local spawns name none, and absent, the daemon picks one as before. A string, like `AttachParams.Mode`, so a bad value is a request error, not a malformed-params close: anything but a non-empty GUID in the "D" form is refused with `protocol_error`, and an id the daemon already has with `session_exists`, which leaves nothing running for the refused spawn and that session untouched. A daemon without the field skips it and picks its own id; the reply always carries the id used. |
+| Error `session_exists` | New `MuxErrorCodes.SessionExists`: a spawn's `SessionId` is in use (above). Additive: an older client reads it as any other refusal. |
 | `MuxEndpointDescriptor.StartTime` | New `long?`: the daemon's `Process.StartTime` in UTC ticks. This is the descriptor file, not the wire. Carry-over 1. |
 
 The `JsonSerializerContext` stays source-generated, with `WhenWritingNull`.
@@ -1154,6 +1156,31 @@ review; the section they change is named first.
   Plain SSH would only repeat the SSH failure and its prompts. A failure after the client connected
   (a spawn RPC) still falls back to plain SSH, as do `NotInstalled`, `Unsupported`,
   `VersionMismatch` and `ProxyFailed`.
+- **§7.5 A remote spawn names its session's id, and a spawn whose outcome is unknown ends that session**
+  (codex E1). Nothing adopts a remote session, so a shell the daemon started for a spawn whose reply was
+  lost - the link dropped, or the request timed out - ran on with no tab that could close it. Now:
+  - The remote branch of `MuxTerminalSessionFactory` picks `Guid.NewGuid()` and sends it as
+    `SpawnParams.SessionId` (§3) through `MuxClient.SpawnAsync(request, sessionId, ct)`; it opens the
+    id the reply names (a daemon without the field picks its own). The local branch sends none.
+  - **Ambiguous**, so the kill is queued (`MuxConnectionHost.KillWhenConnected`, the tracked path a
+    release waits for) before the tab gets its fallback: every failure of the spawn call except a
+    `MuxProtocolException` - in practice `IOException` (the link dropped), `TimeoutException`,
+    `OperationCanceledException` and `ObjectDisposedException`, and any other type too, since a kill of
+    a session that never started costs one logged refusal - and every failure after the reply, before
+    the pane owns the session (the open). Logged as "a spawn's reply was lost; session `<id>` will be
+    ended once connected", or "session `<id>` was started but no pane took it".
+  - **Not ambiguous:** the daemon's own error reply (`MuxProtocolException`). It answered, so it started
+    nothing, and a `session_exists` refusal names someone else's session, which must not be killed.
+  - The tab's fallback is unchanged: plain SSH with the notice.
+  - If the daemon never started the session, the kill fails as `unknown_session`; the host logs
+    "killing session `<id>` failed" once and drops it (only a kill whose connection closed is queued
+    again), so a release is not held up.
+  - The server checks an id in use before it starts a shell, and publishes with `TryAdd`: of two
+    spawns racing for one id, the loser's shell is ended and it gets `session_exists`.
+  - Limits: a remote `ntilde-mux` older than this skips the field, so its orphan stays as before (the
+    kill of the chosen id fails as above). A reconnect that delivers the kill before the daemon has
+    finished the old connection's spawn would also miss it; a spawn takes the daemon milliseconds and a
+    reconnect at least an SSH handshake.
 - **§7.5 Notice actions.** Only `NotInstalled` (*Install ntilde-mux…*) and `VersionMismatch`
   (*Update ntilde-mux…*) carry one; `Unsupported` and `ProxyFailed` carry none (§7.5 listed
   `Unsupported` both ways). A toast with an action does not auto-hide, remote notices merge by title

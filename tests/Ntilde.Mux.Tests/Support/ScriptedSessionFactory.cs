@@ -18,6 +18,9 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
 
     public ScriptedTerminalSession? LastScriptedSession { get; private set; }
 
+    /// <summary>Every scripted session created, in order.</summary>
+    public ConcurrentQueue<ScriptedTerminalSession> Sessions { get; } = new();
+
     /// <summary>When set, Create signals <see cref="CreateEntered"/> and then waits for this gate - a spawn caught mid-flight.</summary>
     public ManualResetEventSlim? CreateGate { get; set; }
 
@@ -45,6 +48,8 @@ internal sealed class ScriptedSessionFactory : ITerminalSessionFactory
 
         bool throwOnSubscribe = ThrowOnSubscribeNext;
         ThrowOnSubscribeNext = false;
-        return LastScriptedSession = new ScriptedTerminalSession(request) { ThrowOnRawSubscribe = throwOnSubscribe };
+        var session = new ScriptedTerminalSession(request) { ThrowOnRawSubscribe = throwOnSubscribe };
+        Sessions.Enqueue(session);
+        return LastScriptedSession = session;
     }
 }

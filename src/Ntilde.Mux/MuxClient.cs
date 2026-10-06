@@ -115,9 +115,22 @@ public sealed class MuxClient : IDisposable
         (await RequestAsync(MuxMethods.ListSessions, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty,
             MuxJsonContext.Default.ListSessionsResult, cancellationToken).ConfigureAwait(false)).Sessions;
 
-    public async Task<Guid> SpawnAsync(SpawnParams request, CancellationToken cancellationToken = default) =>
-        (await RequestAsync(MuxMethods.Spawn, request, MuxJsonContext.Default.SpawnParams,
+    public Task<Guid> SpawnAsync(SpawnParams request, CancellationToken cancellationToken = default) =>
+        SpawnAsync(request, sessionId: null, cancellationToken);
+
+    /// <summary>
+    /// Spawns a session that takes <paramref name="sessionId"/> (Phase 4 spec §3, codex E1): a caller whose reply
+    /// is lost still knows which session to end. Null lets the daemon pick, as <see cref="SpawnAsync(SpawnParams, CancellationToken)"/>
+    /// does. An id the daemon already has is refused (<see cref="MuxErrorCodes.SessionExists"/>); a daemon older
+    /// than the field ignores it and picks its own, so the result - the id the daemon used - is the one to open.
+    /// </summary>
+    public async Task<Guid> SpawnAsync(SpawnParams request, Guid? sessionId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        SpawnParams p = sessionId is Guid id ? request with { SessionId = id.ToString("D") } : request;
+        return (await RequestAsync(MuxMethods.Spawn, p, MuxJsonContext.Default.SpawnParams,
             MuxJsonContext.Default.SpawnResult, cancellationToken).ConfigureAwait(false)).SessionId;
+    }
 
     public Task KillAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
         RequestAsync(MuxMethods.Kill, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams,
