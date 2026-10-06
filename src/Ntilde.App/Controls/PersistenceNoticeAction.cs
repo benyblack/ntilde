@@ -18,14 +18,15 @@ internal sealed record PersistenceNoticeAction(string Label, Action Run)
     /// Nothing else: reinstalling fixes neither a host it cannot run on nor a failed SSH connection. Null
     /// as well when there is no install flow to open (<paramref name="openInstall"/> is null).
     /// </summary>
-    public static PersistenceNoticeAction? ForRemoteFailure(RemoteMuxFailure? failure, Guid profileId, Action<Guid>? openInstall)
+    /// <param name="host">The profile's <c>user@host</c>: the button names it (final review I1), since a merged toast offers only the last action raised.</param>
+    public static PersistenceNoticeAction? ForRemoteFailure(RemoteMuxFailure? failure, Guid profileId, string host, Action<Guid>? openInstall)
     {
         if (openInstall is null) return null;
 
         string? label = failure?.Kind switch
         {
-            RemoteFailureKind.NotInstalled => TerminalPane.RemoteMuxInstallActionLabel,
-            RemoteFailureKind.VersionMismatch => TerminalPane.RemoteMuxUpdateActionLabel,
+            RemoteFailureKind.NotInstalled => TerminalPane.RemoteMuxInstallActionLabel(host),
+            RemoteFailureKind.VersionMismatch => TerminalPane.RemoteMuxUpdateActionLabel(host),
             _ => null,
         };
 

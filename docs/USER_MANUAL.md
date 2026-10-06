@@ -333,8 +333,8 @@ profiles both work. The change applies to tabs opened after you save it.
 
 **Installing `ntilde-mux` on a host.** Each host needs it once. **Install ntilde-mux on this
 host…**, next to the checkbox, saves the profile and opens the install dialog (the
-**Install ntilde-mux…** button on a *Persistent SSH unavailable* notification opens the same
-dialog). The dialog connects with the profile's usual prompts, checks the host's system, and puts
+**Install ntilde-mux on <user@host>…** button on a *Persistent SSH unavailable* notification opens
+the same dialog for that host). The dialog connects with the profile's usual prompts, checks the host's system, and puts
 the binary at `~/.local/share/ntilde/bin/ntilde-mux`. It needs no root and changes nothing else on
 the host: not your `PATH`, not your shell's startup files. It has three ways to get the binary:
 
@@ -396,8 +396,9 @@ taken over).
   has no protocol version in common with this Ntilde, or the proxy failed), a *new* tab opens as a
   plain SSH tab, and a *Persistent SSH unavailable* notification reads
   `[<user@host>: <reason> — this tab will not survive a disconnect]`. When `ntilde-mux` is missing
-  or incompatible, the notification has an **Install ntilde-mux…** or **Update ntilde-mux…**
-  button.
+  or incompatible, the notification has an **Install ntilde-mux on <user@host>…** or **Update
+  ntilde-mux on <user@host>…** button. When several hosts' notices arrive together they share one
+  notification, with a line per host and the button of the last one, named for its host.
 
 **Reconnecting on its own never asks you anything.** The automatic retries use only what needs no
 answer: your keys, your SSH agent, and, on native profiles, a password or key passphrase that

@@ -990,7 +990,8 @@ review; the section they change is named first.
   (*Update ntilde-mux…*) carry one; `Unsupported` and `ProxyFailed` carry none (§7.5 listed
   `Unsupported` both ways). A toast with an action does not auto-hide, remote notices merge by title
   and message (so an action sits next to its own host's line), and an unreachable notice is raised
-  only when SSH itself worked.
+  only when SSH itself worked. The button names its host, *Install ntilde-mux on <user@host>…*
+  (final review I1): a merged toast offers only the last action raised, under several hosts' lines.
 - **§7.6 A pane whose profile lost the flag keeps its pending `ssh:` id for its whole life**, not for
   one save. Turning the flag back on can still reattach the shell; dropping the id would orphan a
   shell nothing can adopt.

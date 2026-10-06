@@ -268,8 +268,8 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
 
         Guid? opened = null;
         PersistenceNoticeAction action = Assert.IsType<PersistenceNoticeAction>(
-            PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, id => opened = id));
-        Assert.Equal("Install ntilde-mux\u2026", action.Label);
+            PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, r.HostDisplayName!, id => opened = id));
+        Assert.Equal("Install ntilde-mux on nova@fake-host\u2026", action.Label);
         action.Run();
         Assert.Equal(_profile.Id, opened);
     }
@@ -289,13 +289,13 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Assert.Equal(RemoteFailureKind.VersionMismatch, r.RemoteFailure!.Kind);
         Assert.False(r.VersionMismatch); // the local daemon's kill-server hint does not apply to a remote one
         Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
-        Assert.Equal("Update ntilde-mux\u2026", PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, _ => { })?.Label);
+        Assert.Equal("Update ntilde-mux on nova@fake-host\u2026", PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, r.HostDisplayName!, _ => { })?.Label);
     }
 
     /// <summary>The brief's rule: only a missing or outdated ntilde-mux has an action - installing fixes nothing else.</summary>
     [Theory]
-    [InlineData(nameof(RemoteFailureKind.NotInstalled), "Install ntilde-mux\u2026")]
-    [InlineData(nameof(RemoteFailureKind.VersionMismatch), "Update ntilde-mux\u2026")]
+    [InlineData(nameof(RemoteFailureKind.NotInstalled), "Install ntilde-mux on nova@fake-host\u2026")]
+    [InlineData(nameof(RemoteFailureKind.VersionMismatch), "Update ntilde-mux on nova@fake-host\u2026")]
     [InlineData(nameof(RemoteFailureKind.Unsupported), null)]
     [InlineData(nameof(RemoteFailureKind.SshFailed), null)]
     [InlineData(nameof(RemoteFailureKind.ProxyFailed), null)]
@@ -304,9 +304,9 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     {
         var failure = new RemoteMuxFailure(Enum.Parse<RemoteFailureKind>(kind), "why");
 
-        Assert.Equal(label, PersistenceNoticeAction.ForRemoteFailure(failure, _profile.Id, _ => { })?.Label);
-        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(failure, _profile.Id, openInstall: null)); // no install flow to open
-        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(null, _profile.Id, _ => { }));
+        Assert.Equal(label, PersistenceNoticeAction.ForRemoteFailure(failure, _profile.Id, "nova@fake-host", _ => { })?.Label);
+        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(failure, _profile.Id, "nova@fake-host", openInstall: null)); // no install flow to open
+        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(null, _profile.Id, "nova@fake-host", _ => { }));
     }
 
     /// <summary>
@@ -326,7 +326,7 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
         Assert.Equal(RemoteFailureKind.SshFailed, r.RemoteFailure!.Kind);
         Assert.Equal(r.RemoteFailure.Reason, r.Detail);
         Assert.Equal((Endpoint, "nova@fake-host"), (r.Endpoint, r.HostDisplayName));
-        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, _ => { }));
+        Assert.Null(PersistenceNoticeAction.ForRemoteFailure(r.RemoteFailure, _profile.Id, r.HostDisplayName!, _ => { }));
     }
 
     /// <summary>An unclassified failure - the connect did not finish in time - is treated as an SSH failure: no plain SSH.</summary>

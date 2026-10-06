@@ -534,11 +534,12 @@ public sealed class MuxRemotePaneTests : IDisposable
         TerminalPane pane = ShowPane(restore: id, configure: p =>
         {
             p.SessionFactory = new MuxTerminalSessionFactory(hosts, _fallback, Resolve, log: null);
-            p.RemoteNoticeAction = (failure, profileId) =>
+            p.RemoteNoticeAction = (failure, profileId, host) =>
             {
                 Assert.Equal(_sshProfile.Id, profileId);
+                Assert.Equal(Host, host);   // final review I1: the host the notice's line names
                 offered.Add(failure?.Kind);
-                return new PersistenceNoticeAction(TerminalPane.RemoteMuxUpdateActionLabel, () => { });
+                return new PersistenceNoticeAction(TerminalPane.RemoteMuxUpdateActionLabel(host), () => { });
             };
         });
 
@@ -552,7 +553,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         (string title, string message, PersistenceNoticeAction? action) = _notices.Single();
         Assert.Equal(TerminalPane.RemoteMuxUnavailableNoticeTitle, title);
         Assert.StartsWith($"[{Host}: ", message, StringComparison.Ordinal);
-        Assert.Equal(TerminalPane.RemoteMuxUpdateActionLabel, action?.Label);
+        Assert.Equal(TerminalPane.RemoteMuxUpdateActionLabel(Host), action?.Label);
     }
 
     [AvaloniaFact]
@@ -560,10 +561,11 @@ public sealed class MuxRemotePaneTests : IDisposable
     {
         _remote.Script = FakeRemoteScript.NotInstalledDash;
         var offered = new List<(RemoteMuxFailure? Failure, Guid ProfileId)>();
-        TerminalPane pane = ShowPane(configure: p => p.RemoteNoticeAction = (failure, profileId) =>
+        TerminalPane pane = ShowPane(configure: p => p.RemoteNoticeAction = (failure, profileId, host) =>
         {
+            Assert.Equal(Host, host);   // final review I1: the host the notice's line names
             offered.Add((failure, profileId));
-            return new PersistenceNoticeAction(TerminalPane.RemoteMuxInstallActionLabel, () => { });
+            return new PersistenceNoticeAction(TerminalPane.RemoteMuxInstallActionLabel(host), () => { });
         });
 
         PumpUntil(() => pane.Session is FakeTerminalSession, "plain SSH stands in");
@@ -575,7 +577,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         (string title, string message, PersistenceNoticeAction? action) = Assert.Single(_notices);
         Assert.Equal(TerminalPane.RemoteMuxUnavailableNoticeTitle, title);
         Assert.Equal(TerminalPane.RemoteMuxUnavailableMessage(Host, failure.Reason), message);
-        Assert.Equal(TerminalPane.RemoteMuxInstallActionLabel, action?.Label);
+        Assert.Equal(TerminalPane.RemoteMuxInstallActionLabel(Host), action?.Label);
         Assert.NotNull(_fallback.LastRequest);
         Assert.False(pane.IsPersistentRemoteTab); // a plain SSH session: the sidebar works on it
     }

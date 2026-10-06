@@ -3687,7 +3687,7 @@ namespace Ntilde.Controls
                 // notice says on which host and why - with the install flow when that would fix it.
                 string reason = result.RemoteFailure?.Reason ?? result.Detail ?? "ntilde-mux could not be used";
                 TerminalLogger.Log($"[TerminalPane] persistent SSH unavailable on {remoteHost} ({reason}); starting plain SSH");
-                RaisePersistenceNotice(RemoteMuxUnavailableNoticeTitle, RemoteMuxUnavailableMessage(remoteHost, reason), RemoteNoticeActionFor(request, result));
+                RaisePersistenceNotice(RemoteMuxUnavailableNoticeTitle, RemoteMuxUnavailableMessage(remoteHost, reason), RemoteNoticeActionFor(request, result, remoteHost));
             }
             else if (result.Outcome == PersistentSessionOutcome.Unavailable)
             {
@@ -3764,13 +3764,16 @@ namespace Ntilde.Controls
             // fixes it. A failed SSH connect needs no toast: the banner already says the host is not reachable.
             if (result.RemoteFailure is { Kind: not (RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser) } failure)
             {
-                RaisePersistenceNotice(RemoteMuxUnavailableNoticeTitle, RemoteMuxUnavailableMessage(host, failure.Reason), RemoteNoticeActionFor(request, result));
+                RaisePersistenceNotice(RemoteMuxUnavailableNoticeTitle, RemoteMuxUnavailableMessage(host, failure.Reason), RemoteNoticeActionFor(request, result, host));
             }
         }
 
-        /// <summary>The window's action for a remote result's notice (spec §7.5), for the profile the request named.</summary>
-        private PersistenceNoticeAction? RemoteNoticeActionFor(TerminalSessionRequest request, PersistentSessionResult result) =>
-            request.Ssh is { } ssh ? RemoteNoticeAction?.Invoke(result.RemoteFailure, ssh.ProfileId) : null;
+        /// <summary>
+        /// The window's action for a remote result's notice (spec §7.5), for the profile the request named, on
+        /// <paramref name="host"/> - the host the notice's line names, which its button names too (final review I1).
+        /// </summary>
+        private PersistenceNoticeAction? RemoteNoticeActionFor(TerminalSessionRequest request, PersistentSessionResult result, string host) =>
+            request.Ssh is { } ssh ? RemoteNoticeAction?.Invoke(result.RemoteFailure, ssh.ProfileId, host) : null;
 
         /// <summary>
         /// UI thread. Phase 4 spec §7.4: the factory call for a remote request runs off the UI thread - it can
@@ -4146,11 +4149,14 @@ namespace Ntilde.Controls
         /// <summary>Phase 4 spec §7.5: a persisted SSH tab whose remote ntilde-mux could not be used.</summary>
         internal const string RemoteMuxUnavailableNoticeTitle = "Persistent SSH unavailable";
 
-        /// <summary>The notice's action when the remote has no ntilde-mux (<c>RemoteFailureKind.NotInstalled</c>).</summary>
-        internal const string RemoteMuxInstallActionLabel = "Install ntilde-mux\u2026";
+        /// <summary>
+        /// The notice's action when the remote has no ntilde-mux (<c>RemoteFailureKind.NotInstalled</c>). It names the host
+        /// it installs on (final review I1): a toast that merges several hosts' notices offers only the last action.
+        /// </summary>
+        internal static string RemoteMuxInstallActionLabel(string host) => $"Install ntilde-mux on {host}\u2026";
 
-        /// <summary>The notice's action when the remote ntilde-mux speaks another protocol (<c>RemoteFailureKind.VersionMismatch</c>).</summary>
-        internal const string RemoteMuxUpdateActionLabel = "Update ntilde-mux\u2026";
+        /// <summary>The notice's action when the remote ntilde-mux speaks another protocol (<c>RemoteFailureKind.VersionMismatch</c>), naming its host.</summary>
+        internal static string RemoteMuxUpdateActionLabel(string host) => $"Update ntilde-mux on {host}\u2026";
 
         /// <summary>The <see cref="RemoteMuxUnavailableNoticeTitle"/> notice's line: the host the tab is on, and why it will not persist.</summary>
         internal static string RemoteMuxUnavailableMessage(string host, string reason) =>
@@ -4195,10 +4201,11 @@ namespace Ntilde.Controls
             f => Task.Factory.StartNew(f, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
         /// <summary>
-        /// The action a remote notice offers for its failure (spec §7.5: "Install ntilde-mux…"), from the
-        /// window, which reads its install flow at call time; null offers none.
+        /// The action a remote notice offers for its failure (spec §7.5: "Install ntilde-mux on &lt;host&gt;…"), from the
+        /// window, which reads its install flow at call time: for the failure, the profile's id and its <c>user@host</c>.
+        /// Null offers none.
         /// </summary>
-        internal Func<RemoteMuxFailure?, Guid, PersistenceNoticeAction?>? RemoteNoticeAction { get; set; }
+        internal Func<RemoteMuxFailure?, Guid, string, PersistenceNoticeAction?>? RemoteNoticeAction { get; set; }
 
         /// <summary>
         /// UI thread. This pane is (or is about to be) a session on a remote daemon (Phase 4 spec §8.4): not a

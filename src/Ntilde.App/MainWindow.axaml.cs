@@ -4620,10 +4620,10 @@ namespace Ntilde
         /// <summary>
         /// The action a persisted SSH tab's notice offers for <paramref name="failure"/> (spec §7.5): the install
         /// flow for <paramref name="profileId"/> when ntilde-mux is missing or outdated, and only while
-        /// <see cref="OpenRemoteMuxInstall"/> is set; otherwise null.
+        /// <see cref="OpenRemoteMuxInstall"/> is set; otherwise null. Its button names <paramref name="host"/>.
         /// </summary>
-        internal PersistenceNoticeAction? RemoteMuxNoticeAction(Ntilde.Shell.Mux.Remote.RemoteMuxFailure? failure, Guid profileId) =>
-            PersistenceNoticeAction.ForRemoteFailure(failure, profileId, OpenRemoteMuxInstall);
+        internal PersistenceNoticeAction? RemoteMuxNoticeAction(Ntilde.Shell.Mux.Remote.RemoteMuxFailure? failure, Guid profileId, string host) =>
+            PersistenceNoticeAction.ForRemoteFailure(failure, profileId, host, OpenRemoteMuxInstall);
 
         /// <summary>
         /// The production <see cref="RemoteMuxHostFactory"/> (Phase 4 spec §7.1): the profile from the SSH

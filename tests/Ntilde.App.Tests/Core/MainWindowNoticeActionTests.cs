@@ -171,17 +171,17 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
         var notInstalled = new RemoteMuxFailure(RemoteFailureKind.NotInstalled, "ntilde-mux is not installed");
         Assert.NotNull(window.OpenRemoteMuxInstall);
         window.OpenRemoteMuxInstall = null;
-        Assert.Null(window.RemoteMuxNoticeAction(notInstalled, profile));
+        Assert.Null(window.RemoteMuxNoticeAction(notInstalled, profile, "nova@fake-host"));
 
         var opened = new List<Guid>();
         window.OpenRemoteMuxInstall = opened.Add;
-        PersistenceNoticeAction install = window.RemoteMuxNoticeAction(notInstalled, profile)!;
+        PersistenceNoticeAction install = window.RemoteMuxNoticeAction(notInstalled, profile, "nova@fake-host")!;
         install.Run();
 
-        Assert.Equal(TerminalPane.RemoteMuxInstallActionLabel, install.Label);
+        Assert.Equal("Install ntilde-mux on nova@fake-host…", install.Label);
         Assert.Equal(new[] { profile }, opened);
-        Assert.Equal(TerminalPane.RemoteMuxUpdateActionLabel, window.RemoteMuxNoticeAction(notInstalled with { Kind = RemoteFailureKind.VersionMismatch }, profile)?.Label);
-        Assert.Null(window.RemoteMuxNoticeAction(new RemoteMuxFailure(RemoteFailureKind.Unsupported, "musl libc is not supported"), profile));
+        Assert.Equal("Update ntilde-mux on nova@fake-host…", window.RemoteMuxNoticeAction(notInstalled with { Kind = RemoteFailureKind.VersionMismatch }, profile, "nova@fake-host")?.Label);
+        Assert.Null(window.RemoteMuxNoticeAction(new RemoteMuxFailure(RemoteFailureKind.Unsupported, "musl libc is not supported"), profile, "nova@fake-host"));
     }
 
     [AvaloniaFact]
@@ -189,7 +189,32 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
     {
         Assert.Equal("Persistent SSH unavailable", TerminalPane.RemoteMuxUnavailableNoticeTitle);
         Assert.Equal(Message, TerminalPane.RemoteMuxUnavailableMessage("nova@fake-host", "ntilde-mux is not installed"));
-        Assert.Equal("Install ntilde-mux\u2026", TerminalPane.RemoteMuxInstallActionLabel);
-        Assert.Equal("Update ntilde-mux\u2026", TerminalPane.RemoteMuxUpdateActionLabel);
+        Assert.Equal("Install ntilde-mux on nova@fake-host\u2026", TerminalPane.RemoteMuxInstallActionLabel("nova@fake-host"));
+        Assert.Equal("Update ntilde-mux on nova@fake-host\u2026", TerminalPane.RemoteMuxUpdateActionLabel("nova@fake-host"));
+    }
+
+    /// <summary>
+    /// Final review I1: a merged toast offers only the last action raised, so its button names the host it acts on -
+    /// never a bare "Install ntilde-mux\u2026" under two hosts' lines.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_merged_toasts_button_names_the_host_its_action_installs_on()
+    {
+        MainWindow window = CreateWindow();
+        var opened = new List<Guid>();
+        window.OpenRemoteMuxInstall = opened.Add;
+        Guid alpha = Guid.NewGuid(), beta = Guid.NewGuid();
+        var notInstalled = new RemoteMuxFailure(RemoteFailureKind.NotInstalled, "ntilde-mux is not installed");
+
+        window.EnqueueNotice(TerminalPane.RemoteMuxUnavailableNoticeTitle, TerminalPane.RemoteMuxUnavailableMessage("someone@alpha", notInstalled.Reason),
+            window.RemoteMuxNoticeAction(notInstalled, alpha, "someone@alpha"));
+        window.EnqueueNotice(TerminalPane.RemoteMuxUnavailableNoticeTitle, TerminalPane.RemoteMuxUnavailableMessage("nova@beta", notInstalled.Reason),
+            window.RemoteMuxNoticeAction(notInstalled, beta, "nova@beta"));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(2, Toast(window).Message!.Split('\n').Length);
+        Assert.Equal("Install ntilde-mux on nova@beta\u2026", ActionButton(window).Content);
+        Click(ActionButton(window));
+        Assert.Equal(new[] { beta }, opened);
     }
 }
