@@ -212,13 +212,22 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
     /// <summary>The target a transport was asked for: <c>user@host:port</c>.</summary>
     private static string TargetOf(SshProfile profile) => $"{profile.User}@{profile.Host}:{profile.Port}";
 
+    /// <summary>Drops <paramref name="client"/>'s link and waits until the host has seen it go.</summary>
+    private async Task CutAsync(MuxClient client)
+    {
+        Task<string?> lost = WhenDisconnected(client);
+        _remote.CutLink();
+        await lost;
+    }
+
     /// <summary>
-    /// Codex D2: once a connect succeeded, the next attempts keep its target (user, host and port here) though the
-    /// profile moved, but take the install metadata from the profile as it is now: the path the install flow
-    /// recorded is used at once.
+    /// Codex D2, residual R2: the install metadata comes from the profile as it is now only while that profile still
+    /// names the pinned target. An install path recorded for the first host is used at once; once the profile moves to
+    /// another host - where the user then installs, under another home - the connection keeps the first host's path:
+    /// the other one would not exist there.
     /// </summary>
     [Fact]
-    public async Task After_the_first_connect_an_edit_keeps_the_target_but_a_recorded_install_path_is_used()
+    public async Task After_a_retarget_the_install_metadata_stays_the_pinned_hosts()
     {
         using var otherHost = new FakeRemoteHost("other@host-b");
         SshProfile first = RemoteMuxConnectorTests.Profile();
@@ -233,19 +242,120 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
                 return profile.Host == "host-b" ? otherHost : _remote;
             },
             log: null)!);
-        MuxClient connected = host.GetClient(Patient)!;
-        Task<string?> lost = WhenDisconnected(connected);
+        await CutAsync(host.GetClient(Patient)!);
 
-        current = RemoteMuxConnectorTests.Edited(first, host: "host-b", port: 2200, user: "other", recordedPath: "/home/nova/.local/share/ntilde/bin/ntilde-mux");
-        _remote.CutLink();
-        await lost;
+        current = RemoteMuxConnectorTests.Edited(first, host: "fake-host", recordedPath: "/home/nova/.local/share/ntilde/bin/ntilde-mux");
+        await CutAsync(host.GetClient(Patient)!);
+        current = RemoteMuxConnectorTests.Edited(first, host: "host-b", port: 2200, user: "other", recordedPath: "/home/other/.local/share/ntilde/bin/ntilde-mux");
         Assert.NotNull(host.GetClient(Patient));
 
-        Assert.Equal(new[] { "nova@fake-host:22", "nova@fake-host:22" }, targets);
+        Assert.Equal(new[] { "nova@fake-host:22", "nova@fake-host:22", "nova@fake-host:22" }, targets);
         Assert.Equal(
-            new[] { RemoteMuxCommand.Proxy(new SshMuxOptions()), "/home/nova/.local/share/ntilde/bin/ntilde-mux proxy --stdio" },
+            new[]
+            {
+                RemoteMuxCommand.Proxy(new SshMuxOptions()),
+                "/home/nova/.local/share/ntilde/bin/ntilde-mux proxy --stdio",
+                "/home/nova/.local/share/ntilde/bin/ntilde-mux proxy --stdio",
+            },
             _remote.Commands);
         Assert.Equal(0, otherHost.StartCount);
+    }
+
+    /// <summary>
+    /// Codex D2, residual R3: only where to connect is pinned - host, port, user, jump hosts. How to sign in comes from
+    /// the profile as it is now on every attempt: a rotated key, a new extra ssh argument, another backend reach the
+    /// live connection's next reconnect, though the host moved and is kept.
+    /// </summary>
+    [Fact]
+    public async Task After_the_first_connect_how_to_sign_in_follows_the_profile_but_where_to_connect_does_not()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b");
+        SshProfile first = RemoteMuxConnectorTests.Profile();
+        first.JumpHops.Add(new SshJumpHop { Host = "bastion", User = "ops", Port = 2200 });
+        SshProfile current = first;
+        var seen = new List<SshProfile>();
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(first.Id),
+            _ => current,
+            (profile, _) =>
+            {
+                lock (seen) seen.Add(profile);
+                return profile.Host == "host-b" ? otherHost : _remote;
+            },
+            log: null)!);
+        await CutAsync(host.GetClient(Patient)!);
+
+        SshProfile edited = SshConnectionService.CloneProfile(first);
+        edited.Host = "host-b";
+        edited.JumpHops = [new SshJumpHop { Host = "other-bastion" }];
+        edited.AuthMode = SshAuthMode.IdentityFile;
+        edited.IdentityFilePath = "/home/me/.ssh/id_rotated";
+        edited.ExtraSshArgs = "-o KexAlgorithms=curve25519-sha256";
+        edited.BackendKind = SshBackendKind.Native;
+        current = edited;
+        Assert.NotNull(host.GetClient(Patient));
+
+        SshProfile next = seen[^1];
+        Assert.Equal(2, seen.Count);
+        Assert.Equal(("fake-host", 22, "nova"), (next.Host, next.Port, next.User));
+        Assert.Equal("ops@bastion:2200", Assert.Single(next.JumpHops).ToString());
+        Assert.Equal((SshAuthMode.IdentityFile, "/home/me/.ssh/id_rotated"), (next.AuthMode, next.IdentityFilePath));
+        Assert.Equal("-o KexAlgorithms=curve25519-sha256", next.ExtraSshArgs);
+        Assert.Equal(SshBackendKind.Native, next.BackendKind);
+        Assert.Equal(0, otherHost.StartCount);
+    }
+
+    /// <summary>
+    /// Codex D2, residual R4: an attempt after the host connected asks its transport for a pinned plan (for OpenSSH, one
+    /// that reads no shared config file, which an edit could rewrite under it); the attempts before do not.
+    /// </summary>
+    [Fact]
+    public async Task Attempts_after_the_first_connect_ask_for_a_pinned_plan()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        var pinned = new List<bool>();
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(profile.Id),
+            _ => profile,
+            (_, request) =>
+            {
+                lock (pinned) pinned.Add(request.Pinned);
+                return _remote;
+            },
+            log: null)!);
+        Assert.Null(host.GetClient(Patient));
+        _remote.Script = null;
+        await CutAsync(host.GetClient(Patient)!);
+        Assert.NotNull(host.GetClient(Patient));
+
+        Assert.Equal(new[] { false, false, true }, pinned);
+    }
+
+    /// <summary>Residual R4: the transport plans OpenSSH as the request says - pinned or not.</summary>
+    [Fact]
+    public void An_OpenSSH_transport_is_planned_pinned_only_when_the_request_says_so()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.OpenSsh;
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+        var asked = new List<bool>();
+        foreach (bool pinned in new[] { false, true })
+        {
+            RemoteMuxHostFactory.CreateTransport(
+                profile,
+                new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false), pinned),
+                (_, selfContained) =>
+                {
+                    asked.Add(selfContained);
+                    return Launch;
+                },
+                () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+                askPassHelperPath: null,
+                log: null);
+        }
+
+        Assert.Equal(new[] { false, true }, asked);
     }
 
     /// <summary>Codex D2: until an attempt connects, each one reads the profile again, so fixing a typo and pressing Enter works.</summary>
@@ -346,7 +456,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         ISshExecTransport Build(bool interactive) => RemoteMuxHostFactory.CreateTransport(
             profile,
             new RemoteMuxTransportRequest(interactive, prompts.BeginAttempt(interactive)),
-            _ => Launch,
+            (_, _) => Launch,
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             askPassHelperPath: "/opt/ntilde/ntilde",
             log: null);
@@ -365,7 +475,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
             profile,
             new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false)),
-            _ => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+            (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
             () => new NativeSshInterop(),
             askPassHelperPath: null,
             log: null);

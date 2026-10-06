@@ -302,16 +302,17 @@ public sealed class SshConnectionService
 
     /// <summary>
     /// The launch plan for exactly <paramref name="profile"/>, which may be a snapshot the store no longer holds as
-    /// it is - a persistent SSH connection keeps the target it first connected to (multiplexer Phase 4 spec §15,
+    /// it is - a persistent SSH connection keeps the destination it first connected to (multiplexer Phase 4 spec §15,
     /// codex D2) - or holds no longer at all (<see cref="SshLaunchPlanner.PlanFor"/>). What the remote multiplexer's
     /// exec attempts launch ssh with; nothing is saved to the store.
     /// </summary>
-    internal SshLaunchDetails BuildLaunchDetailsFor(SshProfile profile, SshDiagnosticsLevel diagnosticsLevel)
+    /// <param name="selfContained">Always the plan that reads no shared config file: a pinned connection's attempts.</param>
+    internal SshLaunchDetails BuildLaunchDetailsFor(SshProfile profile, SshDiagnosticsLevel diagnosticsLevel, bool selfContained = false)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
         var planner = new SshLaunchPlanner(_profileStore, new OpenSshConfigCompiler());
-        SshLaunchPlan plan = planner.PlanFor(profile, diagnosticsLevel.ToArguments());
+        SshLaunchPlan plan = planner.PlanFor(profile, diagnosticsLevel.ToArguments(), selfContained);
         return new SshLaunchDetails
         {
             SshPath = plan.SshExecutablePath,

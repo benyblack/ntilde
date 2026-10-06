@@ -167,6 +167,34 @@ public sealed class SshLaunchPlannerTests
         }
     }
 
+    /// <summary>
+    /// Codex D2, residual R4: a self-contained plan is asked for whatever the store holds - a pinned connection's - so
+    /// a save that rewrites the shared generated file between the check and ssh reading it cannot redirect it.
+    /// </summary>
+    [Fact]
+    public void PlanFor_self_contained_reads_no_config_file_even_for_the_stores_own_profile()
+    {
+        string root = CreateTempDirectory();
+        try
+        {
+            var store = new JsonSshProfileStore(Path.Combine(root, "profiles.json"));
+            SshProfile stored = Snapshot("first.example");
+            store.SaveProfile(stored);
+            var compiler = new OpenSshConfigCompiler(root);
+
+            SshLaunchPlan plan = new SshLaunchPlanner(store, compiler, AnySsh).PlanFor(stored, selfContained: true);
+
+            string[] options = compiler.BuildHostOptions(stored).SelectMany(option => new[] { "-o", option }).ToArray();
+            string[] expected = ["-F", "none", $"ntilde_{stored.Id:N}", "-o", "ServerAliveInterval=7", .. options];
+            Assert.Equal(expected, plan.Arguments);
+            Assert.False(File.Exists(Path.Combine(root, "ssh_config.generated")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     /// <summary>Codex D2: a snapshot of a profile deleted since gets the same plan, rather than failing to find it.</summary>
     [Fact]
     public void PlanFor_a_deleted_profiles_snapshot_reads_no_config_file()

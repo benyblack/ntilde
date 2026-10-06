@@ -410,7 +410,7 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
             RemoteMuxHostFactory.CreateTransport(
                 profile,
                 request,
-                p => _ssh.BuildLaunchDetailsFor(p, SshDiagnosticsLevel.None),
+                (p, selfContained) => _ssh.BuildLaunchDetailsFor(p, SshDiagnosticsLevel.None, selfContained),
                 static () => new NativeSshInterop(),
                 askPassHelperPath: null,
                 HostLog);

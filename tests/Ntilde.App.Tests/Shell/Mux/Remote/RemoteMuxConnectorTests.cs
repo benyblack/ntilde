@@ -523,7 +523,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
             (profile, request) => RemoteMuxHostFactory.CreateTransport(
                 profile,
                 request,
-                _ => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+                (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
                 () => interop,
                 askPassHelperPath: null,
                 log: _ => { }),

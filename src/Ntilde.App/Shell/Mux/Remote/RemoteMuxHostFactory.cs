@@ -33,11 +33,12 @@ internal static class RemoteMuxHostFactory
     /// endpoint any more (<see cref="MuxConnectionHosts.Release"/>), or closes: a fresh client instance id (a Guid
     /// in N format) sent in every hello, and the secrets its user-started attempts remember, forgotten with it. Each attempt
     /// reads the profile again, and builds its transport through <paramref name="transportFor"/>, told
-    /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). From the first attempt that connects, the host keeps
-    /// that attempt's SSH target for its life, taking only the install metadata from the profile as it is now (codex D2):
-    /// the shells its panes show are on that host, so an edit to the profile applies once the window releases the host
-    /// and the next one reads it. A profile deleted meanwhile keeps the last one the store gave. The host tells a stopped
-    /// daemon from a lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).
+    /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). From the first client the host takes
+    /// (<see cref="MuxConnectionHost.ClientAccepted"/>), its attempts keep that client's destination - host, port, user,
+    /// jump hosts - for the host's life (codex D2): the shells its panes show are there, so an edit to those applies once
+    /// the window releases the host and the next one reads it. How to sign in still follows the profile
+    /// (<see cref="RemoteMuxConnector"/>). A profile deleted meanwhile keeps the last one the store gave. The host tells a
+    /// stopped daemon from a lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).
     /// <para>
     /// A profile whose <see cref="SshMuxOptions.PersistRemoteSessions"/> is off still gets its host (codex C2). The
     /// flag decides where that profile's tabs go - <see cref="MuxTerminalSessionFactory.RoutesRemote"/> reads it
@@ -111,6 +112,7 @@ internal static class RemoteMuxHostFactory
         return new MuxConnectionHost((attempt, ct) => connector.ConnectAsync(attempt.Interactive, ct), id.ToString(), log, policy)
         {
             Connector = connector,
+            ClientAccepted = connector.Accept,
             ClassifyDisconnect = client => ClassifyDisconnectAsync(connector, client),
             Scheduler = scheduler ?? SystemMuxTimerScheduler.Instance,
         };
@@ -144,15 +146,16 @@ internal static class RemoteMuxHostFactory
     /// </summary>
     /// <param name="openSshLaunch">
     /// The OpenSSH launch plan of this very profile (<see cref="SshConnectionService.BuildLaunchDetailsFor"/>), which may
-    /// be a host's pinned copy of a profile edited or deleted since: a plan looked up by the profile's id would go where
-    /// the store says now.
+    /// be a host's blend of a profile edited or deleted since: a plan looked up by the profile's id would go where the
+    /// store says now. Its second argument asks for the self-contained plan, which reads no shared config file: true
+    /// when <see cref="RemoteMuxTransportRequest.Pinned"/>.
     /// </param>
     /// <param name="nativeInterop">The native layer (<see cref="NativeSshInterop"/>).</param>
     /// <param name="askPassHelperPath">The askpass helper (<see cref="SshAskPassCommand.LocateHelper()"/>), or null for none.</param>
     public static ISshExecTransport CreateTransport(
         SshProfile profile,
         RemoteMuxTransportRequest request,
-        Func<SshProfile, SshLaunchDetails> openSshLaunch,
+        Func<SshProfile, bool, SshLaunchDetails> openSshLaunch,
         Func<INativeSshInterop> nativeInterop,
         string? askPassHelperPath,
         Action<string>? log)
@@ -167,7 +170,7 @@ internal static class RemoteMuxHostFactory
             return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log);
         }
 
-        SshLaunchDetails launch = openSshLaunch(profile);
+        SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,

@@ -415,7 +415,62 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the kill reached the daemon the shell runs on", Patient);
         Assert.Equal(2, _remote.StartCount);
         Assert.Equal(0, otherHost.StartCount);
-        Assert.Single(_log, line => line.Contains("the profile's SSH target changed; this connection keeps nova@fake-host:22", StringComparison.Ordinal));
+        Assert.Single(_log, line => line.Contains("the profile's host, port, user or jump hosts changed; this connection keeps nova@fake-host:22", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Codex D2, residual R5: the target is pinned when the host takes a client, not when an attempt's hello is done.
+    /// An automatic attempt finishes its hello on the old target just as a user's request supersedes it, after the
+    /// user fixed the profile: the host throws that client away, so its target must not stick - the user's attempt,
+    /// and the reconnects after it, go where the profile says.
+    /// </summary>
+    [Fact]
+    public async Task A_superseded_automatic_attempt_that_got_in_does_not_pin_its_target()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b");
+        using var held = new ManualResetEventSlim();
+        var automaticGotIn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        SshProfile current = _profile;
+        void Log(string line)
+        {
+            _log.Enqueue(line);
+            if (line.Contains(": connected (", StringComparison.Ordinal) && line.EndsWith("automatic)", StringComparison.Ordinal))
+            {
+                automaticGotIn.TrySetResult();   // its hello is done: held here, before the host sees its client
+                held.Wait(Patient);
+            }
+        }
+
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(_profile.Id),
+            _ => current,
+            (profile, _) => profile.Host == "host-b" ? otherHost : _remote,
+            Log,
+            userPrompts: null,
+            _clock)!);
+        Task<MuxClient> automatic = host.TryStartAutomaticAttempt()!;
+        await automaticGotIn.Task.WaitAsync(Patient, Ct);
+
+        current = RemoteMuxConnectorTests.Edited(_profile, host: "host-b");
+        MuxClient? user = await Task.Run(() => host.GetClient(Patient), Ct);   // Enter: supersedes the automatic attempt
+        held.Set();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => automatic.WaitAsync(Patient, Ct));
+
+        Assert.True(user?.IsConnected);
+        Task<string?> lost = WhenDisconnectedAsync(user!);
+        otherHost.CutLink();
+        await lost;
+        Assert.NotNull(await Task.Run(() => host.GetClient(Patient), Ct));
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Equal(2, otherHost.StartCount);
+    }
+
+    private static Task<string?> WhenDisconnectedAsync(MuxClient client)
+    {
+        var tcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.Disconnected += reason => tcs.TrySetResult(reason);
+        if (!client.IsConnected) tcs.TrySetResult(client.DisconnectReason);
+        return tcs.Task.WaitAsync(Patient, Ct);
     }
 
     /// <summary>Review Focus 1: a remote tab closed while its link is down still ends its shell.</summary>

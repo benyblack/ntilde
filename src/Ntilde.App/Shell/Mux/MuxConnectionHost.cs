@@ -122,6 +122,13 @@ internal sealed class MuxConnectionHost : IDisposable
     internal IDisposable? Connector { get; init; }
 
     /// <summary>
+    /// Told each client this host takes as its own, before anything else happens on it; never a client the host throws
+    /// away (an automatic attempt's that a user's request superseded). A remote host's connector pins the SSH
+    /// destination there (<c>RemoteMuxConnector.Accept</c>; codex D2, residual R5).
+    /// </summary>
+    internal Action<MuxClient>? ClientAccepted { get; init; }
+
+    /// <summary>
     /// The transport address, for logs (the local pipe or socket name). Not the pane's persisted
     /// endpoint: that is a <see cref="MuxEndpointId"/> (Phase 4 spec §5).
     /// </summary>
@@ -283,6 +290,7 @@ internal sealed class MuxConnectionHost : IDisposable
                         throw new OperationCanceledException(token);
                     }
 
+                    ClientAccepted?.Invoke(client);
                     OnConnected(client);
                     return client;
                 }, token);
