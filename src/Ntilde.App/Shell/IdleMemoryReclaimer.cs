@@ -31,6 +31,7 @@ namespace Ntilde.Shell
         private readonly int _cooldownTicks;
         private long? _lastAllocatedBytes;
         private int _ticksUntilAllowed;
+        private volatile bool _requested;
 
         public IdleMemoryReclaimer(Func<Probe> probe, Action collect, long reclaimableThresholdBytes, long idleAllocationBudgetBytes, int cooldownTicks)
         {
@@ -40,6 +41,15 @@ namespace Ntilde.Shell
             _idleAllocationBudgetBytes = idleAllocationBudgetBytes;
             _cooldownTicks = cooldownTicks;
         }
+
+        /// <summary>
+        /// Asks for a collection at the next quiet tick whatever the threshold says. For when a lot
+        /// of state was just dropped (a closed pane: its scrollback, and the glyph atlases its
+        /// finalizers release) that the heap counters cannot show yet - the last full GC ran while
+        /// it was still alive and counted it live. Still waits for quiet and the cooldown.
+        /// Callable from any thread.
+        /// </summary>
+        public void RequestCollection() => _requested = true;
 
         /// <summary>
         /// Called on a fixed interval. Collects when less than the idle budget was allocated since
@@ -61,8 +71,10 @@ namespace Ntilde.Shell
 
             bool quiet = sample.TotalAllocatedBytes - previous.Value <= _idleAllocationBudgetBytes;
             long reclaimable = sample.CommittedBytes - sample.LiveAfterLastFullGcBytes;
-            if (!quiet || reclaimable < _reclaimableThresholdBytes) return false;
+            if (!quiet) return false;
+            if (reclaimable < _reclaimableThresholdBytes && !_requested) return false;
 
+            _requested = false;
             _collect();
             _ticksUntilAllowed = _cooldownTicks;
             return true;
@@ -96,6 +108,13 @@ namespace Ntilde.Shell
         }
 
         private static Timer? s_timer;
+        private static IdleMemoryReclaimer? s_instance;
+
+        /// <summary>
+        /// <see cref="RequestCollection"/> on the process-wide reclaimer; a no-op when it was never
+        /// started (CLI modes, tests).
+        /// </summary>
+        public static void RequestIdleCollection() => s_instance?.RequestCollection();
 
         /// <summary>
         /// Starts the process-wide reclaimer on a thread-pool timer: sampled every 5 s, collecting
@@ -111,6 +130,7 @@ namespace Ntilde.Shell
                 reclaimableThresholdBytes: 64L * 1024 * 1024,
                 idleAllocationBudgetBytes: 4L * 1024 * 1024,
                 cooldownTicks: 12);
+            s_instance = reclaimer;
             var interval = TimeSpan.FromSeconds(5);
             s_timer = new Timer(_ =>
             {

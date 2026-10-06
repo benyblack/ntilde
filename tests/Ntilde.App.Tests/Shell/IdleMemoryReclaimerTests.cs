@@ -98,6 +98,59 @@ public sealed class IdleMemoryReclaimerTests
         Assert.Equal(2, _runtime.Collections);
     }
 
+    // Closing a tab frees its scrollback and atlases, but that only shows in the heap counters after
+    // a full GC: the last one ran while the tab was open and counted it live. Measured: two closed
+    // tabs left 84 MB that a forced GC returned and the threshold alone never would.
+    [Fact]
+    public void A_requested_collection_runs_on_the_next_quiet_tick_below_the_threshold()
+    {
+        var reclaimer = NewReclaimer();
+        _runtime.Set(committed: 105 * MB, liveAfterLastFullGc: 90 * MB, allocated: 1_000 * MB);
+        reclaimer.Tick();
+
+        reclaimer.RequestCollection();
+        _runtime.Allocated += 1 * MB;
+
+        Assert.True(reclaimer.Tick());
+        Assert.Equal(1, _runtime.Collections);
+    }
+
+    [Fact]
+    public void A_requested_collection_still_waits_for_the_app_to_go_quiet()
+    {
+        var reclaimer = NewReclaimer();
+        _runtime.Set(committed: 105 * MB, liveAfterLastFullGc: 90 * MB, allocated: 1_000 * MB);
+        reclaimer.Tick();
+        reclaimer.RequestCollection();
+
+        _runtime.Allocated += 50 * MB;
+        Assert.False(reclaimer.Tick());
+
+        _runtime.Allocated += 1 * MB;
+        Assert.True(reclaimer.Tick());
+        Assert.Equal(1, _runtime.Collections);
+    }
+
+    [Fact]
+    public void A_request_is_satisfied_by_a_single_collection()
+    {
+        var reclaimer = NewReclaimer();
+        _runtime.Set(committed: 105 * MB, liveAfterLastFullGc: 90 * MB, allocated: 1_000 * MB);
+        reclaimer.Tick();
+        reclaimer.RequestCollection();
+        _runtime.Allocated += 1 * MB;
+        Assert.True(reclaimer.Tick());
+
+        _runtime.Committed = 105 * MB;
+        for (int i = 0; i < CooldownTicks * 3; i++)
+        {
+            _runtime.Allocated += 1 * MB;
+            reclaimer.Tick();
+        }
+
+        Assert.Equal(1, _runtime.Collections);
+    }
+
     [Fact]
     public void Reading_the_runtime_reports_the_heap()
     {

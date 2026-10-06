@@ -6210,6 +6210,10 @@ namespace Ntilde
             {
                 UnwirePane(pane);
 
+                // The pane's scrollback and glyph atlases are only reclaimable after a full GC, and
+                // nothing else would trigger one in an idle window.
+                IdleMemoryReclaimer.RequestIdleCollection();
+
                 // Two-phase teardown (#154): UI-affine detach runs here on the UI thread;
                 // only the potentially blocking session teardown moves to the pool.
                 // Previously the whole pane.Dispose() ran in Task.Run with a swallowed
