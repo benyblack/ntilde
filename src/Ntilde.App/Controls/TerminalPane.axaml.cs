@@ -4215,7 +4215,7 @@ namespace Ntilde.Controls
         /// <summary>Phase 4 spec §7.4: the loop gave up (or a reattach failed with the link up); Enter reattaches.</summary>
         internal static string RemoteAbandonedBanner(string host) => $"[Connection to {host} lost] [Press Enter to reconnect]";
 
-        /// <summary>Phase 4 spec §7.4: the remote daemon closed the connection; Enter reconnects to a new one.</summary>
+        /// <summary>Phase 4 spec §7.4: the remote daemon stopped (the proxy exited 3: its process is gone); Enter reconnects to a new one.</summary>
         internal static string RemoteDaemonStoppedBanner(string host) => $"[ntilde-mux on {host} stopped] [Press Enter to reconnect]";
 
         /// <summary>Phase 4 spec §7.5: no session could be had from the remote daemon; the id (if any) is kept, and Enter retries.</summary>

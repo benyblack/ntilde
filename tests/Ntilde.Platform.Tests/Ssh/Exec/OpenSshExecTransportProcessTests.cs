@@ -117,7 +117,7 @@ public sealed class OpenSshExecTransportProcessTests
     [Fact]
     public async Task Dispose_after_stdin_eof_lets_the_process_finish_and_keeps_its_exit_code()
     {
-        // 3 is the proxy's "daemon closed the connection" (§7.3): it must never read as unknown.
+        // 3 is the proxy's "the daemon's process is gone" (§7.3, §8.1): it must never read as unknown.
         ISshExecChannel channel = ShellTransport().Start(Pick("findstr x >nul & exit /b 3", "cat >/dev/null; exit 3"), CancellationToken.None);
 
         channel.Dispose();

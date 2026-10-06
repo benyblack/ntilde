@@ -632,7 +632,7 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// The watched client's <see cref="MuxClient.Disconnected"/>, raised on whichever thread ended it - its
     /// reader, its sender, a Dispose caller (the ping's timeout, this host's Dispose) - so nothing here
-    /// blocks: telling why waits up to a second for ssh's exit status, and does so on the pool.
+    /// blocks: telling why waits for ssh's exit status (up to <see cref="ClassifyTimeout"/>), and does so on the pool.
     /// </summary>
     private void OnWatchedClientDisconnected(MuxClient client, string? reason)
     {
@@ -675,7 +675,7 @@ internal sealed class MuxConnectionHost : IDisposable
             if (kind == MuxDisconnectKind.DaemonStopped)
             {
                 RaiseLocked(nameof(DaemonStopped), () => Invoke(nameof(DaemonStopped), DaemonStopped));
-                note = $"[Mux] {Policy.DisplayName}: ntilde-mux closed the connection ({reason}); its sessions ended, and the host does not reconnect until asked";
+                note = $"[Mux] {Policy.DisplayName}: ntilde-mux stopped ({reason}); its sessions ended, and the host does not reconnect until asked";
                 if (ReferenceEquals(client, _watched))
                 {
                     // Its sessions went with it: a kill queued for one has nothing left to end, and delivering it would
