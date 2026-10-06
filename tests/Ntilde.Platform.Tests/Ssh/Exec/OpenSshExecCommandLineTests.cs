@@ -106,8 +106,31 @@ public sealed class OpenSshExecCommandLineTests
         Assert.Contains($"'{flag}'", line, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Final review I6: <c>-N</c> (no remote command) and <c>-f</c> (go to the background) in a profile's
+    /// ExtraSshArgs would stop the proxy command from ever running on the channel, so they are dropped like the
+    /// PTY flags, and logged.
+    /// </summary>
+    [Theory]
+    [InlineData("-N")]
+    [InlineData("-f")]
+    public void A_flag_that_stops_the_command_running_is_dropped_and_logged(string flag)
+    {
+        string[] plan = [.. Plan, flag, "-o", "ConnectTimeout=5"];
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-o", "ConnectTimeout=5", "--", "true"];
+        Assert.Equal(expected, argv);
+        string line = Assert.Single(log);
+        Assert.Contains($"'{flag}'", line, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("-tv")]
+    [InlineData("-Nv")]
+    [InlineData("-fN")]
     [InlineData("-vt")]
     [InlineData("-t5")]
     public void Clustered_flags_are_not_parsed(string flag)

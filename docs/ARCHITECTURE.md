@@ -485,7 +485,7 @@ deadline; the installer uses it.
   (`-F <generated config> <alias>`), plus `-o ControlMaster=no` (the hidden exec never becomes a
   master a visible tab then rides on), `-T -o ClearAllForwardings=yes`, `-o BatchMode=no|yes` and
   `-- <command>`. `-t`, `-tt` and `-T` are dropped from the profile's extra arguments, since a PTY
-  would corrupt the binary stream. An interactive attempt gets the app as `SSH_ASKPASS`
+  would corrupt the binary stream, and so are `-N` and `-f`, which would keep the proxy from running. An interactive attempt gets the app as `SSH_ASKPASS`
   (`SSH_ASKPASS_REQUIRE=force`, `DISPLAY=ntilde`, `NTILDE_SSH_ASKPASS_PROFILE_*`); the helper fills in
   the vault password only for a prompt that names the target's `user@host`, never a jump host's.
 - **Native** (`NativeSshExecTransport`): `nova_ssh_exec(args, command)` runs rusty_ssh's exec mode,

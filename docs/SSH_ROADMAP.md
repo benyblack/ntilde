@@ -138,7 +138,7 @@ user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCH
 
 - **OpenSSH** (`Ntilde.Platform.Ssh.Exec.OpenSshExecTransport`) runs `ssh` from the profile's
   generated config with `-T -o ClearAllForwardings=yes -o ControlMaster=no`, never a PTY, and drops
-  `-t`/`-tt`/`-T` from the profile's extra arguments. A user-started connect uses Ntilde as
+  `-t`/`-tt`/`-T`, `-N` and `-f` from the profile's extra arguments. A user-started connect uses Ntilde as
   `SSH_ASKPASS`, so prompts appear as Ntilde dialogs (the vault password is offered only to a
   prompt that names the target's `user@host`). An automatic reconnect runs in batch mode with no
   askpass at all, so a password-only OpenSSH profile reconnects on Enter.

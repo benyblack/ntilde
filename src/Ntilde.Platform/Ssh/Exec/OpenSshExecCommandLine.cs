@@ -8,14 +8,15 @@ public static class OpenSshExecCommandLine
 {
     /// <summary>
     /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no|yes, -o ControlMaster=no, ...plan, --, command]</c>,
-    /// with any PTY request (<c>-t</c>, <c>-tt</c>, <c>-T</c>) dropped from the plan.
+    /// with any PTY request (<c>-t</c>, <c>-tt</c>, <c>-T</c>) and any <c>-N</c> or <c>-f</c> dropped from the plan.
     /// </summary>
     /// <remarks>
     /// <list type="bullet">
     /// <item><c>-T</c>: no PTY, so the channel carries bytes, not a terminal. ssh's <c>-t</c>/<c>-T</c>
     /// are last-wins, unlike <c>-o</c>, so a <c>-tt</c> in the profile's ExtraSshArgs would turn the
     /// PTY back on and corrupt the binary mux stream: such tokens are dropped from the plan (and
-    /// logged). Only standalone tokens are recognised; clustered flags are not parsed.</item>
+    /// logged). <c>-N</c> and <c>-f</c> are dropped the same way: either would keep the proxy command from
+    /// running on the channel. Only standalone tokens are recognised; clustered flags are not parsed.</item>
     /// <item><c>ClearAllForwardings=yes</c>: the profile's forwards do not ride the mux channel
     /// (they belong to its interactive sessions), matching the native transport.</item>
     /// <item><c>BatchMode=no</c>: prompts stay possible; they reach the user through askpass. With
@@ -60,6 +61,12 @@ public static class OpenSshExecCommandLine
                 continue;
             }
 
+            if (StopsTheCommand(argument))
+            {
+                log?.Invoke($"[OpenSshExec] Ignoring '{argument}' from the profile's ssh arguments: the exec channel must run its command in the foreground.");
+                continue;
+            }
+
             argv.Add(argument);
         }
 
@@ -71,4 +78,11 @@ public static class OpenSshExecCommandLine
     /// <summary><c>-T</c>, or <c>-t</c> repeated (<c>-t</c>, <c>-tt</c>, …), as a token of its own.</summary>
     private static bool IsPtyRequest(string argument) =>
         argument == "-T" || (argument.Length >= 2 && argument[0] == '-' && argument.AsSpan(1).IndexOfAnyExcept('t') < 0);
+
+    /// <summary>
+    /// <c>-N</c> (run no remote command) or <c>-f</c> (go to the background before it runs), as a token of its own
+    /// (final review I6). Either would stop the proxy command from ever running on the channel: <c>-N</c> runs
+    /// none, and <c>-f</c> leaves the channel's pipes behind a backgrounded ssh.
+    /// </summary>
+    private static bool StopsTheCommand(string argument) => argument is "-N" or "-f";
 }

@@ -890,9 +890,10 @@ review; the section they change is named first.
   library") are checked before exit 127, which the dynamic loader also returns next to "not found" /
   "No such file"; a native transport error is checked right after `VersionMismatch`, because the
   native stderr tail holds the transport's message. A sixth kind, `NeedsUser`, is added (below).
-- **§8.2 `-o ControlMaster=no` comes before the plan's arguments, and `-t`/`-tt`/`-T` are dropped
-  from `ExtraSshArgs`.** OpenSSH takes the first value, so the hidden exec would otherwise become a
-  master that a visible tab rides on; a PTY corrupts the binary stream.
+- **§8.2 `-o ControlMaster=no` comes before the plan's arguments, and `-t`/`-tt`/`-T`, `-N` and `-f`
+  are dropped from `ExtraSshArgs`.** OpenSSH takes the first value, so the hidden exec would otherwise
+  become a master that a visible tab rides on; a PTY corrupts the binary stream; `-N` runs no remote
+  command and `-f` backgrounds ssh, so the proxy would never run on the channel.
 - **§8.2 The askpass helper fills in the vault password only for a prompt that names the target's
   `user@host`.** A ProxyJump hop's prompt would otherwise receive the target's password.
 - **§8.2 No `ISshAskPassLocator`.** The App passes the helper path (`SshAskPassCommand.LocateHelper()`).
