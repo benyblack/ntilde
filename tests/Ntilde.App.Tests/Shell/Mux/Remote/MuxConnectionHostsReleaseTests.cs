@@ -237,8 +237,10 @@ public sealed class MuxConnectionHostsReleaseTests : IDisposable
         firstConnectHeld.SetResult();   // that attempt connects a client that is already dead
 
         await TestWait.UntilAsync(() => _log.Any(l => l.Contains("trying again once connected", StringComparison.Ordinal)), "the failed kill was queued again", Patient);
-        Assert.False(closed.Task.IsCompleted, "the host was released before its kill was delivered");
-        Assert.Contains(id, daemon.Server.GetSessionIds());
+        // No "not closed yet" check here: re-queueing the kill can find the host still classifying the lost link,
+        // which KillWhenConnected treats as idle, so one automatic attempt may already have connected, delivered
+        // the kill and released the host. Either way the property is the one Closed records below: the host
+        // closed only after the daemon had ended the session.
         for (int i = 0; i < 200 && !closed.Task.IsCompleted; i++)
         {
             if (host.IsReconnecting) _clock.Advance(FirstRetry);   // the next connect works
