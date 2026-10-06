@@ -27,6 +27,38 @@ public class FuzzSmokeTests
         }
     }
 
+    // Nightly fuzz finding: with DECAWM off, a character that overflows the margin is clamped back
+    // to Cols - width. A double-width character in a 1-column terminal clamped to column -1, the
+    // write was then skipped, and the cursor stayed out of bounds. Encoded in the harness format:
+    // parse CSI ?7l, resize to 1x3, parse U+1104 (a wide Hangul jamo).
+    [Fact]
+    public void NightlyFinding_WideCharacterInOneColumnWithAutowrapOff()
+    {
+        ParseAndResize(new byte[]
+        {
+            0x08, 0x1B, (byte)'[', (byte)'?', (byte)'7', (byte)'l', // parse 5 bytes
+            0x01, 1, 3,                                            // resize to 1x3
+            0x04, 0xE1, 0x84, 0x84,                                // parse 3 bytes: U+1104
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WideCharacterWiderThanTheRow_IsWrittenAtColumnZero_InEitherWrapMode(bool autowrap)
+    {
+        // A row too narrow for the character keeps its lead cell and drops the continuation, the
+        // same whether DECAWM is on or off.
+        var buffer = new TerminalBuffer(cols: 1, rows: 3);
+        var parser = new AnsiParser(buffer);
+        if (!autowrap) parser.Process("\x1b[?7l");
+
+        parser.Process("ᄄ");
+
+        Assert.Equal(0, buffer.CursorCol);
+        Assert.Equal('ᄄ', buffer.ViewportRows[buffer.CursorRow].Cells[0].Character);
+    }
+
     // Same shape as FuzzTarget.FuzzParseAndResize: interleave parser input and resizes driven by
     // the input bytes, asserting invariants after every step.
     private static void ParseAndResize(ReadOnlySpan<byte> data)

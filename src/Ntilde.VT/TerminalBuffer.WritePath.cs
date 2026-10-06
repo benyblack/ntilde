@@ -343,7 +343,9 @@ namespace Ntilde.VT
             }
             else
             {
-                if (_cursorCol + width > Cols) _cursorCol = Cols - width; // Clamp to end
+                // Clamp to end. A character wider than the whole row (wide in a 1-column terminal)
+                // starts at column 0 and loses its continuation, as on the autowrap path.
+                if (_cursorCol + width > Cols) _cursorCol = Math.Max(0, Cols - width);
             }
 
             // Write to buffer
