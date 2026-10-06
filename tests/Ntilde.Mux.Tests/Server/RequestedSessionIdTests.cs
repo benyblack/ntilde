@@ -39,6 +39,25 @@ public sealed class RequestedSessionIdTests
         Assert.Equal(requested.ToString("D"), Assert.Single(host.Factory.Requests).EnvironmentOverrides![MuxServer.SessionEnvironmentVariable]);
     }
 
+    /// <summary>
+    /// The client's id argument is a convenience over the request's own member: given, it wins; null leaves the request
+    /// as it is, so an id the request names itself is still sent.
+    /// </summary>
+    [Fact]
+    public async Task The_clients_id_argument_wins_and_null_keeps_the_requests_own()
+    {
+        using var host = new MuxTestHost();
+        MuxClient client = await host.ConnectClientAsync();
+        Guid own = Guid.NewGuid();
+        Guid argument = Guid.NewGuid();
+
+        Guid kept = await client.SpawnAsync(Scripted with { SessionId = own.ToString("D") }, sessionId: null, Ct);
+        Guid overridden = await client.SpawnAsync(Scripted with { SessionId = Guid.NewGuid().ToString("D") }, argument, Ct);
+
+        Assert.Equal(own, kept);
+        Assert.Equal(argument, overridden);
+    }
+
     [Fact]
     public async Task A_spawn_that_names_no_id_still_gets_one_from_the_daemon()
     {

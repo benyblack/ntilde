@@ -7180,7 +7180,8 @@ namespace Ntilde
         /// UI thread. Final review F1: a remote pane closed. The pass that releases the remote hosts no pane needs runs
         /// once the close is done - a tab's whole tree disposed, the tab itself removed - not in the middle of it, where
         /// the closing tab's other panes would still count. One pass for every pane closed together. A pane also asks for
-        /// one once it has queued the kill of a shell its stale remote result started (codex C1,
+        /// one once it has queued the kill of a shell its stale remote result started (codex C1), or discarded any other
+        /// stale remote result, for which the factory may have queued a kill (codex E1;
         /// <see cref="TerminalPane.RemoteMuxReleaseCheck"/>): that result may come back after its close's pass ran.
         /// </summary>
         private void ScheduleRemoteMuxHostRelease()

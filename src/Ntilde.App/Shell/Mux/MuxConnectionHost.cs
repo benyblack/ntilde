@@ -472,29 +472,34 @@ internal sealed class MuxConnectionHost : IDisposable
     /// </remarks>
     public void KillWhenConnected(Guid sessionId)
     {
+        if (!TryKillWhenConnected(sessionId))
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping the kill of session {sessionId}: the host is closed");
+        }
+    }
+
+    /// <summary>
+    /// <see cref="KillWhenConnected"/>, except that a closed host neither takes the kill nor logs it as dropped: it
+    /// returns false, for a caller that can still reach the daemon another way - through the host the registry takes
+    /// back or builds for the endpoint (codex E1). True once the kill is sent, queued, or moot (the daemon stopped).
+    /// </summary>
+    internal bool TryKillWhenConnected(Guid sessionId)
+    {
         MuxClient? live = null;
-        bool disposed;
         bool moot = false;
         bool idle = false;
         lock (_gate)
         {
-            disposed = _closed;
-            if (!disposed)
-            {
-                live = _client is { IsConnected: true } c ? c : null;
-                // After DaemonStopped, until the next connect: the session went with that daemon (controller ruling).
-                moot = live is null && _daemonStopped;
-                if (live is null && !moot && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
-                idle = live is null && !moot && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
-                if (live is not null) _killsUnsettled++; // until SendKill's continuation settles it: not drained meanwhile
-            }
+            if (_closed) return false;
+            live = _client is { IsConnected: true } c ? c : null;
+            // After DaemonStopped, until the next connect: the session went with that daemon (controller ruling).
+            moot = live is null && _daemonStopped;
+            if (live is null && !moot && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
+            idle = live is null && !moot && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
+            if (live is not null) _killsUnsettled++; // until SendKill's continuation settles it: not drained meanwhile
         }
 
-        if (disposed)
-        {
-            _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping the kill of session {sessionId}: the host is closed");
-        }
-        else if (moot)
+        if (moot)
         {
             _log?.Invoke($"[Mux] {Policy.DisplayName}: not killing session {sessionId}: the daemon stopped, and its sessions ended with it");
         }
@@ -509,6 +514,8 @@ internal sealed class MuxConnectionHost : IDisposable
         {
             SendKill(live, sessionId);
         }
+
+        return true;
     }
 
     /// <summary>

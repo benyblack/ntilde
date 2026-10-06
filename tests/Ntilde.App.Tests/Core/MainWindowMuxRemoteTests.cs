@@ -602,6 +602,42 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(2, _remote.StartCount); // the pane's connect, then one for the kill
     }
 
+    /// <summary>
+    /// Codex E1 residual: a new remote pane closed while its spawn is out on a silent link. Its close's release pass
+    /// closes the host it finds unused, which fails the spawn; the daemon still starts the shell, under the id the
+    /// factory chose. A closed host drops a kill, so that shell's kill goes through a host built for it, and the
+    /// discarded plain-SSH result asks for the release pass that lets that host go once the kill is delivered.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_pane_closed_mid_spawn_on_a_silent_link_still_ends_the_shell_the_daemon_starts()
+    {
+        SaveTabs(LocalLeaf(), new PaneNode { Type = NodeType.Split, SplitOrientation = 0, Children = [NewRemoteLeaf(), LocalLeaf()] });
+        MainWindow window = CreateWindow();
+        PumpUntil(() => AllPanes(window).Any(p => p.Profile?.Type == ConnectionType.SSH), "the background tab was restored");
+        TerminalPane pane = AllPanes(window).Single(p => p.Profile?.Type == ConnectionType.SSH);
+        var gate = new ManualResetEventSlim();
+        var linkBack = new ManualResetEventSlim();
+        _remote.Shells.CreateGate = gate;
+        window.FindControl<TabControl>("Tabs")!.SelectedItem = pane.FindLogicalAncestorOfType<TabItem>(); // shown, it spawns
+        PumpUntil(() => _remote.Shells.CreateEntered.IsSet, "the daemon is starting the pane's shell");
+        MuxConnectionHost first = RemoteHostOf(window)!;
+        _remote.StallLink();                       // the spawn's reply will not come back, and nothing says the link is dead
+        _remote.OnStart = ct => linkBack.Wait(ct); // and no new link until the test says so
+
+        Task<bool> close = Close(window, pane);
+        Assert.True(close.IsCompletedSuccessfully && close.Result, "the split's pane closed at once");
+        PumpUntil(() => first.IsClosed, "the close released the connection: no pane needs it");
+        gate.Set();
+        PumpUntil(() => _remote.Server.GetSessionIds().Count == 1, "the daemon started the shell all the same");
+        Guid orphan = _remote.Server.GetSessionIds().Single();
+        PumpUntil(() => RemoteHostOf(window) is { } next && !ReferenceEquals(next, first), "a host was built to send the orphan's kill");
+
+        linkBack.Set();
+        KillLands(RemoteHostOf(window), orphan, "the orphan's kill was delivered through the new connection");
+        PumpUntil(() => RemoteHostOf(window) is null, "the host built for the kill was released after it");
+        Assert.Equal(2, _remote.StartCount); // the pane's connect, then one for the kill
+    }
+
     private static void PumpFor(int ms)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();

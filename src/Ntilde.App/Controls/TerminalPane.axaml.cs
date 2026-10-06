@@ -3867,17 +3867,28 @@ namespace Ntilde.Controls
         /// <summary>
         /// UI thread. A remote result nobody will show: a later spawn replaced it, or the pane is gone. A shell started
         /// for that result alone - not the one an id reopened, which it did not start - has nobody left to show it, so
-        /// it is ended rather than left running unseen on the remote (<see cref="KillStaleRemoteSession"/>). Then the
-        /// session is let go off the UI thread (a plain SSH stand-in's dispose may block).
+        /// it is ended rather than left running unseen on the remote (<see cref="KillStaleRemoteSession"/>). Any other
+        /// result still asks for the window's release pass (<see cref="RemoteMuxReleaseCheck"/>): the factory may have
+        /// queued a kill of its own for it (codex E1). Then the session is let go off the UI thread (a plain SSH
+        /// stand-in's dispose may block).
         /// </summary>
         private void DiscardRemoteResult(MuxTerminalSessionFactory factory, PersistentSessionResult? result)
         {
-            if (result?.Session is not { } session) return;
-            if (result.Outcome is not PersistentSessionOutcome.Reattached && session is MuxClientSession mux)
+            if (result?.Session is { } kept && result.Outcome is not PersistentSessionOutcome.Reattached && kept is MuxClientSession mux)
             {
                 // Before the dispose below, and before any release pass runs (they run on this thread).
                 KillStaleRemoteSession(factory.Hosts, MuxEndpointId.Parse(result.Endpoint), mux.Id);
             }
+            else
+            {
+                // No shell of this result's to end here - a plain SSH stand-in, a reopen, no session - but the factory
+                // may have queued a kill of its own on the way (codex E1: a spawn whose reply was lost), on a host this
+                // pane's close had released and the registry then took back or built again. The pass lets such a host
+                // go once that kill is delivered; one that is not needed is released as any other.
+                RemoteMuxReleaseCheck?.Invoke();
+            }
+
+            if (result?.Session is not { } session) return;
 
             _ = Task.Run(() =>
             {
@@ -4250,7 +4261,8 @@ namespace Ntilde.Controls
 
         /// <summary>
         /// UI thread. Asks the window for its pass that releases the remote hosts no pane needs (final review F1), once the
-        /// kill of a stale result's shell is queued (codex C1, <see cref="KillStaleRemoteSession"/>): the pass this pane's
+        /// kill of a stale result's shell is queued (codex C1, <see cref="KillStaleRemoteSession"/>), and for any other
+        /// discarded result, for which the factory may have queued a kill itself (codex E1): the pass this pane's
         /// close scheduled may have run before that result came back. Set when the window wires the pane and kept when it
         /// unwires it, since a closed pane's result still arrives. Null: nothing to ask (a pane with no window).
         /// </summary>

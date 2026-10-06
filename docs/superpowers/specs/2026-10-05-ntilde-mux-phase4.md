@@ -1172,6 +1172,13 @@ review; the section they change is named first.
   - **Not ambiguous:** the daemon's own error reply (`MuxProtocolException`). It answered, so it started
     nothing, and a `session_exists` refusal names someone else's session, which must not be killed.
   - The tab's fallback is unchanged: plain SSH with the notice.
+  - A pane closed while its spawn is out on a silent link has its close's release pass close the host,
+    which is what fails the spawn, and a closed host drops a kill. So, as for a stale result's shell
+    (codex C1), the kill then goes through the registry (`Hosts.GetOrCreate`: a pending release taken
+    back, or a new host), asked once more if a release pass closes that host first
+    (`MuxConnectionHost.TryKillWhenConnected`); with no host to be had (the window closing, the profile
+    gone) the log says why. The pane's discard of any remote result now asks for the release pass too, so
+    a host kept only for that kill goes once it is delivered.
   - If the daemon never started the session, the kill fails as `unknown_session`; the host logs
     "killing session `<id>` failed" once and drops it (only a kill whose connection closed is queued
     again), so a release is not held up.

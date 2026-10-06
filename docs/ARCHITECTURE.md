@@ -460,7 +460,9 @@ it).
 - **Spawn ids.** A remote spawn names its session's id (`SpawnParams.SessionId`, a new GUID per spawn),
   since nothing adopts a remote session: when the spawn may have reached the daemon but its pane got no
   session - the reply was lost to a dropped link or a timeout, or the open after it failed - the factory
-  queues that id's kill on the host (`KillWhenConnected`) before the tab falls back to plain SSH. The
+  queues that id's kill on the host (`KillWhenConnected`) before the tab falls back to plain SSH - through
+  the registry when the pane closed meanwhile and its release pass closed that host, as for a stale
+  result's shell, and the discarded result then asks for the release pass. The
   daemon's own error reply queues none. The server refuses an id that is not a non-empty "D" GUID
   (`protocol_error`) or is in use (`session_exists`, leaving that session alone); local spawns name none.
 - **Liveness.** A dropped link is silent until TCP notices, which can take tens of minutes. Every 15 s

@@ -368,12 +368,49 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     }
 
     /// <summary>Queues the kill of a remote session no pane owns (see <see cref="SpawnFresh"/>), before the fallback is returned.</summary>
+    /// <remarks>
+    /// The spawn's host may be closed by now, and a closed host drops a kill: the pane closed while its spawn was out,
+    /// and the window's release pass then closed the host it found unused (final review F1) - which is what failed the
+    /// spawn on a silent link. As for a stale result's shell (codex C1), the kill then goes through the registry, which
+    /// takes back a host whose release is pending or builds the endpoint a new one; the pane's discard of this result
+    /// asks the window for its release pass, so a host kept only for the kill goes once the kill is delivered. A host
+    /// handed back can be closed by a release pass before the kill reaches it, so this asks once more. With no host to
+    /// be had, the log says why: nothing else will end that shell.
+    /// </remarks>
     private void EndUnowned(Target target, Guid id, bool answered)
     {
         _log?.Invoke(answered
             ? $"[Mux] {target.Host.Policy.DisplayName}: session {id} was started but no pane took it; it will be ended once connected"
             : $"[Mux] {target.Host.Policy.DisplayName}: a spawn's reply was lost; session {id} will be ended once connected");
-        target.Host.KillWhenConnected(id);
+        if (target.Host.TryKillWhenConnected(id)) return;
+
+        string? why = null;
+        for (int attempt = 0; attempt < 2 && why is null; attempt++)
+        {
+            MuxConnectionHost? host;
+            try
+            {
+                host = Hosts.GetOrCreate(target.Endpoint);
+            }
+            catch (Exception ex)
+            {
+                why = $"its connection could not be set up: {ex.Message}";
+                break;
+            }
+
+            if (host is null)
+            {
+                why = Hosts.IsDisposed ? "the window is closing" : "its SSH profile is gone";
+            }
+            else if (host.TryKillWhenConnected(id))
+            {
+                _log?.Invoke($"[Mux] {target.Name}: the connection the spawn used is closed; the kill of session {id} goes through another");
+                return;
+            }
+        }
+
+        why ??= "each connection for it closed before the kill could be queued";
+        _log?.Invoke($"[Mux] cannot end session {id} on {target.Name}: no connection to send its kill on ({why}); it keeps running there");
     }
 
     /// <summary>

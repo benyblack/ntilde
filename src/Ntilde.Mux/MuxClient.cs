@@ -120,9 +120,11 @@ public sealed class MuxClient : IDisposable
 
     /// <summary>
     /// Spawns a session that takes <paramref name="sessionId"/> (Phase 4 spec §3, codex E1): a caller whose reply
-    /// is lost still knows which session to end. Null lets the daemon pick, as <see cref="SpawnAsync(SpawnParams, CancellationToken)"/>
-    /// does. An id the daemon already has is refused (<see cref="MuxErrorCodes.SessionExists"/>); a daemon older
-    /// than the field ignores it and picks its own, so the result - the id the daemon used - is the one to open.
+    /// is lost still knows which session to end. It is written over <paramref name="request"/>'s own
+    /// <see cref="SpawnParams.SessionId"/>; null leaves <paramref name="request"/> as it is, exactly as
+    /// <see cref="SpawnAsync(SpawnParams, CancellationToken)"/> sends it - the daemon picks the id unless the request
+    /// names one itself. An id the daemon already has is refused (<see cref="MuxErrorCodes.SessionExists"/>); a daemon
+    /// older than the field ignores it and picks its own, so the result - the id the daemon used - is the one to open.
     /// </summary>
     public async Task<Guid> SpawnAsync(SpawnParams request, Guid? sessionId, CancellationToken cancellationToken = default)
     {

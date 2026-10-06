@@ -587,6 +587,51 @@ public sealed class MuxTerminalSessionFactoryRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// Codex E1 residual: the tab closed while its spawn was out on a silent link, and the window's release pass closed
+    /// the host it found unused - which failed the spawn. A closed host drops a kill, so the shell the daemon still
+    /// starts under the chosen id is killed through a host the registry builds for the endpoint; the next release pass
+    /// (the pane's discard of this result asks for one) lets that host go once the kill is delivered.
+    /// </summary>
+    [Fact]
+    public async Task A_spawn_whose_host_was_released_meanwhile_ends_its_shell_through_another_host()
+    {
+        var clock = new FakeMuxTimerScheduler();
+        var log = new ConcurrentQueue<string>();
+        Guid chosen = Guid.NewGuid();
+        (MuxTerminalSessionFactory factory, MuxConnectionHosts hosts, MuxConnectionHost first) = BuildWithClock(clock, log, chosen);
+        MuxEndpointId endpoint = MuxEndpointId.ForSsh(_profile.Id);
+        ManualResetEventSlim gate = Own(new ManualResetEventSlim());
+        ManualResetEventSlim linkBack = Own(new ManualResetEventSlim());
+        _remote.Shells.CreateGate = gate;
+        Task<PersistentSessionResult> pending = Task.Run(() => factory.CreatePersistent(Ssh()), Ct);
+        Assert.True(_remote.Shells.CreateEntered.Wait(Patient, Ct), "the daemon never got the spawn");
+        _remote.StallLink();                       // the reply will not come back, and nothing says the link is dead
+        _remote.OnStart = ct => linkBack.Wait(ct); // no new link until the test says so
+
+        TaskCompletionSource firstClosed = ClosedSignal(first);
+        hosts.Release(endpoint); // the tab closed: its close's release pass found the endpoint unused
+        await firstClosed.Task.WaitAsync(Patient, Ct);
+        PersistentSessionResult r = await pending.WaitAsync(Patient, Ct); // closing the host failed the spawn
+
+        Assert.Equal(PersistentSessionOutcome.Unavailable, r.Outcome);
+        Assert.IsType<FakeTerminalSession>(r.Session);
+        Assert.DoesNotContain(log, l => l.Contains("dropping the kill", StringComparison.Ordinal));
+        MuxConnectionHost next = Assert.IsType<MuxConnectionHost>(hosts.TryGet(endpoint));
+        Assert.NotSame(first, next);
+        gate.Set();
+        await TestWait.UntilAsync(() => _remote.Server.GetSessionIds().Contains(chosen), "the daemon started the shell all the same", Patient);
+
+        bool? endedAtClose = null;
+        TaskCompletionSource nextClosed = ClosedSignal(next, () => endedAtClose = !_remote.Server.GetSessionIds().Contains(chosen));
+        hosts.Release(endpoint); // the pass the pane's discard asks for
+        Assert.False(next.IsClosed); // the kill has yet to go out
+        linkBack.Set();
+        await nextClosed.Task.WaitAsync(Patient, Ct);
+        Assert.True(endedAtClose);
+        Assert.Equal(2, _remote.StartCount); // the first connect, and the one that carried the kill
+    }
+
+    /// <summary>
     /// Codex E1: the daemon answered with an error, so it started nothing - no kill is queued. When the refusal is that
     /// the id is taken, the session holding it is someone else's and must not be killed.
     /// </summary>
