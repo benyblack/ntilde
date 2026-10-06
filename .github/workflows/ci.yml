@@ -1661,7 +1661,9 @@ jobs:
       # console launcher release.yml ships beside Ntilde.exe, so a prompt waits for
       # `ntilde mux attach` and gets its exit code. Its own NativeAOT publish - IL2026/IL3050
       # and every other warning are errors in Ntilde.Launcher.csproj, so a regression fails
-      # here - and the same invocation as release.yml's, minus -p:Version.
+      # here. release.yml publishes it the same way except for the version properties
+      # (-p:Version, -p:InformationalVersion); this adds -p:TrimmerSingleWarn=false, as the App
+      # publish above does, so ILC names every offending call site.
       #
       # CONFIGURATION is the workflow-level env, read as $env: rather than interpolated into
       # the script (the rule aot_gate_detect cites).
@@ -1696,7 +1698,11 @@ jobs:
           if ($code -ne 7) {
             throw "ntilde.com beside a cmd.exe named Ntilde.exe exited $code for '/d /c exit 7', not 7: the AOT launcher did not start its Ntilde.exe with the raw tail, or did not forward the exit code."
           }
+          # The runner's pwsh wrapper ends every step with `exit $LASTEXITCODE`, which is still the
+          # 7 this smoke just asserted: without these two lines the step fails exactly when it passes.
+          $global:LASTEXITCODE = 0
           Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
+          exit 0
 
       # The logs are the whole diagnostic value when this job fails, and a failed GUI
       # launch on a runner is exactly the case nobody can reproduce locally.

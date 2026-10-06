@@ -671,6 +671,9 @@ jobs:
           if ($code -ne 7) {
             throw "ntilde.com beside a cmd.exe named Ntilde.exe exited $code for '/d /c exit 7', not 7: the AOT launcher did not start its Ntilde.exe with the raw tail, or did not forward the exit code. Do not release a bundle whose ntilde.com cannot run its Ntilde.exe."
           }
+          # The runner's pwsh wrapper ends every step with `exit $LASTEXITCODE`, which is still the
+          # 7 this smoke just asserted: reset it, and end with exit 0, or the step fails when it passes.
+          $global:LASTEXITCODE = 0
           Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
 
           $bundle = Join-Path $PWD 'artifacts/publish/win-x64'
@@ -678,6 +681,7 @@ jobs:
           Copy-Item $launcher (Join-Path $bundle 'ntilde.com') -Force
           if (-not (Test-Path (Join-Path $bundle 'ntilde.com'))) { throw "ntilde.com did not reach $bundle." }
           Write-Output "ntilde.com is in the bundle beside Ntilde.exe."
+          exit 0
 
       # ---- BLOCKING release gate for the Windows bundle, and deliberately placed here:
       # ---- everything below (Archive bundle, Upload release asset, vpk pack, Upload

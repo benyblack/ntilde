@@ -15,13 +15,16 @@ namespace Ntilde.Shell;
 /// installer never did, so <c>ntilde</c> typed at a prompt found nothing; now that directory holds
 /// <c>ntilde.com</c> beside <c>Ntilde.exe</c>, and PATHEXT ranks <c>.COM</c> first, so a prompt runs the console
 /// launcher and waits for it. Program.cs calls <see cref="Ensure"/> from Velopack's install and update hooks
-/// and <see cref="Remove"/> from its uninstall hook, and nothing else calls either
-/// (<c>CliCommandDispatchTests.The_PATH_is_registered_only_from_the_Velopack_hooks</c>).
+/// and <see cref="Remove"/> from its uninstall hook, and nothing else in the App calls or references either
+/// (<c>CliCommandDispatchTests.The_PATH_is_registered_only_from_the_Velopack_hooks</c> scans every method body).
 /// </summary>
 internal static class UserPathRegistration
 {
     private const string EnvironmentKey = "Environment";
     private const string PathValue = "Path";
+
+    /// <summary>The longest value Windows gives an environment variable, in characters.</summary>
+    internal const int MaxPathLength = 32767;
 
     private const nint HwndBroadcast = 0xffff;
     private const uint WmSettingChange = 0x001A;
@@ -30,19 +33,21 @@ internal static class UserPathRegistration
 
     /// <summary>
     /// <paramref name="existing"/> with <paramref name="directory"/> appended (<paramref name="add"/>) or every
-    /// entry naming it removed. Entries split on <c>;</c>, and empty ones are dropped from a PATH that is
-    /// rewritten. Two entries name the same directory when they are equal, ignoring case, after
-    /// <see cref="Environment.ExpandEnvironmentVariables"/> and <see cref="Path.TrimEndingDirectorySeparator(string)"/>.
-    /// The other entries keep their order and their spelling, <c>%VAR%</c> and all. When there is nothing to
-    /// do - adding a directory already there, removing one that is not - <paramref name="existing"/> comes back
-    /// as it was (<c>""</c> for null), so the caller can tell and leave the registry alone. Pure.
+    /// entry naming it removed. Entries split on <c>;</c>, and empty or blank ones are dropped from a PATH that
+    /// is rewritten. Two entries name the same directory when they are equal, ignoring case, once each is
+    /// trimmed of surrounding blanks and quotes, expanded (<see cref="Environment.ExpandEnvironmentVariables"/>)
+    /// and stripped of every trailing separator (<see cref="Path.TrimEndingDirectorySeparator(string)"/>, until
+    /// it has none). The other entries keep their order and their spelling, <c>%VAR%</c> and quotes and all.
+    /// When there is nothing to do - adding a directory already there, removing one that is not -
+    /// <paramref name="existing"/> comes back as it was (<c>""</c> for null), so the caller can tell and leave the
+    /// registry alone. Pure.
     /// </summary>
     public static string Merge(string? existing, string directory, bool add)
     {
         ArgumentException.ThrowIfNullOrEmpty(directory);
         string current = existing ?? "";
         string wanted = Normalize(directory);
-        string[] entries = current.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        string[] entries = current.Split(';').Where(e => !string.IsNullOrWhiteSpace(e)).ToArray();
         bool Names(string entry) => string.Equals(Normalize(entry), wanted, StringComparison.OrdinalIgnoreCase);
 
         bool present = entries.Any(Names);
@@ -50,8 +55,13 @@ internal static class UserPathRegistration
         return present ? string.Join(';', entries.Where(e => !Names(e))) : current;
     }
 
-    private static string Normalize(string entry) =>
-        Path.TrimEndingDirectorySeparator(Environment.ExpandEnvironmentVariables(entry));
+    private static string Normalize(string entry)
+    {
+        string path = Environment.ExpandEnvironmentVariables(entry.Trim().Trim('"').Trim());
+        string trimmed;
+        while ((trimmed = Path.TrimEndingDirectorySeparator(path)).Length < path.Length) path = trimmed;
+        return path;
+    }
 
     /// <summary>Adds <paramref name="directory"/> to HKCU <c>Environment\Path</c>. Windows only; a failure is logged, never thrown.</summary>
     public static void Ensure(string? directory)
@@ -91,6 +101,11 @@ internal static class UserPathRegistration
             string? existing = read();
             string merged = Merge(existing, directory, add);
             if (string.Equals(merged, existing ?? "", StringComparison.Ordinal)) return false;
+
+            // Written whole all the same: cutting it short would drop whichever of the user's own entries
+            // came last. Whoever reads it decides what to do with an over-long value; the log says why.
+            if (merged.Length > MaxPathLength)
+                Log(LogLevel.Warning, $"PATH: the user PATH is {merged.Length} characters after this {change}, past Windows' {MaxPathLength}-character variable limit; it is written whole.");
             write(merged);
         }
         catch (Exception ex)

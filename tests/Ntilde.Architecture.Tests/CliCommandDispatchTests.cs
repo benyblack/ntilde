@@ -176,10 +176,11 @@ public class CliCommandDispatchTests
     /// <summary>
     /// Phase 4 spec §11.3: ntilde.com waits for the exit code of whatever it started, unless the GUI releases
     /// it. A release before any CLI check would hand a CLI verb's prompt back while the verb still ran, so
-    /// every <c>LauncherRelease.Signal</c> in <c>Main</c> comes after every <c>IsSupportedCliMode</c> check. A mux
-    /// verb keeps its launcher waiting but must not pass the event on to the daemon it may start, so
-    /// <c>LauncherRelease.Discard</c> sits inside the mux branch: after its check, before its <c>Execute</c>.
-    /// Compiled order, read from the IL, as in the test above.
+    /// every <c>LauncherRelease.Signal</c> in <c>Main</c> comes after every <c>IsSupportedCliMode</c> check and after
+    /// the mux branch's <c>Execute</c> - a Signal inside that branch would come after every check and still
+    /// release a mux verb. A mux verb keeps its launcher waiting but must not pass the event on to the
+    /// daemon it may start, so <c>LauncherRelease.Discard</c> sits inside the mux branch: after its check,
+    /// before its <c>Execute</c>. Compiled order, read from the IL, as in the test above.
     /// </summary>
     [Fact]
     public void The_launcher_is_released_only_on_the_GUI_path()
@@ -193,41 +194,110 @@ public class CliCommandDispatchTests
 
         int[] checks = Sites("*", "IsSupportedCliMode");
         int[] signals = Sites("LauncherRelease", "Signal");
+        int muxCheck = Assert.Single(Sites("MuxCommand", "IsSupportedCliMode"));
+        int muxExecute = Assert.Single(Sites("MuxCommand", "Execute"));
+        int discard = Assert.Single(Sites("LauncherRelease", "Discard"));
         Assert.True(checks.Length >= 5, $"Main should check the five CLI modes; found {checks.Length} IsSupportedCliMode calls.");
         Assert.NotEmpty(signals);
         Assert.All(signals, s => Assert.True(s > checks.Max(),
             "App Program.Main calls LauncherRelease.Signal before an IsSupportedCliMode check: a CLI verb run through ntilde.com would get its prompt back while it ran."));
+        Assert.All(signals, s => Assert.True(s > muxExecute,
+            "App Program.Main calls LauncherRelease.Signal before MuxCommand.Execute, inside the mux branch: a mux verb run through ntilde.com would get its prompt back while it ran."));
 
-        int muxCheck = Assert.Single(Sites("MuxCommand", "IsSupportedCliMode"));
-        int muxExecute = Assert.Single(Sites("MuxCommand", "Execute"));
-        int discard = Assert.Single(Sites("LauncherRelease", "Discard"));
         Assert.True(muxCheck < discard && discard < muxExecute,
             "App Program.Main must call LauncherRelease.Discard inside the mux branch, between MuxCommand.IsSupportedCliMode and MuxCommand.Execute.");
     }
 
+    private static readonly string[] PathHooks = ["OnAfterInstallFastCallback", "OnAfterUpdateFastCallback", "OnBeforeUninstallFastCallback"];
+
     /// <summary>
     /// Phase 4 spec §11.4: the install directory goes on the user PATH from Velopack's install and update
     /// hooks and comes off in its uninstall hook - and from nowhere else. Those fast callbacks run only when
-    /// Velopack starts the exe for that stage (and it exits after them), so registering them is all
-    /// <c>Main</c> may do: a direct <c>UserPathRegistration</c> call would rewrite the PATH on every start.
+    /// Velopack starts the exe for that stage (and it exits after them); a call anywhere else could rewrite
+    /// the PATH on an ordinary start. So, over every method body in the App assembly:
+    /// <list type="bullet">
+    /// <item><c>Main</c> registers the three hooks before <c>VelopackApp.Run</c>, each with a delegate whose
+    /// target (the nearest <c>ldftn</c> before the registration) is a method of <c>Program</c> or its closures;</item>
+    /// <item>the install and update targets call <c>Ensure</c> and not <c>Remove</c>, the uninstall target
+    /// <c>Remove</c> and not <c>Ensure</c>;</item>
+    /// <item>nothing else references <c>Ensure</c> or <c>Remove</c> - not as a call, not as a method group -
+    /// and nothing but <c>Main</c> references the three targets.</item>
+    /// </list>
     /// </summary>
     [Fact]
     public void The_PATH_is_registered_only_from_the_Velopack_hooks()
     {
-        MethodInfo main = App.GetType("Ntilde.Program", throwOnError: true)!
-            .GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
-        List<MethodBase> calls = CalledMethods(main);
-        int IndexOf(string method) => calls.FindIndex(m => m.Name == method && m.DeclaringType?.FullName == "Velopack.VelopackApp");
+        Type program = App.GetType("Ntilde.Program", throwOnError: true)!;
+        MethodInfo main = program.GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        Type registration = App.GetType("Ntilde.Shell.UserPathRegistration", throwOnError: true)!;
+        MethodInfo ensure = registration.GetMethod("Ensure", CommandMemberFlags)!;
+        MethodInfo remove = registration.GetMethod("Remove", CommandMemberFlags)!;
 
-        int run = IndexOf("Run");
+        List<(OpCode Op, int Token)> mainRefs = MethodReferences(main);
+        MethodBase Resolve(int token) => main.Module.ResolveMethod(token)!;
+        bool IsVelopackApp(int index, string name) =>
+            (mainRefs[index].Op == OpCodes.Callvirt || mainRefs[index].Op == OpCodes.Call)
+            && Resolve(mainRefs[index].Token) is { } m && m.Name == name && m.DeclaringType?.FullName == "Velopack.VelopackApp";
+
+        int run = Enumerable.Range(0, mainRefs.Count).FirstOrDefault(i => IsVelopackApp(i, "Run"), -1);
         Assert.True(run >= 0, "App Program.Main no longer calls VelopackApp.Run.");
-        foreach (string hook in new[] { "OnAfterInstallFastCallback", "OnAfterUpdateFastCallback", "OnBeforeUninstallFastCallback" })
+        var targets = new Dictionary<string, MethodBase>();
+        foreach (string hook in PathHooks)
         {
-            int site = IndexOf(hook);
+            int site = Enumerable.Range(0, mainRefs.Count).FirstOrDefault(i => IsVelopackApp(i, hook), -1);
             Assert.True(site >= 0 && site < run, $"App Program.Main must register VelopackApp.{hook} before VelopackApp.Run.");
+            int ftn = mainRefs.FindLastIndex(site, r => r.Op == OpCodes.Ldftn);
+            Assert.True(ftn >= 0, $"No delegate target found before VelopackApp.{hook} in App Program.Main.");
+            MethodBase target = Resolve(mainRefs[ftn].Token);
+            Assert.True(target.DeclaringType == program || target.DeclaringType?.DeclaringType == program,
+                $"VelopackApp.{hook}'s delegate is {target.DeclaringType?.FullName}.{target.Name}, not Program's own closure.");
+            targets[hook] = target;
         }
 
-        Assert.DoesNotContain(calls, m => m.DeclaringType?.Name == "UserPathRegistration");
+        // Every reference in the assembly to Ensure, Remove or a hook target, by the method that makes it.
+        var ensureRefs = new HashSet<MethodBase>();
+        var removeRefs = new HashSet<MethodBase>();
+        var targetRefs = new HashSet<MethodBase>();
+        var targetTokens = targets.Values.Select(t => t.MetadataToken).ToHashSet();
+        foreach (MethodBase method in AllMethodBodies(App))
+        {
+            foreach ((_, int token) in MethodReferences(method))
+            {
+                if (token == ensure.MetadataToken) ensureRefs.Add(method);
+                if (token == remove.MetadataToken) removeRefs.Add(method);
+                if (targetTokens.Contains(token)) targetRefs.Add(method);
+            }
+        }
+
+        MethodBase install = targets["OnAfterInstallFastCallback"], update = targets["OnAfterUpdateFastCallback"], uninstall = targets["OnBeforeUninstallFastCallback"];
+        Assert.True(ensureRefs.SetEquals([install, update]),
+            "UserPathRegistration.Ensure must be called from the install and update hooks' delegates and nowhere else; it is referenced by: " + Describe(ensureRefs));
+        Assert.True(removeRefs.SetEquals([uninstall]),
+            "UserPathRegistration.Remove must be called from the uninstall hook's delegate and nowhere else; it is referenced by: " + Describe(removeRefs));
+        Assert.True(targetRefs.SetEquals([main]),
+            "The hooks' delegate targets must be referenced only by Program.Main, which registers them; they are referenced by: " + Describe(targetRefs));
+    }
+
+    private static string Describe(IEnumerable<MethodBase> methods) =>
+        string.Join(", ", methods.Select(m => $"{m.DeclaringType?.FullName}.{m.Name}").DefaultIfEmpty("<nothing>"));
+
+    /// <summary>Every method and constructor in <paramref name="assembly"/> that has an IL body, compiler-generated ones included.</summary>
+    private static IEnumerable<MethodBase> AllMethodBodies(Assembly assembly)
+    {
+        const BindingFlags all = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        Type[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            types = ex.Types.Where(t => t is not null).Cast<Type>().ToArray();
+        }
+
+        return types
+            .SelectMany(t => t.GetMethods(all).Cast<MethodBase>().Concat(t.GetConstructors(all)))
+            .Where(m => m.GetMethodBody() is not null);
     }
 
     /// <summary>
@@ -254,10 +324,23 @@ public class CliCommandDispatchTests
         .ToDictionary(op => op.Value);
 
     /// <summary>The methods <paramref name="method"/>'s body calls, in IL order.</summary>
-    private static List<MethodBase> CalledMethods(MethodInfo method)
+    private static List<MethodBase> CalledMethods(MethodInfo method) =>
+        MethodReferences(method)
+            .Where(r => r.Op == OpCodes.Call || r.Op == OpCodes.Callvirt)
+            .Select(r => method.Module.ResolveMethod(r.Token)!)
+            .ToList();
+
+    /// <summary>
+    /// Every instruction in <paramref name="method"/>'s body that names a method - call, callvirt, newobj,
+    /// ldftn (a lambda or method group becoming a delegate), ldvirtftn, jmp, and ldtoken of a method - with
+    /// its metadata token, in IL order. Unresolved, so a whole assembly can be scanned cheaply: within one
+    /// module a non-generic method is always named by its own MethodDef token.
+    /// </summary>
+    private static List<(OpCode Op, int Token)> MethodReferences(MethodBase method)
     {
-        byte[] il = method.GetMethodBody()!.GetILAsByteArray()!;
-        var calls = new List<MethodBase>();
+        var refs = new List<(OpCode Op, int Token)>();
+        byte[]? il = method.GetMethodBody()?.GetILAsByteArray();
+        if (il is null) return refs;
         int i = 0;
         while (i < il.Length)
         {
@@ -265,8 +348,8 @@ public class CliCommandDispatchTests
             short value = twoByte ? unchecked((short)(0xFE00 | il[i + 1])) : il[i];
             i += twoByte ? 2 : 1;
             OpCode op = OpCodesByValue[value];
-            if (op == OpCodes.Call || op == OpCodes.Callvirt)
-                calls.Add(method.Module.ResolveMethod(BitConverter.ToInt32(il, i))!);
+            if (op.OperandType is OperandType.InlineMethod or OperandType.InlineTok)
+                refs.Add((op, BitConverter.ToInt32(il, i)));
             i += op.OperandType switch
             {
                 OperandType.InlineNone => 0,
@@ -277,6 +360,6 @@ public class CliCommandDispatchTests
                 _ => 4,
             };
         }
-        return calls;
+        return refs;
     }
 }

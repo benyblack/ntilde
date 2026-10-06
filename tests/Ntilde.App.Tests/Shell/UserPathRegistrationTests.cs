@@ -29,6 +29,13 @@ public sealed class UserPathRegistrationTests
     [InlineData(null, Dir, false, "")]
     // Not there: nothing to do.
     [InlineData(@"C:\a;;C:\b", Dir, false, @"C:\a;;C:\b")]
+    // Blank entries are empty too, and go with them.
+    [InlineData(@"C:\a; ;C:\b", Dir, true, @"C:\a;C:\b;" + Dir)]
+    // An entry is compared without its surrounding blanks and quotes, and kept as it was written.
+    [InlineData(@"""" + Dir + @""";C:\a", Dir, true, @"""" + Dir + @""";C:\a")]
+    [InlineData(" " + Dir + @" ;C:\a", Dir, true, " " + Dir + @" ;C:\a")]
+    [InlineData(@"C:\a;""" + Dir + @""";  " + Dir + "  ", Dir, false, @"C:\a")]
+    [InlineData(@"C:\a;""C:\b""", Dir, true, @"C:\a;""C:\b"";" + Dir)]
     public void Merge_adds_once_and_removes_every_match(string? existing, string directory, bool add, string expected)
     {
         Assert.Equal(expected, UserPathRegistration.Merge(existing, directory, add));
@@ -43,6 +50,10 @@ public sealed class UserPathRegistrationTests
     [InlineData(@"C:\a;" + Dir, Dir + @"\", true, @"C:\a;" + Dir)]
     [InlineData(@"C:\a;" + Dir + "/", Dir, true, @"C:\a;" + Dir + "/")]
     [InlineData(@"C:\a;" + Dir + @"\;" + Dir, Dir, false, @"C:\a")]
+    // Every trailing separator, not just the last one, on either side.
+    [InlineData(@"C:\a;" + Dir + @"\\\", Dir, true, @"C:\a;" + Dir + @"\\\")]
+    [InlineData(@"C:\a;" + Dir, Dir + @"\\", true, @"C:\a;" + Dir)]
+    [InlineData(Dir + @"\/\;C:\a;""" + Dir + @"\\""", Dir, false, @"C:\a")]
     public void Merge_tolerates_a_trailing_separator(string existing, string directory, bool add, string expected)
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "A trailing backslash is a separator only on Windows.");
@@ -112,6 +123,24 @@ public sealed class UserPathRegistrationTests
 
         Assert.Equal(@"C:\a", path.Value);
         Assert.Equal(1, path.Announcements);
+    }
+
+    /// <summary>
+    /// Past Windows' 32767-character variable limit the PATH is still written whole, and the overflow is
+    /// logged: cutting it short would drop whichever of the user's own entries came last.
+    /// </summary>
+    [Fact]
+    public void Update_writes_an_over_long_PATH_whole()
+    {
+        // 2046 entries of 15 characters: 32735 with the separators, so appending Dir crosses the limit.
+        string existing = string.Join(';', Enumerable.Range(0, 2046).Select(i => $@"C:\tools\t{i:D5}"));
+        Assert.True(existing.Length < UserPathRegistration.MaxPathLength);
+        Assert.True(existing.Length + 1 + Dir.Length > UserPathRegistration.MaxPathLength);
+        var path = new FakeUserPath(existing);
+
+        Assert.True(path.Update(Dir, add: true));
+
+        Assert.Equal(existing + ";" + Dir, path.Value);
     }
 
     [Theory]
