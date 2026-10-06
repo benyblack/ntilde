@@ -391,6 +391,48 @@ public sealed class NativeSshExecTransportTests
         Assert.Equal(0, await blockedRead.WaitAsync(Bound, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>Final review F4: a cancelled connect's channel closes its session at once, with no EOF grace period.</summary>
+    [Fact]
+    public async Task Abort_closes_the_session_at_once()
+    {
+        var interop = new ScriptedNativeSshInterop(); // never exits, not even on EOF
+        ISshExecChannel channel = Start(interop);
+        await WaitUntilAsync(() => interop.Polls > 0, "the first poll");
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        channel.Abort();
+        TimeSpan took = clock.Elapsed;
+
+        Assert.True(took < NativeSshExecChannel.ExitGrace, $"Abort took {took}: it waited for an EOF grace period");
+        Assert.Equal(1, interop.CloseCount);
+        Assert.True(interop.Handle.IsClosed);
+        Assert.False(interop.PollThread!.IsAlive);
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        channel.Abort();   // idempotent
+        channel.Dispose(); // nothing left to end
+        Assert.Equal(1, interop.CloseCount);
+    }
+
+    /// <summary>Final review F4: an Abort while a Dispose waits out its grace period closes the session now.</summary>
+    [Fact]
+    public async Task Abort_cuts_a_disposes_grace_period_short()
+    {
+        var interop = new ScriptedNativeSshInterop(); // never exits, not even on EOF
+        ISshExecChannel channel = Start(interop);
+        await WaitUntilAsync(() => interop.Polls > 0, "the first poll");
+        Task dispose = Task.Run(channel.Dispose, TestContext.Current.CancellationToken);
+        await WaitUntilAsync(() => interop.SendEofCount == 1, "the Dispose sent EOF and waits");
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        channel.Abort();
+        await dispose.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(1), $"Dispose returned {clock.Elapsed} after the Abort: its grace period ran on");
+        Assert.Equal(1, interop.CloseCount);
+        Assert.False(interop.PollThread!.IsAlive);
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task Disposing_the_channel_while_the_poll_thread_waits_on_a_full_queue_frees_it_and_keeps_the_exit_code()
     {

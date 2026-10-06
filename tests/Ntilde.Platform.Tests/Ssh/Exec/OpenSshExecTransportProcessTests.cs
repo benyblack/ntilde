@@ -213,6 +213,47 @@ public sealed class OpenSshExecTransportProcessTests
         Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Final review F4: a cancelled connect's channel is killed at once - no stdin EOF and grace period, which
+    /// an exiting app never waits out - and has been when Abort returns.
+    /// </summary>
+    [Fact]
+    public async Task Abort_kills_the_process_at_once_and_its_status_is_unknown()
+    {
+        var log = new ConcurrentQueue<string>();
+        (string shell, string[] leading) = Shell();
+        ISshExecChannel channel = new OpenSshExecTransport(Profile(), shell, command => [.. leading, command], askPassHelperPath: null, log: log.Enqueue)
+            .Start(Pick("ping -n 60 127.0.0.1 >nul", "sleep 60"), CancellationToken.None);
+        int pid = log.Select(line => Regex.Match(line, @"\(pid (\d+)\)")).Where(m => m.Success)
+            .Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)).Single();
+
+        var clock = Stopwatch.StartNew();
+        channel.Abort();
+        TimeSpan took = clock.Elapsed;
+
+        Assert.True(HasExited(pid), $"pid {pid} is still running after Abort returned");
+        Assert.True(took < OpenSshExecChannel.ExitGrace, $"Abort took {took}: it waited for an EOF grace period");
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+        channel.Abort();   // idempotent
+        channel.Dispose(); // nothing left to end
+    }
+
+    /// <summary>Final review F4: an Abort while a Dispose waits out its grace period ends that wait now.</summary>
+    [Fact]
+    public async Task Abort_cuts_a_disposes_grace_period_short()
+    {
+        ISshExecChannel channel = ShellTransport().Start(Pick("ping -n 60 127.0.0.1 >nul", "sleep 60"), CancellationToken.None);
+        Task dispose = Task.Run(channel.Dispose, TestContext.Current.CancellationToken);
+        await Task.Delay(200, TestContext.Current.CancellationToken);   // inside the grace period: stdin's EOF does not end it
+
+        var clock = Stopwatch.StartNew();
+        channel.Abort();
+        await dispose.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(1), $"Dispose returned {clock.Elapsed} after the Abort: its grace period ran on");
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public void Start_with_a_cancelled_token_starts_nothing()
     {

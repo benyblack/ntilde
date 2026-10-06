@@ -903,6 +903,12 @@ review; the section they change is named first.
 - **§8.2 The askpass helper fills in the vault password only for a prompt that names the target's
   `user@host`.** A ProxyJump hop's prompt would otherwise receive the target's password.
 - **§8.2 No `ISshAskPassLocator`.** The App passes the helper path (`SshAskPassCommand.LocateHelper()`).
+- **`ISshExecChannel.Abort()`** (final review F4): synchronous, idempotent, no grace period. OpenSSH
+  kills ssh's process tree (an askpass helper and its dialog with it); native closes the session; a
+  `Dispose` still in its grace period is cut short. The connector aborts a channel nobody was handed
+  yet when its attempt is cancelled, inside the cancel itself, so the host's `Dispose` (app exit) or a
+  user's request superseding an automatic attempt has stopped ssh before it returns. Ending it
+  gracefully on the pool left ssh and its askpass dialog running after the app exited.
 - **§8.3 Native stdout is a bounded byte queue** (`BoundedChunkQueue`, `Monitor` wait/pulse) that the
   poll thread feeds directly, not a `Pipe`. `Pipe`'s default schedulers put thread-pool work on the
   remote output path, against the multiplexer's no-thread-pool-on-the-output-path rule.

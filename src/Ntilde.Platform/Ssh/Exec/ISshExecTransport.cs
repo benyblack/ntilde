@@ -33,6 +33,19 @@ public interface ISshExecChannel : IDisposable
     /// failure. <see cref="StderrTail"/> is complete when this resolves.
     /// </summary>
     Task<int?> Completion { get; }
+
+    /// <summary>
+    /// Stops the command at once, with no grace period: OpenSSH's process tree is killed (an askpass
+    /// helper with it, and so its dialog), the native session is closed. For a channel nobody was handed
+    /// yet - a connect that was cancelled - where nothing waits for a clean end, and where a user who
+    /// closed the app must not find ssh or its prompt still running (Phase 4 final review F4).
+    /// </summary>
+    /// <remarks>
+    /// Synchronous: the command has been stopped when this returns, so it may block briefly (a kill and
+    /// the wait for it); never call it on the UI thread. Idempotent. A <see cref="IDisposable.Dispose"/> in
+    /// progress is cut short: its grace period ends now. After it, Dispose has nothing left to wait for.
+    /// </remarks>
+    void Abort();
 }
 
 /// <summary>

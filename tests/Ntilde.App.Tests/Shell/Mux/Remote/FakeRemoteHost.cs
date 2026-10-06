@@ -255,6 +255,7 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
     private volatile string? _transportError;
     private volatile bool _killedByChannel;
     private int _disposing;
+    private int _aborts;
 
     internal FakeRemoteChannel(FakeRemoteHost host, string command, FakeRemoteScript? script, string noise, int pipeCapacityBytes)
     {
@@ -308,29 +309,54 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
 
     internal void Stall() => _stalled = true;
 
+    /// <summary>How many times <see cref="Abort"/> was called: a connect cancelled while it held this channel.</summary>
+    public int AbortCount => Volatile.Read(ref _aborts);
+
     /// <summary>
     /// As the real channels end: stdin's EOF, then up to a grace period for the remote side to exit, then
     /// it is killed (<see cref="Completion"/> null). Only then does stdout's read end close: a read pending
     /// on it returns once the remote side's end is gone. A stalled or hung remote side is killed at once,
     /// since no EOF will ever end it.
     /// </summary>
-    public void Dispose()
-    {
-        if (Interlocked.Exchange(ref _disposing, 1) != 0) return;
+    public void Dispose() => End(grace: true);
 
-        bool endsOnEof = !_stalled && _script is not { Hang: true };
+    /// <summary>
+    /// As the real channels abort (final review F4): the remote side is killed at once, with no grace, and
+    /// has ended when this returns. A <see cref="Dispose"/> in its grace period is cut short.
+    /// </summary>
+    public void Abort()
+    {
+        Interlocked.Increment(ref _aborts);
+        End(grace: false);
+    }
+
+    private void End(bool grace)
+    {
+        if (Interlocked.Exchange(ref _disposing, 1) != 0)
+        {
+            // Already ending: an abort only ends the grace period.
+            if (!grace) Kill();
+            return;
+        }
+
+        bool endsOnEof = grace && !_stalled && _script is not { Hang: true };
         _stdin.Dispose();
         if (!endsOnEof || !_remote.Join(ExitGrace))
         {
-            _killedByChannel = true;
-            _killed.Set();
-            CloseQuietly(_proxyStdin);
-            CloseQuietly(_proxyStdoutPipe);
+            Kill();
             _remote.Join(ExitGrace);
         }
 
         CloseQuietly(_stdoutReader);
         _disposed.TrySetResult();
+    }
+
+    private void Kill()
+    {
+        _killedByChannel = true;
+        _killed.Set();
+        CloseQuietly(_proxyStdin);
+        CloseQuietly(_proxyStdoutPipe);
     }
 
     private void RunRemote()

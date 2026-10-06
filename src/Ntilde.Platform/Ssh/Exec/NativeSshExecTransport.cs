@@ -170,12 +170,15 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     private readonly BoundedTail _stderrTail = new(StderrTailBytes);
     private readonly TaskCompletionSource<int?> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _stop = new();
+    private readonly object _stopGate = new(); // an Abort may cancel _stop while a Dispose releases it
     private readonly Thread _pollThread;
 
     private NovaSshSafeHandle? _handle;
     private volatile string? _failure;
     private volatile bool _ended;
     private int _closing;
+    private int _aborting;
+    private bool _stopDisposed; // guarded by _stopGate
 
     // Poll thread only.
     private int? _exitCode;
@@ -217,14 +220,30 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     /// </summary>
     public void Dispose() => Close(ExitGrace);
 
-    /// <summary>Stops the command at once, with no grace period: for a channel nobody has seen yet.</summary>
-    internal void Abort() => Close(TimeSpan.Zero);
+    /// <summary>
+    /// Closes the session at once, with no grace period (<see cref="ISshExecChannel.Abort"/>): for a channel
+    /// nobody has seen yet. A <see cref="Dispose"/> still inside its grace period is cut short.
+    /// </summary>
+    public void Abort()
+    {
+        if (Interlocked.Exchange(ref _aborting, 1) != 0 || Close(TimeSpan.Zero))
+        {
+            return;
+        }
 
-    private void Close(TimeSpan grace)
+        // A Dispose is ending it, and may still be waiting out its grace: close the session now. Its wait for the
+        // poll thread then ends as this one would have.
+        Log($"[NativeSshExec] {_displayName}: aborted; closing the session");
+        CancelStop();
+        CloseHandle();
+    }
+
+    /// <returns>False when another close already ran or is running.</returns>
+    private bool Close(TimeSpan grace)
     {
         if (Interlocked.Exchange(ref _closing, 1) != 0)
         {
-            return;
+            return false;
         }
 
         _stdin.Dispose();
@@ -236,9 +255,9 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         if (!_pollThread.Join(grace))
         {
             Log(grace == TimeSpan.Zero
-                ? $"[NativeSshExec] {_displayName}: start cancelled; closing the session"
+                ? $"[NativeSshExec] {_displayName}: aborted; closing the session"
                 : $"[NativeSshExec] {_displayName}: the command did not end on EOF; closing the session");
-            _stop.Cancel();
+            CancelStop();
             CloseHandle();
             if (!_pollThread.Join(StopWait))
             {
@@ -246,12 +265,27 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 // closed regardless; release the reader rather than leave it on a queue nobody completes.
                 Log($"[NativeSshExec] {_displayName}: the poll thread did not stop; releasing stdout");
                 _stdoutQueue.Release();
-                return;
+                return true;
             }
         }
 
         CloseHandle();
-        _stop.Dispose();
+        lock (_stopGate)
+        {
+            _stopDisposed = true;
+            _stop.Dispose();
+        }
+
+        return true;
+    }
+
+    /// <summary>Cancels what the poll thread waits on (an interaction handler's prompt), unless the close already released it.</summary>
+    private void CancelStop()
+    {
+        lock (_stopGate)
+        {
+            if (!_stopDisposed) _stop.Cancel();
+        }
     }
 
     /// <summary>At the end of stdout: the transport's failure, if it reported one.</summary>

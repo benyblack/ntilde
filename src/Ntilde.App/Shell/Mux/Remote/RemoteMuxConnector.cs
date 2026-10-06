@@ -26,7 +26,9 @@ internal sealed record RemoteMuxTransportRequest(bool Interactive, ISshInteracti
 /// <remarks>
 /// <para>
 /// The connector owns each channel it starts. A failed attempt ends its channel before it throws. A
-/// connected one is ended once its client disconnects, on a pool thread: ending an exec channel may block
+/// cancelled one is aborted at once, inside the cancel, so ssh and any prompt it shows are gone before the
+/// host's Dispose returns (final review F4). A connected one is ended once its client disconnects, on a pool
+/// thread: ending an exec channel may block
 /// for seconds, and it is what frees a read the client's reader has pending on the channel's stdout. On
 /// Windows, closing a pipe's read end does not wake such a read - ssh's exit does - and on a dead link
 /// nothing else would ever end it.
@@ -101,8 +103,8 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// </summary>
     /// <param name="interactive">False for an attempt nobody is waiting on: nothing may prompt.</param>
     /// <exception cref="RemoteMuxUnavailableException">The attempt failed; its channel has been ended.</exception>
-    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled; the channel is being ended.</exception>
-    /// <exception cref="ObjectDisposedException">The connector was disposed, before or during the start; a channel started meanwhile is being ended.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled; the channel was aborted, in the cancel.</exception>
+    /// <exception cref="ObjectDisposedException">The connector was disposed, before or during the start; a channel started meanwhile was aborted.</exception>
     public async Task<MuxClient> ConnectAsync(bool interactive, CancellationToken ct)
     {
         lock (_gate) ObjectDisposedException.ThrowIf(_disposed, this);
@@ -134,41 +136,68 @@ internal sealed class RemoteMuxConnector : IDisposable
         }
 
         var channel = new OwnedChannel(started, host, _log);
-        bool disposedMeanwhile;
-        lock (_gate)
-        {
-            disposedMeanwhile = _disposed;
-            if (!disposedMeanwhile) _latest = channel;
-        }
-
-        if (disposedMeanwhile)
-        {
-            // Dispose already ran and ended whatever channel it knew of; this one is ours to end.
-            _ = channel.EndAsync();
-            throw new ObjectDisposedException(nameof(RemoteMuxConnector));
-        }
-
-        MuxClient client;
+        // Final review F4: until a client has this channel, nothing else ends it, and an exiting app does not wait
+        // for a graceful end on the pool - ssh, blocked on its askpass dialog, outlived the app. So a cancel (the
+        // host's Dispose, or a user's request superseding this automatic attempt) aborts it right in the cancel:
+        // the kill has happened before the host's Dispose returns. Registered on a token already cancelled, it
+        // runs at once, here. The await below may also unwind inside that cancel, before the cancel reaches this
+        // callback (an awaited cancellation's continuations can run inline), and its finally then unregisters it:
+        // so the catch aborts too, synchronously, before that finally - one way or the other, the abort is done
+        // before the cancel returns.
+        CancellationTokenRegistration abortOnCancel = ct.Register(static state => ((OwnedChannel)state!).Abort(), channel);
         try
         {
-            StdioMuxConnection proxy = await StdioMuxTransport.ConnectAsync(started.Stdout, started.Stdin, PreambleTimeout, ct).ConfigureAwait(false);
-            // The remote command runs, so SSH auth succeeded: whatever answered its prompts was right.
-            prompts.Succeeded();
-            client = await MuxClient.ConnectAsync(proxy.Stream, new MuxClientOptions { ClientInstanceId = ClientInstanceId, Log = _log }, ct)
-                .ConfigureAwait(false);
-            _log?.Invoke($"[RemoteMux] {host}: connected (daemon pid {proxy.DaemonPid}, protocol {client.ProtocolVersion}, {(interactive ? "user request" : "automatic")})");
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Not awaited: the host is going away (its dispose cancelled us) and must not wait on ssh.
-            _ = channel.EndAsync();
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw await FailAsync(channel, prompts, ex, host).ConfigureAwait(false);
-        }
+            bool disposedMeanwhile;
+            lock (_gate)
+            {
+                disposedMeanwhile = _disposed;
+                if (!disposedMeanwhile) _latest = channel;
+            }
 
+            if (disposedMeanwhile)
+            {
+                // Dispose already ran and ended whatever channel it knew of; this one is ours, and nobody has it.
+                channel.Abort();
+                throw new ObjectDisposedException(nameof(RemoteMuxConnector));
+            }
+
+            MuxClient client;
+            try
+            {
+                StdioMuxConnection proxy = await StdioMuxTransport.ConnectAsync(started.Stdout, started.Stdin, PreambleTimeout, ct).ConfigureAwait(false);
+                // The remote command runs, so SSH auth succeeded: whatever answered its prompts was right.
+                prompts.Succeeded();
+                client = await MuxClient.ConnectAsync(proxy.Stream, new MuxClientOptions { ClientInstanceId = ClientInstanceId, Log = _log }, ct)
+                    .ConfigureAwait(false);
+                _log?.Invoke($"[RemoteMux] {host}: connected (daemon pid {proxy.DaemonPid}, protocol {client.ProtocolVersion}, {(interactive ? "user request" : "automatic")})");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Aborted here as well as by the cancel's callback (above): whichever runs first does it, and the
+                // other waits for it. Then released off this thread.
+                channel.Abort();
+                _ = channel.EndAsync();
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw await FailAsync(channel, prompts, ex, host).ConfigureAwait(false);
+            }
+
+            // Handed out from here on: the client's end ends the channel, gracefully. Disposing the registration
+            // waits for an abort already running, so none can land on a channel a client holds.
+            abortOnCancel.Dispose();
+            return HandOut(client, channel);
+        }
+        finally
+        {
+            abortOnCancel.Dispose();
+        }
+    }
+
+    /// <summary>The connected client, its channel recorded for <see cref="ExitAsync"/> and ended once the client is done with it.</summary>
+    private MuxClient HandOut(MuxClient client, OwnedChannel channel)
+    {
         _channels.AddOrUpdate(client, channel);
         // Ends the channel once the client is done with it, whoever ends the client.
         client.Disconnected += _ => channel.EndAsync();
@@ -285,9 +314,34 @@ internal sealed class RemoteMuxConnector : IDisposable
     private sealed class OwnedChannel(ISshExecChannel channel, string host, Action<string>? log)
     {
         private readonly object _gate = new();
+        private readonly object _abortGate = new();
         private Task? _ending; // guarded by _gate; set once
+        private bool _aborted; // guarded by _abortGate
 
         public ISshExecChannel Channel { get; } = channel;
+
+        /// <summary>
+        /// Stops the command at once, on the caller's thread (<see cref="ISshExecChannel.Abort"/>): for a channel
+        /// nobody was handed. A graceful end already running is cut short. Never throws.
+        /// </summary>
+        public void Abort()
+        {
+            // Serialised: a second caller (the cancel's callback and the cancelled attempt's catch can race) returns
+            // only once the first has stopped the command.
+            lock (_abortGate)
+            {
+                if (_aborted) return;
+                _aborted = true;
+                try
+                {
+                    Channel.Abort();
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke($"[RemoteMux] {host}: stopping the SSH channel failed: {ex.Message}");
+                }
+            }
+        }
 
         public Task EndAsync()
         {

@@ -96,6 +96,15 @@ internal sealed class FakeExecChannel : ISshExecChannel
         return channel;
     }
 
+    public bool Aborted { get; private set; }
+
+    /// <summary>As <see cref="Dispose"/>, at once: the fake has no grace period to skip.</summary>
+    public void Abort()
+    {
+        Aborted = true;
+        Dispose();
+    }
+
     public void Dispose()
     {
         Disposed = true;

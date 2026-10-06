@@ -721,6 +721,48 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Null(await connecting.WaitAsync(Patient, Ct));
     }
 
+    /// <summary>
+    /// Final review F4: closing the app while a connect waits for the proxy's greeting (behind a password
+    /// prompt, say) kills that channel before the host's Dispose returns. Ending it gracefully on the pool left
+    /// ssh, blocked on its askpass dialog, running after the app had exited.
+    /// </summary>
+    [Fact]
+    public async Task Dispose_aborts_the_channel_of_a_pending_connect_before_it_returns()
+    {
+        _remote.Script = FakeRemoteScript.Silent;   // the channel runs, and no greeting ever comes
+        MuxConnectionHost host = Create();
+        Task<MuxClient?> connecting = Task.Run(() => host.GetClient(MuxHostPolicy.RemoteConnectTimeout), Ct);
+        await TestWait.UntilAsync(() => _remote.LastChannel is { PendingStdoutReads: > 0 }, "the connect waits for the greeting", Patient);
+        FakeRemoteChannel channel = _remote.LastChannel!;
+
+        host.Dispose();
+
+        Assert.Equal(1, channel.AbortCount);
+        Assert.True(channel.Completion.IsCompleted, "the remote command still ran when Dispose returned");
+        Assert.Null(await connecting.WaitAsync(Patient, Ct));
+    }
+
+    /// <summary>Final review F4: a user's request that supersedes an automatic attempt aborts that attempt's channel at once.</summary>
+    [Fact]
+    public async Task A_superseded_automatic_attempt_has_its_channel_aborted()
+    {
+        MuxConnectionHost host = Create();
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+        _remote.Script = FakeRemoteScript.Silent;   // the automatic attempt's channel waits for a greeting that never comes
+        _clock.Advance(FirstRetry);
+        await TestWait.UntilAsync(() => _remote.StartCount == 2 && _remote.LastChannel is { PendingStdoutReads: > 0 }, "the automatic attempt waits", Patient);
+        FakeRemoteChannel automatic = _remote.LastChannel!;
+        _remote.Script = null;
+
+        MuxClient? client = host.GetClient(Patient);   // Enter in a pane
+
+        Assert.True(client?.IsConnected);
+        Assert.Equal(1, automatic.AbortCount);
+    }
+
     [Fact]
     public async Task Dispose_during_a_blocked_automatic_reconnect_returns_promptly()
     {
@@ -914,6 +956,9 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                 ending.TrySetResult();
                 ends.Wait();
             }
+
+            /// <summary>At once: only a graceful end is slow.</summary>
+            public void Abort() => ending.TrySetResult();
         }
 
         private sealed class FailingStream : Stream

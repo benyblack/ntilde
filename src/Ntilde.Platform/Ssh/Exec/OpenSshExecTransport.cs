@@ -190,6 +190,8 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
     private bool _closed;
 
     private int _closing;
+    private int _aborting;
+    private int _stopIssued;
     private volatile bool _stoppedByChannel;
 
     public OpenSshExecChannel(Process process, string displayName, Action<string> log)
@@ -219,20 +221,37 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
     /// </summary>
     public void Dispose() => Close(ExitGrace);
 
-    /// <summary>Stops the command at once, with no grace period: for a channel nobody has seen yet.</summary>
-    internal void Abort() => Close(TimeSpan.Zero);
+    /// <summary>
+    /// Kills the process tree at once, with no grace period (<see cref="ISshExecChannel.Abort"/>): for a
+    /// channel nobody has seen yet. A <see cref="Dispose"/> still inside its grace period is cut short.
+    /// </summary>
+    public void Abort()
+    {
+        if (Interlocked.Exchange(ref _aborting, 1) != 0 || Close(TimeSpan.Zero))
+        {
+            return;
+        }
 
-    private void Close(TimeSpan grace)
+        // A Dispose is ending it, and may still be waiting out its grace: stop it now. Under _lifetime, so the
+        // Process cannot be released meanwhile; once that close is done (_closed) there is nothing left to stop.
+        lock (_lifetime)
+        {
+            if (!_closed) Stop("aborted; stopped it at once");
+        }
+    }
+
+    /// <returns>False when another close already ran or is running.</returns>
+    private bool Close(TimeSpan grace)
     {
         if (Interlocked.Exchange(ref _closing, 1) != 0)
         {
-            return;
+            return false;
         }
 
         _stdin.Dispose();
         if (!_process.WaitForExit(grace))
         {
-            Stop();
+            Stop(grace == TimeSpan.Zero ? "aborted; stopped it at once" : "ssh did not exit on EOF; stopped it");
             _process.WaitForExit(StopWait);
         }
 
@@ -244,6 +263,8 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
             _closed = true;
             if (_exitRead) _process.Dispose();
         }
+
+        return true;
     }
 
     /// <summary>The exit code of a process <see cref="Process.Kill(bool)"/> stopped: TerminateProcess's -1 on Windows, 128 + SIGKILL elsewhere.</summary>
@@ -258,8 +279,14 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
     internal static int? ReportedExitCode(int exitCode, bool killIssued) =>
         killIssued && exitCode == KilledExitCode ? null : exitCode;
 
-    private void Stop()
+    /// <summary>Kills the process tree, once: a Dispose and an <see cref="Abort"/> racing each other issue one kill.</summary>
+    private void Stop(string what)
     {
+        if (Interlocked.Exchange(ref _stopIssued, 1) != 0)
+        {
+            return;
+        }
+
         // Set before the kill, not after: the exit the kill causes may be observed on another thread
         // before Kill even returns. ReportedExitCode then tells a kill from a natural exit by its code.
         _stoppedByChannel = true;
@@ -267,7 +294,7 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
         {
             // The tree: ssh's own children (a ProxyCommand, the askpass helper) hold its pipes too.
             _process.Kill(entireProcessTree: true);
-            _log($"[OpenSshExec] {_displayName}: ssh did not exit on EOF; stopped it");
+            _log($"[OpenSshExec] {_displayName}: {what}");
         }
         catch (InvalidOperationException ex)
         {

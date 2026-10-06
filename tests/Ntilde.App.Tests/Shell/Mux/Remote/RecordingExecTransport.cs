@@ -70,6 +70,9 @@ internal sealed class RecordingExecTransport(Func<string, byte[], FakeExecReply>
         /// <summary>A channel ended before its stdin did: the command was killed, so no exit status.</summary>
         public void Dispose() => _reply.TrySetResult(new FakeExecReply(ExitCode: null));
 
+        /// <summary>As <see cref="Dispose"/>: the command is killed, with no exit status.</summary>
+        public void Abort() => Dispose();
+
         private async Task<int?> ExitCodeAsync() => (await _reply.Task.ConfigureAwait(false)).ExitCode;
 
         private void OnEof(byte[] stdin)
