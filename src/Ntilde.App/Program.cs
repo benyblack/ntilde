@@ -88,6 +88,10 @@ class Program
             TerminalLogger.Log("Build: " + DescribeBuild());
             StartupPerformanceTracker.StartNewCurrent();
 
+            // GUI path only (CLI and installer-hook invocations returned above), and not from App:
+            // headless tests build App too and must not get a background full-GC timer.
+            IdleMemoryReclaimer.Start();
+
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)

@@ -61,6 +61,11 @@ namespace Ntilde.VT
         private List<char> _apcStringBuffer = new List<char>();
         private List<char> _dcsStringBuffer = new List<char>();
         private System.Text.StringBuilder _kittyPayloadBuffer = new System.Text.StringBuilder();
+
+        // Clear() keeps a buffer's capacity, so one inline image used to pin its megabytes of
+        // chars for the life of the pane. A buffer that grew past this is replaced instead; short
+        // sequences (titles, cwd, hyperlinks) keep reusing theirs.
+        private const int RetainedStringBufferChars = 64 * 1024;
         private bool _kittyPayloadOverflow; // set once a chunked Kitty payload exceeds the cap
         private Dictionary<string, string> _kittyPendingParams = new();
         private readonly bool _isConPtyFilteringLikely;
@@ -483,6 +488,24 @@ namespace Ntilde.VT
             _csiTruncated = false;
         }
 
+        /// <summary>
+        /// The finished sequence as a string, built straight from the list's storage (no ToArray
+        /// copy), leaving <paramref name="buffer"/> empty and, if it grew large, freshly allocated.
+        /// </summary>
+        private static string TakeSequence(ref List<char> buffer)
+        {
+            string sequence = new string(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(buffer));
+            if (buffer.Capacity > RetainedStringBufferChars) buffer = new List<char>();
+            else buffer.Clear();
+            return sequence;
+        }
+
+        private void ResetKittyPayloadBuffer()
+        {
+            if (_kittyPayloadBuffer.Capacity > RetainedStringBufferChars) _kittyPayloadBuffer = new System.Text.StringBuilder();
+            else _kittyPayloadBuffer.Clear();
+        }
+
         private void BeginOsc()
         {
             _state = State.Osc;
@@ -699,7 +722,7 @@ namespace Ntilde.VT
                             case State.Osc:
                                 if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleOsc(new string(_oscStringBuffer.ToArray()));
+                                    HandleOsc(TakeSequence(ref _oscStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else if (c == '\x1b')
@@ -716,7 +739,7 @@ namespace Ntilde.VT
                             case State.OscEsc:
                                 if (c == '\\')
                                 {
-                                    HandleOsc(new string(_oscStringBuffer.ToArray()));
+                                    HandleOsc(TakeSequence(ref _oscStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -735,7 +758,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleDcs(new string(_dcsStringBuffer.ToArray()));
+                                    HandleDcs(TakeSequence(ref _dcsStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -748,7 +771,7 @@ namespace Ntilde.VT
                             case State.DcsEsc:
                                 if (c == '\\')
                                 {
-                                    HandleDcs(new string(_dcsStringBuffer.ToArray()));
+                                    HandleDcs(TakeSequence(ref _dcsStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -765,7 +788,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleApc(new string(_apcStringBuffer.ToArray()));
+                                    HandleApc(TakeSequence(ref _apcStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -778,7 +801,7 @@ namespace Ntilde.VT
                             case State.ApcEsc:
                                 if (c == '\\')
                                 {
-                                    HandleApc(new string(_apcStringBuffer.ToArray()));
+                                    HandleApc(TakeSequence(ref _apcStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -3022,7 +3045,7 @@ namespace Ntilde.VT
                 // remember to skip the (truncated, undecodable) payload at the terminator
                 // instead of spending CPU base64-decoding garbage.
                 _kittyPayloadOverflow = true;
-                _kittyPayloadBuffer.Clear();
+                ResetKittyPayloadBuffer();
             }
 
             // Check if more chunks are coming (m=1)
@@ -3354,7 +3377,7 @@ namespace Ntilde.VT
 
         private void ClearKittyState()
         {
-            _kittyPayloadBuffer.Clear();
+            ResetKittyPayloadBuffer();
             _kittyPendingParams.Clear();
             _kittyPayloadOverflow = false;
         }
@@ -3400,21 +3423,40 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// Base64 to bytes without the string copy <see cref="Convert.FromBase64String"/> needs, into
+        /// an array sized exactly for well-formed input (the decoders take the whole array). Null
+        /// when the text is not base64, where FromBase64String would have thrown.
+        /// </summary>
+        private static byte[]? DecodeBase64(ReadOnlySpan<char> chars)
+        {
+            int padding = chars.Length >= 2 && chars[^1] == '=' && chars[^2] == '=' ? 2
+                : chars.Length >= 1 && chars[^1] == '=' ? 1
+                : 0;
+            var bytes = new byte[Math.Max(0, (chars.Length + 3) / 4 * 3 - padding)];
+            if (!Convert.TryFromBase64Chars(chars, bytes, out int written)) return null;
+            // Embedded whitespace (line-wrapped payloads) decodes shorter than the estimate.
+            return written == bytes.Length ? bytes : bytes.AsSpan(0, written).ToArray();
+        }
+
         private void HandleITerm2Image(string osc)
         {
-            var parts = osc.Split(':', 2);
-            if (parts.Length < 2)
+            // The payload is the bulk of an image sequence (megabytes), so it is read in place as a
+            // span: Split(':', 2) used to copy all of it once more just to separate the header.
+            int colon = osc.IndexOf(':');
+            if (colon < 0)
             {
                 return;
             }
 
-            if (!parts[0].StartsWith("1337;File="))
+            string header = osc.Substring(0, colon);
+            if (!header.StartsWith("1337;File="))
             {
                 return;
             }
 
-            var argsPart = parts[0].Substring("1337;File=".Length);
-            var base64Data = parts[1];
+            var argsPart = header.Substring("1337;File=".Length);
+            ReadOnlySpan<char> base64Data = osc.AsSpan(colon + 1);
 
             var args = argsPart.Split(';');
             int width = 0;
@@ -3443,7 +3485,8 @@ namespace Ntilde.VT
                     return;
                 }
 
-                byte[] data = Convert.FromBase64String(base64Data);
+                byte[]? data = DecodeBase64(base64Data);
+                if (data == null) return;
 
                 if (ImageDecoder == null) return;
 

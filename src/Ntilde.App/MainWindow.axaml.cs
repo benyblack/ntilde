@@ -2301,6 +2301,27 @@ namespace Ntilde
             return (anchor, _tabListFallbackFlyout ??= new MenuFlyout());
         }
 
+        /// <summary>
+        /// Empties the window-owned tab-list flyouts other than <paramref name="target"/>. Each tab
+        /// entry's Click closure captures its TabItem, and through TabItem.Content the whole pane,
+        /// so a flyout this method stopped targeting (the fallback once the dedicated button
+        /// exists, the overflow pill between clicks) kept every tab it once listed alive after the
+        /// tab closed. Both are rebuilt before they are shown, so nothing is lost by emptying them.
+        /// An open one is left alone. The dedicated button's own flyout needs no handling: it is
+        /// either the title-bar target, rebuilt on every UpdateTabVisuals, or it went away with
+        /// its button.
+        /// </summary>
+        private void ReleaseOtherTabListMenus(MenuFlyout target)
+        {
+            foreach (var cached in new[] { _tabListFallbackFlyout, _tabOverflowPillFlyout })
+            {
+                if (cached is not null && !ReferenceEquals(cached, target) && !cached.IsOpen && cached.Items.Count > 0)
+                {
+                    cached.Items.Clear();
+                }
+            }
+        }
+
         private void PopulateTabListMenu(bool showFlyout = false, Control? anchorOverride = null)
         {
             var tabs = this.FindControl<TabControl>("Tabs");
@@ -2310,6 +2331,7 @@ namespace Ntilde
             if (resolved == null) return;
             var (anchor, flyout) = resolved.Value;
 
+            ReleaseOtherTabListMenus(flyout);
             flyout.Items.Clear();
             int index = 1;
             foreach (var tab in tabs.Items.Cast<TabItem>())
@@ -5431,6 +5453,10 @@ namespace Ntilde
                 if (tabs.Items.Count == 0) Close();
             }
 
+            // A closed tab is still referenced from places that outlive it - menu closures, cached
+            // lookups - so cut it loose from its pane tree, which is where the memory is.
+            ti.Content = null;
+
             UpdateTabVisuals();
             UpdatePaneAutomationLabels();
             UpdateBroadcastIndicator();
@@ -6183,6 +6209,10 @@ namespace Ntilde
             if (control is TerminalPane pane)
             {
                 UnwirePane(pane);
+
+                // The pane's scrollback and glyph atlases are only reclaimable after a full GC, and
+                // nothing else would trigger one in an idle window.
+                IdleMemoryReclaimer.RequestIdleCollection();
 
                 // Two-phase teardown (#154): UI-affine detach runs here on the UI thread;
                 // only the potentially blocking session teardown moves to the pool.
