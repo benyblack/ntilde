@@ -25,6 +25,11 @@ namespace Ntilde.Tests.Core;
 /// on the view's resize path is caught, not only the one in the buffer. Ntilde.VT.Tests'
 /// WriteLockReentrancyTests covers the buffer's other ways into the write lock.
 /// </para>
+/// <para>
+/// Nothing here installs the fix: the non-pumping wait is what <c>App.Initialize</c> registers
+/// (NonPumpingSynchronizationContext.Register), the same call the shipped app makes, so this also
+/// fails if that wiring goes missing.
+/// </para>
 /// </remarks>
 public class TerminalViewResizeReentrancyTests
 {

@@ -34,7 +34,7 @@ namespace Ntilde.VT
             // width-change path indexes tab-stop/cell arrays with a non-positive length and throws.
             if (newCols <= 0 || newRows <= 0) return;
 
-            EnterWriteLockNonPumping();
+            AcquireWriteLock();
             try
             {
                 if (newCols == Cols && newRows == Rows) return;

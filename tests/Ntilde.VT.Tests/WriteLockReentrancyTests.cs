@@ -17,9 +17,13 @@ namespace Ntilde.VT.Tests;
 //
 // The paint's read lock is not the only casualty: Avalonia's WM_PAINT path then blocks on the
 // render thread finishing the frame, and the render thread's snapshot read queues behind the same
-// waiting writer. So the fix has to be on the writer's side - a thread waiting for the write lock
-// must not dispatch anything while it waits - and these tests pin exactly that, for each way into
-// the write lock the UI thread uses.
+// waiting writer. So the fix has to be on the writer's side: a thread waiting for the write lock
+// must not dispatch anything while it waits.
+//
+// VT is a leaf with no native interop, so the non-dispatching wait itself is the host's
+// (Ntilde.App's NonPumpingSynchronizationContext, proven in TerminalViewResizeReentrancyTests).
+// What the buffer owns, and these tests pin for each way into the write lock the UI thread uses,
+// is that a wait which has to block happens inside the host's TerminalBuffer.BlockingWriteWaitScope.
 public class WriteLockReentrancyTests
 {
     // Long enough that a read which is not starved gets in many times over; short enough that the
@@ -31,6 +35,8 @@ public class WriteLockReentrancyTests
         ["Resize"] = b => b.Resize(100, 30),
         ["Write"] = b => b.Write("x"),
         ["WriteChar"] = b => b.WriteChar('x'),
+        // Reached on the UI thread by the "Debug: Box Drawing Test Screen" command.
+        ["WriteContent"] = b => b.WriteContent("x"),
         ["BlockCursorSuppression"] = b => b.BlockCursorSuppression(TimeSpan.FromMilliseconds(10)),
         ["UpdateThemeColors"] = b => b.UpdateThemeColors(b.Theme),
     };
@@ -44,6 +50,14 @@ public class WriteLockReentrancyTests
     {
         var buffer = new TerminalBuffer(80, 24);
         bool? reentrantReadGotIn = null;
+        int hostScopesOpened = 0;
+
+        var previousHostScope = TerminalBuffer.BlockingWriteWaitScope;
+        TerminalBuffer.BlockingWriteWaitScope = () =>
+        {
+            hostScopesOpened++;
+            return new NonDispatchingWaitScope();
+        };
 
         using var ptyBatch = new PtyBatchStandIn(buffer);
         var uiThreadWait = new PumpingSynchronizationContext(sentMessage: () =>
@@ -68,12 +82,16 @@ public class WriteLockReentrancyTests
         finally
         {
             SynchronizationContext.SetSynchronizationContext(previous);
+            TerminalBuffer.BlockingWriteWaitScope = previousHostScope;
         }
 
         ptyBatch.Join();
         Assert.True(
             ptyBatch.SawAWaitingWriter,
             $"setup failed: {entryPoint} never queued behind the PTY batch, so nothing was tested");
+        Assert.True(
+            hostScopesOpened > 0,
+            $"{entryPoint} blocked on the write lock outside the host's BlockingWriteWaitScope");
         Assert.False(
             reentrantReadGotIn == false,
             $"{entryPoint} dispatched a paint while it waited for the write lock, and the paint " +
@@ -134,6 +152,27 @@ public class WriteLockReentrancyTests
 
             return WaitHelper(waitHandles, waitAll, millisecondsTimeout);
         }
+    }
+
+    /// <summary>
+    /// The host's scope reduced to its effect: for the length of the wait, the thread's context is
+    /// one whose waits dispatch nothing. (Ntilde.App's waits in the kernel; a test thread has no
+    /// windows, so the plain WaitHelper already dispatches nothing here.)
+    /// </summary>
+    private sealed class NonDispatchingWaitScope : SynchronizationContext, IDisposable
+    {
+        private readonly SynchronizationContext? _previous = Current;
+
+        public NonDispatchingWaitScope()
+        {
+            SetWaitNotificationRequired();
+            SetSynchronizationContext(this);
+        }
+
+        public override int Wait(IntPtr[] waitHandles, bool waitAll, int millisecondsTimeout)
+            => WaitHelper(waitHandles, waitAll, millisecondsTimeout);
+
+        public void Dispose() => SetSynchronizationContext(_previous);
     }
 
     /// <summary>

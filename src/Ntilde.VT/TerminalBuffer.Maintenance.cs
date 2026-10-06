@@ -388,7 +388,7 @@ namespace Ntilde.VT
 
         public void UpdateThemeColors(TerminalTheme oldTheme)
         {
-            EnterWriteLockNonPumping();
+            AcquireWriteLock();
             try
             {
                 // Invalidate render-side caches keyed by the theme epoch (paged-scrollback

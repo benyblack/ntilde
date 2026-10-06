@@ -32,6 +32,30 @@ public class LayeringTests
             $"VT must not depend on higher layers. Offenders: {Join(result.FailingTypeNames)}");
     }
 
+    /// <summary>
+    /// The dependency check above sees assemblies, and a P/Invoke into kernel32 is not one: it
+    /// passed while Ntilde.VT carried its own Win32 wait (PR #506). The metadata flag is what every
+    /// spelling of a P/Invoke compiles to - [DllImport], [LibraryImport]'s generated stub, extern
+    /// in a nested type - so read that rather than look for attribute names.
+    /// </summary>
+    [Fact]
+    public void Vt_declares_no_native_interop()
+    {
+        const BindingFlags everyMethod =
+            BindingFlags.Public | BindingFlags.NonPublic |
+            BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+        string[] offenders = Vt.GetTypes()
+            .SelectMany(type => type.GetMethods(everyMethod))
+            .Where(method => (method.Attributes & MethodAttributes.PinvokeImpl) != 0)
+            .Select(method => $"{method.DeclaringType?.FullName}.{method.Name}")
+            .ToArray();
+
+        Assert.True(offenders.Length == 0,
+            $"VT is a leaf with no native interop; OS waits and handles belong to the host. " +
+            $"Offenders: {Join(offenders)}");
+    }
+
     [Fact]
     public void Rendering_only_depends_on_Vt_and_Skia()
     {

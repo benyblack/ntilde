@@ -1,8 +1,10 @@
 using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Ntilde.VT;
 
-namespace Ntilde.VT
+namespace Ntilde.Shell.Native
 {
     /// <summary>
     /// A synchronization context whose blocking waits dispatch nothing. Installed on a thread for
@@ -18,13 +20,22 @@ namespace Ntilde.VT
     /// client - before it blocks, and whatever handles them runs on top of the waiting frame.
     /// </para>
     /// <para>
+    /// That froze the UI thread for good (2026-10-06): a resize waiting for the buffer's write lock
+    /// behind a PTY batch dispatched a WM_PAINT, whose read lock then queued behind the resize's
+    /// own waiting writer. <see cref="Register"/> puts every blocking buffer write wait in one of
+    /// these; see <see cref="TerminalBuffer.BlockingWriteWaitScope"/>.
+    /// </para>
+    /// <para>
     /// This is the same remedy Avalonia applies to its own synchronous commits (NonPumpingLockHelper)
-    /// and that <c>Dispatcher.DisableProcessing</c> exists to provide; it lives here because the
-    /// buffer's lock is where the waiting happens and Ntilde.VT does not know about Avalonia.
+    /// and that <c>Dispatcher.DisableProcessing</c> provides. Ours is used instead because headless
+    /// Avalonia implements no non-pumping wait, so only this one can be shown working in a test
+    /// (TerminalViewResizeReentrancyTests).
     /// </para>
     /// </remarks>
-    internal sealed class NonPumpingSynchronizationContext : SynchronizationContext
+    internal sealed class NonPumpingSynchronizationContext : SynchronizationContext, IDisposable
     {
+        private const uint WaitFailed = 0xFFFFFFFF;
+
         private readonly SynchronizationContext? _inner;
 
         private NonPumpingSynchronizationContext(SynchronizationContext? inner)
@@ -34,9 +45,15 @@ namespace Ntilde.VT
         }
 
         /// <summary>
+        /// Makes every blocking wait for a <see cref="TerminalBuffer"/> write lock non-pumping on
+        /// the threads where it would otherwise pump. Process-wide; idempotent.
+        /// </summary>
+        public static void Register() => TerminalBuffer.BlockingWriteWaitScope = InstallIfWaitsMayPump;
+
+        /// <summary>
         /// Installs a non-pumping context on the current thread if a wait there could dispatch
-        /// messages, and returns it so the caller can <see cref="Uninstall"/> it; otherwise
-        /// installs nothing and returns <c>null</c>.
+        /// messages, and returns it for the caller to dispose, which restores the previous one;
+        /// otherwise installs nothing and returns <c>null</c>.
         /// </summary>
         public static NonPumpingSynchronizationContext? InstallIfWaitsMayPump()
         {
@@ -66,7 +83,7 @@ namespace Ntilde.VT
         /// <summary>
         /// Puts back the context that was current when this one was installed.
         /// </summary>
-        public void Uninstall() => SetSynchronizationContext(_inner);
+        public void Dispose() => SetSynchronizationContext(_inner);
 
         // Only the lock wait runs while this context is current, so nothing should capture it;
         // anything that does still reaches the thread's real context.
@@ -88,19 +105,28 @@ namespace Ntilde.VT
             {
                 // Straight to the kernel: WaitHelper would come back to the CLR's STA wait, which
                 // is the pumping one.
-                return unchecked((int)WaitForMultipleObjectsEx(
+                uint result = WaitForMultipleObjectsEx(
                     (uint)waitHandles.Length,
                     waitHandles,
                     waitAll ? 1 : 0,
                     unchecked((uint)millisecondsTimeout),
-                    bAlertable: 0));
+                    bAlertable: 0);
+
+                // WaitHandle counts every result but a timeout as signalled, so a failure handed
+                // back as a number would send the lock round its retry loop indefinitely.
+                if (result == WaitFailed)
+                {
+                    throw new Win32Exception(Marshal.GetLastPInvokeError());
+                }
+
+                return unchecked((int)result);
             }
 
             // Nothing pumps on a wait outside Windows; this only bypasses the inner context.
             return WaitHelper(waitHandles, waitAll, millisecondsTimeout);
         }
 
-        [DllImport("kernel32.dll", ExactSpelling = true)]
+        [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
         private static extern uint WaitForMultipleObjectsEx(
             uint nCount, IntPtr[] lpHandles, int bWaitAll, uint dwMilliseconds, int bAlertable);
     }
