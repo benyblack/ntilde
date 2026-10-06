@@ -37,13 +37,20 @@ internal static class RemoteMuxHostFactory
     /// <param name="log">The host's, the connector's and the mux client's log.</param>
     /// <param name="userPrompts">The window's prompt handler, for the native backend's user-started attempts.</param>
     /// <param name="scheduler">The clock of the host's liveness ping and reconnect loop; <see cref="SystemMuxTimerScheduler.Instance"/> when null.</param>
+    /// <param name="isTrustedHostKey">
+    /// Whether a host-key request names a key the user already trusts: the only host keys an automatic
+    /// (non-interactive) attempt accepts (<see cref="RemoteMuxInteractionHandler"/>). Null, as the app passes
+    /// it, means the app's native known-hosts store, the one the window's prompts record accepted keys in. A
+    /// caller with a store of its own passes it here (the Docker E2E: the app's store is bound once per process).
+    /// </param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
         Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> transportFor,
         Action<string>? log,
         ISshInteractionHandler? userPrompts = null,
-        IMuxTimerScheduler? scheduler = null)
+        IMuxTimerScheduler? scheduler = null,
+        Func<SshInteractionRequest, bool>? isTrustedHostKey = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -64,7 +71,7 @@ internal static class RemoteMuxHostFactory
             // A profile deleted since keeps connecting as it was: the panes that use it decide when to stop.
             () => resolveProfile(profileId) ?? profile,
             transportFor,
-            new RemoteMuxInteractionHandler(userPrompts),
+            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey),
             Guid.NewGuid().ToString("N"),
             log)
         {

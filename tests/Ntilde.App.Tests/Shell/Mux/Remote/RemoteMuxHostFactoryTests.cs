@@ -125,6 +125,53 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         Assert.Equal(new[] { true, false }, interactive);
     }
 
+    /// <summary>
+    /// An automatic attempt accepts only a host key already trusted (ruling 3), and a caller with a
+    /// known-hosts store of its own decides which, instead of the app's process-wide store: the request
+    /// reaches the injected lookup, and its answer is the attempt's.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_attempt_decides_host_keys_by_the_injected_trust_lookup()
+    {
+        var asked = new List<string>();
+        var prompts = new List<ISshInteractionHandler>();
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(profile.Id),
+            _ => profile,
+            (_, request) =>
+            {
+                lock (prompts) prompts.Add(request.Prompts);
+                return _remote;
+            },
+            log: null,
+            isTrustedHostKey: request =>
+            {
+                lock (asked) asked.Add($"{request.Host}:{request.Port} {request.Algorithm} {request.Fingerprint}");
+                return request.Fingerprint == "SHA256:trusted";
+            })!);
+
+        MuxClient client = await host.TryStartAutomaticAttempt()!.WaitAsync(Patient, Ct);
+        ISshInteractionHandler automatic = Assert.Single(prompts);
+        SshInteractionResponse trusted = await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct);
+        SshInteractionResponse other = await automatic.HandleAsync(HostKey("SHA256:other"), Ct);
+
+        Assert.True(client.IsConnected);
+        Assert.True(trusted.IsAccepted);
+        Assert.False(other.IsAccepted);
+        Assert.True(other.IsCanceled);
+        Assert.Equal(new[] { "fake-host:2222 ssh-ed25519 SHA256:trusted", "fake-host:2222 ssh-ed25519 SHA256:other" }, asked);
+    }
+
+    private static SshInteractionRequest HostKey(string fingerprint) => new()
+    {
+        Kind = SshInteractionKind.UnknownHostKey,
+        Host = "fake-host",
+        Port = 2222,
+        Algorithm = "ssh-ed25519",
+        Fingerprint = fingerprint,
+    };
+
     [Fact]
     public void A_failed_connect_leaves_its_classified_failure_as_LastFailure()
     {

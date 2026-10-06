@@ -6,6 +6,7 @@ using System.Text.Json;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
+using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Launch;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
@@ -15,7 +16,6 @@ using Ntilde.Platform.Tests.Ssh;
 using Ntilde.Pty;
 using Ntilde.Replay;
 using Ntilde.Services.Ssh;
-using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
 using Ntilde.VT;
@@ -44,12 +44,21 @@ namespace Ntilde.Tests.Shell.Mux.Remote;
 /// evidence the PR carries. Run it with <c>--logger "console;verbosity=detailed"</c>.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Gated twice: <see cref="DockerFactAttribute"/> (<c>NTILDE_ENABLE_DOCKER_E2E=1</c>) and
 /// <c>NTILDE_MUX_E2E_BINARY</c>, the path of a linux-x64 <c>ntilde-mux</c>. <c>NTILDE_MUX_E2E_DROP=pause</c>
-/// forces the <c>docker pause</c> drop. The test points <c>NTILDE_APPDATA_ROOT</c> at a temporary directory
-/// while it runs: the SSH profile store, the generated OpenSSH config and the native known-hosts store (which
-/// an automatic native reconnect trusts host keys from) all live there, never in the machine's own profile.
+/// forces the <c>docker pause</c> drop. Meant to run on its own, as CI does:
+/// <c>dotnet test tests/Ntilde.App.Tests --filter "Category=DockerE2E"</c>.
+/// </para>
+/// <para>
+/// The test points <c>NTILDE_APPDATA_ROOT</c> at a temporary directory while it runs - process-wide, hence
+/// its own collection with parallelization off - so the SSH profile store and the generated OpenSSH config
+/// live there, never in the machine's own profile. The native known-hosts store that an automatic reconnect
+/// trusts host keys from is the test's own too, passed to <see cref="RemoteMuxHostFactory.Create"/>: the
+/// app's is bound once per process, to whichever root the first user saw.
+/// </para>
 /// </remarks>
+[Collection(nameof(RemoteMuxDockerE2eCollection))]
 public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
 {
     private const string BinaryVariable = "NTILDE_MUX_E2E_BINARY";
@@ -143,6 +152,7 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
         private MuxConnectionHosts? _hosts;
         private JsonSshProfileStore _store = null!;
         private SshConnectionService _ssh = null!;
+        private readonly NativeKnownHostsStore _knownHosts = new(Path.Combine(root, "ssh", "native_known_hosts.json"));
         private NativeSshTestInteractionHandler _prompts = null!;
         private SshHostKeyInfo? _hostKey;
         private Guid _profileId;
@@ -169,7 +179,13 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
 
             _hosts = new MuxConnectionHosts(
                 new MuxConnectionHost(_ => throw new InvalidOperationException("The E2E never uses the local daemon."), "local", null),
-                id => RemoteMuxHostFactory.Create(id, _ssh.GetStoredProfile, Transport, HostLog, backend == SshBackendKind.Native ? _prompts : null),
+                id => RemoteMuxHostFactory.Create(
+                    id,
+                    _ssh.GetStoredProfile,
+                    Transport,
+                    HostLog,
+                    backend == SshBackendKind.Native ? _prompts : null,
+                    isTrustedHostKey: IsTrustedHostKey),
                 HostLog);
             var factory = new MuxTerminalSessionFactory(_hosts, new NoPlainSsh(), _ssh.GetStoredProfile, HostLog);
             MuxConnectionHost host = _hosts.GetOrCreate(MuxEndpointId.ForSsh(_profileId))
@@ -348,8 +364,16 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
         private void TrustHostKey(int port)
         {
             SshHostKeyInfo key = _hostKey ?? throw new InvalidOperationException("No host key read.");
-            new NativeKnownHostsStore(AppPaths.NativeKnownHostsFilePath).TrustHost(Fixture.Host, port, key.Algorithm, key.Fingerprint);
-            Log($"[e2e] native known hosts ({AppPaths.NativeKnownHostsFilePath}) trust {key.Algorithm} {key.Fingerprint} for {Fixture.Host}:{port}");
+            _knownHosts.TrustHost(Fixture.Host, port, key.Algorithm, key.Fingerprint);
+            Log($"[e2e] native known hosts ({_knownHosts.StoreFilePath}) trust {key.Algorithm} {key.Fingerprint} for {Fixture.Host}:{port}");
+        }
+
+        /// <summary>The automatic attempts' host-key trust: this run's store, never the app's process-wide one.</summary>
+        private bool IsTrustedHostKey(SshInteractionRequest request)
+        {
+            bool trusted = _knownHosts.CheckHost(request.Host, request.Port, request.Algorithm, request.Fingerprint) == NativeKnownHostMatch.Trusted;
+            Log($"[e2e] automatic attempt's host key {request.Algorithm} {request.Fingerprint} for {request.Host}:{request.Port}: {(trusted ? "trusted" : "NOT trusted")}");
+            return trusted;
         }
 
         /// <summary>The container came back on another port: the profile follows it, as a user would edit it.</summary>
@@ -739,4 +763,13 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
             // Best effort: a file still held by an exiting ssh is left to the temp directory's own cleanup.
         }
     }
+}
+
+/// <summary>
+/// <see cref="RemoteMuxDockerE2eTests"/>' own collection, never run in parallel with another: the tests point
+/// <c>NTILDE_APPDATA_ROOT</c> at their temporary directory, for the whole process, while they run.
+/// </summary>
+[CollectionDefinition(nameof(RemoteMuxDockerE2eCollection), DisableParallelization = true)]
+public sealed class RemoteMuxDockerE2eCollection
+{
 }
