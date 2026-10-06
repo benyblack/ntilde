@@ -97,10 +97,15 @@ internal static class RemoteMuxFailureClassifier
         return new RemoteMuxFailure(RemoteFailureKind.ProxyFailed, reason);
     }
 
-    /// <summary>The transport could not even start the command: no ssh executable, a profile it cannot use.</summary>
+    /// <summary>
+    /// The transport could not even start the command: no ssh executable, a profile it cannot use. A transport factory
+    /// that refused the attempt with a failure of its own (a <see cref="RemoteMuxUnavailableException"/>: the native SSH
+    /// switch off, <see cref="RemoteMuxHostFactory.ThrowIfNativeSshDisabled"/>) keeps it, kind and reason.
+    /// </summary>
     public static RemoteMuxFailure StartFailed(Exception error)
     {
         ArgumentNullException.ThrowIfNull(error);
+        if (error is RemoteMuxUnavailableException refused) return refused.Failure;
         return new RemoteMuxFailure(RemoteFailureKind.SshFailed, Quote($"SSH could not start: {error.Message}"));
     }
 

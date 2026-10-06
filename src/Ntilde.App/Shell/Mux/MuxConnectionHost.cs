@@ -392,8 +392,9 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// The loop stopped without a connection: its <see cref="MuxReconnectLoop.Budget"/> ran out, or signing in
     /// needs the user (<see cref="RemoteFailureKind.NeedsUser"/>), which another automatic attempt cannot
-    /// give. <see cref="GetClient"/> still reconnects, and then raises <see cref="Reconnected"/>; the kills
-    /// queued meanwhile are kept, and go out with that connect.
+    /// give; in that case the failure is <see cref="LastFailure"/> by the time this is raised. <see cref="GetClient"/>
+    /// still reconnects, and then raises <see cref="Reconnected"/>; the kills queued meanwhile are kept, and go out
+    /// with that connect.
     /// </summary>
     public event Action? ReconnectAbandoned;
 
@@ -732,6 +733,8 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <summary>
     /// <paramref name="attempt"/>'s outcome as the loop counts it: connected, or not. A failure that needs the
     /// user ends the loop (ruling 1) - unless that attempt is no longer the host's (a user's request superseded it).
+    /// That failure is <see cref="LastFailure"/> before <see cref="ReconnectAbandoned"/> is raised, so a pane can say
+    /// why there (codex4 F): the attempt's own fault continuation records it too, but in no set order with this one.
     /// </summary>
     private async Task<bool> AsLoopAttemptAsync(Task<MuxClient> attempt)
     {
@@ -743,6 +746,7 @@ internal sealed class MuxConnectionHost : IDisposable
         catch (RemoteMuxUnavailableException ex) when (ex.Failure.Kind == RemoteFailureKind.NeedsUser)
         {
             // Ruling: another automatic attempt cannot sign in either - it would only knock again.
+            RecordFailure(attempt, ex);
             GiveUp($"signing in needs the user: {ex.Failure.Reason}", attempt);
             return false;
         }

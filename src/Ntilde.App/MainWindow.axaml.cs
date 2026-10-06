@@ -4607,7 +4607,8 @@ namespace Ntilde
         /// The exec transport for <paramref name="profile"/> (spec §8.2, §8.3), by its backend: what the remote hosts'
         /// attempts and the install flow both run over. May block (OpenSSH plans its config file): off the UI thread.
         /// OpenSSH plans this very profile, which may be a host's blend of an edited or deleted one, self-contained once the
-        /// host's destination is pinned (codex D2).
+        /// host's destination is pinned (codex D2). A Native profile is refused while native SSH is off, as this window's
+        /// settings say at that call (<see cref="NativeSshEnabledNow"/>; codex4 F).
         /// </summary>
         private Ntilde.Platform.Ssh.Exec.ISshExecTransport CreateRemoteMuxTransport(
             Ntilde.Platform.Ssh.Models.SshProfile profile,
@@ -4617,8 +4618,16 @@ namespace Ntilde
                 request,
                 (p, selfContained) => _sshConnectionService.BuildLaunchDetailsFor(p, SshDiagnosticsLevel.None, selfContained),
                 static () => new Ntilde.Platform.Ssh.Native.NativeSshInterop(),
+                NativeSshEnabledNow,
                 SshAskPassCommand.LocateHelper(),
                 AppLogger.Log);
+
+        /// <summary>
+        /// The global native SSH switch (Settings &gt; SSH, <see cref="TerminalSettings.ExperimentalNativeSshEnabled"/>) as
+        /// this window's settings say now - the source a plain SSH pane's spawn reads it from. A save replaces
+        /// <see cref="_settings"/> whole, so this follows it. Read by each remote attempt's transport, off the UI thread.
+        /// </summary>
+        private bool NativeSshEnabledNow() => _settings.ExperimentalNativeSshEnabled;
 
         /// <summary>
         /// The action a persisted SSH tab's notice offers for <paramref name="failure"/> (spec §7.5): the install

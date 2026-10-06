@@ -991,6 +991,18 @@ review; the section they change is named first.
   an automatic reconnect does not ask for"), so the loop stops with `ReconnectAbandoned` instead of
   retrying for its 10 minutes; if it connects, nothing changes. A keyboard-interactive round with
   questions was already aborted, never answered empty; a remembered passphrase is offered as before.
+- **The global native SSH switch refuses a native profile's remote attempts** (codex4 F). The plain SSH path
+  refuses a Native profile while `ExperimentalNativeSshEnabled` (Settings > SSH) is off, and such a profile
+  stays saved, so its persistent tabs connected around the switch. Each attempt's transport now reads it
+  (`RemoteMuxHostFactory.CreateTransport`, from the window's settings at that call), not the host when it is
+  built. While it is off, a Native profile's attempt is refused before anything is built or connected, with
+  the plain path's message (`SshSessionFactory.NativeSshDisabledMessage`), as `NeedsUser`: the reconnect loop
+  stops at once with `ReconnectAbandoned`, a new tab gets the retry banner and no plain SSH stand-in (which
+  would be refused too), a kill waiting on the host stays queued, and the install flow, which builds its
+  transport the same way, fails with the message. Once it is on, Enter connects. OpenSSH profiles do not
+  read it. So that the user knows why, a pane writes a `NeedsUser` failure's reason under its Enter banner
+  (`TerminalPane.RemoteNeedsUserLine`), this refusal's and a sign-in's alike, and a host records that failure
+  as `LastFailure` before it raises `ReconnectAbandoned`, where the pane reads it.
 - **§7.3 A user's request never joins an automatic attempt.** It cancels the automatic attempt in
   flight and starts an interactive one (then resets the backoff); a joined automatic attempt would
   fail for want of a prompt.

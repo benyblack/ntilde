@@ -3742,24 +3742,27 @@ namespace Ntilde.Controls
         /// UI thread. No session from the remote daemon (Phase 4 spec §7.5): the id the request named is kept
         /// (none for a new tab whose SSH connect failed - the Task 19 ruling), and Enter retries. A reattach after
         /// a drop that failed goes back to where the host is (Review Focus 2): into the loop while it still runs,
-        /// else to the Enter banner - never to no session and no banner.
+        /// else to the Enter banner - never to no session and no banner. A failure that needs the user says why
+        /// under either banner (<see cref="RemoteNeedsUserLine"/>).
         /// </summary>
         private void EnterRemoteUnreachable(TerminalSessionRequest request, PersistentSessionResult result, string host)
         {
             MuxSessionIdToRestore = request.ExistingMuxSessionId;
             TermView.SetSession(null);
             TerminalLogger.Log($"[TerminalPane] no session from {host} for {request.ExistingMuxSessionId?.ToString() ?? "a new tab"} ({result.Detail}); kept for a retry");
+            string? needsUser = RemoteNeedsUserLine(result.RemoteFailure);
             if (request.ReattachAfterDrop && request.ExistingMuxSessionId is not null)
             {
                 _muxReattachAfterDrop = true;
                 if (_remoteHost?.Host.IsReconnecting == true) EnterRemoteReconnecting();
-                else EnterRemoteWaitingForEnter(RemoteAbandonedBanner(host));
+                else EnterRemoteWaitingForEnter(RemoteAbandonedBanner(host), detail: needsUser);
                 return;
             }
 
             _muxReattachAfterDrop = false;
             _muxConnectionLost = true;
             WriteBanner($"\r\n\x1b[90m{RemoteUnreachableBanner(SanitizeBannerValue(host))}\x1b[0m\r\n");
+            if (needsUser is not null) WriteBanner($"\x1b[90m{SanitizeBannerValue(needsUser)}\x1b[0m\r\n");
             // SSH worked and only ntilde-mux did not: the toast says why, with the install flow when that
             // fixes it. A failed SSH connect needs no toast: the banner already says the host is not reachable.
             if (result.RemoteFailure is { Kind: not (RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser) } failure)
@@ -4016,7 +4019,14 @@ namespace Ntilde.Controls
                     if (ownSessionDropped || _muxReconnecting) EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName), reattachOnReconnect: false);
                     break;
                 case RemoteHostEvent.ReconnectAbandoned:
-                    if (_muxReconnecting) EnterRemoteWaitingForEnter(RemoteAbandonedBanner(_remoteHostName));
+                    // A give-up because signing in needs the user has recorded that failure by now: the banner says why.
+                    if (_muxReconnecting)
+                    {
+                        EnterRemoteWaitingForEnter(
+                            RemoteAbandonedBanner(_remoteHostName),
+                            detail: RemoteNeedsUserLine((source.Host.LastFailure as RemoteMuxUnavailableException)?.Failure));
+                    }
+
                     break;
                 case RemoteHostEvent.Reconnected:
                     if (AwaitsRemoteReattach()) ReattachAfterReconnect();
@@ -4063,8 +4073,9 @@ namespace Ntilde.Controls
         /// reattach failed with the link up (Review Focus 2) - so Enter does (<see cref="OnKeyDown"/>, <see cref="Reconnect"/>).
         /// The id is kept. <paramref name="reattachOnReconnect"/>: the host's Reconnected (a give-up ended by any Enter)
         /// still brings this pane back too; false after a stopped daemon, whose sessions went with it.
+        /// <paramref name="detail"/>, when given, is a line under the banner (<see cref="RemoteNeedsUserLine"/>).
         /// </summary>
-        private void EnterRemoteWaitingForEnter(string banner, bool reattachOnReconnect = true)
+        private void EnterRemoteWaitingForEnter(string banner, bool reattachOnReconnect = true, string? detail = null)
         {
             if (Session is MuxClientSession mux && MuxSessionIdToRestore is null) _muxReattachId = mux.Id;
             _muxReattachAfterDrop = reattachOnReconnect;
@@ -4073,6 +4084,7 @@ namespace Ntilde.Controls
             TermView.SetSession(null);
             ApplyMuxSharing(null);
             WriteBanner($"\r\n\x1b[90m{SanitizeBannerValue(banner)}\x1b[0m\r\n");
+            if (detail is not null) WriteBanner($"\x1b[90m{SanitizeBannerValue(detail)}\x1b[0m\r\n");
         }
 
         /// <summary>
@@ -4231,6 +4243,16 @@ namespace Ntilde.Controls
 
         /// <summary>Phase 4 spec §7.5: no session could be had from the remote daemon; the id (if any) is kept, and Enter retries.</summary>
         internal static string RemoteUnreachableBanner(string host) => $"[{host} not reachable \u2014 press Enter to retry]";
+
+        /// <summary>
+        /// The line under an Enter banner (<see cref="RemoteUnreachableBanner"/>, <see cref="RemoteAbandonedBanner"/>) when
+        /// signing in needs the user (<see cref="RemoteFailureKind.NeedsUser"/>; codex4 F): that failure's reason, so the user
+        /// knows what the retry needs - an answer an automatic attempt does not ask for, or the native SSH backend turned
+        /// back on in Settings, without which Enter is refused again. Null for any other failure, or none: an SSH failure's
+        /// banner says enough, and ntilde-mux's own failures get the notice.
+        /// </summary>
+        internal static string? RemoteNeedsUserLine(RemoteMuxFailure? failure) =>
+            failure is { Kind: RemoteFailureKind.NeedsUser, Reason: { Length: > 0 } reason } ? $"[{reason}]" : null;
 
         /// <summary>Phase 4 spec §8.4: the remote-files sidebar on a persisted remote tab (title of the toast).</summary>
         internal const string RemoteFilesUnavailableNoticeTitle = "Remote Files";

@@ -3,6 +3,7 @@ using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
+using Ntilde.Platform.Ssh.Sessions;
 using Ntilde.Services.Ssh;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
@@ -409,6 +410,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
                     return Launch;
                 },
                 () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+                static () => true,
                 askPassHelperPath: null,
                 log: null);
         }
@@ -516,6 +518,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             new RemoteMuxTransportRequest(interactive, prompts.BeginAttempt(interactive)),
             (_, _) => Launch,
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+            static () => true,
             askPassHelperPath: "/opt/ntilde/ntilde",
             log: null);
 
@@ -535,10 +538,74 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false)),
             (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
             () => new NativeSshInterop(),
+            static () => true,
             askPassHelperPath: null,
             log: null);
 
         Assert.IsType<NativeSshExecTransport>(transport);
         Assert.Equal("nova@fake-host", transport.DisplayName);
+    }
+
+    /// <summary>
+    /// Codex4 F: the global native SSH switch (Settings &gt; SSH) is read by each attempt's transport, not once per host.
+    /// While it is off, a native profile's attempt is refused before anything is built - no native layer, no ssh plan -
+    /// as <see cref="RemoteFailureKind.NeedsUser"/>, with the message the plain SSH path refuses with; once it is on
+    /// again, the next attempt gets the native transport.
+    /// </summary>
+    [Fact]
+    public void A_native_profile_is_refused_while_native_ssh_is_off_and_nothing_is_built()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.Native;
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+        bool enabled = false;
+        int nativeLayers = 0;
+        int reads = 0;
+        ISshExecTransport Build() => RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false)),
+            (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+            () =>
+            {
+                nativeLayers++;
+                return new NativeSshInterop();
+            },
+            () =>
+            {
+                reads++;
+                return enabled;
+            },
+            askPassHelperPath: null,
+            log: null);
+
+        RemoteMuxUnavailableException refused = Assert.Throws<RemoteMuxUnavailableException>(() => Build());
+
+        Assert.Equal(RemoteFailureKind.NeedsUser, refused.Failure.Kind);
+        Assert.Equal(SshSessionFactory.NativeSshDisabledMessage, refused.Failure.Reason);
+        Assert.Equal(0, nativeLayers);
+
+        enabled = true;   // turned on again
+        Assert.IsType<NativeSshExecTransport>(Build());
+        Assert.Equal((1, 2), (nativeLayers, reads));
+    }
+
+    /// <summary>Codex4 F: the switch is the native backend's; an OpenSSH profile's attempt is built while it is off.</summary>
+    [Fact]
+    public void An_OpenSSH_profile_is_built_while_native_ssh_is_off()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.OpenSsh;
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+
+        ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false)),
+            (_, _) => Launch,
+            () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+            static () => false,
+            askPassHelperPath: null,
+            log: null);
+
+        Assert.IsType<OpenSshExecTransport>(transport);
     }
 }

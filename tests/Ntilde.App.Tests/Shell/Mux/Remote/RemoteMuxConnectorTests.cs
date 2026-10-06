@@ -525,6 +525,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 request,
                 (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
                 () => interop,
+                static () => true,
                 askPassHelperPath: null,
                 log: _ => { }),
             new RemoteMuxInteractionHandler(user, _ => false),

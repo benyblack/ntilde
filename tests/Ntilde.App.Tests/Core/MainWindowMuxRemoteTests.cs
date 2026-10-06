@@ -212,6 +212,44 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.False(factory.RoutesRemote(request)); // read again at the next spawn, not captured once
     }
 
+    /// <summary>
+    /// Codex4 F, through the window's own wiring (its remote host factory and per-attempt transport, not a test's): a new
+    /// remote tab on a native profile while native SSH is off in the window's settings starts no native session and says
+    /// why. The host's one attempt was refused by the switch - its failure is the refusal, not a native connect's.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_new_native_remote_tab_is_refused_by_the_windows_own_transport_while_native_ssh_is_off()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()),
+        });
+        window.MuxHostFactory = () => _local = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_localMux.Listener.Connect(), null, ct), "test", null);
+        var settings = (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+        settings.SessionPersistence = SessionPersistenceMode.KeepOnClose;
+        settings.ExperimentalNativeSshEnabled = false;
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        typeof(MainWindow).GetMethod("AddTab", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(
+            window,
+            [new TerminalProfile { Id = _sshProfile.Id, Name = _sshProfile.Name, Type = ConnectionType.SSH }, Ntilde.Platform.Ssh.Launch.SshDiagnosticsLevel.None]);
+
+        PumpUntil(() => RemotePanes(window).Any(p => Text(p).Contains(TerminalPane.RemoteUnreachableBanner("nova@fake-host"), StringComparison.Ordinal)), "the new tab gave up for now");
+        TerminalPane pane = RemotePanes(window).Single();
+        PumpUntil(() => Text(pane).Contains("[Native SSH is disabled globally.", StringComparison.Ordinal), "the pane says why");
+        Assert.Null(pane.Session);
+        Assert.Null(pane.MuxSessionIdToRestore);
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
+        Assert.Equal(
+            (RemoteFailureKind.NeedsUser, Ntilde.Platform.Ssh.Sessions.SshSessionFactory.NativeSshDisabledMessage),
+            (failure.Kind, failure.Reason));
+        Assert.Equal(1, host.ConnectAttempts);
+    }
+
     /// <summary>Review Focus 4: several panes of one profile restoring at startup share one connection, and so one set of prompts.</summary>
     [AvaloniaFact]
     public void Restoring_three_panes_of_one_profile_starts_one_exec()

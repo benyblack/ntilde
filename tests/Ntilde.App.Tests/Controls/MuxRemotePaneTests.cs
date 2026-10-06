@@ -51,12 +51,26 @@ public sealed class MuxRemotePaneTests : IDisposable
     private readonly List<(string Title, string Message, PersistenceNoticeAction? Action)> _notices = [];
     private readonly List<Window> _windows = [];
     private readonly List<TerminalPane> _panes = [];
+    private bool _nativeSshEnabled = true; // the global switch (Settings > SSH), read by each attempt's transport
+
+    /// <summary>The start of the line a pane shows under its Enter banner while native SSH is off (codex4 F).</summary>
+    private const string NativeSshOffLine = "[Native SSH is disabled globally.";
 
     public MuxRemotePaneTests()
     {
         MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local", null));
-        _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, _) => _remote, log: null, userPrompts: null, scheduler: _clock)));
+        _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock)));
         _factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null);
+    }
+
+    /// <summary>
+    /// The fake remote, behind the app's native SSH switch (<see cref="RemoteMuxHostFactory.CreateTransport"/>): a native
+    /// profile's attempt is refused while <see cref="_nativeSshEnabled"/> is off.
+    /// </summary>
+    private FakeRemoteHost NativeSwitchedRemote(SshProfile profile, RemoteMuxTransportRequest _)
+    {
+        RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, () => Volatile.Read(ref _nativeSshEnabled));
+        return _remote;
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -554,6 +568,70 @@ public sealed class MuxRemotePaneTests : IDisposable
 
         MuxClientSession session = Attached(pane);
         Assert.Contains(session.Id, _remote.Server.GetSessionIds());
+        Assert.Equal(2, _remote.StartCount);
+    }
+
+    /// <summary>
+    /// Codex4 F: a new remote tab on a native profile while native SSH is off (Settings &gt; SSH) starts nothing - no
+    /// native connection, and no plain SSH stand-in, which would be refused as well - and says why under the retry
+    /// banner. Once the switch is on again, Enter connects.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_new_native_remote_tab_while_native_ssh_is_off_starts_nothing_and_says_why()
+    {
+        _sshProfile.BackendKind = SshBackendKind.Native;
+        Volatile.Write(ref _nativeSshEnabled, false);
+
+        TerminalPane pane = ShowPane(backend: SshBackendKind.Native);
+
+        ShowsBanner(pane, TerminalPane.RemoteUnreachableBanner(Host));
+        ShowsBanner(pane, NativeSshOffLine);
+        Assert.Null(pane.Session);
+        Assert.Null(pane.MuxSessionIdToRestore);
+        Assert.Equal(0, _remote.StartCount);
+        Assert.Null(_fallback.LastRequest);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(_notices); // the banner says it: no "will not persist" toast
+
+        Volatile.Write(ref _nativeSshEnabled, true);
+        PressEnter(pane);
+
+        MuxClientSession session = Attached(pane);
+        Assert.Contains(session.Id, _remote.Server.GetSessionIds());
+        Assert.Equal(1, _remote.StartCount);
+    }
+
+    /// <summary>
+    /// Codex4 F: native SSH turned off while a native remote pane is connected. Its link drops, the loop's first attempt
+    /// is refused, and the loop stops at once: the Enter banner, with why under it. Enter while the switch is still off is
+    /// refused the same way, and says so again; once it is on, Enter takes the same shell back.
+    /// </summary>
+    [AvaloniaFact]
+    public void Native_ssh_turned_off_ends_a_native_panes_reconnect_with_why_and_enter_reattaches_once_it_is_on()
+    {
+        _sshProfile.BackendKind = SshBackendKind.Native;
+        TerminalPane pane = ShowPane(backend: SshBackendKind.Native);
+        MuxClientSession first = Attached(pane);
+        Volatile.Write(ref _nativeSshEnabled, false);
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry); // the loop's attempt is refused: it stops
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsBanner(pane, NativeSshOffLine);
+        Assert.False(RemoteHost.IsReconnecting);
+        Assert.Equal(1, _remote.StartCount);
+
+        PressEnter(pane); // still off
+
+        PumpUntil(() => Occurrences(Text(pane), NativeSshOffLine) == 2, "the retry was refused, and the pane said why again");
+        Assert.Equal(1, _remote.StartCount);
+
+        Volatile.Write(ref _nativeSshEnabled, true);
+        PressEnter(pane);
+
+        Reattached(pane, first.Id, first);
         Assert.Equal(2, _remote.StartCount);
     }
 

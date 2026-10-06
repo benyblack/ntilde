@@ -6,6 +6,7 @@ using Ntilde.Mux.Tests.Support;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.Sessions;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
 
@@ -806,6 +807,105 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Empty(user.Asked);
         await TestWait.UntilAsync(() => host.LastFailure is not null, "the failure was recorded", Patient);
         Assert.Equal(RemoteFailureKind.NeedsUser, Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure.Kind);
+    }
+
+    /// <summary>
+    /// The app's transport factory as far as the global native SSH switch goes (codex4 F): a native profile's attempt is
+    /// refused while <paramref name="nativeSshEnabled"/> says off, as <see cref="RemoteMuxHostFactory.CreateTransport"/>
+    /// refuses it; any other attempt gets the fake remote.
+    /// </summary>
+    private Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> NativeSwitched(Func<bool> nativeSshEnabled) => (profile, _) =>
+    {
+        RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, nativeSshEnabled);
+        return _remote;
+    };
+
+    /// <summary>
+    /// Codex4 F: native SSH turned off (Settings &gt; SSH) while a native profile's host is connected. The live connection
+    /// stays; once the link drops, the loop's first attempt is refused before anything connects, and the loop stops at
+    /// once - <see cref="MuxConnectionHost.ReconnectAbandoned"/>, nothing scheduled, not ten minutes of retries - with the
+    /// refusal as the host's last failure by then. Enter while it is still off is refused too; once it is on, Enter
+    /// connects, and the kill queued meanwhile goes out with it.
+    /// </summary>
+    [Fact]
+    public async Task Native_ssh_turned_off_stops_the_reconnect_at_once_and_enter_connects_once_it_is_on()
+    {
+        _profile.BackendKind = SshBackendKind.Native;
+        bool enabled = true;
+        MuxConnectionHost host = Create(NativeSwitched(() => Volatile.Read(ref enabled)));
+        var events = new HostEvents(host);
+        Guid closed = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
+        Volatile.Write(ref enabled, false);
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+        host.KillWhenConnected(closed);
+
+        _clock.Advance(FirstRetry);
+        await events.WaitForAsync("abandoned");
+
+        // Recorded before the event is raised: a pane reads it there, to say why.
+        RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
+        Assert.Equal((RemoteFailureKind.NeedsUser, SshSessionFactory.NativeSshDisabledMessage), (failure.Kind, failure.Reason));
+        Assert.False(host.IsReconnecting);
+        Assert.Equal(0, _clock.PendingCount);
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal(1, _remote.StartCount);   // the refused attempt started nothing
+
+        Assert.Null(host.GetClient(Patient));  // Enter, still off
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Contains(closed, _remote.Server.GetSessionIds());
+
+        Volatile.Write(ref enabled, true);
+        Assert.NotNull(host.GetClient(Patient));   // Enter
+        await events.WaitForAsync("reconnected");
+        Assert.Equal(new[] { "lost:disconnected", "abandoned", "reconnected" }, events.Seen);
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the queued kill went out once connected", Patient);
+        Assert.Equal(2, _remote.StartCount);
+    }
+
+    /// <summary>
+    /// Codex4 F: a kill on an idle native host while native SSH is off. Its automatic attempt is refused before anything
+    /// connects, so the kill is never sent over native; it stays queued, and goes out with the first connect once the
+    /// switch is on again.
+    /// </summary>
+    [Fact]
+    public async Task A_kill_while_native_ssh_is_off_stays_queued_and_nothing_connects_for_it()
+    {
+        _profile.BackendKind = SshBackendKind.Native;
+        bool enabled = false;
+        MuxConnectionHost host = Create(NativeSwitched(() => Volatile.Read(ref enabled)));
+        Guid closed = await SpawnWithoutAnExecAsync();
+
+        host.KillWhenConnected(closed);
+
+        await TestWait.UntilAsync(() => host.LastFailure is not null, "the automatic attempt was refused", Patient);
+        Assert.Equal(RemoteFailureKind.NeedsUser, Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure.Kind);
+        Assert.Equal(0, _remote.StartCount);
+        Assert.Equal(0, _clock.PendingCount);
+        Assert.Contains(closed, _remote.Server.GetSessionIds());
+        Assert.False(Logged("dropping"));
+
+        Volatile.Write(ref enabled, true);
+        Assert.NotNull(host.GetClient(Patient));   // a pane's connect, say
+
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the queued kill reached the daemon", Patient);
+    }
+
+    /// <summary>Codex4 F: the switch is the native backend's. An OpenSSH profile's host connects and reconnects while it is off.</summary>
+    [Fact]
+    public async Task An_OpenSSH_host_connects_and_reconnects_while_native_ssh_is_off()
+    {
+        _profile.BackendKind = SshBackendKind.OpenSsh;
+        MuxConnectionHost host = Create(NativeSwitched(static () => false));
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+
+        await events.WaitForAsync("reconnected");
+        Assert.Equal(2, _remote.StartCount);
     }
 
     /// <summary>

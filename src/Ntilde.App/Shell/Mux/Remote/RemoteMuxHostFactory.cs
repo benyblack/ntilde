@@ -4,6 +4,7 @@ using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
+using Ntilde.Platform.Ssh.Sessions;
 using Ntilde.Services.Ssh;
 
 namespace Ntilde.Shell.Mux.Remote;
@@ -141,7 +142,8 @@ internal static class RemoteMuxHostFactory
     /// prompt - a password-only OpenSSH profile then reconnects on Enter, or through keys, the agent or
     /// an existing ControlMaster.</item>
     /// <item>Native: the native exec transport, its prompts answered by
-    /// <see cref="RemoteMuxTransportRequest.Prompts"/>.</item>
+    /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
+    /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
     /// </list>
     /// </summary>
     /// <param name="openSshLaunch">
@@ -151,12 +153,19 @@ internal static class RemoteMuxHostFactory
     /// when <see cref="RemoteMuxTransportRequest.Pinned"/>.
     /// </param>
     /// <param name="nativeInterop">The native layer (<see cref="NativeSshInterop"/>).</param>
+    /// <param name="nativeSshEnabled">
+    /// The global native SSH switch (Settings &gt; SSH, <c>ExperimentalNativeSshEnabled</c>) as the app's settings say now:
+    /// asked on every call, so turning it off reaches a host's next attempt - its reconnect loop's, its kill delivery's,
+    /// a user's Enter - not only hosts built later (codex4 F).
+    /// </param>
     /// <param name="askPassHelperPath">The askpass helper (<see cref="SshAskPassCommand.LocateHelper()"/>), or null for none.</param>
+    /// <exception cref="RemoteMuxUnavailableException">A Native profile while native SSH is off (<see cref="ThrowIfNativeSshDisabled"/>).</exception>
     public static ISshExecTransport CreateTransport(
         SshProfile profile,
         RemoteMuxTransportRequest request,
         Func<SshProfile, bool, SshLaunchDetails> openSshLaunch,
         Func<INativeSshInterop> nativeInterop,
+        Func<bool> nativeSshEnabled,
         string? askPassHelperPath,
         Action<string>? log)
     {
@@ -165,6 +174,7 @@ internal static class RemoteMuxHostFactory
         ArgumentNullException.ThrowIfNull(openSshLaunch);
         ArgumentNullException.ThrowIfNull(nativeInterop);
 
+        ThrowIfNativeSshDisabled(profile, nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native)
         {
             return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log);
@@ -179,6 +189,25 @@ internal static class RemoteMuxHostFactory
             diagnosticsArguments: null,
             log,
             batchMode: !request.Interactive);
+    }
+
+    /// <summary>
+    /// Refuses a Native profile's attempt while the global native SSH switch is off (codex4 F), as the plain SSH path
+    /// refuses such a profile's session (<see cref="SshSessionFactory"/>), and with its message: a profile saved as
+    /// Native stays saved when the switch goes off, and its persistent tabs must not connect around it. Nothing is built
+    /// or connected first. The failure is <see cref="RemoteFailureKind.NeedsUser"/>: another automatic attempt would be
+    /// refused the same way, so the reconnect loop stops at once and the pane offers Enter, and says why; a kill waiting
+    /// on the host stays queued. Once the switch is on, Enter connects. An OpenSSH profile does not read the switch.
+    /// </summary>
+    /// <exception cref="RemoteMuxUnavailableException">The profile is Native and <paramref name="nativeSshEnabled"/> says off.</exception>
+    internal static void ThrowIfNativeSshDisabled(SshProfile profile, Func<bool> nativeSshEnabled)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(nativeSshEnabled);
+        if (profile.BackendKind == SshBackendKind.Native && !nativeSshEnabled())
+        {
+            throw new RemoteMuxUnavailableException(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, SshSessionFactory.NativeSshDisabledMessage));
+        }
     }
 
     /// <summary>

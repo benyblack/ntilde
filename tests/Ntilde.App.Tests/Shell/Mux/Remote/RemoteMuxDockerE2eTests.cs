@@ -446,6 +446,7 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
                 request,
                 (p, selfContained) => _ssh.BuildLaunchDetailsFor(p, SshDiagnosticsLevel.None, selfContained),
                 static () => new NativeSshInterop(),
+                static () => true,   // both backends run here: native SSH is on
                 askPassHelperPath: null,
                 HostLog);
 
