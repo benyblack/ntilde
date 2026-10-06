@@ -6411,14 +6411,30 @@ namespace Ntilde
             // sends no kill for an exited shell) and no "kept running" toast.
             if (!mux.IsProcessRunning) return await ClosePaneAsync(pane, skipConfirm: true);
 
+            // Read before the close: the pane is gone after it.
+            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint);
+            bool remote = !endpoint.IsLocal;
+            string remoteHost = pane.RemoteHostName is { Length: > 0 } named
+                ? named
+                : _muxHosts?.TryGet(endpoint)?.Policy.DisplayName ?? "its host";
             bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
             if (closed && !_teardownDone)
             {
-                EnqueueNotice("Shell detached", "Shell kept running — Attach to session… to get it back");
+                EnqueueNotice("Shell detached", remote
+                    ? RemoteDetachedMessage(remoteHost, mux.Id)
+                    : "Shell kept running — Attach to session… to get it back");
             }
 
             return closed;
         }
+
+        /// <summary>
+        /// Final review F2: "Attach to session…" lists local shells only, and a remote shell is never adopted, so a
+        /// detached remote shell comes back through <c>ntilde-mux attach</c> on its own host (USER_MANUAL §3.3), by the
+        /// full id <c>ntilde-mux ls</c> shows. <paramref name="host"/> is <c>user@host</c>, as the remote banners say.
+        /// </summary>
+        internal static string RemoteDetachedMessage(string host, Guid sessionId) =>
+            $"Shell kept running on {host} — run 'ntilde-mux attach {sessionId}' on that host to get it back";
 
         /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
         internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }

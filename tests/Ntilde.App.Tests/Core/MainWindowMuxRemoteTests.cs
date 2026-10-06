@@ -309,6 +309,29 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Contains(ids[1], _remote.Server.GetSessionIds());
     }
 
+    /// <summary>
+    /// Final review F2: "Attach to session…" lists local shells only, so a detached remote shell is told to come
+    /// back through ntilde-mux on its own host - named as the banners name it - by the id ntilde-mux ls shows.
+    /// (The local text is pinned by MainWindowMuxSharingTests.Detach_pane_keeps_the_shell_running_and_the_count_drops.)
+    /// </summary>
+    [AvaloniaFact]
+    public void Detaching_a_remote_pane_names_its_host_and_the_command_that_gets_it_back()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
+        TerminalPane pane = RemotePanes(window).Single();
+
+        Task<bool> detach = window.DetachPaneAsync(pane);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        Assert.True(detach.Result);
+        PumpUntil(() => Toast(window).Title == "Shell detached", "the detach toast is shown");
+        Assert.Equal($"Shell kept running on nova@fake-host — run 'ntilde-mux attach {ids[0]}' on that host to get it back", Toast(window).Message);
+        Assert.Contains(ids[0], _remote.Server.GetSessionIds());
+    }
+
     /// <summary>Spec §8.4: no native SSH session stands behind a persisted remote tab, so the sidebar has nothing to browse.</summary>
     [AvaloniaFact]
     public void Remote_files_sidebar_is_unavailable_on_a_persistent_remote_tab()

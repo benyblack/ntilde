@@ -4207,6 +4207,9 @@ namespace Ntilde.Controls
         /// </summary>
         internal bool IsPersistentRemoteTab => !MuxEndpointId.Parse(MuxEndpoint).IsLocal && Session is null or MuxClientSession;
 
+        /// <summary>UI thread. The remote host as this pane's banners name it (<c>user@host</c>); empty until a remote session was asked for.</summary>
+        internal string RemoteHostName => _remoteHostName;
+
         /// <summary>
         /// Set by startup adoption (spec §9 orphans): this pane was opened only to show an orphaned
         /// daemon session. Cleared once it attached. Losing the attach to another instance then closes

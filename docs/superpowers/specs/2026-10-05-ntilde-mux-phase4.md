@@ -996,6 +996,10 @@ review; the section they change is named first.
   shell nothing can adopt.
 - **§7.4 Keys are swallowed while a remote connect is in flight.** The connect may be waiting on a
   prompt, and a second Enter would only join it.
+- **Pane: Detach on a remote pane** (final review F2) detaches as on a local one, but its toast reads
+  "Shell kept running on `<user@host>` — run 'ntilde-mux attach `<id>`' on that host to get it back",
+  with the full id `ntilde-mux ls` lists: "Attach to session…" lists local shells only, and adoption
+  is local-only. A local pane's toast is unchanged.
 - **§7.4 A pane at the daemon-stopped banner waits for its own Enter** (a later `Reconnected` does not
   revive it, since its session went with the daemon), and a pane whose Enter is armed ignores a later
   `ConnectionLost`.

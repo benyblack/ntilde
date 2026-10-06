@@ -419,7 +419,9 @@ with the usual prompts. This happens for:
   kill waits and is sent the next time Ntilde connects to that host; Ntilde also tries once in the
   background, without prompting.
 - **Pane: Detach** leaves the remote shell running, but *Attach to session…* lists local shells
-  only. Reattach a detached remote shell on the host with `ntilde-mux attach <id>`.
+  only. Reattach a detached remote shell on the host with `ntilde-mux attach <id>`: the *Shell
+  detached* notification names the host and gives the command with the shell's id, the one
+  `ntilde-mux ls` lists.
 - Unticking the profile's checkbox makes its new tabs, and its saved tabs at the next launch, open
   plain SSH. Their shells keep running on the host, and Ntilde keeps their ids in its saved
   session, so once the checkbox is ticked again they reattach at the following launch. To end them,
