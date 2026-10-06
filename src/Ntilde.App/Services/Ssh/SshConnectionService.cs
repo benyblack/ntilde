@@ -300,6 +300,28 @@ public sealed class SshConnectionService
         };
     }
 
+    /// <summary>
+    /// The launch plan for exactly <paramref name="profile"/>, which may be a snapshot the store no longer holds as
+    /// it is - a persistent SSH connection keeps the target it first connected to (multiplexer Phase 4 spec §15,
+    /// codex D2) - or holds no longer at all (<see cref="SshLaunchPlanner.PlanFor"/>). What the remote multiplexer's
+    /// exec attempts launch ssh with; nothing is saved to the store.
+    /// </summary>
+    internal SshLaunchDetails BuildLaunchDetailsFor(SshProfile profile, SshDiagnosticsLevel diagnosticsLevel)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        var planner = new SshLaunchPlanner(_profileStore, new OpenSshConfigCompiler());
+        SshLaunchPlan plan = planner.PlanFor(profile, diagnosticsLevel.ToArguments());
+        return new SshLaunchDetails
+        {
+            SshPath = plan.SshExecutablePath,
+            ConfigPath = plan.ConfigFilePath,
+            Alias = plan.Alias,
+            CommandLine = $"{QuoteToken(plan.SshExecutablePath)} {SshArgBuilder.BuildCommandLine(plan.Arguments)}",
+            PlanArguments = plan.Arguments
+        };
+    }
+
     private SshProfile EnsureStoreProfile(Guid profileId, TerminalProfile? fallbackProfile)
     {
         SshProfile? existing = _profileStore.GetProfile(profileId);
@@ -613,7 +635,8 @@ public sealed class SshConnectionService
         return !string.IsNullOrWhiteSpace(host) && int.TryParse(trimmed[(colon + 1)..].Trim(), out port);
     }
 
-    private static SshProfile CloneProfile(SshProfile profile)
+    /// <summary>A deep copy of <paramref name="profile"/>: every field, its lists and its mux options copied.</summary>
+    internal static SshProfile CloneProfile(SshProfile profile)
     {
         return new SshProfile
         {

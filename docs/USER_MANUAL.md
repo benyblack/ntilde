@@ -329,7 +329,10 @@ reattaches and shows the current screen and scrollback.
    *Reliability* tab.
 
 With either one off, the profile opens plain SSH tabs, exactly as before. Native and OpenSSH
-profiles both work. The change applies to tabs opened after you save it.
+profiles both work. The change applies to tabs opened after you save it. Edits to a persistent
+profile's host, port, user, jump hosts or backend apply to its persistent tabs once all of that
+profile's tabs in the window are closed: until then they, and new tabs of the profile, keep
+connecting where they first connected, since that is where their shells run.
 
 **Installing `ntilde-mux` on a host.** Each host needs it once. **Install ntilde-mux on this
 host…**, next to the checkbox, saves the profile and opens the install dialog (the

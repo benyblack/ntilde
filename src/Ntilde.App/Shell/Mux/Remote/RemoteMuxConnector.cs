@@ -4,6 +4,7 @@ using Ntilde.Mux.Transport;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Services.Ssh;
 
 namespace Ntilde.Shell.Mux.Remote;
 
@@ -53,6 +54,8 @@ internal sealed class RemoteMuxConnector : IDisposable
     private readonly ConditionalWeakTable<MuxClient, OwnedChannel> _channels = new();
     private OwnedChannel? _latest; // guarded by _gate: the channel of the most recent attempt
     private bool _disposed;        // guarded by _gate
+    private SshProfile? _pinned;   // guarded by _gate: a copy of the profile the first connected attempt used (codex D2)
+    private bool _retargetLogged;  // guarded by _gate: the profile pointing elsewhere was logged
 
     /// <summary>One profile, one transport for every attempt, and no remembered prompts.</summary>
     public RemoteMuxConnector(SshProfile profile, ISshExecTransport transport, string clientInstanceId, Action<string>? log)
@@ -60,7 +63,11 @@ internal sealed class RemoteMuxConnector : IDisposable
     {
     }
 
-    /// <param name="profile">The profile, read again for each attempt: the install flow may have recorded a path since.</param>
+    /// <param name="profile">
+    /// The profile, read again for each attempt: until one connects, wholly (a typo fixed applies to the next
+    /// attempt); from then on for its install metadata only, since the connection keeps the target it first
+    /// connected to (<see cref="ProfileForAttempt"/>).
+    /// </param>
     /// <param name="transportFor">Builds the transport for one attempt (by the profile's backend, and whether anyone is waiting).</param>
     /// <param name="prompts">This host's prompts: what its attempts remember for its lifetime (<see cref="Dispose"/> forgets).</param>
     /// <param name="clientInstanceId">Sent in every hello, so a reconnect evicts this host's dead connection on the daemon (spec §2.5).</param>
@@ -109,7 +116,7 @@ internal sealed class RemoteMuxConnector : IDisposable
     {
         lock (_gate) ObjectDisposedException.ThrowIf(_disposed, this);
 
-        SshProfile profile = _profile();
+        SshProfile profile = ProfileForAttempt();
         string host = DisplayNameOf(profile);
         string command = RemoteMuxCommand.Proxy(profile.MuxOptions ?? new SshMuxOptions());
         // A native password prompt does not say which hop asks: with jump hops, a remembered password
@@ -169,6 +176,7 @@ internal sealed class RemoteMuxConnector : IDisposable
                 prompts.Succeeded();
                 client = await MuxClient.ConnectAsync(proxy.Stream, new MuxClientOptions { ClientInstanceId = ClientInstanceId, Log = _log }, ct)
                     .ConfigureAwait(false);
+                Pin(profile);
                 _log?.Invoke($"[RemoteMux] {host}: connected (daemon pid {proxy.DaemonPid}, protocol {client.ProtocolVersion}, {(interactive ? "user request" : "automatic")})");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -193,6 +201,73 @@ internal sealed class RemoteMuxConnector : IDisposable
         {
             abortOnCancel.Dispose();
         }
+    }
+
+    /// <summary>
+    /// The profile one attempt connects with (codex D2). Until an attempt connected: the profile as it is now, so an
+    /// edit - a typo fixed - applies to the next attempt. From then on, for the connector's whole life: a copy of the
+    /// profile that connected, whatever the profile says since - host, port, user, jump hops, backend, identity and
+    /// sign-in settings, extra ssh arguments, everything that decides where and how SSH connects - since the shells
+    /// this connection's panes show, and the kills they send, are on that host. Only the install metadata
+    /// (<see cref="SshMuxOptions.RemoteDaemonPath"/>, <see cref="SshMuxOptions.RemoteDaemonVersion"/>,
+    /// <see cref="SshMuxOptions.RemoteDaemonRid"/>) comes from the profile now, so an install or update takes effect
+    /// at once. The first attempt to find the profile pointing elsewhere logs it.
+    /// </summary>
+    private SshProfile ProfileForAttempt()
+    {
+        SshProfile current = _profile();
+        SshProfile? pinned;
+        bool retargeted = false;
+        lock (_gate)
+        {
+            pinned = _pinned;
+            if (pinned is not null && !_retargetLogged && !SameTarget(pinned, current))
+            {
+                _retargetLogged = true;
+                retargeted = true;
+            }
+        }
+
+        if (pinned is null) return current;
+        if (retargeted)
+        {
+            _log?.Invoke($"[RemoteMux] {current.Name}: the profile's SSH target changed; this connection keeps {TargetOf(pinned)} until its tabs close");
+        }
+
+        SshProfile attempt = SshConnectionService.CloneProfile(pinned);
+        SshMuxOptions now = current.MuxOptions ?? new SshMuxOptions();
+        attempt.MuxOptions.RemoteDaemonPath = now.RemoteDaemonPath;
+        attempt.MuxOptions.RemoteDaemonVersion = now.RemoteDaemonVersion;
+        attempt.MuxOptions.RemoteDaemonRid = now.RemoteDaemonRid;
+        return attempt;
+    }
+
+    /// <summary>The first connected attempt's profile becomes the connection's for good (<see cref="ProfileForAttempt"/>).</summary>
+    private void Pin(SshProfile profile)
+    {
+        lock (_gate) _pinned ??= SshConnectionService.CloneProfile(profile);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="a"/> and <paramref name="b"/> name the same SSH target, as far as the log line goes:
+    /// backend, host, port, user, jump hops, sign-in mode and identity file, extra ssh arguments.
+    /// </summary>
+    private static bool SameTarget(SshProfile a, SshProfile b) =>
+        a.BackendKind == b.BackendKind
+        && string.Equals(a.Host, b.Host, StringComparison.Ordinal)
+        && a.Port == b.Port
+        && string.Equals(a.User, b.User, StringComparison.Ordinal)
+        && a.AuthMode == b.AuthMode
+        && string.Equals(a.IdentityFilePath, b.IdentityFilePath, StringComparison.Ordinal)
+        && string.Equals(a.ExtraSshArgs, b.ExtraSshArgs, StringComparison.Ordinal)
+        && a.JumpHops.Select(hop => hop.ToString()).SequenceEqual(b.JumpHops.Select(hop => hop.ToString()), StringComparer.Ordinal);
+
+    /// <summary><c>user@host:port</c>, then <c> via </c> and the jump hops, if any.</summary>
+    private static string TargetOf(SshProfile profile)
+    {
+        string user = string.IsNullOrWhiteSpace(profile.User) ? string.Empty : profile.User + "@";
+        string target = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{user}{profile.Host}:{(profile.Port > 0 ? profile.Port : 22)}");
+        return profile.JumpHops is { Count: > 0 } hops ? $"{target} via {string.Join(",", hops)}" : target;
     }
 
     /// <summary>The connected client, its channel recorded for <see cref="ExitAsync"/> and ended once the client is done with it.</summary>

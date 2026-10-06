@@ -209,6 +209,108 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             _remote.Commands);
     }
 
+    /// <summary>The target a transport was asked for: <c>user@host:port</c>.</summary>
+    private static string TargetOf(SshProfile profile) => $"{profile.User}@{profile.Host}:{profile.Port}";
+
+    /// <summary>
+    /// Codex D2: once a connect succeeded, the next attempts keep its target (user, host and port here) though the
+    /// profile moved, but take the install metadata from the profile as it is now: the path the install flow
+    /// recorded is used at once.
+    /// </summary>
+    [Fact]
+    public async Task After_the_first_connect_an_edit_keeps_the_target_but_a_recorded_install_path_is_used()
+    {
+        using var otherHost = new FakeRemoteHost("other@host-b");
+        SshProfile first = RemoteMuxConnectorTests.Profile();
+        SshProfile current = first;
+        var targets = new List<string>();
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(first.Id),
+            _ => current,
+            (profile, _) =>
+            {
+                lock (targets) targets.Add(TargetOf(profile));
+                return profile.Host == "host-b" ? otherHost : _remote;
+            },
+            log: null)!);
+        MuxClient connected = host.GetClient(Patient)!;
+        Task<string?> lost = WhenDisconnected(connected);
+
+        current = RemoteMuxConnectorTests.Edited(first, host: "host-b", port: 2200, user: "other", recordedPath: "/home/nova/.local/share/ntilde/bin/ntilde-mux");
+        _remote.CutLink();
+        await lost;
+        Assert.NotNull(host.GetClient(Patient));
+
+        Assert.Equal(new[] { "nova@fake-host:22", "nova@fake-host:22" }, targets);
+        Assert.Equal(
+            new[] { RemoteMuxCommand.Proxy(new SshMuxOptions()), "/home/nova/.local/share/ntilde/bin/ntilde-mux proxy --stdio" },
+            _remote.Commands);
+        Assert.Equal(0, otherHost.StartCount);
+    }
+
+    /// <summary>Codex D2: until an attempt connects, each one reads the profile again, so fixing a typo and pressing Enter works.</summary>
+    [Fact]
+    public void Until_an_attempt_connects_each_one_goes_where_the_profile_says_now()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b");
+        SshProfile first = RemoteMuxConnectorTests.Profile();
+        SshProfile current = first;
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(first.Id), _ => current, (profile, _) => profile.Host == "host-b" ? otherHost : _remote, log: null)!);
+        _remote.Script = FakeRemoteScript.ConnectionRefused;   // the wrong host
+
+        Assert.Null(host.GetClient(Patient));
+        current = RemoteMuxConnectorTests.Edited(first, host: "host-b");
+        Assert.NotNull(host.GetClient(Patient));
+
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Equal(1, otherHost.StartCount);
+    }
+
+    /// <summary>
+    /// Codex D2: a profile deleted after the first connect keeps the target that connected - here not the profile
+    /// the host was built from, whose first attempt failed before the user fixed it.
+    /// </summary>
+    [Fact]
+    public async Task A_profile_deleted_after_the_first_connect_keeps_the_target_that_connected()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b") { Script = FakeRemoteScript.ConnectionRefused };
+        SshProfile built = RemoteMuxConnectorTests.Edited(RemoteMuxConnectorTests.Profile(), host: "host-b");
+        SshProfile? current = built;
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(built.Id), _ => current, (profile, _) => profile.Host == "host-b" ? otherHost : _remote, log: null)!);
+        Assert.Null(host.GetClient(Patient));
+        current = RemoteMuxConnectorTests.Edited(built, host: "fake-host");
+        MuxClient connected = host.GetClient(Patient)!;
+        Task<string?> lost = WhenDisconnected(connected);
+
+        current = null;   // deleted
+        _remote.CutLink();
+        await lost;
+        Assert.NotNull(host.GetClient(Patient));
+
+        Assert.Equal(2, _remote.StartCount);
+        Assert.Equal(1, otherHost.StartCount);
+    }
+
+    /// <summary>Codex D2: a profile deleted before any attempt connected keeps the last profile seen, not the one the host was built from.</summary>
+    [Fact]
+    public void A_profile_deleted_before_any_connect_keeps_the_last_profile_seen()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b") { Script = FakeRemoteScript.ConnectionRefused };
+        SshProfile built = RemoteMuxConnectorTests.Profile();
+        SshProfile? current = built;
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(built.Id), _ => current, (profile, _) => profile.Host == "host-b" ? otherHost : _remote, log: null)!);
+        Assert.Null(host.GetClient(Patient));
+        current = RemoteMuxConnectorTests.Edited(built, host: "host-b");
+        Assert.Null(host.GetClient(Patient));
+
+        current = null;   // deleted
+        Assert.Null(host.GetClient(Patient));
+
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Equal(2, otherHost.StartCount);
+    }
+
     [Fact]
     public async Task Disposing_the_host_forgets_what_its_prompts_remembered()
     {

@@ -1003,6 +1003,29 @@ review; the section they change is named first.
   closing its connections is read as a lost link, and the reconnect starts a new daemon, where each
   pane's reattach finds its session gone (`PreviousLost`). `MuxProxyCommand.Run` takes the liveness
   check as an optional parameter, for tests whose daemon runs in their own process.
+- **§5, §7.1 A host's SSH target is pinned at its first successful connect** (codex D2). The connector
+  read the whole profile again on every attempt, so editing a profile's host, port, user, jump chain or
+  backend sent the reconnects of panes whose shells run on the old host - and their kills - to the new
+  one, orphaning the old shells. Until an attempt connects (preamble and hello done), each attempt still
+  reads the profile, so a typo fixed applies to the next one. From then on, for the host's life, every
+  attempt uses a copy of the profile that connected (`RemoteMuxConnector.ProfileForAttempt`): host,
+  port, user, jump hops, backend, sign-in and identity settings, extra ssh arguments and the rest of the
+  profile; only `SshMuxOptions.RemoteDaemonPath`, `RemoteDaemonVersion` and `RemoteDaemonRid` come from
+  the profile as it is now, so an install or update takes effect at once. The first attempt to find the
+  profile pointing elsewhere logs `[RemoteMux] <name>: the profile's SSH target changed; this connection
+  keeps <user@host:port> until its tabs close`. New tabs of the profile use the same host, so the same
+  target; the edit applies once the window releases the host (§5 F1 above) and the next one reads the
+  profile. A deleted profile keeps the pinned copy, or, before any connect, the last profile the store
+  gave (no longer the one the host was built from). OpenSSH planned its launch by profile id, from the
+  store, so the transport would have gone to the new target whatever profile it was handed: the exec
+  transport now plans the profile object itself (`SshConnectionService.BuildLaunchDetailsFor`,
+  `SshLaunchPlanner.PlanFor`). When the store's profile with that id compiles to the same `Host` block
+  with the same extra arguments, that is the usual plan over the shared generated config; otherwise -
+  edited or deleted - it reads no config file (`-F none`) and passes the snapshot's compiled block
+  (`IOpenSshConfigCompiler.BuildHostOptions`) as `-o` options after the extra arguments, so those still
+  win, and it writes nothing to the shared file, which every other launch compiles from the store. The
+  Docker E2E drops the link by network disconnect only when its probe saw the published port come back
+  unchanged, since a moved port would no longer be followed.
 - **Queued kills** survive `ReconnectAbandoned` (budget or `NeedsUser`) and are sent, before
   `Reconnected` is raised, on any later connect, a user's Enter included: the user's intent to end
   those shells still stands. They are dropped, with a log line, on `DaemonStopped` (the daemon's

@@ -4606,6 +4606,7 @@ namespace Ntilde
         /// <summary>
         /// The exec transport for <paramref name="profile"/> (spec §8.2, §8.3), by its backend: what the remote hosts'
         /// attempts and the install flow both run over. May block (OpenSSH plans its config file): off the UI thread.
+        /// OpenSSH plans this very profile, which may be a host's pinned snapshot of an edited or deleted one (codex D2).
         /// </summary>
         private Ntilde.Platform.Ssh.Exec.ISshExecTransport CreateRemoteMuxTransport(
             Ntilde.Platform.Ssh.Models.SshProfile profile,
@@ -4613,7 +4614,7 @@ namespace Ntilde
             Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.CreateTransport(
                 profile,
                 request,
-                p => _sshConnectionService.BuildLaunchDetails(p.Id, SshDiagnosticsLevel.None),
+                p => _sshConnectionService.BuildLaunchDetailsFor(p, SshDiagnosticsLevel.None),
                 static () => new Ntilde.Platform.Ssh.Native.NativeSshInterop(),
                 SshAskPassCommand.LocateHelper(),
                 AppLogger.Log);

@@ -428,6 +428,10 @@ it).
   captured text is the error), and `MuxClient.ConnectAsync` sends the host's `ClientInstanceId`.
   `RemoteMuxFailureClassifier` sorts a failure into `NotInstalled`, `Unsupported`, `VersionMismatch`,
   `SshFailed`, `ProxyFailed` or `NeedsUser`, and the pane's notice and action follow from the kind.
+  Each attempt reads the profile until one connects; from then on the host keeps that attempt's SSH
+  target, refreshing only the install metadata, so an edited profile cannot send the reconnects and
+  kills of shells on one host to another (OpenSSH plans the pinned copy itself, with `-F none` and its
+  block as `-o` options once the store's profile differs: `SshLaunchPlanner.PlanFor`).
 - **The proxy** (`ntilde-mux proxy --stdio`, `Ntilde.Mux.Cli.MuxProxyCommand`) connects to the
   host-local daemon or spawns one (`MuxDaemonLauncher.EnsureEndpointStreamAsync`), writes the
   preamble, then copies bytes on two dedicated threads. It exits 0 when stdin ends; 3 when the
@@ -502,8 +506,9 @@ sends EOF), `StderrTail` (the last 8 KiB) and `Completion` (the exit code, or nu
 was killed or the transport failed). `SshExec.RunAsync` runs one command with stdin bytes and a
 deadline; the installer uses it.
 
-- **OpenSSH** (`OpenSshExecTransport`): `ssh` from `SshLaunchPlanner.Plan(profile)`
-  (`-F <generated config> <alias>`), plus `-o ControlMaster=no` (the hidden exec never becomes a
+- **OpenSSH** (`OpenSshExecTransport`): `ssh` from `SshLaunchPlanner.PlanFor(profile)`
+  (`-F <generated config> <alias>`, or `-F none <alias>` with the profile's block as `-o` options for
+  a pinned copy the store no longer holds as it is), plus `-o ControlMaster=no` (the hidden exec never becomes a
   master a visible tab then rides on), `-T -o ClearAllForwardings=yes`, `-o BatchMode=no|yes` and
   `-- <command>`. The profile's extra arguments are read with ssh's own getopt rules
   (`OpenSshExecCommandLine.SshOptionLetters`: clusters, an option's argument never scanned, options on

@@ -29,8 +29,11 @@ internal static class RemoteMuxHostFactory
     /// endpoint any more (<see cref="MuxConnectionHosts.Release"/>), or closes: a fresh client instance id (a Guid
     /// in N format) sent in every hello, and the secrets its user-started attempts remember, forgotten with it. Each attempt
     /// reads the profile again, and builds its transport through <paramref name="transportFor"/>, told
-    /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). The host tells a stopped daemon from a
-    /// lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).
+    /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). From the first attempt that connects, the host keeps
+    /// that attempt's SSH target for its life, taking only the install metadata from the profile as it is now (codex D2):
+    /// the shells its panes show are on that host, so an edit to the profile applies once the window releases the host
+    /// and the next one reads it. A profile deleted meanwhile keeps the last one the store gave. The host tells a stopped
+    /// daemon from a lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).
     /// <para>
     /// A profile whose <see cref="SshMuxOptions.PersistRemoteSessions"/> is off still gets its host (codex C2). The
     /// flag decides where that profile's tabs go - <see cref="MuxTerminalSessionFactory.RoutesRemote"/> reads it
@@ -41,7 +44,10 @@ internal static class RemoteMuxHostFactory
     /// </para>
     /// </remarks>
     /// <param name="resolveProfile">The SSH profile store's lookup.</param>
-    /// <param name="transportFor">Builds one attempt's transport (<see cref="CreateTransport"/> in the app).</param>
+    /// <param name="transportFor">
+    /// Builds one attempt's transport (<see cref="CreateTransport"/> in the app), for the profile it is handed - which,
+    /// once the host connected, is a copy the store may no longer hold as it is, so it must not be looked up again by id.
+    /// </param>
     /// <param name="log">The host's, the connector's and the mux client's log.</param>
     /// <param name="userPrompts">The window's prompt handler, for the native backend's user-started attempts.</param>
     /// <param name="scheduler">The clock of the host's liveness ping and reconnect loop; <see cref="SystemMuxTimerScheduler.Instance"/> when null.</param>
@@ -73,9 +79,23 @@ internal static class RemoteMuxHostFactory
         }
 
         MuxHostPolicy policy = MuxHostPolicy.Remote(RemoteMuxConnector.DisplayNameOf(profile));
+
+        // A profile deleted since keeps connecting as the store last had it (the panes that use it decide when to
+        // stop); once an attempt connected, the connector keeps that one's target anyway (codex D2).
+        SshProfile lastKnown = profile;
+        SshProfile CurrentProfile()
+        {
+            if (resolveProfile(profileId) is { } now)
+            {
+                Volatile.Write(ref lastKnown, now);
+                return now;
+            }
+
+            return Volatile.Read(ref lastKnown);
+        }
+
         var connector = new RemoteMuxConnector(
-            // A profile deleted since keeps connecting as it was: the panes that use it decide when to stop.
-            () => resolveProfile(profileId) ?? profile,
+            CurrentProfile,
             transportFor,
             new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey),
             Guid.NewGuid().ToString("N"),
@@ -118,7 +138,11 @@ internal static class RemoteMuxHostFactory
     /// <see cref="RemoteMuxTransportRequest.Prompts"/>.</item>
     /// </list>
     /// </summary>
-    /// <param name="openSshLaunch">The profile's OpenSSH launch plan (<see cref="SshConnectionService.BuildLaunchDetails(Guid, Ntilde.Platform.Ssh.Launch.SshDiagnosticsLevel)"/>).</param>
+    /// <param name="openSshLaunch">
+    /// The OpenSSH launch plan of this very profile (<see cref="SshConnectionService.BuildLaunchDetailsFor"/>), which may
+    /// be a host's pinned copy of a profile edited or deleted since: a plan looked up by the profile's id would go where
+    /// the store says now.
+    /// </param>
     /// <param name="nativeInterop">The native layer (<see cref="NativeSshInterop"/>).</param>
     /// <param name="askPassHelperPath">The askpass helper (<see cref="SshAskPassCommand.LocateHelper()"/>), or null for none.</param>
     public static ISshExecTransport CreateTransport(

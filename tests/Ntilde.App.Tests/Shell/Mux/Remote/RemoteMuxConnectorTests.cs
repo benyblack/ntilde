@@ -39,6 +39,21 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         MuxOptions = new SshMuxOptions { PersistRemoteSessions = true, RemoteDaemonPath = recordedPath },
     };
 
+    /// <summary>
+    /// <paramref name="profile"/> as the user edited it: the same id and backend, another target, and the install
+    /// path the install flow recorded (unchanged when null).
+    /// </summary>
+    internal static SshProfile Edited(SshProfile profile, string host, int port = 22, string? user = null, string? recordedPath = null) => new()
+    {
+        Id = profile.Id,
+        Name = profile.Name,
+        BackendKind = profile.BackendKind,
+        Host = host,
+        Port = port,
+        User = user ?? profile.User,
+        MuxOptions = new SshMuxOptions { PersistRemoteSessions = true, RemoteDaemonPath = recordedPath ?? profile.MuxOptions.RemoteDaemonPath },
+    };
+
     internal static SshInteractionRequest PasswordPrompt { get; } = new() { Kind = SshInteractionKind.Password, Prompt = "Password:" };
 
     private T Own<T>(T disposable) where T : IDisposable

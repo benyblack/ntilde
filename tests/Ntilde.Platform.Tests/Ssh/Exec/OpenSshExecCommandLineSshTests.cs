@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Launch;
+using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.OpenSsh;
+using Ntilde.Platform.Ssh.Storage;
 
 namespace Ntilde.Platform.Tests.Ssh.Exec;
 
@@ -81,6 +84,53 @@ public sealed class OpenSshExecCommandLineSshTests
         finally
         {
             File.Delete(config);
+        }
+    }
+
+    /// <summary>
+    /// Codex D2, against the real client: the plan of a connection's pinned snapshot, which reads no config file
+    /// (<see cref="SshLaunchPlanner.PlanFor"/>, the profile edited to another host since), resolves to the snapshot's
+    /// own target as its compiled block would, and the profile's extra arguments still win over that block.
+    /// </summary>
+    [Fact]
+    public void A_pinned_snapshots_plan_resolves_to_its_own_target()
+    {
+        string? ssh = FindSsh();
+        Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
+        string root = Path.Combine(Path.GetTempPath(), $"nova_ssh_pinned_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new JsonSshProfileStore(Path.Combine(root, "profiles.json"));
+            var snapshot = new SshProfile
+            {
+                Host = "first.example",
+                User = "nova",
+                Port = 2201,
+                AuthMode = SshAuthMode.IdentityFile,
+                IdentityFilePath = Path.Combine(root, "id key"),
+                JumpHops = { new SshJumpHop { Host = "bastion.example", User = "ops", Port = 2200 } },
+                ExtraSshArgs = "-o ServerAliveInterval=7",
+            };
+            store.SaveProfile(new SshProfile { Id = snapshot.Id, Host = "second.example", User = "other" });
+
+            SshLaunchPlan plan = new SshLaunchPlanner(store, new OpenSshConfigCompiler(root)).PlanFor(snapshot);
+            IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan.Arguments, "ntilde-mux proxy --stdio");
+            Dictionary<string, string> resolved = ResolvedConfiguration(ssh!, [.. argv.Take(argv.Count - 2)]);
+
+            Assert.Equal("none", plan.Arguments[1]);
+            Assert.Equal("first.example", resolved.GetValueOrDefault("hostname"));
+            Assert.Equal("nova", resolved.GetValueOrDefault("user"));
+            Assert.Equal("2201", resolved.GetValueOrDefault("port"));
+            Assert.Equal("ops@bastion.example:2200", resolved.GetValueOrDefault("proxyjump"));
+            Assert.Equal("yes", resolved.GetValueOrDefault("identitiesonly"));
+            Assert.EndsWith("id key", resolved.GetValueOrDefault("identityfile") ?? string.Empty, StringComparison.Ordinal);
+            Assert.Equal("7", resolved.GetValueOrDefault("serveraliveinterval"));   // the extra argument wins, as over a config file
+            Assert.Equal("false", resolved.GetValueOrDefault("controlmaster"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 

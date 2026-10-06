@@ -236,7 +236,9 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
                 bool reachable = await Fixture.ReconnectNetworkAsync();
                 Assert.True(reachable, "docker network connect left sshd unreachable, although the probe before the session showed it comes back");
                 Log($"[docker] network connect bridge: sshd answers on port {Fixture.Port} (was {portBefore})");
-                if (Fixture.Port != portBefore) MoveProfileTo(Fixture.Port);
+                // A host keeps the target it first connected to (codex D2): moving the profile to a new port would not
+                // move the connection, so the probe chose this method only for a port that comes back unchanged.
+                Assert.Equal(portBefore, Fixture.Port);
             }
             else
             {
@@ -324,13 +326,15 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
 
             int before = _fixture.Port;
             await _fixture.DisconnectNetworkAsync();
-            if (await _fixture.ReconnectNetworkAsync())
+            // The same port, too: a connected host keeps the port it first connected to (codex D2), so a reconnect that
+            // moves the published port would leave the session's connection nothing to come back to.
+            if (await _fixture.ReconnectNetworkAsync() && _fixture.Port == before)
             {
-                Log($"[e2e] link drop method: docker network disconnect/connect (probe: sshd answers again on port {_fixture.Port}, was {before})");
+                Log($"[e2e] link drop method: docker network disconnect/connect (probe: sshd answers again on port {_fixture.Port})");
                 return DropMethod.Network;
             }
 
-            Log("[e2e] link drop method: docker pause/unpause - the probe's network disconnect/connect lost the published port for good; starting a fresh container");
+            Log($"[e2e] link drop method: docker pause/unpause - the probe's network disconnect/connect lost the published port or moved it (port {before}, now {_fixture.Port}); starting a fresh container");
             await _fixture.DisposeAsync();
             _fixture = await DockerSshFixture.StartAsync();
             Log($"[docker] container {_fixture.ContainerName}: sshd on 127.0.0.1:{_fixture.Port}");
@@ -379,16 +383,6 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
             return trusted;
         }
 
-        /// <summary>The container came back on another port: the profile follows it, as a user would edit it.</summary>
-        private void MoveProfileTo(int port)
-        {
-            SshProfile profile = _store.GetProfile(_profileId) ?? throw new InvalidOperationException("The profile is gone.");
-            profile.Port = port;
-            _store.SaveProfile(profile);
-            if (backend == SshBackendKind.Native) TrustHostKey(port);
-            Log($"[e2e] the profile now connects to port {port}");
-        }
-
         /// <summary>Phase 4 spec §9 through the real installer, over the profile's own exec transport; then the profile records it.</summary>
         private async Task InstallAsync(string binary)
         {
@@ -416,7 +410,7 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
             RemoteMuxHostFactory.CreateTransport(
                 profile,
                 request,
-                p => _ssh.BuildLaunchDetails(p.Id, SshDiagnosticsLevel.None),
+                p => _ssh.BuildLaunchDetailsFor(p, SshDiagnosticsLevel.None),
                 static () => new NativeSshInterop(),
                 askPassHelperPath: null,
                 HostLog);

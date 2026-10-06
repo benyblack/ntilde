@@ -385,6 +385,39 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.False(Logged("dropping"));
     }
 
+    /// <summary>
+    /// Codex D2: a host's SSH target is pinned at its first successful connect. The user moves the profile to
+    /// another host while its tabs live on the first one: the loop's reconnect, and the kill it delivers, still
+    /// go where the shells are. The change is logged once.
+    /// </summary>
+    [Fact]
+    public async Task An_edited_profile_does_not_move_a_connected_host_to_its_new_target()
+    {
+        using var otherHost = new FakeRemoteHost("nova@host-b");
+        SshProfile current = _profile;
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(_profile.Id),
+            _ => current,
+            (profile, _) => profile.Host == "host-b" ? otherHost : _remote,
+            _log.Enqueue,
+            userPrompts: null,
+            _clock)!);
+        var events = new HostEvents(host);
+        Guid closed = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
+
+        current = RemoteMuxConnectorTests.Edited(_profile, host: "host-b");
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+        host.KillWhenConnected(closed);
+        _clock.Advance(FirstRetry);
+        await events.WaitForAsync("reconnected");
+
+        await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(closed), "the kill reached the daemon the shell runs on", Patient);
+        Assert.Equal(2, _remote.StartCount);
+        Assert.Equal(0, otherHost.StartCount);
+        Assert.Single(_log, line => line.Contains("the profile's SSH target changed; this connection keeps nova@fake-host:22", StringComparison.Ordinal));
+    }
+
     /// <summary>Review Focus 1: a remote tab closed while its link is down still ends its shell.</summary>
     [Fact]
     public async Task Kill_requested_while_disconnected_is_sent_after_reconnect()
