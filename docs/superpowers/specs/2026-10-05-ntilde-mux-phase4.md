@@ -979,8 +979,10 @@ review; the section they change is named first.
   pane needs: a pane needs its endpoint while its session is on it, while it keeps a pending restore
   id on it (a hydrated tab never shown, a reattach waiting for Enter), and while its connect is in
   flight (`TerminalPane.RemoteMuxEndpointInUse`). `MuxConnectionHosts.Release` closes the host once no
-  kill is queued, being sent or unanswered (`MuxConnectionHost.WhenKillsDrained`; kills `DaemonStopped`
-  dropped count as settled); a host that gave up (`ReconnectAbandoned`) with kills queued stays
+  kill is queued and none is sent but unsettled (`MuxConnectionHost.WhenKillsDrained`): a sent kill counts
+  until its continuation has run, answered or queued again because its connection closed, so a kill that
+  fails at once on a connection already dead is never read as delivered (residual round). Kills
+  `DaemonStopped` dropped count as settled; a host that gave up (`ReconnectAbandoned`) with kills queued stays
   registered, idle (no loop, no pings), and its kills go out on the next use of the endpoint. Reuse:
   `GetOrCreate` for an endpoint whose release is pending takes that host back and cancels the release;
   the host is forgotten under the registry's lock just before its dispose, so nobody is handed a host

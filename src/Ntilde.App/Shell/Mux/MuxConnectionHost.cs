@@ -470,7 +470,7 @@ internal sealed class MuxConnectionHost : IDisposable
                 moot = live is null && _daemonStopped;
                 if (live is null && !moot && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
                 idle = live is null && !moot && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
-                if (live is not null) _killsBeingSent++; // until SendKill tracks it: not drained meanwhile
+                if (live is not null) _killsUnsettled++; // until SendKill's continuation settles it: not drained meanwhile
             }
         }
 
@@ -496,9 +496,11 @@ internal sealed class MuxConnectionHost : IDisposable
     }
 
     /// <summary>
-    /// Sends one kill and tracks it. The caller counted it in <see cref="_killsBeingSent"/> under the lock when it
-    /// decided to send it, so the host never looks drained (<see cref="WhenKillsDrained"/>) between that decision and
-    /// the kill being tracked here.
+    /// Sends one kill and tracks it. The caller counted it in <see cref="_killsUnsettled"/> under the lock when it
+    /// decided to send it, and it stays counted until its continuation below has settled it: answered, or - its
+    /// connection closed first - queued again by <see cref="OnKillFailed"/>. Only then does the count drop and the
+    /// drain get checked (<see cref="WhenKillsDrained"/>), so a failed kill is never read as delivered, not even in
+    /// the moment between its task faulting (at once, on a client already dead) and its continuation running.
     /// </summary>
     private void SendKill(MuxClient client, Guid sessionId)
     {
@@ -512,22 +514,22 @@ internal sealed class MuxConnectionHost : IDisposable
             kill = Task.FromException(ex);
         }
 
-        lock (_gate)
-        {
-            TrackKillLocked(kill);
-            _killsBeingSent--;
-        }
+        lock (_gate) TrackKillLocked(kill);
 
-        // One continuation, in this order: a kill whose connection closed is queued again (OnKillFailed) before the
-        // drain is checked, so it is never read as delivered.
         _ = kill.ContinueWith(
             t =>
             {
-                if (t.IsFaulted) OnKillFailed(sessionId, t.Exception!.GetBaseException());
-                NotifyIfKillsDrained();
+                try
+                {
+                    if (t.IsFaulted) OnKillFailed(sessionId, t.Exception!.GetBaseException());
+                }
+                finally
+                {
+                    lock (_gate) _killsUnsettled--;
+                    NotifyIfKillsDrained();
+                }
             },
             CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
-        NotifyIfKillsDrained(); // a kill that completed before its continuation could see the count drop
     }
 
     private void OnKillFailed(Guid sessionId, Exception error)
@@ -575,7 +577,7 @@ internal sealed class MuxConnectionHost : IDisposable
             if (!ReferenceEquals(client, _client)) return;
             _daemonStopped = false; // a daemon is up again: kills are worth recording from here on
             kills = DrainQueuedKillsLocked();
-            _killsBeingSent += kills.Length; // sent below, outside the lock: not drained meanwhile
+            _killsUnsettled += kills.Length; // sent below, outside the lock; each counted until its continuation settles it
             if (Policy.IsRemote)
             {
                 _watched = client;
@@ -954,14 +956,14 @@ internal sealed class MuxConnectionHost : IDisposable
 
     internal int PendingKillCountForTest { get { lock (_gate) return _pendingKills.Count(t => !t.IsCompleted); } }
 
-    private int _killsBeingSent; // guarded by _gate: kills decided on (OnConnected, KillWhenConnected) that SendKill has not tracked yet
+    private int _killsUnsettled; // guarded by _gate: kills decided on (OnConnected, KillWhenConnected) whose SendKill continuation has not finished
     private readonly List<Action> _drainWaiters = new(); // guarded by _gate: WhenKillsDrained callbacks still waiting
 
     /// <summary>
     /// Final review F1: calls <paramref name="drained"/> once no kill is left to deliver - none queued for a
-    /// connection (<see cref="KillWhenConnected"/>), none being sent, none sent and unanswered - at once, on this
-    /// thread, when that holds now, otherwise on the pool when the last one settles. A kill whose connection closed
-    /// is queued again first, so it never counts as delivered; kills <see cref="DaemonStopped"/> dropped count as
+    /// connection (<see cref="KillWhenConnected"/>), none sent and not yet settled (answered, or queued again because
+    /// its connection closed) - at once, on this thread, when that holds now, otherwise on the pool when the last one
+    /// settles. A kill whose connection closed is queued again before it stops counting, so it never counts as delivered; kills <see cref="DaemonStopped"/> dropped count as
     /// settled. Never called once the host is disposed, nor for kills a give-up (<see cref="ReconnectAbandoned"/>)
     /// left queued until something connects again. <see cref="MuxConnectionHosts.Release"/> waits on it to close
     /// a remote host no pane uses.
@@ -980,7 +982,7 @@ internal sealed class MuxConnectionHost : IDisposable
         if (now) InvokeDrained(drained);
     }
 
-    private bool KillsDrainedLocked() => _queuedKills.Count == 0 && _killsBeingSent == 0 && !_pendingKills.Exists(t => !t.IsCompleted);
+    private bool KillsDrainedLocked() => _queuedKills.Count == 0 && _killsUnsettled == 0 && !_pendingKills.Exists(t => !t.IsCompleted);
 
     private void NotifyIfKillsDrained()
     {

@@ -191,6 +191,65 @@ public sealed class MuxConnectionHostsReleaseTests : IDisposable
         Assert.False(host.IsClosed);
     }
 
+    /// <summary>
+    /// Residual round (a): a queued kill sent on a connection that died before the host sent it fails at once
+    /// (a dead client's KillAsync is a faulted task already), and its continuation queues it again on the pool.
+    /// Until that continuation has run, the kill is not delivered: a release pending meanwhile must not read the
+    /// host as drained, or it closed the host and dropped the kill, leaving the closed tab's shell running.
+    /// </summary>
+    [Fact]
+    public async Task A_kill_that_fails_on_a_dead_connection_keeps_a_pending_release_waiting_until_it_is_delivered()
+    {
+        using var daemon = new MuxTestHost();
+        Guid id;
+        using (MuxClient seed = await MuxClient.ConnectAsync(daemon.Listener.Connect(), null, Ct)) id = await MuxTestHost.SpawnAsync(seed);
+        var firstConnectHeld = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int connects = 0;
+        MuxEndpointId endpoint = MuxEndpointId.ForSsh(Guid.NewGuid());
+        MuxConnectionHost host = new(
+            async (_, ct) =>
+            {
+                MuxClient client = await MuxClient.ConnectAsync(daemon.Listener.Connect(), null, ct).ConfigureAwait(false);
+                if (Interlocked.Increment(ref connects) == 1)
+                {
+                    await firstConnectHeld.Task.ConfigureAwait(false);
+                    client.Dispose();   // dead before the host sends its queued kills on it
+                }
+
+                return client;
+            },
+            "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+        };
+        using var hosts = new MuxConnectionHosts(_local, _ => host, _log.Enqueue);
+        Assert.Same(host, hosts.GetOrCreate(endpoint));
+        bool? killedAtClose = null;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.Closed += _ =>
+        {
+            killedAtClose = !daemon.Server.GetSessionIds().Contains(id);
+            closed.TrySetResult();
+        };
+
+        host.KillWhenConnected(id);   // queued; an idle host starts one automatic attempt for it, held above
+        hosts.Release(endpoint);       // the last pane closed
+        firstConnectHeld.SetResult();   // that attempt connects a client that is already dead
+
+        await TestWait.UntilAsync(() => _log.Any(l => l.Contains("trying again once connected", StringComparison.Ordinal)), "the failed kill was queued again", Patient);
+        Assert.False(closed.Task.IsCompleted, "the host was released before its kill was delivered");
+        Assert.Contains(id, daemon.Server.GetSessionIds());
+        for (int i = 0; i < 200 && !closed.Task.IsCompleted; i++)
+        {
+            if (host.IsReconnecting) _clock.Advance(FirstRetry);   // the next connect works
+            await Task.Delay(20, Ct);
+        }
+
+        await closed.Task.WaitAsync(Patient, Ct);
+        Assert.True(killedAtClose);
+        Assert.True(Volatile.Read(ref connects) >= 2);
+    }
+
     /// <summary>A host disposed some other way is forgotten, so the next ask builds a new one rather than return a closed one.</summary>
     [Fact]
     public async Task A_host_disposed_some_other_way_is_forgotten()
