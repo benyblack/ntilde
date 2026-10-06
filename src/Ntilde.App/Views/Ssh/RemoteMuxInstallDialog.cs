@@ -51,9 +51,14 @@ internal delegate RemoteMuxInstaller RemoteMuxInstallerFactory(
 /// end is shown). Only one run at a time.
 /// </para>
 /// <para>
-/// Closing the window cancels a running install. <see cref="Result"/> then completes when that run has
-/// unwound, so an install that succeeded as the window closed is still recorded (without the flag, which
-/// the user did not see offered).
+/// Closing the window cancels a running install or probe. <see cref="Result"/> then completes when that run
+/// has unwound - every click's work ends there, whichever way it returned - so an install that succeeded as
+/// the window closed is still recorded (without the flag, which the user did not see offered). While the file
+/// picker is open nothing else can start.
+/// </para>
+/// <para>
+/// A version the release source has no release for (<see cref="MuxReleaseNotFoundException"/>) leaves only
+/// Choose file: Install is disabled and the install command hidden, since both would fetch that release.
 /// </para>
 /// <para>
 /// The RID for the install command is the profile's recorded <see cref="SshMuxOptions.RemoteDaemonRid"/>
@@ -93,6 +98,8 @@ internal sealed class RemoteMuxInstallDialog
     private readonly Dictionary<RemoteMuxInstallStep, TextBlock> _steps = [];
 
     private CancellationTokenSource? _run; // the running probe or install; null while idle (UI thread)
+    private bool _picking;                 // the file picker is open
+    private bool _releaseMissing;          // the release download said this version has none
     private RemoteMuxInstallStep? _currentStep;
     private RemoteMuxInstallResult? _last;
     private bool _succeeded;
@@ -247,6 +254,13 @@ internal sealed class RemoteMuxInstallDialog
     /// <summary>How the last run ended: what was installed, why it failed, or <see cref="CancelledText"/>.</summary>
     internal TextBlock OutcomeText { get; }
 
+    /// <summary>
+    /// What the dialog says when <paramref name="version"/> has no release (<see cref="MuxReleaseNotFoundException"/>):
+    /// only Choose file is left, since the install command would download the same missing release.
+    /// </summary>
+    internal static string NoReleaseText(string version) =>
+        $"There is no ntilde-mux release for {version}. Choose file\u2026 uploads an ntilde-mux binary you have.";
+
     /// <summary>The step's line: its mark (<see cref="PendingMark"/>, <see cref="ActiveMark"/>, <see cref="DoneMark"/>, <see cref="FailedMark"/>) and its label.</summary>
     internal string StepText(RemoteMuxInstallStep step) => _steps[step].Text ?? string.Empty;
 
@@ -294,7 +308,11 @@ internal sealed class RemoteMuxInstallDialog
         return control;
     }
 
-    /// <summary>A click's work: async void, so a throw nothing expected goes to the log, not the dispatcher.</summary>
+    /// <summary>
+    /// A click's work. Every run starts from one, so its end is where <see cref="Result"/> completes when the window
+    /// closed meanwhile (<see cref="CompleteIfClosed"/>) - whichever way the work returned. Async void: a throw
+    /// nothing expected goes to the log, not the dispatcher.
+    /// </summary>
     private async void Guard(Func<Task> work)
     {
         try
@@ -306,11 +324,21 @@ internal sealed class RemoteMuxInstallDialog
             AppLogger.Log($"[RemoteMuxInstallDialog] {_host}: {ex}");
             AppendLog($"Something went wrong: {ex.Message}");
         }
+        finally
+        {
+            CompleteIfClosed();
+        }
     }
+
+    /// <summary>Whether a release can be downloaded: a plain version that has not been found missing.</summary>
+    private bool HasRelease => MuxDaemonAsset.IsPlainName(_appVersion) && !_releaseMissing;
+
+    /// <summary>Nothing new may start while a run is going, the picker is open, or after the install or the close.</summary>
+    private bool Busy => _run is not null || _picking || _closed;
 
     private async Task InstallAsync(IMuxDaemonAssetSource? source)
     {
-        if (_run is not null || _succeeded || _closed) return;
+        if (Busy || _succeeded) return;
 
         CancellationTokenSource run = BeginRun();
         RemoteMuxInstallResult? result;
@@ -328,8 +356,11 @@ internal sealed class RemoteMuxInstallDialog
             // The factory itself failed (no launch plan for the profile, say); the installer never throws else.
             result = new RemoteMuxInstallResult(false, ex.Message, null);
         }
+        finally
+        {
+            EndRun(run);
+        }
 
-        EndRun(run);
         if (result is null)
         {
             ShowCancelled();
@@ -341,19 +372,29 @@ internal sealed class RemoteMuxInstallDialog
             _last = result;
             ShowSucceeded(result.Message);
         }
+        else if (result.ReleaseMissing)
+        {
+            // Install again and the install command would both download the same missing release.
+            _last = result;
+            _releaseMissing = true;
+            CopyCommandButton.IsVisible = false;
+            SetActionsEnabled(true);
+            ShowFailed(NoReleaseText(_appVersion));
+        }
         else
         {
             _last = result;
             ShowFailed(result.Message);
         }
-
-        CompleteIfClosed();
     }
 
     private async Task ChooseFileAndInstallAsync()
     {
-        if (_run is not null || _succeeded || _closed) return;
+        if (Busy || _succeeded) return;
 
+        // The picker may not be modal (a portal's): nothing else starts meanwhile, and a second click opens no second one.
+        _picking = true;
+        SetActionsEnabled(false);
         string? path;
         try
         {
@@ -362,10 +403,15 @@ internal sealed class RemoteMuxInstallDialog
         catch (Exception ex)
         {
             AppendLog($"Choosing a file failed: {ex.Message}");
-            return;
+            path = null;
+        }
+        finally
+        {
+            _picking = false;
+            if (_run is null) SetActionsEnabled(true);
         }
 
-        if (string.IsNullOrWhiteSpace(path)) return;
+        if (string.IsNullOrWhiteSpace(path) || _closed) return;
         AppendLog($"Using {path}");
         await InstallAsync(new LocalFileMuxAssetSource(path));
     }
@@ -376,7 +422,7 @@ internal sealed class RemoteMuxInstallDialog
     /// </summary>
     private async Task CopyInstallCommandAsync()
     {
-        if (_run is not null || _closed || _clipboard is null || !MuxDaemonAsset.IsPlainName(_appVersion)) return;
+        if (Busy || _clipboard is null || !HasRelease) return;
 
         string? rid = MuxDaemonRid.IsKnown(_profile.MuxOptions.RemoteDaemonRid) ? _profile.MuxOptions.RemoteDaemonRid : null;
         if (rid is null)
@@ -395,8 +441,11 @@ internal sealed class RemoteMuxInstallDialog
             {
                 outcome = new RemoteHostRefusal(ex.Message);
             }
+            finally
+            {
+                EndRun(run);
+            }
 
-            EndRun(run);
             switch (outcome)
             {
                 case null:
@@ -507,9 +556,7 @@ internal sealed class RemoteMuxInstallDialog
         Progress.IsIndeterminate = true;
         Progress.Maximum = 1;
         Progress.Value = 0;
-        InstallButton.IsEnabled = false;
-        ChooseFileButton.IsEnabled = false;
-        CopyCommandButton.IsEnabled = false;
+        SetActionsEnabled(false);
         CloseButton.Content = "Cancel";
         return run;
     }
@@ -520,9 +567,15 @@ internal sealed class RemoteMuxInstallDialog
         run.Dispose();
         Progress.IsIndeterminate = false;
         CloseButton.Content = "Close";
-        InstallButton.IsEnabled = MuxDaemonAsset.IsPlainName(_appVersion);
-        ChooseFileButton.IsEnabled = true;
-        CopyCommandButton.IsEnabled = true;
+        SetActionsEnabled(true);
+    }
+
+    /// <summary>Install, Choose file and Copy: all off while something runs or the picker is open; Install only with a release.</summary>
+    private void SetActionsEnabled(bool enabled)
+    {
+        InstallButton.IsEnabled = enabled && HasRelease;
+        ChooseFileButton.IsEnabled = enabled;
+        CopyCommandButton.IsEnabled = enabled;
     }
 
     private void ShowSucceeded(string message)

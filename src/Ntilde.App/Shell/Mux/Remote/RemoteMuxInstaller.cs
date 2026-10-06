@@ -26,7 +26,14 @@ internal readonly record struct RemoteMuxInstallProgress(RemoteMuxInstallStep St
 /// <summary>How an install ended.</summary>
 /// <param name="Message">What the dialog shows: the installed version and path, or the reason it failed.</param>
 /// <param name="Installed">What the installed binary reported; only on success.</param>
-internal sealed record RemoteMuxInstallResult(bool Success, string Message, MuxVersionInfo? Installed);
+internal sealed record RemoteMuxInstallResult(bool Success, string Message, MuxVersionInfo? Installed)
+{
+    /// <summary>
+    /// It failed because the source has no release for this app version (<see cref="MuxReleaseNotFoundException"/>):
+    /// the release download, and the install command that points at it, cannot work for this version.
+    /// </summary>
+    public bool ReleaseMissing { get; init; }
+}
 
 /// <summary>
 /// Installs <c>ntilde-mux</c> on a remote host (Phase 4 spec §9), every step over
@@ -82,7 +89,7 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         catch (Exception ex) when (IsFailure(ex, ct))
         {
             // The source's message is the reason: no release for this version, a checksum mismatch, no such file.
-            return Failed(ex.Message);
+            return Failed(ex.Message) with { ReleaseMissing = ex is MuxReleaseNotFoundException };
         }
 
         if (asset.Bytes.Length == 0)

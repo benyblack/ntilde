@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Ntilde.Mux.Cli;
 using Ntilde.Platform.Ssh.Models;
@@ -280,5 +281,46 @@ public sealed class NewSshConnectionInstallFlowTests : IClassFixture<TestAppData
         Dispatcher.UIThread.RunJobs();
 
         Assert.Equal(0, shown);
+        Assert.True(window.FindControl<Border>("RecordingToast")!.IsVisible);
+        Assert.Equal("Install ntilde-mux", window.FindControl<TextBlock>("RecordingToastTitle")!.Text);
+        Assert.Equal("That SSH connection no longer exists.", window.FindControl<TextBlock>("RecordingToastMessage")!.Text);
+    }
+
+    /// <summary>
+    /// Fix round 2: the editor's install, with the real dialog. Closed while "Copy install command" probes the host,
+    /// the dialog still returns, so the editor's command is enabled again rather than for good disabled.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_the_dialog_during_a_copy_probe_frees_the_editor_s_command()
+    {
+        MainWindow window = CreateWindow();
+        var vm = new NewSshConnectionViewModel { HostName = "fake-host", UserName = "nova", BackendKind = SshBackendKind.OpenSsh };
+        window.WireRemoteMuxInstall(vm, window);
+        var host = new Ntilde.Tests.Shell.Mux.Remote.BlockingExecTransport();
+        window.ShowRemoteMuxInstall = (owner, profile) => Ntilde.Views.Ssh.RemoteMuxInstallDialog.ShowAsync(
+            owner,
+            profile,
+            (source, report, progress) => new RemoteMuxInstaller(host, source ?? new NoRelease(), report) { Progress = progress },
+            "0.11.0",
+            owner.Clipboard);
+
+        vm.InstallRemoteMuxCommand.Execute(null);
+        PumpUntil(() => window.OwnedWindows.Count == 1, "the install dialog opened");
+        Window dialog = Assert.Single(window.OwnedWindows);
+        Button copy = dialog.GetLogicalDescendants().OfType<Button>().Single(b => Equals(b.Content, "Copy install command"));
+        Assert.False(vm.InstallRemoteMuxCommand.CanExecute(null));
+
+        copy.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        PumpUntil(() => host.Entered.IsCompleted, "the probe is connecting");
+        dialog.Close();
+
+        PumpUntil(() => vm.InstallRemoteMuxCommand.CanExecute(null), "the editor's command is enabled again");
+        Assert.Equal("ntilde-mux not installed", vm.RemoteDaemonStatusText);
+    }
+
+    private sealed class NoRelease : IMuxDaemonAssetSource
+    {
+        public Task<MuxDaemonAsset> GetAsync(string rid, IProgress<long>? progress, CancellationToken ct) =>
+            throw new MuxReleaseNotFoundException("0.11.0");
     }
 }

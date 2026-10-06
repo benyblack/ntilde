@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Shell.Mux.Remote;
 using Ntilde.Tests.Shell.Mux.Remote; // RecordingExecTransport, FakeExecReply
@@ -68,7 +69,7 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
 
     private RemoteMuxInstallDialog Open(
         SshProfile profile,
-        RecordingExecTransport host,
+        ISshExecTransport host,
         IMuxDaemonAssetSource release,
         string appVersion = "0.11.0",
         IClipboard? clipboard = null,
@@ -215,18 +216,117 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
         Assert.Equal(string.Empty, profile.MuxOptions.RemoteDaemonVersion);
     }
 
+    /// <summary>
+    /// Fix round 2 (ruling): a version without a release points to Choose file only - the install command would
+    /// download the same missing release, and so would Install again.
+    /// </summary>
     [AvaloniaFact]
-    public void A_version_without_a_release_points_to_the_file_and_the_command()
+    public void A_version_without_a_release_points_to_the_file_only()
     {
         RemoteMuxInstallDialog dialog = Open(
             Profile(), Host(new FakeExecReply(InstalledJson)), new FakeSource(new MuxReleaseNotFoundException("0.12.0-dev")), appVersion: "0.12.0-dev", clipboard: Clipboard());
+        Assert.True(dialog.CopyCommandButton.IsVisible);
 
         Click(dialog.InstallButton);
         PumpUntil(() => !dialog.IsRunning, "the install ended");
 
-        Assert.Equal(new MuxReleaseNotFoundException("0.12.0-dev").Message, dialog.OutcomeText.Text);
+        Assert.Equal(RemoteMuxInstallDialog.NoReleaseText("0.12.0-dev"), dialog.OutcomeText.Text);
+        Assert.Contains("Choose file\u2026", dialog.OutcomeText.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("command", dialog.OutcomeText.Text, StringComparison.OrdinalIgnoreCase);
         Assert.True(dialog.ChooseFileButton is { IsVisible: true, IsEnabled: true });
+        Assert.False(dialog.CopyCommandButton.IsVisible);
+        Assert.False(dialog.InstallButton.IsEnabled);
+    }
+
+    /// <summary>A failure that is not a missing release keeps both other ways in.</summary>
+    [AvaloniaFact]
+    public void Another_download_failure_keeps_install_and_the_command()
+    {
+        RemoteMuxInstallDialog dialog = Open(
+            Profile(), Host(new FakeExecReply(InstalledJson)), new FakeSource(new InvalidDataException("checksum mismatch: x")), clipboard: Clipboard());
+
+        Click(dialog.InstallButton);
+        PumpUntil(() => !dialog.IsRunning, "the install ended");
+
+        Assert.Equal("checksum mismatch: x", dialog.OutcomeText.Text);
         Assert.True(dialog.CopyCommandButton is { IsVisible: true, IsEnabled: true });
+        Assert.True(dialog.InstallButton.IsEnabled);
+    }
+
+    /// <summary>
+    /// Fix round 2: closing the window while Copy install command probes the host (a connect waiting on a prompt)
+    /// cancels the probe, and <see cref="RemoteMuxInstallDialog.Result"/> still completes once it unwound.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_the_window_during_a_copy_probe_completes_the_result()
+    {
+        var host = new BlockingExecTransport();
+        RemoteMuxInstallDialog dialog = Open(Profile(), host, Release(), clipboard: Clipboard());
+
+        Click(dialog.CopyCommandButton);
+        PumpUntil(() => host.Entered.IsCompleted, "the probe is connecting");
+        Assert.True(dialog.IsRunning);
+
+        dialog.Window.Close();
+
+        Assert.True(host.Entered.Result.IsCancellationRequested);
+        PumpUntil(() => dialog.Result.IsCompleted, "the result completed after the probe unwound");
+        Assert.Null(dialog.Result.Result);
+        Assert.False(dialog.IsRunning);
+    }
+
+    /// <summary>Fix round 2: nothing else starts while the file picker is open, and a second click opens no second picker.</summary>
+    [AvaloniaFact]
+    public void The_buttons_wait_while_the_file_picker_is_open()
+    {
+        RecordingExecTransport host = Host(new FakeExecReply(InstalledJson));
+        var picked = new TaskCompletionSource<string?>();
+        int pickers = 0;
+        RemoteMuxInstallDialog dialog = Open(Profile(), host, Release(), clipboard: Clipboard(), pickFile: _ =>
+        {
+            pickers++;
+            return picked.Task;
+        });
+
+        Click(dialog.ChooseFileButton);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.False(dialog.InstallButton.IsEnabled);
+        Assert.False(dialog.CopyCommandButton.IsEnabled);
+        Assert.False(dialog.ChooseFileButton.IsEnabled);
+        Click(dialog.ChooseFileButton);
+        Click(dialog.InstallButton);
+        Click(dialog.CopyCommandButton);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, pickers);
+        Assert.Empty(host.Commands);
+
+        picked.SetResult(null);
+        PumpUntil(() => dialog.InstallButton.IsEnabled, "the picker closed");
+
+        Assert.True(dialog.ChooseFileButton.IsEnabled);
+        Assert.True(dialog.CopyCommandButton.IsEnabled);
+        Assert.False(dialog.IsRunning);
+        Assert.Empty(host.Commands);
+    }
+
+    /// <summary>The window closed while the picker was open: the result completes at once, and a file picked after runs nothing.</summary>
+    [AvaloniaFact]
+    public void A_file_picked_after_the_window_closed_runs_nothing()
+    {
+        RecordingExecTransport host = Host(new FakeExecReply(InstalledJson));
+        var picked = new TaskCompletionSource<string?>();
+        RemoteMuxInstallDialog dialog = Open(Profile(), host, Release(), pickFile: _ => picked.Task);
+
+        Click(dialog.ChooseFileButton);
+        dialog.Window.Close();
+        PumpUntil(() => dialog.Result.IsCompleted, "the dialog closed");
+        picked.SetResult("/tmp/ntilde-mux");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Null(dialog.Result.Result);
+        Assert.Empty(host.Commands);
+        Assert.Empty(_sources);
     }
 
     [AvaloniaFact]

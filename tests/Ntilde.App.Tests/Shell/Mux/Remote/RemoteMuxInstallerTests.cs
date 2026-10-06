@@ -214,7 +214,9 @@ public sealed class RemoteMuxInstallerTests
 
         RemoteMuxInstallResult result = await Installer(host, source).InstallAsync(Ct);
 
-        Assert.Equal(new RemoteMuxInstallResult(false, "No ntilde-mux release for 0.10.0 \u2014 choose a file or copy the install command", null), result);
+        Assert.Equal(
+            new RemoteMuxInstallResult(false, "No ntilde-mux release for 0.10.0 \u2014 choose a file or copy the install command", null) { ReleaseMissing = true },
+            result);
         Assert.Equal([RemoteHostProbe.Command], host.Commands);
     }
 
@@ -266,6 +268,7 @@ public sealed class RemoteMuxInstallerTests
 
         Assert.False(result.Success);
         Assert.Contains("HttpClient.Timeout", result.Message, StringComparison.Ordinal);
+        Assert.False(result.ReleaseMissing); // only a missing release says so
     }
 
     /// <summary>Task 23: "Copy install command" probes alone, for the RID; nothing is fetched or uploaded.</summary>
