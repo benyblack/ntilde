@@ -110,7 +110,9 @@ Panes allow you to split a single tab into multiple terminal windows.
 ### 3.3 Persistent sessions (multiplexer)
 Local shells can keep running when Ntilde's window closes, and come back when Ntilde starts
 again. They run inside a small background process, the *multiplexer daemon*
-(`Ntilde mux serve`), which Ntilde starts on demand.
+(`Ntilde mux serve`), which Ntilde starts on demand. SSH tabs can persist too, on the remote
+host, through a daemon installed there: see [Persistent SSH tabs (remote)](#persistent-ssh-tabs-remote)
+below.
 
 - **Turning it on:** Settings → Appearance → *Scrollback* → **Keep shells running when the
   window closes** → *Keep running*. The default is *Off*, and with it off no daemon is ever
@@ -168,7 +170,8 @@ again. They run inside a small background process, the *multiplexer daemon*
   To end an unreachable daemon, end the process whose pid `logs/mux.log` shows, or use
   `ntilde mux kill-server --force` where it still applies (its endpoint file names a live daemon
   this Ntilde cannot talk to).
-- **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`):
+- **Command line** (from the Ntilde executable, e.g. `ntilde` or `Ntilde.exe`; on Windows,
+  `ntilde` in PowerShell or cmd runs `ntilde.com`, see [On Windows: `ntilde.com`](#on-windows-ntildecom)):
 
   | Command | What it does |
   |---|---|
@@ -183,7 +186,9 @@ again. They run inside a small background process, the *multiplexer daemon*
   running." and exit with code 1 (`attach` exits with code 2, its code for any connection
   error). The daemon writes its log to `logs/mux.log` in Ntilde's data folder.
 - **Limitations:**
-  - Local shells only. SSH panes work exactly as before and do not persist.
+  - SSH panes persist only when their profile opts in, on the remote host (see
+    [Persistent SSH tabs (remote)](#persistent-ssh-tabs-remote)). Every other SSH pane works
+    exactly as before and does not persist.
   - Inline images (sixel, kitty graphics) are not shown in persistent panes.
   - Applying an update closes persistent sessions. Ntilde asks first ("N multiplexed sessions
     will be closed by the update", buttons *Close sessions and update* / *Cancel*) and leaves
@@ -285,6 +290,11 @@ Shows a multiplexer session in this terminal, without going through the GUI.
   would loop. Attaching to a *different* session from inside one works.
 - Exit codes: `0` you detached, `1` the session exited or was killed, `2` a usage or connection
   error.
+- On Windows, run it straight from PowerShell or cmd: `ntilde mux attach <id>`. `ntilde` there is
+  `ntilde.com`, which keeps the prompt waiting until you detach (see
+  [On Windows: `ntilde.com`](#on-windows-ntildecom)).
+- On a remote host, `ntilde-mux attach <id>` does the same for the shells of a persistent SSH tab
+  (see [Persistent SSH tabs (remote)](#persistent-ssh-tabs-remote)).
 
 #### `ntilde mux kill-server --force`
 
@@ -301,6 +311,173 @@ guessing. A daemon from the previous version (v1) negotiates with this one, so a
   Deliberately detached shells are re-adopted at the next launch against a v1 daemon (see above).
   A plain `ntilde mux kill-server` replaces it: it stops the v1 daemon, and the next launch
   starts a current one.
+
+#### Persistent SSH tabs (remote)
+
+An SSH tab can survive a network drop, a laptop going to sleep, or Ntilde closing. Its shell runs
+on the remote host inside `ntilde-mux`, a multiplexer daemon installed in your home folder there,
+and Ntilde talks to that daemon through the SSH connection itself (it runs
+`ntilde-mux proxy --stdio` over SSH; neither side opens a port). When the connection drops, the
+shell and the programs in it keep running on the host. When the connection comes back, the tab
+reattaches and shows the current screen and scrollback.
+
+**Turning it on** takes two switches:
+
+1. persistent sessions: Settings → Appearance → *Scrollback* → **Keep shells running when the
+   window closes** → *Keep running*;
+2. per SSH profile: **Keep remote sessions running (ntilde-mux)** in the connection editor's
+   *Reliability* tab.
+
+With either one off, the profile opens plain SSH tabs, exactly as before. Native and OpenSSH
+profiles both work. The change applies to tabs opened after you save it.
+
+**Installing `ntilde-mux` on a host.** Each host needs it once. **Install ntilde-mux on this
+host…**, next to the checkbox, saves the profile and opens the install dialog (the
+**Install ntilde-mux…** button on a *Persistent SSH unavailable* notification opens the same
+dialog). The dialog connects with the profile's usual prompts, checks the host's system, and puts
+the binary at `~/.local/share/ntilde/bin/ntilde-mux`. It needs no root and changes nothing else on
+the host: not your `PATH`, not your shell's startup files. It has three ways to get the binary:
+
+- **Install** downloads `ntilde-mux-<platform>` for this Ntilde version from the project's GitHub
+  release, checks it against the release's `.sha256` file, and keeps the checked copy in Ntilde's
+  data folder (`cache/ntilde-mux/<version>/<platform>`), so the next host of the same platform
+  installs without downloading.
+- **Choose file…** uploads an `ntilde-mux` you already have. Ntilde shows the file's SHA-256, and
+  refuses the file before uploading it when it is built for another platform than the host's.
+- **Copy install command** copies a one-line command that you run in a shell on the host
+  yourself: it downloads the same release file with `curl` on the host, checks it with
+  `sha256sum -c` (`shasum -a 256 -c` on macOS), and installs it to the same place. Use it when your
+  machine cannot reach GitHub but the host can, or when you would rather install by hand.
+
+When this Ntilde version has no release (a development build), **Install** says so and the dialog
+leaves only **Choose file…**. The upload replaces an installed `ntilde-mux` only once the new file
+has arrived complete and has run once on the host, so a cancelled or broken upload leaves the old
+one in place. A daemon that is already running keeps running the binary it started with. When the
+install succeeds, the dialog offers to tick the profile's checkbox. The editor's status line shows
+what was installed: `ntilde-mux 0.11.0 installed`, `ntilde-mux not installed`, or
+`ntilde-mux 0.10.0 installed — this app is 0.11.0`. The versions do not have to match: Ntilde and
+the daemon agree on a protocol version when they connect, and only a daemon with no protocol
+version in common asks for an update.
+
+**Supported hosts:** Linux on x86-64 or arm64 with glibc 2.35 or newer (for example Ubuntu 22.04,
+Debian 12 and later), and macOS on Apple silicon. The dialog refuses, with the reason, musl-based
+systems such as Alpine, glibc older than 2.35, FreeBSD, OpenBSD and other systems, and Intel Macs.
+Windows hosts are not supported.
+
+**What survives a disconnect:** the remote shell and every program running in it (an editor, a
+build, `top`), and the screen and scrollback the daemon keeps for it. Closing Ntilde's window only
+detaches, as for local shells: on the next launch each saved tab connects to its host again and
+reattaches to its shell, under the same rule as local tabs (a shell open in another window is not
+taken over).
+
+**What you see:**
+
+- While a tab connects: `[Connecting to <user@host>…]`. Keys are ignored until it is connected,
+  because the connection may be waiting for you to answer a prompt (for up to two minutes). Tabs of
+  the same profile share one connection, so you answer its prompts once.
+- When the connection drops: `[Connection to <user@host> lost — reconnecting…]`. The tab keeps its
+  last screen. A connection that breaks is noticed at once; one that just goes silent is noticed
+  within about 25 seconds (a ping every 15 seconds, 10 seconds to answer).
+- While it reconnects, **what you type is not sent** to the shell, and nothing is queued to arrive
+  later. The first key you press writes `[Input is not sent while reconnecting]`. Enter tries to
+  reconnect at once.
+- Ntilde retries on its own, waiting about 1, 2, 4, 8 and 16 seconds and then about 30 seconds
+  between attempts, for up to 10 minutes after the drop. When the host answers, the tab reattaches
+  and the current screen replaces the banners.
+- After 10 minutes it stops: `[Connection to <user@host> lost] [Press Enter to reconnect]`.
+- If the daemon itself ended (it was killed, or the host rebooted):
+  `[ntilde-mux on <user@host> stopped] [Press Enter to reconnect]`. Its shells ended with it. Enter
+  starts a new daemon and a new shell, and a *Previous session lost* notification reads
+  `[Previous session was lost — started a new shell]`.
+- If a new tab cannot reach the host over SSH, or a restored tab's host is down:
+  `[<user@host> not reachable — press Enter to retry]`. A restored tab keeps its shell's id, so
+  Enter reattaches once the host is back.
+- If SSH works but `ntilde-mux` cannot be used (it is not installed, the host is not supported, it
+  has no protocol version in common with this Ntilde, or the proxy failed), a *new* tab opens as a
+  plain SSH tab, and a *Persistent SSH unavailable* notification reads
+  `[<user@host>: <reason> — this tab will not survive a disconnect]`. When `ntilde-mux` is missing
+  or incompatible, the notification has an **Install ntilde-mux…** or **Update ntilde-mux…**
+  button.
+
+**Reconnecting on its own never asks you anything.** The automatic retries use only what needs no
+answer: your keys, your SSH agent, and, on native profiles, a password or key passphrase that
+already signed this window in to the host (typed, or taken from the vault). Ntilde keeps that in
+memory only, and forgets it when the window closes or when the server rejects it. Host keys must
+already be trusted. When signing in would need a password or another typed answer, the retries stop
+at once rather than fail again and again (failed logins that fail2ban and account lockouts count),
+and the tab shows `[Connection to <user@host> lost] [Press Enter to reconnect]`. Enter connects
+with the usual prompts. This happens for:
+
+- OpenSSH profiles that sign in with a password: the retries run `ssh` with `BatchMode=yes`;
+- native profiles whose password has not been used in this window yet;
+- native profiles that go through jump hosts and sign in with a password: a password prompt does
+  not say which hop asks, so Ntilde never replays a password along a jump chain.
+
+**Closing, detaching, and turning it off:**
+
+- Closing a tab or pane ends its remote shell. If the host cannot be reached at that moment, the
+  kill waits and is sent the next time Ntilde connects to that host; Ntilde also tries once in the
+  background, without prompting.
+- **Pane: Detach** leaves the remote shell running, but *Attach to session…* lists local shells
+  only. Reattach a detached remote shell on the host with `ntilde-mux attach <id>`.
+- Unticking the profile's checkbox makes its new tabs, and its saved tabs at the next launch, open
+  plain SSH. Their shells keep running on the host, and Ntilde keeps their ids in its saved
+  session, so once the checkbox is ticked again they reattach at the following launch. To end them,
+  run `ntilde-mux kill-server` on the host.
+
+**Limitations:**
+
+- No SFTP sidebar (*Remote Files*) and no port forwards on a persistent remote tab: *Remote Files*
+  shows a notification, "Not available on a persistent remote tab", and the profile's forwards are
+  not set up. Use a plain SSH tab of the same host (from a profile with the checkbox off) for those.
+- Windows hosts are not supported, nor are the hosts the installer refuses (see *Supported hosts*).
+- Linux hosts where systemd-logind ends a user's processes at logout (`KillUserProcesses=yes` in
+  `/etc/systemd/logind.conf`) end the daemon and its shells when your last SSH session closes. Run
+  `loginctl enable-linger $USER` on the host once to keep them.
+- Remote shells inherit the environment of the SSH connection that started the daemon. If you
+  forward your SSH agent (for example `-A` in the profile's extra SSH arguments), `SSH_AUTH_SOCK` in
+  those shells names that connection's agent socket, which goes away when that connection drops:
+  after a reconnect, `git` or `ssh` inside them cannot reach your agent. A new daemon
+  (`ntilde-mux kill-server`, which ends its shells) starts with a fresh environment.
+- The daemon exits by itself 10 minutes after its last shell has ended and its last connection has
+  closed.
+
+**On the host.** `ntilde-mux` is not on the host's `PATH`: run it by its path,
+`~/.local/share/ntilde/bin/ntilde-mux`, or add that folder to your `PATH`.
+
+| Command | What it does |
+|---|---|
+| `ntilde-mux ls [--json]` | Lists the daemon's sessions, as `ntilde mux ls` does. |
+| `ntilde-mux attach <id\|prefix> [--read-only]` | Shows a session in the terminal you run it from, as `ntilde mux attach` does (detach with **Ctrl+\ then d**). It works while the Ntilde tab is attached too: both show the same shell, and the tab shows a "shared with 1" badge. |
+| `ntilde-mux kill <id>` | Ends one session. |
+| `ntilde-mux kill-server [--force]` | Ends every session and stops the daemon. |
+| `ntilde-mux --version [--json]` | Prints the version. |
+
+`serve` and `proxy --stdio` are what Ntilde runs; you do not need them. The daemon writes its log
+to `logs/mux.log` in its data folder: `~/.local/share/ntilde` on Linux,
+`~/Library/Application Support/ntilde` on macOS. As on your own machine, only your user can open
+the daemon's socket, and the daemon never opens a network port.
+
+#### On Windows: `ntilde.com`
+
+`Ntilde.exe` is a windowed program, so PowerShell and cmd do not wait for it, and a command-line
+mode run straight from the prompt would compete with the prompt for your keys. Ntilde therefore
+ships a small console launcher, `ntilde.com`, next to `Ntilde.exe`. Windows tries `.com` before
+`.exe`, so typing `ntilde` runs the launcher, which:
+
+- starts `Ntilde.exe` in the same console, with your arguments passed through unchanged;
+- for a command-line mode (`ntilde mux …`, `ntilde backup …` and the others), waits for it to finish
+  and returns its exit code. So `ntilde mux attach <id>` works straight from PowerShell, and
+  `$LASTEXITCODE` holds its exit code;
+- leaves Ctrl+C and Ctrl+Break to the program instead of ending itself: in `mux attach`, Ctrl+C
+  reaches the attached shell;
+- for a plain `ntilde` that opens a window, returns at once with exit code 0, so the prompt is not
+  held while the window is open.
+
+The installer adds Ntilde's install folder to your user `PATH`, each update keeps it there, and
+uninstalling removes it, so `ntilde` works in any terminal opened afterwards (a terminal that was
+already open keeps its old `PATH`). The release's `.zip` bundle contains `ntilde.com` too, but
+adds nothing to `PATH`.
 
 ---
 
@@ -396,6 +573,10 @@ OpenSSH instead, so the default can never point at a backend that will refuse to
 run. Ntilde warns you if a native profile carries mux options or extra SSH
 arguments that only the OpenSSH backend understands. See `docs/SSH_ROADMAP.md` for
 the full capability matrix.
+
+A profile can also keep its tabs' shells running on the host across network drops,
+with both backends: see [Persistent SSH tabs (remote)](#persistent-ssh-tabs-remote) in
+§3.3.
 
 ### 6.2 Built-in SFTP Transfers
 Access the following commands via the palette to transfer files and folders between your local machine and the SSH host:

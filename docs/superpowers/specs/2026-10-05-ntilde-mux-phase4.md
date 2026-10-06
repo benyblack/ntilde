@@ -1,6 +1,6 @@
 # ntilde multiplexer — Phase 4: remote daemons over SSH, `ntilde.com`, review carry-overs
 
-**Status:** design. **Branch:** `feat/mux-phase4` off `origin/dev-mux` (91d41f1); the PR targets `dev-mux`.
+**Status:** built; §15 records every place the build departs from this design. **Branch:** `feat/mux-phase4` off `origin/dev-mux` (91d41f1); the PR targets `dev-mux`.
 **Predecessors:** Phase 0 (#472), Phase 1 (#474), Phase 2 (#489), Phase 3 (#499,
 `docs/superpowers/specs/2026-09-29-ntilde-mux-phase3.md`).
 
@@ -539,7 +539,10 @@ Every step runs through `ISshExecTransport`, with the same askpass and prompts a
    - **(c) Offline.** *Copy install command* puts the one-liner on the clipboard:
      `mkdir -p ~/.local/share/ntilde/bin && cd ~/.local/share/ntilde/bin && curl -fsSLo ntilde-mux.new <url> && curl -fsSL <url>.sha256 | sed 's/ .*/  ntilde-mux.new/' | sha256sum -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux`.
      On macOS it uses `shasum -a 256 -c`.
-   - A dev build, whose version has no release, offers (b) and (c) only.
+   - A version with no release (a dev build) ends up with (b) only: once (a) reports the release
+     missing, the dialog hides (c), whose one-liner would point at the same missing release, and
+     disables (a). A version that is not a plain release name (an empty one) offers only (b) from
+     the start (§15).
 3. **Upload** (§2 decision 4). One exec runs, with `<N>` the binary's size in bytes,
    `sh -c 'set -e; trap "" PIPE; trap "exit 1" HUP TERM; d="$HOME/.local/share/ntilde/bin"; mkdir -p "$d"; t="$d/.ntilde-mux.$$"; trap "rm -f \"\$t\"" EXIT; cat > "$t"; n=$(wc -c < "$t"); [ $n -eq <N> ] || { echo "ntilde-mux upload incomplete: expected <N> bytes" >&2; exit 1; }; chmod 755 "$t"; "$t" --version --json > /dev/null; mv -f "$t" "$d/ntilde-mux"; trap - EXIT; exec "$d/ntilde-mux" --version --json'`.
    The binary goes to its stdin, then EOF, and a progress bar tracks the bytes written.
@@ -791,3 +794,231 @@ longer names `cmd /c`.
   `.sha256` next to the asset.
 - Refresh `SSH_AUTH_SOCK` in long-lived remote shells (tmux's `update-environment`).
 - A winget alias for `ntilde.com`.
+
+Recorded during the build:
+
+- **Native exec latency floor.** `NativeSshExecTransport`'s poll thread sleeps 10 ms when idle, which
+  puts about 15 ms under every request round trip (attach of an empty session: 15 ms native against
+  2 ms over OpenSSH, §15). An event-driven wakeup from rusty_ssh would remove it; plain native tabs
+  poll at 25 ms.
+- **Password memory per (kind, host, user).** Add the host and user to the native `PasswordPrompt`
+  payload and key `RemoteMuxInteractionHandler`'s remembered secrets by them, so a profile with jump
+  hops and passwords can reconnect on its own (today it reconnects on Enter, §15).
+- **Vault password to a jump host (pre-existing, plain native tabs too).** `NativeSshPromptResponder`
+  allows vault reuse on the *first* Password prompt, and with jump hops that may be a jump host's
+  prompt, so the target's vault password can be sent to the jump host.
+- **Liveness knobs.** `RemoteMuxHostFactory.Create` does not expose `LivenessInterval` /
+  `LivenessTimeout` (`init` on `MuxConnectionHost`), so the Docker E2E runs at the production
+  15 s + 10 s.
+- **A host built only to deliver a kill stays connected.** It pings every 15 s and runs the reconnect
+  loop with no pane on the endpoint. Dispose a remote host once its kill queue drains and no pane uses
+  it.
+- **"Pane: Detach" on a remote tab.** Its toast says "Attach to session… to get it back", but the
+  picker lists local sessions only; until remote endpoints reach the picker (above), the toast should
+  name `ntilde-mux attach` on the host.
+- **The probe's glibc floor is higher than the binary's.** `RemoteHostProbe` refuses glibc below 2.35,
+  but both Linux binaries' highest symbol is `GLIBC_2.34`, so RHEL 9 and its rebuilds (glibc 2.34)
+  are refused although the binary would run. Lowering the floor to 2.34 means the probe's constant
+  and the CI/release ceiling (§10.2) together.
+- **The probe needs `ldd`.** `(ldd --version || getconf GNU_LIBC_VERSION) | head -n 1` keeps ldd's
+  "not found" line on a glibc host without `ldd` and refuses it; ask `getconf` first.
+- **`-N` / `-f` in a profile's extra SSH arguments** still break an OpenSSH exec channel; only
+  `-t`, `-tt` and `-T` are dropped.
+
+## 15. As built
+
+Where the build departs from §1-§14, one entry each, with the reason. Most were rulings made during
+review; the section they change is named first.
+
+### Carry-overs and protocol
+
+- **§4.1 Start token, not wall-clock start time.** On Linux the descriptor's `StartTime` holds the
+  `/proc/<pid>/stat` start time (clock ticks since boot) and must match exactly; elsewhere it is the
+  UTC start time within 1 s (`MuxDiscovery.GetProcessStartToken`, `MuxDaemonOptions.StartToken`).
+  .NET's Linux `Process.StartTime` is derived from the wall clock, so an NTP or VM clock step of more
+  than a second made a live daemon look dead and sent the launcher into its lock.
+- **§4.1 `kill-server --force`** reads the descriptor with the name-only check and leaves the start
+  check to the guard on the `Process` it is about to kill, so a recycled pid gets the specified
+  "pid N is no longer the multiplexer" message rather than a generic one.
+- **§4.9 `RefreshSessionInfoAsync` writes no sharing counts on a v2 daemon.** A thread-pool reply must
+  not overwrite a newer `sessionChanged`; `RefreshSharingAsync` (listSessions) carries
+  `InteractiveClients` instead.
+- **§4.10 The shared-close dialog focuses Detach.** A focused Cancel consumes Enter before `IsDefault`
+  is consulted, so Enter would cancel.
+- **§3 `ClientInstanceId` eviction** aborts each twin through the normal connection-close path, and a
+  connection records its own id only after evicting, so two simultaneous hellos with one id cannot
+  evict each other (both may survive; a reconnect is sequential). An id over 64 characters is
+  ignored and logged.
+
+### The daemon core and the binaries
+
+- **§6.2 `EnsureConnectedAsync` does the hello inside the connect-or-spawn loop, per attempt.** A daemon
+  idling out between accept and hello would otherwise surface as an `IOException` and a 30 s GUI
+  cooldown.
+- **§6.2 The spawner sets `NTILDE_APPDATA_ROOT` to its `MuxPaths.Root`.** The proxy spawns with its
+  host's paths, and a non-default root would otherwise start the daemon at the default one.
+- **§6.2 Surface:** `MuxCliHost.UsagePrefix` (`"ntilde mux"` / `"ntilde-mux"`) stands for
+  `ExecutableDisplayName`, and `MuxPaths.Default()` is added. The usage text lists only the host's
+  verbs and is normalised to `Environment.NewLine` (the CRLF checkout leaked CRLF into `ntilde-mux`
+  on Linux), and the version-mismatch hint names the host's own `kill-server --force`.
+- **§6.4 `MuxCliHost.AttachedToParentConsole` stays** (listed in §6.2, set by `Program.cs`), but no verb
+  reads it since the `cmd /c` hint went (§11.4).
+- **§2 decision 1 Managed SHA-256.** `MuxDiscovery`'s root hash uses `Ntilde.Mux.Contracts.Sha256`,
+  byte-identical to `SHA256.HashData`. On Linux every crypto call loads OpenSSL at run time, which
+  `ldd` does not show and the probe cannot check: `serve` aborted on debian:12-slim without libssl.
+  `LayeringTests.Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly` keeps
+  System.Security.Cryptography, System.Net.Security and System.Net.Http out of everything
+  `ntilde-mux` runs.
+- **§12.4 `ntilde-mux`'s IL references `Ntilde.Pty` as well as `Ntilde.Mux`.**
+  `MuxCliHost.SessionFactory` is a Pty type in Mux's public API; the csproj still references Mux only.
+- **§10.1 The csproj drops referenced projects' `.pdb`s from the publish**, which the one-file
+  assertion needs. The release job also asserts the binary reports the release version (the
+  installer reads it back), and `publish_mux_daemon` waits for `release_tests`.
+- **§10.2 osx-arm64 links `librusty_pty.a` statically too**, so no RID needed the `{exe, dylib}`
+  fallback. First CI run: linux-x64 6,199,568 B, linux-arm64 6,285,528 B, osx-arm64 5,805,608 B;
+  highest symbol `GLIBC_2.34` on both Linux legs.
+
+### Transports
+
+- **§7.1 The remote command is `sh -c 'exec "$HOME/.local/share/ntilde/bin/ntilde-mux" proxy --stdio'`**
+  unless the recorded path passes `RemoteMuxCommand.IsSafeAbsolutePath`, in which case it is
+  `<path> proxy --stdio`. sshd hands the command to the login shell, and fish, tcsh and nushell do not
+  all parse a bare `"$HOME/…"` alike; a single-quoted `sh` script with no single quote inside does.
+- **§7.1 The preamble wait is the host's connect timeout (120 s).** Native `Start` returns before
+  authentication, so the wait includes the user answering prompts.
+- **§7.1 Classifier order.** Loader and format errors (including musl's "Error loading shared
+  library") are checked before exit 127, which the dynamic loader also returns next to "not found" /
+  "No such file"; a native transport error is checked right after `VersionMismatch`, because the
+  native stderr tail holds the transport's message. A sixth kind, `NeedsUser`, is added (below).
+- **§8.2 `-o ControlMaster=no` comes before the plan's arguments, and `-t`/`-tt`/`-T` are dropped
+  from `ExtraSshArgs`.** OpenSSH takes the first value, so the hidden exec would otherwise become a
+  master that a visible tab rides on; a PTY corrupts the binary stream.
+- **§8.2 The askpass helper fills in the vault password only for a prompt that names the target's
+  `user@host`.** A ProxyJump hop's prompt would otherwise receive the target's password.
+- **§8.2 No `ISshAskPassLocator`.** The App passes the helper path (`SshAskPassCommand.LocateHelper()`).
+- **§8.3 Native stdout is a bounded byte queue** (`BoundedChunkQueue`, `Monitor` wait/pulse) that the
+  poll thread feeds directly, not a `Pipe`. `Pipe`'s default schedulers put thread-pool work on the
+  remote output path, against the multiplexer's no-thread-pool-on-the-output-path rule.
+- **§8.3 ABI details.** Handles are `usize` with 0 for a rejected call; the exit status reuses event
+  kind 7 and stderr is the new kind 14; a refused exec gives `Connected`, `Error`, `Closed`; a process
+  killed by a signal sends no exit status, so `Completion` is null (as for a killed OpenSSH channel).
+  `detect_login_shell` runs over `run_exec_collect`, and the exec session repeats its open-and-exec
+  pair: two exec paths, not the one §8.3 asked for.
+
+### Reconnect
+
+- **Automatic attempts are non-interactive** (§7.3 had every attempt call the normal connect).
+  `MuxConnectAttempt { Interactive }`: a user's request (a pane opening, Enter) is interactive; the
+  loop's attempts and the kill-delivery attempt are not. A network drop must not pop a dialog every
+  few seconds, nor send failed logins that fail2ban and lockouts count. Cost: password-only OpenSSH
+  profiles, and native profiles with jump hops and passwords, reconnect on Enter.
+- **OpenSSH automatic attempts** run with `BatchMode=yes`, no `SSH_ASKPASS`,
+  `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. A ProxyJump hop may not inherit `BatchMode`, and an
+  OpenSSH before 8.4 with no tty uses askpass whenever `DISPLAY` is set.
+- **Native automatic attempts** (`RemoteMuxInteractionHandler`) never reach the window's handler, so
+  neither dialogs nor the vault: a host key is accepted only when the app's native known-hosts store
+  already trusts it (rusty_ssh asks about the key on every connect); a password or passphrase is
+  offered only from the host's in-memory record of one that got an earlier attempt in (forgotten on
+  host dispose, and as soon as an attempt that offered it fails SSH or meets another auth prompt);
+  a password is never remembered or replayed for a profile with jump hops, since the prompt does not
+  say which hop asks.
+- **No empty password.** With nothing to answer, a native automatic attempt aborts by closing the
+  session instead of cancelling the prompt: rusty_ssh submits a cancel as an empty password (or empty
+  keyboard-interactive answers), which a server logs as a failed login on every retry.
+- **`NeedsUser` stops the loop at once** with `ReconnectAbandoned`. It is the native abort above, and
+  an automatic OpenSSH attempt refused with `Permission denied` (exit 255). Spending the 10-minute
+  budget would be about 25 pre-auth connections that fail2ban counts. The factory treats it like
+  `SshFailed`.
+- **§7.3 A user's request never joins an automatic attempt.** It cancels the automatic attempt in
+  flight and starts an interactive one (then resets the backoff); a joined automatic attempt would
+  fail for want of a prompt.
+- **§7.2 Liveness counts byte progress.** The link is dead only when no inbound byte arrived within
+  10 s of the ping (a read-stream wrapper stamps every read), and a tick is skipped while the
+  previous ping is unanswered. A ping queued behind a large snapshot on a slow link would otherwise
+  cut a healthy link into a reattach loop.
+- **§7.3 A loss is classified by the lost client's own channel**, waiting at most 1 s for its exit
+  code, and a host clears its last failure when a new attempt starts, so a stale `NotInstalled`
+  cannot label a later timeout.
+- **Queued kills** survive `ReconnectAbandoned` (budget or `NeedsUser`) and are sent, before
+  `Reconnected` is raised, on any later connect, a user's Enter included: the user's intent to end
+  those shells still stands. They are dropped, with a log line, on `DaemonStopped` (the daemon's
+  sessions ended with it, and delivering them would start a new daemon) and on host dispose.
+- **§5 Every close of a non-local pane goes through `KillWhenConnected`,** whatever the session's
+  `IsConnected` says, and through `GetOrCreate` even for a never-spawned pending id; an idle remote
+  host starts one non-interactive attempt to deliver the kill. A kill sent into a silently dead link
+  was lost, and a never-shown restored tab had no host at all.
+
+### Factory and pane
+
+- **§7.5 A new tab whose connect fails (`SshFailed`, `NeedsUser`, a timeout, or a host that cannot be
+  set up) gets `DaemonUnreachable`, no session, no id and the retry banner; no plain-SSH fallback.**
+  Plain SSH would only repeat the SSH failure and its prompts. A failure after the client connected
+  (a spawn RPC) still falls back to plain SSH, as do `NotInstalled`, `Unsupported`,
+  `VersionMismatch` and `ProxyFailed`.
+- **§7.5 Notice actions.** Only `NotInstalled` (*Install ntilde-mux…*) and `VersionMismatch`
+  (*Update ntilde-mux…*) carry one; `Unsupported` and `ProxyFailed` carry none (§7.5 listed
+  `Unsupported` both ways). A toast with an action does not auto-hide, remote notices merge by title
+  and message (so an action sits next to its own host's line), and an unreachable notice is raised
+  only when SSH itself worked.
+- **§7.6 A pane whose profile lost the flag keeps its pending `ssh:` id for its whole life**, not for
+  one save. Turning the flag back on can still reattach the shell; dropping the id would orphan a
+  shell nothing can adopt.
+- **§7.4 Keys are swallowed while a remote connect is in flight.** The connect may be waiting on a
+  prompt, and a second Enter would only join it.
+- **§7.4 A pane at the daemon-stopped banner waits for its own Enter** (a later `Reconnected` does not
+  revive it, since its session went with the daemon), and a pane whose Enter is armed ignores a later
+  `ConnectionLost`.
+
+### Install flow
+
+- **§9 step 3 The upload script** (the text in §9 is final): a byte count after `cat`, a trial
+  `--version --json` before `mv -f`, a cleanup trap that expands `$t` only when it fires, `SIGPIPE`
+  ignored and `HUP`/`TERM` exiting through the trap. A cancelled or timed-out upload ends with stdin's
+  EOF, which `cat` takes as the whole file; an odd `$HOME` broke or ran the eager trap; dash runs no
+  EXIT trap on a signal. Verified under dash and bash, with fish and tcsh as login shells.
+- **§9 step 2(b)/4 Platform checks.** A local file's ELF or Mach-O header must name the probed RID
+  (a universal macOS binary is refused), and an installed binary that reports another RID stays
+  installed with a warning.
+- **§9 step 2(c) Copy install command** uses the profile's recorded RID, or else one probe exec, and is
+  hidden (with Install disabled) after the release download reports the release missing.
+- **§9 step 4 Recording an install** goes through `SshConnectionService.RecordRemoteMuxInstall`, which
+  changes only the four `SshMuxOptions` fields on the store's own copy. The editor view-model's
+  normalisation dropped `ControlPath` and zeroed `ControlPersistSeconds`.
+- **§9 Surface:** the dialog's installer factory also receives the dialog's `report` and `progress`;
+  `RemoteMuxInstaller.ProbeAsync` and `RemoteMuxInstallResult.ReleaseMissing` are added.
+
+### `ntilde.com`
+
+- **§11.3 `LauncherRelease.Discard()` is the first statement of the mux branch.** A daemon started by
+  `mux attach` would otherwise pass `NTILDE_LAUNCHER_RELEASE` to its shells, and a GUI started from
+  one would release the attach's launcher.
+- **§11.1 The child gets the launcher's own `STARTUPINFO`** (`GetStartupInfoW`), so redirected stdio
+  flows through.
+- **§11.4 The PATH hooks are registered on Windows only** and log to Velopack's log inside a hook
+  process; a `Path` value that is not a string is refused rather than read as empty, and the registry
+  is written only when the value changes.
+
+### Phase 3 defects found and fixed
+
+- **A user detach could lose `DetachedByUser`.** When a broadcast dropped a just-closed connection's
+  sink (its frames are refused) before that connection's queued user detach ran on the parse thread,
+  the detach found no sink and decided nothing, so the deliberately detached shell was re-adopted at
+  the next launch. A refusal drop that leaves no interactive subscriber now records the dropped
+  sink, and that sink's own detach, when it arrives, decides as it would have. Found through an
+  arm64-only `AttachModeTests` failure.
+- **`mux attach` could lose its own detach.** `MuxClient.Dispose` closes without draining, and the
+  attach verb disposed right after posting the user detach; it now awaits a bounded ping (at most
+  1 s) first, the pattern `MuxConnectionHost.Dispose` already used.
+
+### Tests
+
+- **§12.3** The Docker E2E is `tests/Ntilde.App.Tests/Shell/Mux/Remote/RemoteMuxDockerE2eTests.cs`,
+  with `Category=DockerE2E` and no `Lane` trait, in its own non-parallel collection, and with its own
+  known-hosts store passed through `RemoteMuxHostFactory.Create(…, isTrustedHostKey)`. Both transports
+  pass against a real sshd: the drop was noticed 25.1-25.3 s after the disconnect (the production
+  15 s + 10 s liveness), `top` kept its pid through the drop and a killed proxy, and a killed daemon
+  gave `DaemonStopped`, then `PreviousLost`. Attach latency, median of 5 (Docker Desktop, same
+  machine): OpenSSH 2.0 ms empty, 123 ms with 10 000 lines (a 12.9 MB snapshot); native 15.2 ms and
+  123 ms.
+- **§12.1** The kill-server start-time test lives in `MuxCliTests`, not a separate
+  `MuxCliKillServerTests`.
