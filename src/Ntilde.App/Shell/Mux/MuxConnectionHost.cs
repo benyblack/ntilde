@@ -42,6 +42,10 @@ internal sealed class MuxConnectionHost : IDisposable
     // Captured once: CancellationTokenSource.Token throws once the source is disposed, and Dispose
     // disposes it while a connect attempt may still hold (or be about to read) the token.
     private readonly CancellationToken _disposedToken;
+    // Set under _gate by Dispose, which cancels _disposed only after leaving the lock (cancelling runs the
+    // token's callbacks, a connector ending its channel among them, and none may run under the host's lock).
+    // Read under the lock everywhere it decides something, and lock-free (hence volatile) where it only skips work.
+    private volatile bool _closed;
     private MuxClient? _client;
     private Task<MuxClient>? _connecting;
     private AttemptState? _connectingState; // what _connecting was started as
@@ -216,7 +220,7 @@ internal sealed class MuxConnectionHost : IDisposable
         {
             lock (_gate)
             {
-                if (_disposed.IsCancellationRequested) return false;
+                if (_closed) return false;
                 if (_client is { IsConnected: true }) return false;
                 // Before the in-flight check: a caller that already timed out on the running attempt must
                 // not make the next pane wait on it again.
@@ -256,7 +260,7 @@ internal sealed class MuxConnectionHost : IDisposable
                     bool takenOver;
                     lock (_gate)
                     {
-                        if (_disposed.IsCancellationRequested) { client.Dispose(); throw new ObjectDisposedException(nameof(MuxConnectionHost)); }
+                        if (_closed) { client.Dispose(); throw new ObjectDisposedException(nameof(MuxConnectionHost)); }
                         takenOver = state.Superseded;
                         if (!takenOver)
                         {
@@ -313,7 +317,7 @@ internal sealed class MuxConnectionHost : IDisposable
         catch (AggregateException ex)
         {
             // A callback registered on it threw: what was cancelled is cancelled all the same.
-            _log?.Invoke($"[Mux] cancelling failed: {ex.GetBaseException().Message}");
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: cancelling failed: {ex.GetBaseException().Message}");
         }
         catch (ObjectDisposedException)
         {
@@ -450,7 +454,7 @@ internal sealed class MuxConnectionHost : IDisposable
         bool idle = false;
         lock (_gate)
         {
-            disposed = _disposed.IsCancellationRequested;
+            disposed = _closed;
             if (!disposed)
             {
                 live = _client is { IsConnected: true } c ? c : null;
@@ -502,7 +506,7 @@ internal sealed class MuxConnectionHost : IDisposable
 
     private void OnKillFailed(Guid sessionId, Exception error)
     {
-        if (error is IOException && !_disposed.IsCancellationRequested)
+        if (error is IOException && !_closed)
         {
             // The connection closed before the daemon answered, so the kill may never have arrived: again
             // on the next connection. A second kill of a session already gone only fails.
@@ -539,7 +543,7 @@ internal sealed class MuxConnectionHost : IDisposable
         TaskCompletionSource? killsSent = null;
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested) return; // Dispose closes it
+            if (_closed) return; // Dispose closes it
             // No longer the host's client (it dropped, and a new attempt started, before this ran): nothing to
             // watch, and the queued kills wait for that attempt.
             if (!ReferenceEquals(client, _client)) return;
@@ -593,7 +597,7 @@ internal sealed class MuxConnectionHost : IDisposable
         string why;
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested || !ReferenceEquals(client, _watched) || ReferenceEquals(client, _lost)) return;
+            if (_closed || !ReferenceEquals(client, _watched) || ReferenceEquals(client, _lost)) return;
             _lost = client;
             StopWatchingLocked();
             why = ReferenceEquals(client, _droppedByPing) && _droppedReason is { } dropped ? dropped : reason ?? "disconnected";
@@ -625,7 +629,7 @@ internal sealed class MuxConnectionHost : IDisposable
         Guid[] moot = [];
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested) return;
+            if (_closed) return;
             if (kind == MuxDisconnectKind.DaemonStopped)
             {
                 RaiseLocked(nameof(DaemonStopped), () => Invoke(nameof(DaemonStopped), DaemonStopped));
@@ -719,7 +723,7 @@ internal sealed class MuxConnectionHost : IDisposable
         Task<MuxClient>? userAttempt = null;
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested || _episode != Episode.Reconnecting) return;
+            if (_closed || _episode != Episode.Reconnecting) return;
             if (failed is not null && !ReferenceEquals(failed, _connecting))
             {
                 why = $"{why}, from an attempt a user's request superseded: not giving up on it";
@@ -769,7 +773,7 @@ internal sealed class MuxConnectionHost : IDisposable
         CancellationTokenSource ping;
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested || !ReferenceEquals(client, _watched) || ReferenceEquals(client, _lost) || !client.IsConnected) return;
+            if (_closed || !ReferenceEquals(client, _watched) || ReferenceEquals(client, _lost) || !client.IsConnected) return;
             _livenessTick = Scheduler.Schedule(LivenessInterval, () => OnLivenessTick(client));
             if (_ping is not null) return; // the previous ping is still unanswered: skip this tick
             ping = _ping = new CancellationTokenSource();
@@ -850,7 +854,7 @@ internal sealed class MuxConnectionHost : IDisposable
         _events = _events.ContinueWith(
             _ =>
             {
-                if (_disposed.IsCancellationRequested) return;
+                if (_closed) return;
                 try
                 {
                     raise();
@@ -936,8 +940,8 @@ internal sealed class MuxConnectionHost : IDisposable
         Guid[] dropped;
         lock (_gate)
         {
-            if (_disposed.IsCancellationRequested) return;
-            _disposed.Cancel();
+            if (_closed) return;
+            _closed = true;
             client = _client;
             _client = null;
             loop = _loop;
@@ -946,12 +950,14 @@ internal sealed class MuxConnectionHost : IDisposable
             dropped = DrainQueuedKillsLocked();
         }
 
+        // Outside the lock, as TryStartConnecting cancels a superseded attempt: cancelling runs the token's
+        // callbacks - the attempt in flight ending its channel - and none of them may run under the host's lock.
+        CancelQuietly(_disposed);
         loop?.Dispose();
         LogDroppedKills(dropped, "the host is closing");
 
-        // Safe to dispose now: the disposed checks above and in the connect attempt read
-        // IsCancellationRequested (valid after Dispose), and the attempt holds the token captured in
-        // the constructor, never _disposed.Token.
+        // Safe to dispose now: every disposed check reads _closed, and the attempt holds the token captured
+        // in the constructor, never _disposed.Token.
         _disposed.Dispose();
 
         try

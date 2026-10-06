@@ -233,9 +233,10 @@ public sealed class MuxConnectionHostsTests
     }
 
     /// <summary>
-    /// A remote host whose Dispose throws (here a transport callback on its disposal token) is logged and
-    /// skipped: the other remote and the local host still close, and nothing escapes into the window's
-    /// teardown, which has no try/catch of its own around this.
+    /// A remote host whose Dispose throws (here its connector's) is logged and skipped: the other remote and
+    /// the local host still close, and nothing escapes into the window's teardown, which has no try/catch of
+    /// its own around this. A transport callback that throws when the host cancels its attempt (final review
+    /// I2: cancelled outside the host's lock) is logged by the host, and its Dispose goes on to the end.
     /// </summary>
     [Fact]
     public void A_remote_host_that_fails_to_dispose_is_logged_and_the_rest_still_close()
@@ -252,7 +253,10 @@ public sealed class MuxConnectionHostsTests
                     ct.Register(() => throw new InvalidOperationException("transport teardown failed"));
                     return Task.FromException<MuxClient>(new MuxUnavailableException("down"));
                 },
-                "bad", null, MuxHostPolicy.Remote("bad box"))
+                "bad", logs.Enqueue, MuxHostPolicy.Remote("bad box"))
+            {
+                Connector = new ThrowingDisposable("connector teardown failed"),
+            }
             : On(goodMux, "good", MuxHostPolicy.Remote("good box")), logs.Enqueue);
         MuxClient localClient = local.GetClient(TimeSpan.FromSeconds(5))!;
         MuxClient goodClient = hosts.GetOrCreate(good)!.GetClient(TimeSpan.FromSeconds(5))!;
@@ -261,7 +265,13 @@ public sealed class MuxConnectionHostsTests
         hosts.Dispose();
 
         Assert.Contains(logs, l => l.Contains("bad box", StringComparison.Ordinal) && l.Contains("transport teardown failed", StringComparison.Ordinal));
+        Assert.Contains(logs, l => l.Contains("bad box", StringComparison.Ordinal) && l.Contains("connector teardown failed", StringComparison.Ordinal));
         Assert.False(goodClient.IsConnected);
         Assert.False(localClient.IsConnected);
+    }
+
+    private sealed class ThrowingDisposable(string message) : IDisposable
+    {
+        public void Dispose() => throw new InvalidOperationException(message);
     }
 }
