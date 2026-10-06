@@ -31,11 +31,11 @@ public sealed class MuxCliHost
     /// </summary>
     public Action? PrepareForegroundConsole { get; init; }
 
-    /// <summary>The executable attached to its parent's console for <c>attach</c> (Windows): the keyboard may be shared.</summary>
+    /// <summary>
+    /// The executable attached to its parent's console for <c>attach</c> (Windows), as spec §6.2 lists it.
+    /// Phase 3's <c>cmd /c</c> hint was its reader; ntilde.com retired that hint (spec §11.4), and no verb reads it now.
+    /// </summary>
     public bool AttachedToParentConsole { get; init; }
-
-    /// <summary>The GUI's executable, for <c>attach</c>'s console hint (removed with the <c>cmd /c</c> hint, spec §11.4).</summary>
-    public bool IsGuiExecutable { get; init; }
 
     /// <summary>This build's version, for the <c>version</c> verb.</summary>
     public string Version { get; init; } = "";

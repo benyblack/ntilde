@@ -30,7 +30,21 @@ class Program
             // Velopack also applies an already-downloaded update here by default. That must not
             // happen behind a live multiplexer daemon: the in-app apply path asks before closing
             // its sessions and shuts it down first, and this one would do neither (spec §9).
-            VelopackApp.Build()
+            VelopackApp velopack = VelopackApp.Build();
+
+            // The install directory goes on the user PATH, so a prompt finds ntilde.com there
+            // (Phase 4 spec §11.4). Fast callbacks run only when Velopack starts this exe for that
+            // stage, and the process exits after them; a normal start never reaches them. Velopack
+            // offers them on Windows only, which is where they are needed.
+            if (OperatingSystem.IsWindows())
+            {
+                velopack = velopack
+                    .OnAfterInstallFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
+                    .OnAfterUpdateFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
+                    .OnBeforeUninstallFastCallback(static _ => UserPathRegistration.Remove(InstallDirectory()));
+            }
+
+            velopack
                 .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(
                     args,
                     static () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(
@@ -141,6 +155,13 @@ class Program
         if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args)) return false;
         return !liveDaemon();
     }
+
+    /// <summary>
+    /// The directory a Velopack hook runs this exe from: the install's stable <c>current</c> folder, which
+    /// holds ntilde.com beside it (spec §11.4). Null only if the process path is unknown, which
+    /// <see cref="UserPathRegistration"/> logs and skips.
+    /// </summary>
+    private static string? InstallDirectory() => System.IO.Path.GetDirectoryName(Environment.ProcessPath);
 
     /// <summary>
     /// Maps the PTY layer's severity onto the app's.

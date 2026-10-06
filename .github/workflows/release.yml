@@ -624,6 +624,61 @@ jobs:
           RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
         run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/publish/${{ matrix.rid }}
 
+      # ---- ntilde.com, the console launcher (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
+      # ---- §10.3, §11). A GUI-subsystem Ntilde.exe is started and forgotten by a prompt, so
+      # ---- `ntilde mux attach` came straight back to it; ntilde.com beside it is found first
+      # ---- (PATHEXT ranks .COM ahead of .EXE), waits, and forwards the exit code. The Velopack
+      # ---- install hook puts this directory on the user PATH.
+      #
+      # Published to its own directory, then smoked, then copied into the bundle as ntilde.com
+      # BEFORE the bundle's smoke gate, Archive bundle and vpk pack: the zip and the Velopack
+      # package both ship what is in artifacts/publish/win-x64, and nothing else adds it.
+      # Its project makes IL2026/IL3050 and every other warning errors, so a regression fails
+      # this publish. Version through env, as for the App's publish above.
+      - name: Publish ntilde.com launcher
+        if: matrix.rid == 'win-x64'
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+        run: dotnet publish src/Ntilde.Launcher/Ntilde.Launcher.csproj -c "$CONFIGURATION" -r win-x64 "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/launcher
+
+      # BLOCKING, like the bundle's gate below, and for the same reason: nothing else runs the
+      # AOT launcher this release ships. One real run in a temporary directory, beside a copy of
+      # cmd.exe named Ntilde.exe - `ntilde.com /d /c exit 7` must exit 7, which passes through its
+      # kernel32 P/Invokes, the [UnmanagedCallersOnly] console-control handler, CreateProcessW with
+      # the raw command-line tail and the exit-code forwarding. A separate directory, so the cmd
+      # copy never sits in the bundle; cmd exits with whatever code it is told, which the real
+      # Ntilde.exe has no verb for. Only then does the launcher join the bundle.
+      - name: Smoke ntilde.com and add it to the bundle (blocking)
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # A non-zero exit is the point of this run; it must reach $LASTEXITCODE, not throw.
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $launcher = Join-Path $PWD 'artifacts/launcher/Ntilde.Launcher.exe'
+          if (-not (Test-Path $launcher)) { throw "The launcher publish produced no Ntilde.Launcher.exe at $launcher." }
+          Write-Output ("Ntilde.Launcher.exe: {0:N0} bytes" -f (Get-Item $launcher).Length)
+
+          $dir = Join-Path $env:RUNNER_TEMP 'ntilde-launcher-smoke'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item $launcher (Join-Path $dir 'ntilde.com') -Force
+          Copy-Item (Join-Path $env:SystemRoot 'System32/cmd.exe') (Join-Path $dir 'Ntilde.exe') -Force
+
+          & (Join-Path $dir 'ntilde.com') /d /c exit 7
+          $code = $LASTEXITCODE
+          if ($code -ne 7) {
+            throw "ntilde.com beside a cmd.exe named Ntilde.exe exited $code for '/d /c exit 7', not 7: the AOT launcher did not start its Ntilde.exe with the raw tail, or did not forward the exit code. Do not release a bundle whose ntilde.com cannot run its Ntilde.exe."
+          }
+          Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
+
+          $bundle = Join-Path $PWD 'artifacts/publish/win-x64'
+          if (-not (Test-Path (Join-Path $bundle 'Ntilde.exe'))) { throw "The bundle has no Ntilde.exe at $bundle for ntilde.com to start." }
+          Copy-Item $launcher (Join-Path $bundle 'ntilde.com') -Force
+          if (-not (Test-Path (Join-Path $bundle 'ntilde.com'))) { throw "ntilde.com did not reach $bundle." }
+          Write-Output "ntilde.com is in the bundle beside Ntilde.exe."
+
       # ---- BLOCKING release gate for the Windows bundle, and deliberately placed here:
       # ---- everything below (Archive bundle, Upload release asset, vpk pack, Upload
       # ---- installer) is downstream, so a bundle that cannot start never reaches the

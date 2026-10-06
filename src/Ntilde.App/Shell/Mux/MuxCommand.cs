@@ -61,13 +61,5 @@ public static class MuxCommand
         // launching console); serve --foreground binds it through this.
         PrepareForegroundConsole = CliConsoleBindings.Prepare,
         AttachedToParentConsole = AttachedToParentConsole,
-        IsGuiExecutable = !IsCliShim(),
     };
-
-    /// <summary>
-    /// The dev-only Ntilde.Cli shim runs this adapter too. It is a console executable that never sets
-    /// <see cref="AttachedToParentConsole"/>, so the GUI's keyboard-sharing hint is not for it.
-    /// </summary>
-    private static bool IsCliShim() =>
-        string.Equals(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name, "Ntilde.Cli", StringComparison.Ordinal);
 }

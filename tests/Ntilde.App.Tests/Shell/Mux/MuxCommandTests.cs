@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Ntilde.Mux;
 using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
@@ -8,7 +9,7 @@ namespace Ntilde.Tests.Shell.Mux;
 
 /// <summary>
 /// The App's adapter over <c>Ntilde.Mux.Cli</c> (Phase 4 spec §6.4): dispatch, the usage text it
-/// must keep, the console hint, and the root override reaching serve. The verbs
+/// must keep, the absence of the old console hint, and the root override reaching serve. The verbs
 /// themselves are tested where they live, in Ntilde.Mux.Tests' <c>MuxCliTests</c>.
 /// </summary>
 public sealed class MuxCommandTests : IDisposable
@@ -54,9 +55,11 @@ public sealed class MuxCommandTests : IDisposable
         """;
 
     private static readonly string PreMoveUsage = PreMoveUsageLiteral.ReplaceLineEndings();
-    private static readonly string PreMoveAttachUsage = PreMoveAttachUsageLiteral.ReplaceLineEndings();
+    private static readonly string AttachUsage = AttachUsageLiteral.ReplaceLineEndings();
 
-    private const string PreMoveAttachUsageLiteral = """
+    // The pre-move attach help, less its Windows paragraph: the `cmd /c` workaround went when ntilde.com
+    // arrived (Phase 4 spec §11.4), which waits like any console program, so the prompt no longer competes.
+    private const string AttachUsageLiteral = """
         Usage: ntilde mux attach <sessionId|prefix> [--read-only]
 
           Shows a multiplexer session in this terminal. The id (or a unique prefix of at least
@@ -64,10 +67,6 @@ public sealed class MuxCommandTests : IDisposable
           Ctrl+\ Ctrl+\ sends a literal Ctrl+\. --read-only shows the session without sending
           input (a convenience, not a security boundary). Exit codes: 0 detached, 1 the session
           ended, 2 an error.
-
-          Windows: from PowerShell, or any prompt that does not wait for GUI programs, run
-            cmd /c ntilde mux attach <id>
-          so the prompt does not compete for your keystrokes.
         """;
 
     [Theory]
@@ -102,13 +101,23 @@ public sealed class MuxCommandTests : IDisposable
     }
 
     [Fact]
-    public void The_attach_help_is_unchanged()
+    public void The_attach_help_is_the_pre_move_text_without_the_workaround()
     {
         var (code, output, err) = Run("mux", "attach", "--help");
 
         Assert.Equal(0, code);
-        Assert.Equal(PreMoveAttachUsage + Environment.NewLine, output);
+        Assert.Equal(AttachUsage + Environment.NewLine, output);
         Assert.Equal(string.Empty, err);
+    }
+
+    [Fact]
+    public void Attach_usage_no_longer_mentions_cmd_c()
+    {
+        var (_, help, _) = Run("mux", "attach", "--help");
+        var (_, _, usage) = Run("mux", "attach");
+
+        Assert.DoesNotContain("cmd /c", help, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cmd /c", usage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -134,23 +143,46 @@ public sealed class MuxCommandTests : IDisposable
         Assert.Equal("No multiplexer is running." + Environment.NewLine, err);
     }
 
-    [Theory]
-    [InlineData(true, true, true)]     // the GUI exe, attached to a parent console: the only case that shares the keyboard
-    [InlineData(true, false, false)]   // allocated its own console (Explorer), or Ntilde.Cli.exe
-    [InlineData(false, true, false)]   // not Windows
-    public void The_console_hint_is_printed_only_for_the_GUI_exe_on_a_parent_console(bool isWindows, bool attachedToParent, bool expected)
+    /// <summary>
+    /// Phase 3 printed a <c>cmd /c</c> hint here, before raw mode, for the GUI exe on a parent console - the
+    /// one case that shared the keyboard with the prompt. ntilde.com ended that (spec §11.4), so an attach
+    /// in exactly that case now writes nothing to stderr.
+    /// </summary>
+    [Fact]
+    public async Task Attach_from_a_parent_console_prints_no_hint()
     {
+        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        using var daemon = new MuxDaemonHost(server, new MuxDaemonOptions
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+            IdleExitAfter = TimeSpan.Zero,
+        });
+        daemon.Start();
+        Guid id;
+        using (Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5)))
+        using (MuxClient c = await MuxClient.ConnectAsync(s, null, Ct))
+        {
+            id = await MuxTestHost.SpawnAsync(c);
+        }
+
+        using var console = new FakeConsoleSurface(80, 24);
         bool previous = MuxCommand.AttachedToParentConsole;
-        MuxCommand.AttachedToParentConsole = attachedToParent;   // as Program.cs sets it from PrepareInteractive
+        MuxCommand.AttachedToParentConsole = true;   // as Program.cs sets it from PrepareInteractive
+        MuxCli.ConsoleFactoryForTest = () => console;
         try
         {
-            string? hint = MuxCli.AttachConsoleHint(isWindows, MuxCommand.CreateHost(_root), "abcd1234");
+            Task<(int Code, string Out, string Err)> run = Task.Run(() => Run("mux", "attach", id.ToString("N")[..8]), Ct);
+            await TestWait.UntilAsync(() => console.IsRaw, "the text client took the console");
+            console.Type("\u001cd");
 
-            Assert.Equal(expected, hint is not null);
-            if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde mux attach abcd1234 (ignore if already under cmd /c)", hint);
+            var (code, _, err) = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+            Assert.Equal(0, code);
+            Assert.Equal(string.Empty, err);
         }
         finally
         {
+            MuxCli.ConsoleFactoryForTest = null;
             MuxCommand.AttachedToParentConsole = previous;
         }
     }

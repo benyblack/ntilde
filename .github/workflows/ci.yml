@@ -1657,6 +1657,47 @@ jobs:
           Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
           Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
 
+      # ntilde.com (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md §10.2, §11): the
+      # console launcher release.yml ships beside Ntilde.exe, so a prompt waits for
+      # `ntilde mux attach` and gets its exit code. Its own NativeAOT publish - IL2026/IL3050
+      # and every other warning are errors in Ntilde.Launcher.csproj, so a regression fails
+      # here - and the same invocation as release.yml's, minus -p:Version.
+      #
+      # CONFIGURATION is the workflow-level env, read as $env: rather than interpolated into
+      # the script (the rule aot_gate_detect cites).
+      - name: Publish ntilde.com launcher (win-x64)
+        shell: pwsh
+        run: dotnet publish src/Ntilde.Launcher/Ntilde.Launcher.csproj -c $env:CONFIGURATION -r win-x64 -p:TrimmerSingleWarn=false -o artifacts/launcher
+
+      # One real run, not just "the exe exists": beside a copy of cmd.exe named Ntilde.exe,
+      # `ntilde.com /d /c exit 7` must exit 7. That passes through everything only the AOT
+      # build can break and no unit test runs - its kernel32 P/Invokes, the
+      # [UnmanagedCallersOnly] console-control handler it registers first, CreateProcessW with
+      # the raw command-line tail, and the exit-code forwarding. A temporary directory, so the
+      # cmd copy never sits in a published one.
+      - name: Smoke the published launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # A non-zero exit is the point of this run; it must reach $LASTEXITCODE, not throw.
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $launcher = Join-Path $PWD 'artifacts/launcher/Ntilde.Launcher.exe'
+          if (-not (Test-Path $launcher)) { throw "The launcher publish produced no Ntilde.Launcher.exe at $launcher." }
+          Write-Output ("Ntilde.Launcher.exe: {0:N0} bytes" -f (Get-Item $launcher).Length)
+
+          $dir = Join-Path $env:RUNNER_TEMP 'ntilde-launcher-smoke'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item $launcher (Join-Path $dir 'ntilde.com') -Force
+          Copy-Item (Join-Path $env:SystemRoot 'System32/cmd.exe') (Join-Path $dir 'Ntilde.exe') -Force
+
+          & (Join-Path $dir 'ntilde.com') /d /c exit 7
+          $code = $LASTEXITCODE
+          if ($code -ne 7) {
+            throw "ntilde.com beside a cmd.exe named Ntilde.exe exited $code for '/d /c exit 7', not 7: the AOT launcher did not start its Ntilde.exe with the raw tail, or did not forward the exit code."
+          }
+          Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
+
       # The logs are the whole diagnostic value when this job fails, and a failed GUI
       # launch on a runner is exactly the case nobody can reproduce locally.
       - name: Upload smoke logs

@@ -69,10 +69,6 @@ public static class MuxCli
           Ctrl+\ Ctrl+\ sends a literal Ctrl+\. --read-only shows the session without sending
           input (a convenience, not a security boundary). Exit codes: 0 detached, 1 the session
           ended, 2 an error.
-
-          Windows: from PowerShell, or any prompt that does not wait for GUI programs, run
-            cmd /c {host.UsagePrefix} attach <id>
-          so the prompt does not compete for your keystrokes.
         """.ReplaceLineEndings();
 
     /// <summary>Test seam: the console `attach` draws on. Null = the real terminal (ConsoleSurfaces.Create).</summary>
@@ -469,9 +465,6 @@ public static class MuxCli
                 return 2;
             }
 
-            // Before the surface exists, so before raw mode: the line must read as a normal line.
-            if (AttachConsoleHint(OperatingSystem.IsWindows(), host, target) is { } hint) stderr.WriteLine(hint);
-
             IConsoleSurface console;
             try
             {
@@ -491,16 +484,6 @@ public static class MuxCli
             }
         }
     }
-
-    /// <summary>
-    /// The review's decision 1: the GUI exe on a parent console shares the keyboard with a prompt that
-    /// does not wait for it. One line on stderr, before raw mode. Null when it does not apply: off
-    /// Windows, in a console executable, or on a console of the process's own.
-    /// </summary>
-    internal static string? AttachConsoleHint(bool isWindows, MuxCliHost host, string target) =>
-        isWindows && host.IsGuiExecutable && host.AttachedToParentConsole
-            ? $"mux: if keystrokes are lost, run via cmd /c {host.UsagePrefix} attach {target} (ignore if already under cmd /c)"
-            : null;
 
     private static bool IsEnclosingSession(Guid target, string? enclosing) =>
         Guid.TryParse(enclosing, out Guid inside) && inside == target;

@@ -285,11 +285,6 @@ Shows a multiplexer session in this terminal, without going through the GUI.
   would loop. Attaching to a *different* session from inside one works.
 - Exit codes: `0` you detached, `1` the session exited or was killed, `2` a usage or connection
   error.
-- On Windows, run it as `cmd /c ntilde mux attach <id>` from PowerShell: a plain PowerShell prompt
-  does not wait for a GUI-subsystem program and competes with it for the keyboard. `ntilde mux
-  attach --help` prints this workaround, and running it directly from a console prints a one-line
-  hint to the same effect before the terminal goes raw. A proper `ntilde.com` console launcher is
-  planned for Phase 4.
 
 #### `ntilde mux kill-server --force`
 

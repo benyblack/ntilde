@@ -206,6 +206,31 @@ public class CliCommandDispatchTests
     }
 
     /// <summary>
+    /// Phase 4 spec §11.4: the install directory goes on the user PATH from Velopack's install and update
+    /// hooks and comes off in its uninstall hook - and from nowhere else. Those fast callbacks run only when
+    /// Velopack starts the exe for that stage (and it exits after them), so registering them is all
+    /// <c>Main</c> may do: a direct <c>UserPathRegistration</c> call would rewrite the PATH on every start.
+    /// </summary>
+    [Fact]
+    public void The_PATH_is_registered_only_from_the_Velopack_hooks()
+    {
+        MethodInfo main = App.GetType("Ntilde.Program", throwOnError: true)!
+            .GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        List<MethodBase> calls = CalledMethods(main);
+        int IndexOf(string method) => calls.FindIndex(m => m.Name == method && m.DeclaringType?.FullName == "Velopack.VelopackApp");
+
+        int run = IndexOf("Run");
+        Assert.True(run >= 0, "App Program.Main no longer calls VelopackApp.Run.");
+        foreach (string hook in new[] { "OnAfterInstallFastCallback", "OnAfterUpdateFastCallback", "OnBeforeUninstallFastCallback" })
+        {
+            int site = IndexOf(hook);
+            Assert.True(site >= 0 && site < run, $"App Program.Main must register VelopackApp.{hook} before VelopackApp.Run.");
+        }
+
+        Assert.DoesNotContain(calls, m => m.DeclaringType?.Name == "UserPathRegistration");
+    }
+
+    /// <summary>
     /// Phase 4 spec §12.4: <c>ntilde-mux</c> has no verbs of its own. Its <c>Main</c> hands every
     /// argument to <c>Ntilde.Mux.Cli.MuxCli.Execute</c>, so a verb added there reaches the remote binary
     /// and the App's <c>ntilde mux</c> alike, and the two cannot drift into separate dispatch tables.

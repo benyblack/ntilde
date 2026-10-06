@@ -11,7 +11,7 @@ namespace Ntilde.Mux.Tests.Cli;
 /// <summary>
 /// The mux verbs, moved from App.Tests' <c>MuxCommandTests</c> with the code they cover (Phase 4
 /// spec §6.4). They run against a host shaped like the standalone <c>ntilde-mux</c>; the App adapter
-/// keeps its own tests for what it supplies (dispatch, its usage text, the console hint, the root override).
+/// keeps its own tests for what it supplies (dispatch, its usage text, the root override).
 /// </summary>
 public sealed class MuxCliTests : IDisposable
 {
@@ -31,7 +31,7 @@ public sealed class MuxCliTests : IDisposable
     }
 
     private MuxCliHost Host(MuxCliVerbs verbs = Offered, ITerminalSessionFactory? sessions = null, Action? prepareForegroundConsole = null,
-        bool isGuiExecutable = false, bool attachedToParentConsole = false) => new()
+        bool attachedToParentConsole = false) => new()
         {
             Paths = new MuxPaths(_root),
             UsagePrefix = Prefix,
@@ -39,7 +39,6 @@ public sealed class MuxCliTests : IDisposable
             SessionFactory = () => sessions ?? new ScriptedSessionFactory(),
             Verbs = verbs,
             PrepareForegroundConsole = prepareForegroundConsole,
-            IsGuiExecutable = isGuiExecutable,
             AttachedToParentConsole = attachedToParentConsole,
         };
 
@@ -628,27 +627,43 @@ public sealed class MuxCliTests : IDisposable
         Assert.Equal(b.SessionId, full);
     }
 
-    [Theory]
-    [InlineData(true, true, true, true)]     // the GUI exe on a parent console: the only case that shares the keyboard
-    [InlineData(true, false, true, false)]   // a console executable (ntilde-mux, Ntilde.Cli) on a parent console
-    [InlineData(true, true, false, false)]   // the GUI exe on a console of its own (Explorer)
-    [InlineData(false, true, true, false)]   // not Windows
-    public void The_console_hint_is_only_for_the_GUI_exe_on_a_parent_console(bool isWindows, bool isGuiExecutable, bool attachedToParent, bool expected)
+    /// <summary>
+    /// Phase 3 printed a <c>cmd /c</c> hint before raw mode when the GUI exe attached to a parent console.
+    /// ntilde.com ended that (Phase 4 spec §11.4): attaching from a parent console writes nothing to stderr.
+    /// </summary>
+    [Fact]
+    public async Task Attach_from_a_parent_console_prints_no_hint()
     {
-        string? hint = MuxCli.AttachConsoleHint(isWindows, Host(isGuiExecutable: isGuiExecutable, attachedToParentConsole: attachedToParent), "abcd1234");
+        Guid id = await StartDaemonWithOneSessionAsync();
+        using var console = new FakeConsoleSurface(80, 24);
+        MuxCli.ConsoleFactoryForTest = () => console;
+        try
+        {
+            MuxCliHost host = Host(attachedToParentConsole: true);
+            Task<(int Code, string Out, string Err)> run = Task.Run(() => Run(host, "attach", id.ToString("N")[..8]), Ct);
+            await TestWait.UntilAsync(() => console.IsRaw, "the text client took the console");
+            console.Type("\u001cd");
 
-        Assert.Equal(expected, hint is not null);
-        if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde-mux attach abcd1234 (ignore if already under cmd /c)", hint);
+            var (code, _, err) = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+            Assert.Equal(0, code);
+            Assert.Equal(string.Empty, err);
+        }
+        finally
+        {
+            MuxCli.ConsoleFactoryForTest = null;
+        }
     }
 
     [Fact]
-    public void Attach_help_names_the_cmd_workaround()
+    public void Attach_usage_no_longer_mentions_cmd_c()
     {
-        var (code, output, _) = Run("attach", "--help");
+        var (code, help, _) = Run("attach", "--help");
+        var (_, _, usage) = Run("attach");
 
         Assert.Equal(0, code);
-        Assert.Contains($"cmd /c {Prefix} attach <id>", output, StringComparison.Ordinal);
-        Assert.Contains("Ctrl+\\ then d (Ctrl may stay held)", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("cmd /c", help, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cmd /c", usage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Ctrl+\\ then d (Ctrl may stay held)", help, StringComparison.Ordinal);
     }
 
     [Fact]
