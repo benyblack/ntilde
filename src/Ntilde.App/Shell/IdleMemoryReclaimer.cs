@@ -22,7 +22,7 @@ namespace Ntilde.Shell
     public sealed class IdleMemoryReclaimer
     {
         /// <summary>One sample of the runtime's heap counters.</summary>
-        public readonly record struct Probe(long CommittedBytes, long LiveAfterLastFullGcBytes, long TotalAllocatedBytes);
+        public readonly record struct Probe(long CommittedBytes, long LiveAfterLastFullGcBytes, long TotalAllocatedBytes, bool FullGcHasRun = true);
 
         private readonly Func<Probe> _probe;
         private readonly Action _collect;
@@ -53,26 +53,33 @@ namespace Ntilde.Shell
 
         /// <summary>
         /// Called on a fixed interval. Collects when less than the idle budget was allocated since
-        /// the previous tick, the heap holds at least the threshold more committed memory than the
-        /// last full collection left live, and the cooldown since the previous collection is over.
-        /// Returns whether it collected.
+        /// the previous tick and either a collection was requested, or a full GC has run, the heap
+        /// holds at least the threshold more committed memory than it left live, and the cooldown
+        /// since the previous collection is over. Returns whether it collected.
         /// </summary>
         public bool Tick()
         {
             Probe sample = _probe();
             long? previous = _lastAllocatedBytes;
             _lastAllocatedBytes = sample.TotalAllocatedBytes;
+            // A request (a pane was closed) is a deliberate drop of state, so it is not held back by
+            // the cooldown, which only exists to stop the threshold heuristic from repeating.
+            bool requested = _requested;
             if (_ticksUntilAllowed > 0)
             {
                 _ticksUntilAllowed--;
-                return false;
+                if (!requested) return false;
             }
             if (previous is null) return false;
 
             bool quiet = sample.TotalAllocatedBytes - previous.Value <= _idleAllocationBudgetBytes;
-            long reclaimable = sample.CommittedBytes - sample.LiveAfterLastFullGcBytes;
             if (!quiet) return false;
-            if (reclaimable < _reclaimableThresholdBytes && !_requested) return false;
+
+            // Before the runtime's first full GC there is no live baseline, and scrollback that is
+            // still filling would read as garbage (measured: a 97 ms collection that freed 15 of 263 MB).
+            long reclaimable = sample.CommittedBytes - sample.LiveAfterLastFullGcBytes;
+            bool worthCollecting = sample.FullGcHasRun && reclaimable >= _reclaimableThresholdBytes;
+            if (!worthCollecting && !requested) return false;
 
             _requested = false;
             _collect();
@@ -94,7 +101,8 @@ namespace Ntilde.Shell
             return new Probe(
                 Math.Max(lastGc.TotalCommittedBytes, GC.GetTotalMemory(forceFullCollection: false)),
                 lastFull.Index == 0 ? 0 : lastFull.HeapSizeBytes - lastFull.FragmentedBytes,
-                GC.GetTotalAllocatedBytes(precise: false));
+                GC.GetTotalAllocatedBytes(precise: false),
+                FullGcHasRun: lastFull.Index != 0);
         }
 
         /// <summary>

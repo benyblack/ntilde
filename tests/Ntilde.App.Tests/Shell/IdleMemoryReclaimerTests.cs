@@ -151,6 +151,54 @@ public sealed class IdleMemoryReclaimerTests
         Assert.Equal(1, _runtime.Collections);
     }
 
+    // Measured: restoring 15 tabs ran a 97 ms collection that freed 15 MB of 263 - with no full GC
+    // yet there is no live baseline, and growing scrollback looked like garbage.
+    [Fact]
+    public void Does_not_collect_on_threshold_before_any_full_gc_has_run()
+    {
+        var reclaimer = NewReclaimer();
+        _runtime.Set(committed: 263 * MB, liveAfterLastFullGc: 0, allocated: 1_000 * MB);
+        _runtime.FullGcHasRun = false;
+        reclaimer.Tick();
+
+        _runtime.Allocated += 1 * MB;
+
+        Assert.False(reclaimer.Tick());
+        Assert.Equal(0, _runtime.Collections);
+    }
+
+    [Fact]
+    public void A_request_is_honoured_before_any_full_gc_has_run()
+    {
+        var reclaimer = NewReclaimer();
+        _runtime.Set(committed: 263 * MB, liveAfterLastFullGc: 0, allocated: 1_000 * MB);
+        _runtime.FullGcHasRun = false;
+        reclaimer.Tick();
+        reclaimer.RequestCollection();
+
+        _runtime.Allocated += 1 * MB;
+
+        Assert.True(reclaimer.Tick());
+    }
+
+    // Measured: closing 14 of 15 tabs waited ~50 s for memory back because a collection a minute
+    // earlier had started the cooldown. A close is a deliberate drop of state, not heuristics.
+    [Fact]
+    public void A_request_does_not_wait_out_the_cooldown()
+    {
+        var reclaimer = NewReclaimer();
+        _runtime.Set(committed: 420 * MB, liveAfterLastFullGc: 60 * MB, allocated: 1_000 * MB);
+        reclaimer.Tick();
+        _runtime.Allocated += 1 * MB;
+        Assert.True(reclaimer.Tick()); // starts the cooldown
+
+        reclaimer.RequestCollection();
+        _runtime.Allocated += 1 * MB;
+
+        Assert.True(reclaimer.Tick());
+        Assert.Equal(2, _runtime.Collections);
+    }
+
     [Fact]
     public void Reading_the_runtime_reports_the_heap()
     {
@@ -166,6 +214,7 @@ public sealed class IdleMemoryReclaimerTests
         public long Committed;
         public long LiveAfterLastFullGc;
         public long Allocated;
+        public bool FullGcHasRun = true;
         public int Collections;
 
         public void Set(long committed, long liveAfterLastFullGc, long allocated)
@@ -175,13 +224,14 @@ public sealed class IdleMemoryReclaimerTests
             Allocated = allocated;
         }
 
-        public IdleMemoryReclaimer.Probe Read() => new(Committed, LiveAfterLastFullGc, Allocated);
+        public IdleMemoryReclaimer.Probe Read() => new(Committed, LiveAfterLastFullGc, Allocated, FullGcHasRun);
 
         // A full compacting GC hands everything but the live set back and becomes the new baseline.
         public void Collect()
         {
             Collections++;
             Committed = LiveAfterLastFullGc;
+            FullGcHasRun = true;
         }
     }
 }
