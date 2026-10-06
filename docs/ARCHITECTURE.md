@@ -457,7 +457,7 @@ it).
   byte counts, so a ping queued behind a large snapshot on a slow link does not cut a healthy
   connection. The host then disposes the client (`ping timeout`).
 - **Reconnect loop** (`MuxReconnectLoop`, one timer through `IMuxTimerScheduler`). On `Disconnected`
-  the host classifies the loss by the lost channel's exit code, waiting at most 1 s for it: 3 raises
+  the host classifies the loss by the lost channel's exit code, waiting at most 2 s for it: 3 raises
   `DaemonStopped` and no retry (the daemon's sessions ended with it, so queued kills are dropped);
   anything else raises `ConnectionLost` and starts the loop. It waits 1, 2, 4, 8, 16, then 30 s, each
   jittered by ±20%, for 10 minutes from the loss, then raises `ReconnectAbandoned`. Success raises

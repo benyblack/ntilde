@@ -4065,7 +4065,7 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
-        /// UI thread. A remote session's connection dropped. The host says within a second what that was - a lost
+        /// UI thread. A remote session's connection dropped. The host says within about two seconds what that was - a lost
         /// link (its loop) or a stopped daemon - and its event shows the banner; until then the pane only stops
         /// sending to the dead connection and remembers what to reattach (an Enter meanwhile reattaches at once).
         /// </summary>

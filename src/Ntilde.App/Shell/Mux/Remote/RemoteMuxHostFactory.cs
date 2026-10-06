@@ -16,8 +16,12 @@ namespace Ntilde.Shell.Mux.Remote;
 /// </summary>
 internal static class RemoteMuxHostFactory
 {
-    /// <summary>How long a disconnect waits for the channel's exit status; the host caps its classification at this too.</summary>
-    private static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(1);
+    /// <summary>
+    /// How long a disconnect waits for the channel's exit status. Longer than the proxy's own wait for a closing
+    /// daemon's process to go (1.5 s, codex D1), so a daemon that stops slowly still reads as stopped; the host's
+    /// <see cref="MuxConnectionHost.ClassifyTimeout"/> sits above it.
+    /// </summary>
+    private static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// The host for <paramref name="id"/>, or null to decline: the local endpoint (not this factory's), or a
@@ -118,7 +122,7 @@ internal static class RemoteMuxHostFactory
     /// (<see cref="MuxProxyExitCodes.DaemonClosed"/>) means the daemon's process is gone, its sessions with it.
     /// Anything else is a lost link: 4 (<see cref="MuxProxyExitCodes.ConnectionClosed"/>), a daemon that dropped
     /// this connection but runs on with its sessions (codex D1); ssh's 255; a channel that was killed or failed
-    /// natively (no status); no status within a second.
+    /// natively (no status); no status within <see cref="DisconnectExitWait"/>.
     /// </summary>
     internal static async Task<MuxDisconnectKind> ClassifyDisconnectAsync(RemoteMuxConnector connector, MuxClient client)
     {

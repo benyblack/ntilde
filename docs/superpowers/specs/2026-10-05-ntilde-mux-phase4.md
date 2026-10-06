@@ -993,8 +993,9 @@ review; the section they change is named first.
   10 s of the ping (a read-stream wrapper stamps every read), and a tick is skipped while the
   previous ping is unanswered. A ping queued behind a large snapshot on a slow link would otherwise
   cut a healthy link into a reattach loop.
-- **§7.3 A loss is classified by the lost client's own channel**, waiting at most 1 s for its exit
-  code, and a host clears its last failure when a new attempt starts, so a stale `NotInstalled`
+- **§7.3 A loss is classified by the lost client's own channel**, waiting at most 2 s for its exit
+  code (longer than the proxy's 1.5 s wait for a closing daemon's process, codex D1; the host's own cap is
+  2.5 s), and a host clears its last failure when a new attempt starts, so a stale `NotInstalled`
   cannot label a later timeout.
 - **§8.1, §7.3 The proxy exits 3 only when the daemon's process is gone; a connection a live daemon
   drops exits 4** (codex D1). A live daemon ends single connections too and keeps their sessions: it
@@ -1007,10 +1008,11 @@ review; the section they change is named first.
   token), every 50 ms for up to 1.5 s: gone is 3, still running is `MuxProxyExitCodes.ConnectionClosed`
   (4). A stdout that cannot be written, at the preamble or later, is 4 too: nobody reads the code, and
   it says nothing about the daemon. The host counts every code but 3 as a lost link, as before. The
-  1.5 s fits inside the 2 s the exec channels give a command to exit once their stdin closed; the
-  host's 1 s classification cap is unchanged, so a daemon that takes longer than that to exit after
-  closing its connections is read as a lost link, and the reconnect starts a new daemon, where each
-  pane's reattach finds its session gone (`PreviousLost`). `MuxProxyCommand.Run` takes the liveness
+  1.5 s fits inside the 2 s the exec channels give a command to exit once their stdin closed, and the
+  host's classification now waits up to 2 s for the exit status (its own cap 2.5 s, both raised from
+  1 s), so a daemon that exits within the proxy's 1.5 s reads as stopped. One that takes longer is read
+  as a lost link, and the reconnect starts a new daemon, where each pane's reattach finds its session
+  gone (`PreviousLost`). The cost: a lost link's loop starts up to 1 s later when ssh has not exited. `MuxProxyCommand.Run` takes the liveness
   check as an optional parameter, for tests whose daemon runs in their own process.
 - **§5, §7.1 A host's SSH target is pinned at its first successful connect** (codex D2). The connector
   read the whole profile again on every attempt, so editing a profile's host, port, user, jump chain or

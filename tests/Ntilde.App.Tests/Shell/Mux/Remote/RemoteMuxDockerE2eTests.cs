@@ -91,7 +91,7 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
     /// <summary>The loop's first attempt is a second after the loss, the next ones back off 2, 4, 8 s.</summary>
     private static readonly TimeSpan BackWithin = TimeSpan.FromSeconds(90);
 
-    /// <summary>A killed proxy or daemon ends the channel at once; only the classification (at most 1 s) is in between.</summary>
+    /// <summary>A killed proxy or daemon ends the channel at once; only the classification (at most 2 s) is in between.</summary>
     private static readonly TimeSpan KillNoticedWithin = TimeSpan.FromSeconds(20);
 
     /// <summary>Beyond the remote host's 120 s connect timeout, so the factory's own answer comes first.</summary>

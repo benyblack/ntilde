@@ -403,8 +403,12 @@ internal sealed class MuxConnectionHost : IDisposable
     /// </summary>
     internal Func<MuxClient, Task<MuxDisconnectKind>>? ClassifyDisconnect { get; init; }
 
-    /// <summary>The cap on <see cref="ClassifyDisconnect"/>: a second, the brief's (tests: longer, to hold a classification open).</summary>
-    internal TimeSpan ClassifyTimeout { get; init; } = TimeSpan.FromSeconds(1);
+    /// <summary>
+    /// The cap on <see cref="ClassifyDisconnect"/>: 2.5 s, above the remote classifier's own 2 s wait for the proxy's exit
+    /// status, which covers the proxy's 1.5 s wait for a closing daemon's process (codex D1). Tests: longer, to hold a
+    /// classification open.
+    /// </summary>
+    internal TimeSpan ClassifyTimeout { get; init; } = TimeSpan.FromSeconds(2.5);
 
     /// <summary>The liveness ping: <see cref="MuxClient.PingAsync"/>. Tests replace it to decide when, and how, a ping ends.</summary>
     internal Func<MuxClient, CancellationToken, Task> Ping { get; init; } = static (client, ct) => client.PingAsync(ct);
