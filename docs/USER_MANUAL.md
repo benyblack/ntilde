@@ -431,8 +431,9 @@ with the usual prompts. This happens for:
   `ntilde-mux ls` lists.
 - Unticking the profile's checkbox makes its new tabs, and its saved tabs at the next launch, open
   plain SSH. Their shells keep running on the host, and Ntilde keeps their ids in its saved
-  session, so once the checkbox is ticked again they reattach at the following launch. To end them,
-  run `ntilde-mux kill-server` on the host.
+  session, so once the checkbox is ticked again they reattach at the following launch. Closing such
+  a tab still ends its shell on the host: Ntilde connects once in the background, without prompting,
+  to send the kill. To end them all at once, run `ntilde-mux kill-server` on the host.
 
 **Limitations:**
 

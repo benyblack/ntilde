@@ -4438,7 +4438,8 @@ namespace Ntilde
 
         /// <summary>
         /// Builds the connection for a remote endpoint the first time a pane uses it (Phase 4 spec §5), or
-        /// returns null to decline (the profile is gone, or does not persist remote sessions). Runs outside
+        /// returns null to decline (the profile is gone; one that does not persist remote sessions still gets a
+        /// connection, to deliver a closed pane's kill: codex C2). Runs outside
         /// the registry's lock, on whichever thread asked, and may race another ask for the same endpoint
         /// (the loser is disposed unused): it may look things up, but must not connect. The constructor
         /// sets <see cref="CreateRemoteMuxHost"/>; a seam for tests.
@@ -7148,7 +7149,7 @@ namespace Ntilde
                 // its host: sent at once (and tracked) while connected, else queued for the next connect - and queued
                 // again if the connection closes before the daemon answers. A dead link can still look connected
                 // until the liveness ping notices, and a kill sent into it straight from here would only be logged.
-                RemoteMuxHostFor(endpoint)?.KillWhenConnected(mux.Id);
+                KillThroughRemoteHost(endpoint, mux.Id);
                 return;
             }
 
@@ -7216,13 +7217,31 @@ namespace Ntilde
             if (disposition != Ntilde.Shell.Mux.PaneDisposition.EndSession || pendingId is not Guid id) return;
             Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(muxEndpoint);
             if (endpoint.IsLocal) return;
-            RemoteMuxHostFor(endpoint)?.KillWhenConnected(id);
+            KillThroughRemoteHost(endpoint, id);
+        }
+
+        /// <summary>
+        /// A closed pane's remote shell is killed through its endpoint's host (<see cref="RemoteMuxHostFor"/>). Without one
+        /// the kill cannot be sent at all, and that is logged, naming the shell left running: nothing adopts a remote orphan.
+        /// </summary>
+        private void KillThroughRemoteHost(Ntilde.Shell.Mux.MuxEndpointId endpoint, Guid sessionId)
+        {
+            if (RemoteMuxHostFor(endpoint) is { } host)
+            {
+                host.KillWhenConnected(sessionId);
+                return;
+            }
+
+            TerminalLogger.Log($"[MainWindow] cannot end session {sessionId} on {endpoint}: no connection to send its kill on (its SSH profile is gone, or the window is closing); it keeps running there");
         }
 
         /// <summary>
         /// The remote endpoint's host, built if no pane has used it yet - a restored tab closed before it was shown,
-        /// or before its own factory call got that far (the creator only constructs; it never connects). Null when
-        /// the profile is gone or no longer persists its sessions, or the window is closing.
+        /// or before its own factory call got that far (the creator only constructs; it never connects). Built whatever
+        /// the profile's <c>PersistRemoteSessions</c> says (codex C2): the flag decides where new tabs go, not whether a
+        /// shell the user closed ends, and a pane whose profile lost the flag still keeps its pending id. A host built
+        /// only for a kill connects for it in one automatic attempt, which never prompts, and the window releases it once
+        /// the kill is delivered. Null when the profile is gone, or the window is closing.
         /// </summary>
         private Ntilde.Shell.Mux.MuxConnectionHost? RemoteMuxHostFor(Ntilde.Shell.Mux.MuxEndpointId endpoint)
         {

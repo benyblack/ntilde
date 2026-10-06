@@ -75,7 +75,7 @@ public sealed class MuxConnectionHostsTests
     [Fact]
     public void A_declined_endpoint_returns_null_and_is_asked_again_next_time()
     {
-        // Declined: the profile is gone, or its PersistRemoteSessions flag is off. Either can change,
+        // Declined: the profile is gone (a profile can come back, by an import or a backup restore),
         // so the answer is not remembered.
         using var local = Unreachable("local", MuxHostPolicy.Local);
         MuxEndpointId remote = MuxEndpointId.ForSsh(Guid.NewGuid());

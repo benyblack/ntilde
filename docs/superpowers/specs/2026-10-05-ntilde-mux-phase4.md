@@ -992,6 +992,18 @@ review; the section they change is named first.
   `IsConnected` says, and through `GetOrCreate` even for a never-spawned pending id; an idle remote
   host starts one non-interactive attempt to deliver the kill. A kill sent into a silently dead link
   was lost, and a never-shown restored tab had no host at all.
+- **§5 A closed pane's remote kill gets a host whatever `PersistRemoteSessions` says** (codex C2). The
+  flag routes tabs (`MuxTerminalSessionFactory.RoutesRemote`, read again in `CreatePersistent` before
+  any host is asked for), so a tab of a profile with the flag off still opens plain SSH; it does not
+  decide whether a shell the user closed ends. `RemoteMuxHostFactory.Create` now declines only a
+  missing profile. A pane that kept its pending `ssh:` id after the flag went off (§7.6 below) has
+  that shell killed on close through a host built for it: one automatic attempt, which never prompts,
+  then released once the kill is delivered. A plain SSH pane no longer counts as needing its endpoint
+  (`TerminalPane.RemoteMuxEndpointInUse`), pending id or not: its close or next spawn asks for the
+  connection again, and counting it kept a host built for another pane's kill connected for as long
+  as it stayed open. A deleted profile still gets no host, and the kill that cannot be sent is logged,
+  naming the shell. Before, the creator declined a flag-off profile and the kill was lost without a
+  word; nothing adopts a remote orphan.
 - **§7.4 A stale remote result's shell is killed through its host too** (codex C1). A result that comes
   back to a pane that was closed or restarted meanwhile, and that started a shell (any outcome but
   `Reattached`), has that shell killed with `KillWhenConnected` on its endpoint's host

@@ -68,7 +68,12 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
     private string Endpoint => MuxEndpointId.ForSsh(_sshProfile.Id).ToString();
 
-    private SshProfile? Resolve(Guid id) => id == _sshProfile.Id ? _sshProfile : null;
+    private volatile bool _profileGone; // the profile is deleted: every lookup misses it from then on
+
+    /// <summary>What each remote attempt's transport was asked for, in order: an automatic attempt is not interactive.</summary>
+    private readonly System.Collections.Concurrent.ConcurrentQueue<RemoteMuxTransportRequest> _transportRequests = new();
+
+    private SshProfile? Resolve(Guid id) => id == _sshProfile.Id && !_profileGone ? _sshProfile : null;
 
     private int _uiThread;
     private int _factoryCallsOffUi; // CreatePersistent resolves the profile once, first: one per remote factory call
@@ -88,7 +93,11 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         {
             DisposeFlushTimeout = TimeSpan.FromSeconds(1),
         };
-        var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, _) => _remote, log: null, userPrompts: null, scheduler: _clock));
+        var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, request) =>
+        {
+            _transportRequests.Enqueue(request);
+            return _remote;
+        }, log: null, userPrompts: null, scheduler: _clock));
         var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
@@ -309,6 +318,78 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         KillLands(RemoteHostOf(window), ids[0], "the kill reached the daemon");
         Assert.Equal(1, _remote.StartCount); // the host connected for it, once
         Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
+    /// Codex C2: the profile's flag decides whether tabs go to the remote daemon, not whether a shell the user closed
+    /// ends. Two panes restored with pending ids on a profile whose flag is now off run plain SSH. Closing one still
+    /// builds a host, which delivers the kill in one automatic - non-interactive - attempt and is then released: the
+    /// other plain SSH pane keeps its id pending, but needs no connection until its own close. Before, the host
+    /// creator declined the profile and the kill was dropped without a word; nothing adopts a remote orphan.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_pane_whose_profile_stopped_persisting_still_kills_its_pending_remote_shell()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        _sshProfile.MuxOptions.PersistRemoteSessions = false;
+        new JsonSshProfileStore().SaveProfile(_sshProfile);
+        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]));
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Count(p => p.Session is FakeTerminalSession) == 2, "both panes opened plain SSH");
+        TerminalPane closing = RemotePanes(window).Single(p => p.MuxSessionIdToRestore == ids[0]);
+        TerminalPane staying = RemotePanes(window).Single(p => p.MuxSessionIdToRestore == ids[1]);
+        Assert.Null(RemoteHostOf(window));
+        Assert.Equal(0, _remote.StartCount);
+
+        Task<bool> close = Close(window, closing);
+        Assert.True(close.IsCompletedSuccessfully && close.Result, "the split's pane closed at once");
+        MuxConnectionHost? host = RemoteHostOf(window);
+        Assert.NotNull(host); // built for the kill, whatever the flag says
+
+        KillLands(host, ids[0], "the kill reached the daemon");
+        PumpUntil(() => host.IsClosed && RemoteHostOf(window) is null, "the host built for the kill was released after it");
+        Assert.Equal(1, _remote.StartCount);
+        Assert.False(Assert.Single(_transportRequests).Interactive); // no prompt can come from it
+        Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+        Assert.Equal(ids[1], staying.MuxSessionIdToRestore);
+        Assert.IsType<FakeTerminalSession>(staying.Session);
+    }
+
+    /// <summary>
+    /// Codex C2: a pane whose profile was deleted has no host to send its kill through. Nothing is built, and the kill
+    /// that cannot be sent is logged rather than dropped without a word.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_pane_whose_profile_is_gone_logs_the_kill_it_cannot_send()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveTabs(LocalLeaf(), RemoteLeaf(ids[0]));
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Count == 1, "the background tab was restored");
+        TerminalPane unshown = RemotePanes(window).Single();
+        _profileGone = true;
+        var logged = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        Action<string>? previous = Ntilde.VT.TerminalLogger.OnLog;
+        Ntilde.VT.TerminalLogger.OnLog = line =>
+        {
+            logged.Enqueue(line);
+            previous?.Invoke(line);
+        };
+        try
+        {
+            Task<bool> close = Close(window, unshown);
+            PumpUntil(() => close.IsCompleted, "the tab closed");
+            Assert.True(close.Result);
+        }
+        finally
+        {
+            Ntilde.VT.TerminalLogger.OnLog = previous;
+        }
+
+        Assert.Null(RemoteHostOf(window));
+        Assert.Equal(0, _remote.StartCount);
+        Assert.Contains(ids[0], _remote.Server.GetSessionIds());
+        Assert.Contains(logged, line => line.Contains(ids[0].ToString(), StringComparison.Ordinal) && line.Contains("kill", StringComparison.Ordinal));
     }
 
     /// <summary>

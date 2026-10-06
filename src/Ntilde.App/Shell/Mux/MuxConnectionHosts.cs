@@ -29,13 +29,13 @@ internal sealed class MuxConnectionHosts : IDisposable
 
     /// <param name="local">The local daemon's host; owned from now on (disposed by <see cref="Dispose"/>).</param>
     /// <param name="createRemote">
-    /// Builds the host for a remote endpoint, or returns null to decline (the profile is gone, or it does
-    /// not persist remote sessions). Called outside this registry's lock, on whichever thread asked, so it
-    /// may do real work (look the profile up, work out how to launch) and may call <see cref="TryGet"/>; it
-    /// must not connect, and must not ask <see cref="GetOrCreate"/> for the endpoint it is building. Two
-    /// threads asking at once can both build one: the first to register wins, and the other host is
-    /// disposed unused. A decline is not remembered: the profile or its flag can change, so the next ask
-    /// asks again.
+    /// Builds the host for a remote endpoint, or returns null to decline (the profile is gone; one that does
+    /// not persist remote sessions still gets a host, to deliver kills: codex C2). Called outside this
+    /// registry's lock, on whichever thread asked, so it may do real work (look the profile up, work out
+    /// how to launch) and may call <see cref="TryGet"/>; it must not connect, and must not ask
+    /// <see cref="GetOrCreate"/> for the endpoint it is building. Two threads asking at once can both
+    /// build one: the first to register wins, and the other host is disposed unused. A decline is not
+    /// remembered: a profile can come back (an import, a backup restore), so the next ask asks again.
     /// </param>
     /// <param name="log">Where a remote host's failed dispose, and a release, is reported (it never stops the others, or the local one).</param>
     public MuxConnectionHosts(MuxConnectionHost local, Func<MuxEndpointId, MuxConnectionHost?> createRemote, Action<string>? log = null)

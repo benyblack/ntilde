@@ -20,9 +20,8 @@ internal static class RemoteMuxHostFactory
     private static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(1);
 
     /// <summary>
-    /// The host for <paramref name="id"/>, or null to decline: the local endpoint (not this factory's), a
-    /// profile that is gone, or one that does not persist remote sessions
-    /// (<see cref="SshMuxOptions.PersistRemoteSessions"/> off).
+    /// The host for <paramref name="id"/>, or null to decline: the local endpoint (not this factory's), or a
+    /// profile that is gone.
     /// </summary>
     /// <remarks>
     /// The host has <see cref="MuxHostPolicy.Remote"/> named <c>user@host</c>, and one
@@ -32,6 +31,14 @@ internal static class RemoteMuxHostFactory
     /// reads the profile again, and builds its transport through <paramref name="transportFor"/>, told
     /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). The host tells a stopped daemon from a
     /// lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).
+    /// <para>
+    /// A profile whose <see cref="SshMuxOptions.PersistRemoteSessions"/> is off still gets its host (codex C2). The
+    /// flag decides where that profile's tabs go - <see cref="MuxTerminalSessionFactory.RoutesRemote"/> reads it
+    /// before any host is asked for, so such a tab opens plain SSH - not whether a shell the user closed ends: a
+    /// pane restored with a pending <c>ssh:</c> id keeps it after the flag goes off (spec §15), and its close kills
+    /// that shell through this host, in one automatic attempt (<see cref="MuxConnectionHost.KillWhenConnected"/>),
+    /// after which the window releases the host. Declining lost the kill, and nothing adopts a remote orphan.
+    /// </para>
     /// </remarks>
     /// <param name="resolveProfile">The SSH profile store's lookup.</param>
     /// <param name="transportFor">Builds one attempt's transport (<see cref="CreateTransport"/> in the app).</param>
@@ -64,8 +71,6 @@ internal static class RemoteMuxHostFactory
             log?.Invoke($"[RemoteMux] no SSH profile {profileId:N} for {id}; its sessions cannot persist");
             return null;
         }
-
-        if (profile.MuxOptions?.PersistRemoteSessions != true) return null;
 
         MuxHostPolicy policy = MuxHostPolicy.Remote(RemoteMuxConnector.DisplayNameOf(profile));
         var connector = new RemoteMuxConnector(

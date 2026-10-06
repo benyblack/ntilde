@@ -181,7 +181,8 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
 
         if (host is null)
         {
-            // Declined after all: the profile changed since the check above, or the window is closing.
+            // Declined after all: the profile was deleted since the check above, or the window is closing.
+            // (The creator does not read PersistRemoteSessions - the check above is the routing decision - codex C2.)
             _log?.Invoke($"[Mux] no connection for {endpoint}; this SSH session will not persist");
             return new(_fallback.Create(request), PersistentSessionOutcome.NotPersistent, null, null);
         }

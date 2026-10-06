@@ -4272,6 +4272,12 @@ namespace Ntilde.Controls
         /// a reopen that could not reach the host), and while its connect is in flight. A local pane, a plain SSH
         /// pane and a new remote tab whose connect failed (its Enter asks for the connection again) need none. The
         /// window releases a remote host no pane needs (<c>MuxConnectionHosts.Release</c>).
+        /// <para>
+        /// A plain SSH pane needs none even with an id pending there (its profile stopped persisting, spec §15): until
+        /// it closes - when its kill asks for the connection again, building a host if need be (codex C2) - or spawns
+        /// again, nothing it does uses the connection. Counting it would keep a host built for another pane's kill
+        /// connected for as long as it stayed open.
+        /// </para>
         /// </summary>
         internal MuxEndpointId? RemoteMuxEndpointInUse
         {
@@ -4279,7 +4285,10 @@ namespace Ntilde.Controls
             {
                 MuxEndpointId endpoint = MuxEndpointId.Parse(MuxEndpoint);
                 if (endpoint.IsLocal) return null;
-                bool inUse = Session is MuxClientSession || MuxSessionIdToRestore is not null || _muxReattachId is not null || _remoteConnecting;
+                bool plainSsh = Session is not null and not MuxClientSession;
+                bool inUse = Session is MuxClientSession
+                    || _remoteConnecting
+                    || (!plainSsh && (MuxSessionIdToRestore is not null || _muxReattachId is not null));
                 return inUse ? endpoint : null;
             }
         }

@@ -399,11 +399,13 @@ it).
 - **One connection host per endpoint.** `MuxConnectionHosts.GetOrCreate(endpoint)` creates hosts
   lazily. `local` is section 8.1's host. A remote host is built by `RemoteMuxHostFactory` from the
   SSH profile; the factory only constructs (the registry calls it outside its lock and keeps the
-  first of two racing creations), and declines a profile that is gone or has the flag off. All
+  first of two racing creations), and declines only a profile that is gone: the flag decides where
+  tabs go, not whether a closed pane's shell ends, so a pane that kept its pending id after the flag
+  went off still gets a host to deliver its kill. All
   panes of one profile share the host: one SSH connection, one set of prompts, one `MuxClient`. When
   a remote pane closes, the window releases every remote host no pane needs any more (a pane needs
-  its endpoint while its session is there, while it keeps a session id pending there, or while its
-  connect runs): `MuxConnectionHosts.Release` closes the host once its kills are delivered
+  its endpoint while its session is there, while it keeps a session id pending there - unless it runs
+  plain SSH - or while its connect runs): `MuxConnectionHosts.Release` closes the host once its kills are delivered
   (`MuxConnectionHost.WhenKillsDrained`), and a host that gave up with kills queued waits idle until
   the endpoint is used again. Asking for the endpoint meanwhile takes the host back; after it closed,
   the next ask builds a new one. The policies differ:

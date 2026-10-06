@@ -46,8 +46,13 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         return tcs.Task.WaitAsync(Patient, Ct);
     }
 
+    /// <summary>
+    /// Codex C2: a profile whose <c>PersistRemoteSessions</c> is off still gets a host. The flag decides where its tabs
+    /// go (<see cref="MuxTerminalSessionFactory.RoutesRemote"/>); a host is also what delivers the kill of a shell
+    /// it once had there, which the user closed. Only the local endpoint and a missing profile are declined.
+    /// </summary>
     [Fact]
-    public void Declines_the_local_endpoint_a_missing_profile_and_a_profile_that_does_not_persist()
+    public void Declines_the_local_endpoint_and_a_missing_profile_but_not_one_that_stopped_persisting()
     {
         SshProfile flagged = RemoteMuxConnectorTests.Profile();
         SshProfile unflagged = RemoteMuxConnectorTests.Profile();
@@ -58,7 +63,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
 
         Assert.Null(Build(MuxEndpointId.Local));
         Assert.Null(Build(MuxEndpointId.ForSsh(Guid.NewGuid())));
-        Assert.Null(Build(MuxEndpointId.ForSsh(unflagged.Id)));
+        Assert.NotNull(Own(Build(MuxEndpointId.ForSsh(unflagged.Id))!));
         Assert.NotNull(Own(Build(MuxEndpointId.ForSsh(flagged.Id))!));
         Assert.Equal(0, _remote.StartCount);
     }
