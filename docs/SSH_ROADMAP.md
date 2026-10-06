@@ -137,8 +137,11 @@ user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCH
 ### Both backends
 
 - **OpenSSH** (`Ntilde.Platform.Ssh.Exec.OpenSshExecTransport`) runs `ssh` from the profile's
-  generated config with `-T -o ClearAllForwardings=yes -o ControlMaster=no`, never a PTY, and drops
-  `-t`/`-tt`/`-T`, `-N` and `-f` from the profile's extra arguments. A user-started connect uses Ntilde as
+  generated config with `-T -o ClearAllForwardings=yes -o ControlMaster=no`, never a PTY. It reads the
+  profile's extra arguments with ssh's own option rules (clusters such as `-tv` included) and drops what
+  would stop the proxy from running on the channel: `-t`, `-T`, `-N`, `-f`, `-n`, `-s`, `-G`, `-V`,
+  `-M`, `-W`/`-O`/`-Q` with their argument, and the `-o` keywords `RequestTTY`, `SessionType`,
+  `ForkAfterAuthentication`, `StdinNull`, `RemoteCommand` and `PermitLocalCommand`. A user-started connect uses Ntilde as
   `SSH_ASKPASS`, so prompts appear as Ntilde dialogs (the vault password is offered only to a
   prompt that names the target's `user@host`). An automatic reconnect runs in batch mode with no
   askpass at all, so a password-only OpenSSH profile reconnects on Enter.

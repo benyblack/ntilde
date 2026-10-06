@@ -816,11 +816,6 @@ Recorded during the build:
   and the CI/release ceiling (§10.2) together.
 - **The probe needs `ldd`.** `(ldd --version || getconf GNU_LIBC_VERSION) | head -n 1` keeps ldd's
   "not found" line on a glibc host without `ldd` and refuses it; ask `getconf` first.
-- **`-W host:port` / `-s` in a profile's extra SSH arguments** still break an OpenSSH exec channel,
-  as `-N` and `-f` did before the final review (§15): `-W` forwards ssh's stdio to a TCP port instead
-  of running a remote command, and `-s` asks for the command as a subsystem, so the proxy never runs.
-  Only `-t`, `-tt`, `-T`, `-N` and `-f` are dropped; `-W` takes its argument as a separate token, so
-  dropping it means dropping that token too.
 
 ## 15. As built
 
@@ -911,10 +906,28 @@ review; the section they change is named first.
   library") are checked before exit 127, which the dynamic loader also returns next to "not found" /
   "No such file"; a native transport error is checked right after `VersionMismatch`, because the
   native stderr tail holds the transport's message. A sixth kind, `NeedsUser`, is added (below).
-- **§8.2 `-o ControlMaster=no` comes before the plan's arguments, and `-t`/`-tt`/`-T`, `-N` and `-f`
-  are dropped from `ExtraSshArgs`.** OpenSSH takes the first value, so the hidden exec would otherwise
+- **§8.2 `-o ControlMaster=no` comes before the plan's arguments, and what would break the channel
+  is dropped from `ExtraSshArgs`.** OpenSSH takes the first value, so the hidden exec would otherwise
   become a master that a visible tab rides on; a PTY corrupts the binary stream; `-N` runs no remote
   command and `-f` backgrounds ssh, so the proxy would never run on the channel.
+- **§8.2 The plan is parsed with ssh's own getopt rules** (codex C3). Matching whole tokens let
+  clusters through: OpenSSH 9.6 reads `-tv` as `requesttty true`, `-Nv` as `sessiontype none`, and
+  `-fN` backgrounds ssh. `OpenSshExecCommandLine` now walks the plan with ssh.c's option string
+  (`1246ab:c:e:fgi:kl:m:no:p:qstvxAB:CD:E:F:GI:J:KL:MNO:P:Q:R:S:TVw:W:XYy`): letters cluster; a letter
+  that takes an argument takes the rest of its token or the next one, never scanned (`-p2tN` is port
+  `2tN`); options are read before the destination and again after it, up to `--` or the next word,
+  after which nothing is an option (kept as written, and logged: ssh would read it as the remote
+  command). Dropped from a cluster, the rest kept (`-tv` becomes `-v`): `t`, `T` (we pass `-T`), `N`,
+  `f`, `n` (stdin from `/dev/null` starves the proxy), `s` (a subsystem), `G` and `V` (print and
+  exit), and `M`, which `ssh -G` shows overrides the `-o ControlMaster=no` before it (a ruling past the
+  review's list). Dropped with their argument: `-W`, `-O`, `-Q`, and an `-o` whose keyword
+  (case-insensitive, ended by whitespace or `=`) is `RequestTTY`, `SessionType`,
+  `ForkAfterAuthentication`, `StdinNull`, `RemoteCommand` or `PermitLocalCommand` (a `LocalCommand`
+  writes to ssh's stdout, the mux stream); every other `-o` is kept whole, its value included. Each
+  dropped piece is logged by its letter or keyword, never its value. `OpenSshExecCommandLineSshTests`
+  runs `ssh -G` on the built argv (an empty `-F` config, no network; skipped without `ssh`) and checks
+  `requesttty false`, `sessiontype default`, `forkafterauthentication no`, `stdinnull no` and
+  `controlmaster false` for each tricky input.
 - **§8.2 The askpass helper fills in the vault password only for a prompt that names the target's
   `user@host`.** A ProxyJump hop's prompt would otherwise receive the target's password.
 - **§8.2 No `ISshAskPassLocator`.** The App passes the helper path (`SshAskPassCommand.LocateHelper()`).

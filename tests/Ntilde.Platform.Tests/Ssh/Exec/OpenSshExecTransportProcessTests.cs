@@ -171,7 +171,8 @@ public sealed class OpenSshExecTransportProcessTests
         ProcessStartInfo startInfo = transport.CreateStartInfo("ntilde-mux proxy --stdio");
 
         Assert.DoesNotContain("-tt", startInfo.ArgumentList);
-        Assert.Contains(log, line => line.Contains("'-tt'", StringComparison.Ordinal));
+        Assert.DoesNotContain("-t", startInfo.ArgumentList);
+        Assert.Contains(log, line => line.Contains("'-t'", StringComparison.Ordinal)); // codex C3: each dropped letter is named
     }
 
     [Fact]

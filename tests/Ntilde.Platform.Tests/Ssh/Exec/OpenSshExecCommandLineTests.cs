@@ -88,58 +88,141 @@ public sealed class OpenSshExecCommandLineTests
         Assert.True(ours < IndexOfPair(argv, "-o", "BatchMode=no"));
     }
 
-    [Theory]
-    [InlineData("-t")]
-    [InlineData("-tt")]
-    [InlineData("-ttt")]
-    [InlineData("-T")]
-    public void A_pty_flag_in_the_plans_extra_arguments_is_dropped_and_logged(string flag)
+    /// <summary>
+    /// The profile's extra arguments; what is left of them; and the pieces dropped, one log line each, in order.
+    /// A PTY (<c>-t</c>, and our own <c>-T</c> kept single), no command (<c>-N</c>), the background (<c>-f</c>), stdin
+    /// from /dev/null (<c>-n</c>), a subsystem (<c>-s</c>), print-and-exit (<c>-G</c>, <c>-V</c>), master mode
+    /// (<c>-M</c>), stdio forwarding (<c>-W</c>), a control command (<c>-O</c>), a query (<c>-Q</c>), and the
+    /// <c>-o</c> keywords that do the same.
+    /// </summary>
+    public static TheoryData<string[], string[], string[]> Breakers => new()
     {
-        string[] plan = [.. Plan, flag, "-o", "ConnectTimeout=5"];
+        { ["-t"], [], ["-t"] },
+        { ["-tt"], [], ["-t", "-t"] },
+        { ["-T"], [], ["-T"] },
+        { ["-N"], [], ["-N"] },
+        { ["-f"], [], ["-f"] },
+        { ["-tv"], ["-v"], ["-t"] },
+        { ["-vt"], ["-v"], ["-t"] },
+        { ["-Nv"], ["-v"], ["-N"] },
+        { ["-fN"], [], ["-f", "-N"] },
+        { ["-n"], [], ["-n"] },
+        { ["-s"], [], ["-s"] },
+        { ["-G"], [], ["-G"] },
+        { ["-V"], [], ["-V"] },
+        { ["-M"], [], ["-M"] },
+        { ["-qMv"], ["-qv"], ["-M"] },
+        { ["-W", "h:22"], [], ["-W"] },
+        { ["-Wh:22"], [], ["-W"] },
+        { ["-vW", "h:22"], ["-v"], ["-W"] },
+        { ["-O", "check"], [], ["-O"] },
+        { ["-Q", "cipher"], [], ["-Q"] },
+        { ["-o", "RequestTTY=force"], [], ["-o RequestTTY"] },
+        { ["-oRequestTTY=yes"], [], ["-o RequestTTY"] },
+        { ["-o", "SessionType none"], [], ["-o SessionType"] },
+        { ["-o", "sessiontype=none"], [], ["-o sessiontype"] },
+        { ["-o", " RequestTTY = yes"], [], ["-o RequestTTY"] },
+        { ["-o", "ForkAfterAuthentication=yes"], [], ["-o ForkAfterAuthentication"] },
+        { ["-o", "StdinNull=yes"], [], ["-o StdinNull"] },
+        { ["-o", "RemoteCommand=x"], [], ["-o RemoteCommand"] },
+        { ["-o", "PermitLocalCommand=yes"], [], ["-o PermitLocalCommand"] },
+        { ["-vo", "RequestTTY=force"], ["-v"], ["-o RequestTTY"] },
+        { ["-voStdinNull=yes"], ["-v"], ["-o StdinNull"] },
+    };
+
+    /// <summary>
+    /// Codex C3: the profile's ssh arguments are read with ssh's own getopt rules, so a breaking flag is found inside
+    /// a cluster too (OpenSSH 9.6: <c>ssh -G -tv</c> says <c>requesttty true</c>, <c>-Nv</c> <c>sessiontype none</c>),
+    /// and an option that takes an argument goes with it. The <c>-o ConnectTimeout=5</c> after each row shows the
+    /// parse carries on in step. Replaces the I6 tests, which matched whole tokens only.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Breakers))]
+    public void A_piece_that_would_break_the_exec_channel_is_dropped_and_logged(string[] extra, string[] kept, string[] dropped)
+    {
         var log = new List<string>();
 
-        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", log.Add);
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, .. extra, "-o", "ConnectTimeout=5"], "true", log.Add);
 
-        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-o", "ConnectTimeout=5", "--", "true"];
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, .. kept, "-o", "ConnectTimeout=5", "--", "true"];
         Assert.Equal(expected, argv);
-        string line = Assert.Single(log);
-        Assert.Contains($"'{flag}'", line, StringComparison.Ordinal);
+        Assert.Equal(dropped.Length, log.Count);
+        for (int i = 0; i < dropped.Length; i++) Assert.Contains($"'{dropped[i]}'", log[i], StringComparison.Ordinal);
+    }
+
+    /// <summary>The profile's extra arguments that must reach ssh exactly as they are.</summary>
+    public static TheoryData<string[]> Harmless => new()
+    {
+        { ["-p", "2222"] },
+        { ["-p2222"] },
+        { ["-p2tN"] },                                  // port "2tN": an argument is never scanned for flags
+        { ["-i", "key", "-v"] },
+        { ["-o", "ProxyCommand=ssh -W %h:%p jump"] },   // one token, -W inside a value
+        { ["-oProxyCommand=ssh -W %h:%p jump"] },
+        { ["-o", "-t"] },                               // an argument that looks like a flag
+        { ["-J", "jump"] },
+        { ["-L", "8080:h:80"] },
+        { ["-vvv"] },
+        { ["-46AaCgKkqXxYy"] },
+        { ["-E", "ssh.log", "-o", "ServerAliveInterval=15"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(Harmless))]
+    public void Everything_else_reaches_ssh_as_it_was(string[] extra)
+    {
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, .. extra], "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, .. extra, "--", "true"];
+        Assert.Equal(expected, argv);
+        Assert.Empty(log);
+    }
+
+    [Fact]
+    public void What_is_kept_keeps_its_order()
+    {
+        string[] extra = ["-4", "-tv", "-p", "2222", "-Nq", "-o", "RequestTTY=yes", "-J", "jump", "-W", "h:22", "-oServerAliveInterval=5", "-C"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, .. extra], "true");
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-4", "-v", "-p", "2222", "-q", "-J", "jump", "-oServerAliveInterval=5", "-C", "--", "true"];
+        Assert.Equal(expected, argv);
     }
 
     /// <summary>
-    /// Final review I6: <c>-N</c> (no remote command) and <c>-f</c> (go to the background) in a profile's
-    /// ExtraSshArgs would stop the proxy command from ever running on the channel, so they are dropped like the
-    /// PTY flags, and logged.
+    /// ssh reads options before the destination and again after it (it restarts getopt after the host): both are
+    /// filtered, and the destination keeps its place.
     /// </summary>
-    [Theory]
-    [InlineData("-N")]
-    [InlineData("-f")]
-    public void A_flag_that_stops_the_command_running_is_dropped_and_logged(string flag)
+    [Fact]
+    public void Options_on_either_side_of_the_destination_are_read_and_the_destination_stays_put()
     {
-        string[] plan = [.. Plan, flag, "-o", "ConnectTimeout=5"];
-        var log = new List<string>();
-
-        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", log.Add);
-
-        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-o", "ConnectTimeout=5", "--", "true"];
-        Assert.Equal(expected, argv);
-        string line = Assert.Single(log);
-        Assert.Contains($"'{flag}'", line, StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData("-tv")]
-    [InlineData("-Nv")]
-    [InlineData("-fN")]
-    [InlineData("-vt")]
-    [InlineData("-t5")]
-    public void Clustered_flags_are_not_parsed(string flag)
-    {
-        string[] plan = [.. Plan, flag];
+        string[] plan = ["-F", Plan[1], "-tv", Plan[2], "-N", "-p", "22"];
 
         IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
 
-        Assert.Contains(flag, argv);
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], "-F", Plan[1], "-v", Plan[2], "-p", "22", "--", "true"];
+        Assert.Equal(expected, argv);
+    }
+
+    /// <summary>
+    /// After the destination ssh reads options only until <c>--</c> or the next word; what follows is the remote
+    /// command, never an option. It is kept as written - no <c>-t</c> in it is dropped - and the log says why the
+    /// channel's command will not run as given.
+    /// </summary>
+    [Theory]
+    [InlineData("uptime")]
+    [InlineData("--")]
+    public void After_the_end_of_sshs_options_nothing_is_read_as_an_option(string end)
+    {
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, "-v", end, "-t", "-N"], "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-v", end, "-t", "-N", "--", "true"];
+        Assert.Equal(expected, argv);
+        Assert.Contains("remote command", Assert.Single(log), StringComparison.Ordinal);
     }
 
     [Fact]
