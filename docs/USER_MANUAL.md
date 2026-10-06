@@ -414,6 +414,8 @@ with the usual prompts. This happens for:
 
 - OpenSSH profiles that sign in with a password: the retries run `ssh` with `BatchMode=yes`;
 - native profiles whose password has not been used in this window yet;
+- native profiles whose key has a passphrase that has not been used in this window yet, when
+  neither the SSH agent nor another key signs in instead;
 - native profiles that go through jump hosts and sign in with a password: a password prompt does
   not say which hop asks, so Ntilde never replays a password along a jump chain.
 

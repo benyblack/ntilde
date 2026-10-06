@@ -977,6 +977,15 @@ review; the section they change is named first.
   an automatic OpenSSH attempt refused with `Permission denied` (exit 255). Spending the 10-minute
   budget would be about 25 pre-auth connections that fail2ban counts. The factory treats it like
   `SshFailed`.
+- **An unremembered passphrase is cancelled, then counts against the attempt** (codex D3). A native
+  automatic attempt that meets an encrypted key's passphrase prompt with nothing remembered still
+  cancels it, rather than aborting the session: a passphrase only unlocks a local key, so the cancel
+  sends the server nothing, and the agent or another key may still get in. The attempt records it
+  (`RemoteMuxInteractionHandler.Attempt.DeclinedPrompt`); if it then fails SSH (the classifier says
+  `SshFailed`), the connector reports `NeedsUser` ("signing in to <host> needs a key passphrase, which
+  an automatic reconnect does not ask for"), so the loop stops with `ReconnectAbandoned` instead of
+  retrying for its 10 minutes; if it connects, nothing changes. A keyboard-interactive round with
+  questions was already aborted, never answered empty; a remembered passphrase is offered as before.
 - **§7.3 A user's request never joins an automatic attempt.** It cancels the automatic attempt in
   flight and starts an interactive one (then resets the backoff); a joined automatic attempt would
   fail for want of a prompt.

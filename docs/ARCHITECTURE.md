@@ -474,7 +474,10 @@ it).
   hops, since a native prompt does not say which hop asks); and for anything else it aborts the
   attempt by closing the session, so no empty password ever reaches the server. Such an attempt
   fails `NeedsUser` (as does an automatic OpenSSH attempt refused with `Permission denied`), which
-  stops the loop at once with `ReconnectAbandoned`: retrying would only feed fail2ban.
+  stops the loop at once with `ReconnectAbandoned`: retrying would only feed fail2ban. A key's
+  passphrase with nothing remembered is cancelled instead (it sends the server nothing, and the agent
+  or another key may still get in), but recorded: if the attempt then fails SSH, it is `NeedsUser`
+  too.
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
   through it, and so does the kill of a shell a stale result started (a result that came back to a pane
   closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once; otherwise it is queued, kept across

@@ -28,8 +28,10 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <para>
 /// Past memory, an interactive attempt (a user is waiting) asks the window's handler, which may show a
 /// dialog. An automatic one never does: it accepts a host key only when the known-hosts store already
-/// trusts it - the native layer asks about the host key on every connect, known or not - and cancels
-/// every other prompt, so the attempt fails quietly and the reconnect loop keeps backing off.
+/// trusts it - the native layer asks about the host key on every connect, known or not - and leaves
+/// every other prompt unanswered (see <see cref="Attempt"/>), so the attempt fails quietly. One that
+/// failed for want of a secret only the user can give fails as needing the user, which stops the
+/// reconnect loop; a refused host key leaves it backing off.
 /// </para>
 /// </remarks>
 internal sealed class RemoteMuxInteractionHandler
@@ -139,7 +141,9 @@ internal sealed class RemoteMuxInteractionHandler
     /// every reconnect, until fail2ban or a lockout steps in. A thrown handler instead makes the native
     /// exec channel close the session without answering (its documented contract), and closing wakes
     /// rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A passphrase
-    /// is still cancelled: it only unlocks a local key, and nothing reaches the server.
+    /// is still cancelled: it only unlocks a local key, and nothing reaches the server. It is recorded,
+    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH, nothing else got
+    /// in, and the connector reports it as needing the user, as it does an aborted prompt.
     /// </para>
     /// </remarks>
     internal sealed class Attempt : ISshInteractionHandler
@@ -151,6 +155,7 @@ internal sealed class RemoteMuxInteractionHandler
         private readonly List<Answer> _answers = []; // guarded by _gate; in the order given
         private bool _succeeded;                     // guarded by _gate
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
+        private SshInteractionKind? _declinedPrompt; // guarded by _gate
 
         internal Attempt(RemoteMuxInteractionHandler owner, bool interactive, bool passwordsReplayable, int generation)
         {
@@ -167,6 +172,16 @@ internal sealed class RemoteMuxInteractionHandler
         public SshInteractionKind? AbortedPrompt
         {
             get { lock (_gate) return _abortedPrompt; }
+        }
+
+        /// <summary>
+        /// A secret prompt this attempt cancelled for want of anyone to ask and anything remembered - an encrypted
+        /// key's passphrase - without ending the connection (codex D3); null when there was none. The attempt may still
+        /// get in another way; if it fails SSH instead, signing in needs the user, as for an <see cref="AbortedPrompt"/>.
+        /// </summary>
+        public SshInteractionKind? DeclinedPrompt
+        {
+            get { lock (_gate) return _declinedPrompt; }
         }
 
         private ISshInteractionHandler? User => Interactive ? _owner._user : null;
@@ -188,7 +203,12 @@ internal sealed class RemoteMuxInteractionHandler
 
                 if (User is not { } user)
                 {
-                    return kind == SshInteractionKind.Password ? throw Abort(kind) : SshInteractionResponse.Cancel();
+                    // A password is never cancelled: rusty_ssh would send the cancel as an empty password. A passphrase
+                    // is: it only unlocks a local key, so nothing reaches the server, and the agent or another key may
+                    // still get in. But it is recorded, so an attempt that then fails SSH reads as needing the user.
+                    if (kind == SshInteractionKind.Password) throw Abort(kind);
+                    Decline(kind);
+                    return SshInteractionResponse.Cancel();
                 }
 
                 SshInteractionResponse response = await user.HandleAsync(request, cancellationToken).ConfigureAwait(false);
@@ -257,6 +277,11 @@ internal sealed class RemoteMuxInteractionHandler
         {
             lock (_gate) _abortedPrompt ??= kind;
             return new RemoteMuxPromptAbortedException(kind);
+        }
+
+        private void Decline(SshInteractionKind kind)
+        {
+            lock (_gate) _declinedPrompt ??= kind;
         }
 
         private bool IsRememberable(SshInteractionKind kind) => kind != SshInteractionKind.Password || _passwordsReplayable;

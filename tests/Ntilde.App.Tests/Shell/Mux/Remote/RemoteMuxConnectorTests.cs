@@ -56,6 +56,9 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
     internal static SshInteractionRequest PasswordPrompt { get; } = new() { Kind = SshInteractionKind.Password, Prompt = "Password:" };
 
+    internal static SshInteractionRequest PassphrasePrompt { get; } =
+        new() { Kind = SshInteractionKind.Passphrase, Prompt = "Enter passphrase for key '/home/nova/.ssh/id_ed25519':" };
+
     private T Own<T>(T disposable) where T : IDisposable
     {
         _owned.Add(disposable);
@@ -550,6 +553,79 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Empty(user.Asked);
         Assert.Equal(RemoteFailureKind.NeedsUser, failed.Failure.Kind);
         Assert.Equal("signing in to nova@fake-host needs a password, which an automatic reconnect does not ask for", failed.Failure.Reason);
+    }
+
+    /// <summary>
+    /// Codex D3, end to end through the real native transport: an automatic attempt meets an encrypted key's passphrase
+    /// prompt with nothing remembered. It cancels it - a passphrase only unlocks a local key, so nothing reaches the
+    /// server, and the agent or another key may still get in - but this time nothing else does, and SSH fails. Signing
+    /// in needs the user, so the failure is NeedsUser, the marker the reconnect loop stops on, not SshFailed.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_native_attempt_that_cancels_an_unremembered_passphrase_and_then_fails_needs_the_user()
+    {
+        var interop = new PromptingNativeSshInterop(
+            PromptingNativeSshInterop.PassphrasePrompt,
+            PromptingNativeSshInterop.Error("Authentication failed: no authentication method succeeded"),
+            NativeSshEvent.Closed());
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("never asked"));
+        RemoteMuxConnector connector = Own(NativeConnector(interop, user));
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        (NativeSshResponseKind kind, string payload) = Assert.Single(interop.Submissions);
+        Assert.Equal(NativeSshResponseKind.Passphrase, kind);
+        Assert.Equal("""{"text":""}""", payload);   // the cancel: no secret, and none sent to the server
+        Assert.Empty(user.Asked);
+        Assert.Equal(RemoteFailureKind.NeedsUser, failed.Failure.Kind);
+        Assert.Equal("signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for", failed.Failure.Reason);
+    }
+
+    /// <summary>Codex D3: the same cancelled passphrase, but another way in (the agent, another key) works: connected, nothing recorded against it.</summary>
+    [Fact]
+    public async Task An_automatic_attempt_that_cancels_a_passphrase_but_gets_in_another_way_connects()
+    {
+        var answers = new List<SshInteractionResponse>();
+        var connector = Own(new RemoteMuxConnector(
+            () => Profile(),
+            (_, request) =>
+            {
+                _remote.OnStart = _ => answers.Add(request.Prompts.HandleAsync(PassphrasePrompt, CancellationToken.None).GetAwaiter().GetResult());
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(new ScriptedUser(), _ => false),
+            "i",
+            null));
+
+        MuxClient client = Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.True(client.IsConnected);
+        Assert.True(Assert.Single(answers).IsCanceled);
+        Assert.False(connector.Prompts.Remembers(SshInteractionKind.Passphrase));
+    }
+
+    /// <summary>Codex D3: a passphrase that got a connection in is still remembered and offered to the next automatic attempt, unchanged.</summary>
+    [Fact]
+    public async Task A_remembered_passphrase_answers_the_next_automatic_attempt()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("correct horse"));
+        var answers = new List<SshInteractionResponse>();
+        var connector = Own(new RemoteMuxConnector(
+            () => Profile(),
+            (_, request) =>
+            {
+                _remote.OnStart = _ => answers.Add(request.Prompts.HandleAsync(PassphrasePrompt, CancellationToken.None).GetAwaiter().GetResult());
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(user, _ => false),
+            "i",
+            null));
+
+        Own(await connector.ConnectAsync(Ct));
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(new[] { "correct horse", "correct horse" }, answers.Select(a => a.Secret));
+        Assert.Single(user.Asked);
     }
 
     /// <summary>The same prompt on a user-started attempt: the user's answer is what is submitted.</summary>

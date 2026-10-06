@@ -712,6 +712,48 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// Codex D3: an automatic attempt that cancels an encrypted key's passphrase prompt, with nothing remembered, and
+    /// then fails SSH needed the user as much as one with a password to give: the loop stops at once
+    /// (<see cref="MuxConnectionHost.ReconnectAbandoned"/>), with nothing scheduled, instead of retrying for ten minutes.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_attempt_that_cancels_an_unremembered_passphrase_and_fails_stops_the_loop()
+    {
+        var user = new ScriptedUser();
+        var answers = new ConcurrentQueue<SshInteractionResponse>();
+        MuxConnectionHost host = Create(
+            (_, request) =>
+            {
+                _remote.OnStart = _ =>
+                {
+                    _remote.Script = null;
+                    if (request.Interactive) return;   // the user's request got in
+                    answers.Enqueue(request.Prompts.HandleAsync(RemoteMuxConnectorTests.PassphrasePrompt, CancellationToken.None).GetAwaiter().GetResult());
+                    // Cancelled: the key was not offered, and nothing else got in.
+                    _remote.Script = FakeRemoteScript.NativeFailure("Authentication failed: no authentication method succeeded");
+                };
+                return _remote;
+            },
+            user);
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+        await events.WaitForAsync("abandoned");
+
+        Assert.False(host.IsReconnecting);
+        Assert.Equal(0, _clock.PendingCount);
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal(2, _remote.StartCount);   // one automatic attempt
+        Assert.True(Assert.Single(answers).IsCanceled);
+        Assert.Empty(user.Asked);
+        await TestWait.UntilAsync(() => host.LastFailure is not null, "the failure was recorded", Patient);
+        Assert.Equal(RemoteFailureKind.NeedsUser, Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure.Kind);
+    }
+
+    /// <summary>
     /// Ruling: a user's request never joins an automatic attempt in flight - that attempt may not prompt,
     /// so the user would wait on an attempt that can only fail for want of a password. It is cancelled, and
     /// an interactive one starts.

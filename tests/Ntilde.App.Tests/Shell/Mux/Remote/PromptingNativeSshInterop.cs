@@ -23,6 +23,14 @@ internal sealed class PromptingNativeSshInterop : INativeSshInterop
     public static NativeSshEvent PasswordPrompt { get; } =
         new(NativeSshEventKind.PasswordPrompt, """{"prompt":"Password:"}"""u8.ToArray(), flags: NativeSshEventFlags.Json);
 
+    /// <summary>An encrypted key's passphrase: asked before the key can be offered, so nothing has reached the server yet.</summary>
+    public static NativeSshEvent PassphrasePrompt { get; } =
+        new(NativeSshEventKind.PassphrasePrompt, """{"prompt":"Enter passphrase for key '/home/nova/.ssh/id_ed25519':"}"""u8.ToArray(), flags: NativeSshEventFlags.Json);
+
+    /// <summary>The native layer's failure, as it queues one before <see cref="NativeSshEvent.Closed"/>; <paramref name="message"/> has no quote or backslash.</summary>
+    public static NativeSshEvent Error(string message) =>
+        new(NativeSshEventKind.Error, Encoding.UTF8.GetBytes($$"""{"message":"{{message}}"}"""), flags: NativeSshEventFlags.Json);
+
     public IReadOnlyList<(NativeSshResponseKind Kind, string PayloadJson)> Submissions
     {
         get { lock (_submissions) return _submissions.ToArray(); }
