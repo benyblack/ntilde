@@ -8210,6 +8210,14 @@ namespace Ntilde
                 return;
             }
 
+            if (pane.IsPersistentRemoteTab)
+            {
+                // Phase 4 spec §8.4, final review I3: as for the sidebar and its transfers - no SSH session of this app
+                // stands behind a persisted remote tab (its session id names a daemon session), so say so and do nothing else.
+                EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesUnavailableMessage);
+                return;
+            }
+
             var profile = pane.Profile;
             var sessionId = pane.Session?.Id ?? Guid.Empty;
             await InitiateSftpTransferAsync(profile, sessionId, direction, kind);

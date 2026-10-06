@@ -995,6 +995,9 @@ review; the section they change is named first.
 - **§7.6 A pane whose profile lost the flag keeps its pending `ssh:` id for its whole life**, not for
   one save. Turning the flag back on can still reattach the shell; dropping the id would orphan a
   shell nothing can adopt.
+- **§8.4 The palette's SFTP upload and download** are refused on a persistent remote tab with the
+  sidebar's notice (final review I3). They opened the transfer dialog with the mux session's id, which
+  names no SSH session of the app, and the job then made an SSH connection of its own.
 - **§7.4 Keys are swallowed while a remote connect is in flight.** The connect may be waiting on a
   prompt, and a second Enter would only join it.
 - **Pane: Detach on a remote pane** (final review F2) detaches as on a local one, but its toast reads

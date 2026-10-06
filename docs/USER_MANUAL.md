@@ -430,9 +430,10 @@ with the usual prompts. This happens for:
 
 **Limitations:**
 
-- No SFTP sidebar (*Remote Files*) and no port forwards on a persistent remote tab: *Remote Files*
-  shows a notification, "Not available on a persistent remote tab", and the profile's forwards are
-  not set up. Use a plain SSH tab of the same host (from a profile with the checkbox off) for those.
+- No SFTP sidebar (*Remote Files*), no SFTP transfers and no port forwards on a persistent remote
+  tab: *Remote Files*, its transfers and the palette's *SFTP: Upload…* and *SFTP: Download…*
+  commands show a notification, "Not available on a persistent remote tab", and the profile's
+  forwards are not set up. Use a plain SSH tab of the same host (from a profile with the checkbox off) for those.
 - Windows hosts are not supported, nor are the hosts the installer refuses (see *Supported hosts*).
 - Linux hosts where systemd-logind ends a user's processes at logout (`KillUserProcesses=yes` in
   `/etc/systemd/logind.conf`) end the daemon and its shells when your last SSH session closes. Run

@@ -360,6 +360,35 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     }
 
     /// <summary>
+    /// Final review I3: the palette's SFTP upload and download are refused on a persistent remote tab the way the
+    /// sidebar and its transfers are - the same notice, and no transfer dialog. Before, they opened the dialog with
+    /// the mux session's id, which names no SSH session of this app (no remote-path completion, no remembered
+    /// password), and the job then opened an SSH connection of its own.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(TransferDirection.Upload, TransferKind.File)]
+    [InlineData(TransferDirection.Upload, TransferKind.Folder)]
+    [InlineData(TransferDirection.Download, TransferKind.File)]
+    [InlineData(TransferDirection.Download, TransferKind.Folder)]
+    public void The_palettes_sftp_transfers_are_unavailable_on_a_persistent_remote_tab(TransferDirection direction, TransferKind kind)
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]));
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
+        TerminalPane pane = RemotePanes(window).Single();
+        Assert.True(pane.IsPersistentRemoteTab);
+        int ownedBefore = window.OwnedWindows.Count;
+
+        var transfer = (Task)typeof(MainWindow).GetMethod("InitiateSftpTransfer", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(window, [pane, direction, kind])!;
+
+        PumpUntil(() => transfer.IsCompleted && Toast(window).Visible, "the toast says why, and nothing waits on a dialog");
+        Assert.Equal(TerminalPane.RemoteFilesUnavailableMessage, Toast(window).Message);
+        Assert.Equal(ownedBefore, window.OwnedWindows.Count);
+    }
+
+    /// <summary>
     /// Phase 4 spec §5: one id on two daemons is two sessions. A remote pane that names (here: keeps pending)
     /// the id of a local orphan does not stop the window from adopting that orphan.
     /// </summary>
