@@ -34,7 +34,10 @@ public sealed class MuxDaemonHost : IDisposable
     }
 
     public Task<string> Completion => _completion.Task;
-    private string LockPath => Path.Combine(Path.GetDirectoryName(_options.DescriptorPath)!, "mux.lock");
+    private string LockPath => LockPathFor(_options.DescriptorPath);
+
+    /// <summary>The lock a daemon serving <paramref name="descriptorPath"/> holds: <c>mux.lock</c> beside the descriptor.</summary>
+    internal static string LockPathFor(string descriptorPath) => Path.Combine(Path.GetDirectoryName(descriptorPath)!, "mux.lock");
 
     public void Start()
     {

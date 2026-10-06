@@ -318,6 +318,30 @@ public class CliCommandDispatchTests
             m => m.Name == "Execute" && m.DeclaringType?.FullName == "Ntilde.Mux.Cli.MuxCli");
     }
 
+    /// <summary>
+    /// Phase 4 final review F3: <c>ntilde-mux</c> serves a root of its own, never the GUI's. Its <c>Main</c>
+    /// resolves its paths through <c>MuxPaths.Standalone()</c>; <c>MuxPaths.Default()</c> - the app-data root the
+    /// GUI's daemon serves - would put both daemons on one descriptor, socket, lock and log on a host that runs
+    /// both. The App's <c>ntilde mux</c> adapter, in turn, keeps the GUI's root and never asks for ntilde-mux's.
+    /// </summary>
+    [Fact]
+    public void Mux_daemon_serves_its_own_root_and_the_App_adapter_the_GUIs()
+    {
+        MethodInfo main = Assembly.Load("ntilde-mux").GetType("Ntilde.MuxDaemon.Program", throwOnError: true)!
+            .GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        List<MethodBase> mainCalls = CalledMethods(main);
+        Assert.Contains(mainCalls, IsMuxPaths("Standalone"));
+        Assert.DoesNotContain(mainCalls, IsMuxPaths("Default"));
+
+        MethodInfo adapterHost = typeof(Ntilde.Shell.Mux.MuxCommand).GetMethod("CreateHost", CommandMemberFlags)!;
+        List<MethodBase> adapterCalls = CalledMethods(adapterHost);
+        Assert.Contains(adapterCalls, m => m.Name == "GetRootDirectory" && m.DeclaringType?.FullName == "Ntilde.Mux.Contracts.MuxDiscovery");
+        Assert.DoesNotContain(adapterCalls, IsMuxPaths("Standalone"));
+    }
+
+    private static Predicate<MethodBase> IsMuxPaths(string name) =>
+        m => m.Name == name && m.DeclaringType?.FullName == "Ntilde.Mux.Daemon.MuxPaths";
+
     private static readonly Dictionary<short, OpCode> OpCodesByValue = typeof(OpCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
         .Select(f => (OpCode)f.GetValue(null)!)

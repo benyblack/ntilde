@@ -25,30 +25,30 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     private readonly string _executable;
     private readonly IReadOnlyList<string> _leadingArgs;
     private readonly IReadOnlyList<string> _serveArguments;
-    private readonly string? _root;
+    private readonly MuxPaths? _paths;
     private readonly object _gate = new();
     private Process? _last; // the latest daemon started, kept to read its exit code; guarded by _gate
 
     /// <param name="leadingArgs">Before the serve arguments: e.g. the dll, when <paramref name="executable"/> is <c>dotnet</c>.</param>
     /// <param name="serveArguments">What makes the executable serve: <c>["mux","serve"]</c> for the GUI's exe.</param>
-    /// <param name="root">
-    /// The root the daemon serves (<see cref="MuxPaths.Root"/>); null = whatever the daemon resolves
-    /// from the environment it inherits. See <see cref="CreateStartInfo"/>.
+    /// <param name="paths">
+    /// The paths the daemon serves - the GUI's or <c>ntilde-mux</c>'s (<see cref="MuxPaths.IsStandalone"/>); null =
+    /// whatever the daemon resolves from the environment it inherits. See <see cref="CreateStartInfo"/>.
     /// </param>
-    public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs, IReadOnlyList<string> serveArguments, string? root = null)
+    public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs, IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
     {
         _executable = executable;
         _leadingArgs = leadingArgs;
         _serveArguments = serveArguments;
-        _root = root;
+        _paths = paths;
     }
 
     /// <summary>
     /// $APPIMAGE when running from an AppImage: Environment.ProcessPath is inside the runtime's FUSE
     /// mount, which is unmounted when the GUI exits and would pull the daemon's files out from under it.
     /// </summary>
-    /// <param name="root">The root the daemon serves; null = the one it resolves from the inherited environment.</param>
-    public static ProcessMuxDaemonSpawner CreateDefault(IReadOnlyList<string> serveArguments, string? root = null)
+    /// <param name="paths">The paths the daemon serves; null = the ones it resolves from the inherited environment.</param>
+    public static ProcessMuxDaemonSpawner CreateDefault(IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
     {
         string exe = ResolveDaemonExecutable(
             Environment.GetEnvironmentVariable("APPIMAGE"),
@@ -56,7 +56,7 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
             Environment.ProcessPath,
             File.Exists)
             ?? throw new InvalidOperationException("The executable path is unknown.");
-        return new ProcessMuxDaemonSpawner(exe, [], serveArguments, root);
+        return new ProcessMuxDaemonSpawner(exe, [], serveArguments, paths);
     }
 
     /// <summary>
@@ -89,11 +89,13 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     }
 
     /// <summary>
-    /// The daemon's command line and environment; nothing is started. The daemon resolves its root
-    /// from <see cref="MuxDiscovery.RootOverrideEnvVar"/> or the default (<see cref="MuxDiscovery.GetRootDirectory"/>),
-    /// so a spawner root other than the one this environment resolves to is handed down
-    /// through that variable - otherwise the launcher would wait at one root for a daemon serving
-    /// another. The root this environment already resolves to is left alone: the GUI's spawns stay
+    /// The daemon's command line and environment; nothing is started. The daemon resolves its root by its
+    /// executable's rule - the GUI's from <see cref="MuxDiscovery.RootOverrideEnvVar"/> or
+    /// <see cref="MuxDiscovery.GetRootDirectory"/>, <c>ntilde-mux</c>'s from
+    /// <see cref="MuxPaths.StandaloneRootOverrideEnvVar"/> or <see cref="MuxPaths.StandaloneRootDirectory"/> - so
+    /// a root other than the one that rule finds in this environment is handed down through that rule's
+    /// variable (<see cref="MuxPaths.RootHandDown"/>); otherwise the launcher would wait at one root for a daemon
+    /// serving another. The root this environment already resolves to is left alone: the GUI's spawns stay
     /// exactly as before, and the daemon's shells do not gain the variable (it would make a GUI started
     /// from one of them skip <c>AppPaths</c>' legacy-root migration).
     /// </summary>
@@ -111,18 +113,13 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
         foreach (string a in _leadingArgs) psi.ArgumentList.Add(a);
         foreach (string a in _serveArguments) psi.ArgumentList.Add(a);
 
-        if (_root is not null && !SameRoot(_root, MuxDiscovery.GetRootDirectory()))
+        if (_paths?.RootHandDown() is { } handDown)
         {
-            psi.Environment[MuxDiscovery.RootOverrideEnvVar] = Path.GetFullPath(_root);
+            psi.Environment[handDown.Variable] = handDown.Root;
         }
 
         return psi;
     }
-
-    private static bool SameRoot(string a, string b) => string.Equals(
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)),
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)),
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     public void Spawn()
     {

@@ -9,7 +9,8 @@ internal static class Program
 {
     private static int Main(string[] args) => MuxCli.Execute(args, Console.Out, Console.Error, new MuxCliHost
     {
-        Paths = MuxPaths.Default(),
+        // Its own root, not the GUI's (final review F3): on a host that also runs ntilde, the two daemons never meet.
+        Paths = MuxPaths.Standalone(),
         UsagePrefix = "ntilde-mux",
         ServeArguments = ["serve"],
         SessionFactory = () => LocalShellSessionFactory.Instance,

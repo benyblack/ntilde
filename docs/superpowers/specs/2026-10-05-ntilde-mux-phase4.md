@@ -97,7 +97,7 @@ Everything stays behind `TerminalSettings.SessionPersistence` plus a new per-pro
 | `HelloParams.ClientInstanceId` | New `string?` (at most 64 characters; anything longer is ignored). A GUI endpoint host generates one random id and reuses it across reconnects. When a hello carries an id, the server closes every *other* open connection with the same id before it replies `welcome`. Those connections are dead twins left by a dropped link, and closing them detaches their sinks through the normal connection-close path. The text client and the CLI send none. A Phase 3 daemon ignores the field (unknown members are skipped), so a GUI reattaching after a drop always uses `Shared` (§7.4) and never depends on the eviction. |
 | `SessionChangedNotification.InteractiveClients` | New `int?`, written only when non-null. Carry-over 9. |
 | `SessionInfoResult.InteractiveClients` | New `int?`. Carry-over 9. |
-| `SpawnParams.Command` empty | Means "the daemon's default login shell". Only `ntilde-mux` daemons (`LocalShellSessionFactory`, §6.3) give it that meaning. The GUI's own daemon is never asked for it: local spawns always carry a command. |
+| `SpawnParams.Command` empty | Means "the daemon's default login shell". Only `ntilde-mux` daemons (`LocalShellSessionFactory`, §6.3) give it that meaning. The GUI's own daemon would refuse it (its `DefaultTerminalSessionFactory` hands it to rusty_pty), so it must never be asked: local spawns always carry a command, and `ntilde-mux` serves a root of its own (§15, final review F3), so a remote client never reaches the GUI's daemon, even on a host that runs both. |
 | `MuxEndpointDescriptor.StartTime` | New `long?`: the daemon's `Process.StartTime` in UTC ticks. This is the descriptor file, not the wire. Carry-over 1. |
 
 The `JsonSerializerContext` stays source-generated, with `WhenWritingNull`.
@@ -855,12 +855,30 @@ review; the section they change is named first.
 - **§6.2 `EnsureConnectedAsync` does the hello inside the connect-or-spawn loop, per attempt.** A daemon
   idling out between accept and hello would otherwise surface as an `IOException` and a 30 s GUI
   cooldown.
-- **§6.2 The spawner sets `NTILDE_APPDATA_ROOT` to its `MuxPaths.Root`.** The proxy spawns with its
-  host's paths, and a non-default root would otherwise start the daemon at the default one.
+- **§6.2 The spawner hands its `MuxPaths.Root` down** when the spawned executable's own rule would not
+  resolve it: through `NTILDE_MUX_ROOT` for `ntilde-mux`, `NTILDE_APPDATA_ROOT` for the GUI's
+  executable (`MuxPaths.RootHandDown`, final review F3). The proxy spawns with its host's paths, and a
+  non-default root would otherwise start the daemon at the default one.
 - **§6.2 Surface:** `MuxCliHost.UsagePrefix` (`"ntilde mux"` / `"ntilde-mux"`) stands for
   `ExecutableDisplayName`, and `MuxPaths.Default()` is added. The usage text lists only the host's
   verbs and is normalised to `Environment.NewLine` (the CRLF checkout leaked CRLF into `ntilde-mux`
   on Linux), and the version-mismatch hint names the host's own `kill-server --force`.
+- **`ntilde-mux` serves its own root** (final review F3): `MuxPaths.Standalone()`, which is
+  `NTILDE_MUX_ROOT` when set, else `<app-data root>/ntilde-mux` (`~/.local/share/ntilde/ntilde-mux` on
+  Linux, `~/Library/Application Support/ntilde/ntilde-mux` on macOS; `NTILDE_APPDATA_ROOT` moves it
+  with the app-data root). Every `ntilde-mux` verb uses it; the App's `ntilde mux` adapter keeps the
+  app-data root (`MuxPaths.Default()`). With one root for both, a host that also ran the GUI shared
+  descriptor, socket, lock and log: a remote proxy reached the GUI's daemon, whose factory refuses an
+  empty command, so every persistent tab fell back to plain SSH; or the GUI found `ntilde-mux`'s daemon,
+  adopted a remote client's sessions as orphans, and its update flow's `shutdown` ended them. The
+  socket stays 0600 in a 0700 directory; the `sun_path` fallback (`$XDG_RUNTIME_DIR` or the temp
+  directory) is named by the root's hash, so it differs as well; a typical macOS `$HOME` keeps the
+  socket in the root (about 84 of 103 bytes). A proxy hands a root other than its environment's to the
+  daemon it spawns through `NTILDE_MUX_ROOT` (the GUI's executable still through
+  `NTILDE_APPDATA_ROOT`): `MuxPaths.IsStandalone` picks the variable. The binary's install path,
+  `~/.local/share/ntilde/bin/ntilde-mux`, is unchanged; nothing migrates, since no `ntilde-mux` had
+  shipped. `MuxPathsTests` and `CliCommandDispatchTests.Mux_daemon_serves_its_own_root_and_the_App_adapter_the_GUIs`
+  pin it; the CI smoke and the Docker E2E read the descriptor there.
 - **§6.4 `MuxCliHost.AttachedToParentConsole` stays** (listed in §6.2, set by `Program.cs`), but no verb
   reads it since the `cmd /c` hint went (§11.4).
 - **§2 decision 1 Managed SHA-256.** `MuxDiscovery`'s root hash uses `Ntilde.Mux.Contracts.Sha256`,

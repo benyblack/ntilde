@@ -65,8 +65,11 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
     private const string DropVariable = "NTILDE_MUX_E2E_DROP";
     private const string AppDataRootVariable = "NTILDE_APPDATA_ROOT";
 
-    /// <summary>Where the daemon's descriptor is for the container's user (MuxDiscovery over <c>~/.local/share/ntilde</c>).</summary>
-    private const string RemoteDescriptorPath = "/home/nova/.local/share/ntilde/mux/mux-endpoint.json";
+    /// <summary>
+    /// Where the daemon's descriptor is for the container's user: MuxDiscovery over ntilde-mux's own root,
+    /// <c>~/.local/share/ntilde/ntilde-mux</c> (final review F3: never the GUI's <c>~/.local/share/ntilde</c>).
+    /// </summary>
+    private const string RemoteDescriptorPath = "/home/nova/.local/share/ntilde/ntilde-mux/mux/mux-endpoint.json";
 
     private const string ConnectionLost = nameof(MuxConnectionHost.ConnectionLost);
     private const string Reconnected = nameof(MuxConnectionHost.Reconnected);

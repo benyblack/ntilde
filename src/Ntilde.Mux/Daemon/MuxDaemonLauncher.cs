@@ -68,7 +68,7 @@ public sealed class MuxDaemonLauncher
         string killServerCommand = DefaultKillServerCommand)
     {
         MuxPaths p = paths ?? MuxPaths.Default();
-        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p.Root), log: log,
+        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p), log: log,
             killServerCommand: killServerCommand);
     }
 

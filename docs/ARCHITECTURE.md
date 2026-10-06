@@ -220,7 +220,7 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
 
 | `MuxCliHost` | `ntilde mux` (App, `Shell/Mux/MuxCommand.cs`) | `ntilde-mux` (remote, `src/Ntilde.Mux.Daemon`) |
 |---|---|---|
-| `Paths` (`MuxPaths`: root, descriptor, endpoint, log folder) | the app-data root, or `NTILDE_APPDATA_ROOT` | the same rule on the remote host |
+| `Paths` (`MuxPaths`: root, descriptor, endpoint, log folder) | the app-data root, or `NTILDE_APPDATA_ROOT` (`MuxPaths.Default`) | its own root beneath it, `<app-data root>/ntilde-mux`, or `NTILDE_MUX_ROOT` (`MuxPaths.Standalone`): on a host that also runs the GUI, the two daemons share no descriptor, socket, lock or log |
 | `ServeArguments` | `mux serve` | `serve` |
 | `SessionFactory` | `DefaultTerminalSessionFactory` (the GUI's shells, unchanged) | `LocalShellSessionFactory`: an empty command is the user's login shell with `-l`; `~` is `$HOME`; SSH is refused |
 | `Verbs` | serve, ls, kill, kill-server, attach, probe-console | serve, proxy, ls, kill, kill-server, attach, `--version` |
@@ -422,7 +422,14 @@ it).
   host-local daemon or spawns one (`MuxDaemonLauncher.EnsureEndpointStreamAsync`), writes the
   preamble, then copies bytes on two dedicated threads. It exits 0 when stdin ends, 3 when the
   daemon closed the connection, 1 when it could not reach or spawn a daemon, and 2 on a usage
-  error. Its stdout carries nothing but the preamble and frames.
+  error. Its stdout carries nothing but the preamble and frames. Every `ntilde-mux` verb serves and
+  looks under `ntilde-mux`'s own root (`MuxPaths.Standalone`: `~/.local/share/ntilde/ntilde-mux` on
+  Linux, `~/Library/Application Support/ntilde/ntilde-mux` on macOS), never the GUI's: on a host that
+  also runs the GUI, a remote client would otherwise reach the GUI's daemon (whose session factory
+  refuses an empty command, so every persistent tab fell back to plain SSH), and the GUI would adopt
+  the remote client's sessions as orphans and end them with its update flow's `shutdown`. The
+  sun_path fallback (`$XDG_RUNTIME_DIR` or the temp directory) is named by a hash of the root, so it
+  stays apart too.
 - **Dead twins.** A host's `MuxClient` sends the same random `ClientInstanceId` in every hello for
   the host's life. The server closes every other connection carrying that id before it replies, so
   the half-open connection a drop leaves behind neither keeps the session "shared with 1" nor blocks

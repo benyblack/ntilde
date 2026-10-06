@@ -453,10 +453,14 @@ with the usual prompts. This happens for:
 | `ntilde-mux kill-server [--force]` | Ends every session and stops the daemon. |
 | `ntilde-mux --version [--json]` | Prints the version. |
 
-`serve` and `proxy --stdio` are what Ntilde runs; you do not need them. The daemon writes its log
-to `logs/mux.log` in its data folder: `~/.local/share/ntilde` on Linux,
-`~/Library/Application Support/ntilde` on macOS. As on your own machine, only your user can open
-the daemon's socket, and the daemon never opens a network port.
+`serve` and `proxy --stdio` are what Ntilde runs; you do not need them. The daemon keeps its files
+in a folder of its own: `~/.local/share/ntilde/ntilde-mux` on Linux,
+`~/Library/Application Support/ntilde/ntilde-mux` on macOS. Its log is `logs/mux.log` there. If you
+also run the Ntilde app on that host, its own multiplexer uses `~/.local/share/ntilde` (or
+`~/Library/Application Support/ntilde`) itself, so the two never share a daemon: `ntilde-mux ls`
+lists only the shells of your persistent SSH tabs, and `ntilde mux ls` only the app's own. As on
+your own machine, only your user can open the daemon's socket, and the daemon never opens a network
+port.
 
 #### On Windows: `ntilde.com`
 

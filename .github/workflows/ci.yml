@@ -1999,9 +1999,10 @@ jobs:
             exit 1
           fi
 
-      # From a pristine root, as on a fresh remote host. The descriptor is
-      # <root>/mux/mux-endpoint.json (MuxDiscovery), written once the daemon listens; `ls`
-      # exits 1 when it reaches no daemon, so its 0 proves the round trip.
+      # From a pristine root, as on a fresh remote host. ntilde-mux serves a root of its own beneath
+      # the app-data root (MuxPaths.Standalone: never the GUI's), so the descriptor is
+      # <app-data root>/ntilde-mux/mux/mux-endpoint.json (MuxDiscovery), written once the daemon
+      # listens; `ls` exits 1 when it reaches no daemon, so its 0 proves the round trip.
       - name: Smoke (--version, serve, ls, kill-server)
         env:
           RID: ${{ matrix.rid }}
@@ -2015,7 +2016,7 @@ jobs:
 
           NTILDE_APPDATA_ROOT="$(mktemp -d)"
           export NTILDE_APPDATA_ROOT
-          descriptor="$NTILDE_APPDATA_ROOT/mux/mux-endpoint.json"
+          descriptor="$NTILDE_APPDATA_ROOT/ntilde-mux/mux/mux-endpoint.json"
           serve_log="$RUNNER_TEMP/ntilde-mux-serve.log"
           "$bin" serve --foreground --idle-exit-minutes 0 >"$serve_log" 2>&1 &
           serve_pid=$!

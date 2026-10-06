@@ -167,6 +167,11 @@ rename: this replaces a running binary safely, answers prompts, and sets the mod
 `RunSftpTransfer` does). Supported hosts: Linux x64/arm64 with glibc 2.35 or newer, macOS arm64.
 musl, BSD, Intel Macs and Windows hosts are refused with the reason, and the tab stays plain SSH.
 
+On the host, `ntilde-mux` keeps its descriptor, socket, lock and log under a root of its own,
+`~/.local/share/ntilde/ntilde-mux` (`~/Library/Application Support/ntilde/ntilde-mux` on macOS),
+never the Ntilde app's: on a host that also runs the app, the app's daemon and `ntilde-mux` stay
+apart, so neither serves (or adopts, or shuts down) the other's shells.
+
 ### Deferred
 
 - SFTP sidebar, remote files and port forwards on a persistent remote tab: such a tab is not an

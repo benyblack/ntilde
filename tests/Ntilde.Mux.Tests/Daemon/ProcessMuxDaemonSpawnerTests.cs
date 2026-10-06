@@ -12,8 +12,12 @@ public sealed class ProcessMuxDaemonSpawnerTests
 {
     private static readonly string OtherRoot = Path.Combine(Path.GetTempPath(), "nmxs" + Guid.NewGuid().ToString("N")[..8]);
 
-    private static string? RootOverride(ProcessStartInfo psi) =>
-        psi.Environment.TryGetValue(MuxDiscovery.RootOverrideEnvVar, out string? value) ? value : null;
+    private static string? RootOverride(ProcessStartInfo psi) => Variable(psi, MuxDiscovery.RootOverrideEnvVar);
+
+    private static string? StandaloneRootOverride(ProcessStartInfo psi) => Variable(psi, MuxPaths.StandaloneRootOverrideEnvVar);
+
+    private static string? Variable(ProcessStartInfo psi, string name) =>
+        psi.Environment.TryGetValue(name, out string? value) ? value : null;
 
     [Fact]
     public void The_arguments_are_the_leading_ones_then_the_serve_ones()
@@ -24,12 +28,33 @@ public sealed class ProcessMuxDaemonSpawnerTests
         Assert.Equal(new[] { "Ntilde.dll", "mux", "serve" }, psi.ArgumentList);
     }
 
+    /// <summary>Final review F3: ntilde-mux reads its root from its own variable; the app-data root stays as inherited.</summary>
     [Fact]
-    public void A_root_other_than_the_inherited_one_is_handed_to_the_daemon()
+    public void A_standalone_root_other_than_the_inherited_one_is_handed_to_the_daemon_through_its_own_variable()
     {
-        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("ntilde-mux", [], ["serve"], OtherRoot).CreateStartInfo();
+        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("ntilde-mux", [], ["serve"], MuxPaths.Standalone(OtherRoot)).CreateStartInfo();
+
+        Assert.Equal(Path.GetFullPath(OtherRoot), StandaloneRootOverride(psi));
+        Assert.Equal(Environment.GetEnvironmentVariable(MuxDiscovery.RootOverrideEnvVar), RootOverride(psi));
+    }
+
+    [Fact]
+    public void A_GUI_root_other_than_the_inherited_one_is_handed_to_the_daemon()
+    {
+        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("ntilde", [], ["mux", "serve"], new MuxPaths(OtherRoot)).CreateStartInfo();
 
         Assert.Equal(Path.GetFullPath(OtherRoot), RootOverride(psi));
+        Assert.Equal(Environment.GetEnvironmentVariable(MuxPaths.StandaloneRootOverrideEnvVar), StandaloneRootOverride(psi));
+    }
+
+    /// <summary>ntilde-mux's own root, as its proxy resolves it: the daemon resolves the same one, so nothing is set.</summary>
+    [Fact]
+    public void The_inherited_standalone_root_leaves_the_environment_alone()
+    {
+        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("ntilde-mux", [], ["serve"], MuxPaths.Standalone()).CreateStartInfo();
+
+        Assert.Equal(Environment.GetEnvironmentVariable(MuxPaths.StandaloneRootOverrideEnvVar), StandaloneRootOverride(psi));
+        Assert.Equal(Environment.GetEnvironmentVariable(MuxDiscovery.RootOverrideEnvVar), RootOverride(psi));
     }
 
     [Theory]
@@ -39,7 +64,7 @@ public sealed class ProcessMuxDaemonSpawnerTests
     {
         string root = MuxDiscovery.GetRootDirectory() + (trailingSeparator ? Path.DirectorySeparatorChar.ToString() : "");
 
-        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("ntilde", [], ["mux", "serve"], root).CreateStartInfo();
+        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("ntilde", [], ["mux", "serve"], new MuxPaths(root)).CreateStartInfo();
 
         Assert.Equal(Environment.GetEnvironmentVariable(MuxDiscovery.RootOverrideEnvVar), RootOverride(psi));
     }
@@ -56,11 +81,11 @@ public sealed class ProcessMuxDaemonSpawnerTests
     [Fact]
     public void CreateDefault_spawns_the_daemon_under_the_launchers_root()
     {
-        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(null, ["serve"], new MuxPaths(OtherRoot));
+        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(null, ["serve"], MuxPaths.Standalone(OtherRoot));
 
         var spawner = Assert.IsType<ProcessMuxDaemonSpawner>(launcher.SpawnerForTest);
         ProcessStartInfo psi = spawner.CreateStartInfo();
-        Assert.Equal(Path.GetFullPath(OtherRoot), RootOverride(psi));
+        Assert.Equal(Path.GetFullPath(OtherRoot), StandaloneRootOverride(psi));
         Assert.Equal(new[] { "serve" }, psi.ArgumentList);
     }
 }
