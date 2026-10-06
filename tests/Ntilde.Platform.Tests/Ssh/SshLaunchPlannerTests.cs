@@ -121,7 +121,7 @@ public sealed class SshLaunchPlannerTests
             copy.Name = "renamed";
             copy.MuxOptions.RemoteDaemonPath = "/home/nova/.local/share/ntilde/bin/ntilde-mux";
 
-            SshLaunchPlan plan = new SshLaunchPlanner(store, new OpenSshConfigCompiler(root)).PlanFor(copy, ["-v"]);
+            SshLaunchPlan plan = new SshLaunchPlanner(store, new OpenSshConfigCompiler(root), AnySsh).PlanFor(copy, ["-v"]);
 
             string[] expected = ["-F", plan.ConfigFilePath, $"ntilde_{stored.Id:N}", "-o", "ServerAliveInterval=7", "-v"];
             Assert.Equal(expected, plan.Arguments);
@@ -151,7 +151,7 @@ public sealed class SshLaunchPlannerTests
             store.SaveProfile(edited);
             var compiler = new OpenSshConfigCompiler(root);
 
-            SshLaunchPlan plan = new SshLaunchPlanner(store, compiler).PlanFor(snapshot, ["-v"]);
+            SshLaunchPlan plan = new SshLaunchPlanner(store, compiler, AnySsh).PlanFor(snapshot, ["-v"]);
 
             string[] options = compiler.BuildHostOptions(snapshot).SelectMany(option => new[] { "-o", option }).ToArray();
             string[] expected = ["-F", "none", $"ntilde_{snapshot.Id:N}", "-o", "ServerAliveInterval=7", "-v", .. options];
@@ -177,7 +177,7 @@ public sealed class SshLaunchPlannerTests
             var store = new JsonSshProfileStore(Path.Combine(root, "profiles.json"));
             SshProfile snapshot = Snapshot("first.example");
 
-            SshLaunchPlan plan = new SshLaunchPlanner(store, new OpenSshConfigCompiler(root)).PlanFor(snapshot);
+            SshLaunchPlan plan = new SshLaunchPlanner(store, new OpenSshConfigCompiler(root), AnySsh).PlanFor(snapshot);
 
             string[] expected = ["-F", "none", $"ntilde_{snapshot.Id:N}"];
             Assert.Equal(expected, plan.Arguments.Take(3));
@@ -212,6 +212,9 @@ public sealed class SshLaunchPlannerTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>The ssh a plan names: these tests only read the plan, so none need be installed.</summary>
+    private static string AnySsh() => "/usr/bin/ssh";
 
     /// <summary>A profile with every piece of a block: a user, a port, a key, a jump hop, and an extra argument.</summary>
     private static SshProfile Snapshot(string host) => new()
