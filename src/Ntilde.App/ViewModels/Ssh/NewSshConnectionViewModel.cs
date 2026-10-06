@@ -5,7 +5,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Ntilde.Platform;
@@ -269,10 +268,7 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     /// <summary>Wired by the install flow in a later task; until then it can never execute.</summary>
     public ICommand InstallRemoteMuxCommand { get; set; } = DisabledCommand.Instance;
 
-    private static string ResolveAppVersion() =>
-        Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? Assembly.GetEntryAssembly()?.GetName().Version?.ToString()
-        ?? string.Empty;
+    private static string ResolveAppVersion() => AppVersionInfo.InformationalVersion ?? string.Empty;
 
     private sealed class DisabledCommand : ICommand
     {
