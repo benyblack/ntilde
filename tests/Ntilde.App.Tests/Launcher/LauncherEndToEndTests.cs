@@ -41,9 +41,9 @@ public sealed class LauncherEndToEndTests : IDisposable
         File.Copy(Path.Combine(Environment.SystemDirectory, "cmd.exe"), Path.Combine(_dir, "Ntilde.exe"));
 
     /// <summary>Every handle the launcher gets is ours, so nothing it starts can hold the test runner's pipes.</summary>
-    private Process Start(string arguments)
+    private Process Start(string arguments, string? launcher = null)
     {
-        var psi = new ProcessStartInfo(Launcher, arguments)
+        var psi = new ProcessStartInfo(launcher ?? Launcher, arguments)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -57,9 +57,9 @@ public sealed class LauncherEndToEndTests : IDisposable
         return process;
     }
 
-    private (int ExitCode, string Stdout, string Stderr) Run(string arguments)
+    private (int ExitCode, string Stdout, string Stderr) Run(string arguments, string? launcher = null)
     {
-        using Process process = Start(arguments);
+        using Process process = Start(arguments, launcher);
         Task<string> stdout = process.StandardOutput.ReadToEndAsync();
         Task<string> stderr = process.StandardError.ReadToEndAsync();
         if (!process.WaitForExit(RunTimeout))
@@ -123,6 +123,26 @@ public sealed class LauncherEndToEndTests : IDisposable
 
         Assert.Equal(LauncherCommandLine.TargetMissingExitCode, exitCode);
         Assert.Contains("ntilde: Ntilde.exe not found next to ntilde.com", stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Spec §11.1: off Windows the launcher only refuses. The ProjectReference copies its apphost beside these
+    /// tests on every OS (extensionless off Windows; CI restores its execute bit with the test host's), and it
+    /// runs from there: nothing is beside it, and the refusal comes before it looks.
+    /// </summary>
+    [Fact]
+    public void Off_Windows_it_refuses_with_exit_1()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The refusal is the launcher's non-Windows path.");
+        string apphost = Path.Combine(AppContext.BaseDirectory, "Ntilde.Launcher");
+        Assert.True(File.Exists(apphost),
+            $"{apphost} is missing: App.Tests' ProjectReference to Ntilde.Launcher should copy the launcher's apphost beside the tests.");
+
+        var (exitCode, stdout, stderr) = Run("mux ls", apphost);
+
+        Assert.Equal(1, exitCode);
+        Assert.Equal(string.Empty, stdout);
+        Assert.Contains("ntilde.com runs on Windows only", stderr, StringComparison.Ordinal);
     }
 
     /// <summary>

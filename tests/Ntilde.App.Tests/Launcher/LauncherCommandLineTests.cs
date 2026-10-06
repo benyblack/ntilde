@@ -25,6 +25,9 @@ public sealed class LauncherCommandLineTests
     [InlineData(@"""C:\a b\ntilde.com x", "")]
     [InlineData(@""""" x", "x")]
     [InlineData(@"""C:\x\ntilde.com""x y", "y")]
+    // No escapes in argv[0]: the quote after C:\x\ closes, so argv[0] is C:\x\y. An escape-aware parser
+    // would read \" as a literal quote, stay inside the quotes to the end and return "".
+    [InlineData(@"""C:\x\""y z", "z")]
     // CRT: a leading blank ends an empty argv[0], so the next word is already an argument.
     [InlineData(" ntilde.com x", "ntilde.com x")]
     [InlineData("", "")]

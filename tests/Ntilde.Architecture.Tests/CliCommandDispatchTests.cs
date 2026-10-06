@@ -174,6 +174,38 @@ public class CliCommandDispatchTests
     }
 
     /// <summary>
+    /// Phase 4 spec §11.3: ntilde.com waits for the exit code of whatever it started, unless the GUI releases
+    /// it. A release before any CLI check would hand a CLI verb's prompt back while the verb still ran, so
+    /// every <c>LauncherRelease.Signal</c> in <c>Main</c> comes after every <c>IsSupportedCliMode</c> check. A mux
+    /// verb keeps its launcher waiting but must not pass the event on to the daemon it may start, so
+    /// <c>LauncherRelease.Discard</c> sits inside the mux branch: after its check, before its <c>Execute</c>.
+    /// Compiled order, read from the IL, as in the test above.
+    /// </summary>
+    [Fact]
+    public void The_launcher_is_released_only_on_the_GUI_path()
+    {
+        MethodInfo main = App.GetType("Ntilde.Program", throwOnError: true)!
+            .GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        List<MethodBase> calls = CalledMethods(main);
+        int[] Sites(string type, string method) => Enumerable.Range(0, calls.Count)
+            .Where(i => calls[i].Name == method && (type == "*" || calls[i].DeclaringType?.Name == type))
+            .ToArray();
+
+        int[] checks = Sites("*", "IsSupportedCliMode");
+        int[] signals = Sites("LauncherRelease", "Signal");
+        Assert.True(checks.Length >= 5, $"Main should check the five CLI modes; found {checks.Length} IsSupportedCliMode calls.");
+        Assert.NotEmpty(signals);
+        Assert.All(signals, s => Assert.True(s > checks.Max(),
+            "App Program.Main calls LauncherRelease.Signal before an IsSupportedCliMode check: a CLI verb run through ntilde.com would get its prompt back while it ran."));
+
+        int muxCheck = Assert.Single(Sites("MuxCommand", "IsSupportedCliMode"));
+        int muxExecute = Assert.Single(Sites("MuxCommand", "Execute"));
+        int discard = Assert.Single(Sites("LauncherRelease", "Discard"));
+        Assert.True(muxCheck < discard && discard < muxExecute,
+            "App Program.Main must call LauncherRelease.Discard inside the mux branch, between MuxCommand.IsSupportedCliMode and MuxCommand.Execute.");
+    }
+
+    /// <summary>
     /// Phase 4 spec §12.4: <c>ntilde-mux</c> has no verbs of its own. Its <c>Main</c> hands every
     /// argument to <c>Ntilde.Mux.Cli.MuxCli.Execute</c>, so a verb added there reaches the remote binary
     /// and the App's <c>ntilde mux</c> alike, and the two cannot drift into separate dispatch tables.
