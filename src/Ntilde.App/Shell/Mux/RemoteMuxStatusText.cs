@@ -8,23 +8,16 @@ public static class RemoteMuxStatusText
 {
     public static string Describe(string? installedVersion, string? appVersion)
     {
-        string installed = StripBuildMetadata(installedVersion);
+        // A "+sha" build-metadata suffix never affects version identity.
+        string installed = AppVersionInfo.WithoutBuildMetadata(installedVersion);
         if (installed.Length == 0)
         {
             return "ntilde-mux not installed";
         }
 
-        string app = StripBuildMetadata(appVersion);
+        string app = AppVersionInfo.WithoutBuildMetadata(appVersion);
         return app.Length == 0 || string.Equals(installed, app, StringComparison.Ordinal)
             ? $"ntilde-mux {installed} installed"
-            : $"ntilde-mux {installed} installed — this app is {app}";
-    }
-
-    /// <summary>Drops a SemVer "+sha" build-metadata suffix, which never affects version identity.</summary>
-    public static string StripBuildMetadata(string? version)
-    {
-        string v = version?.Trim() ?? string.Empty;
-        int plus = v.IndexOf('+');
-        return plus >= 0 ? v.Substring(0, plus) : v;
+            : $"ntilde-mux {installed} installed \u2014 this app is {app}";
     }
 }

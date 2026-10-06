@@ -1,5 +1,4 @@
 using System.Reflection;
-using Ntilde.Shell.Mux;
 
 namespace Ntilde.Shell;
 
@@ -29,6 +28,11 @@ internal static class AppVersionInfo
         assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? assembly?.GetName().Version?.ToString();
 
-    /// <summary>Drops a <c>+…</c> build-metadata suffix, which never names a release.</summary>
-    internal static string WithoutBuildMetadata(string? version) => RemoteMuxStatusText.StripBuildMetadata(version);
+    /// <summary>Trims, and drops a SemVer <c>+…</c> build-metadata suffix, which never affects version identity or names a release.</summary>
+    internal static string WithoutBuildMetadata(string? version)
+    {
+        string v = version?.Trim() ?? string.Empty;
+        int plus = v.IndexOf('+', StringComparison.Ordinal);
+        return plus >= 0 ? v.Substring(0, plus) : v;
+    }
 }

@@ -5,16 +5,19 @@ namespace Ntilde.Shell.Mux.Remote;
 /// or a dev build that has none. Nothing vouches for it, so its own SHA-256 is what the dialog shows.
 /// </summary>
 /// <remarks>
-/// It cannot know which platform the file was built for, so the RID is not checked here. The upload
-/// runs the file once before it replaces anything (<see cref="RemoteMuxInstallCommands.Upload"/>), so a
-/// file for the wrong platform fails there and leaves an installed binary in place.
+/// Its header must say it was built for the host's RID (<see cref="MuxDaemonRid.Of"/>): a file for another
+/// platform is refused here, before anything is uploaded. The upload's trial run
+/// (<see cref="RemoteMuxInstallCommands.Upload"/>) is the second line of defence, for a file whose header
+/// is right but which still cannot run.
 /// </remarks>
 internal sealed class LocalFileMuxAssetSource(string path) : IMuxDaemonAssetSource
 {
     /// <exception cref="FileNotFoundException">There is no such file.</exception>
-    /// <exception cref="InvalidDataException">It is larger than <see cref="MuxDaemonAsset.MaxBytes"/>.</exception>
+    /// <exception cref="InvalidDataException">It is larger than <see cref="MuxDaemonAsset.MaxBytes"/>, or not an executable for <paramref name="rid"/>.</exception>
     public async Task<MuxDaemonAsset> GetAsync(string rid, IProgress<long>? progress, CancellationToken ct)
     {
+        if (!MuxDaemonRid.IsKnown(rid)) throw new ArgumentException($"Not a published runtime identifier: \"{rid}\"", nameof(rid));
+
         string fullPath = Path.GetFullPath(path);
         var info = new FileInfo(fullPath);
         if (!info.Exists)
@@ -28,6 +31,11 @@ internal sealed class LocalFileMuxAssetSource(string path) : IMuxDaemonAssetSour
         }
 
         byte[] bytes = await File.ReadAllBytesAsync(fullPath, ct).ConfigureAwait(false);
+        if (MuxDaemonRid.Of(bytes) != rid)
+        {
+            throw new InvalidDataException($"{Path.GetFileName(fullPath)} is {MuxDaemonRid.Describe(bytes)}; the host needs {rid}");
+        }
+
         progress?.Report(bytes.Length);
         return new MuxDaemonAsset(bytes, MuxDaemonAsset.Sha256Of(bytes), fullPath);
     }

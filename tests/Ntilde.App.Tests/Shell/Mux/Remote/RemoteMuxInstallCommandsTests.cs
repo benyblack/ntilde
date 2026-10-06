@@ -23,12 +23,37 @@ public sealed class RemoteMuxInstallCommandsTests
     public void Upload_streams_into_a_temp_file_checks_its_size_trial_runs_it_then_moves_it_over_and_verifies()
     {
         Assert.Equal(
-            "sh -c 'set -e; d=\"$HOME/.local/share/ntilde/bin\"; mkdir -p \"$d\"; t=\"$d/.ntilde-mux.$$\"; "
-            + "trap \"rm -f \\\"$t\\\"\" EXIT; cat > \"$t\"; "
+            "sh -c 'set -e; trap \"\" PIPE; trap \"exit 1\" HUP TERM; "
+            + "d=\"$HOME/.local/share/ntilde/bin\"; mkdir -p \"$d\"; t=\"$d/.ntilde-mux.$$\"; "
+            + "trap \"rm -f \\\"\\$t\\\"\" EXIT; cat > \"$t\"; "
             + "n=$(wc -c < \"$t\"); [ $n -eq 1834567 ] || { echo \"ntilde-mux upload incomplete: expected 1834567 bytes\" >&2; exit 1; }; "
             + "chmod 755 \"$t\"; \"$t\" --version --json > /dev/null; mv -f \"$t\" \"$d/ntilde-mux\"; trap - EXIT; "
             + "exec \"$d/ntilde-mux\" --version --json'",
             RemoteMuxInstallCommands.Upload(1834567));
+    }
+
+    [Fact]
+    public void Upload_s_cleanup_trap_expands_the_temp_path_when_it_fires()
+    {
+        string upload = RemoteMuxInstallCommands.Upload(10);
+
+        // Deferred: the trap's text is rm -f "$t", so a HOME holding a quote or a $(...) is neither a
+        // syntax error when the trap fires nor run. The eager form re-parses the expanded path.
+        Assert.Contains("trap \"rm -f \\\"\\$t\\\"\" EXIT;", upload, StringComparison.Ordinal);
+        Assert.DoesNotContain("trap \"rm -f \\\"$t\\\"\" EXIT;", upload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Upload_ignores_SIGPIPE_and_exits_through_the_trap_on_HUP_and_TERM_before_anything_is_written()
+    {
+        string upload = RemoteMuxInstallCommands.Upload(10);
+
+        // dash runs no EXIT trap on a signal: a dropped connection's SIGPIPE would leave the temp file.
+        int pipe = upload.IndexOf("trap \"\" PIPE;", StringComparison.Ordinal);
+        int hupTerm = upload.IndexOf("trap \"exit 1\" HUP TERM;", StringComparison.Ordinal);
+        int cat = upload.IndexOf("cat > ", StringComparison.Ordinal);
+        Assert.InRange(pipe, 0, cat);
+        Assert.InRange(hupTerm, 0, cat);
     }
 
     [Theory]
@@ -84,5 +109,19 @@ public sealed class RemoteMuxInstallCommandsTests
         Assert.Contains(GitHubReleaseMuxAssetSource.AssetUrl("0.12.1", "linux-arm64") + " ", line, StringComparison.Ordinal);
         Assert.Contains(GitHubReleaseMuxAssetSource.AssetUrl("0.12.1", "linux-arm64") + ".sha256 ", line, StringComparison.Ordinal);
         Assert.Contains("| sha256sum -c - ", line, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("", "linux-x64")]
+    [InlineData("0.11.0; rm -rf ~", "linux-x64")]
+    [InlineData("0.11.0 ", "linux-x64")]
+    [InlineData("../0.11.0", "linux-x64")]
+    [InlineData("0.11.0", "")]
+    [InlineData("0.11.0", "freebsd-x64")]
+    [InlineData("0.11.0", "osx-x64")]
+    [InlineData("0.11.0", "linux-x64 && id")]
+    public void OfflineOneLiner_takes_only_a_release_version_and_a_published_rid(string version, string rid)
+    {
+        Assert.Throws<ArgumentException>(() => RemoteMuxInstallCommands.OfflineOneLiner(version, rid));
     }
 }

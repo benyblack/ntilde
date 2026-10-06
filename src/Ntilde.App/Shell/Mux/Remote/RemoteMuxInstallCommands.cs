@@ -23,11 +23,18 @@ internal static class RemoteMuxInstallCommands
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Steps 2 and 3 go beyond the spec's command, so that nothing ever replaces a working binary with one
-    /// that cannot run. A cancelled or timed-out upload ends with stdin's EOF (the channel's dispose sends
-    /// it before stopping the command), and <c>cat</c> takes a short read for the whole file: the size
-    /// check stops that. The trial run stops a file the host cannot execute - one the user picked for
-    /// another platform. <c>wc -c</c> pads its count on macOS; the unquoted <c>$n</c> drops the padding.
+    /// Steps 2 and 3 go beyond the spec's first draft, so that nothing ever replaces a working binary with
+    /// one that cannot run. A cancelled or timed-out upload ends with stdin's EOF (the channel's dispose
+    /// sends it before stopping the command), and <c>cat</c> takes a short read for the whole file: the
+    /// size check stops that. The trial run stops a file the host cannot execute. <c>wc -c</c> pads its
+    /// count on macOS; the unquoted <c>$n</c> drops the padding.
+    /// </para>
+    /// <para>
+    /// The cleanup trap is written <c>trap "rm -f \"\$t\"" EXIT</c>: <c>$t</c> is expanded when the trap
+    /// fires, quoted, so a <c>$HOME</c> holding a quote or a <c>$(…)</c> is neither a syntax error nor run.
+    /// SIGPIPE is ignored, since a dropped connection makes the shell's last message to the gone stderr
+    /// raise it and dash runs no EXIT trap on a signal; a failed write then ends the script through
+    /// <c>set -e</c> instead, and the trap runs. SIGHUP and SIGTERM exit through the trap too.
     /// </para>
     /// <para>
     /// The script reads no output until its stdin ends and then prints one line, so streaming megabytes
@@ -38,8 +45,9 @@ internal static class RemoteMuxInstallCommands
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(byteCount);
         string size = byteCount.ToString(CultureInfo.InvariantCulture);
-        return "sh -c 'set -e; d=\"$HOME/.local/share/ntilde/bin\"; mkdir -p \"$d\"; t=\"$d/.ntilde-mux.$$\"; "
-            + "trap \"rm -f \\\"$t\\\"\" EXIT; cat > \"$t\"; "
+        return "sh -c 'set -e; trap \"\" PIPE; trap \"exit 1\" HUP TERM; "
+            + "d=\"$HOME/.local/share/ntilde/bin\"; mkdir -p \"$d\"; t=\"$d/.ntilde-mux.$$\"; "
+            + "trap \"rm -f \\\"\\$t\\\"\" EXIT; cat > \"$t\"; "
             + $"n=$(wc -c < \"$t\"); [ $n -eq {size} ] || {{ echo \"ntilde-mux upload incomplete: expected {size} bytes\" >&2; exit 1; }}; "
             + "chmod 755 \"$t\"; \"$t\" --version --json > /dev/null; mv -f \"$t\" \"$d/ntilde-mux\"; trap - EXIT; "
             + "exec \"$d/ntilde-mux\" --version --json'";
@@ -51,12 +59,15 @@ internal static class RemoteMuxInstallCommands
     /// <c>sha256sum</c>), then <c>chmod</c>s it and moves it over the installed name. The user pastes it into
     /// their own shell, so it is not wrapped in <c>sh -c</c>.
     /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="version"/> is not a release version, or <paramref name="rid"/> is not a published RID.</exception>
     public static string OfflineOneLiner(string version, string rid)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(version);
-        ArgumentException.ThrowIfNullOrWhiteSpace(rid);
+        // Both land unquoted in a command line the user runs.
+        if (!MuxDaemonAsset.IsPlainName(version)) throw new ArgumentException($"Not a release version: \"{version}\"", nameof(version));
+        if (!MuxDaemonRid.IsKnown(rid)) throw new ArgumentException($"Not a published runtime identifier: \"{rid}\"", nameof(rid));
+
         string url = GitHubReleaseMuxAssetSource.AssetUrl(version, rid);
-        string check = rid.StartsWith("osx-", StringComparison.Ordinal) ? "shasum -a 256 -c -" : "sha256sum -c -";
+        string check = rid == MuxDaemonRid.OsxArm64 ? "shasum -a 256 -c -" : "sha256sum -c -";
         return "mkdir -p ~/.local/share/ntilde/bin && cd ~/.local/share/ntilde/bin && "
             + $"curl -fsSLo ntilde-mux.new {url} && "
             + $"curl -fsSL {url}.sha256 | sed 's/ .*/  ntilde-mux.new/' | {check} && "

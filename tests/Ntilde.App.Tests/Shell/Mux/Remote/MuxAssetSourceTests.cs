@@ -248,10 +248,67 @@ public sealed class MuxAssetSourceTests : IDisposable
         Assert.Empty(_http.Requests);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("0.11.0 beta")]
+    public async Task A_version_that_cannot_have_a_release_says_so_without_asking(string version)
+    {
+        var ex = await Assert.ThrowsAsync<MuxReleaseNotFoundException>(() => Source(version).GetAsync(Rid, null, Ct));
+
+        Assert.Equal(
+            $"No ntilde-mux release for {(version.Length == 0 ? "this build" : version)} \u2014 choose a file or copy the install command",
+            ex.Message);
+        Assert.Empty(_http.Requests);
+    }
+
+    [Theory]
+    [InlineData("linux-x64")]
+    [InlineData("linux-arm64")]
+    [InlineData("osx-arm64")]
+    public async Task A_local_file_for_the_host_s_platform_is_read_and_hashed(string rid)
+    {
+        byte[] binary = MuxDaemonRidTests.ExecutableFor(rid, 200_000);
+        Directory.CreateDirectory(_root);
+        string path = Path.Combine(_root, "picked-ntilde-mux");
+        File.WriteAllBytes(path, binary);
+
+        MuxDaemonAsset asset = await new LocalFileMuxAssetSource(path).GetAsync(rid, null, Ct);
+
+        Assert.Equal(binary, asset.Bytes);
+        Assert.Equal(Hex(binary), asset.Sha256Hex);
+    }
+
+    [Theory]
+    [InlineData("linux-arm64", "linux-x64", "ntilde-mux-linux-arm64 is a linux-arm64 executable; the host needs linux-x64")]
+    [InlineData("osx-arm64", "linux-arm64", "ntilde-mux-osx-arm64 is an osx-arm64 executable; the host needs linux-arm64")]
+    [InlineData("linux-x64", "osx-arm64", "ntilde-mux-linux-x64 is a linux-x64 executable; the host needs osx-arm64")]
+    public async Task A_local_file_for_another_platform_is_refused(string fileRid, string hostRid, string message)
+    {
+        Directory.CreateDirectory(_root);
+        string path = Path.Combine(_root, "ntilde-mux-" + fileRid);
+        File.WriteAllBytes(path, MuxDaemonRidTests.ExecutableFor(fileRid));
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => new LocalFileMuxAssetSource(path).GetAsync(hostRid, null, Ct));
+
+        Assert.Equal(message, ex.Message);
+    }
+
+    [Fact]
+    public async Task A_local_file_that_is_no_executable_is_refused()
+    {
+        Directory.CreateDirectory(_root);
+        string path = Path.Combine(_root, "notes.txt");
+        File.WriteAllText(path, "#!/bin/sh\necho not ntilde-mux\n");
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => new LocalFileMuxAssetSource(path).GetAsync(Rid, null, Ct));
+
+        Assert.Equal("notes.txt is not a Linux or macOS executable; the host needs linux-x64", ex.Message);
+    }
+
     [Fact]
     public async Task A_local_file_is_read_and_hashed()
     {
-        byte[] binary = Binary();
+        byte[] binary = MuxDaemonRidTests.ExecutableFor(Rid, 200_000);
         Directory.CreateDirectory(_root);
         string path = Path.Combine(_root, "picked-ntilde-mux");
         File.WriteAllBytes(path, binary);

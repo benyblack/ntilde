@@ -534,17 +534,24 @@ Every step runs through `ISshExecTransport`, with the same askpass and prompts a
    - **(a) GitHub release.** `https://github.com/benyblack/ntilde/releases/download/v<appVersion>/ntilde-mux-<rid>`
      and `…/ntilde-mux-<rid>.sha256`, with `HttpClient`. The SHA-256 must match, and the file is cached
      under `<root>/cache/ntilde-mux/<version>/<rid>`.
-   - **(b) A local file** the user picks. Its own SHA-256 is shown.
+   - **(b) A local file** the user picks. Its own SHA-256 is shown, and its ELF or Mach-O header must
+     name the probed RID, or it is refused before the upload.
    - **(c) Offline.** *Copy install command* puts the one-liner on the clipboard:
      `mkdir -p ~/.local/share/ntilde/bin && cd ~/.local/share/ntilde/bin && curl -fsSLo ntilde-mux.new <url> && curl -fsSL <url>.sha256 | sed 's/ .*/  ntilde-mux.new/' | sha256sum -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux`.
      On macOS it uses `shasum -a 256 -c`.
    - A dev build, whose version has no release, offers (b) and (c) only.
-3. **Upload** (§2 decision 4). One exec runs
-   `sh -c 'set -e; d="$HOME/.local/share/ntilde/bin"; mkdir -p "$d"; t="$d/.ntilde-mux.$$"; trap "rm -f \"$t\"" EXIT; cat > "$t"; chmod 755 "$t"; mv -f "$t" "$d/ntilde-mux"; trap - EXIT; "$d/ntilde-mux" --version --json'`.
+3. **Upload** (§2 decision 4). One exec runs, with `<N>` the binary's size in bytes,
+   `sh -c 'set -e; trap "" PIPE; trap "exit 1" HUP TERM; d="$HOME/.local/share/ntilde/bin"; mkdir -p "$d"; t="$d/.ntilde-mux.$$"; trap "rm -f \"\$t\"" EXIT; cat > "$t"; n=$(wc -c < "$t"); [ $n -eq <N> ] || { echo "ntilde-mux upload incomplete: expected <N> bytes" >&2; exit 1; }; chmod 755 "$t"; "$t" --version --json > /dev/null; mv -f "$t" "$d/ntilde-mux"; trap - EXIT; exec "$d/ntilde-mux" --version --json'`.
    The binary goes to its stdin, then EOF, and a progress bar tracks the bytes written.
+   Nothing may replace a working binary with one that cannot run, hence the extras: a cancelled or
+   timed-out upload ends with stdin's EOF, so the byte count catches the short read `cat` would accept;
+   the trial run catches a file the host cannot execute; the trap expands `$t` only when it fires, so an
+   odd `$HOME` is neither a syntax error nor run; and dash runs no EXIT trap on a signal, so SIGPIPE (a
+   dropped connection's) is ignored and HUP/TERM exit through the trap.
 4. **Verify.** The upload exec's stdout is `--version --json`:
    `{"version":"…","protocolMin":1,"protocolMax":2,"rid":"…","path":"/abs/…/ntilde-mux"}`.
    - The protocol range must overlap this app's.
+   - A binary that reports another RID than the probe's stays installed (it ran), with a warning.
    - The flow records `RemoteDaemonPath`, `RemoteDaemonVersion` and `RemoteDaemonRid` in the
      profile's `SshMuxOptions`, and shows the result.
    - The flag `PersistRemoteSessions` is not changed by the flow. The dialog offers to turn it on.

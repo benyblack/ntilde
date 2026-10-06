@@ -154,6 +154,32 @@ public sealed class RemoteMuxInstallerTests
     }
 
     [Fact]
+    public async Task A_binary_that_reports_another_platform_installs_with_a_warning()
+    {
+        RecordingExecTransport host = Host(new FakeExecReply(InstalledJson.Replace("linux-x64", "linux-arm64", StringComparison.Ordinal)));
+
+        RemoteMuxInstallResult result = await Installer(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x"))).InstallAsync(Ct);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(
+            $"ntilde-mux 0.11.0 installed at {InstalledPath} (warning: it reports linux-arm64, but the host is linux-x64)",
+            result.Message);
+        Assert.Contains(_steps, s => s.Message == "Warning: it reports linux-arm64, but the host is linux-x64");
+    }
+
+    [Fact]
+    public async Task What_the_binary_reports_is_quoted_in_the_message()
+    {
+        RecordingExecTransport host = Host(new FakeExecReply(
+            "{\"version\":\"0.11.0\\u001b[2J\",\"protocolMin\":1,\"protocolMax\":2,\"rid\":\"linux-x64\",\"path\":\"/home/nova/x\\ny\"}\n"));
+
+        RemoteMuxInstallResult result = await Installer(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x"))).InstallAsync(Ct);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("ntilde-mux 0.11.0[2J installed at /home/nova/xy", result.Message);
+    }
+
+    [Fact]
     public async Task Rc_file_noise_before_the_version_json_is_skipped()
     {
         RecordingExecTransport host = Host(new FakeExecReply("Welcome to box!\n\n" + InstalledJson));

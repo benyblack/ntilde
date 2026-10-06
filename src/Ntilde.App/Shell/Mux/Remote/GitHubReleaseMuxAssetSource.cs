@@ -72,15 +72,16 @@ internal sealed class GitHubReleaseMuxAssetSource(HttpClient http, string appVer
         return client;
     }
 
-    /// <exception cref="MuxReleaseNotFoundException">This version has no release, or the release has no asset for <paramref name="rid"/>.</exception>
+    /// <exception cref="MuxReleaseNotFoundException">This version has no release (or is unknown), or the release has no asset for <paramref name="rid"/>.</exception>
     /// <exception cref="InvalidDataException">The checksum does not match (<c>checksum mismatch …</c>), the checksum file is malformed, or the asset is too large.</exception>
     /// <exception cref="HttpRequestException">Another HTTP failure.</exception>
     /// <exception cref="TimeoutException">The downloads outlasted <see cref="DownloadTimeout"/>.</exception>
     public async Task<MuxDaemonAsset> GetAsync(string rid, IProgress<long>? progress, CancellationToken ct)
     {
-        // Both go into a URL and a cache path.
+        // Both go into a URL and a cache path. A version that is no plain name (empty: the build's is
+        // unknown) can have no release, which the dialog explains as it does a 404.
         if (!MuxDaemonAsset.IsPlainName(rid)) throw new ArgumentException($"Not a runtime identifier: \"{rid}\"", nameof(rid));
-        if (!MuxDaemonAsset.IsPlainName(appVersion)) throw new ArgumentException($"Not a release version: \"{appVersion}\"", nameof(appVersion));
+        if (!MuxDaemonAsset.IsPlainName(appVersion)) throw new MuxReleaseNotFoundException(appVersion);
         ct.ThrowIfCancellationRequested();
 
         string directory = Path.Combine(cacheDirectory, appVersion, rid);

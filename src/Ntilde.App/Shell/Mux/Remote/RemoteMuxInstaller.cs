@@ -4,6 +4,8 @@ using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.VT;
+using static Ntilde.Shell.Mux.Remote.RemoteOutputText;
 
 namespace Ntilde.Shell.Mux.Remote;
 
@@ -82,7 +84,7 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         }
 
         var facts = (RemoteHostFacts)outcome;
-        report(RemoteMuxInstallStep.Probing, $"{transport.DisplayName}: {facts.Rid}, HOME={facts.Home}");
+        report(RemoteMuxInstallStep.Probing, $"{transport.DisplayName}: {facts.Rid}, HOME={Quote(facts.Home)}");
         report(RemoteMuxInstallStep.Downloading, $"Getting ntilde-mux for {facts.Rid}\u2026");
         MuxDaemonAsset asset;
         try
@@ -123,7 +125,7 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         if (upload.ExitCode != 0)
         {
             string exit = upload.ExitCode is { } code ? $"exit {code.ToString(CultureInfo.InvariantCulture)}" : "no exit status";
-            string tail = RemoteHostProbe.LastLines(upload.Stderr);
+            string tail = LastLines(upload.Stderr);
             return Failed(tail.Length == 0
                 ? $"The upload to {transport.DisplayName} failed ({exit})"
                 : $"The upload to {transport.DisplayName} failed ({exit}): {tail}");
@@ -132,7 +134,7 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         report(RemoteMuxInstallStep.Verifying, "Verifying the installed ntilde-mux\u2026");
         if (ParseVersion(upload.Stdout) is not { } installed)
         {
-            string printed = RemoteHostProbe.LastLines(upload.Stdout);
+            string printed = LastLines(upload.Stdout);
             return Failed(printed.Length == 0
                 ? "ntilde-mux did not report its version"
                 : $"ntilde-mux did not report its version: {printed}");
@@ -141,10 +143,20 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         if (installed.ProtocolMin > MuxProtocol.MaxSupportedVersion || installed.ProtocolMax < MuxProtocol.MinSupportedVersion)
         {
             return Failed(string.Create(CultureInfo.InvariantCulture,
-                $"ntilde-mux {installed.Version} speaks protocol {installed.ProtocolMin}-{installed.ProtocolMax}; this app speaks {MuxProtocol.MinSupportedVersion}-{MuxProtocol.MaxSupportedVersion}"));
+                $"ntilde-mux {Quote(installed.Version)} speaks protocol {installed.ProtocolMin}-{installed.ProtocolMax}; this app speaks {MuxProtocol.MinSupportedVersion}-{MuxProtocol.MaxSupportedVersion}"));
         }
 
-        string done = $"ntilde-mux {installed.Version} installed at {installed.Path}";
+        string done = $"ntilde-mux {Quote(installed.Version)} installed at {Quote(installed.Path)}";
+        if (!string.Equals(installed.Rid, facts.Rid, StringComparison.Ordinal))
+        {
+            // It ran, twice, so it stays: a binary run under emulation, say. But it is not this host's build,
+            // and the dialog says so.
+            string note = $"it reports {Quote(installed.Rid)}, but the host is {facts.Rid}";
+            TerminalLogger.Log($"[RemoteMuxInstaller] {transport.DisplayName}: {note}");
+            report(RemoteMuxInstallStep.Verifying, $"Warning: {note}");
+            done = $"{done} (warning: {note})";
+        }
+
         report(RemoteMuxInstallStep.Done, done);
         return new RemoteMuxInstallResult(true, done, installed);
     }

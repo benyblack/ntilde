@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Ntilde.Platform.Ssh.Exec;
+using static Ntilde.Shell.Mux.Remote.RemoteOutputText;
 
 namespace Ntilde.Shell.Mux.Remote;
 
@@ -45,7 +46,6 @@ internal static partial class RemoteHostProbe
     public static readonly Version MinimumGlibc = new(2, 35);
 
     private const string HomePrefix = "HOME=";
-    private const int MaxQuotedLength = 200;
 
     /// <summary>
     /// Maps the probe's result to the host's facts, or a refusal. A failed probe (ssh's exit 255, a
@@ -100,7 +100,7 @@ internal static partial class RemoteHostProbe
             case "Darwin":
                 return machine switch
                 {
-                    "arm64" => new RemoteHostFacts("osx-arm64", homeDirectory),
+                    "arm64" => new RemoteHostFacts(MuxDaemonRid.OsxArm64, homeDirectory),
                     "x86_64" => new RemoteHostRefusal("Intel Macs are not supported"),
                     _ => new RemoteHostRefusal($"macOS on {Quote(machine)} is not supported"),
                 };
@@ -109,8 +109,8 @@ internal static partial class RemoteHostProbe
             {
                 string? rid = machine switch
                 {
-                    "x86_64" => "linux-x64",
-                    "aarch64" or "arm64" => "linux-arm64",
+                    "x86_64" => MuxDaemonRid.LinuxX64,
+                    "aarch64" or "arm64" => MuxDaemonRid.LinuxArm64,
                     _ => null,
                 };
                 if (rid is null)
@@ -157,21 +157,6 @@ internal static partial class RemoteHostProbe
         return new RemoteHostRefusal(text.Length == 0
             ? "The host probe's output was not recognized"
             : $"The host probe's output was not recognized: {text}");
-    }
-
-    /// <summary>The last few non-blank lines of <paramref name="text"/>, joined with " / ", at most <see cref="MaxQuotedLength"/> characters.</summary>
-    internal static string LastLines(string? text, int count = 3)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
-        string[] lines = text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
-        return Quote(string.Join(" / ", lines.Skip(Math.Max(0, lines.Length - count))));
-    }
-
-    /// <summary>Host-supplied text, cut to <see cref="MaxQuotedLength"/> characters, with control characters dropped.</summary>
-    private static string Quote(string text)
-    {
-        string clean = new(text.Where(c => !char.IsControl(c)).ToArray());
-        return clean.Length <= MaxQuotedLength ? clean : string.Concat(clean.AsSpan(0, MaxQuotedLength), "\u2026");
     }
 
     [GeneratedRegex("([0-9]+)\\.([0-9]+)", RegexOptions.CultureInvariant)]

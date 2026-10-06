@@ -60,10 +60,11 @@ internal sealed record MuxDaemonAsset(byte[] Bytes, string Sha256Hex, string Ori
 
 /// <summary>
 /// The GitHub release for this version has no <c>ntilde-mux</c> asset (HTTP 404): a dev build, or a
-/// version that was never released. The dialog then offers a local file or the offline one-liner.
+/// version that was never released, or one the build does not know. The dialog then offers a local file
+/// or the offline one-liner.
 /// </summary>
 internal sealed class MuxReleaseNotFoundException(string version)
-    : Exception($"No ntilde-mux release for {version} \u2014 choose a file or copy the install command")
+    : Exception($"No ntilde-mux release for {(string.IsNullOrWhiteSpace(version) ? "this build" : RemoteOutputText.Quote(version))} \u2014 choose a file or copy the install command")
 {
     /// <summary>The app version that has no release.</summary>
     public string Version { get; } = version;
