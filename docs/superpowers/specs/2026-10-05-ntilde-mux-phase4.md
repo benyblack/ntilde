@@ -1015,7 +1015,12 @@ review; the section they change is named first.
   decide whether a shell the user closed ends. `RemoteMuxHostFactory.Create` now declines only a
   missing profile. A pane that kept its pending `ssh:` id after the flag went off (§7.6 below) has
   that shell killed on close through a host built for it: one automatic attempt, which never prompts,
-  then released once the kill is delivered. A plain SSH pane no longer counts as needing its endpoint
+  then released once the kill is delivered. That attempt signs in only with what needs no answer (keys,
+  the agent; a host built fresh remembers no password), so for a password-only OpenSSH profile, or a
+  native one without a remembered password, it fails and the kill stays queued on an idle host: sent
+  on the next connect to that endpoint in the window (a tab opened once the flag is back on), tried
+  again by another such close, and dropped, logged, when the window closes (USER_MANUAL §3.3 says
+  so). A plain SSH pane no longer counts as needing its endpoint
   (`TerminalPane.RemoteMuxEndpointInUse`), pending id or not: its close or next spawn asks for the
   connection again, and counting it kept a host built for another pane's kill connected for as long
   as it stayed open. A deleted profile still gets no host, and the kill that cannot be sent is logged,

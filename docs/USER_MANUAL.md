@@ -432,8 +432,12 @@ with the usual prompts. This happens for:
 - Unticking the profile's checkbox makes its new tabs, and its saved tabs at the next launch, open
   plain SSH. Their shells keep running on the host, and Ntilde keeps their ids in its saved
   session, so once the checkbox is ticked again they reattach at the following launch. Closing such
-  a tab still ends its shell on the host: Ntilde connects once in the background, without prompting,
-  to send the kill. To end them all at once, run `ntilde-mux kill-server` on the host.
+  a tab ends its shell on the host when Ntilde can sign in there without asking you anything (your
+  keys or SSH agent): it connects once in the background, without prompting, to send the kill. For
+  the profiles listed above that need a password, that attempt fails and the shell keeps running: the
+  kill waits until Ntilde next connects to that host in this window (tick the checkbox again and open
+  a tab on it), and is dropped when the window closes. To end them all at once, run
+  `ntilde-mux kill-server` on the host.
 
 **Limitations:**
 
