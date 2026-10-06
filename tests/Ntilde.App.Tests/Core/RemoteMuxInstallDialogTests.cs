@@ -25,6 +25,7 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
         "{\"version\":\"0.11.0\",\"protocolMin\":1,\"protocolMax\":2,\"rid\":\"linux-x64\",\"path\":\"" + InstalledPath + "\"}\n";
 
     private static readonly byte[] Binary = ElfX64(70 * 1024);
+    private static readonly Guid Token = new("a1b2c3d4e5f60718293a4b5c6d7e8f90");
 
     private readonly List<IMuxDaemonAssetSource?> _sources = [];
     private readonly List<Window> _windows = [];
@@ -80,7 +81,7 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
             (source, report, progress) =>
             {
                 _sources.Add(source);
-                return new RemoteMuxInstaller(host, source ?? release, report) { Progress = progress };
+                return new RemoteMuxInstaller(host, source ?? release, report) { Progress = progress, NewUploadToken = () => Token };
             },
             appVersion,
             clipboard,
@@ -147,7 +148,9 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
         PumpUntil(() => !dialog.IsRunning, "the install ended");
 
         Assert.Equal($"ntilde-mux 0.11.0 installed at {InstalledPath}", dialog.OutcomeText.Text);
-        Assert.Equal([RemoteHostProbe.Command, RemoteMuxInstallCommands.Upload(Binary.Length)], host.Commands);
+        Assert.Equal(
+            [RemoteHostProbe.Command, RemoteMuxInstallCommands.UploadForTrial(Binary.Length, Token), RemoteMuxInstallCommands.CommitUpload(Token)],
+            host.Commands);
         Assert.Null(Assert.Single(_sources)); // Install is the release source's
         Assert.Equal(
             ("0.11.0", InstalledPath, "linux-x64", false),

@@ -556,11 +556,14 @@ Each step is an exec over the same transports, with the same prompts as a connec
 2. **Asset** (`IMuxDaemonAssetSource`): the GitHub release's `ntilde-mux-<rid>`, verified against its
    `.sha256` and cached at `<app data>/cache/ntilde-mux/<version>/<rid>`; or a local file, whose ELF
    or Mach-O header must name the probed RID. `MuxDaemonRid` reads the header.
-3. **Upload** (`RemoteMuxInstallCommands.Upload`): one `sh -c` script with the binary on stdin. It
-   writes a temp file beside the target, checks the byte count, `chmod 755`s it, runs it once, then
-   `mv -f`s it over `ntilde-mux` (a rename, so a running daemon keeps its inode), and execs the
-   installed binary's `--version --json`, which is the verification. A short or failed upload never
-   replaces a working binary.
+3. **Upload, validate, commit** (`RemoteMuxInstallCommands`): two `sh -c` execs that name the upload by
+   a fresh token. `UploadForTrial` has the binary on stdin: it sweeps upload temps over an hour old,
+   writes the token's temp file beside the target, checks the byte count, `chmod 755`s it and runs it
+   once, printing its `--version --json`; a trap removes the temp file on any failure. The app checks
+   that JSON (it parses, and its protocol range overlaps the app's). Only then does `CommitUpload`
+   `mv -f` it over `ntilde-mux` (a rename, so a running daemon keeps its inode) and exec the installed
+   binary's `--version --json`, which is the verification; otherwise, or on a cancel after the upload,
+   `DiscardUpload` removes it. A short, failed or incompatible upload never replaces a working binary.
 4. **Record**: `SshConnectionService.RecordRemoteMuxInstall` writes only `RemoteDaemonPath`,
    `RemoteDaemonVersion`, `RemoteDaemonRid` and, when the user ticks it, `PersistRemoteSessions`, on
    the store's own copy of the profile. Compatibility is decided by the handshake;

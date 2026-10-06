@@ -553,15 +553,33 @@ Every step runs through `ISshExecTransport`, with the same askpass and prompts a
      missing, the dialog hides (c), whose one-liner would point at the same missing release, and
      disables (a). A version that is not a plain release name (an empty one) offers only (b) from
      the start (§15).
-3. **Upload** (§2 decision 4). One exec runs, with `<N>` the binary's size in bytes,
-   `sh -c 'set -e; trap "" PIPE; trap "exit 1" HUP TERM; d="$HOME/.local/share/ntilde/bin"; mkdir -p "$d"; t="$d/.ntilde-mux.$$"; trap "rm -f \"\$t\"" EXIT; cat > "$t"; n=$(wc -c < "$t"); [ $n -eq <N> ] || { echo "ntilde-mux upload incomplete: expected <N> bytes" >&2; exit 1; }; chmod 755 "$t"; "$t" --version --json > /dev/null; mv -f "$t" "$d/ntilde-mux"; trap - EXIT; exec "$d/ntilde-mux" --version --json'`.
-   The binary goes to its stdin, then EOF, and a progress bar tracks the bytes written.
-   Nothing may replace a working binary with one that cannot run, hence the extras: a cancelled or
-   timed-out upload ends with stdin's EOF, so the byte count catches the short read `cat` would accept;
-   the trial run catches a file the host cannot execute; the trap expands `$t` only when it fires, so an
-   odd `$HOME` is neither a syntax error nor run; and dash runs no EXIT trap on a signal, so SIGPIPE (a
-   dropped connection's) is ignored and HUP/TERM exit through the trap.
-4. **Verify.** The upload exec's stdout is `--version --json`:
+3. **Upload, validate, then commit** (§2 decision 4). Nothing may replace a working binary before the
+   app has read the new one's `--version --json`, so the install is two execs. Both name the upload by an
+   app-generated token `<T>`, a fresh `Guid` in its "N" form (32 hex digits, safe inside the single quotes).
+   - **(a) Upload and trial run** (`RemoteMuxInstallCommands.UploadForTrial`), with `<N>` the binary's size
+     in bytes:
+     `sh -c 'set -e; trap "" PIPE; trap "exit 1" HUP TERM; d="$HOME/.local/share/ntilde/bin"; mkdir -p "$d"; find "$d" -maxdepth 1 -name ".ntilde-mux.upload-*" -mmin +60 -exec rm -f {} + 2>/dev/null || :; t="$d/.ntilde-mux.upload-<T>"; trap "rm -f \"\$t\"" EXIT; cat > "$t"; n=$(wc -c < "$t"); [ $n -eq <N> ] || { echo "ntilde-mux upload incomplete: expected <N> bytes" >&2; exit 1; }; chmod 755 "$t"; "$t" --version --json; trap - EXIT'`.
+     The binary goes to its stdin, then EOF, and a progress bar tracks the bytes written. Its stdout is
+     the trial's `--version --json`. On success the trap is disarmed and the temp file kept; on any
+     failure the trap removes it. A cancelled or timed-out upload ends with stdin's EOF, so the byte
+     count catches the short read `cat` would accept; the trial run catches a file the host cannot
+     execute; the trap expands `$t` only when it fires, so an odd `$HOME` is neither a syntax error nor
+     run; and dash runs no EXIT trap on a signal, so SIGPIPE (a dropped connection's) is ignored and
+     HUP/TERM exit through the trap. The `find` first sweeps upload temps over an hour old, which only a
+     killed script or a lost reply leaves (an upload lives minutes, so a live one is spared); GNU,
+     BSD/macOS and busybox `find` take it, and one that cannot fails nothing.
+   - **Validation in the app.** The trial's JSON must parse and its protocol range must overlap this
+     app's (step 4's first two checks). If not, the upload is discarded and never committed, and the
+     user sees the same reason as before. Another RID than the probe's does not stop the commit.
+   - **(b) Commit** (`CommitUpload`):
+     `sh -c 'set -e; d="$HOME/.local/share/ntilde/bin"; t="$d/.ntilde-mux.upload-<T>"; mv -f "$t" "$d/ntilde-mux"; exec "$d/ntilde-mux" --version --json'`.
+     A rename, so it is atomic and a daemon running the old binary keeps its inode. Its stdout is the
+     verification (step 4).
+   - **(c) Discard** (`DiscardUpload`), after a rejected trial, a commit that did not run, or a cancel
+     after (a): `sh -c 'd="$HOME/.local/share/ntilde/bin"; t="$d/.ntilde-mux.upload-<T>"; rm -f "$t"'`.
+     Best effort: it runs even after a cancel, a failure is only logged, and the result stays the reason
+     the install stopped. A failure or cancel during (a) needs no discard: the trap cleans up.
+4. **Verify.** The commit exec's stdout is `--version --json`:
    `{"version":"…","protocolMin":1,"protocolMax":2,"rid":"…","path":"/abs/…/ntilde-mux"}`.
    - The protocol range must overlap this app's.
    - A binary that reports another RID than the probe's stays installed (it ran), with a warning.
@@ -1229,6 +1247,14 @@ review; the section they change is named first.
   ignored and `HUP`/`TERM` exiting through the trap. A cancelled or timed-out upload ends with stdin's
   EOF, which `cat` takes as the whole file; an odd `$HOME` broke or ran the eager trap; dash runs no
   EXIT trap on a signal. Verified under dash and bash, with fish and tcsh as login shells.
+- **§9 step 3 Validate before commit** (greptile P1 on PR #504). The single upload script moved the
+  binary over `ntilde-mux` before the app checked its JSON, so a binary that ran but shared no
+  protocol with the app (a local file of another version) replaced a working install and then failed
+  the install. The install is now an upload with a trial run under a token-named temp file, the app's
+  checks, and then a commit exec or a discard exec; the first script also sweeps upload temps over an
+  hour old. A RID mismatch is still committed with a warning. Verified under dash, bash (also as
+  `/bin/sh`), busybox 1.37/1.38 `sh` and `find`, and fish and tcsh as login shells; macOS `find`
+  documents `-maxdepth`, `-mmin` and `-exec … {} +`.
 - **§9 step 2(b)/4 Platform checks.** A local file's ELF or Mach-O header must name the probed RID
   (a universal macOS binary is refused), and an installed binary that reports another RID stays
   installed with a warning.
@@ -1239,6 +1265,9 @@ review; the section they change is named first.
   normalisation dropped `ControlPath` and zeroed `ControlPersistSeconds`.
 - **§9 Surface:** the dialog's installer factory also receives the dialog's `report` and `progress`;
   `RemoteMuxInstaller.ProbeAsync` and `RemoteMuxInstallResult.ReleaseMissing` are added.
+  `RemoteMuxInstallCommands.Upload(byteCount)` became `UploadForTrial(byteCount, token)`,
+  `CommitUpload(token)` and `DiscardUpload(token)`; the installer gains `CommitTimeout` (60 s),
+  `DiscardTimeout` (30 s) and an internal `NewUploadToken` for tests.
 
 ### `ntilde.com`
 

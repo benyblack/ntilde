@@ -7,8 +7,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <remarks>
 /// Its header must say it was built for the host's RID (<see cref="MuxDaemonRid.Of"/>): a file for another
 /// platform is refused here, before anything is uploaded. The upload's trial run
-/// (<see cref="RemoteMuxInstallCommands.Upload"/>) is the second line of defence, for a file whose header
-/// is right but which still cannot run.
+/// (<see cref="RemoteMuxInstallCommands.UploadForTrial"/>) is the second line of defence, for a file whose header
+/// is right but which still cannot run, and the installer's check of what that run reports is the third, for
+/// one that runs but is not this app's: it is discarded before it can replace the installed binary.
 /// </remarks>
 internal sealed class LocalFileMuxAssetSource(string path) : IMuxDaemonAssetSource
 {

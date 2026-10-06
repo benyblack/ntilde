@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using Ntilde.Mux.Cli;
@@ -39,14 +40,22 @@ internal sealed record RemoteMuxInstallResult(bool Success, string Message, MuxV
 /// Installs <c>ntilde-mux</c> on a remote host (Phase 4 spec §9), every step over
 /// <paramref name="transport"/> - the same exec transport, askpass and prompts as the host's persistent
 /// tabs: probe the host (<see cref="RemoteHostProbe"/>), get the binary for its RID from
-/// <paramref name="source"/>, upload it (<see cref="RemoteMuxInstallCommands.Upload"/>), and verify what the
-/// installed binary reports. UI-free: <paramref name="report"/> gets each step with a line for the log.
+/// <paramref name="source"/>, upload and trial-run it under a temp name
+/// (<see cref="RemoteMuxInstallCommands.UploadForTrial"/>), check what it reports, then move it over the
+/// installed binary (<see cref="RemoteMuxInstallCommands.CommitUpload"/>) and verify what that reports. UI-free:
+/// <paramref name="report"/> gets each step with a line for the log.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Every failure is a result with the reason, never an exception, except cancellation:
 /// <see cref="InstallAsync"/> throws <see cref="OperationCanceledException"/> when its token is cancelled.
-/// A cancelled upload never leaves a partial binary in place (see <see cref="RemoteMuxInstallCommands.Upload"/>).
+/// </para>
+/// <para>
+/// A failed install never replaces a working <c>ntilde-mux</c> (spec §9 step 3). A short or cancelled upload,
+/// or one the host cannot run, is removed by the upload script's own trap. A binary that runs but cannot serve
+/// this app - no version line, or a protocol range with nothing in common - is turned away before the commit,
+/// and its upload discarded (<see cref="RemoteMuxInstallCommands.DiscardUpload"/>); so is one the user cancels
+/// after the upload. A binary that reports another RID is committed, with a warning, as it ran.
 /// </para>
 /// <para>
 /// <paramref name="report"/> and <see cref="Progress"/> are called synchronously on whatever thread the flow
@@ -63,11 +72,20 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
     /// <summary>The probe is three tiny commands; this bounds a stuck connect or prompt.</summary>
     public static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(60);
 
-    /// <summary>A few MB over a slow link, plus the trial run and the verification.</summary>
+    /// <summary>A few MB over a slow link, plus the trial run.</summary>
     public static readonly TimeSpan UploadTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>The commit is a rename and the verification; as the probe's, this bounds a stuck connect or prompt.</summary>
+    public static readonly TimeSpan CommitTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>The discard is one <c>rm -f</c>, best effort, and may run after the user cancelled: a short bound.</summary>
+    public static readonly TimeSpan DiscardTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>Byte counts for the download and the upload, for a progress bar.</summary>
     public IProgress<RemoteMuxInstallProgress>? Progress { get; init; }
+
+    /// <summary>The token that names an install's upload on the host (<see cref="RemoteMuxInstallCommands"/>); tests fix it.</summary>
+    internal Func<Guid> NewUploadToken { get; init; } = Guid.NewGuid;
 
     /// <summary>Runs the whole flow. Call it off the UI thread or await it; nothing in it blocks the caller's thread.</summary>
     /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled.</exception>
@@ -101,12 +119,13 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
             $"{asset.Origin}: {asset.Bytes.Length} bytes, SHA-256 {asset.Sha256Hex}"));
 
         report(RemoteMuxInstallStep.Uploading, $"Uploading to {transport.DisplayName}\u2026");
+        Guid token = NewUploadToken();
         SshExecResult upload;
         try
         {
             upload = await SshExec.RunAsync(
                 transport,
-                RemoteMuxInstallCommands.Upload(asset.Bytes.Length),
+                RemoteMuxInstallCommands.UploadForTrial(asset.Bytes.Length, token),
                 asset.Bytes,
                 ProgressOf(RemoteMuxInstallStep.Uploading, asset.Bytes.Length),
                 UploadTimeout,
@@ -114,31 +133,66 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         }
         catch (Exception ex) when (IsFailure(ex, ct))
         {
+            // No discard, here or on a failed exit: the upload script's trap removes its temp file. Only a
+            // reply lost after a trial run that succeeded leaves one, for the next upload's sweep.
             return ExecFailed(ex);
         }
 
         if (upload.ExitCode != 0)
         {
-            string exit = upload.ExitCode is { } code ? $"exit {code.ToString(CultureInfo.InvariantCulture)}" : "no exit status";
-            string tail = LastLines(upload.Stderr);
-            return Failed(tail.Length == 0
-                ? $"The upload to {transport.DisplayName} failed ({exit})"
-                : $"The upload to {transport.DisplayName} failed ({exit}): {tail}");
+            return Failed(ExitFailure($"The upload to {transport.DisplayName} failed", upload));
         }
 
-        report(RemoteMuxInstallStep.Verifying, "Verifying the installed ntilde-mux\u2026");
-        if (ParseVersion(upload.Stdout) is not { } installed)
+        // The host now holds the upload under the token's name, and nothing else has changed. Every way out
+        // of here but a commit that ran discards it, so a binary turned away never replaces a working one.
+        bool committed = false;
+        try
         {
-            string printed = LastLines(upload.Stdout);
-            return Failed(printed.Length == 0
-                ? "ntilde-mux did not report its version"
-                : $"ntilde-mux did not report its version: {printed}");
-        }
+            report(RemoteMuxInstallStep.Verifying, "Verifying the uploaded ntilde-mux\u2026");
+            if (!TryAccept(upload.Stdout, out _, out string? rejected))
+            {
+                return Failed(rejected);
+            }
 
-        if (installed.ProtocolMin > MuxProtocol.MaxSupportedVersion || installed.ProtocolMax < MuxProtocol.MinSupportedVersion)
+            ct.ThrowIfCancellationRequested();
+            report(RemoteMuxInstallStep.Verifying, "Installing it\u2026");
+            SshExecResult commit;
+            try
+            {
+                commit = await SshExec.RunAsync(
+                    transport, RemoteMuxInstallCommands.CommitUpload(token), ReadOnlyMemory<byte>.Empty, null, CommitTimeout, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (IsFailure(ex, ct))
+            {
+                return ExecFailed(ex);
+            }
+
+            if (commit.ExitCode != 0)
+            {
+                return Failed(ExitFailure($"Installing ntilde-mux on {transport.DisplayName} failed", commit));
+            }
+
+            committed = true;
+            return Verified(commit.Stdout, facts);
+        }
+        finally
         {
-            return Failed(string.Create(CultureInfo.InvariantCulture,
-                $"ntilde-mux {Quote(installed.Version)} speaks protocol {installed.ProtocolMin}-{installed.ProtocolMax}; this app speaks {MuxProtocol.MinSupportedVersion}-{MuxProtocol.MaxSupportedVersion}"));
+            if (!committed)
+            {
+                await DiscardAsync(token).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Spec §9 step 4, on the committed binary's <c>--version --json</c>: the checks the trial passed, again (it
+    /// is the same file, now at its installed path), and the RID it reports against the probe's.
+    /// </summary>
+    private RemoteMuxInstallResult Verified(string stdout, RemoteHostFacts facts)
+    {
+        if (!TryAccept(stdout, out MuxVersionInfo? installed, out string? rejected))
+        {
+            return Failed(rejected);
         }
 
         string done = $"ntilde-mux {Quote(installed.Version)} installed at {Quote(installed.Path)}";
@@ -192,6 +246,73 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         options.RemoteDaemonPath = installed.Path;
         options.RemoteDaemonVersion = installed.Version;
         options.RemoteDaemonRid = installed.Rid;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="stdout"/> holds the <c>--version --json</c> of an ntilde-mux this app can use:
+    /// a version line (<see cref="ParseVersion"/>) whose protocol range overlaps this app's. Otherwise
+    /// <paramref name="rejection"/> is the reason the dialog shows.
+    /// </summary>
+    private static bool TryAccept(
+        string stdout,
+        [NotNullWhen(true)] out MuxVersionInfo? info,
+        [NotNullWhen(false)] out string? rejection)
+    {
+        info = ParseVersion(stdout);
+        if (info is null)
+        {
+            string printed = LastLines(stdout);
+            rejection = printed.Length == 0
+                ? "ntilde-mux did not report its version"
+                : $"ntilde-mux did not report its version: {printed}";
+            return false;
+        }
+
+        if (info.ProtocolMin > MuxProtocol.MaxSupportedVersion || info.ProtocolMax < MuxProtocol.MinSupportedVersion)
+        {
+            rejection = string.Create(CultureInfo.InvariantCulture,
+                $"ntilde-mux {Quote(info.Version)} speaks protocol {info.ProtocolMin}-{info.ProtocolMax}; this app speaks {MuxProtocol.MinSupportedVersion}-{MuxProtocol.MaxSupportedVersion}");
+            info = null;
+            return false;
+        }
+
+        rejection = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Removes an upload that was never committed (spec §9 step 3). Best effort: it runs even after the
+    /// caller cancelled, under <see cref="DiscardTimeout"/>, and a failure is only logged, so the result stays
+    /// the reason the install stopped. What it cannot remove, the next upload's sweep does.
+    /// </summary>
+    private async Task DiscardAsync(Guid token)
+    {
+        string failure;
+        try
+        {
+            SshExecResult discard = await SshExec.RunAsync(
+                transport, RemoteMuxInstallCommands.DiscardUpload(token), ReadOnlyMemory<byte>.Empty, null, DiscardTimeout, CancellationToken.None).ConfigureAwait(false);
+            if (discard.ExitCode == 0)
+            {
+                return;
+            }
+
+            failure = ExitFailure("failed", discard);
+        }
+        catch (Exception ex)
+        {
+            failure = $"failed: {ex.Message}";
+        }
+
+        TerminalLogger.Log($"[RemoteMuxInstaller] {transport.DisplayName}: removing the uploaded ntilde-mux {failure}");
+    }
+
+    /// <summary><paramref name="what"/>, then the exit status and the stderr tail of a command that did not exit 0.</summary>
+    private static string ExitFailure(string what, SshExecResult result)
+    {
+        string exit = result.ExitCode is { } code ? $"exit {code.ToString(CultureInfo.InvariantCulture)}" : "no exit status";
+        string tail = LastLines(result.Stderr);
+        return tail.Length == 0 ? $"{what} ({exit})" : $"{what} ({exit}): {tail}";
     }
 
     /// <summary>
