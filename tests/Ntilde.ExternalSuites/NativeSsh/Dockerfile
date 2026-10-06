@@ -1,5 +1,9 @@
 # Native SSH end-to-end fixture image.
 #
+# v5 adds procps (top, pgrep, pkill) and iproute2 for the remote-persistence E2E
+# (tests/Ntilde.App.Tests/Shell/Mux/Remote/RemoteMuxDockerE2eTests.cs): it runs `top` in a persisted
+# session and proves that the same process survives a dropped link, finds the ntilde-mux proxy and
+# daemon by name to kill them, and looks at the container's interfaces while its network is down.
 # v4 moves sshd host-key generation out of the image build (docker:S6437); the entrypoint
 # runs `ssh-keygen -A` at container start instead.
 # v3 exists to make the auth rows of docs/native-ssh/Native_SSH_Test_Matrix.md automatable. v2 set
@@ -9,9 +13,9 @@
 FROM debian:12-slim
 
 # socat backs a trivial echo service (see the entrypoint) so forwarding tests can assert that real
-# bytes complete the round trip, rather than only that a channel opened.
+# bytes complete the round trip, rather than only that a channel opened. procps and iproute2: see v5.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssh-server bash zsh fish ca-certificates vim-tiny socat \
+    && apt-get install -y --no-install-recommends openssh-server bash zsh fish ca-certificates vim-tiny socat procps iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Two users, because one cannot cover both cases:

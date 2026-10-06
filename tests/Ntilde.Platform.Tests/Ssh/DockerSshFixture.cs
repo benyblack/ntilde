@@ -18,10 +18,12 @@ internal sealed class DockerSshFixture : IAsyncDisposable
     // v3 turned on public-key and keyboard-interactive auth, which v2 refused outright.
     // v4 moves sshd host-key generation out of the image build (docker:S6437): the keys are
     // now created by the entrypoint at container start, so every run gets fresh ones.
+    // v5 adds procps and iproute2 (top, pgrep, pkill, ip) for the App's remote-persistence E2E
+    // (RemoteMuxDockerE2eTests), which links this file.
     // Bumping the tag matters: EnsureImageBuiltAsync reuses any already-built image with this
     // name, so a stale v3 would silently serve the new tests an image built from an older
     // Dockerfile.
-    private const string ImageTag = "novaterm-native-ssh-e2e:v4";
+    private const string ImageTag = "novaterm-native-ssh-e2e:v5";
     private const int EchoServicePortValue = 9001;
 
     // Needed as a constant because ProvisionTestKeysAsync is static (it runs before the fixture
@@ -36,7 +38,16 @@ internal sealed class DockerSshFixture : IAsyncDisposable
     }
 
     public string Host => "127.0.0.1";
-    public int Port { get; }
+
+    /// <summary>
+    /// The host port published for the container's sshd. <see cref="ReconnectNetworkAsync"/> resolves it
+    /// again: a container reconnected to its network may be published on another port.
+    /// </summary>
+    public int Port { get; private set; }
+
+    /// <summary>The container's name, for <c>docker</c> commands a test runs itself.</summary>
+    public string ContainerName => _containerName;
+
     public string UserName => "nova";
     public string Password => "nova-pass";
 
@@ -155,6 +166,76 @@ internal sealed class DockerSshFixture : IAsyncDisposable
         return destinationPath;
     }
 
+    /// <summary>
+    /// Runs <paramref name="shellCommand"/> in the container as root, through <c>sh -c</c>, and says how it
+    /// ended. The command's own failure is not an exception: <c>pgrep</c> and <c>pkill</c> answer "nothing
+    /// matched" with exit 1, which a test asserts on. Only a <c>docker exec</c> that does not finish within
+    /// a minute throws.
+    /// </summary>
+    public async Task<DockerExecResult> ExecAsync(string shellCommand)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(shellCommand);
+
+        (int exitCode, string stdout, string stderr) = await RunDockerAsync(["exec", _containerName, "sh", "-c", shellCommand])
+            .ConfigureAwait(false);
+        return new DockerExecResult(exitCode, stdout.Trim(), stderr.Trim());
+    }
+
+    /// <summary>
+    /// Takes the container off its network (<c>docker network disconnect bridge</c>). Everything in it keeps
+    /// running, but no packet reaches it: an established connection goes silent rather than closing (on
+    /// Docker Desktop the published port even keeps accepting connections, which then hear nothing), or is
+    /// cut where the port's proxy goes away with the network.
+    /// </summary>
+    public async Task DisconnectNetworkAsync()
+    {
+        await RunDockerCommandAsync($"network disconnect bridge {_containerName}").ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Puts the container back on its network (<c>docker network connect bridge</c>), then finds the host port
+    /// its sshd is published on again and waits until sshd answers there with its banner. <see cref="Port"/>
+    /// is updated: a reconnected container may be published on another port.
+    /// </summary>
+    /// <returns>
+    /// False when no published port answered within <paramref name="timeout"/> (30 s by default): the mapping
+    /// was lost for good, and this container cannot be reached again.
+    /// </returns>
+    public async Task<bool> ReconnectNetworkAsync(TimeSpan? timeout = null)
+    {
+        await RunDockerCommandAsync($"network connect bridge {_containerName}").ConfigureAwait(false);
+
+        DateTime deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(30));
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await TryResolveMappedPortAsync(_containerName).ConfigureAwait(false) is int port
+                && await AnswersSshAsync(port).ConfigureAwait(false))
+            {
+                Port = port;
+                return true;
+            }
+
+            await Task.Delay(250).ConfigureAwait(false);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Freezes every process in the container (<c>docker pause</c>). Its connections stay open and go silent:
+    /// the kernel still holds them, but nothing in the container reads or writes.
+    /// </summary>
+    public async Task PauseAsync()
+    {
+        await RunDockerCommandAsync($"pause {_containerName}").ConfigureAwait(false);
+    }
+
+    /// <summary>Thaws what <see cref="PauseAsync"/> froze; the connections it held pick up where they were.</summary>
+    public async Task UnpauseAsync()
+    {
+        await RunDockerCommandAsync($"unpause {_containerName}").ConfigureAwait(false);
+    }
+
     public static async Task<DockerSshFixture> StartAsync()
     {
         await EnsureDockerAvailableAsync().ConfigureAwait(false);
@@ -236,6 +317,48 @@ internal sealed class DockerSshFixture : IAsyncDisposable
         }
 
         return port;
+    }
+
+    /// <summary>The published port of the container's sshd, or null when <c>docker port</c> names none.</summary>
+    private static async Task<int?> TryResolveMappedPortAsync(string containerName)
+    {
+        // First line only: a port published on two addresses is listed once per address.
+        string output = await RunDockerCommandAsync($"port {containerName} 22/tcp", throwOnFailure: false).ConfigureAwait(false);
+        string? first = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+        return first is not null && int.TryParse(first.Split(':')[^1], out int port) ? port : null;
+    }
+
+    /// <summary>
+    /// Whether an SSH server greets on <paramref name="port"/> within a few seconds. A connect alone proves
+    /// nothing: Docker Desktop's port proxy accepts connections for a container it cannot reach.
+    /// </summary>
+    private static async Task<bool> AnswersSshAsync(int port)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync("127.0.0.1", port, cts.Token).ConfigureAwait(false);
+            NetworkStream stream = client.GetStream();
+            byte[] banner = new byte[4];
+            int read = 0;
+            while (read < banner.Length)
+            {
+                int n = await stream.ReadAsync(banner.AsMemory(read), cts.Token).ConfigureAwait(false);
+                if (n == 0)
+                {
+                    return false;
+                }
+
+                read += n;
+            }
+
+            return banner is [(byte)'S', (byte)'S', (byte)'H', (byte)'-'];
+        }
+        catch (Exception ex) when (ex is SocketException or IOException or OperationCanceledException)
+        {
+            return false;
+        }
     }
 
     private static async Task WaitForPortAsync(string containerName, int port)
@@ -370,6 +493,48 @@ internal sealed class DockerSshFixture : IAsyncDisposable
 
         return string.IsNullOrWhiteSpace(stdout) ? stderr.Trim() : stdout.Trim();
     }
+
+    /// <summary>
+    /// <c>docker</c> with an argument list, so a shell command passes through as one argument whatever its
+    /// quotes. Bounded: a <c>docker</c> that has not finished within a minute is killed and reported.
+    /// </summary>
+    private static async Task<(int ExitCode, string Stdout, string Stderr)> RunDockerAsync(IReadOnlyList<string> arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "docker",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (string argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using var process = new Process { StartInfo = startInfo };
+        process.Start();
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+        using (var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(1)))
+        {
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                process.Kill(entireProcessTree: true);
+                throw new TimeoutException($"docker {string.Join(' ', arguments)} did not finish within a minute.");
+            }
+        }
+
+        return (process.ExitCode, await stdoutTask.ConfigureAwait(false), await stderrTask.ConfigureAwait(false));
+    }
 }
 
 internal sealed record SshHostKeyInfo(string Algorithm, string Fingerprint);
+
+/// <summary>How a <see cref="DockerSshFixture.ExecAsync"/> command ended, its output trimmed.</summary>
+internal sealed record DockerExecResult(int ExitCode, string Stdout, string Stderr);

@@ -53,4 +53,12 @@
     <Compile Include="..\Ntilde.VT.Tests\StateTransfer\TerminalStateAssert.cs" Link="MuxSupport\TerminalStateAssert.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The Docker sshd fixture, shared with Ntilde.Platform.Tests (Phase 4 spec §12.3): RemoteMuxDockerE2eTests
+         drives the remote multiplexer against the same image. Their namespaces stay Ntilde.Platform.Tests.*. -->
+    <Compile Include="..\Ntilde.Platform.Tests\Ssh\DockerSshFixture.cs" Link="DockerSupport\DockerSshFixture.cs" />
+    <Compile Include="..\Ntilde.Platform.Tests\Ssh\NativeSshTestInteractionHandler.cs" Link="DockerSupport\NativeSshTestInteractionHandler.cs" />
+    <Compile Include="..\Ntilde.Platform.Tests\Infra\DockerFactAttribute.cs" Link="DockerSupport\DockerFactAttribute.cs" />
+  </ItemGroup>
+
 </Project>
