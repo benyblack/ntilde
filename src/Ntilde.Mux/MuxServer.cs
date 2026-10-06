@@ -349,6 +349,7 @@ public sealed class MuxServer : IDisposable
         foreach (MuxServerConnection other in _connections.Values)
         {
             if (ReferenceEquals(other, keep) || other.ClientInstanceId != instanceId) continue;
+            // Log never throws (it swallows a failing host logger): this runs on the hello's parse thread.
             Log($"[MuxServer] connection {other.ConnectionId} superseded by {keep.ConnectionId} (same client instance).");
             other.Abort("superseded by a reconnect of the same client");
         }

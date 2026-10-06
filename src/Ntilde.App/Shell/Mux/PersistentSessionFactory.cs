@@ -10,7 +10,10 @@ internal enum PersistentSessionOutcome
     Reattached,
     PreviousLost,
 
-    /// <summary>A new pane's daemon could not be used: <see cref="PersistentSessionResult.Session"/> is a plain local fallback.</summary>
+    /// <summary>
+    /// A new pane's daemon could not be used: <see cref="PersistentSessionResult.Session"/> is the plain fallback - a
+    /// local shell for a local pane, a plain SSH session for a remote one (Phase 4 spec §7.5) - and will not persist.
+    /// </summary>
     Unavailable,
 
     /// <summary>

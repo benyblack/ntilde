@@ -32,6 +32,12 @@ internal readonly record struct MuxConnectAttempt(bool Interactive);
 /// starts itself (one automatic attempt). All of it runs on
 /// <see cref="Scheduler"/> timers and pool continuations, never on a client's delivery thread and never as a
 /// polling loop. A local host does none of this: its behaviour is what it has always been.
+/// <para>
+/// A remote host lives while a pane of the window needs its endpoint: the window releases it once none does
+/// (<see cref="MuxConnectionHosts.Release"/>), and the release disposes it when its kills are delivered
+/// (<see cref="WhenKillsDrained"/>; final review F1). The window's teardown disposes every host. A local host
+/// lives as long as the window.
+/// </para>
 /// </remarks>
 internal sealed class MuxConnectionHost : IDisposable
 {
@@ -430,8 +436,10 @@ internal sealed class MuxConnectionHost : IDisposable
     /// <see cref="MuxClient.KillAsync"/> and tracked like <see cref="TrackPendingKill"/> (Review Focus 1: a
     /// remote tab closed while its link is down must not orphan its shell). A kill whose connection closes
     /// before the daemon answers is queued again. Queued kills outlive the reconnect loop giving up
-    /// (<see cref="ReconnectAbandoned"/>): a later connect - a user's Enter - still sends them (controller
-    /// ruling). They are dropped, with a log line, only when the host is disposed.
+    /// (<see cref="ReconnectAbandoned"/>): a later connect - a user's Enter, or the next pane opened on the
+    /// endpoint - still sends them (controller ruling). They are dropped, with a log line, in two cases only:
+    /// <see cref="DaemonStopped"/> (that daemon's sessions ended with it) and the host's disposal. A release
+    /// (<see cref="MuxConnectionHosts.Release"/>) waits for them (<see cref="WhenKillsDrained"/>).
     /// </summary>
     /// <remarks>
     /// A remote host that is idle - no live client, no attempt in flight, no reconnect loop running - would

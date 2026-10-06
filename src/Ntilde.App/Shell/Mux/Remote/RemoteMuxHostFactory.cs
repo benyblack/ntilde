@@ -26,8 +26,9 @@ internal static class RemoteMuxHostFactory
     /// </summary>
     /// <remarks>
     /// The host has <see cref="MuxHostPolicy.Remote"/> named <c>user@host</c>, and one
-    /// <see cref="RemoteMuxConnector"/> for its whole life: a fresh client instance id (a Guid in N
-    /// format) sent in every hello, and the secrets its user-started attempts remember. Each attempt
+    /// <see cref="RemoteMuxConnector"/> for its whole life - until the window releases it, no pane needing its
+    /// endpoint any more (<see cref="MuxConnectionHosts.Release"/>), or closes: a fresh client instance id (a Guid
+    /// in N format) sent in every hello, and the secrets its user-started attempts remember, forgotten with it. Each attempt
     /// reads the profile again, and builds its transport through <paramref name="transportFor"/>, told
     /// whether a user is waiting (<see cref="MuxConnectAttempt"/>). The host tells a stopped daemon from a
     /// lost link by the exit status of the proxy under the lost client (<see cref="ClassifyDisconnectAsync"/>).

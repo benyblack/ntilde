@@ -37,7 +37,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     private readonly TimeSpan? _connectTimeout; // set: overrides every host's policy (tests)
     private readonly TimeSpan? _rpcTimeout;     // set: overrides every host's policy (tests)
 
-    /// <param name="hosts">One connection host per endpoint; the window owns and disposes it.</param>
+    /// <param name="hosts">One connection host per endpoint; the window owns and disposes it, and releases a remote one no pane needs.</param>
     /// <param name="fallback">Serves what no daemon does: a new pane whose daemon failed, and every SSH pane that is not persisted.</param>
     /// <param name="resolveProfile">
     /// The SSH profile store's lookup. An SSH request goes to a remote daemon only when its profile has
@@ -65,7 +65,7 @@ internal sealed class MuxTerminalSessionFactory : IPersistentSessionFactory
     {
     }
 
-    /// <summary>One host per endpoint; the window owns and disposes it.</summary>
+    /// <summary>One host per endpoint; the window owns and disposes it, and releases a remote one no pane needs (<see cref="MuxConnectionHosts.Release"/>).</summary>
     public MuxConnectionHosts Hosts { get; }
 
     /// <summary>The local daemon's host.</summary>
