@@ -7226,13 +7226,13 @@ namespace Ntilde
         /// </summary>
         private void KillThroughRemoteHost(Ntilde.Shell.Mux.MuxEndpointId endpoint, Guid sessionId)
         {
-            if (RemoteMuxHostFor(endpoint) is { } host)
+            if (RemoteMuxHostFor(endpoint, out string? whyNone) is { } host)
             {
                 host.KillWhenConnected(sessionId);
                 return;
             }
 
-            TerminalLogger.Log($"[MainWindow] cannot end session {sessionId} on {endpoint}: no connection to send its kill on (its SSH profile is gone, or the window is closing); it keeps running there");
+            TerminalLogger.Log($"[MainWindow] cannot end session {sessionId} on {endpoint}: no connection to send its kill on ({whyNone}); it keeps running there");
         }
 
         /// <summary>
@@ -7241,19 +7241,33 @@ namespace Ntilde
         /// the profile's <c>PersistRemoteSessions</c> says (codex C2): the flag decides where new tabs go, not whether a
         /// shell the user closed ends, and a pane whose profile lost the flag still keeps its pending id. A host built
         /// only for a kill connects for it in one automatic attempt, which never prompts, and the window releases it once
-        /// the kill is delivered. Null when the profile is gone, or the window is closing.
+        /// the kill is delivered.
         /// </summary>
-        private Ntilde.Shell.Mux.MuxConnectionHost? RemoteMuxHostFor(Ntilde.Shell.Mux.MuxEndpointId endpoint)
+        /// <param name="whyNone">
+        /// When there is none, the reason that holds (codex residual round): session persistence was never on in this
+        /// window, so it has no connection registry; the window is closing (the registry is disposed); the SSH profile
+        /// is gone (the only thing the creator declines); or setting the connection up failed.
+        /// </param>
+        private Ntilde.Shell.Mux.MuxConnectionHost? RemoteMuxHostFor(Ntilde.Shell.Mux.MuxEndpointId endpoint, out string? whyNone)
         {
+            whyNone = null;
+            if (_muxHosts is not { } hosts)
+            {
+                whyNone = "session persistence has not been on in this window, so it keeps no remote connections";
+                return null;
+            }
+
             try
             {
-                return _muxHosts?.GetOrCreate(endpoint);
+                if (hosts.GetOrCreate(endpoint) is { } host) return host;
+                whyNone = hosts.IsDisposed ? "the window is closing" : "its SSH profile is gone";
             }
             catch (Exception ex)
             {
-                AppLogger.Log($"[MainWindow] no connection for {endpoint} to send a kill on: {ex.Message}");
-                return null;
+                whyNone = $"its connection could not be set up: {ex.Message}";
             }
+
+            return null;
         }
 
         private void HandleSshQuickOpen(TerminalProfile profile, SshQuickOpenTarget target, SshDiagnosticsLevel diagnosticsLevel)

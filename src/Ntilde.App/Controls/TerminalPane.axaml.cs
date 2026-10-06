@@ -3914,12 +3914,13 @@ namespace Ntilde.Controls
             catch (Exception ex)
             {
                 host = null;
-                why = ex.Message;
+                why = $"its connection could not be set up: {ex.Message}";
             }
 
             if (host is null)
             {
-                TerminalLogger.Log($"[TerminalPane] cannot end session {sessionId} on {endpoint}, started for a result nobody shows: no connection to send its kill on ({why ?? "the window is closing, or the profile is gone"}); it keeps running there");
+                why ??= hosts.IsDisposed ? "the window is closing" : "its SSH profile is gone";
+                TerminalLogger.Log($"[TerminalPane] cannot end session {sessionId} on {endpoint}, started for a result nobody shows: no connection to send its kill on ({why}); it keeps running there");
                 return;
             }
 

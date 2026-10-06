@@ -368,6 +368,47 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         PumpUntil(() => RemotePanes(window).Count == 1, "the background tab was restored");
         TerminalPane unshown = RemotePanes(window).Single();
         _profileGone = true;
+
+        string line = CannotEndLine(CloseLogging(window, unshown), ids[0]);
+
+        Assert.Null(RemoteHostOf(window));
+        Assert.Equal(0, _remote.StartCount);
+        Assert.Contains(ids[0], _remote.Server.GetSessionIds());
+        // Codex residual round: the line names the reason that holds, not every reason there could be.
+        Assert.Contains("its SSH profile is gone", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("window is closing", line, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Codex residual round: a window whose session persistence was never on has no connection registry at all, and
+    /// its log line says so - not that the profile is gone or the window closing, which it was not.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_pending_remote_pane_without_persistence_says_why_its_kill_cannot_be_sent()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveTabs(LocalLeaf(), RemoteLeaf(ids[0]));
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()), // persistence off: no mux factory
+        });
+        window.Show();
+        PumpUntil(() => RemotePanes(window).Count == 1, "the background tab was restored");
+        TerminalPane unshown = RemotePanes(window).Single();
+        Assert.Equal(ids[0], unshown.MuxSessionIdToRestore);
+        Assert.Null(window.MuxHosts);
+
+        string line = CannotEndLine(CloseLogging(window, unshown), ids[0]);
+
+        Assert.Contains("session persistence", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("profile is gone", line, StringComparison.Ordinal);
+        Assert.Contains(ids[0], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>Closes <paramref name="pane"/>, returning what was logged meanwhile.</summary>
+    private static List<string> CloseLogging(MainWindow window, TerminalPane pane)
+    {
         var logged = new System.Collections.Concurrent.ConcurrentQueue<string>();
         Action<string>? previous = Ntilde.VT.TerminalLogger.OnLog;
         Ntilde.VT.TerminalLogger.OnLog = line =>
@@ -377,7 +418,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         };
         try
         {
-            Task<bool> close = Close(window, unshown);
+            Task<bool> close = Close(window, pane);
             PumpUntil(() => close.IsCompleted, "the tab closed");
             Assert.True(close.Result);
         }
@@ -386,11 +427,12 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             Ntilde.VT.TerminalLogger.OnLog = previous;
         }
 
-        Assert.Null(RemoteHostOf(window));
-        Assert.Equal(0, _remote.StartCount);
-        Assert.Contains(ids[0], _remote.Server.GetSessionIds());
-        Assert.Contains(logged, line => line.Contains(ids[0].ToString(), StringComparison.Ordinal) && line.Contains("kill", StringComparison.Ordinal));
+        return [.. logged];
     }
+
+    /// <summary>The one line saying the kill of <paramref name="id"/> could not be sent.</summary>
+    private static string CannotEndLine(List<string> logged, Guid id) =>
+        Assert.Single(logged, line => line.Contains(id.ToString(), StringComparison.Ordinal) && line.Contains("kill", StringComparison.Ordinal));
 
     /// <summary>
     /// Final review F1: closing the last pane of a remote endpoint releases its connection once the kill is

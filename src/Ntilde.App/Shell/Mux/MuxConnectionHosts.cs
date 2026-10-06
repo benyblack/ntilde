@@ -114,6 +114,15 @@ internal sealed class MuxConnectionHosts : IDisposable
         }
     }
 
+    /// <summary>Whether <see cref="Dispose"/> has begun: from then on <see cref="GetOrCreate"/> answers null for every remote endpoint.</summary>
+    public bool IsDisposed
+    {
+        get
+        {
+            lock (_gate) return _disposed;
+        }
+    }
+
     /// <summary>The remote endpoints that have a host now (one whose release is pending included).</summary>
     public IReadOnlyList<MuxEndpointId> RemoteEndpoints
     {
