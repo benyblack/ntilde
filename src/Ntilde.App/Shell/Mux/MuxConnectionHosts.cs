@@ -23,7 +23,8 @@ internal sealed class MuxConnectionHosts : IDisposable
     private readonly object _gate = new();
     private readonly Dictionary<MuxEndpointId, MuxConnectionHost> _remotes = new(); // guarded by _gate
     private readonly List<MuxConnectionHost> _remoteOrder = new();                  // guarded by _gate; creation order
-    private readonly HashSet<MuxConnectionHost> _releasePending = new();            // guarded by _gate: released, kills not yet delivered
+    // Guarded by _gate: released, kills not yet delivered. The value is that release's own token (see Release).
+    private readonly Dictionary<MuxConnectionHost, object> _releasePending = new();
     private readonly List<Task> _releasing = new();                                 // guarded by _gate: released hosts being disposed
     private bool _disposed;                                                          // guarded by _gate
 
@@ -131,30 +132,40 @@ internal sealed class MuxConnectionHosts : IDisposable
     /// disposed. A no-op for <see cref="MuxEndpointId.Local"/>, an endpoint with no host, a release already
     /// pending, and once disposed.
     /// </summary>
+    /// <remarks>
+    /// Each release has a token of its own, which its drained callback carries (codex residual round). The host hands
+    /// its callbacks out under its lock but runs them outside it, so one can be late: before it runs, the host is taken
+    /// back by <see cref="GetOrCreate"/> (its release cancelled) and released again, waiting for a new kill. Only the callback of
+    /// the release still pending closes the host; a late one finds another token and does nothing. Before, it read
+    /// the new release as its own and closed the host with the new kill queued.
+    /// </remarks>
     public void Release(MuxEndpointId id)
     {
         if (id.IsLocal) return;
         MuxConnectionHost? host;
+        object release = new();
         lock (_gate)
         {
-            if (_disposed || TryGetLiveLocked(id) is not { } found || !_releasePending.Add(found)) return;
+            if (_disposed || TryGetLiveLocked(id) is not { } found || !_releasePending.TryAdd(found, release)) return;
             host = found;
         }
 
         _log?.Invoke($"[Mux] {host.Policy.DisplayName}: no pane uses this connection any more; closing it once its kills are delivered");
-        host.WhenKillsDrained(() => OnKillsDrained(id, host));
+        host.WhenKillsDrained(() => OnKillsDrained(id, host, release));
     }
 
     /// <summary>
     /// The released host has nothing left to deliver: forgotten under the lock - from then on every ask builds a new
     /// one - and disposed off the caller's thread (its dispose flushes and ends its channel: seconds). Not when it was
-    /// taken back meanwhile, or the registry is closing (its own Dispose disposes the host).
+    /// taken back meanwhile, released again since (<paramref name="release"/> is no longer the pending one), or the
+    /// registry is closing (its own Dispose disposes the host).
     /// </summary>
-    private void OnKillsDrained(MuxEndpointId id, MuxConnectionHost host)
+    private void OnKillsDrained(MuxEndpointId id, MuxConnectionHost host, object release)
     {
         lock (_gate)
         {
-            if (_disposed || !_releasePending.Remove(host)) return;
+            if (_disposed || !_releasePending.TryGetValue(host, out object? pending) || !ReferenceEquals(pending, release)) return;
+            _releasePending.Remove(host);
             ForgetLocked(id, host);
             _releasing.RemoveAll(t => t.IsCompleted);
             _releasing.Add(Task.Run(() =>

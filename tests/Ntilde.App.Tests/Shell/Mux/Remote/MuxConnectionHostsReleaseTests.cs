@@ -252,6 +252,71 @@ public sealed class MuxConnectionHostsReleaseTests : IDisposable
         Assert.True(Volatile.Read(ref connects) >= 2);
     }
 
+    /// <summary>
+    /// Codex residual round: a release's drained callback is taken from the host and run outside its lock. When that
+    /// callback is late - the release it belongs to was cancelled meanwhile (the endpoint taken back) and a new
+    /// release is waiting for a new kill - it must leave the host alone. Before, it found the host's release pending
+    /// again, read that as its own, and closed the host with the new kill still queued (dropped, with a log line).
+    /// </summary>
+    /// <remarks>
+    /// Deterministic: the test's own waiters sit on either side of the first release's callback in the host's list, so
+    /// the pool thread that settles the first kill takes all three, is held in the first one until the endpoint has
+    /// been taken back and released again, and then reports through the third that the stale callback has run.
+    /// </remarks>
+    [Fact]
+    public async Task A_late_drained_callback_of_a_cancelled_release_leaves_the_host_to_the_release_after_it()
+    {
+        (MuxConnectionHost host, Guid first) = await ConnectedWithASessionAsync();
+        Guid second = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
+        _remote.CutLink();
+        await TestWait.UntilAsync(() => host.IsReconnecting, "the link is down", Patient);
+        host.KillWhenConnected(first);   // queued: the first release waits for it
+        using var hold = new ManualResetEventSlim();
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var staleCallbackRan = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.WhenKillsDrained(() =>
+        {
+            held.TrySetResult();
+            hold.Wait(Patient);
+        });
+        _hosts.Release(Endpoint);                                       // the first release's callback comes next ...
+        host.WhenKillsDrained(() => staleCallbackRan.TrySetResult());   // ... and this one after it
+        bool? secondKilledAtClose = null;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.Closed += _ =>
+        {
+            secondKilledAtClose = !_remote.Server.GetSessionIds().Contains(second);
+            closed.TrySetResult();
+        };
+
+        try
+        {
+            _clock.Advance(FirstRetry);   // the link is back: the first kill goes out and settles
+            await held.Task.WaitAsync(Patient, Ct);
+            Assert.DoesNotContain(first, _remote.Server.GetSessionIds());
+
+            Assert.Same(host, _hosts.GetOrCreate(Endpoint));   // a pane opens there: the first release is cancelled
+            _remote.CutLink();
+            await TestWait.UntilAsync(() => host.IsReconnecting, "the link is down again", Patient);
+            host.KillWhenConnected(second);                    // that pane closes while the link is down
+            _hosts.Release(Endpoint);                          // the second release waits for its kill
+        }
+        finally
+        {
+            hold.Set();   // the first release's callback runs only now
+        }
+
+        await staleCallbackRan.Task.WaitAsync(Patient, Ct);
+        Assert.Same(host, _hosts.TryGet(Endpoint));
+        Assert.False(host.IsClosed, "a cancelled release's late callback closed the host with the second kill queued");
+        Assert.Contains(second, _remote.Server.GetSessionIds());
+
+        _clock.Advance(FirstRetry);   // the link is back: the second kill goes out, then the second release closes the host
+        await closed.Task.WaitAsync(Patient, Ct);
+        Assert.True(secondKilledAtClose);
+        Assert.Null(_hosts.TryGet(Endpoint));
+    }
+
     /// <summary>A host disposed some other way is forgotten, so the next ask builds a new one rather than return a closed one.</summary>
     [Fact]
     public async Task A_host_disposed_some_other_way_is_forgotten()

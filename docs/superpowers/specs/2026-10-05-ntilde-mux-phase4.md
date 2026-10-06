@@ -996,6 +996,9 @@ review; the section they change is named first.
   `DaemonStopped` dropped count as settled; a host that gave up (`ReconnectAbandoned`) with kills queued stays
   registered, idle (no loop, no pings), and its kills go out on the next use of the endpoint. Reuse:
   `GetOrCreate` for an endpoint whose release is pending takes that host back and cancels the release;
+  each release has a token its drained callback must still find pending, so a callback that runs late
+  (the host handed it out before a take-back and a new release that waits for a new kill) closes
+  nothing (codex residual round);
   the host is forgotten under the registry's lock just before its dispose, so nobody is handed a host
   about to close. A host disposed by any path is forgotten (`MuxConnectionHost.Closed`), so the next ask
   builds a new one; the dispose forgets the remembered secret. Local hosts are unchanged. Before, a
