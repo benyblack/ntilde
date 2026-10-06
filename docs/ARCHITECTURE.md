@@ -220,7 +220,7 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
 
 | `MuxCliHost` | `ntilde mux` (App, `Shell/Mux/MuxCommand.cs`) | `ntilde-mux` (remote, `src/Ntilde.Mux.Daemon`) |
 |---|---|---|
-| `Paths` (`MuxPaths`: root, descriptor, endpoint, log folder) | the app-data root, or `NTILDE_APPDATA_ROOT` (`MuxPaths.Default`) | its own root beneath it, `<app-data root>/ntilde-mux`, or `NTILDE_MUX_ROOT` (`MuxPaths.Standalone`): on a host that also runs the GUI, the two daemons share no descriptor, socket, lock or log |
+| `Paths` (`MuxPaths`: root, descriptor, endpoint, log folder) | the app-data root, or `NTILDE_APPDATA_ROOT` (`MuxPaths.Default`); a daemon spawned for another root is handed it through `NTILDE_APPDATA_ROOT` | its own root beneath it, `<app-data root>/ntilde-mux`, or `NTILDE_MUX_ROOT` (`MuxPaths.Standalone`); a daemon spawned for another root is handed it through `NTILDE_MUX_ROOT`. On a host that also runs the GUI, the two daemons share no descriptor, socket, lock or log |
 | `ServeArguments` | `mux serve` | `serve` |
 | `SessionFactory` | `DefaultTerminalSessionFactory` (the GUI's shells, unchanged) | `LocalShellSessionFactory`: an empty command is the user's login shell with `-l`; `~` is `$HOME`; SSH is refused |
 | `Verbs` | serve, ls, kill, kill-server, attach, probe-console | serve, proxy, ls, kill, kill-server, attach, `--version` |
@@ -244,7 +244,8 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
 ```
 
 - **Discovery.** `MuxDiscovery` (Mux.Contracts) resolves `<root>/mux/mux-endpoint.json` under
-  `NTILDE_APPDATA_ROOT` or the local app-data folder. The descriptor names the endpoint, pid and
+  the daemon's root: for the GUI's daemon `NTILDE_APPDATA_ROOT` or the local app-data folder, for
+  `ntilde-mux` its own root beneath that (section 8.2). The descriptor names the endpoint, pid and
   process name; it counts as live only when that pid is alive under that name and with the start
   token the daemon recorded (pid-reuse guard; on Linux the token is the `/proc/<pid>/stat` start
   time in clock ticks since boot, which a wall-clock step cannot move, elsewhere the UTC start time
@@ -263,8 +264,10 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   its shells: there is no watchdog, as in tmux. The daemon logs to `logs/mux.log`.
 - **Launch.** `MuxDaemonLauncher` connects to a live descriptor or spawns the host's serve
   arguments fully detached (all three stdio streams redirected and closed, inheritable std handles
-  cleared on Windows so a captured parent pipe never reaches the daemon, `NTILDE_APPDATA_ROOT` set to
-  the launcher's own root), then polls the descriptor. `EnsureEndpointStreamAsync` stops at the
+  cleared on Windows so a captured parent pipe never reaches the daemon, and the launcher's root
+  handed down only when the spawned executable would not resolve it on its own:
+  `NTILDE_APPDATA_ROOT` for the GUI's `mux serve`, `NTILDE_MUX_ROOT` for `ntilde-mux serve`
+  (`MuxPaths.RootHandDown`)), then polls the descriptor. `EnsureEndpointStreamAsync` stops at the
   connected stream (the proxy's path, section 8.2); `EnsureConnectedAsync` adds the hello, inside the
   connect-or-spawn loop, so a daemon that idles out between accept and hello is retried rather than
   reported. `MuxConnectionHosts` keeps one `MuxConnectionHost` per endpoint, each with one shared
@@ -483,7 +486,7 @@ it).
   plain SSH session with a notice, which offers the install flow for `NotInstalled` and
   `VersionMismatch`.
 - **Not on remote panes, this phase.** A persisted remote pane is not an `ActiveSshSessionRegistry`
-  session, so the SFTP sidebar and remote files are disabled for it, and the profile's port forwards
+  session, so the SFTP sidebar, remote files and the palette's SFTP transfers are disabled for it, and the profile's port forwards
   are not set up (`ClearAllForwardings=yes`; the native exec mode has no forward router).
 
 #### Exec transports (`Ntilde.Platform/Ssh/Exec/`)

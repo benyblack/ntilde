@@ -810,20 +810,17 @@ Recorded during the build:
 - **Liveness knobs.** `RemoteMuxHostFactory.Create` does not expose `LivenessInterval` /
   `LivenessTimeout` (`init` on `MuxConnectionHost`), so the Docker E2E runs at the production
   15 s + 10 s.
-- **A host built only to deliver a kill stays connected.** It pings every 15 s and runs the reconnect
-  loop with no pane on the endpoint. Dispose a remote host once its kill queue drains and no pane uses
-  it.
-- **"Pane: Detach" on a remote tab.** Its toast says "Attach to session… to get it back", but the
-  picker lists local sessions only; until remote endpoints reach the picker (above), the toast should
-  name `ntilde-mux attach` on the host.
 - **The probe's glibc floor is higher than the binary's.** `RemoteHostProbe` refuses glibc below 2.35,
   but both Linux binaries' highest symbol is `GLIBC_2.34`, so RHEL 9 and its rebuilds (glibc 2.34)
   are refused although the binary would run. Lowering the floor to 2.34 means the probe's constant
   and the CI/release ceiling (§10.2) together.
 - **The probe needs `ldd`.** `(ldd --version || getconf GNU_LIBC_VERSION) | head -n 1` keeps ldd's
   "not found" line on a glibc host without `ldd` and refuses it; ask `getconf` first.
-- **`-N` / `-f` in a profile's extra SSH arguments** still break an OpenSSH exec channel; only
-  `-t`, `-tt` and `-T` are dropped.
+- **`-W host:port` / `-s` in a profile's extra SSH arguments** still break an OpenSSH exec channel,
+  as `-N` and `-f` did before the final review (§15): `-W` forwards ssh's stdio to a TCP port instead
+  of running a remote command, and `-s` asks for the command as a subsystem, so the proxy never runs.
+  Only `-t`, `-tt`, `-T`, `-N` and `-f` are dropped; `-W` takes its argument as a separate token, so
+  dropping it means dropping that token too.
 
 ## 15. As built
 
