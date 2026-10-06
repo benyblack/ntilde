@@ -4918,6 +4918,8 @@ namespace Ntilde
             pane.SshInteractionHandler = _sshInteractionService;
             // A method group: OpenRemoteMuxInstall is read when a notice is raised, not now.
             pane.RemoteNoticeAction = RemoteMuxNoticeAction;
+            // Kept by UnwirePane: a stale remote result reaches a closed pane, and its shell's kill asks for the pass (codex C1).
+            pane.RemoteMuxReleaseCheck = ScheduleRemoteMuxHostRelease;
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
             pane.WorkingDirectoryChanged -= OnPaneWorkingDirectoryChanged;
             pane.TitleChanged -= OnPaneTitleChanged;
@@ -7174,7 +7176,9 @@ namespace Ntilde
         /// <summary>
         /// UI thread. Final review F1: a remote pane closed. The pass that releases the remote hosts no pane needs runs
         /// once the close is done - a tab's whole tree disposed, the tab itself removed - not in the middle of it, where
-        /// the closing tab's other panes would still count. One pass for every pane closed together.
+        /// the closing tab's other panes would still count. One pass for every pane closed together. A pane also asks for
+        /// one once it has queued the kill of a shell its stale remote result started (codex C1,
+        /// <see cref="TerminalPane.RemoteMuxReleaseCheck"/>): that result may come back after its close's pass ran.
         /// </summary>
         private void ScheduleRemoteMuxHostRelease()
         {

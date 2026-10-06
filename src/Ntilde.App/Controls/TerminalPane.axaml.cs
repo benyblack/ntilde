@@ -3816,7 +3816,7 @@ namespace Ntilde.Controls
             PersistentSessionResult? result = work.IsCompletedSuccessfully ? work.Result : null;
             if (generation != _remoteGen || Volatile.Read(ref _disposed))
             {
-                DiscardRemoteResult(result);
+                DiscardRemoteResult(factory, result);
                 return;
             }
 
@@ -3865,19 +3865,24 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
-        /// Any thread. A remote result nobody will show: its session is let go off the UI thread (a plain SSH
-        /// stand-in's dispose may block). A shell started for that result alone - not the one an id reopened -
-        /// has nobody left to show it, so it is ended rather than left running unseen on the remote.
+        /// UI thread. A remote result nobody will show: a later spawn replaced it, or the pane is gone. A shell started
+        /// for that result alone - not the one an id reopened, which it did not start - has nobody left to show it, so
+        /// it is ended rather than left running unseen on the remote (<see cref="KillStaleRemoteSession"/>). Then the
+        /// session is let go off the UI thread (a plain SSH stand-in's dispose may block).
         /// </summary>
-        private static void DiscardRemoteResult(PersistentSessionResult? result)
+        private void DiscardRemoteResult(MuxTerminalSessionFactory factory, PersistentSessionResult? result)
         {
             if (result?.Session is not { } session) return;
-            bool startedForIt = result.Outcome is not PersistentSessionOutcome.Reattached;
+            if (result.Outcome is not PersistentSessionOutcome.Reattached && session is MuxClientSession mux)
+            {
+                // Before the dispose below, and before any release pass runs (they run on this thread).
+                KillStaleRemoteSession(factory.Hosts, MuxEndpointId.Parse(result.Endpoint), mux.Id);
+            }
+
             _ = Task.Run(() =>
             {
                 try
                 {
-                    if (startedForIt && session is MuxClientSession mux) mux.Kill();
                     session.Dispose();
                 }
                 catch (Exception ex)
@@ -3885,6 +3890,41 @@ namespace Ntilde.Controls
                     TerminalLogger.Log($"[TerminalPane] discarding a stale remote session failed: {ex.Message}");
                 }
             });
+        }
+
+        /// <summary>
+        /// UI thread. Codex C1: the shell a stale result started is killed the way a closed pane's is, through its
+        /// endpoint's host (<see cref="MuxConnectionHost.KillWhenConnected"/>): sent and tracked while connected, else
+        /// queued for the next connect - one non-interactive attempt on an idle host - and queued again if its
+        /// connection closes first. The session's own fire-and-forget kill was lost on a link already down, or once
+        /// the window released the host. A host released meanwhile is taken back or built again
+        /// (<see cref="MuxConnectionHosts.GetOrCreate"/>), and a release waits for the kill. The window's release pass
+        /// then runs (<see cref="RemoteMuxReleaseCheck"/>): this pane's close may have run it before the result came
+        /// back, and a host kept or built only for this kill must still go once it is delivered. No host at all
+        /// (the window is closing, the profile is gone) is logged: that shell keeps running.
+        /// </summary>
+        private void KillStaleRemoteSession(MuxConnectionHosts hosts, MuxEndpointId endpoint, Guid sessionId)
+        {
+            MuxConnectionHost? host;
+            string? why = null;
+            try
+            {
+                host = hosts.GetOrCreate(endpoint);
+            }
+            catch (Exception ex)
+            {
+                host = null;
+                why = ex.Message;
+            }
+
+            if (host is null)
+            {
+                TerminalLogger.Log($"[TerminalPane] cannot end session {sessionId} on {endpoint}, started for a result nobody shows: no connection to send its kill on ({why ?? "the window is closing, or the profile is gone"}); it keeps running there");
+                return;
+            }
+
+            host.KillWhenConnected(sessionId);
+            RemoteMuxReleaseCheck?.Invoke();
         }
 
         /// <summary>UI thread. Follows <paramref name="host"/>'s events (null: none), dropping the previous host's.</summary>
@@ -4206,6 +4246,14 @@ namespace Ntilde.Controls
         /// Null offers none.
         /// </summary>
         internal Func<RemoteMuxFailure?, Guid, string, PersistenceNoticeAction?>? RemoteNoticeAction { get; set; }
+
+        /// <summary>
+        /// UI thread. Asks the window for its pass that releases the remote hosts no pane needs (final review F1), once the
+        /// kill of a stale result's shell is queued (codex C1, <see cref="KillStaleRemoteSession"/>): the pass this pane's
+        /// close scheduled may have run before that result came back. Set when the window wires the pane and kept when it
+        /// unwires it, since a closed pane's result still arrives. Null: nothing to ask (a pane with no window).
+        /// </summary>
+        internal Action? RemoteMuxReleaseCheck { get; set; }
 
         /// <summary>
         /// UI thread. This pane is (or is about to be) a session on a remote daemon (Phase 4 spec §8.4): not a

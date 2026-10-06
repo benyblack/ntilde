@@ -467,7 +467,8 @@ it).
   fails `NeedsUser` (as does an automatic OpenSSH attempt refused with `Permission denied`), which
   stops the loop at once with `ReconnectAbandoned`: retrying would only feed fail2ban.
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
-  through it. On a live client the kill is sent at once; otherwise it is queued, kept across
+  through it, and so does the kill of a shell a stale result started (a result that came back to a pane
+  closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once; otherwise it is queued, kept across
   `ReconnectAbandoned`, and sent before anything else on the next successful connect of any kind. An
   idle host (no client, no attempt, no loop) starts one automatic attempt to deliver it. Queued kills
   are dropped, with a log line, on `DaemonStopped` and on dispose.

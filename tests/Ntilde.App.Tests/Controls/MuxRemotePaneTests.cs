@@ -499,6 +499,41 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Contains(second.Id, _remote.Server.GetSessionIds());
     }
 
+    /// <summary>
+    /// Codex C1: only a shell started for a stale result is killed. A stale result that reopened an existing shell did
+    /// not start it, so its session is let go and the shell keeps running. (A pane closed in a window has its pending
+    /// id killed by the window's close; this pane has no window to do that.)
+    /// </summary>
+    [AvaloniaFact]
+    public void A_stale_reattach_result_leaves_its_shell_running()
+    {
+        TerminalPane earlier = ShowPane();
+        Guid id = Attached(earlier).Id;
+        earlier.Dispose(); // a plain detach: the shell keeps running, for the pane below to reopen
+        var reopened = new TaskCompletionSource<PersistentSessionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var deliver = new TaskCompletionSource<PersistentSessionResult>(); // inline continuations: SetResult posts the result
+        TerminalPane pane = ShowPane(restore: id, offUi: create =>
+        {
+            _ = OffUiThread(create).ContinueWith(
+                t => _ = t.IsCompletedSuccessfully ? reopened.TrySetResult(t.Result) : reopened.TrySetException(t.Exception!.GetBaseException()),
+                TaskScheduler.Default);
+            return deliver.Task;
+        });
+        PumpUntil(() => reopened.Task.IsCompleted, "the reopen finished");
+        PersistentSessionResult result = reopened.Task.Result;
+        Assert.Equal(PersistentSessionOutcome.Reattached, result.Outcome);
+        var stale = Assert.IsType<MuxClientSession>(result.Session);
+
+        pane.Dispose();          // gone before its result is back
+        deliver.SetResult(result);
+        PumpUntil(() => IsDisposed(stale), "the stale session was let go");
+        Settle(id);
+        _remote.Server.ReapExitedSessions(TimeSpan.Zero);
+
+        Assert.Contains(id, _remote.Server.GetSessionIds());
+        Assert.False(OnDaemon(id).IsExited, "the reopened shell was killed");
+    }
+
     /// <summary>Task 19 ruling: a new remote tab whose SSH connect failed gets no plain SSH stand-in and no id, but a retry.</summary>
     [AvaloniaFact]
     public void A_new_remote_tab_whose_ssh_connect_fails_offers_a_retry()

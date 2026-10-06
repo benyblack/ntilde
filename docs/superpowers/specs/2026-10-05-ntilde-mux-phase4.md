@@ -992,6 +992,17 @@ review; the section they change is named first.
   `IsConnected` says, and through `GetOrCreate` even for a never-spawned pending id; an idle remote
   host starts one non-interactive attempt to deliver the kill. A kill sent into a silently dead link
   was lost, and a never-shown restored tab had no host at all.
+- **§7.4 A stale remote result's shell is killed through its host too** (codex C1). A result that comes
+  back to a pane that was closed or restarted meanwhile, and that started a shell (any outcome but
+  `Reattached`), has that shell killed with `KillWhenConnected` on its endpoint's host
+  (`TerminalPane.KillStaleRemoteSession`, through `GetOrCreate`, so a host released meanwhile is taken
+  back or built again), on the UI thread before the session is let go; then the pane asks the window
+  for its release pass (`TerminalPane.RemoteMuxReleaseCheck`, wired per pane and kept after the pane
+  is unwired), since its close's pass may have run before the result came back. A host kept or built
+  only for that kill is released once it is delivered. No host at all (the window closing, the profile
+  gone) is logged. Before, the session's own fire-and-forget `Kill()` was dropped on a link already
+  down, or once the release had closed the host, and the shell ran on with no pane able to reach it. A
+  `Reattached` result is let go unkilled: it did not start that shell.
 
 ### Factory and pane
 

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
@@ -384,6 +385,98 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.False(host.IsClosed);
         Assert.Same(host, RemoteHostOf(window));
         Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>A leaf of the persisted SSH profile with no session yet: shown, it starts a fresh remote shell.</summary>
+    private PaneNode NewRemoteLeaf() => new() { Type = NodeType.Leaf, SshProfileId = _sshProfile.Id.ToString() };
+
+    /// <summary>
+    /// A window whose second tab - restored in the background - splits a new remote pane with a local one. The remote
+    /// pane's factory call is held: shown, the tab runs it to the end (the shell is spawned on the remote daemon), but
+    /// its result reaches the pane only when the test completes <c>Deliver</c>, on the UI thread, where the pane's
+    /// continuation then posts it at once. The split lets a close finish synchronously, before that.
+    /// </summary>
+    private (MainWindow Window, TerminalPane Pane, PersistentSessionResult Result, TaskCompletionSource<PersistentSessionResult> Deliver) WindowWithAHeldRemoteSpawn()
+    {
+        SaveTabs(LocalLeaf(), new PaneNode { Type = NodeType.Split, SplitOrientation = 0, Children = [NewRemoteLeaf(), LocalLeaf()] });
+        MainWindow window = CreateWindow();
+        PumpUntil(() => AllPanes(window).Any(p => p.Profile?.Type == ConnectionType.SSH), "the background tab was restored");
+        TerminalPane pane = AllPanes(window).Single(p => p.Profile?.Type == ConnectionType.SSH);
+        Assert.Null(pane.Session);
+
+        var spawned = new TaskCompletionSource<PersistentSessionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var deliver = new TaskCompletionSource<PersistentSessionResult>(); // inline continuations: SetResult posts the result
+        pane.RunOffUiThread = create =>
+        {
+            _ = Task.Run(() =>
+            {
+                try { spawned.TrySetResult(create()); }
+                catch (Exception ex) { spawned.TrySetException(ex); }
+            });
+            return deliver.Task;
+        };
+        window.FindControl<TabControl>("Tabs")!.SelectedItem = pane.FindLogicalAncestorOfType<TabItem>(); // a background tab spawns when shown
+        PumpUntil(() => spawned.Task.IsCompleted, "the remote factory call finished");
+        PersistentSessionResult result = spawned.Task.Result;
+        Assert.Equal(PersistentSessionOutcome.Spawned, result.Outcome);
+        Assert.Contains(Assert.IsType<MuxClientSession>(result.Session).Id, _remote.Server.GetSessionIds());
+        return (window, pane, result, deliver);
+    }
+
+    /// <summary>
+    /// Codex C1: a remote result that comes back to a closed pane started a shell nobody will ever show. Its kill goes
+    /// through the endpoint's host, as a closed pane's does: with the link down it is queued, the close's release pass
+    /// keeps the host for it, and it is delivered when the link is back - then the connection goes. Before, the
+    /// result's session sent a fire-and-forget kill into its dead connection and the release closed the host: the
+    /// shell ran on with no pane able to reach it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_stale_results_shell_is_killed_through_its_host_once_the_link_is_back()
+    {
+        (MainWindow window, TerminalPane pane, PersistentSessionResult result, TaskCompletionSource<PersistentSessionResult> deliver) = WindowWithAHeldRemoteSpawn();
+        Guid stale = result.Session!.Id;
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        _remote.CutLink();
+        PumpUntil(() => host.IsReconnecting, "the host noticed the link is down");
+
+        Task<bool> close = Close(window, pane);
+        Assert.True(close.IsCompletedSuccessfully && close.Result, "the split's pane closed at once");
+        deliver.SetResult(result); // the result comes back to a closed pane, ahead of the close's release pass
+        PumpFor(300);
+
+        Assert.False(host.IsClosed, "the connection was released with the stale shell's kill still queued");
+        Assert.Same(host, RemoteHostOf(window));
+        Assert.Contains(stale, _remote.Server.GetSessionIds());
+
+        _clock.Advance(FirstRetry); // the link is back: the queued kill goes first
+        KillLands(host, stale, "the stale result's shell was killed once the link was back");
+        PumpUntil(() => host.IsClosed && RemoteHostOf(window) is null, "the connection was released after the kill");
+    }
+
+    /// <summary>
+    /// Codex C1: the close's release pass may run before the closed pane's result is back, and close the host. The kill
+    /// of the shell that result started then goes through a host built for it - one automatic attempt - and that
+    /// host is released in its turn once the kill is delivered.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_stale_results_shell_is_killed_after_its_connection_was_released()
+    {
+        (MainWindow window, TerminalPane pane, PersistentSessionResult result, TaskCompletionSource<PersistentSessionResult> deliver) = WindowWithAHeldRemoteSpawn();
+        Guid stale = result.Session!.Id;
+        MuxConnectionHost first = RemoteHostOf(window)!;
+        FakeRemoteChannel channel = _remote.LastChannel!;
+
+        Task<bool> close = Close(window, pane);
+        Assert.True(close.IsCompletedSuccessfully && close.Result, "the split's pane closed at once");
+        PumpUntil(() => first.IsClosed && RemoteHostOf(window) is null, "the close released the connection: no pane needs it");
+        PumpUntil(() => channel.IsDisposed, "that connection ended");
+        Assert.Contains(stale, _remote.Server.GetSessionIds());
+
+        deliver.SetResult(result); // only now does the result come back
+        KillLands(RemoteHostOf(window), stale, "the stale result's shell was killed");
+
+        PumpUntil(() => RemoteHostOf(window) is null, "the host built for the kill was released after it");
+        Assert.Equal(2, _remote.StartCount); // the pane's connect, then one for the kill
     }
 
     private static void PumpFor(int ms)
