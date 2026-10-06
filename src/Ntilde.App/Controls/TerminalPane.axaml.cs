@@ -417,7 +417,7 @@ namespace Ntilde.Controls
                 string leaf = System.IO.Path.GetFileName(normalized);
                 if (!string.IsNullOrWhiteSpace(leaf))
                 {
-                    return $"{profileName} · {leaf}";
+                    return $"{profileName} \u00B7 {leaf}";
                 }
             }
 
@@ -853,7 +853,7 @@ namespace Ntilde.Controls
                 // otherwise overwrite this actionable prompt in the shared panel.
                 ToastMessageText.Text = string.IsNullOrEmpty(args.Notice)
                     ? fileName
-                    : $"{fileName} — {args.Notice}";
+                    : $"{fileName} \u2014 {args.Notice}";
                 // Restore the action buttons: an informational drop notice (below) hides
                 // them, and the panel is shared between both uses.
                 ToastPastePathBtn.IsVisible = true;
@@ -4129,22 +4129,22 @@ namespace Ntilde.Controls
         private static bool SessionAnswersDeviceQueries(ITerminalSession? session)
             => session is ITerminalSessionCapabilities { AnswersDeviceQueries: true };
 
-        internal const string MuxUnavailableBanner = "[Multiplexer unavailable — this session will not persist]";
-        internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version — run 'ntilde mux kill-server --force' to replace it]";
-        internal const string MuxPreviousLostBanner = "[Previous session was lost — started a new shell]";
+        internal const string MuxUnavailableBanner = "[Multiplexer unavailable \u2014 this session will not persist]";
+        internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version \u2014 run 'ntilde mux kill-server --force' to replace it]";
+        internal const string MuxPreviousLostBanner = "[Previous session was lost \u2014 started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
-        internal const string MuxUnreachableBanner = "[Multiplexer not reachable — press Enter to retry]";
-        internal const string MuxSessionFailedBanner = "[Multiplexer session failed — press Enter to start a new shell]";
+        internal const string MuxUnreachableBanner = "[Multiplexer not reachable \u2014 press Enter to retry]";
+        internal const string MuxSessionFailedBanner = "[Multiplexer session failed \u2014 press Enter to start a new shell]";
         internal const string MuxUnavailableNoticeTitle = "Session not persistent";
         internal const string MuxOrphanedNoticeTitle = "Multiplexer";
         internal const string MuxOrphanedBanner = "[Another multiplexer is running but cannot be reached. Shells in this window are not kept. Close other ntilde windows or end the old multiplexer.]";
         internal const string MuxPreviousLostNoticeTitle = "Previous session lost";
-        internal const string MuxAttachedElsewhereBanner = "[Your previous shell is open in another window — started a new shell]";
+        internal const string MuxAttachedElsewhereBanner = "[Your previous shell is open in another window \u2014 started a new shell]";
         internal const string MuxAttachedElsewhereNoticeTitle = "Previous shell in use";
         internal const string MuxKilledElsewhereBanner = "[Shell ended from another window]";
         internal const string MuxShareEndedBanner = "[The shell you chose has ended]";
         internal const string MuxShareEndedNoticeTitle = "Attach to session";
-        internal const string MuxAdoptionLostBanner = "[This shell is open in another window — press Enter to start a new shell]";
+        internal const string MuxAdoptionLostBanner = "[This shell is open in another window \u2014 press Enter to start a new shell]";
 
         /// <summary>Phase 4 spec §7.5: a persisted SSH tab whose remote ntilde-mux could not be used.</summary>
         internal const string RemoteMuxUnavailableNoticeTitle = "Persistent SSH unavailable";
@@ -5649,8 +5649,8 @@ namespace Ntilde.Controls
 
                     SftpStatus.IsVisible = true;
                     SftpIcon.Text = activeJobs.Count > 1
-                        ? "⇅"
-                        : primaryJob.Direction == TransferDirection.Upload ? "⬆" : "⬇";
+                        ? "\u21C5"
+                        : primaryJob.Direction == TransferDirection.Upload ? "\u2B06" : "\u2B07";
                     SftpText.Text = BuildRunningTransferStatus(primaryJob, activeJobs.Count);
                 }
                 else
@@ -5665,9 +5665,9 @@ namespace Ntilde.Controls
                         SftpStatus.IsVisible = true;
                         SftpIcon.Text = lastJob.State switch
                         {
-                            TransferState.Completed => "✅",
-                            TransferState.Canceled => "⏹",
-                            _ => "❌"
+                            TransferState.Completed => "\u2705",
+                            TransferState.Canceled => "\u23F9",
+                            _ => "\u274C"
                         };
                         SftpText.Text = BuildCompletedTransferStatus(lastJob);
                     }
@@ -5685,7 +5685,7 @@ namespace Ntilde.Controls
             string detail = job.BytesTotal > 0
                 ? $" {Math.Round(job.Progress * 100)}%"
                 : string.Empty;
-            string prefix = activeTransferCount > 1 ? $"{activeTransferCount} transfers • " : string.Empty;
+            string prefix = activeTransferCount > 1 ? $"{activeTransferCount} transfers \u2022 " : string.Empty;
             return $"{prefix}{action} {job.DisplayName}{detail}";
         }
 
@@ -6088,7 +6088,7 @@ namespace Ntilde.Controls
             if (Profile == null) return;
             UpdateStatusBarVisibility();
             _forwardingStatusUiBuilt = true;
-            StatusBarLabel.Text = $"SSH ▸ {Profile.Name} ▸";
+            StatusBarLabel.Text = $"SSH \u25B8 {Profile.Name} \u25B8";
             StatusBarRules.Children.Clear();
 
             foreach (var rule in Profile.Forwards)
@@ -6097,7 +6097,7 @@ namespace Ntilde.Controls
 
                 var icon = new TextBlock
                 {
-                    Text = "🔁",
+                    Text = "\U0001F501",
                     FontSize = 10,
                     Foreground = rule.Status switch
                     {
@@ -6113,8 +6113,8 @@ namespace Ntilde.Controls
                 {
                     Text = rule.Type switch
                     {
-                        ForwardingType.Local => $"L:{rule.LocalAddress}→{rule.RemoteAddress}",
-                        ForwardingType.Remote => $"R:{rule.RemoteAddress}→{rule.LocalAddress}",
+                        ForwardingType.Local => $"L:{rule.LocalAddress}\u2192{rule.RemoteAddress}",
+                        ForwardingType.Remote => $"R:{rule.RemoteAddress}\u2192{rule.LocalAddress}",
                         ForwardingType.Dynamic => $"D:{rule.LocalAddress}",
                         _ => ""
                     },

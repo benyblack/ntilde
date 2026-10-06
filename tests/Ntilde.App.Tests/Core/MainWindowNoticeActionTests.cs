@@ -178,9 +178,9 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
         PersistenceNoticeAction install = window.RemoteMuxNoticeAction(notInstalled, profile, "nova@fake-host")!;
         install.Run();
 
-        Assert.Equal("Install ntilde-mux on nova@fake-host…", install.Label);
+        Assert.Equal("Install ntilde-mux on nova@fake-host\u2026", install.Label);
         Assert.Equal(new[] { profile }, opened);
-        Assert.Equal("Update ntilde-mux on nova@fake-host…", window.RemoteMuxNoticeAction(notInstalled with { Kind = RemoteFailureKind.VersionMismatch }, profile, "nova@fake-host")?.Label);
+        Assert.Equal("Update ntilde-mux on nova@fake-host\u2026", window.RemoteMuxNoticeAction(notInstalled with { Kind = RemoteFailureKind.VersionMismatch }, profile, "nova@fake-host")?.Label);
         Assert.Null(window.RemoteMuxNoticeAction(new RemoteMuxFailure(RemoteFailureKind.Unsupported, "musl libc is not supported"), profile, "nova@fake-host"));
     }
 

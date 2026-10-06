@@ -123,13 +123,13 @@ namespace Ntilde
         private static readonly TimeSpan PreviewRefreshInterval = TimeSpan.FromMilliseconds(250);
 
         /// <summary>Tab-label marker for "an agent typed into a pane in this tab".</summary>
-        internal const string AgentWroteGlyph = "⌨";  // keyboard
+        internal const string AgentWroteGlyph = "\u2328";  // keyboard
 
         /// <summary>Tab-label marker for "an agent is reading a pane in this tab".</summary>
         internal const string AgentWatchedGlyph = "\U0001F441";  // eye
 
         /// <summary>Tab-label marker for "a pane in this tab is attached from another window too".</summary>
-        internal const string SharedGlyph = "⧉";  // two joined squares: one shell, several windows
+        internal const string SharedGlyph = "\u29C9";  // two joined squares: one shell, several windows
         internal const double MinimumTabHeaderRightReserve = 440;
         internal const double MacOsTrafficLightReserve = 92;
         internal const double TabHeaderViewportPadding = 16;
@@ -984,8 +984,8 @@ namespace Ntilde
                 return chip;
             }
 
-            var bellChip = Chip("TabBellChip", "🔔", TabBellChipBrush);
-            var activityChip = Chip("TabActivityChip", "•", TabActivityChipBrush);
+            var bellChip = Chip("TabBellChip", "\U0001F514", TabBellChipBrush);
+            var activityChip = Chip("TabActivityChip", "\u2022", TabActivityChipBrush);
             var agentWroteChip = Chip("TabAgentWroteChip", AgentWroteGlyph, TabAgentWroteChipBrush);
             var agentWatchedChip = Chip("TabAgentWatchedChip", AgentWatchedGlyph, TabAgentWatchedChipBrush);
             var sharedChip = Chip("TabSharedChip", SharedGlyph, TabSharedChipBrush);
@@ -1586,9 +1586,9 @@ namespace Ntilde
         private string GetTabMenuLabel(TabItem tab, int index)
         {
             var state = GetOrCreateTabState(tab);
-            string icon = state.IsPinned ? "📌 " : string.Empty;
-            if (state.HasBell) icon += "🔔 ";
-            else if (state.HasActivity) icon += "• ";
+            string icon = state.IsPinned ? "\U0001F4CC " : string.Empty;
+            if (state.HasBell) icon += "\U0001F514 ";
+            else if (state.HasActivity) icon += "\u2022 ";
             if (state.AgentTier == AgentHost.AgentAttentionTier.Wrote) icon += AgentWroteGlyph + " ";
             else if (state.AgentTier == AgentHost.AgentAttentionTier.Watched) icon += AgentWatchedGlyph + " ";
             string label = GetTabHeaderText(tab);
@@ -2113,7 +2113,7 @@ namespace Ntilde
 
             badge.IsVisible = hiddenCount > 0;
             badge.Text = hiddenCount > 0 ? $"+{hiddenCount}" : string.Empty;
-            ToolTip.SetTip(button, hiddenCount > 0 ? $"{baseTooltip} — {hiddenCount} hidden" : baseTooltip);
+            ToolTip.SetTip(button, hiddenCount > 0 ? $"{baseTooltip} \u2014 {hiddenCount} hidden" : baseTooltip);
             // This runs after every layout pass (via UpdateTabVisuals -> PopulateTabListMenu), so
             // the resting color here must be the theme's contrast foreground, not hardcoded white:
             // white was invisible against light themes and kept re-stomping the foreground
@@ -2409,7 +2409,7 @@ namespace Ntilde
         {
             if (string.IsNullOrEmpty(value) || value.Length <= maxLength) return value;
             if (maxLength < 5) return value.Substring(0, maxLength);
-            return value.Substring(0, maxLength - 1) + "…";
+            return value.Substring(0, maxLength - 1) + "\u2026";
         }
 
         internal static string TruncateTabLabelWithSuffix(string value, int maxLength, string suffix)
@@ -2430,7 +2430,7 @@ namespace Ntilde
             {
                 prefix = available < 5
                     ? prefix.Substring(0, available)
-                    : prefix.Substring(0, available - 1) + "…";
+                    : prefix.Substring(0, available - 1) + "\u2026";
             }
 
             return prefix + suffix;
@@ -2498,21 +2498,21 @@ namespace Ntilde
                 {
                     string badge = activeCount.ToString();
                     if (startingCount > 0) badge += $" ({startingCount})";
-                    label = $"{label} 🔁 {badge}";
+                    label = $"{label} \U0001F501 {badge}";
                 }
                 else if (hasFailed)
                 {
-                    label = $"{label} ⚠️";
+                    label = $"{label} \u26A0\uFE0F";
                 }
             }
 
             if (state.IsPinned)
             {
-                label = "📌 " + label;
+                label = "\U0001F4CC " + label;
             }
             if (state.IsProtected)
             {
-                label = "🔒 " + label;
+                label = "\U0001F512 " + label;
             }
 
             return label;
@@ -2531,11 +2531,11 @@ namespace Ntilde
 
             if (state.HasBell)
             {
-                suffix += " 🔔";
+                suffix += " \U0001F514";
             }
             else if (state.HasActivity)
             {
-                suffix += " •";
+                suffix += " \u2022";
             }
 
             if (state.AgentTier == AgentHost.AgentAttentionTier.Wrote)
@@ -5111,15 +5111,15 @@ namespace Ntilde
         {
             if (count <= 1) return message;
             if (title == TerminalPane.MuxPreviousLostNoticeTitle)
-                return $"[{count} previous sessions were lost — started new shells]";
+                return $"[{count} previous sessions were lost \u2014 started new shells]";
             if (title == TerminalPane.MuxAttachedElsewhereNoticeTitle)
-                return $"[{count} previous shells are open in another window — started new shells]";
+                return $"[{count} previous shells are open in another window \u2014 started new shells]";
             if (title == TerminalPane.MuxUnavailableNoticeTitle)
             {
                 string hint = message.Contains(TerminalPane.MuxVersionMismatchHint, StringComparison.Ordinal)
                     ? "\n" + TerminalPane.MuxVersionMismatchHint
                     : string.Empty;
-                return $"[Multiplexer unavailable — {count} sessions will not persist]{hint}";
+                return $"[Multiplexer unavailable \u2014 {count} sessions will not persist]{hint}";
             }
 
             return $"{message} ({count} panes)";
@@ -5330,8 +5330,8 @@ namespace Ntilde
             if (_detachedShellsAnnounced || _teardownDone) return;
             _detachedShellsAnnounced = true;
             string message = count == 1
-                ? "1 detached shell is running — Attach to session… to reopen it"
-                : $"{count} detached shells are running — Attach to session… to reopen them";
+                ? "1 detached shell is running \u2014 Attach to session\u2026 to reopen it"
+                : $"{count} detached shells are running \u2014 Attach to session\u2026 to reopen them";
             EnqueueNotice("Detached shells", message);
         }
 
@@ -6422,7 +6422,7 @@ namespace Ntilde
             {
                 EnqueueNotice("Shell detached", remote
                     ? RemoteDetachedMessage(remoteHost, mux.Id)
-                    : "Shell kept running — Attach to session… to get it back");
+                    : "Shell kept running \u2014 Attach to session\u2026 to get it back");
             }
 
             return closed;
@@ -6434,7 +6434,7 @@ namespace Ntilde
         /// full id <c>ntilde-mux ls</c> shows. <paramref name="host"/> is <c>user@host</c>, as the remote banners say.
         /// </summary>
         internal static string RemoteDetachedMessage(string host, Guid sessionId) =>
-            $"Shell kept running on {host} — run 'ntilde-mux attach {sessionId}' on that host to get it back";
+            $"Shell kept running on {host} \u2014 run 'ntilde-mux attach {sessionId}' on that host to get it back";
 
         /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
         internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }
@@ -7009,7 +7009,7 @@ namespace Ntilde
             bool confirmed = false;
             var dialog = CreateThemedDialogWindow("Run Workspace Commands?", 520, 320, canResize: false);
 
-            var listText = string.Join("\n", commands.ConvertAll(c => "•  " + c));
+            var listText = string.Join("\n", commands.ConvertAll(c => "\u2022  " + c));
 
             var cancelButton = new Button { Content = "Cancel", Width = 92 };
             cancelButton.Click += (_, __) => { confirmed = false; dialog.Close(); };
@@ -8089,7 +8089,7 @@ namespace Ntilde
             CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
             if (IsMuxPersistenceActive)
             {
-                CommandRegistry.Register("Session: Attach to Session…", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.AttachSessionId, ""), ShortcutCatalog.AttachSessionId);
+                CommandRegistry.Register("Session: Attach to Session\u2026", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.AttachSessionId, ""), ShortcutCatalog.AttachSessionId);
                 CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding(ShortcutCatalog.DetachPaneId, ""), ShortcutCatalog.DetachPaneId);
             }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");
@@ -8129,19 +8129,19 @@ namespace Ntilde
             // OpenSettingsToBackupPage itself, so a test can assert what these route to via
             // reflection without ever invoking through to the real (headlessly-hanging) ShowDialog.
             CommandRegistry.Register(
-                "Export configuration…",
+                "Export configuration\u2026",
                 "Backup",
                 OpenSettingsToBackupPage,
                 id: "backup.export");
 
             CommandRegistry.Register(
-                "Import configuration…",
+                "Import configuration\u2026",
                 "Backup",
                 OpenSettingsToBackupPage,
                 id: "backup.import");
 
             CommandRegistry.Register(
-                "Restore from snapshot…",
+                "Restore from snapshot\u2026",
                 "Backup",
                 OpenSettingsToBackupPage,
                 id: "backup.restore");
@@ -8213,8 +8213,8 @@ namespace Ntilde
 
             int cols = Math.Max(20, buffer.Cols);
             int inner = Math.Max(2, cols - 2);
-            string horizontal = new string('─', inner);
-            string middle = "│" + new string('.', inner) + "│";
+            string horizontal = new string('\u2500', inner);
+            string middle = "\u2502" + new string('.', inner) + "\u2502";
 
             var ruler = new System.Text.StringBuilder(cols);
             for (int i = 1; i <= cols; i++)
@@ -8225,10 +8225,10 @@ namespace Ntilde
             var screen = new System.Text.StringBuilder();
             screen.AppendLine("[Ntilde] Box Drawing Repro");
             screen.AppendLine(ruler.ToString());
-            screen.AppendLine("┌" + horizontal + "┐");
+            screen.AppendLine("\u250C" + horizontal + "\u2510");
             screen.AppendLine(middle);
-            screen.AppendLine("└" + horizontal + "┘");
-            screen.AppendLine("┼┼┼┼┼  │││││  ─────");
+            screen.AppendLine("\u2514" + horizontal + "\u2518");
+            screen.AppendLine("\u253C\u253C\u253C\u253C\u253C  \u2502\u2502\u2502\u2502\u2502  \u2500\u2500\u2500\u2500\u2500");
 
             buffer.Clear(resetCursor: true);
             buffer.SetCursorPosition(0, 0);
@@ -9028,7 +9028,7 @@ namespace Ntilde
             string trimmedName = string.IsNullOrWhiteSpace(profile.Name) ? string.Empty : profile.Name.Trim();
             const int maxLabelLength = 60;
             string displayName = trimmedName.Length > maxLabelLength
-                ? trimmedName[..maxLabelLength] + "…"
+                ? trimmedName[..maxLabelLength] + "\u2026"
                 : trimmedName;
             string label = string.IsNullOrWhiteSpace(displayName)
                 ? "this connection"
@@ -9188,7 +9188,7 @@ namespace Ntilde
                 {
                     string when = e.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
                     string outcome = e.Outcome == "ok" ? "ok" : $"denied: {e.Outcome}";
-                    string pane = e.PaneId is { } id ? $" · pane {id}" : string.Empty;
+                    string pane = e.PaneId is { } id ? $" \u00B7 pane {id}" : string.Empty;
                     return new TextBlock
                     {
                         Text = $"{when}  {e.Method}  [{outcome}]  {e.Target}{pane}",
@@ -9205,7 +9205,7 @@ namespace Ntilde
 
             var empty = new TextBlock
             {
-                Text = "No agent activity recorded yet. Actions taken by AI agents (typing, opening or closing sessions) appear here — including attempts that were denied.",
+                Text = "No agent activity recorded yet. Actions taken by AI agents (typing, opening or closing sessions) appear here \u2014 including attempts that were denied.",
                 TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.7,
             };

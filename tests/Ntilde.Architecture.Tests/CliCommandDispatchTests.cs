@@ -126,7 +126,7 @@ public class CliCommandDispatchTests
 
         Assert.True(undispatched.Length == 0,
             "These CLI-command-shaped types exist but are not dispatched from " +
-            "src/Ntilde.App/Program.cs — the entry point a shipped self-contained/AOT build " +
+            "src/Ntilde.App/Program.cs \u2014 the entry point a shipped self-contained/AOT build " +
             "actually runs (Ntilde.Cli/Program.cs is a dev-only shim absent from that " +
             "bundle, so wiring a command into it alone leaves the command unreachable there). Add " +
             "an IsSupportedCliMode/Execute branch to App/Program.cs's Main, following the " +
