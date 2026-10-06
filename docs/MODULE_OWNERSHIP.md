@@ -257,7 +257,8 @@ invariant changes.
   (diagnostics go to stderr, the daemon logs to its own file). Exit codes are a contract the GUI
   classifies a drop by: 0 stdin ended, 3 the daemon side ended and the daemon's process is gone (the
   GUI's `DaemonStopped`), 4 the daemon dropped this connection but runs on, or stdout could not be
-  written (a lost link to the GUI), 1 no daemon could be reached or spawned, 2 usage
+  written (a lost link to the GUI), 1 no daemon could be reached or spawned, 2 usage. On Unix it ends
+  fds 1 and 2 for real (`UnixChannelStdio`: every copy to `/dev/null`) before it waits to decide 3 or 4
 - **A user detach is never lost.** The text client waits (bounded, 1 s) for a ping reply after its
   final detach before it disposes the connection, and a refusal drop before a queued user detach
   keeps `DetachedByUser` (both found and fixed in Phase 4)

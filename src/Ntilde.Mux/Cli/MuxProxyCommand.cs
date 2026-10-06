@@ -49,8 +49,10 @@ public static class MuxProxyCommand
     /// <summary>
     /// How long, once the daemon side ended, the proxy waits for the daemon's process to exit before it concludes
     /// that the daemon runs on (codex D1). A daemon that stops - <c>kill-server</c>, its idle exit, an update's
-    /// <c>shutdown</c> - closes its connections first and exits a moment later. Inside the 2 s the GUI's exec
-    /// channels give a command to exit once their stdin closed, so the code still reaches the GUI.
+    /// <c>shutdown</c> - closes its connections first and exits a moment later. Only the exit code waits: the
+    /// channel's stdout and stderr have ended before it (<c>endStdio</c>), so the client has seen the end already.
+    /// It fits inside the 2 s the GUI's exec channels give a command to exit once their stdin closed, and under the
+    /// GUI's 2 s wait for the exit status (<c>RemoteMuxHostFactory.DisconnectExitWait</c>), so the code reaches it.
     /// </summary>
     private static readonly TimeSpan DaemonExitWait = TimeSpan.FromMilliseconds(1500);
 
@@ -80,9 +82,12 @@ public static class MuxProxyCommand
     /// thread (a background thread the process exit ends), and only its EOF can end that read.
     /// </summary>
     /// <remarks>
-    /// When the daemon side ends, stdout closes at once, so the client sees the end without delay; the exit code
-    /// waits for the answer to whether the daemon's process is gone (<see cref="MuxProxyExitCodes.DaemonClosed"/>)
-    /// or runs on (<see cref="MuxProxyExitCodes.ConnectionClosed"/>), for up to <see cref="DaemonExitWait"/>.
+    /// When the daemon side ends, <paramref name="stdout"/> is closed and then <paramref name="endStdio"/> ends the
+    /// process's own stdout and stderr, which closing the stream does not (its descriptor is a copy, and sshd waits for
+    /// stderr too): the client sees the end without delay. Only then does the exit code wait for the answer to whether
+    /// the daemon's process is gone (<see cref="MuxProxyExitCodes.DaemonClosed"/>) or runs on
+    /// (<see cref="MuxProxyExitCodes.ConnectionClosed"/>), for up to <see cref="DaemonExitWait"/>; nothing is written
+    /// to stdout or stderr after.
     /// </remarks>
     /// <param name="stdin">The raw stdin: frames from the client.</param>
     /// <param name="stdout">The raw stdout: the preamble, then frames from the daemon.</param>
@@ -97,12 +102,18 @@ public static class MuxProxyCommand
     /// process that took a dead daemon's pid does not count. Tests whose daemon runs in their own process pass
     /// their own.
     /// </param>
+    /// <param name="endStdio">
+    /// Ends the process's own stdout and stderr once the daemon side ended, before the wait for the daemon's process
+    /// (residual R1): the verb passes <see cref="UnixChannelStdio.EndStdoutAndStderr"/> on Unix, where the proxy runs.
+    /// Null for none: a proxy run inside another process (tests) must not end that process's descriptors.
+    /// </param>
     public static int Run(
         Stream stdin,
         Stream stdout,
         TextWriter stderr,
         Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> connectDaemon,
-        Func<MuxEndpointDescriptor, bool>? isDaemonAlive = null)
+        Func<MuxEndpointDescriptor, bool>? isDaemonAlive = null,
+        Action? endStdio = null)
     {
         ArgumentNullException.ThrowIfNull(stdin);
         ArgumentNullException.ThrowIfNull(stdout);
@@ -173,6 +184,10 @@ public static class MuxProxyCommand
 
         // A stdout nobody reads says nothing about the daemon, and nobody reads the code either: never 3.
         if (stdoutFailed) return MuxProxyExitCodes.ConnectionClosed;
+
+        // Closing the stream left the channel open (a copy of fd 1, and sshd waits for stderr too): end both for
+        // real now, so the client sees the end before the wait below, not when the process exits after it.
+        endStdio?.Invoke();
         return DaemonRunsOn(descriptor, isDaemonAlive) ? MuxProxyExitCodes.ConnectionClosed : MuxProxyExitCodes.DaemonClosed;
     }
 

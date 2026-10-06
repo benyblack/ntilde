@@ -43,7 +43,14 @@ public enum NativeSshEventKind
     /// type for stderr). Only exec sessions send it; a shell session's stderr arrives in
     /// <see cref="Data"/> through its PTY.
     /// </summary>
-    ExtendedData = 14
+    ExtendedData = 14,
+
+    /// <summary>
+    /// An exec session's remote command closed its stdout and stderr: the channel's EOF (codex D1, residual R1).
+    /// Empty. Queued after the data it follows; its <see cref="ExitStatus"/> and <see cref="Closed"/> come once the
+    /// command has exited, which may be later. Only exec sessions send it.
+    /// </summary>
+    Eof = 15
 }
 
 public enum NativeSshResponseKind

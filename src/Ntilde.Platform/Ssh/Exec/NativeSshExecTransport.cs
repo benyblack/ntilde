@@ -140,6 +140,12 @@ public sealed class NativeSshExecTransport : ISshExecTransport
 /// exit status. A failure the native layer reported is the difference, and it surfaces as an
 /// <see cref="SshExecTransportException"/> on <see cref="Stdout"/>.
 /// </para>
+/// <para>
+/// <see cref="Stdout"/> ends at the command's EOF (<see cref="NativeSshEventKind.Eof"/>), or at the session's end
+/// when none came: not at the command's exit, which may be well after it (a proxy whose daemon dropped the
+/// connection waits for the daemon's process before it exits; codex D1, residual R1). A reader that sees that EOF
+/// waits on <see cref="Completion"/> for the exit status.
+/// </para>
 /// </remarks>
 internal sealed class NativeSshExecChannel : ISshExecChannel
 {
@@ -384,6 +390,11 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                         _promptResponder.RespondAsync(next, _interop, handle, _interactionHandler, _stop.Token)
                             .GetAwaiter().GetResult();
                         break;
+                    case NativeSshEventKind.Eof:
+                        // The command closed its stdout (codex D1, residual R1): end it for the reader now. Its
+                        // exit status and the close come once it has exited, which may be much later.
+                        _stdoutQueue.Complete();
+                        break;
                     case NativeSshEventKind.ExitStatus:
                         _exitCode = next.StatusCode;
                         break;
@@ -423,7 +434,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
 
     /// <summary>
     /// The end of the session, in order: the failure and the end are recorded first, so a reader that
-    /// sees stdout's end also sees them. Then the handle closes and <see cref="Completion"/> resolves,
+    /// sees stdout's end here (no EOF came before it) also sees them. Then the handle closes and <see cref="Completion"/> resolves,
     /// with <see cref="StderrTail"/> complete. The log comes last, so it cannot hold anything up.
     /// </summary>
     private void Finish(bool closedByServer)

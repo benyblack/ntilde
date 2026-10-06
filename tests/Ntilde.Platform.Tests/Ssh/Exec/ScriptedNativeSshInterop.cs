@@ -92,6 +92,9 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
 
     public static NativeSshEvent Closed() => NativeSshEvent.Closed("""{"reason":"session-ended"}"""u8.ToArray());
 
+    /// <summary>The remote command's EOF, as rusty_ssh queues it in exec mode: empty, before the exit status and Closed.</summary>
+    public static NativeSshEvent Eof() => new(NativeSshEventKind.Eof, [], flags: NativeSshEventFlags.Json);
+
     public NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command)
     {
         Interlocked.Increment(ref _execCalls);

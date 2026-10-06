@@ -154,6 +154,28 @@ public sealed class NativeSshExecTransportTests
         Assert.Equal("NTILDE-MUX-PROXY 1 42\nframe-1frame-2", await ReadToEndAsync(channel.Stdout));
     }
 
+    /// <summary>
+    /// Codex D1, residual R1: the remote command's EOF ends stdout at once. Its exit status and the channel's close
+    /// come only once the command has exited - for a proxy whose daemon dropped the connection, after its wait for
+    /// the daemon's process - and a reader must not wait for them to see the connection end.
+    /// </summary>
+    [Fact]
+    public async Task The_remote_EOF_ends_stdout_before_the_command_exits()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(
+            ScriptedNativeSshInterop.Connected(),
+            ScriptedNativeSshInterop.Stdout("the last frame"),
+            ScriptedNativeSshInterop.Eof());
+
+        using ISshExecChannel channel = Start(interop);
+
+        Assert.Equal("the last frame", await ReadToEndAsync(channel.Stdout));
+        Assert.False(channel.Completion.IsCompleted, "the command has not exited yet");
+        interop.Enqueue(NativeSshEvent.ExitStatus(4), ScriptedNativeSshInterop.Closed());
+        Assert.Equal(4, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task Stderr_goes_to_the_tail_and_is_complete_when_Completion_resolves()
     {

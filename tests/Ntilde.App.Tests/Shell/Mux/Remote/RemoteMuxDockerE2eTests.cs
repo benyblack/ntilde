@@ -4,6 +4,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
 using Ntilde.Mux;
+using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
@@ -273,6 +274,39 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
             DockerExecResult daemonAlive = await Fixture.ExecAsync($"kill -0 {daemonPid}");
             Assert.True(daemonAlive.ExitCode == 0, $"the daemon (pid {daemonPid}) is gone after only the proxy was killed");
             Log($"[e2e] step 2 passed: top is still pid {topPid}, the daemon is still pid {daemonPid}");
+
+            // --- 2b. The daemon drops the connection but runs on (codex D1, residual R1) ------------------
+            // A twin hello with the host's client instance id makes the daemon evict the host's connection, as it
+            // drops a client too slow to keep up. The proxy exits 4 once its 1.5 s wait for the daemon's process is
+            // over, but the channel's stdout and stderr end at once, so the GUI's client sees the end at once.
+            Log("[e2e] step 2b: the daemon drops this connection (a twin hello with the host's client instance id) and runs on");
+            mark = events.Count;
+            MuxClient evicted = host.WatchedClientForTest ?? throw new InvalidOperationException("The host has no client to drop.");
+            var evictedSeenAt = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+            evicted.Disconnected += _ => evictedSeenAt.TrySetResult(Stopwatch.GetTimestamp());
+            RemoteMuxConnector hostConnector = Assert.IsType<RemoteMuxConnector>(host.Connector);
+            SshProfile twinProfile = _ssh.GetStoredProfile(_profileId) ?? throw new InvalidOperationException("The profile is gone.");
+            using (var twinConnector = new RemoteMuxConnector(twinProfile, Transport(twinProfile, new RemoteMuxTransportRequest(Interactive: true, _prompts)), hostConnector.ClientInstanceId, HostLog))
+            using (MuxClient twin = await twinConnector.ConnectAsync(interactive: true, Ct).WaitAsync(FactoryWithin, Ct))
+            {
+                long twinWelcomedAt = Stopwatch.GetTimestamp();
+                long endSeenAt = await evictedSeenAt.Task.WaitAsync(KillNoticedWithin, Ct);
+                double endAfterMs = Stopwatch.GetElapsedTime(twinWelcomedAt, endSeenAt).TotalMilliseconds;
+                Log($"[e2e] step 2b: the host's client saw its connection end {endAfterMs:0} ms after the twin's welcome (the daemon evicts before it welcomes)");
+                Assert.True(endAfterMs < 1000, $"the GUI saw the dropped connection end {endAfterMs:0} ms after the eviction: the proxy's stdout stayed open through its wait for the daemon's process");
+                lost = await events.WaitForAsync(ConnectionLost, mark, KillNoticedWithin);
+                int? exit = await hostConnector.ExitAsync(evicted, KillNoticedWithin);
+                Log($"[e2e] step 2b: the proxy under the dropped connection exited {exit?.ToString(CultureInfo.InvariantCulture) ?? "(no status)"}");
+                Assert.Equal(MuxProxyExitCodes.ConnectionClosed, exit);
+                back = await events.WaitForAsync(Reconnected, lost.Index + 1, BackWithin);   // its reconnect evicts the twin in turn
+            }
+
+            events.AssertNone(mark, ReconnectAbandoned, DaemonStopped);
+            tab.Dispose();
+            tab = await ReattachAsync(factory, sessionId, "after the daemon dropped the connection");
+            Assert.Equal(topPid, await TopPidAsync());
+            Assert.Equal(daemonPid, await DaemonPidAsync());
+            Log($"[e2e] step 2b passed: a lost link, not a stopped daemon; top is still pid {topPid}, the daemon is still pid {daemonPid}");
 
             // --- 3. The daemon is killed: its sessions go with it ------------------------------------
             Log("[e2e] step 3: kill -9 the daemon");

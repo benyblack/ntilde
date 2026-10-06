@@ -427,7 +427,9 @@ change to the toast that recordings and notices already share.
    `Console.OpenStandardInput/Output` streams with 64 KiB buffers. The proxy never parses a frame.
 4. **When either side closes:**
    - **stdin EOF:** shut down the socket's send side, close the socket and exit **0**;
-   - **socket EOF or error:** flush and close stdout and the socket. Then exit **3** once the daemon's
+   - **socket EOF or error:** flush and close stdout and the socket, and end the process's stdout and
+     stderr for real (on Unix every descriptor of them goes to `/dev/null`; §15), so the client sees
+     the end at once. Then exit **3** once the daemon's
      process is gone (`MuxDiscovery.IsProcessAlive` with the descriptor's pid, process name and start
      token, so a recycled pid does not count), asked every 50 ms for up to 1.5 s, since a daemon that
      stops closes its connections first and exits a moment later; exit **4** when it still runs at the
@@ -948,7 +950,8 @@ review; the section they change is named first.
   poll thread feeds directly, not a `Pipe`. `Pipe`'s default schedulers put thread-pool work on the
   remote output path, against the multiplexer's no-thread-pool-on-the-output-path rule.
 - **§8.3 ABI details.** Handles are `usize` with 0 for a rejected call; the exit status reuses event
-  kind 7 and stderr is the new kind 14; a refused exec gives `Connected`, `Error`, `Closed`; a process
+  kind 7, stderr is the new kind 14, and the command's EOF the new kind 15 (residual R1, below); a
+  refused exec gives `Connected`, `Error`, `Closed`; a process
   killed by a signal sends no exit status, so `Completion` is null (as for a killed OpenSSH channel).
   `detect_login_shell` runs over `run_exec_collect`, and the exec session repeats its open-and-exec
   pair: two exec paths, not the one §8.3 asked for.
@@ -1003,17 +1006,37 @@ review; the section they change is named first.
   and a hello with the same `ClientInstanceId` evicts the older connection. The proxy exited 3 for
   those as well, and the host read `DaemonStopped`: no automatic reconnect, the wrong banner, and its
   queued kills dropped, so a later close orphaned the remote shell. Now, once the daemon side ends, the
-  proxy closes stdout at once (the client sees the end without delay), then asks whether the
-  descriptor's daemon still runs (`MuxDiscovery.IsProcessAlive` with its pid, process name and start
-  token), every 50 ms for up to 1.5 s: gone is 3, still running is `MuxProxyExitCodes.ConnectionClosed`
-  (4). A stdout that cannot be written, at the preamble or later, is 4 too: nobody reads the code, and
-  it says nothing about the daemon. The host counts every code but 3 as a lost link, as before. The
-  1.5 s fits inside the 2 s the exec channels give a command to exit once their stdin closed, and the
-  host's classification now waits up to 2 s for the exit status (its own cap 2.5 s, both raised from
-  1 s), so a daemon that exits within the proxy's 1.5 s reads as stopped. One that takes longer is read
-  as a lost link, and the reconnect starts a new daemon, where each pane's reattach finds its session
-  gone (`PreviousLost`). The cost: a lost link's loop starts up to 1 s later when ssh has not exited. `MuxProxyCommand.Run` takes the liveness
-  check as an optional parameter, for tests whose daemon runs in their own process.
+  proxy ends the channel's stdout and stderr at once, then asks whether the descriptor's daemon still
+  runs (`MuxDiscovery.IsProcessAlive` with its pid, process name and start token), every 50 ms for up
+  to 1.5 s: gone is 3, still running is `MuxProxyExitCodes.ConnectionClosed` (4). A stdout that cannot
+  be written, at the preamble or later, is 4 too: nobody reads the code, and it says nothing about the
+  daemon. The host counts every code but 3 as a lost link, as before. The 1.5 s fits inside the 2 s the
+  exec channels give a command to exit once their stdin closed, and the host's classification now waits
+  up to 2 s for the exit status (its own cap 2.5 s, both raised from 1 s), so a daemon that exits within
+  the proxy's 1.5 s reads as stopped. One that takes longer is read as a lost link, and the reconnect
+  starts a new daemon, where each pane's reattach finds its session gone (`PreviousLost`). The cost: a
+  lost link's loop starts up to 1 s later when ssh has not exited. `MuxProxyCommand.Run` takes the
+  liveness check as an optional parameter, for tests whose daemon runs in their own process.
+  - **Ending stdout and stderr for real** (residual R1). Closing the proxy's stdout stream ended
+    nothing: .NET's console streams each hold a `dup` of their descriptor (`Console.OpenStandardOutput`,
+    `Console.Out`, `Console.Error`), fds 1 and 2 stay open until the process exits, and sshd sends the
+    channel's EOF only once the child's stdout and its stderr are both closed. So a dropped connection
+    reached the GUI only when the proxy exited, 1.5 s later (measured 1514 ms over OpenSSH, 1515 ms
+    native), and keys typed meanwhile were lost. On Unix, where the proxy runs, `MuxCli` passes
+    `UnixChannelStdio.EndStdoutAndStderr` as `Run`'s `endStdio`, called before the wait: each socket
+    among fds 1 and 2 is half-closed for writing (`shutdown(SHUT_WR)`), then every descriptor of the
+    process that refers to the same open file as fd 1 or fd 2 - by device, inode and access mode, from
+    `/proc/self/fd` or `/dev/fd`; a pipe's two ends share an inode - is pointed at `/dev/null` with
+    `dup2`, never `close`, which would let a later open take fd 1 or 2. A file fd 0 also refers to (a
+    terminal, a socket carrying stdin too) is left alone. Nothing is written to stdout or stderr after.
+  - **The native transport ends stdout at the command's EOF.** rusty_ssh read past an exec channel's EOF
+    (exit-status follows it) and ended stdout only at the channel's close, which sshd sends after the
+    proxy exits, so the native backend still saw the drop 1.5 s late. Exec mode now queues the EOF as a
+    new event, kind 15 (`Eof`, empty, a control event after the data it follows; ABI additive, an older
+    managed side skips it), and `NativeSshExecTransport` ends `Stdout` there; the exit status and
+    `Closed` still complete `Completion` afterwards. Docker E2E step 2b measures it: a twin hello evicts
+    the host's connection while the daemon lives, the client sees the end 0 ms after the twin's welcome
+    on both transports, then the proxy exits 4, `ConnectionLost`, `Reconnected`, and `top` keeps its pid.
 - **§5, §7.1 A host's SSH destination is pinned when it first takes a client** (codex D2, with the
   residual round's rulings). The connector read the whole profile again on every attempt, so editing a
   profile's host, port, user or jump chain sent the reconnects of panes whose shells run on the old host

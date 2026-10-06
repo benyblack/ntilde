@@ -194,7 +194,9 @@ public static class MuxCli
     /// demand. Its stdout is the channel, so everything it says - the usage, the launcher's log - goes
     /// to stderr. The raw standard streams, not Console.In/Out: bytes, unbuffered and undecoded. They
     /// are not disposed here: the pump may still be blocked reading stdin, and the process exit closes
-    /// both.
+    /// both. On Unix, once the daemon side ended, the proxy ends fds 1 and 2 themselves before it waits for the
+    /// daemon's process (<see cref="UnixChannelStdio"/>, residual R1): disposing a console stream only closes its
+    /// copy of the descriptor.
     /// </summary>
     private static int Proxy(string[] verbArgs, TextWriter stderr, MuxCliHost host)
     {
@@ -202,7 +204,8 @@ public static class MuxCli
 
         void Log(string line) => stderr.WriteLine($"[ntilde-mux] {line}");
         return MuxProxyCommand.Run(Console.OpenStandardInput(), Console.OpenStandardOutput(), stderr,
-            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths, KillServerCommand(host)).EnsureEndpointStreamAsync(ct));
+            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths, KillServerCommand(host)).EnsureEndpointStreamAsync(ct),
+            endStdio: OperatingSystem.IsWindows() ? null : UnixChannelStdio.EndStdoutAndStderr);
     }
 
     /// <summary><c>--version [--json]</c>: one line, plain or <see cref="MuxVersionInfo"/> as JSON.</summary>

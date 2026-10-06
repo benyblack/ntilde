@@ -119,6 +119,11 @@ pub enum NovaSshEventKind {
     /// since both streams share one channel window. A shell session never emits it: there the PTY
     /// merges stderr into the terminal stream, and any extended data still arrives as Data.
     ExtendedData = 14,
+    /// Exec mode only (codex D1, residual R1): the remote command closed its stdout and stderr (the
+    /// channel's EOF). Empty payload. A control event, queued after the data it follows (one
+    /// producer), so the managed side ends the command's stdout here, at once: the exit status and
+    /// Closed still follow, once the command has exited, which may be much later.
+    Eof = 15,
 }
 
 #[repr(u32)]
@@ -3626,7 +3631,9 @@ enum MainChannelStep {
 /// - stdout becomes Data, and stderr (extended data type 1) becomes ExtendedData. Other extended
 ///   data types are undefined (RFC 4254 §5.2) and dropped, as OpenSSH's client drops them.
 /// - The remote's EOF does not end the session. OpenSSH sends exit-status after EOF, so stopping
-///   there would lose the exit code. The session ends when the channel closes.
+///   there would lose the exit code. The session ends when the channel closes. The EOF is reported
+///   as Eof, so the managed side ends the command's stdout without waiting for its exit (residual
+///   R1: a proxy whose daemon dropped the connection may take a while to exit).
 /// - An exit signal queues nothing: the command has no exit code, and the managed side reads
 ///   Closed without an ExitStatus as exactly that.
 /// - A channel Failure fails the session. The exec request is the only want-reply request on an
@@ -3667,7 +3674,12 @@ fn main_channel_step(
         Some(ChannelMsg::Failure) if exec => {
             anyhow::bail!("the server refused to run the command")
         }
-        Some(ChannelMsg::Eof) if exec => MainChannelStep::Continue,
+        Some(ChannelMsg::Eof) if exec => MainChannelStep::Control(QueuedEvent {
+            kind: NovaSshEventKind::Eof,
+            payload: Vec::new(),
+            status_code: 0,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
+        }),
         Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => MainChannelStep::End,
         Some(_) => MainChannelStep::Continue,
     })
@@ -6691,13 +6703,14 @@ mod exec_mode_tests {
     }
 
     /// OpenSSH sends the command's EOF, then exit-status, then close. A loop that ended at EOF,
-    /// as the shell path does, would drop the exit code of nearly every command.
+    /// as the shell path does, would drop the exit code of nearly every command. The EOF itself is
+    /// reported (Eof, a control event queued after the data before it), so the managed side ends
+    /// the command's stdout at once instead of when the command exits (codex D1, residual R1).
     #[test]
-    fn exec_mode_keeps_reading_past_eof_and_ends_when_the_channel_closes() {
-        assert!(matches!(
-            step(&exec_mode(), ChannelMsg::Eof),
-            MainChannelStep::Continue
-        ));
+    fn exec_mode_reports_eof_keeps_reading_and_ends_when_the_channel_closes() {
+        let eof = expect_control(step(&exec_mode(), ChannelMsg::Eof));
+        assert_eq!(NovaSshEventKind::Eof, eof.kind);
+        assert!(eof.payload.is_empty());
         assert!(matches!(
             step(&exec_mode(), ChannelMsg::Close),
             MainChannelStep::End

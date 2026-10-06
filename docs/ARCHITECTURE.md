@@ -440,7 +440,10 @@ it).
   daemon side ended and the daemon's process is gone (pid, name and start token, waited for up to
   1.5 s, since a stopping daemon closes its connections before it exits); 4 when the daemon dropped
   this connection but runs on (a client too slow, or evicted by its twin) or stdout could not be
-  written; 1 when it could not reach or spawn a daemon; and 2 on a usage error. Its stdout carries
+  written; 1 when it could not reach or spawn a daemon; and 2 on a usage error. When the daemon side
+  ends it ends its stdout and stderr before that wait - on Unix every descriptor of them goes to
+  `/dev/null` (`UnixChannelStdio`), since the console streams hold copies and sshd waits for both - so
+  the client sees the end at once. Its stdout carries
   nothing but the preamble and frames. Every `ntilde-mux` verb serves and
   looks under `ntilde-mux`'s own root (`MuxPaths.Standalone`: `~/.local/share/ntilde/ntilde-mux` on
   Linux, `~/Library/Application Support/ntilde/ntilde-mux` on macOS), never the GUI's: on a host that
@@ -527,7 +530,8 @@ deadline; the installer uses it.
 - **Native** (`NativeSshExecTransport`): `nova_ssh_exec(args, command)` runs rusty_ssh's exec mode,
   which takes the same hop, auth and prompt path as a shell session but opens no PTY and detects no
   shell: `channel_open_session`, then `exec`. Stdout arrives as `Data` events, stderr as
-  `ExtendedData` (kind 14), the exit status (kind 7) before `Closed`, and `nova_ssh_send_eof` ends
+  `ExtendedData` (kind 14), the command's EOF as `Eof` (kind 15, which ends `Stdout` at once), the
+  exit status (kind 7) before `Closed`, and `nova_ssh_send_eof` ends
   stdin. One dedicated poll thread per channel routes the events: stdout into a bounded byte queue
   read without the thread pool, stderr into the tail, prompts to the handler. A native connection
   lives exactly as long as its channel, so an exec never shares a pane's connection.
