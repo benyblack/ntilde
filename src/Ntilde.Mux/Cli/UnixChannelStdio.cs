@@ -46,11 +46,13 @@ internal static class UnixChannelStdio
     /// then every descriptor of this process that refers to the same open file as one of them - each itself, and each
     /// copy - is pointed at <c>/dev/null</c>. A file <paramref name="stdinFd"/> refers to as well is left alone (a
     /// terminal, or a socket that carries stdin too, whose half-close already ended its output). Never throws: without
-    /// the libc calls (an unsupported libc), the process's exit still ends them.
+    /// the libc calls (an unsupported libc), or on a platform whose <c>struct stat</c> it cannot read
+    /// (<see cref="KnowsStatLayout"/>), it does nothing, and the process's exit still ends them.
     /// </summary>
     internal static void End(IReadOnlyList<int> channelFds, int stdinFd)
     {
         ArgumentNullException.ThrowIfNull(channelFds);
+        if (!KnowsStatLayout(OperatingSystem.IsLinux(), OperatingSystem.IsMacOS(), RuntimeInformation.ProcessArchitecture)) return;
         try
         {
             EndCore(channelFds, stdinFd);
@@ -132,11 +134,33 @@ internal static class UnixChannelStdio
         if (fstat(fd, stat) != 0) return null;
         int flags = fcntl(fd, GetStatusFlags);
         if (flags < 0) return null;
-        ulong device = OperatingSystem.IsMacOS() ? BitConverter.ToUInt32(stat, 0) : BitConverter.ToUInt64(stat, 0);
-        return new FileIdentity(device, BitConverter.ToUInt64(stat, 8), flags & AccessModeMask);
+        return IdentityFrom(stat, flags, OperatingSystem.IsMacOS());
     }
 
-    private readonly record struct FileIdentity(ulong Device, ulong Inode, int AccessMode);
+    /// <summary>
+    /// The identity in a <c>struct stat</c> and a descriptor's status flags (see <see cref="IdentityOf"/>). Null for an
+    /// inode of 0, which names no file: macOS reports it for TCP sockets and kqueues, so two such descriptors would
+    /// otherwise look like one, and one of them be sent to /dev/null for the other.
+    /// </summary>
+    internal static FileIdentity? IdentityFrom(byte[] stat, int statusFlags, bool macOS)
+    {
+        ArgumentNullException.ThrowIfNull(stat);
+        ulong inode = BitConverter.ToUInt64(stat, 8);
+        if (inode == 0) return null;
+        ulong device = macOS ? BitConverter.ToUInt32(stat, 0) : BitConverter.ToUInt64(stat, 0);
+        return new FileIdentity(device, inode, statusFlags & AccessModeMask);
+    }
+
+    /// <summary>
+    /// Whether this process's <c>struct stat</c> is one <see cref="IdentityFrom"/> reads right: linux-x64, linux-arm64,
+    /// and osx-arm64's 64-bit inode one. Not osx-x64, where plain <c>fstat</c> fills the legacy struct and offset 8 is no
+    /// inode, nor a 32-bit Linux. None of those is published; the helper does nothing there.
+    /// </summary>
+    internal static bool KnowsStatLayout(bool linux, bool macOS, Architecture architecture) =>
+        (linux && architecture is Architecture.X64 or Architecture.Arm64)
+        || (macOS && architecture == Architecture.Arm64);
+
+    internal readonly record struct FileIdentity(ulong Device, ulong Inode, int AccessMode);
 
     [DllImport("libc", SetLastError = true)]
     private static extern int fstat(int fd, byte[] buffer);

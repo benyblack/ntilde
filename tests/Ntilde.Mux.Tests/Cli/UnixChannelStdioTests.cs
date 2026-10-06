@@ -1,12 +1,13 @@
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using Ntilde.Mux.Cli;
 
 namespace Ntilde.Mux.Tests.Cli;
 
 /// <summary>
 /// <see cref="UnixChannelStdio"/> (codex D1, residual R1), Unix only: a pipe stands in for the exec channel's stdout,
-/// its write end for fd 1, and <c>dup</c>s of it for the copies .NET's console streams hold. sshd sends the channel's
+/// its write end for fd 1, and close-on-exec copies of it (<see cref="CopyOf"/>) for the ones .NET's console streams hold. sshd sends the channel's
 /// EOF only once every one of them is closed, so its reader here must see EOF while those copies are still open.
 /// The test's own fds 1 and 2 are never touched.
 /// </summary>
@@ -36,10 +37,9 @@ public sealed class UnixChannelStdioTests
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix descriptors.");
         (AnonymousPipeServerStream reader, int writeFd) = Pipe(out AnonymousPipeClientStream writer);
-        int copy = dup(writeFd);
+        SafeFileHandle copy = CopyOf(writeFd);
         try
         {
-            Assert.True(copy >= 0);
             reader.ClientSafePipeHandle.Dispose();   // our handle to the client end; the writer stream's is the same
             writer.Dispose();
 
@@ -50,7 +50,7 @@ public sealed class UnixChannelStdioTests
         }
         finally
         {
-            _ = close(copy);   // now the reader's EOF comes, and its task ends
+            copy.Dispose();   // now the reader's EOF comes, and its task ends
             reader.Dispose();
         }
     }
@@ -60,24 +60,22 @@ public sealed class UnixChannelStdioTests
     {
         Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix descriptors.");
         (AnonymousPipeServerStream reader, int writeFd) = Pipe(out AnonymousPipeClientStream writer);
-        int copyA = dup(writeFd);
-        int copyB = dup(writeFd);
+        SafeFileHandle copyA = CopyOf(writeFd);
+        SafeFileHandle copyB = CopyOf(writeFd);
         try
         {
-            Assert.True(copyA >= 0 && copyB >= 0);
-
             UnixChannelStdio.End([writeFd], stdinFd: -1);
 
             // EOF, every copy still open - and the read end, the same pipe's other end in this process, untouched.
             Assert.Equal(0, await ReadAsync(reader).WaitAsync(Patient, Ct));
             byte[] late = "x"u8.ToArray();
-            Assert.Equal(1, (int)write(copyA, ref late[0], 1));                 // a late write goes nowhere, and does not fail
+            Assert.Equal(1, (int)write((int)copyA.DangerousGetHandle(), ref late[0], 1));   // a late write goes nowhere, and does not fail
             Assert.Equal(0, await ReadAsync(reader).WaitAsync(Patient, Ct));
         }
         finally
         {
-            _ = close(copyA);
-            _ = close(copyB);
+            copyA.Dispose();
+            copyB.Dispose();
             writer.Dispose();
             reader.Dispose();
         }
@@ -106,11 +104,48 @@ public sealed class UnixChannelStdioTests
         }
     }
 
-    [DllImport("libc", SetLastError = true)]
-    private static extern int dup(int fd);
+    /// <summary>
+    /// Final round: a <c>struct stat</c> whose inode is 0 - a macOS TCP socket's, a kqueue's - names no file: two such
+    /// descriptors would otherwise look like one, and one of them be sent to /dev/null for the other.
+    /// </summary>
+    [Fact]
+    public void An_inode_of_0_is_no_identity()
+    {
+        byte[] stat = new byte[256];
+        BitConverter.GetBytes(66UL).CopyTo(stat, 0);   // a device, inode 0
 
-    [DllImport("libc", SetLastError = true)]
-    private static extern int close(int fd);
+        Assert.Null(UnixChannelStdio.IdentityFrom(stat, statusFlags: 1, macOS: true));
+        Assert.Null(UnixChannelStdio.IdentityFrom(stat, statusFlags: 1, macOS: false));
+        BitConverter.GetBytes(4242UL).CopyTo(stat, 8);
+        Assert.Equal(new UnixChannelStdio.FileIdentity(66, 4242, 1), UnixChannelStdio.IdentityFrom(stat, statusFlags: 0x8001, macOS: false));
+    }
+
+    /// <summary>
+    /// Final round: the <c>struct stat</c> offsets read here hold for linux-x64, linux-arm64 and osx-arm64 only; osx-x64's
+    /// plain <c>fstat</c> fills the legacy struct, whose offset 8 is no inode. Elsewhere the helper does nothing.
+    /// </summary>
+    [Theory]
+    [InlineData(true, false, Architecture.X64, true)]
+    [InlineData(true, false, Architecture.Arm64, true)]
+    [InlineData(false, true, Architecture.Arm64, true)]
+    [InlineData(false, true, Architecture.X64, false)]
+    [InlineData(true, false, Architecture.X86, false)]
+    [InlineData(true, false, Architecture.Arm, false)]
+    [InlineData(false, false, Architecture.X64, false)]
+    public void Only_known_stat_layouts_are_read(bool linux, bool macOS, Architecture architecture, bool known)
+    {
+        Assert.Equal(known, UnixChannelStdio.KnowsStatLayout(linux, macOS, architecture));
+    }
+
+    /// <summary>
+    /// A copy of <paramref name="fd"/> made close-on-exec atomically (final round), so a parallel test's child process
+    /// never inherits the pipe's write end and holds the reader off its EOF. Opening <c>/dev/fd/N</c> rather than
+    /// <c>fcntl(F_DUPFD_CLOEXEC)</c>: that call's third argument is variadic, which Apple arm64 passes on the stack, where
+    /// a plain P/Invoke would not put it. On Linux it opens the same pipe afresh; on macOS it is a <c>dup</c>; with the
+    /// same access mode either way, which is all the helper matches on.
+    /// </summary>
+    private static SafeFileHandle CopyOf(int fd) =>
+        File.OpenHandle($"/dev/fd/{fd.ToString(System.Globalization.CultureInfo.InvariantCulture)}", FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
 
     [DllImport("libc", SetLastError = true)]
     private static extern nint write(int fd, ref byte buffer, nuint count);
