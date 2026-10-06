@@ -268,6 +268,35 @@ public sealed class RemoteMuxInstallerTests
         Assert.Contains("HttpClient.Timeout", result.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>Task 23: "Copy install command" probes alone, for the RID; nothing is fetched or uploaded.</summary>
+    [Fact]
+    public async Task The_probe_alone_runs_one_command_and_names_the_platform()
+    {
+        RecordingExecTransport host = Host(new FakeExecReply(InstalledJson));
+        var source = new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x"));
+
+        RemoteHostProbeOutcome outcome = await Installer(host, source).ProbeAsync(Ct);
+
+        Assert.Equal(new RemoteHostFacts("linux-x64", "/home/nova"), outcome);
+        Assert.Equal([RemoteHostProbe.Command], host.Commands);
+        Assert.Empty(source.RequestedRids);
+        Assert.Equal([RemoteMuxInstallStep.Probing], _steps.Select(s => s.Step).Distinct());
+        Assert.Contains(_steps, s => s.Message == "nova@fake-host: linux-x64, HOME=/home/nova");
+    }
+
+    [Fact]
+    public async Task A_probe_that_cannot_run_is_a_refusal_with_the_reason()
+    {
+        var host = new RecordingExecTransport((_, _) => new FakeExecReply(UbuntuProbe))
+        {
+            OnStart = _ => throw new InvalidOperationException("ssh was not found"),
+        };
+
+        RemoteHostProbeOutcome outcome = await Installer(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x"))).ProbeAsync(Ct);
+
+        Assert.Equal(new RemoteHostRefusal("Running a command on nova@fake-host failed: ssh was not found"), outcome);
+    }
+
     /// <summary>Hands out one asset, or throws one exception, and keeps the RIDs it was asked for.</summary>
     private sealed class FakeAssetSource : IMuxDaemonAssetSource
     {

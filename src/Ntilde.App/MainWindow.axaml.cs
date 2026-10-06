@@ -3782,6 +3782,8 @@ namespace Ntilde
             // Read through a lambda when an endpoint is first used, so this (or a test's later
             // replacement) is in place before any pane can ask for a remote host.
             RemoteMuxHostFactory = CreateRemoteMuxHost;
+            ShowRemoteMuxInstall = ShowRemoteMuxInstallDialogAsync;
+            OpenRemoteMuxInstall = OpenRemoteMuxInstallForProfile;
             _sshLegacyMigrationService = new SshLegacyProfileMigrationService();
 
             if (_sshLegacyMigrationService.MigrateLegacyProfiles(_settings))
@@ -4444,10 +4446,158 @@ namespace Ntilde
         internal Func<Ntilde.Shell.Mux.MuxEndpointId, Ntilde.Shell.Mux.MuxConnectionHost?> RemoteMuxHostFactory { get; set; } = _ => null;
 
         /// <summary>
-        /// Opens the ntilde-mux install flow (Phase 4 spec §9) for an SSH profile's id. Null until the install
-        /// dialog exists (Task 23); while it is null, no notice offers an install or update.
+        /// Opens the ntilde-mux install flow (Phase 4 spec §9) for an SSH profile's id: what the unavailable
+        /// toast's "Install ntilde-mux…" / "Update ntilde-mux…" runs. The constructor sets
+        /// <see cref="OpenRemoteMuxInstallForProfile"/>; while it is null, no notice offers an install or update.
         /// </summary>
         internal Action<Guid>? OpenRemoteMuxInstall { get; set; }
+
+        /// <summary>
+        /// Shows the install dialog for a saved profile over an owner window and returns how it ended
+        /// (<see cref="RemoteMuxInstallDialog.ShowAsync"/>): after a success the profile's MuxOptions hold what
+        /// was installed, and the flag when the user kept "Keep remote sessions running" ticked. The caller
+        /// saves. The constructor sets <see cref="ShowRemoteMuxInstallDialogAsync"/>; a seam for tests.
+        /// </summary>
+        internal Func<Window, Ntilde.Platform.Ssh.Models.SshProfile, Task<Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult?>> ShowRemoteMuxInstall { get; set; } =
+            static (_, _) => Task.FromResult<Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult?>(null);
+
+        /// <summary>One client for every install's release download: it follows GitHub's redirects to its CDN.</summary>
+        private static readonly Lazy<System.Net.Http.HttpClient> MuxReleaseHttp =
+            new(Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource.CreateHttpClient);
+
+        /// <summary>
+        /// The connection editor's "Install ntilde-mux on this host…" (Phase 4 spec §9): makes the editor's
+        /// command run <see cref="InstallRemoteMuxFromEditorAsync"/> with the editor window as the dialog's owner.
+        /// </summary>
+        internal void WireRemoteMuxInstall(NewSshConnectionViewModel vm, Window editor)
+        {
+            ArgumentNullException.ThrowIfNull(vm);
+            ArgumentNullException.ThrowIfNull(editor);
+            vm.InstallRemoteMux = () => InstallRemoteMuxFromEditorAsync(vm, editor);
+        }
+
+        /// <summary>
+        /// The editor's install: saves the pending edits first - the install runs over the profile's stored host,
+        /// auth and backend - then shows the dialog. After a success the editor gets what was recorded (its status
+        /// line follows) and the profile is saved again, through the same <see cref="SshConnectionService.SaveProfile(NewSshConnectionViewModel)"/>
+        /// the editor uses. An editor that does not validate shows why, and opens nothing.
+        /// </summary>
+        internal async Task InstallRemoteMuxFromEditorAsync(NewSshConnectionViewModel vm, Window editor)
+        {
+            if (!vm.Validate()) return;
+
+            Ntilde.Platform.Ssh.Models.SshProfile saved;
+            try
+            {
+                saved = _sshConnectionService.SaveProfile(vm);
+            }
+            catch (Exception ex)
+            {
+                vm.ValidationError = ex.Message;
+                return;
+            }
+
+            // A new profile keeps this id from now on, so the editor's own save updates it rather than adding a copy.
+            vm.ProfileId = saved.Id;
+            RefreshProfileUIs();
+
+            Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult? result = await ShowRemoteMuxInstall(editor, saved);
+            if (result is not { Success: true }) return;
+
+            vm.ApplyRemoteMuxInstall(saved.MuxOptions);
+            try
+            {
+                _sshConnectionService.SaveProfile(vm);
+                RefreshProfileUIs();
+            }
+            catch (Exception ex)
+            {
+                vm.ValidationError = $"ntilde-mux was installed, but saving the connection failed: {ex.Message}";
+            }
+        }
+
+        /// <summary>The production <see cref="OpenRemoteMuxInstall"/>: fire and forget, so every failure is logged here.</summary>
+        private void OpenRemoteMuxInstallForProfile(Guid profileId) => _ = OpenRemoteMuxInstallForProfileAsync(profileId);
+
+        /// <summary>
+        /// The toast's install (spec §7.5, §9): the stored profile, the dialog over this window, and after a success
+        /// what was recorded saved through the editor's path - the profile as stored now, with the install applied
+        /// (<see cref="NewSshConnectionViewModel.ApplyRemoteMuxInstall"/>).
+        /// </summary>
+        private async Task OpenRemoteMuxInstallForProfileAsync(Guid profileId)
+        {
+            try
+            {
+                Ntilde.Platform.Ssh.Models.SshProfile? profile = _sshConnectionService.GetStoredProfile(profileId);
+                if (profile is null)
+                {
+                    EnqueueNotice("Install ntilde-mux", "That SSH connection no longer exists.");
+                    return;
+                }
+
+                Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult? result = await ShowRemoteMuxInstall(this, profile);
+                if (result is not { Success: true }) return;
+
+                // Read again: the connection may have been edited while the dialog was open.
+                Ntilde.Platform.Ssh.Models.SshProfile current = _sshConnectionService.GetStoredProfile(profileId) ?? profile;
+                var vm = new NewSshConnectionViewModel();
+                vm.ApplySshProfile(current);
+                vm.ApplyRemoteMuxInstall(profile.MuxOptions);
+                _sshConnectionService.SaveProfile(vm);
+                RefreshProfileUIs();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] ntilde-mux install for SSH profile {profileId:N} failed: {ex.Message}");
+                EnqueueNotice("Install ntilde-mux", $"ntilde-mux could not be installed: {ex.Message}");
+            }
+        }
+
+        /// <summary>The production <see cref="ShowRemoteMuxInstall"/>: the dialog, themed like this window's dialogs.</summary>
+        private Task<Ntilde.Shell.Mux.Remote.RemoteMuxInstallResult?> ShowRemoteMuxInstallDialogAsync(Window owner, Ntilde.Platform.Ssh.Models.SshProfile profile) =>
+            RemoteMuxInstallDialog.ShowAsync(
+                owner,
+                profile,
+                (source, report, progress) => CreateRemoteMuxInstaller(profile, source, report, progress),
+                AppVersionInfo.Version,
+                TopLevel.GetTopLevel(owner)?.Clipboard,
+                ApplyThemeToDialogWindow);
+
+        /// <summary>
+        /// One install run's installer (spec §9: every step over the profile's own exec transport). The user is
+        /// present, so the transport is interactive: OpenSSH may prompt through askpass, the native backend
+        /// through this window's prompts. Called off the UI thread by the dialog.
+        /// </summary>
+        private Ntilde.Shell.Mux.Remote.RemoteMuxInstaller CreateRemoteMuxInstaller(
+            Ntilde.Platform.Ssh.Models.SshProfile profile,
+            Ntilde.Shell.Mux.Remote.IMuxDaemonAssetSource? source,
+            Action<Ntilde.Shell.Mux.Remote.RemoteMuxInstallStep, string> report,
+            IProgress<Ntilde.Shell.Mux.Remote.RemoteMuxInstallProgress>? progress) =>
+            new(
+                CreateRemoteMuxTransport(profile, new Ntilde.Shell.Mux.Remote.RemoteMuxTransportRequest(Interactive: true, _sshInteractionService)),
+                source ?? new Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource(
+                    MuxReleaseHttp.Value,
+                    AppVersionInfo.Version,
+                    Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource.DefaultCacheDirectory),
+                report)
+            {
+                Progress = progress,
+            };
+
+        /// <summary>
+        /// The exec transport for <paramref name="profile"/> (spec §8.2, §8.3), by its backend: what the remote hosts'
+        /// attempts and the install flow both run over. May block (OpenSSH plans its config file): off the UI thread.
+        /// </summary>
+        private Ntilde.Platform.Ssh.Exec.ISshExecTransport CreateRemoteMuxTransport(
+            Ntilde.Platform.Ssh.Models.SshProfile profile,
+            Ntilde.Shell.Mux.Remote.RemoteMuxTransportRequest request) =>
+            Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.CreateTransport(
+                profile,
+                request,
+                p => _sshConnectionService.BuildLaunchDetails(p.Id, SshDiagnosticsLevel.None),
+                static () => new Ntilde.Platform.Ssh.Native.NativeSshInterop(),
+                SshAskPassCommand.LocateHelper(),
+                AppLogger.Log);
 
         /// <summary>
         /// The action a persisted SSH tab's notice offers for <paramref name="failure"/> (spec §7.5): the install
@@ -4466,13 +4616,7 @@ namespace Ntilde
             Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.Create(
                 id,
                 _sshConnectionService.GetStoredProfile,
-                (profile, request) => Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.CreateTransport(
-                    profile,
-                    request,
-                    p => _sshConnectionService.BuildLaunchDetails(p.Id, SshDiagnosticsLevel.None),
-                    static () => new Ntilde.Platform.Ssh.Native.NativeSshInterop(),
-                    SshAskPassCommand.LocateHelper(),
-                    AppLogger.Log),
+                CreateRemoteMuxTransport,
                 AppLogger.Log,
                 _sshInteractionService);
 
@@ -8762,6 +8906,7 @@ namespace Ntilde
             vm.ExperimentalNativeSshEnabled = _settings.ExperimentalNativeSshEnabled;
             var dialog = new NewSshConnectionView(vm);
             ApplyThemeToDialogWindow(dialog);
+            WireRemoteMuxInstall(vm, dialog);
             bool saved = await dialog.ShowDialog<bool>(owner ?? this);
 
             if (!saved)

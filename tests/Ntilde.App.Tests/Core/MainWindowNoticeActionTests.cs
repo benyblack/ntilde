@@ -159,14 +159,18 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
         Assert.False(Toast(window).Visible);
     }
 
-    /// <summary>Task 23 assigns the install flow; until then - or for a failure an install cannot fix - no action is offered.</summary>
+    /// <summary>
+    /// The window assigns the install flow (Task 23). Without one - or for a failure an install cannot fix - no
+    /// action is offered.
+    /// </summary>
     [AvaloniaFact]
     public void The_remote_failure_action_opens_the_install_flow_for_the_profile()
     {
         MainWindow window = CreateWindow();
         Guid profile = Guid.NewGuid();
         var notInstalled = new RemoteMuxFailure(RemoteFailureKind.NotInstalled, "ntilde-mux is not installed");
-        Assert.Null(window.OpenRemoteMuxInstall);
+        Assert.NotNull(window.OpenRemoteMuxInstall);
+        window.OpenRemoteMuxInstall = null;
         Assert.Null(window.RemoteMuxNoticeAction(notInstalled, profile));
 
         var opened = new List<Guid>();

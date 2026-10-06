@@ -66,25 +66,13 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
     /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled.</exception>
     public async Task<RemoteMuxInstallResult> InstallAsync(CancellationToken ct)
     {
-        report(RemoteMuxInstallStep.Probing, $"Probing {transport.DisplayName}\u2026");
-        SshExecResult probe;
-        try
-        {
-            probe = await SshExec.RunAsync(transport, RemoteHostProbe.Command, ReadOnlyMemory<byte>.Empty, null, ProbeTimeout, ct).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (IsFailure(ex, ct))
-        {
-            return ExecFailed(ex);
-        }
-
-        RemoteHostProbeOutcome outcome = RemoteHostProbe.Parse(probe);
+        RemoteHostProbeOutcome outcome = await ProbeAsync(ct).ConfigureAwait(false);
         if (outcome is RemoteHostRefusal refusal)
         {
             return Failed(refusal.Reason);
         }
 
         var facts = (RemoteHostFacts)outcome;
-        report(RemoteMuxInstallStep.Probing, $"{transport.DisplayName}: {facts.Rid}, HOME={Quote(facts.Home)}");
         report(RemoteMuxInstallStep.Downloading, $"Getting ntilde-mux for {facts.Rid}\u2026");
         MuxDaemonAsset asset;
         try
@@ -161,6 +149,34 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
         return new RemoteMuxInstallResult(true, done, installed);
     }
 
+    /// <summary>
+    /// Step 1 alone (spec §9): what the host is, or why it cannot have ntilde-mux - a refusal, or a probe
+    /// that never produced a result (its reason is the refusal's). <see cref="InstallAsync"/> starts with it;
+    /// the dialog's "Copy install command" runs it for the RID when the profile has none recorded.
+    /// </summary>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled.</exception>
+    public async Task<RemoteHostProbeOutcome> ProbeAsync(CancellationToken ct)
+    {
+        report(RemoteMuxInstallStep.Probing, $"Probing {transport.DisplayName}\u2026");
+        SshExecResult probe;
+        try
+        {
+            probe = await SshExec.RunAsync(transport, RemoteHostProbe.Command, ReadOnlyMemory<byte>.Empty, null, ProbeTimeout, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsFailure(ex, ct))
+        {
+            return new RemoteHostRefusal(ExecFailureReason(ex));
+        }
+
+        RemoteHostProbeOutcome outcome = RemoteHostProbe.Parse(probe);
+        if (outcome is RemoteHostFacts facts)
+        {
+            report(RemoteMuxInstallStep.Probing, $"{transport.DisplayName}: {facts.Rid}, HOME={Quote(facts.Home)}");
+        }
+
+        return outcome;
+    }
+
     /// <summary>Records what the install flow installed in the profile's options (spec §9 step 4): its path, version and RID.</summary>
     public static void Record(SshMuxOptions options, MuxVersionInfo installed)
     {
@@ -204,8 +220,10 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
     private static bool IsFailure(Exception ex, CancellationToken ct) => ex is not OperationCanceledException || !ct.IsCancellationRequested;
 
     /// <summary>A command that never produced a result: it timed out (the message says so), or the transport could not run it.</summary>
-    private RemoteMuxInstallResult ExecFailed(Exception ex) =>
-        Failed(ex is TimeoutException ? ex.Message : $"Running a command on {transport.DisplayName} failed: {ex.Message}");
+    private RemoteMuxInstallResult ExecFailed(Exception ex) => Failed(ExecFailureReason(ex));
+
+    private string ExecFailureReason(Exception ex) =>
+        ex is TimeoutException ? ex.Message : $"Running a command on {transport.DisplayName} failed: {ex.Message}";
 
     /// <summary>Forwards a byte count, synchronously, as this step's progress.</summary>
     private sealed class StepProgress(IProgress<RemoteMuxInstallProgress> progress, RemoteMuxInstallStep step, long total) : IProgress<long>

@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Ntilde.Platform;
 using Ntilde.Shell.Mux;
@@ -53,6 +54,9 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     private bool _connectAfterSave;
     private bool _experimentalNativeSshEnabled;
     private RemoteShellKind _remoteShellKind = RemoteShellKind.Auto;
+    private Func<Task>? _installRemoteMux;
+    private InstallCommand? _installRemoteMuxCommand;
+    private bool _installRemoteMuxRunning;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -83,13 +87,25 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     public string HostName
     {
         get => _hostName;
-        set => SetField(ref _hostName, value);
+        set
+        {
+            if (SetField(ref _hostName, value))
+            {
+                _installRemoteMuxCommand?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public string UserName
     {
         get => _userName;
-        set => SetField(ref _userName, value);
+        set
+        {
+            if (SetField(ref _userName, value))
+            {
+                _installRemoteMuxCommand?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public int Port
@@ -265,20 +281,84 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
 
     public string RemoteDaemonStatusText => RemoteMuxStatusText.Describe(RemoteDaemonVersion, AppVersion);
 
-    /// <summary>Wired by the install flow in a later task; until then it can never execute.</summary>
-    public ICommand InstallRemoteMuxCommand { get; set; } = DisabledCommand.Instance;
+    /// <summary>
+    /// The editor's "Install ntilde-mux on this host…" (Phase 4 spec §9): runs <see cref="InstallRemoteMux"/>.
+    /// It can run once the profile is saveable - it has a host and a user - while nothing else it started is
+    /// running, and only when whoever shows the editor wired the flow.
+    /// </summary>
+    public ICommand InstallRemoteMuxCommand => _installRemoteMuxCommand ??= new InstallCommand(this);
+
+    /// <summary>
+    /// The install flow, set by whoever shows the editor (MainWindow): it saves the pending edits, so the
+    /// profile exists with its host and auth, opens the install dialog, and afterwards applies what was
+    /// installed (<see cref="ApplyRemoteMuxInstall"/>). Null: the command cannot run. A throw is shown as
+    /// <see cref="ValidationError"/>.
+    /// </summary>
+    public Func<Task>? InstallRemoteMux
+    {
+        get => _installRemoteMux;
+        set
+        {
+            _installRemoteMux = value;
+            _installRemoteMuxCommand?.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>
+    /// What an install recorded in the saved profile's options: the daemon's path, version and RID (the status
+    /// line follows the version), and <see cref="PersistRemoteSessions"/> when the user turned it on in the
+    /// dialog. It never turns the flag off.
+    /// </summary>
+    public void ApplyRemoteMuxInstall(SshMuxOptions recorded)
+    {
+        ArgumentNullException.ThrowIfNull(recorded);
+        _remoteDaemonPath = recorded.RemoteDaemonPath ?? string.Empty;
+        _remoteDaemonRid = recorded.RemoteDaemonRid ?? string.Empty;
+        RemoteDaemonVersion = recorded.RemoteDaemonVersion ?? string.Empty;
+        if (recorded.PersistRemoteSessions)
+        {
+            PersistRemoteSessions = true;
+        }
+    }
+
+    private bool CanInstallRemoteMux =>
+        _installRemoteMux is not null
+        && !_installRemoteMuxRunning
+        && !string.IsNullOrWhiteSpace(HostName)
+        && !string.IsNullOrWhiteSpace(UserName);
 
     private static string ResolveAppVersion() => AppVersionInfo.InformationalVersion ?? string.Empty;
 
-    private sealed class DisabledCommand : ICommand
+    /// <summary>Runs <see cref="InstallRemoteMux"/>, one at a time, on the caller's (the UI) thread.</summary>
+    private sealed class InstallCommand(NewSshConnectionViewModel owner) : ICommand
     {
-        public static readonly DisabledCommand Instance = new();
+        public event EventHandler? CanExecuteChanged;
 
-        public event EventHandler? CanExecuteChanged { add { } remove { } }
+        public bool CanExecute(object? parameter) => owner.CanInstallRemoteMux;
 
-        public bool CanExecute(object? parameter) => false;
+        public async void Execute(object? parameter)
+        {
+            if (!owner.CanInstallRemoteMux) return;
+            Func<Task> install = owner._installRemoteMux!;
+            owner._installRemoteMuxRunning = true;
+            RaiseCanExecuteChanged();
+            try
+            {
+                await install();
+            }
+            catch (Exception ex)
+            {
+                // async void: nothing else would see it.
+                owner.ValidationError = ex.Message;
+            }
+            finally
+            {
+                owner._installRemoteMuxRunning = false;
+                RaiseCanExecuteChanged();
+            }
+        }
 
-        public void Execute(object? parameter) { }
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public string ExtraSshArgs
