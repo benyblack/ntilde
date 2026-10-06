@@ -1,5 +1,6 @@
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Pty;
 using Ntilde.Shell.Mux;
@@ -38,8 +39,55 @@ public sealed class MuxTerminalSessionFactoryTests
             var session = Assert.IsType<MuxClientSession>(r.Session);
             Assert.False(session.IsAttached);
             Assert.Contains(session.Id, mux.Server.GetSessionIds());
-            Assert.Equal("test-endpoint", r.Endpoint);
+            // Phase 4 spec §5: the endpoint identity, not the host's pipe or socket name.
+            Assert.Equal("local", r.Endpoint);
         }
+    }
+
+    [Fact]
+    public void The_convenience_constructor_wraps_a_registry_around_the_local_host()
+    {
+        var (mux, factory, _) = Build();
+        using (mux) using (factory.Host)
+        {
+            Assert.Same(factory.Host, factory.Hosts.Local);
+            Assert.Null(factory.Hosts.GetOrCreate(MuxEndpointId.ForSsh(Guid.NewGuid()))); // no remote creator
+            Assert.Equal(TimeSpan.FromSeconds(5), factory.ConnectTimeout);
+            Assert.Equal(TimeSpan.FromSeconds(3), factory.RpcTimeout);
+        }
+    }
+
+    /// <summary>Phase 4 spec §5: the connect wait is the host's policy, unless a test overrides it.</summary>
+    [Fact]
+    public void The_connect_timeout_comes_from_the_hosts_policy()
+    {
+        var fallback = new RecordingSessionFactory(new FakeTerminalSession());
+        var policy = MuxHostPolicy.Local with { ConnectTimeout = TimeSpan.FromMilliseconds(300) };
+        using var host = new MuxConnectionHost(async ct => { await Task.Delay(Timeout.Infinite, ct); return null!; }, "x", null, policy);
+        var factory = new MuxTerminalSessionFactory(new MuxConnectionHosts(host, _ => null), fallback, null);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        PersistentSessionResult r = factory.CreatePersistent(Local());
+
+        Assert.Equal(PersistentSessionOutcome.Unavailable, r.Outcome);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(3), $"waited {sw.Elapsed}, not the policy's 300 ms");
+        Assert.Equal(TimeSpan.FromMilliseconds(300), factory.ConnectTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(9), new MuxTerminalSessionFactory(host, fallback, null) { ConnectTimeout = TimeSpan.FromSeconds(9) }.ConnectTimeout);
+    }
+
+    /// <summary>
+    /// A reopen that could not reach its daemon keeps its id for a retry - and the endpoint that id
+    /// lives on, so the pane writes both back (Phase 4 spec §5). A local fallback is on no endpoint.
+    /// </summary>
+    [Fact]
+    public void An_unreachable_reopen_names_its_endpoint_and_a_local_fallback_names_none()
+    {
+        var fallback = new RecordingSessionFactory(new FakeTerminalSession());
+        using var host = new MuxConnectionHost(_ => throw new MuxUnavailableException("down"), "x", null);
+        var factory = new MuxTerminalSessionFactory(host, fallback, null) { ConnectTimeout = TimeSpan.FromMilliseconds(500) };
+
+        Assert.Equal("local", factory.CreatePersistent(Local(Guid.NewGuid())).Endpoint);
+        Assert.Null(factory.CreatePersistent(Local()).Endpoint);
     }
 
     [Fact]
@@ -310,5 +358,34 @@ public sealed class MuxTerminalSessionFactoryTests
             Assert.Contains(theirs, mux.Server.GetSessionIds());
             Assert.False(mux.Fake(theirs).Disposed);
         }
+    }
+
+    /// <summary>
+    /// Codex E1 changes the remote spawn only: a local one names no session id (local orphans are adopted), so the
+    /// request on the wire is exactly what it was, and the daemon picks the id.
+    /// </summary>
+    [Fact]
+    public async Task A_local_spawn_names_no_session_id()
+    {
+        using var daemon = FakeMuxServerEnd.Create();
+        using var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "test-endpoint", null);
+        var factory = new MuxTerminalSessionFactory(host, new RecordingSessionFactory(new FakeTerminalSession()), null)
+        {
+            NewRemoteSessionId = () => throw new InvalidOperationException("a local spawn chooses no id"),
+        };
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
+        Task<PersistentSessionResult> pending = Task.Run(() => factory.CreatePersistent(Local()), ct);
+        await daemon.AcceptHelloAsync(version: MuxProtocol.MaxSupportedVersion);
+        MuxRequest spawn = await daemon.ReadRequestAsync();
+        Guid picked = Guid.NewGuid();
+        daemon.Reply(spawn.Id, new SpawnResult { SessionId = picked }, MuxJsonContext.Default.SpawnResult);
+        PersistentSessionResult r = await pending.WaitAsync(TimeSpan.FromSeconds(30), ct);
+
+        Assert.Equal(MuxMethods.Spawn, spawn.Method);
+        Assert.False(spawn.Params!.Value.TryGetProperty("sessionId", out _), spawn.Params.Value.GetRawText());
+        Assert.Null(MuxFrames.ParseParams(spawn.Params, MuxJsonContext.Default.SpawnParams).SessionId);
+        Assert.Equal(PersistentSessionOutcome.Spawned, r.Outcome);
+        Assert.Equal(picked, Assert.IsType<MuxClientSession>(r.Session).Id);
     }
 }

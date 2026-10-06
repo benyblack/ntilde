@@ -1,6 +1,8 @@
 using System.Reflection;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
@@ -68,14 +70,20 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     private static TerminalSettings Settings(MainWindow window) =>
         (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
 
+    /// <summary>
+    /// Runs the dispatcher at least once, even when <paramref name="condition"/> already holds: a
+    /// caller (CreateWindow) whose condition came true on another thread must not return with the
+    /// window's startup jobs - its deferred terminal focus among them - still queued behind it.
+    /// </summary>
     private static void PumpUntil(Func<bool> condition, string because, int ms = 10_000)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        Dispatcher.UIThread.RunJobs();
         while (!condition())
         {
             if (sw.ElapsedMilliseconds > ms) Assert.Fail($"Timed out: {because}");
-            Dispatcher.UIThread.RunJobs();
             Thread.Sleep(10);
+            Dispatcher.UIThread.RunJobs();
         }
     }
 
@@ -508,6 +516,63 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.DoesNotContain(TerminalPane.MuxKilledElsewhereBanner, MuxTestText.VisibleText(mine.Buffer!), StringComparison.Ordinal);
     }
 
+    /// <summary>Another instance watching <paramref name="id"/> read-only: attached, but nobody typing.</summary>
+    private ClientPaneModel WatchReadOnly(Guid id) => Task.Run(async () =>
+    {
+        MuxClient c = await _mux.ConnectClientAsync();
+        MuxClientSession s = c.OpenSession(id, "scripted", null, Ntilde.Mux.Contracts.MuxAttachMode.ReadOnly);
+        var model = new ClientPaneModel(s);
+        await s.AttachAsync(0, MuxTestHost.DefaultPresentation);
+        return model;
+    }).GetAwaiter().GetResult();
+
+    /// <summary>Phase 4 carry-over 9: a read-only observer is not "another window" worth a shared-close prompt.</summary>
+    [AvaloniaFact]
+    public void Closing_a_pane_watched_read_only_does_not_prompt()
+    {
+        MainWindow window = CreateWindow();
+        Settings(window).PaneClosePolicy = "Force";
+        TerminalPane own = AllPanes(window).Single();
+        var session = (MuxClientSession)own.Session!;
+        Guid id = session.Id;
+        ClientPaneModel watcher = WatchReadOnly(id);
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "the observer attached");
+        int asked = -1;
+        window.ConfirmSharedClose = others =>
+        {
+            asked = others;
+            return Task.FromResult(SharedCloseChoice.Cancel);
+        };
+        var close = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        var task = (Task<bool>)close.Invoke(window, [own, false])!;
+        PumpUntil(() => task.IsCompleted, "the close finished");
+
+        Assert.Equal(-1, asked);
+        Assert.True(task.Result);
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the shell was ended, as for a lone pane");
+        GC.KeepAlive(watcher);
+    }
+
+    [AvaloniaFact]
+    public void Agent_close_with_only_a_read_only_peer_kills()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        var session = (MuxClientSession)own.Session!;
+        Guid id = session.Id;
+        ClientPaneModel watcher = WatchReadOnly(id);
+        PumpUntil(() => session.AttachedClients == 2 && session.InteractiveOthers is not null, "the pane knows the observer is there");
+        Assert.Equal(0, session.InteractiveOthers);
+
+        Task<bool> close = ((Ntilde.AgentHost.IAgentActionExecutor)window).ClosePaneAsync(own.PaneId);
+        PumpUntil(() => close.IsCompleted, "the agent's close finished");
+
+        Assert.True(close.Result);
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the shell was ended, not left running for an observer");
+        GC.KeepAlive(watcher);
+    }
+
     [AvaloniaFact]
     public void A_lone_pane_is_decided_without_the_shared_prompt()
     {
@@ -619,6 +684,73 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         PumpUntil(() => answer.IsCompleted, "the dialog closed");
         Assert.Equal(expected, answer.Result);
         Assert.Empty(window.OwnedWindows);
+    }
+
+    /// <summary>
+    /// Keyboard focus is global: a key pressed on the dialog goes to whatever element has focus, so a
+    /// MainWindow terminal that took focus after the dialog opened (its deferred FocusNow jobs, queued
+    /// at Input and Loaded priority by Loaded/Activated/OnOpened) would swallow it. Callers drain the
+    /// window's startup jobs before showing the dialog; the precondition below says so plainly if a
+    /// later change queues another, instead of a timeout waiting for a dialog that never saw the key.
+    /// </summary>
+    private static void PressKey(Window dialog, PhysicalKey key)
+    {
+        dialog.Show();
+        Dispatcher.UIThread.RunJobs();
+        IInputElement? focused = dialog.FocusManager?.GetFocusedElement();
+        Assert.True(focused is null || TopLevel.GetTopLevel(focused as Avalonia.Visual) == dialog,
+            $"the dialog must own keyboard focus before the key press, but {focused?.GetType().Name} in another window has it");
+        dialog.KeyPressQwerty(key, RawInputModifiers.None);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>Phase 4 carry-over 10: the picker takes Enter (attach) and Escape (cancel).</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Picker_Enter_attaches_and_Escape_cancels(bool enter)
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
+        Guid id = Guid.NewGuid();
+        var rows = new[] { new MuxSessionPickerRow(id, "t", "scripted", null, 80, 24, 1, true, null, false) };
+        (Window dialog, Task<Guid?> result) = window.BuildMuxSessionPickerWindow(rows);
+
+        PressKey(dialog, enter ? PhysicalKey.Enter : PhysicalKey.Escape);
+
+        PumpUntil(() => result.IsCompleted, "the picker closed");
+        Assert.Equal(enter ? id : null, result.Result);
+    }
+
+    /// <summary>Carry-over 10: Enter detaches (the safe default), Escape cancels, and nothing ends the shell by key.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Shared_close_Enter_detaches_and_Escape_cancels(bool enter)
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
+        (Window dialog, Task<SharedCloseChoice> result) = window.BuildSharedCloseWindow(1);
+
+        PressKey(dialog, enter ? PhysicalKey.Enter : PhysicalKey.Escape);
+
+        PumpUntil(() => result.IsCompleted, "the dialog closed");
+        Assert.Equal(enter ? SharedCloseChoice.Detach : SharedCloseChoice.Cancel, result.Result);
+    }
+
+    /// <summary>Carry-over 8: wiring the same pane again leaves one MuxAdoptionLost handler, so a lost adoption closes the pane once.</summary>
+    [AvaloniaFact]
+    public void WirePane_twice_leaves_one_adoption_lost_handler()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        var wire = typeof(MainWindow).GetMethod("WirePane", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        wire.Invoke(window, [pane]);
+        wire.Invoke(window, [pane]);
+
+        var handlers = (Action<TerminalPane>)typeof(TerminalPane).GetField("MuxAdoptionLost", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(pane)!;
+        Assert.Single(handlers.GetInvocationList());
     }
 
     /// <summary>Fix round 1: a tab close whose shared pane is answered Detach keeps that shell; the tab's own pane is closed.</summary>

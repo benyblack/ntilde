@@ -15,11 +15,12 @@ public class NamespaceAlignmentTests
 {
     private static Assembly LoadByName(string name) => Assembly.Load(name);
 
-    // Leaf assemblies, each owning exactly "Ntilde.<Name>.*".
+    // Leaf assemblies, each owning exactly "Ntilde.<Name>.*". Ntilde.Launcher is ntilde.com (Phase 4
+    // spec §11), which references nothing at all.
     private static readonly string[] LeafAssemblies =
         { "Ntilde.VT", "Ntilde.Replay", "Ntilde.Rendering",
           "Ntilde.Pty", "Ntilde.Platform", "Ntilde.AgentHost.Contracts", "Ntilde.Mux.Contracts",
-          "Ntilde.Mux" };
+          "Ntilde.Mux", "Ntilde.Launcher" };
 
     [Theory]
     [InlineData("Ntilde.VT")]
@@ -31,6 +32,7 @@ public class NamespaceAlignmentTests
     [InlineData("Ntilde.CommandAssist")]
     [InlineData("Ntilde.Mux.Contracts")]
     [InlineData("Ntilde.Mux")]
+    [InlineData("Ntilde.Launcher")]
     public void Leaf_assembly_types_reside_in_its_own_namespace(string asmName)
     {
         var result = Types.InAssembly(LoadByName(asmName))
@@ -127,6 +129,93 @@ public class NamespaceAlignmentTests
 
         Assert.True(result.IsSuccessful,
             $"Wire types belong in Ntilde.Mux.Contracts. Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
+    // The standalone ntilde-mux (Phase 4 spec §10.1). Its assembly is named for the executable, so
+    // the prefix it owns cannot be derived from the name the way a leaf's is above.
+    private const string MuxDaemonAssembly = "ntilde-mux";
+    private const string MuxDaemonNamespace = "Ntilde.MuxDaemon";
+
+    /// <summary>
+    /// <c>ntilde-mux</c> owns <c>Ntilde.MuxDaemon</c>. Not filtered to public types: its one type,
+    /// <c>Program</c>, is internal, so a public filter would check nothing. Compiler-generated types
+    /// are excluded for the reason given on <see cref="App_may_only_use_the_CommandAssist_prefix_for_Views"/>,
+    /// and through reflection rather than NetArchTest: the list a collection expression synthesizes
+    /// (<c>&lt;&gt;z__ReadOnlySingleElementList`1</c>, in the global namespace) carries the attribute,
+    /// but its nested <c>Enumerator</c> does not, so only a walk up the declaring types finds it.
+    /// </summary>
+    [Fact]
+    public void MuxDaemon_types_reside_in_the_MuxDaemon_namespace() =>
+        AssertEveryTypeResidesIn(MuxDaemonAssembly, MuxDaemonNamespace, MuxDaemonNamespace + ".Program");
+
+    /// <summary>
+    /// The leaf row above checks public types only, and ntilde.com's <c>Program</c> and its P/Invokes are
+    /// internal, so they are checked here the way <c>ntilde-mux</c>'s are.
+    /// </summary>
+    [Fact]
+    public void Launcher_types_reside_in_the_Launcher_namespace() =>
+        AssertEveryTypeResidesIn("Ntilde.Launcher", "Ntilde.Launcher", "Ntilde.Launcher.Program");
+
+    private static void AssertEveryTypeResidesIn(string assemblyName, string ownedNamespace, string pinnedType)
+    {
+        static bool CompilerGenerated(Type? t) =>
+            t is not null && (t.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false) || CompilerGenerated(t.DeclaringType));
+
+        Type[] own = LoadByName(assemblyName).GetTypes()
+            .Where(t => !CompilerGenerated(t) && t.Namespace != "System.Runtime.CompilerServices")
+            .ToArray();
+
+        // Pins the selection itself, so a rename cannot turn this into a check over nothing.
+        Assert.Contains(own, t => t.FullName == pinnedType);
+
+        string[] offenders = own
+            .Where(t => t.Namespace != ownedNamespace && t.Namespace?.StartsWith(ownedNamespace + ".", StringComparison.Ordinal) != true)
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+        Assert.True(offenders.Length == 0,
+            $"{assemblyName} types not in {ownedNamespace}.*: {string.Join(", ", offenders)}");
+    }
+
+    /// <summary>
+    /// Every Ntilde production assembly beside these tests - all this project references, directly or
+    /// not, found by enumerating the output directory rather than listed, so a project added later is
+    /// covered without an edit here. ntilde-mux itself and test assemblies are left out.
+    /// </summary>
+    private static string[] OtherProductionAssemblies() =>
+        Directory.EnumerateFiles(AppContext.BaseDirectory, "Ntilde*.dll")
+            .Select(path => AssemblyName.GetAssemblyName(path).Name ?? string.Empty)
+            .Where(name => name.Length > 0
+                && !string.Equals(name, MuxDaemonAssembly, StringComparison.OrdinalIgnoreCase)
+                && !name.EndsWith(".Tests", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+    /// <summary>
+    /// The reverse of the row above: no other assembly puts a type, public or not, under
+    /// <c>Ntilde.MuxDaemon</c>. A string-prefix rule for <c>Ntilde.Mux</c> would let
+    /// <c>Ntilde.Mux</c> itself do so unnoticed.
+    /// </summary>
+    [Fact]
+    public void No_other_assembly_uses_the_MuxDaemon_namespace()
+    {
+        string[] others = OtherProductionAssemblies();
+
+        // Pins the enumeration, so a changed output layout cannot turn this into a check over nothing:
+        // the App, both console tools and every leaf must be among them.
+        Assert.All(LeafAssemblies.Append("Ntilde").Append("Ntilde.CommandAssist").Append("Ntilde.Cli").Append("Ntilde.Conformance"),
+            name => Assert.Contains(name, others));
+
+        foreach (string asmName in others)
+        {
+            var result = Types.InAssembly(LoadByName(asmName))
+                .Should()
+                .NotResideInNamespaceStartingWith(MuxDaemonNamespace)
+                .GetResult();
+
+            Assert.True(result.IsSuccessful,
+                $"{asmName} must not use the {MuxDaemonNamespace} namespace, which {MuxDaemonAssembly} owns. " +
+                $"Offenders: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        }
     }
 
     [Fact]

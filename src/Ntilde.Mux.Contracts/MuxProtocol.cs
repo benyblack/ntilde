@@ -47,6 +47,13 @@ public static class MuxErrorCodes
 
     /// <summary>Refuses <see cref="MuxAttachMode.IfUnattached"/> when another interactive client is already attached.</summary>
     public const string SessionAttached = "session_attached";
+
+    /// <summary>
+    /// Refuses a spawn whose <see cref="SpawnParams.SessionId"/> names a session the daemon already has
+    /// (Phase 4 spec §3, codex E1; additive). Nothing is left running for the refused spawn, and the session that
+    /// holds the id is left exactly as it was.
+    /// </summary>
+    public const string SessionExists = "session_exists";
 }
 
 public static class MuxMethods

@@ -357,6 +357,44 @@ public sealed class TextClientTests
         Assert.Equal(expectedDetachedByUser, summary.DetachedByUser);
     }
 
+    /// <summary>
+    /// Task 13b review ruling. The chord's detach is fire-and-forget (only queued for the client's
+    /// sender thread), and the CLI disposes the client as soon as Run returns, which closes the
+    /// transport at once. This transport holds every write from the chord on: a sender that has not
+    /// written the detach yet, made to last. It lets the writes through only once the text client
+    /// waits on a reply. A text client that does not flush returns first and is disposed with its
+    /// detach unwritten. The daemon then sees a plain disconnect, and the GUI would adopt the shell
+    /// back (Phase 3 spec §7.7).
+    /// </summary>
+    [Fact]
+    public async Task A_chord_detach_reaches_the_daemon_even_when_the_client_is_disposed_right_after_Run()
+    {
+        using var host = new MuxTestHost();
+        MuxClient spawner = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(spawner);
+        var transport = new HoldableStream(host.Listener.Connect());
+        MuxClient attacher = await MuxClient.ConnectAsync(transport, cancellationToken: Ct);
+        host.Own(attacher);
+        using var console = new FakeConsoleSurface();
+        using var client = new TextClientSession(attacher, id, console);
+        Task<int> run = RunAsync(client);
+        await TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 1, "attached");
+
+        transport.HoldWrites();
+        console.Type("\u001cd"); // the chord sends no input of its own: the first frame after it is the detach
+        await TestWait.UntilAsync(() => transport.HeldWrites == 1, "the sender is held writing the detach");
+        await TestWait.UntilAsync(() => run.IsCompleted || attacher.PendingRequestCount > 0, "Run returned, or the text client waits on a reply");
+        if (!run.IsCompleted) transport.ReleaseWrites(); // it is flushing: let its frames through
+
+        Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        attacher.Dispose(); // what the CLI does as soon as Run returns; a write still held fails
+        await TestWait.UntilAsync(() => host.Server.ConnectionCount == 1, "the attacher's connection closed");
+        await host.Mux(id).InvokeAsync(() => 0);
+
+        Assert.Equal(0, host.Mux(id).AttachedClients);
+        Assert.True(host.Mux(id).DetachedByUser);
+    }
+
     [Fact]
     public async Task Device_queries_in_the_stream_never_reach_the_console()
     {
@@ -385,6 +423,60 @@ public sealed class TextClientTests
 
         console.Type("\u001cd");
         Assert.Equal(0, await run.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+    }
+
+    /// <summary>
+    /// A client transport whose writes can be held. A held write waits until it is released, or
+    /// until the stream is disposed, in which case it fails the way a write to a closed transport
+    /// does and never reaches the peer.
+    /// </summary>
+    private sealed class HoldableStream(Stream inner) : Stream
+    {
+        private readonly ManualResetEventSlim _open = new(true);
+        private int _held;
+        private int _disposed;
+
+        public int HeldWrites => Volatile.Read(ref _held);
+
+        public void HoldWrites() => _open.Reset();
+
+        public void ReleaseWrites() => _open.Set();
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override int Read(Span<byte> buffer) => inner.Read(buffer);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (!_open.IsSet)
+            {
+                Interlocked.Increment(ref _held);
+                _open.Wait();
+                Interlocked.Decrement(ref _held);
+            }
+
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            inner.Write(buffer);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                inner.Dispose();
+                _open.Set(); // a held write wakes to find the stream disposed
+            }
+
+            base.Dispose(disposing);
+        }
     }
 
     /// <summary>Not an IOException, nor anything else the client names: the catch-all paths must handle it.</summary>

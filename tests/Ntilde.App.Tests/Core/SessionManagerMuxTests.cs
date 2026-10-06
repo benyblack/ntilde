@@ -39,10 +39,12 @@ public sealed class SessionManagerMuxTests : IClassFixture<TestAppDataRoot>
 
         PaneNode node = SessionManager.BuildPaneTree(pane)!;
         Assert.Equal(session.Id.ToString(), node.MuxSessionId);
-        Assert.Equal("ep-1", node.MuxEndpoint);
+        // Phase 4 spec §5: the endpoint identity ("local"), not the host's pipe or socket name ("ep-1").
+        Assert.Equal("local", node.MuxEndpoint);
 
         var restored = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(node, new TerminalSettings()));
         Assert.Equal(session.Id, restored.MuxSessionIdToRestore);
+        Assert.Equal("local", restored.MuxEndpoint);
         restored.Dispose();
     }
 
@@ -59,7 +61,60 @@ public sealed class SessionManagerMuxTests : IClassFixture<TestAppDataRoot>
         PaneNode node = SessionManager.BuildPaneTree(restored)!;
 
         Assert.Equal(id.ToString("D"), node.MuxSessionId);
+        Assert.Equal("local", node.MuxEndpoint); // a legacy pipe name is written back as what it means
         restored.Dispose();
+    }
+
+    /// <summary>
+    /// Phase 4 spec §5: a pane whose restore is still pending writes its endpoint back unchanged. Before,
+    /// the pane never learned it, so a remote pane saved before it was first shown came back as local.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_pending_restore_writes_its_remote_endpoint_back()
+    {
+        Guid id = Guid.NewGuid();
+        string endpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString();
+        var saved = new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = id.ToString(), MuxEndpoint = endpoint, MuxShared = true };
+        var restored = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(saved, new TerminalSettings()));
+        Assert.Equal(endpoint, restored.MuxEndpoint);
+
+        PaneNode node = SessionManager.BuildPaneTree(restored)!;
+
+        Assert.Equal((id.ToString("D"), endpoint, true), (node.MuxSessionId, node.MuxEndpoint, node.MuxShared));
+        restored.Dispose();
+    }
+
+    /// <summary>
+    /// Phase 4 spec §5: restore dedupes on (endpoint, id). Two daemons can each hold a session with
+    /// one id (a copied session file, a restored machine image); both panes keep theirs. Every
+    /// spelling of local (none, "local", a legacy pipe name) is one endpoint.
+    /// </summary>
+    [Fact]
+    public void Dedupe_keeps_one_id_under_two_endpoints()
+    {
+        string id = Guid.NewGuid().ToString("D");
+        string ssh = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString();
+        PaneNode local = new() { Type = NodeType.Leaf, MuxSessionId = id, MuxEndpoint = "local" };
+        PaneNode remote = new() { Type = NodeType.Leaf, MuxSessionId = id, MuxEndpoint = ssh };
+        PaneNode remoteDup = new() { Type = NodeType.Leaf, MuxSessionId = id, MuxEndpoint = ssh };
+        PaneNode legacyDup = new() { Type = NodeType.Leaf, MuxSessionId = id, MuxEndpoint = "ntilde-mux-u-1a2b" };
+        PaneNode unsetDup = new() { Type = NodeType.Leaf, MuxSessionId = id };
+        var session = new NtildeSession
+        {
+            Tabs =
+            {
+                new TabSession { Root = new PaneNode { Type = NodeType.Split, Children = { local, remote } } },
+                new TabSession { Root = new PaneNode { Type = NodeType.Split, Children = { remoteDup, legacyDup, unsetDup } } },
+            },
+        };
+
+        SessionManager.DedupeMuxIds(session);
+
+        Assert.Equal((id, "local"), (local.MuxSessionId, local.MuxEndpoint));
+        Assert.Equal((id, ssh), (remote.MuxSessionId, remote.MuxEndpoint));
+        Assert.Null(remoteDup.MuxSessionId);
+        Assert.Null(legacyDup.MuxSessionId);
+        Assert.Null(unsetDup.MuxSessionId);
     }
 
     /// <summary>

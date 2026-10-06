@@ -1,22 +1,30 @@
 using System.Runtime.InteropServices;
-using Ntilde.Mux;
-using Ntilde.Mux.Contracts;
 using Ntilde.Pty;
-using Ntilde.Shell;
 
-namespace Ntilde.Shell.Mux;
+namespace Ntilde.Mux.Daemon;
 
-/// <summary>The body of <c>ntilde mux serve</c> (spec §5). Never initialises Avalonia.</summary>
-internal static partial class MuxDaemonProcess
+public sealed record MuxServeOptions(TimeSpan IdleExitAfter, bool Foreground);
+
+/// <summary>
+/// The body of <c>serve</c> (<c>ntilde mux serve</c>, Phase 2 spec §5; <c>ntilde-mux serve</c>, Phase 4
+/// spec §6.2). Never initialises a UI. The executable supplies the root, the log directory and the
+/// session factory, so this needs nothing from the App.
+/// </summary>
+public static partial class MuxServeHost
 {
     /// <summary>
-    /// <c>mux serve</c>'s exit code when another daemon holds this root's lock (1 is any other start
+    /// <c>serve</c>'s exit code when another daemon holds this root's lock (1 is any other start
     /// failure). The launcher reads it: with no reachable daemon advertised, that one is orphaned.
     /// </summary>
-    internal const int LockHeldExitCode = 3;
+    public const int LockHeldExitCode = 3;
 
-    public static int Run(MuxServeOptions options, TextWriter stderr)
+    public static int Run(MuxServeOptions options, MuxPaths paths, ITerminalSessionFactory sessionFactory, TextWriter stderr)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(paths);
+        ArgumentNullException.ThrowIfNull(sessionFactory);
+        ArgumentNullException.ThrowIfNull(stderr);
+
         // Controller ruling (Task 5 review): the launcher spawns us with our stdio redirected to
         // pipes whose parent ends it closes immediately, so a non-foreground `mux serve` must
         // reassign its own stdio (Windows: detach from the console; Unix: new session + /dev/null
@@ -29,7 +37,7 @@ internal static partial class MuxDaemonProcess
         // not, whatever console it inherited. Before the first spawn.
         if (OperatingSystem.IsWindows()) Environment.SetEnvironmentVariable("NTILDE_PTY_NO_PASSTHROUGH", "1");
 
-        using var log = new RotatingFileLogWriter(Path.Combine(AppPaths.LogsDirectory, "mux.log"), 16L * 1024 * 1024, 8192);
+        using var log = new MuxLogFile(Path.Combine(paths.LogDirectory, "mux.log"), 16L * 1024 * 1024, 8192);
         void Log(string message)
         {
             string line = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}Z {message}";
@@ -48,11 +56,11 @@ internal static partial class MuxDaemonProcess
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Log($"[MuxDaemon] unhandled: {e.ExceptionObject}");
         TaskScheduler.UnobservedTaskException += (_, e) => { Log($"[MuxDaemon] unobserved task: {e.Exception}"); e.SetObserved(); };
 
-        var server = new MuxServer(DefaultTerminalSessionFactory.Instance, new MuxServerOptions { Log = Log });
+        var server = new MuxServer(sessionFactory, new MuxServerOptions { Log = Log });
         using var host = new MuxDaemonHost(server, new MuxDaemonOptions
         {
-            Endpoint = MuxDiscovery.GetDefaultEndpoint(),
-            DescriptorPath = MuxDiscovery.GetDescriptorPath(),
+            Endpoint = paths.Endpoint,
+            DescriptorPath = paths.DescriptorPath,
             IdleExitAfter = options.IdleExitAfter,
             Log = Log,
         });
@@ -95,7 +103,8 @@ internal static partial class MuxDaemonProcess
     /// <summary>
     /// "Cannot serve here" failures: exit 1, not a crash. SocketException is a backstop - the Unix
     /// listener and the host already turn socket errors into IOException - because escaping it
-    /// reaches Program.Main's catch, which writes the GUI's startup-error file and rethrows.
+    /// reaches the executable's top-level catch (the GUI's Program.Main writes its startup-error file
+    /// and rethrows).
     /// </summary>
     internal static bool IsStartFailure(Exception ex) =>
         ex is IOException or UnauthorizedAccessException or System.Net.Sockets.SocketException;
@@ -119,7 +128,8 @@ internal static partial class MuxDaemonProcess
             problem = $"setsid() failed (errno {Marshal.GetLastPInvokeError()}); the daemon stays in its parent's session and may receive its hang-ups";
         }
 
-        int devNull = open("/dev/null", 2 /* O_RDWR */);
+        // NUL-terminated bytes, as open(2) takes them: a byte array needs no string marshalling.
+        int devNull = open("/dev/null\0"u8.ToArray(), 2 /* O_RDWR */);
         if (devNull >= 0)
         {
             _ = dup2(devNull, 0);
@@ -131,7 +141,8 @@ internal static partial class MuxDaemonProcess
         return problem;
     }
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool FreeConsole();
 
@@ -139,7 +150,7 @@ internal static partial class MuxDaemonProcess
     private static extern int setsid();
 
     [DllImport("libc", SetLastError = true)]
-    private static extern int open([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags);
+    private static extern int open(byte[] path, int flags);
 
     [DllImport("libc", SetLastError = true)]
     private static extern int dup2(int oldfd, int newfd);

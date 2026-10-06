@@ -30,10 +30,24 @@ class Program
             // Velopack also applies an already-downloaded update here by default. That must not
             // happen behind a live multiplexer daemon: the in-app apply path asks before closing
             // its sessions and shuts it down first, and this one would do neither (spec §9).
-            VelopackApp.Build()
+            VelopackApp velopack = VelopackApp.Build();
+
+            // The install directory goes on the user PATH, so a prompt finds ntilde.com there
+            // (Phase 4 spec §11.4). Fast callbacks run only when Velopack starts this exe for that
+            // stage, and the process exits after them; a normal start never reaches them. Velopack
+            // offers them on Windows only, which is where they are needed.
+            if (OperatingSystem.IsWindows())
+            {
+                velopack = velopack
+                    .OnAfterInstallFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
+                    .OnAfterUpdateFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
+                    .OnBeforeUninstallFastCallback(static _ => UserPathRegistration.Remove(InstallDirectory()));
+            }
+
+            velopack
                 .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(
                     args,
-                    static () => Ntilde.Shell.Mux.MuxStartupProbe.IsDaemonLive(
+                    static () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(
                         Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), TimeSpan.FromMilliseconds(200))))
                 .Run();
 
@@ -76,6 +90,10 @@ class Program
 
             if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args))
             {
+                // ntilde.com waits for a mux verb's exit code, so its release event is not for us - and
+                // the daemon `attach` may start would pass it on to every shell it hosts (spec §11.3).
+                LauncherRelease.Discard();
+
                 // serve is a daemon: it must not attach to the launching console (it detaches from it).
                 // attach (and probe-console, which mirrors it) is interactive: it needs a real console, allocated if the parent has none.
                 if (Ntilde.Shell.Mux.MuxCommand.NeedsInteractiveConsole(args)) Ntilde.Shell.Mux.MuxCommand.AttachedToParentConsole = CliConsoleBindings.PrepareInteractive();
@@ -83,6 +101,10 @@ class Program
                 Environment.ExitCode = Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
                 return;
             }
+
+            // No CLI mode matched: this is the GUI. When ntilde.com started us it is waiting for our exit
+            // code with the prompt blocked; release it now, before any startup work (spec §11.3).
+            LauncherRelease.Signal();
 
             // Attach the debug-log sink before anything logs. Placed after the CLI dispatches
             // above, which return without ever writing to it — a `--replay` or `backup`
@@ -124,7 +146,7 @@ class Program
     /// cases the staged update waits for the in-app apply, which confirms and stops the daemon.
     /// <paramref name="liveDaemon"/> is only asked for the GUI case, so CLI starts never read the disk.
     /// "Live" means a daemon that answers a 200 ms probe-connect, not merely a descriptor naming a
-    /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Shell.Mux.MuxStartupProbe"/>).
+    /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>).
     /// </summary>
     internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon)
     {
@@ -133,6 +155,13 @@ class Program
         if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args)) return false;
         return !liveDaemon();
     }
+
+    /// <summary>
+    /// The directory a Velopack hook runs this exe from: the install's stable <c>current</c> folder, which
+    /// holds ntilde.com beside it (spec §11.4). Null only if the process path is unknown, which
+    /// <see cref="UserPathRegistration"/> logs and skips.
+    /// </summary>
+    private static string? InstallDirectory() => System.IO.Path.GetDirectoryName(Environment.ProcessPath);
 
     /// <summary>
     /// Maps the PTY layer's severity onto the app's.

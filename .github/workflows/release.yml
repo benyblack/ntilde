@@ -536,7 +536,10 @@ jobs:
     # notarization queue inside vpk pack, which alone can run 10-30+ minutes on a
     # slow day — 40 was cutting the job down mid-wait.
     timeout-minutes: 90
-    needs: [release_metadata, create_release, build_native, release_tests]
+    # publish_mux_daemon too (Phase 4 final review I4): the App's remote installer downloads only its own
+    # version's ntilde-mux-<rid>, so an App published while a ntilde-mux leg failed could never install
+    # ntilde-mux on that platform. A failed leg keeps the App back as well.
+    needs: [release_metadata, create_release, build_native, release_tests, publish_mux_daemon]
     permissions:
       contents: write
     strategy:
@@ -623,6 +626,65 @@ jobs:
           SKIP_RUST_NATIVE_BUILD: "1"
           RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
         run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/publish/${{ matrix.rid }}
+
+      # ---- ntilde.com, the console launcher (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
+      # ---- §10.3, §11). A GUI-subsystem Ntilde.exe is started and forgotten by a prompt, so
+      # ---- `ntilde mux attach` came straight back to it; ntilde.com beside it is found first
+      # ---- (PATHEXT ranks .COM ahead of .EXE), waits, and forwards the exit code. The Velopack
+      # ---- install hook puts this directory on the user PATH.
+      #
+      # Published to its own directory, then smoked, then copied into the bundle as ntilde.com
+      # BEFORE the bundle's smoke gate, Archive bundle and vpk pack: the zip and the Velopack
+      # package both ship what is in artifacts/publish/win-x64, and nothing else adds it.
+      # Its project makes IL2026/IL3050 and every other warning errors, so a regression fails
+      # this publish. Version through env, as for the App's publish above.
+      - name: Publish ntilde.com launcher
+        if: matrix.rid == 'win-x64'
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+        run: dotnet publish src/Ntilde.Launcher/Ntilde.Launcher.csproj -c "$CONFIGURATION" -r win-x64 "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/launcher
+
+      # BLOCKING, like the bundle's gate below, and for the same reason: nothing else runs the
+      # AOT launcher this release ships. One real run in a temporary directory, beside a copy of
+      # cmd.exe named Ntilde.exe - `ntilde.com /d /c exit 7` must exit 7, which passes through its
+      # kernel32 P/Invokes, the [UnmanagedCallersOnly] console-control handler, CreateProcessW with
+      # the raw command-line tail and the exit-code forwarding. A separate directory, so the cmd
+      # copy never sits in the bundle; cmd exits with whatever code it is told, which the real
+      # Ntilde.exe has no verb for. Only then does the launcher join the bundle.
+      - name: Smoke ntilde.com and add it to the bundle (blocking)
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # A non-zero exit is the point of this run; it must reach $LASTEXITCODE, not throw.
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $launcher = Join-Path $PWD 'artifacts/launcher/Ntilde.Launcher.exe'
+          if (-not (Test-Path $launcher)) { throw "The launcher publish produced no Ntilde.Launcher.exe at $launcher." }
+          Write-Output ("Ntilde.Launcher.exe: {0:N0} bytes" -f (Get-Item $launcher).Length)
+
+          $dir = Join-Path $env:RUNNER_TEMP 'ntilde-launcher-smoke'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item $launcher (Join-Path $dir 'ntilde.com') -Force
+          Copy-Item (Join-Path $env:SystemRoot 'System32/cmd.exe') (Join-Path $dir 'Ntilde.exe') -Force
+
+          & (Join-Path $dir 'ntilde.com') /d /c exit 7
+          $code = $LASTEXITCODE
+          if ($code -ne 7) {
+            throw "ntilde.com beside a cmd.exe named Ntilde.exe exited $code for '/d /c exit 7', not 7: the AOT launcher did not start its Ntilde.exe with the raw tail, or did not forward the exit code. Do not release a bundle whose ntilde.com cannot run its Ntilde.exe."
+          }
+          # The runner's pwsh wrapper ends every step with `exit $LASTEXITCODE`, which is still the
+          # 7 this smoke just asserted: reset it, and end with exit 0, or the step fails when it passes.
+          $global:LASTEXITCODE = 0
+          Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
+
+          $bundle = Join-Path $PWD 'artifacts/publish/win-x64'
+          if (-not (Test-Path (Join-Path $bundle 'Ntilde.exe'))) { throw "The bundle has no Ntilde.exe at $bundle for ntilde.com to start." }
+          Copy-Item $launcher (Join-Path $bundle 'ntilde.com') -Force
+          if (-not (Test-Path (Join-Path $bundle 'ntilde.com'))) { throw "ntilde.com did not reach $bundle." }
+          Write-Output "ntilde.com is in the bundle beside Ntilde.exe."
+          exit 0
 
       # ---- BLOCKING release gate for the Windows bundle, and deliberately placed here:
       # ---- everything below (Archive bundle, Upload release asset, vpk pack, Upload
@@ -1830,6 +1892,237 @@ jobs:
           retention-days: 5
           path: artifacts/release
 
+  # ===========================================================================
+  # ntilde-mux, the remote multiplexer (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
+  # §2 decisions 1-2, §9, §10.3): release assets ntilde-mux-<rid> and ntilde-mux-<rid>.sha256
+  # for linux-x64, linux-arm64 and osx-arm64. The App's remote installer downloads
+  # .../releases/download/v<its version>/ntilde-mux-<rid> and verifies it against the .sha256
+  # (sha256sum / `shasum -a 256` format, read by its offline one-liner too), so BOTH NAMES ARE
+  # A CONTRACT with every installed App: renaming either breaks remote installs.
+  #
+  # ci.yml's mux_daemon_aot leg for leg, plus -p:Version and the upload. The Linux legs use
+  # publish_linux's ubuntu:22.04 recipe line for line (the glibc floor), and every leg builds
+  # librusty_pty.a itself - one small crate - so it needs no native artifact: only the release
+  # to upload to and a green release_tests. The binary is ONE file per RID, rusty_pty linked
+  # in statically (spec §2 decision 1); should the osx-arm64 static link ever fail, that RID
+  # alone falls back to {exe, librusty_pty.dylib}, and this job is where that change would land.
+  # ===========================================================================
+  publish_mux_daemon:
+    name: Publish ntilde-mux (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    # An empty image (the macOS leg) runs the job on the runner itself.
+    container: ${{ matrix.container }}
+    # bash on every leg: a container job's inline `run:` blocks otherwise get `sh` (dash) -
+    # see build_native_linux. The macOS runner's bash is 3.2, so nothing below needs bash 4.
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 45
+    # release_tests as well, like every other job that publishes assets (publish_aot,
+    # publish_linux): a release whose tests failed gets no ntilde-mux assets either (#156).
+    needs: [release_metadata, create_release, release_tests]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: linux-x64,   os: ubuntu-latest,    container: ubuntu:22.04 }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm, container: ubuntu:22.04 }
+          - { rid: osx-arm64,   os: macos-latest,     container: '' }
+    steps:
+      # MUST precede actions/checkout in the container (no git otherwise). publish_linux's list,
+      # identical on purpose - see the note on build_native_linux's copy.
+      - name: Install container toolchain
+        if: matrix.container != ''
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y \
+            ca-certificates curl git unzip zstd jq \
+            clang zlib1g-dev binutils file imagemagick squashfs-tools \
+            fontconfig libfreetype6 x11-utils \
+            libicu70 libssl3
+          echo "--- container identity (the glibc floor this lane pins) ---"
+          head -2 /etc/os-release
+          sed -n '1p' <<<"$(ldd --version)"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release_metadata.outputs.checkout_ref }}
+
+      # A prefix of its own (`dotnet-sdk-mux-container-`), as in ci.yml's mux_daemon_aot: no other
+      # job's restore-keys can then match these keys, and these restore-keys match no other job's
+      # (publish_linux's would-be identical key included).
+      - name: Cache .NET SDK (container)
+        if: matrix.container != '' && needs.release_metadata.outputs.cache_trusted == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet
+          key: dotnet-sdk-mux-container-ubuntu2204-${{ matrix.rid }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-mux-container-ubuntu2204-${{ matrix.rid }}-
+
+      # publish_linux's step, unchanged: the tarball named by global.json, verified against its
+      # published .sha512 before anything is extracted. Its comment there has the reasoning.
+      - name: Install .NET SDK (container; version pinned by global.json)
+        if: matrix.container != ''
+        run: |
+          set -euo pipefail
+          sdk_version="$(jq -re '.sdk.version' global.json)"
+          case "$(uname -m)" in
+            x86_64)  sdk_rid=linux-x64 ;;
+            aarch64) sdk_rid=linux-arm64 ;;
+            *) echo "no pinned .NET SDK download for architecture $(uname -m)" >&2; exit 1 ;;
+          esac
+          tarball="dotnet-sdk-${sdk_version}-${sdk_rid}.tar.gz"
+          base_url="https://builds.dotnet.microsoft.com/dotnet/Sdk/${sdk_version}"
+          if [[ -d "$HOME/.dotnet/sdk/$sdk_version" ]]; then
+            echo "SDK $sdk_version already present in \$HOME/.dotnet (cache hit); skipping download"
+          else
+            curl --proto '=https' --tlsv1.2 -sSfL -o "/tmp/$tarball"        "$base_url/$tarball"
+            curl --proto '=https' --tlsv1.2 -sSfL -o "/tmp/$tarball.sha512" "$base_url/$tarball.sha512"
+            expected="$(awk 'NR==1 { print tolower($1) }' "/tmp/$tarball.sha512")"
+            [[ "$expected" =~ ^[0-9a-f]{128}$ ]] \
+              || { echo "::error::$tarball.sha512 is not a SHA-512 hex digest (got '${expected:0:80}') - refusing to install an unverified SDK" >&2; exit 1; }
+            actual="$(sha512sum "/tmp/$tarball" | awk '{ print tolower($1) }')"
+            if [[ "$expected" != "$actual" ]]; then
+              echo "::error::sha512 mismatch for $tarball" >&2
+              echo "  expected: $expected" >&2
+              echo "  actual:   $actual" >&2
+              exit 1
+            fi
+            echo "sha512 verified for $tarball: $actual"
+            mkdir -p "$HOME/.dotnet"
+            tar -xzf "/tmp/$tarball" -C "$HOME/.dotnet"
+            [[ -x "$HOME/.dotnet/dotnet" && -d "$HOME/.dotnet/sdk/$sdk_version" ]] \
+              || { echo "::error::extracted SDK has no dotnet/sdk/$sdk_version - wrong payload shape" >&2; exit 1; }
+          fi
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          echo "DOTNET_ROOT=$HOME/.dotnet" >> "$GITHUB_ENV"
+
+      - name: Setup .NET (macOS)
+        if: matrix.container == ''
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Verify dotnet is on PATH
+        run: |
+          set -euo pipefail
+          command -v dotnet
+          dotnet --version
+
+      # build_native_linux's step, unchanged: rustup-init pinned by version and verified
+      # against its published SHA256 before it runs.
+      - name: Install Rust (container)
+        if: matrix.container != ''
+        run: |
+          set -euo pipefail
+          RUSTUP_VERSION=1.29.1
+          triple="$(uname -m)-unknown-linux-gnu"
+          base_url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${triple}"
+          curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init "${base_url}/rustup-init"
+          curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init.sha256 "${base_url}/rustup-init.sha256"
+          (cd /tmp && sha256sum -c rustup-init.sha256)
+          chmod +x /tmp/rustup-init
+          /tmp/rustup-init -y --default-toolchain stable --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Install Rust (macOS)
+        if: matrix.container == ''
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Verify cargo is on PATH
+        run: |
+          set -euo pipefail
+          command -v cargo
+          cargo --version
+          rustc --version
+
+      - name: Rust Cache
+        if: needs.release_metadata.outputs.cache_trusted == 'true'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: src/Ntilde.App/native
+
+      - name: Build librusty_pty.a
+        run: |
+          set -euo pipefail
+          cd src/Ntilde.App/native
+          cargo build --release --locked
+          ls -la target/release/librusty_pty.a
+
+      # RELEASE_VERSION and RID through env, never interpolated into script source: the version
+      # derives from a tag or a workflow_dispatch input, and $(...) executes in bash.
+      - name: Publish ntilde-mux
+        env:
+          RID: ${{ matrix.rid }}
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.Mux.Daemon/Ntilde.Mux.Daemon.csproj -c "$CONFIGURATION" -r "$RID" \
+            -nodeReuse:false "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" \
+            -o "artifacts/mux-daemon/$RID"
+
+      # The same assertions mux_daemon_aot makes on a PR, repeated on what actually ships: one
+      # file (StripSymbols' sidecar deleted), the glibc floor on Linux, and the version the
+      # installer will read back from `--version --json` (spec §9 step 4) being this release's.
+      - name: Assert a single file, the glibc floor and the version
+        env:
+          RID: ${{ matrix.rid }}
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          pub="artifacts/mux-daemon/$RID"
+          bin="$pub/ntilde-mux"
+          rm -rf "$pub/ntilde-mux.dbg" "$pub/ntilde-mux.dSYM"
+          listing="$(ls -A "$pub")"
+          if [[ "$listing" != "ntilde-mux" ]]; then
+            echo "::error::expected exactly ntilde-mux in $pub; found: $(tr '\n' ' ' <<<"$listing")" >&2
+            exit 1
+          fi
+          if [[ "$(uname -s)" == "Linux" ]]; then
+            glibc_max="$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
+            echo "highest GLIBC_ symbol version: $glibc_max"
+            if [[ "$(printf '%s\n' "$glibc_max" GLIBC_2.35 | sort -V | tail -1)" != "GLIBC_2.35" ]]; then
+              echo "::error::ntilde-mux needs $glibc_max, above the GLIBC_2.35 floor (ubuntu:22.04)" >&2
+              exit 1
+            fi
+          fi
+          version_json="$("$bin" --version --json)"
+          echo "$version_json"
+          grep -qF "\"version\":\"$RELEASE_VERSION\"" <<<"$version_json" \
+            || { echo "::error::ntilde-mux --version --json does not report version $RELEASE_VERSION" >&2; exit 1; }
+
+      # Flat release-asset names, then the checksum beside each, written from inside the
+      # directory so the .sha256 names the bare asset (`<hash>  ntilde-mux-<rid>`).
+      - name: Stage the asset and its checksum
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release
+          cp "artifacts/mux-daemon/$RID/ntilde-mux" "artifacts/release/ntilde-mux-$RID"
+          if [[ "$(uname -s)" == "Darwin" ]]; then
+            (cd artifacts/release && shasum -a 256 "ntilde-mux-$RID" > "ntilde-mux-$RID.sha256")
+          else
+            (cd artifacts/release && sha256sum "ntilde-mux-$RID" > "ntilde-mux-$RID.sha256")
+          fi
+          test -f "artifacts/release/ntilde-mux-$RID" || { echo "::error::no ntilde-mux-$RID" >&2; exit 1; }
+          test -f "artifacts/release/ntilde-mux-$RID.sha256" || { echo "::error::no ntilde-mux-$RID.sha256" >&2; exit 1; }
+          (cd artifacts/release && cat "ntilde-mux-$RID.sha256" && ls -la "ntilde-mux-$RID")
+
+      - name: Upload ntilde-mux release assets
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ needs.release_metadata.outputs.release_tag }}
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/release/ntilde-mux-${{ matrix.rid }}
+            artifacts/release/ntilde-mux-${{ matrix.rid }}.sha256
+
   # THE GATE, plus the only upload. Runs on a plain runner because both halves need
   # what a `container:` job does not have: a docker daemon (smoke-test.sh) - see the
   # block comment above publish_linux.
@@ -1843,7 +2136,8 @@ jobs:
     # headroom is ample rather than tight, but 30 left little room for a slow mirror
     # on top of the Debian gate. No compilation happens here.
     timeout-minutes: 45
-    needs: [release_metadata, publish_linux]
+    # publish_mux_daemon as well, for the reason publish_aot gives (Phase 4 final review I4).
+    needs: [release_metadata, publish_linux, publish_mux_daemon]
     permissions:
       contents: write
     strategy:

@@ -31,6 +31,31 @@ public sealed class MuxOrphansTests
         Assert.Empty(MuxOrphans.CollectReferencedIds(null));
     }
 
+    /// <summary>
+    /// Phase 4 spec §5: adoption and its counts are about the local daemon only. A pane on a remote
+    /// endpoint references a session there, which says nothing about the local daemon's sessions.
+    /// </summary>
+    [Fact]
+    public void Only_local_panes_are_referenced()
+    {
+        Guid unset = Guid.NewGuid(), local = Guid.NewGuid(), legacy = Guid.NewGuid(), remote = Guid.NewGuid();
+        var session = new NtildeSession
+        {
+            Tabs =
+            {
+                new TabSession { Root = new PaneNode { Type = NodeType.Split, Children =
+                {
+                    new PaneNode { Type = NodeType.Leaf, MuxSessionId = unset.ToString() },
+                    new PaneNode { Type = NodeType.Leaf, MuxSessionId = local.ToString(), MuxEndpoint = "local" },
+                    new PaneNode { Type = NodeType.Leaf, MuxSessionId = legacy.ToString(), MuxEndpoint = "ntilde-mux-u-1a2b" },
+                    new PaneNode { Type = NodeType.Leaf, MuxSessionId = remote.ToString(), MuxEndpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString() },
+                } } },
+            },
+        };
+
+        Assert.Equal(new HashSet<Guid> { unset, local, legacy }, MuxOrphans.CollectReferencedIds(session));
+    }
+
     [Fact]
     public void Orphans_are_running_unattached_unfaulted_and_unreferenced()
     {

@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Ntilde.Mux.Contracts;
 
-namespace Ntilde.Shell.Mux;
+namespace Ntilde.Mux.Daemon;
 
-internal interface IMuxDaemonSpawner
+public interface IMuxDaemonSpawner
 {
     void Spawn();
 
@@ -16,28 +16,39 @@ internal interface IMuxDaemonSpawner
 }
 
 /// <summary>
-/// Starts <c>&lt;exe&gt; mux serve</c> fully detached from the caller's stdio (spec §6): the daemon
-/// outlives us and must never hold a pipe a parent is waiting on for EOF - the MSBuild-node hang
-/// CLAUDE.md describes.
+/// Starts <c>&lt;exe&gt; &lt;serve arguments&gt;</c> (<c>mux serve</c> for the GUI's exe, Phase 4 spec §6.2)
+/// fully detached from the caller's stdio (Phase 2 spec §6): the daemon outlives us and must never hold
+/// a pipe a parent is waiting on for EOF - the MSBuild-node hang CLAUDE.md describes.
 /// </summary>
-internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
+public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
 {
     private readonly string _executable;
     private readonly IReadOnlyList<string> _leadingArgs;
+    private readonly IReadOnlyList<string> _serveArguments;
+    private readonly MuxPaths? _paths;
     private readonly object _gate = new();
     private Process? _last; // the latest daemon started, kept to read its exit code; guarded by _gate
 
-    public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs)
+    /// <param name="leadingArgs">Before the serve arguments: e.g. the dll, when <paramref name="executable"/> is <c>dotnet</c>.</param>
+    /// <param name="serveArguments">What makes the executable serve: <c>["mux","serve"]</c> for the GUI's exe.</param>
+    /// <param name="paths">
+    /// The paths the daemon serves - the GUI's or <c>ntilde-mux</c>'s (<see cref="MuxPaths.IsStandalone"/>); null =
+    /// whatever the daemon resolves from the environment it inherits. See <see cref="CreateStartInfo"/>.
+    /// </param>
+    public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs, IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
     {
         _executable = executable;
         _leadingArgs = leadingArgs;
+        _serveArguments = serveArguments;
+        _paths = paths;
     }
 
     /// <summary>
     /// $APPIMAGE when running from an AppImage: Environment.ProcessPath is inside the runtime's FUSE
     /// mount, which is unmounted when the GUI exits and would pull the daemon's files out from under it.
     /// </summary>
-    public static ProcessMuxDaemonSpawner CreateDefault()
+    /// <param name="paths">The paths the daemon serves; null = the ones it resolves from the inherited environment.</param>
+    public static ProcessMuxDaemonSpawner CreateDefault(IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
     {
         string exe = ResolveDaemonExecutable(
             Environment.GetEnvironmentVariable("APPIMAGE"),
@@ -45,7 +56,7 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
             Environment.ProcessPath,
             File.Exists)
             ?? throw new InvalidOperationException("The executable path is unknown.");
-        return new ProcessMuxDaemonSpawner(exe, []);
+        return new ProcessMuxDaemonSpawner(exe, [], serveArguments, paths);
     }
 
     /// <summary>
@@ -77,7 +88,18 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
             && (path[dir.Length] == Path.DirectorySeparatorChar || path[dir.Length] == Path.AltDirectorySeparatorChar);
     }
 
-    public void Spawn()
+    /// <summary>
+    /// The daemon's command line and environment; nothing is started. The daemon resolves its root by its
+    /// executable's rule - the GUI's from <see cref="MuxDiscovery.RootOverrideEnvVar"/> or
+    /// <see cref="MuxDiscovery.GetRootDirectory"/>, <c>ntilde-mux</c>'s from
+    /// <see cref="MuxPaths.StandaloneRootOverrideEnvVar"/> or <see cref="MuxPaths.StandaloneRootDirectory"/> - so
+    /// a root other than the one that rule finds in this environment is handed down through that rule's
+    /// variable (<see cref="MuxPaths.RootHandDown"/>); otherwise the launcher would wait at one root for a daemon
+    /// serving another. The root this environment already resolves to is left alone: the GUI's spawns stay
+    /// exactly as before, and the daemon's shells do not gain the variable (it would make a GUI started
+    /// from one of them skip <c>AppPaths</c>' legacy-root migration).
+    /// </summary>
+    internal ProcessStartInfo CreateStartInfo()
     {
         var psi = new ProcessStartInfo(_executable)
         {
@@ -89,12 +111,23 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
             WorkingDirectory = GetDaemonWorkingDirectory(),
         };
         foreach (string a in _leadingArgs) psi.ArgumentList.Add(a);
-        psi.ArgumentList.Add("mux");
-        psi.ArgumentList.Add("serve");
+        foreach (string a in _serveArguments) psi.ArgumentList.Add(a);
+
+        if (_paths?.RootHandDown() is { } handDown)
+        {
+            psi.Environment[handDown.Variable] = handDown.Root;
+        }
+
+        return psi;
+    }
+
+    public void Spawn()
+    {
+        ProcessStartInfo psi = CreateStartInfo();
 
         if (OperatingSystem.IsWindows()) ClearStdHandleInheritance();
 
-        Process process = Process.Start(psi) ?? throw new InvalidOperationException("mux serve did not start.");
+        Process process = Process.Start(psi) ?? throw new InvalidOperationException("The multiplexer daemon did not start.");
         // Our ends of the three pipes: each closed independently, so one throwing (e.g. the child
         // already exited and its end of the pipe is gone) never leaves another of ours open - that
         // would be the exact hang class this class exists to prevent.
@@ -168,10 +201,12 @@ internal sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     private const int StdInputHandle = -10, StdOutputHandle = -11, StdErrorHandle = -12;
     private const uint HandleFlagInherit = 0x1;
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     private static extern IntPtr GetStdHandle(int nStdHandle);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetHandleInformation(IntPtr hObject, uint dwMask, uint dwFlags);
 }

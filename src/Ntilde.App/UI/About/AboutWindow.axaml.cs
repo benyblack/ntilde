@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -202,11 +201,8 @@ public partial class AboutWindow : Window, IUpdateCheckFeedback
         }
     }
 
-    /// <summary>The same attribute-based resolution BackupService uses; the informational version is what the build pins.</summary>
-    private static string ResolveAppVersion() =>
-        Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? Assembly.GetEntryAssembly()?.GetName().Version?.ToString()
-        ?? "unknown";
+    /// <summary>The informational version as built, as BackupService records it; "unknown" when there is none.</summary>
+    private static string ResolveAppVersion() => Ntilde.Shell.AppVersionInfo.InformationalVersion ?? "unknown";
 
     private void InitializeComponent()
     {

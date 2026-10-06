@@ -51,6 +51,60 @@ public sealed class MuxDiscoveryTests : IDisposable
         Assert.False(MuxDiscovery.TryReadLiveDescriptor(DescriptorPath, out _));
     }
 
+    /// <summary>A token that cannot match: one tick off on Linux (exact compare), 5 s off elsewhere (1 s tolerance).</summary>
+    private static long Mismatched(long real) => real + (OperatingSystem.IsLinux() ? 1 : TimeSpan.FromSeconds(5).Ticks);
+
+    [Fact]
+    public void The_start_token_of_the_current_process_is_readable()
+    {
+        using Process self = Process.GetCurrentProcess();
+        Assert.NotNull(MuxDiscovery.GetProcessStartToken(self));
+    }
+
+    [Fact]
+    public void The_Linux_start_ticks_are_parsed_after_the_last_paren_of_the_comm_field()
+    {
+        const string stat = "1234 (my (weird) name) S 1 1234 1234 0 -1 4194560 100 0 0 0 1 2 0 0 20 0 1 0 987654 12345678 900 18446744073709551615";
+        Assert.Equal(987654L, MuxDiscovery.ParseLinuxStartTicks(stat));
+        Assert.Null(MuxDiscovery.ParseLinuxStartTicks("1234 (short) S 1 2"));
+        Assert.Null(MuxDiscovery.ParseLinuxStartTicks("garbage"));
+    }
+
+    [Fact]
+    public void A_descriptor_whose_start_time_differs_is_not_alive()
+    {
+        using Process self = Process.GetCurrentProcess();
+        long real = MuxDiscovery.GetProcessStartToken(self)!.Value;
+        Assert.True(MuxDiscovery.IsProcessAlive(self.Id, self.ProcessName, real));
+        Assert.True(MuxDiscovery.IsProcessAlive(self.Id, self.ProcessName, null));
+        Assert.False(MuxDiscovery.IsProcessAlive(self.Id, self.ProcessName, Mismatched(real)));
+    }
+
+    [Fact]
+    public void A_live_descriptor_read_rejects_a_recycled_pid_by_start_time()
+    {
+        using Process self = Process.GetCurrentProcess();
+        long real = MuxDiscovery.GetProcessStartToken(self)!.Value;
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(self.Id, self.ProcessName) with { StartTime = real });
+        Assert.True(MuxDiscovery.TryReadLiveDescriptor(DescriptorPath, out _));
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(self.Id, self.ProcessName) with { StartTime = Mismatched(real) });
+        Assert.False(MuxDiscovery.TryReadLiveDescriptor(DescriptorPath, out _));
+    }
+
+    [Fact]
+    public void Descriptor_round_trips_start_time_and_omits_it_when_null()
+    {
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(123, "ntilde") with { StartTime = 638_000_000_000_000_000L });
+        Assert.True(MuxDiscovery.TryReadDescriptor(DescriptorPath, out MuxEndpointDescriptor? back));
+        Assert.Equal(638_000_000_000_000_000L, back.StartTime);
+        Assert.Contains("startTime", File.ReadAllText(DescriptorPath));
+
+        MuxDiscovery.WriteDescriptor(DescriptorPath, Descriptor(123, "ntilde"));
+        Assert.True(MuxDiscovery.TryReadDescriptor(DescriptorPath, out back));
+        Assert.Null(back.StartTime);
+        Assert.DoesNotContain("startTime", File.ReadAllText(DescriptorPath), StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void A_dead_pid_is_not_live()
     {

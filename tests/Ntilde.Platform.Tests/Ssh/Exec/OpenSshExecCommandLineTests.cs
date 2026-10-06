@@ -1,0 +1,276 @@
+using Ntilde.Platform.Ssh.Exec;
+
+namespace Ntilde.Platform.Tests.Ssh.Exec;
+
+/// <summary>The exec argv (Phase 4 spec §8.2): the plan's arguments wrapped in the exec-only options.</summary>
+public sealed class OpenSshExecCommandLineTests
+{
+    private static readonly string[] Plan = ["-F", @"C:\cfg\ntilde_ssh_config", "ntilde_0123abcd"];
+
+    private static readonly string[] ProxyArgv =
+    [
+        "-T", "-o", "ClearAllForwardings=yes", "-o", "BatchMode=no", "-o", "ControlMaster=no",
+        "-F", @"C:\cfg\ntilde_ssh_config", "ntilde_0123abcd",
+        "--", "ntilde-mux proxy --stdio",
+    ];
+
+    private const int ExecOptionCount = 7;
+
+    [Fact]
+    public void Build_wraps_the_plan_in_the_exec_options_and_ends_with_the_command()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "ntilde-mux proxy --stdio");
+
+        Assert.Equal(ProxyArgv, argv);
+    }
+
+    [Fact]
+    public void Build_puts_the_diagnostics_arguments_first()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build(["-v"], Plan, "true");
+
+        Assert.Equal("-v", argv[0]);
+        Assert.Equal("-T", argv[1]);
+        Assert.Equal("--", argv[^2]);
+        Assert.Equal("true", argv[^1]);
+    }
+
+    [Fact]
+    public void Build_keeps_the_plans_extra_ssh_arguments_after_the_alias()
+    {
+        string[] plan = [.. Plan, "-o", "ConnectTimeout=5"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
+
+        Assert.Equal(plan, argv.Skip(ExecOptionCount).Take(plan.Length));
+    }
+
+    [Fact]
+    public void ControlMaster_no_precedes_the_plan_so_it_beats_the_generated_configs_ControlMaster_auto()
+    {
+        // First value wins in ssh: ahead of -F and of ExtraSshArgs, this exec never becomes a master.
+        string[] plan = [.. Plan, "-o", "ControlMaster=auto"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
+
+        int ours = IndexOfPair(argv, "-o", "ControlMaster=no");
+        Assert.True(ours >= 0, "ControlMaster=no is missing");
+        Assert.True(ours < IndexOfPair(argv, "-F", Plan[1]));
+        Assert.True(ours < IndexOfPair(argv, "-o", "ControlMaster=auto"));
+    }
+
+    /// <summary>
+    /// An automatic reconnect must never prompt (Phase 4 ruling: those attempts are non-interactive).
+    /// The first value of an ssh option wins, so batch mode replaces the BatchMode=no token in place:
+    /// appending BatchMode=yes after it would be ignored.
+    /// </summary>
+    [Fact]
+    public void Batch_mode_replaces_BatchMode_no_with_yes_in_the_same_place()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "ntilde-mux proxy --stdio", batchMode: true);
+
+        string[] expected = [.. ProxyArgv];
+        expected[Array.IndexOf(expected, "BatchMode=no")] = "BatchMode=yes";
+        Assert.Equal(expected, argv);
+        Assert.DoesNotContain("BatchMode=no", argv);
+    }
+
+    [Fact]
+    public void Batch_mode_still_precedes_a_BatchMode_in_the_plans_extra_arguments()
+    {
+        string[] plan = [.. Plan, "-o", "BatchMode=no"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", batchMode: true);
+
+        int ours = IndexOfPair(argv, "-o", "BatchMode=yes");
+        Assert.True(ours >= 0, "BatchMode=yes is missing");
+        Assert.True(ours < IndexOfPair(argv, "-F", Plan[1]));
+        Assert.True(ours < IndexOfPair(argv, "-o", "BatchMode=no"));
+    }
+
+    /// <summary>
+    /// The profile's extra arguments; what is left of them; and the pieces dropped, one log line each, in order.
+    /// A PTY (<c>-t</c>, and our own <c>-T</c> kept single), no command (<c>-N</c>), the background (<c>-f</c>), stdin
+    /// from /dev/null (<c>-n</c>), a subsystem (<c>-s</c>), print-and-exit (<c>-G</c>, <c>-V</c>), master mode
+    /// (<c>-M</c>), stdio forwarding (<c>-W</c>), a control command (<c>-O</c>), a query (<c>-Q</c>), and the
+    /// <c>-o</c> keywords that do the same.
+    /// </summary>
+    public static TheoryData<string[], string[], string[]> Breakers => new()
+    {
+        { ["-t"], [], ["-t"] },
+        { ["-tt"], [], ["-t", "-t"] },
+        { ["-T"], [], ["-T"] },
+        { ["-N"], [], ["-N"] },
+        { ["-f"], [], ["-f"] },
+        { ["-tv"], ["-v"], ["-t"] },
+        { ["-vt"], ["-v"], ["-t"] },
+        { ["-Nv"], ["-v"], ["-N"] },
+        { ["-fN"], [], ["-f", "-N"] },
+        { ["-n"], [], ["-n"] },
+        { ["-s"], [], ["-s"] },
+        { ["-G"], [], ["-G"] },
+        { ["-V"], [], ["-V"] },
+        { ["-M"], [], ["-M"] },
+        { ["-qMv"], ["-qv"], ["-M"] },
+        { ["-W", "h:22"], [], ["-W"] },
+        { ["-Wh:22"], [], ["-W"] },
+        { ["-vW", "h:22"], ["-v"], ["-W"] },
+        { ["-O", "check"], [], ["-O"] },
+        { ["-Q", "cipher"], [], ["-Q"] },
+        { ["-o", "RequestTTY=force"], [], ["-o RequestTTY"] },
+        { ["-oRequestTTY=yes"], [], ["-o RequestTTY"] },
+        { ["-o", "SessionType none"], [], ["-o SessionType"] },
+        { ["-o", "sessiontype=none"], [], ["-o sessiontype"] },
+        { ["-o", " RequestTTY = yes"], [], ["-o RequestTTY"] },
+        { ["-o", "ForkAfterAuthentication=yes"], [], ["-o ForkAfterAuthentication"] },
+        { ["-o", "StdinNull=yes"], [], ["-o StdinNull"] },
+        { ["-o", "RemoteCommand=x"], [], ["-o RemoteCommand"] },
+        { ["-o", "PermitLocalCommand=yes"], [], ["-o PermitLocalCommand"] },
+        { ["-vo", "RequestTTY=force"], ["-v"], ["-o RequestTTY"] },
+        { ["-voStdinNull=yes"], ["-v"], ["-o StdinNull"] },
+        // ssh's own keyword split (readconf's strdelim): leading whitespace, one optional '=' with whitespace around it,
+        // a quoted keyword unquoted, a quote inside it joining what is around it. OpenSSH 10.0p2 resolves each of these
+        // to "sessiontype none" (codex residual round).
+        { ["-o", "=SessionType=none"], [], ["-o SessionType"] },
+        { ["-o", "\"SessionType\" none"], [], ["-o SessionType"] },
+        { ["-o", " = SessionType none"], [], ["-o SessionType"] },
+        { ["-o", " =SessionType none"], [], ["-o SessionType"] },
+        { ["-o", "\tSessionType none"], [], ["-o SessionType"] },
+        { ["-o", "Session\"Type\" none"], [], ["-o SessionType"] },
+    };
+
+    /// <summary>
+    /// Codex C3: the profile's ssh arguments are read with ssh's own getopt rules, so a breaking flag is found inside
+    /// a cluster too (OpenSSH 9.6: <c>ssh -G -tv</c> says <c>requesttty true</c>, <c>-Nv</c> <c>sessiontype none</c>),
+    /// and an option that takes an argument goes with it. The <c>-o ConnectTimeout=5</c> after each row shows the
+    /// parse carries on in step. Replaces the I6 tests, which matched whole tokens only.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Breakers))]
+    public void A_piece_that_would_break_the_exec_channel_is_dropped_and_logged(string[] extra, string[] kept, string[] dropped)
+    {
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, .. extra, "-o", "ConnectTimeout=5"], "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, .. kept, "-o", "ConnectTimeout=5", "--", "true"];
+        Assert.Equal(expected, argv);
+        Assert.Equal(dropped.Length, log.Count);
+        for (int i = 0; i < dropped.Length; i++) Assert.Contains($"'{dropped[i]}'", log[i], StringComparison.Ordinal);
+    }
+
+    /// <summary>The profile's extra arguments that must reach ssh exactly as they are.</summary>
+    public static TheoryData<string[]> Harmless => new()
+    {
+        { ["-p", "2222"] },
+        { ["-p2222"] },
+        { ["-p2tN"] },                                  // port "2tN": an argument is never scanned for flags
+        { ["-i", "key", "-v"] },
+        { ["-o", "ProxyCommand=ssh -W %h:%p jump"] },   // one token, -W inside a value
+        { ["-oProxyCommand=ssh -W %h:%p jump"] },
+        { ["-o", "-t"] },                               // an argument that looks like a flag
+        { ["-J", "jump"] },
+        { ["-L", "8080:h:80"] },
+        { ["-vvv"] },
+        { ["-46AaCgKkqXxYy"] },
+        { ["-E", "ssh.log", "-o", "ServerAliveInterval=15"] },
+        { ["-o", "= = SessionType none"] },             // a second '=': ssh reads an empty keyword and ignores the line
+        { ["-o", "\"SessionType none"] },               // an unmatched quote: ssh ignores the line too
+    };
+
+    [Theory]
+    [MemberData(nameof(Harmless))]
+    public void Everything_else_reaches_ssh_as_it_was(string[] extra)
+    {
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, .. extra], "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, .. extra, "--", "true"];
+        Assert.Equal(expected, argv);
+        Assert.Empty(log);
+    }
+
+    [Fact]
+    public void What_is_kept_keeps_its_order()
+    {
+        string[] extra = ["-4", "-tv", "-p", "2222", "-Nq", "-o", "RequestTTY=yes", "-J", "jump", "-W", "h:22", "-oServerAliveInterval=5", "-C"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, .. extra], "true");
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-4", "-v", "-p", "2222", "-q", "-J", "jump", "-oServerAliveInterval=5", "-C", "--", "true"];
+        Assert.Equal(expected, argv);
+    }
+
+    /// <summary>
+    /// ssh reads options before the destination and again after it (it restarts getopt after the host): both are
+    /// filtered, and the destination keeps its place.
+    /// </summary>
+    [Fact]
+    public void Options_on_either_side_of_the_destination_are_read_and_the_destination_stays_put()
+    {
+        string[] plan = ["-F", Plan[1], "-tv", Plan[2], "-N", "-p", "22"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true");
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], "-F", Plan[1], "-v", Plan[2], "-p", "22", "--", "true"];
+        Assert.Equal(expected, argv);
+    }
+
+    /// <summary>
+    /// After the destination ssh reads options only until <c>--</c> or the next word; what follows is the remote
+    /// command, never an option. It is kept as written - no <c>-t</c> in it is dropped - and the log says why the
+    /// channel's command will not run as given.
+    /// </summary>
+    [Theory]
+    [InlineData("uptime")]
+    [InlineData("--")]
+    public void After_the_end_of_sshs_options_nothing_is_read_as_an_option(string end)
+    {
+        var log = new List<string>();
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, "-v", end, "-t", "-N"], "true", log.Add);
+
+        string[] expected = [.. ProxyArgv[..ExecOptionCount], .. Plan, "-v", end, "-t", "-N", "--", "true"];
+        Assert.Equal(expected, argv);
+        Assert.Contains("remote command", Assert.Single(log), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_remote_command_is_never_filtered()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "-t");
+
+        Assert.Equal("-t", argv[^1]);
+    }
+
+    private static int IndexOfPair(IReadOnlyList<string> argv, string option, string value)
+    {
+        for (int i = 0; i + 1 < argv.Count; i++)
+        {
+            if (argv[i] == option && argv[i + 1] == value) return i;
+        }
+
+        return -1;
+    }
+
+    [Fact]
+    public void The_remote_command_is_one_argv_element_after_the_separator()
+    {
+        const string command = "sh -c 'set -e; d=\"$HOME/.local/share/ntilde/bin\"; cat > \"$d/x\"'";
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, command);
+
+        Assert.Equal("--", argv[^2]);
+        Assert.Equal(command, argv[^1]);
+        Assert.Single(argv, a => a == "--");
+    }
+
+    [Fact]
+    public void Build_rejects_missing_inputs()
+    {
+        Assert.Throws<ArgumentNullException>(() => OpenSshExecCommandLine.Build(null!, Plan, "true"));
+        Assert.Throws<ArgumentNullException>(() => OpenSshExecCommandLine.Build([], null!, "true"));
+        Assert.ThrowsAny<ArgumentException>(() => OpenSshExecCommandLine.Build([], Plan, " "));
+    }
+}

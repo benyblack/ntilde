@@ -4,6 +4,32 @@ public interface INativeSshInterop
 {
     NovaSshSafeHandle Connect(NativeSshConnectionOptions options);
 
+    /// <summary>
+    /// Starts an exec session (Phase 4 spec §8.3): the connect, jump chain, host-key and auth prompts
+    /// of <see cref="Connect"/>, then <paramref name="command"/> runs on the target with no PTY. Returns
+    /// at once with the handle; everything after (prompts, stdout as <see cref="NativeSshEventKind.Data"/>,
+    /// stderr as <see cref="NativeSshEventKind.ExtendedData"/>, the exit status, a failure) arrives as
+    /// poll events ending with <see cref="NativeSshEventKind.Closed"/>. <see cref="Write"/> feeds the
+    /// command's stdin and <see cref="SendEof"/> ends it. Release the handle with <see cref="Close"/>.
+    /// </summary>
+    /// <remarks>
+    /// Default implementation throws, like <see cref="RequestRemoteForward"/>: a test double that
+    /// never expects an exec session should fail a test that starts one.
+    /// </remarks>
+    NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement exec sessions.");
+
+    /// <summary>
+    /// Sends EOF on the session's main channel: for an exec session, the end of the command's stdin.
+    /// Idempotent; writes queued before it are sent first, and writes after it are dropped. A session
+    /// that has already ended ignores it.
+    /// </summary>
+    /// <remarks>Default implementation throws; see <see cref="Exec"/>.</remarks>
+    void SendEof(NovaSshSafeHandle sessionHandle) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement exec sessions.");
+
     // Blocking FFI/network call. App/UI-facing services must offload this work before awaiting it.
     IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(
         NativeSshConnectionOptions connectionOptions,

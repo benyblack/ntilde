@@ -37,6 +37,9 @@ public sealed class TextClientSession : IDisposable
 {
     private static readonly PosixSignal[] StopSignals = [PosixSignal.SIGINT, PosixSignal.SIGTERM, PosixSignal.SIGHUP, PosixSignal.SIGQUIT];
 
+    /// <summary>The longest <see cref="FlushDetach"/> waits for the daemon to confirm the detach.</summary>
+    private static readonly TimeSpan DetachFlushTimeout = TimeSpan.FromSeconds(1);
+
     private readonly MuxClient _client;
     private readonly Guid _sessionId;
     private readonly IConsoleSurface _console;
@@ -186,7 +189,25 @@ public sealed class TextClientSession : IDisposable
         {
             bool userDetached = _chordDetached;
             Guard(() => session.Detach(userDetached));
+            Guard(FlushDetach);
         }
+    }
+
+    /// <summary>
+    /// The detach is fire-and-forget: it is only queued for the client's sender thread. The CLI
+    /// disposes the client as soon as <see cref="Run"/> returns, and that closes the transport at
+    /// once, so a detach still queued would never reach the daemon. The daemon's close path would
+    /// then record a plain disconnect, a chord detach would not count as deliberate, and the GUI
+    /// would adopt the shell back (spec §7.7). A ping's reply proves that every frame sent before
+    /// it, the detach included, reached the daemon and was handled in order. The wait is bounded,
+    /// so a daemon that does not answer cannot hold the terminal. There is no ping when the
+    /// connection is already gone.
+    /// </summary>
+    private void FlushDetach()
+    {
+        if (!_client.IsConnected) return;
+        using var cts = new CancellationTokenSource(DetachFlushTimeout);
+        _client.PingAsync(cts.Token).Wait(DetachFlushTimeout);
     }
 
     private static void Guard(Action step)

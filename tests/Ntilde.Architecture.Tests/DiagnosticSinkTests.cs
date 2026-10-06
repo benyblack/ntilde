@@ -22,11 +22,20 @@ public class DiagnosticSinkTests
 {
     /// <summary>
     /// Projects whose product *is* stdout. Console writes here are correct and must not be "fixed".
+    /// <c>Ntilde.Mux.Daemon</c> is the standalone <c>ntilde-mux</c> (Phase 4 spec §12.4). The verbs it
+    /// hosts live in <c>Ntilde.Mux/Cli</c>, which is library code - its text goes to the writers it is
+    /// handed, never through <c>Console.Write*</c> - so that directory stays under the rule. The match
+    /// is on the whole directory name, so <c>src/Ntilde.Mux/Daemon</c> is not exempted by this entry.
+    /// <c>Ntilde.Launcher</c> is <c>ntilde.com</c>, a console-subsystem program whose only output is one of
+    /// three stderr lines, each the reason it is not running <c>Ntilde.exe</c>: it was started off Windows,
+    /// <c>Ntilde.exe</c> is not beside it, or <c>CreateProcessW</c> failed (spec §11.1).
     /// </summary>
     private static readonly string[] ConsoleToolProjects =
     [
         "Ntilde.Cli",
         "Ntilde.Conformance",
+        "Ntilde.Mux.Daemon",
+        "Ntilde.Launcher",
     ];
 
     /// <summary>

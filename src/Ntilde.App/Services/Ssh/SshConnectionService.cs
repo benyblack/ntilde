@@ -2,8 +2,10 @@ using Ntilde.Shell;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Ntilde.Mux.Cli;
 using Ntilde.Platform;
 using Ntilde.VT;
+using Ntilde.Shell.Mux.Remote;
 using Ntilde.Platform.Ssh.Launch;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.OpenSsh;
@@ -18,6 +20,9 @@ public sealed class SshLaunchDetails
     public required string ConfigPath { get; init; }
     public required string Alias { get; init; }
     public required string CommandLine { get; init; }
+
+    /// <summary>The launch plan's arguments as argv: <c>["-F", cfg, alias, ...ExtraSshArgs, ...diagnostics]</c>.</summary>
+    public IReadOnlyList<string> PlanArguments { get; init; } = [];
 }
 
 public sealed class SshConnectionService
@@ -106,6 +111,40 @@ public sealed class SshConnectionService
 
         _profileStore.SaveProfile(merged);
         return _profileStore.GetProfile(merged.Id) ?? merged;
+    }
+
+    /// <summary>
+    /// Records an ntilde-mux install (Phase 4 spec §9 step 4) in the stored profile, and nothing else: the daemon's
+    /// path, version and RID (<see cref="RemoteMuxInstaller.Record"/>), and
+    /// <see cref="SshMuxOptions.PersistRemoteSessions"/> when <paramref name="turnOnPersistRemoteSessions"/> - never off.
+    /// </summary>
+    /// <remarks>
+    /// It saves the store's own copy of the profile as it is now, so every other field stays as stored. Neither
+    /// <see cref="SaveProfile(NewSshConnectionViewModel)"/> nor <see cref="SaveConnectionProfile"/> can do that: the
+    /// first normalizes the profile as the editor does (a custom ControlPath dropped, ControlPersistSeconds zeroed
+    /// with ControlMaster off, the default auth mode made Agent), and the second maps every field from a runtime
+    /// profile and never writes the mux options at all.
+    /// </remarks>
+    /// <returns>The saved profile; null when it is no longer stored, and then nothing is saved.</returns>
+    internal SshProfile? RecordRemoteMuxInstall(Guid profileId, MuxVersionInfo installed, bool turnOnPersistRemoteSessions)
+    {
+        ArgumentNullException.ThrowIfNull(installed);
+
+        SshProfile? stored = _profileStore.GetProfile(profileId); // a copy: the store clones what it hands out
+        if (stored is null)
+        {
+            return null;
+        }
+
+        stored.MuxOptions ??= new SshMuxOptions();
+        RemoteMuxInstaller.Record(stored.MuxOptions, installed);
+        if (turnOnPersistRemoteSessions)
+        {
+            stored.MuxOptions.PersistRemoteSessions = true;
+        }
+
+        _profileStore.SaveProfile(stored);
+        return _profileStore.GetProfile(profileId) ?? stored;
     }
 
     // Legacy overload retained for compatibility while settings/profile separation lands.
@@ -256,7 +295,31 @@ public sealed class SshConnectionService
             SshPath = plan.SshExecutablePath,
             ConfigPath = plan.ConfigFilePath,
             Alias = plan.Alias,
-            CommandLine = commandText
+            CommandLine = commandText,
+            PlanArguments = plan.Arguments
+        };
+    }
+
+    /// <summary>
+    /// The launch plan for exactly <paramref name="profile"/>, which may be a snapshot the store no longer holds as
+    /// it is - a persistent SSH connection keeps the destination it first connected to (multiplexer Phase 4 spec §15,
+    /// codex D2) - or holds no longer at all (<see cref="SshLaunchPlanner.PlanFor"/>). What the remote multiplexer's
+    /// exec attempts launch ssh with; nothing is saved to the store.
+    /// </summary>
+    /// <param name="selfContained">Always the plan that reads no shared config file: a pinned connection's attempts.</param>
+    internal SshLaunchDetails BuildLaunchDetailsFor(SshProfile profile, SshDiagnosticsLevel diagnosticsLevel, bool selfContained = false)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        var planner = new SshLaunchPlanner(_profileStore, new OpenSshConfigCompiler());
+        SshLaunchPlan plan = planner.PlanFor(profile, diagnosticsLevel.ToArguments(), selfContained);
+        return new SshLaunchDetails
+        {
+            SshPath = plan.SshExecutablePath,
+            ConfigPath = plan.ConfigFilePath,
+            Alias = plan.Alias,
+            CommandLine = $"{QuoteToken(plan.SshExecutablePath)} {SshArgBuilder.BuildCommandLine(plan.Arguments)}",
+            PlanArguments = plan.Arguments
         };
     }
 
@@ -573,7 +636,8 @@ public sealed class SshConnectionService
         return !string.IsNullOrWhiteSpace(host) && int.TryParse(trimmed[(colon + 1)..].Trim(), out port);
     }
 
-    private static SshProfile CloneProfile(SshProfile profile)
+    /// <summary>A deep copy of <paramref name="profile"/>: every field, its lists and its mux options copied.</summary>
+    internal static SshProfile CloneProfile(SshProfile profile)
     {
         return new SshProfile
         {
@@ -632,7 +696,11 @@ public sealed class SshConnectionService
             Enabled = mux.Enabled,
             ControlMasterAuto = mux.ControlMasterAuto,
             ControlPath = mux.ControlPath,
-            ControlPersistSeconds = mux.ControlPersistSeconds
+            ControlPersistSeconds = mux.ControlPersistSeconds,
+            PersistRemoteSessions = mux.PersistRemoteSessions,
+            RemoteDaemonPath = mux.RemoteDaemonPath,
+            RemoteDaemonVersion = mux.RemoteDaemonVersion,
+            RemoteDaemonRid = mux.RemoteDaemonRid
         };
     }
 }

@@ -76,6 +76,7 @@ namespace Ntilde.Shell
                 if (node == null) return;
                 node.MuxSessionId = null;
                 node.MuxEndpoint = null;
+                node.MuxShared = false;
                 foreach (PaneNode child in node.Children) Clear(child);
             }
 
@@ -377,16 +378,17 @@ namespace Ntilde.Shell
         /// fail and show a misleading "multiplexer unavailable". The duplicates start fresh shells.
         /// Done on the loaded session, before any tab is built: startup restore builds tabs lazily,
         /// one at a time, so no per-tab pass could see the whole file.
+        /// Keyed on (endpoint, id) (Phase 4 spec §5): one id on two daemons is two sessions.
         /// </summary>
         internal static void DedupeMuxIds(NtildeSession session)
         {
             ArgumentNullException.ThrowIfNull(session);
-            var claimed = new HashSet<Guid>();
+            var claimed = new HashSet<(Ntilde.Shell.Mux.MuxEndpointId, Guid)>();
 
             void Visit(PaneNode? node)
             {
                 if (node == null) return;
-                if (Guid.TryParse(node.MuxSessionId, out Guid id) && !claimed.Add(id))
+                if (Guid.TryParse(node.MuxSessionId, out Guid id) && !claimed.Add((Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint), id)))
                 {
                     node.MuxSessionId = null;
                     node.MuxEndpoint = null;
@@ -458,34 +460,47 @@ namespace Ntilde.Shell
 
         /// <summary>
         /// Spec §9: the daemon session <paramref name="pane"/> shows, so the next launch reattaches to
-        /// it (and does not mistake it for an orphan).
+        /// it (and does not mistake it for an orphan). The endpoint is written in its
+        /// <see cref="Ntilde.Shell.Mux.MuxEndpointId"/> form (Phase 4 spec §5): a pane that never
+        /// learned one, or restored a legacy pipe or socket name, writes "local".
         /// </summary>
         private static void WriteMuxIds(PaneNode leaf, TerminalPane pane)
         {
             if (pane.Session is Ntilde.Mux.MuxClientSession mux)
             {
                 leaf.MuxSessionId = mux.Id.ToString("D");
-                leaf.MuxEndpoint = pane.MuxEndpoint;
+                leaf.MuxEndpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).ToString();
+                leaf.MuxShared = pane.MuxSessionIsShare;
             }
             else if (pane.MuxSessionIdToRestore is Guid pending)
             {
                 // Not spawned yet (a hydrated tab never shown, an adopted tab not visited): the
-                // daemon session is still this pane's. Dropping it here would make the next launch
-                // start a fresh shell and adopt the old one as a duplicate orphan.
+                // daemon session is still this pane's, on the endpoint it was restored with. Dropping
+                // either here would make the next launch start a fresh shell and adopt the old one as
+                // a duplicate orphan - or look for it on the wrong daemon.
                 leaf.MuxSessionId = pending.ToString("D");
-                leaf.MuxEndpoint = pane.MuxEndpoint;
+                leaf.MuxEndpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).ToString();
+                leaf.MuxShared = pane.MuxAttachSharedToRestore;
             }
         }
 
         /// <summary>
         /// Consumed once as ExistingMuxSessionId on the first spawn. With persistence off the
-        /// default factory ignores it and the pane starts a normal shell.
+        /// default factory ignores it and the pane starts a normal shell. The endpoint goes with the
+        /// id (Phase 4 spec §5), so a pane saved before it ever spawns writes both back unchanged.
         /// </summary>
         private static void ApplyRestoredMuxId(TerminalPane pane, PaneNode node)
         {
             if (Guid.TryParse(node.MuxSessionId, out Guid muxId))
             {
+                if (!Ntilde.Shell.Mux.MuxEndpointId.TryParse(node.MuxEndpoint, out Ntilde.Shell.Mux.MuxEndpointId endpoint))
+                {
+                    AppLogger.Log($"[SessionManager] mux session {muxId} names an unknown endpoint '{node.MuxEndpoint}'; treating it as local");
+                }
+
                 pane.MuxSessionIdToRestore = muxId;
+                pane.MuxAttachSharedToRestore = node.MuxShared;
+                pane.MuxEndpoint = endpoint.ToString();
             }
         }
 

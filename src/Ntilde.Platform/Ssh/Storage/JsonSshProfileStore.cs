@@ -310,7 +310,11 @@ public sealed class JsonSshProfileStore : ISshProfileStore
             Enabled = mux.Enabled,
             ControlMasterAuto = mux.ControlMasterAuto,
             ControlPath = mux.ControlPath?.Trim() ?? string.Empty,
-            ControlPersistSeconds = mux.ControlPersistSeconds
+            ControlPersistSeconds = mux.ControlPersistSeconds,
+            PersistRemoteSessions = mux.PersistRemoteSessions,
+            RemoteDaemonPath = mux.RemoteDaemonPath?.Trim() ?? string.Empty,
+            RemoteDaemonVersion = mux.RemoteDaemonVersion?.Trim() ?? string.Empty,
+            RemoteDaemonRid = mux.RemoteDaemonRid?.Trim() ?? string.Empty
         };
     }
 
@@ -373,7 +377,11 @@ public sealed class JsonSshProfileStore : ISshProfileStore
             Enabled = mux.Enabled,
             ControlMasterAuto = mux.ControlMasterAuto,
             ControlPath = mux.ControlPath,
-            ControlPersistSeconds = mux.ControlPersistSeconds
+            ControlPersistSeconds = mux.ControlPersistSeconds,
+            PersistRemoteSessions = mux.PersistRemoteSessions,
+            RemoteDaemonPath = mux.RemoteDaemonPath,
+            RemoteDaemonVersion = mux.RemoteDaemonVersion,
+            RemoteDaemonRid = mux.RemoteDaemonRid
         };
     }
 

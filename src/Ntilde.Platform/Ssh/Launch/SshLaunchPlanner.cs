@@ -60,6 +60,58 @@ public sealed class SshLaunchPlanner : ISshLaunchPlanner
         };
     }
 
+    /// <summary>
+    /// The plan for exactly <paramref name="profile"/>, which need not be what the store holds now: a persistent SSH
+    /// connection keeps the destination it first connected to after its profile is edited or deleted (multiplexer Phase 4,
+    /// codex D2). Unless <paramref name="selfContained"/>, when the store's profile with that id compiles to the same
+    /// <c>Host</c> block and has the same extra arguments, this is <see cref="Plan(Guid, IReadOnlyList{string}?)"/>. With
+    /// <paramref name="selfContained"/> - a pinned connection's every attempt (residual R4) - or otherwise, it reads no
+    /// config file, so a save that rewrites the shared generated file between this check and ssh reading it cannot
+    /// redirect it:
+    /// <c>["-F", "none", alias, ...ExtraSshArgs, ...extraArgs, "-o", option, ...]</c>, with the profile's block
+    /// (<see cref="IOpenSshConfigCompiler.BuildHostOptions"/>) as <c>-o</c> options - after the extra arguments, so
+    /// those win over them as they win over a config file (ssh keeps an option's first value). It writes nothing:
+    /// the shared generated file is every other launch's, compiled from the store, and must not describe a target
+    /// the store no longer has.
+    /// </summary>
+    public SshLaunchPlan PlanFor(SshProfile profile, IReadOnlyList<string>? extraArgs = null, bool selfContained = false)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        IReadOnlyList<string> options = _configCompiler.BuildHostOptions(profile);
+        if (!selfContained
+            && _profileStore.GetProfile(profile.Id) is { } stored
+            && string.Equals(stored.ExtraSshArgs, profile.ExtraSshArgs, StringComparison.Ordinal)
+            && _configCompiler.BuildHostOptions(stored).SequenceEqual(options, StringComparer.Ordinal))
+        {
+            return Plan(profile.Id, extraArgs);
+        }
+
+        string alias = OpenSshConfigCompiler.BuildAlias(profile.Id);
+        var args = new List<string> { "-F", "none", alias };
+        args.AddRange(ParseExtraArguments(profile.ExtraSshArgs));
+        if (extraArgs != null)
+        {
+            args.AddRange(extraArgs.Where(arg => !string.IsNullOrWhiteSpace(arg)));
+        }
+
+        foreach (string option in options)
+        {
+            args.Add("-o");
+            args.Add(option);
+        }
+
+        return new SshLaunchPlan
+        {
+            ProfileId = profile.Id,
+            SshExecutablePath = _sshPathResolver(),
+            ConfigFilePath = "none",
+            Alias = alias,
+            Arguments = args.ToArray(),
+            WorkingDirectory = string.IsNullOrWhiteSpace(profile.WorkingDirectory) ? null : profile.WorkingDirectory
+        };
+    }
+
     public static string ResolveSshExecutablePath()
     {
         if (TryFindInPath(out string? pathFromPath))

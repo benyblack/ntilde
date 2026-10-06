@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Pty;
 using Ntilde.Shell.Mux;
@@ -402,7 +403,7 @@ public sealed class MuxPaneTests : IDisposable
     {
         MuxClientSession first = StartPane();
         Guid id = first.Id;
-        Assert.Equal("test", _pane!.MuxEndpoint);
+        Assert.Equal("local", _pane!.MuxEndpoint); // the endpoint identity (Phase 4 spec §5), not the host's label
         _pane.Dispose();
 
         _pane = new TerminalPane { MuxSessionIdToRestore = id };
@@ -568,7 +569,7 @@ public sealed class MuxPaneTests : IDisposable
     private System.Collections.Generic.List<(string Title, string Message)> RecordNotices()
     {
         var notices = new System.Collections.Generic.List<(string Title, string Message)>();
-        _pane!.PersistenceNotice += (_, title, message) => notices.Add((title, message));
+        _pane!.PersistenceNotice += (_, title, message, _) => notices.Add((title, message));
         return notices;
     }
 

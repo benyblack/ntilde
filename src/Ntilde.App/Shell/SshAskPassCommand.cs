@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Avalonia.Themes.Fluent;
 using Ntilde.Shell;
 using Ntilde.Platform;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.VT;
 
 namespace Ntilde;
@@ -15,12 +16,47 @@ namespace Ntilde;
 internal static class SshAskPassCommand
 {
     internal const string ModeFlag = "--ssh-askpass";
-    internal const string ModeEnvironmentVariable = "NTILDE_SSH_ASKPASS";
-    internal const string ProfileIdEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_ID";
-    internal const string ProfileNameEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_NAME";
-    internal const string ProfileUserEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_USER";
-    internal const string ProfileHostEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_HOST";
-    internal const string ProfilePortEnvironmentVariable = "NTILDE_SSH_ASKPASS_PROFILE_PORT";
+
+    // The environment contract lives with the side that sets it (the exec transport, Phase 4 spec
+    // §8.2); these names stay so the helper reads exactly what the transport writes.
+    internal const string ModeEnvironmentVariable = SshAskPassEnvironment.ModeVariable;
+    internal const string ProfileIdEnvironmentVariable = SshAskPassEnvironment.ProfileIdVariable;
+    internal const string ProfileNameEnvironmentVariable = SshAskPassEnvironment.ProfileNameVariable;
+    internal const string ProfileUserEnvironmentVariable = SshAskPassEnvironment.ProfileUserVariable;
+    internal const string ProfileHostEnvironmentVariable = SshAskPassEnvironment.ProfileHostVariable;
+    internal const string ProfilePortEnvironmentVariable = SshAskPassEnvironment.ProfilePortVariable;
+
+    /// <summary>The app's own executable name, without its extension: the GUI answers askpass too (Program.cs).</summary>
+    private const string AppExecutableName = "Ntilde";
+
+    /// <summary>The CLI shim built next to the app (BuildCliShim), which answers askpass the same way.</summary>
+    private const string CliExecutableName = "Ntilde.Cli";
+
+    /// <summary>
+    /// The askpass helper an OpenSSH exec channel names (Phase 4 spec §8.2), for this process: see
+    /// <see cref="LocateHelper(string?, string, Func{string, bool})"/>.
+    /// </summary>
+    internal static string? LocateHelper() => LocateHelper(Environment.ProcessPath, AppContext.BaseDirectory, File.Exists);
+
+    /// <summary>
+    /// The running app itself when <paramref name="processPath"/> is the ntilde executable; otherwise (a
+    /// dev build under a test host, say) <c>Ntilde.Cli</c> in <paramref name="baseDirectory"/> when it
+    /// exists; otherwise null, and ssh cannot prompt.
+    /// </summary>
+    internal static string? LocateHelper(string? processPath, string baseDirectory, Func<string, bool> fileExists)
+    {
+        ArgumentNullException.ThrowIfNull(fileExists);
+
+        if (!string.IsNullOrEmpty(processPath)
+            && string.Equals(Path.GetFileNameWithoutExtension(processPath), AppExecutableName, StringComparison.OrdinalIgnoreCase))
+        {
+            return processPath;
+        }
+
+        if (string.IsNullOrEmpty(baseDirectory)) return null;
+        string cli = Path.Combine(baseDirectory, OperatingSystem.IsWindows() ? CliExecutableName + ".exe" : CliExecutableName);
+        return fileExists(cli) ? cli : null;
+    }
 
     public static bool IsSupportedCliMode(string[] args)
     {
@@ -40,7 +76,7 @@ internal static class SshAskPassCommand
             string prompt = GetPrompt(args);
             TerminalProfile profile = CreateProfileFromEnvironment();
 
-            if (IsPasswordPrompt(prompt))
+            if (IsTargetPasswordPrompt(prompt, profile))
             {
                 string? vaultPassword = new VaultService().GetSshPasswordForProfile(profile);
                 if (!string.IsNullOrEmpty(vaultPassword))
@@ -117,6 +153,46 @@ internal static class SshAskPassCommand
     private static bool IsPasswordPrompt(string prompt)
     {
         return prompt.Contains("password", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="prompt"/> asks for the password of the profile's own target: the only
+    /// prompt the profile's vault password may answer, or be remembered from.
+    /// </summary>
+    /// <remarks>
+    /// Every ssh the transport starts inherits the askpass environment, including the <c>ssh -W</c>
+    /// that ProxyJump runs for each hop. Answering any "password" prompt would hand the target's
+    /// password to a jump host (and fail the jump's own auth), so the prompt must name the target,
+    /// as OpenSSH writes it, anchored at the start where only ssh - never a server - writes:
+    /// <list type="bullet">
+    /// <item>password auth: <c>&lt;user&gt;@&lt;host&gt;'s password: </c>;</item>
+    /// <item>keyboard-interactive (OpenSSH 8.4+): <c>(&lt;user&gt;@&lt;host&gt;) </c> then the server's
+    /// own text, which must ask for a password.</item>
+    /// </list>
+    /// ssh writes the host as the config's HostName, lowercased, hence the case-insensitive match.
+    /// A profile with no user (ssh then uses the local account) or no host never auto-fills.
+    /// </remarks>
+    internal static bool IsTargetPasswordPrompt(string prompt, TerminalProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(prompt);
+        ArgumentNullException.ThrowIfNull(profile);
+
+        string user = profile.SshUser?.Trim() ?? string.Empty;
+        string host = profile.SshHost?.Trim() ?? string.Empty;
+        if (user.Length == 0 || host.Length == 0)
+        {
+            return false;
+        }
+
+        string target = $"{user}@{host}";
+        if (prompt.StartsWith(target + "'s password", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        string keyboardInteractive = $"({target}) ";
+        return prompt.StartsWith(keyboardInteractive, StringComparison.OrdinalIgnoreCase) &&
+               prompt.AsSpan(keyboardInteractive.Length).Contains("password", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSecretPrompt(string prompt)
@@ -216,7 +292,8 @@ internal static class SshAskPassCommand
             _rememberPassword = new CheckBox
             {
                 Content = "Remember password",
-                IsVisible = IsPasswordPrompt(_state.Prompt) && _state.Profile.Id != Guid.Empty
+                // Only the target's password is the profile's: a jump host's must not be stored as it.
+                IsVisible = IsTargetPasswordPrompt(_state.Prompt, _state.Profile) && _state.Profile.Id != Guid.Empty
             };
 
             Content = BuildContent();

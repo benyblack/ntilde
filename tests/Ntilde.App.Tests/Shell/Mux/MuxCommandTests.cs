@@ -1,37 +1,25 @@
-using System.Text.Json;
+using System.Runtime.InteropServices;
 using Ntilde.Mux;
+using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
-using Ntilde.Mux.TextClient;
 using Ntilde.Shell.Mux;
 
 namespace Ntilde.Tests.Shell.Mux;
 
+/// <summary>
+/// The App's adapter over <c>Ntilde.Mux.Cli</c> (Phase 4 spec §6.4): dispatch, the usage text it
+/// must keep, the absence of the old console hint, and the root override reaching serve. The verbs
+/// themselves are tested where they live, in Ntilde.Mux.Tests' <c>MuxCliTests</c>.
+/// </summary>
 public sealed class MuxCommandTests : IDisposable
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "nmxc" + Guid.NewGuid().ToString("N")[..8]);
-    private MuxDaemonHost? _host;
 
     public void Dispose()
     {
-        _host?.Dispose();
         try { Directory.Delete(_root, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
-    }
-
-    private async Task<Guid> StartDaemonWithOneSessionAsync()
-    {
-        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
-        _host = new MuxDaemonHost(server, new MuxDaemonOptions
-        {
-            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
-            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
-            IdleExitAfter = TimeSpan.Zero,
-        });
-        _host.Start();
-        using Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5));
-        using MuxClient c = await MuxClient.ConnectAsync(s, null, Ct);
-        return await MuxTestHost.SpawnAsync(c);
     }
 
     private (int Code, string Out, string Err) Run(params string[] args)
@@ -43,261 +31,6 @@ public sealed class MuxCommandTests : IDisposable
 
     [Fact] public void Dispatch_matches_only_mux() { Assert.True(MuxCommand.IsSupportedCliMode(["mux", "ls"])); Assert.False(MuxCommand.IsSupportedCliMode(["backup"])); Assert.False(MuxCommand.IsSupportedCliMode([])); }
     [Fact] public void Serve_is_recognised() { Assert.True(MuxCommand.IsServe(["mux", "serve"])); Assert.False(MuxCommand.IsServe(["mux", "ls"])); }
-    [Fact] public void Unknown_verb_is_exit_2() => Assert.Equal(2, Run("mux", "frobnicate").Code);
-    [Fact] public void Missing_verb_is_exit_2() => Assert.Equal(2, Run("mux").Code);
-
-    [Fact]
-    public void Ls_without_a_daemon_is_exit_1_with_a_message()
-    {
-        var (code, _, err) = Run("mux", "ls");
-        Assert.Equal(1, code);
-        Assert.Contains("No multiplexer is running", err);
-    }
-
-    [Fact]
-    public async Task Ls_lists_the_running_session()
-    {
-        Guid id = await StartDaemonWithOneSessionAsync();
-        var (code, output, _) = Run("mux", "ls");
-        Assert.Equal(0, code);
-        Assert.Contains(id.ToString(), output);
-        Assert.Contains("running", output);
-    }
-
-    [Fact]
-    public async Task Ls_json_is_a_ListSessionsResult()
-    {
-        Guid id = await StartDaemonWithOneSessionAsync();
-        var (code, output, _) = Run("mux", "ls", "--json");
-        Assert.Equal(0, code);
-        ListSessionsResult r = JsonSerializer.Deserialize(output, MuxJsonContext.Default.ListSessionsResult)!;
-        Assert.Contains(r.Sessions, s => s.SessionId == id);
-    }
-
-    [Fact]
-    public async Task Kill_unknown_session_is_exit_1_and_known_is_0()
-    {
-        Guid id = await StartDaemonWithOneSessionAsync();
-        Assert.Equal(1, Run("mux", "kill", Guid.NewGuid().ToString()).Code);
-        Assert.Equal(2, Run("mux", "kill", "not-a-guid").Code);
-        Assert.Equal(0, Run("mux", "kill", id.ToString()).Code);
-    }
-
-    [Fact]
-    public async Task Kill_server_stops_the_daemon()
-    {
-        await StartDaemonWithOneSessionAsync();
-        Assert.Equal(0, Run("mux", "kill-server").Code);
-        Assert.Equal("shutdown", await _host!.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
-    }
-
-    /// <summary>
-    /// Final-fix item 6: the daemon answered <c>shutdown</c> but its process is still alive after
-    /// the 5 s wait - kill-server must say so and fail, not report success. The in-process daemon
-    /// advertises a separate long-running child process as its pid, which never exits on its own.
-    /// </summary>
-    [Fact]
-    public void Kill_server_fails_when_the_daemon_process_outlives_the_wait()
-    {
-        using System.Diagnostics.Process stand_in = StartLongRunningProcess();
-        try
-        {
-            var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
-            _host = new MuxDaemonHost(server, new MuxDaemonOptions
-            {
-                Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
-                DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
-                IdleExitAfter = TimeSpan.Zero,
-                Pid = stand_in.Id,
-                ProcessName = stand_in.ProcessName,
-            });
-            _host.Start();
-
-            var (code, output, err) = Run("mux", "kill-server");
-
-            Assert.Equal(1, code);
-            Assert.Contains("Multiplexer did not stop within 5 s.", err);
-            Assert.DoesNotContain("Multiplexer stopped.", output);
-        }
-        finally
-        {
-            try { stand_in.Kill(); } catch (InvalidOperationException) { }
-        }
-    }
-
-    [Fact]
-    public void Kill_server_success_prints_stopped_and_exits_0()
-    {
-        StartDaemonWithOneSessionAsync().GetAwaiter().GetResult();
-        var (code, output, err) = Run("mux", "kill-server");
-        Assert.Equal(0, code);
-        Assert.Contains("Multiplexer stopped.", output);
-        Assert.Equal(string.Empty, err);
-        // PR #489 CI: kill-server's own polling used to block the daemon's descriptor delete on
-        // Windows (sharing violation), leaving it behind so the 5 s wait timed out (~3% of runs).
-        Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)));
-    }
-
-    private static System.Diagnostics.Process StartLongRunningProcess()
-    {
-        var psi = OperatingSystem.IsWindows()
-            ? new System.Diagnostics.ProcessStartInfo("ping", "-n 60 127.0.0.1")
-            : new System.Diagnostics.ProcessStartInfo("sleep", "60");
-        psi.UseShellExecute = false;
-        psi.CreateNoWindow = true;
-        psi.RedirectStandardOutput = true;
-        return System.Diagnostics.Process.Start(psi)!;
-    }
-
-    [Theory]
-    [InlineData(new[] { "mux", "serve" }, 10, false)]
-    [InlineData(new[] { "mux", "serve", "--idle-exit-minutes", "0" }, 0, false)]
-    [InlineData(new[] { "mux", "serve", "--foreground", "--idle-exit-minutes", "3" }, 3, true)]
-    public void Serve_arguments_parse(string[] args, int minutes, bool foreground)
-    {
-        Assert.True(MuxCommand.TryParseServe(args, out MuxServeOptions o, out _));
-        Assert.Equal(TimeSpan.FromMinutes(minutes), o.IdleExitAfter);
-        Assert.Equal(foreground, o.Foreground);
-    }
-
-    [Theory]
-    [InlineData("--idle-exit-minutes")]
-    [InlineData("--idle-exit-minutes", "-1")]
-    [InlineData("--bogus")]
-    public void Bad_serve_arguments_are_rejected(params string[] extra)
-    {
-        Assert.False(MuxCommand.TryParseServe(["mux", "serve", .. extra], out _, out string? error));
-        Assert.NotNull(error);
-    }
-
-    /// <summary>A daemon of another protocol version: the handshake fails, only the pid can stop it.</summary>
-    private System.Diagnostics.Process StartForeignVersionDaemon()
-    {
-        System.Diagnostics.Process standIn = StartLongRunningProcess();
-        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions
-        {
-            MinProtocolVersion = 99,
-            MaxProtocolVersion = 99,
-            ForceConPtyFiltering = false,
-        });
-        _host = new MuxDaemonHost(server, new MuxDaemonOptions
-        {
-            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
-            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
-            IdleExitAfter = TimeSpan.Zero,
-            Pid = standIn.Id,
-            ProcessName = standIn.ProcessName,
-        });
-        _host.Start();
-        return standIn;
-    }
-
-    [Fact]
-    public void Kill_server_against_another_protocol_version_names_the_pid_and_needs_force()
-    {
-        using System.Diagnostics.Process standIn = StartForeignVersionDaemon();
-        try
-        {
-            var (code, output, err) = Run("mux", "kill-server");
-
-            Assert.Equal(1, code);
-            Assert.Contains($"pid {standIn.Id}", err);
-            Assert.Contains("--force", err);
-            Assert.DoesNotContain("terminated", output);
-            Assert.False(standIn.HasExited);
-        }
-        finally
-        {
-            try { standIn.Kill(); } catch (InvalidOperationException) { }
-        }
-    }
-
-    [Fact]
-    public void Kill_server_force_terminates_a_verified_daemon_of_another_version()
-    {
-        using System.Diagnostics.Process standIn = StartForeignVersionDaemon();
-        try
-        {
-            var (code, output, err) = Run("mux", "kill-server", "--force");
-
-            Assert.Equal(0, code);
-            Assert.Contains($"pid {standIn.Id}", output);
-            Assert.True(standIn.WaitForExit(10_000), "the daemon process was terminated");
-            Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)), "the stale descriptor is gone");
-            Assert.Equal(string.Empty, err);
-        }
-        finally
-        {
-            try { standIn.Kill(); } catch (InvalidOperationException) { }
-        }
-    }
-
-    [Fact]
-    public void The_pid_fallback_refuses_a_process_whose_name_does_not_match()
-    {
-        using System.Diagnostics.Process standIn = StartLongRunningProcess();
-        try
-        {
-            string path = MuxDiscovery.GetDescriptorPath(_root);
-            MuxDiscovery.WriteDescriptor(path, new MuxEndpointDescriptor
-            {
-                MinVersion = 99,
-                MaxVersion = 99,
-                Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
-                Pid = standIn.Id,
-                ProcessName = "not-the-daemon",   // a recycled pid
-            });
-            var o = new StringWriter();
-            var e = new StringWriter();
-
-            int code = MuxCommand.KillByPid(path, force: true, o, e);
-
-            Assert.Equal(1, code);
-            Assert.False(standIn.HasExited, "an unverified process is never killed");
-        }
-        finally
-        {
-            try { standIn.Kill(); } catch (InvalidOperationException) { }
-        }
-    }
-
-    [Fact]
-    public void Kill_server_rejects_unknown_options() => Assert.Equal(2, Run("mux", "kill-server", "--bogus").Code);
-
-    [Fact]
-    public void The_console_probe_verdict_needs_raw_applied_restored_and_a_stable_size()
-    {
-        const string raw = "speed 38400 baud; -icanon -isig -echo";
-        const string cooked = "speed 38400 baud; icanon isig echo";
-
-        Assert.True(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (80, 24), writeOk: null));
-        Assert.False(MuxCommand.ProbeVerdict(cooked, cooked, (80, 24), (80, 24), writeOk: null));   // raw mode not applied
-        Assert.False(MuxCommand.ProbeVerdict(raw, raw, (80, 24), (80, 24), writeOk: null));         // not restored
-        Assert.False(MuxCommand.ProbeVerdict(raw, cooked, (80, 24), (1, 1), writeOk: null));        // the size broke while raw
-        Assert.False(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30), writeOk: false));    // Windows: the marker did not print as written
-        Assert.True(MuxCommand.ProbeVerdict(null, null, (120, 30), (120, 30), writeOk: true));     // Windows: no stty, the write measured
-    }
-
-    [Fact]
-    public void The_console_probe_reads_the_Windows_input_mode_back_instead_of_assuming_raw()
-    {
-        // DescribeInputMode's words: line input is icanon, processed input is isig.
-        const string raw = "input=0x03E0 -icanon -isig -echo vtinput";
-        const string noVt = "input=0x01E0 -icanon -isig -echo -vtinput";
-        const string cooked = "input=0x0992 icanon -isig -echo -vtinput";
-
-        Assert.True(MuxCommand.ProbeVerdict(raw, null, (120, 30), (120, 30), writeOk: true));
-        Assert.False(MuxCommand.ProbeVerdict(noVt, null, (120, 30), (120, 30), writeOk: true));   // keys would not arrive as VT
-        Assert.False(MuxCommand.ProbeVerdict(cooked, null, (120, 30), (120, 30), writeOk: true)); // line mode holds the chord until Enter
-        Assert.False(MuxCommand.ProbeVerdict(raw, MuxCommand.RestoreMismatch, (120, 30), (120, 30), writeOk: true));
-    }
-
-    [Fact]
-    public void The_probe_verb_is_hidden_from_the_usage()
-    {
-        var (_, _, err) = Run("mux", "frobnicate");
-        Assert.DoesNotContain("probe-console", err, StringComparison.Ordinal);
-    }
 
     [Fact]
     public void Attach_is_recognised()
@@ -307,35 +40,136 @@ public sealed class MuxCommandTests : IDisposable
         Assert.False(MuxCommand.IsAttach(["backup"]));
     }
 
+    // The App's text before the verbs moved to Ntilde.Mux.Cli (Phase 4 Task 9), copied verbatim from
+    // the old MuxCommand. The adapter prints it with the platform's newline throughout: on Windows
+    // that is the old output byte for byte (these literals carry the checkout's CRLF, as the old ones
+    // did); elsewhere the old output had that CRLF inside the text, which the CLI now normalises. The
+    // comparisons below are exact, so a stray \r on Linux fails them.
+    private const string PreMoveUsageLiteral = """
+        Usage:
+          ntilde mux serve [--idle-exit-minutes N] [--foreground]
+          ntilde mux ls [--json]
+          ntilde mux kill <sessionId>
+          ntilde mux kill-server [--force]
+          ntilde mux attach <sessionId|prefix> [--read-only]
+        """;
+
+    private static readonly string PreMoveUsage = PreMoveUsageLiteral.ReplaceLineEndings();
+    private static readonly string AttachUsage = AttachUsageLiteral.ReplaceLineEndings();
+
+    // The pre-move attach help, less its Windows paragraph: the `cmd /c` workaround went when ntilde.com
+    // arrived (Phase 4 spec §11.4), which waits like any console program, so the prompt no longer competes.
+    private const string AttachUsageLiteral = """
+        Usage: ntilde mux attach <sessionId|prefix> [--read-only]
+
+          Shows a multiplexer session in this terminal. The id (or a unique prefix of at least
+          4 characters) comes from `ntilde mux ls`. Detach with Ctrl+\ then d (Ctrl may stay held);
+          Ctrl+\ Ctrl+\ sends a literal Ctrl+\. --read-only shows the session without sending
+          input (a convenience, not a security boundary). Exit codes: 0 detached, 1 the session
+          ended, 2 an error.
+        """;
+
     [Theory]
-    [InlineData("mux", "attach")]
-    [InlineData("mux", "attach", "abcd", "efgh")]
-    [InlineData("mux", "attach", "--bogus", "abcd")]
-    public void Bad_attach_arguments_are_exit_2(params string[] args) => Assert.Equal(2, Run(args).Code);
-
-    [Fact]
-    public void Attach_without_a_daemon_is_exit_2()
+    [InlineData("mux")]
+    [InlineData("mux", "frobnicate")]
+    [InlineData("mux", "ls", "--bogus")]
+    public void The_usage_text_is_unchanged(params string[] args)
     {
-        var (code, _, err) = Run("mux", "attach", Guid.NewGuid().ToString());
+        var (code, output, err) = Run(args);
+
         Assert.Equal(2, code);
-        Assert.Contains("No multiplexer is running", err);
+        Assert.Equal(string.Empty, output);
+        Assert.Equal(PreMoveUsage + Environment.NewLine, err);
     }
 
     [Fact]
-    public async Task Attach_to_an_unknown_session_is_exit_2()
+    public void An_empty_command_line_prints_the_usage()
     {
-        await StartDaemonWithOneSessionAsync();
-        var (code, _, err) = Run("mux", "attach", Guid.NewGuid().ToString());
+        var (code, _, err) = Run();
+
         Assert.Equal(2, code);
-        Assert.Contains("No session", err);
+        Assert.Equal(PreMoveUsage + Environment.NewLine, err);
     }
 
     [Fact]
-    public async Task Attach_by_prefix_renders_and_detaches_with_the_chord()
+    public void A_serve_parse_error_keeps_its_text()
     {
-        Guid id = await StartDaemonWithOneSessionAsync();
+        var (code, _, err) = Run("mux", "serve", "--bogus");
+
+        Assert.Equal(2, code);
+        Assert.Equal("Unknown option '--bogus'." + Environment.NewLine + PreMoveUsage + Environment.NewLine, err);
+    }
+
+    [Fact]
+    public void The_attach_help_is_the_pre_move_text_without_the_workaround()
+    {
+        var (code, output, err) = Run("mux", "attach", "--help");
+
+        Assert.Equal(0, code);
+        Assert.Equal(AttachUsage + Environment.NewLine, output);
+        Assert.Equal(string.Empty, err);
+    }
+
+    [Fact]
+    public void Attach_usage_no_longer_mentions_cmd_c()
+    {
+        var (_, help, _) = Run("mux", "attach", "--help");
+        var (_, _, usage) = Run("mux", "attach");
+
+        Assert.DoesNotContain("cmd /c", help, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cmd /c", usage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void The_probe_console_usage_is_unchanged()
+    {
+        var (code, _, err) = Run("mux", "probe-console", "--bogus");
+
+        Assert.Equal(2, code);
+        Assert.Equal("usage: ntilde mux probe-console [--keys]" + Environment.NewLine, err);
+    }
+
+    /// <summary>The adapter offers each verb: with no daemon at the root, each one gets as far as looking for it.</summary>
+    [Theory]
+    [InlineData(1, "mux", "ls")]
+    [InlineData(1, "mux", "kill", "00000000-0000-0000-0000-000000000001")]
+    [InlineData(1, "mux", "kill-server")]
+    [InlineData(2, "mux", "attach", "abcd1234")]
+    public void Every_App_verb_reaches_its_body(int exitCode, params string[] args)
+    {
+        var (code, _, err) = Run(args);
+
+        Assert.Equal(exitCode, code);
+        Assert.Equal("No multiplexer is running." + Environment.NewLine, err);
+    }
+
+    /// <summary>
+    /// Phase 3 printed a <c>cmd /c</c> hint here, before raw mode, for the GUI exe on a parent console - the
+    /// one case that shared the keyboard with the prompt. ntilde.com ended that (spec §11.4), so an attach
+    /// in exactly that case now writes nothing to stderr.
+    /// </summary>
+    [Fact]
+    public async Task Attach_from_a_parent_console_prints_no_hint()
+    {
+        var server = new MuxServer(new ScriptedSessionFactory(), new MuxServerOptions { ForceConPtyFiltering = false });
+        using var daemon = new MuxDaemonHost(server, new MuxDaemonOptions
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            DescriptorPath = MuxDiscovery.GetDescriptorPath(_root),
+            IdleExitAfter = TimeSpan.Zero,
+        });
+        daemon.Start();
+        Guid id;
+        using (Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5)))
+        using (MuxClient c = await MuxClient.ConnectAsync(s, null, Ct))
+        {
+            id = await MuxTestHost.SpawnAsync(c);
+        }
+
         using var console = new FakeConsoleSurface(80, 24);
-        MuxCommand.ConsoleFactoryForTest = () => console;
+        bool previous = MuxCommand.AttachedToParentConsole;
+        MuxCommand.AttachedToParentConsole = true;   // as Program.cs sets it from PrepareInteractive
+        MuxCli.ConsoleFactoryForTest = () => console;
         try
         {
             Task<(int Code, string Out, string Err)> run = Task.Run(() => Run("mux", "attach", id.ToString("N")[..8]), Ct);
@@ -345,121 +179,66 @@ public sealed class MuxCommandTests : IDisposable
             var (code, _, err) = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
             Assert.Equal(0, code);
             Assert.Equal(string.Empty, err);
-            Assert.Contains($"[detached from {id}]", console.Output, StringComparison.Ordinal);
-            Assert.False(console.IsRaw);
         }
         finally
         {
-            MuxCommand.ConsoleFactoryForTest = null;
+            MuxCli.ConsoleFactoryForTest = null;
+            MuxCommand.AttachedToParentConsole = previous;
         }
     }
 
+    /// <summary>
+    /// The adapter's root override reaches <c>serve</c> (Phase 4 spec §6.4): the daemon advertises
+    /// under it, and <c>kill-server</c> at the same root stops it.
+    /// </summary>
     [Fact]
-    public async Task Attach_from_inside_the_target_session_is_refused_before_any_console_is_touched()
+    public async Task Serve_honours_the_root_override()
     {
-        // Drawing a session into its own terminal copies each frame into the screen it is copying:
-        // a feedback loop that blacked out the pane in manual testing.
-        Guid id = await StartDaemonWithOneSessionAsync();
-        bool surfaceCreated = false;
-        MuxCommand.ConsoleFactoryForTest = () =>
-        {
-            surfaceCreated = true;
-            return new FakeConsoleSurface(80, 24);
-        };
-        string? previous = Environment.GetEnvironmentVariable(MuxServer.SessionEnvironmentVariable);
-        Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, id.ToString("D"));
+        // serve runs in this process: keep what it rebinds - the console writers (--foreground binds
+        // the console), the PTY log sink, ConPTY's passthrough switch - from leaking into later tests.
+        // The binding also attaches this process to its parent's console on Windows (AttachConsole(-1)).
+        // A test host normally has none, and left attached, every later ConPTY spawn in this process
+        // would take the passthrough path (rusty_pty's host_has_real_console: GetConsoleWindow() != 0).
+        bool hadConsoleWindow = OperatingSystem.IsWindows() && GetConsoleWindow() != IntPtr.Zero;
+        TextWriter consoleOut = Console.Out, consoleError = Console.Error;
+        Action<Ntilde.Pty.PtyLogLevel, string>? ptySink = Ntilde.Pty.PtyLogger.Sink;
+        string? noPassthrough = Environment.GetEnvironmentVariable("NTILDE_PTY_NO_PASSTHROUGH");
+        var serveLog = new StringWriter();
+        TextWriter serveErr = TextWriter.Synchronized(serveLog);
+        Task<int> serve = Task.Run(() => MuxCommand.Execute(["mux", "serve", "--foreground", "--idle-exit-minutes", "0"], TextWriter.Null, serveErr, _root), Ct);
         try
         {
-            var (code, _, err) = Run("mux", "attach", id.ToString("N")[..8]);
+            await TestWait.UntilAsync(() => File.Exists(MuxDiscovery.GetDescriptorPath(_root)) || serve.IsCompleted, "serve advertised itself under the override root");
+            Assert.False(serve.IsCompleted, $"serve exited early: {serveLog}");
 
-            Assert.Equal(2, code);
-            Assert.Equal(
-                $"mux: you are inside session {id.ToString("N")[..8]} already; attaching to it from itself would loop. Use another terminal." + Environment.NewLine,
-                err);
-            Assert.False(surfaceCreated);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, previous);
-            MuxCommand.ConsoleFactoryForTest = null;
-        }
-    }
+            var (code, output, err) = Run("mux", "kill-server");
 
-    [Fact]
-    public async Task Attach_from_inside_a_different_session_proceeds()
-    {
-        Guid id = await StartDaemonWithOneSessionAsync();
-        using var console = new FakeConsoleSurface(80, 24);
-        MuxCommand.ConsoleFactoryForTest = () => console;
-        string? previous = Environment.GetEnvironmentVariable(MuxServer.SessionEnvironmentVariable);
-        Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, Guid.NewGuid().ToString("D"));
-        try
-        {
-            Task<(int Code, string Out, string Err)> run = Task.Run(() => Run("mux", "attach", id.ToString()), Ct);
-            await TestWait.UntilAsync(() => console.IsRaw, "the text client took the console");
-            console.Type("\u001cd");
-
-            var (code, _, err) = await run.WaitAsync(TimeSpan.FromSeconds(10), Ct);
             Assert.Equal(0, code);
+            Assert.Contains("Multiplexer stopped.", output, StringComparison.Ordinal);
             Assert.Equal(string.Empty, err);
+            Assert.Equal(0, await serve.WaitAsync(TimeSpan.FromSeconds(10), Ct));
         }
         finally
         {
-            Environment.SetEnvironmentVariable(MuxServer.SessionEnvironmentVariable, previous);
-            MuxCommand.ConsoleFactoryForTest = null;
+            if (!serve.IsCompleted) Run("mux", "kill-server");
+            Console.SetOut(consoleOut);
+            Console.SetError(consoleError);
+            Ntilde.Pty.PtyLogger.Sink = ptySink;
+            Environment.SetEnvironmentVariable("NTILDE_PTY_NO_PASSTHROUGH", noPassthrough);
+            // Undo only what serve did - a console window that was not there before. A console the
+            // host already had, with or without a window, is left alone.
+            if (OperatingSystem.IsWindows() && !hadConsoleWindow && GetConsoleWindow() != IntPtr.Zero) FreeConsole();
         }
+
+        if (OperatingSystem.IsWindows()) Assert.Equal(hadConsoleWindow, GetConsoleWindow() != IntPtr.Zero);
     }
 
-    [Fact]
-    public void A_session_prefix_must_be_unique_and_at_least_4_characters()
-    {
-        var a = new SessionSummary { SessionId = new Guid("abcd0000-0000-0000-0000-000000000001") };
-        var b = new SessionSummary { SessionId = new Guid("abcd0000-0000-0000-0000-000000000002") };
+    [DllImport("kernel32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern IntPtr GetConsoleWindow();
 
-        Assert.True(MuxCommand.TryResolveSession("abcd0000000000000000000000000001", [a, b], out Guid exact, out _));
-        Assert.Equal(a.SessionId, exact);
-        Assert.False(MuxCommand.TryResolveSession("abcd", [a, b], out _, out string? ambiguous));
-        Assert.Contains("matches 2", ambiguous);
-        Assert.False(MuxCommand.TryResolveSession("abc", [a, b], out _, out string? tooShort));
-        Assert.Contains("at least 4", tooShort);
-        Assert.True(MuxCommand.TryResolveSession("abcd0000-0000-0000-0000-000000000002", [a, b], out Guid full, out _));
-        Assert.Equal(b.SessionId, full);
-    }
-
-    [Theory]
-    [InlineData(true, true, true)]     // the GUI exe, attached to a parent console: the only case that shares the keyboard
-    [InlineData(true, false, false)]   // allocated its own console (Explorer), or Ntilde.Cli.exe
-    [InlineData(false, true, false)]   // not Windows
-    public void The_console_hint_is_printed_only_for_the_GUI_exe_on_a_parent_console(bool isWindows, bool attachedToParent, bool expected)
-    {
-        string? hint = MuxCommand.AttachConsoleHint(isWindows, attachedToParent, "abcd1234");
-
-        Assert.Equal(expected, hint is not null);
-        if (expected) Assert.Equal("mux: if keystrokes are lost, run via cmd /c ntilde mux attach abcd1234 (ignore if already under cmd /c)", hint);
-    }
-
-    [Fact]
-    public void Attach_help_names_the_cmd_workaround()
-    {
-        var (code, output, _) = Run("mux", "attach", "--help");
-
-        Assert.Equal(0, code);
-        Assert.Contains("cmd /c ntilde mux attach <id>", output, StringComparison.Ordinal);
-        Assert.Contains("Ctrl+\\ then d (Ctrl may stay held)", output, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Ls_marks_user_detached_sessions()
-    {
-        Guid id = await StartDaemonWithOneSessionAsync();
-        using Stream s = Ntilde.Mux.Transport.MuxEndpointConnector.Connect(MuxDiscovery.GetDefaultEndpoint(_root), TimeSpan.FromSeconds(5));
-        using MuxClient c = await MuxClient.ConnectAsync(s, null, Ct);
-        MuxClientSession session = c.OpenSession(id, "scripted");
-        await session.AttachAsync(0, MuxTestHost.DefaultPresentation, Ct);
-
-        session.Detach(userDetached: true);
-
-        await TestWait.UntilAsync(() => Run("mux", "ls").Out.Contains("running, detached", StringComparison.Ordinal), "ls marks it");
-        Assert.Contains("\"detachedByUser\":true", Run("mux", "ls", "--json").Out, StringComparison.Ordinal);
-    }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FreeConsole();
 }

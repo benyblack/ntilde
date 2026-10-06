@@ -43,6 +43,9 @@ The native SSH initiative is implemented behind conservative rollout controls.
 - Keepalive honoring user settings
 - Disconnect state surfaced in the terminal pane
 - Runtime (session-scoped) password memory, opt-in
+- Exec mode (`nova_ssh_exec`): a command with no PTY, with stdin EOF, stderr and the exit status
+  as events — the channel persistent remote tabs and the `ntilde-mux` installer run over (see
+  *Remote session persistence* below)
 
 ### Rollout guidance
 
@@ -117,6 +120,76 @@ value appears in the UI unlabelled.
 So `Auto` needs a resolved-backend concept threaded through those call sites
 first — a session-scoped answer rather than a profile field. That is its own
 change, not a rider on the capability gate.
+
+---
+
+## Remote session persistence
+
+_Source date: 2026-10-06 (multiplexer Phase 4, `docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md`)._
+
+An SSH tab whose profile opts in (`SshMuxOptions.PersistRemoteSessions`, the editor's
+**Keep remote sessions running (ntilde-mux)**, with `TerminalSettings.SessionPersistence` on) runs
+its shell inside `ntilde-mux`, Ntilde's multiplexer daemon, on the remote host. The GUI reaches the
+daemon through an SSH exec channel running `ntilde-mux proxy --stdio`, so the shell survives a
+network drop, a closed window and an app restart, and a reconnect reattaches with a snapshot. The
+user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCHITECTURE.md` §8.2.
+
+### Both backends
+
+- **OpenSSH** (`Ntilde.Platform.Ssh.Exec.OpenSshExecTransport`) runs `ssh` from the profile's
+  generated config with `-T -o ClearAllForwardings=yes -o ControlMaster=no`, never a PTY. It reads the
+  profile's extra arguments with ssh's own option rules (clusters such as `-tv` included) and drops what
+  would stop the proxy from running on the channel: `-t`, `-T`, `-N`, `-f`, `-n`, `-s`, `-G`, `-V`,
+  `-M`, `-W`/`-O`/`-Q` with their argument, and the `-o` keywords `RequestTTY`, `SessionType`,
+  `ForkAfterAuthentication`, `StdinNull`, `RemoteCommand` and `PermitLocalCommand`. A user-started connect uses Ntilde as
+  `SSH_ASKPASS`, so prompts appear as Ntilde dialogs (the vault password is offered only to a
+  prompt that names the target's `user@host`). An automatic reconnect runs in batch mode with no
+  askpass at all, so a password-only OpenSSH profile reconnects on Enter.
+- **Native** (`NativeSshExecTransport`) uses rusty_ssh's exec mode: `nova_ssh_exec(args, command)`
+  takes the same hop, auth and prompt path as a shell session (jump chains, identity files, agent,
+  known hosts, keepalive), then opens a session channel and `exec`s the command with no PTY and no
+  shell detection. Stdout arrives as `Data` events, stderr as `ExtendedData`, the command's EOF as
+  `Eof` (kind 15; `NativeSshExecTransport` ends stdout there, without waiting for the command to
+  exit), the exit status as `ExitStatus` before `Closed`, and `nova_ssh_send_eof` ends stdin. (The login-shell detection of
+  a shell session runs a short exec through `run_exec_collect`, of which exec mode is the streaming
+  counterpart.) An exec connection is its own connection: it lives exactly as long as its channel
+  and never shares a pane's.
+- **Automatic reconnects never prompt**, on either backend. A native remote host remembers, in
+  memory, a password or passphrase that got a user-started connect in, and replays only that (never
+  a password through jump hops, since the native prompt does not say which hop asks); host keys
+  must already be trusted. When a password would be needed, the attempt closes the session instead
+  of sending an empty answer, and the retries stop, so a drop never turns into a stream of failed
+  logins.
+
+### Install
+
+The connection editor's **Install ntilde-mux on this host…** probes the host over an exec channel
+(`uname`, the C library, `$HOME`), takes the matching `ntilde-mux-<rid>` from the GitHub release
+(SHA-256-verified and cached) or from a file the user picks, and streams it over another exec into
+`~/.local/share/ntilde/bin/ntilde-mux` (upload by `cat` to a temp file, size check, trial run, then
+rename: this replaces a running binary safely, answers prompts, and sets the mode, none of which
+`RunSftpTransfer` does). Supported hosts: Linux x64/arm64 with glibc 2.35 or newer, macOS arm64.
+musl, BSD, Intel Macs and Windows hosts are refused with the reason, and the tab stays plain SSH.
+
+On the host, `ntilde-mux` keeps its descriptor, socket, lock and log under a root of its own,
+`~/.local/share/ntilde/ntilde-mux` (`~/Library/Application Support/ntilde/ntilde-mux` on macOS),
+never the Ntilde app's: on a host that also runs the app, the app's daemon and `ntilde-mux` stay
+apart, so neither serves (or adopts, or shuts down) the other's shells.
+
+### Deferred
+
+- SFTP sidebar, remote files and port forwards on a persistent remote tab: such a tab is not an
+  `ActiveSshSessionRegistry` native session, and the exec channel carries no forwards. The
+  follow-up runs forwards on the exec connection and registers the pane for the sidebar.
+- Remote sessions in the "Attach to session…" picker, and adoption of remote orphans.
+- Password memory keyed by (kind, host, user), so a jump-chain profile with passwords can
+  reconnect on its own; this needs the native `PasswordPrompt` to carry the host and user.
+- The native exec channel polls with a 10 ms idle sleep, which puts a floor of about 15 ms under
+  each request round trip (OpenSSH: about 2 ms); an event-driven wakeup from rusty_ssh would remove
+  it.
+- Refreshing `SSH_AUTH_SOCK` in long-lived remote shells (tmux's `update-environment`).
+- Embedding the release's `ntilde-mux` SHA-256s in the app at build time instead of trusting the
+  `.sha256` next to each asset.
 
 ---
 

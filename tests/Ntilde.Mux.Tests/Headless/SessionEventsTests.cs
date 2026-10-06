@@ -152,6 +152,51 @@ public sealed class SessionEventsTests
         }
     }
 
+    /// <summary>Phase 4 spec §4 item 9: the same sink re-attaching Shared changes the interactive count only, and that is a change.</summary>
+    [Fact]
+    public async Task ReadOnly_to_shared_reattach_is_a_change()
+    {
+        (HeadlessTerminalSession mux, _) = NewSession(TimeSpan.FromMilliseconds(50));
+        using (mux)
+        {
+            var sink = new RecordingFrameSink { WantsSessionEvents = true };
+            mux.PostAttach(sink, 1, 0, P, MuxProtocol.MaxFrameBytes, MuxAttachMode.ReadOnly);
+            await TestWait.UntilAsync(() => sink.SessionChanges.Count > 0, "the read-only attach was announced");
+            SessionChangedNotification peek = Assert.Single(sink.SessionChanges);
+            Assert.Equal<(int, int?)>((1, 0), (peek.AttachedClients, peek.InteractiveClients));
+
+            mux.PostAttach(sink, 2, 0, P, MuxProtocol.MaxFrameBytes); // the same sink, now Shared
+            await TestWait.UntilAsync(() => sink.SessionChanges.Count > 1, "the re-attach was announced");
+            SessionChangedNotification shown = sink.SessionChanges[^1];
+            Assert.Equal<(int, int?)>((1, 1), (shown.AttachedClients, shown.InteractiveClients));
+        }
+    }
+
+    /// <summary>Phase 4 spec §3: v2 gets the count without read-only observers; a v1 peer still sees the v1 shape.</summary>
+    [Fact]
+    public async Task SessionInfo_carries_InteractiveClients()
+    {
+        using var host = new MuxTestHost();
+        MuxClient gui = await host.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(gui);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(gui, id);
+        MuxClient peek = await host.ConnectClientAsync();
+        await peek.OpenSession(id, "scripted").AttachAsync(MuxAttachMode.ReadOnly, 0, MuxTestHost.DefaultPresentation, TestContext.Current.CancellationToken);
+        await host.SettleAsync(id, gui, peek);
+
+        SessionInfoResult info = await pane.Session.RefreshSessionInfoAsync(TestContext.Current.CancellationToken);
+        Assert.Equal<(int?, int?)>((2, 1), (info.AttachedClients, info.InteractiveClients));
+
+        RawMuxConnection v1 = host.ConnectRaw();
+        await v1.HelloAsync(min: 1, max: 1);
+        long requestId = v1.Request(MuxMethods.SessionInfo, new SessionIdParams { SessionId = id }, MuxJsonContext.Default.SessionIdParams);
+        MuxResponse response = await v1.ReadResponseAsync();
+        Assert.Equal(requestId, response.Id);
+        System.Text.Json.JsonElement result = Assert.NotNull(response.Result);
+        Assert.Equal(2, result.GetProperty("attachedClients").GetInt32());
+        Assert.False(result.TryGetProperty("interactiveClients", out _));
+    }
+
     [Fact]
     public async Task A_natural_exit_sends_no_killed()
     {

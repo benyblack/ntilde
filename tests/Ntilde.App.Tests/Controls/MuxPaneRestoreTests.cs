@@ -4,6 +4,8 @@ using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Pty;
+using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Tests.Shell.Mux;
 
@@ -73,7 +75,7 @@ public sealed class MuxPaneRestoreTests : IDisposable
         _pane.MuxSessionIdToRestore = id;
         _pane.MuxAttachSharedToRestore = shared;
         _pane.MuxAdoptedOrphan = adoptedOrphan;
-        _pane.PersistenceNotice += (_, title, message) => notices.Add((title, message));
+        _pane.PersistenceNotice += (_, title, message, _) => notices.Add((title, message));
         _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
         _window.Show();
     }
@@ -136,6 +138,49 @@ public sealed class MuxPaneRestoreTests : IDisposable
         Assert.Equal((TerminalPane.MuxAttachedElsewhereNoticeTitle, TerminalPane.MuxAttachedElsewhereBanner), Assert.Single(notices));
         Assert.True(other.Session.IsAttached);
         Assert.Equal(1, _mux.Mux(theirs).AttachedClients);
+    }
+
+    /// <summary>Phase 4 carry-over 3: a shared tab is saved as shared, so the next launch rejoins it instead of losing the IfUnattached race.</summary>
+    [AvaloniaFact]
+    public void Shared_panes_save_and_restore_shared()
+    {
+        ClientPaneModel other = AttachOtherClient();
+        Guid theirs = other.Session.Id;
+        var notices = new List<(string Title, string Message)>();
+        ShowRestoringPane(theirs, shared: true, notices);
+        PumpUntil(() => _pane!.Session is MuxClientSession { IsAttached: true } m && m.Id == theirs, "the pane attached the shared session");
+        Assert.True(_pane!.MuxSessionIsShare);
+
+        PaneNode node = Ntilde.Shell.SessionManager.BuildPaneTree(_pane)!;
+        Assert.True(node.MuxShared);
+
+        // A pane that has not spawned yet keeps what it was going to do.
+        var unspawned = Assert.IsType<TerminalPane>(Ntilde.Shell.SessionManager.RestorePaneTree(node, new TerminalSettings()));
+        Assert.True(unspawned.MuxAttachSharedToRestore);
+        Assert.True(Ntilde.Shell.SessionManager.BuildPaneTree(unspawned)!.MuxShared);
+        unspawned.Dispose();
+
+        // The workspace-style strip drops it with the ids.
+        Assert.False(Ntilde.Shell.SessionManager.WithoutMuxIds(new NtildeSession { Tabs = { new TabSession { Root = node } } }).Tabs[0].Root!.MuxShared);
+
+        // The relaunch: the other client still holds the session, and the restored pane joins it shared.
+        _pane.Dispose();
+        _window!.Close();
+        Dispatcher.UIThread.RunJobs();
+        _pane = null;
+        _window = null;
+        var restored = Assert.IsType<TerminalPane>(Ntilde.Shell.SessionManager.RestorePaneTree(node, new TerminalSettings()));
+        PaneSpawnTestHelpers.DisableShellIntegration(restored);
+        restored.SessionFactory = _factory;
+        restored.PersistenceNotice += (_, title, message, _) => notices.Add((title, message));
+        _pane = restored;
+        _window = new Avalonia.Controls.Window { Content = restored, Width = 900, Height = 500 };
+        _window.Show();
+
+        PumpUntil(() => restored.Session is MuxClientSession { IsAttached: true } r && r.Id == theirs, "the restored pane rejoined the shared session");
+        PumpUntil(() => _mux.Mux(theirs).AttachedClients == 2, "both clients are attached");
+        Assert.Empty(notices);
+        Assert.True(restored.MuxSessionIsShare);
     }
 
     [AvaloniaFact]

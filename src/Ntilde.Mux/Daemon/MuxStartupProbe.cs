@@ -1,15 +1,14 @@
-using System.Linq;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Transport;
 
-namespace Ntilde.Shell.Mux;
+namespace Ntilde.Mux.Daemon;
 
 /// <summary>
 /// Whether a multiplexer daemon is really listening, for the startup auto-apply gate
 /// (PR #489 follow-up). A descriptor whose pid and process name check out is not enough - pids get
 /// recycled - so the endpoint is probe-connected. A descriptor whose endpoint genuinely refuses
 /// (missing/connection-refused) is stale: it is deleted (only if it still names that pid), and the
-/// gate no longer disables auto-update.
+/// gate no longer disables auto-update. Everything that is not a refusal counts as live.
 ///
 /// A connect timeout is not automatically a refusal: on Windows, a live daemon with every pipe
 /// instance busy makes a connect wait and then time out exactly like a pipe nobody ever created -
@@ -23,10 +22,11 @@ namespace Ntilde.Shell.Mux;
 /// <see cref="UnauthorizedAccessException"/> means something else owns that endpoint, which is
 /// still live from this probe's point of view.
 /// </summary>
-internal static class MuxStartupProbe
+public static class MuxStartupProbe
 {
     public static bool IsDaemonLive(string descriptorPath, TimeSpan connectTimeout,
-        Func<string, TimeSpan, Stream>? connect = null, Func<string, bool>? pipeExists = null)
+        Func<string, TimeSpan, Stream>? connect = null, Func<string, bool>? pipeExists = null,
+        Func<string, bool>? fileExists = null)
     {
         if (!MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d)) return false;
 
@@ -56,12 +56,28 @@ internal static class MuxStartupProbe
         {
             return true;
         }
-        // The endpoint is missing or nobody is listening: a genuine refusal, so the descriptor is stale.
+        // Only a genuine refusal (see IsGenuineRefusal) makes the descriptor stale; any other
+        // I/O or socket failure is not proof the daemon is gone, so it counts as live.
         catch (Exception ex) when (ex is IOException or System.Net.Sockets.SocketException)
         {
+            if (!IsGenuineRefusal(ex, d.Endpoint, OperatingSystem.IsWindows(), fileExists ?? File.Exists)) return true;
             MuxDiscovery.DeleteDescriptorIfOwned(descriptorPath, d.Pid);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Whether a connect failure proves nobody is listening. Windows: only a
+    /// <see cref="FileNotFoundException"/> (no such pipe). Elsewhere: a
+    /// <see cref="System.Net.Sockets.SocketException"/> with ConnectionRefused (on the exception or
+    /// its inner one), or the socket file being gone. Everything else is not a refusal.
+    /// </summary>
+    internal static bool IsGenuineRefusal(Exception ex, string endpoint, bool isWindows, Func<string, bool> fileExists)
+    {
+        if (isWindows) return ex is FileNotFoundException;
+        if ((ex as System.Net.Sockets.SocketException ?? ex.InnerException as System.Net.Sockets.SocketException)
+            is { SocketErrorCode: System.Net.Sockets.SocketError.ConnectionRefused }) return true;
+        return !fileExists(endpoint);
     }
 
     /// <summary>

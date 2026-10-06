@@ -50,6 +50,10 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly List<IMuxFrameSink> _subscribers = new(); // parse thread only
     private readonly HashSet<IMuxFrameSink> _readOnlySinks = new(); // parse thread only: subscribers attached ReadOnly
     private readonly Dictionary<IMuxFrameSink, long> _attachRequestIds = new(); // parse thread only: each subscriber's latest successful attach
+
+    // Parse thread only: what each interactive subscriber last presented as KittyKeyboardEnabled. The
+    // parser's flag is the AND over these (Phase 4 spec §4 item 5); see RecomputeKitty.
+    private readonly Dictionary<IMuxFrameSink, bool> _kittyBySink = new();
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
     private string _title;
@@ -65,12 +69,22 @@ public sealed class HeadlessTerminalSession : IDisposable
     private int _unsubscribed;
     private int _detachedByUser; // written on the parse thread only
 
+    // Parse thread only: the interactive subscriber whose drop for refusing a frame left no interactive
+    // subscriber, with its latest attach, until its own detach says what kind of departure that was
+    // (spec §7.7). See DropRefusingSink and DecideForDroppedSink.
+    // Accepted residual: a sink dropped this way stops counting as an interactive subscriber at once,
+    // before its detach has run. When two interactive clients leave within one parse item (one is
+    // dropped while the other's detach is still queued), the decision goes to whichever departure the
+    // session processes last. That need not match the order in which the two detaches were queued.
+    private (IMuxFrameSink Sink, long AttachRequestId)? _undecidedDrop;
+
     // sessionChanged coalescing (spec §4), parse thread only: at most one per interval, the trailing
     // one sent by the parse loop's own bounded wait (see ParseLoop).
     private readonly long _sessionChangedIntervalMs;
     private bool _sessionChangePending;
     private long _lastSessionChangeSentMs = long.MinValue / 2;
     private int _lastPublishedAttached;
+    private int _lastPublishedInteractive;
 
     // Kill(by, kind): written before the child is disposed, read by ProcessExit on the parse thread.
     private IMuxFrameSink? _killedBy;
@@ -92,6 +106,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly object _pendingResizeGate = new();
     private (int Cols, int Rows)? _pendingResize;
     private MuxPresentation? _pendingPresentation;
+    private Dictionary<IMuxFrameSink, bool>? _pendingKitty; // each sender's newest kitty flag in the pending burst
     private bool _resizeQueued;
 
     /// <summary>Tests only: raised with the session id once the input writer thread has started.</summary>
@@ -217,6 +232,9 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// <inheritdoc cref="Buffer"/>
     internal AnsiParser Parser => _parser;
 
+    /// <summary>Tests: the parser's kitty keyboard flag, read on the parse thread after every control item queued before it.</summary>
+    internal Task<bool> KittyKeyboardEnabled => InvokeAsync(() => _parser.KittyKeyboardEnabled);
+
     internal int QueuedDataCount => _data.Count;
 
     internal int QueuedControlCount => _control.Count;
@@ -319,13 +337,29 @@ public sealed class HeadlessTerminalSession : IDisposable
     /// single queued item that applies whatever is pending when it runs - never an unbounded backlog
     /// of stale resizes starving output. The newest presentation any coalesced request carried is
     /// kept, since a later size-only request must not discard it.
+    /// <para>
+    /// No client is named here (in-process callers), so the presentation's kitty flag takes no part in
+    /// the AND over interactive clients; see the overload that names the sender.
+    /// </para>
     /// </remarks>
-    public void PostResize(int cols, int rows, MuxPresentation? presentation)
+    public void PostResize(int cols, int rows, MuxPresentation? presentation) => PostResize(from: null, cols, rows, presentation);
+
+    /// <summary>
+    /// <paramref name="from"/> is the client that sent the resize. Its presentation's kitty flag is
+    /// that client's own (Phase 4 spec §4 item 5), so a burst keeps each sender's newest one: latest
+    /// wins only for the size and the session-wide fields.
+    /// </summary>
+    internal void PostResize(IMuxFrameSink? from, int cols, int rows, MuxPresentation? presentation)
     {
         lock (_pendingResizeGate)
         {
             _pendingResize = (cols, rows);
-            if (presentation is not null) _pendingPresentation = presentation;
+            if (presentation is not null)
+            {
+                _pendingPresentation = presentation;
+                if (from is not null) (_pendingKitty ??= new())[from] = presentation.KittyKeyboardEnabled;
+            }
+
             if (_resizeQueued) return;
             _resizeQueued = true;
         }
@@ -337,16 +371,25 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         (int Cols, int Rows)? size;
         MuxPresentation? presentation;
+        Dictionary<IMuxFrameSink, bool>? kitty;
         lock (_pendingResizeGate)
         {
             size = _pendingResize;
             presentation = _pendingPresentation;
+            kitty = _pendingKitty;
             _pendingResize = null;
             _pendingPresentation = null;
+            _pendingKitty = null;
             _resizeQueued = false;
         }
 
         if (presentation is not null) ApplyPresentation(presentation);
+        if (kitty is not null)
+        {
+            foreach ((IMuxFrameSink sink, bool enabled) in kitty) RecordKitty(sink, enabled);
+            RecomputeKitty();
+        }
+
         if (size is { } s) ApplyResize(s.Cols, s.Rows);
     }
 
@@ -372,7 +415,12 @@ public sealed class HeadlessTerminalSession : IDisposable
         EnqueueControl(() =>
         {
             if (attachRequestId is long undone && _attachRequestIds.TryGetValue(sink, out long latest) && latest > undone) return;
-            if (!_subscribers.Remove(sink)) return;
+            if (!_subscribers.Remove(sink))
+            {
+                DecideForDroppedSink(sink, userDetached, attachRequestId);
+                return;
+            }
+
             bool wasReadOnly = _readOnlySinks.Contains(sink);
             Forget(sink);
 
@@ -786,27 +834,29 @@ public sealed class HeadlessTerminalSession : IDisposable
         if (!accepted)
         {
             // A sink that refuses a frame is gone (Broadcast drops it the same way).
-            if (_subscribers.Remove(sink))
-            {
-                Forget(sink);
-                PublishAttachedCount();
-            }
-
+            if (_subscribers.Remove(sink)) DropRefusingSink(sink);
             return;
         }
 
         if (!_subscribers.Contains(sink)) _subscribers.Add(sink);
         _attachRequestIds[sink] = requestId;
+
+        // The kitty flag is recorded only once the subscription has taken effect: a refused or failed
+        // attach changes no client's say in the AND. A re-attach as an observer gives its say up.
         if (readOnly)
         {
             _readOnlySinks.Add(sink);
+            _kittyBySink.Remove(sink);
         }
         else
         {
             _readOnlySinks.Remove(sink);
+            _kittyBySink[sink] = presentation.KittyKeyboardEnabled;
             Volatile.Write(ref _detachedByUser, 0); // a read-only peek must not undo a deliberate detach (spec §7.7)
+            _undecidedDrop = null;                  // decided: a dropped sink's late detach no longer has a say
         }
 
+        RecomputeKitty();
         PublishAttachedCount();
         if (IsExited) Offer(sink, ExitedFrame());
     }
@@ -815,21 +865,63 @@ public sealed class HeadlessTerminalSession : IDisposable
     private bool HasOtherInteractiveSubscriber(IMuxFrameSink sink) =>
         _subscribers.Any(s => !ReferenceEquals(s, sink) && !_readOnlySinks.Contains(s));
 
-    /// <summary>Parse thread only, for a sink just removed from <see cref="_subscribers"/>: drops its per-sink state and tells it.</summary>
+    /// <summary>
+    /// Parse thread only, for a sink just removed from <see cref="_subscribers"/>: drops its per-sink
+    /// state and tells it. Every removal path (detach, a sink dropped for refusing a frame) ends here,
+    /// so this is also where the sink leaves the kitty AND.
+    /// </summary>
     private void Forget(IMuxFrameSink sink)
     {
         _readOnlySinks.Remove(sink);
         _attachRequestIds.Remove(sink);
+        if (_kittyBySink.Remove(sink)) RecomputeKitty();
         ReportSubscription(sink, subscribed: false, readOnly: false);
     }
 
-    /// <summary>Parse thread only: every subscriber leaves at once (fault, terminal exit).</summary>
+    /// <summary>
+    /// Parse thread only, for a sink just removed from <see cref="_subscribers"/> because it refused a
+    /// frame (a broadcast, or its own re-attach's snapshot). A connection refuses once it has closed,
+    /// and that is not a detach. If this removal left no interactive subscriber, it is the departure
+    /// that decides <see cref="DetachedByUser"/>, but it cannot say whether the user meant it. The
+    /// sink's own detach can (<see cref="DecideForDroppedSink"/>), so the decision waits for it.
+    /// </summary>
+    private void DropRefusingSink(IMuxFrameSink sink)
+    {
+        bool wasInteractive = !_readOnlySinks.Contains(sink);
+        long attachRequestId = _attachRequestIds.GetValueOrDefault(sink);
+        Forget(sink);
+        if (wasInteractive && !HasOtherInteractiveSubscriber(sink)) _undecidedDrop = (sink, attachRequestId);
+        PublishAttachedCount();
+    }
+
+    /// <summary>
+    /// Parse thread only: a detach for a sink that is no longer subscribed. A client that detaches
+    /// and then hangs up posts its detach before it closes, but an item queued ahead of the detach
+    /// can broadcast after the close and drop the sink first (<see cref="DropRefusingSink"/>). If that
+    /// drop emptied the session, this detach is the one that says what kind of departure it was: a
+    /// user detach sets <see cref="DetachedByUser"/>, and the connection's own close-time detach
+    /// leaves it clear (spec §7.7). A detach naming an attach the dropped subscription had superseded
+    /// is stale, as it would have been for a live subscriber.
+    /// </summary>
+    private void DecideForDroppedSink(IMuxFrameSink sink, bool userDetached, long? attachRequestId)
+    {
+        if (_undecidedDrop is not { } drop || !ReferenceEquals(drop.Sink, sink)) return;
+        if (attachRequestId is long undone && drop.AttachRequestId > undone) return;
+        _undecidedDrop = null;
+        Volatile.Write(ref _detachedByUser, userDetached ? 1 : 0);
+    }
+
+    /// <summary>
+    /// Parse thread only: every subscriber leaves at once (fault, terminal exit). Nobody is left to
+    /// decide the kitty flag, so it keeps its last value and there is nothing to recompute.
+    /// </summary>
     private void ForgetAll()
     {
         foreach (IMuxFrameSink sink in _subscribers) ReportSubscription(sink, subscribed: false, readOnly: false);
         _subscribers.Clear();
         _readOnlySinks.Clear();
         _attachRequestIds.Clear();
+        _kittyBySink.Clear();
     }
 
     private void ReportSubscription(IMuxFrameSink sink, bool subscribed, bool readOnly)
@@ -840,13 +932,47 @@ public sealed class HeadlessTerminalSession : IDisposable
         catch (Exception ex) { Log($"[Mux] session {Id}: reporting a subscription failed: {ex.Message}"); }
     }
 
+    /// <summary>
+    /// The session-wide fields: the latest client wins. Not <see cref="MuxPresentation.KittyKeyboardEnabled"/>,
+    /// which is each interactive client's own (<see cref="RecordKitty"/>, <see cref="RecomputeKitty"/>).
+    /// </summary>
     private void ApplyPresentation(MuxPresentation presentation)
     {
         if (presentation.CellWidthPx > 0) _parser.CellWidth = presentation.CellWidthPx;
         if (presentation.CellHeightPx > 0) _parser.CellHeight = presentation.CellHeightPx;
         _parser.DefaultForeground = presentation.DefaultFg is uint fg ? TermColor.FromUint(fg) : null;
         _parser.DefaultBackground = presentation.DefaultBg is uint bg ? TermColor.FromUint(bg) : null;
-        _parser.KittyKeyboardEnabled = presentation.KittyKeyboardEnabled;
+    }
+
+    /// <summary>
+    /// Parse thread only: a presentation-carrying resize replaces its sender's kitty flag; call
+    /// <see cref="RecomputeKitty"/> after. Only an interactive subscriber has a say: a read-only
+    /// observer's resize is dropped by its connection, but the session does not rely on that, and a
+    /// sender that is not subscribed (yet, or any more) would leave an entry nothing removes.
+    /// </summary>
+    private void RecordKitty(IMuxFrameSink sink, bool enabled)
+    {
+        if (!_subscribers.Contains(sink) || _readOnlySinks.Contains(sink)) return;
+        _kittyBySink[sink] = enabled;
+    }
+
+    /// <summary>
+    /// Parse thread only. The parser answers a kitty query with flags 0 unless every interactive
+    /// client can speak the protocol, so a text client (which presents false) turns it off only while
+    /// it is attached (Phase 4 spec §4 item 5). With no interactive subscriber the last value stays:
+    /// nobody is typing, and the next interactive attach decides again.
+    /// </summary>
+    private void RecomputeKitty()
+    {
+        bool any = false, all = true;
+        foreach (IMuxFrameSink s in _subscribers)
+        {
+            if (_readOnlySinks.Contains(s) || !_kittyBySink.TryGetValue(s, out bool k)) continue;
+            any = true;
+            all &= k;
+        }
+
+        if (any) _parser.KittyKeyboardEnabled = all;
     }
 
     private void ApplyResize(int cols, int rows)
@@ -896,8 +1022,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                 if (!sink.TryEnqueue(frame))
                 {
                     _subscribers.RemoveAt(i);
-                    Forget(sink);
-                    PublishAttachedCount();
+                    DropRefusingSink(sink);
                 }
             }
         }
@@ -969,18 +1094,21 @@ public sealed class HeadlessTerminalSession : IDisposable
     }
 
     /// <summary>
-    /// Parse thread only. A changed count is a session change (spec §4). Read-only observers count:
-    /// this is the number of connected clients, the same figure <c>listSessions</c> reports; only the
-    /// <c>IfUnattached</c> decision ignores them (<see cref="HasOtherInteractiveSubscriber"/>).
+    /// Parse thread only. A changed pair (attached, interactive) is a session change (spec §4; Phase 4
+    /// spec §4 item 9), so the same sink re-attaching ReadOnly → Shared is one although the attached
+    /// count stays. Read-only observers count in <c>attached</c>: the number of connected clients, the
+    /// same figure <c>listSessions</c> reports; <c>interactive</c> leaves them out.
     /// </summary>
     private void PublishAttachedCount()
     {
         int count = _subscribers.Count;
+        int interactive = count - _readOnlySinks.Count; // read-only sinks are always subscribers too
         Volatile.Write(ref _attached, count);
-        Volatile.Write(ref _interactive, count - _readOnlySinks.Count); // read-only sinks are always subscribers too
-        if (count != _lastPublishedAttached)
+        Volatile.Write(ref _interactive, interactive);
+        if (count != _lastPublishedAttached || interactive != _lastPublishedInteractive)
         {
             _lastPublishedAttached = count;
+            _lastPublishedInteractive = interactive;
             MarkSessionChanged();
         }
     }
@@ -1011,6 +1139,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             {
                 SessionId = Id,
                 AttachedClients = _subscribers.Count,
+                InteractiveClients = _interactive, // parse thread: its only writer
                 Title = Title,
                 Cwd = Cwd,
             }, MuxJsonContext.Default.SessionChangedNotification) is not { } frame) return;

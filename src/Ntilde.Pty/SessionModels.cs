@@ -61,12 +61,22 @@ namespace Ntilde.Pty
         public string? MuxSessionId { get; set; }
 
         /// <summary>
-        /// Transport address of the multiplexer that owns <see cref="MuxSessionId"/>, or
-        /// <c>null</c>. Stored per pane rather than per session file so a window can hold panes
-        /// from more than one daemon.
+        /// Which multiplexer owns <see cref="MuxSessionId"/> (Phase 4 spec §5): <c>local</c>, or
+        /// <c>ssh:&lt;sshProfileId&gt;</c> with the profile id as a Guid in <c>N</c> format. <c>null</c>
+        /// (and, from files written before Phase 4, the local daemon's pipe or socket name) means
+        /// local. Stored per pane rather than per session file so a window can hold panes from more
+        /// than one daemon.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MuxEndpoint { get; set; }
+
+        /// <summary>
+        /// True when the pane joined <see cref="MuxSessionId"/> as a deliberate share (Phase 4 spec §4,
+        /// carry-over 3): the next launch attaches shared too, rather than exclusively and losing the
+        /// race to the window that still holds it. Omitted when false, so older files load unchanged.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool MuxShared { get; set; }
     }
 
     public class WorkspaceBundlePackage

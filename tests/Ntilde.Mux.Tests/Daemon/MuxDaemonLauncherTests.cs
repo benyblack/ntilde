@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
-using Ntilde.Shell.Mux;
+using Ntilde.Mux.Transport;
 
-namespace Ntilde.Tests.Shell.Mux;
+namespace Ntilde.Mux.Tests.Daemon;
 
 public sealed class MuxDaemonLauncherTests : IDisposable
 {
@@ -14,7 +14,9 @@ public sealed class MuxDaemonLauncherTests : IDisposable
 
     public void Dispose()
     {
-        for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
+        IDisposable[] owned;
+        lock (_owned) owned = _owned.ToArray();
+        for (int i = owned.Length - 1; i >= 0; i--) owned[i].Dispose();
         try { Directory.Delete(_root, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
@@ -42,7 +44,7 @@ public sealed class MuxDaemonLauncherTests : IDisposable
             IdleExitAfter = TimeSpan.Zero,
         });
         host.Start();
-        _owned.Add(host);
+        lock (_owned) _owned.Add(host); // the launcher's spawner calls this off the test thread
         return host;
     }
 
@@ -64,6 +66,85 @@ public sealed class MuxDaemonLauncherTests : IDisposable
         using MuxClient client = await Launcher(spawner).EnsureConnectedAsync(Ct);
         await client.PingAsync(Ct);
         Assert.Equal(1, spawner.Spawns);
+    }
+
+    /// <summary>
+    /// Phase 4 spec §6.2: the proxy relays a client's own hello, so the launcher must hand over the
+    /// connection untouched. A hello sent by the launcher would make the test's hello the second one,
+    /// which the server answers with a protocol error and a close.
+    /// </summary>
+    [Fact]
+    public async Task EnsureEndpointStreamAsync_returns_a_raw_stream_without_a_hello()
+    {
+        var spawner = new InProcessSpawner(this);
+
+        (Stream stream, MuxEndpointDescriptor descriptor) = await Launcher(spawner).EnsureEndpointStreamAsync(Ct);
+        using var raw = new RawMuxConnection(stream);
+
+        WelcomeResult welcome = await raw.HelloAsync();
+        Assert.Equal(1, welcome.Version);
+        Assert.Equal(1, spawner.Spawns);
+        Assert.Equal(MuxDiscovery.GetDefaultEndpoint(_root), descriptor.Endpoint);
+        Assert.Equal(Environment.ProcessId, descriptor.Pid);
+    }
+
+    /// <summary>
+    /// The idle-exit race (final-fix item 7), one step earlier: a daemon tearing down can still accept
+    /// a connection, then drop it before answering the hello. EnsureConnected treats that daemon as
+    /// absent and spawns one, as before Phase 4 - it is not a failure (the GUI would give up on the
+    /// multiplexer for its cooldown).
+    /// </summary>
+    [Fact]
+    public async Task EnsureConnected_treats_a_daemon_that_drops_the_hello_as_absent_and_spawns()
+    {
+        IMuxListener dropper = MuxListeners.Create(MuxDiscovery.GetDefaultEndpoint(_root));
+        lock (_owned) _owned.Add(dropper);
+        var dropping = new Thread(() =>
+        {
+            try
+            {
+                while (dropper.Accept(CancellationToken.None) is { } accepted) accepted.Dispose();
+            }
+            catch (IOException)
+            {
+                // A broken accept ends the dropping; the launcher then finds nothing and spawns.
+            }
+        })
+        { IsBackground = true, Name = "MuxDropper" };
+        dropping.Start();
+        using var self = Process.GetCurrentProcess();
+        MuxDiscovery.WriteDescriptor(MuxDiscovery.GetDescriptorPath(_root), new MuxEndpointDescriptor
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(_root),
+            Pid = Environment.ProcessId,
+            ProcessName = self.ProcessName,
+            MinVersion = 1,
+            MaxVersion = 1,
+        });
+        var spawner = new ReplacingSpawner(this, dropper, dropping);
+
+        using MuxClient client = await Launcher(spawner).EnsureConnectedAsync(Ct);
+
+        await client.PingAsync(Ct);
+        Assert.Equal(1, spawner.Spawns);
+    }
+
+    /// <summary>
+    /// Stops <paramref name="old"/> (the daemon that was tearing down), then starts a real one on the
+    /// same endpoint. Dispose only cancels: the pipe instance an in-flight Accept holds is closed on
+    /// <paramref name="accepting"/>'s thread, and a new listener's FirstPipeInstance fails while it is
+    /// open - so the accept thread is joined first (Accept closes its instance before returning null).
+    /// </summary>
+    private sealed class ReplacingSpawner(MuxDaemonLauncherTests t, IMuxListener old, Thread accepting) : IMuxDaemonSpawner
+    {
+        public int Spawns;
+        public void Spawn()
+        {
+            Interlocked.Increment(ref Spawns);
+            old.Dispose();
+            Assert.True(accepting.Join(TimeSpan.FromSeconds(5)), "the old listener's accept thread did not stop within 5 s");
+            t.StartDaemon();
+        }
     }
 
     [Fact]
@@ -185,7 +266,7 @@ public sealed class MuxDaemonLauncherTests : IDisposable
             }
             else
             {
-                _exitCode = MuxDaemonProcess.LockHeldExitCode;
+                _exitCode = MuxServeHost.LockHeldExitCode;
             }
         }
     }

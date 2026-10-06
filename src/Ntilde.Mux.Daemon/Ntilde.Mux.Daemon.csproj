@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The remote multiplexer (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md §10.1). References
+       exactly Ntilde.Mux - ProjectFileLayeringTests.MuxDaemon_only_references_Mux. One file per RID:
+       rusty_pty is linked statically (DirectPInvoke + its staticlib). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ntilde-mux</AssemblyName>
+    <RootNamespace>Ntilde.MuxDaemon</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
+    <StripSymbols>true</StripSymbols>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RustyPtyNativeDir>$(MSBuildThisFileDirectory)..\Ntilde.App\native\target\release\</RustyPtyNativeDir>
+    <RustyPtyStaticLib Condition="'$(RustyPtyStaticLib)' == ''">$(RustyPtyNativeDir)librusty_pty.a</RustyPtyStaticLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Ntilde.Mux\Ntilde.Mux.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(PublishAot)' == 'true' and ($(RuntimeIdentifier.StartsWith('linux-')) or $(RuntimeIdentifier.StartsWith('osx-')))">
+    <DirectPInvoke Include="rusty_pty" />
+    <NativeLibrary Include="$(RustyPtyStaticLib)" />
+  </ItemGroup>
+  <!-- One file per RID means the publish directory holds the executable and nothing else. NativeAOT
+       compiles every managed assembly into it, yet the SDK still publishes the referenced projects'
+       .pdb files beside it, describing assemblies that are not there. The executable's own symbols
+       are StripSymbols' ntilde-mux.dbg / ntilde-mux.dSYM, which CI and the release delete. -->
+  <Target Name="DropManagedPdbsFromNativePublish" AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(PublishAot)' == 'true' and '$(RuntimeIdentifier)' != ''">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+  <!-- JIT runs (dotnet run, tests) load the shared library like the App does. -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
+    <None Include="$(RustyPtyNativeDir)librusty_pty.so" Condition="Exists('$(RustyPtyNativeDir)librusty_pty.so')" Link="librusty_pty.so" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(RustyPtyNativeDir)librusty_pty.dylib" Condition="Exists('$(RustyPtyNativeDir)librusty_pty.dylib')" Link="librusty_pty.dylib" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(RustyPtyNativeDir)rusty_pty.dll" Condition="Exists('$(RustyPtyNativeDir)rusty_pty.dll')" Link="rusty_pty.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

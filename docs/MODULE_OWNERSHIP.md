@@ -132,22 +132,35 @@ invariant changes.
 
 **Namespace:** `Ntilde.Platform` (+ `.Input`, `.Paths`, `.Execution`, plus the SSH sub-tree)
 **Depends on:** Pty
-**Public surface:** `TerminalInputSender`, path mappers, process abstractions, the SSH stack (`Ssh/{Interactions,Launch,Models,Native,OpenSsh,Sessions,Storage,Transport}`)
+**Public surface:** `TerminalInputSender`, path mappers, process abstractions, the SSH stack (`Ssh/{Exec,Interactions,Launch,Models,Native,OpenSsh,Sessions,Storage,Transport}`)
 
 **Owns**
 - Input routing primitives (drop router, shell quoters, input sender)
 - Path mapping (notably WSL ↔ Windows)
 - Process abstraction (`IProcessRunner`)
 - The entire SSH stack: native interop with `rusty_ssh.dll`, OpenSSH bridging, session factories, profile storage, transport
+- SSH exec channels (`Ssh/Exec/`, namespace `Ntilde.Platform.Ssh.Exec`, multiplexer Phase 4 spec §8.2-§8.3): a command run over SSH with no PTY, which the remote multiplexer (`ntilde-mux proxy --stdio`) and its installer use. `ISshExecTransport` / `ISshExecChannel` (stdout, stdin with EOF on dispose, an 8 KiB stderr tail, the exit code), `OpenSshExecTransport` + `OpenSshExecCommandLine` + `SshAskPassEnvironment` (the `ssh` argv and the askpass/batch-mode environment), `NativeSshExecTransport` over rusty_ssh's exec mode (`nova_ssh_exec`, `nova_ssh_send_eof`), `BoundedChunkQueue` / `BoundedTail`, and `SshExec.RunAsync` (one command with stdin bytes and a deadline)
 - Future home of `SessionBufferBinder` and other session-orchestration helpers
 
 **Invariants**
 - This is NOT the terminal engine (that's VT). Renamed from `Ntilde.Core` in #76 to end the three-way "Core" name overload.
 - No Avalonia or Skia in the dependency closure
 - SSH transports must satisfy `IRemoteTerminalTransport` so all SSH session implementations are interchangeable
+- **An exec channel's stdout is a clean byte stream.** The OpenSSH exec always runs `-T` with
+  `ClearAllForwardings=yes` and `ControlMaster=no`, and drops `-t`/`-tt`/`-T` from the profile's
+  extra arguments: a PTY would corrupt the frames, a forward would ride the mux channel, and a
+  hidden exec must never become a ControlMaster that a visible tab then depends on
+- **Batch mode leaves `ssh` no way to prompt:** `BatchMode=yes`, no `SSH_ASKPASS`,
+  `SSH_ASKPASS_REQUIRE=never`, no `DISPLAY` (an OpenSSH older than 8.4 with no tty would otherwise
+  fall back to its compiled-in askpass)
+- **The native exec channel never answers a prompt its handler declined by throwing:** it closes the
+  session instead, so no empty password is ever submitted to a server
+- **No thread-pool work on the native exec's stdout path:** one dedicated poll thread per channel
+  feeds a bounded byte queue that a reader drains synchronously
+- A native exec connection lives exactly as long as its channel; it never shares a pane's connection
 
 **Test authority**
-- Primary: `tests/Ntilde.Platform.Tests/`
+- Primary: `tests/Ntilde.Platform.Tests/` (exec transports: `Ssh/Exec/`)
 - Docker-gated E2E: `tests/Ntilde.Platform.Tests/Ssh/NativeSshDockerE2eTests.cs` (skipped without Docker)
 - App-side integration: `tests/Ntilde.App.Tests/Ssh/`, `tests/Ntilde.App.Tests/Input/`
 
@@ -181,13 +194,15 @@ invariant changes.
 **Owns**
 - The multiplexer wire protocol: frame kinds, framing, binary payload codecs, source-generated JSON DTOs, error codes, version negotiation
 - Daemon discovery (`MuxDiscovery.cs`): the app-data root, the `mux/mux-endpoint.json` descriptor (`MuxEndpointDescriptor`), and the per-user, per-root default endpoint name
+- `Sha256.cs`: a managed SHA-256 (internal) for the endpoint name's root hash
 
 **Invariants**
 - Frame = `u8 kind` + `u32` LE length + payload, payload ≤ `MaxFrameBytes`, header validated before any payload byte is read
 - Every JSON type goes through `MuxJsonContext`
 - Binary parsers length-check before slicing
-- Version negotiation picks the highest common version or refuses
-- A descriptor is live only when its pid is alive **and** runs under the recorded process name (pid-reuse guard); writes are atomic (temp file + move)
+- Version negotiation picks the highest common version or refuses (Min 1 / Max 2); Phase 4's additions (`HelloParams.ClientInstanceId`, `InteractiveClients` on `sessionChanged` and `sessionInfo`, an empty `SpawnParams.Command` meaning the daemon's login shell, and `SpawnParams.SessionId`: the id a remote spawn names for its session, refused when malformed (`protocol_error`) or in use (`session_exists`)) are optional members a Phase 3 peer skips
+- A descriptor is live only when its pid is alive, **and** runs under the recorded process name, **and** carries the start token the daemon recorded (pid-reuse guard; on Linux the token is the `/proc/<pid>/stat` start time, which a wall-clock step cannot move). A descriptor without a token keeps the name check. Writes are atomic (temp file + move); repair is create-new for a missing file and compare-then-replace for a dead one, so it never overwrites a descriptor another daemon wrote meanwhile
+- **No `System.Security.Cryptography`.** `ntilde-mux` runs this assembly and must need nothing but libc, and on Linux .NET loads OpenSSL for every crypto call. The managed `Sha256` is byte-identical to `SHA256.HashData`, so endpoint names still match between the GUI and the daemon on the same host (`LayeringTests.Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`)
 
 **Test authority**
 - `tests/Ntilde.Mux.Tests/`
@@ -196,13 +211,16 @@ invariant changes.
 
 ## Ntilde.Mux (`src/Ntilde.Mux/`)
 
-**Namespace:** `Ntilde.Mux` (+ `.Transport`, `.TextClient`)
+**Namespace:** `Ntilde.Mux` (+ `.Transport`, `.TextClient`, `.Daemon`, `.Cli`)
 **Depends on:** Pty, VT, Replay, Mux.Contracts
 
 **Owns**
 - Multiplexer core: headless authoritative sessions (one parse thread each), the server, the client (`MuxClientSession : ITerminalSession`), and an in-memory transport
 - Local transports (`Transport/`): `NamedPipeMuxListener`, `UnixSocketMuxListener`, `MuxListeners.Create` (the platform's listener) and `MuxEndpointConnector` (the client end)
-- The daemon host: `MuxDaemonHost` / `MuxDaemonOptions` (lock file, descriptor, reaper, idle exit, `shutdown`)
+- The client end of the stdio proxy (`Transport/StdioMuxTransport.cs`, Phase 4 spec §8.1): skips whatever a remote shell prints until the `NTILDE-MUX-PROXY 1 <pid>` preamble (at most 64 KiB, then the captured text is the error) and returns a duplex stream over an exec channel's stdout and stdin
+- The daemon host: `MuxDaemonHost` / `MuxDaemonOptions` (lock file, descriptor, reaper, idle exit, `shutdown`), and the `ClientInstanceId` eviction in `MuxServer`: a hello carrying an id closes every other connection with the same id before `welcome` (Phase 4 spec §3)
+- The daemon process (`Daemon/`, namespace `Ntilde.Mux.Daemon`, moved from the App in Phase 4): `MuxServeHost` (the `serve` process: listener, `MuxDaemonHost`, `mux.log` through the rotating `MuxLogFile`), `MuxDaemonLauncher` (connect to a live descriptor or spawn the host's serve arguments; `EnsureEndpointStreamAsync` for the proxy, `EnsureConnectedAsync` with the hello), `ProcessMuxDaemonSpawner` / `IMuxDaemonSpawner`, `MuxDaemonExit`, `MuxStartupProbe` (whether a descriptor's daemon is really live, for the App's startup auto-apply gate: only a genuine refusal or a missing socket counts as dead, and a Windows connect timeout falls back to enumerating `\\.\pipe\`), `MuxPaths` (root, descriptor, endpoint, log folder, injected by the executable), and `LocalShellSessionFactory`, the remote daemon's shells (an empty command is the default login shell with `-l`; `~` is `$HOME`; SSH is refused)
+- Every `mux` verb (`Cli/`, namespace `Ntilde.Mux.Cli`): `MuxCli.Execute` (serve, ls, kill, kill-server, attach, probe-console, proxy, `--version`, each offered only when the host's `MuxCliVerbs` include it), `MuxCliHost` (what an executable supplies: paths, usage prefix, serve arguments, shell factory, verbs, console binding), `MuxProxyCommand` (`ntilde-mux proxy --stdio`) and `MuxVersionInfo` / `MuxCliJsonContext` (`--version --json`, which the App's installer reads)
 - The `ntilde mux attach` text client (`TextClient/`, Phase 3 spec §6): `TextClientSession` (lifecycle,
   threads, exit codes), `TextClientModel` (its own buffer + parser), `TextClientRenderer` (dirty-row
   repaint), `DetachChord` (`Ctrl+\ d`), `IConsoleSurface` + `WindowsConsoleSurface` /
@@ -230,9 +248,97 @@ invariant changes.
   the model's parser and never reaches the terminal the client draws on
 - **Console modes are restored on every exit path.** Detach, session exit, kill, disconnect,
   attach failure, a console write that throws, and a signal all reach `IConsoleSurface.RestoreMode()`
+- **`Daemon/` and `Cli/` know nothing of the App or Platform** (`LayeringTests.Mux_daemon_and_cli_namespaces_have_no_app_or_platform_dependency`).
+  Each executable injects what differs through `MuxCliHost`; the GUI's own daemon keeps the App's
+  `DefaultTerminalSessionFactory`, so local behaviour cannot change through the remote daemon's
+  factory
+- **The proxy never parses a frame.** `ntilde-mux proxy --stdio` writes the preamble, then copies
+  bytes on two dedicated threads; its stdout carries nothing but the preamble and frames
+  (diagnostics go to stderr, the daemon logs to its own file). Exit codes are a contract the GUI
+  classifies a drop by: 0 stdin ended, 3 the daemon side ended and the daemon's process is gone (the
+  GUI's `DaemonStopped`), 4 the daemon dropped this connection but runs on, or stdout could not be
+  written (a lost link to the GUI), 1 no daemon could be reached or spawned, 2 usage. On Unix it ends
+  fds 1 and 2 for real (`UnixChannelStdio`: every copy to `/dev/null`) before it waits to decide 3 or 4
+- **A user detach is never lost.** The text client waits (bounded, 1 s) for a ping reply after its
+  final detach before it disposes the connection, and a refusal drop before a queued user detach
+  keeps `DetachedByUser` (both found and fixed in Phase 4)
+- **Nothing here may load OpenSSL** (see Mux.Contracts above; the guard walks every Ntilde assembly
+  `ntilde-mux` runs)
 
 **Test authority**
-- `tests/Ntilde.Mux.Tests/` (+ `MuxRealShellSmokeTests` and the real-daemon `MuxDaemonSmokeTests` in App.Tests)
+- `tests/Ntilde.Mux.Tests/` (`Daemon/`, `Cli/`, `Transport/StdioMuxTransportTests`, `Server/ClientInstanceIdTests`; + `MuxRealShellSmokeTests` and the real-daemon `MuxDaemonSmokeTests` in App.Tests)
+
+---
+
+## Ntilde.Mux.Daemon (`src/Ntilde.Mux.Daemon/`)
+
+**Assembly:** `ntilde-mux` (published as one NativeAOT file per RID: linux-x64, linux-arm64, osx-arm64)
+**Namespace:** `Ntilde.MuxDaemon` (`Ntilde.Mux.Daemon` is `Ntilde.Mux`'s own `Daemon/` namespace)
+**Depends on:** Mux (and nothing else: no package references)
+**Public surface:** none; `Program` only
+
+**Owns**
+- The remote multiplexer executable: its `Program.Main` hands every argument to
+  `Ntilde.Mux.Cli.MuxCli.Execute` with an `ntilde-mux` `MuxCliHost` (default paths, usage prefix
+  `ntilde-mux`, serve arguments `["serve"]`, `LocalShellSessionFactory`, verbs serve, proxy, ls, kill,
+  kill-server, attach, `--version`)
+- The static link of `rusty_pty` (`DirectPInvoke` + `NativeLibrary` over `librusty_pty.a` for
+  `linux-*`/`osx-*` RIDs) and the single-file publish (referenced projects' `.pdb`s are dropped)
+
+**Invariants**
+- **References `Ntilde.Mux` only**, in the csproj (`ProjectFileLayeringTests.MuxDaemon_only_references_Mux`)
+  and in IL (`LayeringTests.MuxDaemon_references_only_Mux`; `Ntilde.Pty` appears there only because
+  `MuxCliHost.SessionFactory` is a Pty type), and it names no UI, App or Platform type
+- **Needs only libc.** Nothing it runs references `System.Security.Cryptography`,
+  `System.Net.Security` or `System.Net.Http`, which load OpenSSL at run time on Linux and which a
+  remote host may not have (`Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`). Its only
+  dynamic dependencies are libc, libm, libgcc_s and the loader; the highest `GLIBC_` symbol must stay
+  at or below 2.35 (asserted by CI's `mux_daemon_aot` and the release's `publish_mux_daemon`)
+- **One file per RID**, nothing beside it but `.dbg`/`.dSYM` (asserted by the same jobs)
+- Every verb goes through `MuxCli` (`CliCommandDispatchTests.Mux_daemon_dispatches_every_verb_through_MuxCli`);
+  its types stay in `Ntilde.MuxDaemon`, and no other assembly uses that namespace
+- It may print to the console (`DiagnosticSinkTests.ConsoleToolProjects`)
+
+**Test authority**
+- The verbs it hosts: `tests/Ntilde.Mux.Tests/Cli/`, `Daemon/`
+- Real binary against a real sshd: `tests/Ntilde.App.Tests/Shell/Mux/Remote/RemoteMuxDockerE2eTests.cs`
+  (`Category=DockerE2E`; needs `NTILDE_ENABLE_DOCKER_E2E=1` and `NTILDE_MUX_E2E_BINARY`; build a
+  linux-x64 binary locally with `scripts/docker-publish-mux-daemon.sh linux-x64 artifacts/mux-daemon`)
+- Layering: `tests/Ntilde.Architecture.Tests/`
+
+---
+
+## Ntilde.Launcher (`src/Ntilde.Launcher/`)
+
+**Assembly:** `Ntilde.Launcher`, shipped as `ntilde.com` next to `Ntilde.exe` (win-x64, NativeAOT)
+**Namespace:** `Ntilde.Launcher`
+**Depends on:** *(nothing: no project or package references)*
+**Public surface:** `LauncherCommandLine` (`Tail`, `Build`, `ReleaseEventVariable`, `TargetMissingExitCode`)
+
+**Owns**
+- The Windows console launcher (multiplexer Phase 4 spec §11): find `Ntilde.exe` beside itself
+  (exit 9009 when missing), start it in the same console with the raw command-line tail, wait for it
+  or for the release event, and forward its exit code
+- Its kernel32 P/Invokes (`LauncherNative`) and its console control handler
+
+**Invariants**
+- **No references at all** (`ProjectFileLayeringTests.Launcher_has_no_references`,
+  `LayeringTests.Launcher_references_no_Ntilde_assembly`): it runs before the App, it is not a second
+  entry point into it
+- **Arguments pass byte-identical.** The child's command line is the target's quoted path plus the
+  raw tail of `GetCommandLineW()` after argv[0] by the CRT's rule; nothing is re-quoted
+- **Ctrl+C is never regenerated.** The child shares the console and the process group, so Windows
+  delivers Ctrl+C and Ctrl+Break to it; the launcher's handler only keeps the launcher waiting
+- **It returns early only when the App says so**, through the `NTILDE_LAUNCHER_RELEASE` event that
+  `Ntilde.Shell.LauncherRelease.Signal()` sets on the GUI path; command-line modes are always waited for
+- Off Windows it refuses (exit 1)
+
+**Test authority**
+- `tests/Ntilde.App.Tests/Launcher/`: `LauncherCommandLine.Tail`/`Build` theories on every OS, the
+  wait (`LauncherWaitTests`), end-to-end runs beside a `cmd.exe` stand-in (Windows-gated), and the
+  off-Windows refusal; the App's side in `tests/Ntilde.App.Tests/Shell/LauncherReleaseTests.cs`
+- Release order in `Program.Main`: `tests/Ntilde.Architecture.Tests/CliCommandDispatchTests.cs`
+- CI: `aot_gate` publishes it and runs `ntilde.com /d /c exit 7` beside a `cmd.exe` copy (must exit 7)
 
 ---
 
@@ -430,15 +536,23 @@ requires public test classes.
 - Workspace and session lifecycle
 - SSH UI: connection manager, transfer center, remote files sidebar, vault, sftp service, ssh-askpass
 - Persistent sessions (`Shell/Mux/`, namespace `Ntilde.Shell.Mux`):
-  - `MuxCommand.cs` / `MuxDaemonProcess.cs`: the `ntilde mux serve|ls|kill|kill-server|attach` CLI, dispatched from `Program.cs` before `AppLogger` and Avalonia; `serve` detaches from the console and hosts `MuxDaemonHost`, logging to `logs/mux.log`; `attach` hosts `Ntilde.Mux.TextClient.TextClientSession` (Phase 3 spec §6) and resolves an id or a ≥4-character hex prefix to a session
-  - `MuxDaemonLauncher.cs` / `MuxDaemonSpawner.cs`: connect to a live daemon, or spawn one fully detached from the caller's stdio
-  - `MuxConnectionHost.cs`: the GUI's one shared `MuxClient` (warm-up, reconnect, 30 s back-off after a failed connect, detach on teardown)
-  - `MuxTerminalSessionFactory.cs` / `PersistentSessionFactory.cs` / `SessionPersistenceMode.cs`: local panes go through the mux when `SessionPersistence` is `KeepOnClose`; SSH panes and failures fall back to the default factory. Restore attaches `IfUnattached` on a v2 daemon (server-decided) or falls back to the pane's own `AttachedClients == 0` check on v1
-  - `MuxOrphans.cs` / `PaneDisposition.cs`: orphan adoption on launch (skips sessions with `DetachedByUser`, Phase 3 spec §7.7); a user close kills the session, window teardown detaches
-  - `MuxSessionPicker.cs`: the "Attach to Session…" picker's rows (title, command, cwd, size, attached count, running/exited), sorted running-first
-  - `MuxStartupProbe.cs`: whether a daemon descriptor is really live for the startup auto-apply gate — a connect timeout is not automatically a refusal (Windows named-pipe busy vs. gone), so a Windows timeout falls back to enumerating `\\.\pipe\`
-  - `MuxCommandMatch.cs`: whether a daemon session runs the program a restoring pane expects, compared by executable file name so a path difference alone does not start a spurious fresh shell
+  - `MuxCommand.cs`: the `ntilde mux serve|ls|kill|kill-server|attach|probe-console` adapter, dispatched from `Program.cs` before `AppLogger` and Avalonia. It strips `mux` and calls `Ntilde.Mux.Cli.MuxCli.Execute` with the App's `MuxCliHost`: the app-data root (`MuxDiscovery.GetRootDirectory()`, or a test's root override), `mux serve` as the serve arguments, `DefaultTerminalSessionFactory`, and `CliConsoleBindings.Prepare`. The daemon process (`MuxServeHost`), the launcher/spawner and the startup probe moved to `Ntilde.Mux.Daemon` in Phase 4, the verb bodies to `Ntilde.Mux.Cli`
+  - `MuxConnectionHosts.cs` / `MuxConnectionHost.cs` / `MuxHostPolicy.cs`: one connection host per endpoint, created lazily; each keeps one shared `MuxClient` (warm-up, reconnect, detach on teardown, tracked and queued kills). `local` backs off 30 s after a failed connect; a remote host has the remote policy, the liveness ping and the reconnect loop (Phase 4 spec §5, §7.2-§7.3)
+  - `MuxEndpointId.cs`: `PaneNode.MuxEndpoint` parsed and formatted: `local` or `ssh:<profileId>` (null = `local`)
+  - `MuxTerminalSessionFactory.cs` / `PersistentSessionFactory.cs` / `SessionPersistenceMode.cs`: local panes go through the mux when `SessionPersistence` is `KeepOnClose`; SSH panes whose profile has `PersistRemoteSessions` go to their `ssh:` host (`RoutesRemote`); other SSH panes and local failures fall back to the default factory. Restore attaches `IfUnattached` on a v2 daemon (server-decided) or falls back to the pane's own `AttachedClients == 0` check on v1; a reattach after a drop opens `Shared`
+  - `MuxOrphans.cs` / `PaneDisposition.cs`: orphan adoption on launch, `local` endpoint only (skips sessions with `DetachedByUser`, Phase 3 spec §7.7); a user close kills the session, window teardown detaches
+  - `MuxSessionPicker.cs`: the "Attach to Session…" picker's rows (title, command, cwd, size, attached count, running/exited), sorted running-first; local sessions only
+  - `MuxCommandMatch.cs`: whether a daemon session runs the program a restoring pane expects, compared by executable file name so a path difference alone does not start a spurious fresh shell (local restores only; a remote session's command is the remote login shell, which the GUI does not know)
   - `SharedCloseChoice.cs`: the shared-close prompt's three-way answer (Cancel / Close / Detach)
+  - `RemoteMuxStatusText.cs`: the connection editor's install status line
+- Remote persistence (`Shell/Mux/Remote/`, namespace `Ntilde.Shell.Mux.Remote`, Phase 4 spec §7-§9):
+  - `RemoteMuxConnector.cs`: one connect attempt: the remote command, the exec transport off the UI thread, the stdio preamble, the hello with the host's `ClientInstanceId`, and the classified failure; `RemoteMuxCommand.cs` builds the remote command lines, `RemoteMuxFailureClassifier.cs` / `RemoteFailureKind.cs` the failure kinds (`NotInstalled`, `Unsupported`, `VersionMismatch`, `SshFailed`, `ProxyFailed`, `NeedsUser`)
+  - `RemoteMuxHostFactory.cs`: builds a remote `MuxConnectionHost` from a profile (construction only) and the per-attempt OpenSSH or native exec transport
+  - `RemoteMuxInteractionHandler.cs`: a remote host's native prompts: the in-memory secret record, host-key trust for automatic attempts, and the abort that replaces an empty answer
+  - `MuxReconnectLoop.cs` / `IMuxTimerScheduler.cs`: the backoff loop and its one-shot timers (a fake scheduler in tests)
+  - `RemoteHostProbe.cs`, `MuxDaemonRid.cs`, `IMuxDaemonAssetSource.cs` + `GitHubReleaseMuxAssetSource.cs` / `LocalFileMuxAssetSource.cs`, `RemoteMuxInstallCommands.cs`, `RemoteMuxInstaller.cs`, `RemoteOutputText.cs`: the install flow (probe, verified asset, upload script, version check), UI-free
+  - `Views/Ssh/RemoteMuxInstallDialog.cs` (namespace `Ntilde.Views.Ssh`): the code-built install dialog, opened from the connection editor's Reliability tab and from the *Persistent SSH unavailable* notice
+- Windows launch support (`Shell/`): `LauncherRelease.cs` (sets the `ntilde.com` release event on the GUI path; discards it in the mux branch) and `UserPathRegistration.cs` (the install folder on the user `PATH`, from Velopack's install, update and uninstall hooks only); `AppVersionInfo.cs` (the app's version, for the About window, the editor and the release download)
 
 **Non-responsibilities**
 - VT parsing (delegated to VT)
@@ -449,9 +563,18 @@ requires public test classes.
 - App is allowed to depend on all production assemblies; nothing depends on App except Cli and the App.Tests project (and Architecture.Tests, which references everything for inspection)
 - Renderer-side bugs ("the pixels look wrong") are diagnosed by chasing back through Rendering → VT, not by patching App
 - With `SessionPersistence` off no daemon is ever spawned; the daemon mode never initialises Avalonia; a daemon spawn never inherits the caller's std handles
+- **Remote commands are `sh -c` scripts with no single quote inside**, or a recorded absolute path made only of characters no shell treats specially (`RemoteMuxCommand.IsSafeAbsolutePath`). sshd hands them to the user's login shell, which may be bash, fish, tcsh or nushell; both shapes parse alike in all of them, and neither looks anything up on `PATH`. The install scripts (`RemoteMuxInstallCommands.UploadForTrial`, `CommitUpload`, `DiscardUpload`) follow the same rule; an installed `ntilde-mux` is replaced only by the commit, by rename, after a byte-count check, a trial run and the app's check of the version it reported
+- **Automatic attempts never prompt.** The reconnect loop's attempts and the kill-delivery attempt are non-interactive: OpenSSH in batch mode with no askpass, native answering only from the host's in-memory secret record and trusting only host keys the known-hosts store already trusts. With nothing to answer, a native attempt aborts (closes the session) rather than submit an empty password, and the failure is `NeedsUser`, which stops the loop. A password is never replayed for a profile with jump hops. Only a user's request (a pane opening, Enter) may show a dialog, and it cancels any automatic attempt in flight
+- **No remote connect on the UI thread.** `MuxTerminalSessionFactory.CreatePersistent` for a remote request and a remote host's `GetClient` may wait the 120 s connect timeout behind prompts that themselves need the UI thread; the pane runs them off it, with a generation counter that discards a stale result
+- **A remote pane's kill is never lost silently.** Every close of a non-local pane goes through `MuxConnectionHost.KillWhenConnected`: sent now, or queued (kept across a give-up) and sent first on the next connect; dropped only when the daemon stopped (its sessions are gone) or the host is disposed, with a log line
+- **The GUI's bootstrap environment never leaves the machine:** a remote `SpawnParams.EnvironmentOverrides` is always null
+- **Recording an install changes only the profile's four mux install fields** (`SshConnectionService.RecordRemoteMuxInstall`), on the store's own copy, never through the editor's normalisation
+- **`ntilde.com` is released only on the GUI path, and `PATH` is written only from the Velopack hooks** (`CliCommandDispatchTests.The_launcher_is_released_only_on_the_GUI_path`, `The_PATH_is_registered_only_from_the_Velopack_hooks`)
 
 **Test authority**
 - `tests/Ntilde.App.Tests/` (the largest suite)
+- Remote persistence: `tests/Ntilde.App.Tests/Shell/Mux/Remote/` (connector, classifier, interaction handler, host factory, reconnect loop, installer, probe, asset sources, all over `FakeRemoteHost` and a fake scheduler), `Controls/MuxRemotePaneTests.cs`, `Core/MainWindowMuxRemoteTests.cs`, `Core/RemoteMuxInstallDialogTests.cs`; the Docker E2E `Shell/Mux/Remote/RemoteMuxDockerE2eTests.cs` (`Category=DockerE2E`)
+- Windows launch support: `tests/Ntilde.App.Tests/Shell/LauncherReleaseTests.cs`, `Shell/UserPathRegistrationTests.cs`
 - xunit.v3 + `Avalonia.Headless.XUnit 12.0.4`; **do not downgrade** the Avalonia stack below 12.0.4 — earlier versions leak the headless dispatcher and hang `dotnet test`
 
 ---
@@ -523,7 +646,7 @@ Four files, by concern:
 
 ### `tests/Ntilde.Mux.Tests/`
 
-Scripted-session suite for the mux: contracts, transport, headless session, server, client, and end-to-end scenarios. Shares `TerminalStateAssert` and `ParityCorpus` with VT.Tests by file link.
+Scripted-session suite for the mux: contracts, transport, headless session, server, client, the daemon process and the verbs (`Daemon/`, `Cli/`, moved here from App.Tests with the code in Phase 4), and end-to-end scenarios. Shares `TerminalStateAssert` and `ParityCorpus` with VT.Tests by file link.
 
 ### `tests/Ntilde.Benchmarks/` + `tests/Ntilde.ExternalSuites/`
 

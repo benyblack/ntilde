@@ -56,6 +56,17 @@ public sealed class MuxDaemonHostTests : IDisposable
     }
 
     [Fact]
+    public void Daemon_descriptor_records_the_start_time()
+    {
+        var (host, _, o) = NewHost();
+        host.Start();
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        using Process self = Process.GetCurrentProcess();
+        Assert.NotNull(d.StartTime);
+        Assert.Equal(MuxDiscovery.GetProcessStartToken(self), d.StartTime);
+    }
+
+    [Fact]
     public async Task Shutdown_request_stops_the_host_and_deletes_the_descriptor()
     {
         var (host, _, o) = NewHost();
@@ -215,6 +226,58 @@ public sealed class MuxDaemonHostTests : IDisposable
     }
 
     [Fact]
+    public void Repair_does_not_overwrite_a_descriptor_written_meanwhile_when_it_was_missing()
+    {
+        using Process self = Process.GetCurrentProcess();
+        var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var (host, _, o) = NewHost(log: log.Enqueue, tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        File.Delete(o.DescriptorPath);
+        host.BeforeDescriptorWriteForTest = () => MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "foreign",
+            Pid = Environment.ProcessId + 100_000,
+            ProcessName = self.ProcessName,
+            MinVersion = 1,
+            MaxVersion = 2,
+        });
+
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal("foreign", d.Endpoint);
+        Assert.Single(log, line => line.Contains("descriptor written by another daemon meanwhile; leaving it", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Repair_does_not_overwrite_a_descriptor_changed_meanwhile_when_it_named_a_dead_pid()
+    {
+        var (host, _, o) = NewHost(tickInterval: Timeout.InfiniteTimeSpan);
+        host.Start();
+        MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "stale",
+            Pid = Environment.ProcessId + 100_000,
+            ProcessName = "not-running",
+            MinVersion = 1,
+            MaxVersion = 2,
+        });
+        host.BeforeDescriptorWriteForTest = () => MuxDiscovery.WriteDescriptor(o.DescriptorPath, new MuxEndpointDescriptor
+        {
+            Endpoint = "newer",
+            Pid = Environment.ProcessId + 100_001,
+            ProcessName = "not-running",
+            MinVersion = 1,
+            MaxVersion = 2,
+        });
+
+        host.TickForTest();
+
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal("newer", d.Endpoint);
+    }
+
+    [Fact]
     public void A_descriptor_naming_a_dead_pid_is_rewritten()
     {
         var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
@@ -271,6 +334,9 @@ public sealed class MuxDaemonHostTests : IDisposable
 
     private static readonly TimeSpan ShortWindow = TimeSpan.FromMilliseconds(300);
 
+    /// <summary>Environment.TickCount64's granularity is up to ~16 ms (the Windows timer tick), so a lower bound taken from it is only good to that.</summary>
+    private static readonly TimeSpan TickCountResolution = TimeSpan.FromMilliseconds(16);
+
     /// <summary>(a) Accept fails continuously while a client stays connected: the host keeps running.</summary>
     [Fact]
     public async Task Failing_accepts_with_a_client_connected_never_stop_the_host()
@@ -299,12 +365,16 @@ public sealed class MuxDaemonHostTests : IDisposable
         var listener = new MuxServerAcceptLoopTests.ScriptedListener(new InMemoryMuxListener(), _ => true);
         var (host, _, o) = NewHost(serverOptions: MuxServerAcceptLoopTests.FastRetry(), listenerFactory: _ => listener,
             acceptFailureStopAfter: ShortWindow);
-        var sw = Stopwatch.StartNew();
+        // The host measures the window with Environment.TickCount64 (MuxServer.AcceptFailingFor), so
+        // this measures with the same clock, started before Start (the failure streak begins after it).
+        // A Stopwatch is a different clock and read ~1 ms "early" against it on Linux (the old flake).
+        long startedMs = Environment.TickCount64;
 
         host.Start();
 
         Assert.Equal("accept-failed", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
-        Assert.True(sw.Elapsed >= ShortWindow, $"stopped after {sw.Elapsed}, before the {ShortWindow} window");
+        TimeSpan elapsed = TimeSpan.FromMilliseconds(Environment.TickCount64 - startedMs);
+        Assert.True(elapsed >= ShortWindow - TickCountResolution, $"stopped after {elapsed}, before the {ShortWindow} window");
         Assert.True(listener.Failed > 3, "the loop kept retrying until the host gave up");
         Assert.False(File.Exists(o.DescriptorPath));
         var (next, _, _) = NewHost(pid: Environment.ProcessId + 100_000);

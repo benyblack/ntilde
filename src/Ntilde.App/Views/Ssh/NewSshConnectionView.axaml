@@ -149,7 +149,7 @@
 
             <TabItem Header="Reliability">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Grid Margin="0,10,4,0" ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10">
+                <Grid Margin="0,10,4,0" ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Keepalive interval" VerticalAlignment="Center" />
                     <NumericUpDown Grid.Row="0" Grid.Column="1" Minimum="1" Maximum="3600" Value="{Binding KeepAliveIntervalSeconds}" />
 
@@ -161,6 +161,17 @@
 
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="ControlPersist (sec)" VerticalAlignment="Center" />
                     <NumericUpDown Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="86400" Value="{Binding ControlPersistSeconds}" />
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Remote sessions" VerticalAlignment="Top" />
+                    <StackPanel Grid.Row="4" Grid.Column="1" Spacing="4">
+                        <CheckBox IsChecked="{Binding PersistRemoteSessions}"
+                                  Content="Keep remote sessions running (ntilde-mux)" />
+                        <TextBlock Text="{Binding RemoteDaemonStatusText}" Opacity="0.7" TextWrapping="Wrap" />
+                        <Button Content="Install ntilde-mux on this host&#x2026;"
+                                Command="{Binding InstallRemoteMuxCommand}"
+                                ToolTip.Tip="Saves this connection, then installs ntilde-mux in ~/.local/share/ntilde/bin on the host. Needs a host and a user."
+                                HorizontalAlignment="Left" />
+                    </StackPanel>
                 </Grid>
                 </ScrollViewer>
             </TabItem>

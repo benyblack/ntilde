@@ -15,9 +15,22 @@ public class LayeringTests
     private static Assembly MuxContracts => typeof(global::Ntilde.Mux.Contracts.MuxProtocol).Assembly;
     private static Assembly Mux => typeof(global::Ntilde.Mux.Transport.InMemoryMuxListener).Assembly;
 
+    // The standalone remote daemon (Phase 4 spec §10.1). Its only type, Program, is internal, so the
+    // assembly is loaded by name; this project's ProjectReference puts ntilde-mux.dll beside the tests.
+    private static Assembly MuxDaemon => Assembly.Load("ntilde-mux");
+
+    // ntilde.com (Phase 4 spec §11), loaded by name for the same reason: Program is internal.
+    private static Assembly Launcher => Assembly.Load("Ntilde.Launcher");
+
     // Hoisted for CA1861.
     private static readonly string[] MuxApprovedNtildeReferences =
         ["Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay", "Ntilde.Mux.Contracts"];
+
+    // Hoisted for CA1861. Ntilde.Pty is here although the csproj may not reference it
+    // (ProjectFileLayeringTests.MuxDaemon_only_references_Mux): Ntilde.Mux's own public API names it -
+    // MuxCliHost.SessionFactory is a Func<ITerminalSessionFactory> - so the compiler records the
+    // assembly the moment Program fills that property in. It arrives through Mux, never on its own edge.
+    private static readonly string[] MuxDaemonApprovedNtildeReferences = ["Ntilde.Mux", "Ntilde.Pty"];
 
     [Fact]
     public void Vt_must_be_a_leaf_assembly()
@@ -235,6 +248,31 @@ public class LayeringTests
             $"Mux must stay headless. Offenders: {Join(result.FailingTypeNames)}");
     }
 
+    /// <summary>
+    /// Phase 4 spec §6, §12.4: the daemon core and the verbs moved out of the App so the standalone
+    /// <c>ntilde-mux</c>, which references only Ntilde.Mux, can host them. Each executable injects its
+    /// paths, shells and console; none of it may reach back into the App or Platform.
+    /// </summary>
+    [Fact]
+    public void Mux_daemon_and_cli_namespaces_have_no_app_or_platform_dependency()
+    {
+        PredicateList DaemonAndCli() =>
+            Types.InAssembly(Mux).That().ResideInNamespace("Ntilde.Mux.Daemon").Or().ResideInNamespace("Ntilde.Mux.Cli");
+
+        // Pins the selection itself, so a namespace rename cannot turn this into a check over nothing.
+        Type[] selected = DaemonAndCli().GetTypes().ToArray();
+        Assert.Contains(typeof(global::Ntilde.Mux.Daemon.MuxServeHost), selected);
+        Assert.Contains(typeof(global::Ntilde.Mux.Cli.MuxCli), selected);
+
+        var result = DaemonAndCli()
+            .Should()
+            .NotHaveDependencyOnAny("Ntilde.Shell", "Ntilde.Platform", "Avalonia")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"Mux.Daemon and Mux.Cli must not depend on the App or Platform. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
     /// <summary>The emitted-reference edge, which catches a dependency no type names yet.</summary>
     [Fact]
     public void Mux_references_only_approved_ntilde_assemblies()
@@ -248,10 +286,106 @@ public class LayeringTests
         Assert.True(offenders.Length == 0, $"Mux references unapproved assemblies: {Join(offenders)}");
     }
 
+    /// <summary>
+    /// The IL sibling of <c>ProjectFileLayeringTests.MuxDaemon_only_references_Mux</c> (Phase 4 spec
+    /// §12.4): <c>ntilde-mux</c> is the verbs of <c>Ntilde.Mux.Cli</c> and nothing else, so it may
+    /// reach no UI, App or Platform type - neither by an emitted reference nor by naming one.
+    /// </summary>
+    [Fact]
+    public void MuxDaemon_references_only_Mux()
+    {
+        string[] ntildeReferences = MuxDaemon.GetReferencedAssemblies()
+            .Select(r => r.Name ?? string.Empty)
+            .Where(n => n.StartsWith("Ntilde", StringComparison.Ordinal))
+            .ToArray();
+
+        // Pins the edge itself, so a Program that stopped calling into Mux cannot pass vacuously.
+        Assert.Contains("Ntilde.Mux", ntildeReferences);
+        string[] offenders = ntildeReferences.Where(n => !MuxDaemonApprovedNtildeReferences.Contains(n)).ToArray();
+        Assert.True(offenders.Length == 0, $"ntilde-mux references unapproved assemblies: {Join(offenders)}");
+
+        var result = Types.InAssembly(MuxDaemon)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "Avalonia", "SkiaSharp", "Ntilde.Platform", "Ntilde.Rendering", "Ntilde.Shell",
+                "Ntilde.Controls", "Ntilde.CommandAssist", "Ntilde.AgentHost")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful,
+            $"ntilde-mux must stay headless and App-free. Offenders: {Join(result.FailingTypeNames)}");
+    }
+
+    // Hoisted for CA1861. On Linux these reach OpenSSL, which .NET - NativeAOT included - loads at
+    // run time: hashes, HMAC, random numbers and certificates through System.Security.Cryptography
+    // (and its facades), TLS through System.Net.Security and HttpClient. ldd shows no such
+    // dependency, and a remote host may have no libssl.so at all; ntilde-mux aborted at `serve` on
+    // debian:12-slim until MuxDiscovery's endpoint hash moved to the managed Sha256.
+    private static readonly string[] OpenSslBackedAssemblyPrefixes =
+        ["System.Security.Cryptography", "System.Net.Security", "System.Net.Http"];
+
+    // Hoisted for CA1861: what the walk below must at least reach.
+    private static readonly string[] MuxDaemonClosureFloor =
+        ["ntilde-mux", "Ntilde.Mux", "Ntilde.Mux.Contracts", "Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay"];
+
+    /// <summary>
+    /// Phase 4 spec §2 decision 1 and the Task 12 ruling: ntilde-mux needs libc and nothing else, so
+    /// nothing it runs may reference an assembly that loads OpenSSL. The Ntilde assemblies it runs are
+    /// walked from its own references rather than listed, so a dependency added later is covered too.
+    /// </summary>
+    [Fact]
+    public void Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly()
+    {
+        var closure = new Dictionary<string, Assembly>(StringComparer.Ordinal);
+        var pending = new Queue<Assembly>();
+        pending.Enqueue(MuxDaemon);
+        while (pending.Count > 0)
+        {
+            Assembly asm = pending.Dequeue();
+            if (!closure.TryAdd(asm.GetName().Name ?? string.Empty, asm)) continue;
+            foreach (AssemblyName reference in asm.GetReferencedAssemblies())
+            {
+                if (reference.Name?.StartsWith("Ntilde", StringComparison.Ordinal) == true && !closure.ContainsKey(reference.Name))
+                    pending.Enqueue(Assembly.Load(reference));
+            }
+        }
+
+        Assert.All(MuxDaemonClosureFloor, name => Assert.Contains(name, closure.Keys));
+
+        string[] offenders = closure
+            .SelectMany(entry => entry.Value.GetReferencedAssemblies()
+                .Select(r => r.Name ?? string.Empty)
+                .Where(n => OpenSslBackedAssemblyPrefixes.Any(p => n.StartsWith(p, StringComparison.Ordinal)))
+                .Select(n => $"{entry.Key} -> {n}"))
+            .ToArray();
+
+        Assert.True(offenders.Length == 0,
+            "ntilde-mux must run on libc alone, and these load OpenSSL on Linux (a managed replacement is " +
+            $"what MuxDiscovery's Sha256 is for): {Join(offenders)}");
+    }
+
+    /// <summary>
+    /// The IL sibling of <c>ProjectFileLayeringTests.Launcher_has_no_references</c> (Phase 4 spec §12.4):
+    /// <c>ntilde.com</c> starts <c>Ntilde.exe</c> through kernel32 and never loads an Ntilde assembly, the
+    /// App's included - it is the process that runs before the App, not a second entry point into it.
+    /// </summary>
+    [Fact]
+    public void Launcher_references_no_Ntilde_assembly()
+    {
+        // Pins the load itself, so a renamed assembly cannot turn this into a check over nothing.
+        Assert.Contains(Launcher.GetTypes(), t => t.FullName == "Ntilde.Launcher.LauncherCommandLine");
+
+        string[] ntildeReferences = Launcher.GetReferencedAssemblies()
+            .Select(r => r.Name ?? string.Empty)
+            .Where(n => n.StartsWith("Ntilde", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.True(ntildeReferences.Length == 0, $"Ntilde.Launcher references: {Join(ntildeReferences)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux, MuxDaemon, Launcher })
         {
             var result = Types.InAssembly(asm)
                 .Should()

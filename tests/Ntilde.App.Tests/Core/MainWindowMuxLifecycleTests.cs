@@ -41,13 +41,14 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         _mux.Dispose();
     }
 
-    private MainWindow CreateWindow(TimeSpan? disposeFlush = null)
+    private MainWindow CreateWindow(TimeSpan? disposeFlush = null, Func<MuxEndpointId, MuxConnectionHost?>? createRemote = null)
     {
         _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null)
         {
             DisposeFlushTimeout = disposeFlush ?? TimeSpan.FromSeconds(1),
         };
-        var factory = new MuxTerminalSessionFactory(_host, new RecordingSessionFactory(new FakeTerminalSession()), null);
+        var factory = new MuxTerminalSessionFactory(
+            new MuxConnectionHosts(_host, createRemote ?? (_ => null)), new RecordingSessionFactory(new FakeTerminalSession()), null);
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
@@ -136,9 +137,64 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => !mux.IsProcessRunning, "the pane saw the exit");
 
         typeof(MainWindow).GetMethod("KillMuxSessionOnClose", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(window, [mux, PaneDisposition.EndSession]);
+            .Invoke(window, [mux, PaneDisposition.EndSession, pane.MuxEndpoint]);
 
         Assert.Equal(0, _host!.PendingKillCountForTest);
+    }
+
+    /// <summary>
+    /// Phase 4 spec §5: a closed pane's kill is tracked by the host of the pane's own endpoint, whose
+    /// teardown flush then waits for it. Tracked on the local host instead, the remote connection
+    /// could close right behind the kill and drop it.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_remote_pane_tracks_the_kill_on_its_own_host()
+    {
+        // The remote daemon answers the hello and nothing after it: the pane's attach and its kill
+        // stay unanswered, so the kill is still pending when the test looks.
+        using FakeMuxServerEnd remoteDaemon = FakeMuxServerEnd.Create();
+        // On the pool: started here it would resume on the UI thread, which GetClient blocks.
+        Task hello = Task.Run(() => remoteDaemon.AcceptHelloAsync(), TestContext.Current.CancellationToken);
+        MuxEndpointId remoteId = MuxEndpointId.ForSsh(Guid.NewGuid());
+        var remoteHost = new MuxConnectionHost(ct => MuxClient.ConnectAsync(remoteDaemon.ClientEnd, null, ct), "remote", null, MuxHostPolicy.Remote("box"))
+        {
+            KillFlushTimeout = TimeSpan.FromMilliseconds(200), // the window's teardown gives up on it quickly
+        };
+        MainWindow window = CreateWindow(createRemote: id => id == remoteId ? remoteHost : null);
+        TerminalPane first = AllPanes(window).Single();
+
+        // A second pane, so closing the remote one leaves the window open.
+        typeof(MainWindow).GetProperty("_currentPane", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(window, first);
+        typeof(MainWindow).GetMethod("SplitPane", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [Avalonia.Layout.Orientation.Horizontal]);
+        TerminalPane pane = AllPanes(window).Single(p => !ReferenceEquals(p, first));
+        PumpUntil(() => pane.Session is MuxClientSession { IsAttached: true }, "the split pane attached locally");
+
+        // Until SSH requests are routed to a remote endpoint, a stand-in factory opens it there.
+        pane.SessionFactory = new RemoteEndpointFactory(window.MuxHosts!, remoteId);
+        pane.Reconnect();
+        Assert.True(hello.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken), "the remote host connected");
+        Assert.IsType<MuxClientSession>(pane.Session);
+        Assert.Equal(remoteId.ToString(), pane.MuxEndpoint);
+
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [pane, true])!;
+        PumpUntil(() => close.IsCompleted, "the remote pane closed");
+
+        Assert.True(close.Result);
+        Assert.Equal(1, remoteHost.PendingKillCountForTest);
+        Assert.Equal(0, _host!.PendingKillCountForTest);
+    }
+
+    /// <summary>Opens a new session on the remote endpoint's host, the way Task 19's factory will.</summary>
+    private sealed class RemoteEndpointFactory(MuxConnectionHosts hosts, MuxEndpointId endpoint) : IPersistentSessionFactory
+    {
+        public Ntilde.Pty.ITerminalSession Create(Ntilde.Pty.TerminalSessionRequest request) => CreatePersistent(request).Session!;
+
+        public PersistentSessionResult CreatePersistent(Ntilde.Pty.TerminalSessionRequest request)
+        {
+            MuxClient client = hosts.GetOrCreate(endpoint)!.GetClient(TimeSpan.FromSeconds(5))
+                ?? throw new InvalidOperationException("the remote host did not connect");
+            return new(client.OpenSession(Guid.NewGuid(), request.Command, request.Arguments), PersistentSessionOutcome.Spawned, endpoint.ToString(), null);
+        }
     }
 
     /// <summary>
@@ -354,7 +410,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Dispatcher.UIThread.RunJobs();
 
         for (int i = 0; i < 3; i++)
-            handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+            handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner, null]);
         Dispatcher.UIThread.RunJobs();
 
         (bool visible, string? title, string? message) = Toast(window);
@@ -372,14 +428,14 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         var handler = typeof(MainWindow).GetMethod("OnPanePersistenceNotice", BindingFlags.NonPublic | BindingFlags.Instance)!;
         Dispatcher.UIThread.RunJobs();
 
-        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
-        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner, null]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner, null]);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal((true, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner), Toast(window));
 
         // A later pane (after the connection cooldown, say) raises it again: only the other notice shows.
-        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner]);
-        handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner]);
+        handler.Invoke(window, [pane, TerminalPane.MuxOrphanedNoticeTitle, TerminalPane.MuxOrphanedBanner, null]);
+        handler.Invoke(window, [pane, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner, null]);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal((true, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Toast(window));
     }

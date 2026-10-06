@@ -84,6 +84,31 @@ public sealed class MuxJsonTests
         Assert.Equal(new SessionIdParams { SessionId = id }, System.Text.Json.JsonSerializer.Deserialize(named, MuxJsonContext.Default.SessionIdParams));
     }
 
+    /// <summary>
+    /// Codex E1 (Phase 4 spec §3), additive over the old shape: a spawn names its session's id only when the caller
+    /// chose one. A reader skips members it does not know rather than refusing them, which is how a daemon built
+    /// before the member reads a spawn that carries it.
+    /// </summary>
+    [Fact]
+    public void Spawn_params_name_a_session_id_only_when_one_is_chosen()
+    {
+        var plain = new SpawnParams { Command = "pwsh", Arguments = "-NoLogo", Cols = 100, Rows = 30, Title = "work" };
+        string plainJson = System.Text.Json.JsonSerializer.Serialize(plain, MuxJsonContext.Default.SpawnParams);
+        Assert.DoesNotContain("sessionId", plainJson, StringComparison.Ordinal);
+        Assert.Equal(plain, System.Text.Json.JsonSerializer.Deserialize(plainJson, MuxJsonContext.Default.SpawnParams));
+
+        var named = plain with { SessionId = new Guid("00000000-0000-0000-0000-000000000004").ToString("D") };
+        string namedJson = System.Text.Json.JsonSerializer.Serialize(named, MuxJsonContext.Default.SpawnParams);
+        Assert.Contains("\"sessionId\":\"00000000-0000-0000-0000-000000000004\"", namedJson, StringComparison.Ordinal);
+        Assert.Equal(named, System.Text.Json.JsonSerializer.Deserialize(namedJson, MuxJsonContext.Default.SpawnParams));
+
+        SpawnParams future = MuxFrames.ParseParams(
+            MuxFrames.ParseJson("{\"id\":1,\"method\":\"spawn\",\"params\":{\"command\":\"pwsh\",\"cols\":100,\"rows\":30,\"aMemberFromLater\":{\"x\":[1,2]},\"anotherOne\":\"y\"}}"u8,
+                MuxJsonContext.Default.MuxRequest).Params,
+            MuxJsonContext.Default.SpawnParams);
+        Assert.Equal(("pwsh", 100, 30, (string?)null), (future.Command, future.Cols, future.Rows, future.SessionId));
+    }
+
     [Fact]
     public void Malformed_json_is_a_protocol_error()
     {

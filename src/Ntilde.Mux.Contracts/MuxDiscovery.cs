@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -59,18 +58,23 @@ public static class MuxDiscovery
 
     private const string RuntimeDirEnvVar = "XDG_RUNTIME_DIR";
 
-    private static string SanitizedUser()
+    internal static string SanitizedUser()
     {
         string sanitized = string.Concat(Environment.UserName.ToLowerInvariant().Where(char.IsAsciiLetterOrDigit));
         return sanitized.Length == 0 ? "user" : sanitized;
     }
 
-    private static string RootHash(string root)
+    /// <summary>
+    /// The first 4 bytes of the root's SHA-256, in hex. <see cref="Sha256"/>, not
+    /// <c>System.Security.Cryptography.SHA256</c>: on Linux the latter is OpenSSL, loaded at run time,
+    /// which the standalone ntilde-mux must not need (Phase 4 spec §2 decision 1). Same bytes either way.
+    /// </summary>
+    internal static string RootHash(string root)
     {
         // Trimmed: "C:\x\" and "C:\x" are one root, and clients derive it back from the descriptor path.
         string full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         if (OperatingSystem.IsWindows()) full = full.ToUpperInvariant(); // case-insensitive paths
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(full));
+        byte[] hash = Sha256.Hash(Encoding.UTF8.GetBytes(full));
         return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
     }
 
@@ -97,8 +101,19 @@ public static class MuxDiscovery
         }
     }
 
-    public static bool TryReadDescriptor(string path, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor)
+    public static bool TryReadDescriptor(string path, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor) =>
+        TryReadDescriptorText(path, out _, out descriptor);
+
+    /// <summary>
+    /// <see cref="TryReadDescriptor"/> that also hands back the raw file text it parsed, so a caller
+    /// that decides from the descriptor can later replace it only if the text is still that exact
+    /// text (<see cref="TryReplaceDescriptorIfUnchanged"/>). <paramref name="text"/> is null when the
+    /// file is missing or unreadable, and set (even when the result is false) when the file was read
+    /// but did not parse to a usable descriptor.
+    /// </summary>
+    public static bool TryReadDescriptorText(string path, out string? text, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor)
     {
+        text = null;
         descriptor = null;
         try
         {
@@ -111,7 +126,8 @@ public static class MuxDiscovery
             // Unix unlink/rename ignore open handles, so this is a no-op there.
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = new StreamReader(stream);
-            descriptor = JsonSerializer.Deserialize(reader.ReadToEnd(), MuxJsonContext.Default.MuxEndpointDescriptor);
+            text = reader.ReadToEnd();
+            descriptor = JsonSerializer.Deserialize(text, MuxJsonContext.Default.MuxEndpointDescriptor);
             return descriptor is { Endpoint.Length: > 0 };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -121,26 +137,126 @@ public static class MuxDiscovery
         }
     }
 
-    /// <summary>Readable, and its pid is alive under the recorded process name (guards pid reuse).</summary>
+    /// <summary>
+    /// Writes the descriptor only if nothing is at <paramref name="path"/>: a temp file, then a move
+    /// that refuses to overwrite. False (temp deleted) when another writer got there first.
+    /// </summary>
+    public static bool TryWriteDescriptorIfAbsent(string path, MuxEndpointDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        string dir = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        CreatePrivateDirectory(dir);
+        string temp = Path.Combine(dir, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllText(temp, JsonSerializer.Serialize(descriptor, MuxJsonContext.Default.MuxEndpointDescriptor));
+            File.Move(temp, path, overwrite: false);
+            return true;
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            DeleteQuietly(temp);
+            return false;
+        }
+        catch
+        {
+            DeleteQuietly(temp);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Replaces the descriptor only if the file still holds exactly <paramref name="expectedContent"/>
+    /// (re-read with the same share flags as <see cref="TryReadDescriptor"/>). False when it changed
+    /// or vanished meanwhile. A narrow compare-then-swap, not a lock: it shrinks the window between
+    /// a caller's judgement and its write down to this re-read.
+    /// </summary>
+    public static bool TryReplaceDescriptorIfUnchanged(string path, string expectedContent, MuxEndpointDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(expectedContent);
+        TryReadDescriptorText(path, out string? now, out _);
+        if (now is null || !string.Equals(now, expectedContent, StringComparison.Ordinal)) return false;
+        WriteDescriptor(path, descriptor);
+        return true;
+    }
+
+    private static void DeleteQuietly(string temp)
+    {
+        try { File.Delete(temp); }
+        catch (IOException) { /* best effort: a leftover .tmp is harmless */ }
+        catch (UnauthorizedAccessException) { /* best effort, as above */ }
+    }
+
+    /// <summary>Readable, and its pid is alive under the recorded process name and start time (guards pid reuse).</summary>
     public static bool TryReadLiveDescriptor(string path, [NotNullWhen(true)] out MuxEndpointDescriptor? descriptor)
     {
-        if (TryReadDescriptor(path, out descriptor) && IsProcessAlive(descriptor.Pid, descriptor.ProcessName)) return true;
+        if (TryReadDescriptor(path, out descriptor) && IsProcessAlive(descriptor.Pid, descriptor.ProcessName, descriptor.StartTime)) return true;
         descriptor = null;
         return false;
     }
 
-    public static bool IsProcessAlive(int pid, string processName)
+    public static bool IsProcessAlive(int pid, string processName, long? startToken = null)
     {
         if (pid <= 0) return false;
         try
         {
             using Process process = Process.GetProcessById(pid);
-            return !process.HasExited && string.Equals(process.ProcessName, processName, StringComparison.OrdinalIgnoreCase);
+            return !process.HasExited
+                && string.Equals(process.ProcessName, processName, StringComparison.OrdinalIgnoreCase)
+                && StartTimeMatches(process, startToken);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// True when <paramref name="startToken"/> is null (an older descriptor) or the process's own
+    /// token matches it: exactly on Linux, within a second elsewhere. A token that cannot be read
+    /// also answers true: this check only ever refuses, so the conservative answer is "no evidence against".
+    /// </summary>
+    public static bool StartTimeMatches(Process process, long? startToken)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        if (startToken is not long expected) return true;
+        if (GetProcessStartToken(process) is not long actual) return true;
+        return OperatingSystem.IsLinux() ? actual == expected : Math.Abs(actual - expected) < TimeSpan.TicksPerSecond;
+    }
+
+    /// <summary>
+    /// A process start token that survives clock steps. Linux: the /proc starttime field (clock ticks
+    /// since boot), because .NET derives <see cref="Process.StartTime"/> there from the current wall
+    /// clock, which an NTP step or VM resync shifts. Elsewhere: UTC ticks of <see cref="Process.StartTime"/>.
+    /// Null when it cannot be read. Only ever compared with a token taken on the same host.
+    /// </summary>
+    public static long? GetProcessStartToken(Process process)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        try
+        {
+            if (OperatingSystem.IsLinux())
+                return ParseLinuxStartTicks(File.ReadAllText($"/proc/{process.Id}/stat"));
+            return process.StartTime.ToUniversalTime().Ticks;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Field 22 (starttime) of a /proc/pid/stat line. The comm field (2) may hold spaces and
+    /// parentheses, so parse from the LAST ')': what follows starts at field 3 (state), making
+    /// starttime index 19. Null when the line is malformed.
+    /// </summary>
+    public static long? ParseLinuxStartTicks(string stat)
+    {
+        ArgumentNullException.ThrowIfNull(stat);
+        int close = stat.LastIndexOf(')');
+        if (close < 0) return null;
+        string[] fields = stat[(close + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return fields.Length > 19 && long.TryParse(fields[19], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out long ticks) ? ticks : null;
     }
 
     public static void DeleteDescriptorIfOwned(string path, int pid)

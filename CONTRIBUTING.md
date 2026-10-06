@@ -104,12 +104,16 @@ semantics**.
 | `Ntilde.Backup` | `.ntildebackup` export/import, automatic snapshots, the category-to-path catalogue. Never touches secret storage. | *(leaf)* |
 | `Ntilde.VtContract` | The machine-readable VT capability catalogue (`vt-capabilities.json`) and its schema validation. | *(leaf)* |
 | `Ntilde.AgentHost.Contracts` | Wire contracts shared by the app and the MCP server. | *(leaf)* |
+| `Ntilde.Mux.Contracts` | The multiplexer's wire protocol and daemon discovery. | *(leaf)* |
+| `Ntilde.Mux` | The multiplexer: headless sessions, server, client, transports, the daemon process (`Daemon/`), every `mux` verb (`Cli/`), the `mux attach` text client. No Platform, App or Avalonia. | Pty, VT, Replay, Mux.Contracts |
+| `Ntilde.Mux.Daemon` | `ntilde-mux`, the daemon that runs on SSH hosts for persistent remote tabs: one NativeAOT file per Linux/macOS RID, libc only. | Mux |
+| `Ntilde.Launcher` | `ntilde.com`, the Windows console launcher for `Ntilde.exe`. | *(none)* |
 | `Ntilde.McpServer` | The opt-in MCP server that agents connect to. | AgentHost.Contracts, Backup, VtContract |
-| `Ntilde.App` | Avalonia UI — window, tabs, panes, settings, themes, command palette, Command Assist views, Agent Output panel. Wires it all together. | Platform, VT, Rendering, Pty, Replay, CommandAssist, Backup, AgentHost.Contracts |
+| `Ntilde.App` | Avalonia UI — window, tabs, panes, settings, themes, command palette, Command Assist views, Agent Output panel. Wires it all together. | Platform, VT, Rendering, Pty, Replay, CommandAssist, Backup, AgentHost.Contracts, Mux, Mux.Contracts |
 | `Ntilde.Cli` | Thin CLI entry point. | App |
 | `Ntilde.Conformance` | Validates `docs/vt_coverage_matrix.md` and generates the conformance report. | VtContract |
 
-`CommandAssist`, `Backup`, `VtContract` and `AgentHost.Contracts` are leaves with
+`CommandAssist`, `Backup`, `VtContract`, `AgentHost.Contracts` and `Mux.Contracts` are leaves with
 zero project references. That is deliberate rather than incidental: it is what
 lets `McpServer` share real code with the app while keeping its "does not
 reference App/VT/Pty/Rendering" invariant true by construction, and the
@@ -330,6 +334,7 @@ scripts/build.sh test --filter \
 | `Stress` | Sustained load, leaks. | Lifetime or threading work. |
 | `ShellIntegration` | OSC 133 / OSC 7 shell markers. | Shell-integration changes. |
 | `Regression` | Previously-fixed bugs, pinned so they stay fixed. | You fix a bug — pin it here. |
+| `DockerE2E` | Real SSH against a Docker sshd: the native backend (Platform.Tests) and persistent remote tabs over both backends (App.Tests). Opt-in via `NTILDE_ENABLE_DOCKER_E2E=1`; skipped otherwise. The remote-tab suite also needs `NTILDE_MUX_E2E_BINARY`, the path of a linux-x64 `ntilde-mux`: build one with `scripts/docker-publish-mux-daemon.sh linux-x64 artifacts/mux-daemon` (Docker; Git Bash on Windows) and point the variable at `artifacts/mux-daemon/linux-x64/ntilde-mux`. | You touch the SSH transports, the exec channels or the remote multiplexer. Run it with `--filter "Category=DockerE2E"`, alone. |
 
 `Lane` is a second, separate trait, and today it has one value: `Lane=PlatformBoot`
 marks the App.Tests that boot the Avalonia headless platform themselves (via

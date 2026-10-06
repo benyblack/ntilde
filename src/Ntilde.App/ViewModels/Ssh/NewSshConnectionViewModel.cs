@@ -6,7 +6,10 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using Ntilde.Platform;
+using Ntilde.Shell.Mux;
 using Ntilde.VT;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
@@ -42,10 +45,18 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     private int _keepAliveCountMax = 3;
     private bool _enableMux;
     private int _controlPersistSeconds = 90;
+    private bool _persistRemoteSessions;
+    private string _remoteDaemonPath = string.Empty;
+    private string _remoteDaemonVersion = string.Empty;
+    private string _remoteDaemonRid = string.Empty;
+    private string _appVersion = ResolveAppVersion();
     private string _extraSshArgs = string.Empty;
     private bool _connectAfterSave;
     private bool _experimentalNativeSshEnabled;
     private RemoteShellKind _remoteShellKind = RemoteShellKind.Auto;
+    private Func<Task>? _installRemoteMux;
+    private InstallCommand? _installRemoteMuxCommand;
+    private bool _installRemoteMuxRunning;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -76,13 +87,25 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     public string HostName
     {
         get => _hostName;
-        set => SetField(ref _hostName, value);
+        set
+        {
+            if (SetField(ref _hostName, value))
+            {
+                _installRemoteMuxCommand?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public string UserName
     {
         get => _userName;
-        set => SetField(ref _userName, value);
+        set
+        {
+            if (SetField(ref _userName, value))
+            {
+                _installRemoteMuxCommand?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public int Port
@@ -217,6 +240,125 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
     {
         get => _controlPersistSeconds;
         set => SetField(ref _controlPersistSeconds, value);
+    }
+
+    /// <summary>
+    /// Phase 4: tabs of this profile run inside ntilde-mux on the remote host and survive disconnects.
+    /// Deliberately independent of <see cref="EnableMux"/> and NOT part of <see cref="BackendWarning"/>:
+    /// it is not an OpenSSH client feature.
+    /// </summary>
+    public bool PersistRemoteSessions
+    {
+        get => _persistRemoteSessions;
+        set => SetField(ref _persistRemoteSessions, value);
+    }
+
+    /// <summary>Recorded by the install flow; carried through the editor so a save never drops it.</summary>
+    public string RemoteDaemonVersion
+    {
+        get => _remoteDaemonVersion;
+        set
+        {
+            if (SetField(ref _remoteDaemonVersion, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(RemoteDaemonStatusText));
+            }
+        }
+    }
+
+    /// <summary>The app version the status line compares against; settable for tests.</summary>
+    public string AppVersion
+    {
+        get => _appVersion;
+        set
+        {
+            if (SetField(ref _appVersion, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(RemoteDaemonStatusText));
+            }
+        }
+    }
+
+    public string RemoteDaemonStatusText => RemoteMuxStatusText.Describe(RemoteDaemonVersion, AppVersion);
+
+    /// <summary>
+    /// The editor's "Install ntilde-mux on this host…" (Phase 4 spec §9): runs <see cref="InstallRemoteMux"/>.
+    /// It can run once the profile is saveable - it has a host and a user - while nothing else it started is
+    /// running, and only when whoever shows the editor wired the flow.
+    /// </summary>
+    public ICommand InstallRemoteMuxCommand => _installRemoteMuxCommand ??= new InstallCommand(this);
+
+    /// <summary>
+    /// The install flow, set by whoever shows the editor (MainWindow): it saves the pending edits, so the
+    /// profile exists with its host and auth, opens the install dialog, and afterwards applies what was
+    /// installed (<see cref="ApplyRemoteMuxInstall"/>). Null: the command cannot run. A throw is shown as
+    /// <see cref="ValidationError"/>.
+    /// </summary>
+    public Func<Task>? InstallRemoteMux
+    {
+        get => _installRemoteMux;
+        set
+        {
+            _installRemoteMux = value;
+            _installRemoteMuxCommand?.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>
+    /// What an install recorded in the saved profile's options: the daemon's path, version and RID (the status
+    /// line follows the version), and <see cref="PersistRemoteSessions"/> when the user turned it on in the
+    /// dialog. It never turns the flag off.
+    /// </summary>
+    public void ApplyRemoteMuxInstall(SshMuxOptions recorded)
+    {
+        ArgumentNullException.ThrowIfNull(recorded);
+        _remoteDaemonPath = recorded.RemoteDaemonPath ?? string.Empty;
+        _remoteDaemonRid = recorded.RemoteDaemonRid ?? string.Empty;
+        RemoteDaemonVersion = recorded.RemoteDaemonVersion ?? string.Empty;
+        if (recorded.PersistRemoteSessions)
+        {
+            PersistRemoteSessions = true;
+        }
+    }
+
+    private bool CanInstallRemoteMux =>
+        _installRemoteMux is not null
+        && !_installRemoteMuxRunning
+        && !string.IsNullOrWhiteSpace(HostName)
+        && !string.IsNullOrWhiteSpace(UserName);
+
+    private static string ResolveAppVersion() => AppVersionInfo.InformationalVersion ?? string.Empty;
+
+    /// <summary>Runs <see cref="InstallRemoteMux"/>, one at a time, on the caller's (the UI) thread.</summary>
+    private sealed class InstallCommand(NewSshConnectionViewModel owner) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => owner.CanInstallRemoteMux;
+
+        public async void Execute(object? parameter)
+        {
+            if (!owner.CanInstallRemoteMux) return;
+            Func<Task> install = owner._installRemoteMux!;
+            owner._installRemoteMuxRunning = true;
+            RaiseCanExecuteChanged();
+            try
+            {
+                await install();
+            }
+            catch (Exception ex)
+            {
+                // async void: nothing else would see it.
+                owner.ValidationError = ex.Message;
+            }
+            finally
+            {
+                owner._installRemoteMuxRunning = false;
+                RaiseCanExecuteChanged();
+            }
+        }
+
+        public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public string ExtraSshArgs
@@ -420,7 +562,11 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
             {
                 Enabled = EnableMux,
                 ControlMasterAuto = true,
-                ControlPersistSeconds = EnableMux ? controlPersistSeconds : 0
+                ControlPersistSeconds = EnableMux ? controlPersistSeconds : 0,
+                PersistRemoteSessions = PersistRemoteSessions,
+                RemoteDaemonPath = _remoteDaemonPath,
+                RemoteDaemonVersion = RemoteDaemonVersion,
+                RemoteDaemonRid = _remoteDaemonRid
             },
             ServerAliveIntervalSeconds = keepAliveInterval,
             ServerAliveCountMax = keepAliveCountMax,
@@ -522,6 +668,10 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
         KeepAliveCountMax = sshProfile.ServerAliveCountMax > 0 ? sshProfile.ServerAliveCountMax : 3;
         EnableMux = sshProfile.MuxOptions.Enabled;
         ControlPersistSeconds = sshProfile.MuxOptions.ControlPersistSeconds >= 0 ? sshProfile.MuxOptions.ControlPersistSeconds : 90;
+        PersistRemoteSessions = sshProfile.MuxOptions.PersistRemoteSessions;
+        _remoteDaemonPath = sshProfile.MuxOptions.RemoteDaemonPath ?? string.Empty;
+        _remoteDaemonRid = sshProfile.MuxOptions.RemoteDaemonRid ?? string.Empty;
+        RemoteDaemonVersion = sshProfile.MuxOptions.RemoteDaemonVersion ?? string.Empty;
         ExtraSshArgs = sshProfile.ExtraSshArgs ?? string.Empty;
         RemoteShellKind = sshProfile.RemoteShellKind;
     }

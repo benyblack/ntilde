@@ -219,6 +219,87 @@ public sealed class JsonSshProfileStoreTests
     }
 
     [Fact]
+    public void SaveAndLoad_RoundTripsRemoteMuxFields()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            string storePath = Path.Combine(tempRoot, "profiles.json");
+            var profile = new SshProfile
+            {
+                Id = Guid.Parse("0c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5"),
+                Name = "persist",
+                Host = "persist.internal",
+                MuxOptions = new SshMuxOptions
+                {
+                    PersistRemoteSessions = true,
+                    RemoteDaemonPath = " /opt/ntilde/ntilde-mux ",
+                    RemoteDaemonVersion = "0.11.0",
+                    RemoteDaemonRid = "linux-x64"
+                }
+            };
+            new JsonSshProfileStore(storePath).SaveProfile(profile);
+
+            SshProfile? loaded = new JsonSshProfileStore(storePath).GetProfile(profile.Id);
+
+            Assert.NotNull(loaded);
+            Assert.True(loaded!.MuxOptions.PersistRemoteSessions);
+            Assert.Equal("/opt/ntilde/ntilde-mux", loaded.MuxOptions.RemoteDaemonPath);
+            Assert.Equal("0.11.0", loaded.MuxOptions.RemoteDaemonVersion);
+            Assert.Equal("linux-x64", loaded.MuxOptions.RemoteDaemonRid);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Load_OldJsonWithoutRemoteMuxFields_UsesDefaults()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            string storePath = Path.Combine(tempRoot, "profiles.json");
+            var profile = new SshProfile
+            {
+                Id = Guid.Parse("1d2e3f4a-5b6c-4d7e-9f80-a1b2c3d4e5f6"),
+                Name = "old",
+                Host = "old.internal",
+                MuxOptions = new SshMuxOptions
+                {
+                    PersistRemoteSessions = true,
+                    RemoteDaemonPath = "/x",
+                    RemoteDaemonVersion = "1",
+                    RemoteDaemonRid = "linux-x64"
+                }
+            };
+            new JsonSshProfileStore(storePath).SaveProfile(profile);
+
+            // Simulate a pre-Phase-4 file: drop every line that mentions the new fields.
+            string[] lines = File.ReadAllLines(storePath)
+                .Where(l => !l.Contains("PersistRemoteSessions") && !l.Contains("RemoteDaemon"))
+                .ToArray();
+            string text = string.Join('\n', lines);
+            // Removing the last member of the object can leave a trailing comma; strip it.
+            text = System.Text.RegularExpressions.Regex.Replace(text, @",(\s*\})", "$1");
+            File.WriteAllText(storePath, text);
+
+            SshProfile? loaded = new JsonSshProfileStore(storePath).GetProfile(profile.Id);
+
+            Assert.NotNull(loaded);
+            Assert.False(loaded!.MuxOptions.PersistRemoteSessions);
+            Assert.Equal(string.Empty, loaded.MuxOptions.RemoteDaemonPath);
+            Assert.Equal(string.Empty, loaded.MuxOptions.RemoteDaemonVersion);
+            Assert.Equal(string.Empty, loaded.MuxOptions.RemoteDaemonRid);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void NormalizeRememberPasswordPreference_PreservesNativeProfiles()
     {
         var profile = new SshProfile

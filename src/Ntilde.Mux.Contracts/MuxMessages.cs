@@ -38,6 +38,14 @@ public sealed record HelloParams
     public int MinVersion { get; init; }
     public int MaxVersion { get; init; }
     public string ClientKind { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Phase 4 (spec §2.5, additive; an older daemon ignores it): a stable id of the GUI instance.
+    /// A hello carrying the same id as a live connection closes that connection first - after an SSH
+    /// link drops, the daemon still holds the old half-open one with the GUI's sinks attached. Null
+    /// never evicts; longer than 64 characters is ignored.
+    /// </summary>
+    public string? ClientInstanceId { get; init; }
 }
 
 public sealed record WelcomeResult
@@ -70,6 +78,18 @@ public sealed record SpawnParams
     public IReadOnlyDictionary<string, string>? EnvironmentOverrides { get; init; }
     public bool SkipPowerShellPostLaunchInit { get; init; }
     public string Title { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Phase 4 (spec §3, codex E1; additive): the id the new session takes, in the "D" form, chosen by the
+    /// client so that a spawn whose reply is lost still names a session the client can end. Null (absent):
+    /// the daemon picks one, as before. A string, not a <see cref="Guid"/>, for the reason
+    /// <see cref="AttachParams.Mode"/> is one: a malformed value then gets a request-level error
+    /// (<c>protocol_error</c>) rather than a malformed-params close of the whole connection. An id the
+    /// daemon already has is refused (<see cref="MuxErrorCodes.SessionExists"/>). A daemon older than this
+    /// member skips it (unknown members are ignored) and picks its own: the reply always carries the id used.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SessionId { get; init; }
 }
 
 public sealed record SpawnResult { public Guid SessionId { get; init; } }
@@ -160,6 +180,13 @@ public sealed record SessionInfoResult
     public string? Title { get; init; }
     public string? Cwd { get; init; }
     public int? AttachedClients { get; init; }
+
+    /// <summary>
+    /// <see cref="AttachedClients"/> without read-only observers (Phase 4 spec §3, carry-over 9). The
+    /// server fills it for a v2 peer only and null is never written, so a v1 peer sees the v1 shape.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InteractiveClients { get; init; }
 }
 
 public sealed record StartRecordingParams
@@ -205,6 +232,14 @@ public sealed record SessionChangedNotification
 {
     public Guid SessionId { get; init; }
     public int AttachedClients { get; init; }
+
+    /// <summary>
+    /// <see cref="AttachedClients"/> without read-only observers (Phase 4 spec §3, carry-over 9). 0 is
+    /// written; null is not, so null on receipt means an older daemon that does not send it.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InteractiveClients { get; init; }
+
     public string Title { get; init; } = string.Empty;
     public string? Cwd { get; init; }
 }
@@ -228,4 +263,12 @@ public sealed record MuxEndpointDescriptor
     public required string Endpoint { get; init; }
     public int Pid { get; init; }
     public required string ProcessName { get; init; }
+    /// <summary>
+    /// OS-specific start token from MuxDiscovery.GetProcessStartToken: /proc starttime clock ticks on
+    /// Linux, UTC ticks elsewhere; only ever compared with a token taken on the same host. A recycled
+    /// pid can carry the same process name (another ntilde, say), so the name alone cannot prove the
+    /// process is still this daemon; the token can. Absent from descriptors written by older daemons.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? StartTime { get; init; }
 }
