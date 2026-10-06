@@ -130,7 +130,7 @@ namespace Ntilde.VT
         private bool EnterWriteLockIfNeeded()
         {
             if (Lock.IsWriteLockHeld) return false;
-            Lock.EnterWriteLock();
+            EnterWriteLockNonPumping();
             return true;
         }
 
@@ -139,9 +139,46 @@ namespace Ntilde.VT
             if (lockTaken) rwLock.ExitWriteLock();
         }
 
+        /// <summary>
+        /// Takes the write lock without dispatching anything on this thread while it waits. Every
+        /// write-lock acquisition in the buffer goes through here.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A thread waiting for the write lock is a <i>waiting writer</i>, and
+        /// <see cref="System.Threading.ReaderWriterLockSlim"/> admits no new reader while there is
+        /// one. On the UI thread the wait dispatches sent messages, so a WM_PAINT delivered during
+        /// it ran TerminalView.Render on top of the waiting frame, and Render's read lock queued
+        /// behind that same frame - which could not resume until Render returned. Even a Render
+        /// that gave up on the lock would not escape: Avalonia's paint then blocks on the render
+        /// thread finishing the frame, and that thread's snapshot read queues behind the same
+        /// waiting writer. So the wait itself must not dispatch (WriteLockReentrancyTests).
+        /// </para>
+        /// <para>
+        /// Only the write side needs this. A waiting reader keeps nobody out, so whatever a read
+        /// wait dispatches can still take either lock once the current writer finishes.
+        /// </para>
+        /// </remarks>
+        private void EnterWriteLockNonPumping()
+        {
+            // Uncontended, there is nothing to wait for and so nothing to dispatch: a zero timeout
+            // returns before the lock spins or blocks on its event.
+            if (Lock.TryEnterWriteLock(0)) return;
+
+            var nonPumping = NonPumpingSynchronizationContext.InstallIfWaitsMayPump();
+            try
+            {
+                Lock.EnterWriteLock();
+            }
+            finally
+            {
+                nonPumping?.Uninstall();
+            }
+        }
+
         public void EnterBatchWrite()
         {
-            Lock.EnterWriteLock();
+            EnterWriteLockNonPumping();
             _batchWriteDepth++;
         }
 

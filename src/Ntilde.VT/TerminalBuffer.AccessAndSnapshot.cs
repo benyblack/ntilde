@@ -990,7 +990,7 @@ namespace Ntilde.VT
 
         public void ApplySnapshot(ReplaySnapshot snapshot)
         {
-            Lock.EnterWriteLock();
+            EnterWriteLockNonPumping();
             try
             {
                 // Core properties

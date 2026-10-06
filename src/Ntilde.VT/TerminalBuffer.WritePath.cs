@@ -13,7 +13,7 @@ namespace Ntilde.VT
             bool tookLock = false;
             if (!Lock.IsWriteLockHeld)
             {
-                Lock.EnterWriteLock();
+                EnterWriteLockNonPumping();
                 tookLock = true;
             }
 
@@ -126,7 +126,7 @@ namespace Ntilde.VT
             bool tookLock = false;
             if (!Lock.IsWriteLockHeld)
             {
-                Lock.EnterWriteLock();
+                EnterWriteLockNonPumping();
                 tookLock = true;
             }
 
