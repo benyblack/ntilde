@@ -33,6 +33,9 @@
     <ProjectReference Include="..\..\src\Ntilde.Conformance\Ntilde.Conformance.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux\Ntilde.Mux.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.Mux.Contracts\Ntilde.Mux.Contracts.csproj" />
+    <!-- ntilde.com (Phase 4 spec §11): the tests call LauncherCommandLine and copy the launcher's build,
+         which this reference puts beside them, next to a fake Ntilde.exe (LauncherEndToEndTests). -->
+    <ProjectReference Include="..\..\src\Ntilde.Launcher\Ntilde.Launcher.csproj" ReferenceOutputAssembly="true" />
   </ItemGroup>
 
   <ItemGroup>

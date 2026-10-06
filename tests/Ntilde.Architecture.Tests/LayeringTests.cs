@@ -19,6 +19,9 @@ public class LayeringTests
     // assembly is loaded by name; this project's ProjectReference puts ntilde-mux.dll beside the tests.
     private static Assembly MuxDaemon => Assembly.Load("ntilde-mux");
 
+    // ntilde.com (Phase 4 spec §11), loaded by name for the same reason: Program is internal.
+    private static Assembly Launcher => Assembly.Load("Ntilde.Launcher");
+
     // Hoisted for CA1861.
     private static readonly string[] MuxApprovedNtildeReferences =
         ["Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay", "Ntilde.Mux.Contracts"];
@@ -360,10 +363,29 @@ public class LayeringTests
             $"what MuxDiscovery's Sha256 is for): {Join(offenders)}");
     }
 
+    /// <summary>
+    /// The IL sibling of <c>ProjectFileLayeringTests.Launcher_has_no_references</c> (Phase 4 spec §12.4):
+    /// <c>ntilde.com</c> starts <c>Ntilde.exe</c> through kernel32 and never loads an Ntilde assembly, the
+    /// App's included - it is the process that runs before the App, not a second entry point into it.
+    /// </summary>
+    [Fact]
+    public void Launcher_references_no_Ntilde_assembly()
+    {
+        // Pins the load itself, so a renamed assembly cannot turn this into a check over nothing.
+        Assert.Contains(Launcher.GetTypes(), t => t.FullName == "Ntilde.Launcher.LauncherCommandLine");
+
+        string[] ntildeReferences = Launcher.GetReferencedAssemblies()
+            .Select(r => r.Name ?? string.Empty)
+            .Where(n => n.StartsWith("Ntilde", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        Assert.True(ntildeReferences.Length == 0, $"Ntilde.Launcher references: {Join(ntildeReferences)}");
+    }
+
     [Fact]
     public void No_production_assembly_references_test_assemblies()
     {
-        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux, MuxDaemon })
+        foreach (var asm in new[] { Vt, Replay, Rendering, Pty, Platform, AgentHostContracts, CommandAssist, MuxContracts, Mux, MuxDaemon, Launcher })
         {
             var result = Types.InAssembly(asm)
                 .Should()

@@ -76,6 +76,10 @@ class Program
 
             if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args))
             {
+                // ntilde.com waits for a mux verb's exit code, so its release event is not for us - and
+                // the daemon `attach` may start would pass it on to every shell it hosts (spec §11.3).
+                LauncherRelease.Discard();
+
                 // serve is a daemon: it must not attach to the launching console (it detaches from it).
                 // attach (and probe-console, which mirrors it) is interactive: it needs a real console, allocated if the parent has none.
                 if (Ntilde.Shell.Mux.MuxCommand.NeedsInteractiveConsole(args)) Ntilde.Shell.Mux.MuxCommand.AttachedToParentConsole = CliConsoleBindings.PrepareInteractive();
@@ -83,6 +87,10 @@ class Program
                 Environment.ExitCode = Ntilde.Shell.Mux.MuxCommand.Execute(args, Console.Out, Console.Error);
                 return;
             }
+
+            // No CLI mode matched: this is the GUI. When ntilde.com started us it is waiting for our exit
+            // code with the prompt blocked; release it now, before any startup work (spec §11.3).
+            LauncherRelease.Signal();
 
             // Attach the debug-log sink before anything logs. Placed after the CLI dispatches
             // above, which return without ever writing to it — a `--replay` or `backup`

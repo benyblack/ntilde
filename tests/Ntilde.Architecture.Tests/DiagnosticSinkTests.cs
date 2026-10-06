@@ -26,12 +26,15 @@ public class DiagnosticSinkTests
     /// hosts live in <c>Ntilde.Mux/Cli</c>, which is library code - its text goes to the writers it is
     /// handed, never through <c>Console.Write*</c> - so that directory stays under the rule. The match
     /// is on the whole directory name, so <c>src/Ntilde.Mux/Daemon</c> is not exempted by this entry.
+    /// <c>Ntilde.Launcher</c> is <c>ntilde.com</c>, a console-subsystem program whose only output is the
+    /// stderr line saying why it could not start <c>Ntilde.exe</c> (spec §11.1).
     /// </summary>
     private static readonly string[] ConsoleToolProjects =
     [
         "Ntilde.Cli",
         "Ntilde.Conformance",
         "Ntilde.Mux.Daemon",
+        "Ntilde.Launcher",
     ];
 
     /// <summary>

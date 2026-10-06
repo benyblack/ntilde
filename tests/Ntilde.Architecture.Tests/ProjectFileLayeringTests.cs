@@ -235,6 +235,20 @@ public class ProjectFileLayeringTests
     }
 
     /// <summary>
+    /// Phase 4 spec §10.1, §12.4: <c>ntilde.com</c> is a few kernel32 calls that start <c>Ntilde.exe</c>
+    /// and wait. A project edge would compile the referenced assembly - and whatever it drags in - into a
+    /// launcher that runs before every CLI verb; a package would add a reflection surface its AOT publish
+    /// has to prove safe. The IL sibling is <c>LayeringTests.Launcher_references_no_Ntilde_assembly</c>.
+    /// </summary>
+    [Fact]
+    public void Launcher_has_no_references()
+    {
+        const string launcherCsproj = "src/Ntilde.Launcher/Ntilde.Launcher.csproj";
+        Assert.Empty(ProjectReferences(launcherCsproj));
+        Assert.Empty(PackageReferences(launcherCsproj));
+    }
+
+    /// <summary>
     /// #310: panes must be hosted by the sideloaded ConPTY host, not the OS conhost.exe.
     /// portable-pty only uses it when a <c>conpty.dll</c> sits next to the executable, and that
     /// DLL only finds its server at <c>&lt;arch&gt;\OpenConsole.exe</c> — so both files have to be

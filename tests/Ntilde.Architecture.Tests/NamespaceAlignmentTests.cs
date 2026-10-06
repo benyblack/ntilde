@@ -15,11 +15,12 @@ public class NamespaceAlignmentTests
 {
     private static Assembly LoadByName(string name) => Assembly.Load(name);
 
-    // Leaf assemblies, each owning exactly "Ntilde.<Name>.*".
+    // Leaf assemblies, each owning exactly "Ntilde.<Name>.*". Ntilde.Launcher is ntilde.com (Phase 4
+    // spec §11), which references nothing at all.
     private static readonly string[] LeafAssemblies =
         { "Ntilde.VT", "Ntilde.Replay", "Ntilde.Rendering",
           "Ntilde.Pty", "Ntilde.Platform", "Ntilde.AgentHost.Contracts", "Ntilde.Mux.Contracts",
-          "Ntilde.Mux" };
+          "Ntilde.Mux", "Ntilde.Launcher" };
 
     [Theory]
     [InlineData("Ntilde.VT")]
@@ -31,6 +32,7 @@ public class NamespaceAlignmentTests
     [InlineData("Ntilde.CommandAssist")]
     [InlineData("Ntilde.Mux.Contracts")]
     [InlineData("Ntilde.Mux")]
+    [InlineData("Ntilde.Launcher")]
     public void Leaf_assembly_types_reside_in_its_own_namespace(string asmName)
     {
         var result = Types.InAssembly(LoadByName(asmName))
@@ -143,24 +145,35 @@ public class NamespaceAlignmentTests
     /// but its nested <c>Enumerator</c> does not, so only a walk up the declaring types finds it.
     /// </summary>
     [Fact]
-    public void MuxDaemon_types_reside_in_the_MuxDaemon_namespace()
+    public void MuxDaemon_types_reside_in_the_MuxDaemon_namespace() =>
+        AssertEveryTypeResidesIn(MuxDaemonAssembly, MuxDaemonNamespace, MuxDaemonNamespace + ".Program");
+
+    /// <summary>
+    /// The leaf row above checks public types only, and ntilde.com's <c>Program</c> and its P/Invokes are
+    /// internal, so they are checked here the way <c>ntilde-mux</c>'s are.
+    /// </summary>
+    [Fact]
+    public void Launcher_types_reside_in_the_Launcher_namespace() =>
+        AssertEveryTypeResidesIn("Ntilde.Launcher", "Ntilde.Launcher", "Ntilde.Launcher.Program");
+
+    private static void AssertEveryTypeResidesIn(string assemblyName, string ownedNamespace, string pinnedType)
     {
         static bool CompilerGenerated(Type? t) =>
             t is not null && (t.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false) || CompilerGenerated(t.DeclaringType));
 
-        Type[] own = LoadByName(MuxDaemonAssembly).GetTypes()
+        Type[] own = LoadByName(assemblyName).GetTypes()
             .Where(t => !CompilerGenerated(t) && t.Namespace != "System.Runtime.CompilerServices")
             .ToArray();
 
         // Pins the selection itself, so a rename cannot turn this into a check over nothing.
-        Assert.Contains(own, t => t.FullName == MuxDaemonNamespace + ".Program");
+        Assert.Contains(own, t => t.FullName == pinnedType);
 
         string[] offenders = own
-            .Where(t => t.Namespace != MuxDaemonNamespace && t.Namespace?.StartsWith(MuxDaemonNamespace + ".", StringComparison.Ordinal) != true)
+            .Where(t => t.Namespace != ownedNamespace && t.Namespace?.StartsWith(ownedNamespace + ".", StringComparison.Ordinal) != true)
             .Select(t => t.FullName ?? t.Name)
             .ToArray();
         Assert.True(offenders.Length == 0,
-            $"{MuxDaemonAssembly} types not in {MuxDaemonNamespace}.*: {string.Join(", ", offenders)}");
+            $"{assemblyName} types not in {ownedNamespace}.*: {string.Join(", ", offenders)}");
     }
 
     /// <summary>
