@@ -844,6 +844,16 @@ Recorded during the build:
   and the CI/release ceiling (§10.2) together.
 - **The probe needs `ldd`.** `(ldd --version || getconf GNU_LIBC_VERSION) | head -n 1` keeps ldd's
   "not found" line on a glibc host without `ldd` and refuses it; ask `getconf` first.
+- **A captured GUI launch through `ntilde.com` waits for the GUI (greptile G2, PR #504).** When a
+  caller captures `ntilde`'s output (`ntilde | Out-Null`, or a tool that reads stdout), it keeps
+  waiting until the GUI exits: `Ntilde.exe` inherits the redirected standard handles and holds them
+  after the launcher has returned. Launching `Ntilde.exe` directly behaves the same, so this is not a
+  regression. A fix would release the inherited standard handles in the GUI process on
+  `LauncherRelease.Signal`.
+- **First-party actions are not pinned in `release.yml` (greptile G3, PR #504).** All its jobs, the
+  new `publish_mux_daemon` included, use movable `@v4` tags for first-party actions in jobs that hold
+  `contents: write`; only third-party actions are pinned to SHAs. Pinning first-party actions is a
+  repo-wide hardening decision.
 
 ## 15. As built
 
