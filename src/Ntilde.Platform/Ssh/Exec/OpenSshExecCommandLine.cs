@@ -82,8 +82,8 @@ public static class OpenSshExecCommandLine
     /// <c>/dev/null</c>, which starves the proxy), <c>s</c> (the command becomes a subsystem name), <c>G</c> and
     /// <c>V</c> (print and exit), <c>M</c> (master mode, which beats <c>ControlMaster=no</c>).</item>
     /// <item>Dropped with their argument: <c>-W</c> (stdio forwarding, no command), <c>-O</c> (a control command, then
-    /// exit), <c>-Q</c> (a query, then exit), and an <c>-o</c> whose keyword (case-insensitive, ended by whitespace or
-    /// <c>=</c>) is <c>RequestTTY</c>, <c>SessionType</c>, <c>ForkAfterAuthentication</c>, <c>StdinNull</c>,
+    /// exit), <c>-Q</c> (a query, then exit), and an <c>-o</c> whose keyword (read as ssh reads it,
+    /// <see cref="ConfigKeyword"/>; case-insensitive) is <c>RequestTTY</c>, <c>SessionType</c>, <c>ForkAfterAuthentication</c>, <c>StdinNull</c>,
     /// <c>RemoteCommand</c> or <c>PermitLocalCommand</c> (a LocalCommand writes to ssh's stdout, the mux stream).
     /// Every other <c>-o</c> is kept as it is.</item>
     /// </list>
@@ -190,9 +190,7 @@ public static class OpenSshExecCommandLine
 
     private static (string Piece, string Why)? DroppedConfigOption(string option)
     {
-        ReadOnlySpan<char> text = option.AsSpan().TrimStart(" \t");
-        int end = text.IndexOfAny(" \t=");
-        string keyword = (end < 0 ? text : text[..end]).ToString();
+        if (ConfigKeyword(option) is not { Length: > 0 } keyword) return null; // ssh ignores the line: nothing to drop
         string? why = keyword.ToLowerInvariant() switch
         {
             "requesttty" => NoPty,
@@ -204,6 +202,65 @@ public static class OpenSshExecCommandLine
             _ => null,
         };
         return why is null ? null : ($"-o {keyword}", $"{why} (dropped with its value)");
+    }
+
+    /// <summary>
+    /// The keyword ssh reads from an <c>-o</c> line, as readconf does it (codex residual round): <c>strdelim</c>
+    /// (misc.c) once, and once more when that first token is empty - leading whitespace, or one leading <c>=</c>.
+    /// So <c>=SessionType=none</c>, <c>" = SessionType none"</c> and <c>"\"SessionType\" none"</c> all name
+    /// SessionType, as OpenSSH 10.0p2's <c>ssh -G</c> confirms. Empty or null: ssh ignores the line (a second
+    /// <c>=</c>, an unmatched quote, nothing at all).
+    /// </summary>
+    private static string? ConfigKeyword(string line)
+    {
+        int at = 0;
+        string? keyword = StrDelim(line, ref at);
+        return keyword is { Length: 0 } ? StrDelim(line, ref at) : keyword;
+    }
+
+    private const string ConfigWhitespace = " \t\r\n";
+
+    /// <summary>
+    /// OpenSSH's <c>strdelim</c> (misc.c, splitting on <c>=</c>) from <paramref name="at"/>: the token up to the first
+    /// whitespace, <c>"</c> or <c>=</c>. A <c>"</c> there is removed and the token runs on to the matching quote,
+    /// which ends it (null without one). Otherwise the delimiter and the whitespace after it are skipped and, when the
+    /// delimiter was whitespace, one <c>=</c> and the whitespace after that too. <paramref name="at"/> moves past it
+    /// all; -1 once the line is used up, as ssh's <c>NULL</c>.
+    /// </summary>
+    private static string? StrDelim(string line, ref int at)
+    {
+        if (at < 0) return null;
+        int start = at;
+        int delimiter = line.IndexOfAny([' ', '\t', '\r', '\n', '"', '='], start);
+        if (delimiter < 0)
+        {
+            at = -1;
+            return line[start..];
+        }
+
+        if (line[delimiter] == '"')
+        {
+            int close = line.IndexOf('"', delimiter + 1);
+            if (close < 0)
+            {
+                at = -1;
+                return null;
+            }
+
+            at = SkipConfigWhitespace(line, close + 1);
+            return string.Concat(line.AsSpan(start, delimiter - start), line.AsSpan(delimiter + 1, close - delimiter - 1));
+        }
+
+        string token = line[start..delimiter];
+        at = SkipConfigWhitespace(line, delimiter + 1);
+        if (line[delimiter] != '=' && at < line.Length && line[at] == '=') at = SkipConfigWhitespace(line, at + 1);
+        return token;
+    }
+
+    private static int SkipConfigWhitespace(string line, int at)
+    {
+        while (at < line.Length && ConfigWhitespace.Contains(line[at], StringComparison.Ordinal)) at++;
+        return at;
     }
 
     private static void Dropped(Action<string>? log, string piece, string why) =>

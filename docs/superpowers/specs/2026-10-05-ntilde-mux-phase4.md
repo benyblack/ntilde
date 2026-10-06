@@ -920,8 +920,9 @@ review; the section they change is named first.
   command). Dropped from a cluster, the rest kept (`-tv` becomes `-v`): `t`, `T` (we pass `-T`), `N`,
   `f`, `n` (stdin from `/dev/null` starves the proxy), `s` (a subsystem), `G` and `V` (print and
   exit), and `M`, which `ssh -G` shows overrides the `-o ControlMaster=no` before it (a ruling past the
-  review's list). Dropped with their argument: `-W`, `-O`, `-Q`, and an `-o` whose keyword
-  (case-insensitive, ended by whitespace or `=`) is `RequestTTY`, `SessionType`,
+  review's list). Dropped with their argument: `-W`, `-O`, `-Q`, and an `-o` whose keyword - read as
+  ssh's readconf reads it (`strdelim`: leading whitespace, one optional `=` with whitespace around it,
+  a quoted keyword unquoted), compared case-insensitively - is `RequestTTY`, `SessionType`,
   `ForkAfterAuthentication`, `StdinNull`, `RemoteCommand` or `PermitLocalCommand` (a `LocalCommand`
   writes to ssh's stdout, the mux stream); every other `-o` is kept whole, its value included. Each
   dropped piece is logged by its letter or keyword, never its value. `OpenSshExecCommandLineSshTests`

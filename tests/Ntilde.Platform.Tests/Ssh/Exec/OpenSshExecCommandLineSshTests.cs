@@ -39,6 +39,14 @@ public sealed class OpenSshExecCommandLineSshTests
         { ["-o", "StdinNull=yes"] },
         { ["-o", "RemoteCommand=x"] },
         { ["-o", "PermitLocalCommand=yes"] },
+        { ["-o", "=SessionType=none"] },
+        { ["-o", "\"SessionType\" none"] },
+        { ["-o", " = SessionType none"] },
+        { ["-o", " =SessionType none"] },
+        { ["-o", "\tSessionType none"] },
+        { ["-o", "Session\"Type\" none"] },
+        { ["-o", "= = SessionType none"] },   // kept: ssh itself ignores it, as sessiontype default shows
+        { ["-o", "\"SessionType none"] },     // kept: likewise
         { ["-vo", "RequestTTY=force"] },
         { ["-qMtfNnsv", "-p", "2222", "-o", "ServerAliveInterval=5"] },
     };

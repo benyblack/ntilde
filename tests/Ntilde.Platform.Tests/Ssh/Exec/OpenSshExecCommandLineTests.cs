@@ -128,6 +128,15 @@ public sealed class OpenSshExecCommandLineTests
         { ["-o", "PermitLocalCommand=yes"], [], ["-o PermitLocalCommand"] },
         { ["-vo", "RequestTTY=force"], ["-v"], ["-o RequestTTY"] },
         { ["-voStdinNull=yes"], ["-v"], ["-o StdinNull"] },
+        // ssh's own keyword split (readconf's strdelim): leading whitespace, one optional '=' with whitespace around it,
+        // a quoted keyword unquoted, a quote inside it joining what is around it. OpenSSH 10.0p2 resolves each of these
+        // to "sessiontype none" (codex residual round).
+        { ["-o", "=SessionType=none"], [], ["-o SessionType"] },
+        { ["-o", "\"SessionType\" none"], [], ["-o SessionType"] },
+        { ["-o", " = SessionType none"], [], ["-o SessionType"] },
+        { ["-o", " =SessionType none"], [], ["-o SessionType"] },
+        { ["-o", "\tSessionType none"], [], ["-o SessionType"] },
+        { ["-o", "Session\"Type\" none"], [], ["-o SessionType"] },
     };
 
     /// <summary>
@@ -165,6 +174,8 @@ public sealed class OpenSshExecCommandLineTests
         { ["-vvv"] },
         { ["-46AaCgKkqXxYy"] },
         { ["-E", "ssh.log", "-o", "ServerAliveInterval=15"] },
+        { ["-o", "= = SessionType none"] },             // a second '=': ssh reads an empty keyword and ignores the line
+        { ["-o", "\"SessionType none"] },               // an unmatched quote: ssh ignores the line too
     };
 
     [Theory]
