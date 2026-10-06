@@ -11,8 +11,13 @@ namespace Ntilde.Launcher;
 /// console they share; this process only declines to die of them (spec §2 decision 7). A GUI launch sets a
 /// release event instead, and then this process exits 0 at once, so <c>ntilde</c> alone does not keep the
 /// prompt until the window closes (spec §2 decision 6, §11.3).
+/// <para>
+/// Unsafe only for the console control handler's function pointer (<c>&amp;OnConsoleControl</c>), which NativeAOT
+/// calls without a marshalled delegate (Sonar S6640 reviewed).
+/// </para>
 /// </summary>
-internal static unsafe class Program
+internal static unsafe class Program // NOSONAR - S6640 reviewed: see the remarks above
+
 {
     private const uint CtrlCEvent = 0;
     private const uint CtrlBreakEvent = 1;

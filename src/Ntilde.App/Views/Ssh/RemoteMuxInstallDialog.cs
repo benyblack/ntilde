@@ -158,9 +158,9 @@ internal sealed class RemoteMuxInstallDialog
 
         ResetSteps();
 
-        InstallButton.Click += (_, _) => Guard(() => InstallAsync(source: null));
-        ChooseFileButton.Click += (_, _) => Guard(ChooseFileAndInstallAsync);
-        CopyCommandButton.Click += (_, _) => Guard(CopyInstallCommandAsync);
+        InstallButton.Click += (_, _) => _ = GuardAsync(() => InstallAsync(source: null));
+        ChooseFileButton.Click += (_, _) => _ = GuardAsync(ChooseFileAndInstallAsync);
+        CopyCommandButton.Click += (_, _) => _ = GuardAsync(CopyInstallCommandAsync);
         CloseButton.Click += (_, _) => CancelOrClose();
         Window.Closing += (_, _) => _run?.Cancel();
         Window.Closed += (_, _) => OnClosed();
@@ -310,10 +310,10 @@ internal sealed class RemoteMuxInstallDialog
 
     /// <summary>
     /// A click's work. Every run starts from one, so its end is where <see cref="Result"/> completes when the window
-    /// closed meanwhile (<see cref="CompleteIfClosed"/>) - whichever way the work returned. Async void: a throw
-    /// nothing expected goes to the log, not the dispatcher.
+    /// closed meanwhile (<see cref="CompleteIfClosed"/>) - whichever way the work returned. The click handlers
+    /// discard the task: it never faults, since a throw nothing expected goes to the log, not the dispatcher.
     /// </summary>
-    private async void Guard(Func<Task> work)
+    private async Task GuardAsync(Func<Task> work)
     {
         try
         {

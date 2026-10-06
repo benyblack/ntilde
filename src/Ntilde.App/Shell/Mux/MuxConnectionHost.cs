@@ -507,7 +507,8 @@ internal sealed class MuxConnectionHost : IDisposable
         Task kill;
         try
         {
-            kill = client.KillAsync(sessionId);
+            // Not the host's disposal token: Dispose flushes kills in flight with a bounded wait of its own.
+            kill = client.KillAsync(sessionId, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -642,7 +643,7 @@ internal sealed class MuxConnectionHost : IDisposable
         {
             try
             {
-                kind = await classify(client).WaitAsync(ClassifyTimeout).ConfigureAwait(false);
+                kind = await classify(client).WaitAsync(ClassifyTimeout, CancellationToken.None).ConfigureAwait(false);
             }
             catch (TimeoutException)
             {

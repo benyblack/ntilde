@@ -7,8 +7,12 @@ namespace Ntilde.Launcher;
 /// as <c>nint</c>, <c>BOOL</c> as <c>int</c>, structs and buffers by pointer - so NativeAOT adds no marshalling
 /// beyond pinning the two string names, and the console control handler is a function pointer, not a
 /// marshalled delegate.
+/// <para>
+/// Unsafe by design (Sonar S6640 reviewed): pointers to locals, a pinned copy of the command line and a fixed
+/// two-handle stackalloc array, none kept past the call it is passed to, in a launcher that calls kernel32 only.
+/// </para>
 /// </summary>
-internal static unsafe class LauncherNative
+internal static unsafe class LauncherNative // NOSONAR - S6640 reviewed: see the remarks above
 {
     private const string Kernel32 = "kernel32.dll";
     private const uint Infinite = 0xFFFFFFFF;
