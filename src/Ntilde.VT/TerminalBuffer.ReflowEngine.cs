@@ -443,6 +443,10 @@ namespace Ntilde.VT
                         }
                     }
 
+                    // Old scrollback rows already handed back to the pool; the store's logical indexes
+                    // shift down by this much as its oldest pages go.
+                    int oldRowsReleased = 0;
+
                     for (int i = 0; i < totalPhysRows; i++)
                     {
                         TerminalRow physRow;
@@ -450,9 +454,10 @@ namespace Ntilde.VT
                         {
                             // Read the paged row in place: its cells into the one reused row, its side
                             // tables borrowed (the reflow only reads them).
-                            _scrollback.GetRow(i).CopyTo(scrollbackRow.Cells);
-                            scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(i);
-                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(i), _scrollback.GetHyperlinkMap(i));
+                            int storeRow = i - oldRowsReleased;
+                            _scrollback.GetRow(storeRow).CopyTo(scrollbackRow.Cells);
+                            scrollbackRow.IsWrapped = _scrollback.IsRowWrapped(storeRow);
+                            scrollbackRow.RestoreSideTables(_scrollback.GetExtendedTextMap(storeRow), _scrollback.GetHyperlinkMap(storeRow));
                             physRow = scrollbackRow;
                         }
                         else
@@ -765,6 +770,16 @@ namespace Ntilde.VT
                             FlowLine(logicalIdx, lineLen, lineStartPhys, i == totalPhysRows - 1 ? lastLineEnd : i + 1);
                             logicalIdx++;
                             lineStartPhys = -1;
+                        }
+
+                        // Everything this row held is in `line` or already flowed, so once the oldest
+                        // old page is fully read it goes back to the pool, where the new store's next
+                        // page picks up its array. Built side by side, the new store used to allocate
+                        // a second scrollback and the pool then kept the old one (~75 MB measured over
+                        // three 100k-line panes).
+                        if (i < oldScrollbackCount && i - oldRowsReleased + 1 == _scrollback.OldestPageRowCount)
+                        {
+                            oldRowsReleased += _scrollback.ReleaseOldestPage();
                         }
                     }
 

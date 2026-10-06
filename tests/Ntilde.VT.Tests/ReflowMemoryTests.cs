@@ -33,4 +33,29 @@ public class ReflowMemoryTests
             allocated < newScrollbackBytes * 13 / 10 + 2 * 1024 * 1024,
             $"Reflow allocated {allocated / (1024 * 1024)} MB for a {newScrollbackBytes / (1024 * 1024)} MB scrollback.");
     }
+
+    // Measured in the app: built alongside the old one, the new scrollback allocated fresh pages and
+    // the old ones went back to the pool only at the end, which then kept ~75 MB of them across three
+    // 100k-line panes. Handing each old page back once its rows are consumed lets the new store reuse
+    // the arrays whenever both widths share a page size class. 260 and 300 columns are both in the
+    // 32768-cell class, which nothing else in the test run uses, so the pool starts without them.
+    [Fact]
+    public void Widening_within_a_page_size_class_reuses_the_old_pages()
+    {
+        const int lines = 3_000;
+        var buffer = new TerminalBuffer(260, 24) { MaxHistory = lines };
+        var parser = new AnsiParser(buffer);
+        var text = new StringBuilder();
+        for (int i = 0; i < lines + 100; i++) text.Append("line ").Append(i).Append(' ').Append('x', 200).Append("\r\n");
+        parser.Process(text.ToString());
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        buffer.Resize(300, 24);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        long newScrollbackBytes = (long)(buffer.TotalLines - buffer.Rows) * 300 * 12;
+        Assert.True(
+            allocated < newScrollbackBytes / 5,
+            $"Reflow allocated {allocated / (1024 * 1024)} MB for a {newScrollbackBytes / (1024 * 1024)} MB scrollback whose pages it could have reused.");
+    }
 }
