@@ -874,6 +874,12 @@ review; the section they change is named first.
 - **§10.1 The csproj drops referenced projects' `.pdb`s from the publish**, which the one-file
   assertion needs. The release job also asserts the binary reports the release version (the
   installer reads it back), and `publish_mux_daemon` waits for `release_tests`.
+- **§10.3 The App's uploads wait for `publish_mux_daemon`** (final review I4): `publish_aot` (the Windows
+  and macOS assets and feeds) and `release_linux` (the Linux ones) need it, so a failed ntilde-mux leg
+  keeps the App back too; the installer downloads only its own version's `ntilde-mux-<rid>`, so an App
+  published without them could never install it on that platform. `create_release` cannot wait (every
+  upload, ntilde-mux's included, goes into the release it creates). `ReleaseWorkflowTests` parses
+  `release.yml` and checks every uploading job.
 - **§10.2 osx-arm64 links `librusty_pty.a` statically too**, so no RID needed the `{exe, dylib}`
   fallback. First CI run: linux-x64 6,199,568 B, linux-arm64 6,285,528 B, osx-arm64 5,805,608 B;
   highest symbol `GLIBC_2.34` on both Linux legs.

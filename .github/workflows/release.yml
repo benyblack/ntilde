@@ -536,7 +536,10 @@ jobs:
     # notarization queue inside vpk pack, which alone can run 10-30+ minutes on a
     # slow day — 40 was cutting the job down mid-wait.
     timeout-minutes: 90
-    needs: [release_metadata, create_release, build_native, release_tests]
+    # publish_mux_daemon too (Phase 4 final review I4): the App's remote installer downloads only its own
+    # version's ntilde-mux-<rid>, so an App published while a ntilde-mux leg failed could never install
+    # ntilde-mux on that platform. A failed leg keeps the App back as well.
+    needs: [release_metadata, create_release, build_native, release_tests, publish_mux_daemon]
     permissions:
       contents: write
     strategy:
@@ -2133,7 +2136,8 @@ jobs:
     # headroom is ample rather than tight, but 30 left little room for a slow mirror
     # on top of the Debian gate. No compilation happens here.
     timeout-minutes: 45
-    needs: [release_metadata, publish_linux]
+    # publish_mux_daemon as well, for the reason publish_aot gives (Phase 4 final review I4).
+    needs: [release_metadata, publish_linux, publish_mux_daemon]
     permissions:
       contents: write
     strategy:
