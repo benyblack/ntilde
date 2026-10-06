@@ -7102,6 +7102,9 @@ namespace Ntilde
                     detaching.Detach(userDetached: effective == Ntilde.Shell.Mux.PaneDisposition.Detach);
                 }
 
+                // After its kill is queued (or its detach sent): if no pane needs that remote connection any more, it goes.
+                if (!Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).IsLocal) ScheduleRemoteMuxHostRelease();
+
                 if (session != null)
                 {
                     Task.Run(() =>
@@ -7163,6 +7166,37 @@ namespace Ntilde
             catch (Exception ex)
             {
                 TerminalLogger.Log($"[MainWindow] mux kill failed: {ex.Message}");
+            }
+        }
+
+        private bool _remoteMuxReleasePosted; // UI thread: a ReleaseUnusedRemoteMuxHosts pass is queued
+
+        /// <summary>
+        /// UI thread. Final review F1: a remote pane closed. The pass that releases the remote hosts no pane needs runs
+        /// once the close is done - a tab's whole tree disposed, the tab itself removed - not in the middle of it, where
+        /// the closing tab's other panes would still count. One pass for every pane closed together.
+        /// </summary>
+        private void ScheduleRemoteMuxHostRelease()
+        {
+            if (_remoteMuxReleasePosted || _muxHosts is null) return;
+            _remoteMuxReleasePosted = true;
+            Dispatcher.UIThread.Post(ReleaseUnusedRemoteMuxHosts, DispatcherPriority.Background);
+        }
+
+        /// <summary>
+        /// UI thread. Releases every remote host whose endpoint no pane of this window needs
+        /// (<see cref="TerminalPane.RemoteMuxEndpointInUse"/>): closed once its kills are delivered
+        /// (<see cref="Ntilde.Shell.Mux.MuxConnectionHosts.Release"/>), so it stops pinging and reconnecting, the remote
+        /// proxy and daemon are let go, and its remembered secret is forgotten. Not during teardown, which closes every host.
+        /// </summary>
+        private void ReleaseUnusedRemoteMuxHosts()
+        {
+            _remoteMuxReleasePosted = false;
+            if (_teardownDone || _muxHosts is not { } hosts) return;
+            HashSet<Ntilde.Shell.Mux.MuxEndpointId> needed = [.. AllPanes().Select(p => p.RemoteMuxEndpointInUse).OfType<Ntilde.Shell.Mux.MuxEndpointId>()];
+            foreach (Ntilde.Shell.Mux.MuxEndpointId endpoint in hosts.RemoteEndpoints)
+            {
+                if (!needed.Contains(endpoint)) hosts.Release(endpoint);
             }
         }
 

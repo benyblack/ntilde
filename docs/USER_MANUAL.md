@@ -419,6 +419,12 @@ with the usual prompts. This happens for:
 - Closing a tab or pane ends its remote shell. If the host cannot be reached at that moment, the
   kill waits and is sent the next time Ntilde connects to that host; Ntilde also tries once in the
   background, without prompting.
+- Once no tab of the window uses a host any more (none shows a shell there, none waits to reattach
+  one), Ntilde closes its connection to that host, after any such kill has gone out: it stops
+  checking the link and reconnecting, and forgets a password it remembered for the host. If a kill
+  cannot be sent because reconnecting gave up, the connection waits, idle, and sends it the next
+  time you open a tab on that host. The daemon then exits on its own 10 minutes after its last
+  shell has ended.
 - **Pane: Detach** leaves the remote shell running, but *Attach to session…* lists local shells
   only. Reattach a detached remote shell on the host with `ntilde-mux attach <id>`: the *Shell
   detached* notification names the host and gives the command with the shell's id, the one

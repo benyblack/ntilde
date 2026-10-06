@@ -125,9 +125,10 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [pane, true])!;
 
     /// <summary>Waits until <paramref name="id"/> is gone from the remote daemon, moving the clock on whenever the host's loop is waiting.</summary>
-    private void KillLands(MuxConnectionHost host, Guid id, string because) => PumpUntil(() =>
+    private void KillLands(MuxConnectionHost? host, Guid id, string because) => PumpUntil(() =>
     {
-        if (host.IsReconnecting) _clock.Advance(FirstRetry);
+        // Null once released (final review F1): with nothing left to deliver, the host is closed.
+        if (host?.IsReconnecting == true) _clock.Advance(FirstRetry);
         _remote.Server.ReapExitedSessions(TimeSpan.Zero);
         return !_remote.Server.GetSessionIds().Contains(id);
     }, because);
@@ -304,9 +305,95 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         PumpUntil(() => close.IsCompleted, "the tab closed");
         Assert.True(close.Result);
 
-        KillLands(RemoteHostOf(window)!, ids[0], "the kill reached the daemon");
+        KillLands(RemoteHostOf(window), ids[0], "the kill reached the daemon");
         Assert.Equal(1, _remote.StartCount); // the host connected for it, once
         Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
+    /// Final review F1: closing the last pane of a remote endpoint releases its connection once the kill is
+    /// delivered. Before, the host stayed for the window's life: hidden ssh, remote proxy and daemon alive, a ping
+    /// every 15 s, and a reconnect after sleep to a host the user had closed.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_the_last_remote_pane_releases_its_connection()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());   // the local pane keeps the window open
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        FakeRemoteChannel channel = _remote.LastChannel!;
+
+        Task<bool> close = Close(window, RemotePanes(window).Single());
+        PumpUntil(() => close.IsCompleted, "the pane closed");
+        Assert.True(close.Result);
+
+        PumpUntil(() => host.IsClosed && RemoteHostOf(window) is null, "the connection was released");
+        Assert.DoesNotContain(ids[0], _remote.Server.GetSessionIds());   // its kill went out first
+        PumpUntil(() => channel.IsDisposed, "the channel ended");
+        Assert.Equal(0, _clock.PendingCount);
+        _clock.Advance(TimeSpan.FromMinutes(11));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, _remote.StartCount);
+    }
+
+    /// <summary>Final review F1: a host stays while another pane of its endpoint still has its session there.</summary>
+    [AvaloniaFact]
+    public void Closing_one_of_two_remote_panes_keeps_the_connection()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]));
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes reattached");
+        MuxConnectionHost host = RemoteHostOf(window)!;
+
+        Task<bool> close = Close(window, RemotePanes(window).Single(p => p.Session!.Id == ids[0]));
+        PumpUntil(() => close.IsCompleted, "the pane closed");
+        KillLands(host, ids[0], "the closed pane's shell ended");
+        PumpFor(300);
+
+        Assert.False(host.IsClosed);
+        Assert.Same(host, RemoteHostOf(window));
+        Assert.Equal(1, _clock.PendingCount);   // still watching the link for the other pane
+        Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
+    /// Final review F1: a pane that keeps a session id pending on the endpoint - here a restored tab never shown -
+    /// keeps its host, though no pane of that endpoint has a live session.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_pending_restored_remote_tab_keeps_the_connection()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        SaveTabs(
+            new PaneNode { Type = NodeType.Split, SplitOrientation = 0, Children = [RemoteLeaf(ids[0]), LocalLeaf()] },
+            RemoteLeaf(ids[1]));   // the second tab restores in the background, unshown
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the shown remote pane reattached");
+        TerminalPane unshown = RemotePanes(window).Single(p => p.Session is null);
+        Assert.Equal(ids[1], unshown.MuxSessionIdToRestore);
+        MuxConnectionHost host = RemoteHostOf(window)!;
+
+        Task<bool> close = Close(window, RemotePanes(window).Single(p => p.Session?.Id == ids[0]));
+        PumpUntil(() => close.IsCompleted, "the pane closed");
+        KillLands(host, ids[0], "the closed pane's shell ended");
+        PumpFor(300);
+
+        Assert.False(host.IsClosed);
+        Assert.Same(host, RemoteHostOf(window));
+        Assert.Contains(ids[1], _remote.Server.GetSessionIds());
+    }
+
+    private static void PumpFor(int ms)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < ms)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(10);
+        }
     }
 
     /// <summary>

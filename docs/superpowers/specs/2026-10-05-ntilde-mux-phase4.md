@@ -974,6 +974,21 @@ review; the section they change is named first.
   `Reconnected` is raised, on any later connect, a user's Enter included: the user's intent to end
   those shells still stands. They are dropped, with a log line, on `DaemonStopped` (the daemon's
   sessions ended with it, and delivering them would start a new daemon) and on host dispose.
+- **§5 A remote host is released when no pane needs its endpoint** (final review F1). After a remote
+  pane closes (`DisposeControlTree`, once the close is done), the window releases every remote host no
+  pane needs: a pane needs its endpoint while its session is on it, while it keeps a pending restore
+  id on it (a hydrated tab never shown, a reattach waiting for Enter), and while its connect is in
+  flight (`TerminalPane.RemoteMuxEndpointInUse`). `MuxConnectionHosts.Release` closes the host once no
+  kill is queued, being sent or unanswered (`MuxConnectionHost.WhenKillsDrained`; kills `DaemonStopped`
+  dropped count as settled); a host that gave up (`ReconnectAbandoned`) with kills queued stays
+  registered, idle (no loop, no pings), and its kills go out on the next use of the endpoint. Reuse:
+  `GetOrCreate` for an endpoint whose release is pending takes that host back and cancels the release;
+  the host is forgotten under the registry's lock just before its dispose, so nobody is handed a host
+  about to close. A host disposed by any path is forgotten (`MuxConnectionHost.Closed`), so the next ask
+  builds a new one; the dispose forgets the remembered secret. Local hosts are unchanged. Before, a
+  remote host lived until the window closed: the hidden ssh, the remote proxy and daemon stayed, pings
+  went out every 15 s, the daemon never idled out, and a connection the user had closed came back
+  after sleep.
 - **§5 Every close of a non-local pane goes through `KillWhenConnected`,** whatever the session's
   `IsConnected` says, and through `GetOrCreate` even for a never-spawned pending id; an idle remote
   host starts one non-interactive attempt to deliver the kill. A kill sent into a silently dead link

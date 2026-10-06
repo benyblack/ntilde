@@ -4218,6 +4218,25 @@ namespace Ntilde.Controls
         internal string RemoteHostName => _remoteHostName;
 
         /// <summary>
+        /// UI thread. Final review F1: the remote endpoint whose connection this pane still needs, or null. A pane needs
+        /// it while its session is on that endpoint's daemon (connected or not: a dropped one is taken back through
+        /// it), while it keeps a session id pending there (a restored tab never shown, a reattach waiting for Enter,
+        /// a reopen that could not reach the host), and while its connect is in flight. A local pane, a plain SSH
+        /// pane and a new remote tab whose connect failed (its Enter asks for the connection again) need none. The
+        /// window releases a remote host no pane needs (<c>MuxConnectionHosts.Release</c>).
+        /// </summary>
+        internal MuxEndpointId? RemoteMuxEndpointInUse
+        {
+            get
+            {
+                MuxEndpointId endpoint = MuxEndpointId.Parse(MuxEndpoint);
+                if (endpoint.IsLocal) return null;
+                bool inUse = Session is MuxClientSession || MuxSessionIdToRestore is not null || _muxReattachId is not null || _remoteConnecting;
+                return inUse ? endpoint : null;
+            }
+        }
+
+        /// <summary>
         /// Set by startup adoption (spec §9 orphans): this pane was opened only to show an orphaned
         /// daemon session. Cleared once it attached. Losing the attach to another instance then closes
         /// the pane instead of starting a new shell.

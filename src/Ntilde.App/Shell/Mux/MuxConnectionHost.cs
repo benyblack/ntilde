@@ -462,6 +462,7 @@ internal sealed class MuxConnectionHost : IDisposable
                 moot = live is null && _daemonStopped;
                 if (live is null && !moot && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
                 idle = live is null && !moot && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
+                if (live is not null) _killsBeingSent++; // until SendKill tracks it: not drained meanwhile
             }
         }
 
@@ -486,6 +487,11 @@ internal sealed class MuxConnectionHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Sends one kill and tracks it. The caller counted it in <see cref="_killsBeingSent"/> under the lock when it
+    /// decided to send it, so the host never looks drained (<see cref="WhenKillsDrained"/>) between that decision and
+    /// the kill being tracked here.
+    /// </summary>
     private void SendKill(MuxClient client, Guid sessionId)
     {
         Task kill;
@@ -498,10 +504,22 @@ internal sealed class MuxConnectionHost : IDisposable
             kill = Task.FromException(ex);
         }
 
-        TrackPendingKill(kill);
+        lock (_gate)
+        {
+            TrackKillLocked(kill);
+            _killsBeingSent--;
+        }
+
+        // One continuation, in this order: a kill whose connection closed is queued again (OnKillFailed) before the
+        // drain is checked, so it is never read as delivered.
         _ = kill.ContinueWith(
-            t => OnKillFailed(sessionId, t.Exception!.GetBaseException()),
-            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            t =>
+            {
+                if (t.IsFaulted) OnKillFailed(sessionId, t.Exception!.GetBaseException());
+                NotifyIfKillsDrained();
+            },
+            CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        NotifyIfKillsDrained(); // a kill that completed before its continuation could see the count drop
     }
 
     private void OnKillFailed(Guid sessionId, Exception error)
@@ -549,6 +567,7 @@ internal sealed class MuxConnectionHost : IDisposable
             if (!ReferenceEquals(client, _client)) return;
             _daemonStopped = false; // a daemon is up again: kills are worth recording from here on
             kills = DrainQueuedKillsLocked();
+            _killsBeingSent += kills.Length; // sent below, outside the lock: not drained meanwhile
             if (Policy.IsRemote)
             {
                 _watched = client;
@@ -665,6 +684,7 @@ internal sealed class MuxConnectionHost : IDisposable
         if (moot.Length > 0)
         {
             _log?.Invoke($"[Mux] {Policy.DisplayName}: dropping {moot.Length} queued kills: the daemon stopped, and its sessions ended with it ({string.Join(", ", moot)})");
+            NotifyIfKillsDrained(); // dropped, so nothing is left to deliver (final review F1)
         }
     }
 
@@ -914,14 +934,79 @@ internal sealed class MuxConnectionHost : IDisposable
     public void TrackPendingKill(Task kill)
     {
         ArgumentNullException.ThrowIfNull(kill);
-        lock (_gate)
-        {
-            _pendingKills.RemoveAll(t => t.IsCompleted);
-            _pendingKills.Add(kill);
-        }
+        lock (_gate) TrackKillLocked(kill);
+        _ = kill.ContinueWith(_ => NotifyIfKillsDrained(), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+    }
+
+    private void TrackKillLocked(Task kill)
+    {
+        _pendingKills.RemoveAll(t => t.IsCompleted);
+        _pendingKills.Add(kill);
     }
 
     internal int PendingKillCountForTest { get { lock (_gate) return _pendingKills.Count(t => !t.IsCompleted); } }
+
+    private int _killsBeingSent; // guarded by _gate: kills decided on (OnConnected, KillWhenConnected) that SendKill has not tracked yet
+    private readonly List<Action> _drainWaiters = new(); // guarded by _gate: WhenKillsDrained callbacks still waiting
+
+    /// <summary>
+    /// Final review F1: calls <paramref name="drained"/> once no kill is left to deliver - none queued for a
+    /// connection (<see cref="KillWhenConnected"/>), none being sent, none sent and unanswered - at once, on this
+    /// thread, when that holds now, otherwise on the pool when the last one settles. A kill whose connection closed
+    /// is queued again first, so it never counts as delivered; kills <see cref="DaemonStopped"/> dropped count as
+    /// settled. Never called once the host is disposed, nor for kills a give-up (<see cref="ReconnectAbandoned"/>)
+    /// left queued until something connects again. <see cref="MuxConnectionHosts.Release"/> waits on it to close
+    /// a remote host no pane uses.
+    /// </summary>
+    internal void WhenKillsDrained(Action drained)
+    {
+        ArgumentNullException.ThrowIfNull(drained);
+        bool now;
+        lock (_gate)
+        {
+            if (_closed) return;
+            now = KillsDrainedLocked();
+            if (!now) _drainWaiters.Add(drained);
+        }
+
+        if (now) InvokeDrained(drained);
+    }
+
+    private bool KillsDrainedLocked() => _queuedKills.Count == 0 && _killsBeingSent == 0 && !_pendingKills.Exists(t => !t.IsCompleted);
+
+    private void NotifyIfKillsDrained()
+    {
+        Action[] waiters;
+        lock (_gate)
+        {
+            if (_closed || _drainWaiters.Count == 0 || !KillsDrainedLocked()) return;
+            waiters = _drainWaiters.ToArray();
+            _drainWaiters.Clear();
+        }
+
+        foreach (Action waiter in waiters) InvokeDrained(waiter);
+    }
+
+    private void InvokeDrained(Action drained)
+    {
+        try
+        {
+            drained();
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: a kills-drained callback threw: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// Raised once by <see cref="Dispose"/>, on its thread, as it begins (the host is closed from then on):
+    /// <see cref="MuxConnectionHosts"/> forgets the host, so the next ask for its endpoint builds a new one.
+    /// </summary>
+    internal event Action<MuxConnectionHost>? Closed;
+
+    /// <summary>Whether <see cref="Dispose"/> has begun.</summary>
+    internal bool IsClosed => _closed;
 
     /// <summary>
     /// Closes the connection: the daemon detaches every session on it and keeps them running.
@@ -948,7 +1033,10 @@ internal sealed class MuxConnectionHost : IDisposable
             _episode = Episode.None;
             StopWatchingLocked();
             dropped = DrainQueuedKillsLocked();
+            _drainWaiters.Clear();
         }
+
+        RaiseClosed();
 
         // Outside the lock, as TryStartConnecting cancels a superseded attempt: cancelling runs the token's
         // callbacks - the attempt in flight ending its channel - and none of them may run under the host's lock.
@@ -969,6 +1057,18 @@ internal sealed class MuxConnectionHost : IDisposable
             // Last: the client's flush above still runs over what the connector owns (a remote host's
             // exec channel), and its Disconnected is what ends that channel.
             Connector?.Dispose();
+        }
+    }
+
+    private void RaiseClosed()
+    {
+        try
+        {
+            Closed?.Invoke(this);
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"[Mux] {Policy.DisplayName}: a Closed handler threw: {ex.Message}");
         }
     }
 
