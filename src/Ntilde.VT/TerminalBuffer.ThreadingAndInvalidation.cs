@@ -127,6 +127,11 @@ namespace Ntilde.VT
         /// <see cref="ExitWriteLockIfNeeded"/>), <c>false</c> if the write lock was already held
         /// (the caller acquired nothing and must NOT release it).
         /// </returns>
+        // S7133 wants a lock released in the method that took it. This helper exists to take the
+        // lock *for* its caller, which releases it through ExitWriteLockIfNeeded - the pattern
+        // every write path in the buffer uses - so the rule's premise does not hold here.
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Bug", "S7133:Locks should be released within the same method",
+            Justification = "Acquires on behalf of the caller, which releases via ExitWriteLockIfNeeded.")]
         private bool EnterWriteLockIfNeeded()
         {
             if (Lock.IsWriteLockHeld) return false;

@@ -10,24 +10,12 @@ namespace Ntilde.VT
     {
         public void WriteChar(char c)
         {
-            bool tookLock = false;
-            if (!Lock.IsWriteLockHeld)
-            {
-                EnterWriteLockNonPumping();
-                tookLock = true;
-            }
-
+            bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 WriteCharCore(c);
             }
-            finally
-            {
-                if (tookLock)
-                {
-                    Lock.ExitWriteLock();
-                }
-            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
         }
 
@@ -123,24 +111,12 @@ namespace Ntilde.VT
         {
             if (string.IsNullOrEmpty(text)) return;
 
-            bool tookLock = false;
-            if (!Lock.IsWriteLockHeld)
-            {
-                EnterWriteLockNonPumping();
-                tookLock = true;
-            }
-
+            bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 WriteContentCore(text);
             }
-            finally
-            {
-                if (tookLock)
-                {
-                    Lock.ExitWriteLock();
-                }
-            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
         }
 
