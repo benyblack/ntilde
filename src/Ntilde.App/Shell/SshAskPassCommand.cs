@@ -25,6 +25,7 @@ internal static class SshAskPassCommand
     internal const string ProfileUserEnvironmentVariable = SshAskPassEnvironment.ProfileUserVariable;
     internal const string ProfileHostEnvironmentVariable = SshAskPassEnvironment.ProfileHostVariable;
     internal const string ProfilePortEnvironmentVariable = SshAskPassEnvironment.ProfilePortVariable;
+    internal const string VaultOnlyEnvironmentVariable = SshAskPassEnvironment.VaultOnlyVariable;
 
     /// <summary>The app's own executable name, without its extension: the GUI answers askpass too (Program.cs).</summary>
     private const string AppExecutableName = "Ntilde";
@@ -65,20 +66,43 @@ internal static class SshAskPassCommand
                string.Equals(Environment.GetEnvironmentVariable(ModeEnvironmentVariable), "1", StringComparison.Ordinal);
     }
 
-    public static int Execute(string[] args, TextWriter stdout, TextWriter stderr)
+    public static int Execute(string[] args, TextWriter stdout, TextWriter stderr) =>
+        Execute(args, stdout, stderr, Environment.GetEnvironmentVariable, static profile => new VaultService().GetSshPasswordForProfile(profile), AskUser);
+
+    /// <summary>
+    /// Answers one ssh prompt: the target's own password (<see cref="IsTargetPasswordPrompt"/>) from
+    /// <paramref name="savedPassword"/> when it has one; anything else from <paramref name="askUser"/> - unless the
+    /// environment says vault-only (<see cref="VaultOnlyEnvironmentVariable"/>, an automatic reconnect): then every
+    /// other prompt, and a target's password with nothing saved, exits 1 at once, with no UI built and, for a prompt
+    /// that is not the target's password, the vault not even read. ssh treats that exit as no answer.
+    /// </summary>
+    /// <param name="environment">Reads an environment variable: the transport's askpass contract.</param>
+    /// <param name="savedPassword">The profile's saved password (the vault), or null.</param>
+    /// <param name="askUser">The dialog (<see cref="AskUser"/>): the user's answer, or null when cancelled. The seam tests replace.</param>
+    /// <returns>0 with the answer on <paramref name="stdout"/>; 1 when there is none; 2 when the helper failed.</returns>
+    internal static int Execute(
+        string[] args,
+        TextWriter stdout,
+        TextWriter stderr,
+        Func<string, string?> environment,
+        Func<TerminalProfile, string?> savedPassword,
+        Func<AskPassState, string?> askUser)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
+        ArgumentNullException.ThrowIfNull(environment);
+        ArgumentNullException.ThrowIfNull(savedPassword);
+        ArgumentNullException.ThrowIfNull(askUser);
 
         try
         {
             string prompt = GetPrompt(args);
-            TerminalProfile profile = CreateProfileFromEnvironment();
+            TerminalProfile profile = CreateProfileFromEnvironment(environment);
 
             if (IsTargetPasswordPrompt(prompt, profile))
             {
-                string? vaultPassword = new VaultService().GetSshPasswordForProfile(profile);
+                string? vaultPassword = savedPassword(profile);
                 if (!string.IsNullOrEmpty(vaultPassword))
                 {
                     stdout.WriteLine(vaultPassword);
@@ -86,17 +110,21 @@ internal static class SshAskPassCommand
                 }
             }
 
-            var state = new AskPassState(prompt, profile);
-            BuildAskPassApp(state).StartWithClassicDesktopLifetime(
-                Array.Empty<string>(),
-                ShutdownMode.OnExplicitShutdown);
+            if (string.Equals(environment(VaultOnlyEnvironmentVariable), "1", StringComparison.Ordinal))
+            {
+                // Nobody is waiting (an automatic reconnect): no dialog, no window, no Avalonia app. Never the prompt
+                // itself either, which a server's keyboard-interactive text is part of: ssh's stderr goes to the log.
+                stderr.WriteLine("Ntilde SSH askpass: an automatic reconnect answers only the target's password, from the vault; no answer given.");
+                return 1;
+            }
 
-            if (string.IsNullOrEmpty(state.Response))
+            string? response = askUser(new AskPassState(prompt, profile));
+            if (string.IsNullOrEmpty(response))
             {
                 return 1;
             }
 
-            stdout.WriteLine(state.Response);
+            stdout.WriteLine(response);
             return 0;
         }
         catch (Exception ex)
@@ -119,27 +147,38 @@ internal static class SshAskPassCommand
         return "SSH authentication required.";
     }
 
-    private static TerminalProfile CreateProfileFromEnvironment()
+    private static TerminalProfile CreateProfileFromEnvironment(Func<string, string?> environment)
     {
         var profile = new TerminalProfile
         {
             Type = ConnectionType.SSH,
-            Name = Environment.GetEnvironmentVariable(ProfileNameEnvironmentVariable) ?? string.Empty,
-            SshUser = Environment.GetEnvironmentVariable(ProfileUserEnvironmentVariable) ?? string.Empty,
-            SshHost = Environment.GetEnvironmentVariable(ProfileHostEnvironmentVariable) ?? string.Empty
+            Name = environment(ProfileNameEnvironmentVariable) ?? string.Empty,
+            SshUser = environment(ProfileUserEnvironmentVariable) ?? string.Empty,
+            SshHost = environment(ProfileHostEnvironmentVariable) ?? string.Empty
         };
 
-        if (Guid.TryParse(Environment.GetEnvironmentVariable(ProfileIdEnvironmentVariable), out Guid profileId))
+        if (Guid.TryParse(environment(ProfileIdEnvironmentVariable), out Guid profileId))
         {
             profile.Id = profileId;
         }
 
-        if (int.TryParse(Environment.GetEnvironmentVariable(ProfilePortEnvironmentVariable), out int port) && port > 0)
+        if (int.TryParse(environment(ProfilePortEnvironmentVariable), out int port) && port > 0)
         {
             profile.SshPort = port;
         }
 
         return profile;
+    }
+
+    /// <summary>
+    /// The dialog: an Avalonia app of its own, with one window, until the user answers or cancels. Null when cancelled.
+    /// </summary>
+    private static string? AskUser(AskPassState state)
+    {
+        BuildAskPassApp(state).StartWithClassicDesktopLifetime(
+            Array.Empty<string>(),
+            ShutdownMode.OnExplicitShutdown);
+        return state.Response;
     }
 
     private static AppBuilder BuildAskPassApp(AskPassState state)
