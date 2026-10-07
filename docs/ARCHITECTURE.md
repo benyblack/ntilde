@@ -544,7 +544,12 @@ deadline; the installer uses it.
   `-o ForkAfterAuthentication`, `-o StdinNull`, `-o RemoteCommand`, `-o PermitLocalCommand`), or would
   make the hidden ssh a master (`-M`). An interactive attempt gets the app as `SSH_ASKPASS`
   (`SSH_ASKPASS_REQUIRE=force`, `DISPLAY=ntilde`, `NTILDE_SSH_ASKPASS_PROFILE_*`); the helper fills in
-  the vault password only for a prompt that names the target's `user@host`, never a jump host's. An
+  the vault password only for a prompt that names the target's `user@host`, never a jump host's, and
+  at most once per ssh process (`NTILDE_SSH_ASKPASS_SESSION`, a new token for each ssh, recorded by
+  `SshAskPassSessionMarkers` under `<app-data>/askpass`): the same ssh asking again gets the dialog.
+  After a password was refused on the host, a user's attempt runs it without the vault
+  (`NTILDE_SSH_ASKPASS_NO_VAULT=1`), and the native one passes its password prompts to the window's
+  handler with vault reuse off, so the dialog comes at once. An
   automatic attempt with a saved password gets the same plus `NTILDE_SSH_ASKPASS_VAULT_ONLY=1` and
   `-o NumberOfPasswordPrompts=1` (`OpenSshExecTransport.SavedPasswordOnly`): the helper then answers
   that prompt alone and exits 1 for anything else, without any UI.

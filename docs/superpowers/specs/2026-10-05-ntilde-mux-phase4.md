@@ -1359,6 +1359,23 @@ review; the section they change is named first.
     in the log): `[The saved password was refused — press Enter to sign in]`, or
     `[Automatic reconnect can't sign in without you — press Enter]` for any other sign-in. The native SSH switch
     turned off (codex4 F) keeps its own message, since Enter alone cannot fix it.
+  - Enter then asks (coordinator's follow-up, same branch). Before, Enter's attempt answered from the vault first:
+    OpenSSH's interactive askpass filled every target password prompt from it (up to `NumberOfPasswordPrompts` per
+    method) and never showed the dialog, and the native window handler reuses the vault for a connection's first
+    password prompt. Now:
+    - While a password is refused on the host, a user's attempt avoids the saved password altogether
+      (`RemoteMuxInteractionHandler.Attempt.AvoidsSavedPassword`). Native passes each password prompt to the window's
+      handler with vault reuse off (`SshInteractionRequest.WithoutVaultPasswordReuse`). OpenSSH runs the askpass
+      without the vault (`RemoteMuxTransportRequest.WithoutSavedPassword`, `OpenSshExecTransport(withoutSavedPassword)`,
+      `NTILDE_SSH_ASKPASS_NO_VAULT=1`). Either way the dialog comes at once, with no extra failed login, and its
+      "Remember password" replaces the saved one. An attempt that gets in clears the state.
+    - Every user's attempt fills the saved password at most once per ssh process. `SshAskPassEnvironment.Apply` gives
+      each ssh the exec transport starts a session token (`NTILDE_SSH_ASKPASS_SESSION`). The helper records a fill as
+      an empty file named by the token under `<app-data>/askpass` (`SshAskPassSessionMarkers`; records over a day old
+      are swept), and the same ssh asking again goes to the dialog. A fill it cannot record is not made: the user is
+      asked instead. Vault-only mode is unaffected (`NumberOfPasswordPrompts=1` bounds it). Native already offers the
+      vault once per connection (`NativeSshPromptResponder`). Plain OpenSSH tabs use no askpass (they prompt in the
+      terminal), so this applies to the exec transport only.
   - Limits: ssh counts `NumberOfPasswordPrompts` per method, so a server that offers both keyboard-interactive
     and password auth may be sent a wrong saved password once by each before the loop stops; a
     keyboard-interactive second factor after the password is answered empty by ssh (the helper refuses it), one

@@ -415,8 +415,10 @@ A saved password is tried **once**. If the server refuses it, the retries stop a
 shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
 `[The saved password was refused — press Enter to sign in]` under it; Ntilde does not try that
 password on its own again until a connection to the host signs in. (A server that accepts both
-password and keyboard-interactive sign-in may see it once for each before the retries stop.) If
-the password changed, update or forget it in the Connection Manager.
+password and keyboard-interactive sign-in may see it once for each before the retries stop.) Enter
+then asks you for the password straight away, without trying the saved one again; tick *Remember
+password* to replace the saved one. At any other time, when you connect or press Enter Ntilde fills
+in the saved password at most once per connection: if the server refuses it, you are asked.
 
 When signing in would need a password or another typed answer, the retries stop at once rather than
 fail again and again (failed logins that fail2ban and account lockouts count), and the tab shows

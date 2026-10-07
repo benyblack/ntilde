@@ -156,6 +156,9 @@ invariant changes.
 - **Saved-password-only mode asks no one:** `BatchMode=no` with `NumberOfPasswordPrompts=1`, and the
   askpass helper with `NTILDE_SSH_ASKPASS_VAULT_ONLY=1`, which answers only the target's password from
   the vault and exits for anything else without building any UI; without a helper it is batch mode
+- **Every ssh the exec transport starts gets its own askpass session token** (`NTILDE_SSH_ASKPASS_SESSION`), so the
+  helper fills the vault's password once per ssh; `withoutSavedPassword` sets `NTILDE_SSH_ASKPASS_NO_VAULT=1`, a
+  user's attempt whose helper never uses the vault
 - **The native exec channel never answers a prompt its handler declined by throwing:** it closes the
   session instead, so no empty password is ever submitted to a server
 - **No thread-pool work on the native exec's stdout path:** one dedicated poll thread per channel
