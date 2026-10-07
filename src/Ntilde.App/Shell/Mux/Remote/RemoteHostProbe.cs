@@ -24,26 +24,27 @@ internal sealed record RemoteHostRefusal(string Reason) : RemoteHostProbeOutcome
 /// <remarks>
 /// <para>
 /// The binary is NativeAOT, built on Ubuntu 22.04 against glibc (spec §10.3), so it needs a glibc at
-/// least that new (<see cref="MinimumGlibc"/>) and cannot run on musl. macOS has no glibc and skips the
+/// least <see cref="MinimumGlibc"/> (the newest symbol version it links) and cannot run on musl. macOS has no glibc and skips the
 /// check. Only <c>linux-x64</c>, <c>linux-arm64</c> and <c>osx-arm64</c> are published.
 /// </para>
 /// <para>
-/// The libc line is <c>ldd --version</c>'s first line (<c>ldd (Ubuntu GLIBC 2.35-0ubuntu3.8) 2.35</c>,
-/// <c>ldd (GNU libc) 2.39</c>, musl's <c>musl libc (x86_64)</c>, or the shell's error when there is no
-/// ldd), or <c>getconf GNU_LIBC_VERSION</c>'s (<c>glibc 2.36</c>) when ldd printed nothing.
+/// The libc line is <c>getconf GNU_LIBC_VERSION</c>'s (<c>glibc 2.36</c>) or, when getconf printed nothing,
+/// <c>ldd --version</c>'s first line (<c>ldd (Ubuntu GLIBC 2.35-0ubuntu3.8) 2.35</c>, <c>ldd (GNU libc) 2.39</c>,
+/// musl's <c>musl libc (x86_64)</c>, or the shell's error when there is no ldd either).
 /// </para>
 /// </remarks>
 internal static partial class RemoteHostProbe
 {
     /// <summary>
     /// The probe. sshd hands it to the login shell, which may be fish, tcsh or nushell, so it is one
-    /// single-quoted <c>sh -c</c> script with no single quote inside. ldd's own output goes to stderr on
-    /// musl, hence <c>2&gt;&amp;1</c>.
+    /// single-quoted <c>sh -c</c> script with no single quote inside. getconf comes first because its
+    /// failure is silent: a missing getconf (or musl's, which has no <c>GNU_LIBC_VERSION</c>) falls through to
+    /// ldd, whose own output goes to stderr on musl, hence <c>2&gt;&amp;1</c>.
     /// </summary>
-    public const string Command = "sh -c 'uname -sm; (ldd --version 2>&1 || getconf GNU_LIBC_VERSION 2>&1) | head -n 1; printf \"HOME=%s\\n\" \"$HOME\"'";
+    public const string Command = "sh -c 'uname -sm; (getconf GNU_LIBC_VERSION 2>/dev/null || ldd --version 2>&1) | head -n 1; printf \"HOME=%s\\n\" \"$HOME\"'";
 
-    /// <summary>Ubuntu 22.04's glibc, the release build's (spec §10.3): the oldest the binary loads on.</summary>
-    public static readonly Version MinimumGlibc = new(2, 35);
+    /// <summary>The oldest glibc the binary loads on: it needs symbol versions up to <c>GLIBC_2.34</c> (the RHEL 9 family).</summary>
+    public static readonly Version MinimumGlibc = new(2, 34);
 
     private const string HomePrefix = "HOME=";
 

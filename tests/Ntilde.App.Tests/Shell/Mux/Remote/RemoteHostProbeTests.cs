@@ -13,8 +13,13 @@ public sealed class RemoteHostProbeTests
     private static SshExecResult Probe(string stdout, int? exitCode = 0, string stderr = "") => new(exitCode, stdout, stderr);
 
     [Theory]
-    // Ubuntu 22.04 x64: the glibc floor itself.
+    // Ubuntu 22.04 x64.
     [InlineData("Linux x86_64\nldd (Ubuntu GLIBC 2.35-0ubuntu3.8) 2.35\nHOME=/home/nova\n", "linux-x64", "/home/nova")]
+    // RHEL 9 family: the glibc floor itself, by ldd and by getconf.
+    [InlineData("Linux x86_64\nldd (GNU libc) 2.34\nHOME=/home/rocky\n", "linux-x64", "/home/rocky")]
+    [InlineData("Linux x86_64\nglibc 2.34\nHOME=/home/rocky\n", "linux-x64", "/home/rocky")]
+    // A host with getconf: its answer is the first line.
+    [InlineData("Linux x86_64\nglibc 2.35\nHOME=/home/nova\n", "linux-x64", "/home/nova")]
     // Debian 12 arm64.
     [InlineData("Linux aarch64\nldd (Debian GLIBC 2.36-9+deb12u7) 2.36\nHOME=/home/admin\n", "linux-arm64", "/home/admin")]
     // Fedora 40, root.
@@ -40,9 +45,10 @@ public sealed class RemoteHostProbeTests
     // Alpine (musl), x64 and arm64.
     [InlineData("Linux x86_64\nmusl libc (x86_64)\nHOME=/root\n", "musl libc is not supported")]
     [InlineData("Linux aarch64\nmusl libc (aarch64)\nHOME=/home/alpine\n", "musl libc is not supported")]
-    // CentOS 7 and Ubuntu 20.04: glibc older than the floor.
-    [InlineData("Linux x86_64\nldd (GNU libc) 2.17\nHOME=/home/centos\n", "glibc 2.17 is older than 2.35")]
-    [InlineData("Linux x86_64\nldd (Ubuntu GLIBC 2.31-0ubuntu9.16) 2.31\nHOME=/home/nova\n", "glibc 2.31 is older than 2.35")]
+    // CentOS 7, Ubuntu 20.04 and one minor below the floor: glibc older than the floor.
+    [InlineData("Linux x86_64\nldd (GNU libc) 2.17\nHOME=/home/centos\n", "glibc 2.17 is older than 2.34")]
+    [InlineData("Linux x86_64\nldd (Ubuntu GLIBC 2.31-0ubuntu9.16) 2.31\nHOME=/home/nova\n", "glibc 2.31 is older than 2.34")]
+    [InlineData("Linux x86_64\nglibc 2.33\nHOME=/home/nova\n", "glibc 2.33 is older than 2.34")]
     // macOS on Intel.
     [InlineData("Darwin x86_64\nsh: ldd: command not found\nHOME=/Users/nova\n", "Intel Macs are not supported")]
     // FreeBSD: its ldd has no --version.
@@ -95,16 +101,16 @@ public sealed class RemoteHostProbeTests
     }
 
     [Fact]
-    public void The_minimum_glibc_is_ubuntu_22_04_s()
+    public void The_minimum_glibc_is_the_rhel_9_family_s()
     {
-        Assert.Equal(new Version(2, 35), RemoteHostProbe.MinimumGlibc);
+        Assert.Equal(new Version(2, 34), RemoteHostProbe.MinimumGlibc);
     }
 
     [Fact]
     public void The_probe_is_one_single_quoted_sh_script()
     {
         Assert.Equal(
-            "sh -c 'uname -sm; (ldd --version 2>&1 || getconf GNU_LIBC_VERSION 2>&1) | head -n 1; printf \"HOME=%s\\n\" \"$HOME\"'",
+            "sh -c 'uname -sm; (getconf GNU_LIBC_VERSION 2>/dev/null || ldd --version 2>&1) | head -n 1; printf \"HOME=%s\\n\" \"$HOME\"'",
             RemoteHostProbe.Command);
         RemoteMuxInstallCommandsTests.AssertOneSingleQuotedShScript(RemoteHostProbe.Command);
     }
