@@ -434,6 +434,7 @@ internal sealed class RemoteMuxConnector : IDisposable
 
         string captured = (error as MuxProxyHandshakeException)?.CapturedText ?? string.Empty;
         RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, captured, channel.Channel.StderrTail, error, host, automatic: !prompts.Interactive);
+        bool signInRefused = failure.SignInRefused;
         SavedPasswordVerdict verdict = SavedPasswordVerdictOf(prompts, failure);
         if (verdict == SavedPasswordVerdict.Refused)
         {
@@ -474,7 +475,7 @@ internal sealed class RemoteMuxConnector : IDisposable
             // SSH itself failed - auth, or the connection before the command ran - so a remembered
             // secret this attempt offered may be what the server refused: forget it rather than replay
             // it on every reconnect. A failure after auth (NotInstalled, Unsupported, ProxyFailed) keeps it.
-            prompts.Refused();
+            prompts.Refused(signInRefused);
         }
 
         _log?.Invoke($"[RemoteMux] {host}: {failure.Kind} (exit {(exitCode is { } code ? code.ToString(System.Globalization.CultureInfo.InvariantCulture) : "unknown")}): {failure.Reason}");
@@ -484,7 +485,10 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// <summary>What a failed attempt's saved password had to do with the failure.</summary>
     private enum SavedPasswordVerdict
     {
-        /// <summary>Nothing known: none was offered, or it was never asked for, or the failure came after sign-in.</summary>
+        /// <summary>
+        /// Nothing known: none was offered, or it was never asked for, or the failure came after sign-in or said nothing of
+        /// a refusal.
+        /// </summary>
         None,
 
         /// <summary>The server refused it.</summary>
@@ -498,17 +502,19 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// What the saved password <paramref name="prompts"/> offered had to do with an SSH failure (review I-1), on evidence,
     /// never guesswork. Given to a native password prompt - from the vault, or the same value remembered from an earlier
     /// sign-in - it reached the server: the prompt after it says which - a code
-    /// question is a second factor; a password asked for again, or the attempt failing SSH with nothing after it, is a
-    /// refusal. Handed to OpenSSH's askpass, the helper's record of this attempt's ssh says: a declined prompt naming the
-    /// target (a second factor) is not a refusal; a refusal needs the helper to have filled the password - sshd refusing
-    /// without asking for it (agent keys past MaxAuthTries, password auth off) does not count. Nothing counts once the attempt
-    /// got past sign-in: the greeting proves the password was taken.
+    /// question is a second factor; a password asked for again is a refusal, and so is the native layer's authentication
+    /// failure (<see cref="RemoteMuxFailure.SignInRefused"/>) with nothing after it. Handed to OpenSSH's askpass, the
+    /// helper's record of this attempt's ssh says: a declined prompt naming the target (a second factor) is not a refusal;
+    /// a refusal needs the helper to have filled the password - sshd refusing without asking for it (agent keys past
+    /// MaxAuthTries, password auth off) does not count - and ssh to say the sign-in was refused. Any other failure after
+    /// the password went - the link dropping - says nothing about it: no verdict, and the next attempt offers it again,
+    /// once. Nothing counts once the attempt got past sign-in: the native transport saw it end, or the greeting arrived.
     /// </summary>
     private static SavedPasswordVerdict SavedPasswordVerdictOf(RemoteMuxInteractionHandler.Attempt prompts, RemoteMuxFailure failure)
     {
-        // Past sign-in (the proxy's greeting arrived), the password got in: a later failure is the link's, not a refusal
-        // (re-review item 1), as Attempt.Refused keeps a remembered one.
-        if (prompts.HasSucceeded) return SavedPasswordVerdict.None;
+        // Past sign-in (the native transport said so, or the proxy's greeting arrived), the password got in: a later failure
+        // is the link's, not a refusal (re-review item 1), as Attempt.Refused keeps a remembered one.
+        if (prompts.HasSucceeded || prompts.HasAuthenticated) return SavedPasswordVerdict.None;
         bool sshFailed = failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser || prompts.AbortedPrompt is not null;
         if (!sshFailed) return SavedPasswordVerdict.None;
         if (prompts.StoredPasswordAnswered)
@@ -517,13 +523,14 @@ internal sealed class RemoteMuxConnector : IDisposable
             // window's handler had filled it on Enter, and the host remembered it), reached the server. A remembered password
             // that is not the saved one keeps the remembered rule: forgotten, and the next attempt may offer the saved one.
             if (!prompts.StoredPasswordIsTheSavedOne()) return SavedPasswordVerdict.None;
-            return prompts.SecondFactorAfterSavedPassword ? SavedPasswordVerdict.NotEnough : SavedPasswordVerdict.Refused;
+            if (prompts.SecondFactorAfterSavedPassword) return SavedPasswordVerdict.NotEnough;
+            return prompts.RefusalAfterSavedPassword || failure.SignInRefused ? SavedPasswordVerdict.Refused : SavedPasswordVerdict.None;
         }
 
         if (!prompts.SavedPasswordOffered) return SavedPasswordVerdict.None;
         Ntilde.SshAskPassRecord record = prompts.ReadAskPassRecord();
         if (record.Declined) return SavedPasswordVerdict.NotEnough;
-        return record.Answered ? SavedPasswordVerdict.Refused : SavedPasswordVerdict.None;
+        return record.Answered && failure.SignInRefused ? SavedPasswordVerdict.Refused : SavedPasswordVerdict.None;
     }
 
     private static Func<SshProfile> Fixed(SshProfile profile)

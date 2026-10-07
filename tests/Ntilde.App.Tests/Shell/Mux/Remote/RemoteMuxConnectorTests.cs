@@ -181,8 +181,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         var automatic = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
         var user = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
 
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "nova@fake-host: Permission denied (publickey,password)."), automatic.Failure);
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "nova@fake-host: Permission denied (publickey,password)."), user.Failure);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "nova@fake-host: Permission denied (publickey,password).") { SignInRefused = true }, automatic.Failure);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "nova@fake-host: Permission denied (publickey,password).") { SignInRefused = true }, user.Failure);
     }
 
     [Fact]
@@ -892,11 +892,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     private const string Greeting = "NTILDE-MUX-PROXY 1 4242\n";
 
     /// <summary>
-    /// Re-review item 3 (R15): after the helper filled the saved password, an SSH failure before the command ran - sshd
-    /// closing the connection rather than refusing - counts as the refusal, as on native: retrying could only send it again.
+    /// After the helper filled the saved password, ssh failed with no word of a refusal - the link dropped before the
+    /// proxy's greeting. That says nothing about the password: the failure stays SshFailed (the loop retries), the saved
+    /// password is not marked refused, and the next automatic attempt offers it again - once, as every attempt does.
     /// </summary>
     [Fact]
-    public async Task An_OpenSSH_failure_after_the_saved_password_was_filled_counts_as_a_refusal()
+    public async Task An_OpenSSH_drop_after_the_saved_password_was_filled_is_not_a_refusal()
     {
         var built = new List<OpenSshExecTransport>();
         RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, (t, _) =>
@@ -905,11 +906,11 @@ public sealed class RemoteMuxConnectorTests : IDisposable
             return new FakeRemoteScript(Stderr: "Connection closed by 10.0.0.2 port 22\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
         });
 
-        var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var dropped = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
         await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
 
-        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
-        Assert.Equal(new[] { (false, true), (true, false) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
+        Assert.Equal((RemoteFailureKind.SshFailed, RemoteNeedsUserCause.SignIn), (dropped.Failure.Kind, dropped.Failure.Cause));
+        Assert.Equal(new[] { (false, true), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
     }
 
     /// <summary>
@@ -963,6 +964,39 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.NotEqual(RemoteNeedsUserCause.SavedPasswordRefused, lost.Failure.Cause);
         Assert.NotEqual(RemoteFailureKind.NeedsUser, lost.Failure.Kind);
         Assert.Equal(new[] { "s3cret", "s3cret" }, answers);   // offered again: nothing was refused
+    }
+
+    /// <summary>
+    /// Once the native transport says sign-in is over (<see cref="ISshInteractionHandler.Authenticated"/>), nothing that
+    /// follows counts against what the attempt answered - not even a failure that would otherwise read as a refusal.
+    /// </summary>
+    [Fact]
+    public async Task Nothing_after_a_native_sign_in_counts_as_a_refusal()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var answers = new List<string>();
+        var connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            (_, request) =>
+            {
+                _remote.OnStart = _ =>
+                {
+                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                    lock (answers) answers.Add(answer);
+                    request.Prompts.Authenticated();
+                    _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                };
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(new ScriptedUser(), _ => false, saved.Read),
+            "i",
+            null));
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(RemoteFailureKind.SshFailed, failed.Failure.Kind);
+        Assert.Equal(new[] { "s3cret", "s3cret" }, answers);
     }
 
     /// <summary>
@@ -1219,6 +1253,56 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Single(interop.Submissions);
         Assert.Equal(1, interop.Closes);
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
+    }
+
+    /// <summary>The native layer losing the link: an Error that says nothing about sign-in.</summary>
+    private static NativeSshEvent LinkReset { get; } = PromptingNativeSshInterop.Error("Connection reset by peer (os error 104)");
+
+    /// <summary>
+    /// The native twin of the OpenSSH drop, end to end through the real native exec transport: the saved password answered
+    /// the prompt, and then the link dropped - no other prompt, no word of a refusal - after the session connected (sign-in
+    /// over) or before it. Not a refusal: SshFailed, and the next automatic attempt answers its prompt with the saved
+    /// password again, once.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_native_drop_after_the_saved_password_is_not_a_refusal(bool signedIn)
+    {
+        NativeSshEvent[] dropped = signedIn
+            ? [PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()]
+            : [PromptingNativeSshInterop.PasswordPrompt, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
+
+        var lost = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.SshFailed, RemoteFailureKind.SshFailed), (lost.Failure.Kind, again.Failure.Kind));
+        Assert.Equal(new[] { """{"text":"s3cret"}""", """{"text":"s3cret"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
+    /// The same drop with a remembered password (what got the user's Enter in): the automatic attempt answers from memory,
+    /// the session connects - sign-in is over - and the link drops before the greeting. Nothing the attempt answered was
+    /// refused, so the password stays remembered, and the next automatic attempt answers with it again.
+    /// </summary>
+    [Fact]
+    public async Task A_native_drop_after_sign_in_keeps_the_remembered_password()
+    {
+        NativeSshEvent[] dropped = [PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new ScriptedUser(SshInteractionResponse.FromSecret("pw"))));
+        RemoteMuxInteractionHandler.Attempt enter = connector.Prompts.BeginAttempt(interactive: true);
+        await enter.HandleAsync(PasswordPrompt, Ct);
+        enter.Succeeded();   // the user's Enter got in: the host remembers "pw"
+
+        var lost = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(RemoteFailureKind.SshFailed, lost.Failure.Kind);
+        Assert.Equal(new[] { """{"text":"pw"}""", """{"text":"pw"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+        Assert.True(connector.Prompts.Remembers(SshInteractionKind.Password));
     }
 
     /// <summary>A native keyboard-interactive round with one question, as rusty_ssh raises it.</summary>

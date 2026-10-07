@@ -1,6 +1,7 @@
 using System.Globalization;
 using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
+using Ntilde.Platform.Ssh.Native;
 
 namespace Ntilde.Shell.Mux.Remote;
 
@@ -11,7 +12,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <list type="number">
 /// <item>the hello's <c>version_mismatch</c> → <see cref="RemoteFailureKind.VersionMismatch"/>;</item>
 /// <item>a native transport failure (an <see cref="SshExecTransportException"/>, directly or inside the
-/// handshake's exception) → <see cref="RemoteFailureKind.SshFailed"/>, with the native message. The
+/// handshake's exception) → <see cref="RemoteFailureKind.SshFailed"/>, with the native message, and
+/// <see cref="RemoteMuxFailure.SignInRefused"/> when that message is the native layer's authentication failure. The
 /// remote command never ran, and the stderr tail then holds that message, not the command's output, so
 /// it is not matched against the text rules below;</item>
 /// <item>a loader or format error on any line (<c>Exec format error</c>, <c>cannot execute binary
@@ -24,8 +26,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 126 → <see cref="RemoteFailureKind.Unsupported"/>, with the last stderr line;</item>
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
-/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. For an automatic
-/// attempt, a refusal (<c>Permission denied</c>, or sshd's <c>Too many authentication failures</c>) is
+/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. A refusal
+/// (<c>Permission denied</c>, or sshd's <c>Too many authentication failures</c>) sets
+/// <see cref="RemoteMuxFailure.SignInRefused"/>, and for an automatic attempt is
 /// <see cref="RemoteFailureKind.NeedsUser"/> instead, with the same reason: in batch mode ssh tried only what
 /// needs no answer, and with the saved password it tried that once, so signing in needs the user;</item>
 /// <item>anything else → <see cref="RemoteFailureKind.ProxyFailed"/>, with the exception's message
@@ -61,7 +64,9 @@ internal static class RemoteMuxFailureClassifier
         if (Find<SshExecTransportException>(error, _ => true) is { } transport)
         {
             string message = transport.NativeMessage.Trim().Length > 0 ? transport.NativeMessage.Trim() : transport.Message;
-            return new RemoteMuxFailure(RemoteFailureKind.SshFailed, Quote(message));
+            // rusty_ssh's own word that the server refused every way it signed in: a lost link is another failure.
+            bool refused = NativeSshFailureClassifier.Classify(transport.NativeMessage).Kind == NativeSshFailureKind.Authentication;
+            return new RemoteMuxFailure(RemoteFailureKind.SshFailed, Quote(message)) { SignInRefused = refused };
         }
 
         List<string> lines = [.. Lines(stderr), .. CapturedLines(capturedStdout)];
@@ -86,11 +91,13 @@ internal static class RemoteMuxFailureClassifier
             // Batch mode tried keys and the agent only; refused, it is a password or a passphrase away, which
             // only the user can give. Retrying on a timer would only knock again (Task 20 ruling). An attempt that
             // offered the saved password (BatchMode=no) was refused the same way, and must not send it again. sshd past
-            // MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same.
-            bool refused = automatic && Lines(stderr).Any(line =>
+            // MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same. Any other exit 255 -
+            // the link dropping, nothing listening - says nothing about what was sent.
+            bool refused = Lines(stderr).Any(line =>
                 line.Contains("Permission denied", StringComparison.Ordinal)
                 || line.Contains("Too many authentication failures", StringComparison.Ordinal));
-            return new RemoteMuxFailure(refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed, Quote(lastStderrLine ?? "ssh exited with code 255"));
+            RemoteFailureKind kind = automatic && refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed;
+            return new RemoteMuxFailure(kind, Quote(lastStderrLine ?? "ssh exited with code 255")) { SignInRefused = refused };
         }
 
         string reason = error?.Message is { Length: > 0 } errorMessage ? errorMessage : "The ntilde-mux proxy failed";

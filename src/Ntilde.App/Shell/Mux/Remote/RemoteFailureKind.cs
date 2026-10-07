@@ -59,7 +59,16 @@ internal enum RemoteNeedsUserCause
 /// A classified remote failure: its <paramref name="Kind"/>, the reason (for the log, and the notices of failures past
 /// SSH), and, for a <see cref="RemoteFailureKind.NeedsUser"/> one, its <paramref name="Cause"/>.
 /// </summary>
-internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, RemoteNeedsUserCause Cause = RemoteNeedsUserCause.SignIn);
+internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, RemoteNeedsUserCause Cause = RemoteNeedsUserCause.SignIn)
+{
+    /// <summary>
+    /// SSH said the server refused the sign-in: OpenSSH's <c>Permission denied</c> or <c>Too many authentication
+    /// failures</c> (exit 255), or the native layer's authentication failure - whoever started the attempt. It is the
+    /// evidence that a password the attempt sent was refused (<see cref="RemoteMuxConnector"/>); a failure without it - a
+    /// link that dropped - says nothing about the password.
+    /// </summary>
+    public bool SignInRefused { get; init; }
+}
 
 /// <summary>
 /// A remote host's connect attempt failed (Phase 4 spec §7.1). The App's own exception for a remote

@@ -77,6 +77,27 @@ public sealed class RemoteMuxFailureClassifierTests
         Assert.Equal(RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, Handshake("ended"), "nova@x").Reason, failure.Reason);
     }
 
+    /// <summary>
+    /// Whether SSH said the server refused the sign-in - the evidence a password the attempt sent was refused - read where
+    /// ssh's words are read, automatic attempt or not: OpenSSH's refusal lines, or the native layer's authentication
+    /// failure. A link that dropped, a host that was not there, is no such word.
+    /// </summary>
+    [Theory]
+    [InlineData(255, "nova@x: Permission denied (publickey,password).\r\n", null, true)]
+    [InlineData(255, "Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", null, true)]
+    [InlineData(255, "Connection closed by 10.0.0.2 port 22\r\n", null, false)]
+    [InlineData(255, "ssh: connect to host x port 22: Connection refused\r\n", null, false)]
+    [InlineData(126, "sh: 1: " + Binary + ": Permission denied\n", null, false)]
+    [InlineData(null, "", "SSH authentication failed", true)]
+    [InlineData(null, "", "Connection reset by peer (os error 104)", false)]
+    public void Says_whether_ssh_refused_the_sign_in(int? exitCode, string stderr, string? nativeMessage, bool refused)
+    {
+        Exception error = nativeMessage is null ? Handshake("ended") : new SshExecTransportException($"SSH to nova@x failed: {nativeMessage}", nativeMessage);
+
+        Assert.Equal(refused, RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, error, "nova@x", automatic: true).SignInRefused);
+        Assert.Equal(refused, RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, error, "nova@x", automatic: false).SignInRefused);
+    }
+
     [Fact]
     public void Version_mismatch_names_the_daemons_protocols_and_the_apps()
     {
@@ -130,8 +151,8 @@ public sealed class RemoteMuxFailureClassifierTests
         RemoteMuxFailure wrapped = RemoteMuxFailureClassifier.Classify(
             null, string.Empty, "native ssh: Authentication failed\n", new MuxProxyHandshakeException("Reading the remote output failed (x)", string.Empty, native));
 
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed"), direct);
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed"), wrapped);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed") { SignInRefused = true }, direct);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed") { SignInRefused = true }, wrapped);
     }
 
     [Fact]

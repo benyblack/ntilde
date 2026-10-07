@@ -39,7 +39,8 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     /// channel fails as a transport failure carrying the exception's message. Refusing would not be the
     /// same: a refused password or keyboard-interactive prompt is submitted as an empty answer, which the
     /// server counts as a failed login. Closing wakes rusty_ssh's pending prompt with no answer
-    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there.
+    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there. Once sign-in is
+    /// over, the handler is told (<see cref="ISshInteractionHandler.Authenticated"/>).
     /// </param>
     /// <param name="optionsFactory">
     /// Builds the connection options. Production passes <see cref="NativeSshConnectionOptionsFactory.Create(SshProfile)"/>,
@@ -371,6 +372,8 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 {
                     case NativeSshEventKind.Connected:
                         Log($"[NativeSshExec] {_displayName}: connected; the command is starting");
+                        // Sign-in is over: what fails from here on is the link or the command, never an answer it gave.
+                        _interactionHandler?.Authenticated();
                         break;
                     case NativeSshEventKind.Data:
                         // The payload is a fresh array per event, so the queue takes it without a copy.

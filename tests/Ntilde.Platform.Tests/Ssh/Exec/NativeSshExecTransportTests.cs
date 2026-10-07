@@ -332,6 +332,68 @@ public sealed class NativeSshExecTransportTests
             Task.FromException<SshInteractionResponse>(error);
     }
 
+    /// <summary>
+    /// The session reporting Connected is the end of sign-in: the handler is told, once, after the prompts it answered, so
+    /// a failure after it - the link dropping - is never taken for an answer refused.
+    /// </summary>
+    [Fact]
+    public async Task Connected_tells_the_handler_that_sign_in_is_over()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(
+            ScriptedNativeSshInterop.PasswordPrompt(),
+            ScriptedNativeSshInterop.Connected(),
+            ScriptedNativeSshInterop.Error("Connection reset by peer (os error 104)"),
+            ScriptedNativeSshInterop.Closed());
+        var handler = new SignInRecordingHandler();
+
+        using ISshExecChannel channel = Start(interop, handler);
+        await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { nameof(SshInteractionKind.Password), SignInRecordingHandler.SignedIn }, handler.Seen);
+    }
+
+    /// <summary>A sign-in that fails never reaches Connected, so the handler is never told it is over.</summary>
+    [Fact]
+    public async Task A_sign_in_that_fails_never_tells_the_handler_it_is_over()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(
+            ScriptedNativeSshInterop.PasswordPrompt(),
+            ScriptedNativeSshInterop.Error("SSH authentication failed"),
+            ScriptedNativeSshInterop.Closed());
+        var handler = new SignInRecordingHandler();
+
+        using ISshExecChannel channel = Start(interop, handler);
+        await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { nameof(SshInteractionKind.Password) }, handler.Seen);
+    }
+
+    /// <summary>Answers every prompt with a password, and records each prompt's kind and the end of sign-in, in order.</summary>
+    private sealed class SignInRecordingHandler : ISshInteractionHandler
+    {
+        public const string SignedIn = "signed in";
+
+        private readonly List<string> _seen = [];
+
+        public IReadOnlyList<string> Seen
+        {
+            get { lock (_seen) return _seen.ToArray(); }
+        }
+
+        public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+        {
+            lock (_seen) _seen.Add(request.Kind.ToString());
+            return Task.FromResult(SshInteractionResponse.FromSecret("hunter2"));
+        }
+
+        public void Authenticated()
+        {
+            lock (_seen) _seen.Add(SignedIn);
+        }
+    }
+
     // --- Stdin -----------------------------------------------------------------------------------
 
     [Fact]

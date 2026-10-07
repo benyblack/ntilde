@@ -27,6 +27,10 @@ internal sealed class PromptingNativeSshInterop : INativeSshInterop
     public static NativeSshEvent PassphrasePrompt { get; } =
         new(NativeSshEventKind.PassphrasePrompt, """{"prompt":"Enter passphrase for key '/home/nova/.ssh/id_ed25519':"}"""u8.ToArray(), flags: NativeSshEventFlags.Json);
 
+    /// <summary>Sign-in is over and the command's channel is open: what rusty_ssh queues before the command's output.</summary>
+    public static NativeSshEvent Connected { get; } =
+        new(NativeSshEventKind.Connected, """{"host":"fake-host","port":22,"user":"nova"}"""u8.ToArray(), flags: NativeSshEventFlags.Json);
+
     /// <summary>The native layer's failure, as it queues one before <see cref="NativeSshEvent.Closed"/>; <paramref name="message"/> has no quote or backslash.</summary>
     public static NativeSshEvent Error(string message) =>
         new(NativeSshEventKind.Error, Encoding.UTF8.GetBytes($$"""{"message":"{{message}}"}"""), flags: NativeSshEventFlags.Json);

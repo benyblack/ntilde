@@ -562,7 +562,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler.Attempt refusedTyped = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
         Assert.Equal("typed", (await refusedTyped.HandleAsync(Password, Ct)).Secret);
 
-        refusedTyped.Refused();   // the server's password changed again
+        refusedTyped.Refused(signInRefused: true);   // the server's password changed again
 
         Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
     }
@@ -677,9 +677,9 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     }
 
     /// <summary>
-    /// A remembered password the server refused (its attempt failed SSH) says the server's password changed: when the
-    /// vault holds that same value, the host's automatic attempts do not try it after it either (a different saved value
-    /// would be offered, as above).
+    /// A remembered password the server refused (its attempt failed SSH, which said the sign-in was refused) says the
+    /// server's password changed: when the vault holds that same value, the host's automatic attempts do not try it after
+    /// it either (a different saved value would be offered, as above).
     /// </summary>
     [Fact]
     public async Task A_refused_remembered_password_stops_the_same_saved_one_too()
@@ -690,9 +690,28 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
         Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
 
-        automatic.Refused();
+        automatic.Refused(signInRefused: true);
 
         Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+    }
+
+    /// <summary>
+    /// A remembered password whose attempt failed with no word of a refusal - the link dropped - is forgotten, as every
+    /// remembered secret of a failed attempt is, but not counted as refused: the vault's same value is still offered.
+    /// </summary>
+    [Fact]
+    public async Task A_remembered_password_whose_attempt_dropped_leaves_the_same_saved_one_offered()
+    {
+        var saved = new SavedPasswords("old");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("old")), saved);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
+
+        automatic.Refused();
+
+        Assert.False(handler.Remembers(SshInteractionKind.Password));
+        Assert.True(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
     }
 
     /// <summary>The native password prompt as rusty_ssh's first one reaches the window's handler: vault reuse allowed.</summary>
