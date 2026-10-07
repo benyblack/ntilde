@@ -391,7 +391,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         _clock.Advance(FirstRetry); // the automatic attempt cannot sign in: the loop gives up
 
         ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
-        ShowsBanner(pane, "[Automatic reconnect can't sign in without you — press Enter]");
+        ShowsBanner(pane, "[Automatic reconnect can't sign in without you \u2014 press Enter]");
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("publickey", Text(pane));
     }
@@ -413,7 +413,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         _clock.Advance(FirstRetry);
 
         ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
-        ShowsBanner(pane, "[The saved password was refused — press Enter to sign in]");
+        ShowsBanner(pane, "[The saved password was refused \u2014 press Enter to sign in]");
         Assert.False(RemoteHost.IsReconnecting);
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("can't sign in without you", Text(pane));
@@ -430,13 +430,13 @@ public sealed class MuxRemotePaneTests : IDisposable
         string nativeOff = Ntilde.Platform.Ssh.Sessions.SshSessionFactory.NativeSshDisabledMessage;
 
         Assert.Equal(
-            "[The saved password was refused — press Enter to sign in]",
+            "[The saved password was refused \u2014 press Enter to sign in]",
             TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused)));
         Assert.Equal(
-            "[Automatic reconnect can't sign in without you — press Enter]",
+            "[Automatic reconnect can't sign in without you \u2014 press Enter]",
             TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid)));
         Assert.Equal(
-            "[Automatic reconnect can't sign in without you — press Enter]",
+            "[Automatic reconnect can't sign in without you \u2014 press Enter]",
             TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for")));
         Assert.Equal(
             $"[{nativeOff}]",

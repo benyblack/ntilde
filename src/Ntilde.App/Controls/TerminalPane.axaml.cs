@@ -4245,10 +4245,10 @@ namespace Ntilde.Controls
         internal static string RemoteUnreachableBanner(string host) => $"[{host} not reachable \u2014 press Enter to retry]";
 
         /// <summary>Under an Enter banner: an automatic attempt offered the profile's saved password, and it was refused.</summary>
-        internal const string RemoteSavedPasswordRefusedLine = "[The saved password was refused — press Enter to sign in]";
+        internal const string RemoteSavedPasswordRefusedLine = "[The saved password was refused \u2014 press Enter to sign in]";
 
         /// <summary>Under an Enter banner: signing in needs an answer an automatic attempt does not give.</summary>
-        internal const string RemoteSignInNeedsYouLine = "[Automatic reconnect can't sign in without you — press Enter]";
+        internal const string RemoteSignInNeedsYouLine = "[Automatic reconnect can't sign in without you \u2014 press Enter]";
 
         /// <summary>
         /// The line under an Enter banner (<see cref="RemoteUnreachableBanner"/>, <see cref="RemoteAbandonedBanner"/>) when
