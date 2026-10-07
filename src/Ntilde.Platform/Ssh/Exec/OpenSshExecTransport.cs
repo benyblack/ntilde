@@ -28,6 +28,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     private readonly string _executablePath;
     private readonly Func<string, IReadOnlyList<string>> _buildArguments;
     private readonly string? _askPassHelperPath;
+    private readonly string? _askPassSession;
     private readonly Action<string> _log;
 
     /// <param name="profile">The profile: its name and address for askpass and <see cref="DisplayName"/>.</param>
@@ -52,7 +53,15 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// helper never answers from the vault (<see cref="SshAskPassEnvironment.ApplyWithoutSavedPassword"/>), so the user's
     /// dialog comes at once. Only for a user's attempt: not with <paramref name="batchMode"/> or <paramref name="savedPasswordOnly"/>.
     /// </param>
-    /// <exception cref="ArgumentException">More than one of <paramref name="batchMode"/>, <paramref name="savedPasswordOnly"/> and <paramref name="withoutSavedPassword"/>.</exception>
+    /// <param name="askPassSession">
+    /// The askpass session token every ssh this transport starts gets (<see cref="SshAskPassEnvironment.SessionVariable"/>),
+    /// or null for a new one per ssh. A connect attempt's transport, started once, passes the attempt's own, so the app
+    /// can read back what the helper did for it.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// More than one of <paramref name="batchMode"/>, <paramref name="savedPasswordOnly"/> and <paramref name="withoutSavedPassword"/>;
+    /// or an <paramref name="askPassSession"/> that is not a session token.
+    /// </exception>
     public OpenSshExecTransport(
         SshProfile profile,
         string sshExecutablePath,
@@ -62,7 +71,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         Action<string>? log = null,
         bool batchMode = false,
         bool savedPasswordOnly = false,
-        bool withoutSavedPassword = false)
+        bool withoutSavedPassword = false,
+        string? askPassSession = null)
         : this(
             profile,
             sshExecutablePath,
@@ -71,7 +81,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             log,
             batchMode,
             savedPasswordOnly,
-            withoutSavedPassword)
+            withoutSavedPassword,
+            askPassSession)
     {
     }
 
@@ -87,9 +98,15 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         Action<string>? log,
         bool batchMode = false,
         bool savedPasswordOnly = false,
-        bool withoutSavedPassword = false)
+        bool withoutSavedPassword = false,
+        string? askPassSession = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
+        if (askPassSession is not null && !SshAskPassEnvironment.IsSessionToken(askPassSession))
+        {
+            throw new ArgumentException("Not a session token: 32 lowercase hex digits.", nameof(askPassSession));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(buildArguments);
         PromptMode mode = ModeOf(batchMode, savedPasswordOnly, withoutSavedPassword, askPassHelperPath);
@@ -101,6 +118,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         // Batch mode never prompts, so it has no use for a helper; leaving it out means no dialog can
         // appear even if a future ssh consulted askpass despite BatchMode.
         _askPassHelperPath = batch || string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
+        _askPassSession = askPassSession;
         _log = log ?? TerminalLogger.Log;
         BatchMode = batch;
         SavedPasswordOnly = mode == PromptMode.SavedPasswordOnly;
@@ -223,15 +241,15 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         else if (SavedPasswordOnly)
         {
             // Every ssh this one starts inherits it too; the helper answers only a prompt that names the target.
-            SshAskPassEnvironment.ApplySavedPasswordOnly(startInfo.Environment, _askPassHelperPath!, _profile);
+            SshAskPassEnvironment.ApplySavedPasswordOnly(startInfo.Environment, _askPassHelperPath!, _profile, _askPassSession);
         }
         else if (WithoutSavedPassword)
         {
-            SshAskPassEnvironment.ApplyWithoutSavedPassword(startInfo.Environment, _askPassHelperPath!, _profile);
+            SshAskPassEnvironment.ApplyWithoutSavedPassword(startInfo.Environment, _askPassHelperPath!, _profile, _askPassSession);
         }
         else if (_askPassHelperPath is not null)
         {
-            SshAskPassEnvironment.Apply(startInfo.Environment, _askPassHelperPath, _profile);
+            SshAskPassEnvironment.Apply(startInfo.Environment, _askPassHelperPath, _profile, _askPassSession);
         }
 
         return startInfo;

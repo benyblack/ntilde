@@ -168,6 +168,55 @@ public static class OpenSshExecCommandLine
         return kept;
     }
 
+    /// <summary>
+    /// Whether the plan's own arguments send ssh through another host: a <c>-J</c>, or an <c>-o</c> whose keyword (read as
+    /// ssh reads it, <see cref="ConfigKeyword"/>; case-insensitive) is <c>ProxyJump</c> or <c>ProxyCommand</c>. The plan
+    /// is read as <see cref="WithoutChannelBreakers"/> reads it - letters cluster, an option's argument is the rest of its
+    /// token or the next one and never scanned, nothing after <c>--</c> or a word past the destination is an option - so a
+    /// <c>-J</c> that is another option's argument, or part of the remote command, does not count. Any value counts, even
+    /// <c>none</c>: what matters is whether a saved password could reach a host other than the target.
+    /// </summary>
+    public static bool NamesAProxy(IReadOnlyList<string> planArguments)
+    {
+        ArgumentNullException.ThrowIfNull(planArguments);
+        bool afterDestination = false;
+        for (int i = 0; i < planArguments.Count; i++)
+        {
+            string token = planArguments[i];
+            bool isOption = token.Length >= 2 && token[0] == '-' && token != "--";
+            if (!isOption)
+            {
+                if (token != "--" && !afterDestination)
+                {
+                    afterDestination = true; // the destination
+                    continue;
+                }
+
+                return false; // ssh reads no option from here on
+            }
+
+            for (int j = 1; j < token.Length; j++)
+            {
+                char letter = token[j];
+                if (!TakesArgument(letter)) continue;
+
+                bool attached = j + 1 < token.Length;
+                string argument = attached ? token[(j + 1)..] : i + 1 < planArguments.Count ? planArguments[i + 1] : string.Empty;
+                if (!attached && i + 1 < planArguments.Count) i++;
+                if (letter == 'J') return true;
+                if (letter == 'o' && ConfigKeyword(argument) is { Length: > 0 } keyword
+                    && (keyword.Equals("ProxyJump", StringComparison.OrdinalIgnoreCase) || keyword.Equals("ProxyCommand", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+
+                break;
+            }
+        }
+
+        return false;
+    }
+
     private static bool TakesArgument(char letter)
     {
         int at = letter == ':' ? -1 : SshOptionLetters.IndexOf(letter, StringComparison.Ordinal);

@@ -284,6 +284,56 @@ public sealed class OpenSshExecCommandLineTests
         Assert.Equal("-t", argv[^1]);
     }
 
+    /// <summary>
+    /// A plan whose own arguments send ssh through another host - <c>-J</c>, <c>ProxyJump</c>, <c>ProxyCommand</c> - reaches
+    /// the target through a jump host, which an automatic reconnect must not hand the saved password (on OpenSSH before 8.4
+    /// a jump host's keyboard-interactive text carries no "(user@host) " prefix, so it could ask as the target). Read the
+    /// way ssh reads the plan: clusters, an option's argument wherever it is, <c>-o</c> keywords as readconf reads them.
+    /// </summary>
+    public static TheoryData<string[]> Proxied => new()
+    {
+        { [.. Plan, "-J", "bastion"] },
+        { [.. Plan, "-Jbastion"] },
+        { [.. Plan, "-vJ", "bastion"] },
+        { [.. Plan, "-qJ", "bastion", "-p", "2222"] },
+        { ["-J", "bastion", .. Plan] },
+        { [.. Plan, "-o", "ProxyJump=bastion"] },
+        { [.. Plan, "-oProxyJump=bastion"] },
+        { [.. Plan, "-o", "proxyjump bastion"] },
+        { [.. Plan, "-o", "PROXYCOMMAND=ssh -W %h:%p bastion"] },
+        { [.. Plan, "-o", "ProxyCommand nc %h %p"] },
+        { [.. Plan, "-o", "=ProxyJump=bastion"] },
+        { [.. Plan, "-o", " = ProxyJump bastion"] },
+        { [.. Plan, "-o", "\"ProxyJump\" bastion"] },
+        { [.. Plan, "-vo", "ProxyJump=bastion"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(Proxied))]
+    public void A_plan_that_goes_through_another_host_names_a_proxy(string[] plan)
+    {
+        Assert.True(OpenSshExecCommandLine.NamesAProxy(plan));
+    }
+
+    public static TheoryData<string[]> NotProxied => new()
+    {
+        { Plan },
+        { [.. Plan, "-p", "22", "-o", "ServerAliveInterval=5"] },
+        { [.. Plan, "-i", "-J"] },                      // -J is the identity file's name
+        { [.. Plan, "-l", "J"] },
+        { [.. Plan, "-o", "ProxyJumpy=bastion"] },      // another keyword
+        { [.. Plan, "-o", "LocalCommand=ssh -J bastion"] },
+        { [.. Plan, "--", "-J", "bastion"] },           // the remote command, never an option
+        { [.. Plan, "uptime", "-J", "bastion"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(NotProxied))]
+    public void A_plan_that_goes_straight_to_the_target_names_no_proxy(string[] plan)
+    {
+        Assert.False(OpenSshExecCommandLine.NamesAProxy(plan));
+    }
+
     private static int IndexOfPair(IReadOnlyList<string> argv, string option, string value)
     {
         for (int i = 0; i + 1 < argv.Count; i++)

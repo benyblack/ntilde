@@ -38,11 +38,28 @@ public sealed class SshInteractionRequestTests
 
         Assert.False(copy.AllowVaultPasswordReuse);
         Assert.True(original.AllowVaultPasswordReuse);   // a copy: the original is not changed
-        // Every other property, a future one included, comes across unchanged.
         foreach (PropertyInfo property in typeof(SshInteractionRequest).GetProperties())
         {
             if (property.Name == nameof(SshInteractionRequest.AllowVaultPasswordReuse)) continue;
             Assert.Equal(property.GetValue(original), property.GetValue(copy));
+        }
+    }
+
+    /// <summary>
+    /// What makes the copy test above hold for a property added later: <see cref="Full"/> must give every property a value
+    /// other than a new request's, or the copy could drop it unnoticed. A new property fails here until it is set there.
+    /// </summary>
+    [Fact]
+    public void The_full_request_sets_every_property()
+    {
+        SshInteractionRequest full = Full();
+        var blank = new SshInteractionRequest();
+
+        foreach (PropertyInfo property in typeof(SshInteractionRequest).GetProperties())
+        {
+            object? value = property.GetValue(full);
+            Assert.False(Equals(value, property.GetValue(blank)), $"Full() leaves {property.Name} at its default");
+            if (value is System.Collections.ICollection collection) Assert.NotEqual(0, collection.Count);
         }
     }
 }

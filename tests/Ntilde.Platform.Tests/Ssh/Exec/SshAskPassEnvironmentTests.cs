@@ -89,6 +89,22 @@ public sealed class SshAskPassEnvironmentTests
     }
 
     /// <summary>
+    /// A connect attempt names its own token, so the app can read back what the helper did for that ssh - filled the
+    /// saved password, or declined a second factor - and tell a refused password from one that was never asked for.
+    /// </summary>
+    [Fact]
+    public void Apply_uses_a_given_session_token_and_refuses_one_that_is_not()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        SshAskPassEnvironment.ApplySavedPasswordOnly(environment, "/opt/ntilde/ntilde", Profile(), "0123456789abcdef0123456789abcdef");
+
+        Assert.Equal("0123456789abcdef0123456789abcdef", environment[SshAskPassEnvironment.SessionVariable]);
+        Assert.ThrowsAny<ArgumentException>(() => SshAskPassEnvironment.Apply(environment, "/opt/ntilde/ntilde", Profile(), "../escape"));
+        Assert.ThrowsAny<ArgumentException>(() => SshAskPassEnvironment.Apply(environment, "/opt/ntilde/ntilde", Profile(), "0123456789ABCDEF0123456789ABCDEF"));
+    }
+
+    /// <summary>
     /// A user's attempt after the host's saved password was refused: everything <see cref="SshAskPassEnvironment.Apply"/>
     /// sets, plus the marker that sends the helper straight to the dialog, without the vault.
     /// </summary>

@@ -413,6 +413,17 @@ public sealed class OpenSshExecTransportProcessTests
         Assert.NotEqual(first, second);
     }
 
+    /// <summary>A connect attempt's transport (started once) carries the attempt's own token, so the app can read the helper's record of it.</summary>
+    [Fact]
+    public void A_given_askpass_session_token_is_the_one_ssh_gets()
+    {
+        var transport = new OpenSshExecTransport(
+            Profile(), "/usr/bin/ssh", ["-F", "cfg", "alias"], askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { }, savedPasswordOnly: true,
+            askPassSession: "0123456789abcdef0123456789abcdef");
+
+        Assert.Equal("0123456789abcdef0123456789abcdef", transport.CreateStartInfo("true").Environment[SshAskPassEnvironment.SessionVariable]);
+    }
+
     [Fact]
     public void Without_saved_password_is_for_a_user_attempt_only()
     {

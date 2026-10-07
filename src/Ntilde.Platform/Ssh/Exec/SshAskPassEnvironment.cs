@@ -46,6 +46,21 @@ public static class SshAskPassEnvironment
     /// </summary>
     public const string SessionVariable = "NTILDE_SSH_ASKPASS_SESSION";
 
+    /// <summary>
+    /// Whether <paramref name="token"/> is a session token as <see cref="Apply"/> writes it: 32 lowercase hex digits (a
+    /// Guid in N format). The helper names files by it, so nothing else - a path, an empty value - is ever one.
+    /// </summary>
+    public static bool IsSessionToken(string? token)
+    {
+        if (token is not { Length: 32 }) return false;
+        foreach (char c in token)
+        {
+            if (!char.IsAsciiDigit(c) && c is not (>= 'a' and <= 'f')) return false;
+        }
+
+        return true;
+    }
+
     /// <summary>OpenSSH's own variables.</summary>
     public const string AskPassVariable = "SSH_ASKPASS";
     public const string AskPassRequireVariable = "SSH_ASKPASS_REQUIRE";
@@ -73,20 +88,24 @@ public static class SshAskPassEnvironment
 
     /// <summary>
     /// Points <paramref name="environment"/> (a <c>ProcessStartInfo.Environment</c>) at
-    /// <paramref name="helperPath"/> for <paramref name="profile"/>, with a new <see cref="SessionVariable"/> token. An
+    /// <paramref name="helperPath"/> for <paramref name="profile"/>, with <paramref name="session"/> as its
+    /// <see cref="SessionVariable"/> token - a new one when null: for a connect attempt, whose app reads back what the
+    /// helper did for it, the attempt's own (<see cref="IsSessionToken"/>). An
     /// inherited <c>SSH_ASKPASS</c> is replaced; an inherited non-empty <c>DISPLAY</c> is kept; an inherited
     /// <see cref="VaultOnlyVariable"/> or <see cref="NoVaultVariable"/> is removed, so a user who is waiting gets every
     /// prompt, and the vault once.
     /// </summary>
-    public static void Apply(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
+    /// <exception cref="ArgumentException"><paramref name="session"/> is not a session token.</exception>
+    public static void Apply(IDictionary<string, string?> environment, string helperPath, SshProfile profile, string? session = null)
     {
         ArgumentNullException.ThrowIfNull(environment);
         ArgumentException.ThrowIfNullOrWhiteSpace(helperPath);
         ArgumentNullException.ThrowIfNull(profile);
+        if (session is not null && !IsSessionToken(session)) throw new ArgumentException("Not a session token: 32 lowercase hex digits.", nameof(session));
 
         environment.Remove(VaultOnlyVariable);
         environment.Remove(NoVaultVariable);
-        environment[SessionVariable] = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        environment[SessionVariable] = session ?? Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         environment[AskPassVariable] = helperPath;
         environment[AskPassRequireVariable] = "force";
         if (!environment.TryGetValue(DisplayVariable, out string? display) || string.IsNullOrEmpty(display))
@@ -109,9 +128,9 @@ public static class SshAskPassEnvironment
     /// passphrase, a jump host's password, other keyboard-interactive text - without building any UI.
     /// <c>SSH_ASKPASS_REQUIRE=force</c> and <c>DISPLAY</c> are as <see cref="Apply"/> sets them.
     /// </summary>
-    public static void ApplySavedPasswordOnly(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
+    public static void ApplySavedPasswordOnly(IDictionary<string, string?> environment, string helperPath, SshProfile profile, string? session = null)
     {
-        Apply(environment, helperPath, profile);
+        Apply(environment, helperPath, profile, session);
         environment[VaultOnlyVariable] = "1";
     }
 
@@ -120,9 +139,9 @@ public static class SshAskPassEnvironment
     /// answers from the vault (<see cref="NoVaultVariable"/>), so the user's dialog comes at once and the refused password
     /// is not sent again.
     /// </summary>
-    public static void ApplyWithoutSavedPassword(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
+    public static void ApplyWithoutSavedPassword(IDictionary<string, string?> environment, string helperPath, SshProfile profile, string? session = null)
     {
-        Apply(environment, helperPath, profile);
+        Apply(environment, helperPath, profile, session);
         environment[NoVaultVariable] = "1";
     }
 }
