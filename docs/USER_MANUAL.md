@@ -429,7 +429,7 @@ shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
 password on its own again, for that host in this window: Enter asks you for the password straight
 away; tick *Remember password* to replace the saved one, and Ntilde uses the new one from then on.
 Signing in with a typed password without ticking it leaves the refused one unused. A connection
-that drops *after* the password went in is not a refusal: the retries go on and try the saved
+that drops *after* you are signed in is not a refusal: the retries go on and try the saved
 password again. (Each window keeps its own record, so a second window with tabs on the same host
 tries it once too.) At any other time, when you connect or press Enter Ntilde fills in the saved password at most
 once per connection: if the server refuses it, you are asked.
@@ -439,7 +439,8 @@ alone cannot sign in. The retries stop at once with
 `[Automatic reconnect can't sign in without you — press Enter]`, and later ones do not try the saved
 password again. Enter fills in the saved password for you and asks only for the code.
 Ntilde fills only a prompt that ends in `password:` or reads `Password for <account>:`. A password
-prompt in other words is not filled, reads the same way, and Enter then asks you for it.
+prompt in other words is not filled; the retries stop with
+`[Automatic reconnect can't sign in without you — press Enter]`, and Enter then asks you for it.
 
 When signing in would need a password or another typed answer, the retries stop at once rather than
 fail again and again (failed logins that fail2ban and account lockouts count), and the tab shows

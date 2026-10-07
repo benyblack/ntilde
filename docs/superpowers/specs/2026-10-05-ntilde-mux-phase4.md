@@ -1063,7 +1063,7 @@ review; the section they change is named first.
   up to 4 s for the exit status (its own cap 4.5 s; `RemoteMuxHostFactory` pins the order 1.5 s + 2 s <= 3.5 s < 4 s
   < 4.5 s), so a daemon that exits within the proxy's 1.5 s reads as stopped. One that takes longer is read as a lost link, and the reconnect
   starts a new daemon, where each pane's reattach finds its session gone (`PreviousLost`). The cost: a
-  lost link's loop starts up to 1 s later when ssh has not exited. `MuxProxyCommand.Run` takes the
+  lost link's loop starts up to 4 s later (`DisconnectExitWait`, capped by `ClassifyTimeout`, 4.5 s) when ssh has not exited. `MuxProxyCommand.Run` takes the
   liveness check as an optional parameter, for tests whose daemon runs in their own process.
   - **Ending stdout and stderr for real** (residual R1). Closing the proxy's stdout stream ended
     nothing: .NET's console streams each hold a `dup` of their descriptor (`Console.OpenStandardOutput`,
