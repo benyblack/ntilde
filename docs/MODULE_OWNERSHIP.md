@@ -153,6 +153,9 @@ invariant changes.
 - **Batch mode leaves `ssh` no way to prompt:** `BatchMode=yes`, no `SSH_ASKPASS`,
   `SSH_ASKPASS_REQUIRE=never`, no `DISPLAY` (an OpenSSH older than 8.4 with no tty would otherwise
   fall back to its compiled-in askpass)
+- **Saved-password-only mode asks no one:** `BatchMode=no` with `NumberOfPasswordPrompts=1`, and the
+  askpass helper with `NTILDE_SSH_ASKPASS_VAULT_ONLY=1`, which answers only the target's password from
+  the vault and exits for anything else without building any UI; without a helper it is batch mode
 - **The native exec channel never answers a prompt its handler declined by throwing:** it closes the
   session instead, so no empty password is ever submitted to a server
 - **No thread-pool work on the native exec's stdout path:** one dedicated poll thread per channel
