@@ -105,12 +105,7 @@ internal sealed class RemoteMuxInteractionHandler
         }
     }
 
-    /// <summary>A password was refused on this host since an attempt last got in: automatic attempts offer the saved one no more.</summary>
-    internal bool PasswordRefused
-    {
-        get { lock (_gate) return _passwordRefused; }
-    }
-
+    /// <summary>A password was refused on this host: its automatic attempts offer the saved one no more until one gets in.</summary>
     private void MarkPasswordRefused(int generation)
     {
         lock (_gate)
