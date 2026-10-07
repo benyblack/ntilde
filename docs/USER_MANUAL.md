@@ -413,9 +413,9 @@ server rejects it. Host keys must already be trusted.
 
 If the host's key is unknown or has changed, the retries stop after one attempt and send no
 password. The tab shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
-`[Host key for <host> is unknown or has changed — press Enter to review]` under it, and Enter
+`[Host key for <user@host> is unknown or has changed — press Enter to review]` under it, and Enter
 shows the usual host key question. OpenSSH refuses a *changed* key outright, so there the line is
-`[Host key for <host> has changed — if you trust the new key, remove the old one from known_hosts, then press Enter]`:
+`[Host key for <user@host> has changed — if you trust the new key, remove the old one from known_hosts, then press Enter]`:
 fix `known_hosts` first, then press Enter.
 
 With OpenSSH older than 8.4 (Windows 10's built-in `ssh` is 8.1, Ubuntu 20.04's is 8.2), the

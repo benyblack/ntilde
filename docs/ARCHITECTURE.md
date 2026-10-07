@@ -486,7 +486,10 @@ it).
   `BatchMode=no`, `-o NumberOfPasswordPrompts=1` and the askpass helper in its vault-only mode
   (`NTILDE_SSH_ASKPASS_VAULT_ONLY=1`), which answers the target's password from the vault and
   refuses every other prompt without building any UI; any other runs with `BatchMode=yes`, no
-  `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. An automatic native attempt goes
+  `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. An ssh older than 8.4 is never offered
+  the saved password (`ssh -V` is read once per executable, `OpenSshClientVersionCache`, and an
+  unreadable version counts as older for that attempt): its keyboard-interactive prompts do not name
+  the target, so the helper could not recognise the target's `Password:`. An automatic native attempt goes
   through `RemoteMuxInteractionHandler`: it accepts a host key only when the app's native known-hosts
   store already trusts it; it offers a password or passphrase from the host's in-memory record of one
   that got an earlier attempt in (forgotten when an attempt that offered it fails SSH, and never kept
@@ -497,7 +500,11 @@ it).
   and a refused saved password, `RemoteNeedsUserCause.SavedPasswordRefused`), which stops the loop at
   once with `ReconnectAbandoned`: retrying would only feed fail2ban. A key's passphrase with nothing
   remembered is cancelled instead (it sends the server nothing, and the agent or another key may
-  still get in), but recorded: if the attempt then fails SSH, it is `NeedsUser` too. The pane's line
+  still get in), but recorded: if the attempt then fails SSH before sign-in is over, it is `NeedsUser`
+  too. A host key the user does not trust stops the loop the same way, after one attempt and before any
+  credential is sent (`RemoteNeedsUserCause.HostKey`): a native attempt rejects an unknown or changed
+  key, and OpenSSH's `Host key verification failed.` reads the same; a key OpenSSH reports changed is
+  `HostKeyChanged`, after Enter too, since ssh refuses it without asking. The pane's line
   under its Enter banner comes from the failure's `RemoteNeedsUserCause`, never from ssh's words.
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
   through it, and so does the kill of a shell a stale result started (a result that came back to a pane

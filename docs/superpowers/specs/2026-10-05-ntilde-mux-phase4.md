@@ -1020,10 +1020,12 @@ review; the section they change is named first.
   cancels it, rather than aborting the session: a passphrase only unlocks a local key, so the cancel
   sends the server nothing, and the agent or another key may still get in. The attempt records it
   (`RemoteMuxInteractionHandler.Attempt.DeclinedPrompt`); if it then fails SSH (the classifier says
-  `SshFailed`), the connector reports `NeedsUser` ("signing in to <host> needs a key passphrase, which
-  an automatic reconnect does not ask for"), so the loop stops with `ReconnectAbandoned` instead of
-  retrying for its 10 minutes; if it connects, nothing changes. A keyboard-interactive round with
-  questions was already aborted, never answered empty; a remembered passphrase is offered as before.
+  `SshFailed`) before sign-in is over, the connector reports `NeedsUser` ("signing in to <host> needs
+  a key passphrase, which an automatic reconnect does not ask for"), so the loop stops with
+  `ReconnectAbandoned` instead of retrying for its 10 minutes; if it connects, nothing changes, and a
+  drop after sign-in (something else got in) is the link's: the retries go on. A keyboard-interactive
+  round with questions was already aborted, never answered empty; a remembered passphrase is offered as
+  before.
 - **The global native SSH switch refuses a native profile's remote attempts** (codex4 F). The plain SSH path
   refuses a Native profile while `ExperimentalNativeSshEnabled` (Settings > SSH) is off, and such a profile
   stays saved, so its persistent tabs connected around the switch. Each attempt's transport now reads it
@@ -1402,8 +1404,8 @@ review; the section they change is named first.
       there stays skipped until the host is released (its window's tabs on that host close), even after the user saves
       the same value with Remember. Nothing is counted once an attempt got past sign-in (the proxy's greeting arrived;
       re-review item 1). So on OpenSSH a correct password is counted refused only when sshd failed the session between
-      accepting it and the command running - a disconnect there, or a server whose AuthenticationMethods want a key after
-      the password - and stays skipped until the host is released.
+      accepting it and the command running - a server whose AuthenticationMethods want a key after the password - and
+      stays skipped until the host is released.
     - Smaller fixes:
       - The saved password is offered to OpenSSH only for a profile with a user and a host (the helper must
         recognise the prompt; M2), whose own extra arguments do not change who signs in or where
@@ -1417,7 +1419,8 @@ review; the section they change is named first.
       - The saved password is offered to an OpenSSH askpass only when the helper's record folder takes a probe file
         (`SshAskPassSessionMarkers.CanRecord`, logged once per host; Greptile G1): without its record a refusal could
         never be counted, and every later attempt would send it again. If the folder fails after the probe (a race), the
-        helper still answers: declining would make ssh send an empty password, and the next attempt's probe stops it.
+        helper's claim cannot be written and it fills nothing (A1 below): ssh then sends an empty password once, and the
+        next attempt's probe stops the offers.
       - A native user attempt on a jump-hop profile passes password prompts on with vault reuse off (M9).
       - An askpass run never applies a staged update at startup (`Program.ShouldAutoApplyUpdateOnStartup`; I-2).
   - Limits: the helper answers once per ssh, so a server that offers both keyboard-interactive and password
@@ -1429,15 +1432,17 @@ review; the section they change is named first.
 
 - **2026-10-07: Phase 4 hardening** (branch `fix/mux-phase4-hardening`). As built, for sign-in on automatic reconnects:
   - **A1, the helper fills once.** The vault-only askpass helper fills the saved password at most once per ssh: it
-    claims the ssh's session token (`TryClaim`). A later prompt in the keyboard-interactive form `(user@host) ...`
-    (a PAM `New password:`, a code) gets no answer, is recorded as declined (more than the password was asked: a
-    second factor) and the helper exits 1. A later prompt in the password-method form `user@host's password:` gets
-    no answer and no record: it is ssh's next method re-asking after a refusal. A keyboard-interactive prompt counts
-    as the target's password only when its text ends with `password:` or is exactly `Password for <account>:`
-    (FreeBSD, pfSense, OPNsense, TrueNAS pam_unix; Kerberos); Enter's vault fill and the "Remember password" box use
-    the same rule. Limits: a password prompt in any other wording is not filled, ssh sends an empty answer once, and
-    the failure reads as a second factor (Enter then shows the dialog); a user ssh config that tries password before
-    keyboard-interactive reads a refused password as a second factor.
+    claims the ssh's session token (`TryClaim`), and a claim that cannot be written (the record folder failing after
+    the probe) fills nothing: ssh then sends an empty password once, and the next attempt's probe stops the offers. A
+    later prompt in the keyboard-interactive form `(user@host) ...` (a PAM `New password:`, a code) gets no answer, is
+    recorded as declined (more than the password was asked: a second factor) and the helper exits 1. A later prompt in
+    the password-method form `user@host's password:` gets no answer and no record: it is ssh's next method re-asking
+    after a refusal. A keyboard-interactive prompt counts as the target's password only when its text ends with
+    `password:` or is exactly `Password for <account>:` (FreeBSD, pfSense, OPNsense, TrueNAS pam_unix; Kerberos);
+    Enter's vault fill and the "Remember password" box use the same rule. Limits: a password prompt in any other
+    wording is not filled, ssh sends an empty answer once, and the failure reads as a second factor (Enter then shows
+    the dialog); a user ssh config that tries password before keyboard-interactive reads a refused password as a second
+    factor.
   - **A2, a host key stops the loop.** An unknown or changed host key on an automatic reconnect stops the loop after
     one attempt, and no credential is sent. The pane line is `[Host key for <host> is unknown or has changed —
     press Enter to review]` (native, both cases; OpenSSH, an unknown key). OpenSSH refuses a changed key outright
@@ -1453,18 +1458,20 @@ review; the section they change is named first.
     other exit after the fill, a lost link, is an ordinary SSH failure: the loop goes on and the saved password is
     offered again next attempt (still once per attempt). Native: after the saved password (from the vault or a
     remembered copy) was answered, a failure before sign-in completes counts as refused, sshd cutting the connection
-    at `MaxAuthTries` included; nothing counts after sign-in, and a second factor after it still reads as a second
-    factor. Limits: with ssh's logging silenced (`-q`, `LogLevel QUIET`) neither line appears, so a wrong saved
-    password is re-sent once per attempt until the loop's budget or the server stops it; native, a link drop between
-    the password and the end of sign-in, or a server refusing the session channel after it (`MaxSessions`), reads as
-    a refusal.
+    at `MaxAuthTries` included; nothing counts after sign-in - nor does a key passphrase the attempt cancelled on the
+    way, which then does not stop the loop - and a second factor after it still reads as a second factor. Limits: with
+    ssh's logging silenced (`-q`, `LogLevel QUIET`) neither line appears, so a wrong saved password is re-sent once per
+    attempt until the loop's budget or the server stops it; native, a link drop between the password and the end of
+    sign-in, or a server refusing the session channel after it (`MaxSessions`), reads as a refusal.
   - **A4, old OpenSSH never uses the saved password on its own.** The app reads `ssh -V` once per ssh executable (and
     again when the file changes; `OpenSshClientVersionCache`). Before 8.4 ssh puts no `(user@host)` prefix on
-    keyboard-interactive prompts, so the helper could not tell the target's prompt from a hop's: automatic
-    attempts there run in batch mode (keys and agent). An unreadable version counts as old for that attempt and is read
-    again the next time; the log says why. Windows 10's built-in OpenSSH 8.1 and Ubuntu 20.04's 8.2 are affected, and
-    a password-only server then waits for Enter after every drop (a newer OpenSSH first on PATH, or the native
-    backend, avoids it). The Enter path is unchanged.
+    keyboard-interactive prompts, so the helper never recognises the bare keyboard-interactive `Password:`: ssh would
+    send an empty answer on every attempt, and a second factor after a filled password-method prompt would not be
+    recorded as declined, so it would read as the saved password refused. Automatic attempts there run in batch mode
+    (keys and agent). An unreadable version counts as old for that attempt and is read again the next time; the log
+    says why. Windows 10's built-in OpenSSH 8.1 and Ubuntu 20.04's 8.2 are affected, and a password-only server then
+    waits for Enter after every drop (a newer OpenSSH first on PATH, or the native backend, avoids it). The Enter path
+    is unchanged.
   - **C2, glibc 2.34.** `RemoteHostProbe.MinimumGlibc` is 2.34 (RHEL, Rocky and Alma 9 work); the release binary
     asks for nothing above `GLIBC_2.34`, which CI and the release assert. The probe reads `getconf GNU_LIBC_VERSION`
     first, then `ldd --version`.
