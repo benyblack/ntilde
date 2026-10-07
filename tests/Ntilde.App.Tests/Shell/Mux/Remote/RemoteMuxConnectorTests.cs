@@ -28,7 +28,19 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     {
         for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
         _remote.Dispose();
+        if (Directory.Exists(_askPassRecords)) Directory.Delete(_askPassRecords, recursive: true);
     }
+
+    /// <summary>Where this test's askpass helper - played by the test - records what it did for each attempt's ssh.</summary>
+    private readonly string _askPassRecords = Path.Combine(Path.GetTempPath(), "ntilde-askpass-tests", Guid.NewGuid().ToString("N"));
+
+    private Ntilde.SshAskPassSessionMarkers AskPassRecords => new(() => _askPassRecords);
+
+    /// <summary>The askpass helper filled the target's password from the vault for this attempt's ssh.</summary>
+    private void HelperFilled(RemoteMuxTransportRequest request) => AskPassRecords.RecordAnswered(request.AskPassSession!);
+
+    /// <summary>The askpass helper declined a prompt naming the target that asks for no password (a second factor).</summary>
+    private void HelperDeclined(RemoteMuxTransportRequest request) => AskPassRecords.RecordDeclined(request.AskPassSession!);
 
     internal static SshProfile Profile(string recordedPath = "") => new()
     {
@@ -688,7 +700,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// place, with the script <paramref name="script"/> picks for that transport (sshd's answer to how it signs in).
     /// </summary>
     private RemoteMuxConnector OpenSshConnector(
-        SshProfile profile, SavedPasswords saved, List<OpenSshExecTransport> built, Func<OpenSshExecTransport, FakeRemoteScript?>? script = null)
+        SshProfile profile,
+        SavedPasswords saved,
+        List<OpenSshExecTransport> built,
+        Func<OpenSshExecTransport, RemoteMuxTransportRequest, FakeRemoteScript?>? script = null,
+        Ntilde.Services.Ssh.SshLaunchDetails? launch = null,
+        Func<SshProfile, string?>? vault = null)
     {
         profile.BackendKind = SshBackendKind.OpenSsh;
         return Own(new RemoteMuxConnector(
@@ -698,16 +715,16 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 var transport = Assert.IsType<OpenSshExecTransport>(RemoteMuxHostFactory.CreateTransport(
                     p,
                     request,
-                    (_, _) => Launch,
+                    (_, _) => launch ?? Launch,
                     () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
                     static () => true,
                     askPassHelperPath: "/opt/ntilde/ntilde",
                     log: _ => { }));
                 lock (built) built.Add(transport);
-                _remote.Script = script?.Invoke(transport);
+                _remote.Script = script?.Invoke(transport, request);
                 return _remote;
             },
-            new RemoteMuxInteractionHandler(user: null, _ => false, saved.Read),
+            new RemoteMuxInteractionHandler(user: null, _ => false, vault ?? saved.Read, AskPassRecords.Read),
             "i",
             null));
     }
@@ -752,19 +769,20 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
     /// <summary>
     /// The saved password is the profile's, for where the profile points now. Once the host's destination is pinned and
-    /// the profile is edited to another host (codex D2), the attempts still go to the pinned one: they do not offer it there.
+    /// the profile is edited to another host (codex D2), the attempts still go to the pinned one: they do not offer it there,
+    /// and a user's attempt runs without it (review M4).
     /// </summary>
     [Fact]
     public async Task A_retargeted_automatic_attempt_does_not_offer_the_saved_password()
     {
         SshProfile first = Profile();
         SshProfile current = first;
-        var offers = new List<(bool Retargeted, bool MayOffer)>();
+        var offers = new List<(bool Retargeted, bool MayOffer, bool WithoutSavedPassword)>();
         var connector = Own(new RemoteMuxConnector(
             () => current,
             (_, request) =>
             {
-                lock (offers) offers.Add((request.Retargeted, request.OfferSavedPassword is not null));
+                lock (offers) offers.Add((request.Retargeted, request.OfferSavedPassword is not null, request.WithoutSavedPassword));
                 return _remote;
             },
             new RemoteMuxInteractionHandler(user: null, _ => false, _ => "s3cret"),
@@ -776,8 +794,9 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Own(await connector.ConnectAsync(interactive: false, Ct));          // pinned, the profile unedited
         current = Edited(first, host: "host-b");
         Own(await connector.ConnectAsync(interactive: false, Ct));          // pinned, the profile now names host-b
+        Own(await connector.ConnectAsync(interactive: true, Ct));           // review M4: a user's attempt there too
 
-        Assert.Equal(new[] { (false, false), (false, true), (true, false) }, offers);
+        Assert.Equal(new[] { (false, false, false), (false, true, false), (true, false, false), (true, false, true) }, offers);
     }
 
     /// <summary>
@@ -792,7 +811,11 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     {
         var saved = new SavedPasswords("wrong");
         var built = new List<OpenSshExecTransport>();
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, _ => new FakeRemoteScript(Stderr: sshdSaid, ExitCode: FakeRemoteHost.LinkLostExitCode));
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, (t, request) =>
+        {
+            if (t.SavedPasswordOnly) HelperFilled(request);
+            return new FakeRemoteScript(Stderr: sshdSaid, ExitCode: FakeRemoteHost.LinkLostExitCode);
+        });
 
         var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
         var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
@@ -800,29 +823,145 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (again.Failure.Kind, again.Failure.Cause));
         Assert.Equal(new[] { (false, true), (true, false) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
-        Assert.Equal(1, saved.Reads);
+        Assert.Equal(2, saved.Reads);   // the second read finds the refused value (review M7), and offers nothing
     }
 
     /// <summary>
     /// The coordinator's follow-up: after the saved password was refused, the user's Enter must not send it again. The
-    /// user's attempt runs the askpass without the vault (the dialog at once); once one gets in, user attempts may use the
-    /// vault again, filled once per ssh.
+    /// user's attempt runs the askpass without the vault (the dialog at once). Review M7: a typed password that gets in,
+    /// without Remember ticked, leaves the stale value saved - user attempts keep skipping it; once the saved value
+    /// changes (Remember ticked), they use the vault again, filled once per ssh.
     /// </summary>
     [Fact]
     public async Task After_a_refused_saved_password_the_users_OpenSSH_attempt_skips_the_vault()
     {
         var built = new List<OpenSshExecTransport>();
+        var saved = new SavedPasswords("stale");
         bool serverTakesIt = false;
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("stale"), built, _ => serverTakesIt ? null : PermissionDenied);
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, (t, request) =>
+        {
+            if (t.SavedPasswordOnly) HelperFilled(request);
+            return serverTakesIt ? null : PermissionDenied;
+        });
 
         await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
         serverTakesIt = true;                                    // the user types the right password in the dialog
         Own(await connector.ConnectAsync(interactive: true, Ct));
+        Own(await connector.ConnectAsync(interactive: true, Ct)); // the stale value is still saved
+        saved.Value = "typed";                                   // Remember ticked this time
         Own(await connector.ConnectAsync(interactive: true, Ct));
 
         Assert.Equal(
-            new[] { (false, true, false), (false, false, true), (false, false, false) },
+            new[] { (false, true, false), (false, false, true), (false, false, true), (false, false, false) },
             built.Select(t => (t.BatchMode, t.SavedPasswordOnly, t.WithoutSavedPassword)));
+    }
+
+    /// <summary>
+    /// Review I-1: a second factor after the saved password (the helper filled "(u@h) Password:" and declined "(u@h)
+    /// Verification code:", which ssh then sent empty) is not the saved password refused. The failure needs the user with
+    /// the plain line; the host's automatic attempts stop offering the vault (batch mode: no more failed rounds); and the
+    /// user's Enter is not kept from it - the vault fills the password once and the dialog asks only for the code.
+    /// </summary>
+    [Fact]
+    public async Task A_second_factor_after_the_saved_password_on_OpenSSH_is_not_a_refusal()
+    {
+        var built = new List<OpenSshExecTransport>();
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, (t, request) =>
+        {
+            if (!t.SavedPasswordOnly) return request.Interactive ? null : PermissionDenied;
+            HelperFilled(request);
+            HelperDeclined(request);
+            return PermissionDenied;
+        });
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        Own(await connector.ConnectAsync(interactive: true, Ct));
+
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (failed.Failure.Kind, failed.Failure.Cause));
+        Assert.Equal(
+            new[] { (false, true, false), (true, false, false), (false, false, false) },
+            built.Select(t => (t.BatchMode, t.SavedPasswordOnly, t.WithoutSavedPassword)));
+    }
+
+    /// <summary>
+    /// Review I-1: sshd refused without ever asking for the password (agent keys past MaxAuthTries, password auth off) -
+    /// the helper filled nothing - so nothing counts against the saved password: the plain line, and the next automatic
+    /// attempt offers it again.
+    /// </summary>
+    [Fact]
+    public async Task An_OpenSSH_refusal_that_never_asked_for_the_password_is_not_counted()
+    {
+        var built = new List<OpenSshExecTransport>();
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, (_, _) => PermissionDenied);
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (failed.Failure.Kind, failed.Failure.Cause));
+        Assert.All(built, t => Assert.True(t.SavedPasswordOnly));
+    }
+
+    /// <summary>
+    /// Review M2: the helper answers only a prompt that names the profile's user@host, so a profile without a user (ssh
+    /// then signs in as the local account) is not offered the saved password at all; the vault is not even read.
+    /// </summary>
+    [Fact]
+    public async Task An_OpenSSH_profile_without_a_user_is_not_offered_the_saved_password()
+    {
+        SshProfile noUser = Profile();
+        noUser.User = string.Empty;
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+
+        Own(await OpenSshConnector(noUser, saved, built).ConnectAsync(interactive: false, Ct));
+
+        Assert.True(Assert.Single(built).BatchMode);
+        Assert.Equal(0, saved.Reads);
+    }
+
+    /// <summary>
+    /// Review M3: a jump host named in the profile's own ssh arguments (-J, ProxyJump, ProxyCommand) counts as jump hops:
+    /// on OpenSSH before 8.4 a jump host's keyboard-interactive text has no "(user@host) " prefix and could ask as the
+    /// target, so the saved password is not offered.
+    /// </summary>
+    [Theory]
+    [InlineData("-J", "bastion")]
+    [InlineData("-o", "ProxyCommand=ssh -W %h:%p bastion")]
+    public async Task An_OpenSSH_plan_through_a_jump_host_is_not_offered_the_saved_password(string option, string value)
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var throughJump = new Ntilde.Services.Ssh.SshLaunchDetails
+        {
+            SshPath = Launch.SshPath,
+            ConfigPath = Launch.ConfigPath,
+            Alias = Launch.Alias,
+            CommandLine = Launch.CommandLine,
+            PlanArguments = [.. Launch.PlanArguments, option, value],
+        };
+
+        Own(await OpenSshConnector(Profile(), saved, built, launch: throughJump).ConnectAsync(interactive: false, Ct));
+
+        Assert.True(Assert.Single(built).BatchMode);
+        Assert.Equal(0, saved.Reads);
+    }
+
+    /// <summary>
+    /// Review M6: a vault that cannot be read while the transport is built (a locked keyring) counts as nothing saved: the
+    /// attempt runs in batch mode and connects with a key, instead of failing as "SSH could not start".
+    /// </summary>
+    [Fact]
+    public async Task A_vault_that_throws_leaves_an_OpenSSH_attempt_in_batch_mode()
+    {
+        var built = new List<OpenSshExecTransport>();
+
+        MuxClient client = Own(await OpenSshConnector(
+            Profile(), new SavedPasswords(null), built, vault: _ => throw new InvalidOperationException("the keyring is locked"))
+            .ConnectAsync(interactive: false, Ct));
+
+        Assert.True(client.IsConnected);
+        Assert.True(Assert.Single(built).BatchMode);
     }
 
     /// <summary>
@@ -875,7 +1014,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     {
         var saved = new SavedPasswords("s3cret");
         var built = new List<OpenSshExecTransport>();
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, _ => FakeRemoteScript.ConnectionRefused);
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, (_, _) => FakeRemoteScript.ConnectionRefused);
 
         var down = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
         await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
@@ -890,7 +1029,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     public async Task A_good_saved_password_connects_an_automatic_OpenSSH_attempt()
     {
         var built = new List<OpenSshExecTransport>();
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, t => t.SavedPasswordOnly ? null : PermissionDenied);
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, (t, _) => t.SavedPasswordOnly ? null : PermissionDenied);
 
         MuxClient client = Own(await connector.ConnectAsync(interactive: false, Ct));
 
@@ -936,7 +1075,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal("""{"text":"s3cret"}""", payload);
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (again.Failure.Kind, again.Failure.Cause));
-        Assert.Equal(1, saved.Reads);
+        Assert.Equal(2, saved.Reads);   // the second read finds the refused value (review M7), and sends nothing
     }
 
     /// <summary>rusty_ssh asking for a password again after the saved one: never offered twice, and never an empty answer.</summary>
@@ -951,6 +1090,55 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Single(interop.Submissions);
         Assert.Equal(1, interop.Closes);
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
+    }
+
+    /// <summary>A native keyboard-interactive round with one question, as rusty_ssh raises it.</summary>
+    private static NativeSshEvent KeyboardQuestion(string question) => new(
+        NativeSshEventKind.KeyboardInteractivePrompt,
+        System.Text.Encoding.UTF8.GetBytes($$"""{"name":"","instructions":"","prompts":[{"prompt":"{{question}}","echo":false}]}"""),
+        flags: NativeSshEventFlags.Json);
+
+    /// <summary>
+    /// Review I-1, native, end to end: the server takes the saved password and then asks for a code. The attempt aborts at
+    /// the code (nothing to answer with) - but that is not the saved password refused: the plain line, the host's automatic
+    /// attempts stop offering it (the next one ends at the password prompt without sending anything), and the user's
+    /// attempt still lets the window's handler fill it from the vault, then asks for the code.
+    /// </summary>
+    [Fact]
+    public async Task A_code_question_after_the_saved_password_on_native_is_not_a_refusal()
+    {
+        var interop = new PromptingNativeSshInterop(
+            PromptingNativeSshInterop.PasswordPrompt,
+            KeyboardQuestion("Verification code: "),
+            PromptingNativeSshInterop.PasswordPrompt,
+            PromptingNativeSshInterop.PasswordPrompt);
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("from the vault"));
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            (profile, request) => RemoteMuxHostFactory.CreateTransport(
+                profile,
+                request,
+                (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+                () => interop,
+                static () => true,
+                askPassHelperPath: null,
+                log: _ => { }),
+            new RemoteMuxInteractionHandler(user, _ => false, new SavedPasswords("s3cret").Read),
+            "i",
+            null));
+
+        var secondFactor = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var next = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        Task<MuxClient> enter = connector.ConnectAsync(interactive: true, cts.Token);
+        await TestWait.UntilAsync(() => interop.Submissions.Count == 2, "the user's attempt answered its password prompt");
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => enter);
+
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (secondFactor.Failure.Kind, secondFactor.Failure.Cause));
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (next.Failure.Kind, next.Failure.Cause));
+        Assert.Equal(new[] { """{"text":"s3cret"}""", """{"text":"from the vault"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+        Assert.True(Assert.Single(user.Asked).AllowVaultPasswordReuse);
     }
 
     /// <summary>The native shape with a server that takes the saved password: the automatic attempt connects, with no NeedsUser.</summary>

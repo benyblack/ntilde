@@ -54,6 +54,9 @@ public sealed class MuxRemotePaneTests : IDisposable
     private bool _nativeSshEnabled = true; // the global switch (Settings > SSH), read by each attempt's transport
     private string? _savedPassword;        // the profile's password in the vault, as the app reads it for a remote host
 
+    /// <summary>Where the askpass helper - played by <see cref="NativeSwitchedRemote"/> - records what it did for each attempt's ssh.</summary>
+    private readonly string _askPassRecords = Path.Combine(Path.GetTempPath(), "ntilde-askpass-tests", Guid.NewGuid().ToString("N"));
+
     /// <summary>The start of the line a pane shows under its Enter banner while native SSH is off (codex4 F).</summary>
     private const string NativeSshOffLine = "[Native SSH is disabled globally.";
 
@@ -61,19 +64,25 @@ public sealed class MuxRemotePaneTests : IDisposable
     {
         MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local", null));
         _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(
-            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword))));
+            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword),
+            askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).Read)));
         _factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null);
     }
 
     /// <summary>
     /// The fake remote, behind the app's native SSH switch (<see cref="RemoteMuxHostFactory.CreateTransport"/>): a native
     /// profile's attempt is refused while <see cref="_nativeSshEnabled"/> is off. An automatic OpenSSH attempt is offered
-    /// the saved password, as the app's transport factory offers it to ssh's askpass.
+    /// the saved password, as the app's transport factory offers it to ssh's askpass, and the helper's record of filling it
+    /// is written as the real helper writes it.
     /// </summary>
     private FakeRemoteHost NativeSwitchedRemote(SshProfile profile, RemoteMuxTransportRequest request)
     {
         RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, () => Volatile.Read(ref _nativeSshEnabled));
-        if (!request.Interactive && profile.BackendKind == SshBackendKind.OpenSsh) request.OfferSavedPassword?.Invoke();
+        if (!request.Interactive && profile.BackendKind == SshBackendKind.OpenSsh && request.OfferSavedPassword?.Invoke() == true)
+        {
+            new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).RecordAnswered(request.AskPassSession!);
+        }
+
         return _remote;
     }
 
@@ -91,6 +100,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         foreach (TerminalPane pane in _panes) pane.Dispose();
         for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
         _remote.Dispose();
+        if (Directory.Exists(_askPassRecords)) Directory.Delete(_askPassRecords, recursive: true);
     }
 
     private T Own<T>(T disposable) where T : IDisposable

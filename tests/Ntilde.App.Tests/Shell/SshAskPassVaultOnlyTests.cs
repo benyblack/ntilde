@@ -124,13 +124,16 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
         Assert.Empty(run.VaultReads);
     }
 
-    /// <summary>Vault-only mode is unaffected by the token: ssh's NumberOfPasswordPrompts=1 already bounds it, and it never shows UI.</summary>
+    /// <summary>
+    /// Vault-only mode answers every target password prompt whatever the token (ssh's NumberOfPasswordPrompts=1 already
+    /// bounds it), and never shows UI: the token only records that it did (review I-1).
+    /// </summary>
     [Fact]
-    public void Vault_only_ignores_the_session_token()
+    public void Vault_only_answers_every_target_prompt_whatever_the_token()
     {
         var env = With(VaultOnly, SshAskPassEnvironment.SessionVariable, "0123456789abcdef0123456789abcdef");
-        var first = new Run(env, saved: "s3cret");
-        var second = new Run(env, saved: "s3cret");
+        var first = NewRun(env, saved: "s3cret");
+        var second = NewRun(env, saved: "s3cret");
 
         Assert.Equal(0, first.Execute(TargetPrompt));
         Assert.Equal(0, second.Execute(TargetPrompt));
@@ -177,6 +180,53 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
         {
             File.Delete(_markers);
         }
+    }
+
+    /// <summary>
+    /// Review I-1: the app counts a saved password as refused only when the helper filled it for that ssh and declined no
+    /// second factor. So in vault-only mode the helper records the fill under the attempt's token.
+    /// </summary>
+    [Fact]
+    public void Vault_only_records_that_it_filled_the_password_for_this_ssh()
+    {
+        const string token = "0123456789abcdef0123456789abcdef";
+        var run = NewRun(With(VaultOnly, SshAskPassEnvironment.SessionVariable, token), saved: "s3cret");
+
+        Assert.Equal(0, run.Execute(TargetPrompt));
+
+        Assert.Equal(new SshAskPassRecord(Answered: true, Declined: false), new SshAskPassSessionMarkers(() => _markers).Read(token));
+    }
+
+    /// <summary>
+    /// Review I-1: a prompt that names the target but asks for no password - a second factor after the saved password - is
+    /// declined (ssh then sends it empty) and recorded, so the app does not count the sign-in's failure as a refused
+    /// password. A prompt that does not name the target (a host key, a jump host's password, a passphrase) records nothing.
+    /// </summary>
+    [Fact]
+    public void Vault_only_records_a_declined_prompt_that_names_the_target()
+    {
+        const string token = "0123456789abcdef0123456789abcdef";
+        var markers = new SshAskPassSessionMarkers(() => _markers);
+        var env = With(VaultOnly, SshAskPassEnvironment.SessionVariable, token);
+
+        Assert.NotEqual(0, NewRun(env, saved: "s3cret").Execute("Enter passphrase for key '/home/ops/.ssh/id_ed25519': "));
+        Assert.NotEqual(0, NewRun(env, saved: "s3cret").Execute("jumpuser@bastion's password: "));
+        Assert.Equal(default, markers.Read(token));
+
+        Assert.NotEqual(0, NewRun(env, saved: "s3cret").Execute("(ops@prod.internal) Verification code: "));
+
+        Assert.Equal(new SshAskPassRecord(Answered: false, Declined: true), markers.Read(token));
+    }
+
+    /// <summary>Review M5: claiming a fill is atomic - the first claim of a token wins, a second (or a race) finds it taken.</summary>
+    [Fact]
+    public void A_fill_is_claimed_once()
+    {
+        var markers = new SshAskPassSessionMarkers(() => _markers);
+
+        Assert.True(markers.TryClaim("0123456789abcdef0123456789abcdef"));
+        Assert.False(markers.TryClaim("0123456789abcdef0123456789abcdef"));
+        Assert.True(markers.Read("0123456789abcdef0123456789abcdef").Answered);
     }
 
     /// <summary>Recording a fill sweeps the records older than a day; a recent one stays.</summary>

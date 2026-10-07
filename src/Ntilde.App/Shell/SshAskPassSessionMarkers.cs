@@ -1,22 +1,35 @@
 using System;
 using System.IO;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Shell;
 
 namespace Ntilde;
 
+/// <summary>What the askpass helper did for one ssh process (one session token): see <see cref="SshAskPassSessionMarkers"/>.</summary>
+/// <param name="Answered">It filled the target's password from the vault.</param>
+/// <param name="Declined">
+/// Vault-only, it declined a prompt that names the target but asks for no password - a second factor after the saved
+/// password, which ssh then sent empty.
+/// </param>
+internal readonly record struct SshAskPassRecord(bool Answered, bool Declined);
+
 /// <summary>
-/// The askpass helper's record of the ssh processes whose target password it already filled from the vault: one empty
-/// file per session token (<c>NTILDE_SSH_ASKPASS_SESSION</c>, new for each ssh the exec transport starts), so a second
-/// prompt from the same ssh - the saved password was refused - goes to the user's dialog instead of sending it again.
-/// The helper is a new process for every prompt, so the record lives on disk, in the app's data folder (per user, and
-/// not part of a backup). Nothing secret is written: a file's name is the token, and it is empty.
+/// The askpass helper's record of what it did for each ssh process, one empty file per fact, named by the process's
+/// session token (<c>NTILDE_SSH_ASKPASS_SESSION</c>): <c>&lt;token&gt;.answered</c> when it filled the target's password
+/// from the vault, <c>&lt;token&gt;.declined</c> when, vault-only, it declined a prompt that names the target but asks for
+/// no password. A user's attempt fills at most once per token (<see cref="TryClaim"/>), so a second prompt from the same
+/// ssh - the saved password was refused - goes to the dialog. An automatic attempt's connector reads the record back
+/// (<see cref="Read"/>) to tell a refused saved password from one that was never asked for, or from a second factor.
+/// The helper is a new process for every prompt, so the record lives on disk, in the app's data folder (per user, and not
+/// part of a backup). Nothing secret is written: a file's name is the token, and it is empty.
 /// </summary>
 internal sealed class SshAskPassSessionMarkers
 {
-    /// <summary>How old a record may get before a later fill sweeps it: far past any one ssh's sign-in.</summary>
+    /// <summary>How old a record may get before a later one sweeps it: far past any one ssh's sign-in.</summary>
     internal static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
 
-    private const string Extension = ".answered";
+    private const string AnsweredExtension = ".answered";
+    private const string DeclinedExtension = ".declined";
 
     private readonly Lazy<string> _directory;
 
@@ -30,28 +43,31 @@ internal sealed class SshAskPassSessionMarkers
     /// <summary>The app's own folder for them: <c>askpass</c> under the app-data root.</summary>
     internal static string DefaultDirectory => Path.Combine(AppPaths.RootDirectory, "askpass");
 
-    /// <summary>
-    /// Whether <paramref name="token"/> is one the transport writes: 32 lowercase hex digits. Anything else - a path, an
-    /// empty value - names no file, and the helper behaves as for an ssh with no token.
-    /// </summary>
-    internal static bool IsToken(string? token)
-    {
-        if (token is not { Length: 32 }) return false;
-        foreach (char c in token)
-        {
-            if (!char.IsAsciiDigit(c) && c is not (>= 'a' and <= 'f')) return false;
-        }
-
-        return true;
-    }
-
     /// <summary>Whether the helper already filled the target's password from the vault for this ssh.</summary>
-    public bool HasAnswered(string token)
+    public bool HasAnswered(string token) => Exists(token, AnsweredExtension);
+
+    /// <summary>
+    /// Claims this ssh's one fill from the vault: true only for the call that creates the record - created atomically, so
+    /// of two racing calls one wins. False when it exists already (filled before: the caller asks the user) or cannot be
+    /// written (the caller asks the user rather than risk sending a refused password again). Sweeps stale records.
+    /// </summary>
+    public bool TryClaim(string token) => Create(token, AnsweredExtension, claim: true);
+
+    /// <summary>Vault-only: records that the helper filled the target's password for this ssh (again, if so).</summary>
+    public void RecordAnswered(string token) => Create(token, AnsweredExtension, claim: false);
+
+    /// <summary>Vault-only: records that the helper declined a prompt naming the target that asks for no password.</summary>
+    public void RecordDeclined(string token) => Create(token, DeclinedExtension, claim: false);
+
+    /// <summary>What the helper did for this ssh, as far as its records say; nothing for a token with no record.</summary>
+    public SshAskPassRecord Read(string token) => new(Exists(token, AnsweredExtension), Exists(token, DeclinedExtension));
+
+    private bool Exists(string token, string extension)
     {
-        if (!IsToken(token)) throw new ArgumentException("Not a session token.", nameof(token));
+        RequireToken(token);
         try
         {
-            return File.Exists(PathOf(token));
+            return File.Exists(PathOf(token, extension));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -59,31 +75,36 @@ internal sealed class SshAskPassSessionMarkers
         }
     }
 
-    /// <summary>
-    /// Records that the helper fills the target's password from the vault for this ssh: true once the record exists. False
-    /// when it cannot be written - the caller then asks the user rather than risk sending a refused password again. Each
-    /// record written sweeps those older than <see cref="StaleAfter"/>.
-    /// </summary>
-    public bool TryRecordAnswered(string token)
+    /// <returns>True when this call created the record; with <paramref name="claim"/> false, also when it was there already.</returns>
+    private bool Create(string token, string extension, bool claim)
     {
-        if (!IsToken(token)) throw new ArgumentException("Not a session token.", nameof(token));
+        RequireToken(token);
         try
         {
             Directory.CreateDirectory(_directory.Value);
-            using (new FileStream(PathOf(token), FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            using (new FileStream(PathOf(token, extension), FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
             {
             }
         }
+        catch (IOException) when (!claim && File.Exists(PathOf(token, extension)))
+        {
+            return true;   // recorded before: the fact stands
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            return false;
+            return false;  // there already (a claim lost), or not writable
         }
 
         SweepStale();
         return true;
     }
 
-    private string PathOf(string token) => Path.Combine(_directory.Value, token + Extension);
+    private static void RequireToken(string token)
+    {
+        if (!SshAskPassEnvironment.IsSessionToken(token)) throw new ArgumentException("Not a session token.", nameof(token));
+    }
+
+    private string PathOf(string token, string extension) => Path.Combine(_directory.Value, token + extension);
 
     /// <summary>Deletes the records older than <see cref="StaleAfter"/>; one that cannot be deleted stays for the next sweep.</summary>
     private void SweepStale()
@@ -91,8 +112,9 @@ internal sealed class SshAskPassSessionMarkers
         DateTime cutoff = DateTime.UtcNow - StaleAfter;
         try
         {
-            foreach (string file in Directory.EnumerateFiles(_directory.Value, "*" + Extension))
+            foreach (string file in Directory.EnumerateFiles(_directory.Value))
             {
+                if (!file.EndsWith(AnsweredExtension, StringComparison.Ordinal) && !file.EndsWith(DeclinedExtension, StringComparison.Ordinal)) continue;
                 try
                 {
                     if (File.GetLastWriteTimeUtc(file) < cutoff) File.Delete(file);

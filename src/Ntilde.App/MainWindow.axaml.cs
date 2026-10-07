@@ -4651,7 +4651,8 @@ namespace Ntilde
                 CreateRemoteMuxTransport,
                 AppLogger.Log,
                 _sshInteractionService,
-                savedPassword: static profile => Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.ReadSavedPassword(Vault ?? new VaultService(), profile));
+                savedPassword: static profile => Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.ReadSavedPassword(Vault ?? new VaultService(), profile),
+                askPassRecords: new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory).Read);
 
         /// <summary>
         /// Reuses the hosts kept from an earlier On period; only the first call builds them. Building

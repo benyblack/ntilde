@@ -67,6 +67,11 @@ internal static class RemoteMuxHostFactory
     /// Reads a profile's password saved in the vault (<see cref="ReadSavedPassword"/> in the app), for the host's automatic
     /// attempts: they sign in with it, once, with no UI (<see cref="RemoteMuxInteractionHandler"/>). Null: they never do.
     /// </param>
+    /// <param name="askPassRecords">
+    /// Reads what OpenSSH's askpass helper did for an attempt's ssh (<see cref="SshAskPassSessionMarkers.Read"/> over
+    /// <see cref="SshAskPassSessionMarkers.DefaultDirectory"/> in the app), so a saved password counts as refused only when
+    /// the helper filled it, and a second factor does not count.
+    /// </param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
@@ -75,7 +80,8 @@ internal static class RemoteMuxHostFactory
         ISshInteractionHandler? userPrompts = null,
         IMuxTimerScheduler? scheduler = null,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
-        Func<SshProfile, string?>? savedPassword = null)
+        Func<SshProfile, string?>? savedPassword = null,
+        Func<string, SshAskPassRecord>? askPassRecords = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -108,7 +114,7 @@ internal static class RemoteMuxHostFactory
         var connector = new RemoteMuxConnector(
             CurrentProfile,
             transportFor,
-            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword),
+            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword, askPassRecords, log),
             Guid.NewGuid().ToString("N"),
             log)
         {
@@ -212,18 +218,27 @@ internal static class RemoteMuxHostFactory
         }
 
         SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
-        // Offered only once a helper exists to answer it, and the plan is built: otherwise nothing could be offered.
-        bool savedPasswordOnly = !request.Interactive && askPassHelperPath is not null && request.OfferSavedPassword?.Invoke() == true;
+        IReadOnlyList<string> plan = PlanArgumentsFor(launch, request);
+        // Offered only once a helper exists to answer it and the plan is built; only when the helper can recognise the
+        // target's prompt - it names the profile's user@host (review M2); and not when the plan's own arguments go through
+        // a jump host, which on OpenSSH before 8.4 could ask as the target (review M3).
+        bool savedPasswordOnly = !request.Interactive
+            && askPassHelperPath is not null
+            && !string.IsNullOrWhiteSpace(profile.User)
+            && !string.IsNullOrWhiteSpace(profile.Host)
+            && !OpenSshExecCommandLine.NamesAProxy(plan)
+            && request.OfferSavedPassword?.Invoke() == true;
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
-            PlanArgumentsFor(launch, request),
+            plan,
             request.Interactive || savedPasswordOnly ? askPassHelperPath : null,
             diagnosticsArguments: null,
             log,
             batchMode: !request.Interactive && !savedPasswordOnly,
             savedPasswordOnly: savedPasswordOnly,
-            withoutSavedPassword: request.Interactive && request.WithoutSavedPassword);
+            withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
+            askPassSession: request.AskPassSession);
     }
 
     /// <summary>

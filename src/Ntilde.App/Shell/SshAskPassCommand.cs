@@ -61,11 +61,15 @@ internal static class SshAskPassCommand
         return fileExists(cli) ? cli : null;
     }
 
-    public static bool IsSupportedCliMode(string[] args)
+    public static bool IsSupportedCliMode(string[] args) => IsSupportedCliMode(args, Environment.GetEnvironmentVariable);
+
+    /// <summary>Whether this run answers an ssh prompt: the <see cref="ModeFlag"/>, or <see cref="ModeEnvironmentVariable"/> set to 1.</summary>
+    internal static bool IsSupportedCliMode(string[] args, Func<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(environment);
         return Array.Exists(args, arg => string.Equals(arg, ModeFlag, StringComparison.Ordinal)) ||
-               string.Equals(Environment.GetEnvironmentVariable(ModeEnvironmentVariable), "1", StringComparison.Ordinal);
+               string.Equals(environment(ModeEnvironmentVariable), "1", StringComparison.Ordinal);
     }
 
     public static int Execute(string[] args, TextWriter stdout, TextWriter stderr) =>
@@ -128,6 +132,14 @@ internal static class SshAskPassCommand
 
             if (vaultOnly)
             {
+                // A prompt that names the target but asks for no password - a second factor after the saved password - is
+                // recorded, so the app does not take the sign-in's failure for the saved password refused (review I-1).
+                if (!IsTargetPasswordPrompt(prompt, profile) && NamesTarget(prompt, profile)
+                    && environment(SessionEnvironmentVariable) is { } session && SshAskPassEnvironment.IsSessionToken(session))
+                {
+                    markers.RecordDeclined(session);
+                }
+
                 // Nobody is waiting (an automatic reconnect): no dialog, no window, no Avalonia app. Never the prompt
                 // itself either, which a server's keyboard-interactive text is part of: ssh's stderr goes to the log.
                 stderr.WriteLine("Ntilde SSH askpass: an automatic reconnect answers only the target's password, from the vault; no answer given.");
@@ -152,9 +164,11 @@ internal static class SshAskPassCommand
 
     /// <summary>
     /// The saved password to answer the target's password prompt with, or null for the dialog (or, vault-only, no answer).
-    /// Vault-only answers every such prompt (ssh's <c>NumberOfPasswordPrompts=1</c> bounds it). Otherwise: never with
-    /// <see cref="NoVaultEnvironmentVariable"/>; never twice for one ssh's <see cref="SessionEnvironmentVariable"/>, and not
-    /// at all when the fill cannot be recorded - it could then be sent again. An ssh with no valid token gets it as before.
+    /// Vault-only answers every such prompt (ssh's <c>NumberOfPasswordPrompts=1</c> bounds it) and records the fill under
+    /// the ssh's token, which the app reads back to know the saved password was asked for. Otherwise: never with
+    /// <see cref="NoVaultEnvironmentVariable"/>; never twice for one ssh's <see cref="SessionEnvironmentVariable"/> (the
+    /// claim is atomic), and not at all when the fill cannot be claimed - it could then be sent again. An ssh with no valid
+    /// token gets it as before.
     /// </summary>
     private static string? FromVault(
         Func<string, string?> environment,
@@ -164,17 +178,23 @@ internal static class SshAskPassCommand
         bool vaultOnly,
         TextWriter stderr)
     {
-        if (vaultOnly) return NonEmpty(savedPassword(profile));
-        if (string.Equals(environment(NoVaultEnvironmentVariable), "1", StringComparison.Ordinal)) return null;
-
         string? token = environment(SessionEnvironmentVariable);
-        if (!SshAskPassSessionMarkers.IsToken(token)) return NonEmpty(savedPassword(profile));
+        bool hasToken = SshAskPassEnvironment.IsSessionToken(token);
+        if (vaultOnly)
+        {
+            string? fill = NonEmpty(savedPassword(profile));
+            if (fill is not null && hasToken) markers.RecordAnswered(token!);
+            return fill;
+        }
+
+        if (string.Equals(environment(NoVaultEnvironmentVariable), "1", StringComparison.Ordinal)) return null;
+        if (!hasToken) return NonEmpty(savedPassword(profile));
         if (markers.HasAnswered(token!)) return null; // this ssh asks again: the saved password was refused
 
         if (NonEmpty(savedPassword(profile)) is not { } saved) return null;
-        if (markers.TryRecordAnswered(token!)) return saved;
+        if (markers.TryClaim(token!)) return saved;
 
-        stderr.WriteLine("Ntilde SSH askpass: could not record the saved password's use for this connection; asking instead.");
+        stderr.WriteLine("Ntilde SSH askpass: the saved password's one use for this connection is taken or cannot be recorded; asking instead.");
         return null;
 
         static string? NonEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
@@ -278,6 +298,27 @@ internal static class SshAskPassCommand
         string keyboardInteractive = $"({target}) ";
         return prompt.StartsWith(keyboardInteractive, StringComparison.OrdinalIgnoreCase) &&
                prompt.AsSpan(keyboardInteractive.Length).Contains("password", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="prompt"/> is the target's own - <c>(user@host) </c> or <c>user@host's </c> at its start, where
+    /// only ssh writes - whatever it asks for (<see cref="IsTargetPasswordPrompt"/> narrows it to a password).
+    /// </summary>
+    internal static bool NamesTarget(string prompt, TerminalProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(prompt);
+        ArgumentNullException.ThrowIfNull(profile);
+
+        string user = profile.SshUser?.Trim() ?? string.Empty;
+        string host = profile.SshHost?.Trim() ?? string.Empty;
+        if (user.Length == 0 || host.Length == 0)
+        {
+            return false;
+        }
+
+        string target = $"{user}@{host}";
+        return prompt.StartsWith($"({target}) ", StringComparison.OrdinalIgnoreCase)
+            || prompt.StartsWith(target + "'s ", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSecretPrompt(string prompt)
