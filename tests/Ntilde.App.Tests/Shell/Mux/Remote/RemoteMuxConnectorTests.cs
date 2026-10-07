@@ -1447,6 +1447,35 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.True(connector.Prompts.Remembers(SshInteractionKind.Password));
     }
 
+    /// <summary>
+    /// The same drop on an attempt that first cancelled an encrypted key's passphrase (nothing remembered, as after an app
+    /// restart): the saved password got in all the same - the session connected - so the cancelled passphrase is not what
+    /// kept it out, and signing in does not need the user. SshFailed, so the loop goes on, and the next automatic attempt
+    /// answers its password prompt with the saved password again.
+    /// </summary>
+    [Fact]
+    public async Task A_native_drop_after_sign_in_after_a_cancelled_passphrase_does_not_need_the_user()
+    {
+        NativeSshEvent[] dropped =
+            [PromptingNativeSshInterop.PassphrasePrompt, PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
+
+        var lost = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.SshFailed, RemoteFailureKind.SshFailed), (lost.Failure.Kind, again.Failure.Kind));
+        Assert.Equal(
+            new[]
+            {
+                (NativeSshResponseKind.Passphrase, """{"text":""}"""),
+                (NativeSshResponseKind.Password, """{"text":"s3cret"}"""),
+                (NativeSshResponseKind.Passphrase, """{"text":""}"""),
+                (NativeSshResponseKind.Password, """{"text":"s3cret"}"""),
+            },
+            interop.Submissions);
+    }
+
     /// <summary>A native keyboard-interactive round with one question, as rusty_ssh raises it.</summary>
     private static NativeSshEvent KeyboardQuestion(string question) => new(
         NativeSshEventKind.KeyboardInteractivePrompt,

@@ -474,10 +474,12 @@ internal sealed class RemoteMuxConnector : IDisposable
             string needs = aborted == SshInteractionKind.KeyboardInteractive ? "keyboard-interactive input" : "a password";
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs {needs}, which an automatic reconnect does not ask for");
         }
-        else if (failure.Kind == RemoteFailureKind.SshFailed && prompts.DeclinedPrompt is not null)
+        else if (failure.Kind == RemoteFailureKind.SshFailed && prompts.DeclinedPrompt is not null && !prompts.HasAuthenticated)
         {
             // Codex D3: it cancelled a key's passphrase it had nothing to answer with, and nothing else got in. Only
             // the user can give it, so the same NeedsUser: retrying on a timer would fail the same way for ten minutes.
+            // Once sign-in was over, something else did get in (the agent, the saved password): the drop is the link's,
+            // and the retries go on.
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs a key passphrase, which an automatic reconnect does not ask for");
         }
 

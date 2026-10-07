@@ -305,8 +305,9 @@ internal sealed class RemoteMuxInteractionHandler
     /// exec channel close the session without answering (its documented contract), and closing wakes
     /// rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A passphrase
     /// is still cancelled: it only unlocks a local key, and nothing reaches the server. It is recorded,
-    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH, nothing else got
-    /// in, and the connector reports it as needing the user, as it does an aborted prompt.
+    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH before sign-in is
+    /// over, nothing else got in, and the connector reports it as needing the user, as it does an aborted
+    /// prompt.
     /// </para>
     /// <para>
     /// An automatic attempt that <see cref="MaySignInWithSavedPassword"/> answers a password prompt it has nothing
@@ -522,7 +523,8 @@ internal sealed class RemoteMuxInteractionHandler
         /// <summary>
         /// A secret prompt this attempt cancelled for want of anyone to ask and anything remembered - an encrypted
         /// key's passphrase - without ending the connection (codex D3); null when there was none. The attempt may still
-        /// get in another way; if it fails SSH instead, signing in needs the user, as for an <see cref="AbortedPrompt"/>.
+        /// get in another way; if it fails SSH before sign-in is over (<see cref="HasAuthenticated"/>) instead, signing in
+        /// needs the user, as for an <see cref="AbortedPrompt"/>.
         /// </summary>
         public SshInteractionKind? DeclinedPrompt
         {
