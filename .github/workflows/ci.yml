@@ -1575,7 +1575,9 @@ jobs:
           # Here-string, not `echo | grep`: under pipefail a changed-file list bigger than
           # the pipe buffer makes echo take SIGPIPE, the pipeline non-zero, this `if` false,
           # and the gate skip itself SILENTLY. Same trap linux_packaging_detect calls out.
-          if grep -qE '^(src/|Directory\.(Build|Packages)\.props$|global\.json$|\.github/workflows/[^/]+\.ya?ml$)' <<<"$changed"; then
+          # scripts/mux-daemon-smoke.sh: mux_daemon_aot and mux_daemon_no_openssl run it, so an
+          # edit to it alone must run them.
+          if grep -qE '^(src/|Directory\.(Build|Packages)\.props$|global\.json$|\.github/workflows/[^/]+\.ya?ml$|scripts/mux-daemon-smoke\.sh$)' <<<"$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             echo "Production sources or build inputs changed - running the AOT gate."
           else
@@ -2000,61 +2002,11 @@ jobs:
             exit 1
           fi
 
-      # From a pristine root, as on a fresh remote host. ntilde-mux serves a root of its own beneath
-      # the app-data root (MuxPaths.Standalone: never the GUI's), so the descriptor is
-      # <app-data root>/ntilde-mux/mux/mux-endpoint.json (MuxDiscovery), written once the daemon
-      # listens; `ls` exits 1 when it reaches no daemon, so its 0 proves the round trip.
+      # The script is shared with mux_daemon_no_openssl, which runs it again without OpenSSL.
       - name: Smoke (--version, serve, ls, kill-server)
         env:
           RID: ${{ matrix.rid }}
-        run: |
-          set -euo pipefail
-          bin="$PWD/artifacts/mux-daemon/$RID/ntilde-mux"
-          version_json="$("$bin" --version --json)"
-          echo "$version_json"
-          grep -q '"protocolMax":2' <<<"$version_json" \
-            || { echo "::error::--version --json does not report protocolMax 2" >&2; exit 1; }
-
-          NTILDE_APPDATA_ROOT="$(mktemp -d)"
-          export NTILDE_APPDATA_ROOT
-          descriptor="$NTILDE_APPDATA_ROOT/ntilde-mux/mux/mux-endpoint.json"
-          serve_log="$RUNNER_TEMP/ntilde-mux-serve.log"
-          "$bin" serve --foreground --idle-exit-minutes 0 >"$serve_log" 2>&1 &
-          serve_pid=$!
-          # Whatever happens below, no daemon outlives the step, and its log is printed.
-          finish() {
-            status=$?
-            if kill -0 "$serve_pid" 2>/dev/null; then kill -9 "$serve_pid" 2>/dev/null || true; fi
-            echo "---- serve --foreground log ----"
-            cat "$serve_log" || true
-            exit "$status"
-          }
-          trap finish EXIT
-
-          for _ in $(seq 1 60); do
-            [[ -f "$descriptor" ]] && break
-            kill -0 "$serve_pid" 2>/dev/null || break
-            sleep 0.5
-          done
-          [[ -f "$descriptor" ]] || { echo "::error::serve wrote no descriptor within 30 s" >&2; exit 1; }
-
-          "$bin" ls
-          "$bin" kill-server
-
-          for _ in $(seq 1 40); do
-            kill -0 "$serve_pid" 2>/dev/null || break
-            sleep 0.5
-          done
-          if kill -0 "$serve_pid" 2>/dev/null; then
-            echo "::error::serve was still running 20 s after kill-server" >&2
-            exit 1
-          fi
-          serve_status=0
-          wait "$serve_pid" || serve_status=$?
-          if [[ "$serve_status" -ne 0 ]]; then
-            echo "::error::serve exited $serve_status after kill-server" >&2
-            exit 1
-          fi
+        run: bash scripts/mux-daemon-smoke.sh "$PWD/artifacts/mux-daemon/$RID/ntilde-mux"
 
       - name: Report the size
         env:
@@ -2073,6 +2025,44 @@ jobs:
           path: artifacts/mux-daemon/${{ matrix.rid }}/ntilde-mux
           if-no-files-found: error
           retention-days: 14
+
+  # ntilde-mux needs libc and nothing else (spec §2 decision 1), and a remote host may have no
+  # libssl at all. mux_daemon_aot cannot show that: its container installs libssl3, and the
+  # architecture test sees direct assembly references, not a BCL path that loads OpenSSL at run
+  # time. So the linux-x64 binary it published runs again in debian:12-slim, which ships no
+  # OpenSSL: scripts/mux-daemon-smoke.sh --no-openssl proves libssl and libcrypto are absent,
+  # asserts ldd lists neither, then runs the same smoke.
+  #
+  # On the runner, not in a `container:`, as linux_packaging_smoke: the image gets nothing
+  # installed (actions/checkout would want git in it), and the step is one `docker run` that a
+  # local run repeats as it is. `!cancelled()` for native_ssh_docker_e2e's reason: a failed macOS
+  # leg must not hide the linux-x64 result. A failed linux-x64 leg uploaded nothing, so this job
+  # fails at the download, next to that red leg.
+  mux_daemon_no_openssl:
+    name: ntilde-mux without OpenSSL (linux-x64, debian:12-slim)
+    needs: mux_daemon_aot
+    if: ${{ !cancelled() && needs.mux_daemon_aot.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ntilde-mux (linux-x64)
+        uses: actions/download-artifact@v4
+        with:
+          name: ntilde-mux-linux-x64
+          path: artifacts/mux-daemon/linux-x64
+
+      # zip artifacts drop the execute bit. The checkout is mounted read-only: the smoke writes
+      # only under the container's /tmp.
+      - name: Smoke with no OpenSSL on the host (debian:12-slim)
+        run: |
+          set -euo pipefail
+          chmod +x artifacts/mux-daemon/linux-x64/ntilde-mux
+          docker run --rm -v "$PWD:/w:ro" -w /w debian:12-slim \
+            bash scripts/mux-daemon-smoke.sh --no-openssl /w/artifacts/mux-daemon/linux-x64/ntilde-mux
 
   # ===========================================================================
   # Linux packaging: dry run + smoke gate (#91 Linux leg). Two callers of the same

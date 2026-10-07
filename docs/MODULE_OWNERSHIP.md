@@ -297,7 +297,8 @@ invariant changes.
   `MuxCliHost.SessionFactory` is a Pty type), and it names no UI, App or Platform type
 - **Needs only libc.** Nothing it runs references `System.Security.Cryptography`,
   `System.Net.Security` or `System.Net.Http`, which load OpenSSL at run time on Linux and which a
-  remote host may not have (`Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`). Its only
+  remote host may not have (`Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`; at run
+  time, CI's `mux_daemon_no_openssl` smokes the linux-x64 binary on a host with no OpenSSL). Its only
   dynamic dependencies are libc, libm, libgcc_s and the loader; the highest `GLIBC_` symbol must stay
   at or below 2.35 (asserted by CI's `mux_daemon_aot` and the release's `publish_mux_daemon`)
 - **One file per RID**, nothing beside it but `.dbg`/`.dSYM` (asserted by the same jobs)

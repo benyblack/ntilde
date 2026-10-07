@@ -600,7 +600,8 @@ Each step is an exec over the same transports, with the same prompts as a connec
 System.Security.Cryptography (hashes included), System.Net.Security and System.Net.Http; `ldd` does
 not show it, and a remote host may have no libssl (`serve` aborted on debian:12-slim until the
 endpoint hash moved to a managed SHA-256). `LayeringTests.Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`
-walks everything it runs.
+walks everything it runs, and CI's `mux_daemon_no_openssl` runs the linux-x64 binary's smoke again in
+debian:12-slim once it has proved no libssl or libcrypto is there (`scripts/mux-daemon-smoke.sh --no-openssl`).
 
 ### 8.3 `ntilde.com`: the Windows console launcher
 
