@@ -376,6 +376,52 @@ public sealed class OpenSshExecTransportProcessTests
         Assert.Equal("never", startInfo.Environment[SshAskPassEnvironment.AskPassRequireVariable]);
     }
 
+    /// <summary>
+    /// A user's attempt after the host's saved password was refused: an interactive ssh (BatchMode=no, the usual
+    /// number of prompts) whose helper skips the vault and asks the user at once.
+    /// </summary>
+    [Fact]
+    public void Without_saved_password_runs_an_interactive_ssh_whose_helper_skips_the_vault()
+    {
+        string[] plan = ["-F", "cfg", "alias"];
+        var transport = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", plan, askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { }, withoutSavedPassword: true);
+
+        ProcessStartInfo startInfo = transport.CreateStartInfo("true");
+
+        Assert.True(transport.WithoutSavedPassword);
+        Assert.False(transport.BatchMode);
+        Assert.False(transport.SavedPasswordOnly);
+        Assert.Equal(OpenSshExecCommandLine.Build([], plan, "true"), startInfo.ArgumentList);
+        Assert.Equal("/opt/ntilde/ntilde", startInfo.Environment[SshAskPassEnvironment.AskPassVariable]);
+        Assert.Equal("1", startInfo.Environment[SshAskPassEnvironment.NoVaultVariable]);
+        Assert.False(startInfo.Environment.ContainsKey(SshAskPassEnvironment.VaultOnlyVariable));
+        Assert.False(new OpenSshExecTransport(Profile(), "/usr/bin/ssh", plan, "/opt/ntilde/ntilde", log: _ => { })
+            .CreateStartInfo("true").Environment.ContainsKey(SshAskPassEnvironment.NoVaultVariable));
+    }
+
+    /// <summary>Every ssh the transport starts carries a session token of its own, for the helper's fill-once rule.</summary>
+    [Fact]
+    public void Every_ssh_started_gets_its_own_askpass_session_token()
+    {
+        var transport = new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["-F", "cfg", "alias"], askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { });
+
+        string? first = transport.CreateStartInfo("true").Environment[SshAskPassEnvironment.SessionVariable];
+        string? second = transport.CreateStartInfo("true").Environment[SshAskPassEnvironment.SessionVariable];
+
+        Assert.Matches("^[0-9a-f]{32}$", first);
+        Assert.Matches("^[0-9a-f]{32}$", second);
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public void Without_saved_password_is_for_a_user_attempt_only()
+    {
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["alias"], askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { }, batchMode: true, withoutSavedPassword: true));
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["alias"], askPassHelperPath: "/opt/ntilde/ntilde", log: _ => { }, savedPasswordOnly: true, withoutSavedPassword: true));
+    }
+
     [Fact]
     public void Batch_mode_and_saved_password_only_are_not_both_possible()
     {

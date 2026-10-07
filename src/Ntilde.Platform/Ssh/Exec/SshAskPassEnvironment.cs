@@ -32,6 +32,20 @@ public static class SshAskPassEnvironment
     /// </summary>
     public const string VaultOnlyVariable = "NTILDE_SSH_ASKPASS_VAULT_ONLY";
 
+    /// <summary>
+    /// "1" (<see cref="ApplyWithoutSavedPassword"/>): the helper never answers from the vault, so every prompt goes to
+    /// the user's dialog - for a user's attempt after the host's saved password was refused.
+    /// </summary>
+    public const string NoVaultVariable = "NTILDE_SSH_ASKPASS_NO_VAULT";
+
+    /// <summary>
+    /// One ssh process's token, new for each one <see cref="Apply"/> prepares (32 hex digits): the helper fills the
+    /// target's password from the vault at most once per token, so a second prompt from the same ssh - the saved password
+    /// was refused - goes to the dialog instead of sending it again. A ProxyJump hop's ssh inherits it, as it is part of
+    /// the same connection.
+    /// </summary>
+    public const string SessionVariable = "NTILDE_SSH_ASKPASS_SESSION";
+
     /// <summary>OpenSSH's own variables.</summary>
     public const string AskPassVariable = "SSH_ASKPASS";
     public const string AskPassRequireVariable = "SSH_ASKPASS_REQUIRE";
@@ -59,9 +73,10 @@ public static class SshAskPassEnvironment
 
     /// <summary>
     /// Points <paramref name="environment"/> (a <c>ProcessStartInfo.Environment</c>) at
-    /// <paramref name="helperPath"/> for <paramref name="profile"/>. An inherited <c>SSH_ASKPASS</c>
-    /// is replaced; an inherited non-empty <c>DISPLAY</c> is kept; an inherited <see cref="VaultOnlyVariable"/>
-    /// is removed, so a user who is waiting gets every prompt.
+    /// <paramref name="helperPath"/> for <paramref name="profile"/>, with a new <see cref="SessionVariable"/> token. An
+    /// inherited <c>SSH_ASKPASS</c> is replaced; an inherited non-empty <c>DISPLAY</c> is kept; an inherited
+    /// <see cref="VaultOnlyVariable"/> or <see cref="NoVaultVariable"/> is removed, so a user who is waiting gets every
+    /// prompt, and the vault once.
     /// </summary>
     public static void Apply(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
     {
@@ -70,6 +85,8 @@ public static class SshAskPassEnvironment
         ArgumentNullException.ThrowIfNull(profile);
 
         environment.Remove(VaultOnlyVariable);
+        environment.Remove(NoVaultVariable);
+        environment[SessionVariable] = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         environment[AskPassVariable] = helperPath;
         environment[AskPassRequireVariable] = "force";
         if (!environment.TryGetValue(DisplayVariable, out string? display) || string.IsNullOrEmpty(display))
@@ -96,5 +113,16 @@ public static class SshAskPassEnvironment
     {
         Apply(environment, helperPath, profile);
         environment[VaultOnlyVariable] = "1";
+    }
+
+    /// <summary>
+    /// <see cref="Apply"/>, for a user's attempt after the host's saved password was refused: the helper then never
+    /// answers from the vault (<see cref="NoVaultVariable"/>), so the user's dialog comes at once and the refused password
+    /// is not sent again.
+    /// </summary>
+    public static void ApplyWithoutSavedPassword(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
+    {
+        Apply(environment, helperPath, profile);
+        environment[NoVaultVariable] = "1";
     }
 }

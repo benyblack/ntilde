@@ -25,6 +25,8 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Equal("NTILDE_SSH_ASKPASS_PROFILE_HOST", SshAskPassEnvironment.ProfileHostVariable);
         Assert.Equal("NTILDE_SSH_ASKPASS_PROFILE_PORT", SshAskPassEnvironment.ProfilePortVariable);
         Assert.Equal("NTILDE_SSH_ASKPASS_VAULT_ONLY", SshAskPassEnvironment.VaultOnlyVariable);
+        Assert.Equal("NTILDE_SSH_ASKPASS_NO_VAULT", SshAskPassEnvironment.NoVaultVariable);
+        Assert.Equal("NTILDE_SSH_ASKPASS_SESSION", SshAskPassEnvironment.SessionVariable);
     }
 
     /// <summary>
@@ -65,7 +67,58 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Equal("Prod box", environment["NTILDE_SSH_ASKPASS_PROFILE_NAME"]);
         Assert.Equal("ops", environment["NTILDE_SSH_ASKPASS_PROFILE_USER"]);
         Assert.Equal("prod.internal", environment["NTILDE_SSH_ASKPASS_PROFILE_HOST"]);
-        Assert.Equal(9, environment.Count);
+        Assert.Matches("^[0-9a-f]{32}$", environment["NTILDE_SSH_ASKPASS_SESSION"]);
+        Assert.Equal(10, environment.Count);
+    }
+
+    /// <summary>
+    /// Each ssh the transport starts gets a session token of its own: the helper fills the target's password from the
+    /// vault once per token, so a refused saved password brings the dialog, not the same password again.
+    /// </summary>
+    [Fact]
+    public void Apply_gives_every_ssh_a_session_token_of_its_own()
+    {
+        var first = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var second = new Dictionary<string, string?>(StringComparer.Ordinal) { ["NTILDE_SSH_ASKPASS_SESSION"] = "inherited" };
+
+        SshAskPassEnvironment.Apply(first, "/opt/ntilde/ntilde", Profile());
+        SshAskPassEnvironment.Apply(second, "/opt/ntilde/ntilde", Profile());
+
+        Assert.Matches("^[0-9a-f]{32}$", second["NTILDE_SSH_ASKPASS_SESSION"]);
+        Assert.NotEqual(first["NTILDE_SSH_ASKPASS_SESSION"], second["NTILDE_SSH_ASKPASS_SESSION"]);
+    }
+
+    /// <summary>
+    /// A user's attempt after the host's saved password was refused: everything <see cref="SshAskPassEnvironment.Apply"/>
+    /// sets, plus the marker that sends the helper straight to the dialog, without the vault.
+    /// </summary>
+    [Fact]
+    public void ApplyWithoutSavedPassword_sets_every_askpass_variable_and_the_no_vault_marker()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        SshAskPassEnvironment.ApplyWithoutSavedPassword(environment, "/opt/ntilde/ntilde", Profile());
+
+        Assert.Equal("/opt/ntilde/ntilde", environment["SSH_ASKPASS"]);
+        Assert.Equal("force", environment["SSH_ASKPASS_REQUIRE"]);
+        Assert.Equal("1", environment["NTILDE_SSH_ASKPASS"]);
+        Assert.Equal("1", environment["NTILDE_SSH_ASKPASS_NO_VAULT"]);
+        Assert.False(environment.ContainsKey("NTILDE_SSH_ASKPASS_VAULT_ONLY"));
+        Assert.Equal(11, environment.Count);
+    }
+
+    /// <summary>An inherited no-vault marker must not keep the vault from a later attempt that may use it.</summary>
+    [Fact]
+    public void Apply_and_ApplySavedPasswordOnly_clear_an_inherited_no_vault_marker()
+    {
+        var applied = new Dictionary<string, string?>(StringComparer.Ordinal) { ["NTILDE_SSH_ASKPASS_NO_VAULT"] = "1" };
+        var savedOnly = new Dictionary<string, string?>(StringComparer.Ordinal) { ["NTILDE_SSH_ASKPASS_NO_VAULT"] = "1" };
+
+        SshAskPassEnvironment.Apply(applied, "/opt/ntilde/ntilde", Profile());
+        SshAskPassEnvironment.ApplySavedPasswordOnly(savedOnly, "/opt/ntilde/ntilde", Profile());
+
+        Assert.False(applied.ContainsKey(SshAskPassEnvironment.NoVaultVariable));
+        Assert.False(savedOnly.ContainsKey(SshAskPassEnvironment.NoVaultVariable));
     }
 
     /// <summary>
@@ -88,7 +141,7 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Equal("e15099d2-ac29-40cb-bf1f-f466eb2622b7", environment["NTILDE_SSH_ASKPASS_PROFILE_ID"]);
         Assert.Equal("ops", environment["NTILDE_SSH_ASKPASS_PROFILE_USER"]);
         Assert.Equal("prod.internal", environment["NTILDE_SSH_ASKPASS_PROFILE_HOST"]);
-        Assert.Equal(10, environment.Count);
+        Assert.Equal(11, environment.Count);
     }
 
     [Fact]
