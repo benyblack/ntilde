@@ -1010,9 +1010,9 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
 
     /// <summary>
     /// The loop runs after a drop, and its first attempt fails as <paramref name="automatic"/> makes it. The loop must stop
-    /// there: abandoned at once, nothing scheduled, no attempt in the rest of its budget, and the host-key cause recorded.
+    /// there: abandoned at once, nothing scheduled, no attempt in the rest of its budget, and <paramref name="cause"/> recorded.
     /// </summary>
-    private async Task AssertHostKeyStopsTheLoopAfterOneAttemptAsync(Action<RemoteMuxTransportRequest> automatic)
+    private async Task AssertHostKeyStopsTheLoopAfterOneAttemptAsync(Action<RemoteMuxTransportRequest> automatic, RemoteNeedsUserCause cause = RemoteNeedsUserCause.HostKey)
     {
         int automaticAttempts = 0;
         MuxConnectionHost host = Create(
@@ -1039,7 +1039,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.True(events.Has("abandoned"), "a host key nobody trusts must stop the loop at once");
         Assert.Equal(0, _clock.PendingCount);
         RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
-        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (failure.Kind, failure.Cause));
+        Assert.Equal((RemoteFailureKind.NeedsUser, cause), (failure.Kind, failure.Cause));
         _clock.Advance(MuxReconnectLoop.Budget);
         Assert.Equal(1, Volatile.Read(ref automaticAttempts));
     }
@@ -1068,13 +1068,14 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     }
 
     /// <summary>
-    /// OpenSSH: the loop's attempt hands ssh's askpass the saved password, but ssh fails at the host key - unknown, or
-    /// changed - before asking for it: "Host key verification failed.", exit 255. The loop stops after this one attempt.
+    /// OpenSSH: the loop's attempt hands ssh's askpass the saved password, but ssh fails at the host key before asking for
+    /// it, exit 255. The loop stops after this one attempt, with the host-key cause - or the changed-key one, for a key that
+    /// changed, which Enter cannot show.
     /// </summary>
     [Theory]
-    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr)]
-    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr)]
-    public async Task A_host_key_nobody_trusts_stops_the_loop_after_one_OpenSSH_attempt(string sshSaid)
+    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr, false)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr, true)]
+    public async Task A_host_key_nobody_trusts_stops_the_loop_after_one_OpenSSH_attempt(string sshSaid, bool changed)
     {
         bool offered = false;
 
@@ -1082,7 +1083,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         {
             offered = request.OfferSavedPassword?.Invoke() == true;
             _remote.Script = new FakeRemoteScript(Stderr: sshSaid, ExitCode: FakeRemoteHost.LinkLostExitCode);
-        });
+        }, changed ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey);
 
         Assert.True(offered);
     }

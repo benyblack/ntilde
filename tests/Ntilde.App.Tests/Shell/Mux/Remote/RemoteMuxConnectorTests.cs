@@ -1537,16 +1537,19 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     }
 
     /// <summary>
-    /// OpenSSH: the automatic attempt meets a host key nobody trusts. ssh asks the vault-only askpass "Are you sure you
-    /// want to continue connecting", which it refuses (exit 1, nothing recorded), or - the key changed - refuses on its own:
-    /// "Host key verification failed.", exit 255, before any password. The failure needs the user, with the host-key cause;
-    /// a user's attempt failing the same way stays an SSH failure, as it was. The saved password handed to the helper is no
-    /// refusal: the next automatic attempt offers it again.
+    /// OpenSSH: the automatic attempt meets a host key nobody trusts, before any password. A key it does not know: ssh asks
+    /// the vault-only askpass "Are you sure you want to continue connecting", which it refuses (exit 1, nothing recorded) -
+    /// the failure needs the user, with the host-key cause, and a user's attempt failing the same way stays an SSH failure,
+    /// as it was (its Enter shows the key). A key that changed: ssh refuses it on its own and asks nobody, so a user's
+    /// attempt cannot show it either - both need the user, with the changed-key cause, also where ssh went on with password
+    /// sign-in off. Either way the saved password handed to the helper is no refusal: the next automatic attempt offers it
+    /// again, and a user's attempt is not kept from it.
     /// </summary>
     [Theory]
-    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr)]
-    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr)]
-    public async Task An_automatic_OpenSSH_attempt_that_fails_host_key_verification_needs_the_user_and_leaves_the_saved_password_unrefused(string sshSaid)
+    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr, false)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr, true)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyNotStrictStderr, true)]
+    public async Task An_OpenSSH_attempt_that_fails_host_key_verification_needs_the_user_and_leaves_the_saved_password_unrefused(string sshSaid, bool changed)
     {
         SshProfile profile = Profile();
         var built = new List<OpenSshExecTransport>();
@@ -1557,10 +1560,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         var user = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
         bool stillOffered = connector.Prompts.BeginAttempt(interactive: false, savedPasswordProfile: profile).OfferSavedPassword();
 
-        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (hostKey.Failure.Kind, hostKey.Failure.Cause));
-        Assert.Equal("Host key verification failed.", hostKey.Failure.Reason);
-        Assert.Equal(RemoteFailureKind.SshFailed, user.Failure.Kind);
+        RemoteNeedsUserCause cause = changed ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey;
+        Assert.Equal((RemoteFailureKind.NeedsUser, cause), (hostKey.Failure.Kind, hostKey.Failure.Cause));
+        if (changed) Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKeyChanged), (user.Failure.Kind, user.Failure.Cause));
+        else Assert.Equal(RemoteFailureKind.SshFailed, user.Failure.Kind);
         Assert.True(stillOffered, "a host-key failure is no refusal of the saved password");
+        Assert.False(connector.Prompts.BeginAttempt(interactive: true, savedPasswordProfile: profile).AvoidsSavedPassword);
         Assert.Equal(new[] { (false, true, false), (false, false, false) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly, t.WithoutSavedPassword)));
     }
 }

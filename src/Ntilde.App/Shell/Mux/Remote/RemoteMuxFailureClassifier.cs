@@ -29,8 +29,10 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <see cref="RemoteMuxFailure.SignInRefused"/>, and for an automatic attempt is
 /// <see cref="RemoteFailureKind.NeedsUser"/> instead, with the same reason: in batch mode ssh tried only what
 /// needs no answer, and with the saved password it tried that once, so signing in needs the user. So is ssh's
-/// own host-key failure (<c>Host key verification failed.</c>, or a changed key's warning banner), with the
-/// <see cref="RemoteNeedsUserCause.HostKey"/> cause: every automatic attempt would meet the same key;</item>
+/// own host-key failure (<c>Host key verification failed.</c>), with the <see cref="RemoteNeedsUserCause.HostKey"/>
+/// cause: every automatic attempt would meet the same key. A key that changed (ssh's warning banner, or its
+/// strict-checking line) is <see cref="RemoteFailureKind.NeedsUser"/> for a user's attempt too, with the
+/// <see cref="RemoteNeedsUserCause.HostKeyChanged"/> cause: ssh refuses it without asking, so Enter cannot show it;</item>
 /// <item>anything else → <see cref="RemoteFailureKind.ProxyFailed"/>, with the exception's message
 /// (the handshake's carries what the remote side printed) and the last stderr line, where the proxy
 /// reports a daemon it could not reach.</item>
@@ -94,10 +96,15 @@ internal static class RemoteMuxFailureClassifier
             bool refused = Lines(stderr).Any(line =>
                 IsSshPermissionDenied(line) || line.Contains("Too many authentication failures", StringComparison.Ordinal));
             // A host key the user does not trust is met again by every automatic attempt: the user has to review it. It
-            // decides the cause even with a refusal after it - a changed key turns password sign-in off.
-            bool hostKey = Lines(stderr).Any(IsSshHostKeyFailure);
-            RemoteFailureKind kind = automatic && (refused || hostKey) ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed;
-            RemoteNeedsUserCause cause = kind == RemoteFailureKind.NeedsUser && hostKey ? RemoteNeedsUserCause.HostKey : RemoteNeedsUserCause.SignIn;
+            // decides the cause even with a refusal after it - a changed key turns password sign-in off. A key that changed
+            // needs the user on a user's attempt too: ssh refuses it without asking, so Enter cannot show it.
+            bool changedKey = Lines(stderr).Any(IsSshChangedHostKey);
+            bool hostKey = changedKey || Lines(stderr).Any(line => line == HostKeyVerificationFailed);
+            RemoteFailureKind kind = changedKey || (automatic && (refused || hostKey)) ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed;
+            RemoteNeedsUserCause cause = kind != RemoteFailureKind.NeedsUser ? RemoteNeedsUserCause.SignIn
+                : changedKey ? RemoteNeedsUserCause.HostKeyChanged
+                : hostKey ? RemoteNeedsUserCause.HostKey
+                : RemoteNeedsUserCause.SignIn;
             return new RemoteMuxFailure(kind, Quote(lastStderrLine ?? "ssh exited with code 255"), cause) { SignInRefused = refused };
         }
 
@@ -253,14 +260,26 @@ internal static class RemoteMuxFailureClassifier
     }
 
     /// <summary>
-    /// ssh's own host-key failure, as the whole line: <c>Host key verification failed.</c> - a key it does not know, refused at
-    /// its "Are you sure" (by the askpass helper, or batch mode), or one that changed under strict checking - or the banner
-    /// of a changed key, <c>@ WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! @</c>, which ssh prints even where it goes on
-    /// (StrictHostKeyChecking=no, with password sign-in turned off). Parsed, not searched, as the refusal is.
+    /// ssh's own host-key failure, as the whole line: a key it does not know, refused at its "Are you sure" (by the askpass
+    /// helper, or batch mode), or one that changed under strict checking.
     /// </summary>
-    private static bool IsSshHostKeyFailure(string line) =>
-        line == "Host key verification failed."
-        || (line.StartsWith('@') && line.EndsWith('@') && line.Trim('@', ' ', '\t') == "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!");
+    private const string HostKeyVerificationFailed = "Host key verification failed.";
+
+    private const string ChangedHostKeyPrefix = "Host key for ";
+    private const string ChangedHostKeySuffix = " has changed and you have requested strict checking.";
+
+    /// <summary>
+    /// ssh's own word that a host key changed since it was trusted, as the whole line: the warning banner's
+    /// <c>@ WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! @</c>, which ssh prints even where it goes on
+    /// (StrictHostKeyChecking=no, with password sign-in turned off), or, under strict checking,
+    /// <c>Host key for h has changed and you have requested strict checking.</c> Either is enough. Parsed, not searched, as
+    /// the refusal is.
+    /// </summary>
+    private static bool IsSshChangedHostKey(string line) =>
+        (line.StartsWith('@') && line.EndsWith('@') && line.Trim('@', ' ', '\t') == "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!")
+        || (line.Length > ChangedHostKeyPrefix.Length + ChangedHostKeySuffix.Length
+            && line.StartsWith(ChangedHostKeyPrefix, StringComparison.Ordinal)
+            && line.EndsWith(ChangedHostKeySuffix, StringComparison.Ordinal));
 
     /// <summary>The non-blank lines of <paramref name="text"/>, trimmed.</summary>
     private static IEnumerable<string> Lines(string text) =>

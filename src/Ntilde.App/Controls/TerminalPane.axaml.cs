@@ -4254,10 +4254,18 @@ namespace Ntilde.Controls
         internal static string RemoteHostKeyLine(string host) => $"[Host key for {host} is unknown or has changed \u2014 press Enter to review]";
 
         /// <summary>
+        /// Under an Enter banner: OpenSSH met a host key that changed since it was trusted. ssh refuses it and asks nothing,
+        /// so Enter alone cannot show it: the line says what to do first.
+        /// </summary>
+        internal static string RemoteHostKeyChangedLine(string host) =>
+            $"[Host key for {host} has changed \u2014 if you trust the new key, remove the old one from known_hosts, then press Enter]";
+
+        /// <summary>
         /// The line under an Enter banner (<see cref="RemoteUnreachableBanner"/>, <see cref="RemoteAbandonedBanner"/>) when
         /// signing in needs the user (<see cref="RemoteFailureKind.NeedsUser"/>), by its <see cref="RemoteNeedsUserCause"/>,
         /// so the user knows what the retry needs: <see cref="RemoteSavedPasswordRefusedLine"/>,
-        /// <see cref="RemoteHostKeyLine"/> naming <paramref name="host"/> (the banner's own, as the app knows the host), or
+        /// <see cref="RemoteHostKeyLine"/> or <see cref="RemoteHostKeyChangedLine"/> naming <paramref name="host"/> (the
+        /// banner's own, as the app knows the host), or
         /// <see cref="RemoteSignInNeedsYouLine"/>. Never ssh's or rusty_ssh's own words - a "Permission denied" under a
         /// banner that asks for Enter only confused - which stay in the failure's reason, for the log. The native SSH
         /// backend switched off (codex4 F) keeps its own message, which says what to turn on: Enter alone is refused again.
@@ -4269,6 +4277,7 @@ namespace Ntilde.Controls
             null or { Kind: not RemoteFailureKind.NeedsUser } => null,
             { Cause: RemoteNeedsUserCause.SavedPasswordRefused } => RemoteSavedPasswordRefusedLine,
             { Cause: RemoteNeedsUserCause.HostKey } => RemoteHostKeyLine(host),
+            { Cause: RemoteNeedsUserCause.HostKeyChanged } => RemoteHostKeyChangedLine(host),
             { Cause: RemoteNeedsUserCause.NativeSshDisabled, Reason: { Length: > 0 } reason } => $"[{reason}]",
             _ => RemoteSignInNeedsYouLine,
         };

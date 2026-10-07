@@ -27,7 +27,8 @@ internal enum RemoteFailureKind
     /// passphrase, a host key nobody trusts yet - because the attempt was automatic (or there was no window to
     /// ask through): the native backend ended it at the prompt, or OpenSSH was refused or failed the host key. An SSH
     /// failure in kind, but not one another automatic try can fix: the reconnect loop stops on it (Phase 4 spec
-    /// §7.3, by ruling), and Enter - an interactive attempt - is the way back. Why is its <see cref="RemoteNeedsUserCause"/>.
+    /// §7.3, by ruling), and Enter - an interactive attempt - is the way back. Why is its <see cref="RemoteNeedsUserCause"/>;
+    /// a host key that changed under OpenSSH is one even for a user's attempt (<see cref="RemoteNeedsUserCause.HostKeyChanged"/>).
     /// </summary>
     NeedsUser,
 }
@@ -55,11 +56,18 @@ internal enum RemoteNeedsUserCause
     NativeSshDisabled,
 
     /// <summary>
-    /// The host's key is not one the user trusts - never seen, or changed since - and an automatic attempt accepts no new
-    /// key: the native backend rejected it, or OpenSSH's host key verification failed. Nothing was sent past the key
-    /// exchange, and the next automatic attempt would meet the same key. Enter is a user's attempt, which shows it.
+    /// The host's key is not one the user trusts, and an automatic attempt accepts no new key: the native backend rejected
+    /// one never seen or changed since, or OpenSSH refused one it did not know. Nothing was sent past the key exchange, and
+    /// the next automatic attempt would meet the same key. Enter is a user's attempt, which shows it.
     /// </summary>
     HostKey,
+
+    /// <summary>
+    /// OpenSSH met a host key that changed since it was trusted. ssh refuses it on its own and asks nothing - where it goes
+    /// on, it turns password sign-in off - so a user's attempt cannot show it either: the old key has to leave known_hosts
+    /// first. Nothing was sent past the key exchange. Any attempt, a user's too, fails with this cause.
+    /// </summary>
+    HostKeyChanged,
 }
 
 /// <summary>
