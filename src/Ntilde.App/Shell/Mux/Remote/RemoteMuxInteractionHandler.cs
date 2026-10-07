@@ -336,7 +336,7 @@ internal sealed class RemoteMuxInteractionHandler
         private bool _storedPasswordAnswered;        // guarded by _gate; nobody to ask, and a stored password answered
         private bool _storedFromVault;               // guarded by _gate; that password came from the vault
         private byte[]? _storedHash;                 // guarded by _gate; HashOf that password
-        private AfterSavedPassword _afterSaved;      // guarded by _gate; the first prompt after the saved password
+        private bool? _secondFactorAfterSaved;       // guarded by _gate; null until the first prompt after the stored password
 
         internal Attempt(
             RemoteMuxInteractionHandler owner,
@@ -374,7 +374,7 @@ internal sealed class RemoteMuxInteractionHandler
         /// </summary>
         internal bool SecondFactorAfterSavedPassword
         {
-            get { lock (_gate) return _afterSaved == AfterSavedPassword.SecondFactor; }
+            get { lock (_gate) return _secondFactorAfterSaved == true; }
         }
 
         /// <summary>
@@ -672,7 +672,8 @@ internal sealed class RemoteMuxInteractionHandler
         /// Records the first prompt after a stored password (the saved one, or a remembered one) was answered with nobody to
         /// ask: a keyboard-interactive round whose questions all
         /// ask for something other than a password is a second factor; anything else - a password prompt, a question that
-        /// asks for a password, a passphrase - means the password was refused. An empty round says nothing.
+        /// asks for a password, a passphrase - is not, and a code question after it is none either. An empty round says
+        /// nothing.
         /// </summary>
         private void NoteWhatFollowsTheSavedPassword(SshInteractionRequest request)
         {
@@ -681,8 +682,8 @@ internal sealed class RemoteMuxInteractionHandler
                 && request.KeyboardPrompts.All(question => !question.Prompt.Contains("password", StringComparison.OrdinalIgnoreCase));
             lock (_gate)
             {
-                if (!_storedPasswordAnswered || _afterSaved != AfterSavedPassword.Nothing) return;
-                _afterSaved = secondFactor ? AfterSavedPassword.SecondFactor : AfterSavedPassword.Refusal;
+                if (!_storedPasswordAnswered || _secondFactorAfterSaved is not null) return;
+                _secondFactorAfterSaved = secondFactor;
             }
         }
 
@@ -747,18 +748,6 @@ internal sealed class RemoteMuxInteractionHandler
         private void Track(Answer answer)
         {
             lock (_gate) _answers.Add(answer);
-        }
-
-        private enum AfterSavedPassword
-        {
-            /// <summary>No prompt has come since the saved password, or none was given.</summary>
-            Nothing,
-
-            /// <summary>A password was asked for again: the saved one was refused.</summary>
-            Refusal,
-
-            /// <summary>Something other than a password was asked for: a second factor.</summary>
-            SecondFactor,
         }
 
         private enum AnswerState

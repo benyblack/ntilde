@@ -868,6 +868,22 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     }
 
     /// <summary>
+    /// Only the first prompt after the saved password says whether the server took it: anything but a code question - here
+    /// a key's passphrase - means it did not, and a code question after that is no second factor.
+    /// </summary>
+    [Fact]
+    public async Task Only_the_first_prompt_after_the_saved_password_decides_whether_a_second_factor_followed()
+    {
+        RemoteMuxInteractionHandler.Attempt automatic = Handler(new ScriptedUser(), new SavedPasswords("s3cret")).BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await automatic.HandleAsync(Password, Ct);
+        Assert.True((await automatic.HandleAsync(Passphrase, Ct)).IsCanceled);
+
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
+
+        Assert.False(automatic.SecondFactorAfterSavedPassword);
+    }
+
+    /// <summary>
     /// Review I-1: when the saved password alone cannot sign in (a second factor follows), the host's automatic attempts stop
     /// offering it - no failed rounds on every drop - but a user's attempt is not kept from it: the vault fills the password
     /// once and the window asks only for the code.
