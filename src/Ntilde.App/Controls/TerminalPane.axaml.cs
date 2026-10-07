@@ -4244,15 +4244,29 @@ namespace Ntilde.Controls
         /// <summary>Phase 4 spec §7.5: no session could be had from the remote daemon; the id (if any) is kept, and Enter retries.</summary>
         internal static string RemoteUnreachableBanner(string host) => $"[{host} not reachable \u2014 press Enter to retry]";
 
+        /// <summary>Under an Enter banner: an automatic attempt offered the profile's saved password, and it was refused.</summary>
+        internal const string RemoteSavedPasswordRefusedLine = "[The saved password was refused — press Enter to sign in]";
+
+        /// <summary>Under an Enter banner: signing in needs an answer an automatic attempt does not give.</summary>
+        internal const string RemoteSignInNeedsYouLine = "[Automatic reconnect can't sign in without you — press Enter]";
+
         /// <summary>
         /// The line under an Enter banner (<see cref="RemoteUnreachableBanner"/>, <see cref="RemoteAbandonedBanner"/>) when
-        /// signing in needs the user (<see cref="RemoteFailureKind.NeedsUser"/>; codex4 F): that failure's reason, so the user
-        /// knows what the retry needs - an answer an automatic attempt does not ask for, or the native SSH backend turned
-        /// back on in Settings, without which Enter is refused again. Null for any other failure, or none: an SSH failure's
-        /// banner says enough, and ntilde-mux's own failures get the notice.
+        /// signing in needs the user (<see cref="RemoteFailureKind.NeedsUser"/>), by its <see cref="RemoteNeedsUserCause"/>,
+        /// so the user knows what the retry needs: <see cref="RemoteSavedPasswordRefusedLine"/>, or
+        /// <see cref="RemoteSignInNeedsYouLine"/>. Never ssh's or rusty_ssh's own words - a "Permission denied" under a
+        /// banner that asks for Enter only confused - which stay in the failure's reason, for the log. The native SSH
+        /// backend switched off (codex4 F) keeps its own message, which says what to turn on: Enter alone is refused again.
+        /// Null for any other failure, or none: an SSH failure's banner says enough, and ntilde-mux's own failures get the
+        /// notice.
         /// </summary>
-        internal static string? RemoteNeedsUserLine(RemoteMuxFailure? failure) =>
-            failure is { Kind: RemoteFailureKind.NeedsUser, Reason: { Length: > 0 } reason } ? $"[{reason}]" : null;
+        internal static string? RemoteNeedsUserLine(RemoteMuxFailure? failure) => failure switch
+        {
+            null or { Kind: not RemoteFailureKind.NeedsUser } => null,
+            { Cause: RemoteNeedsUserCause.SavedPasswordRefused } => RemoteSavedPasswordRefusedLine,
+            { Cause: RemoteNeedsUserCause.NativeSshDisabled, Reason: { Length: > 0 } reason } => $"[{reason}]",
+            _ => RemoteSignInNeedsYouLine,
+        };
 
         /// <summary>Phase 4 spec §8.4: the remote-files sidebar on a persisted remote tab (title of the toast).</summary>
         internal const string RemoteFilesUnavailableNoticeTitle = "Remote Files";

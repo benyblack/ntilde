@@ -582,6 +582,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
 
         Assert.Equal(RemoteFailureKind.NeedsUser, refused.Failure.Kind);
         Assert.Equal(SshSessionFactory.NativeSshDisabledMessage, refused.Failure.Reason);
+        Assert.Equal(RemoteNeedsUserCause.NativeSshDisabled, refused.Failure.Cause);   // the pane shows this reason as it is
         Assert.Equal(0, nativeLayers);
 
         enabled = true;   // turned on again

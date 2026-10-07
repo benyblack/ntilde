@@ -370,6 +370,54 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Equal(3, _remote.StartCount);
     }
 
+    /// <summary>
+    /// The smoke test's complaint: an automatic attempt refused by sshd stopped at the Enter banner, and the pane wrote
+    /// ssh's own "Permission denied" under it - confusing under a banner that asks for Enter. The line says what Enter is
+    /// for instead; ssh's words go to the log only.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_refused_automatic_sign_in_says_enter_is_needed_and_never_shows_ssh_s_own_words()
+    {
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = NeedsPassword;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry); // the automatic attempt cannot sign in: the loop gives up
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsBanner(pane, "[Automatic reconnect can't sign in without you — press Enter]");
+        Assert.DoesNotContain("Permission denied", Text(pane));
+        Assert.DoesNotContain("publickey", Text(pane));
+    }
+
+    /// <summary>
+    /// The line under the Enter banner, by why the failure needs the user - never ssh's or rusty_ssh's reason. Only the
+    /// native-SSH-switched-off refusal (codex4 F) keeps its own text: Enter alone cannot fix it. Other failures get none.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_needs_you_line_says_why_in_ntildes_words()
+    {
+        const string sshSaid = "nova@fake-host: Permission denied (publickey,password).";
+        string nativeOff = Ntilde.Platform.Ssh.Sessions.SshSessionFactory.NativeSshDisabledMessage;
+
+        Assert.Equal(
+            "[The saved password was refused — press Enter to sign in]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused)));
+        Assert.Equal(
+            "[Automatic reconnect can't sign in without you — press Enter]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid)));
+        Assert.Equal(
+            "[Automatic reconnect can't sign in without you — press Enter]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for")));
+        Assert.Equal(
+            $"[{nativeOff}]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, nativeOff, RemoteNeedsUserCause.NativeSshDisabled)));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid)));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(null));
+    }
+
     [AvaloniaFact]
     public void One_enter_after_a_give_up_brings_back_every_pane_of_the_host()
     {

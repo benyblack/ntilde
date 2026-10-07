@@ -32,8 +32,34 @@ internal enum RemoteFailureKind
     NeedsUser,
 }
 
-/// <summary>A classified remote failure: its <paramref name="Kind"/>, and the text the user should see.</summary>
-internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason);
+/// <summary>
+/// Why a <see cref="RemoteFailureKind.NeedsUser"/> failure needs the user, in the app's own terms. It decides the line a
+/// pane writes under its Enter banner (<c>TerminalPane.RemoteNeedsUserLine</c>), so that line never repeats what ssh or
+/// rusty_ssh said - that stays in the failure's reason, for the log. Meaningless for the other kinds.
+/// </summary>
+internal enum RemoteNeedsUserCause
+{
+    /// <summary>
+    /// Signing in needs an answer an automatic attempt does not give - a password with none saved, a key's passphrase,
+    /// keyboard-interactive input - or OpenSSH was refused with none of them offered. Enter signs in.
+    /// </summary>
+    SignIn,
+
+    /// <summary>The profile's saved password was offered by an automatic attempt, and refused. Enter signs in.</summary>
+    SavedPasswordRefused,
+
+    /// <summary>
+    /// The native SSH backend is switched off (codex4 F): the reason is the app's own message, which says what to do,
+    /// and Enter alone does not fix it.
+    /// </summary>
+    NativeSshDisabled,
+}
+
+/// <summary>
+/// A classified remote failure: its <paramref name="Kind"/>, the reason (for the log, and the notices of failures past
+/// SSH), and, for a <see cref="RemoteFailureKind.NeedsUser"/> one, its <paramref name="Cause"/>.
+/// </summary>
+internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, RemoteNeedsUserCause Cause = RemoteNeedsUserCause.SignIn);
 
 /// <summary>
 /// A remote host's connect attempt failed (Phase 4 spec §7.1). The App's own exception for a remote

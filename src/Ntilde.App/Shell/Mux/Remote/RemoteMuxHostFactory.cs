@@ -196,8 +196,9 @@ internal static class RemoteMuxHostFactory
     /// refuses such a profile's session (<see cref="SshSessionFactory"/>), and with its message: a profile saved as
     /// Native stays saved when the switch goes off, and its persistent tabs must not connect around it. Nothing is built
     /// or connected first. The failure is <see cref="RemoteFailureKind.NeedsUser"/>: another automatic attempt would be
-    /// refused the same way, so the reconnect loop stops at once and the pane offers Enter, and says why; a kill waiting
-    /// on the host stays queued. Once the switch is on, Enter connects. An OpenSSH profile does not read the switch.
+    /// refused the same way, so the reconnect loop stops at once and the pane offers Enter, and says why - this message,
+    /// as it is (<see cref="RemoteNeedsUserCause.NativeSshDisabled"/>); a kill waiting on the host stays queued. Once the
+    /// switch is on, Enter connects. An OpenSSH profile does not read the switch.
     /// </summary>
     /// <exception cref="RemoteMuxUnavailableException">The profile is Native and <paramref name="nativeSshEnabled"/> says off.</exception>
     internal static void ThrowIfNativeSshDisabled(SshProfile profile, Func<bool> nativeSshEnabled)
@@ -206,7 +207,8 @@ internal static class RemoteMuxHostFactory
         ArgumentNullException.ThrowIfNull(nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native && !nativeSshEnabled())
         {
-            throw new RemoteMuxUnavailableException(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, SshSessionFactory.NativeSshDisabledMessage));
+            throw new RemoteMuxUnavailableException(
+                new RemoteMuxFailure(RemoteFailureKind.NeedsUser, SshSessionFactory.NativeSshDisabledMessage, RemoteNeedsUserCause.NativeSshDisabled));
         }
     }
 
