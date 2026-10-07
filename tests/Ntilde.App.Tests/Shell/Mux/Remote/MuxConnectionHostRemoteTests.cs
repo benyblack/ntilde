@@ -367,6 +367,31 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// A stopped daemon's exit status can come late: the proxy waits up to 1.5 s for the daemon's process to go, and
+    /// on a loaded remote ssh's teardown adds to that. A 3 that arrives 2.4 s after the daemon side closed still reads
+    /// as a stopped daemon - the channel's grace period, the factory's wait for the status and the host's cap on the
+    /// classification all outlast it - and not as a lost link, whose reconnect would bring up a new daemon and tell
+    /// every pane its session was lost. The one test here that waits in real time: those three are real timers.
+    /// </summary>
+    [Fact]
+    public async Task A_stopped_daemons_exit_status_that_arrives_2_4_s_late_still_reads_as_stopped()
+    {
+        _remote.ExitStatusDelay = TimeSpan.FromSeconds(2.4);
+        MuxConnectionHost host = Create();
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
+        _remote.StopDaemon();   // the proxy exits 3, and ssh reports it 2.4 s later
+        await TestWait.UntilAsync(() => events.Seen.Length > 0, "the host told why the connection ended", Patient);
+
+        Assert.Equal(new[] { "daemon-stopped" }, events.Seen);
+        Assert.True(clock.Elapsed >= TimeSpan.FromSeconds(2.3), $"told after {clock.Elapsed}: the status was not late");
+        Assert.False(host.IsReconnecting);
+        Assert.Equal(MuxProxyExitCodes.DaemonClosed, await _remote.Channels.Single().Completion.WaitAsync(Patient, Ct));
+    }
+
+    /// <summary>
     /// Codex D1: a daemon that drops this host's connection but runs on - here another connection with the host's
     /// client instance id replaces it; a client too slow to keep up goes the same way - makes the proxy exit 4,
     /// not 3. That is a lost link: the host reconnects, the daemon's sessions are still there, and a kill queued

@@ -18,11 +18,45 @@ namespace Ntilde.Shell.Mux.Remote;
 internal static class RemoteMuxHostFactory
 {
     /// <summary>
-    /// How long a disconnect waits for the channel's exit status. Longer than the proxy's own wait for a closing
-    /// daemon's process to go (1.5 s, codex D1), so a daemon that stops slowly still reads as stopped; the host's
-    /// <see cref="MuxConnectionHost.ClassifyTimeout"/> sits above it.
+    /// How long a channel this factory builds lets the remote command exit on stdin's EOF before it stops it
+    /// (<see cref="OpenSshExecTransport.ExitGrace"/>, <see cref="NativeSshExecTransport.ExitGrace"/>): the first of the
+    /// waits that tell a stopped daemon from a lost link, which must keep the order below.
     /// </summary>
-    private static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(2);
+    /// <remarks>
+    /// When the daemon side of a connection ends, the proxy on the remote (<c>MuxProxyCommand</c>) ends its stdout at
+    /// once, then waits up to <c>MuxProxyCommand.DaemonExitWait</c> (1.5 s) for the daemon's process to go before it
+    /// exits 3 (gone: <see cref="MuxDisconnectKind.DaemonStopped"/>) or 4 (runs on: a lost link). Then ssh brings the code
+    /// home - sshd sends it, ssh exits - which on a loaded remote takes a while too. The end of stdout reaches the client
+    /// first, and from that moment three waits run here at once, each of which turns a 3 it does not see into a lost link:
+    /// <code>
+    /// DaemonExitWait + SshTeardownAllowance &lt;= ChannelExitGrace &lt; DisconnectExitWait &lt; ClassifyTimeout
+    ///    1.5 s       +         2 s          &lt;=      3.5 s       &lt;        4 s         &lt;      4.5 s
+    /// </code>
+    /// The channel's end (<see cref="RemoteMuxConnector"/> disposes it once its client is done) stops ssh after
+    /// <see cref="ChannelExitGrace"/>, and a stopped ssh has no status; <see cref="ClassifyDisconnectAsync"/> waits
+    /// <see cref="DisconnectExitWait"/> for the status; <see cref="MuxConnectionHost"/> caps the classification at
+    /// <see cref="ClassifyTimeout"/>. Each outlasts the one before it, and the grace leaves ssh
+    /// <see cref="SshTeardownAllowance"/> after the proxy's own wait. Read wrongly, a stopped daemon's panes reconnect to
+    /// a new one and each says its session was lost. The proxy is the remote binary and the transports are the platform's,
+    /// so neither reads these: <c>MuxProxyCommand.DaemonExitWait</c> and the transports' default grace point here, the
+    /// transports are given this grace (<see cref="CreateTransport"/>), and <c>RemoteMuxHostFactoryTests</c> pins the order.
+    /// </remarks>
+    internal static readonly TimeSpan ChannelExitGrace = TimeSpan.FromSeconds(3.5);
+
+    /// <summary>
+    /// What <see cref="ChannelExitGrace"/> leaves ssh, after the proxy's own wait for the daemon's process, to bring the
+    /// exit code home on a loaded remote.
+    /// </summary>
+    internal static readonly TimeSpan SshTeardownAllowance = TimeSpan.FromSeconds(2);
+
+    /// <summary>How long a disconnect waits for the channel's exit status: above <see cref="ChannelExitGrace"/> (see the order there).</summary>
+    internal static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// The host's cap on a disconnect's classification (<see cref="MuxConnectionHost.ClassifyTimeout"/>): above
+    /// <see cref="DisconnectExitWait"/> (see the order at <see cref="ChannelExitGrace"/>).
+    /// </summary>
+    internal static readonly TimeSpan ClassifyTimeout = TimeSpan.FromSeconds(4.5);
 
     /// <summary>
     /// The host for <paramref name="id"/>, or null to decline: the local endpoint (not this factory's), or a
@@ -183,6 +217,8 @@ internal static class RemoteMuxHostFactory
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
     /// </list>
+    /// Either way the channels it starts end with <see cref="ChannelExitGrace"/>, so a stopped daemon's exit code still
+    /// gets through.
     /// </summary>
     /// <param name="openSshLaunch">
     /// The OpenSSH launch plan of this very profile (<see cref="SshConnectionService.BuildLaunchDetailsFor"/>), which may
@@ -222,7 +258,7 @@ internal static class RemoteMuxHostFactory
         ThrowIfNativeSshDisabled(profile, nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native)
         {
-            return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log);
+            return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log, ChannelExitGrace);
         }
 
         SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
@@ -252,7 +288,8 @@ internal static class RemoteMuxHostFactory
             batchMode: !request.Interactive && !savedPasswordOnly,
             savedPasswordOnly: savedPasswordOnly,
             withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
-            askPassSession: request.AskPassSession);
+            askPassSession: request.AskPassSession,
+            exitGrace: ChannelExitGrace);
     }
 
     /// <summary>

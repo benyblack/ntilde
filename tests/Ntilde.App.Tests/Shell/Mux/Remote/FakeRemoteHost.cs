@@ -5,6 +5,7 @@ using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Mux.Transport;
 using Ntilde.Platform.Ssh.Exec;
+using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Tests.Shell.Mux.Remote;
 
@@ -94,6 +95,12 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
     public FakeRemoteScript? Script { get; set; }
 
     /// <summary>
+    /// How long the next channels' ssh takes, once the remote command exited, to report its exit status: its teardown,
+    /// on a loaded remote. A channel stopped meanwhile reports none, as a stopped ssh does.
+    /// </summary>
+    public TimeSpan ExitStatusDelay { get; set; }
+
+    /// <summary>
     /// Runs first inside <see cref="Start"/>, with its token, after <see cref="StartCount"/> counts it: a
     /// test can block there (an unanswered prompt, until cancelled) or throw (ssh could not start).
     /// </summary>
@@ -107,7 +114,7 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
         OnStart?.Invoke(ct);
         ct.ThrowIfCancellationRequested();
 
-        var channel = new FakeRemoteChannel(this, remoteCommand, Script, Noise, PipeCapacityBytes);
+        var channel = new FakeRemoteChannel(this, remoteCommand, Script, Noise, ExitStatusDelay, PipeCapacityBytes);
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -240,12 +247,16 @@ internal sealed record FakeRemoteScript(string Stdout = "", string Stderr = "", 
 /// <summary>One <see cref="FakeRemoteHost"/> exec channel: the remote side runs on a thread of its own.</summary>
 internal sealed class FakeRemoteChannel : ISshExecChannel
 {
-    /// <summary>How long <see cref="Dispose"/> lets the remote side end on stdin's EOF before killing it.</summary>
-    private static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(2);
+    /// <summary>
+    /// How long <see cref="Dispose"/> lets the remote side end on stdin's EOF before killing it: the grace the app gives
+    /// the transports it builds (<see cref="RemoteMuxHostFactory.CreateTransport"/>).
+    /// </summary>
+    private static readonly TimeSpan ExitGrace = RemoteMuxHostFactory.ChannelExitGrace;
 
     private readonly FakeRemoteHost _host;
     private readonly FakeRemoteScript? _script;
     private readonly string _noise;
+    private readonly TimeSpan _exitStatusDelay;
     private readonly Stream _stdinWriter;   // the channel's stdin: writes reach _proxyStdin
     private readonly Stream _proxyStdin;    // what the remote side reads
     private readonly Stream _proxyStdoutPipe; // what the remote side writes: _stdoutReader reads it
@@ -267,12 +278,13 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
     private int _disposing;
     private int _aborts;
 
-    internal FakeRemoteChannel(FakeRemoteHost host, string command, FakeRemoteScript? script, string noise, int pipeCapacityBytes)
+    internal FakeRemoteChannel(FakeRemoteHost host, string command, FakeRemoteScript? script, string noise, TimeSpan exitStatusDelay, int pipeCapacityBytes)
     {
         _host = host;
         Command = command;
         _script = script;
         _noise = noise;
+        _exitStatusDelay = exitStatusDelay;
         (_stdinWriter, _proxyStdin) = InMemoryDuplexPipe.Create(pipeCapacityBytes);
         (_proxyStdoutPipe, _stdoutReader) = InMemoryDuplexPipe.Create(pipeCapacityBytes);
         _stdin = new ChannelStdin(this);
@@ -403,6 +415,10 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
             CloseQuietly(_proxyStdoutPipe);
             CloseQuietly(_proxyStdin);
             if (_transportError is { } error) _stderr.Write($"native ssh: {error}\n");
+
+            // ssh's teardown (ExitStatusDelay): the status comes after it, unless the channel stops ssh first. This
+            // thread stands for ssh, so the channel's grace period waits for it as for ssh's exit.
+            if (_exitStatusDelay > TimeSpan.Zero) _killed.Wait(_exitStatusDelay);
             _completion.TrySetResult(_cut ? _cutExitCode : _killedByChannel ? null : exitCode);
         }
     }
