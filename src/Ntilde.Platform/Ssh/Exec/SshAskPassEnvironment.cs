@@ -124,7 +124,7 @@ public static class SshAskPassEnvironment
     /// <summary>
     /// <see cref="Apply"/>, for an attempt nobody is waiting on whose profile has a saved password (an automatic
     /// reconnect): the helper then runs in its vault-only mode (<see cref="VaultOnlyVariable"/>). It answers the
-    /// target's own password prompt from the saved password, and refuses every other prompt - a host key, a key's
+    /// target's own password prompt from the saved password, once per ssh, and refuses every other prompt - a host key, a key's
     /// passphrase, a jump host's password, other keyboard-interactive text - without building any UI.
     /// <c>SSH_ASKPASS_REQUIRE=force</c> and <c>DISPLAY</c> are as <see cref="Apply"/> sets them.
     /// </summary>

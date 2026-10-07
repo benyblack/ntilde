@@ -363,9 +363,9 @@ what was installed: `ntilde-mux 0.11.0 installed`, `ntilde-mux not installed`, o
 the daemon agree on a protocol version when they connect, and only a daemon with no protocol
 version in common asks for an update.
 
-**Supported hosts:** Linux on x86-64 or arm64 with glibc 2.35 or newer (for example Ubuntu 22.04,
+**Supported hosts:** Linux on x86-64 or arm64 with glibc 2.34 or newer (for example Ubuntu 22.04,
 Debian 12 and later), and macOS on Apple silicon. The dialog refuses, with the reason, musl-based
-systems such as Alpine, glibc older than 2.35, FreeBSD, OpenBSD and other systems, and Intel Macs.
+systems such as Alpine, glibc older than 2.34, FreeBSD, OpenBSD and other systems, and Intel Macs.
 Windows hosts are not supported.
 
 **What survives a disconnect:** the remote shell and every program running in it (an editor, a
@@ -411,21 +411,35 @@ password or key passphrase that already signed this window in to the host (typed
 vault). Ntilde keeps the last in memory only, and forgets it when the window closes or when the
 server rejects it. Host keys must already be trusted.
 
+If the host's key is unknown or has changed, the retries stop after one attempt and send no
+password. The tab shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
+`[Host key for <host> is unknown or has changed — press Enter to review]` under it, and Enter
+shows the usual host key question. OpenSSH refuses a *changed* key outright, so there the line is
+`[Host key for <host> has changed — if you trust the new key, remove the old one from known_hosts, then press Enter]`:
+fix `known_hosts` first, then press Enter.
+
+With OpenSSH older than 8.4 (Windows 10's built-in `ssh` is 8.1, Ubuntu 20.04's is 8.2), the
+retries use only keys and the agent, never the saved password: a password-only host waits for
+Enter after every drop. Put a newer OpenSSH first on your PATH, or use the native SSH backend, to
+have the saved password tried on its own.
+
 A saved password is tried **once**. If the server refuses it, the retries stop at once and the tab
 shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
 `[The saved password was refused — press Enter to sign in]` under it. Ntilde does not use that
 password on its own again, for that host in this window: Enter asks you for the password straight
 away; tick *Remember password* to replace the saved one, and Ntilde uses the new one from then on.
-Signing in with a typed password without ticking it leaves the refused one unused. (A server that
-accepts both password and keyboard-interactive sign-in may see it once for each before the retries
-stop. Each window keeps its own record, so a second window with tabs on the same host tries it once
-too.) At any other time, when you connect or press Enter Ntilde fills in the saved password at most
+Signing in with a typed password without ticking it leaves the refused one unused. A connection
+that drops *after* the password went in is not a refusal: the retries go on and try the saved
+password again. (Each window keeps its own record, so a second window with tabs on the same host
+tries it once too.) At any other time, when you connect or press Enter Ntilde fills in the saved password at most
 once per connection: if the server refuses it, you are asked.
 
 If the host asks for more than the password - a one-time code, a second factor - the saved password
 alone cannot sign in. The retries stop at once with
 `[Automatic reconnect can't sign in without you — press Enter]`, and later ones do not try the saved
 password again. Enter fills in the saved password for you and asks only for the code.
+Ntilde fills only a prompt that ends in `password:` or reads `Password for <account>:`. A password
+prompt in other words is not filled, reads the same way, and Enter then asks you for it.
 
 When signing in would need a password or another typed answer, the retries stop at once rather than
 fail again and again (failed logins that fail2ban and account lockouts count), and the tab shows
@@ -434,7 +448,8 @@ fail again and again (failed logins that fail2ban and account lockouts count), a
 usual prompts. This happens for:
 
 - profiles that sign in with a password that is not saved in the vault (and, on native profiles,
-  has not been used in this window yet): OpenSSH retries run `ssh` with `BatchMode=yes`;
+  has not been used in this window yet), or whose OpenSSH is older than 8.4: OpenSSH retries run
+  `ssh` with `BatchMode=yes`;
 - native profiles whose key has a passphrase that has not been used in this window yet, when
   neither the SSH agent nor another key signs in instead;
 - profiles that go through jump hosts and sign in with a password: a password prompt may come from

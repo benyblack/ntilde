@@ -86,8 +86,8 @@ internal static class SshAskPassCommand
     /// Answers one ssh prompt: the target's own password (<see cref="IsTargetPasswordPrompt"/>) from
     /// <paramref name="savedPassword"/> when it has one; anything else from <paramref name="askUser"/> - unless the
     /// environment says vault-only (<see cref="VaultOnlyEnvironmentVariable"/>, an automatic reconnect): then every
-    /// other prompt, a target's password with nothing saved, and every target's password after the first, exits 1 at
-    /// once, with no UI built and, for a prompt that is not the target's password, the vault not even read
+    /// other prompt, a target's password with nothing saved or no valid session token, and every target's password
+    /// after the first, exits 1 at once, with no UI built and, for a prompt that is not the target's password, the vault not even read
     /// (<see cref="AnswerVaultOnly"/>). ssh treats that exit as no answer.
     /// <para>
     /// In both modes the target's password is filled from the vault at most once per ssh process (its

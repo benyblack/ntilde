@@ -502,7 +502,8 @@ it).
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
   through it, and so does the kill of a shell a stale result started (a result that came back to a pane
   closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once,
-  from the pool and never on the closing (UI) thread, which a stalled link's full send queue would block; it is
+  from the pool (behind earlier kills to the same host, one at a time) and never on the closing (UI) thread, which a
+  stalled link's full send queue would block; it is
   counted and tracked before the close returns, so a release or a dispose right behind it waits for it. A kill
   whose connection closes before the daemon answers, or whose request times out once that connection is gone, is
   queued again. With no live client it is queued, kept across
@@ -571,7 +572,7 @@ deadline; the installer uses it.
 Each step is an exec over the same transports, with the same prompts as a connection:
 
 1. **Probe**: `uname -sm`, the libc line and `$HOME`. `RemoteHostProbe.Parse` (pure) maps the host to
-   linux-x64, linux-arm64 or osx-arm64, and refuses musl, glibc older than 2.35, Intel Macs and
+   linux-x64, linux-arm64 or osx-arm64, and refuses musl, glibc older than 2.34, Intel Macs and
    anything else, with the reason.
 2. **Asset** (`IMuxDaemonAssetSource`): the GitHub release's `ntilde-mux-<rid>`, verified against its
    `.sha256` and cached at `<app data>/cache/ntilde-mux/<version>/<rid>`; or a local file, whose ELF
