@@ -12,8 +12,16 @@ namespace Ntilde.Tests.Shell.Mux.Remote;
 /// that may have been refused is forgotten, never replayed (review fix round 1): the native layer asks
 /// for a password once, then falls to keyboard-interactive, so "asked again" never happens.
 /// </summary>
-public sealed class RemoteMuxInteractionHandlerTests
+public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 {
+    /// <summary>This test's askpass record folder (an OpenSSH offer of the saved password needs one it can write).</summary>
+    private readonly string _records = Path.Combine(Path.GetTempPath(), "ntilde-askpass-tests", Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_records)) Directory.Delete(_records, recursive: true);
+    }
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static SshInteractionRequest Password { get; } = new() { Kind = SshInteractionKind.Password, Prompt = "Password:" };
@@ -377,8 +385,8 @@ public sealed class RemoteMuxInteractionHandlerTests
         }
     }
 
-    private static RemoteMuxInteractionHandler Handler(ISshInteractionHandler? user, SavedPasswords saved) =>
-        new(user, request => request.Fingerprint == "SHA256:trusted", saved.Read);
+    private RemoteMuxInteractionHandler Handler(ISshInteractionHandler? user, SavedPasswords saved) =>
+        new(user, request => request.Fingerprint == "SHA256:trusted", saved.Read, new Ntilde.SshAskPassSessionMarkers(() => _records));
 
     private static readonly Ntilde.Platform.Ssh.Models.SshProfile Box = RemoteMuxConnectorTests.Profile();
 
@@ -557,6 +565,60 @@ public sealed class RemoteMuxInteractionHandlerTests
         refusedTyped.Refused();   // the server's password changed again
 
         Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+    }
+
+    /// <summary>
+    /// Greptile G2: only the password that got in may clear a refusal. The user typed the old refused value, was asked again
+    /// (it was refused once more), and got in with another one, not saved: the old saved value stays refused, and the next
+    /// automatic attempt does not send it.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_value_rejected_again_in_a_successful_attempt_stays_refused()
+    {
+        var saved = new SavedPasswords("stale");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("stale"), SshInteractionResponse.FromSecret("new")), saved);
+        RemoteMuxInteractionHandler.Attempt refused = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await refused.HandleAsync(Password, Ct);
+        refused.SavedPasswordRefused();
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        Assert.Equal("stale", (await enter.HandleAsync(Password, Ct)).Secret);   // refused again: the server asks once more
+        Assert.Equal("new", (await enter.HandleAsync(Password, Ct)).Secret);     // this one gets in
+
+        enter.Succeeded();
+
+        Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+    }
+
+    /// <summary>
+    /// Greptile G1: an OpenSSH offer of the saved password needs a place to record what the helper did - otherwise a
+    /// refusal could never be counted, and every later automatic attempt would send it again. With no record store, or one
+    /// that cannot be written, nothing is offered, and the vault is not even read.
+    /// </summary>
+    [Fact]
+    public void Without_a_writable_askpass_record_no_saved_password_is_offered_to_an_askpass()
+    {
+        var saved = new SavedPasswords("s3cret");
+        string blocked = _records + "-blocked";
+        Directory.CreateDirectory(Path.GetDirectoryName(_records)!);
+        File.WriteAllText(blocked, "a file where the folder would go");
+        var log = new List<string>();
+        try
+        {
+            var noStore = new RemoteMuxInteractionHandler(new ScriptedUser(), _ => false, saved.Read);
+            var unwritable = new RemoteMuxInteractionHandler(
+                new ScriptedUser(), _ => false, saved.Read, new Ntilde.SshAskPassSessionMarkers(() => blocked), log.Add);
+
+            Assert.False(noStore.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+            Assert.False(unwritable.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+            Assert.False(unwritable.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+
+            Assert.Equal(0, saved.Reads);
+            Assert.Single(log, line => line.Contains("askpass", StringComparison.OrdinalIgnoreCase));   // logged once
+        }
+        finally
+        {
+            File.Delete(blocked);
+        }
     }
 
     /// <summary>Review M7: once the saved value changes (the user saved a new one), the host offers it: it was never refused.</summary>
@@ -804,7 +866,7 @@ public sealed class RemoteMuxInteractionHandlerTests
     {
         var log = new List<string>();
         var handler = new RemoteMuxInteractionHandler(
-            new ScriptedUser(), _ => false, _ => throw new InvalidOperationException("the keyring is locked"), log: log.Add);
+            new ScriptedUser(), _ => false, _ => throw new InvalidOperationException("the keyring is locked"), new Ntilde.SshAskPassSessionMarkers(() => _records), log.Add);
         RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
 
         Assert.False(automatic.OfferSavedPassword());

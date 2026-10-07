@@ -59,13 +59,14 @@ internal sealed class RemoteMuxInteractionHandler
     private readonly ISshInteractionHandler? _user;
     private readonly Func<SshInteractionRequest, bool> _isTrustedHostKey;
     private readonly Func<SshProfile, string?>? _savedPassword;
-    private readonly Func<string, SshAskPassRecord>? _askPassRecords;
+    private readonly SshAskPassSessionMarkers? _askPassRecords;
     private readonly Action<string>? _log;
     private readonly object _gate = new();
     private readonly Dictionary<SshInteractionKind, string> _remembered = []; // guarded by _gate
     private int _generation;                                                  // guarded by _gate; bumped by Forget
     private readonly List<byte[]> _refusedPasswords = [];                     // guarded by _gate; HashOf each refused password, newest last
     private bool _savedPasswordNotEnough;                                     // guarded by _gate; a second factor follows it
+    private int _unrecordableLogged;                                          // 1 once "cannot record" was logged
 
     /// <summary>
     /// How many refused passwords a host remembers (re-review item 4): a refused typed or remembered password must not push
@@ -96,7 +97,7 @@ internal sealed class RemoteMuxInteractionHandler
         ISshInteractionHandler? user,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
         Func<SshProfile, string?>? savedPassword = null,
-        Func<string, SshAskPassRecord>? askPassRecords = null,
+        SshAskPassSessionMarkers? askPassRecords = null,
         Action<string>? log = null)
     {
         _user = user;
@@ -199,12 +200,37 @@ internal sealed class RemoteMuxInteractionHandler
         }
     }
 
+    /// <summary>
+    /// Whether the askpass helper could record what it does for an attempt's ssh (Greptile G1): a record store that can be
+    /// written now. Without one an OpenSSH attempt's refused saved password could never be counted, so none is offered to
+    /// an askpass. Logged once per host.
+    /// </summary>
+    private bool CanRecordAskPass()
+    {
+        bool can;
+        try
+        {
+            can = _askPassRecords?.CanRecord() == true;
+        }
+        catch (Exception)
+        {
+            can = false;
+        }
+
+        if (!can && Interlocked.Exchange(ref _unrecordableLogged, 1) == 0)
+        {
+            _log?.Invoke("[RemoteMux] the askpass record folder cannot be written, so automatic OpenSSH reconnects are not offered the saved password");
+        }
+
+        return can;
+    }
+
     /// <summary>What the askpass helper did for an attempt's ssh; nothing when it cannot be read.</summary>
     private SshAskPassRecord ReadAskPassRecord(string session)
     {
         try
         {
-            return _askPassRecords?.Invoke(session) ?? default;
+            return _askPassRecords?.Read(session) ?? default;
         }
         catch (Exception ex)
         {
@@ -399,12 +425,13 @@ internal sealed class RemoteMuxInteractionHandler
 
         /// <summary>
         /// Offers the saved password to a transport that answers its own prompts - ssh's askpass in its vault-only mode -
-        /// for the whole attempt: true when this attempt may (<see cref="MaySignInWithSavedPassword"/>) and the vault holds
-        /// one, which is then counted as offered. It reads the vault to know, and keeps nothing.
+        /// for the whole attempt: true when this attempt may (<see cref="MaySignInWithSavedPassword"/>), the helper's record
+        /// of it can be written (Greptile G1: else a refusal could never be counted), and the vault holds one not refused
+        /// here, which is then counted as offered. It reads the vault to know, and keeps nothing.
         /// </summary>
         public bool OfferSavedPassword()
         {
-            if (!MaySignInWithSavedPassword || UnrefusedSavedPassword() is not { } offer) return false;
+            if (!MaySignInWithSavedPassword || !_owner.CanRecordAskPass() || UnrefusedSavedPassword() is not { } offer) return false;
             lock (_gate)
             {
                 _savedPasswordOffered = true;
@@ -538,8 +565,11 @@ internal sealed class RemoteMuxInteractionHandler
                 _generation,
                 forget: [],
                 remember: answers.Where(a => a.State != AnswerState.Superseded && !a.FromMemory).Select(a => (a.Kind, a.Secret)));
-            // A refused value this attempt sent and got in with works again (the server took it back).
-            _owner.ClearRefusedIfAny(answers.Where(a => a.Kind == SshInteractionKind.Password).Select(a => HashOf(a.Secret)));
+            // A refused value works again only if it is what got in (the server took it back): a password answer that another
+            // prompt superseded in this attempt was rejected again, and clears nothing (Greptile G2).
+            _owner.ClearRefusedIfAny(answers
+                .Where(a => a.Kind == SshInteractionKind.Password && a.State != AnswerState.Superseded)
+                .Select(a => HashOf(a.Secret)));
         }
 
         /// <summary>

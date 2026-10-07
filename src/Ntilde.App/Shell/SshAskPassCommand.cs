@@ -182,6 +182,9 @@ internal static class SshAskPassCommand
         bool hasToken = SshAskPassEnvironment.IsSessionToken(token);
         if (vaultOnly)
         {
+            // The app offers vault-only mode only when the record folder took a probe file (Greptile G1). Should it fail
+            // here all the same (a race), the password is still given: declining would make ssh send an empty one - a
+            // failed login even when the saved password is right - and the next attempt's probe stops the offers anyway.
             string? fill = NonEmpty(savedPassword(profile));
             if (fill is not null && hasToken) markers.RecordAnswered(token!);
             return fill;

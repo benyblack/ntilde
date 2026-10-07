@@ -59,6 +59,29 @@ internal sealed class SshAskPassSessionMarkers
     /// <summary>Vault-only: records that the helper declined a prompt naming the target that asks for no password.</summary>
     public void RecordDeclined(string token) => Create(token, DeclinedExtension, claim: false);
 
+    /// <summary>
+    /// Whether records can be written now (Greptile G1): the folder exists or can be created, and takes a new file - a probe
+    /// created and deleted at once. An automatic attempt offers the saved password only then: without its record, a refused
+    /// saved password could not be counted, and every later attempt would send it again.
+    /// </summary>
+    public bool CanRecord()
+    {
+        try
+        {
+            Directory.CreateDirectory(_directory.Value);
+            string probe = Path.Combine(_directory.Value, "probe-" + Guid.NewGuid().ToString("N") + ".tmp");
+            using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 1, FileOptions.DeleteOnClose))
+            {
+            }
+
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>What the helper did for this ssh, as far as its records say; nothing for a token with no record.</summary>
     public SshAskPassRecord Read(string token) => new(Exists(token, AnsweredExtension), Exists(token, DeclinedExtension));
 

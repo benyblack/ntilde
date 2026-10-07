@@ -81,7 +81,7 @@ internal static class RemoteMuxHostFactory
         IMuxTimerScheduler? scheduler = null,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
         Func<SshProfile, string?>? savedPassword = null,
-        Func<string, SshAskPassRecord>? askPassRecords = null)
+        SshAskPassSessionMarkers? askPassRecords = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);

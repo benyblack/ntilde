@@ -708,7 +708,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         List<OpenSshExecTransport> built,
         Func<OpenSshExecTransport, RemoteMuxTransportRequest, FakeRemoteScript?>? script = null,
         Ntilde.Services.Ssh.SshLaunchDetails? launch = null,
-        Func<SshProfile, string?>? vault = null)
+        Func<SshProfile, string?>? vault = null,
+        Ntilde.SshAskPassSessionMarkers? records = null)
     {
         profile.BackendKind = SshBackendKind.OpenSsh;
         return Own(new RemoteMuxConnector(
@@ -727,7 +728,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 _remote.Script = script?.Invoke(transport, request);
                 return _remote;
             },
-            new RemoteMuxInteractionHandler(user: null, _ => false, vault ?? saved.Read, AskPassRecords.Read),
+            new RemoteMuxInteractionHandler(user: null, _ => false, vault ?? saved.Read, records ?? AskPassRecords),
             "i",
             null));
     }
@@ -1047,6 +1048,32 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         Assert.True(Assert.Single(built).BatchMode);
         Assert.Equal(0, saved.Reads);
+    }
+
+    /// <summary>
+    /// Greptile G1: when the askpass record folder cannot be written (no permission, a full disk), a refusal could never be
+    /// counted, so the automatic attempt is not offered the saved password: batch mode, and the vault is not even read.
+    /// </summary>
+    [Fact]
+    public async Task Without_a_writable_askpass_record_an_automatic_OpenSSH_attempt_runs_in_batch_mode()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        string blocked = _askPassRecords + "-blocked";
+        Directory.CreateDirectory(Path.GetDirectoryName(_askPassRecords)!);
+        File.WriteAllText(blocked, "a file where the folder would go");
+        try
+        {
+            Own(await OpenSshConnector(Profile(), saved, built, records: new Ntilde.SshAskPassSessionMarkers(() => blocked))
+                .ConnectAsync(interactive: false, Ct));
+
+            Assert.True(Assert.Single(built).BatchMode);
+            Assert.Equal(0, saved.Reads);
+        }
+        finally
+        {
+            File.Delete(blocked);
+        }
     }
 
     /// <summary>

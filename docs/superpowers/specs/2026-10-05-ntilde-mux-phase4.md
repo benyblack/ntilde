@@ -1395,7 +1395,8 @@ review; the section they change is named first.
       A host keeps up to four, the oldest dropped first, so a refused typed or remembered password does not push a
       refused saved one out (re-review item 4). A refused value is not offered automatically nor filled on Enter, and a
       different saved value is. A typed password that gets in (Remember unticked) no longer re-arms the stale saved
-      value. Each window's hosts keep their own record: N windows may cost N failed logins.
+      value, and only the password that got in clears a refusal: one the server rejected again earlier in the same
+      attempt does not (Greptile G2). Each window's hosts keep their own record: N windows may cost N failed logins.
     - Clearing a refused value: on native, a sign-in with the refused value itself clears it, because the attempt sees
       every secret it sends. On OpenSSH the app never sees what the helper or the user sent. A value counted as refused
       there stays skipped until the host is released (its window's tabs on that host close), even after the user saves
@@ -1413,6 +1414,10 @@ review; the section they change is named first.
       - A retargeted user attempt keeps the saved password away (M4).
       - The helper's once-per-ssh claim is atomic (`FileMode.CreateNew`; M5).
       - A vault that throws counts as nothing saved (M6).
+      - The saved password is offered to an OpenSSH askpass only when the helper's record folder takes a probe file
+        (`SshAskPassSessionMarkers.CanRecord`, logged once per host; Greptile G1): without its record a refusal could
+        never be counted, and every later attempt would send it again. If the folder fails after the probe (a race), the
+        helper still answers: declining would make ssh send an empty password, and the next attempt's probe stops it.
       - A native user attempt on a jump-hop profile passes password prompts on with vault reuse off (M9).
       - An askpass run never applies a staged update at startup (`Program.ShouldAutoApplyUpdateOnStartup`; I-2).
   - Limits: ssh counts `NumberOfPasswordPrompts` per method, so a server that offers both keyboard-interactive

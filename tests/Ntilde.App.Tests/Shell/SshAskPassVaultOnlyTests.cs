@@ -218,6 +218,30 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
         Assert.Equal(new SshAskPassRecord(Answered: false, Declined: true), markers.Read(token));
     }
 
+    /// <summary>
+    /// Greptile G1: the app asks up front whether the helper could record what it does - a folder it can create a file in -
+    /// and offers no saved password to an automatic attempt when it could not (a refusal would then never be counted). The
+    /// probe leaves nothing behind.
+    /// </summary>
+    [Fact]
+    public void CanRecord_says_whether_the_record_folder_takes_a_new_file()
+    {
+        var writable = new SshAskPassSessionMarkers(() => _markers);
+        string blockedPath = _markers + "-blocked";
+        Directory.CreateDirectory(Path.GetDirectoryName(_markers)!);
+        File.WriteAllText(blockedPath, "a file where the folder would go");
+        try
+        {
+            Assert.True(writable.CanRecord());
+            Assert.Empty(Directory.EnumerateFileSystemEntries(_markers));
+            Assert.False(new SshAskPassSessionMarkers(() => blockedPath).CanRecord());
+        }
+        finally
+        {
+            File.Delete(blockedPath);
+        }
+    }
+
     /// <summary>Review M5: claiming a fill is atomic - the first claim of a token wins, a second (or a race) finds it taken.</summary>
     [Fact]
     public void A_fill_is_claimed_once()

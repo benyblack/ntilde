@@ -65,7 +65,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local", null));
         _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(
             id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword),
-            askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).Read)));
+            askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords))));
         _factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null);
     }
 
