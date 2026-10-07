@@ -691,7 +691,7 @@
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Keep shells running when the window closes"/>
-                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Local shells run in a background multiplexer, survive closing the window or a crash, and reattach when Ntilde starts. SSH panes are not affected. Applies to panes opened after saving."/>
+                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Local shells run in a background multiplexer, survive closing the window or a crash, and reattach when Ntilde starts. SSH panes persist only when their profile also turns on 'Keep remote sessions running (ntilde-mux)'; their shells then keep running on the host. Applies to panes opened after saving."/>
                                 </StackPanel>
                                 <ComboBox Name="SessionPersistenceList" Grid.Column="1" HorizontalAlignment="Right" MinWidth="180">
                                     <ComboBoxItem Tag="Off">Off</ComboBoxItem>
@@ -1060,7 +1060,7 @@
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Native SSH backend"/>
-                                    <TextBlock Classes="RowDesc" Text="Allow profiles set to the Native backend to connect with Ntilde's built-in SSH client instead of the system ssh. On by default; while it is on, new SSH profiles default to the Native backend (existing profiles keep their backend). Applies to new connections only; sessions already open are unaffected. While this is off, a profile explicitly set to Native refuses to connect rather than silently falling back — OpenSSH profiles are unaffected either way."/>
+                                    <TextBlock Classes="RowDesc" Text="Allow profiles set to the Native backend to connect with Ntilde's built-in SSH client instead of the system ssh. On by default; while it is on, new SSH profiles default to the Native backend (existing profiles keep their backend). Applies to new connections; sessions already open stay connected, but a Native profile's persistent remote tab cannot reconnect while this is off. While this is off, a profile explicitly set to Native refuses to connect rather than silently falling back — OpenSSH profiles are unaffected either way."/>
                                 </StackPanel>
                                 <CheckBox Name="NativeSshToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
