@@ -28,6 +28,28 @@ public sealed class StartupAutoApplyTests
         Assert.True(Program.ShouldAutoApplyUpdateOnStartup([], () => false));
     }
 
+    /// <summary>
+    /// The askpass helper is this executable too, and ssh starts it unattended - during an automatic reconnect, with nobody
+    /// at the screen - with the prompt as its only argument and the mode in its environment (<c>NTILDE_SSH_ASKPASS=1</c>).
+    /// A staged update must never be applied in such a run, whichever way it is put in askpass mode; and it never probes.
+    /// </summary>
+    [Fact]
+    public void An_askpass_run_never_auto_applies_by_flag_or_environment()
+    {
+        int probes = 0;
+        Func<bool> live = () =>
+        {
+            probes++;
+            return false;
+        };
+
+        Assert.False(Program.ShouldAutoApplyUpdateOnStartup(["--ssh-askpass", "Password:"], live, _ => null));
+        Assert.False(Program.ShouldAutoApplyUpdateOnStartup(["ops@prod.internal's password: "], live, name => name == "NTILDE_SSH_ASKPASS" ? "1" : null));
+        Assert.Equal(0, probes);
+        Assert.True(Program.ShouldAutoApplyUpdateOnStartup(["ops@prod.internal's password: "], live, _ => null));
+        Assert.Equal(1, probes);
+    }
+
     [Fact]
     public void A_mux_cli_mode_does_not_even_probe_for_a_daemon()
     {

@@ -52,6 +52,10 @@ public sealed class MuxRemotePaneTests : IDisposable
     private readonly List<Window> _windows = [];
     private readonly List<TerminalPane> _panes = [];
     private bool _nativeSshEnabled = true; // the global switch (Settings > SSH), read by each attempt's transport
+    private string? _savedPassword;        // the profile's password in the vault, as the app reads it for a remote host
+
+    /// <summary>Where the askpass helper - played by <see cref="NativeSwitchedRemote"/> - records what it did for each attempt's ssh.</summary>
+    private readonly string _askPassRecords = Path.Combine(Path.GetTempPath(), "ntilde-askpass-tests", Guid.NewGuid().ToString("N"));
 
     /// <summary>The start of the line a pane shows under its Enter banner while native SSH is off (codex4 F).</summary>
     private const string NativeSshOffLine = "[Native SSH is disabled globally.";
@@ -59,17 +63,26 @@ public sealed class MuxRemotePaneTests : IDisposable
     public MuxRemotePaneTests()
     {
         MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local", null));
-        _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock)));
+        _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(
+            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword),
+            askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords))));
         _factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null);
     }
 
     /// <summary>
     /// The fake remote, behind the app's native SSH switch (<see cref="RemoteMuxHostFactory.CreateTransport"/>): a native
-    /// profile's attempt is refused while <see cref="_nativeSshEnabled"/> is off.
+    /// profile's attempt is refused while <see cref="_nativeSshEnabled"/> is off. An automatic OpenSSH attempt is offered
+    /// the saved password, as the app's transport factory offers it to ssh's askpass, and the helper's record of filling it
+    /// is written as the real helper writes it.
     /// </summary>
-    private FakeRemoteHost NativeSwitchedRemote(SshProfile profile, RemoteMuxTransportRequest _)
+    private FakeRemoteHost NativeSwitchedRemote(SshProfile profile, RemoteMuxTransportRequest request)
     {
         RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, () => Volatile.Read(ref _nativeSshEnabled));
+        if (!request.Interactive && profile.BackendKind == SshBackendKind.OpenSsh && request.OfferSavedPassword?.Invoke() == true)
+        {
+            new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).RecordAnswered(request.AskPassSession!);
+        }
+
         return _remote;
     }
 
@@ -87,6 +100,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         foreach (TerminalPane pane in _panes) pane.Dispose();
         for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
         _remote.Dispose();
+        if (Directory.Exists(_askPassRecords)) Directory.Delete(_askPassRecords, recursive: true);
     }
 
     private T Own<T>(T disposable) where T : IDisposable
@@ -368,6 +382,77 @@ public sealed class MuxRemotePaneTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(generation + 1, pane.RemoteConnectGenerationForTest);
         Assert.Equal(3, _remote.StartCount);
+    }
+
+    /// <summary>
+    /// The smoke test's complaint: an automatic attempt refused by sshd stopped at the Enter banner, and the pane wrote
+    /// ssh's own "Permission denied" under it - confusing under a banner that asks for Enter. The line says what Enter is
+    /// for instead; ssh's words go to the log only.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_refused_automatic_sign_in_says_enter_is_needed_and_never_shows_ssh_s_own_words()
+    {
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = NeedsPassword;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry); // the automatic attempt cannot sign in: the loop gives up
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsBanner(pane, "[Automatic reconnect can't sign in without you \u2014 press Enter]");
+        Assert.DoesNotContain("Permission denied", Text(pane));
+        Assert.DoesNotContain("publickey", Text(pane));
+    }
+
+    /// <summary>
+    /// The user's choice, as the pane shows it: the automatic reconnect offered the profile's saved password, sshd refused
+    /// it, and the loop stopped at once. The line under the Enter banner says the saved password was refused.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_refused_saved_password_says_so_under_the_enter_banner()
+    {
+        Volatile.Write(ref _savedPassword, "stale");
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = NeedsPassword;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry);
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsBanner(pane, "[The saved password was refused \u2014 press Enter to sign in]");
+        Assert.False(RemoteHost.IsReconnecting);
+        Assert.DoesNotContain("Permission denied", Text(pane));
+        Assert.DoesNotContain("can't sign in without you", Text(pane));
+    }
+
+    /// <summary>
+    /// The line under the Enter banner, by why the failure needs the user - never ssh's or rusty_ssh's reason. Only the
+    /// native-SSH-switched-off refusal (codex4 F) keeps its own text: Enter alone cannot fix it. Other failures get none.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_needs_you_line_says_why_in_ntildes_words()
+    {
+        const string sshSaid = "nova@fake-host: Permission denied (publickey,password).";
+        string nativeOff = Ntilde.Platform.Ssh.Sessions.SshSessionFactory.NativeSshDisabledMessage;
+
+        Assert.Equal(
+            "[The saved password was refused \u2014 press Enter to sign in]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused)));
+        Assert.Equal(
+            "[Automatic reconnect can't sign in without you \u2014 press Enter]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid)));
+        Assert.Equal(
+            "[Automatic reconnect can't sign in without you \u2014 press Enter]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for")));
+        Assert.Equal(
+            $"[{nativeOff}]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, nativeOff, RemoteNeedsUserCause.NativeSshDisabled)));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid)));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(null));
     }
 
     [AvaloniaFact]

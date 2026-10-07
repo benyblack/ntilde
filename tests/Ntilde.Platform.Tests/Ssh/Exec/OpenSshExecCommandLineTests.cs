@@ -89,6 +89,46 @@ public sealed class OpenSshExecCommandLineTests
     }
 
     /// <summary>
+    /// An automatic reconnect of a profile whose password is saved: ssh may prompt (<c>BatchMode=no</c>, in its usual
+    /// place), so the askpass helper can answer the password from the vault, but a refused one is not asked for again
+    /// (<c>NumberOfPasswordPrompts=1</c>, next to it and ahead of the plan, since ssh keeps an option's first value).
+    /// </summary>
+    [Fact]
+    public void Saved_password_only_keeps_BatchMode_no_and_allows_one_password_prompt()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "ntilde-mux proxy --stdio", savedPasswordOnly: true);
+
+        string[] expected =
+        [
+            "-T", "-o", "ClearAllForwardings=yes", "-o", "BatchMode=no", "-o", "NumberOfPasswordPrompts=1", "-o", "ControlMaster=no",
+            .. Plan,
+            "--", "ntilde-mux proxy --stdio",
+        ];
+        Assert.Equal(expected, argv);
+    }
+
+    [Fact]
+    public void Saved_password_only_precedes_a_NumberOfPasswordPrompts_in_the_plans_extra_arguments()
+    {
+        string[] plan = [.. Plan, "-o", "NumberOfPasswordPrompts=3"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", savedPasswordOnly: true);
+
+        int ours = IndexOfPair(argv, "-o", "NumberOfPasswordPrompts=1");
+        Assert.True(ours >= 0, "NumberOfPasswordPrompts=1 is missing");
+        Assert.True(ours < IndexOfPair(argv, "-F", Plan[1]));
+        Assert.True(ours < IndexOfPair(argv, "-o", "NumberOfPasswordPrompts=3"));
+    }
+
+    [Fact]
+    public void Batch_mode_and_saved_password_only_are_not_both_possible()
+    {
+        Assert.ThrowsAny<ArgumentException>(() => OpenSshExecCommandLine.Build([], Plan, "true", batchMode: true, savedPasswordOnly: true));
+        Assert.DoesNotContain("NumberOfPasswordPrompts=1", OpenSshExecCommandLine.Build([], Plan, "true", batchMode: true));
+        Assert.DoesNotContain("NumberOfPasswordPrompts=1", OpenSshExecCommandLine.Build([], Plan, "true"));
+    }
+
+    /// <summary>
     /// The profile's extra arguments; what is left of them; and the pieces dropped, one log line each, in order.
     /// A PTY (<c>-t</c>, and our own <c>-T</c> kept single), no command (<c>-N</c>), the background (<c>-f</c>), stdin
     /// from /dev/null (<c>-n</c>), a subsystem (<c>-s</c>), print-and-exit (<c>-G</c>, <c>-V</c>), master mode
@@ -242,6 +282,95 @@ public sealed class OpenSshExecCommandLineTests
         IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "-t");
 
         Assert.Equal("-t", argv[^1]);
+    }
+
+    /// <summary>
+    /// A plan whose own arguments send ssh through another host - <c>-J</c>, <c>ProxyJump</c>, <c>ProxyCommand</c> - reaches
+    /// the target through a jump host, which an automatic reconnect must not hand the saved password (on OpenSSH before 8.4
+    /// a jump host's keyboard-interactive text carries no "(user@host) " prefix, so it could ask as the target). Read the
+    /// way ssh reads the plan: clusters, an option's argument wherever it is, <c>-o</c> keywords as readconf reads them.
+    /// </summary>
+    public static TheoryData<string[]> Proxied => new()
+    {
+        { [.. Plan, "-J", "bastion"] },
+        { [.. Plan, "-Jbastion"] },
+        { [.. Plan, "-vJ", "bastion"] },
+        { [.. Plan, "-qJ", "bastion", "-p", "2222"] },
+        { ["-J", "bastion", .. Plan] },
+        { [.. Plan, "-o", "ProxyJump=bastion"] },
+        { [.. Plan, "-oProxyJump=bastion"] },
+        { [.. Plan, "-o", "proxyjump bastion"] },
+        { [.. Plan, "-o", "PROXYCOMMAND=ssh -W %h:%p bastion"] },
+        { [.. Plan, "-o", "ProxyCommand nc %h %p"] },
+        { [.. Plan, "-o", "=ProxyJump=bastion"] },
+        { [.. Plan, "-o", " = ProxyJump bastion"] },
+        { [.. Plan, "-o", "\"ProxyJump\" bastion"] },
+        { [.. Plan, "-vo", "ProxyJump=bastion"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(Proxied))]
+    public void A_plan_that_goes_through_another_host_names_a_proxy(string[] plan)
+    {
+        Assert.True(OpenSshExecCommandLine.NamesAProxy(plan));
+    }
+
+    public static TheoryData<string[]> NotProxied => new()
+    {
+        { Plan },
+        { [.. Plan, "-p", "22", "-o", "ServerAliveInterval=5"] },
+        { [.. Plan, "-i", "-J"] },                      // -J is the identity file's name
+        { [.. Plan, "-l", "J"] },
+        { [.. Plan, "-o", "ProxyJumpy=bastion"] },      // another keyword
+        { [.. Plan, "-o", "LocalCommand=ssh -J bastion"] },
+        { [.. Plan, "--", "-J", "bastion"] },           // the remote command, never an option
+        { [.. Plan, "uptime", "-J", "bastion"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(NotProxied))]
+    public void A_plan_that_goes_straight_to_the_target_names_no_proxy(string[] plan)
+    {
+        Assert.False(OpenSshExecCommandLine.NamesAProxy(plan));
+    }
+
+    /// <summary>
+    /// Re-review item 6: the profile's own ssh arguments may change who signs in or where - <c>-l</c>, <c>-o User</c>, a
+    /// config of their own (<c>-F</c>, which beats ours: ssh keeps the last), <c>-o HostName</c> or <c>-o HostKeyAlias</c>
+    /// (both change the host ssh names in its prompts). The askpass helper then cannot recognise the target's prompt, so
+    /// an automatic reconnect must not count on it. Read as ssh reads options after the destination.
+    /// </summary>
+    [Theory]
+    [InlineData("-l other")]
+    [InlineData("-lother")]
+    [InlineData("-vl other")]
+    [InlineData("-o User=other")]
+    [InlineData("-oUser=other")]
+    [InlineData("-o \"user other\"")]
+    [InlineData("-o =User=other")]
+    [InlineData("-F /home/me/.ssh/other_config")]
+    [InlineData("-o HostName=10.0.0.9")]
+    [InlineData("-o hostname 10.0.0.9")]
+    [InlineData("-o HostKeyAlias=prod")]
+    [InlineData("-p 2222 -o ServerAliveInterval=5 -l other")]
+    public void Extra_arguments_that_change_who_or_where_are_found(string extraSshArgs)
+    {
+        Assert.True(OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(extraSshArgs));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("-p 2222")]
+    [InlineData("-o ServerAliveInterval=5 -C")]
+    [InlineData("-i -l")]                        // -l is the identity file's name
+    [InlineData("-o Username=x")]                // another keyword
+    [InlineData("-o \"LocalCommand=ssh -l other\"")]
+    [InlineData("-- -l other")]                  // the remote command, never an option
+    [InlineData("uptime -l other")]
+    public void Extra_arguments_that_keep_who_and_where_are_not(string? extraSshArgs)
+    {
+        Assert.False(OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(extraSshArgs));
     }
 
     private static int IndexOfPair(IReadOnlyList<string> argv, string option, string value)

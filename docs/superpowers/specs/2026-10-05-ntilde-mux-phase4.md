@@ -991,23 +991,32 @@ review; the section they change is named first.
 - **Automatic attempts are non-interactive** (§7.3 had every attempt call the normal connect).
   `MuxConnectAttempt { Interactive }`: a user's request (a pane opening, Enter) is interactive; the
   loop's attempts and the kill-delivery attempt are not. A network drop must not pop a dialog every
-  few seconds, nor send failed logins that fail2ban and lockouts count. Cost: password-only OpenSSH
-  profiles, and native profiles with jump hops and passwords, reconnect on Enter.
+  few seconds, nor send failed logins that fail2ban and lockouts count. They do sign in with the
+  profile's password saved in the vault, with no UI and once (since 2026-10-07, below). Cost:
+  password-only profiles with no saved password, and profiles with jump hops and passwords, reconnect
+  on Enter.
 - **OpenSSH automatic attempts** run with `BatchMode=yes`, no `SSH_ASKPASS`,
   `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. A ProxyJump hop may not inherit `BatchMode`, and an
-  OpenSSH before 8.4 with no tty uses askpass whenever `DISPLAY` is set.
+  OpenSSH before 8.4 with no tty uses askpass whenever `DISPLAY` is set. The exception (since
+  2026-10-07): a profile with a saved password, no jump hops and its own destination runs
+  `BatchMode=no`, `-o NumberOfPasswordPrompts=1` and the askpass helper in its vault-only mode
+  (`NTILDE_SSH_ASKPASS_VAULT_ONLY=1`, with `SSH_ASKPASS_REQUIRE=force` and `DISPLAY` as for a user's
+  attempt), which answers the target's password from the vault and refuses every other prompt
+  without building any UI.
 - **Native automatic attempts** (`RemoteMuxInteractionHandler`) never reach the window's handler, so
-  neither dialogs nor the vault: a host key is accepted only when the app's native known-hosts store
+  no dialogs: a host key is accepted only when the app's native known-hosts store
   already trusts it (rusty_ssh asks about the key on every connect); a password or passphrase is
-  offered only from the host's in-memory record of one that got an earlier attempt in (forgotten on
+  offered from the host's in-memory record of one that got an earlier attempt in (forgotten on
   host dispose, and as soon as an attempt that offered it fails SSH or meets another auth prompt);
   a password is never remembered or replayed for a profile with jump hops, since the prompt does not
-  say which hop asks.
+  say which hop asks. Since 2026-10-07 a password prompt with nothing remembered is answered from the
+  vault, once per attempt, under the same jump-hop rule; a second password prompt aborts.
 - **No empty password.** With nothing to answer, a native automatic attempt aborts by closing the
   session instead of cancelling the prompt: rusty_ssh submits a cancel as an empty password (or empty
   keyboard-interactive answers), which a server logs as a failed login on every retry.
 - **`NeedsUser` stops the loop at once** with `ReconnectAbandoned`. It is the native abort above, and
-  an automatic OpenSSH attempt refused with `Permission denied` (exit 255). Spending the 10-minute
+  an automatic OpenSSH attempt refused with `Permission denied` or, since 2026-10-07, sshd's
+  `Too many authentication failures` (exit 255), and a refused saved password. Spending the 10-minute
   budget would be about 25 pre-auth connections that fail2ban counts. The factory treats it like
   `SshFailed`.
 - **An unremembered passphrase is cancelled, then counts against the attempt** (codex D3). A native
@@ -1028,9 +1037,10 @@ review; the section they change is named first.
   stops at once with `ReconnectAbandoned`, a new tab gets the retry banner and no plain SSH stand-in (which
   would be refused too), a kill waiting on the host stays queued, and the install flow, which builds its
   transport the same way, fails with the message. Once it is on, Enter connects. OpenSSH profiles do not
-  read it. So that the user knows why, a pane writes a `NeedsUser` failure's reason under its Enter banner
-  (`TerminalPane.RemoteNeedsUserLine`), this refusal's and a sign-in's alike, and a host records that failure
-  as `LastFailure` before it raises `ReconnectAbandoned`, where the pane reads it.
+  read it. So that the user knows why, a pane writes a line under its Enter banner for a `NeedsUser`
+  failure (`TerminalPane.RemoteNeedsUserLine`), and a host records that failure as `LastFailure` before it
+  raises `ReconnectAbandoned`, where the pane reads it. For this refusal the line is its message; since
+  2026-10-07 a sign-in's is the app's own words, never ssh's (below).
 - **§7.3 A user's request never joins an automatic attempt.** It cancels the automatic attempt in
   flight and starts an interactive one (then resets the backoff); a joined automatic attempt would
   fail for want of a prompt.
@@ -1314,3 +1324,109 @@ review; the section they change is named first.
   123 ms.
 - **§12.1** The kill-server start-time test lives in `MuxCliTests`, not a separate
   `MuxCliKillServerTests`.
+
+### After merge
+
+- **2026-10-07: automatic reconnects sign in with a saved password, once, and the needs-you line is the
+  app's own** (the user's choice after the smoke test; branch `fix/mux-saved-password-reconnect`). A profile
+  with its password saved in the vault lost its link; the automatic attempt ran in batch mode, was refused,
+  and stopped at the Enter banner with ssh's `Permission denied (publickey,password).` under it - and Enter
+  then signed in at once, silently, from the vault. Now:
+  - An automatic attempt (the loop's, kill delivery's) may sign in with the profile's saved password, with
+    no UI: when the profile has no jump hops (the native rule for passwords), when the host's destination is
+    the one the profile names now (not once it is pinned elsewhere, codex D2: the password is the profile's,
+    for where it points), and while no password was refused on the host since an attempt last got in
+    (`RemoteMuxInteractionHandler`, which takes the app's vault reader, `RemoteMuxHostFactory.ReadSavedPassword`:
+    the lookup the window's prompts and the askpass helper use).
+  - OpenSSH: `RemoteMuxHostFactory.CreateTransport` asks the attempt (`RemoteMuxTransportRequest.OfferSavedPassword`)
+    whether the vault holds one - reading it and keeping nothing - and, with a helper, builds the
+    saved-password-only transport (`OpenSshExecTransport(savedPasswordOnly)`): `BatchMode=no`,
+    `-o NumberOfPasswordPrompts=1` ahead of the plan, and `SshAskPassEnvironment.ApplySavedPasswordOnly`. In that
+    mode `SshAskPassCommand` answers only a prompt that names the target's `user@host`, from the vault, and
+    exits 1 for anything else (a host key, a passphrase, a jump host's password, keyboard-interactive text that
+    asks for no password) or an empty vault, without building an Avalonia app. Otherwise, batch mode as before.
+  - Native: a password prompt with nothing remembered is answered from the vault, once, and only if the attempt
+    offered no other password; a second password prompt aborts (no empty answer). Keyboard-interactive still
+    aborts any round with questions; a passphrase is still declined. The saved password is not copied into the
+    host's memory.
+  - Refused, it stops the loop at once: the connector reports `NeedsUser` with
+    `RemoteNeedsUserCause.SavedPasswordRefused` - native, for any SSH failure after the password was submitted
+    (the server may cut the connection rather than refuse); OpenSSH, for sshd's refusal, which the classifier now
+    also reads in `Too many authentication failures` (sshd past `MaxAuthTries` disconnects instead). A host that
+    was down never had it refused, and keeps offering it. The host then offers it no more until an attempt gets
+    in, so kill deliveries and later losses add no failed login; a refused remembered password stops it too.
+  - `TerminalPane.RemoteNeedsUserLine` maps the failure's `RemoteNeedsUserCause`, never its reason (which stays
+    in the log): `[The saved password was refused — press Enter to sign in]`, or
+    `[Automatic reconnect can't sign in without you — press Enter]` for any other sign-in. The native SSH switch
+    turned off (codex4 F) keeps its own message, since Enter alone cannot fix it.
+  - Enter then asks (coordinator's follow-up, same branch). Before, Enter's attempt answered from the vault first:
+    OpenSSH's interactive askpass filled every target password prompt from it (up to `NumberOfPasswordPrompts` per
+    method) and never showed the dialog, and the native window handler reuses the vault for a connection's first
+    password prompt. Now:
+    - While a password is refused on the host, a user's attempt avoids the saved password altogether
+      (`RemoteMuxInteractionHandler.Attempt.AvoidsSavedPassword`). Native passes each password prompt to the window's
+      handler with vault reuse off (`SshInteractionRequest.WithoutVaultPasswordReuse`). OpenSSH runs the askpass
+      without the vault (`RemoteMuxTransportRequest.WithoutSavedPassword`, `OpenSshExecTransport(withoutSavedPassword)`,
+      `NTILDE_SSH_ASKPASS_NO_VAULT=1`). Either way the dialog comes at once, with no extra failed login, and its
+      "Remember password" replaces the saved one. An attempt that gets in clears the state.
+    - Every user's attempt fills the saved password at most once per ssh process. `SshAskPassEnvironment.Apply` gives
+      each ssh the exec transport starts a session token (`NTILDE_SSH_ASKPASS_SESSION`). The helper records a fill as
+      an empty file named by the token under `<app-data>/askpass` (`SshAskPassSessionMarkers`; records over a day old
+      are swept), and the same ssh asking again goes to the dialog. A fill it cannot record is not made: the user is
+      asked instead. Vault-only mode is unaffected (`NumberOfPasswordPrompts=1` bounds it). Native already offers the
+      vault once per connection (`NativeSshPromptResponder`). Plain OpenSSH tabs use no askpass (they prompt in the
+      terminal), so this applies to the exec transport only.
+  - Branch review fix round (same branch). Refusal now needs evidence (review I-1): before it, a password plus a second
+    factor read as a refused saved password, and the follow-up above then kept the correct password from Enter.
+    - OpenSSH: each attempt names its askpass session token (`RemoteMuxTransportRequest.AskPassSession`,
+      `OpenSshExecTransport(askPassSession)`). In vault-only mode the helper records `<token>.answered` when it fills
+      the target's password, and `<token>.declined` when it declines a prompt that names the target (`(user@host) ` /
+      `user@host's `) but asks for no password (`SshAskPassSessionMarkers`). The connector counts `SavedPasswordRefused`
+      only for answered and not declined. A declined record is a second factor. No record at all - sshd refused
+      without asking: agent keys past `MaxAuthTries`, password auth off, a prompt the helper did not recognise - counts
+      nothing, and the line is the plain one.
+    - Native: after the saved password, a password prompt or a keyboard-interactive question that asks for a password
+      (case-insensitive "password"), or an SSH failure with nothing after it, is a refusal. A question asking for
+      anything else is a second factor. The saved password counts whether it came from the vault or from the host's
+      memory of an earlier sign-in holding the same value (the live smoke test: the window's handler had filled it on
+      Enter, so the loop's attempt answered from memory, and rusty_ssh's "SSH authentication failed" left it SshFailed,
+      costing one more attempt and the wrong line). A remembered password followed by a second factor is not marked
+      refused either.
+    - A second factor: the failure is `NeedsUser` with the plain sign-in line. The host remembers the saved password
+      alone cannot sign in, and its automatic attempts no longer offer it (batch mode, or an aborted prompt: no more
+      failed rounds). User attempts still fill it once, and the dialog asks only for the code.
+    - The refusal is kept as a keyed hash (HMAC-SHA256 under a key made for this process, never the value; review M7).
+      A host keeps up to four, the oldest dropped first, so a refused typed or remembered password does not push a
+      refused saved one out (re-review item 4). A refused value is not offered automatically nor filled on Enter, and a
+      different saved value is. A typed password that gets in (Remember unticked) no longer re-arms the stale saved
+      value, and only the password that got in clears a refusal: one the server rejected again earlier in the same
+      attempt does not (Greptile G2). Each window's hosts keep their own record: N windows may cost N failed logins.
+    - Clearing a refused value: on native, a sign-in with the refused value itself clears it, because the attempt sees
+      every secret it sends. On OpenSSH the app never sees what the helper or the user sent. A value counted as refused
+      there stays skipped until the host is released (its window's tabs on that host close), even after the user saves
+      the same value with Remember. Nothing is counted once an attempt got past sign-in (the proxy's greeting arrived;
+      re-review item 1). So on OpenSSH a correct password is counted refused only when sshd failed the session between
+      accepting it and the command running - a disconnect there, or a server whose AuthenticationMethods want a key after
+      the password - and stays skipped until the host is released.
+    - Smaller fixes:
+      - The saved password is offered to OpenSSH only for a profile with a user and a host (the helper must
+        recognise the prompt; M2), whose own extra arguments do not change who signs in or where
+        (`OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere`: `-l`, `-F`, `-o User`, `-o HostName`,
+        `-o HostKeyAlias`; re-review item 6), and not when the plan's own arguments go through a jump host
+        (`OpenSshExecCommandLine.NamesAProxy`: `-J`, `ProxyJump`, `ProxyCommand`; M3). Both read the arguments with
+        ssh's getopt rules.
+      - A retargeted user attempt keeps the saved password away (M4).
+      - The helper's once-per-ssh claim is atomic (`FileMode.CreateNew`; M5).
+      - A vault that throws counts as nothing saved (M6).
+      - The saved password is offered to an OpenSSH askpass only when the helper's record folder takes a probe file
+        (`SshAskPassSessionMarkers.CanRecord`, logged once per host; Greptile G1): without its record a refusal could
+        never be counted, and every later attempt would send it again. If the folder fails after the probe (a race), the
+        helper still answers: declining would make ssh send an empty password, and the next attempt's probe stops it.
+      - A native user attempt on a jump-hop profile passes password prompts on with vault reuse off (M9).
+      - An askpass run never applies a staged update at startup (`Program.ShouldAutoApplyUpdateOnStartup`; I-2).
+  - Limits: ssh counts `NumberOfPasswordPrompts` per method, so a server that offers both keyboard-interactive
+    and password auth may be sent a wrong saved password once by each before the loop stops; a
+    keyboard-interactive second factor after the password is answered empty by ssh (the helper refuses it), one
+    failed round, also before the loop stops. Kill delivery and the host's release are unchanged.
+  - Settings: "Keep shells running when the window closes" no longer says SSH panes are not affected, and
+    "Native SSH backend" says a Native profile's persistent tab cannot reconnect while it is off.

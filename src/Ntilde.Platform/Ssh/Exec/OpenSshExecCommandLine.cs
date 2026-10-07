@@ -14,7 +14,7 @@ public static class OpenSshExecCommandLine
     internal const string SshOptionLetters = "1246ab:c:e:fgi:kl:m:no:p:qstvxAB:CD:E:F:GI:J:KL:MNO:P:Q:R:S:TVw:W:XYy";
 
     /// <summary>
-    /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no|yes, -o ControlMaster=no, ...plan, --, command]</c>,
+    /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no|yes, (-o NumberOfPasswordPrompts=1,) -o ControlMaster=no, ...plan, --, command]</c>,
     /// with every piece of the plan that would break the exec channel dropped (<see cref="WithoutChannelBreakers"/>).
     /// </summary>
     /// <remarks>
@@ -29,7 +29,11 @@ public static class OpenSshExecCommandLine
     /// <item><c>BatchMode=no</c>: prompts stay possible; they reach the user through askpass. With
     /// <paramref name="batchMode"/> it is <c>BatchMode=yes</c> in the same place instead, so ssh never
     /// prompts at all: for an attempt nobody is waiting on (an automatic reconnect). Replaced, not
-    /// appended, because ssh keeps an option's first value.</item>
+    /// appended, because ssh keeps an option's first value. With <paramref name="savedPasswordOnly"/> (an
+    /// automatic reconnect whose profile has a saved password, answered by the askpass helper's vault-only mode)
+    /// it stays <c>BatchMode=no</c>, followed by <c>NumberOfPasswordPrompts=1</c>: a refused password is not
+    /// asked for again. ssh counts that per method, so a server that offers both keyboard-interactive and
+    /// password auth may still be sent it once by each.</item>
     /// <item><c>ControlMaster=no</c>: a profile with connection sharing (<c>ControlMaster auto</c> in
     /// the generated config) still reuses an existing master, but this hidden ssh never becomes one.
     /// Were it the master, a visible tab of the same profile would multiplex through it, and the
@@ -46,20 +50,29 @@ public static class OpenSshExecCommandLine
     /// <param name="remoteCommand">The command line the remote shell runs.</param>
     /// <param name="log">Told about each piece dropped from the plan, and why.</param>
     /// <param name="batchMode">True for <c>BatchMode=yes</c>: ssh fails instead of prompting.</param>
+    /// <param name="savedPasswordOnly">True for <c>BatchMode=no</c> with <c>NumberOfPasswordPrompts=1</c>; not with <paramref name="batchMode"/>.</param>
+    /// <exception cref="ArgumentException">Both <paramref name="batchMode"/> and <paramref name="savedPasswordOnly"/>.</exception>
     public static IReadOnlyList<string> Build(
         IReadOnlyList<string> diagnosticsArguments,
         IReadOnlyList<string> planArguments,
         string remoteCommand,
         Action<string>? log = null,
-        bool batchMode = false)
+        bool batchMode = false,
+        bool savedPasswordOnly = false)
     {
         ArgumentNullException.ThrowIfNull(diagnosticsArguments);
         ArgumentNullException.ThrowIfNull(planArguments);
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteCommand);
+        if (batchMode && savedPasswordOnly)
+        {
+            throw new ArgumentException("Batch mode never prompts, so it cannot answer a saved password.", nameof(savedPasswordOnly));
+        }
 
-        var argv = new List<string>(diagnosticsArguments.Count + planArguments.Count + 9);
+        var argv = new List<string>(diagnosticsArguments.Count + planArguments.Count + 11);
         argv.AddRange(diagnosticsArguments);
-        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", batchMode ? "BatchMode=yes" : "BatchMode=no", "-o", "ControlMaster=no"]);
+        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", batchMode ? "BatchMode=yes" : "BatchMode=no"]);
+        if (savedPasswordOnly) argv.AddRange(["-o", "NumberOfPasswordPrompts=1"]);
+        argv.AddRange(["-o", "ControlMaster=no"]);
         argv.AddRange(WithoutChannelBreakers(planArguments, log));
         argv.Add("--");
         argv.Add(remoteCommand);
@@ -154,6 +167,85 @@ public static class OpenSshExecCommandLine
 
         return kept;
     }
+
+    /// <summary>
+    /// Whether the plan's own arguments send ssh through another host: a <c>-J</c>, or an <c>-o</c> whose keyword (read as
+    /// ssh reads it, <see cref="ConfigKeyword"/>; case-insensitive) is <c>ProxyJump</c> or <c>ProxyCommand</c>. The plan
+    /// is read as <see cref="WithoutChannelBreakers"/> reads it - letters cluster, an option's argument is the rest of its
+    /// token or the next one and never scanned, nothing after <c>--</c> or a word past the destination is an option - so a
+    /// <c>-J</c> that is another option's argument, or part of the remote command, does not count. Any value counts, even
+    /// <c>none</c>: what matters is whether a saved password could reach a host other than the target.
+    /// </summary>
+    public static bool NamesAProxy(IReadOnlyList<string> planArguments)
+    {
+        ArgumentNullException.ThrowIfNull(planArguments);
+        return AnyOption(planArguments, static (letter, argument) =>
+            letter == 'J' || (letter == 'o' && IsConfigKeyword(argument, "ProxyJump", "ProxyCommand")));
+    }
+
+    /// <summary>
+    /// Whether the profile's own extra ssh arguments (<c>SshProfile.ExtraSshArgs</c>, split as the plan splits them) change
+    /// who signs in or where, so that ssh's prompts may not name the profile's <c>user@host</c>: <c>-l</c>, <c>-F</c> (a
+    /// config of their own, which beats the plan's: ssh keeps the last <c>-F</c>), or an <c>-o</c> whose keyword is
+    /// <c>User</c>, <c>HostName</c> or <c>HostKeyAlias</c> (the last two change the host ssh names). Read as ssh reads the
+    /// options after the destination, where the plan puts them, with the rules of <see cref="NamesAProxy"/>. Only the
+    /// profile's own arguments: the plan's <c>-F</c> and a pinned plan's <c>-o</c> block are the profile itself.
+    /// </summary>
+    public static bool ExtraArgumentsChangeWhoOrWhere(string? extraSshArgs)
+    {
+        IReadOnlyList<string> extra = Launch.SshLaunchPlanner.ParseExtraArguments(extraSshArgs);
+        if (extra.Count == 0) return false;
+        return AnyOption(["destination", .. extra], static (letter, argument) =>
+            letter is 'l' or 'F' || (letter == 'o' && IsConfigKeyword(argument, "User", "HostName", "HostKeyAlias")));
+    }
+
+    /// <summary>
+    /// Whether <paramref name="match"/> holds for any option ssh reads in <paramref name="plan"/>, given its letter and its
+    /// argument (empty for a flag), read as <see cref="WithoutChannelBreakers"/> reads the plan: letters cluster, an
+    /// option's argument is the rest of its token or the next one and never scanned, and nothing after <c>--</c> or a word
+    /// past the destination is an option.
+    /// </summary>
+    private static bool AnyOption(IReadOnlyList<string> plan, Func<char, string, bool> match)
+    {
+        bool afterDestination = false;
+        for (int i = 0; i < plan.Count; i++)
+        {
+            string token = plan[i];
+            bool isOption = token.Length >= 2 && token[0] == '-' && token != "--";
+            if (!isOption)
+            {
+                if (token != "--" && !afterDestination)
+                {
+                    afterDestination = true; // the destination
+                    continue;
+                }
+
+                return false; // ssh reads no option from here on
+            }
+
+            for (int j = 1; j < token.Length; j++)
+            {
+                char letter = token[j];
+                if (!TakesArgument(letter))
+                {
+                    if (match(letter, string.Empty)) return true;
+                    continue;
+                }
+
+                bool attached = j + 1 < token.Length;
+                string argument = attached ? token[(j + 1)..] : i + 1 < plan.Count ? plan[i + 1] : string.Empty;
+                if (!attached && i + 1 < plan.Count) i++;
+                if (match(letter, argument)) return true;
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether the <c>-o</c> line <paramref name="option"/> sets one of <paramref name="keywords"/> (as ssh reads its keyword; case-insensitive).</summary>
+    private static bool IsConfigKeyword(string option, params string[] keywords) =>
+        ConfigKeyword(option) is { Length: > 0 } keyword && Array.Exists(keywords, k => keyword.Equals(k, StringComparison.OrdinalIgnoreCase));
 
     private static bool TakesArgument(char letter)
     {

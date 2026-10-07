@@ -12,7 +12,9 @@ namespace Ntilde.Platform.Ssh.Exec;
 /// <c>ssh -T -o ClearAllForwardings=yes -o BatchMode=no &lt;plan&gt; -- &lt;command&gt;</c>, with
 /// redirected stdio, no window and no shell, and prompts sent to the askpass helper. In batch mode
 /// (<see cref="BatchMode"/>, for automatic reconnects) it is <c>BatchMode=yes</c> and there is no
-/// askpass: ssh fails rather than prompt.
+/// askpass: ssh fails rather than prompt. An automatic reconnect whose profile has a saved password
+/// runs <see cref="SavedPasswordOnly"/> instead: askpass answers the target's password from the vault,
+/// once, and nothing else.
 /// </summary>
 /// <remarks>
 /// <see cref="Start"/> returns once ssh is running: connect and auth happen in ssh, while the caller
@@ -26,6 +28,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     private readonly string _executablePath;
     private readonly Func<string, IReadOnlyList<string>> _buildArguments;
     private readonly string? _askPassHelperPath;
+    private readonly string? _askPassSession;
     private readonly Action<string> _log;
 
     /// <param name="profile">The profile: its name and address for askpass and <see cref="DisplayName"/>.</param>
@@ -39,6 +42,26 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// <c>BatchMode=yes</c> and without askpass, so it fails instead of prompting. Keys, the agent and
     /// an existing ControlMaster still work.
     /// </param>
+    /// <param name="savedPasswordOnly">
+    /// True for an attempt nobody is waiting on whose profile has a saved password (an automatic reconnect): ssh runs
+    /// with <c>BatchMode=no</c> and <c>NumberOfPasswordPrompts=1</c>, and the helper in its vault-only mode
+    /// (<see cref="SshAskPassEnvironment.ApplySavedPasswordOnly"/>), which answers the target's password from the vault
+    /// and refuses everything else without any UI. Without a helper it is batch mode. Not with <paramref name="batchMode"/>.
+    /// </param>
+    /// <param name="withoutSavedPassword">
+    /// True for a user's attempt after the host's saved password was refused: ssh runs as for any user's attempt, but the
+    /// helper never answers from the vault (<see cref="SshAskPassEnvironment.ApplyWithoutSavedPassword"/>), so the user's
+    /// dialog comes at once. Only for a user's attempt: not with <paramref name="batchMode"/> or <paramref name="savedPasswordOnly"/>.
+    /// </param>
+    /// <param name="askPassSession">
+    /// The askpass session token every ssh this transport starts gets (<see cref="SshAskPassEnvironment.SessionVariable"/>),
+    /// or null for a new one per ssh. A connect attempt's transport, started once, passes the attempt's own, so the app
+    /// can read back what the helper did for it.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// More than one of <paramref name="batchMode"/>, <paramref name="savedPasswordOnly"/> and <paramref name="withoutSavedPassword"/>;
+    /// or an <paramref name="askPassSession"/> that is not a session token.
+    /// </exception>
     public OpenSshExecTransport(
         SshProfile profile,
         string sshExecutablePath,
@@ -46,8 +69,20 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         string? askPassHelperPath,
         IReadOnlyList<string>? diagnosticsArguments = null,
         Action<string>? log = null,
-        bool batchMode = false)
-        : this(profile, sshExecutablePath, ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, batchMode), askPassHelperPath, log, batchMode)
+        bool batchMode = false,
+        bool savedPasswordOnly = false,
+        bool withoutSavedPassword = false,
+        string? askPassSession = null)
+        : this(
+            profile,
+            sshExecutablePath,
+            ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, ModeOf(batchMode, savedPasswordOnly, withoutSavedPassword, askPassHelperPath)),
+            askPassHelperPath,
+            log,
+            batchMode,
+            savedPasswordOnly,
+            withoutSavedPassword,
+            askPassSession)
     {
     }
 
@@ -61,20 +96,33 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         Func<string, IReadOnlyList<string>> buildArguments,
         string? askPassHelperPath,
         Action<string>? log,
-        bool batchMode = false)
+        bool batchMode = false,
+        bool savedPasswordOnly = false,
+        bool withoutSavedPassword = false,
+        string? askPassSession = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
+        if (askPassSession is not null && !SshAskPassEnvironment.IsSessionToken(askPassSession))
+        {
+            throw new ArgumentException("Not a session token: 32 lowercase hex digits.", nameof(askPassSession));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(buildArguments);
+        PromptMode mode = ModeOf(batchMode, savedPasswordOnly, withoutSavedPassword, askPassHelperPath);
+        bool batch = mode == PromptMode.Batch;
 
         _profile = profile;
         _executablePath = executablePath;
         _buildArguments = buildArguments;
         // Batch mode never prompts, so it has no use for a helper; leaving it out means no dialog can
         // appear even if a future ssh consulted askpass despite BatchMode.
-        _askPassHelperPath = batchMode || string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
+        _askPassHelperPath = batch || string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
+        _askPassSession = askPassSession;
         _log = log ?? TerminalLogger.Log;
-        BatchMode = batchMode;
+        BatchMode = batch;
+        SavedPasswordOnly = mode == PromptMode.SavedPasswordOnly;
+        WithoutSavedPassword = mode == PromptMode.WithoutSavedPassword;
     }
 
     public string DisplayName =>
@@ -82,6 +130,54 @@ public sealed class OpenSshExecTransport : ISshExecTransport
 
     /// <summary>True when ssh runs with <c>BatchMode=yes</c> and no askpass: it never prompts.</summary>
     public bool BatchMode { get; }
+
+    /// <summary>
+    /// True when ssh runs with <c>BatchMode=no</c>, <c>NumberOfPasswordPrompts=1</c> and the helper in its vault-only
+    /// mode: the target's password is answered from the vault, once, and nothing else is asked of anyone.
+    /// </summary>
+    public bool SavedPasswordOnly { get; }
+
+    /// <summary>
+    /// True when a user is waiting and the helper never answers from the vault: every prompt goes to the user's dialog.
+    /// False without a helper, when nothing could prompt anyway.
+    /// </summary>
+    public bool WithoutSavedPassword { get; }
+
+    /// <summary>The askpass session token every ssh this transport starts gets, or null when each gets a new one.</summary>
+    public string? AskPassSession => _askPassSession;
+
+    /// <summary>How ssh may prompt: <see cref="ModeOf"/> decides it.</summary>
+    private enum PromptMode
+    {
+        /// <summary>A user is waiting: every prompt goes to the helper, which fills the target's password from the vault once per ssh.</summary>
+        Interactive,
+
+        /// <summary>A user is waiting, and the helper never answers from the vault.</summary>
+        WithoutSavedPassword,
+
+        /// <summary>Nobody is waiting: the helper answers the target's password from the vault, and nothing else.</summary>
+        SavedPasswordOnly,
+
+        /// <summary>Nobody is waiting: <c>BatchMode=yes</c>, no askpass.</summary>
+        Batch,
+    }
+
+    /// <summary>
+    /// The mode the transport runs in, from at most one of the three flags. Saved-password-only needs a helper, and is
+    /// batch without one; without a helper a user's attempt cannot prompt, so without-saved-password changes nothing.
+    /// </summary>
+    private static PromptMode ModeOf(bool batchMode, bool savedPasswordOnly, bool withoutSavedPassword, string? askPassHelperPath)
+    {
+        if ((batchMode ? 1 : 0) + (savedPasswordOnly ? 1 : 0) + (withoutSavedPassword ? 1 : 0) > 1)
+        {
+            throw new ArgumentException("Batch mode, saved-password-only and without-saved-password exclude each other.", nameof(withoutSavedPassword));
+        }
+
+        bool helped = !string.IsNullOrWhiteSpace(askPassHelperPath);
+        if (batchMode) return PromptMode.Batch;
+        if (savedPasswordOnly) return helped ? PromptMode.SavedPasswordOnly : PromptMode.Batch;
+        return withoutSavedPassword && helped ? PromptMode.WithoutSavedPassword : PromptMode.Interactive;
+    }
 
     public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
     {
@@ -91,6 +187,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         ProcessStartInfo startInfo = CreateStartInfo(remoteCommand);
         _log($"[OpenSshExec] {DisplayName}: {startInfo.FileName} {SshArgBuilder.SanitizeForLog(SshArgBuilder.BuildCommandLine(startInfo.ArgumentList))}"
             + (BatchMode ? " (batch mode: ssh will not prompt)"
+                : SavedPasswordOnly ? " (saved password only: askpass answers the target's password from the vault, once, and nothing else)"
+                : WithoutSavedPassword ? " (the saved password was refused: askpass asks the user, not the vault)"
                 : _askPassHelperPath is null ? " (no askpass helper: ssh cannot prompt)" : string.Empty));
 
         var process = new Process { StartInfo = startInfo };
@@ -116,7 +214,11 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         return channel;
     }
 
-    /// <summary>The process to start: ssh itself (no shell), all three streams piped, askpass when there is a helper and no askpass at all in batch mode.</summary>
+    /// <summary>
+    /// The process to start: ssh itself (no shell), all three streams piped, askpass when there is a helper - with a new
+    /// session token each time, in its vault-only mode for <see cref="SavedPasswordOnly"/>, without the vault for
+    /// <see cref="WithoutSavedPassword"/> - and no askpass at all in batch mode.
+    /// </summary>
     internal ProcessStartInfo CreateStartInfo(string remoteCommand)
     {
         var startInfo = new ProcessStartInfo
@@ -139,21 +241,30 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             // Nothing this ssh starts - a ProxyJump hop's ssh among them - may prompt either.
             SshAskPassEnvironment.Suppress(startInfo.Environment);
         }
+        else if (SavedPasswordOnly)
+        {
+            // Every ssh this one starts inherits it too; the helper answers only a prompt that names the target.
+            SshAskPassEnvironment.ApplySavedPasswordOnly(startInfo.Environment, _askPassHelperPath!, _profile, _askPassSession);
+        }
+        else if (WithoutSavedPassword)
+        {
+            SshAskPassEnvironment.ApplyWithoutSavedPassword(startInfo.Environment, _askPassHelperPath!, _profile, _askPassSession);
+        }
         else if (_askPassHelperPath is not null)
         {
-            SshAskPassEnvironment.Apply(startInfo.Environment, _askPassHelperPath, _profile);
+            SshAskPassEnvironment.Apply(startInfo.Environment, _askPassHelperPath, _profile, _askPassSession);
         }
 
         return startInfo;
     }
 
     private static Func<string, IReadOnlyList<string>> ArgumentsFor(
-        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, bool batchMode)
+        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, PromptMode mode)
     {
         ArgumentNullException.ThrowIfNull(planArguments);
         string[] plan = [.. planArguments];
         string[] diagnostics = diagnosticsArguments is null ? [] : [.. diagnosticsArguments];
-        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, batchMode);
+        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, mode == PromptMode.Batch, mode == PromptMode.SavedPasswordOnly);
     }
 }
 

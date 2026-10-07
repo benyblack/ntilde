@@ -479,18 +479,26 @@ it).
 - **Automatic attempts never prompt.** `MuxConnectAttempt.Interactive` is true for a user's request
   (a pane opening, Enter) and false for the loop's attempts and the kill-delivery attempt below. A
   user's request cancels an automatic attempt in flight and starts an interactive one. An automatic
-  OpenSSH attempt runs with `BatchMode=yes`, no `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=never` and no
-  `DISPLAY`. An automatic native attempt goes through `RemoteMuxInteractionHandler`: it accepts a
-  host key only when the app's native known-hosts store already trusts it; it offers a password or
-  passphrase only from the host's in-memory record of one that got an earlier attempt in (forgotten
-  when an attempt that offered it fails SSH, and never kept for a password on a profile with jump
-  hops, since a native prompt does not say which hop asks); and for anything else it aborts the
-  attempt by closing the session, so no empty password ever reaches the server. Such an attempt
-  fails `NeedsUser` (as does an automatic OpenSSH attempt refused with `Permission denied`), which
-  stops the loop at once with `ReconnectAbandoned`: retrying would only feed fail2ban. A key's
-  passphrase with nothing remembered is cancelled instead (it sends the server nothing, and the agent
-  or another key may still get in), but recorded: if the attempt then fails SSH, it is `NeedsUser`
-  too.
+  attempt may sign in with the profile's password saved in the vault, once and with no UI
+  (`RemoteMuxInteractionHandler`, given the app's vault reader `RemoteMuxHostFactory.ReadSavedPassword`):
+  only with no jump hops, for the destination the profile names now, and while no password was refused
+  on the host since an attempt last got in. An automatic OpenSSH attempt with such a password runs
+  `BatchMode=no`, `-o NumberOfPasswordPrompts=1` and the askpass helper in its vault-only mode
+  (`NTILDE_SSH_ASKPASS_VAULT_ONLY=1`), which answers the target's password from the vault and
+  refuses every other prompt without building any UI; any other runs with `BatchMode=yes`, no
+  `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. An automatic native attempt goes
+  through `RemoteMuxInteractionHandler`: it accepts a host key only when the app's native known-hosts
+  store already trusts it; it offers a password or passphrase from the host's in-memory record of one
+  that got an earlier attempt in (forgotten when an attempt that offered it fails SSH, and never kept
+  for a password on a profile with jump hops, since a native prompt does not say which hop asks), or
+  else the saved password, once; and for anything else it aborts the attempt by closing the session,
+  so no empty password ever reaches the server. Such an attempt fails `NeedsUser` (as does an
+  automatic OpenSSH attempt refused with `Permission denied` or `Too many authentication failures`,
+  and a refused saved password, `RemoteNeedsUserCause.SavedPasswordRefused`), which stops the loop at
+  once with `ReconnectAbandoned`: retrying would only feed fail2ban. A key's passphrase with nothing
+  remembered is cancelled instead (it sends the server nothing, and the agent or another key may
+  still get in), but recorded: if the attempt then fails SSH, it is `NeedsUser` too. The pane's line
+  under its Enter banner comes from the failure's `RemoteNeedsUserCause`, never from ssh's words.
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
   through it, and so does the kill of a shell a stale result started (a result that came back to a pane
   closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once; otherwise it is queued, kept across
@@ -536,7 +544,15 @@ deadline; the installer uses it.
   `-o ForkAfterAuthentication`, `-o StdinNull`, `-o RemoteCommand`, `-o PermitLocalCommand`), or would
   make the hidden ssh a master (`-M`). An interactive attempt gets the app as `SSH_ASKPASS`
   (`SSH_ASKPASS_REQUIRE=force`, `DISPLAY=ntilde`, `NTILDE_SSH_ASKPASS_PROFILE_*`); the helper fills in
-  the vault password only for a prompt that names the target's `user@host`, never a jump host's.
+  the vault password only for a prompt that names the target's `user@host`, never a jump host's, and
+  at most once per ssh process (`NTILDE_SSH_ASKPASS_SESSION`, a new token for each ssh, recorded by
+  `SshAskPassSessionMarkers` under `<app-data>/askpass`): the same ssh asking again gets the dialog.
+  After a password was refused on the host, a user's attempt runs it without the vault
+  (`NTILDE_SSH_ASKPASS_NO_VAULT=1`), and the native one passes its password prompts to the window's
+  handler with vault reuse off, so the dialog comes at once. An
+  automatic attempt with a saved password gets the same plus `NTILDE_SSH_ASKPASS_VAULT_ONLY=1` and
+  `-o NumberOfPasswordPrompts=1` (`OpenSshExecTransport.SavedPasswordOnly`): the helper then answers
+  that prompt alone and exits 1 for anything else, without any UI.
 - **Native** (`NativeSshExecTransport`): `nova_ssh_exec(args, command)` runs rusty_ssh's exec mode,
   which takes the same hop, auth and prompt path as a shell session but opens no PTY and detects no
   shell: `channel_open_session`, then `exec`. Stdout arrives as `Data` events, stderr as

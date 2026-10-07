@@ -507,6 +507,48 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         PlanArguments = ["-F", "cfg", "ntilde_0123"],
     };
 
+    /// <summary>
+    /// The reader the app gives a remote host (<see cref="RemoteMuxHostFactory.ReadSavedPassword"/>) looks the profile up as
+    /// the prompts save it and the askpass helper reads it: by the profile's id first, then the older keys.
+    /// </summary>
+    [Fact]
+    public void The_apps_saved_password_reader_finds_the_profiles_vault_entry()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        var vault = new Ntilde.Shell.VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var legacy = new Ntilde.Shell.VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        Assert.Null(RemoteMuxHostFactory.ReadSavedPassword(vault, profile));
+
+        vault.SetSecret(Ntilde.Shell.VaultService.GetCanonicalSshProfileKey(profile.Id), "s3cret");
+        legacy.SetSecret("SSH:nova@fake-host", "shared");
+
+        Assert.Equal("s3cret", RemoteMuxHostFactory.ReadSavedPassword(vault, profile));
+        Assert.Equal("shared", RemoteMuxHostFactory.ReadSavedPassword(legacy, profile));
+    }
+
+    /// <summary>
+    /// Re-review item 2: the transport gives ssh the attempt's own askpass token, the one whose helper records the connector
+    /// reads back; without it they would be written under a token nobody reads, and no refusal could ever be counted.
+    /// </summary>
+    [Fact]
+    public void An_OpenSSH_transport_carries_the_attempts_askpass_token()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.OpenSsh;
+        RemoteMuxInteractionHandler.Attempt attempt = new RemoteMuxInteractionHandler(user: null, _ => false).BeginAttempt(false);
+
+        ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(false, attempt, AskPassSession: attempt.AskPassSession),
+            (_, _) => Launch,
+            () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+            static () => true,
+            askPassHelperPath: "/opt/ntilde/ntilde",
+            log: null);
+
+        Assert.Equal(attempt.AskPassSession, Assert.IsType<OpenSshExecTransport>(transport).AskPassSession);
+    }
+
     [Fact]
     public void An_OpenSSH_profile_runs_ssh_in_batch_mode_only_for_automatic_attempts()
     {
@@ -582,6 +624,7 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
 
         Assert.Equal(RemoteFailureKind.NeedsUser, refused.Failure.Kind);
         Assert.Equal(SshSessionFactory.NativeSshDisabledMessage, refused.Failure.Reason);
+        Assert.Equal(RemoteNeedsUserCause.NativeSshDisabled, refused.Failure.Cause);   // the pane shows this reason as it is
         Assert.Equal(0, nativeLayers);
 
         enabled = true;   // turned on again

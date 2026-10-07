@@ -63,6 +63,15 @@ internal static class RemoteMuxHostFactory
     /// it, means the app's native known-hosts store, the one the window's prompts record accepted keys in. A
     /// caller with a store of its own passes it here (the Docker E2E: the app's store is bound once per process).
     /// </param>
+    /// <param name="savedPassword">
+    /// Reads a profile's password saved in the vault (<see cref="ReadSavedPassword"/> in the app), for the host's automatic
+    /// attempts: they sign in with it, once, with no UI (<see cref="RemoteMuxInteractionHandler"/>). Null: they never do.
+    /// </param>
+    /// <param name="askPassRecords">
+    /// Reads what OpenSSH's askpass helper did for an attempt's ssh (<see cref="SshAskPassSessionMarkers.Read"/> over
+    /// <see cref="SshAskPassSessionMarkers.DefaultDirectory"/> in the app), so a saved password counts as refused only when
+    /// the helper filled it, and a second factor does not count.
+    /// </param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
@@ -70,7 +79,9 @@ internal static class RemoteMuxHostFactory
         Action<string>? log,
         ISshInteractionHandler? userPrompts = null,
         IMuxTimerScheduler? scheduler = null,
-        Func<SshInteractionRequest, bool>? isTrustedHostKey = null)
+        Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
+        Func<SshProfile, string?>? savedPassword = null,
+        SshAskPassSessionMarkers? askPassRecords = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -103,7 +114,7 @@ internal static class RemoteMuxHostFactory
         var connector = new RemoteMuxConnector(
             CurrentProfile,
             transportFor,
-            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey),
+            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword, askPassRecords, log),
             Guid.NewGuid().ToString("N"),
             log)
         {
@@ -117,6 +128,27 @@ internal static class RemoteMuxHostFactory
             ClassifyDisconnect = client => ClassifyDisconnectAsync(connector, client),
             Scheduler = scheduler ?? SystemMuxTimerScheduler.Instance,
         };
+    }
+
+    /// <summary>
+    /// <paramref name="profile"/>'s password saved in <paramref name="vault"/>, or null: looked up as the window's prompts
+    /// save it and the askpass helper reads it (<see cref="VaultService.GetSshPasswordForProfile"/>, by the profile's id,
+    /// then its older name-based keys), so an automatic attempt and the helper agree on whether there is one.
+    /// </summary>
+    internal static string? ReadSavedPassword(VaultService vault, SshProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(vault);
+        ArgumentNullException.ThrowIfNull(profile);
+        string? saved = vault.GetSshPasswordForProfile(new TerminalProfile
+        {
+            Type = ConnectionType.SSH,
+            Id = profile.Id,
+            Name = profile.Name ?? string.Empty,
+            SshUser = profile.User ?? string.Empty,
+            SshHost = profile.Host ?? string.Empty,
+            SshPort = profile.Port,
+        });
+        return string.IsNullOrEmpty(saved) ? null : saved;
     }
 
     /// <summary>
@@ -138,9 +170,14 @@ internal static class RemoteMuxHostFactory
     /// The app's transport for one attempt, by the profile's backend (spec §8.2, §8.3):
     /// <list type="bullet">
     /// <item>OpenSSH: ssh with the profile's launch plan. A user-started attempt prompts through the
-    /// askpass helper; an automatic one runs in batch mode, without askpass, so it fails rather than
-    /// prompt - a password-only OpenSSH profile then reconnects on Enter, or through keys, the agent or
-    /// an existing ControlMaster.</item>
+    /// askpass helper. An automatic one whose profile has a saved password it may use
+    /// (<see cref="RemoteMuxTransportRequest.OfferSavedPassword"/>: no jump hops, the profile's own destination, not
+    /// refused before on this host) runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
+    /// password is answered from the vault, once, and every other prompt is refused with no UI. Any other automatic one
+    /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
+    /// reconnects on Enter, or through keys, the agent or an existing ControlMaster. A user's attempt after a password was
+    /// refused on the host (<see cref="RemoteMuxTransportRequest.WithoutSavedPassword"/>) runs the helper without the
+    /// vault, so the user is asked at once; any other user's attempt has it fill the saved password once per ssh.</item>
     /// <item>Native: the native exec transport, its prompts answered by
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
@@ -181,14 +218,29 @@ internal static class RemoteMuxHostFactory
         }
 
         SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
+        IReadOnlyList<string> plan = PlanArgumentsFor(launch, request);
+        // Offered only once a helper exists to answer it and the plan is built; only when the helper can recognise the
+        // target's prompt - it names the profile's user@host (review M2), which the profile's own arguments must not change
+        // (-l, -o User, -F, -o HostName, -o HostKeyAlias: re-review item 6); and not when the plan's own arguments go
+        // through a jump host, which on OpenSSH before 8.4 could ask as the target (review M3).
+        bool savedPasswordOnly = !request.Interactive
+            && askPassHelperPath is not null
+            && !string.IsNullOrWhiteSpace(profile.User)
+            && !string.IsNullOrWhiteSpace(profile.Host)
+            && !OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(profile.ExtraSshArgs)
+            && !OpenSshExecCommandLine.NamesAProxy(plan)
+            && request.OfferSavedPassword?.Invoke() == true;
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
-            PlanArgumentsFor(launch, request),
-            request.Interactive ? askPassHelperPath : null,
+            plan,
+            request.Interactive || savedPasswordOnly ? askPassHelperPath : null,
             diagnosticsArguments: null,
             log,
-            batchMode: !request.Interactive);
+            batchMode: !request.Interactive && !savedPasswordOnly,
+            savedPasswordOnly: savedPasswordOnly,
+            withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
+            askPassSession: request.AskPassSession);
     }
 
     /// <summary>
@@ -196,8 +248,9 @@ internal static class RemoteMuxHostFactory
     /// refuses such a profile's session (<see cref="SshSessionFactory"/>), and with its message: a profile saved as
     /// Native stays saved when the switch goes off, and its persistent tabs must not connect around it. Nothing is built
     /// or connected first. The failure is <see cref="RemoteFailureKind.NeedsUser"/>: another automatic attempt would be
-    /// refused the same way, so the reconnect loop stops at once and the pane offers Enter, and says why; a kill waiting
-    /// on the host stays queued. Once the switch is on, Enter connects. An OpenSSH profile does not read the switch.
+    /// refused the same way, so the reconnect loop stops at once and the pane offers Enter, and says why - this message,
+    /// as it is (<see cref="RemoteNeedsUserCause.NativeSshDisabled"/>); a kill waiting on the host stays queued. Once the
+    /// switch is on, Enter connects. An OpenSSH profile does not read the switch.
     /// </summary>
     /// <exception cref="RemoteMuxUnavailableException">The profile is Native and <paramref name="nativeSshEnabled"/> says off.</exception>
     internal static void ThrowIfNativeSshDisabled(SshProfile profile, Func<bool> nativeSshEnabled)
@@ -206,7 +259,8 @@ internal static class RemoteMuxHostFactory
         ArgumentNullException.ThrowIfNull(nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native && !nativeSshEnabled())
         {
-            throw new RemoteMuxUnavailableException(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, SshSessionFactory.NativeSshDisabledMessage));
+            throw new RemoteMuxUnavailableException(
+                new RemoteMuxFailure(RemoteFailureKind.NeedsUser, SshSessionFactory.NativeSshDisabledMessage, RemoteNeedsUserCause.NativeSshDisabled));
         }
     }
 

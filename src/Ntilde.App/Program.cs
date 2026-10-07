@@ -148,11 +148,21 @@ class Program
     /// "Live" means a daemon that answers a 200 ms probe-connect, not merely a descriptor naming a
     /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>).
     /// </summary>
-    internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon)
+    internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon) =>
+        ShouldAutoApplyUpdateOnStartup(args, liveDaemon, Environment.GetEnvironmentVariable);
+
+    /// <summary>
+    /// <see cref="ShouldAutoApplyUpdateOnStartup(string[], Func{bool})"/>, reading the environment through
+    /// <paramref name="environment"/>. Never for the askpass helper either: ssh starts this executable for a prompt with
+    /// nobody necessarily at the screen (an automatic reconnect), the mode set by flag or by <c>NTILDE_SSH_ASKPASS=1</c>.
+    /// </summary>
+    internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon, Func<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(liveDaemon);
+        ArgumentNullException.ThrowIfNull(environment);
         if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args)) return false;
+        if (SshAskPassCommand.IsSupportedCliMode(args, environment)) return false;
         return !liveDaemon();
     }
 

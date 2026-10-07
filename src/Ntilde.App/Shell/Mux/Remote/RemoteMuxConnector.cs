@@ -10,9 +10,12 @@ namespace Ntilde.Shell.Mux.Remote;
 
 /// <summary>
 /// What one connect attempt's transport is built for (Phase 4 ruling: automatic reconnects are
-/// non-interactive).
+/// non-interactive, but may sign in with the profile's saved password).
 /// </summary>
-/// <param name="Interactive">A user is waiting: ssh may prompt. False: it must fail instead (OpenSSH's <c>BatchMode=yes</c>).</param>
+/// <param name="Interactive">
+/// A user is waiting: ssh may prompt. False: it must fail instead (OpenSSH's <c>BatchMode=yes</c>) - unless the attempt
+/// signs in with the saved password (<paramref name="OfferSavedPassword"/>).
+/// </param>
 /// <param name="Prompts">The native backend's prompt handler for this attempt (<see cref="RemoteMuxInteractionHandler.Attempt"/>).</param>
 /// <param name="Pinned">
 /// The host's destination is pinned (codex D2, residual R4): the profile handed with this request is the connector's
@@ -24,7 +27,31 @@ namespace Ntilde.Shell.Mux.Remote;
 /// a connection-sharing master for this attempt. The master's ControlPath is keyed by the profile id, so one a plain
 /// tab opened to the profile's new host would carry the pinned attempt there.
 /// </param>
-internal sealed record RemoteMuxTransportRequest(bool Interactive, ISshInteractionHandler Prompts, bool Pinned = false, bool Retargeted = false);
+/// <param name="OfferSavedPassword">
+/// For an automatic attempt that may sign in with the profile's saved password
+/// (<see cref="RemoteMuxInteractionHandler.Attempt.MaySignInWithSavedPassword"/>), null otherwise: called by a transport
+/// whose prompts are answered outside the app - OpenSSH's askpass - when it is built, true when the vault holds the
+/// password, which the attempt then counts as offered (<see cref="RemoteMuxInteractionHandler.Attempt.OfferSavedPassword"/>).
+/// The native transport does not call it: its password prompt reaches <paramref name="Prompts"/>, which answers it.
+/// </param>
+/// <param name="WithoutSavedPassword">
+/// A user's attempt that keeps the saved password away (<see cref="RemoteMuxInteractionHandler.Attempt.AvoidsSavedPassword"/>:
+/// the refused value is still saved, or the destination moved): OpenSSH's askpass must not answer from the vault, so the
+/// user's dialog comes at once. The native transport needs nothing: <paramref name="Prompts"/> keeps the window's handler
+/// from the vault itself.
+/// </param>
+/// <param name="AskPassSession">
+/// The attempt's askpass session token (<see cref="RemoteMuxInteractionHandler.Attempt.AskPassSession"/>) for OpenSSH's
+/// helper, which records under it what it did; null for a new one per ssh (the install flow).
+/// </param>
+internal sealed record RemoteMuxTransportRequest(
+    bool Interactive,
+    ISshInteractionHandler Prompts,
+    bool Pinned = false,
+    bool Retargeted = false,
+    Func<bool>? OfferSavedPassword = null,
+    bool WithoutSavedPassword = false,
+    string? AskPassSession = null);
 
 /// <summary>
 /// Connects to the <c>ntilde-mux</c> daemon on one SSH host (Phase 4 spec §7.1): runs
@@ -134,17 +161,35 @@ internal sealed class RemoteMuxConnector : IDisposable
         string host = DisplayNameOf(profile);
         string command = RemoteMuxCommand.Proxy(profile.MuxOptions ?? new SshMuxOptions());
         // A native password prompt does not say which hop asks: with jump hops, a remembered password
-        // could reach the jump host, so none is remembered or replayed.
-        RemoteMuxInteractionHandler.Attempt prompts = Prompts.BeginAttempt(interactive, passwordsReplayable: profile.JumpHops is not { Count: > 0 });
+        // could reach the jump host, so none is remembered or replayed - nor the saved one offered. Nor is the saved
+        // password offered to a destination the profile no longer names (retargeted): it is the profile's, for where
+        // the profile points now.
+        RemoteMuxInteractionHandler.Attempt prompts = Prompts.BeginAttempt(
+            interactive,
+            passwordsReplayable: profile.JumpHops is not { Count: > 0 },
+            savedPasswordProfile: profile,
+            destinationMoved: retargeted);
 
         ISshExecChannel started;
         try
         {
-            // Start may block (ssh launching), and the transport is built here because building it may
-            // too (OpenSSH plans its config file): both off the calling thread.
-            var request = new RemoteMuxTransportRequest(interactive, prompts, pinned, retargeted);
-            started = await Task.Run(() => _transportFor(profile, request).Start(command, ct), ct)
-                .ConfigureAwait(false);
+            // Start may block (ssh launching), and the request and the transport are built here because building them
+            // may too (OpenSSH plans its config file; whether the saved password is offered or kept away reads the
+            // vault): all off the calling thread.
+            started = await Task.Run(
+                () =>
+                {
+                    var request = new RemoteMuxTransportRequest(
+                        interactive,
+                        prompts,
+                        pinned,
+                        retargeted,
+                        prompts.MaySignInWithSavedPassword ? prompts.OfferSavedPassword : null,
+                        WithoutSavedPassword: prompts.AvoidsSavedPassword,
+                        AskPassSession: prompts.AskPassSession);
+                    return _transportFor(profile, request).Start(command, ct);
+                },
+                ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -389,7 +434,28 @@ internal sealed class RemoteMuxConnector : IDisposable
 
         string captured = (error as MuxProxyHandshakeException)?.CapturedText ?? string.Empty;
         RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, captured, channel.Channel.StderrTail, error, host, automatic: !prompts.Interactive);
-        if (prompts.AbortedPrompt is { } aborted)
+        SavedPasswordVerdict verdict = SavedPasswordVerdictOf(prompts, failure);
+        if (verdict == SavedPasswordVerdict.Refused)
+        {
+            // The user's rule: a wrong saved password is tried once. NeedsUser stops the reconnect loop at once, the pane
+            // says the saved password was refused, and the host uses that value no more.
+            prompts.SavedPasswordRefused();
+            failure = new RemoteMuxFailure(
+                RemoteFailureKind.NeedsUser,
+                $"{host} did not accept the saved password ({failure.Reason}); an automatic reconnect does not try it again",
+                RemoteNeedsUserCause.SavedPasswordRefused);
+        }
+        else if (verdict == SavedPasswordVerdict.NotEnough)
+        {
+            // Review I-1: the server took the saved password and asked for more (a second factor), which an automatic
+            // attempt cannot give. Not a refusal: the user's Enter still fills it and asks only for the rest. The host's
+            // automatic attempts stop offering it, so no more failed rounds.
+            prompts.SavedPasswordNotEnough();
+            failure = new RemoteMuxFailure(
+                RemoteFailureKind.NeedsUser,
+                $"signing in to {host} needs more than the saved password (a second factor), which an automatic reconnect does not ask for ({failure.Reason})");
+        }
+        else if (prompts.AbortedPrompt is { } aborted)
         {
             // We ended it at auth, rather than send the server an empty answer: a quiet failure that says
             // why, marked NeedsUser so the reconnect loop stops instead of knocking again, and Enter is the way in.
@@ -413,6 +479,51 @@ internal sealed class RemoteMuxConnector : IDisposable
 
         _log?.Invoke($"[RemoteMux] {host}: {failure.Kind} (exit {(exitCode is { } code ? code.ToString(System.Globalization.CultureInfo.InvariantCulture) : "unknown")}): {failure.Reason}");
         return new RemoteMuxUnavailableException(failure, error);
+    }
+
+    /// <summary>What a failed attempt's saved password had to do with the failure.</summary>
+    private enum SavedPasswordVerdict
+    {
+        /// <summary>Nothing known: none was offered, or it was never asked for, or the failure came after sign-in.</summary>
+        None,
+
+        /// <summary>The server refused it.</summary>
+        Refused,
+
+        /// <summary>The server took it and asked for more: a second factor.</summary>
+        NotEnough,
+    }
+
+    /// <summary>
+    /// What the saved password <paramref name="prompts"/> offered had to do with an SSH failure (review I-1), on evidence,
+    /// never guesswork. Given to a native password prompt - from the vault, or the same value remembered from an earlier
+    /// sign-in - it reached the server: the prompt after it says which - a code
+    /// question is a second factor; a password asked for again, or the attempt failing SSH with nothing after it, is a
+    /// refusal. Handed to OpenSSH's askpass, the helper's record of this attempt's ssh says: a declined prompt naming the
+    /// target (a second factor) is not a refusal; a refusal needs the helper to have filled the password - sshd refusing
+    /// without asking for it (agent keys past MaxAuthTries, password auth off) does not count. Nothing counts once the attempt
+    /// got past sign-in: the greeting proves the password was taken.
+    /// </summary>
+    private static SavedPasswordVerdict SavedPasswordVerdictOf(RemoteMuxInteractionHandler.Attempt prompts, RemoteMuxFailure failure)
+    {
+        // Past sign-in (the proxy's greeting arrived), the password got in: a later failure is the link's, not a refusal
+        // (re-review item 1), as Attempt.Refused keeps a remembered one.
+        if (prompts.HasSucceeded) return SavedPasswordVerdict.None;
+        bool sshFailed = failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser || prompts.AbortedPrompt is not null;
+        if (!sshFailed) return SavedPasswordVerdict.None;
+        if (prompts.StoredPasswordAnswered)
+        {
+            // Native: the saved password, from the vault or remembered from an earlier sign-in (the live smoke test: the
+            // window's handler had filled it on Enter, and the host remembered it), reached the server. A remembered password
+            // that is not the saved one keeps the remembered rule: forgotten, and the next attempt may offer the saved one.
+            if (!prompts.StoredPasswordIsTheSavedOne()) return SavedPasswordVerdict.None;
+            return prompts.SecondFactorAfterSavedPassword ? SavedPasswordVerdict.NotEnough : SavedPasswordVerdict.Refused;
+        }
+
+        if (!prompts.SavedPasswordOffered) return SavedPasswordVerdict.None;
+        Ntilde.SshAskPassRecord record = prompts.ReadAskPassRecord();
+        if (record.Declined) return SavedPasswordVerdict.NotEnough;
+        return record.Answered ? SavedPasswordVerdict.Refused : SavedPasswordVerdict.None;
     }
 
     private static Func<SshProfile> Fixed(SshProfile profile)

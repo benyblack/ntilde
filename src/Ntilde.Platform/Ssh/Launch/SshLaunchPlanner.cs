@@ -171,7 +171,8 @@ public sealed class SshLaunchPlanner : ISshLaunchPlanner
         return false;
     }
 
-    private static IReadOnlyList<string> ParseExtraArguments(string? rawArguments)
+    /// <summary>The profile's extra ssh arguments as the plan passes them: split on whitespace, quotes grouping.</summary>
+    internal static IReadOnlyList<string> ParseExtraArguments(string? rawArguments)
     {
         if (string.IsNullOrWhiteSpace(rawArguments))
         {

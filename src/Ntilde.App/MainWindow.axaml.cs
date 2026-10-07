@@ -4640,7 +4640,9 @@ namespace Ntilde
         /// <summary>
         /// The production <see cref="RemoteMuxHostFactory"/> (Phase 4 spec §7.1): the profile from the SSH
         /// store, and per attempt a transport by the profile's backend - OpenSSH from its launch plan with
-        /// the askpass helper (batch mode for automatic attempts), or native with this window's prompts.
+        /// the askpass helper (batch mode for automatic attempts, or its vault-only mode when the profile's
+        /// password is saved), or native with this window's prompts. Automatic attempts read the saved password
+        /// from the vault (<see cref="Vault"/>), off the UI thread, and sign in with it once.
         /// </summary>
         private Ntilde.Shell.Mux.MuxConnectionHost? CreateRemoteMuxHost(Ntilde.Shell.Mux.MuxEndpointId id) =>
             Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.Create(
@@ -4648,7 +4650,9 @@ namespace Ntilde
                 _sshConnectionService.GetStoredProfile,
                 CreateRemoteMuxTransport,
                 AppLogger.Log,
-                _sshInteractionService);
+                _sshInteractionService,
+                savedPassword: static profile => Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.ReadSavedPassword(Vault ?? new VaultService(), profile),
+                askPassRecords: new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory));
 
         /// <summary>
         /// Reuses the hosts kept from an earlier On period; only the first call builds them. Building

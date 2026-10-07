@@ -25,8 +25,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
 /// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. For an automatic
-/// attempt, a refusal (<c>Permission denied</c>) is <see cref="RemoteFailureKind.NeedsUser"/> instead, with
-/// the same reason: in batch mode ssh tried only what needs no answer, so signing in needs the user;</item>
+/// attempt, a refusal (<c>Permission denied</c>, or sshd's <c>Too many authentication failures</c>) is
+/// <see cref="RemoteFailureKind.NeedsUser"/> instead, with the same reason: in batch mode ssh tried only what
+/// needs no answer, and with the saved password it tried that once, so signing in needs the user;</item>
 /// <item>anything else → <see cref="RemoteFailureKind.ProxyFailed"/>, with the exception's message
 /// (the handshake's carries what the remote side printed) and the last stderr line, where the proxy
 /// reports a daemon it could not reach.</item>
@@ -46,7 +47,7 @@ internal static class RemoteMuxFailureClassifier
     /// <param name="stderr">The channel's stderr tail.</param>
     /// <param name="error">What the attempt ended with.</param>
     /// <param name="host">The host, for the version-mismatch reason (<c>user@host</c>).</param>
-    /// <param name="automatic">The attempt was automatic: nobody could be asked, and OpenSSH ran in batch mode.</param>
+    /// <param name="automatic">The attempt was automatic: nobody could be asked, and OpenSSH ran in batch mode or offered only the saved password.</param>
     public static RemoteMuxFailure Classify(int? exitCode, string capturedStdout, string stderr, Exception? error, string? host = null, bool automatic = false)
     {
         capturedStdout ??= string.Empty;
@@ -83,8 +84,12 @@ internal static class RemoteMuxFailureClassifier
         if (exitCode == 255)
         {
             // Batch mode tried keys and the agent only; refused, it is a password or a passphrase away, which
-            // only the user can give. Retrying on a timer would only knock again (Task 20 ruling).
-            bool refused = automatic && Lines(stderr).Any(line => line.Contains("Permission denied", StringComparison.Ordinal));
+            // only the user can give. Retrying on a timer would only knock again (Task 20 ruling). An attempt that
+            // offered the saved password (BatchMode=no) was refused the same way, and must not send it again. sshd past
+            // MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same.
+            bool refused = automatic && Lines(stderr).Any(line =>
+                line.Contains("Permission denied", StringComparison.Ordinal)
+                || line.Contains("Too many authentication failures", StringComparison.Ordinal));
             return new RemoteMuxFailure(refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed, Quote(lastStderrLine ?? "ssh exited with code 255"));
         }
 

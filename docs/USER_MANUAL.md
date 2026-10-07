@@ -405,20 +405,40 @@ taken over).
   notification, with a line per host and the button of the last one, named for its host.
 
 **Reconnecting on its own never asks you anything.** The automatic retries use only what needs no
-answer: your keys, your SSH agent, and, on native profiles, a password or key passphrase that
-already signed this window in to the host (typed, or taken from the vault). Ntilde keeps that in
-memory only, and forgets it when the window closes or when the server rejects it. Host keys must
-already be trusted. When signing in would need a password or another typed answer, the retries stop
-at once rather than fail again and again (failed logins that fail2ban and account lockouts count),
-and the tab shows `[Connection to <user@host> lost] [Press Enter to reconnect]`. Enter connects
-with the usual prompts. This happens for:
+answer: your keys, your SSH agent, the profile's password if it is saved in the vault (*Remember
+password* at a password prompt; the Connection Manager shows it), and, on native profiles, a
+password or key passphrase that already signed this window in to the host (typed, or taken from the
+vault). Ntilde keeps the last in memory only, and forgets it when the window closes or when the
+server rejects it. Host keys must already be trusted.
 
-- OpenSSH profiles that sign in with a password: the retries run `ssh` with `BatchMode=yes`;
-- native profiles whose password has not been used in this window yet;
+A saved password is tried **once**. If the server refuses it, the retries stop at once and the tab
+shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
+`[The saved password was refused — press Enter to sign in]` under it. Ntilde does not use that
+password on its own again, for that host in this window: Enter asks you for the password straight
+away; tick *Remember password* to replace the saved one, and Ntilde uses the new one from then on.
+Signing in with a typed password without ticking it leaves the refused one unused. (A server that
+accepts both password and keyboard-interactive sign-in may see it once for each before the retries
+stop. Each window keeps its own record, so a second window with tabs on the same host tries it once
+too.) At any other time, when you connect or press Enter Ntilde fills in the saved password at most
+once per connection: if the server refuses it, you are asked.
+
+If the host asks for more than the password - a one-time code, a second factor - the saved password
+alone cannot sign in. The retries stop at once with
+`[Automatic reconnect can't sign in without you — press Enter]`, and later ones do not try the saved
+password again. Enter fills in the saved password for you and asks only for the code.
+
+When signing in would need a password or another typed answer, the retries stop at once rather than
+fail again and again (failed logins that fail2ban and account lockouts count), and the tab shows
+`[Connection to <user@host> lost] [Press Enter to reconnect]` with
+`[Automatic reconnect can't sign in without you — press Enter]` under it. Enter connects with the
+usual prompts. This happens for:
+
+- profiles that sign in with a password that is not saved in the vault (and, on native profiles,
+  has not been used in this window yet): OpenSSH retries run `ssh` with `BatchMode=yes`;
 - native profiles whose key has a passphrase that has not been used in this window yet, when
   neither the SSH agent nor another key signs in instead;
-- native profiles that go through jump hosts and sign in with a password: a password prompt does
-  not say which hop asks, so Ntilde never replays a password along a jump chain.
+- profiles that go through jump hosts and sign in with a password: a password prompt may come from
+  the jump host, so Ntilde never sends a saved or remembered password along a jump chain on its own.
 
 **Closing, detaching, and turning it off:**
 
