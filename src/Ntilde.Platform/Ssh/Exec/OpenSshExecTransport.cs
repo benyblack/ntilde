@@ -143,6 +143,9 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// </summary>
     public bool WithoutSavedPassword { get; }
 
+    /// <summary>The askpass session token every ssh this transport starts gets, or null when each gets a new one.</summary>
+    public string? AskPassSession => _askPassSession;
+
     /// <summary>How ssh may prompt: <see cref="ModeOf"/> decides it.</summary>
     private enum PromptMode
     {

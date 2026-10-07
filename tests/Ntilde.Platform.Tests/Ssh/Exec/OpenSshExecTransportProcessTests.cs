@@ -422,6 +422,8 @@ public sealed class OpenSshExecTransportProcessTests
             askPassSession: "0123456789abcdef0123456789abcdef");
 
         Assert.Equal("0123456789abcdef0123456789abcdef", transport.CreateStartInfo("true").Environment[SshAskPassEnvironment.SessionVariable]);
+        Assert.Equal("0123456789abcdef0123456789abcdef", transport.AskPassSession);
+        Assert.Null(new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["alias"], "/opt/ntilde/ntilde", log: _ => { }).AskPassSession);
     }
 
     [Fact]

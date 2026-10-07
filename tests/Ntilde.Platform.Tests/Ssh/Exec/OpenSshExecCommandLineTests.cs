@@ -334,6 +334,45 @@ public sealed class OpenSshExecCommandLineTests
         Assert.False(OpenSshExecCommandLine.NamesAProxy(plan));
     }
 
+    /// <summary>
+    /// Re-review item 6: the profile's own ssh arguments may change who signs in or where - <c>-l</c>, <c>-o User</c>, a
+    /// config of their own (<c>-F</c>, which beats ours: ssh keeps the last), <c>-o HostName</c> or <c>-o HostKeyAlias</c>
+    /// (both change the host ssh names in its prompts). The askpass helper then cannot recognise the target's prompt, so
+    /// an automatic reconnect must not count on it. Read as ssh reads options after the destination.
+    /// </summary>
+    [Theory]
+    [InlineData("-l other")]
+    [InlineData("-lother")]
+    [InlineData("-vl other")]
+    [InlineData("-o User=other")]
+    [InlineData("-oUser=other")]
+    [InlineData("-o \"user other\"")]
+    [InlineData("-o =User=other")]
+    [InlineData("-F /home/me/.ssh/other_config")]
+    [InlineData("-o HostName=10.0.0.9")]
+    [InlineData("-o hostname 10.0.0.9")]
+    [InlineData("-o HostKeyAlias=prod")]
+    [InlineData("-p 2222 -o ServerAliveInterval=5 -l other")]
+    public void Extra_arguments_that_change_who_or_where_are_found(string extraSshArgs)
+    {
+        Assert.True(OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(extraSshArgs));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("-p 2222")]
+    [InlineData("-o ServerAliveInterval=5 -C")]
+    [InlineData("-i -l")]                        // -l is the identity file's name
+    [InlineData("-o Username=x")]                // another keyword
+    [InlineData("-o \"LocalCommand=ssh -l other\"")]
+    [InlineData("-- -l other")]                  // the remote command, never an option
+    [InlineData("uptime -l other")]
+    public void Extra_arguments_that_keep_who_and_where_are_not(string? extraSshArgs)
+    {
+        Assert.False(OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(extraSshArgs));
+    }
+
     private static int IndexOfPair(IReadOnlyList<string> argv, string option, string value)
     {
         for (int i = 0; i + 1 < argv.Count; i++)

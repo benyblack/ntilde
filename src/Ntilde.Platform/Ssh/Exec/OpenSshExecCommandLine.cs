@@ -179,10 +179,38 @@ public static class OpenSshExecCommandLine
     public static bool NamesAProxy(IReadOnlyList<string> planArguments)
     {
         ArgumentNullException.ThrowIfNull(planArguments);
+        return AnyOption(planArguments, static (letter, argument) =>
+            letter == 'J' || (letter == 'o' && IsConfigKeyword(argument, "ProxyJump", "ProxyCommand")));
+    }
+
+    /// <summary>
+    /// Whether the profile's own extra ssh arguments (<c>SshProfile.ExtraSshArgs</c>, split as the plan splits them) change
+    /// who signs in or where, so that ssh's prompts may not name the profile's <c>user@host</c>: <c>-l</c>, <c>-F</c> (a
+    /// config of their own, which beats the plan's: ssh keeps the last <c>-F</c>), or an <c>-o</c> whose keyword is
+    /// <c>User</c>, <c>HostName</c> or <c>HostKeyAlias</c> (the last two change the host ssh names). Read as ssh reads the
+    /// options after the destination, where the plan puts them, with the rules of <see cref="NamesAProxy"/>. Only the
+    /// profile's own arguments: the plan's <c>-F</c> and a pinned plan's <c>-o</c> block are the profile itself.
+    /// </summary>
+    public static bool ExtraArgumentsChangeWhoOrWhere(string? extraSshArgs)
+    {
+        IReadOnlyList<string> extra = Launch.SshLaunchPlanner.ParseExtraArguments(extraSshArgs);
+        if (extra.Count == 0) return false;
+        return AnyOption(["destination", .. extra], static (letter, argument) =>
+            letter is 'l' or 'F' || (letter == 'o' && IsConfigKeyword(argument, "User", "HostName", "HostKeyAlias")));
+    }
+
+    /// <summary>
+    /// Whether <paramref name="match"/> holds for any option ssh reads in <paramref name="plan"/>, given its letter and its
+    /// argument (empty for a flag), read as <see cref="WithoutChannelBreakers"/> reads the plan: letters cluster, an
+    /// option's argument is the rest of its token or the next one and never scanned, and nothing after <c>--</c> or a word
+    /// past the destination is an option.
+    /// </summary>
+    private static bool AnyOption(IReadOnlyList<string> plan, Func<char, string, bool> match)
+    {
         bool afterDestination = false;
-        for (int i = 0; i < planArguments.Count; i++)
+        for (int i = 0; i < plan.Count; i++)
         {
-            string token = planArguments[i];
+            string token = plan[i];
             bool isOption = token.Length >= 2 && token[0] == '-' && token != "--";
             if (!isOption)
             {
@@ -198,24 +226,26 @@ public static class OpenSshExecCommandLine
             for (int j = 1; j < token.Length; j++)
             {
                 char letter = token[j];
-                if (!TakesArgument(letter)) continue;
-
-                bool attached = j + 1 < token.Length;
-                string argument = attached ? token[(j + 1)..] : i + 1 < planArguments.Count ? planArguments[i + 1] : string.Empty;
-                if (!attached && i + 1 < planArguments.Count) i++;
-                if (letter == 'J') return true;
-                if (letter == 'o' && ConfigKeyword(argument) is { Length: > 0 } keyword
-                    && (keyword.Equals("ProxyJump", StringComparison.OrdinalIgnoreCase) || keyword.Equals("ProxyCommand", StringComparison.OrdinalIgnoreCase)))
+                if (!TakesArgument(letter))
                 {
-                    return true;
+                    if (match(letter, string.Empty)) return true;
+                    continue;
                 }
 
+                bool attached = j + 1 < token.Length;
+                string argument = attached ? token[(j + 1)..] : i + 1 < plan.Count ? plan[i + 1] : string.Empty;
+                if (!attached && i + 1 < plan.Count) i++;
+                if (match(letter, argument)) return true;
                 break;
             }
         }
 
         return false;
     }
+
+    /// <summary>Whether the <c>-o</c> line <paramref name="option"/> sets one of <paramref name="keywords"/> (as ssh reads its keyword; case-insensitive).</summary>
+    private static bool IsConfigKeyword(string option, params string[] keywords) =>
+        ConfigKeyword(option) is { Length: > 0 } keyword && Array.Exists(keywords, k => keyword.Equals(k, StringComparison.OrdinalIgnoreCase));
 
     private static bool TakesArgument(char letter)
     {
