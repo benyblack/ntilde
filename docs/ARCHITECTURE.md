@@ -501,7 +501,11 @@ it).
   under its Enter banner comes from the failure's `RemoteNeedsUserCause`, never from ssh's words.
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
   through it, and so does the kill of a shell a stale result started (a result that came back to a pane
-  closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once; otherwise it is queued, kept across
+  closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once,
+  from the pool and never on the closing (UI) thread, which a stalled link's full send queue would block; it is
+  counted and tracked before the close returns, so a release or a dispose right behind it waits for it. A kill
+  whose connection closes before the daemon answers, or whose request times out once that connection is gone, is
+  queued again. With no live client it is queued, kept across
   `ReconnectAbandoned`, and sent before anything else on the next successful connect of any kind. An
   idle host (no client, no attempt, no loop) starts one automatic attempt to deliver it. Queued kills
   are dropped, with a log line, on `DaemonStopped` and on dispose.

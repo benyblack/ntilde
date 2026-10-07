@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Platform.Ssh.Models;
@@ -250,6 +251,43 @@ public sealed class MuxConnectionHostsReleaseTests : IDisposable
         await closed.Task.WaitAsync(Patient, Ct);
         Assert.True(killedAtClose);
         Assert.True(Volatile.Read(ref connects) >= 2);
+    }
+
+    /// <summary>
+    /// R5-a: the window's release pass runs right behind a pane's close, whose kill still waits for a full send queue on
+    /// a stalled link (the close returns at once and leaves the sending to the pool). The release must count that kill:
+    /// it waits for the daemon's answer, and only then closes the host.
+    /// </summary>
+    [Fact]
+    public async Task A_release_right_after_a_kill_stuck_behind_a_full_send_queue_waits_for_that_kill()
+    {
+        using var daemon = FakeMuxServerEnd.Create(FullSendQueue.PipeCapacityBytes);
+        MuxEndpointId endpoint = MuxEndpointId.ForSsh(Guid.NewGuid());
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+        };
+        using var hosts = new MuxConnectionHosts(_local, _ => host, _log.Enqueue);
+        Assert.Same(host, hosts.GetOrCreate(endpoint));
+        Task hello = daemon.AcceptHelloAsync();
+        MuxClient client = host.GetClient(Patient)!;
+        await hello.WaitAsync(Patient, Ct);
+        await FullSendQueue.FillAsync(client);   // the link stalls
+        TaskCompletionSource closed = ClosedSignal(host);
+        Guid id = Guid.NewGuid();
+
+        Assert.True(await FullSendQueue.ReturnsPromptlyAsync(() => host.TryKillWhenConnected(id)), "closing the pane waited on the stalled link");
+        hosts.Release(endpoint);   // that was the endpoint's last pane
+
+        // A release that finds nothing to wait for forgets the host at once (and disposes it on the pool).
+        Assert.Same(host, hosts.TryGet(endpoint));
+        Assert.False(host.IsClosed, "the release closed the host with the kill still unsent");
+        MuxRequest kill = await FullSendQueue.DrainUntilRequestAsync(daemon);   // the link drains
+        Assert.Equal(id, FullSendQueue.KilledSession(kill));
+        Assert.Same(host, hosts.TryGet(endpoint));   // still waiting: the kill is not answered yet
+        daemon.Reply(kill.Id, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty);
+        await closed.Task.WaitAsync(Patient, Ct);
+        Assert.Null(hosts.TryGet(endpoint));
     }
 
     /// <summary>

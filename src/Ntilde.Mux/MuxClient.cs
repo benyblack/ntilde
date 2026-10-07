@@ -19,12 +19,18 @@ public sealed class MuxClient : IDisposable
     /// <summary>Disconnect reason when the transport simply went away: not an error code, so not in MuxErrorCodes.</summary>
     private const string ReasonDisconnected = "disconnected";
 
+    /// <summary>
+    /// How many frames may wait for the sender: once that many do, a caller sending another blocks until the
+    /// link takes one. Tests fill it to stand in for a stalled link.
+    /// </summary>
+    internal const int OutboundCapacity = 1024;
+
     private readonly Stream _stream;  // the connection: the sender writes it, and closing it ends the reader
     private readonly Stream _inbound; // what the reader reads: _stream, stamping LastReceivedTicks as bytes arrive
     private readonly MuxClientOptions _options;
     private readonly Thread _readerThread;
     private readonly Thread _senderThread;
-    private readonly BlockingCollection<MuxOutboundFrame> _outbound = new(boundedCapacity: 1024);
+    private readonly BlockingCollection<MuxOutboundFrame> _outbound = new(boundedCapacity: OutboundCapacity);
     private readonly ConcurrentDictionary<long, TaskCompletionSource<MuxResponse>> _pending = new();
     private readonly ConcurrentDictionary<long, MuxClientSession> _pendingAttaches = new();
 

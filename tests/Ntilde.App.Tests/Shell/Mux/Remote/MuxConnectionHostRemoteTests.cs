@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Ntilde.Mux;
 using Ntilde.Mux.Cli;
 using Ntilde.Mux.Contracts;
@@ -519,6 +520,152 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         host.KillWhenConnected(id);
 
         await TestWait.UntilAsync(() => !_remote.Server.GetSessionIds().Contains(id), "the kill reached the daemon", Patient);
+    }
+
+    /// <summary>
+    /// Connects <paramref name="host"/> to <paramref name="daemon"/>, which answers the hello and then stops reading, and
+    /// fills the client's send queue (<see cref="FullSendQueue"/>): a stalled link the liveness ping has not caught yet.
+    /// </summary>
+    private static async Task ConnectOverAStalledLinkAsync(MuxConnectionHost host, FakeMuxServerEnd daemon)
+    {
+        Task hello = daemon.AcceptHelloAsync();
+        MuxClient client = host.GetClient(Patient)!;
+        await hello.WaitAsync(Patient, Ct);
+        await FullSendQueue.FillAsync(client);
+    }
+
+    /// <summary>
+    /// B1: a pane closed while its link is stalled. The client's send queue is full, so sending the kill waits until the
+    /// link drains or is dropped - and the close runs on the UI thread. It returns at once instead, and the kill goes out
+    /// once the queue drains.
+    /// </summary>
+    [Fact]
+    public async Task A_kill_on_a_link_whose_send_queue_is_full_returns_at_once_and_goes_out_once_it_drains()
+    {
+        using var daemon = FakeMuxServerEnd.Create(FullSendQueue.PipeCapacityBytes);
+        MuxConnectionHost host = Own(new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+        });
+        await ConnectOverAStalledLinkAsync(host, daemon);
+        Guid id = Guid.NewGuid();
+
+        Assert.True(await FullSendQueue.ReturnsPromptlyAsync(() => host.TryKillWhenConnected(id)), "closing the pane waited on the stalled link");
+
+        var drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.WhenKillsDrained(() => drained.TrySetResult());
+        MuxRequest kill = await FullSendQueue.DrainUntilRequestAsync(daemon);   // the link drains, and the kill comes out behind the rest
+        Assert.Equal(id, FullSendQueue.KilledSession(kill));
+        Assert.False(drained.Task.IsCompleted, "the kill counted as delivered before the daemon answered it");
+        daemon.Reply(kill.Id, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty);
+        await drained.Task.WaitAsync(Patient, Ct);
+    }
+
+    /// <summary>
+    /// R5-a: the window closes right behind that pane, its kill still waiting for the queue. Dispose's flush waits for it as
+    /// for any kill in flight; had it not been tracked when the close returned, the flush would have found none, and
+    /// closed the connection under it.
+    /// </summary>
+    [Fact]
+    public async Task Dispose_right_after_a_kill_stuck_behind_a_full_send_queue_waits_for_that_kill()
+    {
+        using var daemon = FakeMuxServerEnd.Create(FullSendQueue.PipeCapacityBytes);
+        MuxConnectionHost host = Own(new MuxConnectionHost(ct => MuxClient.ConnectAsync(daemon.ClientEnd, null, ct), "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+            KillFlushTimeout = Patient,
+            DisposeFlushTimeout = TimeSpan.Zero,   // with no kill seen, Dispose would close at once
+        });
+        await ConnectOverAStalledLinkAsync(host, daemon);
+        Guid id = Guid.NewGuid();
+        Assert.True(await FullSendQueue.ReturnsPromptlyAsync(() => host.TryKillWhenConnected(id)), "closing the pane waited on the stalled link");
+
+        Assert.Equal(1, host.PendingKillCountForTest);   // what Dispose's flush waits for
+        Task disposing = Task.Run(host.Dispose, Ct);
+
+        MuxRequest kill = await FullSendQueue.DrainUntilRequestAsync(daemon);
+        Assert.Equal(id, FullSendQueue.KilledSession(kill));
+        Assert.False(disposing.IsCompleted, "Dispose closed the connection before the kill was answered");
+        daemon.Reply(kill.Id, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty);
+        await disposing.WaitAsync(Patient, Ct);
+        Assert.False(Logged("not confirmed"));
+    }
+
+    /// <summary>
+    /// A host over the in-memory daemon whose first kill is never answered: the test fails its request with
+    /// <paramref name="unanswered"/>, as the request timeout would. Every later kill is sent. <paramref name="kills"/>
+    /// counts them; <paramref name="sent"/> completes with the client the first one went to.
+    /// </summary>
+    private MuxConnectionHost WithAnUnansweredFirstKill(MuxTestHost mux, TaskCompletionSource<MuxClient> sent, Task unanswered, StrongBox<int> kills) =>
+        Own(new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "remote", _log.Enqueue, MuxHostPolicy.Remote("box"))
+        {
+            Scheduler = _clock,
+            Kill = (client, sessionId) =>
+            {
+                if (Interlocked.Increment(ref kills.Value) > 1) return client.KillAsync(sessionId, CancellationToken.None);
+                sent.TrySetResult(client);
+                return unanswered;
+            },
+        });
+
+    /// <summary>
+    /// B2: a kill whose request timed out once its connection was already gone - the liveness ping found the link dead,
+    /// and the client was still closing it when the 30 s ran out - may never have reached the daemon, as one whose
+    /// connection closed first. It goes out again on the next connection.
+    /// </summary>
+    [Fact]
+    public async Task A_kill_that_times_out_on_a_connection_already_gone_is_sent_again_after_the_reconnect()
+    {
+        MuxTestHost mux = Own(new MuxTestHost());
+        var sent = new TaskCompletionSource<MuxClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unanswered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var kills = new StrongBox<int>();
+        MuxConnectionHost host = WithAnUnansweredFirstKill(mux, sent, unanswered.Task, kills);
+        var events = new HostEvents(host);
+        MuxClient first = host.GetClient(Patient)!;
+        Guid id = await MuxTestHost.SpawnAsync(first);
+        host.KillWhenConnected(id);   // the user closes the tab
+        Assert.Same(first, await sent.Task.WaitAsync(Patient, Ct));
+
+        first.Dispose();                                   // the connection is found dead ...
+        await events.WaitForAsync("lost");
+        unanswered.SetException(new TimeoutException());   // ... and only then does the kill's request time out
+        _clock.Advance(FirstRetry);                        // the link is back
+
+        await events.WaitForAsync("reconnected");
+        await TestWait.UntilAsync(() => !mux.Server.GetSessionIds().Contains(id), "the timed-out kill went out again on the new connection", Patient);
+        Assert.Equal(2, Volatile.Read(ref kills.Value));
+        Assert.True(Logged($"the kill of session {id} timed out, and its connection is gone; trying again once connected"));
+    }
+
+    /// <summary>
+    /// B2's other half: a kill whose request times out while its connection is still up is logged, once, and not sent
+    /// again. Queued, it would wait for a next connection a working one never needs, and hold the host's release
+    /// meanwhile; sent again on the same connection, it would only wait behind the same silence.
+    /// </summary>
+    [Fact]
+    public async Task A_kill_that_times_out_on_a_live_connection_is_logged_once_and_not_sent_again()
+    {
+        MuxTestHost mux = Own(new MuxTestHost());
+        var sent = new TaskCompletionSource<MuxClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unanswered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var kills = new StrongBox<int>();
+        MuxConnectionHost host = WithAnUnansweredFirstKill(mux, sent, unanswered.Task, kills);
+        MuxClient client = host.GetClient(Patient)!;
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        host.KillWhenConnected(id);
+        await sent.Task.WaitAsync(Patient, Ct);
+        var drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.WhenKillsDrained(() => drained.TrySetResult());
+
+        unanswered.SetException(new TimeoutException());
+
+        await drained.Task.WaitAsync(Patient, Ct);   // settled: nothing is left for a release to wait on
+        Assert.True(client.IsConnected);
+        Assert.Equal(1, Volatile.Read(ref kills.Value));
+        Assert.Contains(id, mux.Server.GetSessionIds());
+        string line = Assert.Single(_log, l => l.Contains(id.ToString(), StringComparison.Ordinal));
+        Assert.Contains($"the daemon did not answer the kill of session {id} in time", line, StringComparison.Ordinal);
     }
 
     /// <summary>A shell already running on the remote daemon, started without an exec channel of this host's.</summary>

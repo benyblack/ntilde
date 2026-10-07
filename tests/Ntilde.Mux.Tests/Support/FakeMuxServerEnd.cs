@@ -15,9 +15,10 @@ internal sealed class FakeMuxServerEnd : IDisposable
     public Stream ClientEnd { get; }
     public RawMuxConnection Raw { get; }
 
-    public static FakeMuxServerEnd Create()
+    /// <param name="pipeCapacityBytes">How much each direction holds before its writer blocks: small, for a daemon that stops reading.</param>
+    public static FakeMuxServerEnd Create(int pipeCapacityBytes = 1 << 20)
     {
-        (Stream client, Stream server) = InMemoryDuplexPipe.Create(1 << 20);
+        (Stream client, Stream server) = InMemoryDuplexPipe.Create(pipeCapacityBytes);
         return new FakeMuxServerEnd(client, server);
     }
 
