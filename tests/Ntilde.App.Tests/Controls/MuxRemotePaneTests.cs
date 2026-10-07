@@ -502,9 +502,10 @@ public sealed class MuxRemotePaneTests : IDisposable
         int started = _remote.StartCount;
         _clock.Advance(MuxReconnectLoop.Budget);
         Assert.Equal((2, 0), (started, _remote.StartCount - started));   // the first connect, then one automatic attempt
-        Assert.DoesNotContain("verification failed", Text(pane));
-        Assert.DoesNotContain("IDENTIFICATION", Text(pane));
-        Assert.DoesNotContain("can't sign in without you", Text(pane));
+        // Compared unwrapped, so a line break at the pane's width cannot hide them.
+        Assert.DoesNotContain(Unwrapped("verification failed"), Unwrapped(Text(pane)));
+        Assert.DoesNotContain(Unwrapped("IDENTIFICATION"), Unwrapped(Text(pane)));
+        Assert.DoesNotContain(Unwrapped("can't sign in without you"), Unwrapped(Text(pane)));
     }
 
     /// <summary>
@@ -522,7 +523,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
         _clock.Advance(FirstRetry);
         ShowsBanner(pane, "[Host key for nova@fake-host is unknown or has changed \u2014 press Enter to review]");
-        Assert.DoesNotContain("remove the old one", Text(pane));
+        Assert.DoesNotContain(Unwrapped("remove the old one"), Unwrapped(Text(pane)));
 
         _remote.Script = new FakeRemoteScript(Stderr: RemoteMuxFailureClassifierTests.ChangedHostKeyStderr, ExitCode: FakeRemoteHost.LinkLostExitCode);
         PressEnter(pane);
@@ -530,7 +531,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         ShowsWrapped(pane, ChangedHostKeyLine);
         Assert.Equal(3, _remote.StartCount);   // the first connect, the loop's one attempt, the Enter
         Assert.False(RemoteHost.IsReconnecting);
-        Assert.DoesNotContain("IDENTIFICATION", Text(pane));
+        Assert.DoesNotContain(Unwrapped("IDENTIFICATION"), Unwrapped(Text(pane)));
     }
 
     [AvaloniaFact]
