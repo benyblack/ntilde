@@ -227,13 +227,13 @@ internal static class RemoteMuxFailureClassifier
         int at = line.IndexOf(Denied, StringComparison.Ordinal);
         if (at < 0) return false;
 
-        // Before it: nothing (OpenSSH before 7.x), or "user@host: " - one word, with no space in it.
+        // Before it: nothing (OpenSSH before 7.x), or "user@host: ". The user is the server's, printed as given, so it
+        // may hold a space (an AD name, "John Smith"); the "@" is ssh's own.
         ReadOnlySpan<char> target = line.AsSpan(0, at);
         if (target.Length > 0)
         {
             if (!target.EndsWith(": ", StringComparison.Ordinal)) return false;
-            ReadOnlySpan<char> who = target[..^2];
-            if (who.IsEmpty || who.ContainsAny(' ', '\t')) return false;
+            if (!target[..^2].Contains('@')) return false;
         }
 
         ReadOnlySpan<char> methods = line.AsSpan(at + Denied.Length);

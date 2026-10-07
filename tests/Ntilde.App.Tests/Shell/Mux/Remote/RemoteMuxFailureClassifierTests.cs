@@ -88,6 +88,8 @@ public sealed class RemoteMuxFailureClassifierTests
     [InlineData("nova@x: Permission denied (publickey,password).\r\n", true)]
     [InlineData("Permission denied (publickey,keyboard-interactive).\r\n", true)]   // OpenSSH before 7.x: no user@host
     [InlineData("nova@fe80::1: Permission denied (publickey).\r\n", true)]
+    [InlineData("John Smith@x: Permission denied (password).\r\n", true)]   // ssh prints the server user as given: an AD name has a space
+    [InlineData("x.sh: Permission denied (publickey).\r\n", false)]         // ssh's own prefix is always user@host
     [InlineData("Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", true)]
     [InlineData("Connection closed by 10.0.0.2 port 22\r\n", false)]
     [InlineData("ssh: connect to host x port 22: Connection refused\r\n", false)]
