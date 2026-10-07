@@ -1790,7 +1790,7 @@ jobs:
   # rusty_pty linked in statically (DirectPInvoke + librusty_pty.a), and no other job builds
   # that shape: everything else builds the App, which loads the shared library. Each leg
   # builds the staticlib, publishes (IL2026/IL3050 are errors in the project), asserts the
-  # single file and, on Linux, the glibc 2.35 floor, then runs it: --version --json, and a
+  # single file and, on Linux, the glibc 2.34 floor (RHEL 9), then runs it: --version --json, and a
   # foreground daemon that `ls` reaches and `kill-server` stops.
   #
   # The Linux legs run in ubuntu:22.04 for linux_packaging_build's reason - whatever links
@@ -1982,8 +1982,9 @@ jobs:
             exit 1
           fi
 
-      # The highest symbol version the binary asks of glibc must not pass the floor the
-      # container pins, compared as versions (sort -V), not as strings.
+      # The highest symbol version the binary asks of glibc must not pass 2.34 (RHEL 9), the floor
+      # the remote host probe enforces. ubuntu:22.04 links against 2.35 but this binary only asks
+      # for 2.34 symbols. Compared as versions (sort -V), not as strings.
       - name: Assert the glibc floor (Linux)
         if: matrix.container != ''
         env:
@@ -1994,8 +1995,8 @@ jobs:
           ldd "$bin"
           glibc_max="$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
           echo "highest GLIBC_ symbol version: $glibc_max"
-          if [[ "$(printf '%s\n' "$glibc_max" GLIBC_2.35 | sort -V | tail -1)" != "GLIBC_2.35" ]]; then
-            echo "::error::ntilde-mux needs $glibc_max, above the GLIBC_2.35 floor (ubuntu:22.04)" >&2
+          if [[ "$(printf '%s\n' "$glibc_max" GLIBC_2.34 | sort -V | tail -1)" != "GLIBC_2.34" ]]; then
+            echo "::error::ntilde-mux needs $glibc_max, above the GLIBC_2.34 floor (RHEL 9)" >&2
             exit 1
           fi
 
