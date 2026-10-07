@@ -78,24 +78,29 @@ public sealed class RemoteMuxFailureClassifierTests
     }
 
     /// <summary>
-    /// Whether SSH said the server refused the sign-in - the evidence a password the attempt sent was refused - read where
-    /// ssh's words are read, automatic attempt or not: OpenSSH's refusal lines, or the native layer's authentication
-    /// failure. A link that dropped, a host that was not there, is no such word.
+    /// Whether OpenSSH said the server refused the sign-in - the evidence a saved password it was handed was refused -
+    /// automatic attempt or not: ssh's own final refusal, <c>[user@host: ]Permission denied (methods).</c>, or sshd's
+    /// <c>Too many authentication failures</c>. A link that dropped, a host that was not there, is no such word; nor is a
+    /// remote shell's "Permission denied" (a profile script, a file) that reached stderr before the link dropped. An
+    /// automatic attempt is NeedsUser exactly when it is one.
     /// </summary>
     [Theory]
-    [InlineData(255, "nova@x: Permission denied (publickey,password).\r\n", null, true)]
-    [InlineData(255, "Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", null, true)]
-    [InlineData(255, "Connection closed by 10.0.0.2 port 22\r\n", null, false)]
-    [InlineData(255, "ssh: connect to host x port 22: Connection refused\r\n", null, false)]
-    [InlineData(126, "sh: 1: " + Binary + ": Permission denied\n", null, false)]
-    [InlineData(null, "", "SSH authentication failed", true)]
-    [InlineData(null, "", "Connection reset by peer (os error 104)", false)]
-    public void Says_whether_ssh_refused_the_sign_in(int? exitCode, string stderr, string? nativeMessage, bool refused)
+    [InlineData("nova@x: Permission denied (publickey,password).\r\n", true)]
+    [InlineData("Permission denied (publickey,keyboard-interactive).\r\n", true)]   // OpenSSH before 7.x: no user@host
+    [InlineData("nova@fe80::1: Permission denied (publickey).\r\n", true)]
+    [InlineData("Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", true)]
+    [InlineData("Connection closed by 10.0.0.2 port 22\r\n", false)]
+    [InlineData("ssh: connect to host x port 22: Connection refused\r\n", false)]
+    [InlineData("-bash: /etc/profile.d/x.sh: Permission denied\r\nConnection to x closed by remote host.\r\n", false)]
+    [InlineData("tool: Permission denied (os error 13)\r\nConnection to x closed by remote host.\r\n", false)]
+    [InlineData("nova@x: Permission denied (publickey,password). Bye\r\n", false)]
+    public void Says_whether_ssh_refused_the_sign_in(string stderr, bool refused)
     {
-        Exception error = nativeMessage is null ? Handshake("ended") : new SshExecTransportException($"SSH to nova@x failed: {nativeMessage}", nativeMessage);
+        RemoteMuxFailure automatic = RemoteMuxFailureClassifier.Classify(255, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: true);
+        RemoteMuxFailure user = RemoteMuxFailureClassifier.Classify(255, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: false);
 
-        Assert.Equal(refused, RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, error, "nova@x", automatic: true).SignInRefused);
-        Assert.Equal(refused, RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, error, "nova@x", automatic: false).SignInRefused);
+        Assert.Equal((refused, refused), (automatic.SignInRefused, user.SignInRefused));
+        Assert.Equal(refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed, automatic.Kind);
     }
 
     [Fact]
@@ -151,8 +156,8 @@ public sealed class RemoteMuxFailureClassifierTests
         RemoteMuxFailure wrapped = RemoteMuxFailureClassifier.Classify(
             null, string.Empty, "native ssh: Authentication failed\n", new MuxProxyHandshakeException("Reading the remote output failed (x)", string.Empty, native));
 
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed") { SignInRefused = true }, direct);
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed") { SignInRefused = true }, wrapped);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed"), direct);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Authentication failed"), wrapped);
     }
 
     [Fact]

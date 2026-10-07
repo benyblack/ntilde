@@ -21,9 +21,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// A remembered secret that may have been refused is forgotten, never replayed: replaying a stale
 /// password every few seconds is a lockout waiting to happen. The native layer asks for a password once
 /// and then falls to keyboard-interactive, so a refusal shows as another auth prompt after it, or as the
-/// attempt failing SSH with the native layer's authentication failure (<see cref="Attempt.Refused"/>); see
-/// <see cref="Attempt"/>. A password is counted as refused only on that evidence: an attempt that failed
-/// otherwise - the link dropped - forgets it, but holds nothing against it.
+/// attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>. Once the native transport
+/// said sign-in was over (<see cref="Attempt.Authenticated"/>), a failure counts against nothing it offered.
 /// </para>
 /// <para>
 /// A native password prompt does not say which hop of a jump chain asks, and each hop asks the same
@@ -379,15 +378,6 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>
-        /// Native: the prompt after the stored password (<see cref="StoredPasswordAnswered"/>) asked for a password again - a
-        /// password prompt, a question that asks for one: the server refused it.
-        /// </summary>
-        internal bool RefusalAfterSavedPassword
-        {
-            get { lock (_gate) return _afterSaved == AfterSavedPassword.Refusal; }
-        }
-
-        /// <summary>
         /// With nobody to ask, this attempt answered a password prompt with a stored password: the saved one from the vault,
         /// or one the host remembered - which is often the saved one too, filled by the window's handler on an earlier Enter
         /// (the live smoke test). What follows it says whether it was refused (<see cref="SecondFactorAfterSavedPassword"/>).
@@ -629,32 +619,25 @@ internal sealed class RemoteMuxInteractionHandler
         /// <summary>
         /// The attempt failed SSH (auth, or the connection before the command ran): every secret it offered
         /// from memory may be the reason, so each is forgotten, and the next user attempt asks instead. A
-        /// password among them that was refused - another auth prompt came after it, or SSH said the sign-in was refused
-        /// (<paramref name="signInRefused"/>) - means the server's password changed: the host uses that value no more, from
-        /// the vault either (the same value saved there is likely as stale). Without that evidence (the link dropped) it is
-        /// only forgotten. A no-op once the attempt <see cref="Succeeded"/> or its sign-in was over
-        /// (<see cref="Authenticated"/>): what it offered got it in.
+        /// password among them means the server's password changed: the host uses that value no more, from the vault
+        /// either (the same value saved there is likely as stale). A no-op once the attempt
+        /// <see cref="Succeeded"/>, or its sign-in was over (<see cref="Authenticated"/>): what it offered got it in.
         /// </summary>
-        /// <param name="signInRefused">SSH said the server refused the sign-in (<see cref="RemoteMuxFailure.SignInRefused"/>).</param>
-        public void Refused(bool signInRefused = false)
+        public void Refused()
         {
             List<Answer> answers;
-            Answer? passwordFromMemory;
-            bool askedAgain;
             lock (_gate)
             {
                 if (_succeeded || _authenticated) return;
                 answers = [.. _answers];
-                passwordFromMemory = answers.LastOrDefault(a => a.FromMemory && a.Kind == SshInteractionKind.Password);
-                askedAgain = passwordFromMemory?.State == AnswerState.Superseded;   // another auth prompt came after it
             }
 
             _owner.Settle(_generation, forget: answers.Where(a => a.FromMemory).Select(a => (a.Kind, a.Secret)), remember: []);
             // A second factor after it means the remembered password was taken: the attempt failed at the factor, so the
             // password is not marked refused (it may be the saved one, which the user's Enter must still fill; review I-1).
-            if (passwordFromMemory is not null && !SecondFactorAfterSavedPassword && (signInRefused || askedAgain))
+            if (!SecondFactorAfterSavedPassword && answers.LastOrDefault(a => a.FromMemory && a.Kind == SshInteractionKind.Password) is { } refusedFromMemory)
             {
-                _owner.MarkPasswordRefused(_generation, HashOf(passwordFromMemory.Secret));
+                _owner.MarkPasswordRefused(_generation, HashOf(refusedFromMemory.Secret));
             }
         }
 

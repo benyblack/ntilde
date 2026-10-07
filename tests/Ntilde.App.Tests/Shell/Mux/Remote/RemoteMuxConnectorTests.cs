@@ -899,17 +899,20 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     [Fact]
     public async Task An_OpenSSH_drop_after_the_saved_password_was_filled_is_not_a_refusal()
     {
+        SshProfile profile = Profile();
         var built = new List<OpenSshExecTransport>();
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, (t, _) =>
+        RemoteMuxConnector connector = OpenSshConnector(profile, new SavedPasswords("s3cret"), built, (t, _) =>
         {
             if (t.SavedPasswordOnly) HelperFilled(t);
             return new FakeRemoteScript(Stderr: "Connection closed by 10.0.0.2 port 22\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
         });
 
         var dropped = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        bool stillOffered = connector.Prompts.BeginAttempt(interactive: false, savedPasswordProfile: profile).OfferSavedPassword();
         await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
 
         Assert.Equal((RemoteFailureKind.SshFailed, RemoteNeedsUserCause.SignIn), (dropped.Failure.Kind, dropped.Failure.Cause));
+        Assert.True(stillOffered, "the saved password must not be marked refused");
         Assert.Equal(new[] { (false, true), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
     }
 
@@ -1259,19 +1262,41 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     private static NativeSshEvent LinkReset { get; } = PromptingNativeSshInterop.Error("Connection reset by peer (os error 104)");
 
     /// <summary>
-    /// The native twin of the OpenSSH drop, end to end through the real native exec transport: the saved password answered
-    /// the prompt, and then the link dropped - no other prompt, no word of a refusal - after the session connected (sign-in
-    /// over) or before it. Not a refusal: SshFailed, and the next automatic attempt answers its prompt with the saved
-    /// password again, once.
+    /// Native, end to end through the real native exec transport: the saved password answered the prompt, and SSH failed
+    /// before sign-in was over - with no second prompt and no word of a refusal. rusty_ssh tries the identity file and the
+    /// agent's keys first, so the password may be sshd's last try under MaxAuthTries, which it answers by cutting the
+    /// connection (russh's bare "Disconnected"); a reset reads the same. It counts as the saved password refused: the
+    /// attempt needs the user, and the host's next automatic attempt ends at the prompt without sending it again.
     /// </summary>
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task A_native_drop_after_the_saved_password_is_not_a_refusal(bool signedIn)
+    [InlineData("Disconnected")]
+    [InlineData("Connection reset by peer (os error 104)")]
+    public async Task A_native_failure_after_the_saved_password_before_sign_in_is_over_is_a_refusal(string nativeError)
     {
-        NativeSshEvent[] dropped = signedIn
-            ? [PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()]
-            : [PromptingNativeSshInterop.PasswordPrompt, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop(
+            PromptingNativeSshInterop.PasswordPrompt,
+            PromptingNativeSshInterop.Error(nativeError),
+            NativeSshEvent.Closed(),
+            PromptingNativeSshInterop.PasswordPrompt);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
+
+        var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (again.Failure.Kind, again.Failure.Cause));
+        Assert.Equal(new[] { """{"text":"s3cret"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
+    /// The native twin of the OpenSSH drop: the saved password answered the prompt, the session connected - sign-in is
+    /// over (the transport says so at Connected) - and then the link dropped before the greeting. Not a refusal: SshFailed,
+    /// and the next automatic attempt answers its prompt with the saved password again, once.
+    /// </summary>
+    [Fact]
+    public async Task A_native_drop_after_sign_in_is_not_a_refusal()
+    {
+        NativeSshEvent[] dropped = [PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()];
         var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
         RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
 

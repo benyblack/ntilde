@@ -902,16 +902,19 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     /// The user's live smoke test (native, no jump hops, the server's password changed so the saved value is wrong): the
     /// user had signed in with Enter, the window's handler filling the saved password, so the host remembered it. The link
     /// dropped; the loop's attempt answered rusty_ssh's password prompt from that memory - the saved value - and rusty_ssh
-    /// failed authentication (an Error event, then Closed, as the real native layer reports it). That attempt must stop the
-    /// loop at once, as the saved password refused: no second attempt scheduled, and the pane's line is the refused one.
+    /// failed authentication (an Error event, then Closed, as the real native layer reports it) - or sshd, at MaxAuthTries
+    /// after the agent's keys, cut the connection, which reaches it as russh's bare "Disconnected". That attempt must stop
+    /// the loop at once, as the saved password refused: no second attempt scheduled, and the pane's line is the refused one.
     /// </summary>
-    [Fact]
-    public async Task A_remembered_saved_password_refused_on_native_stops_the_loop_at_once_as_the_saved_password_refused()
+    [Theory]
+    [InlineData("SSH authentication failed")]
+    [InlineData("Disconnected")]
+    public async Task A_remembered_saved_password_refused_on_native_stops_the_loop_at_once_as_the_saved_password_refused(string nativeError)
     {
         _profile.BackendKind = SshBackendKind.Native;
         var interop = new PromptingNativeSshInterop(
             PromptingNativeSshInterop.PasswordPrompt,
-            PromptingNativeSshInterop.Error("SSH authentication failed"),
+            PromptingNativeSshInterop.Error(nativeError),
             NativeSshEvent.Closed());
         int nativeAttempts = 0;
         MuxConnectionHost host = Create(

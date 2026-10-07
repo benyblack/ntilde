@@ -1,7 +1,6 @@
 using System.Globalization;
 using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
-using Ntilde.Platform.Ssh.Native;
 
 namespace Ntilde.Shell.Mux.Remote;
 
@@ -12,8 +11,7 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <list type="number">
 /// <item>the hello's <c>version_mismatch</c> → <see cref="RemoteFailureKind.VersionMismatch"/>;</item>
 /// <item>a native transport failure (an <see cref="SshExecTransportException"/>, directly or inside the
-/// handshake's exception) → <see cref="RemoteFailureKind.SshFailed"/>, with the native message, and
-/// <see cref="RemoteMuxFailure.SignInRefused"/> when that message is the native layer's authentication failure. The
+/// handshake's exception) → <see cref="RemoteFailureKind.SshFailed"/>, with the native message. The
 /// remote command never ran, and the stderr tail then holds that message, not the command's output, so
 /// it is not matched against the text rules below;</item>
 /// <item>a loader or format error on any line (<c>Exec format error</c>, <c>cannot execute binary
@@ -26,8 +24,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 126 → <see cref="RemoteFailureKind.Unsupported"/>, with the last stderr line;</item>
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
-/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. A refusal
-/// (<c>Permission denied</c>, or sshd's <c>Too many authentication failures</c>) sets
+/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. A refusal - ssh's own
+/// <c>[user@host: ]Permission denied (methods).</c>, or sshd's <c>Too many authentication failures</c> - sets
 /// <see cref="RemoteMuxFailure.SignInRefused"/>, and for an automatic attempt is
 /// <see cref="RemoteFailureKind.NeedsUser"/> instead, with the same reason: in batch mode ssh tried only what
 /// needs no answer, and with the saved password it tried that once, so signing in needs the user;</item>
@@ -64,9 +62,7 @@ internal static class RemoteMuxFailureClassifier
         if (Find<SshExecTransportException>(error, _ => true) is { } transport)
         {
             string message = transport.NativeMessage.Trim().Length > 0 ? transport.NativeMessage.Trim() : transport.Message;
-            // rusty_ssh's own word that the server refused every way it signed in: a lost link is another failure.
-            bool refused = NativeSshFailureClassifier.Classify(transport.NativeMessage).Kind == NativeSshFailureKind.Authentication;
-            return new RemoteMuxFailure(RemoteFailureKind.SshFailed, Quote(message)) { SignInRefused = refused };
+            return new RemoteMuxFailure(RemoteFailureKind.SshFailed, Quote(message));
         }
 
         List<string> lines = [.. Lines(stderr), .. CapturedLines(capturedStdout)];
@@ -94,8 +90,7 @@ internal static class RemoteMuxFailureClassifier
             // MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same. Any other exit 255 -
             // the link dropping, nothing listening - says nothing about what was sent.
             bool refused = Lines(stderr).Any(line =>
-                line.Contains("Permission denied", StringComparison.Ordinal)
-                || line.Contains("Too many authentication failures", StringComparison.Ordinal));
+                IsSshPermissionDenied(line) || line.Contains("Too many authentication failures", StringComparison.Ordinal));
             RemoteFailureKind kind = automatic && refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed;
             return new RemoteMuxFailure(kind, Quote(lastStderrLine ?? "ssh exited with code 255")) { SignInRefused = refused };
         }
@@ -219,6 +214,37 @@ internal static class RemoteMuxFailureClassifier
     private static bool IsBinaryNotFound(string line) =>
         line.Contains(BinaryName, StringComparison.Ordinal)
         && (line.Contains("not found", StringComparison.Ordinal) || line.Contains("No such file or directory", StringComparison.Ordinal));
+
+    /// <summary>
+    /// ssh's own final refusal, as the whole line: <c>[user@host: ]Permission denied (method,...).</c> - the methods the
+    /// server still offered, names with no space between them. It decides that a saved password counts as refused, so the
+    /// line is parsed, not searched: a remote shell's <c>-bash: x.sh: Permission denied</c>, or a tool's <c>Permission
+    /// denied (os error 13)</c>, that reached stderr before the link dropped is not one.
+    /// </summary>
+    private static bool IsSshPermissionDenied(string line)
+    {
+        const string Denied = "Permission denied (";
+        int at = line.IndexOf(Denied, StringComparison.Ordinal);
+        if (at < 0) return false;
+
+        // Before it: nothing (OpenSSH before 7.x), or "user@host: " - one word, with no space in it.
+        ReadOnlySpan<char> target = line.AsSpan(0, at);
+        if (target.Length > 0)
+        {
+            if (!target.EndsWith(": ", StringComparison.Ordinal)) return false;
+            ReadOnlySpan<char> who = target[..^2];
+            if (who.IsEmpty || who.ContainsAny(' ', '\t')) return false;
+        }
+
+        ReadOnlySpan<char> methods = line.AsSpan(at + Denied.Length);
+        if (!methods.EndsWith(").", StringComparison.Ordinal)) return false;
+        foreach (char c in methods[..^2])
+        {
+            if (!char.IsAsciiLetterOrDigit(c) && c is not ('-' or ',' or '@' or '.' or '_')) return false;
+        }
+
+        return true;
+    }
 
     /// <summary>The non-blank lines of <paramref name="text"/>, trimmed.</summary>
     private static IEnumerable<string> Lines(string text) =>

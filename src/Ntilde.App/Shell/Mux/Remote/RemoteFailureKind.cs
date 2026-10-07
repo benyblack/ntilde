@@ -62,10 +62,11 @@ internal enum RemoteNeedsUserCause
 internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, RemoteNeedsUserCause Cause = RemoteNeedsUserCause.SignIn)
 {
     /// <summary>
-    /// SSH said the server refused the sign-in: OpenSSH's <c>Permission denied</c> or <c>Too many authentication
-    /// failures</c> (exit 255), or the native layer's authentication failure - whoever started the attempt. It is the
-    /// evidence that a password the attempt sent was refused (<see cref="RemoteMuxConnector"/>); a failure without it - a
-    /// link that dropped - says nothing about the password.
+    /// OpenSSH said the server refused the sign-in: its own final <c>Permission denied (methods).</c> line, or sshd's <c>Too many
+    /// authentication failures</c> (exit 255) - whoever started the attempt. It is the evidence that the saved password
+    /// ssh's askpass filled was refused (<see cref="RemoteMuxConnector"/>); a failure without it - a link that dropped -
+    /// says nothing about the password. Never set for the native backend, whose refusal at sshd's MaxAuthTries is a bare
+    /// disconnect: there, whether sign-in was over decides.
     /// </summary>
     public bool SignInRefused { get; init; }
 }
