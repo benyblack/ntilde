@@ -496,7 +496,8 @@ internal sealed class RemoteMuxConnector : IDisposable
 
     /// <summary>
     /// What the saved password <paramref name="prompts"/> offered had to do with an SSH failure (review I-1), on evidence,
-    /// never guesswork. Given to a native password prompt, it reached the server: the prompt after it says which - a code
+    /// never guesswork. Given to a native password prompt - from the vault, or the same value remembered from an earlier
+    /// sign-in - it reached the server: the prompt after it says which - a code
     /// question is a second factor; a password asked for again, or the attempt failing SSH with nothing after it, is a
     /// refusal. Handed to OpenSSH's askpass, the helper's record of this attempt's ssh says: a declined prompt naming the
     /// target (a second factor) is not a refusal; a refusal needs the helper to have filled the password - sshd refusing
@@ -510,8 +511,12 @@ internal sealed class RemoteMuxConnector : IDisposable
         if (prompts.HasSucceeded) return SavedPasswordVerdict.None;
         bool sshFailed = failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser || prompts.AbortedPrompt is not null;
         if (!sshFailed) return SavedPasswordVerdict.None;
-        if (prompts.SavedPasswordAnswered)
+        if (prompts.StoredPasswordAnswered)
         {
+            // Native: the saved password, from the vault or remembered from an earlier sign-in (the live smoke test: the
+            // window's handler had filled it on Enter, and the host remembered it), reached the server. A remembered password
+            // that is not the saved one keeps the remembered rule: forgotten, and the next attempt may offer the saved one.
+            if (!prompts.StoredPasswordIsTheSavedOne()) return SavedPasswordVerdict.None;
             return prompts.SecondFactorAfterSavedPassword ? SavedPasswordVerdict.NotEnough : SavedPasswordVerdict.Refused;
         }
 

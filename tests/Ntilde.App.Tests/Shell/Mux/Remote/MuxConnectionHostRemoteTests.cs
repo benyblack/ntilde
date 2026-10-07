@@ -6,6 +6,7 @@ using Ntilde.Mux.Tests.Support;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.Native;
 using Ntilde.Platform.Ssh.Sessions;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
@@ -37,7 +38,11 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     {
         for (int i = _owned.Count - 1; i >= 0; i--) _owned[i].Dispose();
         _remote.Dispose();
+        if (Directory.Exists(_askPassRecords)) Directory.Delete(_askPassRecords, recursive: true);
     }
+
+    /// <summary>Where this test's askpass helper - played by the test - records what it did for each attempt's ssh.</summary>
+    private readonly string _askPassRecords = Path.Combine(Path.GetTempPath(), "ntilde-askpass-tests", Guid.NewGuid().ToString("N"));
 
     private T Own<T>(T disposable) where T : IDisposable
     {
@@ -49,7 +54,9 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport>? transportFor = null,
         ISshInteractionHandler? user = null,
         Func<SshProfile, string?>? savedPassword = null) =>
-        Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(_profile.Id), _ => _profile, transportFor ?? ((_, _) => _remote), _log.Enqueue, user, _clock, savedPassword: savedPassword)
+        Own(RemoteMuxHostFactory.Create(
+                MuxEndpointId.ForSsh(_profile.Id), _ => _profile, transportFor ?? ((_, _) => _remote), _log.Enqueue, user, _clock,
+                savedPassword: savedPassword, askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords))
             ?? throw new InvalidOperationException("the factory declined"));
 
     private bool Logged(string text) => _log.Any(l => l.Contains(text, StringComparison.Ordinal));
@@ -889,6 +896,112 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Equal(new[] { "right" }, answered);
         Assert.Null(host.LastFailure);
         Assert.False(host.IsReconnecting);
+    }
+
+    /// <summary>
+    /// The user's live smoke test (native, no jump hops, the server's password changed so the saved value is wrong): the
+    /// user had signed in with Enter, the window's handler filling the saved password, so the host remembered it. The link
+    /// dropped; the loop's attempt answered rusty_ssh's password prompt from that memory - the saved value - and rusty_ssh
+    /// failed authentication (an Error event, then Closed, as the real native layer reports it). That attempt must stop the
+    /// loop at once, as the saved password refused: no second attempt scheduled, and the pane's line is the refused one.
+    /// </summary>
+    [Fact]
+    public async Task A_remembered_saved_password_refused_on_native_stops_the_loop_at_once_as_the_saved_password_refused()
+    {
+        _profile.BackendKind = SshBackendKind.Native;
+        var interop = new PromptingNativeSshInterop(
+            PromptingNativeSshInterop.PasswordPrompt,
+            PromptingNativeSshInterop.Error("SSH authentication failed"),
+            NativeSshEvent.Closed());
+        int nativeAttempts = 0;
+        MuxConnectionHost host = Create(
+            (profile, request) =>
+            {
+                if (!request.Interactive)
+                {
+                    Interlocked.Increment(ref nativeAttempts);
+                    return RemoteMuxHostFactory.CreateTransport(
+                        profile,
+                        request,
+                        (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+                        () => interop,
+                        static () => true,
+                        askPassHelperPath: null,
+                        log: _ => { });
+                }
+
+                // The user's Enter: the window's handler fills the saved password into the prompt, and it gets in.
+                _remote.OnStart = _ => request.Prompts.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult();
+                return _remote;
+            },
+            new ScriptedUser(SshInteractionResponse.FromSecret("stale")),
+            savedPassword: _ => "stale");
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+        await TestWait.UntilAsync(() => events.Has("abandoned") || _clock.PendingCount == 1, "the loop's attempt ended", Patient);
+
+        Assert.True(events.Has("abandoned"), "the refused saved password must stop the loop at once");
+        Assert.Equal(0, _clock.PendingCount);
+        RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
+        Assert.Equal(1, Volatile.Read(ref nativeAttempts));
+        Assert.Equal(new[] { """{"text":"stale"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
+    /// The OpenSSH twin of the smoke test: the loop's attempt runs the vault-only askpass, the helper fills the saved
+    /// password (its record written under the transport's token), and sshd refuses it. The loop stops at once, as the saved
+    /// password refused.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_saved_password_on_OpenSSH_stops_the_loop_at_once_as_the_saved_password_refused()
+    {
+        var records = new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords);
+        int automaticAttempts = 0;
+        MuxConnectionHost host = Create(
+            (profile, request) =>
+            {
+                _remote.OnStart = null;
+                _remote.Script = null;
+                if (request.Interactive) return _remote;
+                Interlocked.Increment(ref automaticAttempts);
+                var transport = (OpenSshExecTransport)RemoteMuxHostFactory.CreateTransport(
+                    profile,
+                    request,
+                    (_, _) => new Ntilde.Services.Ssh.SshLaunchDetails
+                    {
+                        SshPath = "/usr/bin/ssh",
+                        ConfigPath = "cfg",
+                        Alias = "ntilde_0123",
+                        CommandLine = "/usr/bin/ssh -F cfg ntilde_0123",
+                        PlanArguments = ["-F", "cfg", "ntilde_0123"],
+                    },
+                    () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+                    static () => true,
+                    askPassHelperPath: "/opt/ntilde/ntilde",
+                    log: _ => { });
+                if (transport.SavedPasswordOnly) records.RecordAnswered(transport.AskPassSession!);
+                _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
+                return _remote;
+            },
+            savedPassword: _ => "stale");
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+        await TestWait.UntilAsync(() => events.Has("abandoned") || _clock.PendingCount == 1, "the loop's attempt ended", Patient);
+
+        Assert.True(events.Has("abandoned"), "the refused saved password must stop the loop at once");
+        Assert.Equal(0, _clock.PendingCount);
+        RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
+        Assert.Equal(1, Volatile.Read(ref automaticAttempts));
     }
 
     /// <summary>

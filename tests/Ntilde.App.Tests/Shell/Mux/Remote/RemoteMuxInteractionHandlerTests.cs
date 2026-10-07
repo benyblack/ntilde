@@ -788,6 +788,47 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         Assert.True(automatic.SecondFactorAfterSavedPassword);
     }
 
+    /// <summary>
+    /// The live smoke test's shape: the password an automatic attempt answers from the host's memory is the saved one (the
+    /// window's handler filled it on the user's Enter). Refused, it is the saved password refused - the attempt says so, so
+    /// the connector stops the loop at once with that cause.
+    /// </summary>
+    [Fact]
+    public async Task A_remembered_password_that_is_the_saved_one_counts_as_the_saved_password()
+    {
+        var saved = new SavedPasswords("stale");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("stale")), saved);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+
+        Assert.Equal("stale", (await automatic.HandleAsync(Password, Ct)).Secret);
+
+        Assert.True(automatic.StoredPasswordAnswered);
+        Assert.True(automatic.StoredPasswordIsTheSavedOne());
+        saved.Value = "another";
+        Assert.False(automatic.StoredPasswordIsTheSavedOne());
+    }
+
+    /// <summary>
+    /// Review I-1 for a remembered password: a code question after it is a second factor, so the password was taken - the
+    /// attempt failing at the code must not mark it refused (it is also the saved value here, which Enter must still fill).
+    /// </summary>
+    [Fact]
+    public async Task A_second_factor_after_a_remembered_password_does_not_mark_it_refused()
+    {
+        var saved = new SavedPasswords("s3cret");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("s3cret")), saved);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await automatic.HandleAsync(Password, Ct);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
+
+        automatic.Refused();
+
+        Assert.True(automatic.SecondFactorAfterSavedPassword);
+        Assert.False(handler.BeginAttempt(interactive: true, savedPasswordProfile: Box).AvoidsSavedPassword);
+    }
+
     /// <summary>A keyboard-interactive question that asks for a password again, or a second password prompt, means the saved one was refused.</summary>
     [Fact]
     public async Task A_password_question_after_the_saved_password_is_a_refusal()

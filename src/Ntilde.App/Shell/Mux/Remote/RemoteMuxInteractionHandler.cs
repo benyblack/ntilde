@@ -330,8 +330,10 @@ internal sealed class RemoteMuxInteractionHandler
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
         private bool _savedPasswordOffered;          // guarded by _gate
-        private bool _savedPasswordAnswered;         // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
+        private bool _storedPasswordAnswered;        // guarded by _gate; nobody to ask, and a stored password answered
+        private bool _storedFromVault;               // guarded by _gate; that password came from the vault
+        private byte[]? _storedHash;                 // guarded by _gate; HashOf that password
         private AfterSavedPassword _afterSaved;      // guarded by _gate; the first prompt after the saved password
 
         internal Attempt(
@@ -363,13 +365,45 @@ internal sealed class RemoteMuxInteractionHandler
         public string AskPassSession { get; } = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// Native: the prompt after the saved password asked for something other than a password - a keyboard-interactive
-        /// question with no "password" in it, a code - so the server took the password and wants a second factor (review
-        /// I-1). A password prompt, or a question that asks for a password, after it means it was refused.
+        /// Native: the prompt after the stored password (<see cref="StoredPasswordAnswered"/>) asked for something other than
+        /// a password - a keyboard-interactive question with no "password" in it, a code - so the server took the password
+        /// and wants a second factor (review I-1). A password prompt, or a question that asks for a password, after it means
+        /// it was refused.
         /// </summary>
         internal bool SecondFactorAfterSavedPassword
         {
             get { lock (_gate) return _afterSaved == AfterSavedPassword.SecondFactor; }
+        }
+
+        /// <summary>
+        /// With nobody to ask, this attempt answered a password prompt with a stored password: the saved one from the vault,
+        /// or one the host remembered - which is often the saved one too, filled by the window's handler on an earlier Enter
+        /// (the live smoke test). What follows it says whether it was refused (<see cref="SecondFactorAfterSavedPassword"/>).
+        /// </summary>
+        internal bool StoredPasswordAnswered
+        {
+            get { lock (_gate) return _storedPasswordAnswered; }
+        }
+
+        /// <summary>
+        /// Whether the stored password this attempt answered is the profile's saved one: taken from the vault, or a remembered
+        /// value the vault holds too (compared by <see cref="HashOf"/>, reading the vault). Its refusal is then the saved
+        /// password refused.
+        /// </summary>
+        internal bool StoredPasswordIsTheSavedOne()
+        {
+            byte[]? stored;
+            lock (_gate)
+            {
+                if (!_storedPasswordAnswered) return false;
+                if (_storedFromVault) return true;
+                stored = _storedHash;
+            }
+
+            return stored is not null
+                && _savedPasswordProfile is { } profile
+                && _owner.ReadSavedPassword(profile) is { } saved
+                && CryptographicOperations.FixedTimeEquals(HashOf(saved), stored);
         }
 
         /// <summary>What the askpass helper did for this attempt's ssh (OpenSSH): filled the saved password, declined a second factor.</summary>
@@ -415,15 +449,6 @@ internal sealed class RemoteMuxInteractionHandler
         }
 
         /// <summary>
-        /// The saved password was given as the answer to a password prompt (native): it certainly reached the server, so
-        /// an SSH failure after it is its refusal. One handed to ssh's askpass may never have been asked for.
-        /// </summary>
-        internal bool SavedPasswordAnswered
-        {
-            get { lock (_gate) return _savedPasswordAnswered; }
-        }
-
-        /// <summary>
         /// Offers the saved password to a transport that answers its own prompts - ssh's askpass in its vault-only mode -
         /// for the whole attempt: true when this attempt may (<see cref="MaySignInWithSavedPassword"/>), the helper's record
         /// of it can be written (Greptile G1: else a refusal could never be counted), and the vault holds one not refused
@@ -448,7 +473,7 @@ internal sealed class RemoteMuxInteractionHandler
         public void SavedPasswordRefused()
         {
             byte[]? hash;
-            lock (_gate) hash = _offeredHash;
+            lock (_gate) hash = _offeredHash ?? _storedHash;
             if (hash is not null) _owner.MarkPasswordRefused(_generation, hash);
         }
 
@@ -500,6 +525,7 @@ internal sealed class RemoteMuxInteractionHandler
                 if (Recall(kind) is { } remembered)
                 {
                     Track(new Answer(kind, remembered, FromMemory: true));
+                    if (kind == SshInteractionKind.Password && User is null) NoteStoredPassword(remembered, fromVault: false);
                     return SshInteractionResponse.FromSecret(remembered);
                 }
 
@@ -589,7 +615,9 @@ internal sealed class RemoteMuxInteractionHandler
             }
 
             _owner.Settle(_generation, forget: answers.Where(a => a.FromMemory).Select(a => (a.Kind, a.Secret)), remember: []);
-            if (answers.LastOrDefault(a => a.FromMemory && a.Kind == SshInteractionKind.Password) is { } refusedFromMemory)
+            // A second factor after it means the remembered password was taken: the attempt failed at the factor, so the
+            // password is not marked refused (it may be the saved one, which the user's Enter must still fill; review I-1).
+            if (!SecondFactorAfterSavedPassword && answers.LastOrDefault(a => a.FromMemory && a.Kind == SshInteractionKind.Password) is { } refusedFromMemory)
             {
                 _owner.MarkPasswordRefused(_generation, HashOf(refusedFromMemory.Secret));
             }
@@ -613,15 +641,18 @@ internal sealed class RemoteMuxInteractionHandler
             {
                 if (_savedPasswordOffered) return null;
                 _savedPasswordOffered = true;
-                _savedPasswordAnswered = true;
                 _offeredHash = saved.Hash;
+                _storedPasswordAnswered = true;
+                _storedFromVault = true;
+                _storedHash = saved.Hash;
             }
 
             return saved.Value;
         }
 
         /// <summary>
-        /// Records the first prompt after the saved password was answered: a keyboard-interactive round whose questions all
+        /// Records the first prompt after a stored password (the saved one, or a remembered one) was answered with nobody to
+        /// ask: a keyboard-interactive round whose questions all
         /// ask for something other than a password is a second factor; anything else - a password prompt, a question that
         /// asks for a password, a passphrase - means the password was refused. An empty round says nothing.
         /// </summary>
@@ -632,8 +663,20 @@ internal sealed class RemoteMuxInteractionHandler
                 && request.KeyboardPrompts.All(question => !question.Prompt.Contains("password", StringComparison.OrdinalIgnoreCase));
             lock (_gate)
             {
-                if (!_savedPasswordAnswered || _afterSaved != AfterSavedPassword.Nothing) return;
+                if (!_storedPasswordAnswered || _afterSaved != AfterSavedPassword.Nothing) return;
                 _afterSaved = secondFactor ? AfterSavedPassword.SecondFactor : AfterSavedPassword.Refusal;
+            }
+        }
+
+        /// <summary>Records the stored password this attempt answered with nobody to ask, unless it already answered one.</summary>
+        private void NoteStoredPassword(string secret, bool fromVault)
+        {
+            lock (_gate)
+            {
+                if (_storedPasswordAnswered) return;
+                _storedPasswordAnswered = true;
+                _storedFromVault = fromVault;
+                _storedHash = HashOf(secret);
             }
         }
 
