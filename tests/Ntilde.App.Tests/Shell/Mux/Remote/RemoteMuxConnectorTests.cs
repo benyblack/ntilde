@@ -40,7 +40,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// The askpass helper filled the target's password from the vault for the ssh <paramref name="transport"/> starts: under
     /// the token that transport gives ssh, as the real helper reads it from its environment (re-review item 2).
     /// </summary>
-    private void HelperFilled(OpenSshExecTransport transport) => AskPassRecords.RecordAnswered(transport.AskPassSession!);
+    private void HelperFilled(OpenSshExecTransport transport) => AskPassRecords.TryClaim(transport.AskPassSession!);
 
     /// <summary>The askpass helper declined a prompt naming the target that asks for no password (a second factor).</summary>
     private void HelperDeclined(OpenSshExecTransport transport) => AskPassRecords.RecordDeclined(transport.AskPassSession!);

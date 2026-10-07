@@ -86,14 +86,15 @@ internal static class SshAskPassCommand
     /// Answers one ssh prompt: the target's own password (<see cref="IsTargetPasswordPrompt"/>) from
     /// <paramref name="savedPassword"/> when it has one; anything else from <paramref name="askUser"/> - unless the
     /// environment says vault-only (<see cref="VaultOnlyEnvironmentVariable"/>, an automatic reconnect): then every
-    /// other prompt, and a target's password with nothing saved, exits 1 at once, with no UI built and, for a prompt
-    /// that is not the target's password, the vault not even read. ssh treats that exit as no answer.
+    /// other prompt, a target's password with nothing saved, and every target's password after the first, exits 1 at
+    /// once, with no UI built and, for a prompt that is not the target's password, the vault not even read
+    /// (<see cref="AnswerVaultOnly"/>). ssh treats that exit as no answer.
     /// <para>
-    /// A user's attempt fills the target's password from the vault at most once per ssh process (its
-    /// <see cref="SessionEnvironmentVariable"/> token, recorded in <paramref name="markers"/>): the same ssh asking again
-    /// means the saved password was refused, so the user is asked instead of it being sent again. With
-    /// <see cref="NoVaultEnvironmentVariable"/> (the host's saved password was refused before) the vault is not used at
-    /// all. Either way the dialog's "Remember password" replaces the saved one.
+    /// In both modes the target's password is filled from the vault at most once per ssh process (its
+    /// <see cref="SessionEnvironmentVariable"/> token, recorded in <paramref name="markers"/>). On a user's attempt the
+    /// same ssh asking again means the saved password was refused, so the user is asked instead of it being sent again.
+    /// With <see cref="NoVaultEnvironmentVariable"/> (the host's saved password was refused before) the vault is not used
+    /// at all. Either way the dialog's "Remember password" replaces the saved one.
     /// </para>
     /// </summary>
     /// <param name="environment">Reads an environment variable: the transport's askpass contract.</param>
@@ -122,28 +123,15 @@ internal static class SshAskPassCommand
         {
             string prompt = GetPrompt(args);
             TerminalProfile profile = CreateProfileFromEnvironment(environment);
-            bool vaultOnly = string.Equals(environment(VaultOnlyEnvironmentVariable), "1", StringComparison.Ordinal);
+            if (string.Equals(environment(VaultOnlyEnvironmentVariable), "1", StringComparison.Ordinal))
+            {
+                return AnswerVaultOnly(prompt, profile, environment, savedPassword, markers, stdout, stderr);
+            }
 
-            if (IsTargetPasswordPrompt(prompt, profile) && FromVault(environment, savedPassword, markers, profile, vaultOnly, stderr) is { } vaultPassword)
+            if (IsTargetPasswordPrompt(prompt, profile) && FromVault(environment, savedPassword, markers, profile, stderr) is { } vaultPassword)
             {
                 stdout.WriteLine(vaultPassword);
                 return 0;
-            }
-
-            if (vaultOnly)
-            {
-                // A prompt that names the target but asks for no password - a second factor after the saved password - is
-                // recorded, so the app does not take the sign-in's failure for the saved password refused (review I-1).
-                if (!IsTargetPasswordPrompt(prompt, profile) && NamesTarget(prompt, profile)
-                    && environment(SessionEnvironmentVariable) is { } session && SshAskPassEnvironment.IsSessionToken(session))
-                {
-                    markers.RecordDeclined(session);
-                }
-
-                // Nobody is waiting (an automatic reconnect): no dialog, no window, no Avalonia app. Never the prompt
-                // itself either, which a server's keyboard-interactive text is part of: ssh's stderr goes to the log.
-                stderr.WriteLine("Ntilde SSH askpass: an automatic reconnect answers only the target's password, from the vault; no answer given.");
-                return 1;
             }
 
             string? response = askUser(new AskPassState(prompt, profile));
@@ -163,35 +151,78 @@ internal static class SshAskPassCommand
     }
 
     /// <summary>
-    /// The saved password to answer the target's password prompt with, or null for the dialog (or, vault-only, no answer).
-    /// Vault-only answers every such prompt (ssh's <c>NumberOfPasswordPrompts=1</c> bounds it) and records the fill under
-    /// the ssh's token, which the app reads back to know the saved password was asked for. Otherwise: never with
-    /// <see cref="NoVaultEnvironmentVariable"/>; never twice for one ssh's <see cref="SessionEnvironmentVariable"/> (the
-    /// claim is atomic), and not at all when the fill cannot be claimed - it could then be sent again. An ssh with no valid
-    /// token gets it as before.
+    /// Vault-only (an automatic reconnect: nobody is waiting): the target's password from the vault, at most once per ssh
+    /// process, and nothing else - no dialog, no window, no Avalonia app. ssh's <c>NumberOfPasswordPrompts=1</c> bounds a
+    /// method's attempts, not the prompts of one keyboard-interactive round, so the fill is claimed under the ssh's
+    /// <see cref="SessionEnvironmentVariable"/> token (<see cref="SshAskPassSessionMarkers.TryClaim"/>); the claim is also
+    /// the record the app reads back to know the saved password was asked for. With no token, or a claim that cannot be
+    /// made, nothing is filled: without the record a later prompt could not tell it came second.
+    /// <para>
+    /// After the fill, a later prompt for the target's password gets nothing. In the password method's form it is ssh's
+    /// next method after the server refused the fill (one that offers keyboard-interactive and password auth), and the
+    /// fill's record stands alone, so the app reads a refused saved password. In the keyboard-interactive form it is the
+    /// same round going on (an expired password's <c>New password:</c>), asking for more than the saved password: recorded
+    /// declined, as is any prompt naming the target that asks for no password (a second factor).
+    /// </para>
+    /// </summary>
+    /// <returns>0 with the saved password on <paramref name="stdout"/>; otherwise 1, which ssh takes as no answer.</returns>
+    private static int AnswerVaultOnly(
+        string prompt,
+        TerminalProfile profile,
+        Func<string, string?> environment,
+        Func<TerminalProfile, string?> savedPassword,
+        SshAskPassSessionMarkers markers,
+        TextWriter stdout,
+        TextWriter stderr)
+    {
+        string? token = environment(SessionEnvironmentVariable);
+        if (SshAskPassEnvironment.IsSessionToken(token))
+        {
+            if (!IsTargetPasswordPrompt(prompt, profile))
+            {
+                // A prompt that names the target but asks for no password - a second factor after the saved password - is
+                // recorded, so the app does not take the sign-in's failure for the saved password refused (review I-1).
+                if (NamesTarget(prompt, profile)) markers.RecordDeclined(token!);
+            }
+            else if (!markers.HasAnswered(token!))
+            {
+                // The first: filled only by the call whose claim creates the record; a claim already taken, or that cannot
+                // be written, fills nothing.
+                if (savedPassword(profile) is { Length: > 0 } saved && markers.TryClaim(token!))
+                {
+                    stdout.WriteLine(saved);
+                    return 0;
+                }
+            }
+            else if (!IsTargetPasswordMethodPrompt(prompt, profile))
+            {
+                // After the fill, the same keyboard-interactive round asks for more. (The password method asking again is the
+                // refusal, which the fill's record already says.)
+                markers.RecordDeclined(token!);
+            }
+        }
+
+        // Not the prompt itself, which a server's keyboard-interactive text is part of: ssh's stderr goes to the log.
+        stderr.WriteLine("Ntilde SSH askpass: an automatic reconnect answers only the target's password, once, from the vault; no answer given.");
+        return 1;
+    }
+
+    /// <summary>
+    /// A user's attempt: the saved password to answer the target's password prompt with, or null for the dialog. Never
+    /// with <see cref="NoVaultEnvironmentVariable"/>; never twice for one ssh's <see cref="SessionEnvironmentVariable"/>
+    /// (the claim is atomic), and not at all when the fill cannot be claimed - it could then be sent again. An ssh with no
+    /// valid token gets it as before.
     /// </summary>
     private static string? FromVault(
         Func<string, string?> environment,
         Func<TerminalProfile, string?> savedPassword,
         SshAskPassSessionMarkers markers,
         TerminalProfile profile,
-        bool vaultOnly,
         TextWriter stderr)
     {
-        string? token = environment(SessionEnvironmentVariable);
-        bool hasToken = SshAskPassEnvironment.IsSessionToken(token);
-        if (vaultOnly)
-        {
-            // The app offers vault-only mode only when the record folder took a probe file (Greptile G1). Should it fail
-            // here all the same (a race), the password is still given: declining would make ssh send an empty one - a
-            // failed login even when the saved password is right - and the next attempt's probe stops the offers anyway.
-            string? fill = NonEmpty(savedPassword(profile));
-            if (fill is not null && hasToken) markers.RecordAnswered(token!);
-            return fill;
-        }
-
         if (string.Equals(environment(NoVaultEnvironmentVariable), "1", StringComparison.Ordinal)) return null;
-        if (!hasToken) return NonEmpty(savedPassword(profile));
+        string? token = environment(SessionEnvironmentVariable);
+        if (!SshAskPassEnvironment.IsSessionToken(token)) return NonEmpty(savedPassword(profile));
         if (markers.HasAnswered(token!)) return null; // this ssh asks again: the saved password was refused
 
         if (NonEmpty(savedPassword(profile)) is not { } saved) return null;
@@ -275,7 +306,8 @@ internal static class SshAskPassCommand
     /// <list type="bullet">
     /// <item>password auth: <c>&lt;user&gt;@&lt;host&gt;'s password: </c>;</item>
     /// <item>keyboard-interactive (OpenSSH 8.4+): <c>(&lt;user&gt;@&lt;host&gt;) </c> then the server's
-    /// own text, which must ask for a password.</item>
+    /// own text, which must end asking for a password (<c>password:</c>, trailing blanks aside): text
+    /// that only mentions one may be asking for something else.</item>
     /// </list>
     /// ssh writes the host as the config's HostName, lowercased, hence the case-insensitive match.
     /// A profile with no user (ssh then uses the local account) or no host never auto-fills.
@@ -285,23 +317,27 @@ internal static class SshAskPassCommand
         ArgumentNullException.ThrowIfNull(prompt);
         ArgumentNullException.ThrowIfNull(profile);
 
-        string user = profile.SshUser?.Trim() ?? string.Empty;
-        string host = profile.SshHost?.Trim() ?? string.Empty;
-        if (user.Length == 0 || host.Length == 0)
-        {
-            return false;
-        }
-
-        string target = $"{user}@{host}";
-        if (prompt.StartsWith(target + "'s password", StringComparison.OrdinalIgnoreCase))
+        if (IsTargetPasswordMethodPrompt(prompt, profile))
         {
             return true;
         }
 
+        if (TargetOf(profile) is not { } target)
+        {
+            return false;
+        }
+
         string keyboardInteractive = $"({target}) ";
         return prompt.StartsWith(keyboardInteractive, StringComparison.OrdinalIgnoreCase) &&
-               prompt.AsSpan(keyboardInteractive.Length).Contains("password", StringComparison.OrdinalIgnoreCase);
+               prompt.AsSpan(keyboardInteractive.Length).TrimEnd().EndsWith("password:", StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Whether <paramref name="prompt"/> is the target's password as ssh's password method asks for it,
+    /// <c>user@host's password: </c> - the first form <see cref="IsTargetPasswordPrompt"/> takes.
+    /// </summary>
+    private static bool IsTargetPasswordMethodPrompt(string prompt, TerminalProfile profile) =>
+        TargetOf(profile) is { } target && prompt.StartsWith(target + "'s password", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether <paramref name="prompt"/> is the target's own - <c>(user@host) </c> or <c>user@host's </c> at its start, where
@@ -312,16 +348,17 @@ internal static class SshAskPassCommand
         ArgumentNullException.ThrowIfNull(prompt);
         ArgumentNullException.ThrowIfNull(profile);
 
+        return TargetOf(profile) is { } target
+            && (prompt.StartsWith($"({target}) ", StringComparison.OrdinalIgnoreCase)
+                || prompt.StartsWith(target + "'s ", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>The profile's target as ssh names it in a prompt, <c>user@host</c>; null without a user or a host.</summary>
+    private static string? TargetOf(TerminalProfile profile)
+    {
         string user = profile.SshUser?.Trim() ?? string.Empty;
         string host = profile.SshHost?.Trim() ?? string.Empty;
-        if (user.Length == 0 || host.Length == 0)
-        {
-            return false;
-        }
-
-        string target = $"{user}@{host}";
-        return prompt.StartsWith($"({target}) ", StringComparison.OrdinalIgnoreCase)
-            || prompt.StartsWith(target + "'s ", StringComparison.OrdinalIgnoreCase);
+        return user.Length == 0 || host.Length == 0 ? null : $"{user}@{host}";
     }
 
     private static bool IsSecretPrompt(string prompt)

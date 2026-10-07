@@ -52,6 +52,27 @@ public sealed class SshAskPassTargetPromptTests
         Assert.False(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Target()));
     }
 
+    /// <summary>
+    /// Keyboard-interactive text is the server's, and may mention a password while asking for something else: only text
+    /// that ends asking for one (<c>password:</c>, whatever its case, trailing blanks aside) is the target's password.
+    /// </summary>
+    [Theory]
+    [InlineData("(ops@prod.internal) Your password expires soon. Verification code: ")]
+    [InlineData("(ops@prod.internal) Password expired. Enter the code we sent: ")]
+    [InlineData("(ops@prod.internal) Password")]
+    public void Keyboard_interactive_text_that_does_not_end_asking_for_a_password_is_not(string prompt)
+    {
+        Assert.False(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Target()));
+    }
+
+    [Theory]
+    [InlineData("(ops@prod.internal) PASSWORD:")]
+    [InlineData("(ops@prod.internal) New password:  \n")]
+    public void Keyboard_interactive_text_ending_with_password_is(string prompt)
+    {
+        Assert.True(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Target()));
+    }
+
     [Fact]
     public void A_profile_without_a_user_never_auto_fills()
     {

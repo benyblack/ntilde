@@ -8,18 +8,20 @@ namespace Ntilde;
 /// <summary>What the askpass helper did for one ssh process (one session token): see <see cref="SshAskPassSessionMarkers"/>.</summary>
 /// <param name="Answered">It filled the target's password from the vault.</param>
 /// <param name="Declined">
-/// Vault-only, it declined a prompt that names the target but asks for no password - a second factor after the saved
-/// password, which ssh then sent empty.
+/// Vault-only, it declined a prompt that names the target and asks for more than the saved password - one that asks for
+/// no password (a second factor), or the same keyboard-interactive round asking for a password again after the fill (an
+/// expired password's new one) - which ssh then sent empty.
 /// </param>
 internal readonly record struct SshAskPassRecord(bool Answered, bool Declined);
 
 /// <summary>
 /// The askpass helper's record of what it did for each ssh process, one empty file per fact, named by the process's
 /// session token (<c>NTILDE_SSH_ASKPASS_SESSION</c>): <c>&lt;token&gt;.answered</c> when it filled the target's password
-/// from the vault, <c>&lt;token&gt;.declined</c> when, vault-only, it declined a prompt that names the target but asks for
-/// no password. A user's attempt fills at most once per token (<see cref="TryClaim"/>), so a second prompt from the same
-/// ssh - the saved password was refused - goes to the dialog. An automatic attempt's connector reads the record back
-/// (<see cref="Read"/>) to tell a refused saved password from one that was never asked for, or from a second factor.
+/// from the vault, <c>&lt;token&gt;.declined</c> when, vault-only, it declined a prompt that names the target and asks for
+/// more (<see cref="SshAskPassRecord.Declined"/>). Every attempt fills at most once per token (<see cref="TryClaim"/>): a
+/// second prompt from the same ssh goes to the dialog on a user's attempt, and gets no answer on an automatic one. An
+/// automatic attempt's connector reads the record back (<see cref="Read"/>) to tell a refused saved password from one
+/// that was never asked for, or from a second factor.
 /// The helper is a new process for every prompt, so the record lives on disk, in the app's data folder (per user, and not
 /// part of a backup). Nothing secret is written: a file's name is the token, and it is empty.
 /// </summary>
@@ -48,15 +50,13 @@ internal sealed class SshAskPassSessionMarkers
 
     /// <summary>
     /// Claims this ssh's one fill from the vault: true only for the call that creates the record - created atomically, so
-    /// of two racing calls one wins. False when it exists already (filled before: the caller asks the user) or cannot be
-    /// written (the caller asks the user rather than risk sending a refused password again). Sweeps stale records.
+    /// of two racing calls one wins. False when it exists already (filled before) or cannot be written; either way the
+    /// caller does not fill - a user's attempt asks the user, an automatic one gives no answer - rather than risk sending a
+    /// refused password again. Sweeps stale records.
     /// </summary>
     public bool TryClaim(string token) => Create(token, AnsweredExtension, claim: true);
 
-    /// <summary>Vault-only: records that the helper filled the target's password for this ssh (again, if so).</summary>
-    public void RecordAnswered(string token) => Create(token, AnsweredExtension, claim: false);
-
-    /// <summary>Vault-only: records that the helper declined a prompt naming the target that asks for no password.</summary>
+    /// <summary>Vault-only: records that the helper declined a prompt naming the target that asks for more than the saved password.</summary>
     public void RecordDeclined(string token) => Create(token, DeclinedExtension, claim: false);
 
     /// <summary>

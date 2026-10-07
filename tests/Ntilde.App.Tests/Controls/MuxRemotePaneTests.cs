@@ -80,7 +80,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, () => Volatile.Read(ref _nativeSshEnabled));
         if (!request.Interactive && profile.BackendKind == SshBackendKind.OpenSsh && request.OfferSavedPassword?.Invoke() == true)
         {
-            new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).RecordAnswered(request.AskPassSession!);
+            new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).TryClaim(request.AskPassSession!);
         }
 
         return _remote;

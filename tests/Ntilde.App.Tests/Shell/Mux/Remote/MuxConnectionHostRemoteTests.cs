@@ -984,7 +984,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                     static () => true,
                     askPassHelperPath: "/opt/ntilde/ntilde",
                     log: _ => { });
-                if (transport.SavedPasswordOnly) records.RecordAnswered(transport.AskPassSession!);
+                if (transport.SavedPasswordOnly) records.TryClaim(transport.AskPassSession!);
                 _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
                 return _remote;
             },
