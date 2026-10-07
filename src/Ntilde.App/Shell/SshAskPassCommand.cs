@@ -306,8 +306,9 @@ internal static class SshAskPassCommand
     /// <list type="bullet">
     /// <item>password auth: <c>&lt;user&gt;@&lt;host&gt;'s password: </c>;</item>
     /// <item>keyboard-interactive (OpenSSH 8.4+): <c>(&lt;user&gt;@&lt;host&gt;) </c> then the server's
-    /// own text, which must end asking for a password (<c>password:</c>, trailing blanks aside): text
-    /// that only mentions one may be asking for something else.</item>
+    /// own text, which must end asking for a password (<c>password:</c>, blanks aside) or be exactly
+    /// <c>Password for &lt;account&gt;:</c> (FreeBSD's pam_unix, Kerberos): text that only mentions
+    /// one may be asking for something else.</item>
     /// </list>
     /// ssh writes the host as the config's HostName, lowercased, hence the case-insensitive match.
     /// A profile with no user (ssh then uses the local account) or no host never auto-fills.
@@ -328,8 +329,43 @@ internal static class SshAskPassCommand
         }
 
         string keyboardInteractive = $"({target}) ";
-        return prompt.StartsWith(keyboardInteractive, StringComparison.OrdinalIgnoreCase) &&
-               prompt.AsSpan(keyboardInteractive.Length).TrimEnd().EndsWith("password:", StringComparison.OrdinalIgnoreCase);
+        if (!prompt.StartsWith(keyboardInteractive, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> text = prompt.AsSpan(keyboardInteractive.Length).Trim();
+        return text.EndsWith("password:", StringComparison.OrdinalIgnoreCase) || IsPasswordForOneAccount(text);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="text"/> is exactly <c>Password for &lt;account&gt;:</c>, whatever its case, with an account
+    /// name that has no blank in it: pam_unix's prompt on FreeBSD and its derivatives (<c>Password for user@host:</c>), and
+    /// Kerberos's (<c>Password for user@REALM:</c>).
+    /// </summary>
+    private static bool IsPasswordForOneAccount(ReadOnlySpan<char> text)
+    {
+        const string Lead = "Password for ";
+        if (!text.StartsWith(Lead, StringComparison.OrdinalIgnoreCase) || !text.EndsWith(':'))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> account = text[Lead.Length..^1];
+        if (account.IsEmpty)
+        {
+            return false;
+        }
+
+        foreach (char c in account)
+        {
+            if (char.IsWhiteSpace(c))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

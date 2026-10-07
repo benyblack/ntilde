@@ -196,6 +196,36 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
         Assert.Equal(new SshAskPassRecord(Answered: true, Declined: false), RecordOf(Token));
     }
 
+    private const string PfSensePrompt = "(admin@192.168.1.1) Password for admin@pfSense.home.arpa:";
+
+    /// <summary>A pfSense box (FreeBSD's sshd, keyboard-interactive only) the profile reaches by address.</summary>
+    private static Dictionary<string, string> PfSense(IReadOnlyDictionary<string, string> environment) =>
+        With(With(environment, SshAskPassEnvironment.ProfileUserVariable, "admin"), SshAskPassEnvironment.ProfileHostVariable, "192.168.1.1");
+
+    /// <summary>
+    /// FreeBSD's pam_unix asks <c>Password for user@host:</c> - all such a host wants. An automatic reconnect fills it,
+    /// once, and records no decline: the sign-in is not taken for one that needs a second factor.
+    /// </summary>
+    [Fact]
+    public void Vault_only_fills_the_password_FreeBSD_asks_for_and_records_no_decline()
+    {
+        var answers = Converse(PfSense(VaultOnlySsh), PfSensePrompt);
+
+        Assert.Equal([(0, "s3cret" + Environment.NewLine)], answers);
+        Assert.Equal(new SshAskPassRecord(Answered: true, Declined: false), RecordOf(Token));
+    }
+
+    [Fact]
+    public void A_user_attempt_fills_the_password_FreeBSD_asks_for_from_the_vault()
+    {
+        var run = NewRun(PfSense(With(Interactive, SshAskPassEnvironment.SessionVariable, Token)), saved: "s3cret", typed: "typed");
+
+        Assert.Equal(0, run.Execute(PfSensePrompt));
+
+        Assert.Equal("s3cret" + Environment.NewLine, run.Stdout.ToString());
+        Assert.Empty(run.Dialogs);
+    }
+
     /// <summary>Without a session token nothing could hold the fill to one per ssh, so vault-only gives none.</summary>
     [Fact]
     public void Vault_only_without_a_session_token_answers_nothing()
@@ -234,7 +264,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
 
     /// <summary>
     /// On Enter, keyboard-interactive text that mentions a password but asks for something else goes to the dialog, not
-    /// the vault: only a prompt that ends with "password:" is the target's password.
+    /// the vault: only a prompt that ends asking for one is the target's password.
     /// </summary>
     [Fact]
     public void A_user_attempt_takes_a_keyboard_interactive_prompt_not_ending_in_password_to_the_dialog()
