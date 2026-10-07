@@ -73,21 +73,22 @@ public sealed class OpenSshClientVersionTests
     private static string Pick(string windows, string unix) => OperatingSystem.IsWindows() ? windows : unix;
 
     /// <summary>The probe, with the platform shell standing in for ssh and running <paramref name="script"/> instead of <c>-V</c>.</summary>
-    private static Version? ProbeShell(string script, TimeSpan timeout)
+    private static OpenSshClientProbe ProbeShell(string script, TimeSpan timeout, TimeProvider? time = null, Func<ProcessStartInfo, Process?>? start = null)
     {
         (string shell, string[] leading) = Shell();
-        return OpenSshClientVersion.Probe(shell, [.. leading, script], timeout);
+        return OpenSshClientVersion.Probe(shell, [.. leading, script], timeout, time, start);
     }
 
     /// <summary>ssh -V writes its version to stderr.</summary>
     [Fact]
     public void The_probe_reads_the_version_ssh_writes_to_stderr()
     {
-        Version? version = ProbeShell(
+        OpenSshClientProbe probe = ProbeShell(
             Pick("echo OpenSSH_for_Windows_8.1p1, LibreSSL 3.0.2 1>&2", "echo 'OpenSSH_8.2p1 Ubuntu-4ubuntu0.11, OpenSSL 1.1.1f  31 Mar 2020' >&2"),
             Bound);
 
-        Assert.Equal(Pick("8.1", "8.2"), version?.ToString());
+        Assert.Equal(OpenSshClientProbeKind.Version, probe.Kind);
+        Assert.Equal(Pick("8.1", "8.2"), probe.Version?.ToString());
     }
 
     /// <summary>
@@ -98,41 +99,86 @@ public sealed class OpenSshClientVersionTests
     public void The_probes_stdin_is_closed_so_nothing_waits_on_it()
     {
         var timer = Stopwatch.StartNew();
-        Version? version = ProbeShell(
+        OpenSshClientProbe probe = ProbeShell(
             Pick("set /p line= & echo OpenSSH_9.5p1, LibreSSL 3.8.2 1>&2", "read line; echo 'OpenSSH_9.5p1, LibreSSL 3.8.2' >&2"),
             Bound);
 
-        Assert.Equal(new Version(9, 5), version);
+        Assert.Equal(new Version(9, 5), probe.Version);
         Assert.True(timer.Elapsed < Bound, $"took {timer.Elapsed}");
     }
 
-    /// <summary>R4-a, R4-b: a client that does not answer within the timeout is stopped, and has no version.</summary>
+    /// <summary>
+    /// R4-a, R4-b: a client that does not answer within the timeout is stopped. That says nothing about the client - a
+    /// loaded machine just woken from sleep - so the answer is indeterminate, with why.
+    /// </summary>
     [Fact]
-    public void A_probe_that_runs_past_its_timeout_is_stopped_and_reads_as_no_version()
+    public void A_probe_that_runs_past_its_timeout_is_stopped_and_indeterminate()
     {
         var timer = Stopwatch.StartNew();
-        Version? version = ProbeShell(
+        OpenSshClientProbe probe = ProbeShell(
             Pick("ping -n 60 127.0.0.1 >nul & echo OpenSSH_9.5p1 1>&2", "sleep 60; echo OpenSSH_9.5p1 >&2"),
             TimeSpan.FromMilliseconds(500));
 
-        Assert.Null(version);
+        Assert.Equal(OpenSshClientProbeKind.Indeterminate, probe.Kind);
+        Assert.Null(probe.Version);
+        Assert.Contains("did not exit within", probe.Reason, StringComparison.Ordinal);
         Assert.True(timer.Elapsed < TimeSpan.FromSeconds(15), $"the probe took {timer.Elapsed}");
     }
 
-    /// <summary>R4-a: ssh -V exits 0; a run that fails says nothing about the client, whatever it printed.</summary>
+    /// <summary>
+    /// The timeout counts from the moment the process runs, not from before its start: a slow exec (an antivirus scan of
+    /// ssh.exe on its first run) is not the client being slow to answer. The clock here moves a minute while the process
+    /// starts, which would use up the whole budget if the start counted.
+    /// </summary>
     [Fact]
-    public void A_probe_that_exits_with_an_error_reads_as_no_version()
+    public void A_slow_start_does_not_count_against_the_probes_timeout()
     {
-        Assert.Null(ProbeShell(Pick("echo OpenSSH_9.5p1 1>&2 & exit /b 1", "echo OpenSSH_9.5p1 >&2; exit 1"), Bound));
+        var clock = new ManualClock();
+        OpenSshClientProbe probe = ProbeShell(
+            Pick("echo OpenSSH_9.5p1, LibreSSL 3.8.2 1>&2", "echo 'OpenSSH_9.5p1, LibreSSL 3.8.2' >&2"),
+            Bound,
+            clock,
+            startInfo =>
+            {
+                clock.Advance(TimeSpan.FromMinutes(1));
+                return Process.Start(startInfo);
+            });
+
+        Assert.Equal(OpenSshClientProbeKind.Version, probe.Kind);
+        Assert.Equal(new Version(9, 5), probe.Version);
     }
 
-    /// <summary>R4-a: no executable there is no version, not an exception.</summary>
+    /// <summary>R4-a: ssh -V exits 0; a run that exits otherwise is not an OpenSSH client this can read, whatever it printed.</summary>
     [Fact]
-    public void A_missing_client_reads_as_no_version()
+    public void A_probe_that_exits_with_an_error_is_definitively_not_OpenSSH()
+    {
+        OpenSshClientProbe probe = ProbeShell(Pick("echo OpenSSH_9.5p1 1>&2 & exit /b 1", "echo OpenSSH_9.5p1 >&2; exit 1"), Bound);
+
+        Assert.Equal(OpenSshClientProbeKind.NotOpenSsh, probe.Kind);
+        Assert.True(probe.IsDefinitive);
+        Assert.Equal("it exited with code 1", probe.Reason);
+    }
+
+    /// <summary>R4-a: another client (here, one that prints Dropbear's version) ran and answered: definitively not OpenSSH.</summary>
+    [Fact]
+    public void A_probe_that_prints_no_OpenSSH_version_is_definitively_not_OpenSSH()
+    {
+        OpenSshClientProbe probe = ProbeShell(Pick("echo dropbear v2022.83 1>&2", "echo 'dropbear v2022.83' >&2"), Bound);
+
+        Assert.Equal(OpenSshClientProbeKind.NotOpenSsh, probe.Kind);
+        Assert.Equal("it printed no OpenSSH version", probe.Reason);
+    }
+
+    /// <summary>R4-a: no executable there, or one that cannot start, is no version - indeterminate, not an exception.</summary>
+    [Fact]
+    public void A_client_that_cannot_start_is_indeterminate()
     {
         string missing = Path.Combine(Path.GetTempPath(), $"ntilde-no-ssh-{Guid.NewGuid():N}", OperatingSystem.IsWindows() ? "ssh.exe" : "ssh");
 
-        Assert.Null(OpenSshClientVersion.Probe(missing));
+        OpenSshClientProbe probe = OpenSshClientVersion.Probe(missing);
+
+        Assert.Equal(OpenSshClientProbeKind.Indeterminate, probe.Kind);
+        Assert.StartsWith("it could not start", probe.Reason, StringComparison.Ordinal);
     }
 
     /// <summary>The real client, where there is one: its own <c>-V</c> output parses.</summary>
@@ -150,45 +196,92 @@ public sealed class OpenSshClientVersionTests
         }
 
         Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
-        Version? version = OpenSshClientVersion.Probe(ssh!);
-        TestContext.Current.TestOutputHelper?.WriteLine($"{ssh}: {version?.ToString() ?? "(none)"}");
+        OpenSshClientProbe probe = OpenSshClientVersion.Probe(ssh!);
+        TestContext.Current.TestOutputHelper?.WriteLine($"{ssh}: {probe}");
 
-        Assert.NotNull(version);
+        Assert.Equal(OpenSshClientProbeKind.Version, probe.Kind);
+        Assert.NotNull(probe.Version);
     }
 
     private static readonly DateTime Monday = new(2026, 10, 5, 9, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>The cache over a counting probe, with the executables' last-write times as <paramref name="stamps"/> says.</summary>
-    private static OpenSshClientVersionCache Counting(List<string> probed, Func<string, DateTime> stamps, Version? version = null) =>
-        new(
+    /// <summary>The cache over a counting probe that answers the next of <paramref name="answers"/> (the last once they run out).</summary>
+    private static OpenSshClientVersionCache Counting(List<string> probed, Func<string, DateTime> stamps, params OpenSshClientProbe[] answers)
+    {
+        if (answers.Length == 0) answers = [OpenSshClientProbe.Found(new Version(9, 5))];
+        return new(
             path =>
             {
-                lock (probed) probed.Add(path);
-                return version ?? new Version(9, 5);
+                lock (probed)
+                {
+                    probed.Add(path);
+                    return answers[Math.Min(probed.Count - 1, answers.Length - 1)];
+                }
             },
             stamps);
+    }
 
-    /// <summary>Once per plan: one probe per executable and last-write time, and only the first lookup is the first.</summary>
+    /// <summary>Once per plan: one probe per executable and last-write time, and only the first lookup probed it.</summary>
     [Fact]
     public void The_cache_probes_an_executable_once_until_it_changes()
     {
         var probed = new List<string>();
         DateTime stamp = Monday;
-        OpenSshClientVersionCache cache = Counting(probed, _ => stamp, new Version(8, 1));
+        OpenSshClientVersionCache cache = Counting(probed, _ => stamp, OpenSshClientProbe.Found(new Version(8, 1)));
         string ssh = Path.Combine(Path.GetTempPath(), "bin", "ssh");
 
-        Version? first = cache.VersionOf(ssh, out bool firstLookup);
-        Version? again = cache.VersionOf(ssh, out bool againFirst);
+        OpenSshClientProbe first = cache.Lookup(ssh, out bool firstProbed);
+        OpenSshClientProbe again = cache.Lookup(ssh, out bool againProbed);
         stamp = Monday.AddDays(1);   // upgraded in place
-        Version? upgraded = cache.VersionOf(ssh, out bool upgradedFirst);
-        Version? afterUpgrade = cache.VersionOf(ssh, out bool afterUpgradeFirst);
+        OpenSshClientProbe upgraded = cache.Lookup(ssh, out bool upgradedProbed);
+        OpenSshClientProbe afterUpgrade = cache.Lookup(ssh, out bool afterUpgradeProbed);
 
         Assert.Equal(new[] { ssh, ssh }, probed);
-        Assert.Equal(new Version(8, 1), first);
+        Assert.Equal(new Version(8, 1), first.Version);
         Assert.Equal(first, again);
         Assert.Equal(first, upgraded);
         Assert.Equal(first, afterUpgrade);
-        Assert.Equal((true, false, true, false), (firstLookup, againFirst, upgradedFirst, afterUpgradeFirst));
+        Assert.Equal((true, false, true, false), (firstProbed, againProbed, upgradedProbed, afterUpgradeProbed));
+    }
+
+    /// <summary>A definitive "not OpenSSH" holds for the executable as it is: kept, like a version.</summary>
+    [Fact]
+    public void A_definitive_not_OpenSSH_answer_is_kept()
+    {
+        var probed = new List<string>();
+        OpenSshClientVersionCache cache = Counting(probed, _ => Monday, OpenSshClientProbe.NotOpenSsh("it exited with code 1"), OpenSshClientProbe.Found(new Version(9, 5)));
+        string ssh = Path.Combine(Path.GetTempPath(), "bin", "ssh");
+
+        OpenSshClientProbe first = cache.Lookup(ssh, out _);
+        OpenSshClientProbe again = cache.Lookup(ssh, out bool againProbed);
+
+        Assert.Equal(OpenSshClientProbeKind.NotOpenSsh, first.Kind);
+        Assert.Equal(first, again);
+        Assert.False(againProbed);
+        Assert.Single(probed);
+    }
+
+    /// <summary>
+    /// An indeterminate answer (a timeout, a start that failed) fails closed for the lookup that got it, and is not kept:
+    /// the next lookup probes again, and a healthy client's version then comes back.
+    /// </summary>
+    [Fact]
+    public void An_indeterminate_answer_is_not_kept_and_the_next_lookup_probes_again()
+    {
+        var probed = new List<string>();
+        OpenSshClientVersionCache cache = Counting(
+            probed, _ => Monday, OpenSshClientProbe.Indeterminate("it did not exit within 5 s"), OpenSshClientProbe.Found(new Version(9, 5)));
+        string ssh = Path.Combine(Path.GetTempPath(), "bin", "ssh");
+
+        OpenSshClientProbe first = cache.Lookup(ssh, out bool firstProbed);
+        OpenSshClientProbe second = cache.Lookup(ssh, out bool secondProbed);
+        OpenSshClientProbe third = cache.Lookup(ssh, out bool thirdProbed);
+
+        Assert.Equal((OpenSshClientProbeKind.Indeterminate, "it did not exit within 5 s"), (first.Kind, first.Reason));
+        Assert.Equal(new Version(9, 5), second.Version);
+        Assert.Equal(second, third);
+        Assert.Equal((true, true, false), (firstProbed, secondProbed, thirdProbed));
+        Assert.Equal(2, probed.Count);
     }
 
     /// <summary>Each executable has its own version: a second ssh on the PATH is probed on its own.</summary>
@@ -200,9 +293,9 @@ public sealed class OpenSshClientVersionTests
         string one = Path.Combine(Path.GetTempPath(), "one", "ssh");
         string two = Path.Combine(Path.GetTempPath(), "two", "ssh");
 
-        cache.VersionOf(one, out _);
-        cache.VersionOf(two, out _);
-        cache.VersionOf(one, out _);
+        cache.Lookup(one, out _);
+        cache.Lookup(two, out _);
+        cache.Lookup(one, out _);
 
         Assert.Equal(new[] { one, two }, probed);
     }
@@ -216,48 +309,61 @@ public sealed class OpenSshClientVersionTests
         string direct = Path.Combine(Path.GetTempPath(), "bin", "ssh");
         string roundabout = Path.Combine(Path.GetTempPath(), "bin", "..", "bin", "ssh");
 
-        cache.VersionOf(direct, out bool directFirst);
-        cache.VersionOf(roundabout, out bool roundaboutFirst);
+        cache.Lookup(direct, out bool directProbed);
+        cache.Lookup(roundabout, out bool roundaboutProbed);
 
         Assert.Equal(new[] { direct }, probed);
-        Assert.Equal((true, false), (directFirst, roundaboutFirst));
+        Assert.Equal((true, false), (directProbed, roundaboutProbed));
     }
 
-    /// <summary>Hosts reconnecting at once share one probe: the others wait for its answer instead of running their own.</summary>
-    [Fact]
-    public async Task Concurrent_lookups_share_one_probe()
+    /// <summary>
+    /// Hosts reconnecting at once share one probe in flight: the others wait for its answer instead of running their own,
+    /// and only the lookup that started it says it probed. That holds for an indeterminate answer too; the lookup after
+    /// them probes again.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Concurrent_lookups_share_one_probe(bool definitive)
     {
         var probed = new List<string>();
+        using var started = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
+        OpenSshClientProbe answer = definitive ? OpenSshClientProbe.Found(new Version(9, 5)) : OpenSshClientProbe.Indeterminate("it did not exit within 5 s");
         var cache = new OpenSshClientVersionCache(
             path =>
             {
                 lock (probed) probed.Add(path);
+                started.Set();
                 release.Wait(Bound);
-                return new Version(9, 5);
+                return answer;
             },
             _ => Monday);
         string ssh = Path.Combine(Path.GetTempPath(), "bin", "ssh");
-        int firsts = 0;
+        int probers = 0;
 
-        Task<Version?>[] lookups = [.. Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
+        Task<OpenSshClientProbe>[] lookups = [.. Enumerable.Range(0, 4).Select(_ => Task.Run(() =>
         {
-            Version? version = cache.VersionOf(ssh, out bool first);
-            if (first) Interlocked.Increment(ref firsts);
-            return version;
+            OpenSshClientProbe probe = cache.Lookup(ssh, out bool probedHere);
+            if (probedHere) Interlocked.Increment(ref probers);
+            return probe;
         }))];
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.True(started.Wait(Bound, TestContext.Current.CancellationToken), "the probe started");
+        await Task.Delay(100, TestContext.Current.CancellationToken);   // let the other lookups find it in flight
         release.Set();
-        Version?[] versions = await Task.WhenAll(lookups).WaitAsync(Bound, TestContext.Current.CancellationToken);
+        OpenSshClientProbe[] answers = await Task.WhenAll(lookups).WaitAsync(Bound, TestContext.Current.CancellationToken);
 
-        Assert.All(versions, v => Assert.Equal(new Version(9, 5), v));
+        Assert.All(answers, a => Assert.Equal(answer, a));
         Assert.Single(probed);
-        Assert.Equal(1, firsts);
+        Assert.Equal(1, probers);
+
+        cache.Lookup(ssh, out bool laterProbed);
+        Assert.Equal(!definitive, laterProbed);
     }
 
-    /// <summary>R4-a: a probe that throws is no version, and is remembered as such until the executable changes.</summary>
+    /// <summary>R4-a: a probe that throws is indeterminate, with why, and is probed again next time.</summary>
     [Fact]
-    public void A_probe_that_throws_is_no_version()
+    public void A_probe_that_throws_is_indeterminate()
     {
         int probes = 0;
         var cache = new OpenSshClientVersionCache(
@@ -269,8 +375,24 @@ public sealed class OpenSshClientVersionTests
             _ => Monday);
         string ssh = Path.Combine(Path.GetTempPath(), "bin", "ssh");
 
-        Assert.Null(cache.VersionOf(ssh, out _));
-        Assert.Null(cache.VersionOf(ssh, out _));
-        Assert.Equal(1, probes);
+        OpenSshClientProbe first = cache.Lookup(ssh, out _);
+        OpenSshClientProbe second = cache.Lookup(ssh, out _);
+
+        Assert.Equal(OpenSshClientProbeKind.Indeterminate, first.Kind);
+        Assert.Contains("the probe broke", first.Reason, StringComparison.Ordinal);
+        Assert.Equal(first, second);
+        Assert.Equal(2, probes);
+    }
+
+    /// <summary>A clock that moves only when told to.</summary>
+    private sealed class ManualClock : TimeProvider
+    {
+        private long _ticks;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => Interlocked.Read(ref _ticks);
+
+        public void Advance(TimeSpan by) => Interlocked.Add(ref _ticks, by.Ticks);
     }
 }

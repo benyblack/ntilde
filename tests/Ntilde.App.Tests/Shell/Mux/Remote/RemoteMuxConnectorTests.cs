@@ -542,7 +542,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(user, _ => false),
             "i",
             null);
@@ -697,18 +698,24 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         }
     }
 
-    /// <summary>The OpenSSH client's versions as a test sets them: every executable is <paramref name="version"/> (null: unreadable).</summary>
-    internal static OpenSshClientVersionCache SshVersions(Version? version, List<string>? probed = null) =>
-        new(
+    /// <summary>
+    /// The OpenSSH clients' versions as a test sets them: each probe answers the next of <paramref name="answers"/>, and the
+    /// last again once they run out; each probed path goes to <paramref name="probed"/>.
+    /// </summary>
+    internal static OpenSshClientVersionCache SshVersions(List<string>? probed, params OpenSshClientProbe[] answers)
+    {
+        int next = 0;
+        return new(
             path =>
             {
                 if (probed is not null) lock (probed) probed.Add(path);
-                return version;
+                return answers[Math.Min(Interlocked.Increment(ref next) - 1, answers.Length - 1)];
             },
             static _ => new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc));
+    }
 
     /// <summary>An OpenSSH client whose keyboard-interactive prompts name the target (8.4 and later).</summary>
-    internal static OpenSshClientVersionCache ModernSsh => SshVersions(new Version(9, 5));
+    internal static OpenSshClientVersionCache ModernSsh => SshVersions(null, OpenSshClientProbe.Found(new Version(9, 5)));
 
     /// <summary>
     /// A connector over the app's own transport choice (<see cref="RemoteMuxHostFactory.CreateTransport"/>) for an
@@ -745,7 +752,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                     {
                         if (logged is not null) lock (logged) logged.Add(line);
                     },
-                    versions));
+                    openSshVersions: versions));
                 lock (built) built.Add(transport);
                 _remote.Script = script?.Invoke(transport, request);
                 return _remote;
@@ -778,23 +785,25 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// A4: before 8.4 OpenSSH writes a keyboard-interactive prompt with no <c>(user@host) </c> in front, so the vault-only
     /// helper never fills one - ssh then sends an empty answer, a failed login on every attempt - and a second factor after
     /// a filled password is not recorded as declined, so it reads as the saved password refused. Such a client's automatic
-    /// attempts run in batch mode, as with jump hops: the vault is not even read. An ssh whose version cannot be read counts
-    /// as one (R4-a). Its version is probed once for the plan's ssh, and the batch decision logged once, not per attempt. A
-    /// user's attempt is unchanged, and probes nothing (R4-c).
+    /// attempts run in batch mode, as with jump hops: the vault is not even read. An ssh that is not OpenSSH counts as one
+    /// (R4-a). Its version is probed once for the plan's ssh, and the batch decision logged once, with why, not per attempt.
+    /// A user's attempt is unchanged, and probes nothing (R4-c).
     /// </summary>
     [Theory]
-    [InlineData("8.1")]   // Windows 10's inbox client
-    [InlineData("8.2")]   // Ubuntu 20.04
-    [InlineData("8.3")]
-    [InlineData(null)]    // unreadable
-    public async Task An_OpenSSH_client_before_8_4_runs_automatic_attempts_in_batch_mode_without_reading_the_vault(string? version)
+    [InlineData("8.1", "is OpenSSH 8.1")]   // Windows 10's inbox client
+    [InlineData("8.2", "is OpenSSH 8.2")]   // Ubuntu 20.04
+    [InlineData("8.3", "is OpenSSH 8.3")]
+    [InlineData("not OpenSSH", "it exited with code 1")]
+    public async Task An_OpenSSH_client_before_8_4_runs_automatic_attempts_in_batch_mode_without_reading_the_vault(string client, string said)
     {
         var saved = new SavedPasswords("s3cret");
         var built = new List<OpenSshExecTransport>();
         var probed = new List<string>();
         var logged = new List<string>();
-        RemoteMuxConnector connector = OpenSshConnector(
-            Profile(), saved, built, versions: SshVersions(version is null ? null : Version.Parse(version), probed), logged: logged);
+        OpenSshClientProbe answer = client == "not OpenSSH"
+            ? OpenSshClientProbe.NotOpenSsh("it exited with code 1")
+            : OpenSshClientProbe.Found(Version.Parse(client));
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, versions: SshVersions(probed, answer), logged: logged);
 
         Own(await connector.ConnectAsync(interactive: true, Ct));
         Assert.Empty(probed);
@@ -807,6 +816,36 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal(0, saved.Reads);
         Assert.Equal(new[] { Launch.SshPath }, probed);
         Assert.Single(logged, line => line.Contains("not offered the saved password", StringComparison.Ordinal));
+        Assert.Contains(said, Assert.Single(logged), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A version that could not be read - the probe timed out, ssh would not start - fails closed for that attempt alone:
+    /// batch mode, no vault read, and the cause logged. It is not kept: the next automatic attempt reads the version again,
+    /// and a client of 8.4 or later gets the vault-only askpass back.
+    /// </summary>
+    [Fact]
+    public async Task An_OpenSSH_version_that_could_not_be_read_fails_closed_for_that_attempt_only()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var probed = new List<string>();
+        var logged = new List<string>();
+        RemoteMuxConnector connector = OpenSshConnector(
+            Profile(),
+            saved,
+            built,
+            versions: SshVersions(probed, OpenSshClientProbe.Indeterminate("it did not exit within 5 s"), OpenSshClientProbe.Found(new Version(9, 5))),
+            logged: logged);
+
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+        int readsAfterFirst = saved.Reads;
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(new[] { (true, false), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
+        Assert.Equal((0, 1), (readsAfterFirst, saved.Reads));
+        Assert.Equal(new[] { Launch.SshPath, Launch.SshPath }, probed);
+        Assert.Contains("could not be read (it did not exit within 5 s)", Assert.Single(logged), StringComparison.Ordinal);
     }
 
     /// <summary>A4's other side: from 8.4 the prompts name the target, and automatic attempts keep the vault-only askpass.</summary>
@@ -818,7 +857,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         var saved = new SavedPasswords("s3cret");
         var built = new List<OpenSshExecTransport>();
         var logged = new List<string>();
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, versions: SshVersions(Version.Parse(version)), logged: logged);
+        RemoteMuxConnector connector = OpenSshConnector(
+            Profile(), saved, built, versions: SshVersions(null, OpenSshClientProbe.Found(Version.Parse(version))), logged: logged);
 
         Own(await connector.ConnectAsync(interactive: false, Ct));
 
@@ -1228,7 +1268,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(user, _ => false, new SavedPasswords("stale").Read),
             "i",
             null));
@@ -1287,7 +1328,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(new ScriptedUser(SshInteractionResponse.FromSecret("never asked")), _ => false, saved.Read),
             "i",
             null);
@@ -1435,7 +1477,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(user, _ => false, new SavedPasswords("s3cret").Read),
             "i",
             null));
@@ -1567,7 +1610,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(new ScriptedUser(), _ => keyTrusted, new SavedPasswords("s3cret").Read),
             "i",
             null));

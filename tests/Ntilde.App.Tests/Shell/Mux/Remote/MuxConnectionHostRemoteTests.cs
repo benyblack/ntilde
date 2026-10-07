@@ -931,7 +931,8 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                         () => interop,
                         static () => true,
                         askPassHelperPath: null,
-                        log: _ => { });
+                        log: _ => { },
+                        openSshVersions: RemoteMuxConnectorTests.ModernSsh);
                 }
 
                 // The user's Enter: the window's handler fills the saved password into the prompt, and it gets in.
@@ -988,7 +989,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                     static () => true,
                     askPassHelperPath: "/opt/ntilde/ntilde",
                     log: _ => { },
-                    RemoteMuxConnectorTests.ModernSsh);
+                    openSshVersions: RemoteMuxConnectorTests.ModernSsh);
                 if (transport.SavedPasswordOnly) records.TryClaim(transport.AskPassSession!);
                 _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
                 return _remote;

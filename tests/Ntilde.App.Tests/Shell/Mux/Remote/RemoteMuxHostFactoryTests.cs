@@ -412,7 +412,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
                 () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
                 static () => true,
                 askPassHelperPath: null,
-                log: null);
+                log: null,
+                openSshVersions: RemoteMuxConnectorTests.ModernSsh);
         }
 
         Assert.Equal(new[] { false, true }, asked);
@@ -544,7 +545,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             static () => true,
             askPassHelperPath: "/opt/ntilde/ntilde",
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.Equal(attempt.AskPassSession, Assert.IsType<OpenSshExecTransport>(transport).AskPassSession);
     }
@@ -562,7 +564,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             static () => true,
             askPassHelperPath: "/opt/ntilde/ntilde",
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.False(Assert.IsType<OpenSshExecTransport>(Build(interactive: true)).BatchMode);
         Assert.True(Assert.IsType<OpenSshExecTransport>(Build(interactive: false)).BatchMode);
@@ -582,7 +585,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => new NativeSshInterop(),
             static () => true,
             askPassHelperPath: null,
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.IsType<NativeSshExecTransport>(transport);
         Assert.Equal("nova@fake-host", transport.DisplayName);
@@ -618,7 +622,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
                 return enabled;
             },
             askPassHelperPath: null,
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         RemoteMuxUnavailableException refused = Assert.Throws<RemoteMuxUnavailableException>(() => Build());
 
@@ -647,7 +652,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             static () => false,
             askPassHelperPath: null,
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.IsType<OpenSshExecTransport>(transport);
     }

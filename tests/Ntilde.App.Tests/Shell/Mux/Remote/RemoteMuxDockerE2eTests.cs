@@ -448,7 +448,8 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
                 static () => new NativeSshInterop(),
                 static () => true,   // both backends run here: native SSH is on
                 askPassHelperPath: null,
-                HostLog);
+                HostLog,
+                openSshVersions: OpenSshClientVersionCache.Shared);
 
         /// <summary>What a persisted SSH pane asks the factory for: a new tab, or its own session again.</summary>
         private TerminalSessionRequest Request(Guid? existing = null, bool reattachAfterDrop = false) => new(

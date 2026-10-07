@@ -200,7 +200,7 @@ internal static class RemoteMuxHostFactory
     /// <param name="openSshVersions">
     /// The OpenSSH clients' versions (<see cref="OpenSshClientVersionCache.Shared"/> in the app), read for an automatic
     /// attempt that would be offered the saved password; the probe may block for seconds, so this is called off the UI
-    /// thread. Null: no version is known, and no automatic attempt is offered the saved password.
+    /// thread.
     /// </param>
     /// <exception cref="RemoteMuxUnavailableException">A Native profile while native SSH is off (<see cref="ThrowIfNativeSshDisabled"/>).</exception>
     public static ISshExecTransport CreateTransport(
@@ -211,12 +211,13 @@ internal static class RemoteMuxHostFactory
         Func<bool> nativeSshEnabled,
         string? askPassHelperPath,
         Action<string>? log,
-        OpenSshClientVersionCache? openSshVersions = null)
+        OpenSshClientVersionCache openSshVersions)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(openSshLaunch);
         ArgumentNullException.ThrowIfNull(nativeInterop);
+        ArgumentNullException.ThrowIfNull(openSshVersions);
 
         ThrowIfNativeSshDisabled(profile, nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native)
@@ -259,21 +260,27 @@ internal static class RemoteMuxHostFactory
     /// of its keyboard-interactive prompts (8.4 and later, <see cref="OpenSshClientVersion.PrefixesKeyboardInteractivePrompts"/>).
     /// The vault-only askpass answers only a prompt that names the target. An older client's <c>Password: </c> would go
     /// unanswered, and ssh then sends an empty answer, a failed login on every attempt. A second factor after a filled
-    /// password would not be recorded as declined either, so it would read as the saved password refused. A version that
-    /// cannot be read, or no <paramref name="versions"/> to read it with, counts as older. The version is probed once per
-    /// executable (<see cref="OpenSshClientVersionCache"/>); an older one is logged at that probe, not on every attempt.
+    /// password would not be recorded as declined either, so it would read as the saved password refused. A client that is
+    /// not OpenSSH counts as older, and so does one whose version could not be read this time - for this attempt only: that
+    /// answer is not kept, and the next attempt reads the version again (<see cref="OpenSshClientVersionCache"/>). Each probe
+    /// that leaves the attempt without the saved password is logged once, with why: a definitive answer once per executable,
+    /// not on every attempt.
     /// </summary>
-    internal static bool PrefixesKeyboardInteractivePrompts(string sshPath, OpenSshClientVersionCache? versions, Action<string>? log)
+    internal static bool PrefixesKeyboardInteractivePrompts(string sshPath, OpenSshClientVersionCache versions, Action<string>? log)
     {
-        if (versions is null) return false;
-
-        Version? version = versions.VersionOf(sshPath, out bool firstLookup);
-        bool prefixes = OpenSshClientVersion.PrefixesKeyboardInteractivePrompts(version);
-        if (!prefixes && firstLookup)
+        OpenSshClientProbe probe = versions.Lookup(sshPath, out bool probedHere);
+        bool prefixes = OpenSshClientVersion.PrefixesKeyboardInteractivePrompts(probe.Version);
+        if (!prefixes && probedHere)
         {
-            log?.Invoke(version is null
-                ? $"[RemoteMux] the OpenSSH version of {sshPath} cannot be read, so automatic OpenSSH reconnects are not offered the saved password"
-                : $"[RemoteMux] {sshPath} is OpenSSH {version}, whose keyboard-interactive prompts do not name the target (8.4 and later do), so automatic OpenSSH reconnects are not offered the saved password");
+            log?.Invoke(probe.Kind switch
+            {
+                OpenSshClientProbeKind.Version =>
+                    $"[RemoteMux] {sshPath} is OpenSSH {probe.Version}, whose keyboard-interactive prompts do not name the target (8.4 and later do), so automatic OpenSSH reconnects are not offered the saved password",
+                OpenSshClientProbeKind.NotOpenSsh =>
+                    $"[RemoteMux] {sshPath} is not an OpenSSH client this can read ({probe.Reason}), so automatic OpenSSH reconnects are not offered the saved password",
+                _ =>
+                    $"[RemoteMux] the OpenSSH version of {sshPath} could not be read ({probe.Reason}), so this automatic reconnect is not offered the saved password; the next one reads it again",
+            });
         }
 
         return prefixes;

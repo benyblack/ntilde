@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 
 namespace Ntilde.Platform.Ssh.Exec;
 
@@ -21,6 +22,9 @@ public static class OpenSshClientVersion
 
     /// <summary>How long the output is waited for after the exit, at least, however little of the timeout is left.</summary>
     private static readonly TimeSpan DrainGrace = TimeSpan.FromSeconds(1);
+
+    /// <summary>How much of what one stream printed is kept: <c>ssh -V</c> prints one short line.</summary>
+    private const int OutputKept = 8192;
 
     private const string Product = "OpenSSH_";
     private const string WindowsPort = "for_Windows_";
@@ -75,23 +79,35 @@ public static class OpenSshClientVersion
     }
 
     /// <summary>
-    /// Runs <c>ssh -V</c> with <paramref name="sshExecutablePath"/> - the client an attempt is about to run - and reads its
-    /// version; null when it cannot be read (<see cref="Probe(string, IReadOnlyList{string}, TimeSpan)"/>). Blocks for up
-    /// to <see cref="ProbeTimeout"/> and a second for the output: never on the UI thread.
+    /// Runs <c>ssh -V</c> with <paramref name="sshExecutablePath"/> - the client an attempt is about to run - and says what
+    /// it learned (<see cref="Probe(string, IReadOnlyList{string}, TimeSpan, TimeProvider?, Func{ProcessStartInfo, Process?}?)"/>).
+    /// Blocks for up to <see cref="ProbeTimeout"/> after the start, and a second for the output: never on the UI thread.
     /// </summary>
-    public static Version? Probe(string sshExecutablePath) => Probe(sshExecutablePath, ["-V"], ProbeTimeout);
+    public static OpenSshClientProbe Probe(string sshExecutablePath) => Probe(sshExecutablePath, ["-V"], ProbeTimeout);
 
     /// <summary>
-    /// Runs <paramref name="executablePath"/> with <paramref name="arguments"/> and parses what it printed, stderr first
+    /// Runs <paramref name="executablePath"/> with <paramref name="arguments"/> and reads what it printed, stderr first
     /// (<see cref="Parse"/>). It cannot prompt: stdin is closed at once, there is no window, every stream is piped, and the
-    /// askpass variables say never (<see cref="SshAskPassEnvironment.Suppress"/>). Null when it does not start, does not
-    /// exit 0 within <paramref name="timeout"/> - its process tree is then stopped - or prints no OpenSSH version. The
-    /// arguments are the test seam: a shell stands in for ssh there.
+    /// askpass variables say never (<see cref="SshAskPassEnvironment.Suppress"/>). The answer is
+    /// <see cref="OpenSshClientProbeKind.Version"/> when it exits 0 having printed OpenSSH's version, and
+    /// <see cref="OpenSshClientProbeKind.NotOpenSsh"/> when it exits otherwise or prints none. It is
+    /// <see cref="OpenSshClientProbeKind.Indeterminate"/> when it does not start, does not exit within
+    /// <paramref name="timeout"/> of its start (its process tree is then stopped), or its output cannot be read. The
+    /// timeout counts from the start's return: a slow exec, such as an antivirus scan of the executable, is not the client
+    /// being slow to answer.
     /// </summary>
-    internal static Version? Probe(string executablePath, IReadOnlyList<string> arguments, TimeSpan timeout)
+    /// <param name="time">The clock the timeout is measured by; the system's by default. A test seam.</param>
+    /// <param name="start">Starts the process; <see cref="Process.Start(ProcessStartInfo)"/> by default. A test seam.</param>
+    internal static OpenSshClientProbe Probe(
+        string executablePath,
+        IReadOnlyList<string> arguments,
+        TimeSpan timeout,
+        TimeProvider? time = null,
+        Func<ProcessStartInfo, Process?>? start = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(arguments);
+        time ??= TimeProvider.System;
 
         var startInfo = new ProcessStartInfo
         {
@@ -105,58 +121,100 @@ public static class OpenSshClientVersion
         foreach (string argument in arguments) startInfo.ArgumentList.Add(argument);
         SshAskPassEnvironment.Suppress(startInfo.Environment);
 
-        var timer = Stopwatch.StartNew();
-        Process process;
+        Process? started;
         try
         {
-            process = Process.Start(startInfo) ?? throw new InvalidOperationException("no process started");
+            started = (start ?? Process.Start)(startInfo);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return null;
+            return OpenSshClientProbe.Indeterminate($"it could not start: {ex.Message}");
         }
 
-        using (process)
+        if (started is null) return OpenSshClientProbe.Indeterminate("it could not start");
+        long began = time.GetTimestamp();
+
+        using Process process = started;
+        Task<string> stderr;
+        Task<string> stdout;
+        try
         {
-            Task<string> stderr;
-            Task<string> stdout;
-            try
-            {
-                process.StandardInput.Close();
-                stderr = process.StandardError.ReadToEndAsync();
-                stdout = process.StandardOutput.ReadToEndAsync();
-            }
-            catch (Exception)
-            {
-                Stop(process);
-                return null;
-            }
-
-            if (!process.WaitForExit(Remaining(timer, timeout)))
-            {
-                Stop(process);
-                return null;
-            }
-
-            try
-            {
-                // Its last bytes may still be in the pipes when the exit is seen; a pipe something it started still holds
-                // open is not waited out.
-                TimeSpan drain = Remaining(timer, timeout);
-                if (!Task.WaitAll([stderr, stdout], drain > DrainGrace ? drain : DrainGrace)) return null;
-            }
-            catch (AggregateException)
-            {
-                return null;
-            }
-
-            return process.ExitCode == 0 ? Parse(stderr.Result) ?? Parse(stdout.Result) : null;
+            process.StandardInput.Close();
+            stderr = ReadOnItsOwnThread(process.StandardError, "SshVersionStderr");
+            stdout = ReadOnItsOwnThread(process.StandardOutput, "SshVersionStdout");
         }
+        catch (Exception ex)
+        {
+            Stop(process);
+            return OpenSshClientProbe.Indeterminate($"its output could not be read: {ex.Message}");
+        }
+
+        if (!process.WaitForExit(Remaining(time, began, timeout)))
+        {
+            Stop(process);
+            return OpenSshClientProbe.Indeterminate(string.Create(CultureInfo.InvariantCulture, $"it did not exit within {timeout.TotalSeconds:0.#} s"));
+        }
+
+        try
+        {
+            // Its last bytes may still be in the pipes when the exit is seen; a pipe something it started still holds
+            // open is not waited out.
+            TimeSpan drain = Remaining(time, began, timeout);
+            if (!Task.WaitAll([stderr, stdout], drain > DrainGrace ? drain : DrainGrace))
+            {
+                return OpenSshClientProbe.Indeterminate("its output did not end when it exited");
+            }
+        }
+        catch (AggregateException ex)
+        {
+            return OpenSshClientProbe.Indeterminate($"its output could not be read: {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        int exitCode = process.ExitCode;
+        if (exitCode != 0) return OpenSshClientProbe.NotOpenSsh(string.Create(CultureInfo.InvariantCulture, $"it exited with code {exitCode}"));
+        return (Parse(stderr.Result) ?? Parse(stdout.Result)) is { } version
+            ? OpenSshClientProbe.Found(version)
+            : OpenSshClientProbe.NotOpenSsh("it printed no OpenSSH version");
     }
 
-    private static TimeSpan Remaining(Stopwatch timer, TimeSpan timeout)
+    /// <summary>
+    /// Reads <paramref name="reader"/> to its end on a thread of its own, keeping the first <see cref="OutputKept"/>
+    /// characters, and disposes it there. A redirected pipe on Windows is a synchronous stream, so an async read would
+    /// hold a pool thread for as long as the pipe stays open; a stopped process tree closes it.
+    /// </summary>
+    private static Task<string> ReadOnItsOwnThread(StreamReader reader, string name)
     {
-        TimeSpan left = timeout - timer.Elapsed;
+        var read = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        new Thread(() =>
+        {
+            try
+            {
+                var kept = new StringBuilder();
+                char[] buffer = new char[1024];
+                int count;
+                while ((count = reader.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    kept.Append(buffer, 0, Math.Min(count, OutputKept - kept.Length));
+                }
+
+                read.TrySetResult(kept.ToString());
+            }
+            catch (Exception ex)
+            {
+                read.TrySetException(ex);
+            }
+            finally
+            {
+                reader.Dispose();
+            }
+        })
+        { IsBackground = true, Name = name }.Start();
+        return read.Task;
+    }
+
+    private static TimeSpan Remaining(TimeProvider time, long began, TimeSpan timeout)
+    {
+        TimeSpan left = timeout - time.GetElapsedTime(began);
         return left > TimeSpan.Zero ? left : TimeSpan.Zero;
     }
 
