@@ -1392,13 +1392,24 @@ review; the section they change is named first.
       alone cannot sign in, and its automatic attempts no longer offer it (batch mode, or an aborted prompt: no more
       failed rounds). User attempts still fill it once, and the dialog asks only for the code.
     - The refusal is kept as a keyed hash (HMAC-SHA256 under a key made for this process, never the value; review M7).
-      A refused value is not offered automatically nor filled on Enter, a different saved value is, and a sign-in
-      with the refused value itself clears it. A typed password that gets in (Remember unticked) no longer re-arms the
-      stale saved value. Each window's hosts keep their own record: N windows may cost N failed logins.
+      A host keeps up to four, the oldest dropped first, so a refused typed or remembered password does not push a
+      refused saved one out (re-review item 4). A refused value is not offered automatically nor filled on Enter, and a
+      different saved value is. A typed password that gets in (Remember unticked) no longer re-arms the stale saved
+      value. Each window's hosts keep their own record: N windows may cost N failed logins.
+    - Clearing a refused value: on native, a sign-in with the refused value itself clears it, because the attempt sees
+      every secret it sends. On OpenSSH the app never sees what the helper or the user sent. A value counted as refused
+      there stays skipped until the host is released (its window's tabs on that host close), even after the user saves
+      the same value with Remember. Nothing is counted once an attempt got past sign-in (the proxy's greeting arrived;
+      re-review item 1). So on OpenSSH a correct password is counted refused only when sshd failed the session between
+      accepting it and the command running - a disconnect there, or a server whose AuthenticationMethods want a key after
+      the password - and stays skipped until the host is released.
     - Smaller fixes:
       - The saved password is offered to OpenSSH only for a profile with a user and a host (the helper must
-        recognise the prompt; M2), and not when the plan's own arguments go through a jump host
-        (`OpenSshExecCommandLine.NamesAProxy`: `-J`, `ProxyJump`, `ProxyCommand`, read with ssh's getopt rules; M3).
+        recognise the prompt; M2), whose own extra arguments do not change who signs in or where
+        (`OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere`: `-l`, `-F`, `-o User`, `-o HostName`,
+        `-o HostKeyAlias`; re-review item 6), and not when the plan's own arguments go through a jump host
+        (`OpenSshExecCommandLine.NamesAProxy`: `-J`, `ProxyJump`, `ProxyCommand`; M3). Both read the arguments with
+        ssh's getopt rules.
       - A retargeted user attempt keeps the saved password away (M4).
       - The helper's once-per-ssh claim is atomic (`FileMode.CreateNew`; M5).
       - A vault that throws counts as nothing saved (M6).
