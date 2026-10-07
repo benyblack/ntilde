@@ -697,10 +697,25 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         }
     }
 
+    /// <summary>The OpenSSH client's versions as a test sets them: every executable is <paramref name="version"/> (null: unreadable).</summary>
+    internal static OpenSshClientVersionCache SshVersions(Version? version, List<string>? probed = null) =>
+        new(
+            path =>
+            {
+                if (probed is not null) lock (probed) probed.Add(path);
+                return version;
+            },
+            static _ => new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc));
+
+    /// <summary>An OpenSSH client whose keyboard-interactive prompts name the target (8.4 and later).</summary>
+    internal static OpenSshClientVersionCache ModernSsh => SshVersions(new Version(9, 5));
+
     /// <summary>
     /// A connector over the app's own transport choice (<see cref="RemoteMuxHostFactory.CreateTransport"/>) for an
     /// OpenSSH profile: each attempt's transport is built and recorded - not started - and the fake remote runs in its
-    /// place, with the script <paramref name="script"/> picks for that transport (sshd's answer to how it signs in).
+    /// place, with the script <paramref name="script"/> picks for that transport (sshd's answer to how it signs in). The
+    /// ssh is a client 8.4 or later unless <paramref name="versions"/> says otherwise; what the factory logs goes to
+    /// <paramref name="logged"/>.
     /// </summary>
     private RemoteMuxConnector OpenSshConnector(
         SshProfile profile,
@@ -709,9 +724,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Func<OpenSshExecTransport, RemoteMuxTransportRequest, FakeRemoteScript?>? script = null,
         Ntilde.Services.Ssh.SshLaunchDetails? launch = null,
         Func<SshProfile, string?>? vault = null,
-        Ntilde.SshAskPassSessionMarkers? records = null)
+        Ntilde.SshAskPassSessionMarkers? records = null,
+        OpenSshClientVersionCache? versions = null,
+        List<string>? logged = null)
     {
         profile.BackendKind = SshBackendKind.OpenSsh;
+        versions ??= ModernSsh;
         return Own(new RemoteMuxConnector(
             () => profile,
             (p, request) =>
@@ -723,7 +741,11 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                     () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
                     static () => true,
                     askPassHelperPath: "/opt/ntilde/ntilde",
-                    log: _ => { }));
+                    log: line =>
+                    {
+                        if (logged is not null) lock (logged) logged.Add(line);
+                    },
+                    versions));
                 lock (built) built.Add(transport);
                 _remote.Script = script?.Invoke(transport, request);
                 return _remote;
@@ -750,6 +772,59 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         Assert.Equal(new[] { (false, false), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
         Assert.Equal(1, saved.Reads);
+    }
+
+    /// <summary>
+    /// A4: before 8.4 OpenSSH writes a keyboard-interactive prompt with no <c>(user@host) </c> in front, so the vault-only
+    /// helper never fills one - ssh then sends an empty answer, a failed login on every attempt - and a second factor after
+    /// a filled password is not recorded as declined, so it reads as the saved password refused. Such a client's automatic
+    /// attempts run in batch mode, as with jump hops: the vault is not even read. An ssh whose version cannot be read counts
+    /// as one (R4-a). Its version is probed once for the plan's ssh, and the batch decision logged once, not per attempt. A
+    /// user's attempt is unchanged, and probes nothing (R4-c).
+    /// </summary>
+    [Theory]
+    [InlineData("8.1")]   // Windows 10's inbox client
+    [InlineData("8.2")]   // Ubuntu 20.04
+    [InlineData("8.3")]
+    [InlineData(null)]    // unreadable
+    public async Task An_OpenSSH_client_before_8_4_runs_automatic_attempts_in_batch_mode_without_reading_the_vault(string? version)
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var probed = new List<string>();
+        var logged = new List<string>();
+        RemoteMuxConnector connector = OpenSshConnector(
+            Profile(), saved, built, versions: SshVersions(version is null ? null : Version.Parse(version), probed), logged: logged);
+
+        Own(await connector.ConnectAsync(interactive: true, Ct));
+        Assert.Empty(probed);
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(
+            new[] { (false, false), (true, false), (true, false) },
+            built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
+        Assert.Equal(0, saved.Reads);
+        Assert.Equal(new[] { Launch.SshPath }, probed);
+        Assert.Single(logged, line => line.Contains("not offered the saved password", StringComparison.Ordinal));
+    }
+
+    /// <summary>A4's other side: from 8.4 the prompts name the target, and automatic attempts keep the vault-only askpass.</summary>
+    [Theory]
+    [InlineData("8.4")]
+    [InlineData("9.5")]
+    public async Task An_OpenSSH_client_from_8_4_keeps_the_vault_only_askpass(string version)
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var logged = new List<string>();
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, versions: SshVersions(Version.Parse(version)), logged: logged);
+
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((false, true), (Assert.Single(built).BatchMode, built[0].SavedPasswordOnly));
+        Assert.Equal(1, saved.Reads);
+        Assert.DoesNotContain(logged, line => line.Contains("not offered the saved password", StringComparison.Ordinal));
     }
 
     /// <summary>With jump hops (the same conservative rule as native), or nothing saved, an automatic attempt is the batch mode it was.</summary>

@@ -32,7 +32,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// (<see cref="RemoteMuxInteractionHandler.Attempt.MaySignInWithSavedPassword"/>), null otherwise: called by a transport
 /// whose prompts are answered outside the app - OpenSSH's askpass - when it is built, true when the vault holds the
 /// password, which the attempt then counts as offered (<see cref="RemoteMuxInteractionHandler.Attempt.OfferSavedPassword"/>).
-/// The native transport does not call it: its password prompt reaches <paramref name="Prompts"/>, which answers it.
+/// The native transport does not call it: its password prompt reaches <paramref name="Prompts"/>, which answers it. Nor
+/// does an OpenSSH transport whose ssh is older than 8.4 (<see cref="RemoteMuxHostFactory.PrefixesKeyboardInteractivePrompts"/>).
 /// </param>
 /// <param name="WithoutSavedPassword">
 /// A user's attempt that keeps the saved password away (<see cref="RemoteMuxInteractionHandler.Attempt.AvoidsSavedPassword"/>:

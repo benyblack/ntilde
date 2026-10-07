@@ -172,7 +172,8 @@ internal static class RemoteMuxHostFactory
     /// <item>OpenSSH: ssh with the profile's launch plan. A user-started attempt prompts through the
     /// askpass helper. An automatic one whose profile has a saved password it may use
     /// (<see cref="RemoteMuxTransportRequest.OfferSavedPassword"/>: no jump hops, the profile's own destination, not
-    /// refused before on this host) runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
+    /// refused before on this host), through an ssh of 8.4 or later (<see cref="PrefixesKeyboardInteractivePrompts"/>),
+    /// runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
     /// password is answered from the vault, once, and every other prompt is refused with no UI. Any other automatic one
     /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
     /// reconnects on Enter, or through keys, the agent or an existing ControlMaster. A user's attempt after a password was
@@ -196,6 +197,11 @@ internal static class RemoteMuxHostFactory
     /// a user's Enter - not only hosts built later (codex4 F).
     /// </param>
     /// <param name="askPassHelperPath">The askpass helper (<see cref="SshAskPassCommand.LocateHelper()"/>), or null for none.</param>
+    /// <param name="openSshVersions">
+    /// The OpenSSH clients' versions (<see cref="OpenSshClientVersionCache.Shared"/> in the app), read for an automatic
+    /// attempt that would be offered the saved password; the probe may block for seconds, so this is called off the UI
+    /// thread. Null: no version is known, and no automatic attempt is offered the saved password.
+    /// </param>
     /// <exception cref="RemoteMuxUnavailableException">A Native profile while native SSH is off (<see cref="ThrowIfNativeSshDisabled"/>).</exception>
     public static ISshExecTransport CreateTransport(
         SshProfile profile,
@@ -204,7 +210,8 @@ internal static class RemoteMuxHostFactory
         Func<INativeSshInterop> nativeInterop,
         Func<bool> nativeSshEnabled,
         string? askPassHelperPath,
-        Action<string>? log)
+        Action<string>? log,
+        OpenSshClientVersionCache? openSshVersions = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(request);
@@ -222,14 +229,18 @@ internal static class RemoteMuxHostFactory
         // Offered only once a helper exists to answer it and the plan is built; only when the helper can recognise the
         // target's prompt - it names the profile's user@host (review M2), which the profile's own arguments must not change
         // (-l, -o User, -F, -o HostName, -o HostKeyAlias: re-review item 6); and not when the plan's own arguments go
-        // through a jump host, which on OpenSSH before 8.4 could ask as the target (review M3).
+        // through a jump host, which on OpenSSH before 8.4 could ask as the target (review M3). Nor with an ssh before 8.4 at
+        // all, whose keyboard-interactive prompts do not name the target (PrefixesKeyboardInteractivePrompts): its version is
+        // read only for an attempt that would otherwise be offered, and before the vault is.
         bool savedPasswordOnly = !request.Interactive
             && askPassHelperPath is not null
             && !string.IsNullOrWhiteSpace(profile.User)
             && !string.IsNullOrWhiteSpace(profile.Host)
             && !OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(profile.ExtraSshArgs)
             && !OpenSshExecCommandLine.NamesAProxy(plan)
-            && request.OfferSavedPassword?.Invoke() == true;
+            && request.OfferSavedPassword is { } offerSavedPassword
+            && PrefixesKeyboardInteractivePrompts(launch.SshPath, openSshVersions, log)
+            && offerSavedPassword();
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
@@ -241,6 +252,31 @@ internal static class RemoteMuxHostFactory
             savedPasswordOnly: savedPasswordOnly,
             withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
             askPassSession: request.AskPassSession);
+    }
+
+    /// <summary>
+    /// Whether the OpenSSH client at <paramref name="sshPath"/>, the one the attempt runs, puts <c>(user@host) </c> in front
+    /// of its keyboard-interactive prompts (8.4 and later, <see cref="OpenSshClientVersion.PrefixesKeyboardInteractivePrompts"/>).
+    /// The vault-only askpass answers only a prompt that names the target. An older client's <c>Password: </c> would go
+    /// unanswered, and ssh then sends an empty answer, a failed login on every attempt. A second factor after a filled
+    /// password would not be recorded as declined either, so it would read as the saved password refused. A version that
+    /// cannot be read, or no <paramref name="versions"/> to read it with, counts as older. The version is probed once per
+    /// executable (<see cref="OpenSshClientVersionCache"/>); an older one is logged at that probe, not on every attempt.
+    /// </summary>
+    internal static bool PrefixesKeyboardInteractivePrompts(string sshPath, OpenSshClientVersionCache? versions, Action<string>? log)
+    {
+        if (versions is null) return false;
+
+        Version? version = versions.VersionOf(sshPath, out bool firstLookup);
+        bool prefixes = OpenSshClientVersion.PrefixesKeyboardInteractivePrompts(version);
+        if (!prefixes && firstLookup)
+        {
+            log?.Invoke(version is null
+                ? $"[RemoteMux] the OpenSSH version of {sshPath} cannot be read, so automatic OpenSSH reconnects are not offered the saved password"
+                : $"[RemoteMux] {sshPath} is OpenSSH {version}, whose keyboard-interactive prompts do not name the target (8.4 and later do), so automatic OpenSSH reconnects are not offered the saved password");
+        }
+
+        return prefixes;
     }
 
     /// <summary>

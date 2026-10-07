@@ -987,7 +987,8 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                     () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
                     static () => true,
                     askPassHelperPath: "/opt/ntilde/ntilde",
-                    log: _ => { });
+                    log: _ => { },
+                    RemoteMuxConnectorTests.ModernSsh);
                 if (transport.SavedPasswordOnly) records.TryClaim(transport.AskPassSession!);
                 _remote.Script = new FakeRemoteScript(Stderr: "nova@fake-host: Permission denied (publickey,password).\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
                 return _remote;
