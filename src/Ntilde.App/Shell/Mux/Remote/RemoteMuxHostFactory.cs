@@ -220,12 +220,14 @@ internal static class RemoteMuxHostFactory
         SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
         IReadOnlyList<string> plan = PlanArgumentsFor(launch, request);
         // Offered only once a helper exists to answer it and the plan is built; only when the helper can recognise the
-        // target's prompt - it names the profile's user@host (review M2); and not when the plan's own arguments go through
-        // a jump host, which on OpenSSH before 8.4 could ask as the target (review M3).
+        // target's prompt - it names the profile's user@host (review M2), which the profile's own arguments must not change
+        // (-l, -o User, -F, -o HostName, -o HostKeyAlias: re-review item 6); and not when the plan's own arguments go
+        // through a jump host, which on OpenSSH before 8.4 could ask as the target (review M3).
         bool savedPasswordOnly = !request.Interactive
             && askPassHelperPath is not null
             && !string.IsNullOrWhiteSpace(profile.User)
             && !string.IsNullOrWhiteSpace(profile.Host)
+            && !OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(profile.ExtraSshArgs)
             && !OpenSshExecCommandLine.NamesAProxy(plan)
             && request.OfferSavedPassword?.Invoke() == true;
         return new OpenSshExecTransport(

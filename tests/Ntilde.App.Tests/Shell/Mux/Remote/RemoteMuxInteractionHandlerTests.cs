@@ -538,6 +538,27 @@ public sealed class RemoteMuxInteractionHandlerTests
         Assert.False(next.SavedPasswordOffered);
     }
 
+    /// <summary>
+    /// Re-review item 4: the host remembers more than one refused password. A remembered (typed, unsaved) password refused
+    /// after the saved one must not push the saved one's refusal out - that would re-arm a value known to be wrong.
+    /// </summary>
+    [Fact]
+    public async Task A_later_refusal_does_not_rearm_the_refused_saved_password()
+    {
+        var saved = new SavedPasswords("stale");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("typed")), saved);
+        RemoteMuxInteractionHandler.Attempt refusedSaved = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await refusedSaved.HandleAsync(Password, Ct);
+        refusedSaved.SavedPasswordRefused();
+        await RememberAsync(handler, Password);   // the user signed in with "typed", not saved
+        RemoteMuxInteractionHandler.Attempt refusedTyped = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("typed", (await refusedTyped.HandleAsync(Password, Ct)).Secret);
+
+        refusedTyped.Refused();   // the server's password changed again
+
+        Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+    }
+
     /// <summary>Review M7: once the saved value changes (the user saved a new one), the host offers it: it was never refused.</summary>
     [Fact]
     public async Task A_changed_saved_password_is_offered_again()

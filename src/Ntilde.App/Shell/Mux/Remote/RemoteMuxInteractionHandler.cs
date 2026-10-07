@@ -64,8 +64,14 @@ internal sealed class RemoteMuxInteractionHandler
     private readonly object _gate = new();
     private readonly Dictionary<SshInteractionKind, string> _remembered = []; // guarded by _gate
     private int _generation;                                                  // guarded by _gate; bumped by Forget
-    private byte[]? _refusedPassword;                                         // guarded by _gate; HashOf the last refused password
+    private readonly List<byte[]> _refusedPasswords = [];                     // guarded by _gate; HashOf each refused password, newest last
     private bool _savedPasswordNotEnough;                                     // guarded by _gate; a second factor follows it
+
+    /// <summary>
+    /// How many refused passwords a host remembers (re-review item 4): a refused typed or remembered password must not push
+    /// a refused saved one out and re-arm it. The oldest goes first.
+    /// </summary>
+    private const int RefusedPasswordsKept = 4;
 
     /// <summary>The key of <see cref="HashOf"/>: made for this process, never stored.</summary>
     private static readonly byte[] HashKey = RandomNumberGenerator.GetBytes(32);
@@ -128,7 +134,7 @@ internal sealed class RemoteMuxInteractionHandler
         {
             _remembered.Clear();
             _generation++;
-            _refusedPassword = null;
+            _refusedPasswords.Clear();
             _savedPasswordNotEnough = false;
         }
     }
@@ -141,7 +147,9 @@ internal sealed class RemoteMuxInteractionHandler
     {
         lock (_gate)
         {
-            if (generation == _generation) _refusedPassword = hash;
+            if (generation != _generation || _refusedPasswords.Exists(refused => CryptographicOperations.FixedTimeEquals(refused, hash))) return;
+            if (_refusedPasswords.Count == RefusedPasswordsKept) _refusedPasswords.RemoveAt(0);
+            _refusedPasswords.Add(hash);
         }
     }
 
@@ -156,20 +164,21 @@ internal sealed class RemoteMuxInteractionHandler
 
     private bool IsRefused(byte[] hash)
     {
-        lock (_gate) return _refusedPassword is { } refused && CryptographicOperations.FixedTimeEquals(refused, hash);
+        lock (_gate) return _refusedPasswords.Exists(refused => CryptographicOperations.FixedTimeEquals(refused, hash));
     }
 
     private bool AnyRefused()
     {
-        lock (_gate) return _refusedPassword is not null;
+        lock (_gate) return _refusedPasswords.Count > 0;
     }
 
-    /// <summary>An attempt got in having sent one of <paramref name="hashes"/>: if one is the refused value, it works now.</summary>
+    /// <summary>An attempt got in having sent <paramref name="hashes"/>: a refused value among them works now.</summary>
     private void ClearRefusedIfAny(IEnumerable<byte[]> hashes)
     {
+        byte[][] sent = [.. hashes];
         lock (_gate)
         {
-            if (_refusedPassword is { } refused && hashes.Any(hash => CryptographicOperations.FixedTimeEquals(refused, hash))) _refusedPassword = null;
+            _refusedPasswords.RemoveAll(refused => Array.Exists(sent, hash => CryptographicOperations.FixedTimeEquals(refused, hash)));
         }
     }
 
@@ -422,6 +431,15 @@ internal sealed class RemoteMuxInteractionHandler
             if (_savedPasswordProfile is not { } profile || _owner.ReadSavedPassword(profile) is not { } saved) return null;
             byte[] hash = HashOf(saved);
             return _owner.IsRefused(hash) ? null : (saved, hash);
+        }
+
+        /// <summary>
+        /// The attempt got past sign-in (<see cref="Succeeded"/>: the proxy's greeting arrived): a failure after it - the mux
+        /// hello - says nothing about the password it sent (re-review item 1).
+        /// </summary>
+        internal bool HasSucceeded
+        {
+            get { lock (_gate) return _succeeded; }
         }
 
         /// <summary>The prompt this attempt refused to answer, ending the connection; null when it answered every one.</summary>

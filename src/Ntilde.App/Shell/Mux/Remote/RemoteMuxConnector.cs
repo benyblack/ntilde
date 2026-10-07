@@ -500,10 +500,14 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// question is a second factor; a password asked for again, or the attempt failing SSH with nothing after it, is a
     /// refusal. Handed to OpenSSH's askpass, the helper's record of this attempt's ssh says: a declined prompt naming the
     /// target (a second factor) is not a refusal; a refusal needs the helper to have filled the password - sshd refusing
-    /// without asking for it (agent keys past MaxAuthTries, password auth off) does not count.
+    /// without asking for it (agent keys past MaxAuthTries, password auth off) does not count. Nothing counts once the attempt
+    /// got past sign-in: the greeting proves the password was taken.
     /// </summary>
     private static SavedPasswordVerdict SavedPasswordVerdictOf(RemoteMuxInteractionHandler.Attempt prompts, RemoteMuxFailure failure)
     {
+        // Past sign-in (the proxy's greeting arrived), the password got in: a later failure is the link's, not a refusal
+        // (re-review item 1), as Attempt.Refused keeps a remembered one.
+        if (prompts.HasSucceeded) return SavedPasswordVerdict.None;
         bool sshFailed = failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser || prompts.AbortedPrompt is not null;
         if (!sshFailed) return SavedPasswordVerdict.None;
         if (prompts.SavedPasswordAnswered)
