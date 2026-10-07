@@ -413,12 +413,19 @@ server rejects it. Host keys must already be trusted.
 
 A saved password is tried **once**. If the server refuses it, the retries stop at once and the tab
 shows `[Connection to <user@host> lost] [Press Enter to reconnect]` with
-`[The saved password was refused — press Enter to sign in]` under it; Ntilde does not try that
-password on its own again until a connection to the host signs in. (A server that accepts both
-password and keyboard-interactive sign-in may see it once for each before the retries stop.) Enter
-then asks you for the password straight away, without trying the saved one again; tick *Remember
-password* to replace the saved one. At any other time, when you connect or press Enter Ntilde fills
-in the saved password at most once per connection: if the server refuses it, you are asked.
+`[The saved password was refused — press Enter to sign in]` under it. Ntilde does not use that
+password on its own again, for that host in this window: Enter asks you for the password straight
+away; tick *Remember password* to replace the saved one, and Ntilde uses the new one from then on.
+Signing in with a typed password without ticking it leaves the refused one unused. (A server that
+accepts both password and keyboard-interactive sign-in may see it once for each before the retries
+stop. Each window keeps its own record, so a second window with tabs on the same host tries it once
+too.) At any other time, when you connect or press Enter Ntilde fills in the saved password at most
+once per connection: if the server refuses it, you are asked.
+
+If the host asks for more than the password - a one-time code, a second factor - the saved password
+alone cannot sign in. The retries stop at once with
+`[Automatic reconnect can't sign in without you — press Enter]`, and later ones do not try the saved
+password again. Enter fills in the saved password for you and asks only for the code.
 
 When signing in would need a password or another typed answer, the retries stop at once rather than
 fail again and again (failed logins that fail2ban and account lockouts count), and the tab shows

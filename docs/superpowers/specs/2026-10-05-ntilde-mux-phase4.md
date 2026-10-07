@@ -1376,6 +1376,34 @@ review; the section they change is named first.
       asked instead. Vault-only mode is unaffected (`NumberOfPasswordPrompts=1` bounds it). Native already offers the
       vault once per connection (`NativeSshPromptResponder`). Plain OpenSSH tabs use no askpass (they prompt in the
       terminal), so this applies to the exec transport only.
+  - Branch review fix round (same branch). Refusal now needs evidence (review I-1): before it, a password plus a second
+    factor read as a refused saved password, and the follow-up above then kept the correct password from Enter.
+    - OpenSSH: each attempt names its askpass session token (`RemoteMuxTransportRequest.AskPassSession`,
+      `OpenSshExecTransport(askPassSession)`). In vault-only mode the helper records `<token>.answered` when it fills
+      the target's password, and `<token>.declined` when it declines a prompt that names the target (`(user@host) ` /
+      `user@host's `) but asks for no password (`SshAskPassSessionMarkers`). The connector counts `SavedPasswordRefused`
+      only for answered and not declined. A declined record is a second factor. No record at all - sshd refused
+      without asking: agent keys past `MaxAuthTries`, password auth off, a prompt the helper did not recognise - counts
+      nothing, and the line is the plain one.
+    - Native: after the saved password, a password prompt or a keyboard-interactive question that asks for a password
+      (case-insensitive "password"), or an SSH failure with nothing after it, is a refusal. A question asking for
+      anything else is a second factor.
+    - A second factor: the failure is `NeedsUser` with the plain sign-in line. The host remembers the saved password
+      alone cannot sign in, and its automatic attempts no longer offer it (batch mode, or an aborted prompt: no more
+      failed rounds). User attempts still fill it once, and the dialog asks only for the code.
+    - The refusal is kept as a keyed hash (HMAC-SHA256 under a key made for this process, never the value; review M7).
+      A refused value is not offered automatically nor filled on Enter, a different saved value is, and a sign-in
+      with the refused value itself clears it. A typed password that gets in (Remember unticked) no longer re-arms the
+      stale saved value. Each window's hosts keep their own record: N windows may cost N failed logins.
+    - Smaller fixes:
+      - The saved password is offered to OpenSSH only for a profile with a user and a host (the helper must
+        recognise the prompt; M2), and not when the plan's own arguments go through a jump host
+        (`OpenSshExecCommandLine.NamesAProxy`: `-J`, `ProxyJump`, `ProxyCommand`, read with ssh's getopt rules; M3).
+      - A retargeted user attempt keeps the saved password away (M4).
+      - The helper's once-per-ssh claim is atomic (`FileMode.CreateNew`; M5).
+      - A vault that throws counts as nothing saved (M6).
+      - A native user attempt on a jump-hop profile passes password prompts on with vault reuse off (M9).
+      - An askpass run never applies a staged update at startup (`Program.ShouldAutoApplyUpdateOnStartup`; I-2).
   - Limits: ssh counts `NumberOfPasswordPrompts` per method, so a server that offers both keyboard-interactive
     and password auth may be sent a wrong saved password once by each before the loop stops; a
     keyboard-interactive second factor after the password is answered empty by ssh (the helper refuses it), one
