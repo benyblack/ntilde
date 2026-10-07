@@ -1387,7 +1387,11 @@ review; the section they change is named first.
       nothing, and the line is the plain one.
     - Native: after the saved password, a password prompt or a keyboard-interactive question that asks for a password
       (case-insensitive "password"), or an SSH failure with nothing after it, is a refusal. A question asking for
-      anything else is a second factor.
+      anything else is a second factor. The saved password counts whether it came from the vault or from the host's
+      memory of an earlier sign-in holding the same value (the live smoke test: the window's handler had filled it on
+      Enter, so the loop's attempt answered from memory, and rusty_ssh's "SSH authentication failed" left it SshFailed,
+      costing one more attempt and the wrong line). A remembered password followed by a second factor is not marked
+      refused either.
     - A second factor: the failure is `NeedsUser` with the plain sign-in line. The host remembers the saved password
       alone cannot sign in, and its automatic attempts no longer offer it (batch mode, or an aborted prompt: no more
       failed rounds). User attempts still fill it once, and the dialog asks only for the code.
