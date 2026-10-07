@@ -360,4 +360,221 @@ public sealed class RemoteMuxInteractionHandlerTests
 
         Assert.True(handler.Remembers(SshInteractionKind.Password));
     }
+
+    /// <summary>The vault as the app reads it for a remote host (<see cref="RemoteMuxHostFactory.ReadSavedPassword"/>): a value, and every read counted.</summary>
+    private sealed class SavedPasswords(string? value)
+    {
+        private int _reads;
+
+        public string? Value { get; set; } = value;
+
+        public int Reads => Volatile.Read(ref _reads);
+
+        public string? Read(Ntilde.Platform.Ssh.Models.SshProfile profile)
+        {
+            Interlocked.Increment(ref _reads);
+            return Value;
+        }
+    }
+
+    private static RemoteMuxInteractionHandler Handler(ISshInteractionHandler? user, SavedPasswords saved) =>
+        new(user, request => request.Fingerprint == "SHA256:trusted", saved.Read);
+
+    private static readonly Ntilde.Platform.Ssh.Models.SshProfile Box = RemoteMuxConnectorTests.Profile();
+
+    /// <summary>
+    /// The user's choice after the smoke test: an automatic attempt signs in with the profile's saved password, with no
+    /// UI - once. A second password prompt in the same attempt means the server refused it: the attempt aborts (NeedsUser
+    /// in the connector) rather than offer it again, or send an empty answer.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_password_prompt_is_answered_once_from_the_saved_password()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("never asked"));
+        RemoteMuxInteractionHandler.Attempt automatic = Handler(user, saved).BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.True(automatic.MaySignInWithSavedPassword);
+        Assert.False(automatic.SavedPasswordOffered);
+
+        SshInteractionResponse first = await automatic.HandleAsync(Password, Ct);
+
+        Assert.Equal("s3cret", first.Secret);
+        Assert.False(first.IsCanceled);
+        Assert.False(first.RememberPasswordInVault);   // it came from there
+        Assert.True(automatic.SavedPasswordOffered);
+        var second = await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Password, Ct));
+        Assert.Equal(SshInteractionKind.Password, second.Prompt);
+        Assert.Equal(1, saved.Reads);
+        Assert.Empty(user.Asked);
+    }
+
+    /// <summary>The saved password lives in the vault: an attempt that got in with it does not copy it into the host's memory.</summary>
+    [Fact]
+    public async Task The_saved_password_is_not_remembered_in_memory()
+    {
+        var saved = new SavedPasswords("s3cret");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(), saved);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+
+        await automatic.HandleAsync(Password, Ct);
+        automatic.Succeeded();
+
+        Assert.False(handler.Remembers(SshInteractionKind.Password));
+    }
+
+    /// <summary>
+    /// Keyboard-interactive keeps its rule (any round with questions aborts), a passphrase is still declined, and with
+    /// nothing saved a password prompt aborts as before - none of them reads the vault for the password's sake.
+    /// </summary>
+    [Fact]
+    public async Task Keyboard_interactive_a_passphrase_and_an_empty_vault_keep_their_rules()
+    {
+        var saved = new SavedPasswords(null);
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(), saved);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+
+        Assert.True((await automatic.HandleAsync(Passphrase, Ct)).IsCanceled);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Password, Ct));
+
+        Assert.False(automatic.SavedPasswordOffered);
+        Assert.Equal(1, saved.Reads);   // the password prompt's look, which found nothing
+    }
+
+    /// <summary>
+    /// A native password prompt does not say which hop asks: with jump hops (passwords not replayable), the saved
+    /// password is never offered, as a remembered one never is. The vault is not even read.
+    /// </summary>
+    [Fact]
+    public async Task With_jump_hops_the_saved_password_is_never_offered()
+    {
+        var saved = new SavedPasswords("s3cret");
+        RemoteMuxInteractionHandler.Attempt viaJumpHost = Handler(new ScriptedUser(), saved)
+            .BeginAttempt(interactive: false, passwordsReplayable: false, savedPasswordProfile: Box);
+
+        Assert.False(viaJumpHost.MaySignInWithSavedPassword);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => viaJumpHost.HandleAsync(Password, Ct));
+        Assert.False(viaJumpHost.OfferSavedPassword());
+        Assert.False(viaJumpHost.SavedPasswordOffered);
+        Assert.Equal(0, saved.Reads);
+    }
+
+    /// <summary>A user is waiting: the window's handler answers (from the vault itself, or a dialog); this one reads nothing.</summary>
+    [Fact]
+    public async Task An_interactive_attempt_leaves_the_saved_password_to_the_windows_handler()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typed"));
+        RemoteMuxInteractionHandler.Attempt attempt = Handler(user, saved).BeginAttempt(interactive: true, savedPasswordProfile: Box);
+
+        Assert.Equal("typed", (await attempt.HandleAsync(Password, Ct)).Secret);
+
+        Assert.False(attempt.MaySignInWithSavedPassword);
+        Assert.False(attempt.OfferSavedPassword());
+        Assert.Equal(0, saved.Reads);
+        Assert.Single(user.Asked);
+    }
+
+    /// <summary>
+    /// A password the host remembered comes first. Refused, it is not followed by the saved one in the same attempt: one
+    /// password per automatic attempt, whatever its source.
+    /// </summary>
+    [Fact]
+    public async Task A_remembered_password_comes_first_and_a_refused_one_is_not_followed_by_the_saved_one()
+    {
+        var saved = new SavedPasswords("s3cret");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("remembered")), saved);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+
+        Assert.Equal("remembered", (await automatic.HandleAsync(Password, Ct)).Secret);
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Password, Ct));
+
+        Assert.False(automatic.SavedPasswordOffered);
+        Assert.Equal(0, saved.Reads);
+    }
+
+    /// <summary>
+    /// The OpenSSH shape: the attempt's transport is built once, and its askpass helper answers the password itself.
+    /// Offering it reads the vault (and keeps nothing), and counts it as offered only when there is one.
+    /// </summary>
+    [Fact]
+    public void Offering_the_saved_password_to_an_askpass_reads_the_vault_and_counts_only_when_there_is_one()
+    {
+        var saved = new SavedPasswords(null);
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(), saved);
+        RemoteMuxInteractionHandler.Attempt nothingSaved = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        RemoteMuxInteractionHandler.Attempt noProfile = handler.BeginAttempt(interactive: false);
+
+        Assert.False(nothingSaved.OfferSavedPassword());
+        Assert.False(nothingSaved.SavedPasswordOffered);
+        saved.Value = "s3cret";
+        RemoteMuxInteractionHandler.Attempt withSaved = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.True(withSaved.OfferSavedPassword());
+        Assert.True(withSaved.SavedPasswordOffered);
+        Assert.False(noProfile.MaySignInWithSavedPassword);   // the connector names no profile for a retargeted attempt
+        Assert.False(noProfile.OfferSavedPassword());
+        Assert.Equal(2, saved.Reads);
+    }
+
+    /// <summary>
+    /// A refused saved password is tried once per host, not once per attempt: until an attempt gets in, the host's later
+    /// automatic attempts - a kill's delivery, the next loss - offer it no more. Once one gets in, they may again.
+    /// </summary>
+    [Fact]
+    public async Task After_a_refusal_the_host_offers_the_saved_password_no_more_until_an_attempt_gets_in()
+    {
+        var saved = new SavedPasswords("wrong");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("right")), saved);
+        RemoteMuxInteractionHandler.Attempt refused = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await refused.HandleAsync(Password, Ct);
+
+        refused.SavedPasswordRefused();
+
+        RemoteMuxInteractionHandler.Attempt next = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.False(next.MaySignInWithSavedPassword);
+        Assert.False(next.OfferSavedPassword());
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => next.HandleAsync(Password, Ct));
+        Assert.Equal(1, saved.Reads);
+
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(Password, Ct);
+        enter.Succeeded();
+        saved.Value = "right";
+        Assert.True(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).MaySignInWithSavedPassword);
+    }
+
+    /// <summary>
+    /// A remembered password the server refused (its attempt failed SSH) says the server's password changed: the saved
+    /// one is likely as stale, so the host's automatic attempts do not try it after it either.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_remembered_password_stops_the_saved_one_too()
+    {
+        var saved = new SavedPasswords("s3cret");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("old")), saved);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
+
+        automatic.Refused();
+
+        Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).MaySignInWithSavedPassword);
+        Assert.Equal(0, saved.Reads);
+    }
+
+    /// <summary>A passphrase refused is no reason to stop offering the saved password: it never reached the server.</summary>
+    [Fact]
+    public async Task A_refused_remembered_passphrase_leaves_the_saved_password_alone()
+    {
+        var saved = new SavedPasswords("s3cret");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("key-pass")), saved);
+        await RememberAsync(handler, Passphrase);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await automatic.HandleAsync(Passphrase, Ct);
+
+        automatic.Refused();
+
+        Assert.True(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).MaySignInWithSavedPassword);
+    }
 }

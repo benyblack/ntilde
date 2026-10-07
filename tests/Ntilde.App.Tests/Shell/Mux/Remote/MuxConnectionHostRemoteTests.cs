@@ -45,8 +45,11 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         return disposable;
     }
 
-    private MuxConnectionHost Create(Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport>? transportFor = null, ISshInteractionHandler? user = null) =>
-        Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(_profile.Id), _ => _profile, transportFor ?? ((_, _) => _remote), _log.Enqueue, user, _clock)
+    private MuxConnectionHost Create(
+        Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport>? transportFor = null,
+        ISshInteractionHandler? user = null,
+        Func<SshProfile, string?>? savedPassword = null) =>
+        Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(_profile.Id), _ => _profile, transportFor ?? ((_, _) => _remote), _log.Enqueue, user, _clock, savedPassword: savedPassword)
             ?? throw new InvalidOperationException("the factory declined"));
 
     private bool Logged(string text) => _log.Any(l => l.Contains(text, StringComparison.Ordinal));
@@ -807,6 +810,85 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Empty(user.Asked);
         await TestWait.UntilAsync(() => host.LastFailure is not null, "the failure was recorded", Patient);
         Assert.Equal(RemoteFailureKind.NeedsUser, Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure.Kind);
+    }
+
+    /// <summary>
+    /// The native auth shape against a server whose password is <paramref name="serverPassword"/>: a user's request gets in
+    /// (its key, say); an automatic attempt is asked for a password, and gets in only with the right one. What its prompts
+    /// answered is recorded - "&lt;aborted&gt;" for an attempt that ended the session at the prompt instead.
+    /// </summary>
+    private Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> PasswordServer(string serverPassword, ConcurrentQueue<string> answered) => (_, request) =>
+    {
+        _remote.OnStart = _ =>
+        {
+            _remote.Script = null;
+            if (request.Interactive) return;
+            try
+            {
+                string answer = request.Prompts.HandleAsync(RemoteMuxConnectorTests.PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                answered.Enqueue(answer);
+                if (answer != serverPassword) _remote.Script = FakeRemoteScript.NativeFailure("Authentication failed: no authentication method succeeded");
+            }
+            catch (RemoteMuxPromptAbortedException ex)
+            {
+                // As the native channel does: the session closes without answering.
+                answered.Enqueue("<aborted>");
+                _remote.Script = FakeRemoteScript.NativeFailure($"the native session failed: {ex.Message}");
+            }
+        };
+        return _remote;
+    };
+
+    /// <summary>
+    /// The user's choice: a wrong saved password is tried once, and the loop stops (NeedsUser) - at once, nothing scheduled,
+    /// not ten minutes of failed logins - saying the saved password was refused. A kill queued meanwhile is delivered by
+    /// an automatic attempt of its own on the idle host, which does not send the refused password again.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_saved_password_stops_the_loop_at_once_and_is_not_sent_again()
+    {
+        var answered = new ConcurrentQueue<string>();
+        MuxConnectionHost host = Create(PasswordServer("right", answered), new ScriptedUser(), savedPassword: _ => "wrong");
+        var events = new HostEvents(host);
+        Guid closed = await MuxTestHost.SpawnAsync(host.GetClient(Patient)!);
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+        await events.WaitForAsync("abandoned");
+
+        RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
+        Assert.False(host.IsReconnecting);
+        Assert.Equal(0, _clock.PendingCount);
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal(2, _remote.StartCount);   // one automatic attempt
+
+        host.KillWhenConnected(closed);         // the idle host tries once to deliver it
+        await TestWait.UntilAsync(() => answered.Count == 2, "the kill's automatic attempt reached the prompt", Patient);
+
+        Assert.Equal(new[] { "wrong", "<aborted>" }, answered);
+        Assert.Contains(closed, _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>A saved password the server takes: the loop's first attempt reconnects, with no NeedsUser and no give-up.</summary>
+    [Fact]
+    public async Task A_good_saved_password_reconnects_with_no_NeedsUser()
+    {
+        var answered = new ConcurrentQueue<string>();
+        MuxConnectionHost host = Create(PasswordServer("right", answered), new ScriptedUser(), savedPassword: _ => "right");
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+        await events.WaitForAsync("reconnected");
+
+        Assert.Equal(new[] { "lost:disconnected", "reconnected" }, events.Seen);
+        Assert.Equal(new[] { "right" }, answered);
+        Assert.Null(host.LastFailure);
+        Assert.False(host.IsReconnecting);
     }
 
     /// <summary>

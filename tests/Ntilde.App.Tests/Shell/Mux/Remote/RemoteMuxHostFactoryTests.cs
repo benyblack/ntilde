@@ -507,6 +507,25 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         PlanArguments = ["-F", "cfg", "ntilde_0123"],
     };
 
+    /// <summary>
+    /// The reader the app gives a remote host (<see cref="RemoteMuxHostFactory.ReadSavedPassword"/>) looks the profile up as
+    /// the prompts save it and the askpass helper reads it: by the profile's id first, then the older keys.
+    /// </summary>
+    [Fact]
+    public void The_apps_saved_password_reader_finds_the_profiles_vault_entry()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        var vault = new Ntilde.Shell.VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var legacy = new Ntilde.Shell.VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        Assert.Null(RemoteMuxHostFactory.ReadSavedPassword(vault, profile));
+
+        vault.SetSecret(Ntilde.Shell.VaultService.GetCanonicalSshProfileKey(profile.Id), "s3cret");
+        legacy.SetSecret("SSH:nova@fake-host", "shared");
+
+        Assert.Equal("s3cret", RemoteMuxHostFactory.ReadSavedPassword(vault, profile));
+        Assert.Equal("shared", RemoteMuxHostFactory.ReadSavedPassword(legacy, profile));
+    }
+
     [Fact]
     public void An_OpenSSH_profile_runs_ssh_in_batch_mode_only_for_automatic_attempts()
     {

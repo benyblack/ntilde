@@ -65,6 +65,10 @@ public sealed class RemoteMuxFailureClassifierTests
     [InlineData(false, 255, "nova@x: Permission denied (publickey,password).\r\n", nameof(RemoteFailureKind.SshFailed))]
     [InlineData(true, 255, "ssh: connect to host x port 22: Connection refused\r\n", nameof(RemoteFailureKind.SshFailed))]
     [InlineData(true, 126, "sh: 1: " + Binary + ": Permission denied\n", nameof(RemoteFailureKind.Unsupported))]
+    // sshd past MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same, which another
+    // automatic attempt would only repeat - with a saved password, one more failed login each time
+    [InlineData(true, 255, "Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", nameof(RemoteFailureKind.NeedsUser))]
+    [InlineData(false, 255, "Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", nameof(RemoteFailureKind.SshFailed))]
     public void An_automatic_attempt_that_ssh_refused_needs_the_user(bool automatic, int exitCode, string stderr, string kind)
     {
         RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, Handshake("ended"), "nova@x", automatic);

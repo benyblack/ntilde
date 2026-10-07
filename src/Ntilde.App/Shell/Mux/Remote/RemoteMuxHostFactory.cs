@@ -63,6 +63,10 @@ internal static class RemoteMuxHostFactory
     /// it, means the app's native known-hosts store, the one the window's prompts record accepted keys in. A
     /// caller with a store of its own passes it here (the Docker E2E: the app's store is bound once per process).
     /// </param>
+    /// <param name="savedPassword">
+    /// Reads a profile's password saved in the vault (<see cref="ReadSavedPassword"/> in the app), for the host's automatic
+    /// attempts: they sign in with it, once, with no UI (<see cref="RemoteMuxInteractionHandler"/>). Null: they never do.
+    /// </param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
@@ -70,7 +74,8 @@ internal static class RemoteMuxHostFactory
         Action<string>? log,
         ISshInteractionHandler? userPrompts = null,
         IMuxTimerScheduler? scheduler = null,
-        Func<SshInteractionRequest, bool>? isTrustedHostKey = null)
+        Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
+        Func<SshProfile, string?>? savedPassword = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -103,7 +108,7 @@ internal static class RemoteMuxHostFactory
         var connector = new RemoteMuxConnector(
             CurrentProfile,
             transportFor,
-            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey),
+            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword),
             Guid.NewGuid().ToString("N"),
             log)
         {
@@ -117,6 +122,27 @@ internal static class RemoteMuxHostFactory
             ClassifyDisconnect = client => ClassifyDisconnectAsync(connector, client),
             Scheduler = scheduler ?? SystemMuxTimerScheduler.Instance,
         };
+    }
+
+    /// <summary>
+    /// <paramref name="profile"/>'s password saved in <paramref name="vault"/>, or null: looked up as the window's prompts
+    /// save it and the askpass helper reads it (<see cref="VaultService.GetSshPasswordForProfile"/>, by the profile's id,
+    /// then its older name-based keys), so an automatic attempt and the helper agree on whether there is one.
+    /// </summary>
+    internal static string? ReadSavedPassword(VaultService vault, SshProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(vault);
+        ArgumentNullException.ThrowIfNull(profile);
+        string? saved = vault.GetSshPasswordForProfile(new TerminalProfile
+        {
+            Type = ConnectionType.SSH,
+            Id = profile.Id,
+            Name = profile.Name ?? string.Empty,
+            SshUser = profile.User ?? string.Empty,
+            SshHost = profile.Host ?? string.Empty,
+            SshPort = profile.Port,
+        });
+        return string.IsNullOrEmpty(saved) ? null : saved;
     }
 
     /// <summary>
@@ -138,9 +164,12 @@ internal static class RemoteMuxHostFactory
     /// The app's transport for one attempt, by the profile's backend (spec §8.2, §8.3):
     /// <list type="bullet">
     /// <item>OpenSSH: ssh with the profile's launch plan. A user-started attempt prompts through the
-    /// askpass helper; an automatic one runs in batch mode, without askpass, so it fails rather than
-    /// prompt - a password-only OpenSSH profile then reconnects on Enter, or through keys, the agent or
-    /// an existing ControlMaster.</item>
+    /// askpass helper. An automatic one whose profile has a saved password it may use
+    /// (<see cref="RemoteMuxTransportRequest.OfferSavedPassword"/>: no jump hops, the profile's own destination, not
+    /// refused before on this host) runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
+    /// password is answered from the vault, once, and every other prompt is refused with no UI. Any other automatic one
+    /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
+    /// reconnects on Enter, or through keys, the agent or an existing ControlMaster.</item>
     /// <item>Native: the native exec transport, its prompts answered by
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
@@ -181,14 +210,17 @@ internal static class RemoteMuxHostFactory
         }
 
         SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
+        // Offered only once a helper exists to answer it, and the plan is built: otherwise nothing could be offered.
+        bool savedPasswordOnly = !request.Interactive && askPassHelperPath is not null && request.OfferSavedPassword?.Invoke() == true;
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
             PlanArgumentsFor(launch, request),
-            request.Interactive ? askPassHelperPath : null,
+            request.Interactive || savedPasswordOnly ? askPassHelperPath : null,
             diagnosticsArguments: null,
             log,
-            batchMode: !request.Interactive);
+            batchMode: !request.Interactive && !savedPasswordOnly,
+            savedPasswordOnly: savedPasswordOnly);
     }
 
     /// <summary>

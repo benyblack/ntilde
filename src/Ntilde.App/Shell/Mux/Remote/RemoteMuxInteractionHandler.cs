@@ -1,4 +1,5 @@
 using Ntilde.Platform.Ssh.Interactions;
+using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
 
 namespace Ntilde.Shell.Mux.Remote;
@@ -33,37 +34,63 @@ namespace Ntilde.Shell.Mux.Remote;
 /// failed for want of a secret only the user can give fails as needing the user, which stops the
 /// reconnect loop; a refused host key leaves it backing off.
 /// </para>
+/// <para>
+/// The one exception (the user's choice after the Phase 4 smoke test): the profile's password saved in the vault. An
+/// automatic attempt may sign in with it, with no UI, once - <see cref="Attempt.MaySignInWithSavedPassword"/> - unless
+/// the profile has jump hops (the same rule as for a remembered password) or the host's destination moved
+/// (the connector then names no profile). A native attempt answers its first password prompt with it; an OpenSSH one
+/// hands it to ssh's askpass (<see cref="Attempt.OfferSavedPassword"/>). Refused, it is not offered again by this host's
+/// automatic attempts until one gets in (<see cref="Attempt.SavedPasswordRefused"/>): a wrong saved password must not
+/// add a failed login on every reconnect or kill delivery. The same holds once a remembered password was refused: the
+/// server's password changed, and the saved one is likely as stale.
+/// </para>
 /// </remarks>
 internal sealed class RemoteMuxInteractionHandler
 {
     private readonly ISshInteractionHandler? _user;
     private readonly Func<SshInteractionRequest, bool> _isTrustedHostKey;
+    private readonly Func<SshProfile, string?>? _savedPassword;
     private readonly object _gate = new();
     private readonly Dictionary<SshInteractionKind, string> _remembered = []; // guarded by _gate
     private int _generation;                                                  // guarded by _gate; bumped by Forget
+    private bool _passwordRefused;                                            // guarded by _gate; until an attempt gets in
 
     /// <param name="user">The window's handler (dialogs, the vault, the known-hosts store), or null for none.</param>
     /// <param name="isTrustedHostKey">
     /// Whether a host-key request names a key the user already trusts; the app's native known-hosts store
     /// by default, the one the window's handler records accepted keys in.
     /// </param>
-    public RemoteMuxInteractionHandler(ISshInteractionHandler? user, Func<SshInteractionRequest, bool>? isTrustedHostKey = null)
+    /// <param name="savedPassword">
+    /// Reads the profile's password saved in the vault, or null for none (<see cref="RemoteMuxHostFactory.ReadSavedPassword"/>
+    /// in the app). Called off the UI thread, only for an automatic attempt that may use it. Null: automatic attempts
+    /// never sign in with a saved password.
+    /// </param>
+    public RemoteMuxInteractionHandler(
+        ISshInteractionHandler? user,
+        Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
+        Func<SshProfile, string?>? savedPassword = null)
     {
         _user = user;
         _isTrustedHostKey = isTrustedHostKey ?? IsTrustedInTheAppsKnownHosts;
+        _savedPassword = savedPassword;
     }
 
     /// <summary>
     /// The handler for one connect attempt; <paramref name="interactive"/> when a user is waiting on it.
     /// <paramref name="passwordsReplayable"/> is false for a profile with jump hops: its passwords are
     /// neither offered from memory nor remembered, and a password remembered before is dropped.
+    /// <paramref name="savedPasswordProfile"/> is the attempt's profile when its saved password may sign an automatic
+    /// attempt in to that destination - null when the host's destination moved away from what the profile names now; the
+    /// attempt then may only when it is automatic, its passwords are replayable, and no password was refused on this host
+    /// since an attempt last got in.
     /// </summary>
-    public Attempt BeginAttempt(bool interactive, bool passwordsReplayable = true)
+    public Attempt BeginAttempt(bool interactive, bool passwordsReplayable = true, SshProfile? savedPasswordProfile = null)
     {
         lock (_gate)
         {
             if (!passwordsReplayable) _remembered.Remove(SshInteractionKind.Password);
-            return new Attempt(this, interactive, passwordsReplayable, _generation);
+            SshProfile? savedFor = !interactive && passwordsReplayable && !_passwordRefused && _savedPassword is not null ? savedPasswordProfile : null;
+            return new Attempt(this, interactive, passwordsReplayable, _generation, savedFor);
         }
     }
 
@@ -74,8 +101,32 @@ internal sealed class RemoteMuxInteractionHandler
         {
             _remembered.Clear();
             _generation++;
+            _passwordRefused = false;
         }
     }
+
+    /// <summary>A password was refused on this host since an attempt last got in: automatic attempts offer the saved one no more.</summary>
+    internal bool PasswordRefused
+    {
+        get { lock (_gate) return _passwordRefused; }
+    }
+
+    private void MarkPasswordRefused(int generation)
+    {
+        lock (_gate)
+        {
+            if (generation == _generation) _passwordRefused = true;
+        }
+    }
+
+    private void ClearPasswordRefused()
+    {
+        lock (_gate) _passwordRefused = false;
+    }
+
+    /// <summary>The profile's saved password, or null for none.</summary>
+    private string? ReadSavedPassword(SshProfile profile) =>
+        _savedPassword?.Invoke(profile) is { Length: > 0 } saved ? saved : null;
 
     internal bool Remembers(SshInteractionKind kind)
     {
@@ -145,28 +196,80 @@ internal sealed class RemoteMuxInteractionHandler
     /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH, nothing else got
     /// in, and the connector reports it as needing the user, as it does an aborted prompt.
     /// </para>
+    /// <para>
+    /// An automatic attempt that <see cref="MaySignInWithSavedPassword"/> answers a password prompt it has nothing
+    /// remembered for with the profile's saved password - once, and only when it has offered no other password: a second
+    /// password prompt means the first answer was refused, and aborts as above. The saved password is not tracked or
+    /// remembered: it stays in the vault, and the next attempt reads it there.
+    /// </para>
     /// </remarks>
     internal sealed class Attempt : ISshInteractionHandler
     {
         private readonly RemoteMuxInteractionHandler _owner;
         private readonly bool _passwordsReplayable;
         private readonly int _generation;
+        private readonly SshProfile? _savedPasswordProfile;
         private readonly object _gate = new();
         private readonly List<Answer> _answers = []; // guarded by _gate; in the order given
         private bool _succeeded;                     // guarded by _gate
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
+        private bool _savedPasswordOffered;          // guarded by _gate
+        private bool _savedPasswordAnswered;         // guarded by _gate
 
-        internal Attempt(RemoteMuxInteractionHandler owner, bool interactive, bool passwordsReplayable, int generation)
+        internal Attempt(RemoteMuxInteractionHandler owner, bool interactive, bool passwordsReplayable, int generation, SshProfile? savedPasswordProfile)
         {
             _owner = owner;
             Interactive = interactive;
             _passwordsReplayable = passwordsReplayable;
             _generation = generation;
+            _savedPasswordProfile = savedPasswordProfile;
         }
 
         /// <summary>True when a user is waiting on this attempt: prompts may reach them.</summary>
         public bool Interactive { get; }
+
+        /// <summary>
+        /// This automatic attempt may sign in with the profile's saved password, if the vault holds one: no jump hops,
+        /// the profile's own destination, and no password refused on this host since an attempt last got in.
+        /// </summary>
+        public bool MaySignInWithSavedPassword => _savedPasswordProfile is not null;
+
+        /// <summary>
+        /// The saved password was offered: handed to ssh's askpass for the whole attempt (<see cref="OfferSavedPassword"/>,
+        /// OpenSSH), or given as the answer to a password prompt (native).
+        /// </summary>
+        public bool SavedPasswordOffered
+        {
+            get { lock (_gate) return _savedPasswordOffered; }
+        }
+
+        /// <summary>
+        /// The saved password was given as the answer to a password prompt (native): it certainly reached the server, so
+        /// an SSH failure after it is its refusal. One handed to ssh's askpass may never have been asked for.
+        /// </summary>
+        internal bool SavedPasswordAnswered
+        {
+            get { lock (_gate) return _savedPasswordAnswered; }
+        }
+
+        /// <summary>
+        /// Offers the saved password to a transport that answers its own prompts - ssh's askpass in its vault-only mode -
+        /// for the whole attempt: true when this attempt may (<see cref="MaySignInWithSavedPassword"/>) and the vault holds
+        /// one, which is then counted as offered. It reads the vault to know, and keeps nothing.
+        /// </summary>
+        public bool OfferSavedPassword()
+        {
+            if (_savedPasswordProfile is not { } profile || _owner.ReadSavedPassword(profile) is null) return false;
+            lock (_gate) _savedPasswordOffered = true;
+            return true;
+        }
+
+        /// <summary>
+        /// The saved password this attempt offered was refused (the connector's verdict): the host's automatic attempts do
+        /// not offer it again until one gets in - unless the host forgot everything since this attempt began.
+        /// </summary>
+        public void SavedPasswordRefused() => _owner.MarkPasswordRefused(_generation);
 
         /// <summary>The prompt this attempt refused to answer, ending the connection; null when it answered every one.</summary>
         public SshInteractionKind? AbortedPrompt
@@ -203,6 +306,9 @@ internal sealed class RemoteMuxInteractionHandler
 
                 if (User is not { } user)
                 {
+                    // The profile's saved password, once, with no UI: the user's choice for automatic reconnects.
+                    if (kind == SshInteractionKind.Password && TakeSavedPassword() is { } saved) return SshInteractionResponse.FromSecret(saved);
+
                     // A password is never cancelled: rusty_ssh would send the cancel as an empty password. A passphrase
                     // is: it only unlocks a local key, so nothing reaches the server, and the agent or another key may
                     // still get in. But it is recorded, so an attempt that then fails SSH reads as needing the user.
@@ -239,7 +345,8 @@ internal sealed class RemoteMuxInteractionHandler
         /// <summary>
         /// The connection got past auth (the remote command runs): every secret that was not followed by
         /// another auth prompt got its hop in, so the host remembers it - unless the host forgot everything
-        /// since this attempt began. From now on <see cref="Refused"/> changes nothing.
+        /// since this attempt began. Signing in works again, so the host's automatic attempts may offer the
+        /// saved password again. From now on <see cref="Refused"/> changes nothing.
         /// </summary>
         public void Succeeded()
         {
@@ -254,12 +361,15 @@ internal sealed class RemoteMuxInteractionHandler
                 _generation,
                 forget: [],
                 remember: answers.Where(a => a.State != AnswerState.Superseded && !a.FromMemory).Select(a => (a.Kind, a.Secret)));
+            _owner.ClearPasswordRefused();
         }
 
         /// <summary>
         /// The attempt failed SSH (auth, or the connection before the command ran): every secret it offered
         /// from memory may be the reason, so each is forgotten, and the next user attempt asks instead. A
-        /// no-op once the attempt <see cref="Succeeded"/>: past the greeting, what it offered got it in.
+        /// password among them means the server's password changed: the saved one is likely as stale, so the
+        /// host's automatic attempts stop offering it too, until one gets in. A no-op once the attempt
+        /// <see cref="Succeeded"/>: past the greeting, what it offered got it in.
         /// </summary>
         public void Refused()
         {
@@ -271,6 +381,31 @@ internal sealed class RemoteMuxInteractionHandler
             }
 
             _owner.Settle(_generation, forget: answers.Where(a => a.FromMemory).Select(a => (a.Kind, a.Secret)), remember: []);
+            if (answers.Exists(a => a.FromMemory && a.Kind == SshInteractionKind.Password)) _owner.MarkPasswordRefused(_generation);
+        }
+
+        /// <summary>
+        /// The saved password for this attempt's password prompt, once: null when the attempt may not use it, when it
+        /// already answered a password prompt (from memory, or with the saved password: this prompt means that answer was
+        /// refused), or when the vault holds none.
+        /// </summary>
+        private string? TakeSavedPassword()
+        {
+            if (_savedPasswordProfile is not { } profile) return null;
+            lock (_gate)
+            {
+                if (_savedPasswordOffered || _answers.Exists(a => a.Kind == SshInteractionKind.Password)) return null;
+            }
+
+            if (_owner.ReadSavedPassword(profile) is not { } saved) return null;
+            lock (_gate)
+            {
+                if (_savedPasswordOffered) return null;
+                _savedPasswordOffered = true;
+                _savedPasswordAnswered = true;
+            }
+
+            return saved;
         }
 
         private RemoteMuxPromptAbortedException Abort(SshInteractionKind kind)

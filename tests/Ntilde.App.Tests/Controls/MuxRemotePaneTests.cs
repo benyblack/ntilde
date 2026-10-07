@@ -52,6 +52,7 @@ public sealed class MuxRemotePaneTests : IDisposable
     private readonly List<Window> _windows = [];
     private readonly List<TerminalPane> _panes = [];
     private bool _nativeSshEnabled = true; // the global switch (Settings > SSH), read by each attempt's transport
+    private string? _savedPassword;        // the profile's password in the vault, as the app reads it for a remote host
 
     /// <summary>The start of the line a pane shows under its Enter banner while native SSH is off (codex4 F).</summary>
     private const string NativeSshOffLine = "[Native SSH is disabled globally.";
@@ -59,17 +60,20 @@ public sealed class MuxRemotePaneTests : IDisposable
     public MuxRemotePaneTests()
     {
         MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local", null));
-        _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock)));
+        _hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(
+            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock, savedPassword: _ => Volatile.Read(ref _savedPassword))));
         _factory = new MuxTerminalSessionFactory(_hosts, _fallback, Resolve, log: null);
     }
 
     /// <summary>
     /// The fake remote, behind the app's native SSH switch (<see cref="RemoteMuxHostFactory.CreateTransport"/>): a native
-    /// profile's attempt is refused while <see cref="_nativeSshEnabled"/> is off.
+    /// profile's attempt is refused while <see cref="_nativeSshEnabled"/> is off. An automatic OpenSSH attempt is offered
+    /// the saved password, as the app's transport factory offers it to ssh's askpass.
     /// </summary>
-    private FakeRemoteHost NativeSwitchedRemote(SshProfile profile, RemoteMuxTransportRequest _)
+    private FakeRemoteHost NativeSwitchedRemote(SshProfile profile, RemoteMuxTransportRequest request)
     {
         RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, () => Volatile.Read(ref _nativeSshEnabled));
+        if (!request.Interactive && profile.BackendKind == SshBackendKind.OpenSsh) request.OfferSavedPassword?.Invoke();
         return _remote;
     }
 
@@ -390,6 +394,29 @@ public sealed class MuxRemotePaneTests : IDisposable
         ShowsBanner(pane, "[Automatic reconnect can't sign in without you — press Enter]");
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("publickey", Text(pane));
+    }
+
+    /// <summary>
+    /// The user's choice, as the pane shows it: the automatic reconnect offered the profile's saved password, sshd refused
+    /// it, and the loop stopped at once. The line under the Enter banner says the saved password was refused.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_refused_saved_password_says_so_under_the_enter_banner()
+    {
+        Volatile.Write(ref _savedPassword, "stale");
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = NeedsPassword;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry);
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsBanner(pane, "[The saved password was refused — press Enter to sign in]");
+        Assert.False(RemoteHost.IsReconnecting);
+        Assert.DoesNotContain("Permission denied", Text(pane));
+        Assert.DoesNotContain("can't sign in without you", Text(pane));
     }
 
     /// <summary>
