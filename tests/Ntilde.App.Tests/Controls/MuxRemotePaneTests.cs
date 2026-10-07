@@ -420,7 +420,8 @@ public sealed class MuxRemotePaneTests : IDisposable
     [AvaloniaFact]
     public void A_refused_saved_password_says_so_under_the_enter_banner()
     {
-        Volatile.Write(ref _savedPassword, "stale");
+        const string Secret = "stale-pw-7f3a";
+        Volatile.Write(ref _savedPassword, Secret);
         TerminalPane pane = ShowPane();
         Attached(pane);
         _remote.Script = NeedsPassword;
@@ -434,6 +435,8 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.False(RemoteHost.IsReconnecting);
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("can't sign in without you", Text(pane));
+        // Compared unwrapped, so a line break inside the secret cannot hide it.
+        Assert.DoesNotContain(Unwrapped(Secret), Unwrapped(Text(pane)));
     }
 
     /// <summary>

@@ -1179,7 +1179,8 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Equal(0, _clock.PendingCount);
         RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
-        Assert.Equal(1, Volatile.Read(ref automaticAttempts));
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal(1, Volatile.Read(ref automaticAttempts));   // once across the whole backoff, not once so far
     }
 
     /// <summary>
