@@ -34,7 +34,18 @@ namespace Ntilde.Shell.Mux.Remote;
 /// password, which the attempt then counts as offered (<see cref="RemoteMuxInteractionHandler.Attempt.OfferSavedPassword"/>).
 /// The native transport does not call it: its password prompt reaches <paramref name="Prompts"/>, which answers it.
 /// </param>
-internal sealed record RemoteMuxTransportRequest(bool Interactive, ISshInteractionHandler Prompts, bool Pinned = false, bool Retargeted = false, Func<bool>? OfferSavedPassword = null);
+/// <param name="WithoutSavedPassword">
+/// A user's attempt after a password was refused on the host (<see cref="RemoteMuxInteractionHandler.Attempt.AvoidsSavedPassword"/>):
+/// OpenSSH's askpass must not answer from the vault, so the user's dialog comes at once. The native transport needs
+/// nothing: <paramref name="Prompts"/> keeps the window's handler from the vault itself.
+/// </param>
+internal sealed record RemoteMuxTransportRequest(
+    bool Interactive,
+    ISshInteractionHandler Prompts,
+    bool Pinned = false,
+    bool Retargeted = false,
+    Func<bool>? OfferSavedPassword = null,
+    bool WithoutSavedPassword = false);
 
 /// <summary>
 /// Connects to the <c>ntilde-mux</c> daemon on one SSH host (Phase 4 spec §7.1): runs
@@ -159,7 +170,12 @@ internal sealed class RemoteMuxConnector : IDisposable
             // too (OpenSSH plans its config file, and asks the vault whether a password is saved): both off the
             // calling thread.
             var request = new RemoteMuxTransportRequest(
-                interactive, prompts, pinned, retargeted, prompts.MaySignInWithSavedPassword ? prompts.OfferSavedPassword : null);
+                interactive,
+                prompts,
+                pinned,
+                retargeted,
+                prompts.MaySignInWithSavedPassword ? prompts.OfferSavedPassword : null,
+                WithoutSavedPassword: prompts.AvoidsSavedPassword);
             started = await Task.Run(() => _transportFor(profile, request).Start(command, ct), ct)
                 .ConfigureAwait(false);
         }

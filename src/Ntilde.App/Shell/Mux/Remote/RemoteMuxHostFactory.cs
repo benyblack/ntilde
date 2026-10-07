@@ -169,7 +169,9 @@ internal static class RemoteMuxHostFactory
     /// refused before on this host) runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
     /// password is answered from the vault, once, and every other prompt is refused with no UI. Any other automatic one
     /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
-    /// reconnects on Enter, or through keys, the agent or an existing ControlMaster.</item>
+    /// reconnects on Enter, or through keys, the agent or an existing ControlMaster. A user's attempt after a password was
+    /// refused on the host (<see cref="RemoteMuxTransportRequest.WithoutSavedPassword"/>) runs the helper without the
+    /// vault, so the user is asked at once; any other user's attempt has it fill the saved password once per ssh.</item>
     /// <item>Native: the native exec transport, its prompts answered by
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
@@ -220,7 +222,8 @@ internal static class RemoteMuxHostFactory
             diagnosticsArguments: null,
             log,
             batchMode: !request.Interactive && !savedPasswordOnly,
-            savedPasswordOnly: savedPasswordOnly);
+            savedPasswordOnly: savedPasswordOnly,
+            withoutSavedPassword: request.Interactive && request.WithoutSavedPassword);
     }
 
     /// <summary>

@@ -804,6 +804,69 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     }
 
     /// <summary>
+    /// The coordinator's follow-up: after the saved password was refused, the user's Enter must not send it again. The
+    /// user's attempt runs the askpass without the vault (the dialog at once); once one gets in, user attempts may use the
+    /// vault again, filled once per ssh.
+    /// </summary>
+    [Fact]
+    public async Task After_a_refused_saved_password_the_users_OpenSSH_attempt_skips_the_vault()
+    {
+        var built = new List<OpenSshExecTransport>();
+        bool serverTakesIt = false;
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("stale"), built, _ => serverTakesIt ? null : PermissionDenied);
+
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        serverTakesIt = true;                                    // the user types the right password in the dialog
+        Own(await connector.ConnectAsync(interactive: true, Ct));
+        Own(await connector.ConnectAsync(interactive: true, Ct));
+
+        Assert.Equal(
+            new[] { (false, true, false), (false, false, true), (false, false, false) },
+            built.Select(t => (t.BatchMode, t.SavedPasswordOnly, t.WithoutSavedPassword)));
+    }
+
+    /// <summary>
+    /// The native shape, end to end through the real native exec transport: after the saved password was refused, the
+    /// user's attempt's first password prompt - which the window's handler would answer from the vault - reaches it with
+    /// vault reuse off, so the user is asked at once. Nothing more is sent than what the user typed.
+    /// </summary>
+    [Fact]
+    public async Task After_a_refused_saved_password_the_users_native_attempt_asks_without_the_vault()
+    {
+        var interop = new PromptingNativeSshInterop(
+            PromptingNativeSshInterop.PasswordPrompt,
+            PromptingNativeSshInterop.Error("Authentication failed: no authentication method succeeded"),
+            NativeSshEvent.Closed(),
+            PromptingNativeSshInterop.PasswordPrompt);
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typed"));
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            (profile, request) => RemoteMuxHostFactory.CreateTransport(
+                profile,
+                request,
+                (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+                () => interop,
+                static () => true,
+                askPassHelperPath: null,
+                log: _ => { }),
+            new RemoteMuxInteractionHandler(user, _ => false, new SavedPasswords("stale").Read),
+            "i",
+            null));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+
+        Task<MuxClient> enter = connector.ConnectAsync(interactive: true, cts.Token);
+        await TestWait.UntilAsync(() => interop.Submissions.Count == 2, "the user's password was submitted");
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => enter);
+        SshInteractionRequest asked = Assert.Single(user.Asked);
+        Assert.Equal(SshInteractionKind.Password, asked.Kind);
+        Assert.False(asked.AllowVaultPasswordReuse);
+        Assert.Equal(new[] { """{"text":"stale"}""", """{"text":"typed"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
     /// An attempt that never reached the password - nothing listening, the host down - did not have it refused: the
     /// failure stays SshFailed, the loop retries, and the next automatic attempt offers the saved password again.
     /// </summary>

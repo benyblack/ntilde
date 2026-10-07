@@ -82,7 +82,8 @@ internal sealed class RemoteMuxInteractionHandler
     /// <paramref name="savedPasswordProfile"/> is the attempt's profile when its saved password may sign an automatic
     /// attempt in to that destination - null when the host's destination moved away from what the profile names now; the
     /// attempt then may only when it is automatic, its passwords are replayable, and no password was refused on this host
-    /// since an attempt last got in.
+    /// since an attempt last got in. An interactive attempt begun while one was refused avoids the saved password
+    /// altogether (<see cref="Attempt.AvoidsSavedPassword"/>): the user is asked.
     /// </summary>
     public Attempt BeginAttempt(bool interactive, bool passwordsReplayable = true, SshProfile? savedPasswordProfile = null)
     {
@@ -90,7 +91,7 @@ internal sealed class RemoteMuxInteractionHandler
         {
             if (!passwordsReplayable) _remembered.Remove(SshInteractionKind.Password);
             SshProfile? savedFor = !interactive && passwordsReplayable && !_passwordRefused && _savedPassword is not null ? savedPasswordProfile : null;
-            return new Attempt(this, interactive, passwordsReplayable, _generation, savedFor);
+            return new Attempt(this, interactive, passwordsReplayable, _generation, savedFor, avoidsSavedPassword: interactive && _passwordRefused);
         }
     }
 
@@ -212,13 +213,15 @@ internal sealed class RemoteMuxInteractionHandler
         private bool _savedPasswordOffered;          // guarded by _gate
         private bool _savedPasswordAnswered;         // guarded by _gate
 
-        internal Attempt(RemoteMuxInteractionHandler owner, bool interactive, bool passwordsReplayable, int generation, SshProfile? savedPasswordProfile)
+        internal Attempt(
+            RemoteMuxInteractionHandler owner, bool interactive, bool passwordsReplayable, int generation, SshProfile? savedPasswordProfile, bool avoidsSavedPassword)
         {
             _owner = owner;
             Interactive = interactive;
             _passwordsReplayable = passwordsReplayable;
             _generation = generation;
             _savedPasswordProfile = savedPasswordProfile;
+            AvoidsSavedPassword = avoidsSavedPassword;
         }
 
         /// <summary>True when a user is waiting on this attempt: prompts may reach them.</summary>
@@ -229,6 +232,14 @@ internal sealed class RemoteMuxInteractionHandler
         /// the profile's own destination, and no password refused on this host since an attempt last got in.
         /// </summary>
         public bool MaySignInWithSavedPassword => _savedPasswordProfile is not null;
+
+        /// <summary>
+        /// This user's attempt began while a password was refused on the host (the saved one, or a remembered one): nothing
+        /// answers from the vault - the window's handler gets each password prompt with vault reuse off, and OpenSSH's
+        /// askpass runs without the vault (<see cref="RemoteMuxTransportRequest.WithoutSavedPassword"/>) - so the user is
+        /// asked at once instead of the refused password going out again. The dialog's "Remember" replaces the saved one.
+        /// </summary>
+        public bool AvoidsSavedPassword { get; }
 
         /// <summary>
         /// The saved password was offered: handed to ssh's askpass for the whole attempt (<see cref="OfferSavedPassword"/>,
@@ -312,7 +323,11 @@ internal sealed class RemoteMuxInteractionHandler
                     return SshInteractionResponse.Cancel();
                 }
 
-                SshInteractionResponse response = await user.HandleAsync(request, cancellationToken).ConfigureAwait(false);
+                // After a refusal on this host the window's handler must not answer from the vault: the user is asked.
+                SshInteractionRequest forUser = AvoidsSavedPassword && kind == SshInteractionKind.Password && request.AllowVaultPasswordReuse
+                    ? request.WithoutVaultPasswordReuse()
+                    : request;
+                SshInteractionResponse response = await user.HandleAsync(forUser, cancellationToken).ConfigureAwait(false);
                 if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
                 {
                     Track(new Answer(kind, response.Secret, FromMemory: false));

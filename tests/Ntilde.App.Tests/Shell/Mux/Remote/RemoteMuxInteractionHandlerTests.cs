@@ -563,6 +563,73 @@ public sealed class RemoteMuxInteractionHandlerTests
         Assert.Equal(0, saved.Reads);
     }
 
+    /// <summary>The native password prompt as rusty_ssh's first one reaches the window's handler: vault reuse allowed.</summary>
+    private static SshInteractionRequest VaultReusablePassword { get; } = new()
+    {
+        Kind = SshInteractionKind.Password,
+        Prompt = "Password:",
+        ProfileId = Box.Id,
+        ProfileName = Box.Name,
+        ProfileUser = Box.User,
+        ProfileHost = Box.Host,
+        AllowVaultPasswordReuse = true,
+        RememberPasswordInVault = true,
+    };
+
+    /// <summary>
+    /// The coordinator's follow-up: after the host's saved password was refused, the user's Enter must not send it again
+    /// through the window's handler, which answers a first password prompt from the vault. The attempt passes the prompt
+    /// on with vault reuse off, so the dialog comes at once; its "Remember" still saves (the request still allows that).
+    /// </summary>
+    [Fact]
+    public async Task After_a_refusal_a_user_attempt_asks_without_the_vault()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typed"));
+        RemoteMuxInteractionHandler handler = Handler(user, new SavedPasswords("stale"));
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await automatic.HandleAsync(Password, Ct);
+        automatic.SavedPasswordRefused();
+
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        SshInteractionResponse answer = await enter.HandleAsync(VaultReusablePassword, Ct);
+
+        Assert.True(enter.AvoidsSavedPassword);
+        Assert.Equal("typed", answer.Secret);
+        SshInteractionRequest asked = Assert.Single(user.Asked);
+        Assert.False(asked.AllowVaultPasswordReuse);
+        Assert.True(asked.RememberPasswordInVault);
+        Assert.Equal(Box.Id, asked.ProfileId);
+    }
+
+    /// <summary>Without a refusal on the host, a user's attempt passes the prompt on as it came: the vault may answer it once.</summary>
+    [Fact]
+    public async Task Without_a_refusal_a_user_attempt_leaves_vault_reuse_as_it_came()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typed"));
+        RemoteMuxInteractionHandler.Attempt enter = Handler(user, new SavedPasswords("s3cret")).BeginAttempt(interactive: true, savedPasswordProfile: Box);
+
+        await enter.HandleAsync(VaultReusablePassword, Ct);
+
+        Assert.False(enter.AvoidsSavedPassword);
+        Assert.True(Assert.Single(user.Asked).AllowVaultPasswordReuse);
+    }
+
+    /// <summary>Once a user's attempt got in, signing in works again: the next user attempt may use the vault, as before.</summary>
+    [Fact]
+    public async Task A_user_attempt_that_gets_in_ends_the_avoidance()
+    {
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("typed")), new SavedPasswords("stale"));
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await automatic.HandleAsync(Password, Ct);
+        automatic.SavedPasswordRefused();
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(VaultReusablePassword, Ct);
+
+        enter.Succeeded();
+
+        Assert.False(handler.BeginAttempt(interactive: true, savedPasswordProfile: Box).AvoidsSavedPassword);
+    }
+
     /// <summary>A passphrase refused is no reason to stop offering the saved password: it never reached the server.</summary>
     [Fact]
     public async Task A_refused_remembered_passphrase_leaves_the_saved_password_alone()
