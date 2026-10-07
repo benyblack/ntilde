@@ -14,7 +14,7 @@ public static class OpenSshExecCommandLine
     internal const string SshOptionLetters = "1246ab:c:e:fgi:kl:m:no:p:qstvxAB:CD:E:F:GI:J:KL:MNO:P:Q:R:S:TVw:W:XYy";
 
     /// <summary>
-    /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no|yes, -o ControlMaster=no, ...plan, --, command]</c>,
+    /// <c>[...diagnostics, -T, -o ClearAllForwardings=yes, -o BatchMode=no|yes, (-o NumberOfPasswordPrompts=1,) -o ControlMaster=no, ...plan, --, command]</c>,
     /// with every piece of the plan that would break the exec channel dropped (<see cref="WithoutChannelBreakers"/>).
     /// </summary>
     /// <remarks>
@@ -29,7 +29,11 @@ public static class OpenSshExecCommandLine
     /// <item><c>BatchMode=no</c>: prompts stay possible; they reach the user through askpass. With
     /// <paramref name="batchMode"/> it is <c>BatchMode=yes</c> in the same place instead, so ssh never
     /// prompts at all: for an attempt nobody is waiting on (an automatic reconnect). Replaced, not
-    /// appended, because ssh keeps an option's first value.</item>
+    /// appended, because ssh keeps an option's first value. With <paramref name="savedPasswordOnly"/> (an
+    /// automatic reconnect whose profile has a saved password, answered by the askpass helper's vault-only mode)
+    /// it stays <c>BatchMode=no</c>, followed by <c>NumberOfPasswordPrompts=1</c>: a refused password is not
+    /// asked for again. ssh counts that per method, so a server that offers both keyboard-interactive and
+    /// password auth may still be sent it once by each.</item>
     /// <item><c>ControlMaster=no</c>: a profile with connection sharing (<c>ControlMaster auto</c> in
     /// the generated config) still reuses an existing master, but this hidden ssh never becomes one.
     /// Were it the master, a visible tab of the same profile would multiplex through it, and the
@@ -46,20 +50,29 @@ public static class OpenSshExecCommandLine
     /// <param name="remoteCommand">The command line the remote shell runs.</param>
     /// <param name="log">Told about each piece dropped from the plan, and why.</param>
     /// <param name="batchMode">True for <c>BatchMode=yes</c>: ssh fails instead of prompting.</param>
+    /// <param name="savedPasswordOnly">True for <c>BatchMode=no</c> with <c>NumberOfPasswordPrompts=1</c>; not with <paramref name="batchMode"/>.</param>
+    /// <exception cref="ArgumentException">Both <paramref name="batchMode"/> and <paramref name="savedPasswordOnly"/>.</exception>
     public static IReadOnlyList<string> Build(
         IReadOnlyList<string> diagnosticsArguments,
         IReadOnlyList<string> planArguments,
         string remoteCommand,
         Action<string>? log = null,
-        bool batchMode = false)
+        bool batchMode = false,
+        bool savedPasswordOnly = false)
     {
         ArgumentNullException.ThrowIfNull(diagnosticsArguments);
         ArgumentNullException.ThrowIfNull(planArguments);
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteCommand);
+        if (batchMode && savedPasswordOnly)
+        {
+            throw new ArgumentException("Batch mode never prompts, so it cannot answer a saved password.", nameof(savedPasswordOnly));
+        }
 
-        var argv = new List<string>(diagnosticsArguments.Count + planArguments.Count + 9);
+        var argv = new List<string>(diagnosticsArguments.Count + planArguments.Count + 11);
         argv.AddRange(diagnosticsArguments);
-        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", batchMode ? "BatchMode=yes" : "BatchMode=no", "-o", "ControlMaster=no"]);
+        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", batchMode ? "BatchMode=yes" : "BatchMode=no"]);
+        if (savedPasswordOnly) argv.AddRange(["-o", "NumberOfPasswordPrompts=1"]);
+        argv.AddRange(["-o", "ControlMaster=no"]);
         argv.AddRange(WithoutChannelBreakers(planArguments, log));
         argv.Add("--");
         argv.Add(remoteCommand);

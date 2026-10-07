@@ -144,6 +144,33 @@ public sealed class OpenSshExecCommandLineSshTests
         }
     }
 
+    /// <summary>
+    /// The saved-password-only argv, against the real client: ssh may prompt (<c>batchmode no</c>) and asks for a
+    /// password once (<c>numberofpasswordprompts 1</c>), over a profile's own extra arguments saying otherwise - ssh
+    /// keeps an option's first value.
+    /// </summary>
+    [Fact]
+    public void Saved_password_only_resolves_to_one_password_prompt_over_the_profiles_own_arguments()
+    {
+        string? ssh = FindSsh();
+        Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
+        string config = Path.GetTempFileName(); // empty: neither the user's nor the system's ssh config is read
+        try
+        {
+            string[] plan = ["-F", config, "ntilde-exec-check", "-o", "NumberOfPasswordPrompts=3", "-o", "BatchMode=yes"];
+            IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "ntilde-mux proxy --stdio", savedPasswordOnly: true);
+
+            Dictionary<string, string> resolved = ResolvedConfiguration(ssh!, [.. argv.Take(argv.Count - 2)]);
+
+            Assert.Equal("1", resolved.GetValueOrDefault("numberofpasswordprompts"));
+            Assert.Equal("no", resolved.GetValueOrDefault("batchmode"));
+        }
+        finally
+        {
+            File.Delete(config);
+        }
+    }
+
     private static string? FindSsh()
     {
         try

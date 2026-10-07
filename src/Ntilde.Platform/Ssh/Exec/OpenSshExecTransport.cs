@@ -12,7 +12,9 @@ namespace Ntilde.Platform.Ssh.Exec;
 /// <c>ssh -T -o ClearAllForwardings=yes -o BatchMode=no &lt;plan&gt; -- &lt;command&gt;</c>, with
 /// redirected stdio, no window and no shell, and prompts sent to the askpass helper. In batch mode
 /// (<see cref="BatchMode"/>, for automatic reconnects) it is <c>BatchMode=yes</c> and there is no
-/// askpass: ssh fails rather than prompt.
+/// askpass: ssh fails rather than prompt. An automatic reconnect whose profile has a saved password
+/// runs <see cref="SavedPasswordOnly"/> instead: askpass answers the target's password from the vault,
+/// once, and nothing else.
 /// </summary>
 /// <remarks>
 /// <see cref="Start"/> returns once ssh is running: connect and auth happen in ssh, while the caller
@@ -39,6 +41,13 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// <c>BatchMode=yes</c> and without askpass, so it fails instead of prompting. Keys, the agent and
     /// an existing ControlMaster still work.
     /// </param>
+    /// <param name="savedPasswordOnly">
+    /// True for an attempt nobody is waiting on whose profile has a saved password (an automatic reconnect): ssh runs
+    /// with <c>BatchMode=no</c> and <c>NumberOfPasswordPrompts=1</c>, and the helper in its vault-only mode
+    /// (<see cref="SshAskPassEnvironment.ApplySavedPasswordOnly"/>), which answers the target's password from the vault
+    /// and refuses everything else without any UI. Without a helper it is batch mode. Not with <paramref name="batchMode"/>.
+    /// </param>
+    /// <exception cref="ArgumentException">Both <paramref name="batchMode"/> and <paramref name="savedPasswordOnly"/>.</exception>
     public OpenSshExecTransport(
         SshProfile profile,
         string sshExecutablePath,
@@ -46,8 +55,16 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         string? askPassHelperPath,
         IReadOnlyList<string>? diagnosticsArguments = null,
         Action<string>? log = null,
-        bool batchMode = false)
-        : this(profile, sshExecutablePath, ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, batchMode), askPassHelperPath, log, batchMode)
+        bool batchMode = false,
+        bool savedPasswordOnly = false)
+        : this(
+            profile,
+            sshExecutablePath,
+            ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, ModeOf(batchMode, savedPasswordOnly, askPassHelperPath)),
+            askPassHelperPath,
+            log,
+            batchMode,
+            savedPasswordOnly)
     {
     }
 
@@ -61,20 +78,23 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         Func<string, IReadOnlyList<string>> buildArguments,
         string? askPassHelperPath,
         Action<string>? log,
-        bool batchMode = false)
+        bool batchMode = false,
+        bool savedPasswordOnly = false)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(buildArguments);
+        (bool batch, bool savedOnly) = ModeOf(batchMode, savedPasswordOnly, askPassHelperPath);
 
         _profile = profile;
         _executablePath = executablePath;
         _buildArguments = buildArguments;
         // Batch mode never prompts, so it has no use for a helper; leaving it out means no dialog can
         // appear even if a future ssh consulted askpass despite BatchMode.
-        _askPassHelperPath = batchMode || string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
+        _askPassHelperPath = batch || string.IsNullOrWhiteSpace(askPassHelperPath) ? null : askPassHelperPath;
         _log = log ?? TerminalLogger.Log;
-        BatchMode = batchMode;
+        BatchMode = batch;
+        SavedPasswordOnly = savedOnly;
     }
 
     public string DisplayName =>
@@ -82,6 +102,27 @@ public sealed class OpenSshExecTransport : ISshExecTransport
 
     /// <summary>True when ssh runs with <c>BatchMode=yes</c> and no askpass: it never prompts.</summary>
     public bool BatchMode { get; }
+
+    /// <summary>
+    /// True when ssh runs with <c>BatchMode=no</c>, <c>NumberOfPasswordPrompts=1</c> and the helper in its vault-only
+    /// mode: the target's password is answered from the vault, once, and nothing else is asked of anyone.
+    /// </summary>
+    public bool SavedPasswordOnly { get; }
+
+    /// <summary>
+    /// The mode the transport runs in: batch, saved-password-only (which needs a helper, and is batch without one), or
+    /// neither (a user is waiting).
+    /// </summary>
+    private static (bool BatchMode, bool SavedPasswordOnly) ModeOf(bool batchMode, bool savedPasswordOnly, string? askPassHelperPath)
+    {
+        if (batchMode && savedPasswordOnly)
+        {
+            throw new ArgumentException("Batch mode never prompts, so it cannot answer a saved password.", nameof(savedPasswordOnly));
+        }
+
+        bool helped = !string.IsNullOrWhiteSpace(askPassHelperPath);
+        return savedPasswordOnly ? (!helped, helped) : (batchMode, false);
+    }
 
     public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
     {
@@ -91,6 +132,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         ProcessStartInfo startInfo = CreateStartInfo(remoteCommand);
         _log($"[OpenSshExec] {DisplayName}: {startInfo.FileName} {SshArgBuilder.SanitizeForLog(SshArgBuilder.BuildCommandLine(startInfo.ArgumentList))}"
             + (BatchMode ? " (batch mode: ssh will not prompt)"
+                : SavedPasswordOnly ? " (saved password only: askpass answers the target's password from the vault, once, and nothing else)"
                 : _askPassHelperPath is null ? " (no askpass helper: ssh cannot prompt)" : string.Empty));
 
         var process = new Process { StartInfo = startInfo };
@@ -116,7 +158,10 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         return channel;
     }
 
-    /// <summary>The process to start: ssh itself (no shell), all three streams piped, askpass when there is a helper and no askpass at all in batch mode.</summary>
+    /// <summary>
+    /// The process to start: ssh itself (no shell), all three streams piped, askpass when there is a helper - in its
+    /// vault-only mode for <see cref="SavedPasswordOnly"/> - and no askpass at all in batch mode.
+    /// </summary>
     internal ProcessStartInfo CreateStartInfo(string remoteCommand)
     {
         var startInfo = new ProcessStartInfo
@@ -139,6 +184,11 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             // Nothing this ssh starts - a ProxyJump hop's ssh among them - may prompt either.
             SshAskPassEnvironment.Suppress(startInfo.Environment);
         }
+        else if (SavedPasswordOnly)
+        {
+            // Every ssh this one starts inherits it too; the helper answers only a prompt that names the target.
+            SshAskPassEnvironment.ApplySavedPasswordOnly(startInfo.Environment, _askPassHelperPath!, _profile);
+        }
         else if (_askPassHelperPath is not null)
         {
             SshAskPassEnvironment.Apply(startInfo.Environment, _askPassHelperPath, _profile);
@@ -148,12 +198,12 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     }
 
     private static Func<string, IReadOnlyList<string>> ArgumentsFor(
-        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, bool batchMode)
+        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, (bool BatchMode, bool SavedPasswordOnly) mode)
     {
         ArgumentNullException.ThrowIfNull(planArguments);
         string[] plan = [.. planArguments];
         string[] diagnostics = diagnosticsArguments is null ? [] : [.. diagnosticsArguments];
-        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, batchMode);
+        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, mode.BatchMode, mode.SavedPasswordOnly);
     }
 }
 

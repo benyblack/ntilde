@@ -24,6 +24,7 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Equal("NTILDE_SSH_ASKPASS_PROFILE_USER", SshAskPassEnvironment.ProfileUserVariable);
         Assert.Equal("NTILDE_SSH_ASKPASS_PROFILE_HOST", SshAskPassEnvironment.ProfileHostVariable);
         Assert.Equal("NTILDE_SSH_ASKPASS_PROFILE_PORT", SshAskPassEnvironment.ProfilePortVariable);
+        Assert.Equal("NTILDE_SSH_ASKPASS_VAULT_ONLY", SshAskPassEnvironment.VaultOnlyVariable);
     }
 
     /// <summary>
@@ -65,6 +66,50 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Equal("ops", environment["NTILDE_SSH_ASKPASS_PROFILE_USER"]);
         Assert.Equal("prod.internal", environment["NTILDE_SSH_ASKPASS_PROFILE_HOST"]);
         Assert.Equal(9, environment.Count);
+    }
+
+    /// <summary>
+    /// An automatic reconnect of a profile whose password is saved: everything <see cref="SshAskPassEnvironment.Apply"/>
+    /// sets, SSH_ASKPASS_REQUIRE=force and the placeholder DISPLAY included, plus the mode in which the helper answers
+    /// the target's password from the vault and nothing else, with no UI.
+    /// </summary>
+    [Fact]
+    public void ApplySavedPasswordOnly_sets_every_askpass_variable_and_the_vault_only_mode()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        SshAskPassEnvironment.ApplySavedPasswordOnly(environment, "/opt/ntilde/ntilde", Profile());
+
+        Assert.Equal("/opt/ntilde/ntilde", environment["SSH_ASKPASS"]);
+        Assert.Equal("force", environment["SSH_ASKPASS_REQUIRE"]);
+        Assert.Equal("ntilde", environment["DISPLAY"]);
+        Assert.Equal("1", environment["NTILDE_SSH_ASKPASS"]);
+        Assert.Equal("1", environment["NTILDE_SSH_ASKPASS_VAULT_ONLY"]);
+        Assert.Equal("e15099d2-ac29-40cb-bf1f-f466eb2622b7", environment["NTILDE_SSH_ASKPASS_PROFILE_ID"]);
+        Assert.Equal("ops", environment["NTILDE_SSH_ASKPASS_PROFILE_USER"]);
+        Assert.Equal("prod.internal", environment["NTILDE_SSH_ASKPASS_PROFILE_HOST"]);
+        Assert.Equal(10, environment.Count);
+    }
+
+    [Fact]
+    public void ApplySavedPasswordOnly_keeps_an_existing_display_as_Apply_does()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal) { ["DISPLAY"] = ":0" };
+
+        SshAskPassEnvironment.ApplySavedPasswordOnly(environment, "/opt/ntilde/ntilde", Profile());
+
+        Assert.Equal(":0", environment["DISPLAY"]);
+    }
+
+    /// <summary>A vault-only mode the app itself inherited must not turn a waiting user's prompt away unanswered.</summary>
+    [Fact]
+    public void Apply_clears_an_inherited_vault_only_mode()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal) { ["NTILDE_SSH_ASKPASS_VAULT_ONLY"] = "1" };
+
+        SshAskPassEnvironment.Apply(environment, "/opt/ntilde/ntilde", Profile());
+
+        Assert.False(environment.ContainsKey(SshAskPassEnvironment.VaultOnlyVariable));
     }
 
     [Fact]
@@ -133,5 +178,8 @@ public sealed class SshAskPassEnvironmentTests
         Assert.Throws<ArgumentNullException>(() => SshAskPassEnvironment.Apply(null!, "/x", Profile()));
         Assert.ThrowsAny<ArgumentException>(() => SshAskPassEnvironment.Apply(environment, " ", Profile()));
         Assert.Throws<ArgumentNullException>(() => SshAskPassEnvironment.Apply(environment, "/x", null!));
+        Assert.Throws<ArgumentNullException>(() => SshAskPassEnvironment.ApplySavedPasswordOnly(null!, "/x", Profile()));
+        Assert.ThrowsAny<ArgumentException>(() => SshAskPassEnvironment.ApplySavedPasswordOnly(environment, " ", Profile()));
+        Assert.Throws<ArgumentNullException>(() => SshAskPassEnvironment.ApplySavedPasswordOnly(environment, "/x", null!));
     }
 }

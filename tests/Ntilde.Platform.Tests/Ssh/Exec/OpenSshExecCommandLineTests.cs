@@ -89,6 +89,46 @@ public sealed class OpenSshExecCommandLineTests
     }
 
     /// <summary>
+    /// An automatic reconnect of a profile whose password is saved: ssh may prompt (<c>BatchMode=no</c>, in its usual
+    /// place), so the askpass helper can answer the password from the vault, but a refused one is not asked for again
+    /// (<c>NumberOfPasswordPrompts=1</c>, next to it and ahead of the plan, since ssh keeps an option's first value).
+    /// </summary>
+    [Fact]
+    public void Saved_password_only_keeps_BatchMode_no_and_allows_one_password_prompt()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "ntilde-mux proxy --stdio", savedPasswordOnly: true);
+
+        string[] expected =
+        [
+            "-T", "-o", "ClearAllForwardings=yes", "-o", "BatchMode=no", "-o", "NumberOfPasswordPrompts=1", "-o", "ControlMaster=no",
+            .. Plan,
+            "--", "ntilde-mux proxy --stdio",
+        ];
+        Assert.Equal(expected, argv);
+    }
+
+    [Fact]
+    public void Saved_password_only_precedes_a_NumberOfPasswordPrompts_in_the_plans_extra_arguments()
+    {
+        string[] plan = [.. Plan, "-o", "NumberOfPasswordPrompts=3"];
+
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], plan, "true", savedPasswordOnly: true);
+
+        int ours = IndexOfPair(argv, "-o", "NumberOfPasswordPrompts=1");
+        Assert.True(ours >= 0, "NumberOfPasswordPrompts=1 is missing");
+        Assert.True(ours < IndexOfPair(argv, "-F", Plan[1]));
+        Assert.True(ours < IndexOfPair(argv, "-o", "NumberOfPasswordPrompts=3"));
+    }
+
+    [Fact]
+    public void Batch_mode_and_saved_password_only_are_not_both_possible()
+    {
+        Assert.ThrowsAny<ArgumentException>(() => OpenSshExecCommandLine.Build([], Plan, "true", batchMode: true, savedPasswordOnly: true));
+        Assert.DoesNotContain("NumberOfPasswordPrompts=1", OpenSshExecCommandLine.Build([], Plan, "true", batchMode: true));
+        Assert.DoesNotContain("NumberOfPasswordPrompts=1", OpenSshExecCommandLine.Build([], Plan, "true"));
+    }
+
+    /// <summary>
     /// The profile's extra arguments; what is left of them; and the pieces dropped, one log line each, in order.
     /// A PTY (<c>-t</c>, and our own <c>-T</c> kept single), no command (<c>-N</c>), the background (<c>-f</c>), stdin
     /// from /dev/null (<c>-n</c>), a subsystem (<c>-s</c>), print-and-exit (<c>-G</c>, <c>-V</c>), master mode

@@ -26,6 +26,12 @@ public static class SshAskPassEnvironment
     public const string ProfileHostVariable = "NTILDE_SSH_ASKPASS_PROFILE_HOST";
     public const string ProfilePortVariable = "NTILDE_SSH_ASKPASS_PROFILE_PORT";
 
+    /// <summary>
+    /// "1" (<see cref="ApplySavedPasswordOnly"/>): the helper answers only the target's own password prompt, and only
+    /// from the profile's saved password; every other prompt, or none saved, it refuses without showing anything.
+    /// </summary>
+    public const string VaultOnlyVariable = "NTILDE_SSH_ASKPASS_VAULT_ONLY";
+
     /// <summary>OpenSSH's own variables.</summary>
     public const string AskPassVariable = "SSH_ASKPASS";
     public const string AskPassRequireVariable = "SSH_ASKPASS_REQUIRE";
@@ -54,7 +60,8 @@ public static class SshAskPassEnvironment
     /// <summary>
     /// Points <paramref name="environment"/> (a <c>ProcessStartInfo.Environment</c>) at
     /// <paramref name="helperPath"/> for <paramref name="profile"/>. An inherited <c>SSH_ASKPASS</c>
-    /// is replaced; an inherited non-empty <c>DISPLAY</c> is kept.
+    /// is replaced; an inherited non-empty <c>DISPLAY</c> is kept; an inherited <see cref="VaultOnlyVariable"/>
+    /// is removed, so a user who is waiting gets every prompt.
     /// </summary>
     public static void Apply(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
     {
@@ -62,6 +69,7 @@ public static class SshAskPassEnvironment
         ArgumentException.ThrowIfNullOrWhiteSpace(helperPath);
         ArgumentNullException.ThrowIfNull(profile);
 
+        environment.Remove(VaultOnlyVariable);
         environment[AskPassVariable] = helperPath;
         environment[AskPassRequireVariable] = "force";
         if (!environment.TryGetValue(DisplayVariable, out string? display) || string.IsNullOrEmpty(display))
@@ -75,5 +83,18 @@ public static class SshAskPassEnvironment
         environment[ProfileUserVariable] = profile.User ?? string.Empty;
         environment[ProfileHostVariable] = profile.Host ?? string.Empty;
         environment[ProfilePortVariable] = profile.Port.ToString(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// <see cref="Apply"/>, for an attempt nobody is waiting on whose profile has a saved password (an automatic
+    /// reconnect): the helper then runs in its vault-only mode (<see cref="VaultOnlyVariable"/>). It answers the
+    /// target's own password prompt from the saved password, and refuses every other prompt - a host key, a key's
+    /// passphrase, a jump host's password, other keyboard-interactive text - without building any UI.
+    /// <c>SSH_ASKPASS_REQUIRE=force</c> and <c>DISPLAY</c> are as <see cref="Apply"/> sets them.
+    /// </summary>
+    public static void ApplySavedPasswordOnly(IDictionary<string, string?> environment, string helperPath, SshProfile profile)
+    {
+        Apply(environment, helperPath, profile);
+        environment[VaultOnlyVariable] = "1";
     }
 }
