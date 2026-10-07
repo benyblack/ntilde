@@ -906,9 +906,11 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     public async Task An_automatic_attempt_that_needs_a_password_stops_the_loop_and_raises_ReconnectAbandoned()
     {
         var user = new ScriptedUser();
+        using var started = new SemaphoreSlim(0);   // one release per transport the host builds, i.e. per attempt
         MuxConnectionHost host = Create(
             (_, request) =>
             {
+                started.Release();
                 _remote.OnStart = _ =>
                 {
                     _remote.Script = null;
@@ -937,7 +939,10 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
 
         Assert.False(host.IsReconnecting);
         Assert.Equal(0, _clock.PendingCount);
+        while (started.Wait(0)) { }   // the attempts so far
         _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal(0, _clock.PendingCount);   // nothing armed after the give-up
+        Assert.False(await started.WaitAsync(TimeSpan.FromMilliseconds(200), CancellationToken.None), "no attempt started after the give-up");
         Assert.Equal(2, _remote.StartCount);   // one automatic attempt, not one every 30 s
         Assert.Empty(user.Asked);
         Assert.False(Logged("dropping"));
@@ -1139,6 +1144,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     {
         var records = new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords);
         int automaticAttempts = 0;
+        using var started = new SemaphoreSlim(0);   // one release per automatic attempt
         MuxConnectionHost host = Create(
             (profile, request) =>
             {
@@ -1146,6 +1152,7 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
                 _remote.Script = null;
                 if (request.Interactive) return _remote;
                 Interlocked.Increment(ref automaticAttempts);
+                started.Release();
                 var transport = (OpenSshExecTransport)RemoteMuxHostFactory.CreateTransport(
                     profile,
                     request,
@@ -1179,8 +1186,12 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Equal(0, _clock.PendingCount);
         RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
+        Assert.Equal(1, Volatile.Read(ref automaticAttempts));
+        Assert.True(started.Wait(0));   // that one attempt
         _clock.Advance(MuxReconnectLoop.Budget);
-        Assert.Equal(1, Volatile.Read(ref automaticAttempts));   // once across the whole backoff, not once so far
+        Assert.Equal(0, _clock.PendingCount);   // nothing armed after the give-up
+        Assert.False(await started.WaitAsync(TimeSpan.FromMilliseconds(200), CancellationToken.None), "no attempt started after the give-up");
+        Assert.Equal(1, Volatile.Read(ref automaticAttempts));
     }
 
     /// <summary>
