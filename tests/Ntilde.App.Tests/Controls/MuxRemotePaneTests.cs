@@ -441,18 +441,51 @@ public sealed class MuxRemotePaneTests : IDisposable
 
         Assert.Equal(
             "[The saved password was refused \u2014 press Enter to sign in]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused)));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused), Host));
         Assert.Equal(
             "[Automatic reconnect can't sign in without you \u2014 press Enter]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid)));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid), Host));
         Assert.Equal(
             "[Automatic reconnect can't sign in without you \u2014 press Enter]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for")));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for"), Host));
         Assert.Equal(
             $"[{nativeOff}]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, nativeOff, RemoteNeedsUserCause.NativeSshDisabled)));
-        Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid)));
-        Assert.Null(TerminalPane.RemoteNeedsUserLine(null));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, nativeOff, RemoteNeedsUserCause.NativeSshDisabled), Host));
+        // A host key's line names the host as the app knows it, never as ssh's or the server's text has it.
+        Assert.Equal(
+            "[Host key for nova@fake-host is unknown or has changed — press Enter to review]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Host key for evil-host has changed", RemoteNeedsUserCause.HostKey), Host));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid), Host));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(null, Host));
+    }
+
+    /// <summary>
+    /// As the pane shows it: the automatic reconnect met a host key nobody trusts - never seen, or changed - and the
+    /// loop stopped after that one attempt. The line under the Enter banner says the key needs reviewing, naming the host
+    /// as the app knows it; ssh's own words, and its warning banner, go to the log only.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr)]
+    public void A_host_key_nobody_trusts_stops_the_loop_and_says_so_under_the_enter_banner(string sshSaid)
+    {
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = new FakeRemoteScript(Stderr: sshSaid, ExitCode: FakeRemoteHost.LinkLostExitCode);
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry);
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        ShowsBanner(pane, "[Host key for nova@fake-host is unknown or has changed — press Enter to review]");
+        Assert.False(RemoteHost.IsReconnecting);
+        int started = _remote.StartCount;
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal((2, 0), (started, _remote.StartCount - started));   // the first connect, then one automatic attempt
+        Assert.DoesNotContain("verification failed", Text(pane));
+        Assert.DoesNotContain("IDENTIFICATION", Text(pane));
+        Assert.DoesNotContain("can't sign in without you", Text(pane));
     }
 
     [AvaloniaFact]

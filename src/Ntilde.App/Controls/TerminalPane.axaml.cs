@@ -3750,7 +3750,7 @@ namespace Ntilde.Controls
             MuxSessionIdToRestore = request.ExistingMuxSessionId;
             TermView.SetSession(null);
             TerminalLogger.Log($"[TerminalPane] no session from {host} for {request.ExistingMuxSessionId?.ToString() ?? "a new tab"} ({result.Detail}); kept for a retry");
-            string? needsUser = RemoteNeedsUserLine(result.RemoteFailure);
+            string? needsUser = RemoteNeedsUserLine(result.RemoteFailure, host);
             if (request.ReattachAfterDrop && request.ExistingMuxSessionId is not null)
             {
                 _muxReattachAfterDrop = true;
@@ -4024,7 +4024,7 @@ namespace Ntilde.Controls
                     {
                         EnterRemoteWaitingForEnter(
                             RemoteAbandonedBanner(_remoteHostName),
-                            detail: RemoteNeedsUserLine((source.Host.LastFailure as RemoteMuxUnavailableException)?.Failure));
+                            detail: RemoteNeedsUserLine((source.Host.LastFailure as RemoteMuxUnavailableException)?.Failure, _remoteHostName));
                     }
 
                     break;
@@ -4250,20 +4250,25 @@ namespace Ntilde.Controls
         /// <summary>Under an Enter banner: signing in needs an answer an automatic attempt does not give.</summary>
         internal const string RemoteSignInNeedsYouLine = "[Automatic reconnect can't sign in without you \u2014 press Enter]";
 
+        /// <summary>Under an Enter banner: an automatic attempt met a host key the user does not trust, never seen or changed.</summary>
+        internal static string RemoteHostKeyLine(string host) => $"[Host key for {host} is unknown or has changed \u2014 press Enter to review]";
+
         /// <summary>
         /// The line under an Enter banner (<see cref="RemoteUnreachableBanner"/>, <see cref="RemoteAbandonedBanner"/>) when
         /// signing in needs the user (<see cref="RemoteFailureKind.NeedsUser"/>), by its <see cref="RemoteNeedsUserCause"/>,
-        /// so the user knows what the retry needs: <see cref="RemoteSavedPasswordRefusedLine"/>, or
+        /// so the user knows what the retry needs: <see cref="RemoteSavedPasswordRefusedLine"/>,
+        /// <see cref="RemoteHostKeyLine"/> naming <paramref name="host"/> (the banner's own, as the app knows the host), or
         /// <see cref="RemoteSignInNeedsYouLine"/>. Never ssh's or rusty_ssh's own words - a "Permission denied" under a
         /// banner that asks for Enter only confused - which stay in the failure's reason, for the log. The native SSH
         /// backend switched off (codex4 F) keeps its own message, which says what to turn on: Enter alone is refused again.
         /// Null for any other failure, or none: an SSH failure's banner says enough, and ntilde-mux's own failures get the
         /// notice.
         /// </summary>
-        internal static string? RemoteNeedsUserLine(RemoteMuxFailure? failure) => failure switch
+        internal static string? RemoteNeedsUserLine(RemoteMuxFailure? failure, string host) => failure switch
         {
             null or { Kind: not RemoteFailureKind.NeedsUser } => null,
             { Cause: RemoteNeedsUserCause.SavedPasswordRefused } => RemoteSavedPasswordRefusedLine,
+            { Cause: RemoteNeedsUserCause.HostKey } => RemoteHostKeyLine(host),
             { Cause: RemoteNeedsUserCause.NativeSshDisabled, Reason: { Length: > 0 } reason } => $"[{reason}]",
             _ => RemoteSignInNeedsYouLine,
         };

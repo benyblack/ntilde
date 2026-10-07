@@ -35,9 +35,9 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     private static SshInteractionRequest Secret(string kind) =>
         Enum.Parse<SshInteractionKind>(kind) == SshInteractionKind.Password ? Password : Passphrase;
 
-    private static SshInteractionRequest HostKey(string fingerprint) => new()
+    private static SshInteractionRequest HostKey(string fingerprint, SshInteractionKind kind = SshInteractionKind.UnknownHostKey) => new()
     {
-        Kind = SshInteractionKind.UnknownHostKey,
+        Kind = kind,
         Host = "fake-host",
         Port = 22,
         Algorithm = "ssh-ed25519",
@@ -145,19 +145,48 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     /// <summary>
     /// The native layer asks about the host key on every connect, known or not (the window's handler
     /// answers a known one from the known-hosts store without a dialog). Refusing them all would make
-    /// every automatic reconnect fail; accepting only a trusted key keeps it quiet and safe.
+    /// every automatic reconnect fail; accepting only a trusted key keeps it quiet and safe. Either shape - a key never
+    /// seen, or one that changed - is rejected unless trusted, and the attempt records that it rejected one: the
+    /// failure that follows is the host key's, which only the user can review.
     /// </summary>
-    [Fact]
-    public async Task An_automatic_attempt_accepts_only_a_host_key_already_trusted()
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey))]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey))]
+    public async Task An_automatic_attempt_accepts_only_a_host_key_already_trusted(string kind)
     {
-        RemoteMuxInteractionHandler.Attempt automatic = Handler(new ScriptedUser()).BeginAttempt(interactive: false);
+        SshInteractionKind shape = Enum.Parse<SshInteractionKind>(kind);
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser());
+        RemoteMuxInteractionHandler.Attempt known = handler.BeginAttempt(interactive: false);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false);
 
-        SshInteractionResponse trusted = await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct);
-        SshInteractionResponse changed = await automatic.HandleAsync(HostKey("SHA256:changed"), Ct);
+        SshInteractionResponse trusted = await known.HandleAsync(HostKey("SHA256:trusted", shape), Ct);
+        SshInteractionResponse changed = await automatic.HandleAsync(HostKey("SHA256:changed", shape), Ct);
 
         Assert.True(trusted.IsAccepted);
+        Assert.False(known.HostKeyRejected);
         Assert.False(changed.IsAccepted);
         Assert.True(changed.IsCanceled);
+        Assert.True(automatic.HostKeyRejected);
+    }
+
+    /// <summary>
+    /// A user's attempt takes either host-key shape to the user, and what they answer - a rejection too - is theirs:
+    /// the attempt records no rejection of its own.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey))]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey))]
+    public async Task An_interactive_attempt_takes_either_host_key_shape_to_the_user_and_records_no_rejection(string kind)
+    {
+        SshInteractionKind shape = Enum.Parse<SshInteractionKind>(kind);
+        var user = new ScriptedUser(SshInteractionResponse.Cancel());
+        RemoteMuxInteractionHandler.Attempt attempt = Handler(user).BeginAttempt(interactive: true);
+
+        SshInteractionResponse answer = await attempt.HandleAsync(HostKey("SHA256:new", shape), Ct);
+
+        Assert.False(answer.IsAccepted);
+        Assert.Equal(shape, Assert.Single(user.Asked).Kind);
+        Assert.False(attempt.HostKeyRejected);
     }
 
     [Fact]

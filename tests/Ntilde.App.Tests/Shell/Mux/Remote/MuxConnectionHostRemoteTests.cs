@@ -53,10 +53,11 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     private MuxConnectionHost Create(
         Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport>? transportFor = null,
         ISshInteractionHandler? user = null,
-        Func<SshProfile, string?>? savedPassword = null) =>
+        Func<SshProfile, string?>? savedPassword = null,
+        Func<SshInteractionRequest, bool>? isTrustedHostKey = null) =>
         Own(RemoteMuxHostFactory.Create(
                 MuxEndpointId.ForSsh(_profile.Id), _ => _profile, transportFor ?? ((_, _) => _remote), _log.Enqueue, user, _clock,
-                savedPassword: savedPassword, askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords))
+                isTrustedHostKey: isTrustedHostKey, savedPassword: savedPassword, askPassRecords: new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords))
             ?? throw new InvalidOperationException("the factory declined"));
 
     private bool Logged(string text) => _log.Any(l => l.Contains(text, StringComparison.Ordinal));
@@ -1005,6 +1006,85 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (failure.Kind, failure.Cause));
         Assert.Equal(1, Volatile.Read(ref automaticAttempts));
+    }
+
+    /// <summary>
+    /// The loop runs after a drop, and its first attempt fails as <paramref name="automatic"/> makes it. The loop must stop
+    /// there: abandoned at once, nothing scheduled, no attempt in the rest of its budget, and the host-key cause recorded.
+    /// </summary>
+    private async Task AssertHostKeyStopsTheLoopAfterOneAttemptAsync(Action<RemoteMuxTransportRequest> automatic)
+    {
+        int automaticAttempts = 0;
+        MuxConnectionHost host = Create(
+            (_, request) =>
+            {
+                _remote.OnStart = null;
+                _remote.Script = null;
+                if (request.Interactive) return _remote;
+                Interlocked.Increment(ref automaticAttempts);
+                automatic(request);
+                return _remote;
+            },
+            new ScriptedUser(),
+            savedPassword: _ => "s3cret",
+            isTrustedHostKey: _ => false);
+        var events = new HostEvents(host);
+        Assert.NotNull(host.GetClient(Patient));
+        _remote.CutLink();
+        await events.WaitForAsync("lost");
+
+        _clock.Advance(FirstRetry);
+        await TestWait.UntilAsync(() => events.Has("abandoned") || _clock.PendingCount == 1, "the loop's attempt ended", Patient);
+
+        Assert.True(events.Has("abandoned"), "a host key nobody trusts must stop the loop at once");
+        Assert.Equal(0, _clock.PendingCount);
+        RemoteMuxFailure failure = Assert.IsType<RemoteMuxUnavailableException>(host.LastFailure).Failure;
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (failure.Kind, failure.Cause));
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal(1, Volatile.Read(ref automaticAttempts));
+    }
+
+    /// <summary>
+    /// Native: the loop's attempt meets a host key nobody trusts - never seen, or changed - and rejects it. Another
+    /// automatic attempt would meet the same key, so the loop stops after this one, not ten minutes of knocking. The only
+    /// answer given was the rejection: no password, the saved one included.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey))]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey))]
+    public async Task A_host_key_nobody_trusts_stops_the_loop_after_one_native_attempt(string kind)
+    {
+        var answers = new ConcurrentQueue<SshInteractionResponse>();
+
+        await AssertHostKeyStopsTheLoopAfterOneAttemptAsync(request => _remote.OnStart = _ =>
+        {
+            SshInteractionResponse answer = request.Prompts.HandleAsync(RemoteMuxConnectorTests.HostKeyPrompt(Enum.Parse<SshInteractionKind>(kind)), CancellationToken.None)
+                .GetAwaiter().GetResult();
+            answers.Enqueue(answer);
+            if (!answer.IsAccepted) _remote.Script = FakeRemoteScript.NativeFailure("Unknown server key");
+        });
+
+        Assert.False(Assert.Single(answers).IsAccepted);
+    }
+
+    /// <summary>
+    /// OpenSSH: the loop's attempt hands ssh's askpass the saved password, but ssh fails at the host key - unknown, or
+    /// changed - before asking for it: "Host key verification failed.", exit 255. The loop stops after this one attempt.
+    /// </summary>
+    [Theory]
+    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr)]
+    public async Task A_host_key_nobody_trusts_stops_the_loop_after_one_OpenSSH_attempt(string sshSaid)
+    {
+        bool offered = false;
+
+        await AssertHostKeyStopsTheLoopAfterOneAttemptAsync(request =>
+        {
+            offered = request.OfferSavedPassword?.Invoke() == true;
+            _remote.Script = new FakeRemoteScript(Stderr: sshSaid, ExitCode: FakeRemoteHost.LinkLostExitCode);
+        });
+
+        Assert.True(offered);
     }
 
     /// <summary>

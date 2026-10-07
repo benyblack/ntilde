@@ -34,8 +34,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// dialog. An automatic one never does: it accepts a host key only when the known-hosts store already
 /// trusts it - the native layer asks about the host key on every connect, known or not - and leaves
 /// every other prompt unanswered (see <see cref="Attempt"/>), so the attempt fails quietly. One that
-/// failed for want of a secret only the user can give fails as needing the user, which stops the
-/// reconnect loop; a refused host key leaves it backing off.
+/// failed for want of a secret only the user can give, or that rejected a host key the user does not
+/// trust (<see cref="Attempt.HostKeyRejected"/>), fails as needing the user, which stops the reconnect loop.
 /// </para>
 /// <para>
 /// The one exception (the user's choice after the Phase 4 smoke test): the profile's password saved in the vault. An
@@ -331,6 +331,7 @@ internal sealed class RemoteMuxInteractionHandler
         private bool _authenticated;                 // guarded by _gate; the native transport said sign-in is over
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
+        private bool _hostKeyRejected;               // guarded by _gate; nobody to ask, and the key was not trusted
         private bool _savedPasswordOffered;          // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
         private bool _storedPasswordAnswered;        // guarded by _gate; nobody to ask, and a stored password answered
@@ -528,6 +529,16 @@ internal sealed class RemoteMuxInteractionHandler
             get { lock (_gate) return _declinedPrompt; }
         }
 
+        /// <summary>
+        /// With nobody to ask, this attempt rejected a host key the user does not trust - one never seen, or one that changed.
+        /// That ends the connection at the key exchange, before anything is sent, and the next attempt meets the same key:
+        /// only the user can review it. A user's own answer in the dialog is not recorded here.
+        /// </summary>
+        public bool HostKeyRejected
+        {
+            get { lock (_gate) return _hostKeyRejected; }
+        }
+
         private ISshInteractionHandler? User => Interactive ? _owner._user : null;
 
         /// <exception cref="RemoteMuxPromptAbortedException">Nobody to ask and nothing to answer a password or keyboard-interactive prompt with.</exception>
@@ -580,7 +591,9 @@ internal sealed class RemoteMuxInteractionHandler
             {
                 // Nobody to ask: a known host key only. A cancel is submitted as a rejection, which ends
                 // the connection before any credential is sent.
-                return _owner._isTrustedHostKey(request) ? SshInteractionResponse.AcceptHostKey() : SshInteractionResponse.Cancel();
+                if (_owner._isTrustedHostKey(request)) return SshInteractionResponse.AcceptHostKey();
+                lock (_gate) _hostKeyRejected = true;
+                return SshInteractionResponse.Cancel();
             }
 
             // A keyboard-interactive round with questions has no answer here; one with none (some servers

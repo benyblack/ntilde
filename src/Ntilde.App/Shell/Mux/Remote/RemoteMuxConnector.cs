@@ -455,6 +455,17 @@ internal sealed class RemoteMuxConnector : IDisposable
                 RemoteFailureKind.NeedsUser,
                 $"signing in to {host} needs more than the saved password (a second factor), which an automatic reconnect does not ask for ({failure.Reason})");
         }
+        else if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.Interactive && prompts.HostKeyRejected)
+        {
+            // Native: the automatic attempt rejected a host key the user does not trust - never seen, or changed - and the
+            // connection ended at the key exchange, before anything was sent. The next attempt meets the same key, so
+            // retrying on a timer would only knock for ten minutes: NeedsUser, and Enter shows the key. A user's attempt
+            // stays an SSH failure, as it was. (OpenSSH's own host-key failure is classified so already.)
+            failure = new RemoteMuxFailure(
+                RemoteFailureKind.NeedsUser,
+                $"the host key of {host} is not one the user trusts (unknown, or changed), and an automatic reconnect accepts no new key ({failure.Reason})",
+                RemoteNeedsUserCause.HostKey);
+        }
         else if (prompts.AbortedPrompt is { } aborted)
         {
             // We ended it at auth, rather than send the server an empty answer: a quiet failure that says

@@ -24,10 +24,10 @@ internal enum RemoteFailureKind
 
     /// <summary>
     /// Signing in needs an answer nobody was asked for - a password, keyboard-interactive input, a key's
-    /// passphrase - because the attempt was automatic (or there was no window to ask through): the native
-    /// backend ended it at the prompt, or OpenSSH in batch mode was refused. An SSH failure in kind, but not
-    /// one another automatic try can fix: the reconnect loop stops on it (Phase 4 spec §7.3, by ruling), and
-    /// Enter - an interactive attempt - is the way back.
+    /// passphrase, a host key nobody trusts yet - because the attempt was automatic (or there was no window to
+    /// ask through): the native backend ended it at the prompt, or OpenSSH was refused or failed the host key. An SSH
+    /// failure in kind, but not one another automatic try can fix: the reconnect loop stops on it (Phase 4 spec
+    /// §7.3, by ruling), and Enter - an interactive attempt - is the way back. Why is its <see cref="RemoteNeedsUserCause"/>.
     /// </summary>
     NeedsUser,
 }
@@ -53,6 +53,13 @@ internal enum RemoteNeedsUserCause
     /// and Enter alone does not fix it.
     /// </summary>
     NativeSshDisabled,
+
+    /// <summary>
+    /// The host's key is not one the user trusts - never seen, or changed since - and an automatic attempt accepts no new
+    /// key: the native backend rejected it, or OpenSSH's host key verification failed. Nothing was sent past the key
+    /// exchange, and the next automatic attempt would meet the same key. Enter is a user's attempt, which shows it.
+    /// </summary>
+    HostKey,
 }
 
 /// <summary>
