@@ -26,6 +26,8 @@ internal static class SshAskPassCommand
     internal const string ProfileHostEnvironmentVariable = SshAskPassEnvironment.ProfileHostVariable;
     internal const string ProfilePortEnvironmentVariable = SshAskPassEnvironment.ProfilePortVariable;
     internal const string VaultOnlyEnvironmentVariable = SshAskPassEnvironment.VaultOnlyVariable;
+    internal const string NoVaultEnvironmentVariable = SshAskPassEnvironment.NoVaultVariable;
+    internal const string SessionEnvironmentVariable = SshAskPassEnvironment.SessionVariable;
 
     /// <summary>The app's own executable name, without its extension: the GUI answers askpass too (Program.cs).</summary>
     private const string AppExecutableName = "Ntilde";
@@ -67,7 +69,14 @@ internal static class SshAskPassCommand
     }
 
     public static int Execute(string[] args, TextWriter stdout, TextWriter stderr) =>
-        Execute(args, stdout, stderr, Environment.GetEnvironmentVariable, static profile => new VaultService().GetSshPasswordForProfile(profile), AskUser);
+        Execute(
+            args,
+            stdout,
+            stderr,
+            Environment.GetEnvironmentVariable,
+            static profile => new VaultService().GetSshPasswordForProfile(profile),
+            AskUser,
+            new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory));
 
     /// <summary>
     /// Answers one ssh prompt: the target's own password (<see cref="IsTargetPasswordPrompt"/>) from
@@ -75,10 +84,18 @@ internal static class SshAskPassCommand
     /// environment says vault-only (<see cref="VaultOnlyEnvironmentVariable"/>, an automatic reconnect): then every
     /// other prompt, and a target's password with nothing saved, exits 1 at once, with no UI built and, for a prompt
     /// that is not the target's password, the vault not even read. ssh treats that exit as no answer.
+    /// <para>
+    /// A user's attempt fills the target's password from the vault at most once per ssh process (its
+    /// <see cref="SessionEnvironmentVariable"/> token, recorded in <paramref name="markers"/>): the same ssh asking again
+    /// means the saved password was refused, so the user is asked instead of it being sent again. With
+    /// <see cref="NoVaultEnvironmentVariable"/> (the host's saved password was refused before) the vault is not used at
+    /// all. Either way the dialog's "Remember password" replaces the saved one.
+    /// </para>
     /// </summary>
     /// <param name="environment">Reads an environment variable: the transport's askpass contract.</param>
     /// <param name="savedPassword">The profile's saved password (the vault), or null.</param>
     /// <param name="askUser">The dialog (<see cref="AskUser"/>): the user's answer, or null when cancelled. The seam tests replace.</param>
+    /// <param name="markers">The record of the ssh processes already filled from the vault.</param>
     /// <returns>0 with the answer on <paramref name="stdout"/>; 1 when there is none; 2 when the helper failed.</returns>
     internal static int Execute(
         string[] args,
@@ -86,7 +103,8 @@ internal static class SshAskPassCommand
         TextWriter stderr,
         Func<string, string?> environment,
         Func<TerminalProfile, string?> savedPassword,
-        Func<AskPassState, string?> askUser)
+        Func<AskPassState, string?> askUser,
+        SshAskPassSessionMarkers markers)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(stdout);
@@ -94,23 +112,21 @@ internal static class SshAskPassCommand
         ArgumentNullException.ThrowIfNull(environment);
         ArgumentNullException.ThrowIfNull(savedPassword);
         ArgumentNullException.ThrowIfNull(askUser);
+        ArgumentNullException.ThrowIfNull(markers);
 
         try
         {
             string prompt = GetPrompt(args);
             TerminalProfile profile = CreateProfileFromEnvironment(environment);
+            bool vaultOnly = string.Equals(environment(VaultOnlyEnvironmentVariable), "1", StringComparison.Ordinal);
 
-            if (IsTargetPasswordPrompt(prompt, profile))
+            if (IsTargetPasswordPrompt(prompt, profile) && FromVault(environment, savedPassword, markers, profile, vaultOnly, stderr) is { } vaultPassword)
             {
-                string? vaultPassword = savedPassword(profile);
-                if (!string.IsNullOrEmpty(vaultPassword))
-                {
-                    stdout.WriteLine(vaultPassword);
-                    return 0;
-                }
+                stdout.WriteLine(vaultPassword);
+                return 0;
             }
 
-            if (string.Equals(environment(VaultOnlyEnvironmentVariable), "1", StringComparison.Ordinal))
+            if (vaultOnly)
             {
                 // Nobody is waiting (an automatic reconnect): no dialog, no window, no Avalonia app. Never the prompt
                 // itself either, which a server's keyboard-interactive text is part of: ssh's stderr goes to the log.
@@ -132,6 +148,36 @@ internal static class SshAskPassCommand
             stderr.WriteLine($"Ntilde SSH askpass failed: {ex.Message}");
             return 2;
         }
+    }
+
+    /// <summary>
+    /// The saved password to answer the target's password prompt with, or null for the dialog (or, vault-only, no answer).
+    /// Vault-only answers every such prompt (ssh's <c>NumberOfPasswordPrompts=1</c> bounds it). Otherwise: never with
+    /// <see cref="NoVaultEnvironmentVariable"/>; never twice for one ssh's <see cref="SessionEnvironmentVariable"/>, and not
+    /// at all when the fill cannot be recorded - it could then be sent again. An ssh with no valid token gets it as before.
+    /// </summary>
+    private static string? FromVault(
+        Func<string, string?> environment,
+        Func<TerminalProfile, string?> savedPassword,
+        SshAskPassSessionMarkers markers,
+        TerminalProfile profile,
+        bool vaultOnly,
+        TextWriter stderr)
+    {
+        if (vaultOnly) return NonEmpty(savedPassword(profile));
+        if (string.Equals(environment(NoVaultEnvironmentVariable), "1", StringComparison.Ordinal)) return null;
+
+        string? token = environment(SessionEnvironmentVariable);
+        if (!SshAskPassSessionMarkers.IsToken(token)) return NonEmpty(savedPassword(profile));
+        if (markers.HasAnswered(token!)) return null; // this ssh asks again: the saved password was refused
+
+        if (NonEmpty(savedPassword(profile)) is not { } saved) return null;
+        if (markers.TryRecordAnswered(token!)) return saved;
+
+        stderr.WriteLine("Ntilde SSH askpass: could not record the saved password's use for this connection; asking instead.");
+        return null;
+
+        static string? NonEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
     }
 
     private static string GetPrompt(string[] args)
