@@ -1301,13 +1301,12 @@ namespace Ntilde.AgentHost
             {
                 if (_windowlessSource is { } source)
                 {
-                    // The allowlist check rides inside the source's own look-up (MayActOnEndpoint), so the act and
-                    // its check share one survey of the daemons and one time budget.
-                    var outcome = await source.SendInputAsync(p.PaneId, payload, MayActOnEndpoint, cancellationToken).ConfigureAwait(false);
-                    return Journaled(request, AgentHostProtocol.Methods.SendInput, p.PaneId, WindowlessActTarget(outcome, "input"),
-                        outcome == WindowlessOutcome.Ok
-                            ? Ok(request.Id, JsonSerializer.SerializeToElement(new SendInputResult { BytesSent = byteCount }, AgentHostJsonContext.Default.SendInputResult))
-                            : WindowlessError(request.Id, p.PaneId, AgentHostProtocol.Methods.SendInput, outcome));
+                    // The act check rides inside the source's own look-up (WindowlessActCheck), so the act and its
+                    // check share one survey of the daemons and one time budget.
+                    var check = new WindowlessActCheck(this, source);
+                    var outcome = await source.SendInputAsync(p.PaneId, payload, check.MayAct, cancellationToken).ConfigureAwait(false);
+                    return WindowlessActed(request, AgentHostProtocol.Methods.SendInput, p.PaneId, "input", source, check, outcome,
+                        Ok(request.Id, JsonSerializer.SerializeToElement(new SendInputResult { BytesSent = byteCount }, AgentHostJsonContext.Default.SendInputResult)));
                 }
                 return Journaled(request, AgentHostProtocol.Methods.SendInput, p.PaneId, "input",
                     Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'."));
@@ -1438,11 +1437,10 @@ namespace Ntilde.AgentHost
                 {
                     // A windowless session's kill IS allowlist-gated on a remote endpoint (ruling R5): nobody sees it
                     // go, and it destroys a shell on another machine.
-                    var outcome = await source.KillAsync(p.PaneId, MayActOnEndpoint, cancellationToken).ConfigureAwait(false);
-                    return Journaled(request, AgentHostProtocol.Methods.CloseSession, p.PaneId, WindowlessActTarget(outcome, "session"),
-                        outcome == WindowlessOutcome.Ok
-                            ? Ok(request.Id, JsonSerializer.SerializeToElement(new CloseSessionResult { Closed = true }, AgentHostJsonContext.Default.CloseSessionResult))
-                            : WindowlessError(request.Id, p.PaneId, AgentHostProtocol.Methods.CloseSession, outcome));
+                    var check = new WindowlessActCheck(this, source);
+                    var outcome = await source.KillAsync(p.PaneId, check.MayAct, cancellationToken).ConfigureAwait(false);
+                    return WindowlessActed(request, AgentHostProtocol.Methods.CloseSession, p.PaneId, "session", source, check, outcome,
+                        Ok(request.Id, JsonSerializer.SerializeToElement(new CloseSessionResult { Closed = true }, AgentHostJsonContext.Default.CloseSessionResult)));
                 }
                 return Journaled(request, AgentHostProtocol.Methods.CloseSession, p.PaneId, "session",
                     Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'."));
@@ -1481,9 +1479,9 @@ namespace Ntilde.AgentHost
         /// the read). Pane reads, <c>captureScreen</c> included, are not journaled:
         /// the pane's own indicator shows them.
         /// </summary>
-        private AgentHostResponse Journaled(AgentHostRequest request, string method, Guid? paneId, string target, AgentHostResponse response)
+        private AgentHostResponse Journaled(AgentHostRequest request, string method, Guid? paneId, string target, AgentHostResponse response, bool windowless = false)
         {
-            _journal.Record(method, paneId, target, response.Error?.Code ?? "ok");
+            _journal.Record(method, paneId, target, response.Error?.Code ?? "ok", windowless);
             return response;
         }
 
@@ -1502,7 +1500,8 @@ namespace Ntilde.AgentHost
                 if (rows.Length > 0)
                 {
                     sessions = [.. sessions, .. rows];
-                    _journal.Record(AgentHostProtocol.Methods.ListSessions, null, WindowlessTarget, "ok");
+                    // A read, so a polling agent's listings fold into one entry rather than push acts out.
+                    _journal.RecordRead(AgentHostProtocol.Methods.ListSessions, null, WindowlessTarget(null), "ok", windowless: true);
                 }
             }
 
@@ -1635,10 +1634,15 @@ namespace Ntilde.AgentHost
         // GUIDs), the pane would win.
         //
         // Reads of a windowless session are journaled, unlike pane reads, and light the window (WindowlessWatched):
-        // there is no pane indicator to show them (R5). A read whose id no daemon has named no session and records
-        // nothing. Acts need the act toggle and, on a remote endpoint, that SSH profile's allowlist, for input and kill
-        // alike (R5); the check runs inside the source's own look-up (MayActOnEndpoint), so check and act share one
-        // survey of the daemons and one time budget.
+        // there is no pane indicator to show them (R5). They go in as reads (RecordRead), which fold: a polling agent
+        // leaves one entry per kind of read since its last act, not a ring full of them that pushes the acts out. A read
+        // whose id no daemon has named no session and records nothing. Entries name the session's host
+        // ("windowless · this computer"), and the dialog calls their id a session's, not a pane's.
+        //
+        // Acts need the act toggle and, on a remote endpoint, that SSH profile's allowlist, for input and kill alike
+        // (R5). The check runs inside the source's own look-up (WindowlessActCheck), so check and act share one survey of
+        // the daemons and one time budget, and it is made when the act is about to happen, seconds after the request
+        // may have arrived: act turned off, or observe off (the source withdrawn), meanwhile means nothing is done.
         //
         // Known limits, by design:
         // - Scrollback is the newest MuxReadScreenLimits.MaxScrollbackRows (2000) rows the daemon holds: one read
@@ -1655,8 +1659,13 @@ namespace Ntilde.AgentHost
         // it are ConfigureAwait(false), and the runtime never inlines such a continuation on a thread that has a
         // SynchronizationContext, as the UI thread does: the import, render and file write below run on the pool.
 
-        /// <summary>The journal's target for a windowless session.</summary>
-        private const string WindowlessTarget = "windowless";
+        /// <summary>
+        /// The journal's target for a windowless session: "windowless · " and its host's display name, which comes from
+        /// the user's own profile data (or "this computer"), never from a daemon. Plain "windowless" when no one host is
+        /// meant (a listing) or known.
+        /// </summary>
+        private static string WindowlessTarget(string? hostDisplayName)
+            => hostDisplayName is null ? "windowless" : $"windowless · {hostDisplayName}";
 
         private static SessionInfo ToSessionInfo(WindowlessSessionInfo session) => new()
         {
@@ -1756,12 +1765,12 @@ namespace Ntilde.AgentHost
             if (inputs is not { } render)
             {
                 // Nothing will be drawn, so nothing is read: the look-up alone says whether there is such a session.
-                var (outcome, _) = await source.ResolveAsync(p.PaneId, cancellationToken).ConfigureAwait(false);
+                var (outcome, sshProfileId) = await source.ResolveAsync(p.PaneId, cancellationToken).ConfigureAwait(false);
                 if (outcome != WindowlessOutcome.Ok)
                 {
                     return WindowlessError(request.Id, p.PaneId, method, outcome);
                 }
-                return Journaled(request, method, p.PaneId, WindowlessTarget, Error(request.Id, AgentHostProtocol.ErrorCodes.CaptureUnavailable, live
+                return JournaledRead(method, p.PaneId, source.HostDisplayName(sshProfileId), Error(request.Id, AgentHostProtocol.ErrorCodes.CaptureUnavailable, live
                     ? "A windowless session has no window to capture. Use mode 'render', which draws it from its screen."
                     : "There is no open pane to take font metrics from, so this windowless session cannot be rendered. Open a tab, then retry; ntilde.read_screen works regardless."));
             }
@@ -1854,36 +1863,104 @@ namespace Ntilde.AgentHost
         /// </summary>
         private AgentHostResponse WindowlessRead(AgentHostRequest request, string method, Guid sessionId, WindowlessScreen screen, AgentHostResponse response)
         {
-            if (screen.Session is null)
+            if (screen.Session is not { } session)
             {
                 return response;
             }
+            return JournaledRead(method, sessionId, session.HostDisplayName, response);
+        }
+
+        /// <summary>
+        /// Records a read of a windowless session as a read (folding with its like since the last act), and lights the
+        /// window when it disclosed the session's content.
+        /// </summary>
+        private AgentHostResponse JournaledRead(string method, Guid sessionId, string? hostDisplayName, AgentHostResponse response)
+        {
             if (response.Error is null)
             {
                 NoteWindowlessRead();
             }
-            return Journaled(request, method, sessionId, WindowlessTarget, response);
+            _journal.RecordRead(method, sessionId, WindowlessTarget(hostDisplayName), response.Error?.Code ?? "ok", windowless: true);
+            return response;
         }
 
         /// <summary>
-        /// The act check a windowless act hands its source (R5): a session on this computer needs the act toggle alone;
-        /// one on an SSH host needs that profile allowlisted, as an SSH pane does. The source calls it synchronously on
-        /// whichever thread it resumed on, the UI thread possibly: the probe (MainWindow.IsSshProfileAgentAllowed) reads
-        /// the SSH profile store, which takes its own lock around a small file read and never waits on the dispatcher,
-        /// and both it and <see cref="AllowsAgentActOnProfile"/> fail closed.
+        /// The act check a windowless act hands its source (R5), and what it saw. The source asks it at the end of its
+        /// own look-up, which can take seconds (its survey of the daemons), so it reads the gates then rather than when
+        /// the request arrived: the act toggle must still be on, and the source still the one the window publishes
+        /// (observe off, or the window closing, withdraws it). Then a session on this computer needs nothing more; one on
+        /// an SSH host needs that profile allowlisted, as an SSH pane does.
+        /// <para>
+        /// The source calls <see cref="MayAct"/> synchronously on whichever thread it resumed on, the UI thread possibly.
+        /// It reads two volatile fields and, for an SSH host, the allowlist probe (MainWindow.IsSshProfileAgentAllowed),
+        /// which reads the SSH profile store under the store's own lock around a small file read: fast, and it never waits
+        /// on the dispatcher. It and <see cref="AllowsAgentActOnProfile"/> fail closed. What it records is read by the
+        /// handler after it awaited the source, which orders the two.
+        /// </para>
         /// </summary>
-        private bool MayActOnEndpoint(Guid? sshProfileId) => sshProfileId is not { } profileId || AllowsAgentActOnProfile(profileId);
+        private sealed class WindowlessActCheck(AgentHostService service, IWindowlessSessionSource source)
+        {
+            /// <summary>True once the source found the session and asked: the act named a windowless session.</summary>
+            public bool Asked { get; private set; }
+
+            /// <summary>The session's SSH profile id, null for this computer; meaningful once <see cref="Asked"/>.</summary>
+            public Guid? SshProfileId { get; private set; }
+
+            /// <summary>The error code a refusal answers with; null when allowed, or not asked.</summary>
+            public string? Refusal { get; private set; }
+
+            public bool MayAct(Guid? sshProfileId)
+            {
+                Asked = true;
+                SshProfileId = sshProfileId;
+                Refusal = !service._actEnabled ? AgentHostProtocol.ErrorCodes.ActDisabled
+                    : !ReferenceEquals(service._windowlessSource, source) ? AgentHostProtocol.ErrorCodes.ActUnavailable
+                    : sshProfileId is { } profileId && !service.AllowsAgentActOnProfile(profileId) ? AgentHostProtocol.ErrorCodes.ProfileNotAllowed
+                    : null;
+                return Refusal is null;
+            }
+        }
 
         /// <summary>
-        /// The journal's target for a windowless act: <see cref="WindowlessTarget"/> once the source took it on, or the
-        /// pane path's <paramref name="notFoundTarget"/> for an id no daemon has.
+        /// The end of a windowless act: its response, journaled as an act. An act the source took on is named by its
+        /// session's host; one on an id no daemon has keeps the pane path's <paramref name="notFoundTarget"/>.
         /// </summary>
-        private static string WindowlessActTarget(WindowlessOutcome outcome, string notFoundTarget)
-            => outcome == WindowlessOutcome.NotFound ? notFoundTarget : WindowlessTarget;
-
-        /// <summary>A windowless call's failure as the protocol error the agent sees.</summary>
-        private static AgentHostResponse WindowlessError(long requestId, Guid sessionId, string method, WindowlessOutcome outcome) => outcome switch
+        private AgentHostResponse WindowlessActed(
+            AgentHostRequest request, string method, Guid sessionId, string notFoundTarget, IWindowlessSessionSource source,
+            WindowlessActCheck check, WindowlessOutcome outcome, AgentHostResponse success)
         {
+            var response = outcome switch
+            {
+                WindowlessOutcome.Ok => success,
+                WindowlessOutcome.NotAllowed => WindowlessRefusal(request.Id, check.Refusal),
+                _ => WindowlessError(request.Id, sessionId, method, outcome, reached: check.Asked),
+            };
+            string target = check.Asked ? WindowlessTarget(source.HostDisplayName(check.SshProfileId)) : notFoundTarget;
+            return Journaled(request, method, sessionId, target, response, windowless: check.Asked);
+        }
+
+        /// <summary>A windowless act its check refused, by the gate that refused it.</summary>
+        private static AgentHostResponse WindowlessRefusal(long requestId, string? refusal) => refusal switch
+        {
+            AgentHostProtocol.ErrorCodes.ActDisabled => Error(requestId, AgentHostProtocol.ErrorCodes.ActDisabled,
+                "Acting was turned off while this request was on its way, so nothing was done. Enable Settings → Agent access (observe) → Agent access (act), then retry."),
+            AgentHostProtocol.ErrorCodes.ActUnavailable => Error(requestId, AgentHostProtocol.ErrorCodes.ActUnavailable,
+                "Agent access was turned off, or the window is closing, while this request was on its way, so nothing was done."),
+            _ => Error(requestId, AgentHostProtocol.ErrorCodes.ProfileNotAllowed, NotAllowedMessage),
+        };
+
+        private const string NotAllowedMessage =
+            "This windowless session runs on an SSH host whose profile is not allowlisted for agent access. Enable it in the connection's settings, then retry.";
+
+        /// <summary>
+        /// A windowless call's failure as the protocol error the agent sees. <paramref name="reached"/>: the source found
+        /// the session before the call failed, which tells an act that its daemon was reached and then did not do it.
+        /// Every outcome has its own arm; one this does not know throws, which the request loop answers as
+        /// <c>internal</c>, so a new outcome can never pass for <c>sessionNotFound</c> unnoticed.
+        /// </summary>
+        private static AgentHostResponse WindowlessError(long requestId, Guid sessionId, string method, WindowlessOutcome outcome, bool reached = false) => outcome switch
+        {
+            WindowlessOutcome.NotFound => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{sessionId}'."),
             WindowlessOutcome.Unsupported => Error(requestId, AgentHostProtocol.ErrorCodes.Unsupported,
                 "The multiplexer daemon that holds this session is too old to read its screen. Its status is still available from ntilde.get_session_status; a daemon started by a newer ntilde can read it."),
             WindowlessOutcome.NotRunning => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotRunning, method switch
@@ -1892,11 +1969,16 @@ namespace Ntilde.AgentHost
                 AgentHostProtocol.Methods.CloseSession => "The session has already exited, so there is nothing to close.",
                 _ => "The session has ended, and its daemon no longer holds its screen.",
             }),
-            WindowlessOutcome.NotAllowed => Error(requestId, AgentHostProtocol.ErrorCodes.ProfileNotAllowed,
-                "This windowless session runs on an SSH host whose profile is not allowlisted for agent access. Enable it in the connection's settings, then retry."),
-            WindowlessOutcome.Unreachable => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotFound,
-                $"No session with paneId '{sessionId}' could be reached: a multiplexer daemon did not answer in time. Retry shortly."),
-            _ => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{sessionId}'."),
+            WindowlessOutcome.NotAllowed => Error(requestId, AgentHostProtocol.ErrorCodes.ProfileNotAllowed, NotAllowedMessage),
+            WindowlessOutcome.Unreachable => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotFound, (reached, method) switch
+            {
+                (true, AgentHostProtocol.Methods.CloseSession) =>
+                    "The session's daemon did not confirm the kill in time, so the session may already have ended. List sessions to check.",
+                (true, AgentHostProtocol.Methods.SendInput) =>
+                    "The connection to the session's daemon closed before the input could go, so nothing was sent. Retry shortly.",
+                _ => $"No session with paneId '{sessionId}' could be reached: a multiplexer daemon did not answer in time. Retry shortly.",
+            }),
+            _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "The agent host has no error for this windowless outcome."),
         };
 
         /// <summary>

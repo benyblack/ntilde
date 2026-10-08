@@ -9477,6 +9477,20 @@ namespace Ntilde
             }
         }
 
+        /// <summary>
+        /// One line of the Agent Activity dialog. A windowless session's id is its mux session id, so it is called a
+        /// session, never a pane; a run of identical reads the journal folded says how many it stands for ("×N"). Pure,
+        /// so its wording is testable without a window.
+        /// </summary>
+        internal static string DescribeAgentActivity(AgentHost.AgentActivityEntry e)
+        {
+            string when = e.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+            string outcome = e.Outcome == "ok" ? "ok" : $"denied: {e.Outcome}";
+            string times = e.Count > 1 ? $" ×{e.Count}" : string.Empty;
+            string id = e.PaneId is { } paneId ? $" · {(e.Windowless ? "session" : "pane")} {paneId}" : string.Empty;
+            return $"{when}  {e.Method}{times}  [{outcome}]  {e.Target}{id}";
+        }
+
         // A3: visible agent activity journal ("nothing is silent"). Read-only
         // snapshot of recent acting attempts (allowed and denied) and reads of
         // windowless sessions (Phase 5 ruling R5), newest first,
@@ -9491,17 +9505,12 @@ namespace Ntilde
                 // Bind to the data snapshot with a template; don't materialize
                 // controls as items (bypasses recycling, leaks on refresh).
                 ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<AgentHost.AgentActivityEntry>((e, _) =>
-                {
-                    string when = e.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
-                    string outcome = e.Outcome == "ok" ? "ok" : $"denied: {e.Outcome}";
-                    string pane = e.PaneId is { } id ? $" \u00B7 pane {id}" : string.Empty;
-                    return new TextBlock
+                    new TextBlock
                     {
-                        Text = $"{when}  {e.Method}  [{outcome}]  {e.Target}{pane}",
+                        Text = DescribeAgentActivity(e),
                         TextWrapping = TextWrapping.Wrap,
                         Margin = new Thickness(0, 2, 0, 2),
-                    };
-                }),
+                    }),
             };
             var scroll = new ScrollViewer
             {

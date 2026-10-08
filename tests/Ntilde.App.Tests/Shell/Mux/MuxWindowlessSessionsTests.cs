@@ -135,6 +135,29 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
     }
 
     /// <summary>
+    /// Task 13 fix round 1: an act learns only its session's profile id, and names the host in the agent journal by it.
+    /// The name comes from the hosts the window holds, as a listing's does, and asks no daemon.
+    /// </summary>
+    [Fact]
+    public void A_hosts_display_name_comes_from_the_windows_hosts_without_connecting()
+    {
+        int connects = 0;
+        MuxConnectionHost local = LocalHost(To(_localMux));
+        MuxConnectionHost remote = RemoteHost(_ =>
+        {
+            Interlocked.Increment(ref connects);
+            throw new IOException("never asked");
+        }, "nova@box");
+        MuxWindowlessSessions source = Source(Hosts(local, (MuxEndpointId.ForSsh(_profileId), remote)));
+
+        Assert.Equal(MuxWindowlessSessions.LocalHostDisplayName, source.HostDisplayName(null));
+        Assert.Equal("nova@box", source.HostDisplayName(_profileId));
+        Assert.Null(source.HostDisplayName(Guid.NewGuid())); // no host for that endpoint
+        Assert.Equal(0, Volatile.Read(ref connects));
+        Assert.Equal(0, remote.ConnectAttempts);
+    }
+
+    /// <summary>
     /// Ruling R4: the agent path never connects and never prompts. A host that never connected and one whose link
     /// dropped are skipped - neither connect function runs again - and the sessions only they could show are not offered.
     /// </summary>

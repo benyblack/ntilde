@@ -24,14 +24,21 @@ internal sealed class StubWindowlessSource : IWindowlessSessionSource
     private readonly List<(Guid Id, string Text)> _inputs = new();
     private readonly List<Guid> _kills = new();
     private readonly List<Guid?> _mayActAsked = new();
+    private readonly Dictionary<Guid, string> _hostNames = new();
 
     private sealed record Session(WindowlessSessionInfo Info, TerminalBuffer Buffer, MuxReadScreenResult Status);
 
     /// <summary>When it returns non-null, what <see cref="ReadScreenAsync"/> answers instead of reading the buffer.</summary>
     public Func<Guid, WindowlessScreen?>? ReadOverride { get; set; }
 
-    /// <summary>When it returns non-null, what <see cref="ResolveAsync"/> answers instead of looking the id up.</summary>
-    public Func<Guid, WindowlessOutcome?>? ResolveOverride { get; set; }
+    /// <summary>Runs inside an act's look-up, just before its <c>mayAct</c> is asked: a test changes the world there.</summary>
+    public Action? BeforeActCheck { get; set; }
+
+    /// <summary>
+    /// When set, what an act whose check passed ends with instead of sending or killing: <see cref="WindowlessOutcome.Unreachable"/>
+    /// is a connection that closed before the input, or a kill its daemon did not confirm in time.
+    /// </summary>
+    public WindowlessOutcome? ActOutcome { get; set; }
 
     /// <summary>Every call, by member name, in order.</summary>
     public IReadOnlyList<string> Calls { get { lock (_gate) return _calls.ToArray(); } }
@@ -90,6 +97,7 @@ internal sealed class StubWindowlessSource : IWindowlessSessionSource
         lock (_gate)
         {
             _sessions.Add(new Session(info, buffer, status));
+            if (sshProfileId is { } profileId) _hostNames[profileId] = info.HostDisplayName;
         }
         return info;
     }
@@ -137,6 +145,7 @@ internal sealed class StubWindowlessSource : IWindowlessSessionSource
         if (session is null) return Task.FromResult(WindowlessOutcome.NotFound);
         if (!Allowed(session, mayAct)) return Task.FromResult(WindowlessOutcome.NotAllowed);
         if (!session.Info.Running) return Task.FromResult(WindowlessOutcome.NotRunning);
+        if (ActOutcome is { } scripted) return Task.FromResult(scripted);
 
         lock (_gate)
         {
@@ -156,6 +165,7 @@ internal sealed class StubWindowlessSource : IWindowlessSessionSource
         if (session is null) return Task.FromResult(WindowlessOutcome.NotFound);
         if (!Allowed(session, mayAct)) return Task.FromResult(WindowlessOutcome.NotAllowed);
         if (!session.Info.Running) return Task.FromResult(WindowlessOutcome.NotRunning);
+        if (ActOutcome is { } scripted) return Task.FromResult(scripted);
 
         lock (_gate)
         {
@@ -173,13 +183,22 @@ internal sealed class StubWindowlessSource : IWindowlessSessionSource
             _calls.Add(nameof(ResolveAsync));
             session = Find(sessionId);
         }
-        if (ResolveOverride?.Invoke(sessionId) is { } scripted)
-        {
-            return Task.FromResult<(WindowlessOutcome, Guid?)>((scripted, null));
-        }
         return Task.FromResult<(WindowlessOutcome, Guid?)>(session is null
             ? (WindowlessOutcome.NotFound, null)
             : (WindowlessOutcome.Ok, session.Info.SshProfileId));
+    }
+
+    /// <summary>
+    /// As the real source: "this computer" for null, the host's name for an endpoint a session was ever added on (a host
+    /// outlives its sessions), else null.
+    /// </summary>
+    public string? HostDisplayName(Guid? sshProfileId)
+    {
+        if (sshProfileId is not { } profileId) return "this computer";
+        lock (_gate)
+        {
+            return _hostNames.TryGetValue(profileId, out string? name) ? name : null;
+        }
     }
 
     private bool Allowed(Session session, Func<Guid?, bool> mayAct)
@@ -188,6 +207,7 @@ internal sealed class StubWindowlessSource : IWindowlessSessionSource
         {
             _mayActAsked.Add(session.Info.SshProfileId);
         }
+        BeforeActCheck?.Invoke();
         return mayAct(session.Info.SshProfileId);
     }
 

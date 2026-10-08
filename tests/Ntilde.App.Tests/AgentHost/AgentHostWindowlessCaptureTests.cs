@@ -54,13 +54,13 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         => new(registry, AgentHostTestEndpoint.CreateEndpoint(_tempDir), _tempDir, _exportDir, journal);
 
     /// <summary>A measured pane, whose render parameters (and theme) a windowless capture borrows.</summary>
-    private static AgentSessionRegistration RegisterMeasuredPane(AgentSessionRegistry registry, TerminalTheme? theme = null)
+    private static AgentSessionRegistration RegisterMeasuredPane(AgentSessionRegistry registry, TerminalTheme? theme = null, CellMetrics? metrics = null)
     {
         var buffer = new TerminalBuffer(80, 24);
         if (theme != null) buffer.Theme = theme;
         var registration = new AgentSessionRegistration(Guid.NewGuid(), buffer, "title", "Profile", "local", isActive: true);
         registration.UpdateRenderParameters(new PaneRenderParameters(
-            Metrics, TerminalSnapshotOptions.DefaultTypefaceFamily, FontSize: 14f, EnableLigatures: false, EnableComplexShaping: true));
+            metrics ?? Metrics, TerminalSnapshotOptions.DefaultTypefaceFamily, FontSize: 14f, EnableLigatures: false, EnableComplexShaping: true));
         Assert.True(registry.Register(registration));
         return registration;
     }
@@ -126,7 +126,8 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, response.Error?.Code);
         Assert.Contains("a windowless session has no window to capture", response.Error!.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(nameof(IWindowlessSessionSource.ReadScreenAsync), source.Calls); // nothing was read
-        Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, Assert.Single(journal.Snapshot()).Outcome);
+        var entry = Assert.Single(journal.Snapshot());
+        Assert.Equal((AgentHostProtocol.ErrorCodes.CaptureUnavailable, "windowless · this computer"), (entry.Outcome, entry.Target));
         Assert.False(Directory.Exists(_exportDir) && Directory.EnumerateFiles(_exportDir).Any());
     }
 
@@ -143,6 +144,28 @@ public class AgentHostWindowlessCaptureTests : IDisposable
         Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, response.Error?.Code);
         Assert.Contains("no open pane to take font metrics from", response.Error!.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(nameof(IWindowlessSessionSource.ReadScreenAsync), source.Calls);
+    }
+
+    [Fact]
+    public void Render_over_the_pixel_budget_is_captureUnavailable_and_writes_nothing()
+    {
+        var registry = new AgentSessionRegistry();
+        var huge = new CellMetrics { CellWidth = 5000f, CellHeight = 5000f, Baseline = 4000f, Ascent = 4000f, Descent = 1000f, Leading = 0f };
+        RegisterMeasuredPane(registry, metrics: huge);
+        var source = new StubWindowlessSource();
+        var session = source.Add("too big to draw");
+        var journal = new AgentActivityJournal();
+        using var service = NewService(registry, journal);
+        service.SetWindowlessSource(source);
+
+        var response = Handle(service, CaptureLine(session.SessionId));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.CaptureUnavailable, response.Error?.Code);
+        Assert.Contains("pixel per-capture budget", response.Error!.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(_exportDir) && Directory.EnumerateFiles(_exportDir).Any());
+        var entry = Assert.Single(journal.Snapshot());
+        Assert.Equal((AgentHostProtocol.ErrorCodes.CaptureUnavailable, "windowless · this computer"), (entry.Outcome, entry.Target));
+        Assert.False(service.WindowlessWatched); // nothing was disclosed
     }
 
     [Fact]

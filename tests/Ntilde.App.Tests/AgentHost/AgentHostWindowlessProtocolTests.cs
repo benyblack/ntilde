@@ -20,6 +20,10 @@ namespace Ntilde.AppTests.AgentHost;
 /// </summary>
 public class AgentHostWindowlessProtocolTests
 {
+    /// <summary>The journal's target for a windowless session on this computer, and on the stub's SSH host.</summary>
+    private const string LocalTarget = "windowless · this computer";
+    private const string RemoteTarget = "windowless · nova@build-box";
+
     private static AgentSessionRegistration RegisterPane(AgentSessionRegistry registry, string content = "", Guid? id = null)
     {
         var buffer = new TerminalBuffer(80, 24);
@@ -178,7 +182,8 @@ public class AgentHostWindowlessProtocolTests
         var entry = Assert.Single(journal.Snapshot());
         Assert.Equal(AgentHostProtocol.Methods.ReadScreen, entry.Method);
         Assert.Equal(session.SessionId, entry.PaneId);
-        Assert.Equal("windowless", entry.Target);
+        Assert.Equal(LocalTarget, entry.Target);
+        Assert.True(entry.Windowless); // the dialog calls its id a session's, not a pane's
         Assert.Equal("ok", entry.Outcome);
     }
 
@@ -387,9 +392,10 @@ public class AgentHostWindowlessProtocolTests
         {
             Assert.Equal(AgentHostProtocol.Methods.SendInput, e.Method);
             Assert.Equal("ok", e.Outcome);
-            Assert.Equal("windowless", e.Target);
+            Assert.True(e.Windowless);
         });
-        Assert.Equal([local.SessionId, remote.SessionId], entries.Select(e => e.PaneId!.Value)); // newest first
+        // Newest first, each named by the host it runs on.
+        Assert.Equal([(local.SessionId, LocalTarget), (remote.SessionId, RemoteTarget)], entries.Select(e => (e.PaneId!.Value, e.Target)));
     }
 
     [Fact]
@@ -465,6 +471,7 @@ public class AgentHostWindowlessProtocolTests
         var entry = Assert.Single(journal.Snapshot());
         Assert.Equal(AgentHostProtocol.Methods.CloseSession, entry.Method);
         Assert.Equal(session.SessionId, entry.PaneId);
+        Assert.Equal(RemoteTarget, entry.Target);
         Assert.Equal("ok", entry.Outcome);
 
         // Gone now: a second close finds nothing.
@@ -488,6 +495,202 @@ public class AgentHostWindowlessProtocolTests
         Assert.True(result.Closed);
         Assert.Equal(pane.PaneId, executor.LastClosePane);
         Assert.Empty(source.Calls);
+    }
+
+    // ── fix round 1: acts that land late, and acts the daemon did not confirm ─
+
+    [Fact]
+    public void An_act_whose_toggle_is_turned_off_during_its_look_up_is_actDisabled_and_does_nothing()
+    {
+        // The source's look-up can take seconds (its survey); the act check runs at its end, so it must read the toggle
+        // then, not when the request arrived.
+        var source = new StubWindowlessSource();
+        var session = source.Add();
+        var journal = new AgentActivityJournal();
+        using var service = NewService(new AgentSessionRegistry(), journal);
+        service.SetWindowlessSource(source);
+        service.ActEnabled = true;
+        source.BeforeActCheck = () => service.ActEnabled = false;
+
+        var input = Handle(service, SendInputLine(session.SessionId, "rm -rf ~\r"));
+        service.ActEnabled = true; // on again as the close arrives, off again by the time its look-up ends
+        var close = Handle(service, CloseLine(session.SessionId));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ActDisabled, input.Error?.Code);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ActDisabled, close.Error?.Code);
+        Assert.Empty(source.Inputs);
+        Assert.Empty(source.Kills);
+        Assert.All(journal.Snapshot(), e => Assert.Equal((AgentHostProtocol.ErrorCodes.ActDisabled, LocalTarget), (e.Outcome, e.Target)));
+    }
+
+    [Fact]
+    public void An_act_whose_source_is_withdrawn_during_its_look_up_is_actUnavailable_and_does_nothing()
+    {
+        // Observe turned off, or the window closing, while the survey ran: the source the act started with is no longer
+        // the one the window publishes.
+        var source = new StubWindowlessSource();
+        var session = source.Add();
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        service.ActEnabled = true;
+        source.BeforeActCheck = () => service.SetWindowlessSource(null);
+
+        var input = Handle(service, SendInputLine(session.SessionId, "x"));
+        service.SetWindowlessSource(source);
+        var close = Handle(service, CloseLine(session.SessionId));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ActUnavailable, input.Error?.Code);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.ActUnavailable, close.Error?.Code);
+        Assert.Empty(source.Inputs);
+        Assert.Empty(source.Kills);
+    }
+
+    [Fact]
+    public void Input_whose_daemon_connection_closed_is_sessionNotFound_and_says_nothing_was_sent()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add();
+        var journal = new AgentActivityJournal();
+        using var service = NewService(new AgentSessionRegistry(), journal);
+        service.SetWindowlessSource(source);
+        service.ActEnabled = true;
+        source.ActOutcome = WindowlessOutcome.Unreachable;
+
+        var response = Handle(service, SendInputLine(session.SessionId, "x"));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.SessionNotFound, response.Error?.Code);
+        Assert.Contains("nothing was sent", response.Error!.Message, StringComparison.Ordinal);
+        Assert.Empty(source.Inputs);
+        Assert.Equal((AgentHostProtocol.ErrorCodes.SessionNotFound, LocalTarget), (Assert.Single(journal.Snapshot()).Outcome, journal.Snapshot()[0].Target));
+    }
+
+    [Fact]
+    public void A_close_whose_kill_its_daemon_did_not_confirm_says_the_session_may_have_ended()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add();
+        var journal = new AgentActivityJournal();
+        using var service = NewService(new AgentSessionRegistry(), journal);
+        service.SetWindowlessSource(source);
+        service.ActEnabled = true;
+        source.ActOutcome = WindowlessOutcome.Unreachable;
+
+        var response = Handle(service, CloseLine(session.SessionId));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.SessionNotFound, response.Error?.Code);
+        Assert.Contains("did not confirm the kill in time", response.Error!.Message, StringComparison.Ordinal);
+        Assert.Contains("may already have ended", response.Error.Message, StringComparison.Ordinal);
+        Assert.Contains("List sessions to check", response.Error.Message, StringComparison.Ordinal);
+        Assert.Equal(AgentHostProtocol.ErrorCodes.SessionNotFound, Assert.Single(journal.Snapshot()).Outcome);
+    }
+
+    [Fact]
+    public void A_close_of_an_id_no_daemon_answered_for_keeps_the_general_message()
+    {
+        // Not found because a daemon did not answer the survey: no kill was sent, so nothing "may have ended".
+        var source = new StubWindowlessSource();
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(new UnreachableActs(source));
+        service.ActEnabled = true;
+
+        var response = Handle(service, CloseLine(Guid.NewGuid()));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.SessionNotFound, response.Error?.Code);
+        Assert.Contains("did not answer in time", response.Error!.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("kill", response.Error.Message, StringComparison.Ordinal);
+    }
+
+    // ── fix round 1: the outcome map, and the branches it had no test for ────
+
+    [Fact]
+    public void An_outcome_the_host_has_no_error_for_is_an_internal_error_never_sessionNotFound()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add();
+        source.ReadOverride = _ => new WindowlessScreen((WindowlessOutcome)99, session, null, null);
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.Internal, Handle(service, ReadScreenLine(session.SessionId)).Error?.Code);
+    }
+
+    [Fact]
+    public void Status_of_a_session_that_ended_after_it_was_listed_is_exited_with_the_listings_exit_code()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add(running: false, exitCode: 4);
+        source.ReadOverride = _ => new WindowlessScreen(WindowlessOutcome.NotRunning, session, null, null);
+        var journal = new AgentActivityJournal();
+        using var service = NewService(new AgentSessionRegistry(), journal);
+        service.SetWindowlessSource(source);
+
+        var status = Result(Handle(service, StatusLine(session.SessionId)), AgentHostJsonContext.Default.SessionStatusDto);
+
+        Assert.Equal(AgentHostProtocol.StatusKinds.Exited, status.Status);
+        Assert.Equal(4, status.ExitCode);
+        Assert.Equal(0, status.LastOutputAtMs);
+        Assert.Equal("ok", Assert.Single(journal.Snapshot()).Outcome);
+    }
+
+    [Fact]
+    public void ReadScrollback_on_a_daemon_too_old_to_read_screens_is_unsupported()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add();
+        source.ReadOverride = _ => new WindowlessScreen(WindowlessOutcome.Unsupported, session, null, new MuxReadScreenResult { Running = true });
+        using var service = NewService(new AgentSessionRegistry(), new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+
+        var response = Handle(service, ReadScrollbackLine(session.SessionId, 0, 100));
+
+        Assert.Equal(AgentHostProtocol.ErrorCodes.Unsupported, response.Error?.Code);
+    }
+
+    // ── fix round 1: polling does not flood the journal ──────────────────────
+
+    [Fact]
+    public void A_polling_agent_does_not_push_an_earlier_act_out_of_the_journal()
+    {
+        var source = new StubWindowlessSource();
+        var session = source.Add("$ ");
+        var journal = new AgentActivityJournal();
+        using var service = NewService(new AgentSessionRegistry(), journal);
+        service.SetWindowlessSource(source);
+        service.ActEnabled = true;
+
+        Assert.Null(Handle(service, SendInputLine(session.SessionId, "make\r")).Error);
+        for (int i = 0; i < 300; i++)
+        {
+            Assert.Null(Handle(service, i % 2 == 0 ? StatusLine(session.SessionId) : ReadScreenLine(session.SessionId)).Error);
+        }
+
+        Assert.Equal(
+            [
+                (AgentHostProtocol.Methods.ReadScreen, 150),
+                (AgentHostProtocol.Methods.GetSessionStatus, 150),
+                (AgentHostProtocol.Methods.SendInput, 1),
+            ],
+            journal.Snapshot().Select(e => (e.Method, e.Count)));
+    }
+
+    /// <summary>A source whose every look-up ends <see cref="WindowlessOutcome.Unreachable"/> before it finds anything.</summary>
+    private sealed class UnreachableActs(IWindowlessSessionSource inner) : IWindowlessSessionSource
+    {
+        public Task<IReadOnlyList<WindowlessSessionInfo>> ListAsync(CancellationToken ct) => inner.ListAsync(ct);
+
+        public Task<WindowlessScreen> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken ct)
+            => Task.FromResult(new WindowlessScreen(WindowlessOutcome.Unreachable, null, null, null));
+
+        public Task<WindowlessOutcome> SendInputAsync(Guid sessionId, string text, Func<Guid?, bool> mayAct, CancellationToken ct)
+            => Task.FromResult(WindowlessOutcome.Unreachable);
+
+        public Task<WindowlessOutcome> KillAsync(Guid sessionId, Func<Guid?, bool> mayAct, CancellationToken ct)
+            => Task.FromResult(WindowlessOutcome.Unreachable);
+
+        public Task<(WindowlessOutcome Outcome, Guid? SshProfileId)> ResolveAsync(Guid sessionId, CancellationToken ct)
+            => Task.FromResult<(WindowlessOutcome, Guid?)>((WindowlessOutcome.Unreachable, null));
+
+        public string? HostDisplayName(Guid? sshProfileId) => inner.HostDisplayName(sshProfileId);
     }
 
     // ── the window light ─────────────────────────────────────────────────────

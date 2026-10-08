@@ -191,6 +191,20 @@ internal sealed class MuxWindowlessSessions : IWindowlessSessionSource
         return (outcome, session?.Info.SshProfileId);
     }
 
+    /// <remarks>
+    /// Over <see cref="MuxConnectionHosts.AllByEndpoint"/>, the hosts a survey asks, so the name is the one a listing of
+    /// that endpoint gives. Takes only the registry's lock; asks, connects and builds nothing.
+    /// </remarks>
+    public string? HostDisplayName(Guid? sshProfileId)
+    {
+        if (sshProfileId is null) return LocalHostDisplayName;
+        foreach ((MuxEndpointId endpoint, MuxConnectionHost host) in _hosts.AllByEndpoint)
+        {
+            if (endpoint.SshProfileId == sshProfileId) return DisplayName(endpoint, host);
+        }
+        return null;
+    }
+
     /// <summary>A windowless session, the summary its daemon listed, and the client that listed it.</summary>
     private sealed record Found(WindowlessSessionInfo Info, SessionSummary Summary, MuxClient Client);
 

@@ -94,5 +94,13 @@ namespace Ntilde.AgentHost
         /// endpoint through its own <c>mayAct</c> instead, in the same look-up.
         /// </summary>
         Task<(WindowlessOutcome Outcome, Guid? SshProfileId)> ResolveAsync(Guid sessionId, CancellationToken ct);
+
+        /// <summary>
+        /// The <see cref="WindowlessSessionInfo.HostDisplayName"/> of the endpoint <paramref name="sshProfileId"/> names
+        /// ("this computer" for null), from the hosts the window holds now: no daemon is asked, so it costs nothing and
+        /// never waits. Null when the window has no host for that endpoint. For a caller that learned only the profile id,
+        /// as an act's <c>mayAct</c> does.
+        /// </summary>
+        string? HostDisplayName(Guid? sshProfileId);
     }
 }
