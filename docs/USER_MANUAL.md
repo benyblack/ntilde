@@ -208,9 +208,10 @@ below.
     build", one whose version cannot be compared "from a different build", and the last clause is
     left out when it runs no shells.) Its **Restart multiplexer now** button asks first, then
     stops the daemon (ending its process if it has not exited within 5 seconds) and starts one of
-    this version; if the daemon is already this version's by then, nothing is stopped and a
-    notification says so. The panes in the window keep their place: each shows
-    `[Multiplexer disconnected] [Press Enter to reconnect]`, and Enter starts a new shell.
+    this version; if the daemon is already this version's by then, or does not answer, nothing is
+    stopped and a notification says so. The panes in the window keep their place: each shows
+    `[Multiplexer disconnected] [Press Enter to reconnect]`, and Enter starts a new shell once the
+    restart is over.
   - If the daemon crashes, or is killed, its shells are gone.
   - A shell inherits the daemon's environment, not the window's. The daemon's environment is
     the one Ntilde had when it first started the daemon.
@@ -384,7 +385,7 @@ is left out when it runs no shells.) Its **Restart ntilde-mux on <user@host>** b
 then stops that daemon — and only it; if the connection is down, or the daemon is already the
 installed version, nothing is sent and a notification says so. Its tabs show
 `[ntilde-mux on <user@host> stopped] [Press Enter to reconnect]`, and Enter starts the installed
-version. When the install succeeds, the dialog offers to tick the profile's checkbox. The editor's status line shows
+version once the old one has stopped. When the install succeeds, the dialog offers to tick the profile's checkbox. The editor's status line shows
 what was installed: `ntilde-mux 0.11.0 installed`, `ntilde-mux not installed`, or
 `ntilde-mux 0.10.0 installed — this app is 0.11.0`. The versions do not have to match: Ntilde and
 the daemon agree on a protocol version when they connect, and only a daemon with no protocol

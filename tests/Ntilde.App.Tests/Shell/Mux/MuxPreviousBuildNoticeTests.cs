@@ -116,18 +116,26 @@ public sealed class MuxPreviousBuildNoticeTests
     [Fact]
     public void A_reported_version_is_quoted_before_it_reaches_the_toast()
     {
-        string hostile = "0.0.1\u001b[2J\u202e\r\nfake line" + new string('9', 500);
+        string bidi = ((char)0x202E).ToString();
+        string hostile = "0.0.1" + (char)0x1B + "[2J" + bidi + "\r\nfake line" + new string('9', 500);
 
         foreach (string message in new[]
         {
             MuxPreviousBuildNotice.LocalMessage(hostile, "0.12.0", 1),
-            MuxPreviousBuildNotice.RemoteMessage("nova@\u202ebox", hostile, "0.12.0", 1),
-            MuxPreviousBuildNotice.NothingToRestart("nova@\u202ebox", hostile),
-            MuxPreviousBuildNotice.ShutdownFailed("nova@\u202ebox", hostile),
+            MuxPreviousBuildNotice.RemoteMessage("nova@" + bidi + "box", hostile, "0.12.0", 1),
         })
         {
-            Assert.DoesNotContain(message, c => char.IsControl(c) || c == '\u202e');
-            Assert.True(message.Length < 500, $"not capped: {message.Length} characters");
+            Assert.DoesNotContain(message, c => char.IsControl(c) || c == (char)0x202E);
+            Assert.Contains("0.0.1[2Jfake line", message, StringComparison.Ordinal); // what is left of it, in order
+            Assert.True(message.Length < 400, $"not capped: {message.Length} characters");
+        }
+
+        // The outcomes quote the host the same way.
+        foreach (MuxPreviousBuildNotice.RestartOutcome outcome in Enum.GetValues<MuxPreviousBuildNotice.RestartOutcome>())
+        {
+            string message = MuxPreviousBuildNotice.Outcome(outcome, "nova@" + bidi + "box" + new string('x', 500));
+            Assert.DoesNotContain(message, c => char.IsControl(c) || c == (char)0x202E);
+            Assert.True(message.Length < 400, $"not capped: {message.Length} characters");
         }
     }
 
@@ -135,7 +143,7 @@ public sealed class MuxPreviousBuildNoticeTests
     [InlineData(null, 3, "Restart Multiplexer", "Restart the multiplexer?", "3 shells running in the multiplexer will be closed.")]
     [InlineData(null, 1, "Restart Multiplexer", "Restart the multiplexer?", "1 shell running in the multiplexer will be closed.")]
     [InlineData(null, -1, "Restart Multiplexer", "Restart the multiplexer?", "All shells running in the multiplexer will be closed.")]
-    [InlineData(null, 0, "Restart Multiplexer", "Restart the multiplexer?", "The multiplexer is stopped, and one of this version started.")]
+    [InlineData(null, 0, "Restart Multiplexer", "Restart the multiplexer?", "The multiplexer restarts with this version.")]
     [InlineData("nova@box", 2, "Restart ntilde-mux", "Restart ntilde-mux on nova@box?", "2 shells running in ntilde-mux on nova@box will be closed.")]
     [InlineData("nova@box", 0, "Restart ntilde-mux", "Restart ntilde-mux on nova@box?", "ntilde-mux on nova@box is stopped; reconnecting starts the installed version.")]
     public void The_question_names_what_closes(string? host, int shells, string title, string heading, string message)
@@ -146,21 +154,30 @@ public sealed class MuxPreviousBuildNoticeTests
         Assert.Equal("Restart", MuxPreviousBuildNotice.ConfirmButton);
     }
 
-    /// <summary>Review item 3/4: every confirmed restart that does not happen says why.</summary>
+    /// <summary>Review items 3, 4 and M3: every confirmed restart that does not happen says why, in words chosen by its cause.</summary>
     [Fact]
     public void Each_outcome_of_a_restart_that_did_not_happen_is_said_plainly()
     {
-        Assert.Equal("The multiplexer is already from this build; nothing to restart.", MuxPreviousBuildNotice.NothingToRestart(null, "0.12.0"));
-        Assert.Equal("The multiplexer is not running; nothing to restart.", MuxPreviousBuildNotice.NotRunning);
-        Assert.Equal("The multiplexer does not report its build; it was not restarted.", MuxPreviousBuildNotice.NothingToRestart(null, "0.0.0"));
-        Assert.Equal("The multiplexer does not report its build; it was not restarted.", MuxPreviousBuildNotice.NothingToRestart(null, null));
-        Assert.Equal("ntilde-mux on nova@box is already the version this app installs; nothing to restart.", MuxPreviousBuildNotice.NothingToRestart("nova@box", "0.12.0+abc"));
-        Assert.Equal("ntilde-mux on nova@box does not report its version; it was not restarted.", MuxPreviousBuildNotice.NothingToRestart("nova@box", null));
-        Assert.Equal("The multiplexer is already being restarted.", MuxPreviousBuildNotice.AlreadyRestarting(null));
-        Assert.Equal("ntilde-mux on nova@box is already being restarted.", MuxPreviousBuildNotice.AlreadyRestarting("nova@box"));
-        Assert.Equal("ntilde-mux on nova@box is not connected; it was not restarted.", MuxPreviousBuildNotice.NotConnected("nova@box"));
-        Assert.Equal("ntilde-mux on nova@box could not be told to restart (timed out); it keeps running.", MuxPreviousBuildNotice.ShutdownFailed("nova@box", "timed out"));
-        Assert.Equal("The old multiplexer could not be stopped; its shells may still be running.", MuxPreviousBuildNotice.NotStopped);
+        (MuxPreviousBuildNotice.RestartOutcome Outcome, string Local, string Remote)[] said =
+        [
+            (MuxPreviousBuildNotice.RestartOutcome.AlreadyRestarting, "The multiplexer is already being restarted.", "ntilde-mux on nova@box is already being restarted."),
+            (MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild, "The multiplexer is already from this build; nothing to restart.", "ntilde-mux on nova@box is already the version this app installs; nothing to restart."),
+            (MuxPreviousBuildNotice.RestartOutcome.NoVersion, "The multiplexer does not report its build; it was not restarted.", "ntilde-mux on nova@box does not report its version; it was not restarted."),
+            (MuxPreviousBuildNotice.RestartOutcome.NotRunning, "The multiplexer is not running; nothing to restart.", "ntilde-mux on nova@box is not running; nothing to restart."),
+            (MuxPreviousBuildNotice.RestartOutcome.Unreachable, "The multiplexer could not be reached; nothing was restarted.", "ntilde-mux on nova@box could not be reached; nothing was restarted."),
+            (MuxPreviousBuildNotice.RestartOutcome.NotConnected, "The multiplexer is not connected; it was not restarted.", "ntilde-mux on nova@box is not connected; it was not restarted."),
+            (MuxPreviousBuildNotice.RestartOutcome.ShutdownFailed, "The multiplexer could not be told to restart; it keeps running.", "ntilde-mux on nova@box could not be told to restart; it keeps running."),
+            (MuxPreviousBuildNotice.RestartOutcome.NotStopped, "The old multiplexer could not be stopped; its shells may still be running.", "The old ntilde-mux on nova@box could not be stopped; its shells may still be running."),
+            (MuxPreviousBuildNotice.RestartOutcome.StopUnconfirmed, "The old multiplexer was told to stop, but whether it did could not be checked.", "The old ntilde-mux on nova@box was told to stop, but whether it did could not be checked."),
+            (MuxPreviousBuildNotice.RestartOutcome.Failed, "The multiplexer restart failed; see the log.", "The restart of ntilde-mux on nova@box failed; see the log."),
+        ];
+
+        Assert.Equal(Enum.GetValues<MuxPreviousBuildNotice.RestartOutcome>().Length, said.Length); // every outcome is worded
+        foreach ((MuxPreviousBuildNotice.RestartOutcome outcome, string local, string remote) in said)
+        {
+            Assert.Equal(local, MuxPreviousBuildNotice.Outcome(outcome, host: null));
+            Assert.Equal(remote, MuxPreviousBuildNotice.Outcome(outcome, "nova@box"));
+        }
     }
 
     /// <summary>

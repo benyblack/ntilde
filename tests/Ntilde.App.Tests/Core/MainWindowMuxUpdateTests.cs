@@ -1,8 +1,6 @@
 using System.Text.Json;
 using Avalonia.Controls;
-using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
-using Avalonia.Input;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
@@ -15,6 +13,7 @@ using Ntilde.Shell.Mux;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
 using Ntilde.Tests.Shell.Mux; // MuxTestText
 using static Ntilde.Tests.Core.WindowToast;
+using RestartOutcome = Ntilde.Shell.Mux.MuxPreviousBuildNotice.RestartOutcome;
 
 namespace Ntilde.Tests.Core;
 
@@ -29,8 +28,9 @@ namespace Ntilde.Tests.Core;
 /// The window's daemon is an in-memory one: <see cref="_old"/> (reporting <see cref="PreviousBuild"/>) until it is told
 /// to shut down, then <see cref="_current"/>, this build's - what the launcher's spawn gives, which the host's connect
 /// counts (<see cref="_connects"/>). The old daemon stops as the real one does (<c>MuxDaemonHost.RequestStop</c>): it kills
-/// every session, then closes. <see cref="TestAppDataRoot"/> is taken for its lifetime: the window restores and saves its
-/// session there.
+/// every session, then closes. The window's multiplexer notices are read from <see cref="_notices"/>, never from "the"
+/// toast, which other notices share (on a machine with no keychain, the credential notice). <see cref="TestAppDataRoot"/>
+/// is taken for its lifetime: the window restores and saves its session there.
 /// </remarks>
 public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
@@ -38,18 +38,23 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     private const string PreviousBuild = "0.0.1";
 
     private static readonly MuxEndpointDescriptor OldDaemon = new() { Endpoint = "test", Pid = 4242, ProcessName = "Ntilde", MinVersion = 1, MaxVersion = 2 };
+    private static readonly MuxEndpointId Local = MuxEndpointId.Local;
 
     private readonly MuxTestHost _old = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = PreviousBuild });
     private readonly MuxTestHost _current = new(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = ThisBuild });
     private readonly TaskCompletionSource<bool> _oldExited = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly List<MuxConnectionHost> _hosts = [];
+
+    /// <summary>Every multiplexer notice the window raised (UI thread): offers, and restarts' outcomes.</summary>
+    private readonly List<MuxPreviousBuildNotice.Raised> _notices = [];
+
     private volatile bool _oldStopped;
     private int _connects;
     private int _oldShutdowns;
 
     /// <summary>
     /// Run first when the old daemon is told to shut down, before it stops as the real one does: a test can deliver every
-    /// shell's <c>exited</c> first - the order that reaches panes still attached - or leave the daemon running.
+    /// shell's <c>exited</c> first - the order that reaches panes still attached - or hold the stop.
     /// </summary>
     private Func<Task>? _beforeOldStops;
 
@@ -98,7 +103,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     /// A window whose local daemon is <see cref="_old"/> until it stops, then <see cref="_current"/>; persistence on unless
     /// <paramref name="settings"/> says otherwise. <paramref name="connect"/> replaces the host's connect.
     /// </summary>
-    private MainWindow CreateWindow(TerminalSettings? settings = null, Func<CancellationToken, Task<MuxClient>>? connect = null, MuxPreviousBuildNotice.Launch? launch = null)
+    private MainWindow CreateWindow(TerminalSettings? settings = null, Func<CancellationToken, Task<MuxClient>>? connect = null)
     {
         var host = new MuxConnectionHost(connect ?? (ct =>
         {
@@ -115,13 +120,16 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
             Settings = settings ?? new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose },
         });
         window.MuxThisBuildVersion = ThisBuild;
-        window.MuxPreviousBuildLaunch = launch ?? new MuxPreviousBuildNotice.Launch(); // this test's launch
+        window.MuxPreviousBuildLaunch = new MuxPreviousBuildNotice.Launch(); // this test's launch
+        window.MuxNoticeRaisedForTest = _notices.Add;
         window.MuxProbeForUpdate = async ct => _oldStopped ? await MuxClient.ConnectAsync(_current.Listener.Connect(), null, ct) : await MuxClient.ConnectAsync(_old.Listener.Connect(), null, ct);
         window.MuxReadDescriptorForUpdate = () => OldDaemon;
         window.MuxWaitForDaemonExitForUpdate = _ => _oldExited.Task;
         window.Show();
         return window;
     }
+
+    private static TerminalSettings ClosesOnExit => new() { SessionPersistence = SessionPersistenceMode.KeepOnClose, ShellExitPolicy = "Always" };
 
     /// <summary>Three shells running in the old daemon, and a session file whose one tab shows them side by side.</summary>
     private Guid[] ThreePanesOnTheOldDaemon()
@@ -152,11 +160,20 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
 
     private static readonly string ThreeShellsNotice = MuxPreviousBuildNotice.LocalMessage(PreviousBuild, ThisBuild, 3);
 
-    /// <summary>Waits for the window's three panes to reattach their shells, and for the notice that names them.</summary>
-    private static void PumpUntilOffered(MainWindow window)
+    /// <summary>The local daemon's offers so far (outcomes left out).</summary>
+    private List<MuxPreviousBuildNotice.Raised> LocalOffers => [.. _notices.Where(n => n.Endpoint == Local && n.Outcome is null)];
+
+    /// <summary>The restarts' outcomes raised so far.</summary>
+    private List<RestartOutcome> Outcomes => [.. _notices.Where(n => n.Outcome is not null).Select(n => n.Outcome!.Value)];
+
+    /// <summary>Waits for the window's three panes to reattach their shells, and for the notice that names them; returns its action.</summary>
+    private PersistenceNoticeAction PumpUntilOffered(MainWindow window)
     {
         PumpUntil(() => Attached(window).Count == 3, "the three panes reattached");
-        PumpUntil(() => Toast(window).Message?.Contains(ThreeShellsNotice, StringComparison.Ordinal) == true, "the notice is shown");
+        PumpUntil(() => LocalOffers.Count == 1, "the notice is raised");
+        MuxPreviousBuildNotice.Raised offer = LocalOffers[0];
+        Assert.Equal(ThreeShellsNotice, offer.Message);
+        return offer.Action!;
     }
 
     private static string Unwrapped(string text) =>
@@ -166,9 +183,9 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         pane.Buffer is { } buffer && Unwrapped(MuxTestText.VisibleText(buffer)).Contains(Unwrapped(banner), StringComparison.Ordinal);
 
     /// <summary>
-    /// One connection, three panes: one notice, naming the daemon's version and its three shells, with the restart. The
-    /// panes share the host's connection, so it is offered once, not per pane - and not again when the connection drops
-    /// and comes back to the same daemon.
+    /// One connection, three panes: one notice, naming the daemon's version and its three shells, with the restart - on
+    /// the toast, as a line of its own with its button. The panes share the host's connection, so it is offered once, not
+    /// per pane - and not again when the connection drops and comes back to the same daemon.
     /// </summary>
     [AvaloniaFact]
     public void A_daemon_of_the_previous_build_is_offered_a_restart_once()
@@ -178,11 +195,11 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         MuxConnectionHost host = _hosts.Single();
 
         PumpUntilOffered(window);
+        PumpUntil(() => ToastLines(window).Contains(ThreeShellsNotice), "the toast shows the notice");
 
-        (bool visible, string? title, string? message) = Toast(window);
-        Assert.True(visible);
-        Assert.Equal(MuxPreviousBuildNotice.Title, title);
-        Assert.Equal(ThreeShellsNotice, message);
+        MuxPreviousBuildNotice.Raised offer = Assert.Single(LocalOffers);
+        Assert.Equal("Restart multiplexer now", offer.Action!.Label);
+        Assert.Equal($"{MuxPreviousBuildNotice.Title}\n{Local}", offer.Key);
         Assert.True(ToastButton(window, "RecordingToastAction").IsVisible);
         Assert.Equal("Restart multiplexer now", ToastButton(window, "RecordingToastAction").Content);
         Assert.Equal(1, Volatile.Read(ref _connects));
@@ -192,11 +209,11 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         MuxClient first = host.CurrentClient!;
         first.Dispose();
         host.WarmUp();
-        PumpUntilDecided(window, MuxEndpointId.Local, 2);
+        PumpUntilDecided(window, Local, 2);
 
         Assert.Equal(2, Volatile.Read(ref _connects));
         Assert.Equal(PreviousBuild, host.CurrentClient!.ServerVersion);
-        Assert.False(Toast(window).Visible, $"offered again: '{Toast(window).Message}'");
+        Assert.Single(_notices); // the one offer: none again, and no outcome
     }
 
     /// <summary>A daemon of this very build is what the window wants: nothing to say.</summary>
@@ -206,10 +223,15 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         _oldStopped = true; // the daemon is this build's from the start
         MainWindow window = CreateWindow();
         MuxConnectionHost host = _hosts.Single();
-        PumpUntilDecided(window, MuxEndpointId.Local, 1);
+        PumpUntilDecided(window, Local, 1);
+        // Another notice on the toast is not this test's business: CI's ubuntu runner has no keychain, and says so there.
+        window.EnqueueNotice("Credential storage unavailable", "No system keychain was found, so SSH passwords won't be saved this session.");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(Toast(window).Visible);
 
         Assert.Equal(ThisBuild, host.CurrentClient!.ServerVersion);
-        Assert.False(Toast(window).Visible, $"a notice was shown: '{Toast(window).Message}'");
+        Assert.Empty(_notices);
+        Assert.DoesNotContain(ToastLines(window), l => l.StartsWith("The multiplexer", StringComparison.Ordinal));
     }
 
     /// <summary>With SessionPersistence Off nothing new appears, whatever the daemon the window's panes still use reports.</summary>
@@ -219,10 +241,11 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         ThreePanesOnTheOldDaemon();
         MainWindow window = CreateWindow(new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off });
         MuxConnectionHost host = _hosts.Single();
-        PumpUntilDecided(window, MuxEndpointId.Local, 1);
+        PumpUntilDecided(window, Local, 1);
 
         Assert.Equal(PreviousBuild, host.CurrentClient!.ServerVersion);
-        Assert.False(Toast(window).Visible && Toast(window).Title == MuxPreviousBuildNotice.Title, $"a notice was shown: '{Toast(window).Message}'");
+        Assert.Empty(_notices);
+        Assert.DoesNotContain(ThreeShellsNotice, ToastLines(window));
     }
 
     /// <summary>
@@ -239,11 +262,9 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     public void Restarting_keeps_every_pane_and_enter_starts_a_shell_on_the_new_daemon(bool exitsFirst)
     {
         Guid[] old = ThreePanesOnTheOldDaemon();
-        MainWindow window = CreateWindow(new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose, ShellExitPolicy = "Always" });
+        MainWindow window = CreateWindow(ClosesOnExit);
         MuxConnectionHost host = _hosts.Single();
-        PumpUntilOffered(window);
-        List<TerminalPane> panes = [.. window.AllPanesForTest()];
-        Assert.Equal(3, panes.Count);
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
         List<MuxClientSession> shown = Attached(window);
         if (exitsFirst)
         {
@@ -266,16 +287,17 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         var terminated = new List<MuxEndpointDescriptor>();
         window.MuxTerminateDaemon = d => { lock (terminated) terminated.Add(d); return true; };
 
-        Click(ToastButton(window, "RecordingToastAction"));
+        restart.Run();
         PumpUntil(() => host.CurrentClient is { ServerVersion: ThisBuild }, "the host connected to a daemon of this build");
-        PumpUntilDecided(window, MuxEndpointId.Local, 2);
+        PumpUntilDecided(window, Local, 2);
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
         for (int i = 0; i < 20; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(10); } // any exit a pane still heard is handled
 
         Assert.Equal([(null, 3)], asked);
         Assert.Equal(1, Volatile.Read(ref _oldShutdowns));
         Assert.Equal(2, Volatile.Read(ref _connects));
         lock (terminated) Assert.Empty(terminated); // it exited on its own
-        Assert.False(Toast(window).Visible, $"a notice followed the restart: '{Toast(window).Message}'");
+        Assert.Single(_notices); // the offer: no outcome, and no offer for the new daemon
         IReadOnlyList<TerminalPane> after = window.AllPanesForTest();
         Assert.Equal(3, after.Count);
         Assert.Equal(1, window.FindControl<TabControl>("Tabs")!.ItemCount);
@@ -293,9 +315,40 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
 
         // Enter in a pane starts a new shell, on the new daemon.
         TerminalPane first = after[0];
-        first.TermView.Focus();
-        TopLevel.GetTopLevel(first)!.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+        PressEnter(first);
         PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "the pane started a new shell");
+        Assert.Contains(first.Session!.Id, _current.Server.GetSessionIds());
+        Assert.Equal(3, window.AllPanesForTest().Count);
+    }
+
+    /// <summary>
+    /// Review M1: until the old daemon is gone, the host still holds its connection, so Enter in a pane the restart let go
+    /// must not start a shell there (it would be killed with the rest, and close the pane under a close-on-exit policy).
+    /// Enter is held, the pane says so, and its shell starts on the new daemon once the restart is over.
+    /// </summary>
+    [AvaloniaFact]
+    public void Enter_during_a_restart_waits_for_the_new_daemon()
+    {
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow(ClosesOnExit);
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
+        var stop = new TaskCompletionSource();
+        _beforeOldStops = () => stop.Task; // the old daemon holds its stop until the test lets it go
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+
+        restart.Run();
+        PumpUntil(() => Volatile.Read(ref _oldShutdowns) == 1, "shutdown was sent");
+        TerminalPane first = window.AllPanesForTest()[0];
+        Assert.True(Shows(first, TerminalPane.MuxDisconnectedBanner));
+        PressEnter(first);
+        for (int i = 0; i < 20; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(10); }
+
+        Assert.Equal(3, _old.Server.GetSessionIds().Count); // nothing started on the old daemon
+        Assert.Null(first.Session);
+        Assert.True(Shows(first, TerminalPane.MuxRestartingBanner), $"no restarting line: {MuxTestText.VisibleText(first.Buffer!)}");
+
+        stop.SetResult();
+        PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "the held Enter started a shell once the restart was over");
         Assert.Contains(first.Session!.Id, _current.Server.GetSessionIds());
         Assert.Equal(3, window.AllPanesForTest().Count);
     }
@@ -311,7 +364,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         ThreePanesOnTheOldDaemon();
         MainWindow window = CreateWindow();
         MuxConnectionHost host = _hosts.Single();
-        PumpUntilOffered(window);
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
         _oldStopsOnShutdown = false;
         window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
         window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(false);
@@ -325,12 +378,14 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
             return true;
         };
 
-        Click(ToastButton(window, "RecordingToastAction"));
+        restart.Run();
         PumpUntil(() => host.CurrentClient is { ServerVersion: ThisBuild }, "the host connected to a daemon of this build");
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
 
         Assert.Equal(1, Volatile.Read(ref _oldShutdowns));
         lock (terminated) Assert.Same(OldDaemon, Assert.Single(terminated));
         Assert.Equal(2, Volatile.Read(ref _connects));
+        Assert.Empty(Outcomes);
     }
 
     /// <summary>Review item 4: a daemon that neither exits nor can be terminated is reported, and can be offered again later.</summary>
@@ -339,17 +394,138 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     {
         ThreePanesOnTheOldDaemon();
         MainWindow window = CreateWindow();
-        PumpUntilOffered(window);
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
         _oldStopsOnShutdown = false;
         window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
         window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(false);
         window.MuxTerminateDaemon = _ => false;
 
-        Click(ToastButton(window, "RecordingToastAction"));
-        PumpUntil(() => Toast(window).Message == MuxPreviousBuildNotice.NotStopped, "the failure is reported");
+        restart.Run();
         PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
 
-        Assert.True(window.MuxPreviousBuildLaunch.TryOffer(MuxEndpointId.Local), "the offer was not released");
+        Assert.Equal([RestartOutcome.NotStopped], Outcomes);
+        Assert.True(window.MuxPreviousBuildLaunch.TryOffer(Local), "the offer was not released");
+    }
+
+    /// <summary>
+    /// Review M2: when the daemon could not be stopped its shells keep running, and they are shells like any other - one
+    /// the user reopens with "Attach to session…" is saved for the next launch, not left out as ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void Shells_a_restart_could_not_stop_are_saved_when_reopened()
+    {
+        Guid[] ids = ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
+        _oldStopsOnShutdown = false;
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(false);
+        window.MuxTerminateDaemon = _ => false;
+        restart.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+        Assert.Equal([RestartOutcome.NotStopped], Outcomes);
+        Assert.All(ids, id => Assert.False(_old.Mux(id).IsExited)); // still running
+        File.Delete(AppPaths.SessionFilePath);
+
+        window.PickMuxSession = _ => Task.FromResult<Guid?>(ids[0]);
+        Task attach = window.AttachToMuxSessionAsync();
+        PumpUntil(() => attach.IsCompleted && Attached(window).Any(s => s.Id == ids[0]), "the shell was reopened");
+        PumpUntil(() => File.Exists(AppPaths.SessionFilePath) && File.ReadAllText(AppPaths.SessionFilePath).Contains(ids[0].ToString("D"), StringComparison.Ordinal),
+            "the reopened shell is saved");
+    }
+
+    /// <summary>
+    /// Review M3: the last look before <c>shutdown</c> finds a daemon advertised but not answering: it is left alone, and
+    /// the notice says it could not be reached - not that it is not running.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_daemon_that_cannot_be_reached_at_the_last_look_is_left_alone()
+    {
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
+        window.ConfirmMuxRestart = (_, _) =>
+        {
+            window.MuxProbeForUpdate = _ => Task.FromResult<MuxClient?>(null); // advertised (the descriptor stays), not answering
+            return Task.FromResult(true);
+        };
+        int terminated = 0;
+        window.MuxTerminateDaemon = _ => { Interlocked.Increment(ref terminated); return true; };
+
+        restart.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+
+        Assert.Equal([RestartOutcome.Unreachable], Outcomes);
+        Assert.Equal(0, Volatile.Read(ref _oldShutdowns));
+        Assert.Equal(0, Volatile.Read(ref terminated));
+        Assert.Equal(3, Attached(window).Count); // not let go of
+    }
+
+    /// <summary>Review M3: no descriptor and nothing answering at the last look: "not running", and nothing is done.</summary>
+    [AvaloniaFact]
+    public void No_daemon_at_the_last_look_is_reported_as_not_running()
+    {
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
+        window.ConfirmMuxRestart = (_, _) =>
+        {
+            window.MuxProbeForUpdate = _ => Task.FromResult<MuxClient?>(null);
+            window.MuxReadDescriptorForUpdate = () => null;
+            return Task.FromResult(true);
+        };
+
+        restart.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+
+        Assert.Equal([RestartOutcome.NotRunning], Outcomes);
+        Assert.Equal(0, Volatile.Read(ref _oldShutdowns));
+        Assert.Equal(3, Attached(window).Count);
+    }
+
+    /// <summary>
+    /// Review M3: <c>shutdown</c> went out but no descriptor says which process to watch, so whether the daemon stopped
+    /// cannot be checked - said so, rather than "could not be stopped"; the restart still connects again.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_shutdown_that_cannot_be_watched_says_so()
+    {
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        MuxConnectionHost host = _hosts.Single();
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        window.MuxReadDescriptorForUpdate = () => null;
+
+        restart.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+        PumpUntil(() => host.CurrentClient is { ServerVersion: ThisBuild }, "the host connected to a daemon of this build");
+
+        Assert.Equal(1, Volatile.Read(ref _oldShutdowns));
+        Assert.Equal([RestartOutcome.StopUnconfirmed], Outcomes);
+    }
+
+    /// <summary>
+    /// Review M4: an unexpected failure after the panes let go of their shells is reported plainly, the offer is
+    /// released, and Enter in a pane works again.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_unexpected_failure_mid_restart_is_reported()
+    {
+        ThreePanesOnTheOldDaemon();
+        MainWindow window = CreateWindow();
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        window.MuxRestartFaultForTest = () => throw new InvalidOperationException("scripted restart failure");
+
+        restart.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+
+        Assert.Equal([RestartOutcome.Failed], Outcomes);
+        Assert.True(window.MuxPreviousBuildLaunch.TryOffer(Local), "the offer was not released");
+        TerminalPane first = window.AllPanesForTest()[0];
+        PressEnter(first);
+        PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "Enter starts a shell again");
     }
 
     /// <summary>Declined: nothing is sent, the old daemon keeps its shells, and this launch does not offer it again.</summary>
@@ -358,7 +534,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     {
         Guid[] ids = ThreePanesOnTheOldDaemon();
         MainWindow window = CreateWindow();
-        PumpUntilOffered(window);
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
         int asked = 0;
         window.ConfirmMuxRestart = (_, _) => { asked++; return Task.FromResult(false); };
         bool probed = false;
@@ -366,7 +542,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         int terminated = 0;
         window.MuxTerminateDaemon = _ => { Interlocked.Increment(ref terminated); return true; };
 
-        Click(ToastButton(window, "RecordingToastAction"));
+        restart.Run();
         PumpUntil(() => asked == 1, "asked");
         PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
 
@@ -376,8 +552,8 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(1, Volatile.Read(ref _connects));
         Assert.All(ids, id => Assert.False(_old.Mux(id).IsExited));
         Assert.Equal(3, Attached(window).Count);
-        Assert.False(Toast(window).Visible);
-        Assert.False(window.MuxPreviousBuildLaunch.TryOffer(MuxEndpointId.Local), "a declined offer was released");
+        Assert.Single(_notices); // the offer: no outcome
+        Assert.False(window.MuxPreviousBuildLaunch.TryOffer(Local), "a declined offer was released");
     }
 
     /// <summary>
@@ -390,7 +566,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     {
         ThreePanesOnTheOldDaemon();
         MainWindow window = CreateWindow();
-        PumpUntilOffered(window);
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
         int currentShutdowns = 0;
         _current.Server.ShutdownRequested += () => Interlocked.Increment(ref currentShutdowns);
         window.ConfirmMuxRestart = (_, _) =>
@@ -401,9 +577,10 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         int terminated = 0;
         window.MuxTerminateDaemon = _ => { Interlocked.Increment(ref terminated); return true; };
 
-        Click(ToastButton(window, "RecordingToastAction"));
-        PumpUntil(() => Toast(window).Message == MuxPreviousBuildNotice.NothingToRestart(null, ThisBuild), "the notice says why");
+        restart.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
 
+        Assert.Equal([RestartOutcome.AlreadyThisBuild], Outcomes);
         Assert.Equal(0, Volatile.Read(ref currentShutdowns));
         Assert.Equal(0, Volatile.Read(ref _oldShutdowns));
         Assert.Equal(0, Volatile.Read(ref terminated));
@@ -419,21 +596,21 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
     {
         ThreePanesOnTheOldDaemon();
         MainWindow window = CreateWindow();
-        PumpUntilOffered(window);
-        PersistenceNoticeAction action = OfferedAction(window)!;
+        PersistenceNoticeAction restart = PumpUntilOffered(window);
         var answer = new TaskCompletionSource<bool>();
         int asked = 0;
         window.ConfirmMuxRestart = (_, _) => { asked++; return answer.Task; };
 
-        action.Run();
+        restart.Run();
         PumpUntil(() => asked == 1, "the first click asks");
-        action.Run();
-        PumpUntil(() => Toast(window).Message == MuxPreviousBuildNotice.AlreadyRestarting(null), "the second click says why");
+        restart.Run();
+        PumpUntil(() => Outcomes.Contains(RestartOutcome.AlreadyRestarting), "the second click says why");
         answer.SetResult(false);
         PumpUntil(() => !window.IsMuxRestartRunningForTest, "the first restart finished");
 
         Assert.Equal(1, asked);
         Assert.Equal(0, Volatile.Read(ref _oldShutdowns));
+        Assert.Equal([RestartOutcome.AlreadyRestarting], Outcomes);
     }
 
     /// <summary>
@@ -468,13 +645,14 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
             return true;
         };
 
-        PumpUntil(() => Toast(window).Title == TerminalPane.MuxUnavailableNoticeTitle, "the fallback notice is shown");
-        Assert.Contains(TerminalPane.MuxVersionMismatchHint, Toast(window).Message, StringComparison.Ordinal);
-        Assert.True(ToastButton(window, "RecordingToastAction").IsVisible);
-        Assert.Equal("Restart multiplexer now", ToastButton(window, "RecordingToastAction").Content);
+        string fallback = $"{TerminalPane.MuxUnavailableBanner}\n{TerminalPane.MuxVersionMismatchHint}";
+        PumpUntil(() => Toast(window).Title == TerminalPane.MuxUnavailableNoticeTitle && ToastLines(window).Contains(TerminalPane.MuxVersionMismatchHint), "the fallback notice is shown");
+        Assert.Contains(fallback, Toast(window).Message, StringComparison.Ordinal);
+        PersistenceNoticeAction action = OfferedAction(window)!;
+        Assert.Equal("Restart multiplexer now", action.Label);
         int before = Volatile.Read(ref connects);
 
-        Click(ToastButton(window, "RecordingToastAction"));
+        action.Run();
         PumpUntil(() => host.CurrentClient is { ServerVersion: ThisBuild }, "the host connected to a daemon of this build");
 
         Assert.Equal([(null, -1)], asked); // the count cannot be had from a daemon this build cannot speak to

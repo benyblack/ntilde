@@ -1,5 +1,7 @@
 using System.Reflection;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Ntilde.Controls;
@@ -19,10 +21,25 @@ internal static class WindowToast
          window.FindControl<TextBlock>("RecordingToastTitle")!.Text,
          window.FindControl<TextBlock>("RecordingToastMessage")!.Text);
 
+    /// <summary>
+    /// The visible toast's lines - one per notice merged into it - or none. Other notices share the toast (a machine with
+    /// no keychain shows the credential notice at startup), so a test looks for its own line, never at "the" toast.
+    /// </summary>
+    public static string[] ToastLines(MainWindow window) =>
+        Toast(window) is (true, _, { } message) ? message.Split('\n') : [];
+
     /// <summary>The toast's action button (<c>RecordingToastAction</c>) or its close button (<c>RecordingToastClose</c>).</summary>
     public static Button ToastButton(MainWindow window, string name) => window.FindControl<Button>(name)!;
 
     public static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    /// <summary>Enter, through Avalonia's real input pipeline: the pane's focused view first, the pane second.</summary>
+    public static void PressEnter(TerminalPane pane)
+    {
+        pane.TermView.Focus();
+        TopLevel.GetTopLevel(pane)!.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+        Dispatcher.UIThread.RunJobs();
+    }
 
     /// <summary>The action the toast offers now, as the button would run it; null when it offers none.</summary>
     public static PersistenceNoticeAction? OfferedAction(MainWindow window) =>

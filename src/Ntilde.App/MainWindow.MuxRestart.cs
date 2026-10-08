@@ -10,6 +10,7 @@ using Ntilde.Mux.Contracts;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
+using RestartOutcome = Ntilde.Shell.Mux.MuxPreviousBuildNotice.RestartOutcome;
 
 namespace Ntilde
 {
@@ -48,8 +49,11 @@ namespace Ntilde
         /// <summary>Test seam: sends <c>shutdown</c> to a remote daemon over its host's connection. Called on the pool.</summary>
         internal Func<MuxClient, CancellationToken, Task> MuxShutdownRemoteDaemon { get; set; } = static (client, ct) => client.ShutdownServerAsync(ct);
 
-        /// <summary>Test seam: told of each "from another build" notice as it is raised - its endpoint, merge key, words and action.</summary>
-        internal Action<MuxEndpointId, string, string, PersistenceNoticeAction>? MuxRestartOfferedForTest { get; set; }
+        /// <summary>Test seam: told of each multiplexer notice as it is raised - an offer, or a restart's outcome.</summary>
+        internal Action<MuxPreviousBuildNotice.Raised>? MuxNoticeRaisedForTest { get; set; }
+
+        /// <summary>Test seam: runs inside a restart right after the panes let go of their shells, before <c>shutdown</c> is sent.</summary>
+        internal Action? MuxRestartFaultForTest { get; set; }
 
         /// <summary>Tests: how many connections of <paramref name="endpoint"/> the window has finished deciding about.</summary>
         internal int MuxRestartDecisionsForTest(MuxEndpointId endpoint) => _muxRestartDecisions.GetValueOrDefault(endpoint);
@@ -111,7 +115,7 @@ namespace Ntilde
                 // Keyed by endpoint (review item 5): two daemons whose hosts share a name raise the same words, and must not merge.
                 string key = $"{MuxPreviousBuildNotice.Title}\n{id}";
                 AppLogger.Log($"[MainWindow] the multiplexer on {where} is from another build ({RemoteOutputText.Quote(daemonVersion)}, this is {MuxThisBuildVersion}); offering a restart");
-                MuxRestartOfferedForTest?.Invoke(id, key, message, action);
+                MuxNoticeRaisedForTest?.Invoke(new MuxPreviousBuildNotice.Raised(id, null, key, message, action));
                 EnqueueNotice(MuxPreviousBuildNotice.Title, message, action, key);
             }
             finally
@@ -159,11 +163,18 @@ namespace Ntilde
             }
         }
 
-        /// <summary>A restart's outcome, when it did not happen as asked: a line of its own on the toast.</summary>
-        private void RaiseMuxRestartOutcome(string message)
+        /// <summary>
+        /// A restart's outcome, when it did not happen as asked: a line of its own on the toast, worded from
+        /// <paramref name="outcome"/> alone (<see cref="MuxPreviousBuildNotice.Outcome"/>). <paramref name="host"/> is null for
+        /// this computer's daemon.
+        /// </summary>
+        private void RaiseMuxRestartOutcome(MuxEndpointId id, RestartOutcome outcome, string? host)
         {
-            AppLogger.Log($"[MainWindow] multiplexer restart: {message}");
-            EnqueueNotice(MuxPreviousBuildNotice.Title, message, action: null, key: $"{MuxPreviousBuildNotice.Title}\n{message}");
+            string message = MuxPreviousBuildNotice.Outcome(outcome, host);
+            string key = $"{MuxPreviousBuildNotice.Title}\n{message}";
+            AppLogger.Log($"[MainWindow] multiplexer restart on {host ?? "this computer"}: {outcome}");
+            MuxNoticeRaisedForTest?.Invoke(new MuxPreviousBuildNotice.Raised(id, outcome, key, message, null));
+            EnqueueNotice(MuxPreviousBuildNotice.Title, message, action: null, key: key);
         }
 
         /// <summary>
@@ -173,11 +184,12 @@ namespace Ntilde
         /// <item>it asks, naming how many shells the daemon runs - declined, nothing is sent, and the notice stays dismissed;</item>
         /// <item>it stops the daemon (<see cref="ShutdownLocalDaemonAsync"/>: <c>shutdown</c> and up to 5 s for the exit, then
         /// by pid when it is still there or could not be asked, as <c>kill-server --force</c> does). Just before
-        /// <c>shutdown</c> it looks at the daemon the probe reached once more, leaving one of this build alone, and lets this
-        /// window's panes go of their shells (<see cref="LetGoOfLocalShellsForRestart"/>);</item>
+        /// <c>shutdown</c> it looks at what the probe found once more - leaving alone a daemon of this build, one that does
+        /// not answer, or none at all - and this window's panes let go of their shells (<see cref="LetGoOfShellsForRestart"/>);</item>
         /// <item>it warms the host up, without waiting out a failure cooldown, so a daemon of this build starts.</item>
         /// </list>
-        /// Every way it does not happen as asked says why, and every way but a declined question releases the offer.
+        /// Every way it does not happen as asked says why (<see cref="RestartOutcome"/>), every way but a declined question
+        /// releases the offer, and the panes' Enter waits until it is over.
         /// </summary>
         private async Task RestartLocalMuxAsync()
         {
@@ -185,18 +197,19 @@ namespace Ntilde
             MuxEndpointId local = MuxEndpointId.Local;
             if (!MuxPreviousBuildLaunch.TryBeginRestart(local))
             {
-                RaiseMuxRestartOutcome(MuxPreviousBuildNotice.AlreadyRestarting(null));
+                RaiseMuxRestartOutcome(local, RestartOutcome.AlreadyRestarting, null);
                 return;
             }
 
             _muxRestartsRunning++;
             bool declined = false;
+            List<TerminalPane> letGo = [];
             try
             {
                 MuxClient? old = host.CurrentClient;
                 if (old is not null && !MuxPreviousBuildNotice.IsFromAnotherBuild(old.ServerVersion, MuxThisBuildVersion))
                 {
-                    RaiseMuxRestartOutcome(MuxPreviousBuildNotice.NothingToRestart(null, old.ServerVersion));
+                    RaiseMuxRestartOutcome(local, MuxPreviousBuildNotice.NothingToRestart(old.ServerVersion), null);
                     return;
                 }
 
@@ -208,76 +221,80 @@ namespace Ntilde
                 }
 
                 AppLogger.Log("[MainWindow] restarting the multiplexer");
-                string? leftAlone = null;
-                LocalDaemonStop stop = await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), "the restart", (daemon, versionMismatch) =>
+                RestartOutcome? leftAlone = null;
+                LocalDaemonStop stop = await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), "the restart", (daemon, found) =>
                 {
-                    // The last look (review item 3): the daemon about to be stopped must still be another build's.
-                    bool stillAnotherBuild = daemon is null
-                        ? versionMismatch
-                        : MuxPreviousBuildNotice.IsFromAnotherBuild(daemon.ServerVersion, MuxThisBuildVersion);
-                    if (!stillAnotherBuild)
+                    // The last look (review item 3, round 2 M3): what is about to be stopped must still be another build's.
+                    leftAlone = found switch
                     {
-                        leftAlone = daemon is null
-                            ? MuxPreviousBuildNotice.NotRunning
-                            : MuxPreviousBuildNotice.NothingToRestart(null, daemon.ServerVersion);
-                        return false;
-                    }
+                        LocalDaemonProbe.Reached when !MuxPreviousBuildNotice.IsFromAnotherBuild(daemon!.ServerVersion, MuxThisBuildVersion)
+                            => MuxPreviousBuildNotice.NothingToRestart(daemon.ServerVersion),
+                        LocalDaemonProbe.Reached or LocalDaemonProbe.VersionMismatch => null,
+                        LocalDaemonProbe.NotRunning => RestartOutcome.NotRunning,
+                        _ => RestartOutcome.Unreachable,
+                    };
+                    if (leftAlone is not null) return false;
 
-                    LetGoOfLocalShellsForRestart();
+                    letGo.AddRange(LetGoOfShellsForRestart(local));
+                    MuxRestartFaultForTest?.Invoke();
                     return true;
                 });
 
-                if (stop == LocalDaemonStop.LeftAlone)
+                switch (stop)
                 {
-                    RaiseMuxRestartOutcome(leftAlone ?? MuxPreviousBuildNotice.NotRunning);
-                    return;
+                    case LocalDaemonStop.LeftAlone:
+                        RaiseMuxRestartOutcome(local, leftAlone ?? RestartOutcome.NotRunning, null);
+                        return;
+                    case LocalDaemonStop.NotStopped:
+                        RaiseMuxRestartOutcome(local, RestartOutcome.NotStopped, null);
+                        break;
+                    default:
+                        if (stop == LocalDaemonStop.StopUnconfirmed) RaiseMuxRestartOutcome(local, RestartOutcome.StopUnconfirmed, null);
+                        // Its connection drops just after the process is gone: the warm-up must not find it still up.
+                        if (old is not null) await WhenMuxClientDisconnectedAsync(old, TimeSpan.FromSeconds(2));
+                        break;
                 }
 
-                if (stop == LocalDaemonStop.NotConfirmed)
-                {
-                    RaiseMuxRestartOutcome(MuxPreviousBuildNotice.NotStopped);
-                }
-                else if (old is not null)
-                {
-                    // Its connection drops just after the process is gone: the warm-up must not find it still up.
-                    await WhenMuxClientDisconnectedAsync(old, TimeSpan.FromSeconds(2));
-                }
                 host.EndFailureCooldown();
                 host.WarmUp();
             }
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] restarting the multiplexer failed: {ex}");
+                RaiseMuxRestartOutcome(local, RestartOutcome.Failed, null);
             }
             finally
             {
                 if (!declined) MuxPreviousBuildLaunch.ReleaseOffer(local);
                 MuxPreviousBuildLaunch.EndRestart(local);
                 _muxRestartsRunning--;
+                foreach (TerminalPane pane in letGo) pane.EndMuxRestartHold();
             }
         }
 
         /// <summary>
-        /// UI thread, just before the restart sends <c>shutdown</c> (review item 6). The daemon's stop kills every shell, and
-        /// its <c>exited</c> can reach a pane before the connection drops - and an exit takes the exit policy's path, which may
-        /// close the pane, its tab, and rewrite the saved layout. So this window's panes let go of their shells first
-        /// (<see cref="TerminalPane.LetGoOfMuxSessionForRestart"/>): a plain detach, then the "multiplexer disconnected"
-        /// banner, and Enter starts a new shell on the new daemon. The shells are marked ended and the session saved without
-        /// them, as for an update that closes the daemon: the next launch starts fresh shells in the same layout, quietly.
-        /// Another process's windows on the same daemon cannot be reached from here: theirs take whatever the daemon's stop
-        /// delivers.
+        /// UI thread, just before a restart sends <c>shutdown</c> to <paramref name="endpoint"/>'s daemon (review item 6, and
+        /// round 2 item 6 for a remote one). The daemon's stop kills every shell, and its <c>exited</c> can reach a pane before
+        /// the connection drops - an exit takes the exit policy's path, which may close a local pane, its tab, and rewrite the
+        /// saved layout, and makes a remote one claim its SSH session ended. So this window's panes on that endpoint let go of
+        /// their shells first (<see cref="TerminalPane.LetGoOfMuxSessionForRestart"/>): a plain detach, then the banner the
+        /// daemon's end shows anyway, and Enter starts a new shell once the restart is over. They keep no session and no id,
+        /// so the session saved now - and every save after - names none of those shells, and the next launch starts fresh
+        /// ones in the same layout, quietly; nothing is marked ended (round 2 M2), so a shell that outlives a failed stop is
+        /// like any other once reopened. Another process's windows on the same daemon cannot be reached from here: theirs
+        /// take whatever the daemon's stop delivers.
         /// </summary>
-        private void LetGoOfLocalShellsForRestart()
+        private List<TerminalPane> LetGoOfShellsForRestart(MuxEndpointId endpoint)
         {
-            MarkLocalShellsEnded();
-            int letGo = 0;
-            foreach (TerminalPane pane in _paneOwnerTab.Keys)
+            List<TerminalPane> letGo = [];
+            foreach (TerminalPane pane in _paneOwnerTab.Keys.ToList())
             {
-                if (ShowsLocalMuxEndpoint(pane) && pane.LetGoOfMuxSessionForRestart()) letGo++;
+                if (MuxEndpointId.Parse(pane.MuxEndpoint) == endpoint && pane.LetGoOfMuxSessionForRestart()) letGo.Add(pane);
             }
 
             SaveSessionWithoutEndedShells();
-            AppLogger.Log($"[MainWindow] {letGo} pane(s) let go of their shells for the multiplexer restart");
+            AppLogger.Log($"[MainWindow] {letGo.Count} pane(s) let go of their shells for the restart of the multiplexer on {endpoint}");
+            return letGo;
         }
 
         /// <summary>Completes once <paramref name="client"/> has disconnected, or after <paramref name="timeout"/>.</summary>
@@ -292,22 +309,24 @@ namespace Ntilde
         /// <summary>
         /// "Restart ntilde-mux on {host}". UI thread. One restart of that daemon at a time, process-wide; then it needs the
         /// host's connection, and a daemon still of another version, both when it asks and again just before it sends
-        /// <c>shutdown</c> over that connection - nothing else is touched: not the local daemon, not another host's. The
-        /// daemon exits and its proxy with it, so the host reports it stopped and its panes offer Enter, whose connect's
-        /// proxy starts the installed ntilde-mux. Every way it does not happen as asked says why, and every way but a
-        /// declined question releases the offer.
+        /// <c>shutdown</c> over that connection - nothing else is touched: not the local daemon, not another host's. Just
+        /// before, this window's panes on that host let go of their shells (<see cref="LetGoOfShellsForRestart"/>). The daemon
+        /// exits and its proxy with it, so the host reports it stopped, and the panes' Enter - once that connection is gone -
+        /// starts a new shell, whose connect's proxy starts the installed ntilde-mux. Every way it does not happen as asked
+        /// says why (<see cref="RestartOutcome"/>), and every way but a declined question releases the offer.
         /// </summary>
         private async Task RestartRemoteMuxAsync(MuxEndpointId id, string where)
         {
             if (_teardownDone) return;
             if (!MuxPreviousBuildLaunch.TryBeginRestart(id))
             {
-                RaiseMuxRestartOutcome(MuxPreviousBuildNotice.AlreadyRestarting(where));
+                RaiseMuxRestartOutcome(id, RestartOutcome.AlreadyRestarting, where);
                 return;
             }
 
             _muxRestartsRunning++;
             bool declined = false;
+            List<TerminalPane> letGo = [];
             try
             {
                 if (!TryGetRemoteDaemonToRestart(id, where, out MuxConnectionHost? host, out MuxClient? client)) return;
@@ -321,10 +340,12 @@ namespace Ntilde
                 // The last look (review item 3): the question may have taken minutes.
                 if (!TryGetRemoteDaemonToRestart(id, where, out host, out client)) return;
                 AppLogger.Log($"[MainWindow] restarting ntilde-mux on {where}");
+                letGo.AddRange(LetGoOfShellsForRestart(id));
+                MuxRestartFaultForTest?.Invoke();
+                TimeSpan timeout = host.Policy.RpcTimeout;
                 try
                 {
                     // From the pool: on a stalled link the client's send queue may be full, and the send waits for it.
-                    TimeSpan timeout = host.Policy.RpcTimeout;
                     await Task.Run(async () =>
                     {
                         using var cts = new CancellationTokenSource(timeout);
@@ -333,18 +354,25 @@ namespace Ntilde
                 }
                 catch (Exception ex)
                 {
-                    RaiseMuxRestartOutcome(MuxPreviousBuildNotice.ShutdownFailed(where, ex.Message));
+                    AppLogger.Log($"[MainWindow] sending shutdown to ntilde-mux on {where} failed: {ex.Message}");
+                    RaiseMuxRestartOutcome(id, RestartOutcome.ShutdownFailed, where);
+                    return;
                 }
+
+                // Until the daemon's stop ends this connection, a shell started over it would end with the rest.
+                await WhenMuxClientDisconnectedAsync(client, timeout);
             }
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] restarting ntilde-mux on {where} failed: {ex}");
+                RaiseMuxRestartOutcome(id, RestartOutcome.Failed, where);
             }
             finally
             {
                 if (!declined) MuxPreviousBuildLaunch.ReleaseOffer(id);
                 MuxPreviousBuildLaunch.EndRestart(id);
                 _muxRestartsRunning--;
+                foreach (TerminalPane pane in letGo) pane.EndMuxRestartHold();
             }
         }
 
@@ -359,13 +387,13 @@ namespace Ntilde
             client = host?.CurrentClient;
             if (host is null || client is null)
             {
-                RaiseMuxRestartOutcome(MuxPreviousBuildNotice.NotConnected(where));
+                RaiseMuxRestartOutcome(id, RestartOutcome.NotConnected, where);
                 return false;
             }
 
             if (!MuxPreviousBuildNotice.IsFromAnotherBuild(client.ServerVersion, MuxThisBuildVersion))
             {
-                RaiseMuxRestartOutcome(MuxPreviousBuildNotice.NothingToRestart(where, client.ServerVersion));
+                RaiseMuxRestartOutcome(id, MuxPreviousBuildNotice.NothingToRestart(client.ServerVersion), where);
                 return false;
             }
 

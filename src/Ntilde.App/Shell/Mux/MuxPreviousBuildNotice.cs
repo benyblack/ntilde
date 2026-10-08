@@ -25,9 +25,6 @@ internal static class MuxPreviousBuildNotice
     /// <summary>The restart question's confirm button.</summary>
     public const string ConfirmButton = "Restart";
 
-    /// <summary>The local restart sent <c>shutdown</c>, and the daemon neither exited nor could be terminated.</summary>
-    public const string NotStopped = "The old multiplexer could not be stopped; its shells may still be running.";
-
     /// <summary>What ntilde-mux reports when it cannot tell its own version (Task 20): unknown, as none is.</summary>
     private const string UnknownVersion = "0.0.0";
 
@@ -120,45 +117,89 @@ internal static class MuxPreviousBuildNotice
         {
             < 0 => $"All shells running in {where} will be closed.",
             0 => host is null
-                ? "The multiplexer is stopped, and one of this version started."
+                ? "The multiplexer restarts with this version."
                 : $"{where} is stopped; reconnecting starts the installed version.",
             1 => $"1 shell running in {where} will be closed.",
             _ => $"{shells} shells running in {where} will be closed.",
         };
     }
 
-    /// <summary>The local restart's last look reached no daemon at all: nothing to restart.</summary>
-    public const string NotRunning = "The multiplexer is not running; nothing to restart.";
-
     /// <summary>
-    /// A confirmed restart found nothing to restart at its last look: the daemon it reached is this build's after all
-    /// (another window restarted it), or reports no version. <paramref name="host"/> is null for this computer's daemon.
+    /// Why a confirmed restart did not happen as asked (review items 3 and 4, round 2 M3/M4). Every outcome notice is worded
+    /// from one of these by <see cref="Outcome"/> - never from what a daemon said.
     /// </summary>
-    public static string NothingToRestart(string? host, string? daemonVersion)
+    internal enum RestartOutcome
     {
-        if (host is null)
-        {
-            return Known(daemonVersion).Length == 0
-                ? "The multiplexer does not report its build; it was not restarted."
-                : "The multiplexer is already from this build; nothing to restart.";
-        }
+        /// <summary>A restart of that daemon, from this window or another, is still asking or stopping it.</summary>
+        AlreadyRestarting,
 
-        string where = $"ntilde-mux on {RemoteOutputText.Quote(host)}";
-        return Known(daemonVersion).Length == 0
-            ? $"{where} does not report its version; it was not restarted."
-            : $"{where} is already the version this app installs; nothing to restart.";
+        /// <summary>At the last look the daemon is this build's - the version this app installs - after all.</summary>
+        AlreadyThisBuild,
+
+        /// <summary>At the last look the daemon reports no version.</summary>
+        NoVersion,
+
+        /// <summary>At the last look no daemon is advertised and none answers.</summary>
+        NotRunning,
+
+        /// <summary>At the last look a daemon is advertised but does not answer.</summary>
+        Unreachable,
+
+        /// <summary>The host has no connection to send <c>shutdown</c> over.</summary>
+        NotConnected,
+
+        /// <summary><c>shutdown</c> could not be sent, or was not answered.</summary>
+        ShutdownFailed,
+
+        /// <summary>The daemon neither exited after <c>shutdown</c> nor could be terminated.</summary>
+        NotStopped,
+
+        /// <summary><c>shutdown</c> went out, but no descriptor says which process to watch, so the stop cannot be checked.</summary>
+        StopUnconfirmed,
+
+        /// <summary>Something unexpected failed on the way (the log has it).</summary>
+        Failed,
     }
 
-    /// <summary>A second click, from this window or another, while that daemon's restart is still asking or stopping it.</summary>
-    public static string AlreadyRestarting(string? host) =>
-        host is null ? "The multiplexer is already being restarted." : $"ntilde-mux on {RemoteOutputText.Quote(host)} is already being restarted.";
+    /// <summary>The words of <paramref name="outcome"/>, for this computer's daemon (<paramref name="host"/> null) or the one on <paramref name="host"/>.</summary>
+    public static string Outcome(RestartOutcome outcome, string? host)
+    {
+        string it = host is null ? "The multiplexer" : $"ntilde-mux on {RemoteOutputText.Quote(host)}";
+        string old = host is null ? "The old multiplexer" : $"The old ntilde-mux on {RemoteOutputText.Quote(host)}";
+        return outcome switch
+        {
+            RestartOutcome.AlreadyRestarting => $"{it} is already being restarted.",
+            RestartOutcome.AlreadyThisBuild => host is null
+                ? "The multiplexer is already from this build; nothing to restart."
+                : $"{it} is already the version this app installs; nothing to restart.",
+            RestartOutcome.NoVersion => host is null
+                ? "The multiplexer does not report its build; it was not restarted."
+                : $"{it} does not report its version; it was not restarted.",
+            RestartOutcome.NotRunning => $"{it} is not running; nothing to restart.",
+            RestartOutcome.Unreachable => $"{it} could not be reached; nothing was restarted.",
+            RestartOutcome.NotConnected => $"{it} is not connected; it was not restarted.",
+            RestartOutcome.ShutdownFailed => $"{it} could not be told to restart; it keeps running.",
+            RestartOutcome.NotStopped => $"{old} could not be stopped; its shells may still be running.",
+            RestartOutcome.StopUnconfirmed => $"{old} was told to stop, but whether it did could not be checked.",
+            RestartOutcome.Failed => host is null
+                ? "The multiplexer restart failed; see the log."
+                : $"The restart of ntilde-mux on {RemoteOutputText.Quote(host)} failed; see the log.",
+            _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
+        };
+    }
 
-    /// <summary>The remote restart found no connection to send <c>shutdown</c> over.</summary>
-    public static string NotConnected(string host) => $"ntilde-mux on {RemoteOutputText.Quote(host)} is not connected; it was not restarted.";
+    /// <summary>
+    /// The outcome of a daemon found, at the last look, not to be another build's: this build's after all, or one that
+    /// reports no version.
+    /// </summary>
+    public static RestartOutcome NothingToRestart(string? daemonVersion) =>
+        Known(daemonVersion).Length == 0 ? RestartOutcome.NoVersion : RestartOutcome.AlreadyThisBuild;
 
-    /// <summary>The remote restart's <c>shutdown</c> failed: <paramref name="reason"/> may be the server's own words, quoted.</summary>
-    public static string ShutdownFailed(string host, string reason) =>
-        $"ntilde-mux on {RemoteOutputText.Quote(host)} could not be told to restart ({RemoteOutputText.Quote(reason)}); it keeps running.";
+    /// <summary>
+    /// A multiplexer notice as the window raised it (tests: <c>MainWindow.MuxNoticeRaisedForTest</c>): the endpoint it is
+    /// about, the outcome it reports (null for the offer itself), the key it merges by, its words and its action.
+    /// </summary>
+    internal readonly record struct Raised(MuxEndpointId Endpoint, RestartOutcome? Outcome, string Key, string Message, Controls.PersistenceNoticeAction? Action);
 
     private static string Known(string? version)
     {

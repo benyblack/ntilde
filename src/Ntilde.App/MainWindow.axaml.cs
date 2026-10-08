@@ -11133,56 +11133,109 @@ namespace Ntilde
             }
         }
 
+        /// <summary>How the probe before a stop found the local daemon.</summary>
+        private enum LocalDaemonProbe
+        {
+            /// <summary>It answered: there is a connection to it.</summary>
+            Reached,
+
+            /// <summary>None answered, and no descriptor advertises one.</summary>
+            NotRunning,
+
+            /// <summary>One is advertised, but none answered (hung, or just gone).</summary>
+            Unreachable,
+
+            /// <summary>One answered as another protocol version: it cannot be asked anything, only terminated.</summary>
+            VersionMismatch,
+        }
+
         /// <summary>How <see cref="ShutdownLocalDaemonAsync"/> ended.</summary>
         private enum LocalDaemonStop
         {
             /// <summary>The daemon is known to be gone: it exited after <c>shutdown</c>, or was terminated.</summary>
             Gone,
 
-            /// <summary>None was reached, or it could not be confirmed gone.</summary>
-            NotConfirmed,
+            /// <summary>No daemon was reached, and none was there to terminate.</summary>
+            NoneReached,
 
             /// <summary>The restart's last look left the daemon alone: nothing was sent.</summary>
             LeftAlone,
+
+            /// <summary><c>shutdown</c> went out, but no descriptor said which process to watch: the stop cannot be checked.</summary>
+            StopUnconfirmed,
+
+            /// <summary>A daemon was there, and is not known to be gone.</summary>
+            NotStopped,
         }
 
         /// <summary>
         /// Probes for the local daemon and, when one is up, sends it <c>shutdown</c> and waits up to
         /// <paramref name="wait"/> for it to exit (the update path's probe-and-shutdown, shared with Task 17's quit and
-        /// Task 23's restart). Never throws: a daemon that cannot be reached or does not stop is logged, and the caller
-        /// carries on.
+        /// Task 23's restart). A daemon that cannot be reached or does not stop is logged, never thrown; only an exception
+        /// from <paramref name="restart"/> propagates.
         /// </summary>
         /// <param name="purpose">What the caller is doing, for the log ("quitting", "the restart").</param>
         /// <param name="restart">
-        /// Task 23's restart, or null. It is shown the daemon the probe reached - null when none answered, with whether the
-        /// one there speaks another protocol version - just before <c>shutdown</c> would be sent, and false leaves it alone
-        /// (<see cref="LocalDaemonStop.LeftAlone"/>). With it, a daemon still there after the wait, or one that could not be
-        /// asked, is terminated by pid, as <c>kill-server --force</c> does (<see cref="MuxTerminateDaemon"/>).
+        /// Task 23's restart, or null. It is shown the daemon the probe reached (null when none answered) and how the probe
+        /// found it, just before <c>shutdown</c> would be sent, and false leaves it alone (<see cref="LocalDaemonStop.LeftAlone"/>).
+        /// With it, a daemon still there after the wait, or one that could not be asked, is terminated by pid, as
+        /// <c>kill-server --force</c> does (<see cref="MuxTerminateDaemon"/>).
         /// </param>
-        private async System.Threading.Tasks.Task<LocalDaemonStop> ShutdownLocalDaemonAsync(TimeSpan wait, string purpose, Func<Ntilde.Mux.MuxClient?, bool, bool>? restart = null)
+        private async System.Threading.Tasks.Task<LocalDaemonStop> ShutdownLocalDaemonAsync(TimeSpan wait, string purpose, Func<Ntilde.Mux.MuxClient?, LocalDaemonProbe, bool>? restart = null)
         {
             // Read before the shutdown, as the exit wait's is: the daemon deletes its descriptor on the way out.
             Ntilde.Mux.Contracts.MuxEndpointDescriptor? described = restart is not null ? ReadMuxDescriptorBeforeShutdown(purpose) : null;
             (Ntilde.Mux.MuxClient? probed, bool versionMismatch) = await ProbeLocalDaemonAsync(purpose);
+            LocalDaemonProbe found = probed is not null ? LocalDaemonProbe.Reached
+                : versionMismatch ? LocalDaemonProbe.VersionMismatch
+                : described is null ? LocalDaemonProbe.NotRunning
+                : LocalDaemonProbe.Unreachable;
             using (Ntilde.Mux.MuxClient? daemon = probed)
             {
-                if (restart is not null && !restart(daemon, versionMismatch)) return LocalDaemonStop.LeftAlone;
-                if (daemon is not null && await ShutdownMuxDaemonForUpdateAsync(daemon, wait, purpose)) return LocalDaemonStop.Gone;
+                if (restart is not null && !restart(daemon, found)) return LocalDaemonStop.LeftAlone;
+                if (daemon is not null)
+                {
+                    switch (await ShutdownMuxDaemonForUpdateAsync(daemon, wait, purpose))
+                    {
+                        case DaemonShutdown.Exited: return LocalDaemonStop.Gone;
+                        case DaemonShutdown.Unwatched: return LocalDaemonStop.StopUnconfirmed;
+                    }
+                }
+                else if (!versionMismatch && restart is null)
+                {
+                    return LocalDaemonStop.NoneReached;
+                }
             }
 
-            if (described is null) return LocalDaemonStop.NotConfirmed;
+            if (described is null) return LocalDaemonStop.NotStopped;
             try
             {
-                return await Task.Run(() => MuxTerminateDaemon(described)) ? LocalDaemonStop.Gone : LocalDaemonStop.NotConfirmed;
+                return await Task.Run(() => MuxTerminateDaemon(described)) ? LocalDaemonStop.Gone : LocalDaemonStop.NotStopped;
             }
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] terminating the multiplexer (pid {described.Pid}) for {purpose} failed: {ex.Message}");
-                return LocalDaemonStop.NotConfirmed;
+                return LocalDaemonStop.NotStopped;
             }
         }
 
-        private System.Threading.Tasks.Task<bool> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon) =>
+        /// <summary>What sending a daemon <c>shutdown</c> came to (<see cref="ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient, TimeSpan, string)"/>).</summary>
+        private enum DaemonShutdown
+        {
+            /// <summary>Sent, and the process the descriptor names exited.</summary>
+            Exited,
+
+            /// <summary>It could not be sent, or was not answered.</summary>
+            NotSent,
+
+            /// <summary>Sent, but no descriptor says which process to watch.</summary>
+            Unwatched,
+
+            /// <summary>Sent, and the process was still there when the wait ran out.</summary>
+            StillThere,
+        }
+
+        private System.Threading.Tasks.Task<DaemonShutdown> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon) =>
             ShutdownMuxDaemonForUpdateAsync(daemon, System.Threading.Timeout.InfiniteTimeSpan, "the update");
 
         /// <summary>The descriptor, read through <see cref="MuxReadDescriptorForUpdate"/>; null when it cannot be read.</summary>
@@ -11199,11 +11252,8 @@ namespace Ntilde
         /// <param name="daemon">A connection to the daemon.</param>
         /// <param name="wait">How long to wait for the exit on top of the exit seam's own limit; infinite adds none.</param>
         /// <param name="purpose">What the caller is doing, for the log ("the update", "quitting", "the restart").</param>
-        /// <returns>
-        /// True once the daemon is known to have exited; false when <c>shutdown</c> could not be sent, no descriptor says
-        /// which process to wait for, or it was still there when the wait ran out.
-        /// </returns>
-        private async System.Threading.Tasks.Task<bool> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon, TimeSpan wait, string purpose)
+        /// <returns>Whether it went out, and whether the daemon is known to have exited (<see cref="DaemonShutdown"/>).</returns>
+        private async System.Threading.Tasks.Task<DaemonShutdown> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon, TimeSpan wait, string purpose)
         {
             // Read before the shutdown: the daemon deletes its descriptor on the way out,
             // and the pid in it is what says when the process is really gone.
@@ -11216,14 +11266,14 @@ namespace Ntilde
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] mux shutdown before {purpose} failed: {ex.Message}");
-                return false;
+                return DaemonShutdown.NotSent;
             }
 
             // As kill-server does: the apply replaces the executable the daemon runs from,
             // so let it finish exiting first. Awaited, never blocking the UI thread.
             if (before is null)
             {
-                return false;
+                return DaemonShutdown.Unwatched;
             }
 
             bool gone = false;
@@ -11241,7 +11291,7 @@ namespace Ntilde
             }
             catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
             if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; going on with {purpose}");
-            return gone;
+            return gone ? DaemonShutdown.Exited : DaemonShutdown.StillThere;
         }
 
         /// <summary>

@@ -4253,6 +4253,7 @@ namespace Ntilde.Controls
         internal const string MuxVersionMismatchHint = "[The running multiplexer is a different version \u2014 run 'ntilde mux kill-server --force' to replace it]";
         internal const string MuxPreviousLostBanner = "[Previous session was lost \u2014 started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
+        internal const string MuxRestartingBanner = "[The multiplexer is restarting \u2014 the new shell starts once it is back]";
         internal const string MuxUnreachableBanner = "[Multiplexer not reachable \u2014 press Enter to retry]";
         internal const string MuxSessionFailedBanner = "[Multiplexer session failed \u2014 press Enter to start a new shell]";
         internal const string MuxUnavailableNoticeTitle = "Session not persistent";
@@ -4633,24 +4634,59 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
-        /// UI thread. Phase 5 Task 23 (review item 6): the window is about to restart the local daemon this pane's shell runs
-        /// in, which ends the shell. The pane lets go of it first - a plain detach, so the daemon's stop cannot reach it as the
-        /// shell's exit, which would take the exit policy's path and could close the pane - and shows the "multiplexer
-        /// disconnected" banner, as a lost connection does. Nothing is kept to reattach (that shell is about to end): Enter
-        /// starts a new shell, on the new daemon. False when the pane shows no local daemon session.
+        /// UI thread. Phase 5 Task 23 (review item 6, and round 2 item 6 for a remote one): the window is about to restart the
+        /// daemon this pane's shell runs in, which ends the shell. The pane lets go of it first - a plain detach, so the
+        /// daemon's stop cannot reach it as the shell's exit, which would take the exit policy's path (a local pane could close,
+        /// a remote one would claim its SSH session ended) - and shows the banner the daemon's end shows anyway: "multiplexer
+        /// disconnected", or "ntilde-mux on host stopped". It keeps no session and no id (that shell is about to end), so no
+        /// save names it, and Enter starts a new shell. Until <see cref="EndMuxRestartHold"/>, Enter waits (round 2 M1): the
+        /// host still holds the old daemon's connection, and a shell started there would end with the rest. False when the
+        /// pane shows no daemon session.
         /// </summary>
         internal bool LetGoOfMuxSessionForRestart()
         {
-            if (Session is not MuxClientSession mux || FollowsRemoteSession) return false;
-            HandleMuxConnectionLost(mux, MuxDisconnectedBanner, reattach: false);
-            // Also when the connection was already lost (and kept the id to reattach): the shell is about to end either way.
+            if (Session is not MuxClientSession mux) return false;
+            if (FollowsRemoteSession)
+            {
+                EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName), reattachOnReconnect: false);
+            }
+            else
+            {
+                HandleMuxConnectionLost(mux, MuxDisconnectedBanner, reattach: false);
+                _muxConnectionLost = true; // also when it was lost already, and HandleMuxConnectionLost left it as it was
+            }
+
             _muxReattachId = null;
             _muxReattachShared = false;
-            // Keys reach OnKeyDown's reconnect, never a session that no longer delivers anything to this pane.
+            _muxReattachAfterDrop = false;
+            _muxRestartHold = true;
+            _muxReconnectAfterRestart = false;
+            _muxRestartHoldNoted = false;
+            Session = null;
+            _agentRegistration?.SetLifecycle(null);
+            // Keys reach OnKeyDown, never a session that no longer delivers anything to this pane.
             TermView.SetSession(null);
             mux.Detach(userDetached: false);
             return true;
         }
+
+        /// <summary>
+        /// UI thread. The restart that let go of this pane's shell (<see cref="LetGoOfMuxSessionForRestart"/>) is over, however
+        /// it ended: Enter starts a new shell again, and one pressed meanwhile does so now.
+        /// </summary>
+        internal void EndMuxRestartHold()
+        {
+            if (!_muxRestartHold) return;
+            _muxRestartHold = false;
+            if (!_muxReconnectAfterRestart || Volatile.Read(ref _disposed)) return;
+            _muxReconnectAfterRestart = false;
+            Reconnect();
+        }
+
+        /// <summary>Whether a held Enter (<see cref="LetGoOfMuxSessionForRestart"/>) waits for its restart to end. UI thread.</summary>
+        private bool _muxRestartHold;
+        private bool _muxReconnectAfterRestart; // an Enter came while held
+        private bool _muxRestartHoldNoted;      // the held line is written once
 
         /// <summary>UI thread. The daemon or the connection is gone; the shell may still be running there.</summary>
         private void HandleMuxConnectionLost(MuxClientSession source, string banner, bool reattach = true)
@@ -5407,6 +5443,20 @@ namespace Ntilde.Controls
                 e.Handled = true;
                 if (e.Key == Key.Enter) RetryRemoteNow();
                 else if (!IsModifierKey(e.Key)) NoteRemoteInputDropped();
+                return;
+            }
+
+            // Phase 5 Task 23 (round 2 M1): the shell was let go for a restart that is still stopping the old daemon.
+            if (_muxRestartHold && e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                _muxReconnectAfterRestart = true;
+                if (!_muxRestartHoldNoted)
+                {
+                    _muxRestartHoldNoted = true;
+                    WriteBanner($"\x1b[90m{MuxRestartingBanner}\x1b[0m\r\n");
+                }
+
                 return;
             }
 
