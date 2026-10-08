@@ -160,7 +160,13 @@ internal sealed class RemoteMuxConnector : IDisposable
 
         (SshProfile profile, bool pinned, bool retargeted) = ProfileForAttempt();
         string host = DisplayNameOf(profile);
-        string command = RemoteMuxCommand.Proxy(profile.MuxOptions ?? new SshMuxOptions());
+        SshMuxOptions muxOptions = profile.MuxOptions ?? new SshMuxOptions();
+        string command = RemoteMuxCommand.Proxy(muxOptions);
+        if (RemoteMuxCommand.RefusedRecordedPath(muxOptions.RemoteDaemonPath))
+        {
+            _log?.Invoke("[RemoteMux] recorded ntilde-mux path refused (unsafe characters); using the default install path");
+        }
+
         // A native password prompt does not say which hop asks: with jump hops, a remembered password
         // could reach the jump host, so none is remembered or replayed - nor the saved one offered. Nor is the saved
         // password offered to a destination the profile no longer names (retargeted): it is the profile's, for where

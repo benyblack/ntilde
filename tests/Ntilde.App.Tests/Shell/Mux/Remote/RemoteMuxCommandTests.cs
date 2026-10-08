@@ -18,14 +18,22 @@ public sealed class RemoteMuxCommandTests
     [InlineData("/home/nova/.local/share/ntilde/bin/ntilde-mux", "/home/nova/.local/share/ntilde/bin/ntilde-mux proxy --stdio")]
     [InlineData("/opt/ntilde-mux_1.2+b/bin/ntilde-mux", "/opt/ntilde-mux_1.2+b/bin/ntilde-mux proxy --stdio")]
     [InlineData("", ProxyFallback)]
-    [InlineData("/home/a b/x", ProxyFallback)]
-    [InlineData("/x;rm -rf ~", ProxyFallback)]
+    [InlineData("/home/a b/x", "sh -c 'exec \"/home/a b/x\" proxy --stdio'")]
+    [InlineData("/home/José/.local/share/ntilde/bin/ntilde-mux", "sh -c 'exec \"/home/José/.local/share/ntilde/bin/ntilde-mux\" proxy --stdio'")]
+    [InlineData("/home/a$b/x", "sh -c 'exec \"/home/a\\$b/x\" proxy --stdio'")]
+    [InlineData("/home/a`b/x", "sh -c 'exec \"/home/a\\`b/x\" proxy --stdio'")]
+    [InlineData("/home/a\"b/x", "sh -c 'exec \"/home/a\\\"b/x\" proxy --stdio'")]
+    [InlineData("/home/$USER/x", "sh -c 'exec \"/home/\\$USER/x\" proxy --stdio'")]
+    [InlineData("/x;rm -rf ~", "sh -c 'exec \"/x;rm -rf ~\" proxy --stdio'")]
+    [InlineData("/home/a'b/x", ProxyFallback)]
+    [InlineData("/home/a\\b/x", ProxyFallback)]
+    [InlineData("/home/a!b/x", ProxyFallback)]
+    [InlineData("/x/‮evil", ProxyFallback)]
+    [InlineData("/x/a\u0001b", ProxyFallback)]
     [InlineData("relative/x", ProxyFallback)]
     [InlineData("/home/nova//x", ProxyFallback)]
     [InlineData("/home/nova/../root/x", ProxyFallback)]
     [InlineData("/home/it's/x", ProxyFallback)]
-    [InlineData("/home/$USER/x", ProxyFallback)]
-    [InlineData("/home/nova/`id`", ProxyFallback)]
     [InlineData("/home/nova/x\n", ProxyFallback)]
     [InlineData("/", ProxyFallback)]
     public void Remote_command_is_shell_agnostic(string recordedPath, string expected)
@@ -41,7 +49,7 @@ public sealed class RemoteMuxCommandTests
         }
         else
         {
-            Assert.True(RemoteMuxCommand.IsSafeAbsolutePath(recordedPath));
+            Assert.True(RemoteMuxCommand.IsQuotableAbsolutePath(recordedPath));
             Assert.DoesNotContain('\'', command);
             Assert.DoesNotContain('"', command);
         }
@@ -54,14 +62,87 @@ public sealed class RemoteMuxCommandTests
             "/home/nova/.local/share/ntilde/bin/ntilde-mux --version --json",
             RemoteMuxCommand.VersionJson(new SshMuxOptions { RemoteDaemonPath = "/home/nova/.local/share/ntilde/bin/ntilde-mux" }));
         Assert.Equal(
+            "sh -c 'exec \"/x y\" --version --json'",
+            RemoteMuxCommand.VersionJson(new SshMuxOptions { RemoteDaemonPath = "/x y" }));
+        Assert.Equal(
             ProxyFallback.Replace("proxy --stdio", "--version --json", StringComparison.Ordinal),
-            RemoteMuxCommand.VersionJson(new SshMuxOptions { RemoteDaemonPath = "/x;y" }));
+            RemoteMuxCommand.VersionJson(new SshMuxOptions { RemoteDaemonPath = "/x'y" }));
     }
 
     [Fact]
     public void The_fallback_runs_the_default_install_dir()
     {
         Assert.Contains(RemoteInstallDir.Assign + "exec \"$d/ntilde-mux\" ", RemoteMuxCommand.Proxy(new SshMuxOptions()), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/a", true)]
+    [InlineData("/usr/local/bin/ntilde-mux", true)]
+    [InlineData("/home/n.o-v_a/+x", true)]
+    [InlineData("/a b", true)]
+    [InlineData("/a*", true)]
+    [InlineData("/a$b", true)]
+    [InlineData("/hé", true)]
+    [InlineData("", false)]
+    [InlineData("/", false)]
+    [InlineData("a/b", false)]
+    [InlineData("~/x", false)]
+    [InlineData("/a//b", false)]
+    [InlineData("/a/../b", false)]
+    [InlineData("/a\tb", false)]
+    [InlineData("/a\\b", false)]
+    [InlineData("/a'b", false)]
+    [InlineData("/a!b", false)]
+    [InlineData("/a​b", false)]
+    [InlineData("/a‮b", false)]
+    public void IsQuotableAbsolutePath_allows_any_absolute_path_without_the_refused_characters(string path, bool quotable)
+    {
+        Assert.Equal(quotable, RemoteMuxCommand.IsQuotableAbsolutePath(path));
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("/home/nova/x", false)]
+    [InlineData("/home/a b/x", false)]
+    [InlineData("/home/a'b/x", true)]
+    [InlineData("relative/x", true)]
+    [InlineData("/x/‮evil", true)]
+    public void RefusedRecordedPath_is_a_recorded_path_that_is_replaced(string recorded, bool refused)
+    {
+        Assert.Equal(refused, RemoteMuxCommand.RefusedRecordedPath(recorded));
+    }
+
+    [Theory]
+    [InlineData("a b")]
+    [InlineData("a$b c")]
+    [InlineData("a`b`")]
+    [InlineData("a\"b")]
+    [InlineData("Jósé $HOME `id`")]
+    public void A_quoted_recorded_path_runs_that_exact_file_under_sh(string dirName)
+    {
+        PosixShell.Require();
+        string root = Path.Combine(Path.GetTempPath(), "ntilde-quote-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string script = Path.Combine(root, dirName, "ntilde-mux");
+            if (OperatingSystem.IsWindows() && dirName.Contains('"'))
+            {
+                Assert.Skip("Windows file names cannot hold a double quote.");
+            }
+
+            PosixShell.WriteEchoScript(script);
+            string recorded = PosixShell.ToShellPath(script);
+            string command = RemoteMuxCommand.Proxy(new SshMuxOptions { RemoteDaemonPath = recorded });
+
+            (int exit, string stdout, string stderr) = PosixShell.Run(command, new Dictionary<string, string?> { ["HOME"] = "/nonexistent" });
+
+            Assert.True(exit == 0, $"{command}: {stderr}");
+            Assert.Equal($"[{recorded}] proxy --stdio", stdout.Trim());
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
     }
 
     [Theory]
@@ -92,25 +173,5 @@ public sealed class RemoteMuxCommandTests
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
-    }
-
-    [Theory]
-    [InlineData("/a", true)]
-    [InlineData("/usr/local/bin/ntilde-mux", true)]
-    [InlineData("/home/n.o-v_a/+x", true)]
-    [InlineData("", false)]
-    [InlineData("/", false)]
-    [InlineData("a/b", false)]
-    [InlineData("~/x", false)]
-    [InlineData("/a//b", false)]
-    [InlineData("/a/../b", false)]
-    [InlineData("/a b", false)]
-    [InlineData("/a\tb", false)]
-    [InlineData("/a*", false)]
-    [InlineData("/a\\b", false)]
-    [InlineData("/h\u00e9", false)]
-    public void IsSafeAbsolutePath_allows_only_plain_absolute_paths(string path, bool safe)
-    {
-        Assert.Equal(safe, RemoteMuxCommand.IsSafeAbsolutePath(path));
     }
 }
