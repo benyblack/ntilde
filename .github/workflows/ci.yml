@@ -1542,6 +1542,13 @@ jobs:
           # linux_packaging_detect, which this job deliberately mirrors.
           fetch-depth: 0
 
+      - name: Self-test the AOT gate path filter
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/aot_gate_paths_tests.py
+
       # Dependency-free path filter, matching linux_packaging_detect rather than
       # introducing a third-party action this repo uses nowhere.
       #
@@ -1581,18 +1588,17 @@ jobs:
           changed="$(git diff --name-only "$base"...HEAD)"
           echo "Changed files vs merge base:"
           echo "$changed"
-          # Here-string, not `echo | grep`: under pipefail a changed-file list bigger than
-          # the pipe buffer makes echo take SIGPIPE, the pipeline non-zero, this `if` false,
-          # and the gate skip itself SILENTLY. Same trap linux_packaging_detect calls out.
-          # scripts/mux-daemon-smoke.sh: mux_daemon_aot and mux_daemon_no_openssl run it, so an
-          # edit to it alone must run them.
-          if grep -qE '^(src/|Directory\.(Build|Packages)\.props$|global\.json$|\.github/workflows/[^/]+\.ya?ml$|scripts/mux-daemon-smoke\.sh$)' <<<"$changed"; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "Production sources or build inputs changed - running the AOT gate."
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Nothing under src/ or the build inputs changed - skipping the AOT gate."
-          fi
+          # The path rule lives in scripts/ci/aot-gate-paths.sh (self-tested by the step above),
+          # so it is a directory rule with one place to read it. It reads the changed paths on
+          # stdin, as a here-string rather than `echo |` for the SIGPIPE reason
+          # linux_packaging_detect calls out, and prints run=true or run=false.
+          # Beyond src/ and the build inputs it covers the test directories that feed
+          # native_ssh_docker_e2e: that job needs the linux-x64 ntilde-mux binary this gate
+          # builds, and without it the remote-persistence step skips with a notice and stays
+          # green, so a PR changing only those tests never ran them.
+          result="$(bash scripts/ci/aot-gate-paths.sh <<<"$changed")"
+          echo "$result" >> "$GITHUB_OUTPUT"
+          echo "AOT gate decision: $result"
 
   aot_gate:
     name: AOT Gate (windows-latest)
