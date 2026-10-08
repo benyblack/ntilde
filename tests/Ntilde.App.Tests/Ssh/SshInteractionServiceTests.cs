@@ -219,7 +219,10 @@ public sealed class SshInteractionServiceTests
             ProfileId = Guid.Parse("531365f9-b488-4475-ab7d-7221e5056cae"),
             ProfileName = "Native Prod",
             ProfileUser = "alice",
-            ProfileHost = "example.internal"
+            ProfileHost = "example.internal",
+            Host = "example.internal",
+            Port = 22,
+            User = "alice"
         }, CancellationToken.None);
 
         Assert.NotNull(capturedVm);
@@ -267,16 +270,7 @@ public sealed class SshInteractionServiceTests
                 return Task.FromResult(SshInteractionResponse.FromSecret("manual-secret", rememberPasswordInVault: true));
             });
 
-        var response = await service.HandleAsync(new SshInteractionRequest
-        {
-            Kind = SshInteractionKind.Password,
-            Prompt = "Password:",
-            ProfileId = profile.Id,
-            ProfileName = profile.Name,
-            ProfileUser = profile.SshUser,
-            ProfileHost = profile.SshHost,
-            AllowVaultPasswordReuse = false
-        }, CancellationToken.None);
+        var response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
         Assert.Equal("manual-secret", response.Secret);
         Assert.Equal("manual-secret", vault.GetSshPasswordForProfile(profile));
@@ -300,16 +294,7 @@ public sealed class SshInteractionServiceTests
             authPresenter: (_, _, _) =>
                 Task.FromResult(SshInteractionResponse.FromSecret("manual-secret")));
 
-        var response = await service.HandleAsync(new SshInteractionRequest
-        {
-            Kind = SshInteractionKind.Password,
-            Prompt = "Password:",
-            ProfileId = profile.Id,
-            ProfileName = profile.Name,
-            ProfileUser = profile.SshUser,
-            ProfileHost = profile.SshHost,
-            AllowVaultPasswordReuse = false
-        }, CancellationToken.None);
+        var response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
         Assert.Equal("manual-secret", response.Secret);
         Assert.Null(vault.GetSshPasswordForProfile(profile));
@@ -319,36 +304,27 @@ public sealed class SshInteractionServiceTests
     public async Task NativePasswordRequests_StoreSubmittedPassword_InRuntimeSessionCache()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var registry = new ActiveSshSessionRegistry();
         Guid sessionId = Guid.Parse("6e392be4-b615-496f-b1f6-c559d7f4c4f3");
-        Guid profileId = Guid.Parse("b15431d2-30e6-46de-99cd-c984f4995aaf");
-        ActiveSshSessionRegistry.Instance.Unregister(sessionId);
-        ActiveSshSessionRegistry.Instance.Register(new ActiveSshSessionDescriptor(
+        TerminalProfile profile = CreateProfile("b15431d2-30e6-46de-99cd-c984f4995aaf");
+        registry.Register(new ActiveSshSessionDescriptor(
             sessionId,
-            profileId,
+            profile.Id,
             Ntilde.Platform.Ssh.Models.SshBackendKind.Native));
 
         var service = new SshInteractionService(
             vaultService: vault,
+            sessionRegistry: registry,
             authPresenter: (_, _, _) =>
                 Task.FromResult(SshInteractionResponse.FromSecret("manual-secret")));
 
-        SshInteractionResponse response = await service.HandleAsync(new SshInteractionRequest
-        {
-            Kind = SshInteractionKind.Password,
-            Prompt = "Password:",
-            SessionId = sessionId,
-            ProfileId = profileId,
-            ProfileName = "Native Prod",
-            ProfileUser = "alice",
-            ProfileHost = "example.internal",
-            AllowVaultPasswordReuse = false
-        }, CancellationToken.None);
+        SshInteractionResponse response = await service.HandleAsync(
+            TargetPasswordRequest(profile, sessionId),
+            CancellationToken.None);
 
         Assert.Equal("manual-secret", response.Secret);
-        Assert.True(ActiveSshSessionRegistry.Instance.TryGetRuntimePassword(sessionId, out string? password));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out string? password));
         Assert.Equal("manual-secret", password);
-
-        ActiveSshSessionRegistry.Instance.Unregister(sessionId);
     }
 
     [Fact]
@@ -370,16 +346,7 @@ public sealed class SshInteractionServiceTests
             authPresenter: (_, _, _) =>
                 Task.FromResult(SshInteractionResponse.FromSecret("manual-secret")));
 
-        var response = await service.HandleAsync(new SshInteractionRequest
-        {
-            Kind = SshInteractionKind.Password,
-            Prompt = "Password:",
-            ProfileId = profile.Id,
-            ProfileName = profile.Name,
-            ProfileUser = profile.SshUser,
-            ProfileHost = profile.SshHost,
-            AllowVaultPasswordReuse = false
-        }, CancellationToken.None);
+        var response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
 
         Assert.Equal("manual-secret", response.Secret);
         Assert.Equal("vault-secret", vault.GetSshPasswordForProfile(profile));
@@ -408,16 +375,9 @@ public sealed class SshInteractionServiceTests
                 return Task.FromResult(SshInteractionResponse.Cancel());
             });
 
-        var response = await service.HandleAsync(new SshInteractionRequest
-        {
-            Kind = SshInteractionKind.Password,
-            Prompt = "Password:",
-            ProfileId = profile.Id,
-            ProfileName = profile.Name,
-            ProfileUser = profile.SshUser,
-            ProfileHost = profile.SshHost,
-            AllowVaultPasswordReuse = true
-        }, CancellationToken.None);
+        var response = await service.HandleAsync(
+            TargetPasswordRequest(profile, allowVaultPasswordReuse: true),
+            CancellationToken.None);
 
         Assert.Equal(0, promptCount);
         Assert.Equal("vault-secret", response.Secret);
@@ -448,16 +408,9 @@ public sealed class SshInteractionServiceTests
                 return Task.FromResult(SshInteractionResponse.Cancel());
             });
 
-        var response = await service.HandleAsync(new SshInteractionRequest
-        {
-            Kind = SshInteractionKind.Password,
-            Prompt = "Password:",
-            ProfileId = profile.Id,
-            ProfileName = profile.Name,
-            ProfileUser = profile.SshUser,
-            ProfileHost = profile.SshHost,
-            AllowVaultPasswordReuse = true
-        }, CancellationToken.None);
+        var response = await service.HandleAsync(
+            TargetPasswordRequest(profile, allowVaultPasswordReuse: true),
+            CancellationToken.None);
 
         Assert.Equal(0, promptCount);
         Assert.Equal("legacy-secret", response.Secret);
@@ -486,6 +439,184 @@ public sealed class SshInteractionServiceTests
                 return Task.FromResult(SshInteractionResponse.FromSecret("manual-secret"));
             });
 
+        SshInteractionResponse response = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
+
+        Assert.Equal("manual-secret", response.Secret);
+        Assert.Equal(1, promptCount);
+    }
+
+    // ---- jump chains: a password only ever reaches the server it belongs to ----
+
+    [AvaloniaFact]
+    public async Task JumpHopPasswordPrompt_IsNeverAnsweredWithTheTargetsSavedPassword()
+    {
+        // The reported leak: the first password prompt of a chain comes from the bastion, and the
+        // profile's saved (target) password was auto-sent to it. Even with reuse allowed on the
+        // request, a jump hop's prompt must go to the user.
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        TerminalProfile profile = CreateProfile("0f8a6f55-4bd8-4f6e-8a5b-1c2f0ad9e101");
+        vault.SetSshPasswordForProfile(profile, "target-vault-secret");
+
+        int promptCount = 0;
+        var service = new SshInteractionService(
+            vaultService: vault,
+            sessionRegistry: new ActiveSshSessionRegistry(),
+            authPresenter: (_, _, _) =>
+            {
+                promptCount++;
+                return Task.FromResult(SshInteractionResponse.FromSecret("bastion-secret"));
+            });
+
+        SshInteractionResponse response = await service.HandleAsync(
+            JumpHopPasswordRequest(profile, allowVaultPasswordReuse: true),
+            CancellationToken.None);
+
+        Assert.Equal(1, promptCount);
+        Assert.Equal("bastion-secret", response.Secret);
+    }
+
+    [AvaloniaFact]
+    public async Task JumpHopPassword_IsNeverRememberedAsTheTargetsPassword()
+    {
+        // The other half of the leak: "remember" on the bastion's prompt saved the bastion's
+        // password under the TARGET's vault key.
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        TerminalProfile profile = CreateProfile("6c1b8f0e-2a7d-4f39-9d8e-4b1a2c3d4e02");
+        vault.SetSshPasswordForProfile(profile, "target-vault-secret");
+
+        var service = new SshInteractionService(
+            vaultService: vault,
+            sessionRegistry: new ActiveSshSessionRegistry(),
+            authPresenter: (_, _, _) =>
+                Task.FromResult(SshInteractionResponse.FromSecret("bastion-secret", rememberPasswordInVault: true)));
+
+        await service.HandleAsync(JumpHopPasswordRequest(profile), CancellationToken.None);
+
+        Assert.Equal("target-vault-secret", vault.GetSshPasswordForProfile(profile));
+    }
+
+    [AvaloniaFact]
+    public async Task JumpHopPasswordPrompt_DoesNotOfferRemember_AndNamesTheJumpHost()
+    {
+        AuthPromptViewModel? capturedVm = null;
+        var service = new SshInteractionService(
+            vaultService: new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore()),
+            sessionRegistry: new ActiveSshSessionRegistry(),
+            authPresenter: (_, vm, _) =>
+            {
+                capturedVm = vm;
+                return Task.FromResult(SshInteractionResponse.Cancel());
+            });
+
+        await service.HandleAsync(
+            JumpHopPasswordRequest(CreateProfile("a4d0e6a1-7c55-4a0b-9f63-1f2e3d4c5b03")),
+            CancellationToken.None);
+
+        Assert.NotNull(capturedVm);
+        Assert.False(capturedVm!.CanRememberPassword);
+        Assert.Contains("jump host jump@bastion.internal:2200", capturedVm.Message, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public async Task TargetPasswordPrompt_NamesTheTargetItAuthenticates()
+    {
+        AuthPromptViewModel? capturedVm = null;
+        var service = new SshInteractionService(
+            vaultService: new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore()),
+            sessionRegistry: new ActiveSshSessionRegistry(),
+            authPresenter: (_, vm, _) =>
+            {
+                capturedVm = vm;
+                return Task.FromResult(SshInteractionResponse.Cancel());
+            });
+
+        await service.HandleAsync(
+            TargetPasswordRequest(CreateProfile("d2b7c1e4-3f5a-4e6b-8c9d-0a1b2c3d4e04")),
+            CancellationToken.None);
+
+        Assert.NotNull(capturedVm);
+        Assert.True(capturedVm!.CanRememberPassword);
+        Assert.Contains("alice@example.internal", capturedVm.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("jump host", capturedVm.Message, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public async Task BastionPasswordTypedInASession_IsNotReplayedToTheTarget()
+    {
+        // The runtime cache used to be keyed by session alone, so the password typed for the
+        // bastion was auto-sent to the next prompt — the target's.
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        TerminalProfile profile = CreateProfile("7e3f9a2b-1c4d-4e5f-8a6b-9c0d1e2f3a05");
+        var answers = new Queue<string>(["bastion-secret", "target-secret"]);
+        int promptCount = 0;
+        var service = new SshInteractionService(
+            vaultService: new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore()),
+            sessionRegistry: registry,
+            authPresenter: (_, _, _) =>
+            {
+                promptCount++;
+                return Task.FromResult(SshInteractionResponse.FromSecret(answers.Dequeue()));
+            });
+
+        SshInteractionResponse bastion = await service.HandleAsync(
+            JumpHopPasswordRequest(profile, sessionId),
+            CancellationToken.None);
+        SshInteractionResponse target = await service.HandleAsync(
+            TargetPasswordRequest(profile, sessionId),
+            CancellationToken.None);
+
+        Assert.Equal(2, promptCount);
+        Assert.Equal("bastion-secret", bastion.Secret);
+        Assert.Equal("target-secret", target.Secret);
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", out string? heldForBastion));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out string? heldForTarget));
+        Assert.Equal("bastion-secret", heldForBastion);
+        Assert.Equal("target-secret", heldForTarget);
+    }
+
+    [AvaloniaFact]
+    public async Task RuntimePassword_IsReplayedToTheServerItWasEnteredFor()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        TerminalProfile profile = CreateProfile("3a9c7e1f-5b2d-4c8e-9f0a-1b2c3d4e5f06");
+        registry.SetRuntimePassword(sessionId, "bastion.internal", 2200, "jump", "bastion-secret");
+        int promptCount = 0;
+        var service = new SshInteractionService(
+            vaultService: new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore()),
+            sessionRegistry: registry,
+            authPresenter: (_, _, _) =>
+            {
+                promptCount++;
+                return Task.FromResult(SshInteractionResponse.Cancel());
+            });
+
+        SshInteractionResponse response = await service.HandleAsync(
+            JumpHopPasswordRequest(profile, sessionId),
+            CancellationToken.None);
+
+        Assert.Equal(0, promptCount);
+        Assert.Equal("bastion-secret", response.Secret);
+    }
+
+    [AvaloniaFact]
+    public async Task PasswordPrompt_ThatDoesNotNameItsServer_IsNeverFilledFromTheVault()
+    {
+        // Fail closed: a prompt that cannot say which server is asking might be any of them.
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        TerminalProfile profile = CreateProfile("8b4d2f6a-9e1c-4a3b-8d7e-6f5a4b3c2d07");
+        vault.SetSshPasswordForProfile(profile, "target-vault-secret");
+        int promptCount = 0;
+        var service = new SshInteractionService(
+            vaultService: vault,
+            sessionRegistry: new ActiveSshSessionRegistry(),
+            authPresenter: (_, _, _) =>
+            {
+                promptCount++;
+                return Task.FromResult(SshInteractionResponse.FromSecret("manual-secret"));
+            });
+
         SshInteractionResponse response = await service.HandleAsync(new SshInteractionRequest
         {
             Kind = SshInteractionKind.Password,
@@ -494,11 +625,69 @@ public sealed class SshInteractionServiceTests
             ProfileName = profile.Name,
             ProfileUser = profile.SshUser,
             ProfileHost = profile.SshHost,
-            AllowVaultPasswordReuse = false
+            AllowVaultPasswordReuse = true
         }, CancellationToken.None);
 
-        Assert.Equal("manual-secret", response.Secret);
         Assert.Equal(1, promptCount);
+        Assert.Equal("manual-secret", response.Secret);
+    }
+
+    private static TerminalProfile CreateProfile(string id)
+    {
+        return new TerminalProfile
+        {
+            Id = Guid.Parse(id),
+            Type = ConnectionType.SSH,
+            Name = "Native Prod",
+            SshHost = "example.internal",
+            SshUser = "alice"
+        };
+    }
+
+    /// <summary>A password prompt from the profile's final target, as NativeSshSession builds it.</summary>
+    private static SshInteractionRequest TargetPasswordRequest(
+        TerminalProfile profile,
+        Guid? sessionId = null,
+        bool allowVaultPasswordReuse = false)
+    {
+        return new SshInteractionRequest
+        {
+            Kind = SshInteractionKind.Password,
+            Prompt = "Password:",
+            SessionId = sessionId,
+            ProfileId = profile.Id,
+            ProfileName = profile.Name,
+            ProfileUser = profile.SshUser,
+            ProfileHost = profile.SshHost,
+            AllowVaultPasswordReuse = allowVaultPasswordReuse,
+            Host = profile.SshHost,
+            Port = 22,
+            User = profile.SshUser,
+            IsJumpHop = false
+        };
+    }
+
+    /// <summary>A password prompt from a bastion in front of the profile's target.</summary>
+    private static SshInteractionRequest JumpHopPasswordRequest(
+        TerminalProfile profile,
+        Guid? sessionId = null,
+        bool allowVaultPasswordReuse = false)
+    {
+        return new SshInteractionRequest
+        {
+            Kind = SshInteractionKind.Password,
+            Prompt = "Password:",
+            SessionId = sessionId,
+            ProfileId = profile.Id,
+            ProfileName = profile.Name,
+            ProfileUser = profile.SshUser,
+            ProfileHost = profile.SshHost,
+            AllowVaultPasswordReuse = allowVaultPasswordReuse,
+            Host = "bastion.internal",
+            Port = 2200,
+            User = "jump",
+            IsJumpHop = true
+        };
     }
 
     [Fact]

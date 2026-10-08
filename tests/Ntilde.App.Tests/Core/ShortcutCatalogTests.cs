@@ -7,7 +7,7 @@ public sealed class ShortcutCatalogTests
     [Fact]
     public void GetDefinitions_IncludesSettingsPaneAndCommandAssistBindings()
     {
-        IReadOnlyList<ShortcutDefinition> definitions = ShortcutCatalog.GetDefinitions();
+        IReadOnlyList<ShortcutDefinition> definitions = ShortcutCatalog.GetDefinitions(isMacOS: false);
 
         Assert.Contains(definitions, definition => definition.CommandId == "settings" && definition.Scope == ShortcutScope.App);
         Assert.Contains(definitions, definition => definition.CommandId == "command_assist_toggle" && definition.Scope == ShortcutScope.CommandAssist);
@@ -18,7 +18,7 @@ public sealed class ShortcutCatalogTests
     public void GetEntries_ExposesDisplayMetadataForSettingsBinding()
     {
         ShortcutCatalogEntry settingsEntry = Assert.Single(
-            ShortcutCatalog.GetEntries(),
+            ShortcutCatalog.GetEntries(isMacOS: false),
             entry => entry.CommandId == "settings");
 
         Assert.Equal("Settings", settingsEntry.Title);
@@ -30,10 +30,10 @@ public sealed class ShortcutCatalogTests
     public void GetEntries_IncludesMoveTabShortcuts_WithPageKeyDefaults()
     {
         ShortcutCatalogEntry prev = Assert.Single(
-            ShortcutCatalog.GetEntries(),
+            ShortcutCatalog.GetEntries(isMacOS: false),
             entry => entry.CommandId == "move_tab_prev");
         ShortcutCatalogEntry next = Assert.Single(
-            ShortcutCatalog.GetEntries(),
+            ShortcutCatalog.GetEntries(isMacOS: false),
             entry => entry.CommandId == "move_tab_next");
 
         Assert.Equal("Tab: Move Previous", prev.Title);

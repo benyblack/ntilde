@@ -117,6 +117,7 @@ Applies semantic operations to terminal state. Maintains cursor, modes, tab stop
 - Scrollback is immutable once flushed
 - Buffer state is renderer-agnostic — no Skia, no Avalonia in the type surface
 - All read access requires holding `TerminalBuffer.Lock` (`ReaderWriterLockSlim`); reads without the lock throw `AssertLockHeld`
+- Every write-lock acquisition goes through `AcquireWriteLock()`; one that has to block runs inside the host-supplied `TerminalBuffer.BlockingWriteWaitScope`. VT owns that routing; the wait policy and any native wait belong to the host (VT declares no P/Invoke — `Vt_declares_no_native_interop`)
 
 #### `TerminalRow` / `TerminalCell`
 
@@ -198,6 +199,7 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 - Command palette + command-assist (in-process shell-integration helpers)
 - The Agent Output panel (`AgentOutput/`): tracks the current command's output region and renders it as markdown into an Avalonia control tree. Parsing is Markdig; the control-tree rendering is this assembly's own `MarkdownRenderer`
 - Pane resizing (pixel → row/col calculation)
+- The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 ### Non-Responsibilities
 - VT parsing (delegated to VT)

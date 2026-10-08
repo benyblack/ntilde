@@ -61,6 +61,11 @@ namespace Ntilde.VT
         private List<char> _apcStringBuffer = new List<char>();
         private List<char> _dcsStringBuffer = new List<char>();
         private System.Text.StringBuilder _kittyPayloadBuffer = new System.Text.StringBuilder();
+
+        // Clear() keeps a buffer's capacity, so one inline image used to pin its megabytes of
+        // chars for the life of the pane. A buffer that grew past this is replaced instead; short
+        // sequences (titles, cwd, hyperlinks) keep reusing theirs.
+        private const int RetainedStringBufferChars = 64 * 1024;
         private bool _kittyPayloadOverflow; // set once a chunked Kitty payload exceeds the cap
         private Dictionary<string, string> _kittyPendingParams = new();
         private readonly bool _isConPtyFilteringLikely;
@@ -162,6 +167,12 @@ namespace Ntilde.VT
         private const int Osc52MaxDecodedBytes = 1024 * 1024;
 
         /// <summary>
+        /// Length cap on OSC 9 notification text (issue #271): the host's toast stays a
+        /// compact single line, so longer text is flattened and elided with "…".
+        /// </summary>
+        private const int Osc9MaxNotificationChars = 200;
+
+        /// <summary>
         /// The legal xterm OSC 52 selection alphabet: c = clipboard, p = primary, q = secondary,
         /// s = select, 0-7 = cut buffers. Used to sanitize the targets string before it is echoed
         /// back in a query-denial reply - see <see cref="SanitizeEchoParameter"/>.
@@ -232,6 +243,25 @@ namespace Ntilde.VT
         public Action? OnBell { get; set; }
         public Action<string>? OnWorkingDirectoryChanged { get; set; }
         public Action<string>? OnTitleChanged { get; set; }
+
+        /// <summary>
+        /// Raised when an OSC 9 desktop-notification sequence (issue #271) arrives:
+        /// <c>OSC 9 ; text ST/BEL</c> (ConEmu-style, as emitted by Claude Code). The parser
+        /// only flattens and caps the text; whether to surface a notification (settings gate,
+        /// focus policy) and how to show it are the App layer's call — the same split as
+        /// <see cref="OnClipboardWrite"/>.
+        /// </summary>
+        public Action<string>? OnDesktopNotification { get; set; }
+
+        /// <summary>
+        /// Raised when an OSC 9;4 progress sequence (issue #271) arrives:
+        /// <c>OSC 9 ; 4 ; state [; progress] ST/BEL</c>. <paramref name="state"/> is the raw
+        /// integer: 0 removes the indication, 1 normal, 2 error, 3 indeterminate, 4 paused.
+        /// <paramref name="percent"/> is 0–100 (clamped), or <see langword="null"/> when the
+        /// sequence omitted it — legal for indeterminate. Where the progress renders (tab
+        /// header, taskbar) is the App layer's call.
+        /// </summary>
+        public Action<int, int?>? OnProgressReported { get; set; }
 
         /// <summary>
         /// Raised when an OSC 52 clipboard-write sequence (issue #268) decodes successfully:
@@ -458,6 +488,24 @@ namespace Ntilde.VT
             _csiTruncated = false;
         }
 
+        /// <summary>
+        /// The finished sequence as a string, built straight from the list's storage (no ToArray
+        /// copy), leaving <paramref name="buffer"/> empty and, if it grew large, freshly allocated.
+        /// </summary>
+        private static string TakeSequence(ref List<char> buffer)
+        {
+            string sequence = new string(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(buffer));
+            if (buffer.Capacity > RetainedStringBufferChars) buffer = new List<char>();
+            else buffer.Clear();
+            return sequence;
+        }
+
+        private void ResetKittyPayloadBuffer()
+        {
+            if (_kittyPayloadBuffer.Capacity > RetainedStringBufferChars) _kittyPayloadBuffer = new System.Text.StringBuilder();
+            else _kittyPayloadBuffer.Clear();
+        }
+
         private void BeginOsc()
         {
             _state = State.Osc;
@@ -674,7 +722,7 @@ namespace Ntilde.VT
                             case State.Osc:
                                 if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleOsc(new string(_oscStringBuffer.ToArray()));
+                                    HandleOsc(TakeSequence(ref _oscStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else if (c == '\x1b')
@@ -691,7 +739,7 @@ namespace Ntilde.VT
                             case State.OscEsc:
                                 if (c == '\\')
                                 {
-                                    HandleOsc(new string(_oscStringBuffer.ToArray()));
+                                    HandleOsc(TakeSequence(ref _oscStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -710,7 +758,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleDcs(new string(_dcsStringBuffer.ToArray()));
+                                    HandleDcs(TakeSequence(ref _dcsStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -723,7 +771,7 @@ namespace Ntilde.VT
                             case State.DcsEsc:
                                 if (c == '\\')
                                 {
-                                    HandleDcs(new string(_dcsStringBuffer.ToArray()));
+                                    HandleDcs(TakeSequence(ref _dcsStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -740,7 +788,7 @@ namespace Ntilde.VT
                                 }
                                 else if (c == '\a' || c == '\u009C')
                                 {
-                                    HandleApc(new string(_apcStringBuffer.ToArray()));
+                                    HandleApc(TakeSequence(ref _apcStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -753,7 +801,7 @@ namespace Ntilde.VT
                             case State.ApcEsc:
                                 if (c == '\\')
                                 {
-                                    HandleApc(new string(_apcStringBuffer.ToArray()));
+                                    HandleApc(TakeSequence(ref _apcStringBuffer));
                                     _state = State.Normal;
                                 }
                                 else
@@ -2424,6 +2472,73 @@ namespace Ntilde.VT
                 return;
             }
 
+            // OSC 9: desktop notification / progress reporting (issue #271, ConEmu-style;
+            // Claude Code emits both). Two shapes share the code:
+            //   OSC 9 ; <text>                -> desktop notification with that text
+            //   OSC 9 ; 4 ; <state> [; <pct>] -> progress: 0 removes, 1 normal, 2 error,
+            //      3 indeterminate, 4 paused; pct is 0-100 and may be omitted (null).
+            // The "4;" prefix is what distinguishes them: a bare "4" with no semicolon
+            // after it is notification text, not a progress payload (ConEmu requires the
+            // state parameter). The text is flattened to one line and capped so a
+            // misbehaving program cannot push a wall of text at the toast; everything
+            // else about showing either shape (settings, focus policy) is the App's
+            // call, same split as OSC 52.
+            if (code == "9")
+            {
+                if (data.StartsWith("4;", StringComparison.Ordinal))
+                {
+                    // state is mandatory; a payload without one (e.g. "4;") is dropped
+                    // rather than guessed at.
+                    string[] progressParts = data.Split(';');
+                    if (progressParts.Length >= 2 &&
+                        int.TryParse(progressParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int progressState))
+                    {
+                        int? percent = null;
+                        if (progressParts.Length >= 3 &&
+                            int.TryParse(progressParts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int rawPercent))
+                        {
+                            percent = Math.Clamp(rawPercent, 0, 100);
+                        }
+
+                        OnProgressReported?.Invoke(progressState, percent);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(data))
+                {
+                    // One line, no stray controls. BEL/0x9C/ESC terminate the sequence,
+                    // but anything else — TAB, NEL, other C0/C1 — reaches here and would
+                    // land in the host's toast verbatim. Every surviving control becomes
+                    // a space; CRLF collapses to one (the \r is dropped ahead of its \n).
+                    var textBuilder = new StringBuilder(data.Length);
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        char ch = data[i];
+                        if (ch == '\r' && i + 1 < data.Length && data[i + 1] == '\n')
+                        {
+                            continue;
+                        }
+
+                        textBuilder.Append(char.IsControl(ch) ? ' ' : ch);
+                    }
+
+                    string text = textBuilder.ToString().Trim();
+                    if (text.Length == 0)
+                    {
+                        // Controls-only payload: sanitization left nothing to say.
+                        return;
+                    }
+
+                    if (text.Length > Osc9MaxNotificationChars)
+                    {
+                        text = text[..(Osc9MaxNotificationChars - 1)] + "…";
+                    }
+
+                    OnDesktopNotification?.Invoke(text);
+                }
+
+                return;
+            }
+
             // OSC 10/11: dynamic foreground/background color queries.
             // Query form is "10;?" / "11;?" (BEL and ST termination are both already
             // normalized away by the caller before HandleOsc ever sees this string).
@@ -2930,7 +3045,7 @@ namespace Ntilde.VT
                 // remember to skip the (truncated, undecodable) payload at the terminator
                 // instead of spending CPU base64-decoding garbage.
                 _kittyPayloadOverflow = true;
-                _kittyPayloadBuffer.Clear();
+                ResetKittyPayloadBuffer();
             }
 
             // Check if more chunks are coming (m=1)
@@ -3262,7 +3377,7 @@ namespace Ntilde.VT
 
         private void ClearKittyState()
         {
-            _kittyPayloadBuffer.Clear();
+            ResetKittyPayloadBuffer();
             _kittyPendingParams.Clear();
             _kittyPayloadOverflow = false;
         }
@@ -3308,21 +3423,40 @@ namespace Ntilde.VT
             }
         }
 
+        /// <summary>
+        /// Base64 to bytes without the string copy <see cref="Convert.FromBase64String"/> needs, into
+        /// an array sized exactly for well-formed input (the decoders take the whole array). Null
+        /// when the text is not base64, where FromBase64String would have thrown.
+        /// </summary>
+        private static byte[]? DecodeBase64(ReadOnlySpan<char> chars)
+        {
+            int padding = chars.Length >= 2 && chars[^1] == '=' && chars[^2] == '=' ? 2
+                : chars.Length >= 1 && chars[^1] == '=' ? 1
+                : 0;
+            var bytes = new byte[Math.Max(0, (chars.Length + 3) / 4 * 3 - padding)];
+            if (!Convert.TryFromBase64Chars(chars, bytes, out int written)) return null;
+            // Embedded whitespace (line-wrapped payloads) decodes shorter than the estimate.
+            return written == bytes.Length ? bytes : bytes.AsSpan(0, written).ToArray();
+        }
+
         private void HandleITerm2Image(string osc)
         {
-            var parts = osc.Split(':', 2);
-            if (parts.Length < 2)
+            // The payload is the bulk of an image sequence (megabytes), so it is read in place as a
+            // span: Split(':', 2) used to copy all of it once more just to separate the header.
+            int colon = osc.IndexOf(':');
+            if (colon < 0)
             {
                 return;
             }
 
-            if (!parts[0].StartsWith("1337;File="))
+            string header = osc.Substring(0, colon);
+            if (!header.StartsWith("1337;File="))
             {
                 return;
             }
 
-            var argsPart = parts[0].Substring("1337;File=".Length);
-            var base64Data = parts[1];
+            var argsPart = header.Substring("1337;File=".Length);
+            ReadOnlySpan<char> base64Data = osc.AsSpan(colon + 1);
 
             var args = argsPart.Split(';');
             int width = 0;
@@ -3351,7 +3485,8 @@ namespace Ntilde.VT
                     return;
                 }
 
-                byte[] data = Convert.FromBase64String(base64Data);
+                byte[]? data = DecodeBase64(base64Data);
+                if (data == null) return;
 
                 if (ImageDecoder == null) return;
 

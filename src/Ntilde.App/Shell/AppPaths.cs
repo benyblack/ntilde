@@ -60,6 +60,12 @@ namespace Ntilde.Shell
         public static string CommandPaletteUsageFilePath => Path.Combine(RootDirectory, "command-palette-usage.json");
         public static string CommandAssistDirectory => Path.Combine(RootDirectory, "command-assist");
 
+        /// <summary>
+        /// Where a pre-rebrand install wrote its shell-integration bootstraps. Sessions saved back
+        /// then can still name a bootstrap in here; restore uses this to recognise it as ours.
+        /// </summary>
+        public static string LegacyCommandAssistDirectory => Path.Combine(LegacyRootDirectory, "command-assist");
+
         /// <summary>Append-only JSON-Lines command history written by <c>JsonlHistoryStore</c>.</summary>
         public static string CommandHistoryFilePath => Path.Combine(CommandAssistDirectory, "history.jsonl");
 

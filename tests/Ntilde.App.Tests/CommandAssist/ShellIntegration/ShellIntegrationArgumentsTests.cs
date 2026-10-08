@@ -24,6 +24,62 @@ public sealed class ShellIntegrationArgumentsTests
     private static string Encode(string script)
         => Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
 
+    // A macOS session file from the field, verbatim: bash's injection, saved by a pre-rebrand
+    // version, under the old NovaTerminal data folder, with a space in the path.
+    private const string MacLegacyDir = "/Users/babak/Library/Application Support/NovaTerminal/command-assist";
+    private const string MacCurrentDir = "/Users/babak/Library/Application Support/ntilde/command-assist";
+    private static readonly string?[] MacDirs = { MacCurrentDir, MacLegacyDir };
+
+    [Fact]
+    public void StripInjected_RemovesAStaleBashBootstrapFromThePreRebrandFolder()
+    {
+        string stale = $"--rcfile \"{MacLegacyDir}/command-assist-bootstrap.bash\" -i";
+
+        // The injected trailing -i goes with it: "" is what the user configured.
+        Assert.Equal(string.Empty, ShellIntegrationArguments.StripInjected(stale, MacDirs));
+    }
+
+    [Fact]
+    public void StripInjected_RemovesABashBootstrapFromTheCurrentFolder()
+    {
+        string stale = $"--rcfile \"{MacCurrentDir}/command-assist-bootstrap.bash\" -i";
+
+        Assert.Equal(string.Empty, ShellIntegrationArguments.StripInjected(stale, MacDirs));
+    }
+
+    [Fact]
+    public void StripInjected_UnquotedBashBootstrap_IsRemovedToo()
+    {
+        const string dir = "/home/me/.local/share/ntilde/command-assist";
+        string stale = $"--rcfile {dir}/command-assist-bootstrap.bash -i";
+
+        Assert.Equal(string.Empty, ShellIntegrationArguments.StripInjected(stale, dir));
+    }
+
+    [Fact]
+    public void StripInjected_KeepsTheUsersOwnArgumentsAfterTheBashBootstrap()
+    {
+        // The provider puts the user's arguments after its --rcfile and adds -i only when they had
+        // no interactive flag - so with --login there is no trailing -i to remove.
+        string stale = $"--rcfile \"{MacLegacyDir}/command-assist-bootstrap.bash\" --noprofile --login";
+
+        Assert.Equal("--noprofile --login", ShellIntegrationArguments.StripInjected(stale, MacDirs));
+    }
+
+    [Theory]
+    // A user's own rcfile - the case the bash provider's bail-out exists for.
+    [InlineData("--rcfile \"/Users/babak/my rc/bashrc\" -i")]
+    // Our file name, but not in one of our folders.
+    [InlineData("--rcfile /tmp/command-assist-bootstrap.bash -i")]
+    // bash's option is lowercase; this is not it.
+    [InlineData("--RCFILE \"/Users/babak/Library/Application Support/ntilde/command-assist/command-assist-bootstrap.bash\" -i")]
+    // Unterminated quote: not a token, so nothing can be proven ours.
+    [InlineData("--rcfile \"/Users/babak/Library/Application Support/ntilde/command-assist/command-assist-bootstrap.bash -i")]
+    public void StripInjected_KeepsBashArgumentsThatAreNotProvablyOurs(string args)
+    {
+        Assert.Equal(args, ShellIntegrationArguments.StripInjected(args, MacDirs));
+    }
+
     [Fact]
     public void StripInjected_RemovesAStaleBootstrapFileArgument()
     {

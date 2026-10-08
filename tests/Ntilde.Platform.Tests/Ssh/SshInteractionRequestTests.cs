@@ -21,6 +21,8 @@ public sealed class SshInteractionRequestTests
         RememberPasswordInVault = true,
         Host = "prod.internal",
         Port = 2222,
+        User = "ops",
+        IsJumpHop = true,
         Algorithm = "ssh-ed25519",
         Fingerprint = "SHA256:abc",
         Prompt = "Password:",

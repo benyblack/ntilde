@@ -120,6 +120,14 @@ namespace Ntilde.Controls
         public event Action<TerminalPane, int>? ProcessExited;
         /// <summary>A command ran at least <see cref="LongCommandNotificationPolicy.ThresholdSeconds"/>: (pane, command, exitCode, duration). Policy (setting, focus) is the window's call.</summary>
         public event Action<TerminalPane, string?, int?, TimeSpan>? LongCommandCompleted;
+        /// <summary>OSC 9 desktop-notification text arrived (issue #271). Whether to show it
+        /// (settings gate, focus policy) and how is the window's call — same split as
+        /// <see cref="LongCommandCompleted"/>.</summary>
+        public event Action<TerminalPane, string>? OscNotificationReceived;
+        /// <summary>An OSC 9;4 progress state arrived (issue #271); <see langword="null"/>
+        /// withdraws the pane's indication. Where it renders (tab header, taskbar) is the
+        /// window's call.</summary>
+        public event Action<TerminalPane, TerminalProgressReport?>? ProgressReported;
 
         private TerminalSettings? _settings;
         private bool _isUpdatingScroll = false;
@@ -3208,6 +3216,36 @@ namespace Ntilde.Controls
                     TitleChanged?.Invoke(this, title);
                 });
             };
+            Parser.OnDesktopNotification += text =>
+            {
+                this.Dispatcher.Post(() =>
+                {
+                    OscNotificationReceived?.Invoke(this, text);
+                });
+            };
+            Parser.OnProgressReported += (state, percent) =>
+            {
+                // State 0 is the ONLY withdrawal edge (Codex review, PR #500). An
+                // unknown/future state is ignored rather than mapped to a withdrawal:
+                // clearing a live indicator because the client speaks a dialect this
+                // build doesn't know would throw away real progress. FromOsc returns
+                // null for both, so the distinction is made here, before the post.
+                if (state == 0)
+                {
+                    this.Dispatcher.Post(() => ProgressReported?.Invoke(this, null));
+                    return;
+                }
+
+                if (TerminalProgressReport.FromOsc(state, percent) is not { } report)
+                {
+                    return;
+                }
+
+                this.Dispatcher.Post(() =>
+                {
+                    ProgressReported?.Invoke(this, report);
+                });
+            };
             Parser.OnPromptReady += () =>
             {
                 NoteShellIntegrationMarkObserved();
@@ -3429,6 +3467,9 @@ namespace Ntilde.Controls
 
                 if (profile == null || profile.Type != ConnectionType.SSH)
                 {
+                    // Like the launch plan below, a launch-time detail: applied after ShellArgs is
+                    // captured so the persisted arguments stay what the user configured.
+                    args = ShellHelper.ApplyLoginShellConvention(effectiveShell, args, OperatingSystem.IsMacOS());
                     ApplyShellIntegrationLaunchPlan(profile, ref effectiveShell, ref args, startingDir);
 
                     // ShellCommand/ShellArgs are deliberately NOT updated with the merged
@@ -6076,9 +6117,11 @@ namespace Ntilde.Controls
                 using (var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(
                     pixelSize, new Vector(96 * effectiveScale, 96 * effectiveScale)))
                 {
-                    rtb.Render(view);
+                    // Not rtb.Render(view): this runs beside the render thread's live frames,
+                    // and RenderOffscreen keeps it from acting as one.
+                    view.RenderOffscreen(rtb);
                     using var stream = new System.IO.MemoryStream();
-                    rtb.Save(stream);
+                    rtb.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                     png = stream.ToArray();
                 }
 
@@ -6148,10 +6191,10 @@ namespace Ntilde.Controls
                         (int)Math.Ceiling(TermView.Bounds.Height * dpi));
 
                     var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(pixelSize, new Vector(96 * dpi, 96 * dpi));
-                    rtb.Render(TermView);
+                    TermView.RenderOffscreen(rtb);
 
                     using var stream = await file.OpenWriteAsync();
-                    rtb.Save(stream);
+                    rtb.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 }
                 else if (format.Equals("ansi", StringComparison.OrdinalIgnoreCase))
                 {

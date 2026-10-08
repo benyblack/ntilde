@@ -18,9 +18,11 @@ namespace Ntilde.Rendering
         /// from the container header BEFORE any pixels are decoded. Mirrors AnsiParser's
         /// post-decode guard: without a pre-decode bound, a small compressed payload can
         /// declare enormous dimensions and force the full allocation during decode, before
-        /// the parser ever gets the chance to reject it.
+        /// the parser ever gets the chance to reject it. Sixel carries no size it is bound to
+        /// honour, so its data is clipped to this bound while it decodes instead
+        /// (<see cref="SixelDecoder.MaxPixelDimension"/>).
         /// </summary>
-        public int MaxPixelDimension { get; set; } = 2000;
+        public int MaxPixelDimension { get; set; } = SixelDecoder.DefaultMaxPixelDimension;
 
         public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight)
         {
@@ -79,7 +81,7 @@ namespace Ntilde.Rendering
                 return null;
             }
 
-            SKBitmap? bitmap = new SixelDecoder().Decode(sixelData);
+            SKBitmap? bitmap = new SixelDecoder { MaxPixelDimension = MaxPixelDimension }.Decode(sixelData);
             if (bitmap == null)
             {
                 return null;

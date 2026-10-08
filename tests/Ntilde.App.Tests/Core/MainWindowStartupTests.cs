@@ -339,7 +339,7 @@ public sealed class MainWindowStartupTests : IDisposable, IClassFixture<TestAppD
         toggleMethod!.Invoke(window, null);
 
         TerminalCommand settingsCommand = Assert.Single(CommandRegistry.GetCommands().Where(command => command.Title == "Settings"));
-        Assert.Equal("Ctrl+,", settingsCommand.Shortcut);
+        Assert.Equal(ShortcutPlatform.DefaultBinding("settings", "Ctrl+,"), settingsCommand.Shortcut);
     }
 
     [AvaloniaFact]

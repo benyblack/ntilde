@@ -1,11 +1,12 @@
-# Tests in the non-blocking headless App.Tests lane that are allowed to fail without
-# failing the job. Enforced by scripts/check-app-tests-baseline.py; anything failing that
-# is NOT listed here fails the "Unit Tests" job.
+# Tests in the headless App.Tests lane that are allowed to fail without failing the job.
+# Enforced by scripts/check-app-tests-baseline.py; anything failing that is NOT listed here
+# fails the "Unit Tests" job, and so does a hang.
 #
-# This file exists because the lane runs continue-on-error (the Avalonia.Headless.XUnit
-# teardown hang, #81, must not block PRs) and that made every result invisible: the job was
-# green for weeks while 16 tests failed on Windows and 14 on ubuntu. Naming each accepted
-# failure forces the choice to be deliberate.
+# The lane's test steps run continue-on-error so that this list, rather than `dotnet test`'s
+# exit code, decides whether a failure blocks - that is the only reason they still do. They
+# once also tolerated the #81 teardown hang, and that tolerance made every result invisible:
+# the job was green for weeks while 16 tests failed on Windows and 14 on ubuntu. Naming each
+# accepted failure is what keeps the choice deliberate.
 #
 # Rules for adding a line:
 #   - Only genuine non-determinism (timing, ordering, environment). A test that is simply

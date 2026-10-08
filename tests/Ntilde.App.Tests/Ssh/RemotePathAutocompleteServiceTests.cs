@@ -92,7 +92,7 @@ public sealed class RemotePathAutocompleteServiceTests
         Guid sessionId = Guid.NewGuid();
         var registry = new ActiveSshSessionRegistry();
         registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native));
-        registry.SetRuntimePassword(sessionId, "runtime-secret");
+        registry.SetRuntimePassword(sessionId, "prod.internal", 2200, "ops", "runtime-secret");
         var interop = new RecordingNativeSshInterop(
             new[]
             {

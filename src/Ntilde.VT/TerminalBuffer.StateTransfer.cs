@@ -137,7 +137,7 @@ namespace Ntilde.VT
 
             Hyperlink[] links;
             bool activeScreenChanged;
-            Lock.EnterWriteLock();
+            AcquireWriteLock();
             try
             {
                 links = RebuildHyperlinks(snapshot.Hyperlinks);
