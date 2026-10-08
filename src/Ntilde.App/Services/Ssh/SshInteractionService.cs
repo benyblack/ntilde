@@ -36,7 +36,7 @@ public sealed class SshInteractionService : ISshInteractionService
         _prepareDialog = prepareDialog;
         _hostKeyPresenter = hostKeyPresenter ?? PresentHostKeyAsync;
         _authPresenter = authPresenter ?? PresentAuthAsync;
-        _knownHostsStore = knownHostsStore ?? new NativeKnownHostsStore(AppPaths.NativeKnownHostsFilePath);
+        _knownHostsStore = knownHostsStore ?? NativeKnownHostsStore.ForPath(AppPaths.NativeKnownHostsFilePath);
         _vaultService = vaultService ?? new VaultService();
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
     }

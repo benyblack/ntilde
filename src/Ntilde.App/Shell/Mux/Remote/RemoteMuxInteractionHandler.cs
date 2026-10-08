@@ -274,7 +274,7 @@ internal sealed class RemoteMuxInteractionHandler
     /// process's life. Code that needs another store (a test with its own app-data root) passes
     /// <c>isTrustedHostKey</c> instead, through <see cref="RemoteMuxHostFactory.Create"/>.
     /// </summary>
-    private static readonly Lazy<NativeKnownHostsStore> KnownHosts = new(() => new NativeKnownHostsStore(AppPaths.NativeKnownHostsFilePath));
+    private static readonly Lazy<NativeKnownHostsStore> KnownHosts = new(() => NativeKnownHostsStore.ForPath(AppPaths.NativeKnownHostsFilePath));
 
     private static bool IsTrustedInTheAppsKnownHosts(SshInteractionRequest request) =>
         KnownHosts.Value.CheckHost(request.Host, request.Port, request.Algorithm, request.Fingerprint) == NativeKnownHostMatch.Trusted;

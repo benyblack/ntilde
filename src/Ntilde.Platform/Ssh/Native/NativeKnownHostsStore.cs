@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 using Ntilde.Platform.Ssh.Storage;
 
@@ -12,12 +14,32 @@ public enum NativeKnownHostMatch
 
 public sealed class NativeKnownHostsStore
 {
-    private readonly object _syncRoot = new();
+    // One lock object per full store path, process-wide, so every instance on a path serialises
+    // (two windows, the mux handler, tests). Known limit: two *processes* (two app instances)
+    // writing at once are not coordinated. The tmp+rename write means neither can leave a torn
+    // file, but one can lose the other's latest entry. rusty_ssh also reads this file directly.
+    private static readonly ConcurrentDictionary<string, object> PathLocks =
+        new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+    private static readonly ConcurrentDictionary<string, NativeKnownHostsStore> Instances =
+        new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+    private const int MaxCorruptFiles = 5;
+
+    private readonly object _syncRoot;
     private readonly string _storeFilePath;
 
     public NativeKnownHostsStore(string storeFilePath)
     {
         _storeFilePath = Path.GetFullPath(storeFilePath ?? throw new ArgumentNullException(nameof(storeFilePath)));
+        _syncRoot = PathLocks.GetOrAdd(_storeFilePath, static _ => new object());
+    }
+
+    /// <summary>One shared instance per full store path.</summary>
+    public static NativeKnownHostsStore ForPath(string storeFilePath)
+    {
+        string full = Path.GetFullPath(storeFilePath ?? throw new ArgumentNullException(nameof(storeFilePath)));
+        return Instances.GetOrAdd(full, static p => new NativeKnownHostsStore(p));
     }
 
     public string StoreFilePath => _storeFilePath;
@@ -90,9 +112,61 @@ public sealed class NativeKnownHostsStore
             string json = File.ReadAllText(_storeFilePath);
             return JsonSerializer.Deserialize(json, SshJsonContext.Default.ListKnownHostEntry) ?? new List<KnownHostEntry>();
         }
+        catch (JsonException ex)
+        {
+            // Never let the next TrustHost overwrite an unparseable store: keep it aside.
+            KeepCorruptFileAside(ex);
+            return new List<KnownHostEntry>();
+        }
         catch
         {
             return new List<KnownHostEntry>();
+        }
+    }
+
+    private void KeepCorruptFileAside(Exception cause)
+    {
+        try
+        {
+            string stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            string target = $"{_storeFilePath}.corrupt-{stamp}";
+            for (int n = 1; File.Exists(target); n++)
+            {
+                target = $"{_storeFilePath}.corrupt-{stamp}-{n}";
+            }
+
+            File.Move(_storeFilePath, target);
+            Debug.WriteLine($"[KnownHosts] Unparseable store moved to {target}: {cause.Message}");
+            PruneCorruptFiles();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Debug.WriteLine($"[KnownHosts] Could not set aside unparseable store: {ex.Message}");
+        }
+    }
+
+    private void PruneCorruptFiles()
+    {
+        try
+        {
+            string? directory = Path.GetDirectoryName(_storeFilePath);
+            if (string.IsNullOrEmpty(directory))
+            {
+                return;
+            }
+
+            var stale = new DirectoryInfo(directory)
+                .GetFiles(Path.GetFileName(_storeFilePath) + ".corrupt-*")
+                .OrderByDescending(f => f.CreationTimeUtc)
+                .ThenByDescending(f => f.Name, StringComparer.Ordinal)
+                .Skip(MaxCorruptFiles);
+            foreach (FileInfo file in stale)
+            {
+                try { file.Delete(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
@@ -110,9 +184,33 @@ public sealed class NativeKnownHostsStore
             .ToList();
 
         string json = JsonSerializer.Serialize(ordered, SshJsonContext.Default.ListKnownHostEntry);
-        File.WriteAllText(_storeFilePath, json);
-    }
 
+        // Write beside the store then rename over it, so a reader (this app, or rusty_ssh) never
+        // sees a truncated file.
+        string tmp = $"{_storeFilePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(tmp, json);
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    File.Move(tmp, _storeFilePath, overwrite: true);
+                    return;
+                }
+                catch (Exception ex) when (OperatingSystem.IsWindows()
+                                           && attempt < 4
+                                           && ex is IOException or UnauthorizedAccessException)
+                {
+                    Thread.Sleep(20);
+                }
+            }
+        }
+        finally
+        {
+            try { File.Delete(tmp); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
+    }
     private static string NormalizeHost(string host) => host?.Trim() ?? string.Empty;
 
     private static string NormalizeAlgorithm(string algorithm) => algorithm?.Trim() ?? string.Empty;
