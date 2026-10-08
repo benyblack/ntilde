@@ -169,7 +169,7 @@
                         <TextBlock Text="{Binding RemoteDaemonStatusText}" Opacity="0.7" TextWrapping="Wrap" />
                         <Button Content="Install ntilde-mux on this host&#x2026;"
                                 Command="{Binding InstallRemoteMuxCommand}"
-                                ToolTip.Tip="Saves this connection, then installs ntilde-mux in ~/.local/share/ntilde/bin on the host. Needs a host and a user."
+                                ToolTip.Tip="Saves this connection, then installs ntilde-mux in $XDG_DATA_HOME/ntilde/bin (default ~/.local/share/ntilde/bin) on the host. Needs a host and a user."
                                 HorizontalAlignment="Left" />
                     </StackPanel>
                 </Grid>

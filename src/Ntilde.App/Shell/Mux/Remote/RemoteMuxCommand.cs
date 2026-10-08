@@ -9,16 +9,13 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <list type="bullet">
 /// <item>the install flow's recorded absolute path, when it is made only of characters no shell treats
 /// specially (<see cref="IsSafeAbsolutePath"/>), then the arguments;</item>
-/// <item>otherwise <c>sh -c 'exec "$HOME/.local/share/ntilde/bin/ntilde-mux" …'</c>: a single-quoted
-/// script with no single quote inside, which every shell passes to sh untouched, and which sh expands
-/// to the default install path.</item>
+/// <item>otherwise <c>sh -c '&lt;<see cref="RemoteInstallDir.Assign"/>&gt; exec "$d/ntilde-mux" …'</c>: a
+/// single-quoted script with no single quote inside, which every shell passes to sh untouched, and which sh
+/// expands to the default install path (under <c>$XDG_DATA_HOME</c> when it is set and absolute).</item>
 /// </list>
 /// </summary>
 internal static class RemoteMuxCommand
 {
-    /// <summary>Where the install flow puts the binary, relative to the remote <c>$HOME</c> (spec §9).</summary>
-    public const string DefaultRelativePath = ".local/share/ntilde/bin/ntilde-mux";
-
     /// <summary>Runs the stdio proxy the mux client speaks through (spec §8.1).</summary>
     public static string Proxy(SshMuxOptions options) => For(options, "proxy --stdio");
 
@@ -46,6 +43,6 @@ internal static class RemoteMuxCommand
         string recorded = options.RemoteDaemonPath ?? string.Empty;
         return IsSafeAbsolutePath(recorded)
             ? $"{recorded} {arguments}"
-            : $"sh -c 'exec \"$HOME/{DefaultRelativePath}\" {arguments}'";
+            : $"sh -c '{RemoteInstallDir.Assign}exec \"$d/ntilde-mux\" {arguments}'";
     }
 }

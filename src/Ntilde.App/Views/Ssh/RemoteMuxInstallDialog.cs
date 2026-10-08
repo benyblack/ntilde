@@ -193,7 +193,7 @@ internal sealed class RemoteMuxInstallDialog
                             },
                             new TextBlock
                             {
-                                Text = $"{RemoteMuxStatusText.Describe(profile.MuxOptions.RemoteDaemonVersion, _appVersion)}. It goes to ~/.local/share/ntilde/bin; nothing needs root.",
+                                Text = $"{RemoteMuxStatusText.Describe(profile.MuxOptions.RemoteDaemonVersion, _appVersion)}. It goes to {RemoteInstallDir.Display}; nothing needs root.",
                                 Opacity = 0.75,
                                 TextWrapping = TextWrapping.Wrap,
                             },

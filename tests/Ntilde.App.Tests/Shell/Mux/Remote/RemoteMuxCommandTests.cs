@@ -11,7 +11,8 @@ namespace Ntilde.Tests.Shell.Mux.Remote;
 /// </summary>
 public sealed class RemoteMuxCommandTests
 {
-    private const string ProxyFallback = "sh -c 'exec \"$HOME/.local/share/ntilde/bin/ntilde-mux\" proxy --stdio'";
+    private const string ProxyFallback =
+        "sh -c 'case \"${XDG_DATA_HOME-}\" in /*) d=\"$XDG_DATA_HOME/ntilde/bin\";; *) d=\"$HOME/.local/share/ntilde/bin\";; esac; exec \"$d/ntilde-mux\" proxy --stdio'";
 
     [Theory]
     [InlineData("/home/nova/.local/share/ntilde/bin/ntilde-mux", "/home/nova/.local/share/ntilde/bin/ntilde-mux proxy --stdio")]
@@ -53,15 +54,44 @@ public sealed class RemoteMuxCommandTests
             "/home/nova/.local/share/ntilde/bin/ntilde-mux --version --json",
             RemoteMuxCommand.VersionJson(new SshMuxOptions { RemoteDaemonPath = "/home/nova/.local/share/ntilde/bin/ntilde-mux" }));
         Assert.Equal(
-            "sh -c 'exec \"$HOME/.local/share/ntilde/bin/ntilde-mux\" --version --json'",
+            ProxyFallback.Replace("proxy --stdio", "--version --json", StringComparison.Ordinal),
             RemoteMuxCommand.VersionJson(new SshMuxOptions { RemoteDaemonPath = "/x;y" }));
     }
 
     [Fact]
-    public void The_fallback_runs_the_default_install_path_under_HOME()
+    public void The_fallback_runs_the_default_install_dir()
     {
-        Assert.Equal(".local/share/ntilde/bin/ntilde-mux", RemoteMuxCommand.DefaultRelativePath);
-        Assert.Contains("\"$HOME/" + RemoteMuxCommand.DefaultRelativePath + "\"", RemoteMuxCommand.Proxy(new SshMuxOptions()), StringComparison.Ordinal);
+        Assert.Contains(RemoteInstallDir.Assign + "exec \"$d/ntilde-mux\" ", RemoteMuxCommand.Proxy(new SshMuxOptions()), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void The_fallback_runs_the_install_under_XDG_DATA_HOME_or_HOME(bool xdgSet)
+    {
+        PosixShell.Require();
+        string root = Path.Combine(Path.GetTempPath(), "ntilde-fallback-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string xdg = Path.Combine(root, "xdg");
+            string home = Path.Combine(root, "home");
+            PosixShell.WriteEchoScript(Path.Combine(xdgSet ? xdg : home + "/.local/share", "ntilde", "bin", "ntilde-mux"));
+            var env = new Dictionary<string, string?>
+            {
+                ["HOME"] = PosixShell.ToShellPath(home),
+                ["XDG_DATA_HOME"] = xdgSet ? PosixShell.ToShellPath(xdg) : null,
+            };
+
+            (int exit, string stdout, string stderr) = PosixShell.Run(RemoteMuxCommand.Proxy(new SshMuxOptions()), env);
+
+            Assert.True(exit == 0, stderr);
+            string installed = PosixShell.ToShellPath(xdgSet ? xdg : home + "/.local/share") + "/ntilde/bin/ntilde-mux";
+            Assert.Equal($"[{installed}] proxy --stdio", stdout.Trim());
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
     }
 
     [Theory]
