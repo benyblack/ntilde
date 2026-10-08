@@ -105,7 +105,7 @@ internal static class RemoteMuxInstallCommands
         return "sh -c '" + RemoteInstallDir.Assign + "mkdir -p \"$d\" && cd \"$d\" && "
             + $"curl -fsSLo ntilde-mux.new {url} && "
             + $"curl -fsSL {url}.sha256 | sed \"s/ .*/  ntilde-mux.new/\" | {check} && "
-            + "chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux'";
+            + "chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux && echo \"installed to $d/ntilde-mux\"'";
     }
 
     /// <summary>Sets <c>$d</c>, the install directory (<see cref="RemoteInstallDir.Assign"/>).</summary>

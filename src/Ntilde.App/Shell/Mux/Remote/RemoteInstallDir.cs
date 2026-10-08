@@ -16,5 +16,5 @@ internal static class RemoteInstallDir
     internal const string Assign = "case \"${XDG_DATA_HOME-}\" in /*) d=\"$XDG_DATA_HOME/ntilde/bin\";; *) d=\"$HOME/.local/share/ntilde/bin\";; esac; ";
 
     /// <summary>The directory, for the UI copy that tells the user where the install goes.</summary>
-    internal const string Display = "$XDG_DATA_HOME/ntilde/bin (default ~/.local/share/ntilde/bin)";
+    internal const string Display = "~/.local/share/ntilde/bin (or $XDG_DATA_HOME/ntilde/bin when set)";
 }

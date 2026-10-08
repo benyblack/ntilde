@@ -49,6 +49,23 @@ public sealed class NewSshConnectionViewLayoutTests
     }
 
     [AvaloniaFact]
+    public void InstallButton_tooltip_names_the_install_dir_the_scripts_use()
+    {
+        var view = ShowAt(height: 620);
+        try
+        {
+            var button = view.FindControl<Button>("InstallMuxButton");
+            Assert.NotNull(button);
+            string tip = Assert.IsType<string>(ToolTip.GetTip(button!));
+            Assert.Contains(Ntilde.Shell.Mux.Remote.RemoteInstallDir.Display, tip, StringComparison.Ordinal);
+        }
+        finally
+        {
+            view.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void EveryTab_HostsItsFormInAScrollViewer()
     {
         var view = ShowAt(height: 620);

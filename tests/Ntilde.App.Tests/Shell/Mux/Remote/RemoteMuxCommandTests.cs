@@ -28,8 +28,10 @@ public sealed class RemoteMuxCommandTests
     [InlineData("/home/a'b/x", ProxyFallback)]
     [InlineData("/home/a\\b/x", ProxyFallback)]
     [InlineData("/home/a!b/x", ProxyFallback)]
-    [InlineData("/x/‮evil", ProxyFallback)]
+    [InlineData("/x/\u202eevil", ProxyFallback)]
     [InlineData("/x/a\u0001b", ProxyFallback)]
+    [InlineData("/a\U000E0041b", ProxyFallback)]
+    [InlineData("/a\u2028b", ProxyFallback)]
     [InlineData("relative/x", ProxyFallback)]
     [InlineData("/home/nova//x", ProxyFallback)]
     [InlineData("/home/nova/../root/x", ProxyFallback)]
@@ -52,6 +54,18 @@ public sealed class RemoteMuxCommandTests
             Assert.True(RemoteMuxCommand.IsQuotableAbsolutePath(recordedPath));
             Assert.DoesNotContain('\'', command);
             Assert.DoesNotContain('"', command);
+        }
+    }
+
+    [Fact]
+    public void An_unpaired_surrogate_is_refused_and_falls_back()
+    {
+        // Built here, not in an InlineData row: xunit's data serialisation turns a lone surrogate into U+FFFD.
+        foreach (string path in new[] { "/a" + (char)0xD800 + "b", "/a" + (char)0xDC00 + "b", "/a" + (char)0xD800, "/a" + (char)0xDC00 + (char)0xD800 })
+        {
+            Assert.False(RemoteMuxCommand.IsQuotableAbsolutePath(path));
+            Assert.Equal(ProxyFallback, RemoteMuxCommand.Proxy(new SshMuxOptions { RemoteDaemonPath = path }));
+            Assert.True(RemoteMuxCommand.RefusedRecordedPath(path));
         }
     }
 
@@ -93,8 +107,13 @@ public sealed class RemoteMuxCommandTests
     [InlineData("/a\\b", false)]
     [InlineData("/a'b", false)]
     [InlineData("/a!b", false)]
-    [InlineData("/a​b", false)]
-    [InlineData("/a‮b", false)]
+    [InlineData("/a\u200bb", false)]
+    [InlineData("/a\u202eb", false)]
+    [InlineData("/a\U000E0041b", false)]
+    [InlineData("/a\U000E0001b", false)]
+    [InlineData("/a\u2028b", false)]
+    [InlineData("/a\u2029b", false)]
+    [InlineData("/a\U0001F600b", true)]
     public void IsQuotableAbsolutePath_allows_any_absolute_path_without_the_refused_characters(string path, bool quotable)
     {
         Assert.Equal(quotable, RemoteMuxCommand.IsQuotableAbsolutePath(path));
@@ -106,7 +125,7 @@ public sealed class RemoteMuxCommandTests
     [InlineData("/home/a b/x", false)]
     [InlineData("/home/a'b/x", true)]
     [InlineData("relative/x", true)]
-    [InlineData("/x/‮evil", true)]
+    [InlineData("/x/\u202eevil", true)]
     public void RefusedRecordedPath_is_a_recorded_path_that_is_replaced(string recorded, bool refused)
     {
         Assert.Equal(refused, RemoteMuxCommand.RefusedRecordedPath(recorded));

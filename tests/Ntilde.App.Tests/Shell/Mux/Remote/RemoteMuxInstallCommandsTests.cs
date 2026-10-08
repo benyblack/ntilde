@@ -212,7 +212,7 @@ public sealed class RemoteMuxInstallCommandsTests
             "sh -c '" + RemoteInstallDir.Assign + "mkdir -p \"$d\" && cd \"$d\" && "
             + "curl -fsSLo ntilde-mux.new https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-linux-x64 && "
             + "curl -fsSL https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-linux-x64.sha256 "
-            + "| sed \"s/ .*/  ntilde-mux.new/\" | sha256sum -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux'",
+            + "| sed \"s/ .*/  ntilde-mux.new/\" | sha256sum -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux && echo \"installed to $d/ntilde-mux\"'",
             RemoteMuxInstallCommands.OfflineOneLiner("0.11.0", "linux-x64"));
     }
 
@@ -223,7 +223,7 @@ public sealed class RemoteMuxInstallCommandsTests
             "sh -c '" + RemoteInstallDir.Assign + "mkdir -p \"$d\" && cd \"$d\" && "
             + "curl -fsSLo ntilde-mux.new https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-osx-arm64 && "
             + "curl -fsSL https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-osx-arm64.sha256 "
-            + "| sed \"s/ .*/  ntilde-mux.new/\" | shasum -a 256 -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux'",
+            + "| sed \"s/ .*/  ntilde-mux.new/\" | shasum -a 256 -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux && echo \"installed to $d/ntilde-mux\"'",
             RemoteMuxInstallCommands.OfflineOneLiner("0.11.0", "osx-arm64"));
     }
 

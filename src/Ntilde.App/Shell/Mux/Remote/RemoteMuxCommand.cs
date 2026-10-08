@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Ntilde.Platform.Ssh.Models;
 
 namespace Ntilde.Shell.Mux.Remote;
@@ -28,14 +29,28 @@ internal static class RemoteMuxCommand
     /// True for an absolute path (<c>/</c> and at least one more character, no <c>//</c>, no <c>/../</c>) that can
     /// sit inside sh double quotes in a single-quoted script: it holds no <c>'</c> (ends the script), no <c>\</c> (fish
     /// rewrites a doubled one inside single quotes), no <c>!</c> (history expansion in an interactive login shell), no
-    /// control character and no Unicode format character (a bidi override spoofs what the user sees).
+    /// control, Unicode format (a bidi override spoofs what the user sees) or line/paragraph separator character, and no unpaired surrogate.
     /// </summary>
     public static bool IsQuotableAbsolutePath(string path)
     {
         if (string.IsNullOrEmpty(path) || path.Length < 2 || path[0] != '/') return false;
         foreach (char c in path)
         {
-            if (c is '\'' or '\\' or '!' || char.IsControl(c) || char.GetUnicodeCategory(c) == UnicodeCategory.Format) return false;
+            if (c is '\'' or '\\' or '!') return false;
+        }
+
+        // Runes, not chars: a format character above U+FFFF is a surrogate pair to a char, and an unpaired
+        // surrogate is no character at all (the wire would carry U+FFFD).
+        for (int i = 0; i < path.Length; i++)
+        {
+            if (char.IsHighSurrogate(path[i]) && i + 1 < path.Length && char.IsLowSurrogate(path[i + 1])) i++;
+            else if (char.IsSurrogate(path[i])) return false;
+        }
+
+        foreach (Rune r in path.EnumerateRunes())
+        {
+            if (Rune.IsControl(r)) return false;
+            if (Rune.GetUnicodeCategory(r) is UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator) return false;
         }
 
         return !path.Contains("//", StringComparison.Ordinal) && !path.Contains("/../", StringComparison.Ordinal);
