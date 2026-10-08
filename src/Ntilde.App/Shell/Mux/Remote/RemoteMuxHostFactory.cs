@@ -212,7 +212,8 @@ internal static class RemoteMuxHostFactory
     /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
     /// reconnects on Enter, or through keys, the agent or an existing ControlMaster. A user's attempt after a password was
     /// refused on the host (<see cref="RemoteMuxTransportRequest.WithoutSavedPassword"/>) runs the helper without the
-    /// vault, so the user is asked at once; any other user's attempt has it fill the saved password once per ssh.</item>
+    /// vault, so the user is asked at once, as does one through a jump host that could ask as the target
+    /// (<see cref="SshAskPassVaultPolicy.MayOfferVault"/>); any other user's attempt has it fill the saved password once per ssh.</item>
     /// <item>Native: the native exec transport, its prompts answered by
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
@@ -278,6 +279,13 @@ internal static class RemoteMuxHostFactory
             && request.OfferSavedPassword is { } offerSavedPassword
             && PrefixesKeyboardInteractivePrompts(launch.SshPath, openSshVersions, log)
             && offerSavedPassword();
+        // A user's attempt through a jump host: the helper's target-prompt match can be forged by a hop (an ssh before 8.4 puts
+        // no (user@host) in front of a keyboard-interactive prompt; a hop with the target's user@host is indistinguishable),
+        // so it runs without the vault and the user types the password. The version is read only when a jump host is in play.
+        bool noVaultForJumpHost = request.Interactive
+            && askPassHelperPath is not null
+            && SshAskPassVaultPolicy.GoesThroughJumpHost(profile)
+            && !SshAskPassVaultPolicy.MayOfferVault(profile, PrefixesKeyboardInteractivePrompts(launch.SshPath, openSshVersions, log));
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
@@ -287,7 +295,7 @@ internal static class RemoteMuxHostFactory
             log,
             batchMode: !request.Interactive && !savedPasswordOnly,
             savedPasswordOnly: savedPasswordOnly,
-            withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
+            withoutSavedPassword: request.Interactive && (request.WithoutSavedPassword || noVaultForJumpHost),
             askPassSession: request.AskPassSession,
             exitGrace: ChannelExitGrace);
     }

@@ -836,7 +836,8 @@ Recorded during the build:
 - **Password memory per (kind, host, user).** Add the host and user to the native `PasswordPrompt`
   payload and key `RemoteMuxInteractionHandler`'s remembered secrets by them, so a profile with jump
   hops and passwords can reconnect on its own (today it reconnects on Enter, §15).
-- **Vault password to a jump host (pre-existing, plain native tabs too).** `NativeSshPromptResponder`
+- **Vault password to a jump host (pre-existing, plain native tabs too). RESOLVED** (native by d1972b7, whose prompts name
+  their hop; OpenSSH askpass by Phase 5 Task 2, `SshAskPassVaultPolicy`). `NativeSshPromptResponder`
   allows vault reuse on the *first* Password prompt, and with jump hops that may be a jump host's
   prompt, so the target's vault password can be sent to the jump host.
 - **Liveness knobs.** `RemoteMuxHostFactory.Create` does not expose `LivenessInterval` /

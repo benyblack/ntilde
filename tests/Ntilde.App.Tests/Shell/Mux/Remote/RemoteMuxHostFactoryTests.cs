@@ -572,6 +572,57 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         Assert.True(Assert.IsType<OpenSshExecTransport>(Build(interactive: false)).BatchMode);
     }
 
+    /// <summary>
+    /// Phase 5 Task 2: a user's attempt through a jump host runs the askpass helper without the vault when the ssh does
+    /// not prefix keyboard-interactive prompts (before 8.4, or unknown), or a hop is the target's own user@host - a bastion
+    /// could then ask as the target. Otherwise the vault is filled as before.
+    /// </summary>
+    [Theory]
+    [InlineData(8, 1, "bob", "bastion", true)]
+    [InlineData(9, 6, "bob", "bastion", false)]
+    [InlineData(9, 6, "NOVA", "FAKE-HOST", true)]
+    [InlineData(9, 6, "", "fake-host", true)]
+    public void A_user_attempt_through_a_jump_host_may_run_without_the_vault(int major, int minor, string hopUser, string hopHost, bool expectedWithoutVault)
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.OpenSsh;
+        profile.JumpHops.Add(new SshJumpHop { User = hopUser, Host = hopHost, Port = 2222 });
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+
+        ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(true, prompts.BeginAttempt(true)),
+            (_, _) => Launch,
+            () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+            static () => true,
+            askPassHelperPath: "/opt/ntilde/ntilde",
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.SshVersions(null, OpenSshClientProbe.Found(new Version(major, minor))));
+
+        Assert.Equal(expectedWithoutVault, Assert.IsType<OpenSshExecTransport>(transport).WithoutSavedPassword);
+    }
+
+    [Fact]
+    public void A_user_attempt_through_a_jump_host_with_an_unreadable_ssh_version_runs_without_the_vault()
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.OpenSsh;
+        profile.JumpHops.Add(new SshJumpHop { User = "bob", Host = "bastion" });
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+
+        ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(true, prompts.BeginAttempt(true)),
+            (_, _) => Launch,
+            () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+            static () => true,
+            askPassHelperPath: "/opt/ntilde/ntilde",
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.SshVersions(null, OpenSshClientProbe.Indeterminate("it timed out")));
+
+        Assert.True(Assert.IsType<OpenSshExecTransport>(transport).WithoutSavedPassword);
+    }
+
     [Fact]
     public void A_native_profile_gets_the_native_transport()
     {

@@ -184,6 +184,16 @@ public static class OpenSshExecCommandLine
     }
 
     /// <summary>
+    /// Whether the profile's own extra ssh arguments (<c>SshProfile.ExtraSshArgs</c>, split as the plan splits them) name a
+    /// proxy, read as <see cref="NamesAProxy"/> reads a plan's options after the destination.
+    /// </summary>
+    public static bool ExtraArgumentsNameAProxy(string? extraSshArgs)
+    {
+        IReadOnlyList<string> extra = Launch.SshLaunchPlanner.ParseExtraArguments(extraSshArgs);
+        return extra.Count > 0 && NamesAProxy(["destination", .. extra]);
+    }
+
+    /// <summary>
     /// Whether the profile's own extra ssh arguments (<c>SshProfile.ExtraSshArgs</c>, split as the plan splits them) change
     /// who signs in or where, so that ssh's prompts may not name the profile's <c>user@host</c>: <c>-l</c>, <c>-F</c> (a
     /// config of their own, which beats the plan's: ssh keeps the last <c>-F</c>), or an <c>-o</c> whose keyword is
