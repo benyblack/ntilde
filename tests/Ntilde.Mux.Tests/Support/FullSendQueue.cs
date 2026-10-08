@@ -1,13 +1,12 @@
-using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
-using Ntilde.Mux.Tests.Support;
 
-namespace Ntilde.Tests.Shell.Mux.Remote;
+namespace Ntilde.Mux.Tests.Support;
 
 /// <summary>
 /// A stalled link as a client feels it: the daemon end stops reading, the client's sender is stuck in a write, and its
-/// outbound queue fills behind it. From then on whoever sends on that client blocks until the daemon reads again - the
-/// UI thread too, closing a pane, unless the host sends from elsewhere.
+/// outbound queue fills behind it. Before Phase 5 whoever sent next on that client blocked until the daemon read again -
+/// the UI thread too, closing a pane. Now the send returns, and its frame waits in the client's overflow. Shared with
+/// Ntilde.App.Tests (linked as MuxSupport).
 /// </summary>
 internal static class FullSendQueue
 {
@@ -27,7 +26,7 @@ internal static class FullSendQueue
     /// <summary>
     /// Fills <paramref name="client"/>'s outbound queue once its daemon stops reading: first a frame larger than the
     /// pipe, which the sender takes and is stuck writing, then exactly as many frames as the queue holds. Returns once
-    /// all of them are in: the next send on the client blocks.
+    /// all of them are in: the next frame sent on the client cannot join the queue until the daemon reads.
     /// </summary>
     public static Task FillAsync(MuxClient client) =>
         Task.Run(

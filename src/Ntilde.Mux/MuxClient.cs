@@ -12,16 +12,25 @@ namespace Ntilde.Mux;
 /// session opened on it: snapshots, output, resizes, exits and faults are raised there, strictly in
 /// frame order. RPC continuations are forced asynchronous so no awaiting caller ever runs on it.
 /// <see cref="Disconnected"/> (and each session's) is the exception: it is raised on whichever of the
-/// reader thread, the sender thread or the <see cref="Dispose"/> caller ends the connection first.
+/// reader thread, the sender thread, the <see cref="Dispose"/> caller or a caller whose send overflowed
+/// (<see cref="MuxClientOptions.MaxOverflowBytes"/>) ends the connection first.
 /// </summary>
+/// <remarks>
+/// No send blocks its caller (Phase 5, ruling R6): the UI thread types, resizes, detaches and kills through
+/// here, and a stalled link must not freeze it. A frame that finds the send queue full waits in an overflow
+/// behind it, and frames reach the wire in the order of their calls whichever way they went.
+/// </remarks>
 public sealed class MuxClient : IDisposable
 {
     /// <summary>Disconnect reason when the transport simply went away: not an error code, so not in MuxErrorCodes.</summary>
     private const string ReasonDisconnected = "disconnected";
 
+    /// <summary>Disconnect reason when more than <see cref="MuxClientOptions.MaxOverflowBytes"/> waited behind a stalled link.</summary>
+    private const string ReasonSendOverflow = "send overflow";
+
     /// <summary>
-    /// How many frames may wait for the sender: once that many do, a caller sending another blocks until the
-    /// link takes one. Tests fill it to stand in for a stalled link.
+    /// How many frames may wait for the sender: once that many do, a frame sent next waits in the overflow
+    /// (<see cref="Send"/>) until the link takes one. Tests fill it to stand in for a stalled link.
     /// </summary>
     internal const int OutboundCapacity = 1024;
 
@@ -31,6 +40,23 @@ public sealed class MuxClient : IDisposable
     private readonly Thread _readerThread;
     private readonly Thread _senderThread;
     private readonly BlockingCollection<MuxOutboundFrame> _outbound = new(boundedCapacity: OutboundCapacity);
+
+    /// <summary>
+    /// Guards the overflow, and orders every send against every other and against <see cref="OnDisconnected"/>'s
+    /// <c>CompleteAdding</c>. Held only for non-blocking work.
+    /// </summary>
+    private readonly object _sendGate = new();
+
+    /// <summary>
+    /// Frames sent while <see cref="_outbound"/> was full, or while earlier ones still waited here: in call order.
+    /// The pump moves the head into <see cref="_outbound"/>, and dequeues it only once it is in, so a later send
+    /// cannot overtake it.
+    /// </summary>
+    private readonly Queue<MuxOutboundFrame> _overflow = new();
+
+    private long _overflowBytes; // guarded by _sendGate: the payload bytes waiting in _overflow
+    private bool _pumping;       // guarded by _sendGate: a PumpOverflow work item is queued or running, and owns the head
+
     private readonly ConcurrentDictionary<long, TaskCompletionSource<MuxResponse>> _pending = new();
     private readonly ConcurrentDictionary<long, MuxClientSession> _pendingAttaches = new();
 
@@ -306,29 +332,113 @@ public sealed class MuxClient : IDisposable
         }
     }
 
+    /// <summary>A request's frame. Never blocks; a frame that cannot be sent fails the request (<see cref="IOException"/>).</summary>
     private void Enqueue(MuxOutboundFrame frame)
     {
-        try
+        if (!Send(frame)) throw Closed();
+    }
+
+    /// <summary>A fire-and-forget frame. Never blocks; a frame that cannot be sent is dropped: there is nobody to tell.</summary>
+    private void Post(MuxOutboundFrame frame) => Send(frame);
+
+    /// <summary>
+    /// The one send path, which never blocks its caller. The frame joins the send queue when the queue has room and
+    /// nothing waits in the overflow; otherwise it joins the overflow, which one pool work item at a time
+    /// (<see cref="PumpOverflow"/>) moves into the queue in order. Takes the frame's reference either way. False when
+    /// the frame is not sent and never will be: the client is disconnected, or this frame took the overflow past
+    /// <see cref="MuxClientOptions.MaxOverflowBytes"/>, and that disconnected it.
+    /// </summary>
+    private bool Send(MuxOutboundFrame frame)
+    {
+        bool overflowed = false;
+        lock (_sendGate)
         {
-            _outbound.Add(frame);
+            if (_outbound.IsAddingCompleted)
+            {
+                frame.Release();
+                return false;
+            }
+
+            if (_overflow.Count == 0 && _outbound.TryAdd(frame)) return true;
+
+            _overflow.Enqueue(frame);
+            _overflowBytes += frame.PayloadLength;
+            if (_overflowBytes > _options.MaxOverflowBytes)
+            {
+                overflowed = true;
+            }
+            else if (!_pumping)
+            {
+                _pumping = true;
+                ThreadPool.UnsafeQueueUserWorkItem(static client => client.PumpOverflow(), this, preferLocal: false);
+            }
         }
-        catch (InvalidOperationException)
+
+        if (!overflowed) return true;
+        FaultFromSendOverflow(); // outside the gate: the disconnect raises host code
+        return false;
+    }
+
+    /// <summary>
+    /// Moves the overflow into the send queue, head first, blocking this pool thread - never a caller - while the queue
+    /// is full. One runs at a time per client (<see cref="_pumping"/>). The head leaves the overflow only once the queue
+    /// has taken it, so a send meanwhile lines up behind it instead of overtaking it. Once the client is disconnected it
+    /// releases whatever is left: <see cref="OnDisconnected"/> leaves that to a pump, whose head may be in flight.
+    /// </summary>
+    private void PumpOverflow()
+    {
+        while (true)
         {
-            frame.Release();
-            throw Closed();
+            MuxOutboundFrame next;
+            lock (_sendGate)
+            {
+                if (_outbound.IsAddingCompleted) DropOverflowLocked();
+                if (_overflow.Count == 0)
+                {
+                    _pumping = false;
+                    return;
+                }
+
+                next = _overflow.Peek();
+            }
+
+            bool added;
+            try
+            {
+                _outbound.Add(next);
+                added = true;
+            }
+            catch (InvalidOperationException)
+            {
+                added = false; // CompleteAdding: the client disconnected while this waited for room
+            }
+
+            lock (_sendGate)
+            {
+                _overflow.Dequeue();
+                _overflowBytes -= next.PayloadLength;
+                if (!added) next.Release();
+            }
         }
     }
 
-    private void Post(MuxOutboundFrame frame)
+    private void DropOverflowLocked()
     {
-        try
-        {
-            _outbound.Add(frame);
-        }
-        catch (InvalidOperationException)
-        {
-            frame.Release(); // disconnected: fire-and-forget has nobody to tell
-        }
+        while (_overflow.TryDequeue(out MuxOutboundFrame? frame)) frame.Release();
+        _overflowBytes = 0;
+    }
+
+    /// <summary>
+    /// More than <see cref="MuxClientOptions.MaxOverflowBytes"/> waits behind the link: it is given up, with the
+    /// teardown a read error gets. Pending requests fail, the overflow is released, and <see cref="Disconnected"/>
+    /// hands the connection to the host's reconnect or drop path. Raised on the sending caller's thread.
+    /// </summary>
+    private void FaultFromSendOverflow()
+    {
+        if (!IsConnected) return; // another send's overflow, or anything else, ended it first
+        SafeLog($"[MuxClient] outbound overflow past {_options.MaxOverflowBytes} bytes; disconnecting");
+        try { OnDisconnected(ReasonSendOverflow); }
+        catch (Exception ex) { SafeLog($"[MuxClient] a Disconnected handler threw: {ex}"); }
     }
 
     private IOException Closed() => new($"The mux connection is closed ({DisconnectReason ?? ReasonDisconnected}).");
@@ -566,7 +676,14 @@ public sealed class MuxClient : IDisposable
     {
         if (Interlocked.Exchange(ref _disconnected, 1) != 0) return;
         Interlocked.CompareExchange(ref _disconnectReason, reason ?? ReasonDisconnected, null);
-        _outbound.CompleteAdding();
+        lock (_sendGate)
+        {
+            // No send queues anything after this, and a pump blocked in Add throws out of it. A pump that runs
+            // releases what is left itself: its head may be in flight into the queue, which then owns it.
+            _outbound.CompleteAdding();
+            if (!_pumping) DropOverflowLocked();
+        }
+
         try { _stream.Dispose(); }
         catch (IOException) { /* closing a transport the peer already dropped - the goal is reached */ }
 
