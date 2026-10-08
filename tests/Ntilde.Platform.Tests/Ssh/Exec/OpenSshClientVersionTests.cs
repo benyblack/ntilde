@@ -329,6 +329,8 @@ public sealed class OpenSshClientVersionTests
         var probed = new List<string>();
         using var started = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
+        int joins = 0;
+        using var joined = new ManualResetEventSlim();
         OpenSshClientProbe answer = definitive ? OpenSshClientProbe.Found(new Version(9, 5)) : OpenSshClientProbe.Indeterminate("it did not exit within 5 s");
         var cache = new OpenSshClientVersionCache(
             path =>
@@ -338,7 +340,13 @@ public sealed class OpenSshClientVersionTests
                 release.Wait(Bound);
                 return answer;
             },
-            _ => Monday);
+            _ => Monday)
+        {
+            Joined = () =>
+            {
+                if (Interlocked.Increment(ref joins) == 3) joined.Set();
+            },
+        };
         string ssh = Path.Combine(Path.GetTempPath(), "bin", "ssh");
         int probers = 0;
 
@@ -349,7 +357,9 @@ public sealed class OpenSshClientVersionTests
             return probe;
         }))];
         Assert.True(started.Wait(Bound, TestContext.Current.CancellationToken), "the probe started");
-        await Task.Delay(100, TestContext.Current.CancellationToken);   // let the other lookups find it in flight
+        // Hold the probe until the other three lookups have taken it in flight: an indeterminate answer is dropped as soon
+        // as it is given, so a lookup arriving after that rightly probes again (a sleep here flaked on a loaded runner).
+        Assert.True(joined.Wait(Bound, TestContext.Current.CancellationToken), "the other lookups joined the probe in flight");
         release.Set();
         OpenSshClientProbe[] answers = await Task.WhenAll(lookups).WaitAsync(Bound, TestContext.Current.CancellationToken);
 

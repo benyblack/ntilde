@@ -29,6 +29,12 @@ public sealed class OpenSshClientVersionCache
     public static OpenSshClientVersionCache Shared { get; } = new();
 
     /// <summary>
+    /// Told each time a lookup takes the probe another lookup started, running or kept: lets a test hold a probe until the
+    /// lookups it expects have joined it, rather than guess how long they take to arrive.
+    /// </summary>
+    internal Action? Joined { get; init; }
+
+    /// <summary>
     /// What the client at <paramref name="sshExecutablePath"/> is. Unless a definitive answer is kept for it as it is now,
     /// or a probe of it is running, this lookup probes it: the probe runs that path as given - the one the attempt runs -
     /// and may block for as long as the probe does, so never on the UI thread.
@@ -65,6 +71,7 @@ public sealed class OpenSshClientVersionCache
             probe = known.Probe;
         }
 
+        if (!probedHere) Joined?.Invoke();
         OpenSshClientProbe answer = probe.Value;
         if (!answer.IsDefinitive)
         {
