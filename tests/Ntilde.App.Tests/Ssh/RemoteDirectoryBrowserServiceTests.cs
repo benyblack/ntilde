@@ -205,6 +205,70 @@ public sealed class RemoteDirectoryBrowserServiceTests
         Assert.Equal(6, interop.LastConnectionOptions.KeepAliveCountMax);
     }
 
+    [Fact]
+    public async Task ListDirectoryAsync_ThroughAJumpHop_SendsEachServerOnlyItsOwnPassword()
+    {
+        // A password typed for the bastion must not become the target's password, and the target's
+        // saved password must not reach the bastion. Here the session knows only the bastion's
+        // password and the profile has no saved one: the target gets none, the bastion its own.
+        Guid profileId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native));
+        registry.SetRuntimePassword(sessionId, "bastion.internal", 22, "jump", "bastion-secret");
+
+        var store = new TestSshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "chained",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default,
+            JumpHops = { new SshJumpHop { Host = "bastion.internal", User = "jump", Port = 22 } }
+        });
+        var interop = new RecordingNativeSshInterop(Array.Empty<NativeRemotePathEntry>());
+        var service = CreateService(registry, interop, new SshConnectionService(store), _ => null);
+
+        RemoteSidebarListingResult result = await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(interop.LastConnectionOptions);
+        Assert.Null(interop.LastConnectionOptions!.Password);
+        Assert.Equal(new string?[] { "bastion-secret" }, interop.LastConnectionOptions.JumpHopPasswords);
+    }
+
+    [Fact]
+    public async Task ListDirectoryAsync_ThroughAJumpHop_KeepsTheSavedTargetPasswordOffTheBastion()
+    {
+        Guid profileId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native));
+
+        var store = new TestSshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "chained",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default,
+            JumpHops = { new SshJumpHop { Host = "bastion.internal", User = "jump", Port = 22 } }
+        });
+        var interop = new RecordingNativeSshInterop(Array.Empty<NativeRemotePathEntry>());
+        var service = CreateService(registry, interop, new SshConnectionService(store), _ => "target-vault-secret");
+
+        await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+
+        Assert.Equal("target-vault-secret", interop.LastConnectionOptions!.Password);
+        Assert.Equal(new string?[] { null }, interop.LastConnectionOptions.JumpHopPasswords);
+    }
+
     private static RemoteDirectoryBrowserService CreateService(
         ActiveSshSessionRegistry registry,
         INativeSshInterop interop,

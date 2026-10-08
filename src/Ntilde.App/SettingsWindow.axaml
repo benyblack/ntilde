@@ -665,6 +665,24 @@
                                 </StackPanel>
                                 <CheckBox Name="LongCommandNotificationsToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Program notifications (OSC 9)"/>
+                                    <TextBlock Classes="RowDesc" Text="Show a toast when a program explicitly asks for one via OSC 9 (e.g. an AI CLI pinging that a long task finished). Suppressed while you're looking at the pane, like long command notifications."/>
+                                </StackPanel>
+                                <CheckBox Name="Osc9NotificationsToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+                            <Grid ColumnDefinitions="*,360">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Classes="RowLabel" Text="Progress reporting (OSC 9;4)"/>
+                                    <TextBlock Classes="RowDesc" Text="Show per-tab progress and Windows taskbar progress when a program reports it via OSC 9;4 (e.g. an AI CLI's task progress)."/>
+                                </StackPanel>
+                                <CheckBox Name="Osc9ProgressReportingToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
                             <Border BorderBrush="{StaticResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,18,0,18"/>
 
                             <Grid ColumnDefinitions="*,360">
@@ -930,7 +948,7 @@
                             <Grid ColumnDefinitions="*,360" Margin="24,0,0,0">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Suggestion bubble while typing"/>
-                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="After two characters, show the best matching command from your history just above the prompt. Esc hides it for the rest of the command. Turn this off to keep the assistant silent until you ask for it with Ctrl+Space or Ctrl+R."/>
+                                    <TextBlock Name="CommandAssistBubbleDesc" Classes="RowDesc" TextWrapping="Wrap" Text="After two characters, show the best matching command from your history just above the prompt. Esc hides it for the rest of the command. Turn this off to keep the assistant silent until you ask for it with Ctrl+Space or Ctrl+R."/>
                                 </StackPanel>
                                 <CheckBox Name="CommandAssistPassiveBubbleToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
@@ -939,7 +957,7 @@
                             <Grid ColumnDefinitions="*,360" Margin="24,0,0,0">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Remember commands"/>
-                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Record the commands you run so they can be suggested and searched with Ctrl+R. Only what the shell echoed on screen is recorded, so a password typed at a hidden prompt is never captured, and common secret-bearing arguments (--password, tokens, bearer headers) are redacted before anything is written. Other secrets typed as part of a visible command are not. With this off the assistant still suggests file paths and explains failures - it just stops writing history."/>
+                                    <TextBlock Name="CommandAssistHistoryDesc" Classes="RowDesc" TextWrapping="Wrap" Text="Record the commands you run so they can be suggested and searched with Ctrl+R. Only what the shell echoed on screen is recorded, so a password typed at a hidden prompt is never captured, and common secret-bearing arguments (--password, tokens, bearer headers) are redacted before anything is written. Other secrets typed as part of a visible command are not. With this off the assistant still suggests file paths and explains failures - it just stops writing history."/>
                                     <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Suspect something sensitive is in there? Clear history erases every recorded command, including anything carried over from an older version of Ntilde."/>
                                     <TextBlock Name="CommandAssistHistoryStatus" Classes="RowDesc" TextWrapping="Wrap" Text="" IsVisible="False"/>
                                 </StackPanel>
@@ -970,7 +988,7 @@
                             <Grid ColumnDefinitions="*,360" Margin="24,0,0,0">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Saved snippets"/>
-                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Commands you pinned with Ctrl+Shift+S, plus anything you add here. They show up in the assistant's popup alongside your history. Edit a name or a command in place - changes save when you leave the box."/>
+                                    <TextBlock Name="CommandAssistSnippetsDesc" Classes="RowDesc" TextWrapping="Wrap" Text="Commands you pinned with Ctrl+Shift+S, plus anything you add here. They show up in the assistant's popup alongside your history. Edit a name or a command in place - changes save when you leave the box."/>
                                     <TextBlock Name="CommandAssistSnippetStatus" Classes="RowDesc" TextWrapping="Wrap" Text="" IsVisible="False"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="10">

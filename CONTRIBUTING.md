@@ -87,6 +87,48 @@ would much rather answer a question early than reject a finished PR.
 
 ---
 
+## Running a Dev Build (Sidecar)
+
+To run the app while you keep building and testing, launch it through the
+sidecar script rather than from `src/Ntilde.App/bin/`:
+
+```bash
+scripts/run-sidecar.sh           # Linux / macOS
+```
+
+```powershell
+scripts\run-sidecar.ps1          # Windows (needs pwsh 7+)
+```
+
+Each run builds through the wrapper, mirrors the fresh output to a fixed
+directory outside the repo, and launches the app from that copy. The repo's
+`bin/` stays free for `build`/`test`, and because it is re-mirrored every time,
+the copy cannot go stale the way a hand-made one does. On Windows this is what
+stops the running app from locking its DLLs and failing your next build.
+
+It mirrors `Ntilde.McpServer` too, and prints the path to point your MCP client
+at. See [docs/mcp-dev-companion.md](docs/mcp-dev-companion.md) for why the
+client must use that copy (#211).
+
+| `run-sidecar.ps1` | `run-sidecar.sh` | Effect |
+|---|---|---|
+| *(default)* | *(default)* | Debug build, mirror app + MCP server, launch the app |
+| `-Configuration Release` | `-c Release` / `--configuration Release` | Build and mirror Release instead |
+| `-NoBuild` | `--no-build` | Skip the build; mirror the current output and launch |
+| `-SkipMcpServer` | `--skip-mcp-server` | App only; don't build or mirror the MCP server |
+| — | `--no-launch` | Build and mirror, but don't start the app |
+| `-SidecarRoot DIR` | `--sidecar-root DIR` (or `NTILDE_SIDECAR_ROOT`) | Use a different sidecar directory |
+| `-TargetFramework net10.0` | `-f` / `--framework net10.0` | Which `bin/<Configuration>/<tfm>/` output to mirror. It does not change what gets built, so only change it after the projects' own `TargetFramework` has changed |
+
+The default sidecar root is `%LOCALAPPDATA%\ntilde-sidecar` on Windows and
+`~/.local/share/ntilde-sidecar` elsewhere (on macOS too). Both scripts use the
+same location, so you can switch between them. Under it, the app lands in
+`<Configuration>/net10.0/` and the MCP server in `McpServer/<Configuration>/net10.0/`.
+The `.sh` script detaches the app and writes its stdout/stderr to
+`<sidecar-root>/sidecar-launch.log`.
+
+---
+
 ## The Shape of the Codebase
 
 Bytes flow **Pty → VT → Rendering**. The two rules that explain most of the
@@ -422,23 +464,26 @@ All PRs are automatically checked by CI:
   and commit the result.
 - unit tests (VT, Rendering, Architecture, Platform, McpServer — blocking)
 - headless App.Tests, in two lanes (`Lane!=PlatformBoot` and `Lane=PlatformBoot`)
-  — **failures are blocking**. Both test steps carry `continue-on-error`, but
-  that tolerates the *hang* only. That hang was recorded here for months as an
+  — **blocking**, on failures and on hangs. Both test steps carry
+  `continue-on-error`, but only so the verdict can come from the following step,
+  **Check App.Tests failures against the flake allowlist**, instead of from
+  `dotnet test`'s exit code. That step fails the job for any failing test not
+  named in `tests/app-tests-known-flaky.txt`, for a hang, for a missing or short
+  `.trx`, for a runner-level abort, and for a test step that exited non-zero
+  with no failing test to explain it. It prints how many tests executed, so a
+  truncated run is visible rather than silently green.
+
+  It used to tolerate the hang. That hang was recorded here for months as an
   upstream Avalonia.Headless deadlock (AvaloniaUI/Avalonia#21467, tracked as
-  #81) that no in-repo change could address; four dumps say otherwise. It was
-  ours: a Command Assist pass outliving its test read Avalonia's mutable
-  `Dispatcher.UIThread` static from a threadpool thread and became the UI
-  thread, and the next test's throw inside `EnsureIsolatedApplication()` — which
-  Avalonia does not guard — unwound the single dispatcher loop the whole
-  assembly shares, so every remaining test blocked forever and the `.trx`
-  reported nothing. PR #416 fixed it; #417 removed the leaked panes feeding the
-  same contamination. The tolerance stays until run data says the hang is gone,
-  because a handful of green runs is not that evidence. The *results* are then
-  gated by the following step,
-  **Check App.Tests failures against the flake allowlist**, which fails the job
-  for any failing test not named in `tests/app-tests-known-flaky.txt`. A missing
-  `.trx` is the hang and only warns, so the step also prints how many tests
-  executed — a truncated run is visible rather than silently green.
+  #81) that no in-repo change could address; the dumps said otherwise. It was
+  ours: code running off the UI thread read Avalonia's mutable
+  `Dispatcher.UIThread` static and became the UI thread, and the next test's
+  throw inside `EnsureIsolatedApplication()` — which Avalonia does not guard —
+  unwound the single dispatcher loop the whole assembly shares, so every
+  remaining test blocked forever and the `.trx` reported nothing. #416 and #426
+  removed the readers the dumps named, and no CI job has hung since. If yours
+  does, the blame dump is in the job's `unit-tests-*` artifact: read it before
+  theorising, which is what finally solved this one.
 - renderer metric thresholds (`tab_perf_smoke`)
 - golden shared PNG tests
 
@@ -453,10 +498,10 @@ a parity or replay break detected there must be fixed or reverted before the
 next release. Release tags additionally run the gating unit lane on all three
 OSes before any bundle is published.
 
-Failing blocking CI blocks merge. The only tolerated failure anywhere is the
-#81 hang, and the heavy categories (`Replay`, `RenderMetrics`, `PtySmoke`,
-`Stress`, `GoldenSharedPng`) run in their own jobs or on `main` rather than on
-every PR — run the ones your change touches locally.
+Failing blocking CI blocks merge. No failure is tolerated anywhere except a
+flaky App.Test named in the allowlist, and the heavy categories (`Replay`,
+`RenderMetrics`, `PtySmoke`, `Stress`, `GoldenSharedPng`) run in their own jobs
+or on `main` rather than on every PR — run the ones your change touches locally.
 
 Maintainers may request:
 - additional replay fixtures

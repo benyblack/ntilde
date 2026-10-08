@@ -322,6 +322,30 @@ namespace Ntilde.VT.Storage
             return true;
         }
 
+        /// <summary>Rows held by the oldest page, or 0 when the store is empty.</summary>
+        public int OldestPageRowCount => _pages.First?.Value.UsedRows ?? 0;
+
+        /// <summary>
+        /// Drops the oldest page and returns it to the pool, exactly as budget eviction does, and
+        /// returns how many rows it held (0 when the store is empty). Logical indexes shift down by
+        /// that many. For a caller that has finished reading those rows while rebuilding the store
+        /// elsewhere - the reflow - so the rebuilt store reuses the page's array instead of
+        /// allocating a second scrollback.
+        /// </summary>
+        public int ReleaseOldestPage()
+        {
+            if (_pages.First == null) return 0;
+
+            var oldest = _pages.First.Value;
+            _pages.RemoveFirst();
+            int rows = oldest.UsedRows;
+            _totalRowsEvicted += rows;
+            _currentBytes -= oldest.ByteSize;
+            if (ReferenceEquals(_lastAccessedPage, oldest)) _lastAccessedPage = null;
+            _pool.Return(oldest);
+            return rows;
+        }
+
         /// <summary>
         /// Evicts oldest pages until total bytes are within <see cref="MaxScrollbackBytes"/>.
         /// Returned pages go back to the pool.

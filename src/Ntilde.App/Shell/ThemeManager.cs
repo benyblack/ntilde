@@ -11,8 +11,11 @@ namespace Ntilde.Shell
     {
         private readonly string _themesDirectory;
         private readonly Dictionary<string, TerminalTheme> _loadedThemes = new();
+        // Several formats share an extension (".json" is both native and Windows Terminal), so
+        // ImportTheme tries every importer for the extension in this order.
         private readonly List<ThemeImporters.IThemeImporter> _importers = new()
         {
+            new ThemeImporters.NativeThemeImporter(),
             new ThemeImporters.WindowsTerminalImporter(),
             new ThemeImporters.ITerm2Importer(),
             new ThemeImporters.AlacrittyImporter()
@@ -70,43 +73,49 @@ namespace Ntilde.Shell
 
         public string ImportTheme(string filePath)
         {
-            string ext = Path.GetExtension(filePath).ToLower();
-            var importer = _importers.FirstOrDefault(i => i.Extension.ToLower() == ext);
+            string ext = Path.GetExtension(filePath);
 
-            if (importer == null && ext == ".json")
+            // An importer that does not recognise the file yields nothing, and the next one for
+            // the extension gets a turn; an unexpected throw from one is logged, not allowed to
+            // end the search.
+            foreach (var importer in _importers.Where(i => string.Equals(i.Extension, ext, StringComparison.OrdinalIgnoreCase)))
             {
-                // Simple JSON theme? Try to just copy it
+                List<TerminalTheme> imported;
                 try
                 {
-                    string json = File.ReadAllText(filePath);
-                    var theme = JsonSerializer.Deserialize(json, AppJsonContext.Default.TerminalTheme);
-                    if (theme != null)
-                    {
-                        string targetPath = Path.Combine(_themesDirectory, Path.GetFileName(filePath));
-                        File.WriteAllText(targetPath, json);
-                        _loadedThemes[theme.Name] = theme;
-                        return theme.Name;
-                    }
+                    imported = importer.Import(filePath).ToList();
                 }
-                catch { }
-            }
+                catch (Exception ex)
+                {
+                    TerminalLogger.Warning($"[ThemeManager] {importer.Name} importer failed on {filePath}: {ex.Message}");
+                    continue;
+                }
+                if (imported.Count == 0) continue;
 
-            if (importer != null)
-            {
-                var imported = importer.Import(filePath);
-                string lastThemeName = "";
+                // A theme that cannot be written is logged and skipped rather than thrown: the
+                // settings window calls this from an async click handler that does not catch, and
+                // one bad scheme should not cost the rest of the file.
+                string lastWritten = "";
                 foreach (var theme in imported)
                 {
-                    string fileName = theme.Name.Replace(" ", "") + ".json";
-                    string targetPath = Path.Combine(_themesDirectory, fileName);
-                    string json = JsonSerializer.Serialize(theme, AppJsonContext.Default.TerminalTheme);
-                    File.WriteAllText(targetPath, json);
+                    string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
+                    try
+                    {
+                        string json = JsonSerializer.Serialize(theme, AppJsonContext.Default.TerminalTheme);
+                        File.WriteAllText(targetPath, json);
+                    }
+                    catch (Exception ex)
+                    {
+                        TerminalLogger.Warning($"[ThemeManager] Could not write imported theme {theme.Name} to {targetPath}: {ex.Message}");
+                        continue;
+                    }
                     _loadedThemes[theme.Name] = theme;
-                    lastThemeName = theme.Name;
+                    lastWritten = theme.Name;
                 }
-                return lastThemeName;
+                return lastWritten;
             }
 
+            TerminalLogger.Warning($"[ThemeManager] No theme importer recognised {filePath}");
             return "";
         }
 
@@ -131,8 +140,7 @@ namespace Ntilde.Shell
 
         public void SaveTheme(TerminalTheme theme)
         {
-            string fileName = theme.Name.Replace(" ", "").Replace("/", "_").Replace("\\", "_") + ".json";
-            string targetPath = Path.Combine(_themesDirectory, fileName);
+            string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
 
             try
             {
@@ -154,8 +162,7 @@ namespace Ntilde.Shell
 
             if (_loadedThemes.TryGetValue(name, out var theme))
             {
-                string fileName = theme.Name.Replace(" ", "").Replace("/", "_").Replace("\\", "_") + ".json";
-                string targetPath = Path.Combine(_themesDirectory, fileName);
+                string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
 
                 try
                 {
@@ -171,6 +178,18 @@ namespace Ntilde.Shell
                 }
             }
         }
+
+        // Backslash is not in the Unix invalid set, but SaveTheme always replaced it, so it stays
+        // replaced on every platform.
+        private static readonly char[] UnsafeFileNameChars = Path.GetInvalidFileNameChars().Append('\\').ToArray();
+
+        // The one place a theme's file name comes from. The name is free text from the theme's
+        // source, so it can hold a path separator or a character the file system rejects; import,
+        // save, and delete must all derive the same file name from it, or a file one of them
+        // writes is never found by another. Spaces are dropped as they always were, so existing
+        // theme files keep their names (the built-in "Solarized Dark" ships as SolarizedDark.json).
+        private static string ThemeFileName(string themeName) =>
+            new string(themeName.Replace(" ", "").Select(c => UnsafeFileNameChars.Contains(c) ? '_' : c).ToArray()) + ".json";
 
         private void ExtractBuiltInThemes()
         {

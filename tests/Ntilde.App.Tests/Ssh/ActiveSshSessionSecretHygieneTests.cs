@@ -1,5 +1,6 @@
 using System;
-using System.Collections.Generic;
+using System.Collections;
+using System.Linq;
 using System.Reflection;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Services.Ssh;
@@ -21,8 +22,16 @@ namespace Ntilde.Tests.Ssh;
 public sealed class ActiveSshSessionSecretHygieneTests
 {
     private const string Secret = "correct horse battery staple";
+    private const string Host = "prod.internal";
+    private const int Port = 22;
+    private const string User = "ops";
 
-    private static Dictionary<Guid, byte[]> PasswordBuffers(ActiveSshSessionRegistry registry)
+    /// <summary>
+    /// The one buffer the registry holds. Read through the non-generic <see cref="IDictionary"/> so the
+    /// test does not depend on the (private) key type: the storage is keyed per server, and what these
+    /// tests care about is the byte[] value, not how it is addressed.
+    /// </summary>
+    private static byte[] SingleRetainedBuffer(ActiveSshSessionRegistry registry)
     {
         FieldInfo field = typeof(ActiveSshSessionRegistry).GetField(
             "_runtimePasswords",
@@ -32,7 +41,8 @@ public sealed class ActiveSshSessionSecretHygieneTests
                 + "tests need reshaping with it — do not delete them, they are the only check that the "
                 + "retained secret is actually wiped rather than merely dropped.");
 
-        return (Dictionary<Guid, byte[]>)field.GetValue(registry)!;
+        var buffers = (IDictionary)field.GetValue(registry)!;
+        return buffers.Values.Cast<byte[]>().Single();
     }
 
     private static ActiveSshSessionRegistry RegistryWithSession(Guid sessionId)
@@ -47,16 +57,16 @@ public sealed class ActiveSshSessionSecretHygieneTests
     {
         Guid sessionId = Guid.NewGuid();
         ActiveSshSessionRegistry registry = RegistryWithSession(sessionId);
-        registry.SetRuntimePassword(sessionId, Secret);
+        registry.SetRuntimePassword(sessionId, Host, Port, User, Secret);
 
         // Hold the array itself, so dropping it from the dictionary cannot hide whether it was wiped.
-        byte[] retained = PasswordBuffers(registry)[sessionId];
+        byte[] retained = SingleRetainedBuffer(registry);
         Assert.Contains(retained, b => b != 0);
 
         registry.Unregister(sessionId);
 
         Assert.All(retained, b => Assert.Equal(0, b));
-        Assert.False(registry.TryGetRuntimePassword(sessionId, out _));
+        Assert.False(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out _));
     }
 
     [Fact]
@@ -67,13 +77,13 @@ public sealed class ActiveSshSessionSecretHygieneTests
         Guid sessionId = Guid.NewGuid();
         ActiveSshSessionRegistry registry = RegistryWithSession(sessionId);
 
-        registry.SetRuntimePassword(sessionId, Secret);
-        byte[] first = PasswordBuffers(registry)[sessionId];
+        registry.SetRuntimePassword(sessionId, Host, Port, User, Secret);
+        byte[] first = SingleRetainedBuffer(registry);
 
-        registry.SetRuntimePassword(sessionId, "a different secret entirely");
+        registry.SetRuntimePassword(sessionId, Host, Port, User, "a different secret entirely");
 
         Assert.All(first, b => Assert.Equal(0, b));
-        Assert.True(registry.TryGetRuntimePassword(sessionId, out string? current));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out string? current));
         Assert.Equal("a different secret entirely", current);
     }
 
@@ -82,13 +92,13 @@ public sealed class ActiveSshSessionSecretHygieneTests
     {
         Guid sessionId = Guid.NewGuid();
         ActiveSshSessionRegistry registry = RegistryWithSession(sessionId);
-        registry.SetRuntimePassword(sessionId, Secret);
-        byte[] retained = PasswordBuffers(registry)[sessionId];
+        registry.SetRuntimePassword(sessionId, Host, Port, User, Secret);
+        byte[] retained = SingleRetainedBuffer(registry);
 
-        registry.SetRuntimePassword(sessionId, null);
+        registry.SetRuntimePassword(sessionId, Host, Port, User, null);
 
         Assert.All(retained, b => Assert.Equal(0, b));
-        Assert.False(registry.TryGetRuntimePassword(sessionId, out _));
+        Assert.False(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out _));
     }
 
     [Theory]
@@ -108,9 +118,9 @@ public sealed class ActiveSshSessionSecretHygieneTests
         Guid sessionId = Guid.NewGuid();
         ActiveSshSessionRegistry registry = RegistryWithSession(sessionId);
 
-        registry.SetRuntimePassword(sessionId, password);
+        registry.SetRuntimePassword(sessionId, Host, Port, User, password);
 
-        Assert.True(registry.TryGetRuntimePassword(sessionId, out string? roundTripped));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, Host, Port, User, out string? roundTripped));
         Assert.Equal(password, roundTripped);
     }
 

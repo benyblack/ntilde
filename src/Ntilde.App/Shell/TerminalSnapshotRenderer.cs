@@ -143,7 +143,9 @@ namespace Ntilde.Shell
     /// Thread affinity: safe to call off the UI thread. It takes the buffer's read
     /// lock for the values it needs, releases it, and then draws (the draw
     /// operation re-enters the lock itself). It never touches the live control or
-    /// its caches — pass no caches and it allocates its own Skia font objects.
+    /// its caches — pass no caches and it allocates its own Skia font objects — nor
+    /// the buffer's live row-diff state: its snapshot is always an isolated one
+    /// (<see cref="RenderSnapshotRequest.Isolated"/>).
     /// </summary>
     public static class TerminalSnapshotRenderer
     {
@@ -262,7 +264,12 @@ namespace Ntilde.Shell
                 cursorCol: cursorCol,
                 rowCache: options.RowCache,
                 enableComplexShaping: options.EnableComplexShaping,
-                glyphCache: options.GlyphCache);
+                glyphCache: options.GlyphCache,
+                // Never a frame of the live view, and usually taken on another thread (the
+                // agent-host IPC thread). A live-mode snapshot here would advance the buffer's
+                // row-diff baseline under the live renderer, whose next frame would then leave
+                // out every change made before this capture.
+                isolatedSnapshot: true);
 
             try
             {

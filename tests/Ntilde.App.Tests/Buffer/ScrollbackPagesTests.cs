@@ -53,5 +53,39 @@ namespace Ntilde.Tests.Buffer
                 Assert.Equal(expectedChar, row[0].Character);
             }
         }
+
+        // The reflow reads the old store front to back while building the new one, and hands each
+        // page back as soon as it has consumed it, so the new store reuses the arrays instead of
+        // allocating a second scrollback.
+        [Fact]
+        public void ReleaseOldestPage_DropsTheFirstPageAndShiftsLogicalIndexes()
+        {
+            var scrollback = new ScrollbackPages(10, _pool, maxScrollbackBytes: 64L * 1024 * 1024);
+            var row = new TerminalCell[10];
+            for (int i = 0; i < 200; i++)
+            {
+                row[0] = new TerminalCell((char)('A' + (i % 26)), default, default);
+                scrollback.AppendRow(row.AsSpan(), isWrapped: i % 2 == 0);
+            }
+            Assert.Equal(TerminalPageConstants.DefaultRowsPerPage, scrollback.OldestPageRowCount);
+
+            int released = scrollback.ReleaseOldestPage();
+
+            Assert.Equal(TerminalPageConstants.DefaultRowsPerPage, released);
+            Assert.Equal(200 - released, scrollback.Count);
+            Assert.Equal(released, scrollback.TotalRowsEvicted);
+            Assert.Equal((char)('A' + (released % 26)), scrollback.GetRow(0)[0].Character);
+            Assert.Equal(released % 2 == 0, scrollback.IsRowWrapped(0));
+        }
+
+        [Fact]
+        public void ReleaseOldestPage_OnAnEmptyStore_ReleasesNothing()
+        {
+            var scrollback = new ScrollbackPages(10, _pool);
+
+            Assert.Equal(0, scrollback.OldestPageRowCount);
+            Assert.Equal(0, scrollback.ReleaseOldestPage());
+            Assert.Equal(0, scrollback.Count);
+        }
     }
 }

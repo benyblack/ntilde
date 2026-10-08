@@ -44,8 +44,14 @@ public sealed class ActiveSshSessionRegistry
     /// password and fail its auth for no visible reason. Reads, writes and clears all happen inside the
     /// lock so the bytes are never observed while being wiped. Contention is irrelevant — this is touched
     /// on auth and on teardown, not per keystroke.
+    ///
+    /// Keyed by session AND server (host, port, user), not by session alone: a session through a jump
+    /// chain authenticates several servers, and a password belongs to exactly one of them. Keyed by
+    /// session, a bastion's password was replayed to the target (and handed to every hop of a later
+    /// transfer). A lookup has to name the server, so a password can only be returned for the server
+    /// it was entered for.
     /// </remarks>
-    private readonly Dictionary<Guid, byte[]> _runtimePasswords = new();
+    private readonly Dictionary<RuntimePasswordKey, byte[]> _runtimePasswords = new();
     private readonly object _runtimePasswordGate = new();
 
     public static ActiveSshSessionRegistry Instance => Shared.Value;
@@ -80,19 +86,24 @@ public sealed class ActiveSshSessionRegistry
     public void Unregister(Guid sessionId)
     {
         _sessions.TryRemove(sessionId, out _);
-        ClearRuntimePassword(sessionId);
+        ClearRuntimePasswords(sessionId);
     }
 
-    public void SetRuntimePassword(Guid sessionId, string? password)
+    /// <summary>
+    /// Holds <paramref name="password"/> as the password of <paramref name="user"/> on
+    /// <paramref name="host"/>:<paramref name="port"/>, for this session only. An empty password
+    /// clears that one entry.
+    /// </summary>
+    public void SetRuntimePassword(Guid sessionId, string host, int port, string user, string? password)
     {
-        if (sessionId == Guid.Empty)
+        if (sessionId == Guid.Empty || !RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
         {
             return;
         }
 
         if (string.IsNullOrEmpty(password))
         {
-            ClearRuntimePassword(sessionId);
+            ClearRuntimePassword(key);
             return;
         }
 
@@ -104,29 +115,36 @@ public sealed class ActiveSshSessionRegistry
 
         lock (_runtimePasswordGate)
         {
-            if (_runtimePasswords.TryGetValue(sessionId, out byte[]? existing))
+            if (_runtimePasswords.TryGetValue(key, out byte[]? existing))
             {
                 CryptographicOperations.ZeroMemory(existing);
             }
 
-            _runtimePasswords[sessionId] = buffer;
+            _runtimePasswords[key] = buffer;
         }
     }
 
     /// <summary>
-    /// Returns the session's password, or <c>null</c> when none is held.
+    /// Returns the password this session holds for <paramref name="user"/> on
+    /// <paramref name="host"/>:<paramref name="port"/>, or <c>null</c> when none is held. Never
+    /// returns a password entered for a different server of the same session.
     /// </summary>
     /// <remarks>
     /// The returned string is a transient copy — see the note on <c>_runtimePasswords</c>. Callers should
     /// use it and let it go rather than storing it anywhere with a longer life than the operation.
     /// </remarks>
-    public bool TryGetRuntimePassword(Guid sessionId, out string? password)
+    public bool TryGetRuntimePassword(Guid sessionId, string host, int port, string user, out string? password)
     {
+        password = null;
+        if (!RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
+        {
+            return false;
+        }
+
         lock (_runtimePasswordGate)
         {
-            if (!_runtimePasswords.TryGetValue(sessionId, out byte[]? stored))
+            if (!_runtimePasswords.TryGetValue(key, out byte[]? stored))
             {
-                password = null;
                 return false;
             }
 
@@ -137,14 +155,66 @@ public sealed class ActiveSshSessionRegistry
         }
     }
 
-    private void ClearRuntimePassword(Guid sessionId)
+    private void ClearRuntimePassword(RuntimePasswordKey key)
     {
         lock (_runtimePasswordGate)
         {
-            if (_runtimePasswords.Remove(sessionId, out byte[]? removed))
+            if (_runtimePasswords.Remove(key, out byte[]? removed))
             {
                 CryptographicOperations.ZeroMemory(removed);
             }
+        }
+    }
+
+    private void ClearRuntimePasswords(Guid sessionId)
+    {
+        lock (_runtimePasswordGate)
+        {
+            List<RuntimePasswordKey>? keys = null;
+            foreach (RuntimePasswordKey key in _runtimePasswords.Keys)
+            {
+                if (key.SessionId == sessionId)
+                {
+                    (keys ??= new List<RuntimePasswordKey>()).Add(key);
+                }
+            }
+
+            if (keys == null)
+            {
+                return;
+            }
+
+            foreach (RuntimePasswordKey key in keys)
+            {
+                if (_runtimePasswords.Remove(key, out byte[]? removed))
+                {
+                    CryptographicOperations.ZeroMemory(removed);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// One server of one session. The host is compared case-insensitively (DNS names are), the user
+    /// exactly (Unix account names are case-sensitive), and port 0 means 22 — the same defaults the
+    /// connect path applies, so the key a prompt stores under is the key a transfer looks up.
+    /// </summary>
+    private readonly record struct RuntimePasswordKey(Guid SessionId, string Host, int Port, string User)
+    {
+        public static bool TryCreate(Guid sessionId, string? host, int port, string? user, out RuntimePasswordKey key)
+        {
+            if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user) || port is < 0 or > 65535)
+            {
+                key = default;
+                return false;
+            }
+
+            key = new RuntimePasswordKey(
+                sessionId,
+                host.Trim().ToLowerInvariant(),
+                port == 0 ? 22 : port,
+                user);
+            return true;
         }
     }
 }

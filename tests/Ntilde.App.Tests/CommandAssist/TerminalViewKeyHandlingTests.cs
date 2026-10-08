@@ -1,3 +1,6 @@
+using Avalonia.Input.Platform;
+using Avalonia.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using Ntilde.Shell;
@@ -243,6 +246,62 @@ public sealed class TerminalViewKeyHandlingTests
         session.Verify(x => x.SendInput("\x1bOF"), Times.Once);
     }
 
+    // --- Modified cursor, editing and function keys ------------------------------------------
+    //
+    // TerminalInputModeEncoderTests covers the whole key x modifier table. These prove the
+    // modifiers survive the trip through HandleKeyDownCore: that the kitty, Alt-sends-ESC and
+    // Ctrl+letter branches ahead of EncodeSpecialKey let these chords through, and that exactly one
+    // sequence goes out - the modified one, not the plain key as well or instead.
+
+    [AvaloniaTheory]
+    [InlineData(Key.Left, KeyModifiers.Control, "\x1b[1;5D")]    // word left: PSReadLine, bash, zsh
+    [InlineData(Key.Right, KeyModifiers.Control, "\x1b[1;5C")]   // word right
+    [InlineData(Key.Up, KeyModifiers.Shift, "\x1b[1;2A")]        // editor selection
+    [InlineData(Key.Home, KeyModifiers.Shift, "\x1b[1;2H")]
+    [InlineData(Key.Delete, KeyModifiers.Control, "\x1b[3;5~")]  // kill-word forward
+    [InlineData(Key.PageUp, KeyModifiers.Shift, "\x1b[5;2~")]
+    [InlineData(Key.F1, KeyModifiers.Shift, "\x1b[1;2P")]
+    [InlineData(Key.F5, KeyModifiers.Shift, "\x1b[15;2~")]
+    // EncodeAltKey declines non-printable keys, so Alt+arrow falls through to the encoder.
+    [InlineData(Key.Left, KeyModifiers.Alt, "\x1b[1;3D")]
+    // Ctrl+Alt is AltGr on Windows, but an arrow composes no text, so there is nothing to protect
+    // by dropping it; the Ctrl+letter branch requires !Alt and does not claim it either.
+    [InlineData(Key.Left, KeyModifiers.Control | KeyModifiers.Alt, "\x1b[1;7D")]
+    public void HandleKeyDownCore_ModifiedSpecialKey_SendsXtermModifierParameter(
+        Key key, KeyModifiers modifiers, string expected)
+    {
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var view = new TerminalView();
+        view.SetBuffer(new TerminalBuffer(80, 24));
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+
+        Assert.True(view.HandleKeyDownCore(key, modifiers));
+
+        session.Verify(x => x.SendInput(expected), Times.Once);
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Once);
+    }
+
+    [AvaloniaFact]
+    public void HandleKeyDownCore_ModifiedArrowsInApplicationCursorMode_SendCsiFormNotSs3()
+    {
+        var session = new Mock<ITerminalSession>();
+        var view = new TerminalView();
+        var buffer = new TerminalBuffer(80, 24);
+        buffer.Modes.IsApplicationCursorKeys = true;
+        view.SetBuffer(buffer);
+        view.SetSession(session.Object);
+
+        Assert.True(view.HandleKeyDownCore(Key.Left, KeyModifiers.Control));
+        Assert.True(view.HandleKeyDownCore(Key.End, KeyModifiers.Shift));
+
+        session.Verify(x => x.SendInput("\x1b[1;5D"), Times.Once);
+        session.Verify(x => x.SendInput("\x1b[1;2F"), Times.Once);
+        session.Verify(x => x.SendInput("\x1bOD"), Times.Never);
+        session.Verify(x => x.SendInput("\x1bOF"), Times.Never);
+    }
+
     [AvaloniaFact]
     public void FocusReporting_WhenEnabled_EmitsFocusInAndFocusOut()
     {
@@ -377,12 +436,96 @@ public sealed class TerminalViewKeyHandlingTests
         view.SetBuffer(new TerminalBuffer(80, 24));
         view.SetSession(session.Object);
         view.ApplySettings(new TerminalSettings());
+        view.UseMacOSClipboardChords = false; // copy-on-Ctrl+C is the Windows/Linux convention
         view.SetSelectionForTest(0, 0, 0, 3);
 
         bool handled = view.HandleKeyDownCore(Key.C, KeyModifiers.Control);
 
         Assert.True(handled);
         session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+    }
+
+    private static (TerminalView View, Mock<ITerminalSession> Session) CreateMacOSView(bool disambiguate)
+    {
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var view = new TerminalView();
+        view.SetBuffer(disambiguate ? CreateDisambiguateBuffer() : new TerminalBuffer(80, 24));
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+        view.UseMacOSClipboardChords = true;
+        return (view, session);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MacOS_CmdCWithSelection_CopiesAndSendsNothing(bool disambiguate)
+    {
+        var (view, session) = CreateMacOSView(disambiguate);
+        view.SetSelectionForTest(0, 0, 0, 3);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+        Assert.True(view.HasSelection());
+    }
+
+    [AvaloniaFact]
+    public async Task MacOS_CmdCWithSelection_WritesTheSelectionToTheClipboard()
+    {
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var buffer = new TerminalBuffer(80, 24);
+        new AnsiParser(buffer).Process("hello world");
+        var view = new TerminalView { UseMacOSClipboardChords = true };
+        view.SetBuffer(buffer);
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+
+        // CopySelectionToClipboard reaches the clipboard through the view's TopLevel.
+        var window = new Window { Content = view, Width = 400, Height = 300 };
+        window.Show();
+        await window.Clipboard!.SetTextAsync("stale");
+        view.SetSelectionForTest(0, 0, 0, 4);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("hello", await window.Clipboard.TryGetTextAsync());
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+    }
+
+    [AvaloniaFact]
+    public void MacOS_CmdCWithoutSelection_IsSwallowed()
+    {
+        var (view, session) = CreateMacOSView(disambiguate: true);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Meta));
+
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Never);
+    }
+
+    [AvaloniaFact]
+    public void MacOS_CtrlCWithSelection_IsTheInterrupt()
+    {
+        var (view, session) = CreateMacOSView(disambiguate: false);
+        view.SetSelectionForTest(0, 0, 0, 3);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Control));
+
+        session.Verify(x => x.SendInput("\x03"), Times.Once);
+    }
+
+    [AvaloniaFact]
+    public void MacOS_Disambiguate_CtrlCWithSelection_IsEncodedNotCopied()
+    {
+        var (view, session) = CreateMacOSView(disambiguate: true);
+        view.SetSelectionForTest(0, 0, 0, 3);
+
+        Assert.True(view.HandleKeyDownCore(Key.C, KeyModifiers.Control));
+
+        session.Verify(x => x.SendInput("\x1b[99;5u"), Times.Once);
     }
 
     [AvaloniaFact]
@@ -411,6 +554,7 @@ public sealed class TerminalViewKeyHandlingTests
         view.SetBuffer(CreateDisambiguateBuffer());
         view.SetSession(session.Object);
         view.ApplySettings(new TerminalSettings());
+        view.UseMacOSClipboardChords = false; // copy-on-Ctrl+C is the Windows/Linux convention
         view.SetSelectionForTest(0, 0, 0, 3);
 
         bool handled = view.HandleKeyDownCore(Key.C, KeyModifiers.Control);
@@ -487,6 +631,26 @@ public sealed class TerminalViewKeyHandlingTests
         Assert.True(handled);
         session.Verify(x => x.SendInput("\x1b[9;2u"), Times.Once);
         session.Verify(x => x.SendInput("\x1b[Z"), Times.Never);
+    }
+
+    [AvaloniaFact]
+    public void KittyProtocolOn_Disambiguate_CtrlLeft_FallsThroughToModifiedLegacyForm()
+    {
+        // Functional keys are out of scope for Ntilde's disambiguate tier, so EncodeKittyKey returns
+        // null and the legacy encoder answers - which now carries the modifier instead of sending a
+        // bare CSI D.
+        var session = new Mock<ITerminalSession>();
+        session.SetupGet(x => x.IsProcessRunning).Returns(true);
+        var view = new TerminalView();
+        view.SetBuffer(CreateDisambiguateBuffer());
+        view.SetSession(session.Object);
+        view.ApplySettings(new TerminalSettings());
+
+        bool handled = view.HandleKeyDownCore(Key.Left, KeyModifiers.Control);
+
+        Assert.True(handled);
+        session.Verify(x => x.SendInput("\x1b[1;5D"), Times.Once);
+        session.Verify(x => x.SendInput(It.IsAny<string>()), Times.Once);
     }
 
     [AvaloniaFact]

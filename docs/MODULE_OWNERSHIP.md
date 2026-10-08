@@ -42,7 +42,8 @@ invariant changes.
 - All read access requires holding `TerminalBuffer.Lock`; reads without the lock throw via `AssertLockHeld`
 - **Lock re-entrancy contract:** `Lock` is a non-recursive `ReaderWriterLockSlim`. `EnterReadLockIfNeeded()` returns `false` (and acquires nothing) when a read *or* write lock is already held. `EnterWriteLockIfNeeded()` returns `false` only when a *write* lock is already held — calling it while holding a read lock throws `LockRecursionException` (upgrading is not supported), it does **not** return `false`. Both return `true` when they actually acquired the lock. The returned `bool` says *whether this call took the lock* — callers must pass it to the matching `Exit…IfNeeded(..., lockTaken)` and must **not** unlock when it is `false`. Treating a `false` return as "lock acquired" double-unlocks (or unlocks a caller's outer lock).
 - **`GetRowAbsolute()` null contract:** returns `null` for any absolute row that has no persistent `TerminalRow` — including **paged-out scrollback rows** (scrollback lives in `ScrollbackPages`, not as row objects), out-of-range rows, and negative indices. To read scrollback content use the cell/grapheme accessors (`GetCellAbsolute`, `GetGraphemeAbsolute`), which page it in; callers that assume a non-null row for scrollback indices will NRE.
-- No OS, PTY, rendering, or UI logic in this assembly (`Vt_must_be_a_leaf_assembly` arch test)
+- **Blocking write waits go through the host's scope:** every write-lock acquisition goes through `AcquireWriteLock()`, and one that has to block runs inside `TerminalBuffer.BlockingWriteWaitScope` when the host has set it. VT owns the routing (`WriteLockReentrancyTests`); the policy - a UI thread's wait must not dispatch messages - and its native wait belong to App.
+- No OS, PTY, rendering, or UI logic in this assembly (`Vt_must_be_a_leaf_assembly` arch test), and no native interop (`Vt_declares_no_native_interop`)
 - All types in `Ntilde.VT.*` namespace (`Leaf_assembly_types_reside_in_its_own_namespace`, `NamespaceAlignmentTests.cs`)
 
 **Test authority**
@@ -137,6 +138,7 @@ invariant changes.
 **Owns**
 - Input routing primitives (drop router, shell quoters, input sender)
 - Path mapping (notably WSL ↔ Windows)
+- Link activation policy (`Links/LinkSchemes`): whether a terminal link may open, reveal a local path, or do nothing. Platform path rules, so not in VT, which only detects and stores links
 - Process abstraction (`IProcessRunner`)
 - The entire SSH stack: native interop with `rusty_ssh.dll`, OpenSSH bridging, session factories, profile storage, transport
 - SSH exec channels (`Ssh/Exec/`, namespace `Ntilde.Platform.Ssh.Exec`, multiplexer Phase 4 spec §8.2-§8.3): a command run over SSH with no PTY, which the remote multiplexer (`ntilde-mux proxy --stdio`) and its installer use. `ISshExecTransport` / `ISshExecChannel` (stdout, stdin with EOF on dispose, an 8 KiB stderr tail, the exit code), `OpenSshExecTransport` + `OpenSshExecCommandLine` + `SshAskPassEnvironment` (the `ssh` argv and the askpass/batch-mode environment), `NativeSshExecTransport` over rusty_ssh's exec mode (`nova_ssh_exec`, `nova_ssh_send_eof`), `BoundedChunkQueue` / `BoundedTail`, and `SshExec.RunAsync` (one command with stdin bytes and a deadline)
@@ -560,6 +562,7 @@ requires public test classes.
   - `RemoteHostProbe.cs`, `MuxDaemonRid.cs`, `IMuxDaemonAssetSource.cs` + `GitHubReleaseMuxAssetSource.cs` / `LocalFileMuxAssetSource.cs`, `RemoteMuxInstallCommands.cs`, `RemoteMuxInstaller.cs`, `RemoteOutputText.cs`: the install flow (probe, verified asset, upload script, version check), UI-free
   - `Views/Ssh/RemoteMuxInstallDialog.cs` (namespace `Ntilde.Views.Ssh`): the code-built install dialog, opened from the connection editor's Reliability tab and from the *Persistent SSH unavailable* notice
 - Windows launch support (`Shell/`): `LauncherRelease.cs` (sets the `ntilde.com` release event on the GUI path; discards it in the mux branch) and `UserPathRegistration.cs` (the install folder on the user `PATH`, from Velopack's install, update and uninstall hooks only); `AppVersionInfo.cs` (the app's version, for the About window, the editor and the release download)
+- The UI thread's lock-wait policy: `App.Initialize` registers `Shell/Native/NonPumpingSynchronizationContext` as VT's `BlockingWriteWaitScope`, so a UI-thread wait for a buffer's write lock dispatches no messages. A pumping wait let a WM_PAINT deadlock against its own resize (`TerminalViewResizeReentrancyTests`)
 
 **Non-responsibilities**
 - VT parsing (delegated to VT)

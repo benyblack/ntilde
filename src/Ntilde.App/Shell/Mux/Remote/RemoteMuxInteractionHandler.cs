@@ -25,9 +25,10 @@ namespace Ntilde.Shell.Mux.Remote;
 /// said sign-in was over (<see cref="Attempt.Authenticated"/>), a failure counts against nothing it offered.
 /// </para>
 /// <para>
-/// A native password prompt does not say which hop of a jump chain asks, and each hop asks the same
-/// "Password:". So for a profile with jump hops a password is never remembered or replayed (a
-/// passphrase is: it unlocks a local key, whichever hop asks).
+/// For a profile with jump hops a password is never remembered or replayed (a passphrase is: it unlocks a
+/// local key, whichever hop asks). Native prompts name the hop that asks
+/// (<see cref="SshInteractionRequest.IsJumpHop"/>), and the window's handler fills and saves the profile's
+/// password only for its target; this handler keeps the stricter rule regardless.
 /// </para>
 /// <para>
 /// Past memory, an interactive attempt (a user is waiting) asks the window's handler, which may show a

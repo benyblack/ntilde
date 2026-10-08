@@ -11,6 +11,23 @@ namespace Ntilde.VT
         public SelectionState? Selection { get; init; }
         public IReadOnlyList<SearchMatch>? SearchMatches { get; init; }
         public int ActiveSearchIndex { get; init; }
+
+        /// <summary>
+        /// True for a capture that is not a frame of the live view: an agent-host screenshot, a
+        /// PNG export, a golden render. Such a capture neither reads nor writes the buffer's
+        /// row-diff baseline and render-row cache; it builds every row fresh and reports every
+        /// renderable row as dirty.
+        /// </summary>
+        /// <remarks>
+        /// The default (false) is the live view's mode. There, <see cref="TerminalRenderSnapshot.DirtySpans"/>
+        /// holds the cells that changed since the previous live capture, and the renderer
+        /// repaints only those spans over the row picture it drew last time. That contract
+        /// breaks if anything else captures in between: the intervening capture advances the
+        /// baseline, the next live frame's spans omit every change made before it, and the
+        /// renderer keeps painting those cells from its older picture. The baseline belongs to
+        /// the live renderer alone, so every other caller must set this.
+        /// </remarks>
+        public bool Isolated { get; init; }
     }
 
     public readonly struct RenderThemeSnapshot

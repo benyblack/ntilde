@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "660b22afec722704079dc9aee5ff1dccca412dfaac7f91518a47b667221d83d9",
+  "matrixSha256": "5ea9364bae9e5ca3fd01a1c4816c5345093928832c36156acbcc1cfc2125b121",
   "summary": {
-    "totalRows": 63,
-    "supportedCount": 26,
+    "totalRows": 64,
+    "supportedCount": 27,
     "partialCount": 31,
     "experimentalCount": 1,
     "notSupportedCount": 4,
     "wontSupportCount": 1,
-    "rowsWithLinkedEvidence": 41,
-    "supportedRowsWithLinkedEvidence": 26,
+    "rowsWithLinkedEvidence": 43,
+    "supportedRowsWithLinkedEvidence": 27,
     "errorCount": 0,
     "warningCount": 0
   },
@@ -68,35 +68,35 @@
       "order": 7,
       "title": "8) OSC sequences",
       "startLine": 148,
-      "endLine": 157,
-      "rowCount": 8
+      "endLine": 158,
+      "rowCount": 9
     },
     {
       "order": 8,
       "title": "9) Kitty graphics / APC",
-      "startLine": 163,
-      "endLine": 166,
+      "startLine": 164,
+      "endLine": 167,
       "rowCount": 2
     },
     {
       "order": 9,
       "title": "10) SIXEL",
-      "startLine": 172,
-      "endLine": 175,
+      "startLine": 173,
+      "endLine": 176,
       "rowCount": 2
     },
     {
       "order": 10,
       "title": "11) Clipboard, selection, and hyperlinking",
-      "startLine": 181,
-      "endLine": 185,
+      "startLine": 182,
+      "endLine": 186,
       "rowCount": 3
     },
     {
       "order": 11,
       "title": "12) Unicode width, graphemes, and font behavior",
-      "startLine": 191,
-      "endLine": 195,
+      "startLine": 192,
+      "endLine": 196,
       "rowCount": 3
     }
   ],
@@ -702,16 +702,25 @@
       "feature": "Application cursor keys",
       "status": "\u26A0 Partial",
       "specOrNotes": "Impacts input mapping",
-      "evidenceText": "Unit/Code: \u0060ReplayV2Tests\u0060, app input paths",
+      "evidenceText": "Unit: \u0060tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs\u0060, \u0060tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs\u0060; Unit/Code: \u0060ReplayV2Tests\u0060",
       "evidenceKinds": [
         "replay",
         "unit"
       ],
-      "evidenceLinks": [],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/CommandAssist/TerminalViewKeyHandlingTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.App.Tests/Input/TerminalInputModeEncoderTests.cs",
+          "exists": true
+        }
+      ],
       "hasAutomatedEvidenceSignal": true,
-      "hasLinkedEvidence": false,
+      "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
-      "knownDeviations": "Parser/UI wiring exists; needs targeted key-mapping tests",
+      "knownDeviations": "Unmodified arrows and Home/End switch between CSI and SS3 with the mode; with a modifier held they always use xterm\u0027s \u0060CSI 1;m\u0060 form (e.g. Ctrl\u002BLeft \u0060CSI 1;5D\u0060), as xterm does, since SS3 has no parameter slot",
       "sourceLine": 113
     },
     {
@@ -822,7 +831,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BInput",
-      "knownDeviations": "Scope: disambiguate-escape-codes tier (\u00600b1\u0060) only. Bits \u00600b10\u0060/\u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (event types, alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad and functional keys keep their legacy encodings (including modified arrows/Home/End/PgUp/PgDn - the spec\u0027s \u0060CSI 1;mod \u003Cletter\u003E\u0060 form is not emitted, so e.g. Ctrl\u002BLeft stays an unmodified \u0060CSI D\u0060). AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
+      "knownDeviations": "Scope: disambiguate-escape-codes tier (\u00600b1\u0060) only. Bits \u00600b10\u0060/\u00600b100\u0060/\u00600b1000\u0060/\u00600b10000\u0060 (event types, alternate keys, all-keys, associated text) are accepted but masked out on push/set, so the \u0060CSI ? u\u0060 reply only advertises flags actually honored. Key encoding covers Esc, modified Enter/Tab/Backspace, and ctrl/alt/super combinations on the spec\u0027s legacy-text keys; keypad and functional keys keep their legacy encodings, which for arrows/Home/End/Insert/Delete/PgUp/PgDn/F1-F12 carry modifiers in xterm\u0027s PC-style form (e.g. Ctrl\u002BLeft is \u0060CSI 1;5D\u0060, Ctrl\u002BDelete \u0060CSI 3;5~\u0060). AltGr on Windows non-US layouts is reported as Control\u002BAlt; the encoder carves that combination out (falls through to legacy/text) so composed characters are not swallowed - the accepted trade-off is that literal Ctrl\u002BAlt\u002B\u0026lt;key\u0026gt; shortcuts on US layouts also lose kitty encoding, same as the pre-existing Alt-sends-ESC carve-out. Gated end-to-end by \u0060TerminalSettings.EnableKittyKeyboardProtocol\u0060 (default on): when off, the App-side encoder is skipped unconditionally and the \u0060CSI ? u\u0060 reply always reports flags 0 regardless of the pushed stack state. The tab-broadcast path in \u0060MainWindow\u0060 builds its own input independently of this encoder and always sends legacy encoding to broadcast targets regardless of their own flag state.",
       "sourceLine": 118
     },
     {
@@ -1126,6 +1135,31 @@
     },
     {
       "section": "8) OSC sequences",
+      "feature": "OSC 9 / 9;4",
+      "status": "\u2705 Supported",
+      "specOrNotes": "",
+      "evidenceText": "Unit: \u0060tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs\u0060, \u0060tests/Ntilde.App.Tests/TerminalProgressPresentationTests.cs\u0060",
+      "evidenceKinds": [
+        "unit"
+      ],
+      "evidenceLinks": [
+        {
+          "path": "tests/Ntilde.App.Tests/TerminalProgressPresentationTests.cs",
+          "exists": true
+        },
+        {
+          "path": "tests/Ntilde.VT.Tests/Osc9NotificationProgressTests.cs",
+          "exists": true
+        }
+      ],
+      "hasAutomatedEvidenceSignal": true,
+      "hasLinkedEvidence": true,
+      "ownership": "Parser\u002BApp",
+      "knownDeviations": "#271. \u00609;\u003Ctext\u003E\u0060 flattens/caps (200 chars) and raises \u0060OnDesktopNotification\u0060; \u00609;4;\u003Cstate\u003E[;\u003Cpct\u003E]\u0060 clamps pct 0-100 and raises \u0060OnProgressReported\u0060 (state 0-4, pct null when omitted; malformed payloads dropped; bare \u00604\u0060 without \u0060;\u0060 is notification text). App side: focus-gated in-app toast (\u0060Osc9NotificationsEnabled\u0060, default false, same policy as long-command notifications), per-tab progress \u2014 thin bar in vertical headers, trailing suffix in horizontal titles \u2014 and Windows taskbar progress mirroring the selected tab (\u0060Osc9ProgressReportingEnabled\u0060, default true). Progress withdraws on state 0, pane exit, and pane close",
+      "sourceLine": 155
+    },
+    {
+      "section": "8) OSC sequences",
       "feature": "OSC 133",
       "status": "\u26A0 Partial",
       "specOrNotes": "",
@@ -1143,7 +1177,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
       "knownDeviations": "Supports A/B/C/D markers; broader semantic prompt extensions not audited",
-      "sourceLine": 155
+      "sourceLine": 156
     },
     {
       "section": "8) OSC sequences",
@@ -1169,7 +1203,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Requires \u0060inline=1\u0060 and the \u0060File=\u0060 arg shape; no \u0060name=\u0060/\u0060size=\u0060 enforcement",
-      "sourceLine": 156
+      "sourceLine": 157
     },
     {
       "section": "8) OSC sequences",
@@ -1185,7 +1219,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Parser\u002BWin",
       "knownDeviations": "",
-      "sourceLine": 157
+      "sourceLine": 158
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1214,7 +1248,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BRenderer",
       "knownDeviations": "Native APC (non-tunneled) on Windows decodes behind \u0060TerminalSettings.AllowNativeKittyGraphics\u0060 (default on) \u2014 historically probes got \u0060ERR\u0060/images skipped; modern ConPTY passes APC through intact (live-verified 2026-09). Payload formats: container (PNG/...) plus raw \u0060f=24\u0060/\u0060f=32\u0060 sized by \u0060s=\u0060/\u0060v=\u0060, \u0060o=z\u0060 zlib inflation, and \u0060t=f\u0060 file transport read through the host-injected \u0060ReadFileBytes\u0060 delegate (App-side reader confined to \u0060%TEMP%\u0060, 64 MB cap). \u0060t=s\u0060 (shm) skips gracefully. Placement params (\u0060z\u0060, \u0060U=1\u0060, \u0060p=1\u0060, \u0060C=1\u0060) are accepted but only cursor-anchored placement is implemented.",
-      "sourceLine": 165
+      "sourceLine": 166
     },
     {
       "section": "9) Kitty graphics / APC",
@@ -1230,7 +1264,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Pruned images\u0027 bitmaps are retired by the buffer; the owning view disposes them once no in-flight snapshot session predates the retire (#166)",
-      "sourceLine": 166
+      "sourceLine": 167
     },
     {
       "section": "10) SIXEL",
@@ -1255,7 +1289,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Decoder\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 174
+      "sourceLine": 175
     },
     {
       "section": "10) SIXEL",
@@ -1269,7 +1303,7 @@
       "hasLinkedEvidence": false,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "",
-      "sourceLine": 175
+      "sourceLine": 176
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1285,7 +1319,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 183
+      "sourceLine": 184
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1299,7 +1333,7 @@
       "hasLinkedEvidence": false,
       "ownership": "UI",
       "knownDeviations": "",
-      "sourceLine": 184
+      "sourceLine": 185
     },
     {
       "section": "11) Clipboard, selection, and hyperlinking",
@@ -1320,7 +1354,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BUI",
       "knownDeviations": "Ctrl-click open path is app-level",
-      "sourceLine": 185
+      "sourceLine": 186
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1350,7 +1384,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Deterministic 0/1/2-cell model for combining marks, emoji modifiers, ZWJ emoji, variation selectors, and regional-indicator flags. No Unicode-version pin or full UAX #11 conformance table is documented yet.",
-      "sourceLine": 193
+      "sourceLine": 194
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1383,7 +1417,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Combining/variation attachment is covered for common terminal cases, including pending-wrap boundaries. Full extended-grapheme-cluster conformance is not claimed.",
-      "sourceLine": 194
+      "sourceLine": 195
     },
     {
       "section": "12) Unicode width, graphemes, and font behavior",
@@ -1412,7 +1446,7 @@
       "hasLinkedEvidence": true,
       "ownership": "Buffer\u002BRenderer",
       "knownDeviations": "Chunked ZWJ families, emoji modifiers, VS15/VS16, and chunked regional-indicator flag pairs are covered. Remaining gaps: cursor-addressing CSI remains cell-oriented, and width-changing selectors that arrive after a base glyph already placed at the last column are not guaranteed to retroactively reflow.",
-      "sourceLine": 195
+      "sourceLine": 196
     }
   ],
   "errors": [],

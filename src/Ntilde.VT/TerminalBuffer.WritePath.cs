@@ -10,24 +10,12 @@ namespace Ntilde.VT
     {
         public void WriteChar(char c)
         {
-            bool tookLock = false;
-            if (!Lock.IsWriteLockHeld)
-            {
-                Lock.EnterWriteLock();
-                tookLock = true;
-            }
-
+            bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 WriteCharCore(c);
             }
-            finally
-            {
-                if (tookLock)
-                {
-                    Lock.ExitWriteLock();
-                }
-            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
         }
 
@@ -123,24 +111,12 @@ namespace Ntilde.VT
         {
             if (string.IsNullOrEmpty(text)) return;
 
-            bool tookLock = false;
-            if (!Lock.IsWriteLockHeld)
-            {
-                Lock.EnterWriteLock();
-                tookLock = true;
-            }
-
+            bool lockTaken = EnterWriteLockIfNeeded();
             try
             {
                 WriteContentCore(text);
             }
-            finally
-            {
-                if (tookLock)
-                {
-                    Lock.ExitWriteLock();
-                }
-            }
+            finally { ExitWriteLockIfNeeded(Lock, lockTaken); }
             Invalidate();
         }
 
@@ -343,7 +319,9 @@ namespace Ntilde.VT
             }
             else
             {
-                if (_cursorCol + width > Cols) _cursorCol = Cols - width; // Clamp to end
+                // Clamp to end. A character wider than the whole row (wide in a 1-column terminal)
+                // starts at column 0 and loses its continuation, as on the autowrap path.
+                if (_cursorCol + width > Cols) _cursorCol = Math.Max(0, Cols - width);
             }
 
             // Write to buffer

@@ -1,5 +1,6 @@
 using Ntilde.Shell;
 using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using Ntilde.Platform;
 using Ntilde.VT;
 using Ntilde.Platform.Ssh.Native;
@@ -153,6 +154,105 @@ public sealed class SftpServiceTests
         Assert.NotNull(interop.ConnectionOptions);
         Assert.Equal(@"C:\keys\id_ed25519", interop.ConnectionOptions!.IdentityFilePath);
         Assert.Null(interop.ConnectionOptions.Password);
+    }
+
+    [Fact]
+    public void ExecuteNativeSftpTransfer_SendsEachJumpHopOnlyItsOwnSessionPassword()
+    {
+        // The transfer path used to send its one password to every hop, so a bastion received the
+        // target's saved password. Each hop now gets only the password its terminal session entered
+        // for THAT hop; a hop with none gets none — never the target's.
+        Guid profileId = Guid.Parse("01984e10-5a2b-7c3d-8e4f-5a6b7c8d9e01");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Chained",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default,
+            JumpHops =
+            {
+                new SshJumpHop { Host = "bastion-one.internal", User = "jump", Port = 22 },
+                // No user: authenticates as the target user, and is keyed that way too.
+                new SshJumpHop { Host = "bastion-two.internal", User = string.Empty, Port = 2222 }
+            }
+        });
+        var service = new SshConnectionService(store);
+        TerminalProfile profile = service.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.SetRuntimePassword(sessionId, "bastion-one.internal", 22, "jump", "bastion-one-secret");
+        var job = new TransferJob
+        {
+            SessionId = sessionId,
+            ProfileId = profileId,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\download.txt",
+            RemotePath = "/tmp/download.txt"
+        };
+        var interop = new CapturingNativeSshInterop();
+
+        SftpService.ExecuteNativeSftpTransfer(
+            job,
+            profile,
+            service,
+            allProfiles: null,
+            interop: interop,
+            passwordResolver: static _ => "target-vault-secret",
+            sessionRegistry: registry,
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+
+        Assert.NotNull(interop.ConnectionOptions);
+        Assert.Equal("target-vault-secret", interop.ConnectionOptions!.Password);
+        Assert.Equal(new string?[] { "bastion-one-secret", null }, interop.ConnectionOptions.JumpHopPasswords);
+    }
+
+    [Fact]
+    public void ExecuteNativeSftpTransfer_PrefersThePasswordTheSessionEnteredForTheTarget()
+    {
+        Guid profileId = Guid.Parse("01984e11-6b3c-7d4e-9f5a-6b7c8d9e0f02");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Direct",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default
+        });
+        var service = new SshConnectionService(store);
+        TerminalProfile profile = service.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.SetRuntimePassword(sessionId, "prod.internal", 2200, "ops", "typed-target-secret");
+        var job = new TransferJob
+        {
+            SessionId = sessionId,
+            ProfileId = profileId,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\download.txt",
+            RemotePath = "/tmp/download.txt"
+        };
+        var interop = new CapturingNativeSshInterop();
+
+        SftpService.ExecuteNativeSftpTransfer(
+            job,
+            profile,
+            service,
+            interop: interop,
+            passwordResolver: static _ => "stale-vault-secret",
+            sessionRegistry: registry,
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+
+        Assert.Equal("typed-target-secret", interop.ConnectionOptions!.Password);
+        Assert.Empty(interop.ConnectionOptions.JumpHopPasswords);
     }
 
     [Fact]
@@ -390,10 +490,11 @@ public sealed class SftpServiceTests
 
         TransferState stateAfterAddReturns = TransferState.Failed;
         string statusAfterAddReturns = string.Empty;
+        Dispatcher uiDispatcher = Dispatcher.CurrentDispatcher;
 
         await Task.Run(() =>
         {
-            sut.AddJob(job);
+            sut.AddJob(job, uiDispatcher);
             stateAfterAddReturns = job.State;
             statusAfterAddReturns = job.StatusText;
         });
@@ -404,6 +505,108 @@ public sealed class SftpServiceTests
         Assert.Equal(TransferState.Running, job.State);
 
         interop.Release.Set();
+    }
+
+    // Progress (raised on the native callback thread) and completion (raised on the transfer
+    // worker) must be marshalled to the dispatcher the owner handed in, never to the
+    // Dispatcher.UIThread static read from those threads: whenever that static's backing field is
+    // null - which headless isolation makes it at every test boundary - the read makes the
+    // reading thread the UI thread (#81). The owner here is a second dispatcher on a thread of its
+    // own, so a regression that goes back to the static posts to the headless UI dispatcher
+    // instead and the owner's queue stays empty.
+    [AvaloniaFact]
+    public void RunJob_MarshalsProgressAndCompletionToTheOwnersDispatcher()
+    {
+        Guid profileId = Guid.Parse("5f0c8a52-6f7e-4a55-9a43-2c1b7de0a9e4");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Native",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default
+        });
+        var sshService = new SshConnectionService(store);
+        TerminalProfile profile = sshService.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        var sut = new SftpService(
+            new ProgressReportingNativeSshInterop(bytesDone: 512, bytesTotal: 2048),
+            settingsLoader: () => new TerminalSettings { Profiles = new List<TerminalProfile> { profile } },
+            sshServiceFactory: () => sshService);
+        var job = new TransferJob
+        {
+            SessionId = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            ProfileName = profile.Name,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\movie.mkv",
+            RemotePath = "/mnt/box/media/movies/movie.mkv",
+            State = TransferState.Running
+        };
+
+        var updates = new List<(int ThreadId, TransferState State, long BytesDone)>();
+        sut.JobUpdated += (_, updated) => updates.Add((Environment.CurrentManagedThreadId, updated.State, updated.BytesDone));
+
+        using var ownerReady = new ManualResetEventSlim(false);
+        using var workerDone = new ManualResetEventSlim(false);
+        Dispatcher? ownerDispatcher = null;
+        int ownerThreadId = 0;
+        Exception? ownerFailure = null;
+        var ownerThread = new Thread(() =>
+        {
+            try
+            {
+                // This thread's own dispatcher. The headless session already owns the UI slot,
+                // so this one does not take it.
+                ownerDispatcher = Dispatcher.CurrentDispatcher;
+                ownerThreadId = Environment.CurrentManagedThreadId;
+                ownerReady.Set();
+                Assert.True(workerDone.Wait(TimeSpan.FromSeconds(10)), "Transfer worker did not finish.");
+                ownerDispatcher.RunJobs();
+            }
+            catch (Exception ex)
+            {
+                ownerFailure = ex;
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "SftpServiceTests owner dispatcher"
+        };
+        ownerThread.Start();
+        Assert.True(ownerReady.Wait(TimeSpan.FromSeconds(10)), "Owner thread did not start.");
+
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                sut.RunJobAsync(job, ownerDispatcher!, CancellationToken.None).GetAwaiter().GetResult();
+            }
+            finally
+            {
+                workerDone.Set();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "SftpServiceTests transfer worker"
+        };
+        worker.Start();
+
+        Assert.True(worker.Join(TimeSpan.FromSeconds(10)), "Transfer worker did not finish.");
+        Assert.True(ownerThread.Join(TimeSpan.FromSeconds(10)), "Owner thread did not finish.");
+        Assert.Null(ownerFailure);
+        // Anything misrouted to the headless UI dispatcher would surface here as an extra update.
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(2, updates.Count);
+        Assert.All(updates, update => Assert.Equal(ownerThreadId, update.ThreadId));
+        Assert.Equal((TransferState.Running, 512L), (updates[0].State, updates[0].BytesDone));
+        Assert.Equal(TransferState.Completed, updates[1].State);
+        Assert.Equal(TransferState.Completed, job.State);
     }
 
     [Fact]
@@ -781,6 +984,35 @@ public sealed class SftpServiceTests
             CancellationToken = cancellationToken;
             return [];
         }
+
+        public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+        public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows) => throw new NotSupportedException();
+        public int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options) => throw new NotSupportedException();
+        public void WriteChannel(NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void SendChannelEof(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void CloseChannel(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void SubmitResponse(NovaSshSafeHandle sessionHandle, NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Close(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+    }
+
+    private sealed class ProgressReportingNativeSshInterop(long bytesDone, long bytesTotal) : INativeSshInterop
+    {
+        public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) => throw new NotSupportedException();
+
+        public void RunSftpTransfer(
+            NativeSshConnectionOptions connectionOptions,
+            NativeSftpTransferOptions transferOptions,
+            Action<NativeSftpTransferProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            progress?.Invoke(new NativeSftpTransferProgress { BytesDone = bytesDone, BytesTotal = bytesTotal });
+        }
+
+        public IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(
+            NativeSshConnectionOptions connectionOptions,
+            string remotePath,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
         public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();

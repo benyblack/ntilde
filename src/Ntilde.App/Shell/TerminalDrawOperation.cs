@@ -52,6 +52,13 @@ namespace Ntilde.Shell
         private readonly int _cellHeightDevicePx;
         private readonly PixelGrid _pixelGrid;
         private readonly bool _showRenderHud;
+
+        /// <summary>
+        /// True when this pass is not a frame of the live view (an agent-host capture, a PNG
+        /// export, a golden render), so it takes an isolated snapshot that leaves the buffer's
+        /// live row-diff baseline alone. See <see cref="RenderSnapshotRequest.Isolated"/>.
+        /// </summary>
+        private readonly bool _isolatedSnapshot;
         private bool _wasAltScreenLastFrame;
 
         private static readonly bool GlyphDiagnosticsEnabled = IsEnvFlagEnabled("NTILDE_DIAG_GLYPH");
@@ -113,6 +120,8 @@ namespace Ntilde.Shell
         private int _colEdgesCount;
         private int _rowEdgesCount;
         private RenderPerfMetrics _framePerfMetrics;
+        // Set by Render() from the Avalonia lease; direct DrawTerminalInternal callers draw offscreen.
+        private string _renderBackend = RenderBackend.Offscreen;
         private long _frameAllocStartBytes;
         private int _frameOtherDrawCalls;
         private bool _collectFramePerfMetrics;
@@ -203,7 +212,8 @@ namespace Ntilde.Shell
             RowImageCache? rowCache = null,
             bool enableComplexShaping = true,
             GlyphCache? glyphCache = null,
-            bool showRenderHud = false)
+            bool showRenderHud = false,
+            bool isolatedSnapshot = false)
         {
             _bounds = bounds;
             _buffer = buffer;
@@ -231,6 +241,7 @@ namespace Ntilde.Shell
             _enableComplexShaping = enableComplexShaping;
             _glyphCache = glyphCache;
             _showRenderHud = showRenderHud;
+            _isolatedSnapshot = isolatedSnapshot;
             _cellWidthDevicePx = Math.Max(1, ToDevicePx(_metrics.CellWidth));
             _cellHeightDevicePx = Math.Max(1, ToDevicePx(_metrics.CellHeight));
             int baselineOffsetPx = ToDevicePx(_metrics.Baseline);
@@ -276,6 +287,7 @@ namespace Ntilde.Shell
 
             using var lease = leaseFeature.Lease();
             var canvas = lease.SkCanvas;
+            _renderBackend = RenderBackend.Describe(lease.GrContext);
 
             canvas.Save();
             using var snapshotToDispose = DrawTerminalInternal(canvas);
@@ -342,7 +354,8 @@ namespace Ntilde.Shell
                     ScrollOffset = _scrollOffset,
                     Selection = _selection,
                     SearchMatches = _searchMatches,
-                    ActiveSearchIndex = _activeSearchIndex
+                    ActiveSearchIndex = _activeSearchIndex,
+                    Isolated = _isolatedSnapshot
                 };
                 TerminalRenderSnapshot renderSnapshot = _buffer.CaptureRenderSnapshot(snapshotRequest, out long readLockMs);
                 RendererStatistics.RecordBufferReadLockTimeMs(readLockMs);
@@ -831,6 +844,7 @@ namespace Ntilde.Shell
                     _framePerfMetrics.DirtyCellsEstimated = dirtyCells;
                     _framePerfMetrics.FrameTimeMs = frameSw.Elapsed.TotalMilliseconds;
                     _framePerfMetrics.FrameIndex = RendererStatistics.TotalFrames;
+                    _framePerfMetrics.Backend = _renderBackend;
                 }
 
                 if (_showRenderHud)
@@ -865,7 +879,7 @@ namespace Ntilde.Shell
         private void DrawPerformanceHud(SKCanvas canvas, RenderPerfMetrics metrics, byte alpha)
         {
             float hudWidth = 280f;
-            float hudHeight = 90f;
+            float hudHeight = 106f;
             float padding = 10f;
             float margin = 10f;
 
@@ -909,6 +923,8 @@ namespace Ntilde.Shell
             canvas.DrawText($"Draws: {metrics.DrawCallsTotal} (Cache:{metrics.RowPictureCacheHits}/{metrics.RowPictureCacheMisses})", textX, textY, textPaint);
             textY += lineHeight;
             canvas.DrawText($"Atlas Builds: {metrics.AtlasAlphaGlyphs}/{metrics.AtlasColorGlyphs} | Mem: {metrics.AllocBytesThisFrame / 1024.0:F1} kb", textX, textY, textPaint);
+            textY += lineHeight;
+            canvas.DrawText($"Backend: {metrics.Backend ?? RenderBackend.Offscreen}", textX, textY, textPaint);
         }
 
         private void FlushBatches(SKCanvas canvas)

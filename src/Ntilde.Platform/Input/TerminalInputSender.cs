@@ -8,6 +8,10 @@ namespace Ntilde.Platform.Input
         private const string BracketedPasteStart = "\x1b[200~";
         private const string BracketedPasteEnd = "\x1b[201~";
 
+        // ESC, and the 8-bit C1 CSI that stands for "ESC [" in a single character.
+        private const string Escape = "\u001b";
+        private const string C1ControlSequenceIntroducer = "\u009b";
+
         public static string PreparePaste(string content, bool bracketedPasteModeEnabled)
         {
             if (string.IsNullOrEmpty(content))
@@ -15,15 +19,27 @@ namespace Ntilde.Platform.Input
                 return string.Empty;
             }
 
-            string normalizedContent = content.Replace("\r\n", "\r");
             if (!bracketedPasteModeEnabled)
             {
-                return normalizedContent;
+                return content.Replace("\r\n", "\r");
             }
 
-            // If the content itself contains the end sequence, it could be a bracketed paste hijacking attack.
-            // A conservative approach is to strip the embedded terminator before wrapping the paste block.
-            string safeContent = normalizedContent.Replace(BracketedPasteEnd, "");
+            // Pasted text must not be able to end the paste block early: everything after an
+            // early terminator reaches the shell as typed input, so a copied snippet could run
+            // commands. Removing the terminator's spelling does not work, because removing it
+            // can assemble a new one ("ESC[20" + "ESC[201~" + "1~" becomes "ESC[201~"), and
+            // "\u009B201~" is another spelling of it. Instead remove the characters every
+            // spelling has to start with. Deleting a single character can never create another
+            // occurrence of it, so one pass leaves no ESC or C1 CSI and therefore no terminator,
+            // however it is nested or spelled. Pasted escape sequences are lost with them; they
+            // have no business inside a paste block anyway.
+            //
+            // Sanitize before normalizing line endings, so that "CR ESC LF", which is a CRLF once
+            // the ESC is gone, still ends up as a single CR.
+            string safeContent = content
+                .Replace(Escape, string.Empty)
+                .Replace(C1ControlSequenceIntroducer, string.Empty)
+                .Replace("\r\n", "\r");
             return BracketedPasteStart + safeContent + BracketedPasteEnd;
         }
 

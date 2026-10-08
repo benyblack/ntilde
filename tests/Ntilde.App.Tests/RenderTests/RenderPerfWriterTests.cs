@@ -67,7 +67,8 @@ namespace Ntilde.Tests.RenderTests
                         AtlasColorGlyphs = 6,
                         DirectDrawTextCount = 2,
                         ShapedTextRuns = 1,
-                        AllocBytesThisFrame = 128
+                        AllocBytesThisFrame = 128,
+                        Backend = "GPU/OpenGL"
                     };
 
                     writer!.TryWrite(metrics);
@@ -81,6 +82,7 @@ namespace Ntilde.Tests.RenderTests
                 Assert.Equal(7, doc.RootElement.GetProperty("FrameIndex").GetInt64());
                 Assert.Equal(3, doc.RootElement.GetProperty("DrawCallsTotal").GetInt32());
                 Assert.Equal(128, doc.RootElement.GetProperty("AllocBytesThisFrame").GetInt64());
+                Assert.Equal("GPU/OpenGL", doc.RootElement.GetProperty("Backend").GetString());
             }
             finally
             {

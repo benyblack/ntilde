@@ -22,5 +22,8 @@ namespace Ntilde.Rendering
         public int DirectDrawTextCount { get; set; }
         public int ShapedTextRuns { get; set; }
         public long AllocBytesThisFrame { get; set; }
+
+        /// <summary>Skia backend the frame was drawn with; see <see cref="RenderBackend"/>.</summary>
+        public string? Backend { get; set; }
     }
 }

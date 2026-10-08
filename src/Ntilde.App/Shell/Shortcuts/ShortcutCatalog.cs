@@ -70,15 +70,28 @@ public static class ShortcutCatalog
         new("command_assist_insert", "Command Assist: Insert Selection", "Command Assist", ShortcutScope.CommandAssist, "Ctrl+Enter"),
     ];
 
-    public static IReadOnlyList<ShortcutDefinition> GetDefinitions()
+    // Entries above are written with Ctrl; these are the same entries with each default adapted to
+    // a platform's primary modifier (see ShortcutPlatform). Built once per platform flavour.
+    private static readonly IReadOnlyList<ShortcutCatalogEntry> MacOSEntries = AdaptTo(isMacOS: true);
+    private static readonly IReadOnlyList<ShortcutCatalogEntry> OtherEntries = AdaptTo(isMacOS: false);
+
+    public static IReadOnlyList<ShortcutDefinition> GetDefinitions() => GetDefinitions(ShortcutPlatform.IsMacOS);
+
+    public static IReadOnlyList<ShortcutDefinition> GetDefinitions(bool isMacOS)
     {
-        return Entries
+        return GetEntries(isMacOS)
             .Select(entry => new ShortcutDefinition(entry.CommandId, entry.Scope, entry.DefaultBinding))
             .ToArray();
     }
 
-    public static IReadOnlyList<ShortcutCatalogEntry> GetEntries()
+    public static IReadOnlyList<ShortcutCatalogEntry> GetEntries() => GetEntries(ShortcutPlatform.IsMacOS);
+
+    public static IReadOnlyList<ShortcutCatalogEntry> GetEntries(bool isMacOS) => isMacOS ? MacOSEntries : OtherEntries;
+
+    private static IReadOnlyList<ShortcutCatalogEntry> AdaptTo(bool isMacOS)
     {
-        return Entries;
+        return Entries
+            .Select(entry => entry with { DefaultBinding = ShortcutPlatform.DefaultBinding(entry.CommandId, entry.DefaultBinding, isMacOS) })
+            .ToArray();
     }
 }

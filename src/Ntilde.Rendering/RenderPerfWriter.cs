@@ -12,6 +12,10 @@ namespace Ntilde.Rendering
         private readonly object _gate = new();
         private readonly FileStream _stream;
         private readonly ArrayBufferWriter<byte> _buffer = new(512);
+        // Whole lines waiting for the next flush. The stream itself is unbuffered, so the
+        // file only ever receives complete lines - a FileStream buffer would spill to disk
+        // mid-line whenever it filled, leaving half a JSON object at the tail.
+        private readonly ArrayBufferWriter<byte> _pending = new(32 * 1024);
         private long _frameIndex;
         private int _pendingFramesSinceFlush;
         private bool _disabled;
@@ -19,6 +23,9 @@ namespace Ntilde.Rendering
         private RenderPerfWriter(FileStream stream)
         {
             _stream = stream;
+            // The app keeps its writer in a static that is never disposed, so without this
+            // a normal exit drops every frame since the last 60-frame flush.
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
         }
 
         public static RenderPerfWriter? CreateFromEnvironment()
@@ -57,7 +64,7 @@ namespace Ntilde.Rendering
                     FileMode.Append,
                     FileAccess.Write,
                     FileShare.Read,
-                    bufferSize: 4096,
+                    bufferSize: 0,
                     options: FileOptions.SequentialScan);
 
                 return new RenderPerfWriter(stream);
@@ -67,6 +74,8 @@ namespace Ntilde.Rendering
                 return null;
             }
         }
+
+        internal void OnProcessExit(object? sender, EventArgs e) => Dispose();
 
         public long NextFrameIndex() => Interlocked.Increment(ref _frameIndex);
 
@@ -110,12 +119,13 @@ namespace Ntilde.Rendering
                         writer.WriteNumber(nameof(RenderPerfMetrics.DirectDrawTextCount), metrics.DirectDrawTextCount);
                         writer.WriteNumber(nameof(RenderPerfMetrics.ShapedTextRuns), metrics.ShapedTextRuns);
                         writer.WriteNumber(nameof(RenderPerfMetrics.AllocBytesThisFrame), metrics.AllocBytesThisFrame);
+                        writer.WriteString(nameof(RenderPerfMetrics.Backend), metrics.Backend ?? RenderBackend.Offscreen);
                         writer.WriteEndObject();
                         writer.Flush();
                     }
 
-                    _stream.Write(_buffer.WrittenSpan);
-                    _stream.WriteByte((byte)'\n');
+                    _pending.Write(_buffer.WrittenSpan);
+                    _pending.Write("\n"u8);
                     _pendingFramesSinceFlush++;
                     if (_pendingFramesSinceFlush >= FlushEveryFrames)
                     {
@@ -151,6 +161,7 @@ namespace Ntilde.Rendering
             }
 
             _disabled = true;
+            AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
             try
             {
                 FlushUnsafe();
@@ -164,6 +175,20 @@ namespace Ntilde.Rendering
 
         private void FlushUnsafe()
         {
+            if (_pending.WrittenCount > 0)
+            {
+                try
+                {
+                    _stream.Write(_pending.WrittenSpan);
+                }
+                finally
+                {
+                    // Drop the batch even if the write threw partway: the failure path
+                    // (DisableUnsafe) flushes again, and re-sending the same bytes would
+                    // append duplicate frames after whatever partial write reached disk.
+                    _pending.Clear();
+                }
+            }
             _stream.Flush();
             _pendingFramesSinceFlush = 0;
         }

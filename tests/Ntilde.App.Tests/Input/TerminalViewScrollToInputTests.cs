@@ -136,6 +136,7 @@ namespace Ntilde.Tests.Input
             // Ctrl+C with a selection copies instead of sending SIGINT - reading and copying
             // scrollback must not snap the viewport away from what is being read.
             var (view, session) = CreateScrolledUpView();
+            view.UseMacOSClipboardChords = false; // copy-on-Ctrl+C is the Windows/Linux convention
             view.SetSelectionForTest(0, 0, 0, 3);
 
             bool handled = view.HandleKeyDownCore(Key.C, KeyModifiers.Control);

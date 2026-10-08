@@ -350,4 +350,37 @@ public class PaneParserWiringTests
         parser.OnClipboardWrite?.Invoke("c", System.Text.Encoding.UTF8.GetBytes("third"));
         Assert.Equal(2, pane.ClipboardWriteAttemptsForTest);
     }
+
+    /// <summary>
+    /// PR #500 Codex review: OSC 9;4 state 0 is the only withdrawal edge. An unknown or
+    /// future state must be ignored — not collapsed into the null report that clears a
+    /// live indicator — so a client speaking a newer dialect than this build cannot
+    /// erase real progress. The pane event is posted to the dispatcher, so jobs are
+    /// pumped between invocations.
+    /// </summary>
+    [AvaloniaFact]
+    public void Progress_UnknownState_IsIgnored_NotTreatedAsWithdrawal()
+    {
+        using var pane = new TerminalPane();
+        pane.CreateAndWireParser();
+        Assert.NotNull(pane.Parser);
+
+        var events = new List<TerminalProgressReport?>();
+        pane.ProgressReported += (_, report) => events.Add(report);
+
+        pane.Parser!.OnProgressReported?.Invoke(1, 42);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new TerminalProgressReport(TerminalProgressKind.Normal, 42), Assert.Single(events));
+
+        // Unknown/future state: no event at all — the live 42% survives.
+        pane.Parser!.OnProgressReported?.Invoke(9, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Single(events);
+
+        // State 0: the one withdrawal edge, delivered as a null report.
+        pane.Parser!.OnProgressReported?.Invoke(0, null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(2, events.Count);
+        Assert.Null(events[1]);
+    }
 }

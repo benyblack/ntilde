@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.Native;
 using Ntilde.Platform.Ssh.Sessions;
 using Ntilde.Platform.Tests.Infra;
 using Ntilde.VT;
@@ -17,6 +18,11 @@ namespace Ntilde.Platform.Tests.Ssh;
 /// resolves on its own loopback. That makes each hop a genuinely separate SSH session — its own
 /// TCP-or-tunnel transport, handshake, host-key check and authentication — without the
 /// multi-container network fixture the matrix used to say these rows were waiting for.
+///
+/// The hops authenticate as <see cref="DockerSshFixture.JumpUserName"/> and the target as
+/// <see cref="DockerSshFixture.UserName"/>, with different passwords, and the handler answers each
+/// prompt with the password of the user it names. Any password sent to the wrong hop therefore fails
+/// authentication instead of passing unnoticed, as it did while every hop shared one password.
 /// </summary>
 public sealed class NativeSshDockerJumpChainE2eTests
 {
@@ -28,10 +34,11 @@ public sealed class NativeSshDockerJumpChainE2eTests
     public async Task JumpHost_OneHop_ReachesAShellOnTheTarget()
     {
         await using var fixture = await DockerSshFixture.StartAsync();
+        await fixture.CreateJumpUserAsync();
 
         var buffer = new TerminalBuffer(120, 30);
         var parser = new AnsiParser(buffer);
-        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        NativeSshTestInteractionHandler handler = CreatePerHopHandler(fixture);
 
         SshProfile profile = CreateTunnelledProfile(fixture, hopCount: 1);
 
@@ -46,6 +53,7 @@ public sealed class NativeSshDockerJumpChainE2eTests
         Assert.Equal(
             2,
             handler.RequestSnapshot().Count(request => request.Kind == SshInteractionKind.UnknownHostKey));
+        AssertEachServerAskedForItsOwnPassword(fixture, handler, hopCount: 1);
     }
 
     [DockerFact]
@@ -54,10 +62,11 @@ public sealed class NativeSshDockerJumpChainE2eTests
     public async Task JumpChain_TwoHops_ReachesALiveShellOnTheTarget()
     {
         await using var fixture = await DockerSshFixture.StartAsync();
+        await fixture.CreateJumpUserAsync();
 
         var buffer = new TerminalBuffer(120, 30);
         var parser = new AnsiParser(buffer);
-        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        NativeSshTestInteractionHandler handler = CreatePerHopHandler(fixture);
 
         SshProfile profile = CreateTunnelledProfile(fixture, hopCount: 2);
 
@@ -75,6 +84,64 @@ public sealed class NativeSshDockerJumpChainE2eTests
         Assert.Equal(
             3,
             handler.RequestSnapshot().Count(request => request.Kind == SshInteractionKind.UnknownHostKey));
+        AssertEachServerAskedForItsOwnPassword(fixture, handler, hopCount: 2);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task NativeSftp_ThroughAPasswordBastion_SendsEachHopItsOwnPassword()
+    {
+        // The transfer path cannot prompt; it used to send its one password to every hop. With the
+        // bastion's and target's passwords different, only per-hop credentials can complete this.
+        await using var fixture = await DockerSshFixture.StartAsync();
+        await fixture.CreateJumpUserAsync();
+
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"ntilde-native-sftp-bastion-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            const string remotePath = "/tmp/native-sftp-bastion-source.txt";
+            const string expected = "native-sftp-through-a-password-bastion";
+            await fixture.WriteTextFileAsync(remotePath, expected);
+
+            // One sshd answers both addresses, so one host key covers both known-hosts entries.
+            SshHostKeyInfo hostKey = await fixture.GetHostKeyAsync();
+            string knownHostsPath = Path.Combine(tempRoot, "native_known_hosts.json");
+            var knownHosts = new NativeKnownHostsStore(knownHostsPath);
+            knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
+            knownHosts.TrustHost("127.0.0.1", fixture.InContainerSshPort, hostKey.Algorithm, hostKey.Fingerprint);
+
+            string localPath = Path.Combine(tempRoot, "downloaded.txt");
+            var connection = new NativeSshConnectionOptions
+            {
+                Host = "127.0.0.1",
+                User = fixture.UserName,
+                Port = fixture.InContainerSshPort,
+                Password = fixture.Password,
+                KnownHostsFilePath = knownHostsPath,
+                JumpHops =
+                [
+                    new SshJumpHop { Host = fixture.Host, User = fixture.JumpUserName, Port = fixture.Port }
+                ],
+                JumpHopPasswords = [fixture.JumpPassword]
+            };
+            var transfer = new NativeSftpTransferOptions
+            {
+                Direction = NativeSftpTransferDirection.Download,
+                Kind = NativeSftpTransferKind.File,
+                RemotePath = remotePath,
+                LocalPath = localPath
+            };
+
+            new NativeSshInterop().RunSftpTransfer(connection, transfer, progress: null, CancellationToken.None);
+
+            Assert.Equal(expected, File.ReadAllText(localPath));
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
     }
 
     [DockerFact]
@@ -83,11 +150,12 @@ public sealed class NativeSshDockerJumpChainE2eTests
     public async Task DynamicForward_ThroughAJumpHop_CarriesRealBytesToTheEchoService()
     {
         await using var fixture = await DockerSshFixture.StartAsync();
+        await fixture.CreateJumpUserAsync();
 
         int localPort = GetFreeLocalPort();
         var buffer = new TerminalBuffer(120, 30);
         var parser = new AnsiParser(buffer);
-        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        NativeSshTestInteractionHandler handler = CreatePerHopHandler(fixture);
 
         SshProfile profile = CreateTunnelledProfile(fixture, hopCount: 1);
         profile.Forwards.Add(new PortForward
@@ -137,7 +205,7 @@ public sealed class NativeSshDockerJumpChainE2eTests
         profile.JumpHops.Add(new SshJumpHop
         {
             Host = fixture.Host,
-            User = fixture.UserName,
+            User = fixture.JumpUserName,
             Port = fixture.Port
         });
         for (int i = 1; i < hopCount; i++)
@@ -145,11 +213,60 @@ public sealed class NativeSshDockerJumpChainE2eTests
             profile.JumpHops.Add(new SshJumpHop
             {
                 Host = "127.0.0.1",
-                User = fixture.UserName,
+                User = fixture.JumpUserName,
                 Port = fixture.InContainerSshPort
             });
         }
 
         return profile;
+    }
+
+    /// <summary>Answers each password prompt with the password of the user that prompt names.</summary>
+    private static NativeSshTestInteractionHandler CreatePerHopHandler(DockerSshFixture fixture)
+    {
+        return new NativeSshTestInteractionHandler(
+            fixture.Password,
+            passwordsByUser: new Dictionary<string, string>
+            {
+                [fixture.JumpUserName] = fixture.JumpPassword,
+                [fixture.UserName] = fixture.Password
+            });
+    }
+
+    /// <summary>
+    /// Every hop, then the target, asked for a password — in connect order, each naming its own
+    /// server and saying whether it is a jump hop. That identity is what the app keys credential
+    /// reuse on, so it is asserted against the real native layer, not only against fakes.
+    /// </summary>
+    private static void AssertEachServerAskedForItsOwnPassword(
+        DockerSshFixture fixture,
+        NativeSshTestInteractionHandler handler,
+        int hopCount)
+    {
+        SshInteractionRequest[] passwordPrompts = handler.RequestSnapshot()
+            .Where(request => request.Kind == SshInteractionKind.Password)
+            .ToArray();
+
+        Assert.Equal(hopCount + 1, passwordPrompts.Length);
+
+        SshInteractionRequest firstHop = passwordPrompts[0];
+        Assert.True(firstHop.IsJumpHop);
+        Assert.Equal(fixture.Host, firstHop.Host);
+        Assert.Equal(fixture.Port, firstHop.Port);
+        Assert.Equal(fixture.JumpUserName, firstHop.User);
+
+        foreach (SshInteractionRequest laterHop in passwordPrompts.Skip(1).Take(hopCount - 1))
+        {
+            Assert.True(laterHop.IsJumpHop);
+            Assert.Equal("127.0.0.1", laterHop.Host);
+            Assert.Equal(fixture.InContainerSshPort, laterHop.Port);
+            Assert.Equal(fixture.JumpUserName, laterHop.User);
+        }
+
+        SshInteractionRequest target = passwordPrompts[^1];
+        Assert.False(target.IsJumpHop);
+        Assert.Equal("127.0.0.1", target.Host);
+        Assert.Equal(fixture.InContainerSshPort, target.Port);
+        Assert.Equal(fixture.UserName, target.User);
     }
 }

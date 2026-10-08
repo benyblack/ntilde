@@ -12,7 +12,6 @@ using Avalonia.Input.Platform;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
@@ -139,10 +138,38 @@ namespace Ntilde.Shell
 
         internal Func<Key, KeyModifiers, bool>? KeyDownInterceptor { get; set; }
 
+        /// <summary>
+        /// macOS clipboard conventions: Cmd+C copies, and Ctrl+C is always the interrupt. Off macOS,
+        /// Ctrl+C copies when there is a selection. Settable so tests can pin either behavior on any OS.
+        /// </summary>
+        internal bool UseMacOSClipboardChords { get; set; } = OperatingSystem.IsMacOS();
+
+        /// <summary>
+        /// True for Cmd+<paramref name="expected"/> with no other modifier, on macOS only.
+        /// </summary>
+        internal static bool IsMacClipboardChord(Key key, KeyModifiers modifiers, Key expected, bool isMacOS)
+        {
+            const KeyModifiers relevant = KeyModifiers.Control | KeyModifiers.Alt | KeyModifiers.Shift | KeyModifiers.Meta;
+            return isMacOS && key == expected && (modifiers & relevant) == KeyModifiers.Meta;
+        }
+
         internal bool HandleKeyDownCore(Key key, KeyModifiers keyModifiers)
         {
             if (KeyDownInterceptor?.Invoke(key, keyModifiers) == true)
             {
+                return true;
+            }
+
+            // Cmd+C is the macOS copy chord. It is consumed whether or not there is a selection -
+            // Cmd has no terminal encoding, so letting it fall through would send a bare 'c' (or
+            // a kitty CSI sequence) to the shell. The selection is kept, as in Terminal.app/iTerm2.
+            // Cmd+V is the "paste" binding's macOS default, dispatched by MainWindow.
+            if (IsMacClipboardChord(key, keyModifiers, Key.C, UseMacOSClipboardChords))
+            {
+                if (HasSelection())
+                {
+                    _ = CopySelectionToClipboard();
+                }
                 return true;
             }
 
@@ -239,14 +266,17 @@ namespace Ntilde.Shell
                     return true;
 
                 default:
-                    if (isCtrl && !keyModifiers.HasFlag(KeyModifiers.Shift) && !keyModifiers.HasFlag(KeyModifiers.Alt))
+                    if (isCtrl)
                     {
-                        if (key >= Key.A && key <= Key.Z)
+                        // Ctrl+A..Z -> 0x01..0x1A, plus the Ctrl+punctuation/digit C0 rows
+                        // (Ctrl+\ -> FS, Ctrl+] -> GS, Ctrl+_ -> US, ...). Declines AltGr
+                        // (Ctrl+Alt) so composed text still arrives through OnTextInput. App
+                        // shortcuts on these chords never get here: MainWindow's tunnel handler
+                        // consumes them first.
+                        string? controlSequence = TerminalInputModeEncoder.EncodeLegacyControlKey(key, keyModifiers);
+                        if (controlSequence != null)
                         {
-                            // Ctrl+A = 1, Ctrl+Z = 26
-                            // ASCII Control Characters
-                            char ctrlChar = (char)(key - Key.A + 1);
-                            SendUserInput(ctrlChar.ToString());
+                            SendUserInput(controlSequence);
                             return true;
                         }
                     }
@@ -255,7 +285,9 @@ namespace Ntilde.Shell
                 case Key.C:
                     if (isCtrl)
                     {
-                        if (HasSelection())
+                        // Copy-on-Ctrl+C is the Windows/Linux convenience. macOS copies with Cmd+C
+                        // (above), so there Ctrl+C is always the interrupt, selection or not.
+                        if (HasSelection() && !UseMacOSClipboardChords)
                         {
                             _ = CopySelectionToClipboard();
                             ClearSelection();
@@ -286,7 +318,15 @@ namespace Ntilde.Shell
                     // Arrows
             }
 
-            string? sequence = TerminalInputModeEncoder.EncodeSpecialKey(key, _buffer?.Modes);
+            // Cursor, editing and function keys, with their modifiers (Ctrl+Left -> CSI 1;5D). Every
+            // modifier combination of these keys arrives here: the kitty encoder leaves functional
+            // keys alone, EncodeAltKey declines non-printable keys (so Alt+arrow lands here too),
+            // and the Ctrl branch above only claims letters. Command Assist's interceptor matches
+            // its bindings with exact modifiers, so by default it takes only the unmodified
+            // Up/Down. App chords on these keys never get this far - MainWindow's tunnel handler
+            // takes Ctrl+Shift+PageUp/PageDown (move tab) and Alt+arrow when there is a pane to
+            // move to, and marks the event handled first.
+            string? sequence = TerminalInputModeEncoder.EncodeSpecialKey(key, keyModifiers, _buffer?.Modes);
             if (sequence != null)
             {
                 SendUserInput(sequence);
@@ -305,6 +345,7 @@ namespace Ntilde.Shell
         /// 2. Ctrl+C with an active selection is copy-to-clipboard, matching the behavior users
         ///    already have; without a selection it is a real Ctrl+C and the protocol encodes it
         ///    as CSI 99;5u (the spec explicitly notes Ctrl+C stops raising SIGINT in this mode).
+        ///    Not on macOS, where copy is Cmd+C and Ctrl+C is always the real key.
         /// </summary>
         private bool TryEncodeKittyKey(Key key, KeyModifiers keyModifiers, out string? sequence)
         {
@@ -315,7 +356,7 @@ namespace Ntilde.Shell
                 return false;
             }
 
-            if (key == Key.C && (keyModifiers & KeyModifiers.Control) != 0 && HasSelection())
+            if (key == Key.C && (keyModifiers & KeyModifiers.Control) != 0 && HasSelection() && !UseMacOSClipboardChords)
             {
                 return false;
             }
@@ -1230,8 +1271,20 @@ namespace Ntilde.Shell
         // Selection state
         private readonly SelectionState _selection = new SelectionState();
         private readonly Ntilde.VT.Links.UrlDetector _urlDetector = new Ntilde.VT.Links.UrlDetector();
+
+        /// <summary>
+        /// Decides whether a link is clickable (hover) and carries out a Ctrl+click on one. Hover and
+        /// click both ask this one object, so a link that would not open never underlines. Settable
+        /// so tests can route links through a recording environment instead of launching anything.
+        /// </summary>
+        internal TerminalLinkOpener LinkOpener { get; set; } = TerminalLinkOpener.Default;
+
         // Hovered link overlay state (transient UI state, never written to the buffer).
         private (int AbsRow, int StartCol, int EndCol, string Uri)? _hoveredLink;
+
+        /// <summary>The link currently underlined under the pointer, if any.</summary>
+        internal string? HoveredLinkUriForTest => _hoveredLink?.Uri;
+
         // One-row memo so we only re-run detection when the pointer moves to a new row.
         private int _hoverScanRow = -1;
         private System.Collections.Generic.IReadOnlyList<Ntilde.VT.Links.LinkSpan> _hoverScanSpans =
@@ -2308,6 +2361,38 @@ namespace Ntilde.Shell
             StopUiTimers();
         }
 
+        // Non-zero while RenderOffscreen is rasterizing this view. UI thread only.
+        private int _offscreenRenderDepth;
+
+        /// <summary>
+        /// Rasterizes this view into <paramref name="target"/> for a screenshot or export (the
+        /// agent-host <c>live</c> capture, Export Snapshot (PNG)). UI thread only.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Avalonia.Media.Imaging.RenderTargetBitmap.Render"/> calls <see cref="Render"/>
+        /// and runs the draw operation synchronously on the UI thread, while the compositor's render
+        /// thread may be drawing a live frame of the same buffer. So this pass must not act as a live
+        /// frame. It takes an isolated snapshot, leaving the buffer's row-diff baseline to the live
+        /// renderer. It also renders without the live row-picture cache: live frames repaint their
+        /// dirty spans over the latest cached picture of each row, so that picture is the other half
+        /// of the baseline, and the cache's disposal drain belongs to the render thread.
+        /// </remarks>
+        internal void RenderOffscreen(Avalonia.Media.Imaging.RenderTargetBitmap target)
+        {
+            ArgumentNullException.ThrowIfNull(target);
+            Dispatcher.UIThread.VerifyAccess();
+
+            _offscreenRenderDepth++;
+            try
+            {
+                target.Render(this);
+            }
+            finally
+            {
+                _offscreenRenderDepth--;
+            }
+        }
+
         public override void Render(DrawingContext context)
         {
             var buffer = _buffer; // Capture local reference to prevent it becoming null mid-render (race condition)
@@ -2367,6 +2452,9 @@ namespace Ntilde.Shell
                 _rowCache.RequestClear();
             }
 
+            // See RenderOffscreen for why an off-screen pass must not look like a live frame.
+            bool offscreen = _offscreenRenderDepth > 0;
+
             context.Custom(new TerminalDrawOperation(
                 Bounds,
                 buffer,
@@ -2391,10 +2479,11 @@ namespace Ntilde.Shell
                 totalLines,
                 cursorRow,
                 cursorCol,
-                _rowCache,
+                offscreen ? null : _rowCache,
                 _enableComplexShaping,
                 _glyphCache,
-                _showRenderHud
+                _showRenderHud,
+                isolatedSnapshot: offscreen
             ));
 
             if (_hoveredLink is { } link && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)
@@ -2516,18 +2605,14 @@ namespace Ntilde.Shell
 
             if (leftPressed)
             {
+                if (TryActivateLinkAt(point.Position, e.KeyModifiers))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
                 // Normal mode: Handle selection
                 var (row, col) = ScreenToTerminal(point.Position);
-
-                if (IsLinkActivationModifier(e.KeyModifiers) && _buffer != null)
-                {
-                    string? uri = ResolveLinkAt(row, col);
-                    if (TryOpenLink(uri))
-                    {
-                        e.Handled = true;
-                        return;
-                    }
-                }
 
                 // Check for double/triple-click
                 if (e.ClickCount == 2)
@@ -2637,7 +2722,7 @@ namespace Ntilde.Shell
             }
         }
 
-        private void UpdateHoveredLink(Avalonia.Point position)
+        internal void UpdateHoveredLink(Avalonia.Point position)
         {
             if (_buffer == null) return;
 
@@ -2647,9 +2732,10 @@ namespace Ntilde.Shell
             string? osc8 = _buffer.GetHyperlinkAbsolute(col, absRow);
             if (!string.IsNullOrWhiteSpace(osc8))
             {
-                // Only show as clickable if it would actually open (mirror the click allowlist),
-                // so non-openable schemes (e.g. ftp://) don't underline or show the hand cursor.
-                if (Ntilde.VT.Links.LinkSchemes.IsAllowed(osc8))
+                // Only show as clickable if it would actually open (the click asks the same
+                // LinkOpener), so non-openable targets (ftp://, a remote or UNC file: link) don't
+                // underline or show the hand cursor.
+                if (LinkOpener.IsActivatable(osc8))
                     SetHoveredLink((absRow, col, col, osc8));
                 else
                     ClearHoveredLink();
@@ -2672,8 +2758,8 @@ namespace Ntilde.Shell
                     var (startCol, endCol) = Ntilde.VT.Links.RowTextExtractor.SpanToColumns(span, _hoverScanMap);
                     if (col >= startCol && col <= endCol)
                     {
-                        // Mirror the click allowlist: don't underline schemes that can't open.
-                        if (Ntilde.VT.Links.LinkSchemes.IsAllowed(span.Uri))
+                        // Mirror the click: don't underline links that can't open.
+                        if (LinkOpener.IsActivatable(span.Uri))
                             SetHoveredLink((absRow, startCol, endCol, span.Uri));
                         else
                             ClearHoveredLink();
@@ -2709,24 +2795,16 @@ namespace Ntilde.Shell
                 : (modifiers & KeyModifiers.Control) != 0;
         }
 
-        private bool TryOpenLink(string? uri)
+        /// <summary>
+        /// Ctrl+click (Cmd+click on macOS) on a link at <paramref name="position"/>: true when a link
+        /// was opened and the click is consumed, false to let it fall through to selection.
+        /// </summary>
+        internal bool TryActivateLinkAt(Avalonia.Point position, KeyModifiers modifiers)
         {
-            if (!Ntilde.VT.Links.LinkSchemes.IsAllowed(uri)) return false;
-            if (!Uri.TryCreate(uri, UriKind.Absolute, out var linkUri)) return false;
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = linkUri.ToString(),
-                    UseShellExecute = true
-                });
-                return true;
-            }
-            catch
-            {
-                // Ignore failed launch attempts.
-                return false;
-            }
+            if (!IsLinkActivationModifier(modifiers) || _buffer == null) return false;
+
+            var (row, col) = ScreenToTerminal(position);
+            return LinkOpener.TryOpen(ResolveLinkAt(row, col));
         }
 
         // Resolves the link under (absRow, col): OSC 8 first, then a detected span.

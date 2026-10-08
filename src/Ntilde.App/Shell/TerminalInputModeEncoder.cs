@@ -31,8 +31,36 @@ namespace Ntilde.Shell
 
     internal static class TerminalInputModeEncoder
     {
-        public static string? EncodeSpecialKey(Key key, ModeState? modes)
+        /// <summary>
+        /// Encodes the cursor keys, Home/End, Insert/Delete, PageUp/PageDown and F1-F12, or
+        /// returns <c>null</c> for any other key.
+        ///
+        /// Unmodified, these keep the classic VT encodings: CSI or SS3 for the cursor keys and
+        /// Home/End depending on DECCKM (application cursor keys), SS3 for F1-F4, and
+        /// <c>CSI n ~</c> for the rest.
+        ///
+        /// With any modifier held they take xterm's "PC-style" form, which carries the modifiers
+        /// as a second parameter, <c>m = 1 + shift(1) + alt(2) + ctrl(4) + meta(8)</c>:
+        /// - cursor keys and Home/End: <c>CSI 1 ; m A|B|C|D|H|F</c>
+        /// - Insert, Delete, PageUp, PageDown, F5-F12: <c>CSI n ; m ~</c> (same n as unmodified)
+        /// - F1-F4: <c>CSI 1 ; m P|Q|R|S</c>
+        ///
+        /// The modifiers are the whole point of these chords: Ctrl+Left/Right is word jump in
+        /// PSReadLine, bash and zsh, Shift+arrows is selection in editors, Ctrl+Delete is
+        /// kill-word. Sent as the plain key, each one silently becomes a one-character move or
+        /// delete. The modified form is always the CSI one, even in application cursor mode, as in
+        /// xterm: SS3 has no parameter slot, and the CSI form is what shells and editors bind these
+        /// chords to. Windows ConPTY's VT input parser translates these same sequences back into
+        /// modified key events for console applications, so no platform special-casing is needed.
+        /// </summary>
+        public static string? EncodeSpecialKey(Key key, KeyModifiers modifiers, ModeState? modes)
         {
+            int modifierParameter = GetXtermModifierParameter(modifiers);
+            if (modifierParameter > 1)
+            {
+                return EncodeModifiedSpecialKey(key, modifierParameter);
+            }
+
             bool applicationCursorKeys = modes?.IsApplicationCursorKeys == true;
 
             return key switch
@@ -61,6 +89,63 @@ namespace Ntilde.Shell
                 Key.F12 => "\x1b[24~",
                 _ => null
             };
+        }
+
+        private static string? EncodeModifiedSpecialKey(Key key, int modifierParameter)
+        {
+            return key switch
+            {
+                Key.Up => FormatModifiedCsi(1, modifierParameter, 'A'),
+                Key.Down => FormatModifiedCsi(1, modifierParameter, 'B'),
+                Key.Right => FormatModifiedCsi(1, modifierParameter, 'C'),
+                Key.Left => FormatModifiedCsi(1, modifierParameter, 'D'),
+                Key.Home => FormatModifiedCsi(1, modifierParameter, 'H'),
+                Key.End => FormatModifiedCsi(1, modifierParameter, 'F'),
+                Key.Insert => FormatModifiedCsi(2, modifierParameter, '~'),
+                Key.Delete => FormatModifiedCsi(3, modifierParameter, '~'),
+                Key.PageUp => FormatModifiedCsi(5, modifierParameter, '~'),
+                Key.PageDown => FormatModifiedCsi(6, modifierParameter, '~'),
+                Key.F1 => FormatModifiedCsi(1, modifierParameter, 'P'),
+                Key.F2 => FormatModifiedCsi(1, modifierParameter, 'Q'),
+                Key.F3 => FormatModifiedCsi(1, modifierParameter, 'R'),
+                Key.F4 => FormatModifiedCsi(1, modifierParameter, 'S'),
+                Key.F5 => FormatModifiedCsi(15, modifierParameter, '~'),
+                Key.F6 => FormatModifiedCsi(17, modifierParameter, '~'),
+                Key.F7 => FormatModifiedCsi(18, modifierParameter, '~'),
+                Key.F8 => FormatModifiedCsi(19, modifierParameter, '~'),
+                Key.F9 => FormatModifiedCsi(20, modifierParameter, '~'),
+                Key.F10 => FormatModifiedCsi(21, modifierParameter, '~'),
+                Key.F11 => FormatModifiedCsi(23, modifierParameter, '~'),
+                Key.F12 => FormatModifiedCsi(24, modifierParameter, '~'),
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// xterm's modifier parameter: 1 plus shift=1, alt=2, ctrl=4, meta=8. A result of 1 means
+        /// no modifier is held and the key keeps its unmodified encoding. Ctrl+Alt is deliberately
+        /// not treated as AltGr here, unlike in <see cref="EncodeAltKey"/> and
+        /// <see cref="EncodeKittyKey"/>: none of the keys this parameter is used for compose text,
+        /// so there is no WM_CHAR to protect and Ctrl+Alt+arrow is simply m = 7.
+        /// </summary>
+        private static int GetXtermModifierParameter(KeyModifiers modifiers)
+        {
+            int parameter = 1;
+            if ((modifiers & KeyModifiers.Shift) != 0) parameter += 1;
+            if ((modifiers & KeyModifiers.Alt) != 0) parameter += 2;
+            if ((modifiers & KeyModifiers.Control) != 0) parameter += 4;
+            if ((modifiers & KeyModifiers.Meta) != 0) parameter += 8;
+            return parameter;
+        }
+
+        private static string FormatModifiedCsi(int parameter, int modifierParameter, char final)
+        {
+            return string.Concat(
+                ((char)0x1b) + "[",
+                parameter.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ";",
+                modifierParameter.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                final.ToString());
         }
 
         // Kitty keyboard protocol modifier bit field (shift=1, alt=2, ctrl=4, super=8).
@@ -95,7 +180,8 @@ namespace Ntilde.Shell
         ///   whenever ctrl, alt or super is held, which is what disambiguates Ctrl+I from Tab and
         ///   Ctrl+M from Enter. Plain and shift-only presses still produce text.
         /// - Keypad and functional keys (arrows, F-keys, Home/End/PgUp/PgDn, Insert/Delete) are out
-        ///   of scope for this tier in Ntilde and keep their legacy encodings.
+        ///   of scope for this tier in Ntilde and keep their legacy encodings, which for the
+        ///   functional keys carry modifiers in xterm's form (<see cref="EncodeSpecialKey"/>).
         ///
         /// The modifiers field is omitted entirely when no modifiers are active, per spec.
         /// </summary>
@@ -267,6 +353,72 @@ namespace Ntilde.Shell
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Legacy Ctrl+key encoding: the C0 control character a Ctrl chord sends when no
+        /// keyboard protocol is active, or <c>null</c> when the chord has none.
+        ///
+        /// Ctrl+A..Z map to 0x01..0x1A (Shift excluded: Ctrl+Shift+letter is an app-shortcut
+        /// space). The punctuation and digit rows follow Xlib's XLookupString control mapping,
+        /// which xterm, VTE and Windows Terminal all send:
+        /// - NUL  0x00: Ctrl+@ (Ctrl+Shift+2), Ctrl+2, Ctrl+Space
+        /// - ESC  0x1B: Ctrl+[, Ctrl+3
+        /// - FS   0x1C: Ctrl+\, Ctrl+4
+        /// - GS   0x1D: Ctrl+], Ctrl+5
+        /// - RS   0x1E: Ctrl+^ (Ctrl+Shift+6), Ctrl+6
+        /// - US   0x1F: Ctrl+_ (Ctrl+Shift+-), Ctrl+7, Ctrl+/
+        /// - DEL  0x7F: Ctrl+8
+        ///
+        /// Without this, those chords were swallowed: Windows does put the control character in
+        /// WM_CHAR, but Avalonia drops control characters from TextInput, so the only way they
+        /// reach the PTY is by encoding them on KeyDown. Programs depend on them - Ctrl+\ is
+        /// SIGQUIT and the <c>ntilde mux attach</c> detach prefix, Ctrl+] is telnet's escape,
+        /// Ctrl+_ is readline/emacs undo, Ctrl+Space / Ctrl+@ is set-mark.
+        ///
+        /// Ctrl+Alt is declined: on Windows that is how AltGr arrives, and AltGr composes real
+        /// text on most non-US layouts (AltGr+8/9 are '[' and ']' on German) that must reach
+        /// TextInput - encoding it here would mark KeyDown handled and the character would be lost.
+        /// Meta chords are declined too.
+        ///
+        /// Layout limitation: <see cref="Key"/> is a US-layout virtual key, so the punctuation
+        /// rows match the key in that US position (the same assumption
+        /// <see cref="GetUnshiftedCodepoint"/> makes for the kitty protocol). On a layout where
+        /// '\' or ']' only exist behind AltGr, Ctrl+\ is not reachable this way - the same is
+        /// true in Windows Terminal. The digit forms (Ctrl+4, Ctrl+5, ...) work on every layout.
+        /// </summary>
+        public static string? EncodeLegacyControlKey(Key key, KeyModifiers modifiers)
+        {
+            if ((modifiers & KeyModifiers.Control) == 0 ||
+                (modifiers & (KeyModifiers.Alt | KeyModifiers.Meta)) != 0)
+            {
+                return null;
+            }
+
+            bool shift = (modifiers & KeyModifiers.Shift) != 0;
+
+            int code = shift
+                ? key switch
+                {
+                    Key.D2 => 0x00,        // Ctrl+@
+                    Key.D6 => 0x1E,        // Ctrl+^
+                    Key.OemMinus => 0x1F,  // Ctrl+_
+                    _ => -1
+                }
+                : key switch
+                {
+                    >= Key.A and <= Key.Z => key - Key.A + 1,
+                    Key.Space or Key.D2 => 0x00,
+                    Key.OemOpenBrackets or Key.D3 => 0x1B,
+                    Key.OemPipe or Key.OemBackslash or Key.D4 => 0x1C,
+                    Key.OemCloseBrackets or Key.D5 => 0x1D,
+                    Key.D6 => 0x1E,
+                    Key.D7 or Key.OemQuestion => 0x1F,
+                    Key.D8 => 0x7F,
+                    _ => -1
+                };
+
+            return code < 0 ? null : ((char)code).ToString();
         }
 
         public static string? EncodeFocusChanged(ModeState? modes, bool isFocused)
