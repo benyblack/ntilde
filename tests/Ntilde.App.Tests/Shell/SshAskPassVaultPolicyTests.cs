@@ -23,8 +23,14 @@ public sealed class SshAskPassVaultPolicyTests
     [InlineData(true, true, "OPS", "prod.internal", "", false)]   // hop equals the target, case-insensitive
     [InlineData(true, true, "", "PROD.internal", "", false)]   // empty hop user is the profile's user
     [InlineData(true, true, "other", "prod.internal", "", true)]   // same host, another user: prompts differ
+    [InlineData(true, true, "", "ops@prod.internal", "", false)]   // Host typed as user@host, empty User
+    [InlineData(true, true, "", "prod.internal:2222", "", false)]   // Host with a port; ssh prompts omit it
+    [InlineData(true, true, "", "OPS@PROD.internal", "", false)]   // case-insensitive
+    [InlineData(true, true, "", "[prod.internal]:2222", "", false)]   // bracketed host with a port
+    [InlineData(true, true, "", "bob@bastion:2222", "", true)]   // distinct user@host with a port
+    [InlineData(false, true, "", "", "-J ops@prod.internal:2222", false)]   // extra-args proxy, 8.4+
     [InlineData(false, false, "", "", "-J bob@bastion", false)]   // proxy in the extra arguments, 8.1
-    [InlineData(false, true, "", "", "-o ProxyJump=bob@bastion", true)]   // proxy in the extra arguments, 8.4+
+    [InlineData(false, true, "", "", "-o ProxyJump=bob@bastion", false)]   // proxy in the extra arguments fails closed, whatever the version
     public void The_vault_is_offered_only_when_no_jump_host_could_ask_as_the_target(
         bool hasHop, bool prefixes, string hopUser, string hopHost, string extra, bool expected)
     {

@@ -373,6 +373,28 @@ public sealed class OpenSshExecCommandLineTests
         Assert.False(OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(extraSshArgs));
     }
 
+    [Theory]
+    [InlineData("-J x")]
+    [InlineData("-Jx")]
+    [InlineData("-o ProxyJump=x")]
+    [InlineData("-oProxyCommand=nc %h %p")]
+    [InlineData("-p 2222 -o proxyjump=a,b")]
+    public void Extra_arguments_that_name_a_proxy_are_found(string extraSshArgs)
+    {
+        Assert.True(OpenSshExecCommandLine.ExtraArgumentsNameAProxy(extraSshArgs));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("-p 2222 -C")]
+    [InlineData("-o ServerAliveInterval=5")]
+    [InlineData("uptime -J x")]   // the remote command, never an option
+    public void Extra_arguments_without_a_proxy_are_not(string? extraSshArgs)
+    {
+        Assert.False(OpenSshExecCommandLine.ExtraArgumentsNameAProxy(extraSshArgs));
+    }
+
     private static int IndexOfPair(IReadOnlyList<string> argv, string option, string value)
     {
         for (int i = 0; i + 1 < argv.Count; i++)

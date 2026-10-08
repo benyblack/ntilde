@@ -38,20 +38,51 @@ internal static class SshAskPassVaultPolicy
     {
         ArgumentNullException.ThrowIfNull(profile);
         if (!GoesThroughJumpHost(profile)) return true;
+        // A proxy in the profile's extra arguments is not parsed: its hops are unknown, so it fails closed.
+        if (OpenSshExecCommandLine.ExtraArgumentsNameAProxy(profile.ExtraSshArgs)) return false;
         if (!sshPrefixesKeyboardInteractivePrompts) return false;
 
         string targetUser = (profile.User ?? string.Empty).Trim();
         string targetHost = (profile.Host ?? string.Empty).Trim();
         foreach (SshJumpHop hop in profile.JumpHops ?? [])
         {
-            string user = string.IsNullOrWhiteSpace(hop.User) ? targetUser : hop.User.Trim();
+            (string user, string host) = HopIdentity(hop, targetUser);
             if (string.Equals(user, targetUser, StringComparison.OrdinalIgnoreCase)
-                && string.Equals((hop.Host ?? string.Empty).Trim(), targetHost, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(host, targetHost, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// The user and host ssh will name for <paramref name="hop"/>, as <c>OpenSshConfigCompiler</c> emits it into ProxyJump:
+    /// <c>User@Host</c>, or the Host alone when the user is empty - which may itself be typed <c>user@host</c> - split at the
+    /// last '@', with a trailing <c>:port</c> (or a <c>[v6]:port</c> bracket) dropped. No user means the target's.
+    /// </summary>
+    private static (string User, string Host) HopIdentity(SshJumpHop hop, string targetUser)
+    {
+        string host = (hop.Host ?? string.Empty).Trim();
+        string entry = string.IsNullOrWhiteSpace(hop.User) ? host : $"{hop.User.Trim()}@{host}";
+        string user = string.Empty;
+        int at = entry.LastIndexOf('@');
+        if (at >= 0)
+        {
+            user = entry[..at].Trim();
+            host = entry[(at + 1)..].Trim();
+        }
+
+        if (host.StartsWith('[') && host.IndexOf(']') is > 0 and int close)
+        {
+            host = host[1..close];
+        }
+        else if (host.IndexOf(':') is > 0 and int colon && host.IndexOf(':', colon + 1) < 0)
+        {
+            host = host[..colon];
+        }
+
+        return (user.Length == 0 ? targetUser : user, host);
     }
 }
