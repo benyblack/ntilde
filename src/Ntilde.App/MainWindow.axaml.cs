@@ -288,6 +288,21 @@ namespace Ntilde
         /// <summary>The shared-close prompt (spec §7.4), given how many other clients show the shell. A seam so tests answer without a modal.</summary>
         internal Func<int, Task<Ntilde.Shell.Mux.SharedCloseChoice>> ConfirmSharedClose { get; set; }
 
+        /// <summary>The first-close question's three outcomes (spec R1): Escape or the dialog's X is <see cref="FirstCloseAction.Cancel"/>.</summary>
+        internal enum FirstCloseAction { Cancel, Keep, Close }
+
+        /// <summary>An answer to the first-close question; <paramref name="Remember"/> is its "Don't ask again".</summary>
+        internal readonly record struct FirstCloseAnswer(FirstCloseAction Action, bool Remember);
+
+        /// <summary>
+        /// The first-close question (spec R1), given how many local shells the close would leave running. A seam so
+        /// tests answer without a modal; the constructor assigns <see cref="ShowFirstCloseDialogAsync"/>.
+        /// </summary>
+        internal Func<int, Task<FirstCloseAnswer>> ConfirmFirstClose { get; set; }
+
+        /// <summary>Where "Don't ask again" keeps the first-close answer (R1). A seam so tests use a scratch root.</summary>
+        internal Ntilde.Shell.Mux.MuxCloseChoiceStore MuxCloseChoiceStore { get; set; } = Ntilde.Shell.Mux.MuxCloseChoiceStore.Default;
+
         /// <summary>Test seam: runs inside <see cref="PerformAppTeardown"/> right after its one-shot guard.</summary>
         internal Action? TeardownFaultForTest { get; set; }
         private readonly DispatcherTimer _updateCheckTimer = new() { Interval = TimeSpan.FromSeconds(10) };
@@ -3847,6 +3862,7 @@ namespace Ntilde
             ConfirmSessionLossForUpdate = ShowUpdateSessionLossConfirmationAsync;
             PickMuxSession = ShowMuxSessionPickerAsync;
             ConfirmSharedClose = ShowSharedCloseDialogAsync;
+            ConfirmFirstClose = ShowFirstCloseDialogAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -6614,6 +6630,69 @@ namespace Ntilde
                             HorizontalAlignment = HorizontalAlignment.Right,
                             Spacing = 8,
                             Children = { cancel, detach, close },
+                        },
+                    },
+                },
+            };
+
+            return (dialog, closed.Task);
+        }
+
+        private async Task<FirstCloseAnswer> ShowFirstCloseDialogAsync(int count)
+        {
+            // A close from the taskbar can reach a minimized window, and a dialog it owns would open out of sight:
+            // the close would seem to do nothing. (A hidden owner makes ShowDialog throw, which closes as Keep.)
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            (Window dialog, Task<FirstCloseAnswer> result) = BuildFirstCloseDialog(count);
+            await dialog.ShowDialog(this);
+            return await result;
+        }
+
+        /// <summary>
+        /// The first-close question (spec R1), not yet shown; the task completes with the answer when it closes.
+        /// Enter keeps the shells (Keep running holds focus, as the safe default), Escape or closing the dialog
+        /// cancels the window's close, and Close them (which ends the shells) is never the default. Separate from
+        /// <see cref="ShowFirstCloseDialogAsync"/> so a headless test can show it and press keys.
+        /// </summary>
+        internal (Window Window, Task<FirstCloseAnswer> Result) BuildFirstCloseDialog(int count)
+        {
+            var answer = new FirstCloseAnswer(FirstCloseAction.Cancel, Remember: false);
+            var dialog = CreateThemedDialogWindow("Close Ntilde", 480, 250, canResize: false);
+            var dontAskAgain = new CheckBox { Content = "Don't ask again" };
+            var keep = new Button { Content = "Keep running", MinWidth = 110, IsDefault = true };
+            var close = new Button { Content = "Close them", MinWidth = 110 };
+            var closed = new TaskCompletionSource<FirstCloseAnswer>(TaskCreationOptions.RunContinuationsAsynchronously);
+            dialog.Closed += (_, _) => closed.TrySetResult(answer);
+            // Keep holds focus: a focused CheckBox would take Enter for itself (toggling) before IsDefault is consulted.
+            dialog.Opened += (_, _) => keep.Focus();
+            dialog.KeyDown += (_, e) =>
+            {
+                if (e.Key != Key.Escape) return;
+                e.Handled = true;
+                answer = new FirstCloseAnswer(FirstCloseAction.Cancel, Remember: false);
+                dialog.Close();
+            };
+            keep.Click += (_, _) => { answer = new FirstCloseAnswer(FirstCloseAction.Keep, dontAskAgain.IsChecked == true); dialog.Close(); };
+            close.Click += (_, _) => { answer = new FirstCloseAnswer(FirstCloseAction.Close, dontAskAgain.IsChecked == true); dialog.Close(); };
+            string body = count > 1 ? $"Reopen ntilde to get them back. ({count} shells)" : "Reopen ntilde to get them back.";
+            dialog.Content = new Border
+            {
+                Padding = new Thickness(16),
+                Child = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock { Text = "Your shells keep running in the background.", FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap },
+                        new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap },
+                        dontAskAgain,
+                        new TextBlock { Text = "Turn this off in Settings → Keep shells running when the window closes.", FontSize = 12, Opacity = 0.75, TextWrapping = TextWrapping.Wrap },
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Spacing = 8,
+                            Children = { keep, close },
                         },
                     },
                 },
@@ -9848,10 +9927,148 @@ namespace Ntilde
         }
         private bool _teardownDone;
 
+        /// <summary>
+        /// This close is settled - the first-close question was answered (R1), or Task 17's quit was confirmed - so
+        /// the close that follows goes straight to the teardown without asking.
+        /// </summary>
+        private bool _closeConfirmed;
+
+        /// <summary>The first-close question is posted or on screen: another close request meanwhile is held, not asked again.</summary>
+        private bool _firstCloseQuestionOpen;
+
+        /// <summary>Local shells <see cref="EndLocalSessionsOnTeardown"/> has ended: neither counted as kept nor saved for reattach.</summary>
+        private readonly HashSet<Guid> _localSessionsEndedOnClose = [];
+
         protected override void OnClosing(WindowClosingEventArgs e)
         {
             base.OnClosing(e);
+            if (!ProceedWithClose(e.CloseReason)) e.Cancel = true;
+        }
+
+        /// <summary>
+        /// Test seam: what <see cref="OnClosing"/> does for a close with <paramref name="reason"/> (only Avalonia can
+        /// build the event args, and only its lifetime raises the shutdown reasons). True when the close was held.
+        /// </summary>
+        internal bool HandleClosingForTest(WindowCloseReason reason) => !ProceedWithClose(reason);
+
+        /// <summary>OnClosing's body: false holds the close while the first-close question is asked; otherwise the teardown runs.</summary>
+        private bool ProceedWithClose(WindowCloseReason reason)
+        {
+            if (HoldCloseForFirstCloseQuestion(reason)) return false;
             PerformAppTeardown();
+            return true;
+        }
+
+        /// <summary>
+        /// Spec R1: a window closing with live local shells asks whether they keep running, unless the answer was
+        /// remembered ("Don't ask again"), which is then applied without asking. Not asked when this close is already
+        /// settled, when persistence is off (the setting, and the factory with it: with "Off" nothing new appears), or
+        /// when no local shell would be left running (remote shells never ask).
+        /// <para>
+        /// Only a window close asks. A lifetime shutdown - the OS ending the session (<see cref="WindowCloseReason.OSShutdown"/>)
+        /// or the application lifetime shutting down (<see cref="WindowCloseReason.ApplicationShutdown"/>: macOS Cmd+Q,
+        /// <c>TryShutdown</c>) - never asks and never kills, whatever was remembered: it behaves like Keep, the
+        /// non-destructive answer, as every close did before R1. Holding it would cancel the shutdown itself.
+        /// </para>
+        /// True holds this close: the question is posted, never asked inside OnClosing, and its answer closes again.
+        /// </summary>
+        private bool HoldCloseForFirstCloseQuestion(WindowCloseReason reason)
+        {
+            if (_closeConfirmed || _teardownDone || reason is WindowCloseReason.OSShutdown or WindowCloseReason.ApplicationShutdown) return false;
+            if (!IsMuxPersistenceActive || !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)) return false;
+            if (_firstCloseQuestionOpen) return true; // a second close while the dialog is up: one question at a time
+            int count = CountKeptLocalSessions();
+            if (count == 0) return false;
+
+            switch (MuxCloseChoiceStore.Read())
+            {
+                case Ntilde.Shell.Mux.MuxCloseChoice.Keep:
+                    return false;
+                case Ntilde.Shell.Mux.MuxCloseChoice.Close:
+                    EndLocalSessionsOnTeardown();
+                    return false;
+                default:
+                    _firstCloseQuestionOpen = true;
+                    // Posted: the answer closes the window again, and Close() must never re-enter this OnClosing.
+                    Dispatcher.UIThread.Post(() => _ = AskFirstCloseAsync(count));
+                    return true;
+            }
+        }
+
+        /// <summary>
+        /// Asks the first-close question (R1) and settles the held close with the answer: Cancel leaves the window
+        /// open; Keep closes it again, and Close ends the local shells first; either is remembered first when "Don't
+        /// ask again" was ticked. A question that could not be asked closes as Keep - nothing is lost, as before R1 -
+        /// rather than leave a window that cannot be closed. A close that happened meanwhile by another way (an OS
+        /// shutdown, an update restart) already applied its own rules, and the answer is dropped.
+        /// </summary>
+        private async Task AskFirstCloseAsync(int count)
+        {
+            FirstCloseAnswer answer;
+            try
+            {
+                answer = await ConfirmFirstClose(count);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] the first-close question failed; keeping the shells running: {ex.Message}");
+                answer = new FirstCloseAnswer(FirstCloseAction.Keep, Remember: false);
+            }
+            finally
+            {
+                _firstCloseQuestionOpen = false;
+            }
+
+            if (_teardownDone || answer.Action is not (FirstCloseAction.Keep or FirstCloseAction.Close)) return;
+
+            try
+            {
+                bool end = answer.Action == FirstCloseAction.Close;
+                if (answer.Remember) MuxCloseChoiceStore.Remember(end ? Ntilde.Shell.Mux.MuxCloseChoice.Close : Ntilde.Shell.Mux.MuxCloseChoice.Keep);
+                if (end) EndLocalSessionsOnTeardown();
+                _closeConfirmed = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] closing after the first-close question failed: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// The local panes whose shells a close would leave running in the daemon: what the first-close question (R1)
+        /// counts and the teardown logs. Shells <see cref="EndLocalSessionsOnTeardown"/> has ended are not kept.
+        /// </summary>
+        private int CountKeptLocalSessions() => _paneOwnerTab.Keys.Count(p => ShowsLocalMuxEndpoint(p)
+            && p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true } mux
+            && !_localSessionsEndedOnClose.Contains(mux.Id));
+
+        /// <summary>
+        /// Ends every local pane's live shell as the window closes: R1's "Close them" (asked or remembered), and Task
+        /// 17's quit. Each kill goes to the local host (<see cref="Ntilde.Shell.Mux.MuxConnectionHost.KillWhenConnected"/>),
+        /// sent at once and tracked, and the teardown's <see cref="Ntilde.Shell.Mux.MuxConnectionHosts.Dispose"/> waits
+        /// for the replies before it disconnects, so none is dropped behind the close. The ended shells are not saved for
+        /// reattach either: the next launch starts fresh shells quietly, as with persistence off, rather than report
+        /// them lost. Remote shells are left alone. Idempotent.
+        /// </summary>
+        private void EndLocalSessionsOnTeardown()
+        {
+            if (_muxHosts is not { } hosts) return;
+            int ended = 0;
+            foreach (TerminalPane pane in _paneOwnerTab.Keys)
+            {
+                if (!ShowsLocalMuxEndpoint(pane)
+                    || pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true } mux
+                    || !_localSessionsEndedOnClose.Add(mux.Id))
+                {
+                    continue;
+                }
+
+                hosts.Local.KillWhenConnected(mux.Id);
+                ended++;
+            }
+
+            if (ended > 0) AppLogger.Log($"[MainWindow] ending {ended} local session(s) as the window closes");
         }
 
         /// <summary>
@@ -9872,7 +10089,7 @@ namespace Ntilde
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs != null)
             {
-                SessionManager.SaveSession(this, tabs);
+                SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
             }
 
             if (_muxHosts is { } muxHosts)
@@ -9880,7 +10097,7 @@ namespace Ntilde
                 // The agent host stops asking these hosts before they close (the Stop below clears it again).
                 AgentHost.AgentHostService.Instance.SetWindowlessSource(null);
                 // Local panes only: the log line points at `ntilde mux ls`, which lists the local daemon.
-                int kept = _paneOwnerTab.Keys.Count(p => ShowsLocalMuxEndpoint(p) && p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true });
+                int kept = CountKeptLocalSessions();
                 // Explicit detach: closing each connection makes its daemon drop this client's
                 // subscriptions and keep every shell running. Panes are deliberately not disposed
                 // (that would kill them). Each host flushes what is already queued first, so a kill

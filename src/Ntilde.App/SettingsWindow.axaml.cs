@@ -32,6 +32,12 @@ namespace Ntilde
         public TerminalSettings Settings => _settings; // Expose for main window to grab without reloading disk
 
         /// <summary>
+        /// The session persistence setting as this window opened (spec R1): saving a different one forgets the
+        /// first-close dialog's remembered answer, so turning persistence back on asks again.
+        /// </summary>
+        private readonly string? _sessionPersistenceAtOpen;
+
+        /// <summary>
         /// F1: set once a successful Import or Restore has replaced configuration on disk out from
         /// under this window (see <see cref="ReloadSettingsAfterExternalChangeAsync"/>). The owning
         /// <c>MainWindow.OpenSettings</c> must adopt the reloaded <see cref="Settings"/> regardless
@@ -135,6 +141,7 @@ namespace Ntilde
             UiScale.PinScale(this, UiScale.Current);
             UiScale.FitWindow(this);
             _settings = TerminalSettings.Load();
+            _sessionPersistenceAtOpen = _settings.SessionPersistence;
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))
             {
@@ -3464,6 +3471,13 @@ namespace Ntilde
             _settings.TitleBarOrder = _titleBarDraft.BuildSaveOrder();
 
             _settings.Save();
+            // R1: a changed persistence setting forgets the first-close answer; turned back on, the next close asks again.
+            if (Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_sessionPersistenceAtOpen)
+                != Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence))
+            {
+                Ntilde.Shell.Mux.MuxCloseChoiceStore.Default.Forget();
+            }
+
             Close(true); // Return true to indicate saved
         }
 

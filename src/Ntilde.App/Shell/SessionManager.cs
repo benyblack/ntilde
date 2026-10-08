@@ -19,7 +19,11 @@ namespace Ntilde.Shell
     {
         private static string SessionPath => AppPaths.SessionFilePath;
 
-        public static void SaveSession(Window window, TabControl tabs)
+        /// <param name="endedLocalMuxSessions">
+        /// Local daemon sessions the closing window has just ended (spec R1's "Close them"): left out, so the next
+        /// launch starts fresh shells quietly, as with persistence off, instead of reporting them lost.
+        /// </param>
+        public static void SaveSession(Window window, TabControl tabs, IReadOnlySet<Guid>? endedLocalMuxSessions = null)
         {
             var sw = Stopwatch.StartNew();
             int payloadBytes = 0;
@@ -28,6 +32,13 @@ namespace Ntilde.Shell
                 // The startup session file is the one snapshot that names daemon sessions: the next
                 // launch reattaches to them (spec §9).
                 var session = CaptureSession(window, tabs, includeMuxIds: true);
+                if (endedLocalMuxSessions is { Count: > 0 })
+                {
+                    session = WithoutMuxIds(session, node =>
+                        Guid.TryParse(node.MuxSessionId, out Guid id)
+                        && endedLocalMuxSessions.Contains(id)
+                        && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal);
+                }
 
                 var json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
                 payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
@@ -65,18 +76,26 @@ namespace Ntilde.Shell
         /// A copy, never in place: a capture can share PaneNodes with a restored tab's Tag (see the
         /// placeholder fallback in <see cref="CaptureSessionCore"/>), which the startup save still needs.
         /// </summary>
-        internal static NtildeSession WithoutMuxIds(NtildeSession session)
+        internal static NtildeSession WithoutMuxIds(NtildeSession session) => WithoutMuxIds(session, static _ => true);
+
+        /// <summary><see cref="WithoutMuxIds(NtildeSession)"/> for the panes <paramref name="clear"/> picks only; the same deep copy.</summary>
+        internal static NtildeSession WithoutMuxIds(NtildeSession session, Func<PaneNode, bool> clear)
         {
             ArgumentNullException.ThrowIfNull(session);
+            ArgumentNullException.ThrowIfNull(clear);
             string json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
             NtildeSession copy = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession) ?? new NtildeSession();
 
-            static void Clear(PaneNode? node)
+            void Clear(PaneNode? node)
             {
                 if (node == null) return;
-                node.MuxSessionId = null;
-                node.MuxEndpoint = null;
-                node.MuxShared = false;
+                if (clear(node))
+                {
+                    node.MuxSessionId = null;
+                    node.MuxEndpoint = null;
+                    node.MuxShared = false;
+                }
+
                 foreach (PaneNode child in node.Children) Clear(child);
             }
 
