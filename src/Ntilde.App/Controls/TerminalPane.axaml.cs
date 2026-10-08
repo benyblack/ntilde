@@ -4632,6 +4632,26 @@ namespace Ntilde.Controls
             QueueOutputUiRefresh();
         }
 
+        /// <summary>
+        /// UI thread. Phase 5 Task 23 (review item 6): the window is about to restart the local daemon this pane's shell runs
+        /// in, which ends the shell. The pane lets go of it first - a plain detach, so the daemon's stop cannot reach it as the
+        /// shell's exit, which would take the exit policy's path and could close the pane - and shows the "multiplexer
+        /// disconnected" banner, as a lost connection does. Nothing is kept to reattach (that shell is about to end): Enter
+        /// starts a new shell, on the new daemon. False when the pane shows no local daemon session.
+        /// </summary>
+        internal bool LetGoOfMuxSessionForRestart()
+        {
+            if (Session is not MuxClientSession mux || FollowsRemoteSession) return false;
+            HandleMuxConnectionLost(mux, MuxDisconnectedBanner, reattach: false);
+            // Also when the connection was already lost (and kept the id to reattach): the shell is about to end either way.
+            _muxReattachId = null;
+            _muxReattachShared = false;
+            // Keys reach OnKeyDown's reconnect, never a session that no longer delivers anything to this pane.
+            TermView.SetSession(null);
+            mux.Detach(userDetached: false);
+            return true;
+        }
+
         /// <summary>UI thread. The daemon or the connection is gone; the shell may still be running there.</summary>
         private void HandleMuxConnectionLost(MuxClientSession source, string banner, bool reattach = true)
         {

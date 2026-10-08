@@ -18,6 +18,7 @@ using Ntilde.Shell.Mux.Remote;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
 using Ntilde.Tests.Shell.Mux;
 using Ntilde.Tests.Shell.Mux.Remote;
+using static Ntilde.Tests.Core.WindowToast;
 
 namespace Ntilde.Tests.Core;
 
@@ -65,7 +66,14 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         _remote.Dispose();
         _localMux.Dispose();
         new JsonSshProfileStore().DeleteProfile(_sshProfile.Id);
+        if (_twin is { } twin) new JsonSshProfileStore().DeleteProfile(twin.Profile.Id);
     }
+
+    /// <summary>
+    /// A second profile and its host, set by a test before <see cref="CreateWindow"/>: the window resolves it and connects
+    /// to its host as for <see cref="_sshProfile"/>.
+    /// </summary>
+    private (SshProfile Profile, FakeRemoteHost Host)? _twin;
 
     private string Endpoint => MuxEndpointId.ForSsh(_sshProfile.Id).ToString();
 
@@ -74,7 +82,10 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// <summary>What each remote attempt's transport was asked for, in order: an automatic attempt is not interactive.</summary>
     private readonly System.Collections.Concurrent.ConcurrentQueue<RemoteMuxTransportRequest> _transportRequests = new();
 
-    private SshProfile? Resolve(Guid id) => id == _sshProfile.Id && !_profileGone ? _sshProfile : null;
+    private SshProfile? Resolve(Guid id) =>
+        id == _sshProfile.Id && !_profileGone ? _sshProfile
+        : _twin is { } twin && id == twin.Profile.Id ? twin.Profile
+        : null;
 
     private int _uiThread;
     private int _factoryCallsOffUi; // CreatePersistent resolves the profile once, first: one per remote factory call
@@ -98,10 +109,10 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         {
             DisposeFlushTimeout = TimeSpan.FromSeconds(1),
         };
-        var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, request) =>
+        var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (profile, request) =>
         {
             _transportRequests.Enqueue(request);
-            return remote ?? _remote;
+            return _twin is { } twin && profile.Id == twin.Profile.Id ? twin.Host : remote ?? _remote;
         }, log: null, userPrompts: null, scheduler: _clock));
         var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
         AppServiceBundle services = AppServices.BuildForDesigner() with
@@ -194,11 +205,6 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             Dispatcher.UIThread.RunJobs();
         }
     }
-
-    private static (bool Visible, string? Title, string? Message) Toast(MainWindow window) =>
-        (window.FindControl<Border>("RecordingToast")!.IsVisible,
-         window.FindControl<TextBlock>("RecordingToastTitle")!.Text,
-         window.FindControl<TextBlock>("RecordingToastMessage")!.Text);
 
     private static string Text(TerminalPane pane) => MuxTestText.VisibleText(pane.Buffer!);
 
@@ -912,12 +918,13 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// <summary>Phase 5 Task 23: the version this app installs on remote hosts, as the window is told it.</summary>
     private const string ThisBuild = "0.12.0";
 
-    /// <summary>The window of a Task 23 test: persistence on, this build's version pinned, and nothing offered yet this launch.</summary>
+    /// <summary>The window of a Task 23 test: persistence on, this build's version pinned, and a launch of its own.</summary>
     private MainWindow CreateRestartWindow(FakeRemoteHost remote) => CreateWindow(
         beforeShow: w =>
         {
             w.MuxThisBuildVersion = ThisBuild;
-            w.MuxPreviousBuildOffers = new MuxPreviousBuildNotice.Offered();
+            w.MuxPreviousBuildLaunch = new MuxPreviousBuildNotice.Launch();
+            w.MuxRestartOfferedForTest = (endpoint, key, message, action) => _offers.Add((endpoint, key, message, action));
         },
         remote: remote,
         settings: new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose });
@@ -932,21 +939,35 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
     private readonly List<FakeRemoteHost> _otherRemotes = [];
 
-    private static readonly string TwoShellsNotice = MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", 2);
+    /// <summary>Each "from another build" notice a Task 23 window raised (UI thread): its endpoint, merge key, words and action.</summary>
+    private readonly List<(MuxEndpointId Endpoint, string Key, string Message, PersistenceNoticeAction Action)> _offers = [];
 
-    private static Button ToastButton(MainWindow window, string name) => window.FindControl<Button>(name)!;
+    private static readonly string TwoShellsNotice = MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", ThisBuild, 2);
 
-    private static void Click(Button button) => button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+    private MuxEndpointId RemoteId => MuxEndpointId.ForSsh(_sshProfile.Id);
 
-    /// <summary>The host's events so far have been handled, and what they posted to the UI thread has run.</summary>
-    private static void PumpUntilQuiet(MuxConnectionHost host)
+    /// <summary>Two panes of the profile on a host still running an older ntilde-mux: the window shown, both reattached, the notice up.</summary>
+    private (MainWindow Window, FakeRemoteHost Remote, Guid[] Ids) TwoPanesOnAPreviousVersion()
     {
-        PumpUntil(() => host.EventsForTest.IsCompleted, "the host's events were handled");
-        for (int i = 0; i < 20; i++)
+        FakeRemoteHost remote = PreviousVersionHost();
+        Guid[] ids = SpawnOnRemote(2, remote);
+        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]));
+        MainWindow window = CreateRestartWindow(remote);
+        PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes reattached");
+        PumpUntil(() => Toast(window).Message?.Contains(TwoShellsNotice, StringComparison.Ordinal) == true, "the notice is shown");
+        return (window, remote, ids);
+    }
+
+    /// <summary>Cuts the link under the profile's host and moves the clock on until the host has connected again.</summary>
+    private void Reconnect(FakeRemoteHost remote, MuxConnectionHost host)
+    {
+        MuxClient? before = host.CurrentClient;
+        remote.CutLink();
+        PumpUntil(() =>
         {
-            Thread.Sleep(10);
-            Dispatcher.UIThread.RunJobs();
-        }
+            if (host.IsReconnecting) _clock.Advance(FirstRetry);
+            return host.CurrentClient is { } c && !ReferenceEquals(c, before);
+        }, "the host reconnected");
     }
 
     /// <summary>
@@ -957,12 +978,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     [AvaloniaFact]
     public void A_remote_daemon_of_a_previous_version_is_offered_a_restart_once()
     {
-        FakeRemoteHost remote = PreviousVersionHost();
-        Guid[] ids = SpawnOnRemote(2, remote);
-        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]));
-        MainWindow window = CreateRestartWindow(remote);
-        PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes reattached");
-        PumpUntil(() => Toast(window).Message?.Contains(TwoShellsNotice, StringComparison.Ordinal) == true, "the notice is shown");
+        (MainWindow window, FakeRemoteHost remote, _) = TwoPanesOnAPreviousVersion();
 
         Assert.Equal((true, MuxPreviousBuildNotice.Title, TwoShellsNotice), Toast(window));
         Assert.Equal("Restart ntilde-mux on nova@fake-host", ToastButton(window, "RecordingToastAction").Content);
@@ -970,17 +986,11 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         // Dismissed; then the link drops, and the host reconnects to the same daemon.
         Click(ToastButton(window, "RecordingToastClose"));
         MuxConnectionHost host = RemoteHostOf(window)!;
-        MuxClient first = host.CurrentClient!;
-        remote.CutLink();
-        PumpUntil(() =>
-        {
-            if (host.IsReconnecting) _clock.Advance(FirstRetry);
-            return host.CurrentClient is { } c && !ReferenceEquals(c, first);
-        }, "the host reconnected");
-        PumpUntilQuiet(host);
+        Reconnect(remote, host);
+        PumpUntilDecided(window, RemoteId, 2);
 
         Assert.Equal("0.0.1", host.CurrentClient!.ServerVersion);
-        Assert.False(Toast(window).Visible && Toast(window).Message!.Contains(TwoShellsNotice, StringComparison.Ordinal), "offered again after a reconnect");
+        Assert.False(Toast(window).Visible, $"offered again after a reconnect: '{Toast(window).Message}'");
     }
 
     /// <summary>
@@ -1008,10 +1018,107 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         Click(ToastButton(window, "RecordingToastAction"));
         PumpUntil(() => Volatile.Read(ref remoteShutdowns) == 1, "the remote daemon was told to shut down");
-        PumpUntilQuiet(_local!);
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
 
         Assert.Equal([("nova@fake-host", 2)], asked);
         Assert.Equal(0, Volatile.Read(ref localShutdowns));
         Assert.False(localProbed, "the local daemon was probed to be shut down");
+    }
+
+    /// <summary>
+    /// Review item 4: the link is down when the button is pressed. Nothing can be sent, the notice says so, and the offer
+    /// is released: the next connection to that daemon offers the restart again.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remote_restart_while_not_connected_says_so_and_is_offered_again()
+    {
+        (MainWindow window, FakeRemoteHost remote, _) = TwoPanesOnAPreviousVersion();
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        PersistenceNoticeAction action = OfferedAction(window)!;
+        int asked = 0;
+        window.ConfirmMuxRestart = (_, _) => { asked++; return Task.FromResult(true); };
+        remote.CutLink();
+        PumpUntil(() => host.CurrentClient is null, "the link is down");
+
+        action.Run();
+        PumpUntil(() => Toast(window).Message == MuxPreviousBuildNotice.NotConnected("nova@fake-host"), "the notice says why");
+        Assert.Equal(0, asked);
+
+        PumpUntil(() =>
+        {
+            if (host.IsReconnecting) _clock.Advance(FirstRetry);
+            return host.CurrentClient is not null;
+        }, "the host reconnected");
+        PumpUntil(() => Toast(window).Message?.Contains(TwoShellsNotice, StringComparison.Ordinal) == true, "offered again");
+    }
+
+    /// <summary>
+    /// Review item 4: <c>shutdown</c> could not be sent (here it times out). The notice says so, the daemon keeps running,
+    /// and the offer is released: the next connection offers the restart again.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remote_restart_whose_shutdown_fails_says_so_and_is_offered_again()
+    {
+        (MainWindow window, FakeRemoteHost remote, Guid[] ids) = TwoPanesOnAPreviousVersion();
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        window.MuxShutdownRemoteDaemon = (_, _) => Task.FromException(new TimeoutException("timed out"));
+
+        Click(ToastButton(window, "RecordingToastAction"));
+        PumpUntil(() => Toast(window).Message == MuxPreviousBuildNotice.ShutdownFailed("nova@fake-host", "timed out"), "the notice says why");
+        Assert.All(ids, id => Assert.Contains(id, remote.Server.GetSessionIds()));
+
+        Click(ToastButton(window, "RecordingToastClose"));
+        Reconnect(remote, host);
+        PumpUntil(() => Toast(window).Message?.Contains(TwoShellsNotice, StringComparison.Ordinal) == true, "offered again");
+    }
+
+    /// <summary>
+    /// Review item 5: two profiles of one <c>user@host</c> on two daemons give two notices of the same words, each keyed by
+    /// its endpoint (so the toast never merges them into one line with one button: see
+    /// <c>MainWindowNoticeActionTests.Notices_of_the_same_words_with_their_own_keys_keep_a_line_each</c>), and each one's
+    /// action stops its own daemon only.
+    /// </summary>
+    [AvaloniaFact]
+    public void Two_hosts_of_one_name_get_a_notice_each_and_each_button_stops_its_own()
+    {
+        FakeRemoteHost first = PreviousVersionHost();
+        FakeRemoteHost second = PreviousVersionHost();
+        SshProfile twin = RemoteMuxConnectorTests.Profile();
+        twin.BackendKind = SshBackendKind.Native;
+        new JsonSshProfileStore().SaveProfile(twin);
+        _twin = (twin, second);
+        Guid[] onFirst = SpawnOnRemote(2, first);
+        Guid[] onSecond = SpawnOnRemote(2, second);
+        string twinEndpoint = MuxEndpointId.ForSsh(twin.Id).ToString();
+        SaveSession(
+            RemoteLeaf(onFirst[0]),
+            new PaneNode { Type = NodeType.Leaf, SshProfileId = twin.Id.ToString(), MuxSessionId = onSecond[0].ToString("D"), MuxEndpoint = twinEndpoint });
+        int firstShutdowns = 0;
+        int secondShutdowns = 0;
+        first.Server.ShutdownRequested += () => Interlocked.Increment(ref firstShutdowns);
+        second.Server.ShutdownRequested += () => Interlocked.Increment(ref secondShutdowns);
+        MainWindow window = CreateRestartWindow(first);
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        MuxEndpointId twinId = MuxEndpointId.ForSsh(twin.Id);
+        PumpUntilDecided(window, RemoteId, 1);
+        PumpUntilDecided(window, twinId, 1);
+
+        List<(MuxEndpointId Endpoint, string Key, string Message, PersistenceNoticeAction Action)> offers = [.. _offers];
+        Assert.Equal(2, offers.Count);
+        Assert.True(offers.Select(o => o.Endpoint).ToHashSet().SetEquals([RemoteId, twinId]), "one offer for each endpoint");
+        Assert.All(offers, o => Assert.Equal(TwoShellsNotice, o.Message)); // the same words for both...
+        Assert.NotEqual(offers[0].Key, offers[1].Key);                     // ...under keys of their own
+
+        foreach ((MuxEndpointId endpoint, _, _, PersistenceNoticeAction action) in offers)
+        {
+            (int First, int Second) before = (Volatile.Read(ref firstShutdowns), Volatile.Read(ref secondShutdowns));
+            action.Run();
+            PumpUntil(() => Volatile.Read(ref firstShutdowns) + Volatile.Read(ref secondShutdowns) == before.First + before.Second + 1, "one daemon was told to shut down");
+            PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+            Assert.Equal(
+                endpoint == RemoteId ? (before.First + 1, before.Second) : (before.First, before.Second + 1),
+                (Volatile.Read(ref firstShutdowns), Volatile.Read(ref secondShutdowns)));
+        }
     }
 }

@@ -3,8 +3,8 @@ using Ntilde.Shell.Mux;
 namespace Ntilde.Tests.Shell.Mux;
 
 /// <summary>
-/// Phase 5 Task 23: what decides that a daemon is another build's, and the words the notice, its action and its question
-/// use. The window's side is <c>MainWindowMuxUpdateTests</c> (local) and <c>MainWindowMuxRemoteTests</c> (remote).
+/// Phase 5 Task 23: what decides that a daemon is another build's, and the words the notice, its action, its question and
+/// its outcomes use. The window's side is <c>MainWindowMuxUpdateTests</c> (local) and <c>MainWindowMuxRemoteTests</c> (remote).
 /// </summary>
 public sealed class MuxPreviousBuildNoticeTests
 {
@@ -29,15 +29,62 @@ public sealed class MuxPreviousBuildNoticeTests
     public void A_daemon_is_another_builds_only_when_both_versions_are_known_and_differ(string? daemon, string? thisBuild, bool expected) =>
         Assert.Equal(expected, MuxPreviousBuildNotice.IsFromAnotherBuild(daemon, thisBuild));
 
+    /// <summary>
+    /// Ruling R-a: one comparison, SemVer 2.0.0 precedence. The numeric release parts compare as numbers (1.10 is newer than
+    /// 1.9), build metadata is ignored, a prerelease comes before its release, and prerelease identifiers compare as SemVer
+    /// says (numbers numerically and below words, words in ASCII order, a longer set after its prefix). A version that does
+    /// not parse has no order.
+    /// </summary>
+    [Theory]
+    [InlineData("0.11.0", "0.12.0", -1)]
+    [InlineData("0.13.0", "0.12.0", 1)]
+    [InlineData("1.10.0", "1.9.0", 1)]
+    [InlineData("0.12.0+3f2c1ab", "0.11.0", 1)]
+    [InlineData("0.12.0", "0.12.0+3f2c1ab", 0)]
+    [InlineData("0.12", "0.12.0", 0)]
+    [InlineData("0.12.0-beta.1", "0.12.0", -1)]
+    [InlineData("0.12.0", "0.12.0-rc.1", 1)]
+    [InlineData("0.12.0-beta.2", "0.12.0-beta.10", -1)]
+    [InlineData("0.12.0-alpha", "0.12.0-beta", -1)]
+    [InlineData("0.12.0-1", "0.12.0-alpha", -1)]
+    [InlineData("0.12.0-beta", "0.12.0-beta.1", -1)]
+    [InlineData("dev-build", "0.12.0", null)]
+    [InlineData("0.12.x", "0.12.0", null)]
+    [InlineData("0.12.0", "", null)]
+    [InlineData("0.12.0-", "0.12.0", null)]
+    [InlineData("0.12.0-beta..1", "0.12.0", null)]
+    [InlineData("99999999999.0.0", "0.12.0", null)]
+    public void Versions_compare_by_semver_precedence(string? a, string? b, int? expected)
+    {
+        Assert.Equal(expected, MuxPreviousBuildNotice.CompareVersions(a, b));
+        Assert.Equal(-expected, MuxPreviousBuildNotice.CompareVersions(b, a));
+    }
+
+    /// <summary>Ruling R-a: "previous" only for an older daemon; a newer one is called newer, and one with no order different.</summary>
+    [Theory]
+    [InlineData("0.11.0", "previous build", "a previous version")]
+    [InlineData("0.12.0-rc.1", "previous build", "a previous version")]
+    [InlineData("0.13.0", "a newer build", "a newer version")]
+    [InlineData("custom", "a different build", "a different version")]
+    public void The_notice_says_how_the_daemons_version_relates_to_this_one(string daemon, string local, string remote)
+    {
+        Assert.Equal(
+            $"The multiplexer is from {(local == "previous build" ? "the previous build" : local)} ({daemon}); restart it when convenient \u2014 this closes its 3 shells.",
+            MuxPreviousBuildNotice.LocalMessage(daemon, "0.12.0", 3));
+        Assert.Equal(
+            $"ntilde-mux on nova@box is from {remote} ({daemon}); restart it when convenient \u2014 this closes its 2 shells.",
+            MuxPreviousBuildNotice.RemoteMessage("nova@box", daemon, "0.12.0", 2));
+    }
+
     [Fact]
     public void The_local_notice_names_the_old_version_and_the_daemons_shells()
     {
         Assert.Equal(
-            "The multiplexer is from the previous build (0.0.1); restart it when convenient — this closes its 3 shells.",
-            MuxPreviousBuildNotice.LocalMessage("0.0.1", 3));
+            "The multiplexer is from the previous build (0.0.1); restart it when convenient \u2014 this closes its 3 shells.",
+            MuxPreviousBuildNotice.LocalMessage("0.0.1", "0.12.0", 3));
         Assert.Equal(
-            "The multiplexer is from the previous build (0.11.0); restart it when convenient — this closes its 1 shell.",
-            MuxPreviousBuildNotice.LocalMessage("0.11.0+3f2c1ab", 1));
+            "The multiplexer is from the previous build (0.11.0); restart it when convenient \u2014 this closes its 1 shell.",
+            MuxPreviousBuildNotice.LocalMessage("0.11.0+3f2c1ab", "0.12.0", 1));
         Assert.Equal("Multiplexer", MuxPreviousBuildNotice.Title);
         Assert.Equal("Restart multiplexer now", MuxPreviousBuildNotice.LocalActionLabel);
     }
@@ -46,9 +93,20 @@ public sealed class MuxPreviousBuildNoticeTests
     public void The_remote_notice_and_its_action_name_the_host()
     {
         Assert.Equal(
-            "ntilde-mux on nova@box is from a previous version (0.0.1); restart it when convenient — this closes its 2 shells.",
-            MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", 2));
+            "ntilde-mux on nova@box is from a previous version (0.0.1); restart it when convenient \u2014 this closes its 2 shells.",
+            MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", "0.12.0", 2));
         Assert.Equal("Restart ntilde-mux on nova@box", MuxPreviousBuildNotice.RemoteActionLabel("nova@box"));
+    }
+
+    /// <summary>Ruling R-b: a daemon that runs no shells closes none - the clause goes, from the notice and from the question.</summary>
+    [Fact]
+    public void A_daemon_with_no_shells_is_not_said_to_close_any()
+    {
+        Assert.Equal("The multiplexer is from the previous build (0.0.1); restart it when convenient.", MuxPreviousBuildNotice.LocalMessage("0.0.1", "0.12.0", 0));
+        Assert.Equal("ntilde-mux on nova@box is from a previous version (0.0.1); restart it when convenient.", MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", "0.12.0", 0));
+        Assert.DoesNotContain("0", MuxPreviousBuildNotice.ConfirmMessage(null, 0), StringComparison.Ordinal);
+        Assert.DoesNotContain("0", MuxPreviousBuildNotice.ConfirmMessage("nova@box", 0), StringComparison.Ordinal);
+        Assert.DoesNotContain("closed", MuxPreviousBuildNotice.ConfirmMessage(null, 0), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -58,13 +116,18 @@ public sealed class MuxPreviousBuildNoticeTests
     [Fact]
     public void A_reported_version_is_quoted_before_it_reaches_the_toast()
     {
-        string hostile = "0.0.1\u001b[2J‮\r\nfake line" + new string('9', 500);
+        string hostile = "0.0.1\u001b[2J\u202e\r\nfake line" + new string('9', 500);
 
-        foreach (string message in new[] { MuxPreviousBuildNotice.LocalMessage(hostile, 1), MuxPreviousBuildNotice.RemoteMessage("nova@‮box", hostile, 1) })
+        foreach (string message in new[]
         {
-            Assert.DoesNotContain(message, c => char.IsControl(c) || c == '‮');
-            Assert.Contains("0.0.1[2J", message, StringComparison.Ordinal);
-            Assert.True(message.Length < 400, $"not capped: {message.Length} characters");
+            MuxPreviousBuildNotice.LocalMessage(hostile, "0.12.0", 1),
+            MuxPreviousBuildNotice.RemoteMessage("nova@\u202ebox", hostile, "0.12.0", 1),
+            MuxPreviousBuildNotice.NothingToRestart("nova@\u202ebox", hostile),
+            MuxPreviousBuildNotice.ShutdownFailed("nova@\u202ebox", hostile),
+        })
+        {
+            Assert.DoesNotContain(message, c => char.IsControl(c) || c == '\u202e');
+            Assert.True(message.Length < 500, $"not capped: {message.Length} characters");
         }
     }
 
@@ -72,7 +135,9 @@ public sealed class MuxPreviousBuildNoticeTests
     [InlineData(null, 3, "Restart Multiplexer", "Restart the multiplexer?", "3 shells running in the multiplexer will be closed.")]
     [InlineData(null, 1, "Restart Multiplexer", "Restart the multiplexer?", "1 shell running in the multiplexer will be closed.")]
     [InlineData(null, -1, "Restart Multiplexer", "Restart the multiplexer?", "All shells running in the multiplexer will be closed.")]
+    [InlineData(null, 0, "Restart Multiplexer", "Restart the multiplexer?", "The multiplexer is stopped, and one of this version started.")]
     [InlineData("nova@box", 2, "Restart ntilde-mux", "Restart ntilde-mux on nova@box?", "2 shells running in ntilde-mux on nova@box will be closed.")]
+    [InlineData("nova@box", 0, "Restart ntilde-mux", "Restart ntilde-mux on nova@box?", "ntilde-mux on nova@box is stopped; reconnecting starts the installed version.")]
     public void The_question_names_what_closes(string? host, int shells, string title, string heading, string message)
     {
         Assert.Equal(title, MuxPreviousBuildNotice.ConfirmTitle(host));
@@ -81,24 +146,47 @@ public sealed class MuxPreviousBuildNoticeTests
         Assert.Equal("Restart", MuxPreviousBuildNotice.ConfirmButton);
     }
 
+    /// <summary>Review item 3/4: every confirmed restart that does not happen says why.</summary>
+    [Fact]
+    public void Each_outcome_of_a_restart_that_did_not_happen_is_said_plainly()
+    {
+        Assert.Equal("The multiplexer is already from this build; nothing to restart.", MuxPreviousBuildNotice.NothingToRestart(null, "0.12.0"));
+        Assert.Equal("The multiplexer is not running; nothing to restart.", MuxPreviousBuildNotice.NotRunning);
+        Assert.Equal("The multiplexer does not report its build; it was not restarted.", MuxPreviousBuildNotice.NothingToRestart(null, "0.0.0"));
+        Assert.Equal("The multiplexer does not report its build; it was not restarted.", MuxPreviousBuildNotice.NothingToRestart(null, null));
+        Assert.Equal("ntilde-mux on nova@box is already the version this app installs; nothing to restart.", MuxPreviousBuildNotice.NothingToRestart("nova@box", "0.12.0+abc"));
+        Assert.Equal("ntilde-mux on nova@box does not report its version; it was not restarted.", MuxPreviousBuildNotice.NothingToRestart("nova@box", null));
+        Assert.Equal("The multiplexer is already being restarted.", MuxPreviousBuildNotice.AlreadyRestarting(null));
+        Assert.Equal("ntilde-mux on nova@box is already being restarted.", MuxPreviousBuildNotice.AlreadyRestarting("nova@box"));
+        Assert.Equal("ntilde-mux on nova@box is not connected; it was not restarted.", MuxPreviousBuildNotice.NotConnected("nova@box"));
+        Assert.Equal("ntilde-mux on nova@box could not be told to restart (timed out); it keeps running.", MuxPreviousBuildNotice.ShutdownFailed("nova@box", "timed out"));
+        Assert.Equal("The old multiplexer could not be stopped; its shells may still be running.", MuxPreviousBuildNotice.NotStopped);
+    }
+
     /// <summary>
-    /// Once per launch for each endpoint: the first claim wins, later ones (a reconnect, another window) do not; a release
-    /// - after a restart, or a count that could not be had - lets the next connection offer it again.
+    /// Once per launch for each endpoint: the first offer wins, later ones (a reconnect, another window) do not; a release
+    /// - after a restart, or any way one did not happen - lets the next connection offer it again. One restart at a time
+    /// for each endpoint, process-wide; another endpoint's runs alongside it.
     /// </summary>
     [Fact]
-    public void An_endpoint_is_offered_once_until_released()
+    public void An_endpoint_is_offered_once_until_released_and_restarted_once_at_a_time()
     {
-        var offered = new MuxPreviousBuildNotice.Offered();
+        var launch = new MuxPreviousBuildNotice.Launch();
         MuxEndpointId remote = MuxEndpointId.ForSsh(Guid.NewGuid());
 
-        Assert.True(offered.TryClaim(MuxEndpointId.Local));
-        Assert.False(offered.TryClaim(MuxEndpointId.Local));
-        Assert.True(offered.TryClaim(remote)); // per endpoint
-        Assert.False(offered.TryClaim(MuxEndpointId.ForSsh(remote.SshProfileId!.Value)));
+        Assert.True(launch.TryOffer(MuxEndpointId.Local));
+        Assert.False(launch.TryOffer(MuxEndpointId.Local));
+        Assert.True(launch.TryOffer(remote)); // per endpoint
+        Assert.False(launch.TryOffer(MuxEndpointId.ForSsh(remote.SshProfileId!.Value)));
+        launch.ReleaseOffer(MuxEndpointId.Local);
+        Assert.True(launch.TryOffer(MuxEndpointId.Local));
+        Assert.False(launch.TryOffer(remote));
 
-        offered.Release(MuxEndpointId.Local);
-
-        Assert.True(offered.TryClaim(MuxEndpointId.Local));
-        Assert.False(offered.TryClaim(remote));
+        Assert.True(launch.TryBeginRestart(MuxEndpointId.Local));
+        Assert.False(launch.TryBeginRestart(MuxEndpointId.Local));
+        Assert.True(launch.TryBeginRestart(remote));
+        launch.EndRestart(MuxEndpointId.Local);
+        Assert.True(launch.TryBeginRestart(MuxEndpointId.Local));
+        Assert.False(launch.TryBeginRestart(remote));
     }
 }

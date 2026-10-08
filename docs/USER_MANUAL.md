@@ -204,9 +204,12 @@ below.
     while any daemon is running a downloaded update is not applied automatically at start.
   - A daemon an update kept is still the previous version's. Once per launch a *Multiplexer*
     notification says so: "The multiplexer is from the previous build (0.11.0); restart it when
-    convenient — this closes its 3 shells." Its **Restart multiplexer now** button asks first,
-    then stops the daemon (ending its process if it has not exited within 5 seconds) and starts
-    one of this version. Panes on the old daemon show
+    convenient — this closes its 3 shells." (A daemon newer than this Ntilde is "from a newer
+    build", one whose version cannot be compared "from a different build", and the last clause is
+    left out when it runs no shells.) Its **Restart multiplexer now** button asks first, then
+    stops the daemon (ending its process if it has not exited within 5 seconds) and starts one of
+    this version; if the daemon is already this version's by then, nothing is stopped and a
+    notification says so. The panes in the window keep their place: each shows
     `[Multiplexer disconnected] [Press Enter to reconnect]`, and Enter starts a new shell.
   - If the daemon crashes, or is killed, its shells are gone.
   - A shell inherits the daemon's environment, not the window's. The daemon's environment is
@@ -375,8 +378,11 @@ has arrived complete and has run once on the host, so a cancelled or broken uplo
 one in place. A daemon that is already running keeps running the binary it started with, and so do
 its shells. Once per launch, when Ntilde connects to a daemon whose version is not the one this
 Ntilde installs, a *Multiplexer* notification says so: "ntilde-mux on <user@host> is from a previous
-version (0.10.0); restart it when convenient — this closes its 2 shells." Its **Restart ntilde-mux on
-<user@host>** button asks first, then stops that daemon; its tabs show
+version (0.10.0); restart it when convenient — this closes its 2 shells." (A newer daemon is "from a
+newer version", one whose version cannot be compared "from a different version", and the last clause
+is left out when it runs no shells.) Its **Restart ntilde-mux on <user@host>** button asks first,
+then stops that daemon — and only it; if the connection is down, or the daemon is already the
+installed version, nothing is sent and a notification says so. Its tabs show
 `[ntilde-mux on <user@host> stopped] [Press Enter to reconnect]`, and Enter starts the installed
 version. When the install succeeds, the dialog offers to tick the profile's checkbox. The editor's status line shows
 what was installed: `ntilde-mux 0.11.0 installed`, `ntilde-mux not installed`, or
