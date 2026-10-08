@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 
@@ -70,8 +71,20 @@ internal sealed class NativeSshPromptResponder
         };
 
         byte[] payload = NativeSshInteractionJson.BuildResponsePayload(responseKind, response);
-        interop.SubmitResponse(sessionHandle, responseKind, payload);
+        try
+        {
+            PayloadObserver?.Invoke(payload);
+            interop.SubmitResponse(sessionHandle, responseKind, payload);
+        }
+        finally
+        {
+            // The payload is a password or keyboard-interactive answers in plain JSON.
+            CryptographicOperations.ZeroMemory(payload);
+        }
     }
+
+    /// <summary>Test seam: handed the payload array just before it is submitted, so a test can check it is cleared afterwards.</summary>
+    internal Action<byte[]>? PayloadObserver { get; set; }
 
     private SshInteractionRequest WithProfileContext(SshInteractionRequest request)
     {

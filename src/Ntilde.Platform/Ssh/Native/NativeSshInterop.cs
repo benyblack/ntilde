@@ -645,10 +645,10 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             return;
         }
 
-        byte[] payload = data.ToArray();
         try
         {
-            int rc = NativeMethods.nova_ssh_submit_response(sessionHandle, (uint)responseKind, payload, (nuint)payload.Length);
+            // Passed by reference to the caller's own bytes: no second copy of a password to clear.
+            int rc = NativeMethods.nova_ssh_submit_response(sessionHandle, (uint)responseKind, ref MemoryMarshal.GetReference(data), (nuint)data.Length);
             if (rc is ResultOk or ResultInvalidArgument)
             {
                 return;
@@ -1166,7 +1166,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         public static extern int nova_ssh_close_raw(IntPtr session);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_submit_response")]
-        public static extern int nova_ssh_submit_response(NovaSshSafeHandle session, uint responseKind, byte[] data, nuint dataLength);
+        public static extern int nova_ssh_submit_response(NovaSshSafeHandle session, uint responseKind, ref byte data, nuint dataLength);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_sftp_transfer")]
         public static extern int nova_ssh_sftp_transfer(

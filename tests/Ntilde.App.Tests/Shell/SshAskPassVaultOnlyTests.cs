@@ -39,6 +39,16 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
         [SshAskPassEnvironment.VaultOnlyVariable] = "1",
     };
 
+    [Fact]
+    public void The_marker_folder_is_private()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
+
+        Assert.True(new SshAskPassSessionMarkers(() => _markers).TryClaim(Guid.NewGuid().ToString("N")));
+
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(_markers));
+    }
+
     private Run NewRun(IReadOnlyDictionary<string, string> environment, string? saved, string? typed = null) =>
         new(environment, saved, typed, _markers);
 

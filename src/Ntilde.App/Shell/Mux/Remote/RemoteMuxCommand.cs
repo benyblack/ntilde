@@ -49,8 +49,7 @@ internal static class RemoteMuxCommand
 
         foreach (Rune r in path.EnumerateRunes())
         {
-            if (Rune.IsControl(r)) return false;
-            if (Rune.GetUnicodeCategory(r) is UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator) return false;
+            if (RemoteOutputText.IsHidden(r)) return false;
         }
 
         return !path.Contains("//", StringComparison.Ordinal) && !path.Contains("/../", StringComparison.Ordinal);

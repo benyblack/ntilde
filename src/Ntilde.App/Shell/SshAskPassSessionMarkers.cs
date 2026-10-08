@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Shell;
 
@@ -68,7 +69,7 @@ internal sealed class SshAskPassSessionMarkers
     {
         try
         {
-            Directory.CreateDirectory(_directory.Value);
+            PrivateDirectory.Create(_directory.Value);
             string probe = Path.Combine(_directory.Value, "probe-" + Guid.NewGuid().ToString("N") + ".tmp");
             using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 1, FileOptions.DeleteOnClose))
             {
@@ -104,7 +105,7 @@ internal sealed class SshAskPassSessionMarkers
         RequireToken(token);
         try
         {
-            Directory.CreateDirectory(_directory.Value);
+            PrivateDirectory.Create(_directory.Value);
             using (new FileStream(PathOf(token, extension), FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
             {
             }

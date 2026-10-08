@@ -4265,7 +4265,7 @@ namespace Ntilde.Controls
 
         /// <summary>The <see cref="RemoteMuxUnavailableNoticeTitle"/> notice's line: the host the tab is on, and why it will not persist.</summary>
         internal static string RemoteMuxUnavailableMessage(string host, string reason) =>
-            $"[{host}: {reason} \u2014 this tab will not survive a disconnect]";
+            $"[{RemoteOutputText.Quote(host)}: {RemoteOutputText.Quote(reason)} \u2014 this tab will not survive a disconnect]";
 
         /// <summary>Phase 4 spec §7.4: while a remote pane's factory call runs off the UI thread.</summary>
         internal static string RemoteConnectingBanner(string host) => $"[Connecting to {host}\u2026]";

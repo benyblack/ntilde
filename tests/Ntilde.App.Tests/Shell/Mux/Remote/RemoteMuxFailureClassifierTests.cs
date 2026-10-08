@@ -264,6 +264,28 @@ public sealed class RemoteMuxFailureClassifierTests
     }
 
     [Fact]
+    public void Server_text_in_a_failure_reason_loses_control_and_bidi_characters()
+    {
+        // ESC, BEL, a right-to-left override (Cf, which IsControl misses), a supplementary-plane tag character
+        // (Cf above U+FFFF), an unpaired surrogate, a line separator and a CR.
+        RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(
+            255, string.Empty, "x\u001b[2J\u0007y\u202Ez\U000E0041w\uD800v\u2028u\r", null);
+
+        foreach (string bad in new[] { "\u001b", "\u0007", "\u202E", "\U000E0041", "\uD800", "\u2028", "\r" })
+        {
+            Assert.DoesNotContain(bad, failure.Reason, StringComparison.Ordinal);
+        }
+
+        foreach (string kept in new[] { "x", "y", "z", "w", "v", "u" })
+        {
+            Assert.Contains(kept, failure.Reason, StringComparison.Ordinal);
+        }
+
+        Assert.DoesNotContain('\u001b', Ntilde.Controls.TerminalPane.RemoteMuxUnavailableMessage("box", "a\u001bb"));
+        Assert.DoesNotContain('\u202E', Ntilde.Controls.TerminalPane.RemoteMuxUnavailableMessage("box", "a\u202Eb"));
+    }
+
+    [Fact]
     public void A_native_failure_is_SshFailed_even_when_its_message_mentions_a_missing_file()
     {
         // The native stderr tail carries the native message; it is not the remote command's output.
