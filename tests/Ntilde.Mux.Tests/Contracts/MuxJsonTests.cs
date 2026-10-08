@@ -1,10 +1,43 @@
 using System.Text;
+using System.Text.Json;
 using Ntilde.Mux.Contracts;
 
 namespace Ntilde.Mux.Tests.Contracts;
 
 public sealed class MuxJsonTests
 {
+    [Fact]
+    public void A_welcome_and_descriptor_without_a_version_have_no_version_key()
+    {
+        string welcome = JsonSerializer.Serialize(new WelcomeResult { Version = 2 }, MuxJsonContext.Default.WelcomeResult);
+        string descriptor = JsonSerializer.Serialize(new MuxEndpointDescriptor { Endpoint = "e", ProcessName = "p" }, MuxJsonContext.Default.MuxEndpointDescriptor);
+
+        Assert.DoesNotContain("erverVersion", welcome, StringComparison.Ordinal);
+        Assert.DoesNotContain("ppVersion", descriptor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_version_serializes_as_serverVersion_and_appVersion_and_round_trips()
+    {
+        string welcome = JsonSerializer.Serialize(new WelcomeResult { Version = 2, ServerVersion = "1.2.3" }, MuxJsonContext.Default.WelcomeResult);
+        string descriptor = JsonSerializer.Serialize(new MuxEndpointDescriptor { Endpoint = "e", ProcessName = "p", AppVersion = "1.2.3" }, MuxJsonContext.Default.MuxEndpointDescriptor);
+
+        Assert.Contains("\"serverVersion\":\"1.2.3\"", welcome, StringComparison.Ordinal);
+        Assert.Contains("\"appVersion\":\"1.2.3\"", descriptor, StringComparison.Ordinal);
+        Assert.Equal("1.2.3", JsonSerializer.Deserialize(welcome, MuxJsonContext.Default.WelcomeResult)!.ServerVersion);
+        Assert.Equal("1.2.3", JsonSerializer.Deserialize(descriptor, MuxJsonContext.Default.MuxEndpointDescriptor)!.AppVersion);
+    }
+
+    [Fact]
+    public void Old_json_without_a_version_key_deserializes_to_null()
+    {
+        WelcomeResult welcome = JsonSerializer.Deserialize("{\"version\":1,\"forceConPtyFiltering\":false}", MuxJsonContext.Default.WelcomeResult)!;
+        MuxEndpointDescriptor descriptor = JsonSerializer.Deserialize("{\"minVersion\":1,\"maxVersion\":1,\"endpoint\":\"e\",\"pid\":1,\"processName\":\"p\"}", MuxJsonContext.Default.MuxEndpointDescriptor)!;
+
+        Assert.Null(welcome.ServerVersion);
+        Assert.Null(descriptor.AppVersion);
+    }
+
     [Fact]
     public void Requests_round_trip_with_camel_case_params()
     {

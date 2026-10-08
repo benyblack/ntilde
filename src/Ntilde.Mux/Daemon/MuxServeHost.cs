@@ -18,7 +18,7 @@ public static partial class MuxServeHost
     /// </summary>
     public const int LockHeldExitCode = 3;
 
-    public static int Run(MuxServeOptions options, MuxPaths paths, ITerminalSessionFactory sessionFactory, TextWriter stderr)
+    public static int Run(MuxServeOptions options, MuxPaths paths, ITerminalSessionFactory sessionFactory, TextWriter stderr, string? appVersion = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(paths);
@@ -56,7 +56,7 @@ public static partial class MuxServeHost
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Log($"[MuxDaemon] unhandled: {e.ExceptionObject}");
         TaskScheduler.UnobservedTaskException += (_, e) => { Log($"[MuxDaemon] unobserved task: {e.Exception}"); e.SetObserved(); };
 
-        var server = new MuxServer(sessionFactory, new MuxServerOptions { Log = Log });
+        var server = new MuxServer(sessionFactory, new MuxServerOptions { Log = Log, AppVersion = appVersion });
         using var host = new MuxDaemonHost(server, new MuxDaemonOptions
         {
             Endpoint = paths.Endpoint,

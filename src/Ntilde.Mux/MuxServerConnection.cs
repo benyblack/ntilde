@@ -455,7 +455,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         Volatile.Write(ref _version, chosen);
-        Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering }, MuxJsonContext.Default.WelcomeResult);
+        Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering, ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion }, MuxJsonContext.Default.WelcomeResult);
     }
 
     private void HandleRequest(MuxRequest request)

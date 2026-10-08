@@ -61,5 +61,7 @@ public static class MuxCommand
         // launching console); serve --foreground binds it through this.
         PrepareForegroundConsole = CliConsoleBindings.Prepare,
         AttachedToParentConsole = AttachedToParentConsole,
+        // The daemon reports this build's version so a later GUI can tell it is from an older one.
+        Version = AppVersionInfo.Version,
     };
 }

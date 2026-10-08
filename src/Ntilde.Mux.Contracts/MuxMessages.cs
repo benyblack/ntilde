@@ -52,6 +52,13 @@ public sealed record WelcomeResult
 {
     public int Version { get; init; }
     public bool ForceConPtyFiltering { get; init; }
+
+    /// <summary>
+    /// The daemon's build version (informational, no build metadata). Absent from a daemon that predates it
+    /// or was given none; null on the client then.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServerVersion { get; init; }
 }
 
 /// <summary>What the client looks like: applied to the mux parser so its replies describe it.</summary>
@@ -319,4 +326,8 @@ public sealed record MuxEndpointDescriptor
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? StartTime { get; init; }
+
+    /// <summary>The daemon's build version, so a GUI can tell a daemon left over from an older build. Absent from older daemons.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AppVersion { get; init; }
 }

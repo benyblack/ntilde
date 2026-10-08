@@ -99,6 +99,9 @@ public sealed class MuxClient : IDisposable
     /// <summary>From Welcome. Construct the pane's parser with this so both halves of a snapshot parse identically.</summary>
     public bool ForceConPtyFiltering { get; private set; }
 
+    /// <summary>From Welcome: the daemon's build version; null for a server that reports none.</summary>
+    public string? ServerVersion { get; private set; }
+
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
     public event Action<string?>? Disconnected;
@@ -142,6 +145,7 @@ public sealed class MuxClient : IDisposable
 
             client.ProtocolVersion = welcome.Version;
             client.ForceConPtyFiltering = welcome.ForceConPtyFiltering;
+            client.ServerVersion = welcome.ServerVersion;
             return client;
         }
         catch

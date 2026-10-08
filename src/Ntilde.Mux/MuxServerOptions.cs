@@ -10,6 +10,9 @@ public sealed class MuxServerOptions
     /// <summary>Passed to every session's parser and reported in Welcome so clients parse identically.</summary>
     public bool ForceConPtyFiltering { get; init; } = OperatingSystem.IsWindows();
 
+    /// <summary>The host's build version, reported in Welcome (<c>ServerVersion</c>) and the endpoint descriptor. Null/empty: none reported.</summary>
+    public string? AppVersion { get; init; }
+
     /// <summary>Server-side cap on an attach's <c>maxScrollbackRows</c> (spec §7).</summary>
     public int MaxAttachScrollbackRows { get; init; } = 20_000;
 

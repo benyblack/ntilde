@@ -186,7 +186,7 @@ public static class MuxCli
             if (wasConsoleError) stderr = Console.Error;
         }
 
-        return MuxServeHost.Run(options, host.Paths, host.SessionFactory(), stderr);
+        return MuxServeHost.Run(options, host.Paths, host.SessionFactory(), stderr, host.Version);
     }
 
     /// <summary>
