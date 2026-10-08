@@ -9250,26 +9250,24 @@ namespace Ntilde
             sw.OnFontSizeChanged += (size) => { _settings.FontSize = size; ApplySettingsToAllTabs(); };
             sw.OnUiScaleChanged += (scale) => { _settings.UiScale = scale; UiScale.Apply(scale); };
             sw.OnThemeChanged += (theme) =>
-        {
-            _settings.ThemeName = theme;
-            // Force reload themes to pick up any changes from settings window.
-            _settings.ThemeManager.ReloadThemes();
-            _settings.RefreshActiveTheme();
-            ApplyThemeToUI();
-            ApplySettingsToAllTabs();
-            UpdateTabVisuals();
-        };
+            {
+                _settings.ThemeName = theme;
+                // Force reload themes to pick up any changes from settings window.
+                _settings.ThemeManager.ReloadThemes();
+                _settings.RefreshActiveTheme();
+                ApplyThemeToUI();
+                ApplySettingsToAllTabs();
+                UpdateTabVisuals();
+            };
 
             // "Quit and close all shells…" (Task 17): Settings closes without saving, then the quit runs.
             sw.SessionPersistenceActive = IsMuxPersistenceActive;
-            bool quitRequested = false;
-            sw.OnQuitAndCloseAllShellsRequested += () => quitRequested = true;
 
             bool saved = await sw.ShowDialog<bool>(this);
 
             ApplySettingsWindowResult(sw, saved, previewSnapshot);
 
-            if (quitRequested) await QuitAndCloseAllShellsAsync();
+            if (sw.QuitAndCloseAllRequested) await QuitAndCloseAllShellsAsync();
         }
 
         /// <summary>

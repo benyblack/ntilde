@@ -152,10 +152,10 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Raised when the "Quit and close all shells…" link is clicked, just before this window closes without
-        /// saving; the owner runs the quit once the dialog is gone.
+        /// True once the "Quit and close all shells…" link was clicked; the window then closes without
+        /// saving, and the owner runs the quit once the dialog is gone.
         /// </summary>
-        internal event Action? OnQuitAndCloseAllShellsRequested;
+        internal bool QuitAndCloseAllRequested { get; private set; }
 
         public SettingsWindow() : this(0, null) { }
 
@@ -166,7 +166,7 @@ namespace Ntilde
             {
                 quitLink.Click += (_, _) =>
                 {
-                    OnQuitAndCloseAllShellsRequested?.Invoke();
+                    QuitAndCloseAllRequested = true;
                     Close(false); // nothing is saved
                 };
             }

@@ -117,8 +117,11 @@ public sealed class SessionManagerMuxTests : IClassFixture<TestAppDataRoot>
     {
         var node = new PaneNode
         {
-            Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = Guid.NewGuid().ToString(),
-            MuxEndpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString(), MuxQuietPreviousLost = true,
+            Type = NodeType.Leaf,
+            Command = "pwsh.exe",
+            MuxSessionId = Guid.NewGuid().ToString(),
+            MuxEndpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString(),
+            MuxQuietPreviousLost = true,
         };
 
         var restored = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(node, new TerminalSettings()));

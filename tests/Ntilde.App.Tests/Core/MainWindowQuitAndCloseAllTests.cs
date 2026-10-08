@@ -175,8 +175,6 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
     public void The_settings_link_asks_the_owner_and_closes_without_saving()
     {
         var settings = new SettingsWindow { SessionPersistenceActive = true };
-        int requests = 0;
-        settings.OnQuitAndCloseAllShellsRequested += () => requests++;
         var owner = new Window();
         owner.Show();
         Task<bool> result = settings.ShowDialog<bool>(owner);
@@ -185,7 +183,7 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
         settings.FindControl<Button>("QuitAndCloseAllShellsLink")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         PumpUntil(() => result.IsCompleted, "settings closed");
-        Assert.Equal(1, requests);
+        Assert.True(settings.QuitAndCloseAllRequested);
         Assert.False(result.Result);
     }
 }
