@@ -1558,6 +1558,7 @@ jobs:
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/aot_gate_paths_tests.py
+          "$py" scripts/tests/aot_smoke_verdict_tests.py
 
       # Dependency-free path filter, matching linux_packaging_detect rather than
       # introducing a third-party action this repo uses nowhere.
@@ -1730,64 +1731,41 @@ jobs:
               throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
             }
 
-            # One assertion beyond "Main ran": the window and a terminal view actually came up,
-            # and a shell was spawned with a live child. Persistence is ON by default (KeepOnClose),
-            # so on a pristine profile the shell is no longer spawned in this process: the GUI starts
-            # the multiplexer daemon (`Ntilde.exe mux serve`, same bundle, same NTILDE_APPDATA_ROOT)
-            # and the daemon spawns it. The smoke stays on the real default on purpose, which also
-            # makes it prove the AOT daemon path. Either shape passes, and each needs a line that is
-            # only reachable with a real child behind it:
-            #   - persistence off / daemon unavailable fallback: debug.log has RustPtySession's
-            #     `Spawned ... pid=<n>` (src/Ntilde.Pty/RustPtySession.cs, after the IsInvalid check);
-            #   - persistence on: debug.log has MuxDaemonLauncher's `[Mux] starting the multiplexer
-            #     daemon` (src/Ntilde.Mux/Daemon/MuxDaemonLauncher.cs) AND the daemon's own mux.log
-            #     has the same `Spawned ... pid=<n>` line (MuxServeHost routes PtyLogger into mux.log
-            #     as `[Info] [RustPtySession] Spawned ...`) AND `[MuxDaemon] serving`
-            #     (src/Ntilde.Mux/MuxDaemonHost.cs).
-            # `Spawned ... pid=<n>` rather than `Spawning`: RustPtySession logs `Spawning` BEFORE
-            # calling pty_spawn, so a PTY that cannot spawn writes it anyway (Codex P1 on #445).
-            #
-            # If a log-message reword breaks this, re-anchor it; do not delete the check.
-            $spawnPattern = '\[RustPtySession\] Spawned .*pid=\d+'
-            if (-not (Select-String -Path $debugLog -Pattern '\[TerminalView\] Theme applied' -Quiet)) {
-              throw "$debugLog has no line matching '\[TerminalView\] Theme applied', so the bundle started but its UI never finished coming up. A trimmed-away type reached only while building the terminal view looks exactly like this."
-            }
-            $guiSpawned    = Select-String -Path $debugLog -Pattern $spawnPattern -Quiet
-            $daemonStarted = Select-String -Path $debugLog -Pattern '\[Mux\] starting the multiplexer daemon' -Quiet
-            $daemonSpawned = (Test-Path $muxLog) -and (Select-String -Path $muxLog -Pattern $spawnPattern -Quiet)
-            $daemonServing = (Test-Path $muxLog) -and (Select-String -Path $muxLog -Pattern '\[MuxDaemon\] serving' -Quiet)
-            if ($guiSpawned) {
-              Write-Output "The shell was spawned in the GUI process (persistence off or daemon unavailable)."
-            }
-            elseif ($daemonStarted -and $daemonServing -and $daemonSpawned) {
-              Write-Output "The GUI started the multiplexer daemon and the daemon spawned the shell."
-            }
-            else {
-              throw "Neither shape of shell spawn was found. GUI: $debugLog has no '$spawnPattern' line. Daemon: debug.log started the daemon=$daemonStarted, $muxLog serving=$daemonServing, spawned a shell=$daemonSpawned. So the bundle started but cannot open a shell, or the AOT daemon path (ntilde mux serve) is broken."
-            }
+            # The verdict lives in scripts/ci/aot-smoke-verdict.ps1 (self-tested by
+            # scripts/tests/aot_smoke_verdict_tests.py). The smoke runs on the real default
+            # (KeepOnClose), so the shell is spawned by the multiplexer daemon (`Ntilde.exe mux
+            # serve`), not the GUI, and this also proves the AOT daemon path. When the GUI started
+            # the daemon, the daemon must have served AND spawned a shell (mux.log): a GUI-side
+            # `Spawned` line alone would be the local fallback hiding a broken daemon. The GUI-only
+            # line is accepted only when no daemon was started (persistence off).
+            # `Spawned ... pid=<n>` rather than `Spawning`: Spawning is logged BEFORE pty_spawn
+            # (Codex P1 on #445). If a log reword breaks this, re-anchor it; do not delete it.
+            & (Join-Path $PWD 'scripts/ci/aot-smoke-verdict.ps1') -DebugLog $debugLog -MuxLog $muxLog
 
             Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
           }
           finally {
-            # The daemon outlives the GUI process and must never be left running: stop it by its own
-            # verb first, then by command line (it runs from a staged copy under the profile root, or
-            # from the publish directory).
-            $global:LASTEXITCODE = 0
-            try { & $exe mux kill-server 2>&1 | Out-Host } catch { Write-Output "kill-server failed: $_" }
-            $global:LASTEXITCODE = 0
-            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            # The daemon outlives the GUI process and must never be left running: stop it by its
+            # own verb first (-Wait: the exe is a WinExe, so a bare call returns at once), then by
+            # command line (it runs from a staged copy under the profile root, or from the publish
+            # directory). Nothing here may fail the step.
+            try { Start-Process -FilePath $exe -ArgumentList 'mux', 'kill-server' -Wait -WindowStyle Hidden } catch { Write-Output "kill-server failed: $_" }
+            if ($proc) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
             Start-Sleep -Seconds 1
-            $publishDir = Split-Path $exe -Parent
-            Get-CimInstance Win32_Process -Filter "Name = 'Ntilde.exe'" -ErrorAction SilentlyContinue |
-              Where-Object {
-                $_.CommandLine -match 'mux\s+serve' -and $_.ExecutablePath -and
-                ($_.ExecutablePath.StartsWith($publishDir, [StringComparison]::OrdinalIgnoreCase) -or
-                 $_.ExecutablePath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase))
-              } |
-              ForEach-Object {
-                Write-Output "Stopping leftover daemon pid $($_.ProcessId)"
-                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-              }
+            try {
+              $publishDir = Split-Path $exe -Parent
+              Get-CimInstance Win32_Process -Filter "Name = 'Ntilde.exe'" |
+                Where-Object {
+                  $_.CommandLine -match 'mux\s+serve' -and $_.ExecutablePath -and
+                  ($_.ExecutablePath.StartsWith($publishDir, [StringComparison]::OrdinalIgnoreCase) -or
+                   $_.ExecutablePath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase))
+                } |
+                ForEach-Object {
+                  Write-Output "Stopping leftover daemon pid $($_.ProcessId)"
+                  Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+                }
+            }
+            catch { Write-Output "daemon sweep failed: $_" }
           }
           # The runner's pwsh wrapper ends the step with `exit $LASTEXITCODE`; kill-server's code
           # must not leak into it.
