@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Shell.Mux;
+using Ntilde.Tests.Shell.Mux; // MuxTestText
 
 namespace Ntilde.Tests.Core;
 
@@ -40,6 +41,13 @@ internal static class WindowToast
         TopLevel.GetTopLevel(pane)!.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
         Dispatcher.UIThread.RunJobs();
     }
+
+    /// <summary>Whether <paramref name="pane"/> shows <paramref name="line"/>, however its width wrapped it.</summary>
+    public static bool Shows(TerminalPane pane, string line) =>
+        pane.Buffer is { } buffer && Unwrapped(MuxTestText.VisibleText(buffer)).Contains(Unwrapped(line), StringComparison.Ordinal);
+
+    private static string Unwrapped(string text) =>
+        text.Replace("\n", string.Empty, StringComparison.Ordinal).Replace("\r", string.Empty, StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
 
     /// <summary>The action the toast offers now, as the button would run it; null when it offers none.</summary>
     public static PersistenceNoticeAction? OfferedAction(MainWindow window) =>

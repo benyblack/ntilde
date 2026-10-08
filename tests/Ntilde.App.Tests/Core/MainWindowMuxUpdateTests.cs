@@ -176,12 +176,6 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         return offer.Action!;
     }
 
-    private static string Unwrapped(string text) =>
-        text.Replace("\n", string.Empty, StringComparison.Ordinal).Replace("\r", string.Empty, StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
-
-    private static bool Shows(TerminalPane pane, string banner) =>
-        pane.Buffer is { } buffer && Unwrapped(MuxTestText.VisibleText(buffer)).Contains(Unwrapped(banner), StringComparison.Ordinal);
-
     /// <summary>
     /// One connection, three panes: one notice, naming the daemon's version and its three shells, with the restart - on
     /// the toast, as a line of its own with its button. The panes share the host's connection, so it is offered once, not
@@ -351,6 +345,85 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "the held Enter started a shell once the restart was over");
         Assert.Contains(first.Session!.Id, _current.Server.GetSessionIds());
         Assert.Equal(3, window.AllPanesForTest().Count);
+    }
+
+    /// <summary>One tab for each of <paramref name="count"/> shells running in the old daemon, the first selected.</summary>
+    private Guid[] TabsOnTheOldDaemon(int count)
+    {
+        Guid[] ids = Task.Run(async () =>
+        {
+            MuxClient client = await _old.ConnectClientAsync();
+            var spawned = new Guid[count];
+            for (int i = 0; i < count; i++) spawned[i] = await MuxTestHost.SpawnAsync(client);
+            return spawned;
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        var session = new NtildeSession { ActiveTabIndex = 0 };
+        foreach (Guid id in ids) session.Tabs.Add(new TabSession { Title = $"tab {session.Tabs.Count}", Root = LocalLeaf(id) });
+        Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.SessionFilePath)!);
+        File.WriteAllText(AppPaths.SessionFilePath, JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession));
+        return ids;
+    }
+
+    private static void Pump(int times = 20)
+    {
+        for (int i = 0; i < times; i++) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(10); }
+    }
+
+    /// <summary>
+    /// Review round 3, item 1: a pane the restart let go of starts a shell only through its Enter, as its banner says -
+    /// never because it is shown again (a tab switch re-attaches it: the attach fallback), during the restart (when the
+    /// host still holds the old daemon's connection) or after it; and the palette's "Pane: Reconnect" is held like Enter.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_released_pane_starts_a_shell_only_through_enter_however_it_is_shown_or_reconnected()
+    {
+        Guid[] old = TabsOnTheOldDaemon(2);
+        MainWindow window = CreateWindow(ClosesOnExit);
+        TabControl tabs = window.FindControl<TabControl>("Tabs")!;
+        PumpUntil(() => Attached(window).Count == 1, "the first tab's pane attached");
+        tabs.SelectedIndex = 1;
+        PumpUntil(() => Attached(window).Count == 2, "the second tab's pane attached");
+        tabs.SelectedIndex = 0;
+        PumpUntil(() => LocalOffers.Count == 1, "the notice is raised");
+        TerminalPane first = window.AllPanesForTest().Single(p => p.Session?.Id == old[0]);
+        TerminalPane second = window.AllPanesForTest().Single(p => p.Session?.Id == old[1]);
+        var stop = new TaskCompletionSource();
+        _beforeOldStops = () => stop.Task; // the old daemon holds its stop until the test lets it go
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+
+        LocalOffers[0].Action!.Run();
+        PumpUntil(() => Volatile.Read(ref _oldShutdowns) == 1, "shutdown was sent");
+
+        // During the restart: each tab shown again re-attaches its pane, and nothing starts over the old connection.
+        tabs.SelectedIndex = 1;
+        Pump();
+        tabs.SelectedIndex = 0;
+        Pump();
+        Assert.Equal(2, _old.Server.GetSessionIds().Count);
+        Assert.Null(first.Session);
+        Assert.Null(second.Session);
+
+        // The palette's "Pane: Reconnect" is held as Enter is.
+        first.Reconnect();
+        Pump();
+        Assert.Equal(2, _old.Server.GetSessionIds().Count);
+        Assert.Null(first.Session);
+        Assert.True(Shows(first, TerminalPane.MuxRestartingBanner), $"no restarting line: {MuxTestText.VisibleText(first.Buffer!)}");
+
+        stop.SetResult();
+        PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "the held reconnect ran once the restart was over");
+        Assert.Contains(first.Session!.Id, _current.Server.GetSessionIds());
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+
+        // After it: the other pane, shown again, waits for Enter.
+        tabs.SelectedIndex = 1;
+        Pump();
+        Assert.Null(second.Session);
+        Assert.True(Shows(second, TerminalPane.MuxDisconnectedBanner));
+        PressEnter(second);
+        PumpUntil(() => second.Session is MuxClientSession { IsAttached: true }, "Enter started a shell");
+        Assert.Contains(second.Session!.Id, _current.Server.GetSessionIds());
+        Assert.Equal(2, window.AllPanesForTest().Count);
     }
 
     /// <summary>

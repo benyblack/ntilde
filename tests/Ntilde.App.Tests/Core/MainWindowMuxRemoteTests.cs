@@ -1091,6 +1091,46 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     }
 
     /// <summary>
+    /// Review round 3, item 3: Enter in a remote pane the restart let go of, while that daemon is still stopping, is held -
+    /// nothing starts over the old connection - and the line it writes names ntilde-mux on that host, as its banner does.
+    /// Once the old daemon is gone, the held Enter starts a shell on the new one.
+    /// </summary>
+    [AvaloniaFact]
+    public void Enter_during_a_remote_restart_is_held_and_says_ntilde_mux_is_restarting()
+    {
+        (MainWindow window, FakeRemoteHost remote, _) = TwoPanesOnAPreviousVersion();
+        var stop = new TaskCompletionSource();
+        MuxServer oldServer = remote.Server;
+        int shutdowns = 0;
+        oldServer.ShutdownRequested += () =>
+        {
+            Interlocked.Increment(ref shutdowns);
+            _ = Task.Run(async () =>
+            {
+                await stop.Task;
+                remote.StopDaemon();
+            });
+        };
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+
+        Offers(RemoteId)[0].Action!.Run();
+        PumpUntil(() => Volatile.Read(ref shutdowns) == 1, "shutdown was sent");
+        TerminalPane first = RemotePanes(window)[0];
+        PressEnter(first);
+        for (int i = 0; i < 20; i++) { Thread.Sleep(10); Dispatcher.UIThread.RunJobs(); }
+
+        Assert.True(Shows(first, TerminalPane.RemoteMuxRestartingBanner("nova@fake-host")), $"no remote restarting line: {Text(first)}");
+        Assert.False(Shows(first, TerminalPane.MuxRestartingBanner), "the local restarting line on a remote pane");
+        Assert.Equal(2, oldServer.GetSessionIds().Count); // nothing started over the old connection
+        Assert.Null(first.Session);
+
+        stop.SetResult();
+        PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "the held Enter started a shell once the restart was over");
+        Assert.NotSame(oldServer, remote.Server);
+        Assert.Contains(first.Session!.Id, remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
     /// Review item 4: the link is down when the button is pressed. Nothing can be sent, the notice says so, and the offer
     /// is released: the next connection to that daemon offers the restart again.
     /// </summary>

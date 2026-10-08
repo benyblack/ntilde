@@ -235,7 +235,7 @@ namespace Ntilde
                     };
                     if (leftAlone is not null) return false;
 
-                    letGo.AddRange(LetGoOfShellsForRestart(local));
+                    LetGoOfShellsForRestart(local, letGo);
                     MuxRestartFaultForTest?.Invoke();
                     return true;
                 });
@@ -284,17 +284,23 @@ namespace Ntilde
         /// like any other once reopened. Another process's windows on the same daemon cannot be reached from here: theirs
         /// take whatever the daemon's stop delivers.
         /// </summary>
-        private List<TerminalPane> LetGoOfShellsForRestart(MuxEndpointId endpoint)
+        /// <param name="letGo">
+        /// The restart's list of panes whose hold it ends when it is over. Each pane joins it before it lets go, so a throw
+        /// part way through never leaves a pane held for good (round 3); ending the hold of a pane that let go of nothing
+        /// does nothing.
+        /// </param>
+        private void LetGoOfShellsForRestart(MuxEndpointId endpoint, List<TerminalPane> letGo)
         {
-            List<TerminalPane> letGo = [];
+            int count = 0;
             foreach (TerminalPane pane in _paneOwnerTab.Keys.ToList())
             {
-                if (MuxEndpointId.Parse(pane.MuxEndpoint) == endpoint && pane.LetGoOfMuxSessionForRestart()) letGo.Add(pane);
+                if (MuxEndpointId.Parse(pane.MuxEndpoint) != endpoint) continue;
+                letGo.Add(pane);
+                if (pane.LetGoOfMuxSessionForRestart()) count++;
             }
 
             SaveSessionWithoutEndedShells();
-            AppLogger.Log($"[MainWindow] {letGo.Count} pane(s) let go of their shells for the restart of the multiplexer on {endpoint}");
-            return letGo;
+            AppLogger.Log($"[MainWindow] {count} pane(s) let go of their shells for the restart of the multiplexer on {endpoint}");
         }
 
         /// <summary>Completes once <paramref name="client"/> has disconnected, or after <paramref name="timeout"/>.</summary>
@@ -340,7 +346,7 @@ namespace Ntilde
                 // The last look (review item 3): the question may have taken minutes.
                 if (!TryGetRemoteDaemonToRestart(id, where, out host, out client)) return;
                 AppLogger.Log($"[MainWindow] restarting ntilde-mux on {where}");
-                letGo.AddRange(LetGoOfShellsForRestart(id));
+                LetGoOfShellsForRestart(id, letGo);
                 MuxRestartFaultForTest?.Invoke();
                 TimeSpan timeout = host.Policy.RpcTimeout;
                 try

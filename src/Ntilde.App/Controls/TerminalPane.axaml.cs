@@ -3441,6 +3441,7 @@ namespace Ntilde.Controls
             // and a stale flag would make every Enter reconnect.
             _muxConnectionLost = false;
             _muxReconnecting = false;
+            _muxReleasedForRestart = false;
             _remoteInputHintShown = false;
             // A remote result still on its way belongs to the spawn this one replaces (Phase 4 spec §7.4).
             _remoteConnecting = false;
@@ -4254,6 +4255,9 @@ namespace Ntilde.Controls
         internal const string MuxPreviousLostBanner = "[Previous session was lost \u2014 started a new shell]";
         internal const string MuxDisconnectedBanner = "[Multiplexer disconnected] [Press Enter to reconnect]";
         internal const string MuxRestartingBanner = "[The multiplexer is restarting \u2014 the new shell starts once it is back]";
+
+        /// <summary>Phase 5 Task 23: a remote pane's held Enter while its host's ntilde-mux restarts; <paramref name="host"/> is sanitized by the caller.</summary>
+        internal static string RemoteMuxRestartingBanner(string host) => $"[ntilde-mux on {host} is restarting \u2014 the new shell starts once it is back]";
         internal const string MuxUnreachableBanner = "[Multiplexer not reachable \u2014 press Enter to retry]";
         internal const string MuxSessionFailedBanner = "[Multiplexer session failed \u2014 press Enter to start a new shell]";
         internal const string MuxUnavailableNoticeTitle = "Session not persistent";
@@ -4646,7 +4650,10 @@ namespace Ntilde.Controls
         internal bool LetGoOfMuxSessionForRestart()
         {
             if (Session is not MuxClientSession mux) return false;
-            if (FollowsRemoteSession)
+            _muxRestartHold = true; // first: whatever fails below, the window ends the hold it sees here
+            _muxReleasedForRestart = true;
+            _muxRestartHoldRemote = FollowsRemoteSession;
+            if (_muxRestartHoldRemote)
             {
                 EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName), reattachOnReconnect: false);
             }
@@ -4659,7 +4666,6 @@ namespace Ntilde.Controls
             _muxReattachId = null;
             _muxReattachShared = false;
             _muxReattachAfterDrop = false;
-            _muxRestartHold = true;
             _muxReconnectAfterRestart = false;
             _muxRestartHoldNoted = false;
             Session = null;
@@ -4683,10 +4689,31 @@ namespace Ntilde.Controls
             Reconnect();
         }
 
-        /// <summary>Whether a held Enter (<see cref="LetGoOfMuxSessionForRestart"/>) waits for its restart to end. UI thread.</summary>
+        /// <summary>
+        /// UI thread. Asked to reconnect while held (<see cref="Reconnect"/>, from Enter or the palette): it reconnects once the
+        /// restart ends, and says so once, in words chosen by the pane's kind - never by what a daemon said.
+        /// </summary>
+        private void HoldReconnectForRestart()
+        {
+            _muxReconnectAfterRestart = true;
+            if (_muxRestartHoldNoted) return;
+            _muxRestartHoldNoted = true;
+            string line = _muxRestartHoldRemote ? RemoteMuxRestartingBanner(SanitizeBannerValue(_remoteHostName)) : MuxRestartingBanner;
+            WriteBanner($"\x1b[90m{line}\x1b[0m\r\n");
+        }
+
+        /// <summary>Whether a reconnect (<see cref="LetGoOfMuxSessionForRestart"/>) waits for its restart to end. UI thread.</summary>
         private bool _muxRestartHold;
-        private bool _muxReconnectAfterRestart; // an Enter came while held
+        private bool _muxRestartHoldRemote;     // the pane let go of a remote daemon's shell
+        private bool _muxReconnectAfterRestart; // a reconnect was asked for while held
         private bool _muxRestartHoldNoted;      // the held line is written once
+
+        /// <summary>
+        /// The pane let go of its shell for a restart and has started none since (round 3): only a reconnect (Enter, the
+        /// palette) starts one, as its banner says - being shown again (the attach fallback) does not. UI thread; reset with
+        /// every new session.
+        /// </summary>
+        private bool _muxReleasedForRestart;
 
         /// <summary>UI thread. The daemon or the connection is gone; the shell may still be running there.</summary>
         private void HandleMuxConnectionLost(MuxClientSession source, string banner, bool reattach = true)
@@ -5446,20 +5473,6 @@ namespace Ntilde.Controls
                 return;
             }
 
-            // Phase 5 Task 23 (round 2 M1): the shell was let go for a restart that is still stopping the old daemon.
-            if (_muxRestartHold && e.Key == Key.Enter)
-            {
-                e.Handled = true;
-                _muxReconnectAfterRestart = true;
-                if (!_muxRestartHoldNoted)
-                {
-                    _muxRestartHoldNoted = true;
-                    WriteBanner($"\x1b[90m{MuxRestartingBanner}\x1b[0m\r\n");
-                }
-
-                return;
-            }
-
             // Reconnect if dead
             // _muxConnectionLost covers what the session cannot report itself: an attach that failed
             // over a connection that is still up leaves a running, connected, never-attached session.
@@ -5482,6 +5495,14 @@ namespace Ntilde.Controls
 
         public void Reconnect()
         {
+            // Phase 5 Task 23: the shell was let go for a restart that is still stopping the old daemon, whose connection the
+            // host still holds - a shell started over it would end with the rest. Held until the restart ends.
+            if (_muxRestartHold)
+            {
+                HoldReconnectForRestart();
+                return;
+            }
+
             CloseRemoteFilesSidebar();
 
             if (Session != null)
@@ -5759,8 +5780,9 @@ namespace Ntilde.Controls
 
             // Fallback: Ensure session is initialized if it wasn't yet (e.g. nested split timing). Not while a
             // remote connect is in flight, or the host's loop is getting this pane's session back: both end in a
-            // session of their own, and a re-parent (a split, a zoom) must not start another connect.
-            if (Session == null && !_remoteConnecting && !_muxReconnecting)
+            // session of their own, and a re-parent (a split, a zoom) must not start another connect. Nor for a pane a
+            // multiplexer restart let go of (Phase 5 Task 23): it waits for Enter, as its banner says.
+            if (Session == null && !_remoteConnecting && !_muxReconnecting && !_muxReleasedForRestart)
             {
                 InitializeSession(ShellCommand, Profile, TermView.Cols, TermView.Rows);
             }
