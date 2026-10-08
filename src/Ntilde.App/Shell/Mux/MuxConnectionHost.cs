@@ -31,7 +31,8 @@ internal readonly record struct MuxConnectAttempt(bool Interactive);
 /// while it is down (<see cref="KillWhenConnected"/>) are sent after the next connect, which an idle host
 /// starts itself (one automatic attempt). All of it runs on
 /// <see cref="Scheduler"/> timers and pool continuations, never on a client's delivery thread and never as a
-/// polling loop. A local host does none of this: its behaviour is what it has always been.
+/// polling loop. A local host does none of this: its behaviour is what it has always been. Both kinds raise
+/// <see cref="Connected"/> for each connection they take (Phase 5 Task 23).
 /// <para>
 /// A remote host lives while a pane of the window needs its endpoint: the window releases it once none does
 /// (<see cref="MuxConnectionHosts.Release"/>), and the release disposes it when its kills are delivered
@@ -442,6 +443,24 @@ internal sealed class MuxConnectionHost : IDisposable
     /// </summary>
     public event Action? DaemonStopped;
 
+    /// <summary>
+    /// A connection is up, with this client (Phase 5 Task 23): raised once for every connection the host takes - the
+    /// first, and each one after a drop, a reconnect or a daemon's restart - local and remote hosts alike, so a handler
+    /// can read what the daemon reported in its welcome (<see cref="MuxClient.ServerVersion"/>). Raised as this host's
+    /// other events are (see <see cref="ConnectionLost"/>), ahead of a <see cref="Reconnected"/> for the same connect.
+    /// </summary>
+    public event Action<MuxClient>? Connected;
+
+    /// <summary>
+    /// Ends the failure cooldown now (Phase 5 Task 23): the user just removed what made the last attempt fail - a daemon of
+    /// another protocol version, stopped - so the next <see cref="WarmUp"/> or <see cref="GetClient"/> tries at once rather
+    /// than answering nothing until <see cref="FailureCooldown"/> runs out. <see cref="LastFailure"/> stays until it does.
+    /// </summary>
+    public void EndFailureCooldown()
+    {
+        lock (_gate) _failedAtMs = null;
+    }
+
     /// <summary>The reconnect loop runs: after <see cref="ConnectionLost"/>, until <see cref="Reconnected"/> or <see cref="ReconnectAbandoned"/>.</summary>
     public bool IsReconnecting { get { lock (_gate) return _episode == Episode.Reconnecting; } }
 
@@ -670,7 +689,7 @@ internal sealed class MuxConnectionHost : IDisposable
     }
 
     /// <summary>
-    /// After every successful connect, on the attempt's own pool thread: the queued kills go out, and a remote
+    /// After every successful connect, on the attempt's own pool thread: <see cref="Connected"/> is queued, the queued kills go out, and a remote
     /// host starts watching the client - liveness timer, <see cref="MuxClient.Disconnected"/> - and ends a
     /// loss in progress with <see cref="Reconnected"/>, raised once those kills have been sent.
     /// </summary>
@@ -686,6 +705,7 @@ internal sealed class MuxConnectionHost : IDisposable
             // watch, and the queued kills wait for that attempt.
             if (!ReferenceEquals(client, _client)) return;
             _daemonStopped = false; // a daemon is up again: kills are worth recording from here on
+            RaiseLocked(nameof(Connected), () => Invoke(nameof(Connected), Connected, client));
             kills = DrainQueuedKillsLocked();
             _killsUnsettled += kills.Length; // sent below, outside the lock; each counted until its continuation settles it
             if (Policy.IsRemote)

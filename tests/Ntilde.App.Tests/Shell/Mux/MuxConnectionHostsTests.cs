@@ -270,6 +270,30 @@ public sealed class MuxConnectionHostsTests
         Assert.False(localClient.IsConnected);
     }
 
+    /// <summary>
+    /// Phase 5 Task 23: one place reports every host's connections - the local one's, and each remote one's from the moment
+    /// it is registered - with its endpoint, so the window can offer to restart a daemon of another build wherever it runs.
+    /// </summary>
+    [Fact]
+    public async Task Every_hosts_connections_are_reported_with_its_endpoint()
+    {
+        using var localMux = new MuxTestHost();
+        using var remoteMux = new MuxTestHost();
+        var local = On(localMux, "local", MuxHostPolicy.Local);
+        MuxEndpointId remoteId = MuxEndpointId.ForSsh(Guid.NewGuid());
+        using var hosts = new MuxConnectionHosts(local, _ => On(remoteMux, "remote", MuxHostPolicy.Remote("box")));
+        var reported = new System.Collections.Concurrent.ConcurrentQueue<(MuxEndpointId, MuxConnectionHost, MuxClient)>();
+        hosts.HostConnected += (id, host, client) => reported.Enqueue((id, host, client));
+
+        MuxConnectionHost remote = hosts.GetOrCreate(remoteId)!;
+        MuxClient remoteClient = remote.GetClient(TimeSpan.FromSeconds(5))!;
+        await remote.EventsForTest;
+        MuxClient localClient = local.GetClient(TimeSpan.FromSeconds(5))!;
+        await local.EventsForTest;
+
+        Assert.Equal([(remoteId, remote, remoteClient), (MuxEndpointId.Local, local, localClient)], reported);
+    }
+
     private sealed class ThrowingDisposable(string message) : IDisposable
     {
         public void Dispose() => throw new InvalidOperationException(message);

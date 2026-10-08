@@ -3741,11 +3741,14 @@ namespace Ntilde.Controls
                 {
                     RaisePersistenceNotice(MuxOrphanedNoticeTitle, MuxOrphanedBanner);
                 }
+                else if (result.VersionMismatch)
+                {
+                    // Phase 5 Task 23: the hint stays, and the toast offers the restart that replaces the daemon.
+                    RaisePersistenceNotice(MuxUnavailableNoticeTitle, $"{MuxUnavailableBanner}\n{MuxVersionMismatchHint}", LocalMuxRestartAction?.Invoke());
+                }
                 else
                 {
-                    RaisePersistenceNotice(MuxUnavailableNoticeTitle, result.VersionMismatch
-                        ? $"{MuxUnavailableBanner}\n{MuxVersionMismatchHint}"
-                        : MuxUnavailableBanner);
+                    RaisePersistenceNotice(MuxUnavailableNoticeTitle, MuxUnavailableBanner);
                 }
             }
             else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
@@ -4361,6 +4364,13 @@ namespace Ntilde.Controls
         /// Null offers none.
         /// </summary>
         internal Func<RemoteMuxFailure?, Guid, string, PersistenceNoticeAction?>? RemoteNoticeAction { get; set; }
+
+        /// <summary>
+        /// The action the "Session not persistent" notice offers when the local daemon speaks another protocol version
+        /// (Phase 5 Task 23): the window's "Restart multiplexer now", read when the notice is raised. Null offers none; the
+        /// notice keeps its hint either way.
+        /// </summary>
+        internal Func<PersistenceNoticeAction?>? LocalMuxRestartAction { get; set; }
 
         /// <summary>
         /// UI thread. Asks the window for its pass that releases the remote hosts no pane needs (final review F1), once the

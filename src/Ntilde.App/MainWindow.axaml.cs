@@ -3895,6 +3895,7 @@ namespace Ntilde
             ConfirmSharedClose = ShowSharedCloseDialogAsync;
             ConfirmFirstClose = ShowFirstCloseDialogAsync;
             ConfirmQuitAndCloseAll = ShowQuitAndCloseAllDialogAsync;
+            ConfirmMuxRestart = ShowMuxRestartDialogAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -4561,6 +4562,7 @@ namespace Ntilde
             if (injected is Ntilde.Shell.Mux.MuxTerminalSessionFactory mux)
             {
                 _muxHosts = mux.Hosts;
+                WatchMuxDaemonVersions();
                 return mux;
             }
 
@@ -4823,6 +4825,8 @@ namespace Ntilde
                 return Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
             }
 
+            WatchMuxDaemonVersions();
+
             // The SSH profile store, through a lambda: this runs before _sshConnectionService is assigned
             // (Task 19's note), and a profile's PersistRemoteSessions is read at each spawn. Panes make
             // their remote requests off the UI thread (TerminalPane.RunOffUiThread, Phase 4 spec §7.4).
@@ -4832,6 +4836,239 @@ namespace Ntilde
                 id => _sshConnectionService?.GetStoredProfile(id),
                 AppLogger.Log);
         }
+
+        // --- A daemon from another build (Phase 5 Task 23) ---------------------------------------------------------
+        // An update keeps a compatible daemon running (R9, R10), and the remote install flow replaces ntilde-mux's binary
+        // under a daemon that keeps running: either way the window can be served by another build's daemon. It says so once
+        // per launch for each endpoint, offering a restart.
+
+        /// <summary>
+        /// This build's version: what its own daemon reports, and the ntilde-mux version its install flow installs (the
+        /// source <see cref="Ntilde.Shell.Mux.RemoteMuxStatusText"/> compares against). A seam so tests pin it.
+        /// </summary>
+        internal string MuxThisBuildVersion { get; set; } = AppVersionInfo.Version;
+
+        /// <summary>The endpoints this launch has offered a restart for: the process's, shared by its windows. A seam so each test is a launch of its own.</summary>
+        internal Ntilde.Shell.Mux.MuxPreviousBuildNotice.Offered MuxPreviousBuildOffers { get; set; } = Ntilde.Shell.Mux.MuxPreviousBuildNotice.Offered.Process;
+
+        /// <summary>
+        /// The restart's question, given the daemon's host (null for this computer's) and how many shells it runs (-1 when
+        /// unknown). A seam so tests answer without a modal; the constructor assigns <see cref="ShowMuxRestartDialogAsync"/>.
+        /// </summary>
+        internal Func<string?, int, Task<bool>> ConfirmMuxRestart { get; set; }
+
+        /// <summary>
+        /// Test seam: terminates the local daemon a descriptor names, as <c>kill-server --force</c> does
+        /// (<see cref="Ntilde.Mux.Daemon.MuxDaemonStop.Terminate"/>: re-verified to still be that daemon, then waited for up
+        /// to 5 s); true once it is gone. Blocking: called off the UI thread.
+        /// </summary>
+        internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, bool> MuxTerminateDaemon { get; set; } = TerminateLocalMuxDaemon;
+
+        private bool _muxDaemonVersionsWatched; // UI thread
+        private bool _muxRestartInProgress;     // UI thread
+
+        /// <summary>Once <see cref="_muxHosts"/> exists (it is never replaced): every connection of every host is checked.</summary>
+        private void WatchMuxDaemonVersions()
+        {
+            if (_muxDaemonVersionsWatched || _muxHosts is not { } hosts) return;
+            _muxDaemonVersionsWatched = true;
+            hosts.HostConnected += OnMuxHostConnected;
+        }
+
+        /// <summary>A host connected (on the pool, from its event queue, which must not wait): decided on the UI thread.</summary>
+        private void OnMuxHostConnected(Ntilde.Shell.Mux.MuxEndpointId id, Ntilde.Shell.Mux.MuxConnectionHost host, Ntilde.Mux.MuxClient client) =>
+            Dispatcher.UIThread.Post(() => _ = OfferMuxRestartAsync(id, host, client));
+
+        /// <summary>
+        /// UI thread. A daemon of another build - both versions known and different - is offered a restart once per launch
+        /// for its endpoint, with persistence on (nothing new appears with "Off"). Claimed first, so a reconnect to the same
+        /// daemon, or another window's connection to it, offers nothing more; then its running shells are counted (after the
+        /// panes this launch spawned there) and the notice raised. A count that cannot be had releases the claim: the next
+        /// connection may offer it.
+        /// </summary>
+        private async Task OfferMuxRestartAsync(Ntilde.Shell.Mux.MuxEndpointId id, Ntilde.Shell.Mux.MuxConnectionHost host, Ntilde.Mux.MuxClient client)
+        {
+            if (_teardownDone
+                || !client.IsConnected
+                || client.ServerVersion is not { } daemonVersion
+                || !Ntilde.Shell.Mux.MuxPreviousBuildNotice.IsFromAnotherBuild(daemonVersion, MuxThisBuildVersion)
+                || !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)
+                || !MuxPreviousBuildOffers.TryClaim(id))
+            {
+                return;
+            }
+
+            int? shells = await CountRunningMuxShellsAsync(client, host.Policy.RpcTimeout);
+            if (shells is not int count || _teardownDone)
+            {
+                MuxPreviousBuildOffers.Release(id);
+                return;
+            }
+
+            string where = host.Policy.DisplayName;
+            AppLogger.Log($"[MainWindow] the multiplexer on {where} is from another build ({Ntilde.Shell.Mux.Remote.RemoteOutputText.Quote(daemonVersion)}, this is {MuxThisBuildVersion}); offering a restart");
+            if (id.IsLocal)
+            {
+                EnqueueNotice(Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title, Ntilde.Shell.Mux.MuxPreviousBuildNotice.LocalMessage(daemonVersion, count), LocalMuxRestartNoticeAction());
+            }
+            else
+            {
+                EnqueueNotice(
+                    Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title,
+                    Ntilde.Shell.Mux.MuxPreviousBuildNotice.RemoteMessage(where, daemonVersion, count),
+                    new PersistenceNoticeAction(Ntilde.Shell.Mux.MuxPreviousBuildNotice.RemoteActionLabel(where), () => _ = RestartRemoteMuxAsync(id, where)));
+            }
+        }
+
+        /// <summary>
+        /// "Restart multiplexer now", for the notice above and a pane's version-mismatch fallback; null with persistence
+        /// off, when nothing new appears.
+        /// </summary>
+        private PersistenceNoticeAction? LocalMuxRestartNoticeAction() =>
+            Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)
+                ? new PersistenceNoticeAction(Ntilde.Shell.Mux.MuxPreviousBuildNotice.LocalActionLabel, () => _ = RestartLocalMuxAsync())
+                : null;
+
+        /// <summary>How many shells <paramref name="client"/>'s daemon runs; null when it cannot say within <paramref name="timeout"/>. Off the caller's thread.</summary>
+        private static Task<int?> CountRunningMuxShellsAsync(Ntilde.Mux.MuxClient client, TimeSpan timeout) => Task.Run(async () =>
+        {
+            using var cts = new CancellationTokenSource(timeout);
+            try
+            {
+                IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> sessions = await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
+                return (int?)sessions.Count(s => s.Running);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] counting the multiplexer's shells failed: {ex.Message}");
+                return null;
+            }
+        });
+
+        /// <summary>The restart's question; a question that cannot be asked is a no.</summary>
+        private async Task<bool> AskMuxRestartAsync(string? host, int shells)
+        {
+            try
+            {
+                return await ConfirmMuxRestart(host, shells);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] the multiplexer restart question failed; not restarting: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// "Restart multiplexer now": asks, naming how many shells the local daemon runs; then stops it - <c>shutdown</c> and
+        /// up to 5 s for it to exit, then by pid when it is still there or could not be asked (another protocol version), as
+        /// <c>kill-server --force</c> does - and warms the host up, without waiting out a failure cooldown, so a daemon of
+        /// this build starts. The panes on the old daemon go through their "multiplexer disconnected" path, and Enter
+        /// reconnects them. Declined: nothing is sent, and this launch does not offer it again. UI thread.
+        /// </summary>
+        private async Task RestartLocalMuxAsync()
+        {
+            if (_muxRestartInProgress || _teardownDone || _muxHosts?.Local is not { } host) return;
+            _muxRestartInProgress = true;
+            try
+            {
+                Ntilde.Mux.MuxClient? old = host.CurrentClient;
+                int shells = old is null ? -1 : await CountRunningMuxShellsAsync(old, host.Policy.RpcTimeout) ?? -1;
+                if (!await AskMuxRestartAsync(null, shells)) return;
+
+                AppLogger.Log("[MainWindow] restarting the multiplexer");
+                if (!await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), force: true))
+                {
+                    AppLogger.Log("[MainWindow] the old multiplexer could not be confirmed stopped; connecting anyway");
+                }
+
+                // Its connection drops just after the process is gone: the warm-up must not find it still up.
+                if (old is not null) await WhenMuxClientDisconnectedAsync(old, TimeSpan.FromSeconds(2));
+                MuxPreviousBuildOffers.Release(Ntilde.Shell.Mux.MuxEndpointId.Local);
+                host.EndFailureCooldown();
+                host.WarmUp();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] restarting the multiplexer failed: {ex}");
+            }
+            finally
+            {
+                _muxRestartInProgress = false;
+            }
+        }
+
+        /// <summary>Completes once <paramref name="client"/> has disconnected, or after <paramref name="timeout"/>.</summary>
+        private static async Task WhenMuxClientDisconnectedAsync(Ntilde.Mux.MuxClient client, TimeSpan timeout)
+        {
+            var gone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            client.Disconnected += _ => gone.TrySetResult();
+            if (!client.IsConnected) gone.TrySetResult();
+            await Task.WhenAny(gone.Task, Task.Delay(timeout));
+        }
+
+        /// <summary>
+        /// "Restart ntilde-mux on {host}": asks, naming how many shells that daemon runs, then sends it <c>shutdown</c> over
+        /// the host's own connection. The daemon exits and its proxy with it, so the host reports it stopped and its panes
+        /// offer Enter, whose connect's proxy starts the installed ntilde-mux. Nothing else is touched: not the local daemon,
+        /// not another host's. Not connected now: nothing is sent, and the next connection offers it again. UI thread.
+        /// </summary>
+        private async Task RestartRemoteMuxAsync(Ntilde.Shell.Mux.MuxEndpointId id, string where)
+        {
+            if (_muxRestartInProgress || _teardownDone) return;
+            Ntilde.Shell.Mux.MuxConnectionHost? host = _muxHosts?.TryGet(id);
+            if (host?.CurrentClient is not { } client)
+            {
+                AppLogger.Log($"[MainWindow] not restarting ntilde-mux on {where}: it is not connected now");
+                MuxPreviousBuildOffers.Release(id);
+                return;
+            }
+
+            _muxRestartInProgress = true;
+            try
+            {
+                int shells = await CountRunningMuxShellsAsync(client, host.Policy.RpcTimeout) ?? -1;
+                if (!await AskMuxRestartAsync(where, shells)) return;
+
+                AppLogger.Log($"[MainWindow] restarting ntilde-mux on {where}");
+                // From the pool: on a stalled link the client's send queue may be full, and the send waits for it.
+                await Task.Run(async () =>
+                {
+                    using var cts = new CancellationTokenSource(host.Policy.RpcTimeout);
+                    await client.ShutdownServerAsync(cts.Token).ConfigureAwait(false);
+                });
+                MuxPreviousBuildOffers.Release(id);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] sending shutdown to ntilde-mux on {where} failed: {ex.Message}");
+            }
+            finally
+            {
+                _muxRestartInProgress = false;
+            }
+        }
+
+        /// <summary>The production <see cref="ConfirmMuxRestart"/>; <paramref name="shells"/> is -1 when unknown.</summary>
+        private Task<bool> ShowMuxRestartDialogAsync(string? host, int shells) =>
+            ShowConfirmationDialogAsync(
+                Ntilde.Shell.Mux.MuxPreviousBuildNotice.ConfirmTitle(host),
+                Ntilde.Shell.Mux.MuxPreviousBuildNotice.ConfirmHeading(host),
+                Ntilde.Shell.Mux.MuxPreviousBuildNotice.ConfirmMessage(host, shells),
+                Ntilde.Shell.Mux.MuxPreviousBuildNotice.ConfirmButton,
+                92);
+
+        /// <summary>The production <see cref="MuxTerminateDaemon"/>: kill-server --force's step, on the GUI's own root.</summary>
+        private static bool TerminateLocalMuxDaemon(Ntilde.Mux.Contracts.MuxEndpointDescriptor daemon)
+        {
+            Ntilde.Mux.Daemon.MuxDaemonStop.TerminateResult result = Ntilde.Mux.Daemon.MuxDaemonStop.Terminate(
+                Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), daemon, TimeSpan.FromSeconds(5), out string? failure);
+            AppLogger.Log(result == Ntilde.Mux.Daemon.MuxDaemonStop.TerminateResult.Terminated
+                ? $"[MainWindow] terminated the multiplexer (pid {daemon.Pid})"
+                : $"[MainWindow] terminating the multiplexer (pid {daemon.Pid}): {failure}");
+            return result == Ntilde.Mux.Daemon.MuxDaemonStop.TerminateResult.Terminated;
+        }
+        // --- end of Task 23 ----------------------------------------------------------------------------------------
 
         /// <summary>Every pane in every tab, including a zoomed tab's stashed root.</summary>
         internal IReadOnlyList<TerminalPane> AllPanesForTest() => AllPanes();
@@ -5085,6 +5322,7 @@ namespace Ntilde
             pane.SshInteractionHandler = _sshInteractionService;
             // A method group: OpenRemoteMuxInstall is read when a notice is raised, not now.
             pane.RemoteNoticeAction = RemoteMuxNoticeAction;
+            pane.LocalMuxRestartAction = LocalMuxRestartNoticeAction;
             // Kept by UnwirePane: a stale remote result reaches a closed pane, and its shell's kill asks for the pass (codex C1).
             pane.RemoteMuxReleaseCheck = ScheduleRemoteMuxHostRelease;
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
@@ -5251,12 +5489,14 @@ namespace Ntilde
         /// A remote notice (<see cref="TerminalPane.RemoteMuxUnavailableNoticeTitle"/>) is one line per message - per
         /// host and reason - not per title: merged by title, the longer of two hosts' lines was shown with the other
         /// host's action (the Task 19 note), so the button could install on a host its line did not name. Each
-        /// action's own line is now always in the toast; panes of one host and reason still merge ("(n panes)").
+        /// action's own line is now always in the toast; panes of one host and reason still merge ("(n panes)"). The
+        /// "from another build" notices (<see cref="Ntilde.Shell.Mux.MuxPreviousBuildNotice"/>) are one line per message as
+        /// well: one per daemon, each naming its own host.
         /// </remarks>
         internal void EnqueueNotice(string title, string message, PersistenceNoticeAction? action = null)
         {
             if (action is not null) _pendingNoticeAction = action;
-            string key = title == TerminalPane.RemoteMuxUnavailableNoticeTitle ? $"{title}\n{message}" : title;
+            string key = title is TerminalPane.RemoteMuxUnavailableNoticeTitle or Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title ? $"{title}\n{message}" : title;
             int index = _pendingPersistenceNotices.FindIndex(n => n.Key == key);
             bool first = _pendingPersistenceNotices.Count == 0;
             if (index < 0) _pendingPersistenceNotices.Add((key, title, message, 1));
@@ -11118,27 +11358,57 @@ namespace Ntilde
         /// <summary>
         /// Probes for the local daemon and, when one is up, sends it <c>shutdown</c> and waits up to
         /// <paramref name="wait"/> for it to exit (the update path's probe-and-shutdown, shared with Task 17's quit).
+        /// With <paramref name="force"/> (Task 23's restart), a daemon still there after that - or one that could not be
+        /// asked, because it speaks another protocol version - is terminated by pid, as <c>kill-server --force</c> does
+        /// (<see cref="MuxTerminateDaemon"/>). True once the daemon is known to be gone.
         /// Never throws: a daemon that cannot be reached or does not stop is logged, and the caller carries on.
         /// </summary>
-        private async System.Threading.Tasks.Task ShutdownLocalDaemonAsync(TimeSpan wait)
+        private async System.Threading.Tasks.Task<bool> ShutdownLocalDaemonAsync(TimeSpan wait, bool force = false)
         {
-            using Ntilde.Mux.MuxClient? daemon = await ProbeMuxDaemonForUpdateAsync();
-            if (daemon is null) return;
-            await ShutdownMuxDaemonForUpdateAsync(daemon, wait);
+            // Read before the shutdown, as the exit wait's is: the daemon deletes its descriptor on the way out.
+            Ntilde.Mux.Contracts.MuxEndpointDescriptor? described = force ? ReadMuxDescriptorBeforeShutdown() : null;
+            using (Ntilde.Mux.MuxClient? daemon = await ProbeMuxDaemonForUpdateAsync())
+            {
+                if (daemon is not null && await ShutdownMuxDaemonForUpdateAsync(daemon, wait)) return true;
+            }
+
+            if (described is null) return false;
+            try
+            {
+                return await Task.Run(() => MuxTerminateDaemon(described));
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] terminating the multiplexer (pid {described.Pid}) failed: {ex.Message}");
+                return false;
+            }
         }
 
-        private System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon) =>
+        private System.Threading.Tasks.Task<bool> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon) =>
             ShutdownMuxDaemonForUpdateAsync(daemon, System.Threading.Timeout.InfiniteTimeSpan);
+
+        /// <summary>The descriptor, read through <see cref="MuxReadDescriptorForUpdate"/>; null when it cannot be read.</summary>
+        private Ntilde.Mux.Contracts.MuxEndpointDescriptor? ReadMuxDescriptorBeforeShutdown()
+        {
+            try { return MuxReadDescriptorForUpdate(); }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] reading the mux descriptor before update failed: {ex.Message}");
+                return null;
+            }
+        }
 
         /// <param name="daemon">A connection to the daemon.</param>
         /// <param name="wait">How long to wait for the exit on top of the exit seam's own limit; infinite adds none.</param>
-        private async System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon, TimeSpan wait)
+        /// <returns>
+        /// True once the daemon is known to have exited; false when <c>shutdown</c> could not be sent, no descriptor says
+        /// which process to wait for, or it was still there when the wait ran out.
+        /// </returns>
+        private async System.Threading.Tasks.Task<bool> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon, TimeSpan wait)
         {
             // Read before the shutdown: the daemon deletes its descriptor on the way out,
             // and the pid in it is what says when the process is really gone.
-            Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = null;
-            try { before = MuxReadDescriptorForUpdate(); }
-            catch (Exception ex) { AppLogger.Log($"[MainWindow] reading the mux descriptor before update failed: {ex.Message}"); }
+            Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = ReadMuxDescriptorBeforeShutdown();
 
             try
             {
@@ -11147,14 +11417,14 @@ namespace Ntilde
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}");
-                return;
+                return false;
             }
 
             // As kill-server does: the apply replaces the executable the daemon runs from,
             // so let it finish exiting first. Awaited, never blocking the UI thread.
             if (before is null)
             {
-                return;
+                return false;
             }
 
             bool gone = false;
@@ -11172,6 +11442,7 @@ namespace Ntilde
             }
             catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
             if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; applying the update anyway");
+            return gone;
         }
 
         /// <summary>

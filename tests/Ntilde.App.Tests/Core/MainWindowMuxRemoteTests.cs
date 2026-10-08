@@ -61,6 +61,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         // The window's hosts, remote ones included: closing a remote pane above can start a host's connect for its kill.
         _hosts?.Dispose();
         _local?.Dispose();
+        foreach (FakeRemoteHost other in _otherRemotes) other.Dispose();
         _remote.Dispose();
         _localMux.Dispose();
         new JsonSshProfileStore().DeleteProfile(_sshProfile.Id);
@@ -88,7 +89,9 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// <summary>The app's wiring over the test's daemons: the local one in memory, the remote one behind <see cref="_remote"/>.</summary>
     /// <param name="bootTimeUtc">The boot (or logon) the window's startup restore sees (spec R2); the real one when null.</param>
     /// <param name="beforeShow">Runs on the built window before it is shown, when no pane has spawned yet.</param>
-    private MainWindow CreateWindow(DateTime? bootTimeUtc = null, Action<MainWindow>? beforeShow = null)
+    /// <param name="remote">The profile's host; <see cref="_remote"/> when null.</param>
+    /// <param name="settings">The window's settings; the designer's (SessionPersistence Off) when null.</param>
+    private MainWindow CreateWindow(DateTime? bootTimeUtc = null, Action<MainWindow>? beforeShow = null, FakeRemoteHost? remote = null, TerminalSettings? settings = null)
     {
         Volatile.Write(ref _uiThread, Environment.CurrentManagedThreadId);
         _local = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_localMux.Listener.Connect(), null, ct), "test", null)
@@ -98,7 +101,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (_, request) =>
         {
             _transportRequests.Enqueue(request);
-            return _remote;
+            return remote ?? _remote;
         }, log: null, userPrompts: null, scheduler: _clock));
         var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
         AppServiceBundle services = AppServices.BuildForDesigner() with
@@ -106,6 +109,10 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             CommandAssist = TestCommandAssistServices.Instance,
             SessionFactory = factory,
         };
+        if (settings is not null)
+        {
+            services = services with { Settings = settings };
+        }
         if (bootTimeUtc is { } boot)
         {
             services = services with { SessionsCannotPredateUtc = () => boot };
@@ -162,9 +169,10 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     };
 
     /// <summary>Shells already running on the remote daemon, started without an exec channel (another machine's client, say).</summary>
-    private Guid[] SpawnOnRemote(int count) => Task.Run(async () =>
+    /// <param name="remote">The host whose daemon runs them; <see cref="_remote"/> when null.</param>
+    private Guid[] SpawnOnRemote(int count, FakeRemoteHost? remote = null) => Task.Run(async () =>
     {
-        (Stream stream, _) = await _remote.ConnectDaemonAsync(TestContext.Current.CancellationToken);
+        (Stream stream, _) = await (remote ?? _remote).ConnectDaemonAsync(TestContext.Current.CancellationToken);
         using MuxClient client = await MuxClient.ConnectAsync(stream, null, TestContext.Current.CancellationToken);
         var ids = new Guid[count];
         for (int i = 0; i < count; i++) ids[i] = await MuxTestHost.SpawnAsync(client);
@@ -899,5 +907,111 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(
             [("local", theirs, "this computer"), (Endpoint, ids[2], "nova@fake-host")],
             listing.Result.Select(s => (s.Endpoint, s.SessionId, s.HostDisplayName)));
+    }
+
+    /// <summary>Phase 5 Task 23: the version this app installs on remote hosts, as the window is told it.</summary>
+    private const string ThisBuild = "0.12.0";
+
+    /// <summary>The window of a Task 23 test: persistence on, this build's version pinned, and nothing offered yet this launch.</summary>
+    private MainWindow CreateRestartWindow(FakeRemoteHost remote) => CreateWindow(
+        beforeShow: w =>
+        {
+            w.MuxThisBuildVersion = ThisBuild;
+            w.MuxPreviousBuildOffers = new MuxPreviousBuildNotice.Offered();
+        },
+        remote: remote,
+        settings: new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose });
+
+    /// <summary>A remote host whose ntilde-mux, still running, is an older version than the one this app installs; disposed with the test.</summary>
+    private FakeRemoteHost PreviousVersionHost()
+    {
+        var remote = new FakeRemoteHost(serverOptions: new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = "0.0.1" });
+        _otherRemotes.Add(remote);
+        return remote;
+    }
+
+    private readonly List<FakeRemoteHost> _otherRemotes = [];
+
+    private static readonly string TwoShellsNotice = MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", 2);
+
+    private static Button ToastButton(MainWindow window, string name) => window.FindControl<Button>(name)!;
+
+    private static void Click(Button button) => button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+
+    /// <summary>The host's events so far have been handled, and what they posted to the UI thread has run.</summary>
+    private static void PumpUntilQuiet(MuxConnectionHost host)
+    {
+        PumpUntil(() => host.EventsForTest.IsCompleted, "the host's events were handled");
+        for (int i = 0; i < 20; i++)
+        {
+            Thread.Sleep(10);
+            Dispatcher.UIThread.RunJobs();
+        }
+    }
+
+    /// <summary>
+    /// Phase 5 Task 23: a remote ntilde-mux still running an older version than the one this app installs (the install
+    /// flow replaced its binary, not it) is offered a restart: one notice for the host, naming it, the daemon's version
+    /// and its shells, however many panes use it - and none again when the link drops and comes back to that daemon.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remote_daemon_of_a_previous_version_is_offered_a_restart_once()
+    {
+        FakeRemoteHost remote = PreviousVersionHost();
+        Guid[] ids = SpawnOnRemote(2, remote);
+        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]));
+        MainWindow window = CreateRestartWindow(remote);
+        PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes reattached");
+        PumpUntil(() => Toast(window).Message?.Contains(TwoShellsNotice, StringComparison.Ordinal) == true, "the notice is shown");
+
+        Assert.Equal((true, MuxPreviousBuildNotice.Title, TwoShellsNotice), Toast(window));
+        Assert.Equal("Restart ntilde-mux on nova@fake-host", ToastButton(window, "RecordingToastAction").Content);
+
+        // Dismissed; then the link drops, and the host reconnects to the same daemon.
+        Click(ToastButton(window, "RecordingToastClose"));
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        MuxClient first = host.CurrentClient!;
+        remote.CutLink();
+        PumpUntil(() =>
+        {
+            if (host.IsReconnecting) _clock.Advance(FirstRetry);
+            return host.CurrentClient is { } c && !ReferenceEquals(c, first);
+        }, "the host reconnected");
+        PumpUntilQuiet(host);
+
+        Assert.Equal("0.0.1", host.CurrentClient!.ServerVersion);
+        Assert.False(Toast(window).Visible && Toast(window).Message!.Contains(TwoShellsNotice, StringComparison.Ordinal), "offered again after a reconnect");
+    }
+
+    /// <summary>
+    /// Phase 5 Task 23: the remote action asks, naming the host and its shells, then sends <c>shutdown</c> over that host's
+    /// connection - to that daemon only: the local daemon is neither probed nor told anything.
+    /// </summary>
+    [AvaloniaFact]
+    public void Restarting_a_remote_daemon_shuts_down_that_daemon_only()
+    {
+        FakeRemoteHost remote = PreviousVersionHost();
+        Guid[] ids = SpawnOnRemote(2, remote);
+        SaveSession(RemoteLeaf(ids[0]), RemoteLeaf(ids[1]), LocalLeaf());
+        int remoteShutdowns = 0;
+        int localShutdowns = 0;
+        remote.Server.ShutdownRequested += () => Interlocked.Increment(ref remoteShutdowns);
+        _localMux.Server.ShutdownRequested += () => Interlocked.Increment(ref localShutdowns);
+        MainWindow window = CreateRestartWindow(remote);
+        var asked = new List<(string? Host, int Shells)>();
+        window.ConfirmMuxRestart = (host, shells) => { asked.Add((host, shells)); return Task.FromResult(true); };
+        bool localProbed = false;
+        window.MuxProbeForUpdate = _ => { localProbed = true; return Task.FromResult<MuxClient?>(null); };
+        PumpUntil(() => RemotePanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both remote panes reattached");
+        PumpUntil(() => AllPanes(window).Any(p => MuxEndpointId.Parse(p.MuxEndpoint).IsLocal && p.Session is MuxClientSession { IsAttached: true }), "the local pane attached");
+        PumpUntil(() => Toast(window).Message?.Contains(TwoShellsNotice, StringComparison.Ordinal) == true, "the notice is shown");
+
+        Click(ToastButton(window, "RecordingToastAction"));
+        PumpUntil(() => Volatile.Read(ref remoteShutdowns) == 1, "the remote daemon was told to shut down");
+        PumpUntilQuiet(_local!);
+
+        Assert.Equal([("nova@fake-host", 2)], asked);
+        Assert.Equal(0, Volatile.Read(ref localShutdowns));
+        Assert.False(localProbed, "the local daemon was probed to be shut down");
     }
 }

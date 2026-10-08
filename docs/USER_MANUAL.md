@@ -135,7 +135,8 @@ below.
   `[Multiplexer unavailable — this session will not persist]`. Ntilde tries the daemon again
   for panes opened 30 seconds later. If the running daemon is from a different Ntilde version,
   the notification adds a second line telling you to run `ntilde mux kill-server --force` to
-  replace it.
+  replace it, and a **Restart multiplexer now** button that does it for you: it asks first, then
+  stops the daemon and starts one of this version.
   A pane that is *reattaching* to a saved shell (at startup, say, while the daemon is slow to
   answer) does not start a stand-in shell, because its shell may still be running in the daemon.
   It shows `[Multiplexer not reachable — press Enter to retry]` and keeps the shell's id, so
@@ -201,6 +202,12 @@ below.
     Ntilde can ask first. With the setting off, an update never keeps a running daemon: Ntilde
     asks first ("N multiplexed sessions will be closed by the update") and shuts it down, and
     while any daemon is running a downloaded update is not applied automatically at start.
+  - A daemon an update kept is still the previous version's. Once per launch a *Multiplexer*
+    notification says so: "The multiplexer is from the previous build (0.11.0); restart it when
+    convenient — this closes its 3 shells." Its **Restart multiplexer now** button asks first,
+    then stops the daemon (ending its process if it has not exited within 5 seconds) and starts
+    one of this version. Panes on the old daemon show
+    `[Multiplexer disconnected] [Press Enter to reconnect]`, and Enter starts a new shell.
   - If the daemon crashes, or is killed, its shells are gone.
   - A shell inherits the daemon's environment, not the window's. The daemon's environment is
     the one Ntilde had when it first started the daemon.
@@ -365,8 +372,13 @@ the host: not your `PATH`, not your shell's startup files. It has three ways to 
 When this Ntilde version has no release (a development build), **Install** says so and the dialog
 leaves only **Choose file…**. The upload replaces an installed `ntilde-mux` only once the new file
 has arrived complete and has run once on the host, so a cancelled or broken upload leaves the old
-one in place. A daemon that is already running keeps running the binary it started with. When the
-install succeeds, the dialog offers to tick the profile's checkbox. The editor's status line shows
+one in place. A daemon that is already running keeps running the binary it started with, and so do
+its shells. Once per launch, when Ntilde connects to a daemon whose version is not the one this
+Ntilde installs, a *Multiplexer* notification says so: "ntilde-mux on <user@host> is from a previous
+version (0.10.0); restart it when convenient — this closes its 2 shells." Its **Restart ntilde-mux on
+<user@host>** button asks first, then stops that daemon; its tabs show
+`[ntilde-mux on <user@host> stopped] [Press Enter to reconnect]`, and Enter starts the installed
+version. When the install succeeds, the dialog offers to tick the profile's checkbox. The editor's status line shows
 what was installed: `ntilde-mux 0.11.0 installed`, `ntilde-mux not installed`, or
 `ntilde-mux 0.10.0 installed — this app is 0.11.0`. The versions do not have to match: Ntilde and
 the daemon agree on a protocol version when they connect, and only a daemon with no protocol
