@@ -174,6 +174,46 @@ public sealed class MuxClient : IDisposable
         RequestAsync(MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty, MuxJsonContext.Default.MuxEmpty, cancellationToken);
 
     /// <summary>
+    /// The daemon's <c>sessionInfo</c> for any session, open on this client or not (Phase 5: the agent host's windowless
+    /// sessions). An unknown id throws <see cref="MuxProtocolException"/> with <see cref="MuxErrorCodes.UnknownSession"/>.
+    /// </summary>
+    public Task<SessionInfoResult> GetSessionInfoAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
+        RequestAsync(MuxMethods.SessionInfo, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams,
+            MuxJsonContext.Default.SessionInfoResult, cancellationToken);
+
+    /// <summary>
+    /// A session's screen as the daemon's headless parser holds it, and its status, without attaching (Phase 5: the
+    /// agent host's windowless sessions). The daemon clamps <paramref name="maxScrollbackRows"/> to
+    /// 0..<see cref="MuxReadScreenLimits.MaxScrollbackRows"/>. The snapshot passes the same
+    /// <see cref="MuxClientOptions.AttachLimits"/> checks an attach's does.
+    /// </summary>
+    /// <returns>Null when the daemon does not know <c>readScreen</c> (it answers <c>protocol_error</c>, on any negotiated version).</returns>
+    /// <exception cref="MuxProtocolException">
+    /// Any other refusal, with its code: <c>unknown_session</c>, <c>session_exited</c> (the session stopped before the
+    /// read ran), <c>snapshot_too_large</c> (past the daemon's <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/> or this
+    /// client's limits: ask for fewer rows), <c>internal_error</c> (a faulted session). A snapshot this client cannot
+    /// decode fails this call only, never the connection: it arrived inside a well-formed reply.
+    /// </exception>
+    public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default)
+    {
+        long id = Interlocked.Increment(ref _nextId);
+        JsonElement p = MuxFrames.ToElement(new ReadScreenParams { SessionId = sessionId, MaxScrollbackRows = maxScrollbackRows },
+            MuxJsonContext.Default.ReadScreenParams);
+        MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.ReadScreen, p, cancellationToken).ConfigureAwait(false);
+        if (response.Error is { } error)
+        {
+            // An older daemon's answer to a method it does not know. A daemon that knows readScreen never refuses with
+            // this code (it clamps instead), so it means "unsupported" whichever version was negotiated.
+            if (error.Code == MuxErrorCodes.ProtocolError) return null;
+            throw new MuxProtocolException(error.Code, error.Message);
+        }
+
+        ReadScreenResult result = MuxFrames.ParseParams(response.Result, MuxJsonContext.Default.ReadScreenResult);
+        TerminalStateSnapshot snapshot = DecodeSnapshot(result.Snapshot);
+        return new MuxScreenRead(snapshot, result with { Snapshot = [] }); // the bytes are decoded: do not hold both
+    }
+
+    /// <summary>
     /// Asks the daemon to kill every session and exit (spec §4). Completes once the server has
     /// acknowledged; the connection closes shortly after as the server tears down.
     /// </summary>
@@ -281,6 +321,19 @@ public sealed class MuxClient : IDisposable
         Post(MuxFrames.Request(new MuxRequest { Id = 0, Method = method, Params = MuxFrames.ToElement(parameters, typeInfo) }));
 
     internal void SendInput(Guid sessionId, string text) => Post(MuxFrames.Input(sessionId, Encoding.UTF8.GetBytes(text)));
+
+    /// <summary>
+    /// Input for a session this client has not opened or attached (Phase 5: the agent host's windowless sessions): the
+    /// daemon takes Input frames from any connection. Never blocks, like every send (ruling R6). Fire-and-forget, so
+    /// nothing reports an unknown or exited session: ask <see cref="GetSessionInfoAsync"/> first. Empty text sends
+    /// nothing. The daemon drops it while this connection is attached to the session read-only.
+    /// </summary>
+    public void SendInputTo(Guid sessionId, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (text.Length == 0) return;
+        SendInput(sessionId, text);
+    }
 
     internal void SendResize(Guid sessionId, int cols, int rows, MuxPresentation? presentation) =>
         PostRequest(MuxMethods.Resize, new ResizeParams { SessionId = sessionId, Cols = cols, Rows = rows, Presentation = presentation },
@@ -633,6 +686,12 @@ public sealed class MuxClient : IDisposable
         tcs?.TrySetResult(new MuxResponse { Id = requestId });
     }
 
+    /// <summary>
+    /// The one decode of a daemon's snapshot, shared by attach (<see cref="OnSnapshot"/>, on the reader thread) and
+    /// <see cref="ReadScreenAsync"/> (on the caller's): <see cref="MuxClientOptions.AttachLimits"/> is checked here, so
+    /// neither path can adopt more than the other. Throws <see cref="MuxProtocolException"/>: <c>snapshot_too_large</c>
+    /// past a limit, <c>protocol_error</c> when malformed. What that costs is each caller's own decision.
+    /// </summary>
     private TerminalStateSnapshot DecodeSnapshot(ReadOnlySpan<byte> json)
     {
         MuxAttachLimits limits = _options.AttachLimits;

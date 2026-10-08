@@ -22,6 +22,8 @@ public sealed class MuxServerOptionsValidationTests
         "accept-max-below-initial" => new MuxServerOptions { AcceptRetryInitialDelay = TimeSpan.FromSeconds(3), AcceptRetryMaxDelay = TimeSpan.FromSeconds(2) },
         "accept-log-negative" => new MuxServerOptions { AcceptFailureLogInterval = TimeSpan.FromSeconds(-1) },
         "session-changed-negative" => new MuxServerOptions { SessionChangedInterval = TimeSpan.FromMilliseconds(-1) },
+        "read-screen-zero" => new MuxServerOptions { MaxReadScreenBytes = 0 },
+        "read-screen-over-limit" => new MuxServerOptions { MaxReadScreenBytes = MuxReadScreenLimits.MaxSnapshotBytes + 1 },
         _ => throw new ArgumentOutOfRangeException(nameof(name)),
     };
 
@@ -41,6 +43,8 @@ public sealed class MuxServerOptionsValidationTests
     [InlineData("accept-max-below-initial")]
     [InlineData("accept-log-negative")]
     [InlineData("session-changed-negative")]
+    [InlineData("read-screen-zero")]
+    [InlineData("read-screen-over-limit")] // only lowered (tests): past 4 MiB the reply would risk the stream budget
     public void Nonsensical_options_are_refused_at_construction(string name)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MuxServer(new ScriptedSessionFactory(), Invalid(name)).Dispose());

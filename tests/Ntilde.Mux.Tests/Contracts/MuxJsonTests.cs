@@ -145,6 +145,47 @@ public sealed class MuxJsonTests
     }
 
     [Fact]
+    public void ReadScreen_params_have_the_documented_wire_shape()
+    {
+        string json = System.Text.Json.JsonSerializer.Serialize(
+            new ReadScreenParams { SessionId = new Guid("00000000-0000-0000-0000-000000000007"), MaxScrollbackRows = 0 },
+            MuxJsonContext.Default.ReadScreenParams);
+
+        Assert.Equal("{\"sessionId\":\"00000000-0000-0000-0000-000000000007\",\"maxScrollbackRows\":0}", json);
+        Assert.Equal("readScreen", MuxMethods.ReadScreen);
+        Assert.Equal((2000, 4 * 1024 * 1024), (MuxReadScreenLimits.MaxScrollbackRows, MuxReadScreenLimits.MaxSnapshotBytes));
+    }
+
+    [Fact]
+    public void A_readScreen_result_carries_the_snapshot_as_base64_and_omits_what_is_unknown()
+    {
+        string bare = System.Text.Json.JsonSerializer.Serialize(
+            new ReadScreenResult { Snapshot = [1, 2, 3], Running = true, AttachedClients = 1 }, MuxJsonContext.Default.ReadScreenResult);
+        var full = new ReadScreenResult
+        {
+            Snapshot = [4, 5],
+            Running = false,
+            ExitCode = 3,
+            HasActiveChildProcesses = true,
+            AttachedClients = 2,
+            InteractiveClients = 0,
+            Title = "t",
+            Cwd = "/w",
+            LastOutputUnixMs = 1_700_000_000_123,
+        };
+        ReadScreenResult back = System.Text.Json.JsonSerializer.Deserialize(
+            System.Text.Json.JsonSerializer.Serialize(full, MuxJsonContext.Default.ReadScreenResult), MuxJsonContext.Default.ReadScreenResult)!;
+
+        Assert.Contains("\"snapshot\":\"AQID\"", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("exitCode", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("interactiveClients", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("lastOutputUnixMs", bare, StringComparison.Ordinal);
+        Assert.Equal(new byte[] { 4, 5 }, back.Snapshot);
+        Assert.Equal((false, (int?)3, true, 2, (int?)0, "t", "/w", (long?)1_700_000_000_123),
+            (back.Running, back.ExitCode, back.HasActiveChildProcesses, back.AttachedClients, back.InteractiveClients, back.Title, back.Cwd, back.LastOutputUnixMs));
+    }
+
+    [Fact]
     public void A_shared_attach_keeps_the_v1_wire_shape()
     {
         var p = new AttachParams

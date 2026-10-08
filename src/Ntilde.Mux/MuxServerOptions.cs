@@ -29,6 +29,12 @@ public sealed class MuxServerOptions
 
     public int MaxSnapshotBytes { get; init; } = MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes;
 
+    /// <summary>
+    /// The cap on a <c>readScreen</c> snapshot (serialized bytes): <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/>.
+    /// Tests lower it; it cannot be raised, since that cap is what keeps one reply inside the stream budget.
+    /// </summary>
+    internal int MaxReadScreenBytes { get; init; } = MuxReadScreenLimits.MaxSnapshotBytes;
+
     public int MaxInboundFrameBytes { get; init; } = MuxProtocol.MaxFrameBytes;
 
     /// <summary>

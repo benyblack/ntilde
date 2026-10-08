@@ -56,6 +56,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     private readonly Dictionary<IMuxFrameSink, bool> _kittyBySink = new();
     private char[] _chars = new char[Utf8ChunkDecoder.GetMaxCharCount(4096)];
     private long _rawOffset;
+    private long _lastOutputUnixMs; // 0 until the first chunk; written by the parse thread only, once per chunk
     private string _title;
     private string? _cwd;
     private int _cols;
@@ -214,6 +215,19 @@ public sealed class HeadlessTerminalSession : IDisposable
     public int? ExitCode => IsExited ? Volatile.Read(ref _exitCode) : null;
     public bool IsFaulted => Volatile.Read(ref _faulted) != 0;
     public long StreamPosition => Interlocked.Read(ref _rawOffset);
+
+    /// <summary>
+    /// Wall-clock time (Unix milliseconds) the parse thread last took a chunk of the child's output; null before the
+    /// first. Stamped once per chunk, not per byte.
+    /// </summary>
+    public long? LastOutputUnixMs
+    {
+        get
+        {
+            long ms = Volatile.Read(ref _lastOutputUnixMs);
+            return ms == 0 ? null : ms;
+        }
+    }
 
     /// <summary>
     /// The detach that left the session with no interactive subscribers was a user detach (spec §7.7);
@@ -402,6 +416,20 @@ public sealed class HeadlessTerminalSession : IDisposable
         var item = WorkItem.ForAction(
             () => ExecuteAttach(sink, requestId, maxScrollbackRows, presentation, maxSnapshotBytes, mode),
             onDropped: () => ReplySessionExited(sink, requestId));
+        if (!TryEnqueue(_control, item)) item.OnDropped!();
+    }
+
+    /// <summary>
+    /// Phase 5 <c>readScreen</c>: the screen is captured on the parse thread, which also answers
+    /// <paramref name="requestId"/> on <paramref name="sink"/>, as an attach does, but nothing is subscribed. Like an
+    /// attach it is always answered: an item dropped because the session stopped gets <c>session_exited</c>.
+    /// <paramref name="hasActiveChildProcesses"/> is probed by the caller, off this thread.
+    /// </summary>
+    internal void PostReadScreen(IMuxFrameSink sink, long requestId, int maxScrollbackRows, int maxSnapshotBytes, bool hasActiveChildProcesses)
+    {
+        var item = WorkItem.ForAction(
+            () => ExecuteReadScreen(sink, requestId, maxScrollbackRows, maxSnapshotBytes, hasActiveChildProcesses),
+            onDropped: () => Reply(sink, requestId, MuxErrorCodes.SessionExited, $"Session {Id} has exited; its screen cannot be read."));
         if (!TryEnqueue(_control, item)) item.OnDropped!();
     }
 
@@ -675,6 +703,7 @@ public sealed class HeadlessTerminalSession : IDisposable
     {
         long seq = Interlocked.Read(ref _rawOffset);
         Interlocked.Exchange(ref _rawOffset, seq + data.Length);
+        Volatile.Write(ref _lastOutputUnixMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
         // A faulted parser no longer tracks the child; feeding clients a stream the mux cannot
         // vouch for would only make them diverge from something that is itself wrong.
@@ -859,6 +888,68 @@ public sealed class HeadlessTerminalSession : IDisposable
         RecomputeKitty();
         PublishAttachedCount();
         if (IsExited) Offer(sink, ExitedFrame());
+    }
+
+    /// <summary>
+    /// Parse thread: the screen and the status are taken together, between two chunks, so they agree. Every path
+    /// answers; an exited session that is still listed answers with its last screen.
+    /// </summary>
+    private void ExecuteReadScreen(IMuxFrameSink sink, long requestId, int maxScrollbackRows, int maxSnapshotBytes, bool hasActiveChildProcesses)
+    {
+        if (IsFaulted)
+        {
+            Reply(sink, requestId, MuxErrorCodes.Internal, $"Session {Id} is faulted; its state no longer tracks the child.");
+            return;
+        }
+
+        byte[] json;
+        try
+        {
+            json = TerminalStateSerializer.ToBytes(CaptureSnapshot(maxScrollbackRows));
+        }
+        catch (Exception ex)
+        {
+            Reply(sink, requestId, MuxErrorCodes.Internal, $"Snapshot capture failed: {ex.Message}");
+            return;
+        }
+
+        // The reply is a Response frame, charged to the connection's stream budget: past the cap it is refused,
+        // never risked against that budget's client_too_slow.
+        if (json.Length > maxSnapshotBytes)
+        {
+            Reply(sink, requestId, MuxErrorCodes.SnapshotTooLarge,
+                $"The screen of session {Id} is {json.Length} bytes; the limit is {maxSnapshotBytes}. Ask for fewer scrollback rows.");
+            return;
+        }
+
+        MuxOutboundFrame frame;
+        try
+        {
+            bool exited = IsExited;
+            frame = MuxFrames.Response(new MuxResponse
+            {
+                Id = requestId,
+                Result = MuxFrames.ToElement(new ReadScreenResult
+                {
+                    Snapshot = json,
+                    Running = !exited,
+                    ExitCode = ExitCode,
+                    HasActiveChildProcesses = !exited && hasActiveChildProcesses,
+                    AttachedClients = AttachedClients,
+                    InteractiveClients = sink.WantsSessionEvents ? InteractiveClients : null, // v2 only, as in sessionInfo
+                    Title = Title,
+                    Cwd = Cwd,
+                    LastOutputUnixMs = LastOutputUnixMs,
+                }, MuxJsonContext.Default.ReadScreenResult),
+            });
+        }
+        catch (Exception ex)
+        {
+            Reply(sink, requestId, MuxErrorCodes.Internal, $"The screen reply could not be built: {ex.Message}");
+            return;
+        }
+
+        Offer(sink, frame);
     }
 
     /// <summary>Parse thread only. A read-only observer does not count: it must not make a GUI abandon its own shell (spec §3).</summary>

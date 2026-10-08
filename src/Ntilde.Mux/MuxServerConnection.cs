@@ -559,6 +559,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.ExportFlight:
                     Reply(request, Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).ExportFlight(), MuxJsonContext.Default.ExportFlightResult);
                     break;
+                case MuxMethods.ReadScreen:
+                    HandleReadScreen(request);
+                    break;
                 case MuxMethods.Hello:
                     throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "hello may only be sent once.");
                 default:
@@ -606,6 +609,24 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         // never this request: a refused or failed attach leaves the connection as it was. Not a
         // security boundary: any same-user process can open another, interactive connection.
         session.PostAttach(this, request.Id, rows, p.Presentation, _server.Options.MaxSnapshotBytes, mode);
+    }
+
+    /// <summary>
+    /// Phase 5: a session's screen and status for a connection that need not be attached to it. Only the parse thread
+    /// may capture, so the reply comes from there, as an attach's does, and subscribes nothing. The row count is
+    /// clamped, never refused: <c>protocol_error</c> must keep meaning "this daemon does not know readScreen".
+    /// </summary>
+    private void HandleReadScreen(MuxRequest request)
+    {
+        ReadScreenParams p = Params(request, MuxJsonContext.Default.ReadScreenParams);
+        HeadlessTerminalSession session = Session(p.SessionId);
+        if (request.Id == 0) return; // a read does nothing but answer
+
+        int rows = Math.Clamp(p.MaxScrollbackRows, 0, MuxReadScreenLimits.MaxScrollbackRows);
+
+        // Probed here, as sessionInfo does: the probe can walk the process table, and the parse thread is the output path.
+        bool hasChildren = !session.IsExited && session.Inner.HasActiveChildProcesses;
+        session.PostReadScreen(this, request.Id, rows, _server.Options.MaxReadScreenBytes, hasChildren);
     }
 
     /// <summary>Reader thread. Once per (session, kind) per connection lifetime, so a client typing into a read-only view does not flood the log.</summary>
