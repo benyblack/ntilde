@@ -62,7 +62,7 @@ grep -q '"protocolMax":2' <<<"$version_json" \
 NTILDE_APPDATA_ROOT="$(mktemp -d)"
 export NTILDE_APPDATA_ROOT
 descriptor="$NTILDE_APPDATA_ROOT/ntilde-mux/mux/mux-endpoint.json"
-serve_log="${RUNNER_TEMP:-/tmp}/ntilde-mux-serve.log"
+serve_log="$NTILDE_APPDATA_ROOT/ntilde-mux-serve.log"
 "$bin" serve --foreground --idle-exit-minutes 0 >"$serve_log" 2>&1 &
 serve_pid=$!
 # Whatever happens below, no daemon outlives the script, and its log is printed.

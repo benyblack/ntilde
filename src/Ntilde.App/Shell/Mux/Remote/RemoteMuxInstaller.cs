@@ -167,9 +167,9 @@ internal sealed class RemoteMuxInstaller(ISshExecTransport transport, IMuxDaemon
                 return ExecFailed(ex);
             }
 
-            // A cancel that lands as the commit finishes finds the exec with nothing left to wait for, so it returns the
-            // result; the cancel stands all the same (spec §9 step 3): the upload is discarded and the caller sees it.
-            ct.ThrowIfCancellationRequested();
+            // The commit's result is in: a cancel that lands now changes nothing. The upload already replaced ntilde-mux,
+            // so the install is verified and reported (and the caller records it); only a cancel the exec sees before the
+            // result leaves the commit unknown, and discards (spec §9 step 3).
             if (commit.ExitCode != 0)
             {
                 return Failed(ExitFailure($"Installing ntilde-mux on {transport.DisplayName} failed", commit));

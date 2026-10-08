@@ -579,7 +579,10 @@ Every step runs through `ISshExecTransport`, with the same askpass and prompts a
    - **(c) Discard** (`DiscardUpload`), after a rejected trial, a commit that did not run, or a cancel
      after (a): `sh -c 'd="$HOME/.local/share/ntilde/bin"; t="$d/.ntilde-mux.upload-<T>"; rm -f "$t"'`.
      Best effort: it runs even after a cancel, a failure is only logged, and the result stays the reason
-     the install stopped. A failure or cancel during (a) needs no discard: the trap cleans up.
+     the install stopped. A failure or cancel during (a) needs no discard: the trap cleans up. A cancel
+     that lands once the commit's result is in changes nothing: the upload already replaced ntilde-mux, so
+     the install is verified and reported (and recorded); only a cancel the exec sees before that result
+     leaves the commit unknown, and discards.
 4. **Verify.** The commit exec's stdout is `--version --json`:
    `{"version":"…","protocolMin":1,"protocolMax":2,"rid":"…","path":"/abs/…/ntilde-mux"}`.
    - The protocol range must overlap this app's.

@@ -237,7 +237,8 @@ public sealed class RemoteMuxInstallerTests
 
     /// <summary>
     /// After the upload's trial run the host keeps the temp file; a cancel from then on, before the commit or
-    /// while it runs, still discards it (spec §9 step 3), and the caller sees the cancellation.
+    /// while it still runs (its result unknown), still discards it (spec §9 step 3), and the caller sees the
+    /// cancellation.
     /// </summary>
     [Theory]
     [InlineData(false)]
@@ -245,13 +246,11 @@ public sealed class RemoteMuxInstallerTests
     public async Task A_cancel_after_the_upload_discards_it_and_throws(bool duringTheCommit)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
-        var host = new RecordingExecTransport((command, _) =>
-        {
-            if (command == RemoteHostProbe.Command) return new FakeExecReply(UbuntuProbe);
-            if (command == Discard) return new FakeExecReply();
-            if (command == Commit) cts.Cancel(); // only reached when the cancel is during the commit
-            return new FakeExecReply(InstalledJson);
-        });
+        var inner = new RecordingExecTransport((command, _) =>
+            command == RemoteHostProbe.Command ? new FakeExecReply(UbuntuProbe)
+            : command == Discard ? new FakeExecReply()
+            : new FakeExecReply(InstalledJson));
+        var host = new CommitHost(inner, cts, commitFinishes: false);
         var installer = new RemoteMuxInstaller(
             host,
             new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x")),
@@ -262,34 +261,36 @@ public sealed class RemoteMuxInstallerTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => installer.InstallAsync(cts.Token));
 
-        Assert.Equal(
-            duringTheCommit ? [RemoteHostProbe.Command, Trial, Commit, Discard] : [RemoteHostProbe.Command, Trial, Discard],
-            host.Commands);
+        Assert.Equal(duringTheCommit, host.CommitRan);
+        Assert.Equal([RemoteHostProbe.Command, Trial, Discard], inner.Commands);
     }
 
     /// <summary>
-    /// A cancel that lands as the commit finishes still discards it and throws. Here the commit's output and exit status are
-    /// in before the cancel - the order a loaded CI runner produced - so the exec has nothing left to wait for and returns
-    /// the result; the installer must still see the cancellation.
+    /// A cancel that lands once the commit's result is in changes nothing: the upload already replaced ntilde-mux, so the
+    /// install is verified and reported for the caller to record, and nothing is discarded. Here the commit's output and
+    /// exit status are in before the cancel - the order a loaded CI runner produced.
     /// </summary>
     [Fact]
-    public async Task A_cancel_that_lands_as_the_commit_finishes_still_discards_it_and_throws()
+    public async Task A_cancel_that_lands_after_the_commit_finished_keeps_the_install()
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
         var inner = new RecordingExecTransport((command, _) =>
             command == RemoteHostProbe.Command ? new FakeExecReply(UbuntuProbe)
             : command == Discard ? new FakeExecReply()
             : new FakeExecReply(InstalledJson));
-        var host = new CommitFinishedBeforeTheCancel(inner, cts);
+        var host = new CommitHost(inner, cts, commitFinishes: true);
         var installer = new RemoteMuxInstaller(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x")), (_, _) => { })
         {
             NewUploadToken = () => Token,
         };
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => installer.InstallAsync(cts.Token));
+        RemoteMuxInstallResult result = await installer.InstallAsync(cts.Token);
 
+        Assert.True(cts.IsCancellationRequested);
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(Installed, result.Installed);
         Assert.True(host.CommitRan);
-        Assert.Equal([RemoteHostProbe.Command, Trial, Discard], inner.Commands);
+        Assert.Equal([RemoteHostProbe.Command, Trial], inner.Commands);
     }
 
     [Fact]
@@ -498,11 +499,16 @@ public sealed class RemoteMuxInstallerTests
     }
 
     /// <summary>
-    /// <paramref name="inner"/> for every command but the commit, whose channel has its output and exit status (0) ready from
-    /// the start and lands <paramref name="cancel"/> as the exec collects its result (reading its stderr, the last thing it
-    /// does): the commit has finished, the exec has waited for everything, and only then is the caller cancelled.
+    /// <paramref name="inner"/> for every command but the commit, which lands <paramref name="cancel"/> at a set point:
+    /// <list type="bullet">
+    /// <item><paramref name="commitFinishes"/>: its output and exit status (0) are ready from the start, and the cancel lands
+    /// as the exec collects its result (reading its stderr, the last thing it does) - the commit has finished;</item>
+    /// <item>otherwise: the cancel lands at stdin's EOF while the commit still runs, and it ends only when its channel is
+    /// disposed, with no exit status - its result is never known.</item>
+    /// </list>
+    /// Either way the race the real transports leave open is closed, so the outcome does not depend on scheduling.
     /// </summary>
-    private sealed class CommitFinishedBeforeTheCancel(RecordingExecTransport inner, CancellationTokenSource cancel) : ISshExecTransport
+    private sealed class CommitHost(RecordingExecTransport inner, CancellationTokenSource cancel, bool commitFinishes) : ISshExecTransport
     {
         private int _commitRan;
 
@@ -515,7 +521,50 @@ public sealed class RemoteMuxInstallerTests
             if (remoteCommand != Commit) return inner.Start(remoteCommand, ct);
             ct.ThrowIfCancellationRequested();
             Volatile.Write(ref _commitRan, 1);
-            return new FinishedChannel(cancel);
+            return commitFinishes ? new FinishedChannel(cancel) : new RunningChannel(cancel);
+        }
+
+        private sealed class RunningChannel : ISshExecChannel
+        {
+            private readonly TaskCompletionSource<int?> _exit = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public RunningChannel(CancellationTokenSource cancel)
+            {
+                Stdout = new OutputAtExit(_exit.Task);
+                Stdin = new CancelAtEof(cancel);
+            }
+
+            public Stream Stdout { get; }
+
+            public Stream Stdin { get; }
+
+            public string StderrTail => string.Empty;
+
+            public Task<int?> Completion => _exit.Task;
+
+            public void Dispose() => _exit.TrySetResult(null);
+
+            public void Abort() => Dispose();
+        }
+
+        /// <summary>No output until the command ends.</summary>
+        private sealed class OutputAtExit(Task exited) : MemoryStream
+        {
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                await exited.WaitAsync(cancellationToken).ConfigureAwait(false);
+                return 0;
+            }
+        }
+
+        /// <summary>The exec closing stdin (its EOF) is when the caller cancels.</summary>
+        private sealed class CancelAtEof(CancellationTokenSource cancel) : MemoryStream
+        {
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing) cancel.Cancel();
+                base.Dispose(disposing);
+            }
         }
 
         private sealed class FinishedChannel(CancellationTokenSource cancel) : ISshExecChannel
