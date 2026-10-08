@@ -105,6 +105,8 @@ public sealed class MuxCliTests : IDisposable
     [InlineData("version", MuxCliVerbs.Version, true)]
     [InlineData("--version", MuxCliVerbs.Version, true)]  // ntilde-mux --version: the flag is the verb
     [InlineData("--version", Offered, false)]
+    [InlineData("spawn-for-test", MuxCliVerbs.SpawnForTest, true)]
+    [InlineData("spawn-for-test", Offered, false)]        // hidden, and offered only where a host asks for it
     public void Known_verbs_are_the_implemented_ones_the_host_offers(string verb, MuxCliVerbs verbs, bool known) =>
         Assert.Equal(known, MuxCli.IsKnownVerb(verb, verbs));
 
@@ -147,6 +149,7 @@ public sealed class MuxCliTests : IDisposable
         Assert.DoesNotContain("proxy", appSet, StringComparison.Ordinal);
         Assert.DoesNotContain("--version", appSet, StringComparison.Ordinal);
         Assert.DoesNotContain("probe-console", standalone, StringComparison.Ordinal);
+        Assert.Equal(appSet, Run(Host(Offered | MuxCliVerbs.SpawnForTest)).Err.ReplaceLineEndings("\n"));   // never listed
     }
 
     [Fact]
@@ -175,6 +178,55 @@ public sealed class MuxCliTests : IDisposable
         Assert.Equal(0, code);
         ListSessionsResult r = JsonSerializer.Deserialize(output, MuxJsonContext.Default.ListSessionsResult)!;
         Assert.Contains(r.Sessions, s => s.SessionId == id);
+    }
+
+    // spawn-for-test (Phase 5 Task 24): the hidden verb a verification run uses to start sessions running a command of
+    // its own (a heartbeat) in the daemon. No other verb starts a session; attach needs one first.
+
+    [Fact]
+    public async Task Spawn_for_test_starts_a_session_running_the_command_and_prints_its_id()
+    {
+        Guid first = await StartDaemonWithOneSessionAsync();
+
+        var (code, output, err) = Run(Host(Offered | MuxCliVerbs.SpawnForTest), "spawn-for-test", "hb-cmd.exe", "/d /c heartbeat.cmd hb1.txt");
+
+        Assert.Equal(0, code);
+        Assert.Equal(string.Empty, err);
+        Guid id = Guid.ParseExact(output.TrimEnd(), "D");
+        Assert.NotEqual(first, id);
+        ListSessionsResult r = JsonSerializer.Deserialize(Run("ls", "--json").Out, MuxJsonContext.Default.ListSessionsResult)!;
+        SessionSummary spawned = Assert.Single(r.Sessions, s => s.SessionId == id);
+        Assert.Equal("hb-cmd.exe", spawned.Command);
+        Assert.Equal("/d /c heartbeat.cmd hb1.txt", spawned.Arguments);   // one string, as the session's process gets it
+        Assert.True(spawned.Running);   // and it runs on after the verb's connection closed
+    }
+
+    [Fact]
+    public void Spawn_for_test_without_a_daemon_is_exit_1_and_starts_none()
+    {
+        var (code, output, err) = Run(Host(Offered | MuxCliVerbs.SpawnForTest), "spawn-for-test", "cmd.exe");
+
+        Assert.Equal(1, code);
+        Assert.Equal(string.Empty, output);
+        Assert.Equal("No multiplexer is running." + Environment.NewLine, err);
+        Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)));
+    }
+
+    /// <summary>A command is required, and its arguments are one string: a third word is a mistake, not more arguments.</summary>
+    [Theory]
+    [InlineData(new object[] { new string[] { } })]
+    [InlineData(new object[] { new[] { " " } })]
+    [InlineData(new object[] { new[] { "cmd.exe", "/c", "exit" } })]
+    public async Task Spawn_for_test_needs_a_command_and_at_most_one_arguments_string(string[] rest)
+    {
+        await StartDaemonWithOneSessionAsync();
+
+        var (code, output, err) = Run(Host(Offered | MuxCliVerbs.SpawnForTest), ["spawn-for-test", .. rest]);
+
+        Assert.Equal(2, code);
+        Assert.Equal(string.Empty, output);
+        Assert.Equal($"usage: {Prefix} spawn-for-test <command> [<arguments>]" + Environment.NewLine, err);
+        Assert.Single(JsonSerializer.Deserialize(Run("ls", "--json").Out, MuxJsonContext.Default.ListSessionsResult)!.Sessions);   // nothing spawned
     }
 
     [Fact]

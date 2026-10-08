@@ -63,7 +63,9 @@ public static class MuxCommand
             ServeArguments = ServeArguments,
             // The GUI's own daemon keeps the GUI's session factory, so local behaviour cannot change (Phase 4 spec §6.3).
             SessionFactory = () => DefaultTerminalSessionFactory.Instance,
-            Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole,
+            // spawn-for-test is hidden: verification runs start their own sessions with it (Phase 5 Task 24).
+            Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole
+                | MuxCliVerbs.SpawnForTest,
             // Program.cs skips CliConsoleBindings.Prepare for serve (a daemon must not attach to the
             // launching console); serve --foreground binds it through this.
             PrepareForegroundConsole = CliConsoleBindings.Prepare,

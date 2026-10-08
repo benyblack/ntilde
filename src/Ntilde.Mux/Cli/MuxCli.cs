@@ -31,10 +31,12 @@ public static class MuxCli
         ("proxy", MuxCliVerbs.Proxy),
         ("version", MuxCliVerbs.Version),
         ("--version", MuxCliVerbs.Version),
+        ("spawn-for-test", MuxCliVerbs.SpawnForTest),
     ];
 
-    // One usage line per verb, listed only when the host offers it. probe-console, a diagnostic, is
-    // never listed. The App's set prints exactly the text it always has (its tests pin it).
+    // One usage line per verb, listed only when the host offers it. probe-console, a diagnostic, and
+    // spawn-for-test, for verification runs, are never listed. The App's set prints exactly the text it
+    // always has (its tests pin it).
     private static readonly (MuxCliVerbs Verb, string Line)[] UsageLines =
     [
         (MuxCliVerbs.Serve, "serve [--idle-exit-minutes N] [--foreground]"),
@@ -114,6 +116,7 @@ public static class MuxCli
                 MuxCliVerbs.ProbeConsole => ProbeConsole(verbArgs, stdout, stderr, host),
                 MuxCliVerbs.Proxy => Proxy(verbArgs, stderr, host),
                 MuxCliVerbs.Version => Version(verbArgs, stdout, stderr, host),
+                MuxCliVerbs.SpawnForTest => SpawnForTest(verbArgs, stdout, stderr, descriptorPath, host),
                 _ => Fail(stderr, Usage(host)),
             };
         }
@@ -274,6 +277,33 @@ public static class MuxCli
         if (!s.Running) return $"exited {s.ExitCode}";
         // Deliberately detached (spec §7.7): the GUI leaves these alone, so ls is where they are found.
         return s.DetachedByUser ? "running, detached" : "running";
+    }
+
+    /// <summary>
+    /// Hidden, for verification runs (Phase 5 Task 24, <c>scripts/mux-update-survival.ps1</c>):
+    /// <c>spawn-for-test &lt;command&gt; [&lt;arguments&gt;]</c> starts a session running the command in the running daemon,
+    /// prints its id and exits; the session runs on, detached. The arguments are one string, the command line the
+    /// command's process gets. No other verb starts a session, and <c>attach</c> needs one first. Like <c>ls</c> and
+    /// <c>kill</c>, it never starts a daemon: exit 1 when none runs.
+    /// </summary>
+    private static int SpawnForTest(string[] verbArgs, TextWriter stdout, TextWriter stderr, string descriptorPath, MuxCliHost host)
+    {
+        if (verbArgs.Length is < 2 or > 3 || string.IsNullOrWhiteSpace(verbArgs[1]))
+        {
+            return Fail(stderr, $"usage: {host.UsagePrefix} spawn-for-test <command> [<arguments>]");
+        }
+
+        using MuxClient? client = Connect(descriptorPath, stderr, host);
+        if (client is null) return 1;
+
+        Guid id = client.SpawnAsync(new SpawnParams
+        {
+            Command = verbArgs[1],
+            Arguments = verbArgs.Length == 3 ? verbArgs[2] : string.Empty,
+            Title = "spawn-for-test",
+        }).GetAwaiter().GetResult();
+        stdout.WriteLine(id.ToString("D"));
+        return 0;
     }
 
     private static int Kill(string[] verbArgs, TextWriter stdout, TextWriter stderr, string descriptorPath, MuxCliHost host)

@@ -135,6 +135,7 @@ public sealed class MuxCommandTests : IDisposable
     [InlineData(1, "mux", "kill", "00000000-0000-0000-0000-000000000001")]
     [InlineData(1, "mux", "kill-server")]
     [InlineData(2, "mux", "attach", "abcd1234")]
+    [InlineData(1, "mux", "spawn-for-test", "cmd.exe")]   // hidden: for verification runs (Phase 5 Task 24)
     public void Every_App_verb_reaches_its_body(int exitCode, params string[] args)
     {
         var (code, _, err) = Run(args);
