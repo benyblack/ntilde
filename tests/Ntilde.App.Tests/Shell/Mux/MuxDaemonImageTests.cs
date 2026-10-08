@@ -385,6 +385,67 @@ public sealed class MuxDaemonImageTests
         Assert.DoesNotContain(fs.Operations, o => o.Contains(linked, StringComparison.OrdinalIgnoreCase) || o.Contains(linkedStaging, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Review fix round 2: only a copy - named for a version, with its <c>.complete</c> - or a staging folder named as
+    /// staging names them is ever deleted. <c>bin\</c> may be a junction into a shared folder.
+    /// </summary>
+    [Fact]
+    public void Pruning_deletes_only_folders_that_are_copies()
+    {
+        FakeImageFileSystem fs = Installed();
+        string copy = Path.Combine(Bin, "0.10.0");
+        fs.AddFile(Path.Combine(copy, "Ntilde.exe"), "exe");
+        fs.AddFile(Path.Combine(copy, MuxDaemonImage.CompleteFileName), "");
+        string[] strangers =
+        [
+            Path.Combine(Bin, "photos"),                      // not a version's name, no list
+            Path.Combine(Bin, "1.0.0"),                       // a version's name, but no list
+            Path.Combine(Bin, ".cache"),                      // hidden, but not a staging folder
+            Path.Combine(Bin, ".0.9.0.notaguid.tmp"),         // staging-like, but no guid
+        ];
+        foreach (string stranger in strangers)
+        {
+            fs.AddFile(Path.Combine(stranger, "keep.me"), "someone else's");
+            fs.SetLastWriteTimeUtc(stranger, DateTime.UtcNow - TimeSpan.FromDays(2));
+        }
+
+        MuxDaemonImage.PruneOldCopies(DataRoot, Version, fs, Log);
+
+        Assert.False(fs.DirectoryExists(copy));
+        foreach (string stranger in strangers)
+        {
+            Assert.True(fs.FileExists(Path.Combine(stranger, "keep.me")), stranger);
+            Assert.Contains(_log, l => l.Contains(stranger, StringComparison.Ordinal));
+        }
+    }
+
+    /// <summary>
+    /// Review fix round 2: Windows deletes a folder's entries in name order, and <c>.complete</c> sorts first. A copy whose
+    /// delete stops part way (a console host still exiting) must keep its list, so it is still known as a copy, and goes
+    /// at the next prune.
+    /// </summary>
+    [Fact]
+    public void A_copy_that_could_not_be_wholly_deleted_keeps_its_list_and_goes_next_time()
+    {
+        FakeImageFileSystem fs = Installed();
+        string copy = Path.Combine(Bin, "0.10.0");
+        fs.AddFile(Path.Combine(copy, "Ntilde.exe"), "exe");
+        fs.AddFile(Path.Combine(copy, "conpty.dll"), "conpty");
+        fs.AddFile(Path.Combine(copy, "x64", "OpenConsole.exe"), "host");
+        fs.AddFile(Path.Combine(copy, MuxDaemonImage.CompleteFileName), "");
+        string host = Path.Combine(copy, "x64", "OpenConsole.exe");
+        fs.FailDelete = path => path == host ? new UnauthorizedAccessException($"Access to the path '{path}' is denied.") : null;
+
+        MuxDaemonImage.PruneOldCopies(DataRoot, Version, fs, Log);
+
+        Assert.True(fs.FileExists(Path.Combine(copy, MuxDaemonImage.CompleteFileName)));
+        fs.FailDelete = null;
+
+        MuxDaemonImage.PruneOldCopies(DataRoot, Version, fs, Log);
+
+        Assert.False(fs.DirectoryExists(copy));
+    }
+
     [Fact]
     public void Pruning_deletes_a_temporary_folder_only_once_it_is_stale()
     {
@@ -444,8 +505,13 @@ public sealed class MuxDaemonImageTests
             File.WriteAllBytes(Path.Combine(root, "NtildeApp", "Update.exe"), []);
             string data = Path.Combine(root, "data");
             string old = Path.Combine(data, "bin", "0.0.1");
-            Directory.CreateDirectory(old);
+            Directory.CreateDirectory(Path.Combine(old, "x64"));
             File.WriteAllBytes(Path.Combine(old, "Ntilde.exe"), [0]);
+            File.WriteAllBytes(Path.Combine(old, "x64", "OpenConsole.exe"), [0]);
+            File.WriteAllText(Path.Combine(old, MuxDaemonImage.CompleteFileName), "1\tNtilde.exe\n");
+            string stranger = Path.Combine(data, "bin", "not-a-copy");
+            Directory.CreateDirectory(stranger);
+            File.WriteAllBytes(Path.Combine(stranger, "keep.me"), [42]);
 
             string resolved = MuxDaemonImage.Resolve(exe, data, Version, MuxImageFileSystem.Instance, Log);
 
@@ -457,14 +523,16 @@ public sealed class MuxDaemonImageTests
             Assert.Equal(new byte[] { 8, 9, 10 }, File.ReadAllBytes(Path.Combine(copy, "x64", "OpenConsole.exe")));
             Assert.True(File.Exists(Path.Combine(copy, MuxDaemonImage.CompleteFileName)));
             Assert.False(File.Exists(Path.Combine(copy, "ntilde.com")));
-            Assert.Equal(new[] { "0.0.1", Version }, Directory.GetDirectories(Path.Combine(data, "bin")).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+            Assert.Equal(new[] { "0.0.1", Version, "not-a-copy" }, Directory.GetDirectories(Path.Combine(data, "bin")).Select(Path.GetFileName).Order(StringComparer.Ordinal));
             Assert.Equal(resolved, MuxDaemonImage.Resolve(exe, data, Version, MuxImageFileSystem.Instance, Log));
 
             MuxDaemonImage.PruneOldCopies(data, Version, MuxImageFileSystem.Instance, Log);
 
             Assert.False(Directory.Exists(old));
             Assert.True(File.Exists(resolved));
-            Assert.DoesNotContain(_log, l => !l.Contains("staged", StringComparison.OrdinalIgnoreCase) && !l.Contains("deleted", StringComparison.OrdinalIgnoreCase));
+            Assert.True(File.Exists(Path.Combine(stranger, "keep.me")));
+            Assert.DoesNotContain(_log, l => !l.Contains("staged", StringComparison.OrdinalIgnoreCase) && !l.Contains("deleted", StringComparison.OrdinalIgnoreCase)
+                && !l.Contains("not-a-copy", StringComparison.Ordinal));
         }
         finally
         {

@@ -122,10 +122,11 @@ internal static class MuxDaemonImage
     }
 
     /// <summary>
-    /// Deletes <c>&lt;app-data&gt;\bin\&lt;v&gt;</c> folders other than the current version's (<c>&lt;v&gt;</c> and its
-    /// re-packs, <c>&lt;v&gt;-&lt;n&gt;</c>), and staging folders a crashed stager left. A folder in use (a running older
-    /// daemon) fails to delete and is kept whole; a junction or link is never touched. Best effort, never throws; the
-    /// caller runs it off the UI thread.
+    /// Deletes <c>&lt;app-data&gt;\bin\&lt;v&gt;</c> copies other than the current version's (<c>&lt;v&gt;</c> and its
+    /// re-packs, <c>&lt;v&gt;-&lt;n&gt;</c>), and staging folders a crashed stager left. Only what is ours goes
+    /// (<see cref="DeleteCopies"/>): <c>bin\</c> may be a junction into a folder that holds other things. A copy in use (a
+    /// running older daemon) fails to delete and is kept whole; a junction or link is never touched. Best effort, never
+    /// throws; the caller runs it off the UI thread.
     /// </summary>
     public static void PruneOldCopies(string appDataRoot, string currentVersion, IMuxImageFileSystem fs, Action<string> log)
     {
@@ -134,20 +135,22 @@ internal static class MuxDaemonImage
         // Without a version there is nothing to keep, and every copy - a running daemon's included - would look old.
         if (!IsFolderName(currentVersion)) return;
 
-        DeleteCopies(Path.Combine(appDataRoot, DirectoryName), name => IsCurrentVersion(name, currentVersion), onlyStaleStaging: true, fs, log);
+        DeleteCopies(Path.Combine(appDataRoot, DirectoryName), name => IsCurrentVersion(name, currentVersion), onlyStaleStaging: true, retryAfter: null, fs, log);
     }
 
     /// <summary>
     /// Uninstall (<see cref="MuxUninstall"/>): deletes every copy and staging folder, then <c>bin\</c> itself once it is
-    /// empty - unless it is a junction or link, which is left in place. A copy in use is kept whole, and a junction or
-    /// link inside is never touched, as for <see cref="PruneOldCopies"/>. Best effort, never throws.
+    /// empty - unless it is a junction or link, which is left in place. Only what is ours goes, a copy in use is kept
+    /// whole, and a junction or link inside is never touched, as for <see cref="PruneOldCopies"/>. A copy whose delete
+    /// fails is tried once more after <paramref name="retryAfter"/>: right after a forced stop, its console hosts may
+    /// still be exiting. Best effort, never throws.
     /// </summary>
-    public static void RemoveAllCopies(string appDataRoot, IMuxImageFileSystem fs, Action<string> log)
+    public static void RemoveAllCopies(string appDataRoot, IMuxImageFileSystem fs, Action<string> log, TimeSpan retryAfter)
     {
         ArgumentNullException.ThrowIfNull(fs);
         ArgumentNullException.ThrowIfNull(log);
         string bin = Path.Combine(appDataRoot, DirectoryName);
-        if (!DeleteCopies(bin, static _ => false, onlyStaleStaging: false, fs, log)) return;
+        if (!DeleteCopies(bin, static _ => false, onlyStaleStaging: false, retryAfter, fs, log)) return;
 
         try
         {
@@ -160,11 +163,14 @@ internal static class MuxDaemonImage
     }
 
     /// <summary>
-    /// Deletes the folders in <paramref name="bin"/> but those <paramref name="keep"/> names: copies through
-    /// <see cref="TryDeleteCopy"/>, staging folders outright (only once stale with <paramref name="onlyStaleStaging"/>:
-    /// a fresh one may be another process's at work). False when there is no <paramref name="bin"/> to look in.
+    /// Deletes the folders in <paramref name="bin"/> that are ours, but those <paramref name="keep"/> names: copies - named
+    /// for a version, holding a <see cref="CompleteFileName"/> - through <see cref="TryDeleteCopy"/> (tried once more after
+    /// <paramref name="retryAfter"/> when given), and staging folders - named <c>.&lt;version&gt;.&lt;32 hex&gt;.tmp</c> -
+    /// outright, only once stale with <paramref name="onlyStaleStaging"/> (a fresh one may be another process's at work).
+    /// Every other folder is left alone, and said so: <c>bin\</c> may be a junction into a folder that holds other things.
+    /// False when there is no <paramref name="bin"/> to look in.
     /// </summary>
-    private static bool DeleteCopies(string bin, Func<string, bool> keep, bool onlyStaleStaging, IMuxImageFileSystem fs, Action<string> log)
+    private static bool DeleteCopies(string bin, Func<string, bool> keep, bool onlyStaleStaging, TimeSpan? retryAfter, IMuxImageFileSystem fs, Action<string> log)
     {
         IReadOnlyList<string> folders;
         try
@@ -192,6 +198,12 @@ internal static class MuxDaemonImage
 
                 if (name.StartsWith('.'))
                 {
+                    if (!IsStagingName(name))
+                    {
+                        log($"[Mux] left {folder} alone: it is not a copy of the multiplexer daemon");
+                        continue;
+                    }
+
                     // A stager's folder: at work while fresh, a crashed one's once stale. Nothing ever runs from one.
                     if (!onlyStaleStaging || DateTime.UtcNow - fs.GetLastWriteTimeUtc(folder) >= StaleStagingAge) fs.DeleteDirectory(folder);
                     continue;
@@ -199,7 +211,20 @@ internal static class MuxDaemonImage
 
                 if (keep(name)) continue;
 
-                if (TryDeleteCopy(folder, fs, out string? kept)) log($"[Mux] deleted the multiplexer daemon's copy {folder}: no daemon runs from it");
+                if (!IsFolderName(name) || !fs.FileExists(Path.Combine(folder, CompleteFileName)))
+                {
+                    log($"[Mux] left {folder} alone: it is not a copy of the multiplexer daemon");
+                    continue;
+                }
+
+                bool deleted = TryDeleteCopy(folder, fs, out string? kept);
+                if (!deleted && retryAfter is { } delay)
+                {
+                    Thread.Sleep(delay);
+                    deleted = TryDeleteCopy(folder, fs, out kept);
+                }
+
+                if (deleted) log($"[Mux] deleted the multiplexer daemon's copy {folder}: no daemon runs from it");
                 else log($"[Mux] kept the multiplexer daemon's copy {folder}: {kept}");
             }
             catch (Exception ex)
@@ -384,8 +409,10 @@ internal static class MuxDaemonImage
     /// <summary>
     /// Deletes a copy unless a daemon runs from it. Windows refuses to delete a running executable, but would let its
     /// folder be renamed or its other files go: so the executables at the top go first, and a refusal there leaves the
-    /// copy whole. A junction or link is never deleted through: its files are its target's. Null in
-    /// <paramref name="kept"/> when it is gone; otherwise why not.
+    /// copy whole. A junction or link is never deleted through: its files are its target's. <see cref="CompleteFileName"/>
+    /// goes last, just before the folder: a delete that stops part way (a console host still exiting) leaves it, so the
+    /// rest is still known for a copy and goes next time - a recursive delete would take it first, as it sorts first.
+    /// Null in <paramref name="kept"/> when it is gone; otherwise why not.
     /// </summary>
     private static bool TryDeleteCopy(string folder, IMuxImageFileSystem fs, out string? kept)
     {
@@ -394,6 +421,14 @@ internal static class MuxDaemonImage
             if (fs.IsReparsePoint(folder))
             {
                 kept = "it is a junction or link";
+                return false;
+            }
+
+            IReadOnlyList<string> subfolders = fs.GetDirectories(folder);
+            if (subfolders.Any(fs.IsReparsePoint))
+            {
+                // Not one of ours: a copy holds plain folders only (<arch>\).
+                kept = "it holds a junction or link";
                 return false;
             }
 
@@ -410,6 +445,14 @@ internal static class MuxDaemonImage
                 }
             }
 
+            foreach (string subfolder in subfolders) fs.DeleteDirectory(subfolder);
+            string complete = Path.Combine(folder, CompleteFileName);
+            foreach (string file in fs.GetFiles(folder, "*"))
+            {
+                if (!string.Equals(file, complete, StringComparison.OrdinalIgnoreCase)) fs.DeleteFile(file);
+            }
+
+            fs.DeleteFile(complete);
             fs.DeleteDirectory(folder);
         }
         catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException)
@@ -481,6 +524,18 @@ internal static class MuxDaemonImage
         && version.Trim().Length == version.Length
         && version.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
         && version.IndexOfAny(['\\', '/']) < 0;
+
+    /// <summary><c>.&lt;version or version-n&gt;.&lt;32 hex&gt;.tmp</c>: the name <see cref="Stage"/> gives its folder.</summary>
+    private static bool IsStagingName(string name)
+    {
+        const string Suffix = ".tmp";
+        if (name.Length <= 1 + Suffix.Length || name[0] != '.' || !name.EndsWith(Suffix, StringComparison.OrdinalIgnoreCase)) return false;
+        string inner = name[1..^Suffix.Length];
+        int dot = inner.LastIndexOf('.');
+        if (dot <= 0) return false;
+        string guid = inner[(dot + 1)..];
+        return guid.Length == 32 && guid.All(char.IsAsciiHexDigit) && IsFolderName(inner[..dot]);
+    }
 
     /// <summary><paramref name="name"/> is <paramref name="version"/>'s copy: the version itself, or a re-pack of it (<c>-&lt;n&gt;</c>).</summary>
     private static bool IsCurrentVersion(string name, string version)

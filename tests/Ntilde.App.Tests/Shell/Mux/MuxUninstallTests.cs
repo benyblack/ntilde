@@ -18,7 +18,8 @@ public sealed class MuxUninstallTests
     private static readonly MuxEndpointDescriptor Running = new() { Endpoint = "ntilde-mux-test", Pid = 4242, ProcessName = "Ntilde" };
 
     /// <summary>Short, so a test that waits one out stays fast.</summary>
-    private static readonly MuxUninstall.Waits Short = new(Request: TimeSpan.FromMilliseconds(300), Shutdown: TimeSpan.FromMilliseconds(300), Terminate: TimeSpan.FromMilliseconds(300));
+    private static readonly MuxUninstall.Waits Short = new(
+        Request: TimeSpan.FromMilliseconds(300), Shutdown: TimeSpan.FromMilliseconds(300), Terminate: TimeSpan.FromMilliseconds(300), RetryDelete: TimeSpan.FromMilliseconds(50));
 
     private readonly List<string> _log = new();
 
@@ -141,6 +142,45 @@ public sealed class MuxUninstallTests
         Assert.True(fs.FileExists(Path.Combine(Bin, "0.12.0", "x64", "OpenConsole.exe"))); // kept whole
         Assert.True(fs.DirectoryExists(Bin));
         Assert.Contains(_log, l => l.Contains("0.12.0", StringComparison.Ordinal) && l.Contains("kept", StringComparison.Ordinal));
+    }
+
+    /// <summary>Review fix round 2: <c>bin\</c> may be a junction into a shared folder; only our copies are ever deleted.</summary>
+    [Fact]
+    public void Removing_the_copies_leaves_a_folder_that_is_not_a_copy_alone()
+    {
+        FakeImageFileSystem fs = WithCopies();
+        string stranger = Path.Combine(Bin, "photos");
+        string unlisted = Path.Combine(Bin, "2.0.0"); // a version's name, but no list
+        fs.AddFile(Path.Combine(stranger, "keep.me"), "someone else's");
+        fs.AddFile(Path.Combine(unlisted, "keep.me"), "someone else's");
+
+        Run(new FakeDaemon { Live = null }, fs);
+
+        Assert.False(fs.DirectoryExists(Path.Combine(Bin, "0.11.0")));
+        Assert.False(fs.DirectoryExists(Path.Combine(Bin, "0.12.0")));
+        Assert.True(fs.FileExists(Path.Combine(stranger, "keep.me")));
+        Assert.True(fs.FileExists(Path.Combine(unlisted, "keep.me")));
+        Assert.True(fs.DirectoryExists(Bin));
+        Assert.Contains(_log, l => l.Contains(stranger, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Review fix round 2: right after a forced stop the daemon's console hosts may still be exiting, so a copy's delete can
+    /// fail once on <c>x64\OpenConsole.exe</c>; uninstall tries it again after a moment instead of leaving half a copy.
+    /// </summary>
+    [Fact]
+    public void A_copy_whose_delete_fails_once_is_tried_again()
+    {
+        FakeImageFileSystem fs = WithCopies();
+        string host = Path.Combine(Bin, "0.12.0", "x64", "OpenConsole.exe");
+        int refusals = 0;
+        fs.FailDelete = path => path == host && refusals++ == 0 ? new UnauthorizedAccessException($"Access to the path '{path}' is denied.") : null;
+
+        Run(new FakeDaemon { Live = null }, fs);
+
+        Assert.Equal(2, refusals);
+        Assert.False(fs.DirectoryExists(Path.Combine(Bin, "0.12.0")));
+        Assert.False(fs.DirectoryExists(Bin));
     }
 
     [Fact]

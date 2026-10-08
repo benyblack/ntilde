@@ -10,8 +10,9 @@ namespace Ntilde.Shell.Mux;
 /// its own copy under the app-data root (<see cref="MuxDaemonImage"/>), outside the install root that uninstall stops and
 /// deletes: left alone, the daemon and every shell it hosts would outlive the uninstall, with about 75 MB of copies. So
 /// the hook stops it as <c>ntilde mux kill-server --force</c> would - asked to shut down, and terminated by pid when it
-/// cannot be asked or has not exited within 5 s - then removes the copies (<see cref="MuxDaemonImage.RemoveAllCopies"/>).
-/// About 10 s at worst, inside the budget Velopack gives a fast callback.
+/// cannot be asked or has not exited within 5 s - then removes the copies (<see cref="MuxDaemonImage.RemoveAllCopies"/>):
+/// only folders that are copies, never anything else <c>bin\</c> holds. About 10 s at worst, inside the budget Velopack
+/// gives a fast callback; the hook runs it before the PATH's removal, whose broadcast can take seconds of its own.
 /// </summary>
 internal static class MuxUninstall
 {
@@ -19,9 +20,10 @@ internal static class MuxUninstall
     /// <param name="Request">For the shutdown request to be answered: a daemon that never answers must not hold the uninstall.</param>
     /// <param name="Shutdown">For the daemon to exit once asked: kill-server's 5 s.</param>
     /// <param name="Terminate">For it to be gone once terminated.</param>
-    internal sealed record Waits(TimeSpan Request, TimeSpan Shutdown, TimeSpan Terminate)
+    /// <param name="RetryDelete">Before a copy whose delete failed is tried once more: its console hosts may still be exiting.</param>
+    internal sealed record Waits(TimeSpan Request, TimeSpan Shutdown, TimeSpan Terminate, TimeSpan RetryDelete)
     {
-        public static Waits Default { get; } = new(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(2));
+        public static Waits Default { get; } = new(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(500));
     }
 
     /// <summary>The hook (Program.cs): this user's daemon at the app-data root, and its copies. Windows only; never throws.</summary>
@@ -47,17 +49,19 @@ internal static class MuxUninstall
         ArgumentNullException.ThrowIfNull(daemon);
         ArgumentNullException.ThrowIfNull(fs);
         ArgumentNullException.ThrowIfNull(log);
+        Waits w = waits ?? Waits.Default;
         try
         {
-            StopDaemon(daemon, log, waits ?? Waits.Default);
+            StopDaemon(daemon, log, w);
         }
         catch (Exception ex)
         {
             log($"[Mux] uninstall: stopping the multiplexer daemon failed: {ex.Message}");
         }
 
-        // After the daemon: a copy it still runs from cannot be deleted, and is kept whole.
-        MuxDaemonImage.RemoveAllCopies(appDataRoot, fs, log);
+        // After the daemon: a copy it still runs from cannot be deleted, and is kept whole; one whose console hosts are
+        // still exiting from a forced stop is tried once more.
+        MuxDaemonImage.RemoveAllCopies(appDataRoot, fs, log, w.RetryDelete);
     }
 
     private static void StopDaemon(IMuxUninstallDaemon daemon, Action<string> log, Waits waits)

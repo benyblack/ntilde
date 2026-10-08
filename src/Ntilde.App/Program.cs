@@ -39,6 +39,7 @@ class Program
             //
             // Uninstall also stops the local multiplexer daemon and removes its copies (Phase 5 Task 21): the daemon runs
             // from a copy outside the install root, so the uninstall would otherwise leave it, and every shell, running.
+            // First, within the hook's time budget: the PATH's WM_SETTINGCHANGE broadcast can wait seconds on hung windows.
             if (OperatingSystem.IsWindows())
             {
                 velopack = velopack
@@ -46,8 +47,8 @@ class Program
                     .OnAfterUpdateFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
                     .OnBeforeUninstallFastCallback(static _ =>
                     {
-                        UserPathRegistration.Remove(InstallDirectory());
                         Ntilde.Shell.Mux.MuxUninstall.Run();
+                        UserPathRegistration.Remove(InstallDirectory());
                     });
             }
 

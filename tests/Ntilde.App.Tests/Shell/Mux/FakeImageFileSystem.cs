@@ -31,6 +31,9 @@ internal sealed class FakeImageFileSystem : IMuxImageFileSystem
     public Action<string, string>? BeforeMove { get; set; }
     public Action<string>? BeforeDeleteFile { get; set; }
 
+    /// <summary>A file or folder that cannot be deleted right now (an exiting process still holds it): the exception to throw.</summary>
+    public Func<string, Exception?>? FailDelete { get; set; }
+
     public void AddFile(string path, string content)
     {
         CreateDirectory(Path.GetDirectoryName(path)!);
@@ -114,19 +117,49 @@ internal sealed class FakeImageFileSystem : IMuxImageFileSystem
     public void DeleteFile(string path)
     {
         BeforeDeleteFile?.Invoke(path);
-        if (InUse.Contains(path)) throw new UnauthorizedAccessException($"Access to the path '{path}' is denied.");
+        Refuse(path);
         _files.Remove(path);
         Operations.Add($"delete {path}");
     }
 
+    /// <summary>
+    /// As Windows' recursive delete does: the entries in name order, files and folders alike, each folder's contents
+    /// before itself; the first that cannot go stops it there, and what came before it is gone.
+    /// </summary>
     public void DeleteDirectory(string path)
     {
         if (!DirectoryExists(path)) throw new DirectoryNotFoundException(path);
-        if (InUse.Any(f => f.StartsWith(path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))) throw new UnauthorizedAccessException($"Access to the path '{path}' is denied.");
-        foreach (string f in Under(_files.Keys, path)) _files.Remove(f);
-        foreach (string d in Under(_dirs, path)) _dirs.Remove(d);
-        _dirs.Remove(path);
+        DeleteTree(path);
         Operations.Add($"rmdir {path}");
+    }
+
+    private void DeleteTree(string directory)
+    {
+        List<string> entries = _files.Keys.Concat(_dirs)
+            .Where(e => Cmp.Equals(Path.GetDirectoryName(e), directory))
+            .OrderBy(e => Path.GetFileName(e), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (string entry in entries)
+        {
+            if (_dirs.Contains(entry))
+            {
+                DeleteTree(entry);
+            }
+            else
+            {
+                Refuse(entry);
+                _files.Remove(entry);
+            }
+        }
+
+        Refuse(directory);
+        _dirs.Remove(directory);
+    }
+
+    private void Refuse(string path)
+    {
+        if (InUse.Contains(path)) throw new UnauthorizedAccessException($"Access to the path '{path}' is denied.");
+        if (FailDelete?.Invoke(path) is { } failure) throw failure;
     }
 
     private static List<string> Under(IEnumerable<string> paths, string directory) =>
