@@ -751,72 +751,114 @@ jobs:
           $env:NTILDE_APPDATA_ROOT = $root
           $errorFile = Join-Path $root 'logs/startup_error.txt'
           $debugLog  = Join-Path $root 'logs/debug.log'
+          $muxLog    = Join-Path $root 'logs/mux.log'
 
           $exe = Join-Path $PWD 'artifacts/publish/win-x64/Ntilde.exe'
           if (-not (Test-Path $exe)) { throw "The publish produced no Ntilde.exe at $exe." }
 
-          $proc = Start-Process -FilePath $exe -PassThru
-          Write-Output "Started pid $($proc.Id); watching for 45s."
+          try {
+            $proc = Start-Process -FilePath $exe -PassThru
+            Write-Output "Started pid $($proc.Id); watching for 45s."
 
-          # Poll rather than sleep-then-look, so a fast crash is reported as a crash instead
-          # of waiting out the full window first.
-          $deadline = (Get-Date).AddSeconds(45)
-          while ((Get-Date) -lt $deadline) {
-            if ($proc.HasExited -or (Test-Path $errorFile)) { break }
-            Start-Sleep -Seconds 2
-          }
-
-          # Diagnostics BEFORE the assertions: on a tag build this log is the whole
-          # diagnosis, and an assertion that throws first would take it away.
-          foreach ($f in @($debugLog, $errorFile)) {
-            if (Test-Path $f) {
-              Write-Output "---- $f ----"
-              Get-Content $f -Tail 60
+            # Poll rather than sleep-then-look, so a fast crash is reported as a crash instead
+            # of waiting out the full window first.
+            $deadline = (Get-Date).AddSeconds(45)
+            while ((Get-Date) -lt $deadline) {
+              if ($proc.HasExited -or (Test-Path $errorFile)) { break }
+              Start-Sleep -Seconds 2
             }
-          }
 
-          if (Test-Path $errorFile) {
-            throw "The bundle failed during startup and wrote startup_error.txt (contents above). A trimmed-away type or a native that will not load is a real break in the artifact about to be released - do not retry it away."
-          }
-          if ($proc.HasExited) {
-            throw "The bundle exited on its own within 45s (exit code $($proc.ExitCode)) without writing startup_error.txt, so it died outside Program.cs's own try/catch - suspect the native side or the host."
-          }
-          if (-not (Test-Path $debugLog)) {
-            throw "The process is alive but never wrote $debugLog, so managed Main did not reach its startup logging. Suspect a failure before the log sink is wired, in the AOT host itself."
-          }
-
-          # Asserts on the THIRD line Program.cs logs at startup, not the first: the first
-          # ("Ntilde started with args: ...") never reaches the file, on any machine, so
-          # the obvious assertion is a guaranteed false failure. Build: is the better anchor
-          # anyway - it proves managed Main got through startup AND that DescribeBuild
-          # resolved the executable path, the one remaining IL3000 in the tree.
-          if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
-            throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
-          }
-
-          # Beyond "Main ran": the window and a terminal view came up, and the downloaded
-          # native PTY loaded and spawned a shell with a live child. Both lines are emitted on
-          # a pristine profile. If a log reword breaks this, re-anchor to whatever the renderer
-          # and the PTY now say on first paint - do not delete the check, or this step goes
-          # back to proving only that a process launched, which #443 also did.
-          #
-          # `Spawned ... pid=<n>`, NOT the `Spawning` line this step first shipped with:
-          # RustPtySession logs `Spawning` BEFORE calling pty_spawn, so a rusty_pty that is
-          # missing, ABI-incompatible, or simply unable to spawn writes it and then throws
-          # into TerminalPane.InitializeSessionCore's catch, which shows an error banner and
-          # leaves the process alive and themed. Every assertion in this step would pass and
-          # the PTY-less bundle would be published - the precise failure this gate exists to
-          # stop, since this job's natives come from `Download Native Artifact` and are never
-          # compiled or run anywhere else. `Spawned` sits after the IsInvalid check and carries
-          # the child pid, so it cannot be reached without a working native. (Codex P1 on #445.)
-          foreach ($pattern in @('\[TerminalView\] Theme applied', '\[RustPtySession\] Spawned .*pid=\d+')) {
-            if (-not (Select-String -Path $debugLog -Pattern $pattern -Quiet)) {
-              throw "$debugLog has no line matching '$pattern', so the bundle started but its UI never finished coming up. A trimmed-away type reached only while building the terminal view, or a native that failed to load, looks exactly like this."
+            # Diagnostics BEFORE the assertions: on a tag build this log is the whole
+            # diagnosis, and an assertion that throws first would take it away.
+            foreach ($f in @($debugLog, $muxLog, $errorFile)) {
+              if (Test-Path $f) {
+                Write-Output "---- $f ----"
+                Get-Content $f -Tail 60
+              }
             }
-          }
 
-          Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
-          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            if (Test-Path $errorFile) {
+              throw "The bundle failed during startup and wrote startup_error.txt (contents above). A trimmed-away type or a native that will not load is a real break in the artifact about to be released - do not retry it away."
+            }
+            if ($proc.HasExited) {
+              throw "The bundle exited on its own within 45s (exit code $($proc.ExitCode)) without writing startup_error.txt, so it died outside Program.cs's own try/catch - suspect the native side or the host."
+            }
+            if (-not (Test-Path $debugLog)) {
+              throw "The process is alive but never wrote $debugLog, so managed Main did not reach its startup logging. Suspect a failure before the log sink is wired, in the AOT host itself."
+            }
+
+            # Asserts on the THIRD line Program.cs logs at startup, not the first: the first
+            # ("Ntilde started with args: ...") never reaches the file, on any machine, so
+            # the obvious assertion is a guaranteed false failure. Build: is the better anchor
+            # anyway - it proves managed Main got through startup AND that DescribeBuild
+            # resolved the executable path, the one remaining IL3000 in the tree.
+            if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
+              throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
+            }
+
+            # One assertion beyond "Main ran": the window and a terminal view actually came up,
+            # and a shell was spawned with a live child. Persistence is ON by default (KeepOnClose),
+            # so on a pristine profile the shell is no longer spawned in this process: the GUI starts
+            # the multiplexer daemon (`Ntilde.exe mux serve`, same bundle, same NTILDE_APPDATA_ROOT)
+            # and the daemon spawns it. The smoke stays on the real default on purpose, which also
+            # makes it prove the AOT daemon path. Either shape passes, and each needs a line that is
+            # only reachable with a real child behind it:
+            #   - persistence off / daemon unavailable fallback: debug.log has RustPtySession's
+            #     `Spawned ... pid=<n>` (src/Ntilde.Pty/RustPtySession.cs, after the IsInvalid check);
+            #   - persistence on: debug.log has MuxDaemonLauncher's `[Mux] starting the multiplexer
+            #     daemon` (src/Ntilde.Mux/Daemon/MuxDaemonLauncher.cs) AND the daemon's own mux.log
+            #     has the same `Spawned ... pid=<n>` line (MuxServeHost routes PtyLogger into mux.log
+            #     as `[Info] [RustPtySession] Spawned ...`) AND `[MuxDaemon] serving`
+            #     (src/Ntilde.Mux/MuxDaemonHost.cs).
+            # `Spawned ... pid=<n>` rather than `Spawning`: RustPtySession logs `Spawning` BEFORE
+            # calling pty_spawn, so a PTY that cannot spawn writes it anyway (Codex P1 on #445).
+            #
+            # If a log-message reword breaks this, re-anchor it; do not delete the check.
+            $spawnPattern = '\[RustPtySession\] Spawned .*pid=\d+'
+            if (-not (Select-String -Path $debugLog -Pattern '\[TerminalView\] Theme applied' -Quiet)) {
+              throw "$debugLog has no line matching '\[TerminalView\] Theme applied', so the bundle started but its UI never finished coming up. A trimmed-away type reached only while building the terminal view looks exactly like this."
+            }
+            $guiSpawned    = Select-String -Path $debugLog -Pattern $spawnPattern -Quiet
+            $daemonStarted = Select-String -Path $debugLog -Pattern '\[Mux\] starting the multiplexer daemon' -Quiet
+            $daemonSpawned = (Test-Path $muxLog) -and (Select-String -Path $muxLog -Pattern $spawnPattern -Quiet)
+            $daemonServing = (Test-Path $muxLog) -and (Select-String -Path $muxLog -Pattern '\[MuxDaemon\] serving' -Quiet)
+            if ($guiSpawned) {
+              Write-Output "The shell was spawned in the GUI process (persistence off or daemon unavailable)."
+            }
+            elseif ($daemonStarted -and $daemonServing -and $daemonSpawned) {
+              Write-Output "The GUI started the multiplexer daemon and the daemon spawned the shell."
+            }
+            else {
+              throw "Neither shape of shell spawn was found. GUI: $debugLog has no '$spawnPattern' line. Daemon: debug.log started the daemon=$daemonStarted, $muxLog serving=$daemonServing, spawned a shell=$daemonSpawned. So the bundle started but cannot open a shell, or the AOT daemon path (ntilde mux serve) is broken."
+            }
+
+            Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
+          }
+          finally {
+            # The daemon outlives the GUI process and must never be left running: stop it by its own
+            # verb first, then by command line (it runs from a staged copy under the profile root, or
+            # from the publish directory).
+            $global:LASTEXITCODE = 0
+            try { & $exe mux kill-server 2>&1 | Out-Host } catch { Write-Output "kill-server failed: $_" }
+            $global:LASTEXITCODE = 0
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+            $publishDir = Split-Path $exe -Parent
+            Get-CimInstance Win32_Process -Filter "Name = 'Ntilde.exe'" -ErrorAction SilentlyContinue |
+              Where-Object {
+                $_.CommandLine -match 'mux\s+serve' -and $_.ExecutablePath -and
+                ($_.ExecutablePath.StartsWith($publishDir, [StringComparison]::OrdinalIgnoreCase) -or
+                 $_.ExecutablePath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase))
+              } |
+              ForEach-Object {
+                Write-Output "Stopping leftover daemon pid $($_.ProcessId)"
+                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+              }
+          }
+          # The runner's pwsh wrapper ends the step with `exit $LASTEXITCODE`; kill-server's code
+          # must not leak into it.
+          $global:LASTEXITCODE = 0
+          exit 0
 
       # win-x64 only. osx-arm64's user-facing zip is the Velopack Portable bundle
       # (Ntilde.app inside a ditto zip) built by the macOS Velopack steps below and
