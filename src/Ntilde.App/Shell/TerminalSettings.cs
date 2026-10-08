@@ -107,7 +107,8 @@ namespace Ntilde.Shell
         /// MainWindow (which picks the session factory for new panes); the pane never reads it, so it is
         /// deliberately absent from TerminalPane.ApplySettings.
         /// </summary>
-        public string SessionPersistence { get; set; } = "Off";
+        public const string DefaultSessionPersistence = Ntilde.Shell.Mux.SessionPersistenceMode.Off;
+        public string SessionPersistence { get; set; } = DefaultSessionPersistence;
         public System.Collections.Generic.Dictionary<string, string> Keybindings { get; set; } = new();
 
         // Title bar customization. Deltas only: an id absent here takes its TitleBarCatalog default,
