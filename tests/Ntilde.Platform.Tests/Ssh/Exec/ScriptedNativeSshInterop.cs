@@ -18,6 +18,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     private int _execCalls;
     private readonly SemaphoreSlim _arrived = new(0);
     private int _waits;
+    private long _lastDequeueTimestamp;
     private int _polls;
     private int _dequeued;
     private int _sendEofCount;
@@ -83,8 +84,22 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
             return true;
         }
 
-        return _arrived.Wait(timeout);
+        if (sessionHandle.IsClosed)
+        {
+            return false; // as the native wait: a closed session has nothing to wait for
+        }
+
+        return _arrived.Wait(IdleWaitOverride ?? timeout);
     }
+
+    /// <summary>
+    /// When set, <see cref="WaitForEvent"/> waits this long whatever the caller asks for: a wake-up the
+    /// transport loses then costs seconds, not one 100 ms tick, so a test can tell the two apart.
+    /// </summary>
+    public TimeSpan? IdleWaitOverride { get; set; }
+
+    /// <summary>The <see cref="Stopwatch.GetTimestamp"/> at which the last event was dequeued by a poll.</summary>
+    public long LastDequeueTimestamp => Volatile.Read(ref _lastDequeueTimestamp);
 
     public static NativeSshEvent Connected() =>
         new(NativeSshEventKind.Connected, """{"host":"example.com","port":2200,"user":"alice"}"""u8.ToArray(), flags: NativeSshEventFlags.Json);
@@ -148,6 +163,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
             return null;
         }
 
+        Volatile.Write(ref _lastDequeueTimestamp, System.Diagnostics.Stopwatch.GetTimestamp());
         Interlocked.Increment(ref _dequeued);
         return next;
     }
@@ -178,6 +194,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     {
         Interlocked.Increment(ref _closeCount);
         sessionHandle.Dispose();
+        _arrived.Release(); // as mark_closed wakes the native wait, so a close never waits out the override
     }
 
     public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) =>

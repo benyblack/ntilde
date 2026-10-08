@@ -1309,6 +1309,9 @@ fn spawn_session(config: ConnectConfig, mode: SessionMode) -> usize {
             });
         }
 
+        // Invariant: Closed is queued BEFORE mark_closed (queue_event drops events once closed). The
+        // managed PollLoop relies on it: it must see Closed to stop, or nova_ssh_wait_event would
+        // report CLOSED on an empty queue and the loop would spin.
         worker_shared.queue_event(QueuedEvent {
             kind: NovaSshEventKind::Closed,
             payload: serde_json::to_vec(&ClosedPayload {
@@ -6818,6 +6821,7 @@ mod event_wait_tests {
         let shared = Arc::new(SharedState::new());
         let handle = session_with(&shared);
 
+        let started = Instant::now();
         let producer = {
             let shared = shared.clone();
             thread::spawn(move || {
@@ -6826,7 +6830,6 @@ mod event_wait_tests {
             })
         };
 
-        let started = Instant::now();
         let rc = nova_ssh_wait_event(handle, 1000);
         let waited = started.elapsed();
         producer.join().unwrap();
@@ -6835,6 +6838,27 @@ mod event_wait_tests {
         assert!(waited >= Duration::from_millis(90), "woke before the event: {waited:?}");
         assert!(waited < Duration::from_millis(800), "slept through the wake-up: {waited:?}");
         nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn nova_ssh_close_from_another_thread_wakes_a_parked_wait() {
+        // The real close path: registry removal, then mark_closed. The waiter holds its own Arc to
+        // the session, so it was already past the registry lookup and reports CLOSED.
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+
+        let waiter = thread::spawn(move || {
+            let started = Instant::now();
+            let rc = nova_ssh_wait_event(handle, 1000);
+            (rc, started.elapsed())
+        });
+
+        thread::sleep(Duration::from_millis(100));
+        nova_ssh_close(handle);
+
+        let (rc, waited) = waiter.join().expect("the waiter must not panic");
+        assert_eq!(NOVA_SSH_RESULT_CLOSED, rc);
+        assert!(waited < Duration::from_millis(800), "slept through the close: {waited:?}");
     }
 
     #[test]

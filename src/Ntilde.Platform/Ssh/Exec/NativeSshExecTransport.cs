@@ -385,7 +385,11 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 if (next is null)
                 {
                     // Parks until the native side queues something. Bounded so _stop is seen and the
-                    // handle's reference (held for the call) never delays a close for long.
+                    // handle's reference (held for the call) never delays a close for long. Relies on
+                    // the native worker queueing Closed before it marks the session closed: otherwise
+                    // a closed, empty session would return at once and this loop would spin. The
+                    // native close now usually completes on this thread (the SafeHandle release
+                    // runs when the last reference drops), bounded by Close's StopWait.
                     _interop.WaitForEvent(handle, IdleWait);
                     continue;
                 }

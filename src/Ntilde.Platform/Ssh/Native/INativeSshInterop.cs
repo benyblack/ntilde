@@ -54,7 +54,8 @@ public interface INativeSshInterop
     /// </remarks>
     bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
     {
-        Thread.Sleep(timeout > TimeSpan.FromMilliseconds(10) ? TimeSpan.FromMilliseconds(10) : timeout);
+        TimeSpan sleep = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout; // Infinite must not sleep forever
+        Thread.Sleep(sleep > TimeSpan.FromMilliseconds(10) ? TimeSpan.FromMilliseconds(10) : sleep);
         return true;
     }
     void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data);
