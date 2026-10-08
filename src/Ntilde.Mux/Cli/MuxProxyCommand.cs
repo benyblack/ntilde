@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
 using Ntilde.Mux.Transport;
 
 namespace Ntilde.Mux.Cli;
@@ -106,19 +107,26 @@ public static class MuxProxyCommand
     /// (residual R1): the verb passes <see cref="UnixChannelStdio.EndStdoutAndStderr"/> on Unix, where the proxy runs.
     /// Null for none: a proxy run inside another process (tests) must not end that process's descriptors.
     /// </param>
+    /// <param name="getEnvironmentVariable">
+    /// The proxy's environment, for <c>SSH_AUTH_SOCK</c>; null is the process's. Once connected, the proxy points the
+    /// daemon's stable agent link (<see cref="AgentSocketLink"/>) at this connection's agent, so the shells the
+    /// daemon spawned earlier reach the agent of the newest connection. A missing or dead agent leaves the link alone.
+    /// </param>
     public static int Run(
         Stream stdin,
         Stream stdout,
         TextWriter stderr,
         Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> connectDaemon,
         Func<MuxEndpointDescriptor, bool>? isDaemonAlive = null,
-        Action? endStdio = null)
+        Action? endStdio = null,
+        Func<string, string?>? getEnvironmentVariable = null)
     {
         ArgumentNullException.ThrowIfNull(stdin);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
         ArgumentNullException.ThrowIfNull(connectDaemon);
         isDaemonAlive ??= static d => MuxDiscovery.IsProcessAlive(d.Pid, d.ProcessName, d.StartTime);
+        getEnvironmentVariable ??= Environment.GetEnvironmentVariable;
 
         Stream daemon;
         MuxEndpointDescriptor descriptor;
@@ -132,6 +140,8 @@ public static class MuxProxyCommand
             CloseQuietly(stdout);
             return MuxProxyExitCodes.DaemonUnavailable;
         }
+
+        RepointAgentLink(descriptor, getEnvironmentVariable, stderr);
 
         try
         {
@@ -188,6 +198,24 @@ public static class MuxProxyCommand
         // real now, so the client sees the end before the wait below, not when the process exits after it.
         endStdio?.Invoke();
         return DaemonRunsOn(descriptor, isDaemonAlive) ? MuxProxyExitCodes.ConnectionClosed : MuxProxyExitCodes.DaemonClosed;
+    }
+
+    /// <summary>
+    /// Points the daemon's agent link at this connection's <c>SSH_AUTH_SOCK</c>. Best effort and silent: it must never
+    /// fail or delay the proxy, and only a link whose directory exists (the daemon's endpoint directory) is touched.
+    /// </summary>
+    private static void RepointAgentLink(MuxEndpointDescriptor descriptor, Func<string, string?> getEnvironmentVariable, TextWriter stderr)
+    {
+        try
+        {
+            string? link = AgentSocketLink.LinkPathForEndpoint(descriptor.Endpoint, line => stderr.WriteLine($"[ntilde-mux] {line}"));
+            if (link is null || !Directory.Exists(Path.GetDirectoryName(link))) return;
+            AgentSocketLink.TryRepoint(link, getEnvironmentVariable("SSH_AUTH_SOCK"));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            // The agent link is a convenience: a proxy that cannot update it still pumps.
+        }
     }
 
     /// <summary>
