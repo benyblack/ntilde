@@ -345,7 +345,9 @@ the host: not your `PATH`, not your shell's startup files. It has three ways to 
 - **Install** downloads `ntilde-mux-<platform>` for this Ntilde version from the project's GitHub
   release, checks it against the release's `.sha256` file, and keeps the checked copy in Ntilde's
   data folder (`cache/ntilde-mux/<version>/<platform>`), so the next host of the same platform
-  installs without downloading.
+  installs without downloading. The macOS `ntilde-mux` is signed and notarized; a copy you drag in
+  through Finder from a browser download still gets Gatekeeper's prompt the first time, because of the
+  quarantine attribute the browser sets, not because of the binary.
 - **Choose file…** uploads an `ntilde-mux` you already have. Ntilde shows the file's SHA-256, and
   refuses the file before uploading it when it is built for another platform than the host's.
 - **Copy install command** copies a one-line command that you run in a shell on the host

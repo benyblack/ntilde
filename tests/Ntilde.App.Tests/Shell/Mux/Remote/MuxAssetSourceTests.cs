@@ -40,6 +40,11 @@ public sealed class MuxAssetSourceTests : IDisposable
 
     private GitHubReleaseMuxAssetSource Source(string version = Version) => new(new HttpClient(_http), version, CacheDirectory);
 
+    private GitHubReleaseMuxAssetSource PinnedSource(string pinHex) =>
+        new(new HttpClient(_http), Version, CacheDirectory, new Dictionary<string, string> { [Rid] = pinHex });
+
+    private const string PinMismatchMessage = "The release's checksum does not match the one built into this app.";
+
     private void ServeRelease(byte[] binary, string? checksumLine = null)
     {
         _http.Serve(AssetUrl, binary);
@@ -173,6 +178,103 @@ public sealed class MuxAssetSourceTests : IDisposable
         Assert.Equal(binary, asset.Bytes);
         Assert.Equal(AssetUrl, asset.Origin);
         Assert.Equal(binary, File.ReadAllBytes(Path.Combine(dir, "ntilde-mux")));
+    }
+
+    [Fact]
+    public async Task A_served_pair_that_disagrees_with_the_pin_throws_and_caches_nothing()
+    {
+        // The binary and its .sha256 agree with each other, as a swapped release's would; the app's pin does not.
+        byte[] binary = Binary();
+        ServeRelease(binary);
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => PinnedSource(Hex(Binary(10))).GetAsync(Rid, null, Ct));
+
+        Assert.Equal(PinMismatchMessage, ex.Message);
+        Assert.False(File.Exists(Path.Combine(CacheDirectory, Version, Rid, "ntilde-mux")));
+    }
+
+    [Fact]
+    public async Task A_served_pair_that_matches_the_pin_is_accepted_and_cached()
+    {
+        byte[] binary = Binary();
+        ServeRelease(binary);
+
+        MuxDaemonAsset asset = await PinnedSource(Hex(binary).ToUpperInvariant()).GetAsync(Rid, null, Ct);
+
+        Assert.Equal(binary, asset.Bytes);
+        Assert.Equal(Hex(binary), asset.Sha256Hex);
+        Assert.Equal(binary, File.ReadAllBytes(Path.Combine(CacheDirectory, Version, Rid, "ntilde-mux")));
+    }
+
+    [Fact]
+    public async Task A_pinned_download_whose_binary_differs_from_both_checksums_still_throws()
+    {
+        // The .sha256 equals the pin, but the binary is not what it names.
+        byte[] binary = Binary();
+        ServeRelease(Binary(10), $"{Hex(binary)}  ntilde-mux-{Rid}\n");
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => PinnedSource(Hex(binary)).GetAsync(Rid, null, Ct));
+
+        Assert.StartsWith("checksum mismatch", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_cache_hit_that_agrees_with_the_pin_makes_no_http_call()
+    {
+        byte[] binary = Binary();
+        string dir = Path.Combine(CacheDirectory, Version, Rid);
+        Directory.CreateDirectory(dir);
+        File.WriteAllBytes(Path.Combine(dir, "ntilde-mux"), binary);
+        File.WriteAllText(Path.Combine(dir, "ntilde-mux.sha256"), $"{Hex(binary)}  ntilde-mux-{Rid}\n");
+
+        MuxDaemonAsset asset = await PinnedSource(Hex(binary)).GetAsync(Rid, null, Ct);
+
+        Assert.Equal(binary, asset.Bytes);
+        Assert.Empty(_http.Requests);
+    }
+
+    [Fact]
+    public async Task A_self_consistent_cache_with_another_hash_than_the_pin_is_downloaded_again()
+    {
+        // A cached pair that verifies against itself but not against the pin (a stale or planted copy) is a miss.
+        byte[] stale = Binary(5000);
+        byte[] binary = Binary();
+        string dir = Path.Combine(CacheDirectory, Version, Rid);
+        Directory.CreateDirectory(dir);
+        File.WriteAllBytes(Path.Combine(dir, "ntilde-mux"), stale);
+        File.WriteAllText(Path.Combine(dir, "ntilde-mux.sha256"), $"{Hex(stale)}  ntilde-mux-{Rid}\n");
+        ServeRelease(binary);
+
+        MuxDaemonAsset asset = await PinnedSource(Hex(binary)).GetAsync(Rid, null, Ct);
+
+        Assert.Equal(binary, asset.Bytes);
+        Assert.Equal(AssetUrl, asset.Origin);
+        Assert.Equal(binary, File.ReadAllBytes(Path.Combine(dir, "ntilde-mux")));
+    }
+
+    [Fact]
+    public async Task A_pin_for_another_rid_changes_nothing()
+    {
+        byte[] binary = Binary();
+        ServeRelease(binary);
+        var source = new GitHubReleaseMuxAssetSource(
+            new HttpClient(_http), Version, CacheDirectory, new Dictionary<string, string> { ["osx-arm64"] = Hex(Binary(10)) });
+
+        MuxDaemonAsset asset = await source.GetAsync(Rid, null, Ct);
+
+        Assert.Equal(binary, asset.Bytes);
+    }
+
+    [Fact]
+    public async Task No_pins_keep_todays_behaviour()
+    {
+        byte[] binary = Binary();
+        ServeRelease(binary);
+        var source = new GitHubReleaseMuxAssetSource(new HttpClient(_http), Version, CacheDirectory, new Dictionary<string, string>());
+
+        MuxDaemonAsset asset = await source.GetAsync(Rid, null, Ct);
+
+        Assert.Equal(binary, asset.Bytes);
     }
 
     [Fact]

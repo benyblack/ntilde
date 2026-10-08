@@ -4673,7 +4673,8 @@ namespace Ntilde
                 source ?? new Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource(
                     MuxReleaseHttp.Value,
                     AppVersionInfo.Version,
-                    Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource.DefaultCacheDirectory),
+                    Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource.DefaultCacheDirectory,
+                    Ntilde.Shell.Mux.Remote.MuxAssetPins.Load()),
                 report)
             {
                 Progress = progress,

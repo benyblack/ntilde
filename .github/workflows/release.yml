@@ -607,6 +607,27 @@ jobs:
           name: native-${{ matrix.os }}
           path: src/Ntilde.App/native
 
+      # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
+      # below so remote installs verify their download against them (Phase 5 Task 10). Counted: a download
+      # that silently found nothing would build an App with no pins.
+      - name: Download the ntilde-mux checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mux-sha256-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/mux-sha256
+
+      - name: Check the ntilde-mux checksums
+        shell: bash
+        env:
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: |
+          set -euo pipefail
+          ls -la "$MUX_SHA256_DIR"
+          for rid in linux-x64 linux-arm64 osx-arm64; do
+            test -s "$MUX_SHA256_DIR/ntilde-mux-$rid.sha256" || { echo "::error::no ntilde-mux-$rid.sha256 to embed" >&2; exit 1; }
+          done
+
       - name: Restore
         run: dotnet restore
 
@@ -625,7 +646,8 @@ jobs:
         env:
           SKIP_RUST_NATIVE_BUILD: "1"
           RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
-        run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/publish/${{ matrix.rid }}
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" "-p:NtildeMuxSha256Dir=$MUX_SHA256_DIR" -o artifacts/publish/${{ matrix.rid }}
 
       # ---- ntilde.com, the console launcher (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
       # ---- §10.3, §11). A GUI-subsystem Ntilde.exe is started and forgotten by a prompt, so
@@ -1366,7 +1388,9 @@ jobs:
     # restore + AOT publish + build-deb.sh + vpk pack, with no preinstalled anything
     # to fall back on. Not 90 like publish_aot - there is no notarization wait here.
     timeout-minutes: 60
-    needs: [release_metadata, create_release, build_native_linux, release_tests]
+    # publish_mux_daemon: the App embeds its checksums (Phase 5 Task 10). It needs only
+    # [release_metadata, create_release, release_tests], so this adds no cycle.
+    needs: [release_metadata, create_release, build_native_linux, release_tests, publish_mux_daemon]
     permissions:
       contents: read
     strategy:
@@ -1534,6 +1558,27 @@ jobs:
           name: native-${{ matrix.os }}
           path: src/Ntilde.App/native
 
+      # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
+      # below so remote installs verify their download against them (Phase 5 Task 10). Counted: a download
+      # that silently found nothing would build an App with no pins.
+      - name: Download the ntilde-mux checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mux-sha256-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/mux-sha256
+
+      - name: Check the ntilde-mux checksums
+        shell: bash
+        env:
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: |
+          set -euo pipefail
+          ls -la "$MUX_SHA256_DIR"
+          for rid in linux-x64 linux-arm64 osx-arm64; do
+            test -s "$MUX_SHA256_DIR/ntilde-mux-$rid.sha256" || { echo "::error::no ntilde-mux-$rid.sha256 to embed" >&2; exit 1; }
+          done
+
       - name: Restore
         run: dotnet restore
 
@@ -1546,12 +1591,14 @@ jobs:
         env:
           SKIP_RUST_NATIVE_BUILD: "1"
           RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
         run: |
           set -euo pipefail
           dotnet publish src/Ntilde.App/Ntilde.App.csproj \
             -c "$CONFIGURATION" -r ${{ matrix.rid }} --self-contained true \
             -p:PublishAot=true -p:SkipCliShim=true \
             "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" \
+            "-p:NtildeMuxSha256Dir=$MUX_SHA256_DIR" \
             -o artifacts/publish/${{ matrix.rid }}
 
       # BEFORE anything packages this directory, not after. StripSymbols=true
@@ -1917,12 +1964,19 @@ jobs:
     defaults:
       run:
         shell: bash
-    timeout-minutes: 45
+    # 90, like publish_aot: the macOS leg now waits on Apple's notarization queue (see the signing
+    # steps below), which alone can run 10-30+ minutes on a slow day. Every other leg ends in minutes.
+    timeout-minutes: 90
     # release_tests as well, like every other job that publishes assets (publish_aot,
     # publish_linux): a release whose tests failed gets no ntilde-mux assets either (#156).
     needs: [release_metadata, create_release, release_tests]
     permissions:
       contents: write
+    # The secrets context is not allowed in step-level `if`, so the signing gate is an env boolean,
+    # exactly as in publish_aot. Without the secrets (a fork) the macOS leg still builds and publishes,
+    # unsigned; it says so in a ::notice::.
+    env:
+      MAC_SIGNING_ENABLED: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -1947,6 +2001,30 @@ jobs:
           echo "--- container identity (the glibc floor this lane pins) ---"
           head -2 /etc/os-release
           sed -n '1p' <<<"$(ldd --version)"
+
+      # macOS signing setup precedes the checkout_ref checkout on purpose, as in publish_aot: that ref
+      # can name a revision that lacks the local action, so the workflow's own ref is checked out first,
+      # the keychain imported (it lives outside the workspace, so the re-checkout cannot disturb it),
+      # and only then the release revision. Gated like publish_aot's, so every other leg and the
+      # unsigned lane keep a single checkout.
+      - name: Checkout workflow ref (provides the local signing action)
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up macOS signing keychain
+        id: mac_signing
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED == 'true'
+        uses: ./.github/actions/setup-mac-signing
+        with:
+          cert-p12-base64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          installer-p12-base64: ${{ secrets.MAC_INSTALLER_CERT_P12_BASE64 }}
+          cert-password: ${{ secrets.MAC_CERT_PASSWORD }}
+          sign-app-identity: ${{ secrets.MAC_SIGN_APP_IDENTITY }}
+          sign-install-identity: ${{ secrets.MAC_SIGN_INSTALL_IDENTITY }}
+          notary-profile: ${{ secrets.MAC_NOTARY_PROFILE }}
+          apple-id: ${{ secrets.MAC_APPLE_ID }}
+          team-id: ${{ secrets.MAC_TEAM_ID }}
+          app-specific-password: ${{ secrets.MAC_APP_SPECIFIC_PASSWORD }}
 
       - uses: actions/checkout@v4
         with:
@@ -2096,6 +2174,38 @@ jobs:
           grep -qF "\"version\":\"$RELEASE_VERSION\"" <<<"$version_json" \
             || { echo "::error::ntilde-mux --version --json does not report version $RELEASE_VERSION" >&2; exit 1; }
 
+      # Sign and notarize ntilde-mux for macOS (Phase 5 Task 10), BEFORE the checksum is written: the
+      # .sha256 must describe the bytes users download, and the App pins that hash. A bare executable
+      # cannot carry a stapled ticket, so Gatekeeper checks the notarization online on first run.
+      # The hardened runtime (--options runtime) is what notarization requires; ntilde-mux needs no
+      # entitlement for it. Identities reach the script through env, never by interpolation: they contain
+      # spaces and parentheses.
+      - name: Sign and notarize ntilde-mux (macOS)
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED == 'true'
+        env:
+          RID: ${{ matrix.rid }}
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+          KEYCHAIN: ${{ steps.mac_signing.outputs.keychain }}
+          MAC_SIGN_APP_IDENTITY: ${{ secrets.MAC_SIGN_APP_IDENTITY }}
+          MAC_NOTARY_PROFILE: ${{ secrets.MAC_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          bin="artifacts/mux-daemon/$RID/ntilde-mux"
+          codesign --force --timestamp --options runtime --keychain "$KEYCHAIN" --sign "$MAC_SIGN_APP_IDENTITY" "$bin"
+          codesign --verify --strict --verbose=2 "$bin"
+          zip_dir="$(mktemp -d)"
+          ditto -c -k --keepParent "$bin" "$zip_dir/mux.zip"
+          xcrun notarytool submit "$zip_dir/mux.zip" --keychain-profile "$MAC_NOTARY_PROFILE" --keychain "$KEYCHAIN" --wait
+          # Signing and notarizing must not have changed what the binary reports.
+          version_json="$("$bin" --version --json)"
+          echo "$version_json"
+          grep -qF "\"version\":\"$RELEASE_VERSION\"" <<<"$version_json" \
+            || { echo "::error::signed ntilde-mux --version --json does not report version $RELEASE_VERSION" >&2; exit 1; }
+
+      - name: Note that ntilde-mux is not signed (macOS)
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED != 'true'
+        run: echo "::notice::ntilde-mux is not signed (no signing secrets)"
+
       # Flat release-asset names, then the checksum beside each, written from inside the
       # directory so the .sha256 names the bare asset (`<hash>  ntilde-mux-<rid>`).
       - name: Stage the asset and its checksum
@@ -2122,6 +2232,16 @@ jobs:
           files: |
             artifacts/release/ntilde-mux-${{ matrix.rid }}
             artifacts/release/ntilde-mux-${{ matrix.rid }}.sha256
+
+      # The checksum again, as a workflow artifact: publish_aot and publish_linux embed all three in the
+      # App (-p:NtildeMuxSha256Dir) so a download is verified against what THIS release shipped, not
+      # against a .sha256 that sits beside a possibly swapped binary.
+      - name: Upload the ntilde-mux checksum for the App builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: mux-sha256-${{ matrix.rid }}
+          path: artifacts/release/ntilde-mux-${{ matrix.rid }}.sha256
+          if-no-files-found: error
 
   # THE GATE, plus the only upload. Runs on a plain runner because both halves need
   # what a `container:` job does not have: a docker daemon (smoke-test.sh) - see the

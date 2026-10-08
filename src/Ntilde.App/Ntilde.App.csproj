@@ -97,6 +97,12 @@
     <EmbeddedResource Include="Resources\vt-conformance-report.json">
       <LogicalName>Ntilde.Resources.vt-conformance-report.json</LogicalName>
     </EmbeddedResource>
+    <!-- release.yml passes NtildeMuxSha256Dir: the ntilde-mux-<rid>.sha256 files its publish_mux_daemon job
+         wrote, which MuxAssetPins reads back so a download is checked against what this release shipped.
+         Without the property (dev, CI) nothing is embedded and the glob is never evaluated. -->
+    <EmbeddedResource Include="$(NtildeMuxSha256Dir)/ntilde-mux-*.sha256"
+                      LogicalName="Ntilde.Resources.mux-sha256.%(Filename)%(Extension)"
+                      Condition="'$(NtildeMuxSha256Dir)' != ''" />
   </ItemGroup>
 
   <PropertyGroup>
