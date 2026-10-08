@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
 using Ntilde.Shell;
 
 namespace Ntilde.Tests.Shell;
@@ -50,6 +52,79 @@ public sealed class SshAskPassTargetPromptTests
     public void A_prompt_that_is_not_for_a_password_is_not(string prompt)
     {
         Assert.False(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Target()));
+    }
+
+    /// <summary>
+    /// Keyboard-interactive text is the server's, and may mention a password while asking for something else: only text
+    /// that ends asking for one (<c>password:</c>, whatever its case, trailing blanks aside), or is exactly the password
+    /// for one account (below), is the target's password.
+    /// </summary>
+    [Theory]
+    [InlineData("(ops@prod.internal) Your password expires soon. Verification code: ")]
+    [InlineData("(ops@prod.internal) Password expired. Enter the code we sent: ")]
+    [InlineData("(ops@prod.internal) Password")]
+    public void Keyboard_interactive_text_that_does_not_end_asking_for_a_password_is_not(string prompt)
+    {
+        Assert.False(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Target()));
+    }
+
+    [Theory]
+    [InlineData("(ops@prod.internal) PASSWORD:")]
+    [InlineData("(ops@prod.internal) New password:  \n")]
+    public void Keyboard_interactive_text_ending_with_password_is(string prompt)
+    {
+        Assert.True(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Target()));
+    }
+
+    /// <summary>
+    /// pam_unix on FreeBSD and its derivatives (pfSense, OPNsense, TrueNAS CORE, whose sshd offers keyboard-interactive
+    /// only) asks <c>Password for user@host:</c>, and Kerberos <c>Password for user@REALM:</c>: the whole text, one account
+    /// name with no blank in it, whatever the case.
+    /// </summary>
+    [Theory]
+    [InlineData("admin", "192.168.1.1", "(admin@192.168.1.1) Password for admin@pfSense.home.arpa:")]
+    [InlineData("u", "h", "(u@h) Password for u@EXAMPLE.COM: ")]
+    [InlineData("u", "h", "(u@h) PASSWORD FOR u@example.com:")]
+    [InlineData("u", "h", "(u@h) password for u:")]
+    public void Keyboard_interactive_password_for_one_account_is(string user, string host, string prompt)
+    {
+        Assert.True(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Profile(user, host)));
+    }
+
+    [Theory]
+    [InlineData("(u@h) One-time password for u:")]
+    [InlineData("(u@h) Password for u: (expired)")]
+    [InlineData("(u@h) Password for two words:")]
+    [InlineData("(u@h) New password for u@h:")]
+    [InlineData("(u@h) Password for :")]
+    public void Keyboard_interactive_text_that_is_not_exactly_password_for_one_account_is_not(string prompt)
+    {
+        Assert.False(SshAskPassCommand.IsTargetPasswordPrompt(prompt, Profile("u", "h")));
+    }
+
+    /// <summary>The dialog offers to remember only the target's password, so it must know FreeBSD's prompt for it too.</summary>
+    [AvaloniaFact]
+    public void The_dialog_offers_to_remember_the_password_FreeBSD_asks_for()
+    {
+        TerminalProfile pfSense = Profile("admin", "192.168.1.1");
+
+        Assert.True(RememberOffered("(admin@192.168.1.1) Password for admin@pfSense.home.arpa:", pfSense));
+        Assert.False(RememberOffered("(admin@192.168.1.1) Verification code:", pfSense));
+    }
+
+    private static TerminalProfile Profile(string user, string host) => new()
+    {
+        Id = Guid.Parse("e15099d2-ac29-40cb-bf1f-f466eb2622b7"),
+        Type = ConnectionType.SSH,
+        SshUser = user,
+        SshHost = host,
+    };
+
+    private static bool RememberOffered(string prompt, TerminalProfile profile)
+    {
+        var window = new SshAskPassCommand.AskPassWindow(new SshAskPassCommand.AskPassState(prompt, profile), shutdown: () => { });
+        var panel = (StackPanel)((Border)window.Content!).Child!;
+        return panel.Children.OfType<CheckBox>().Single().IsVisible;
     }
 
     [Fact]

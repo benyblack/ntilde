@@ -35,9 +35,9 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     private static SshInteractionRequest Secret(string kind) =>
         Enum.Parse<SshInteractionKind>(kind) == SshInteractionKind.Password ? Password : Passphrase;
 
-    private static SshInteractionRequest HostKey(string fingerprint) => new()
+    private static SshInteractionRequest HostKey(string fingerprint, SshInteractionKind kind = SshInteractionKind.UnknownHostKey) => new()
     {
-        Kind = SshInteractionKind.UnknownHostKey,
+        Kind = kind,
         Host = "fake-host",
         Port = 22,
         Algorithm = "ssh-ed25519",
@@ -145,19 +145,48 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     /// <summary>
     /// The native layer asks about the host key on every connect, known or not (the window's handler
     /// answers a known one from the known-hosts store without a dialog). Refusing them all would make
-    /// every automatic reconnect fail; accepting only a trusted key keeps it quiet and safe.
+    /// every automatic reconnect fail; accepting only a trusted key keeps it quiet and safe. Either shape - a key never
+    /// seen, or one that changed - is rejected unless trusted, and the attempt records that it rejected one: the
+    /// failure that follows is the host key's, which only the user can review.
     /// </summary>
-    [Fact]
-    public async Task An_automatic_attempt_accepts_only_a_host_key_already_trusted()
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey))]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey))]
+    public async Task An_automatic_attempt_accepts_only_a_host_key_already_trusted(string kind)
     {
-        RemoteMuxInteractionHandler.Attempt automatic = Handler(new ScriptedUser()).BeginAttempt(interactive: false);
+        SshInteractionKind shape = Enum.Parse<SshInteractionKind>(kind);
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser());
+        RemoteMuxInteractionHandler.Attempt known = handler.BeginAttempt(interactive: false);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false);
 
-        SshInteractionResponse trusted = await automatic.HandleAsync(HostKey("SHA256:trusted"), Ct);
-        SshInteractionResponse changed = await automatic.HandleAsync(HostKey("SHA256:changed"), Ct);
+        SshInteractionResponse trusted = await known.HandleAsync(HostKey("SHA256:trusted", shape), Ct);
+        SshInteractionResponse changed = await automatic.HandleAsync(HostKey("SHA256:changed", shape), Ct);
 
         Assert.True(trusted.IsAccepted);
+        Assert.False(known.HostKeyRejected);
         Assert.False(changed.IsAccepted);
         Assert.True(changed.IsCanceled);
+        Assert.True(automatic.HostKeyRejected);
+    }
+
+    /// <summary>
+    /// A user's attempt takes either host-key shape to the user, and what they answer - a rejection too - is theirs:
+    /// the attempt records no rejection of its own.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey))]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey))]
+    public async Task An_interactive_attempt_takes_either_host_key_shape_to_the_user_and_records_no_rejection(string kind)
+    {
+        SshInteractionKind shape = Enum.Parse<SshInteractionKind>(kind);
+        var user = new ScriptedUser(SshInteractionResponse.Cancel());
+        RemoteMuxInteractionHandler.Attempt attempt = Handler(user).BeginAttempt(interactive: true);
+
+        SshInteractionResponse answer = await attempt.HandleAsync(HostKey("SHA256:new", shape), Ct);
+
+        Assert.False(answer.IsAccepted);
+        Assert.Equal(shape, Assert.Single(user.Asked).Kind);
+        Assert.False(attempt.HostKeyRejected);
     }
 
     [Fact]
@@ -677,9 +706,9 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     }
 
     /// <summary>
-    /// A remembered password the server refused (its attempt failed SSH) says the server's password changed: when the
-    /// vault holds that same value, the host's automatic attempts do not try it after it either (a different saved value
-    /// would be offered, as above).
+    /// A remembered password the server refused (its attempt failed SSH before sign-in was over) says the server's
+    /// password changed: when the vault holds that same value, the host's automatic attempts do not try it after it either
+    /// (a different saved value would be offered, as above).
     /// </summary>
     [Fact]
     public async Task A_refused_remembered_password_stops_the_same_saved_one_too()
@@ -693,6 +722,27 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         automatic.Refused();
 
         Assert.False(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
+    }
+
+    /// <summary>
+    /// Once the native transport said sign-in was over, the remembered password got its attempt in: the attempt failing
+    /// after it (the link dropped before the greeting) neither forgets it nor counts it as refused, so the vault's same
+    /// value is still offered too.
+    /// </summary>
+    [Fact]
+    public async Task A_remembered_password_is_kept_when_its_attempt_fails_after_sign_in()
+    {
+        var saved = new SavedPasswords("old");
+        RemoteMuxInteractionHandler handler = Handler(new ScriptedUser(SshInteractionResponse.FromSecret("old")), saved);
+        await RememberAsync(handler, Password);
+        RemoteMuxInteractionHandler.Attempt automatic = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("old", (await automatic.HandleAsync(Password, Ct)).Secret);
+        automatic.Authenticated();
+
+        automatic.Refused();
+
+        Assert.True(handler.Remembers(SshInteractionKind.Password));
+        Assert.True(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).OfferSavedPassword());
     }
 
     /// <summary>The native password prompt as rusty_ssh's first one reaches the window's handler: vault reuse allowed.</summary>
@@ -844,6 +894,22 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         Assert.False(viaKeyboard.SecondFactorAfterSavedPassword);
         Assert.False(viaPassword.SecondFactorAfterSavedPassword);
+    }
+
+    /// <summary>
+    /// Only the first prompt after the saved password says whether the server took it: anything but a code question - here
+    /// a key's passphrase - means it did not, and a code question after that is no second factor.
+    /// </summary>
+    [Fact]
+    public async Task Only_the_first_prompt_after_the_saved_password_decides_whether_a_second_factor_followed()
+    {
+        RemoteMuxInteractionHandler.Attempt automatic = Handler(new ScriptedUser(), new SavedPasswords("s3cret")).BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        await automatic.HandleAsync(Password, Ct);
+        Assert.True((await automatic.HandleAsync(Passphrase, Ct)).IsCanceled);
+
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => automatic.HandleAsync(Keyboard, Ct));
+
+        Assert.False(automatic.SecondFactorAfterSavedPassword);
     }
 
     /// <summary>

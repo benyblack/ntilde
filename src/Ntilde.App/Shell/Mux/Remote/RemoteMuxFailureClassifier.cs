@@ -24,10 +24,15 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 126 → <see cref="RemoteFailureKind.Unsupported"/>, with the last stderr line;</item>
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
-/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. For an automatic
-/// attempt, a refusal (<c>Permission denied</c>, or sshd's <c>Too many authentication failures</c>) is
+/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. A refusal - ssh's own
+/// <c>[user@host: ]Permission denied (methods).</c>, or sshd's <c>Too many authentication failures</c> - sets
+/// <see cref="RemoteMuxFailure.SignInRefused"/>, and for an automatic attempt is
 /// <see cref="RemoteFailureKind.NeedsUser"/> instead, with the same reason: in batch mode ssh tried only what
-/// needs no answer, and with the saved password it tried that once, so signing in needs the user;</item>
+/// needs no answer, and with the saved password it tried that once, so signing in needs the user. So is ssh's
+/// own host-key failure (<c>Host key verification failed.</c>), with the <see cref="RemoteNeedsUserCause.HostKey"/>
+/// cause: every automatic attempt would meet the same key. A key that changed (ssh's warning banner, or its
+/// strict-checking line) is <see cref="RemoteFailureKind.NeedsUser"/> for a user's attempt too, with the
+/// <see cref="RemoteNeedsUserCause.HostKeyChanged"/> cause: ssh refuses it without asking, so Enter cannot show it;</item>
 /// <item>anything else → <see cref="RemoteFailureKind.ProxyFailed"/>, with the exception's message
 /// (the handshake's carries what the remote side printed) and the last stderr line, where the proxy
 /// reports a daemon it could not reach.</item>
@@ -86,11 +91,21 @@ internal static class RemoteMuxFailureClassifier
             // Batch mode tried keys and the agent only; refused, it is a password or a passphrase away, which
             // only the user can give. Retrying on a timer would only knock again (Task 20 ruling). An attempt that
             // offered the saved password (BatchMode=no) was refused the same way, and must not send it again. sshd past
-            // MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same.
-            bool refused = automatic && Lines(stderr).Any(line =>
-                line.Contains("Permission denied", StringComparison.Ordinal)
-                || line.Contains("Too many authentication failures", StringComparison.Ordinal));
-            return new RemoteMuxFailure(refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed, Quote(lastStderrLine ?? "ssh exited with code 255"));
+            // MaxAuthTries cuts the connection instead of refusing the last try: a refusal all the same. Any other exit 255 -
+            // the link dropping, nothing listening - says nothing about what was sent.
+            bool refused = Lines(stderr).Any(line =>
+                IsSshPermissionDenied(line) || line.Contains("Too many authentication failures", StringComparison.Ordinal));
+            // A host key the user does not trust is met again by every automatic attempt: the user has to review it. It
+            // decides the cause even with a refusal after it - a changed key turns password sign-in off. A key that changed
+            // needs the user on a user's attempt too: ssh refuses it without asking, so Enter cannot show it.
+            bool changedKey = Lines(stderr).Any(IsSshChangedHostKey);
+            bool hostKey = changedKey || Lines(stderr).Any(line => line == HostKeyVerificationFailed);
+            RemoteFailureKind kind = changedKey || (automatic && (refused || hostKey)) ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed;
+            RemoteNeedsUserCause cause = kind != RemoteFailureKind.NeedsUser ? RemoteNeedsUserCause.SignIn
+                : changedKey ? RemoteNeedsUserCause.HostKeyChanged
+                : hostKey ? RemoteNeedsUserCause.HostKey
+                : RemoteNeedsUserCause.SignIn;
+            return new RemoteMuxFailure(kind, Quote(lastStderrLine ?? "ssh exited with code 255"), cause) { SignInRefused = refused };
         }
 
         string reason = error?.Message is { Length: > 0 } errorMessage ? errorMessage : "The ntilde-mux proxy failed";
@@ -212,6 +227,59 @@ internal static class RemoteMuxFailureClassifier
     private static bool IsBinaryNotFound(string line) =>
         line.Contains(BinaryName, StringComparison.Ordinal)
         && (line.Contains("not found", StringComparison.Ordinal) || line.Contains("No such file or directory", StringComparison.Ordinal));
+
+    /// <summary>
+    /// ssh's own final refusal, as the whole line: <c>[user@host: ]Permission denied (method,...).</c> - the methods the
+    /// server still offered, names with no space between them. It decides that a saved password counts as refused, so the
+    /// line is parsed, not searched: a remote shell's <c>-bash: x.sh: Permission denied</c>, or a tool's <c>Permission
+    /// denied (os error 13)</c>, that reached stderr before the link dropped is not one.
+    /// </summary>
+    private static bool IsSshPermissionDenied(string line)
+    {
+        const string Denied = "Permission denied (";
+        int at = line.IndexOf(Denied, StringComparison.Ordinal);
+        if (at < 0) return false;
+
+        // Before it: nothing (OpenSSH before 7.x), or "user@host: ". The user is the server's, printed as given, so it
+        // may hold a space (an AD name, "John Smith"); the "@" is ssh's own.
+        ReadOnlySpan<char> target = line.AsSpan(0, at);
+        if (target.Length > 0)
+        {
+            if (!target.EndsWith(": ", StringComparison.Ordinal)) return false;
+            if (!target[..^2].Contains('@')) return false;
+        }
+
+        ReadOnlySpan<char> methods = line.AsSpan(at + Denied.Length);
+        if (!methods.EndsWith(").", StringComparison.Ordinal)) return false;
+        foreach (char c in methods[..^2])
+        {
+            if (!char.IsAsciiLetterOrDigit(c) && c is not ('-' or ',' or '@' or '.' or '_')) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// ssh's own host-key failure, as the whole line: a key it does not know, refused at its "Are you sure" (by the askpass
+    /// helper, or batch mode), or one that changed under strict checking.
+    /// </summary>
+    private const string HostKeyVerificationFailed = "Host key verification failed.";
+
+    private const string ChangedHostKeyPrefix = "Host key for ";
+    private const string ChangedHostKeySuffix = " has changed and you have requested strict checking.";
+
+    /// <summary>
+    /// ssh's own word that a host key changed since it was trusted, as the whole line: the warning banner's
+    /// <c>@ WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! @</c>, which ssh prints even where it goes on
+    /// (StrictHostKeyChecking=no, with password sign-in turned off), or, under strict checking,
+    /// <c>Host key for h has changed and you have requested strict checking.</c> Either is enough. Parsed, not searched, as
+    /// the refusal is.
+    /// </summary>
+    private static bool IsSshChangedHostKey(string line) =>
+        (line.StartsWith('@') && line.EndsWith('@') && line.Trim('@', ' ', '\t') == "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!")
+        || (line.Length > ChangedHostKeyPrefix.Length + ChangedHostKeySuffix.Length
+            && line.StartsWith(ChangedHostKeyPrefix, StringComparison.Ordinal)
+            && line.EndsWith(ChangedHostKeySuffix, StringComparison.Ordinal));
 
     /// <summary>The non-blank lines of <paramref name="text"/>, trimmed.</summary>
     private static IEnumerable<string> Lines(string text) =>

@@ -40,7 +40,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// The askpass helper filled the target's password from the vault for the ssh <paramref name="transport"/> starts: under
     /// the token that transport gives ssh, as the real helper reads it from its environment (re-review item 2).
     /// </summary>
-    private void HelperFilled(OpenSshExecTransport transport) => AskPassRecords.RecordAnswered(transport.AskPassSession!);
+    private void HelperFilled(OpenSshExecTransport transport) => AskPassRecords.TryClaim(transport.AskPassSession!);
 
     /// <summary>The askpass helper declined a prompt naming the target that asks for no password (a second factor).</summary>
     private void HelperDeclined(OpenSshExecTransport transport) => AskPassRecords.RecordDeclined(transport.AskPassSession!);
@@ -181,8 +181,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         var automatic = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
         var user = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
 
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "nova@fake-host: Permission denied (publickey,password)."), automatic.Failure);
-        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "nova@fake-host: Permission denied (publickey,password)."), user.Failure);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "nova@fake-host: Permission denied (publickey,password).") { SignInRefused = true }, automatic.Failure);
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "nova@fake-host: Permission denied (publickey,password).") { SignInRefused = true }, user.Failure);
     }
 
     [Fact]
@@ -542,7 +542,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(user, _ => false),
             "i",
             null);
@@ -698,9 +699,30 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     }
 
     /// <summary>
+    /// The OpenSSH clients' versions as a test sets them: each probe answers the next of <paramref name="answers"/>, and the
+    /// last again once they run out; each probed path goes to <paramref name="probed"/>.
+    /// </summary>
+    internal static OpenSshClientVersionCache SshVersions(List<string>? probed, params OpenSshClientProbe[] answers)
+    {
+        int next = 0;
+        return new(
+            path =>
+            {
+                if (probed is not null) lock (probed) probed.Add(path);
+                return answers[Math.Min(Interlocked.Increment(ref next) - 1, answers.Length - 1)];
+            },
+            static _ => new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc));
+    }
+
+    /// <summary>An OpenSSH client whose keyboard-interactive prompts name the target (8.4 and later).</summary>
+    internal static OpenSshClientVersionCache ModernSsh => SshVersions(null, OpenSshClientProbe.Found(new Version(9, 5)));
+
+    /// <summary>
     /// A connector over the app's own transport choice (<see cref="RemoteMuxHostFactory.CreateTransport"/>) for an
     /// OpenSSH profile: each attempt's transport is built and recorded - not started - and the fake remote runs in its
-    /// place, with the script <paramref name="script"/> picks for that transport (sshd's answer to how it signs in).
+    /// place, with the script <paramref name="script"/> picks for that transport (sshd's answer to how it signs in). The
+    /// ssh is a client 8.4 or later unless <paramref name="versions"/> says otherwise; what the factory logs goes to
+    /// <paramref name="logged"/>.
     /// </summary>
     private RemoteMuxConnector OpenSshConnector(
         SshProfile profile,
@@ -709,9 +731,12 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Func<OpenSshExecTransport, RemoteMuxTransportRequest, FakeRemoteScript?>? script = null,
         Ntilde.Services.Ssh.SshLaunchDetails? launch = null,
         Func<SshProfile, string?>? vault = null,
-        Ntilde.SshAskPassSessionMarkers? records = null)
+        Ntilde.SshAskPassSessionMarkers? records = null,
+        OpenSshClientVersionCache? versions = null,
+        List<string>? logged = null)
     {
         profile.BackendKind = SshBackendKind.OpenSsh;
+        versions ??= ModernSsh;
         return Own(new RemoteMuxConnector(
             () => profile,
             (p, request) =>
@@ -723,7 +748,11 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                     () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
                     static () => true,
                     askPassHelperPath: "/opt/ntilde/ntilde",
-                    log: _ => { }));
+                    log: line =>
+                    {
+                        if (logged is not null) lock (logged) logged.Add(line);
+                    },
+                    openSshVersions: versions));
                 lock (built) built.Add(transport);
                 _remote.Script = script?.Invoke(transport, request);
                 return _remote;
@@ -750,6 +779,92 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         Assert.Equal(new[] { (false, false), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
         Assert.Equal(1, saved.Reads);
+    }
+
+    /// <summary>
+    /// A4: before 8.4 OpenSSH writes a keyboard-interactive prompt with no <c>(user@host) </c> in front, so the vault-only
+    /// helper never fills one - ssh then sends an empty answer, a failed login on every attempt - and a second factor after
+    /// a filled password is not recorded as declined, so it reads as the saved password refused. Such a client's automatic
+    /// attempts run in batch mode, as with jump hops: the vault is not even read. An ssh that is not OpenSSH counts as one
+    /// (R4-a). Its version is probed once for the plan's ssh, and the batch decision logged once, with why, not per attempt.
+    /// A user's attempt is unchanged, and probes nothing (R4-c).
+    /// </summary>
+    [Theory]
+    [InlineData("8.1", "is OpenSSH 8.1")]   // Windows 10's inbox client
+    [InlineData("8.2", "is OpenSSH 8.2")]   // Ubuntu 20.04
+    [InlineData("8.3", "is OpenSSH 8.3")]
+    [InlineData("not OpenSSH", "it exited with code 1")]
+    public async Task An_OpenSSH_client_before_8_4_runs_automatic_attempts_in_batch_mode_without_reading_the_vault(string client, string said)
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var probed = new List<string>();
+        var logged = new List<string>();
+        OpenSshClientProbe answer = client == "not OpenSSH"
+            ? OpenSshClientProbe.NotOpenSsh("it exited with code 1")
+            : OpenSshClientProbe.Found(Version.Parse(client));
+        RemoteMuxConnector connector = OpenSshConnector(Profile(), saved, built, versions: SshVersions(probed, answer), logged: logged);
+
+        Own(await connector.ConnectAsync(interactive: true, Ct));
+        Assert.Empty(probed);
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(
+            new[] { (false, false), (true, false), (true, false) },
+            built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
+        Assert.Equal(0, saved.Reads);
+        Assert.Equal(new[] { Launch.SshPath }, probed);
+        Assert.Single(logged, line => line.Contains("not offered the saved password", StringComparison.Ordinal));
+        Assert.Contains(said, Assert.Single(logged), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A version that could not be read - the probe timed out, ssh would not start - fails closed for that attempt alone:
+    /// batch mode, no vault read, and the cause logged. It is not kept: the next automatic attempt reads the version again,
+    /// and a client of 8.4 or later gets the vault-only askpass back.
+    /// </summary>
+    [Fact]
+    public async Task An_OpenSSH_version_that_could_not_be_read_fails_closed_for_that_attempt_only()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var probed = new List<string>();
+        var logged = new List<string>();
+        RemoteMuxConnector connector = OpenSshConnector(
+            Profile(),
+            saved,
+            built,
+            versions: SshVersions(probed, OpenSshClientProbe.Indeterminate("it did not exit within 5 s"), OpenSshClientProbe.Found(new Version(9, 5))),
+            logged: logged);
+
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+        int readsAfterFirst = saved.Reads;
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(new[] { (true, false), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
+        Assert.Equal((0, 1), (readsAfterFirst, saved.Reads));
+        Assert.Equal(new[] { Launch.SshPath, Launch.SshPath }, probed);
+        Assert.Contains("could not be read (it did not exit within 5 s)", Assert.Single(logged), StringComparison.Ordinal);
+    }
+
+    /// <summary>A4's other side: from 8.4 the prompts name the target, and automatic attempts keep the vault-only askpass.</summary>
+    [Theory]
+    [InlineData("8.4")]
+    [InlineData("9.5")]
+    public async Task An_OpenSSH_client_from_8_4_keeps_the_vault_only_askpass(string version)
+    {
+        var saved = new SavedPasswords("s3cret");
+        var built = new List<OpenSshExecTransport>();
+        var logged = new List<string>();
+        RemoteMuxConnector connector = OpenSshConnector(
+            Profile(), saved, built, versions: SshVersions(null, OpenSshClientProbe.Found(Version.Parse(version))), logged: logged);
+
+        Own(await connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((false, true), (Assert.Single(built).BatchMode, built[0].SavedPasswordOnly));
+        Assert.Equal(1, saved.Reads);
+        Assert.DoesNotContain(logged, line => line.Contains("not offered the saved password", StringComparison.Ordinal));
     }
 
     /// <summary>With jump hops (the same conservative rule as native), or nothing saved, an automatic attempt is the batch mode it was.</summary>
@@ -892,24 +1007,28 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     private const string Greeting = "NTILDE-MUX-PROXY 1 4242\n";
 
     /// <summary>
-    /// Re-review item 3 (R15): after the helper filled the saved password, an SSH failure before the command ran - sshd
-    /// closing the connection rather than refusing - counts as the refusal, as on native: retrying could only send it again.
+    /// After the helper filled the saved password, ssh failed with no word of a refusal - the link dropped before the
+    /// proxy's greeting. That says nothing about the password: the failure stays SshFailed (the loop retries), the saved
+    /// password is not marked refused, and the next automatic attempt offers it again - once, as every attempt does.
     /// </summary>
     [Fact]
-    public async Task An_OpenSSH_failure_after_the_saved_password_was_filled_counts_as_a_refusal()
+    public async Task An_OpenSSH_drop_after_the_saved_password_was_filled_is_not_a_refusal()
     {
+        SshProfile profile = Profile();
         var built = new List<OpenSshExecTransport>();
-        RemoteMuxConnector connector = OpenSshConnector(Profile(), new SavedPasswords("s3cret"), built, (t, _) =>
+        RemoteMuxConnector connector = OpenSshConnector(profile, new SavedPasswords("s3cret"), built, (t, _) =>
         {
             if (t.SavedPasswordOnly) HelperFilled(t);
             return new FakeRemoteScript(Stderr: "Connection closed by 10.0.0.2 port 22\r\n", ExitCode: FakeRemoteHost.LinkLostExitCode);
         });
 
-        var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var dropped = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        bool stillOffered = connector.Prompts.BeginAttempt(interactive: false, savedPasswordProfile: profile).OfferSavedPassword();
         await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
 
-        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
-        Assert.Equal(new[] { (false, true), (true, false) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
+        Assert.Equal((RemoteFailureKind.SshFailed, RemoteNeedsUserCause.SignIn), (dropped.Failure.Kind, dropped.Failure.Cause));
+        Assert.True(stillOffered, "the saved password must not be marked refused");
+        Assert.Equal(new[] { (false, true), (false, true) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly)));
     }
 
     /// <summary>
@@ -963,6 +1082,39 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.NotEqual(RemoteNeedsUserCause.SavedPasswordRefused, lost.Failure.Cause);
         Assert.NotEqual(RemoteFailureKind.NeedsUser, lost.Failure.Kind);
         Assert.Equal(new[] { "s3cret", "s3cret" }, answers);   // offered again: nothing was refused
+    }
+
+    /// <summary>
+    /// Once the native transport says sign-in is over (<see cref="ISshInteractionHandler.Authenticated"/>), nothing that
+    /// follows counts against what the attempt answered - not even a failure that would otherwise read as a refusal.
+    /// </summary>
+    [Fact]
+    public async Task Nothing_after_a_native_sign_in_counts_as_a_refusal()
+    {
+        var saved = new SavedPasswords("s3cret");
+        var answers = new List<string>();
+        var connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            (_, request) =>
+            {
+                _remote.OnStart = _ =>
+                {
+                    string answer = request.Prompts.HandleAsync(PasswordPrompt, CancellationToken.None).GetAwaiter().GetResult().Secret;
+                    lock (answers) answers.Add(answer);
+                    request.Prompts.Authenticated();
+                    _remote.Script = FakeRemoteScript.NativeFailure("SSH authentication failed");
+                };
+                return _remote;
+            },
+            new RemoteMuxInteractionHandler(new ScriptedUser(), _ => false, saved.Read),
+            "i",
+            null));
+
+        var failed = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(RemoteFailureKind.SshFailed, failed.Failure.Kind);
+        Assert.Equal(new[] { "s3cret", "s3cret" }, answers);
     }
 
     /// <summary>
@@ -1116,7 +1268,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(user, _ => false, new SavedPasswords("stale").Read),
             "i",
             null));
@@ -1175,7 +1328,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(new ScriptedUser(SshInteractionResponse.FromSecret("never asked")), _ => false, saved.Read),
             "i",
             null);
@@ -1221,6 +1375,107 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
     }
 
+    /// <summary>The native layer losing the link: an Error that says nothing about sign-in.</summary>
+    private static NativeSshEvent LinkReset { get; } = PromptingNativeSshInterop.Error("Connection reset by peer (os error 104)");
+
+    /// <summary>
+    /// Native, end to end through the real native exec transport: the saved password answered the prompt, and SSH failed
+    /// before sign-in was over - with no second prompt and no word of a refusal. rusty_ssh tries the identity file and the
+    /// agent's keys first, so the password may be sshd's last try under MaxAuthTries, which it answers by cutting the
+    /// connection (russh's bare "Disconnected"); a reset reads the same. It counts as the saved password refused: the
+    /// attempt needs the user, and the host's next automatic attempt ends at the prompt without sending it again.
+    /// </summary>
+    [Theory]
+    [InlineData("Disconnected")]
+    [InlineData("Connection reset by peer (os error 104)")]
+    public async Task A_native_failure_after_the_saved_password_before_sign_in_is_over_is_a_refusal(string nativeError)
+    {
+        var interop = new PromptingNativeSshInterop(
+            PromptingNativeSshInterop.PasswordPrompt,
+            PromptingNativeSshInterop.Error(nativeError),
+            NativeSshEvent.Closed(),
+            PromptingNativeSshInterop.PasswordPrompt);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
+
+        var refused = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SavedPasswordRefused), (refused.Failure.Kind, refused.Failure.Cause));
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.SignIn), (again.Failure.Kind, again.Failure.Cause));
+        Assert.Equal(new[] { """{"text":"s3cret"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
+    /// The native twin of the OpenSSH drop: the saved password answered the prompt, the session connected - sign-in is
+    /// over (the transport says so at Connected) - and then the link dropped before the greeting. Not a refusal: SshFailed,
+    /// and the next automatic attempt answers its prompt with the saved password again, once.
+    /// </summary>
+    [Fact]
+    public async Task A_native_drop_after_sign_in_is_not_a_refusal()
+    {
+        NativeSshEvent[] dropped = [PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
+
+        var lost = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.SshFailed, RemoteFailureKind.SshFailed), (lost.Failure.Kind, again.Failure.Kind));
+        Assert.Equal(new[] { """{"text":"s3cret"}""", """{"text":"s3cret"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
+    /// The same drop with a remembered password (what got the user's Enter in): the automatic attempt answers from memory,
+    /// the session connects - sign-in is over - and the link drops before the greeting. Nothing the attempt answered was
+    /// refused, so the password stays remembered, and the next automatic attempt answers with it again.
+    /// </summary>
+    [Fact]
+    public async Task A_native_drop_after_sign_in_keeps_the_remembered_password()
+    {
+        NativeSshEvent[] dropped = [PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new ScriptedUser(SshInteractionResponse.FromSecret("pw"))));
+        RemoteMuxInteractionHandler.Attempt enter = connector.Prompts.BeginAttempt(interactive: true);
+        await enter.HandleAsync(PasswordPrompt, Ct);
+        enter.Succeeded();   // the user's Enter got in: the host remembers "pw"
+
+        var lost = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal(RemoteFailureKind.SshFailed, lost.Failure.Kind);
+        Assert.Equal(new[] { """{"text":"pw"}""", """{"text":"pw"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+        Assert.True(connector.Prompts.Remembers(SshInteractionKind.Password));
+    }
+
+    /// <summary>
+    /// The same drop on an attempt that first cancelled an encrypted key's passphrase (nothing remembered, as after an app
+    /// restart): the saved password got in all the same - the session connected - so the cancelled passphrase is not what
+    /// kept it out, and signing in does not need the user. SshFailed, so the loop goes on, and the next automatic attempt
+    /// answers its password prompt with the saved password again.
+    /// </summary>
+    [Fact]
+    public async Task A_native_drop_after_sign_in_after_a_cancelled_passphrase_does_not_need_the_user()
+    {
+        NativeSshEvent[] dropped =
+            [PromptingNativeSshInterop.PassphrasePrompt, PromptingNativeSshInterop.PasswordPrompt, PromptingNativeSshInterop.Connected, LinkReset, NativeSshEvent.Closed()];
+        var interop = new PromptingNativeSshInterop([.. dropped, .. dropped]);
+        RemoteMuxConnector connector = Own(NativeConnector(interop, new SavedPasswords("s3cret")));
+
+        var lost = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var again = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.SshFailed, RemoteFailureKind.SshFailed), (lost.Failure.Kind, again.Failure.Kind));
+        Assert.Equal(
+            new[]
+            {
+                (NativeSshResponseKind.Passphrase, """{"text":""}"""),
+                (NativeSshResponseKind.Password, """{"text":"s3cret"}"""),
+                (NativeSshResponseKind.Passphrase, """{"text":""}"""),
+                (NativeSshResponseKind.Password, """{"text":"s3cret"}"""),
+            },
+            interop.Submissions);
+    }
+
     /// <summary>A native keyboard-interactive round with one question, as rusty_ssh raises it.</summary>
     private static NativeSshEvent KeyboardQuestion(string question) => new(
         NativeSshEventKind.KeyboardInteractivePrompt,
@@ -1251,7 +1506,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
                 () => interop,
                 static () => true,
                 askPassHelperPath: null,
-                log: _ => { }),
+                log: _ => { },
+                openSshVersions: ModernSsh),
             new RemoteMuxInteractionHandler(user, _ => false, new SavedPasswords("s3cret").Read),
             "i",
             null));
@@ -1296,6 +1552,169 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         Assert.True(client.IsConnected);
         Assert.Equal(new[] { "s3cret" }, answers);
+    }
+
+    /// <summary>A host-key request as the native layer hands it over, in <paramref name="shape"/>.</summary>
+    internal static SshInteractionRequest HostKeyPrompt(SshInteractionKind shape) => new()
+    {
+        Kind = shape,
+        Host = "fake-host",
+        Port = 22,
+        Algorithm = "ssh-ed25519",
+        Fingerprint = "SHA256:new",
+    };
+
+    /// <summary>
+    /// The native transport over the fake remote: rusty_ssh asks about the host key before sign-in, and ends the session
+    /// when the answer rejects it. What the prompts answered is recorded.
+    /// </summary>
+    private Func<SshProfile, RemoteMuxTransportRequest, ISshExecTransport> NativeHostKeyServer(SshInteractionKind shape, List<SshInteractionResponse> answers) =>
+        (_, request) =>
+        {
+            _remote.OnStart = _ =>
+            {
+                SshInteractionResponse answer = request.Prompts.HandleAsync(HostKeyPrompt(shape), CancellationToken.None).GetAwaiter().GetResult();
+                lock (answers) answers.Add(answer);
+                _remote.Script = answer.IsAccepted ? null : FakeRemoteScript.NativeFailure("Unknown server key");
+            };
+            return _remote;
+        };
+
+    /// <summary>
+    /// Native: an automatic attempt meets a host key nobody trusts - one never seen, or one that changed - and rejects
+    /// it, which ends the session at the key exchange. The next automatic attempt would meet the same key, so the failure
+    /// needs the user, with the host-key cause. Nothing was sent: the saved password was not even read. And it is no refusal
+    /// of the saved password: a user's attempt is not kept from it, and an automatic one still answers with it.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey))]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey))]
+    public async Task An_automatic_native_attempt_that_rejects_a_host_key_needs_the_user_and_leaves_the_saved_password_unrefused(string kind)
+    {
+        var saved = new SavedPasswords("s3cret");
+        var answers = new List<SshInteractionResponse>();
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            NativeHostKeyServer(Enum.Parse<SshInteractionKind>(kind), answers),
+            new RemoteMuxInteractionHandler(new ScriptedUser(SshInteractionResponse.AcceptHostKey()), _ => false, saved.Read),
+            "i",
+            null));
+
+        var hostKey = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (hostKey.Failure.Kind, hostKey.Failure.Cause));
+        Assert.False(Assert.Single(answers).IsAccepted);
+        Assert.Equal(0, saved.Reads);
+        Assert.False(connector.Prompts.BeginAttempt(interactive: true, savedPasswordProfile: NativeProfile()).AvoidsSavedPassword);
+        RemoteMuxInteractionHandler.Attempt next = connector.Prompts.BeginAttempt(interactive: false, savedPasswordProfile: NativeProfile());
+        Assert.Equal("s3cret", (await next.HandleAsync(PasswordPrompt, Ct)).Secret);
+    }
+
+    /// <summary>
+    /// Native, end to end through the real native exec transport, as rusty_ssh raises the prompt: the automatic
+    /// attempt's only submission is the rejection - no password, the saved one included - and the failure needs the user,
+    /// with the host-key cause. Once the user trusted the key (their Enter), the next automatic attempt signs in with the
+    /// saved password, which nothing marked refused.
+    /// </summary>
+    [Fact]
+    public async Task An_automatic_native_attempt_submits_only_the_host_key_rejection()
+    {
+        NativeSshEvent hostKeyEvent = new(
+            NativeSshEventKind.HostKeyPrompt,
+            """{"host":"fake-host","port":22,"algorithm":"ssh-ed25519","fingerprint":"SHA256:new"}"""u8.ToArray(),
+            flags: NativeSshEventFlags.Json);
+        var interop = new PromptingNativeSshInterop(
+            hostKeyEvent,
+            PromptingNativeSshInterop.Error("Unknown server key"),
+            NativeSshEvent.Closed(),
+            hostKeyEvent,
+            PromptingNativeSshInterop.PasswordPrompt);
+        bool keyTrusted = false;
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            (profile, request) => RemoteMuxHostFactory.CreateTransport(
+                profile,
+                request,
+                (_, _) => throw new InvalidOperationException("a native profile never plans an ssh command line"),
+                () => interop,
+                static () => true,
+                askPassHelperPath: null,
+                log: _ => { },
+                openSshVersions: ModernSsh),
+            new RemoteMuxInteractionHandler(new ScriptedUser(), _ => keyTrusted, new SavedPasswords("s3cret").Read),
+            "i",
+            null));
+
+        var hostKey = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (hostKey.Failure.Kind, hostKey.Failure.Cause));
+        Assert.Equal(new[] { (NativeSshResponseKind.HostKeyDecision, """{"accept":false}""") }, interop.Submissions);
+
+        keyTrusted = true;
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        Task<MuxClient> next = connector.ConnectAsync(interactive: false, cts.Token);
+        await TestWait.UntilAsync(() => interop.Submissions.Count == 3, "the next automatic attempt answered its password prompt");
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => next);
+        Assert.Equal(new[] { """{"accept":false}""", """{"accept":true}""", """{"text":"s3cret"}""" }, interop.Submissions.Select(s => s.PayloadJson));
+    }
+
+    /// <summary>
+    /// A user's attempt is what it was. The user rejected the key in the dialog - or there was no window to ask, and
+    /// an untrusted key was rejected as an automatic attempt rejects it: an SSH failure, not one that needs the user.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey), true)]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey), true)]
+    [InlineData(nameof(SshInteractionKind.UnknownHostKey), false)]
+    [InlineData(nameof(SshInteractionKind.ChangedHostKey), false)]
+    public async Task A_users_native_attempt_whose_host_key_is_rejected_stays_an_ssh_failure(string kind, bool window)
+    {
+        var answers = new List<SshInteractionResponse>();
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(
+            NativeProfile,
+            NativeHostKeyServer(Enum.Parse<SshInteractionKind>(kind), answers),
+            new RemoteMuxInteractionHandler(window ? new ScriptedUser(SshInteractionResponse.Cancel()) : null, _ => false, new SavedPasswords("s3cret").Read),
+            "i",
+            null));
+
+        var rejected = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
+
+        Assert.Equal(new RemoteMuxFailure(RemoteFailureKind.SshFailed, "Unknown server key"), rejected.Failure);
+        Assert.False(Assert.Single(answers).IsAccepted);
+    }
+
+    /// <summary>
+    /// OpenSSH: the automatic attempt meets a host key nobody trusts, before any password. A key it does not know: ssh asks
+    /// the vault-only askpass "Are you sure you want to continue connecting", which it refuses (exit 1, nothing recorded) -
+    /// the failure needs the user, with the host-key cause, and a user's attempt failing the same way stays an SSH failure,
+    /// as it was (its Enter shows the key). A key that changed: ssh refuses it on its own and asks nobody, so a user's
+    /// attempt cannot show it either - both need the user, with the changed-key cause, also where ssh went on with password
+    /// sign-in off. Either way the saved password handed to the helper is no refusal: the next automatic attempt offers it
+    /// again, and a user's attempt is not kept from it.
+    /// </summary>
+    [Theory]
+    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr, false)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr, true)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyNotStrictStderr, true)]
+    public async Task An_OpenSSH_attempt_that_fails_host_key_verification_needs_the_user_and_leaves_the_saved_password_unrefused(string sshSaid, bool changed)
+    {
+        SshProfile profile = Profile();
+        var built = new List<OpenSshExecTransport>();
+        RemoteMuxConnector connector = OpenSshConnector(profile, new SavedPasswords("s3cret"), built, (_, _) =>
+            new FakeRemoteScript(Stderr: sshSaid, ExitCode: FakeRemoteHost.LinkLostExitCode));
+
+        var hostKey = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: false, Ct));
+        var user = await Assert.ThrowsAsync<RemoteMuxUnavailableException>(() => connector.ConnectAsync(interactive: true, Ct));
+        bool stillOffered = connector.Prompts.BeginAttempt(interactive: false, savedPasswordProfile: profile).OfferSavedPassword();
+
+        RemoteNeedsUserCause cause = changed ? RemoteNeedsUserCause.HostKeyChanged : RemoteNeedsUserCause.HostKey;
+        Assert.Equal((RemoteFailureKind.NeedsUser, cause), (hostKey.Failure.Kind, hostKey.Failure.Cause));
+        if (changed) Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKeyChanged), (user.Failure.Kind, user.Failure.Cause));
+        else Assert.Equal(RemoteFailureKind.SshFailed, user.Failure.Kind);
+        Assert.True(stillOffered, "a host-key failure is no refusal of the saved password");
+        Assert.False(connector.Prompts.BeginAttempt(interactive: true, savedPasswordProfile: profile).AvoidsSavedPassword);
+        Assert.Equal(new[] { (false, true, false), (false, false, false) }, built.Select(t => (t.BatchMode, t.SavedPasswordOnly, t.WithoutSavedPassword)));
     }
 }
 

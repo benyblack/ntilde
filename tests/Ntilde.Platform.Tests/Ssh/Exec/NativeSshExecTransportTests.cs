@@ -332,6 +332,68 @@ public sealed class NativeSshExecTransportTests
             Task.FromException<SshInteractionResponse>(error);
     }
 
+    /// <summary>
+    /// The session reporting Connected is the end of sign-in: the handler is told, once, after the prompts it answered, so
+    /// a failure after it - the link dropping - is never taken for an answer refused.
+    /// </summary>
+    [Fact]
+    public async Task Connected_tells_the_handler_that_sign_in_is_over()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(
+            ScriptedNativeSshInterop.PasswordPrompt(),
+            ScriptedNativeSshInterop.Connected(),
+            ScriptedNativeSshInterop.Error("Connection reset by peer (os error 104)"),
+            ScriptedNativeSshInterop.Closed());
+        var handler = new SignInRecordingHandler();
+
+        using ISshExecChannel channel = Start(interop, handler);
+        await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { nameof(SshInteractionKind.Password), SignInRecordingHandler.SignedIn }, handler.Seen);
+    }
+
+    /// <summary>A sign-in that fails never reaches Connected, so the handler is never told it is over.</summary>
+    [Fact]
+    public async Task A_sign_in_that_fails_never_tells_the_handler_it_is_over()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        interop.Enqueue(
+            ScriptedNativeSshInterop.PasswordPrompt(),
+            ScriptedNativeSshInterop.Error("SSH authentication failed"),
+            ScriptedNativeSshInterop.Closed());
+        var handler = new SignInRecordingHandler();
+
+        using ISshExecChannel channel = Start(interop, handler);
+        await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { nameof(SshInteractionKind.Password) }, handler.Seen);
+    }
+
+    /// <summary>Answers every prompt with a password, and records each prompt's kind and the end of sign-in, in order.</summary>
+    private sealed class SignInRecordingHandler : ISshInteractionHandler
+    {
+        public const string SignedIn = "signed in";
+
+        private readonly List<string> _seen = [];
+
+        public IReadOnlyList<string> Seen
+        {
+            get { lock (_seen) return _seen.ToArray(); }
+        }
+
+        public Task<SshInteractionResponse> HandleAsync(SshInteractionRequest request, CancellationToken cancellationToken)
+        {
+            lock (_seen) _seen.Add(request.Kind.ToString());
+            return Task.FromResult(SshInteractionResponse.FromSecret("hunter2"));
+        }
+
+        public void Authenticated()
+        {
+            lock (_seen) _seen.Add(SignedIn);
+        }
+    }
+
     // --- Stdin -----------------------------------------------------------------------------------
 
     [Fact]
@@ -403,7 +465,7 @@ public sealed class NativeSshExecTransportTests
         Task<int> blockedRead = channel.Stdout.ReadAsync(new byte[16], TestContext.Current.CancellationToken).AsTask();
 
         Task dispose = Task.Run(channel.Dispose, TestContext.Current.CancellationToken);
-        await dispose.WaitAsync(NativeSshExecChannel.ExitGrace + Bound, TestContext.Current.CancellationToken);
+        await dispose.WaitAsync(NativeSshExecChannel.DefaultExitGrace + Bound, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, interop.SendEofCount);
         Assert.Equal(1, interop.CloseCount);
@@ -411,6 +473,42 @@ public sealed class NativeSshExecTransportTests
         Assert.False(interop.PollThread!.IsAlive);
         Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
         Assert.Equal(0, await blockedRead.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// The grace a transport is given is how long its channels' Dispose waits for the command to end on stdin's EOF: the
+    /// mux's are given a longer one than the default, ordered against the remote proxy's own wait. A short one here
+    /// closes the session of a command that ignores the EOF well before the default grace would have.
+    /// </summary>
+    [Fact]
+    public async Task A_transport_given_an_exit_grace_waits_that_long_for_the_command_to_end_on_EOF()
+    {
+        var interop = new ScriptedNativeSshInterop(); // never exits, not even on EOF
+        var transport = new NativeSshExecTransport(
+            Profile(), interop, null, NativeSshConnectionOptionsFactory.Create, log: _ => { }, exitGrace: TimeSpan.FromMilliseconds(100));
+        ISshExecChannel channel = transport.Start("ntilde-mux proxy --stdio", CancellationToken.None);
+        await WaitUntilAsync(() => interop.Polls > 0, "the first poll");
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        await Task.Run(channel.Dispose, TestContext.Current.CancellationToken).WaitAsync(Bound, TestContext.Current.CancellationToken);
+        TimeSpan took = clock.Elapsed;
+
+        Assert.Equal(TimeSpan.FromMilliseconds(100), transport.ExitGrace);
+        Assert.True(took < NativeSshExecChannel.DefaultExitGrace, $"Dispose took {took}: it waited out the default grace, not the one given");
+        Assert.Equal((1, 1), (interop.SendEofCount, interop.CloseCount));
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void The_exit_grace_is_the_default_unless_one_is_given_and_must_be_positive()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        Assert.Equal(NativeSshExecChannel.DefaultExitGrace, Transport(interop).ExitGrace);
+        Assert.Equal(
+            TimeSpan.FromSeconds(7),
+            new NativeSshExecTransport(Profile(), interop, null, NativeSshConnectionOptionsFactory.Create, exitGrace: TimeSpan.FromSeconds(7)).ExitGrace);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new NativeSshExecTransport(Profile(), interop, null, NativeSshConnectionOptionsFactory.Create, exitGrace: TimeSpan.Zero));
     }
 
     /// <summary>Final review F4: a cancelled connect's channel closes its session at once, with no EOF grace period.</summary>
@@ -425,7 +523,7 @@ public sealed class NativeSshExecTransportTests
         channel.Abort();
         TimeSpan took = clock.Elapsed;
 
-        Assert.True(took < NativeSshExecChannel.ExitGrace, $"Abort took {took}: it waited for an EOF grace period");
+        Assert.True(took < NativeSshExecChannel.DefaultExitGrace, $"Abort took {took}: it waited for an EOF grace period");
         Assert.Equal(1, interop.CloseCount);
         Assert.True(interop.Handle.IsClosed);
         Assert.False(interop.PollThread!.IsAlive);
@@ -465,7 +563,7 @@ public sealed class NativeSshExecTransportTests
         await WaitUntilAsync(() => interop.Dequeued >= chunksToFill, "the queue to fill");
 
         await Task.Run(channel.Dispose, TestContext.Current.CancellationToken)
-            .WaitAsync(NativeSshExecChannel.ExitGrace + NativeSshExecChannel.StopWait + Bound, TestContext.Current.CancellationToken);
+            .WaitAsync(NativeSshExecChannel.DefaultExitGrace + NativeSshExecChannel.StopWait + Bound, TestContext.Current.CancellationToken);
 
         // Abandoning stdout woke the parked poll thread, which dropped the rest and reached Closed
         // within the grace period. Had it stayed parked, the channel would have stopped it: null.
@@ -485,7 +583,7 @@ public sealed class NativeSshExecTransportTests
         await handler.Request.WaitAsync(Bound, TestContext.Current.CancellationToken);
 
         await Task.Run(channel.Dispose, TestContext.Current.CancellationToken)
-            .WaitAsync(NativeSshExecChannel.ExitGrace + NativeSshExecChannel.StopWait + Bound, TestContext.Current.CancellationToken);
+            .WaitAsync(NativeSshExecChannel.DefaultExitGrace + NativeSshExecChannel.StopWait + Bound, TestContext.Current.CancellationToken);
 
         Assert.True(handler.Token.IsCancellationRequested);
         Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));

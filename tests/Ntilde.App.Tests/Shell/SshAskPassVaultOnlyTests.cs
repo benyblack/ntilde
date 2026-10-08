@@ -5,8 +5,8 @@ namespace Ntilde.Tests.Shell;
 
 /// <summary>
 /// The askpass helper's vault-only mode (<see cref="SshAskPassEnvironment.VaultOnlyVariable"/>), which an automatic
-/// reconnect of a profile with a saved password runs it in: it answers the target's own password prompt from the vault
-/// and nothing else, and never builds any UI - no Avalonia app, no window. Without the mode, the helper is as before:
+/// reconnect of a profile with a saved password runs it in: it answers the target's own password prompt from the vault,
+/// once per ssh process, and nothing else, and never builds any UI - no Avalonia app, no window. Without the mode, the helper is as before:
 /// the vault for the target's password - once per ssh process (<see cref="SshAskPassEnvironment.SessionVariable"/>), never
 /// with <see cref="SshAskPassEnvironment.NoVaultVariable"/> - and a dialog for everything else. The dialog is the seam
 /// (<see cref="SshAskPassCommand.Execute(string[], TextWriter, TextWriter, Func{string, string?}, Func{TerminalProfile, string?}, Func{SshAskPassCommand.AskPassState, string?}, SshAskPassSessionMarkers)"/>):
@@ -71,6 +71,26 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     private static Dictionary<string, string> With(IReadOnlyDictionary<string, string> environment, string name, string value) =>
         new(environment, StringComparer.Ordinal) { [name] = value };
 
+    private const string Token = "0123456789abcdef0123456789abcdef";
+
+    /// <summary>Vault-only, for the ssh whose token is <see cref="Token"/>: how an automatic reconnect runs the helper.</summary>
+    private static readonly Dictionary<string, string> VaultOnlySsh = With(VaultOnly, SshAskPassEnvironment.SessionVariable, Token);
+
+    /// <summary>
+    /// One ssh's prompts in order, each answered by a new helper process (as ssh runs it) with "s3cret" saved: what each
+    /// exited with and wrote.
+    /// </summary>
+    private (int Exit, string Answer)[] Converse(IReadOnlyDictionary<string, string> environment, params string[] prompts) =>
+        prompts.Select(prompt =>
+        {
+            var run = NewRun(environment, saved: "s3cret");
+            int exit = run.Execute(prompt);
+            Assert.Empty(run.Dialogs);
+            return (exit, run.Stdout.ToString());
+        }).ToArray();
+
+    private SshAskPassRecord RecordOf(string token) => new SshAskPassSessionMarkers(() => _markers).Read(token);
+
     /// <summary>
     /// The coordinator's fix to the smoke test's complaint: Enter after a refused saved password re-sent it on every
     /// prompt and never showed the dialog. Now one ssh process (its session token) gets the saved password once; when
@@ -125,21 +145,138 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     }
 
     /// <summary>
-    /// Vault-only mode answers every target password prompt whatever the token (ssh's NumberOfPasswordPrompts=1 already
-    /// bounds it), and never shows UI: the token only records that it did (review I-1).
+    /// Vault-only mode, too, fills the target's password at most once per ssh process (its token), and never shows UI:
+    /// ssh's NumberOfPasswordPrompts=1 bounds a method's attempts, not the prompts of one keyboard-interactive round. The
+    /// same ssh asking again gets no answer, and the vault is not even read.
     /// </summary>
     [Fact]
-    public void Vault_only_answers_every_target_prompt_whatever_the_token()
+    public void Vault_only_answers_the_target_prompt_once_per_token()
     {
-        var env = With(VaultOnly, SshAskPassEnvironment.SessionVariable, "0123456789abcdef0123456789abcdef");
-        var first = NewRun(env, saved: "s3cret");
-        var second = NewRun(env, saved: "s3cret");
+        var first = NewRun(VaultOnlySsh, saved: "s3cret");
+        var second = NewRun(VaultOnlySsh, saved: "s3cret");
 
         Assert.Equal(0, first.Execute(TargetPrompt));
-        Assert.Equal(0, second.Execute(TargetPrompt));
+        Assert.Equal(1, second.Execute(TargetPrompt));
 
-        Assert.Equal("s3cret" + Environment.NewLine, second.Stdout.ToString());
+        Assert.Equal("s3cret" + Environment.NewLine, first.Stdout.ToString());
+        Assert.Equal(string.Empty, second.Stdout.ToString());
         Assert.Empty(second.Dialogs);
+        Assert.Empty(second.VaultReads);
+    }
+
+    /// <summary>
+    /// A PAM expired-password conversation is one keyboard-interactive round: after the saved password, the server asks for
+    /// a new one and then for it again. Those get nothing - an unattended process must never type the saved password into
+    /// a new-password field - and are recorded declined: more than the saved password was asked for.
+    /// </summary>
+    [Fact]
+    public void Vault_only_fills_a_PAM_expired_password_conversation_once_and_records_the_rest_declined()
+    {
+        var answers = Converse(
+            VaultOnlySsh,
+            "(ops@prod.internal) Password: ",
+            "(ops@prod.internal) New password: ",
+            "(ops@prod.internal) Retype new password: ");
+
+        Assert.Equal([(0, "s3cret" + Environment.NewLine), (1, string.Empty), (1, string.Empty)], answers);
+        Assert.Equal(new SshAskPassRecord(Answered: true, Declined: true), RecordOf(Token));
+    }
+
+    /// <summary>
+    /// A server that offers keyboard-interactive and password auth: after a refused keyboard-interactive fill, ssh's next
+    /// method asks in its own form (<c>user@host's password:</c>). That is the refusal asking again, not more being asked
+    /// for: no answer, and nothing recorded declined, so the app still reads the saved password as refused.
+    /// </summary>
+    [Fact]
+    public void Vault_only_after_a_keyboard_interactive_fill_the_password_method_asking_again_is_no_second_factor()
+    {
+        var answers = Converse(VaultOnlySsh, "(ops@prod.internal) Password: ", TargetPrompt);
+
+        Assert.Equal([(0, "s3cret" + Environment.NewLine), (1, string.Empty)], answers);
+        Assert.Equal(new SshAskPassRecord(Answered: true, Declined: false), RecordOf(Token));
+    }
+
+    private const string PfSensePrompt = "(admin@192.168.1.1) Password for admin@pfSense.home.arpa:";
+
+    /// <summary>A pfSense box (FreeBSD's sshd, keyboard-interactive only) the profile reaches by address.</summary>
+    private static Dictionary<string, string> PfSense(IReadOnlyDictionary<string, string> environment) =>
+        With(With(environment, SshAskPassEnvironment.ProfileUserVariable, "admin"), SshAskPassEnvironment.ProfileHostVariable, "192.168.1.1");
+
+    /// <summary>
+    /// FreeBSD's pam_unix asks <c>Password for user@host:</c> - all such a host wants. An automatic reconnect fills it,
+    /// once, and records no decline: the sign-in is not taken for one that needs a second factor.
+    /// </summary>
+    [Fact]
+    public void Vault_only_fills_the_password_FreeBSD_asks_for_and_records_no_decline()
+    {
+        var answers = Converse(PfSense(VaultOnlySsh), PfSensePrompt);
+
+        Assert.Equal([(0, "s3cret" + Environment.NewLine)], answers);
+        Assert.Equal(new SshAskPassRecord(Answered: true, Declined: false), RecordOf(Token));
+    }
+
+    [Fact]
+    public void A_user_attempt_fills_the_password_FreeBSD_asks_for_from_the_vault()
+    {
+        var run = NewRun(PfSense(With(Interactive, SshAskPassEnvironment.SessionVariable, Token)), saved: "s3cret", typed: "typed");
+
+        Assert.Equal(0, run.Execute(PfSensePrompt));
+
+        Assert.Equal("s3cret" + Environment.NewLine, run.Stdout.ToString());
+        Assert.Empty(run.Dialogs);
+    }
+
+    /// <summary>Without a session token nothing could hold the fill to one per ssh, so vault-only gives none.</summary>
+    [Fact]
+    public void Vault_only_without_a_session_token_answers_nothing()
+    {
+        var run = new Run(VaultOnly, saved: "s3cret");
+
+        Assert.Equal(1, run.Execute(TargetPrompt));
+
+        Assert.Equal(string.Empty, run.Stdout.ToString());
+        Assert.Empty(run.Dialogs);
+    }
+
+    /// <summary>
+    /// Vault-only, a fill that cannot be recorded is not made: without the record, a later prompt from the same ssh could
+    /// not tell that it came second, and would get the saved password again.
+    /// </summary>
+    [Fact]
+    public void Vault_only_when_the_record_cannot_be_written_answers_nothing()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_markers)!);
+        File.WriteAllText(_markers, "a file where the directory would go");
+        try
+        {
+            var run = NewRun(VaultOnlySsh, saved: "s3cret");
+
+            Assert.Equal(1, run.Execute(TargetPrompt));
+
+            Assert.Equal(string.Empty, run.Stdout.ToString());
+            Assert.Empty(run.Dialogs);
+        }
+        finally
+        {
+            File.Delete(_markers);
+        }
+    }
+
+    /// <summary>
+    /// On Enter, keyboard-interactive text that mentions a password but asks for something else goes to the dialog, not
+    /// the vault: only a prompt that ends asking for one is the target's password.
+    /// </summary>
+    [Fact]
+    public void A_user_attempt_takes_a_keyboard_interactive_prompt_not_ending_in_password_to_the_dialog()
+    {
+        const string prompt = "(ops@prod.internal) Your password expires soon. Verification code: ";
+        var run = NewRun(With(Interactive, SshAskPassEnvironment.SessionVariable, Token), saved: "s3cret", typed: "123456");
+
+        Assert.Equal(0, run.Execute(prompt));
+
+        Assert.Equal("123456" + Environment.NewLine, run.Stdout.ToString());
+        Assert.Equal(prompt, Assert.Single(run.Dialogs));
+        Assert.Empty(run.VaultReads);
     }
 
     /// <summary>A token that is not 32 hex digits names no file: the helper behaves as without one, and writes nothing.</summary>
@@ -275,7 +412,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     [Fact]
     public void Vault_only_answers_the_targets_password_prompt_from_the_vault()
     {
-        var run = new Run(VaultOnly, saved: "s3cret");
+        var run = NewRun(VaultOnlySsh, saved: "s3cret");
 
         int exit = run.Execute(TargetPrompt);
 
@@ -290,7 +427,7 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     [Fact]
     public void Vault_only_answers_a_keyboard_interactive_password_prompt_for_the_target_too()
     {
-        var run = new Run(VaultOnly, saved: "s3cret");
+        var run = NewRun(VaultOnlySsh, saved: "s3cret");
 
         Assert.Equal(0, run.Execute("(ops@prod.internal) Password: "));
         Assert.Equal("s3cret" + Environment.NewLine, run.Stdout.ToString());
@@ -299,16 +436,18 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
 
     /// <summary>
     /// Everything that is not the target's password is turned away at once, with no UI built and the vault not even
-    /// read: a host key, a key's passphrase, a jump host's password, keyboard-interactive text that asks for no password.
+    /// read: a host key, a key's passphrase, a jump host's password, keyboard-interactive text that asks for no password -
+    /// even text that mentions one but does not end asking for it.
     /// </summary>
     [Theory]
     [InlineData("The authenticity of host 'prod.internal' can't be established.\nAre you sure you want to continue connecting (yes/no/[fingerprint])? ")]
     [InlineData("Enter passphrase for key '/home/ops/.ssh/id_ed25519': ")]
     [InlineData("jumpuser@bastion's password: ")]
     [InlineData("(ops@prod.internal) Verification code: ")]
+    [InlineData("(ops@prod.internal) Your password expires soon. Verification code: ")]
     public void Vault_only_refuses_every_other_prompt_without_any_ui(string prompt)
     {
-        var run = new Run(VaultOnly, saved: "s3cret", typed: "typed");
+        var run = NewRun(VaultOnlySsh, saved: "s3cret", typed: "typed");
 
         int exit = run.Execute(prompt);
 
@@ -323,13 +462,14 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
     [InlineData("")]
     public void Vault_only_with_nothing_saved_refuses_the_targets_password_without_any_ui(string? saved)
     {
-        var run = new Run(VaultOnly, saved, typed: "typed");
+        var run = NewRun(VaultOnlySsh, saved, typed: "typed");
 
         int exit = run.Execute(TargetPrompt);
 
         Assert.NotEqual(0, exit);
         Assert.Equal(string.Empty, run.Stdout.ToString());
         Assert.Empty(run.Dialogs);
+        Assert.Equal(default, RecordOf(Token)); // no fill, so no claim: a claim would read as a refused password
     }
 
     /// <summary>A user is waiting: the vault fills the target's password, as before, and anything else goes to the dialog.</summary>

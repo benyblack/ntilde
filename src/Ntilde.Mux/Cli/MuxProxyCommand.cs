@@ -51,10 +51,9 @@ public static class MuxProxyCommand
     /// that the daemon runs on (codex D1). A daemon that stops - <c>kill-server</c>, its idle exit, an update's
     /// <c>shutdown</c> - closes its connections first and exits a moment later. Only the exit code waits: the
     /// channel's stdout and stderr have ended before it (<c>endStdio</c>), so the client has seen the end already.
-    /// It fits inside the 2 s the GUI's exec channels give a command to exit once their stdin closed, and under the
-    /// GUI's 2 s wait for the exit status (<c>RemoteMuxHostFactory.DisconnectExitWait</c>), so the code reaches it.
+    /// The GUI's waits for the code are ordered above it: see <c>RemoteMuxHostFactory.ChannelExitGrace</c> in the app.
     /// </summary>
-    private static readonly TimeSpan DaemonExitWait = TimeSpan.FromMilliseconds(1500);
+    internal static readonly TimeSpan DaemonExitWait = TimeSpan.FromMilliseconds(1500);
 
     /// <summary>How often <see cref="DaemonExitWait"/> looks.</summary>
     private static readonly TimeSpan DaemonExitPoll = TimeSpan.FromMilliseconds(50);

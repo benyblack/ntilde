@@ -18,11 +18,45 @@ namespace Ntilde.Shell.Mux.Remote;
 internal static class RemoteMuxHostFactory
 {
     /// <summary>
-    /// How long a disconnect waits for the channel's exit status. Longer than the proxy's own wait for a closing
-    /// daemon's process to go (1.5 s, codex D1), so a daemon that stops slowly still reads as stopped; the host's
-    /// <see cref="MuxConnectionHost.ClassifyTimeout"/> sits above it.
+    /// How long a channel this factory builds lets the remote command exit on stdin's EOF before it stops it
+    /// (<see cref="OpenSshExecTransport.ExitGrace"/>, <see cref="NativeSshExecTransport.ExitGrace"/>): the first of the
+    /// waits that tell a stopped daemon from a lost link, which must keep the order below.
     /// </summary>
-    private static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(2);
+    /// <remarks>
+    /// When the daemon side of a connection ends, the proxy on the remote (<c>MuxProxyCommand</c>) ends its stdout at
+    /// once, then waits up to <c>MuxProxyCommand.DaemonExitWait</c> (1.5 s) for the daemon's process to go before it
+    /// exits 3 (gone: <see cref="MuxDisconnectKind.DaemonStopped"/>) or 4 (runs on: a lost link). Then ssh brings the code
+    /// home - sshd sends it, ssh exits - which on a loaded remote takes a while too. The end of stdout reaches the client
+    /// first, and from that moment three waits run here at once, each of which turns a 3 it does not see into a lost link:
+    /// <code>
+    /// DaemonExitWait + SshTeardownAllowance &lt;= ChannelExitGrace &lt; DisconnectExitWait &lt; ClassifyTimeout
+    ///    1.5 s       +         2 s          &lt;=      3.5 s       &lt;        4 s         &lt;      4.5 s
+    /// </code>
+    /// The channel's end (<see cref="RemoteMuxConnector"/> disposes it once its client is done) stops ssh after
+    /// <see cref="ChannelExitGrace"/>, and a stopped ssh has no status; <see cref="ClassifyDisconnectAsync"/> waits
+    /// <see cref="DisconnectExitWait"/> for the status; <see cref="MuxConnectionHost"/> caps the classification at
+    /// <see cref="ClassifyTimeout"/>. Each outlasts the one before it, and the grace leaves ssh
+    /// <see cref="SshTeardownAllowance"/> after the proxy's own wait. Read wrongly, a stopped daemon's panes reconnect to
+    /// a new one and each says its session was lost. The proxy is the remote binary and the transports are the platform's,
+    /// so neither reads these: <c>MuxProxyCommand.DaemonExitWait</c> and the transports' default grace point here, the
+    /// transports are given this grace (<see cref="CreateTransport"/>), and <c>RemoteMuxHostFactoryTests</c> pins the order.
+    /// </remarks>
+    internal static readonly TimeSpan ChannelExitGrace = TimeSpan.FromSeconds(3.5);
+
+    /// <summary>
+    /// What <see cref="ChannelExitGrace"/> leaves ssh, after the proxy's own wait for the daemon's process, to bring the
+    /// exit code home on a loaded remote.
+    /// </summary>
+    internal static readonly TimeSpan SshTeardownAllowance = TimeSpan.FromSeconds(2);
+
+    /// <summary>How long a disconnect waits for the channel's exit status: above <see cref="ChannelExitGrace"/> (see the order there).</summary>
+    internal static readonly TimeSpan DisconnectExitWait = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// The host's cap on a disconnect's classification (<see cref="MuxConnectionHost.ClassifyTimeout"/>): above
+    /// <see cref="DisconnectExitWait"/> (see the order at <see cref="ChannelExitGrace"/>).
+    /// </summary>
+    internal static readonly TimeSpan ClassifyTimeout = TimeSpan.FromSeconds(4.5);
 
     /// <summary>
     /// The host for <paramref name="id"/>, or null to decline: the local endpoint (not this factory's), or a
@@ -172,7 +206,8 @@ internal static class RemoteMuxHostFactory
     /// <item>OpenSSH: ssh with the profile's launch plan. A user-started attempt prompts through the
     /// askpass helper. An automatic one whose profile has a saved password it may use
     /// (<see cref="RemoteMuxTransportRequest.OfferSavedPassword"/>: no jump hops, the profile's own destination, not
-    /// refused before on this host) runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
+    /// refused before on this host), through an ssh of 8.4 or later (<see cref="PrefixesKeyboardInteractivePrompts"/>),
+    /// runs the helper in its vault-only mode, with <c>NumberOfPasswordPrompts=1</c>: the
     /// password is answered from the vault, once, and every other prompt is refused with no UI. Any other automatic one
     /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
     /// reconnects on Enter, or through keys, the agent or an existing ControlMaster. A user's attempt after a password was
@@ -182,6 +217,8 @@ internal static class RemoteMuxHostFactory
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
     /// </list>
+    /// Either way the channels it starts end with <see cref="ChannelExitGrace"/>, so a stopped daemon's exit code still
+    /// gets through.
     /// </summary>
     /// <param name="openSshLaunch">
     /// The OpenSSH launch plan of this very profile (<see cref="SshConnectionService.BuildLaunchDetailsFor"/>), which may
@@ -196,6 +233,11 @@ internal static class RemoteMuxHostFactory
     /// a user's Enter - not only hosts built later (codex4 F).
     /// </param>
     /// <param name="askPassHelperPath">The askpass helper (<see cref="SshAskPassCommand.LocateHelper()"/>), or null for none.</param>
+    /// <param name="openSshVersions">
+    /// The OpenSSH clients' versions (<see cref="OpenSshClientVersionCache.Shared"/> in the app), read for an automatic
+    /// attempt that would be offered the saved password; the probe may block for seconds, so this is called off the UI
+    /// thread.
+    /// </param>
     /// <exception cref="RemoteMuxUnavailableException">A Native profile while native SSH is off (<see cref="ThrowIfNativeSshDisabled"/>).</exception>
     public static ISshExecTransport CreateTransport(
         SshProfile profile,
@@ -204,17 +246,19 @@ internal static class RemoteMuxHostFactory
         Func<INativeSshInterop> nativeInterop,
         Func<bool> nativeSshEnabled,
         string? askPassHelperPath,
-        Action<string>? log)
+        Action<string>? log,
+        OpenSshClientVersionCache openSshVersions)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(openSshLaunch);
         ArgumentNullException.ThrowIfNull(nativeInterop);
+        ArgumentNullException.ThrowIfNull(openSshVersions);
 
         ThrowIfNativeSshDisabled(profile, nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native)
         {
-            return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log);
+            return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log, ChannelExitGrace);
         }
 
         SshLaunchDetails launch = openSshLaunch(profile, request.Pinned);
@@ -222,14 +266,18 @@ internal static class RemoteMuxHostFactory
         // Offered only once a helper exists to answer it and the plan is built; only when the helper can recognise the
         // target's prompt - it names the profile's user@host (review M2), which the profile's own arguments must not change
         // (-l, -o User, -F, -o HostName, -o HostKeyAlias: re-review item 6); and not when the plan's own arguments go
-        // through a jump host, which on OpenSSH before 8.4 could ask as the target (review M3).
+        // through a jump host, which on OpenSSH before 8.4 could ask as the target (review M3). Nor with an ssh before 8.4 at
+        // all, whose keyboard-interactive prompts do not name the target (PrefixesKeyboardInteractivePrompts): its version is
+        // read only for an attempt that would otherwise be offered, and before the vault is.
         bool savedPasswordOnly = !request.Interactive
             && askPassHelperPath is not null
             && !string.IsNullOrWhiteSpace(profile.User)
             && !string.IsNullOrWhiteSpace(profile.Host)
             && !OpenSshExecCommandLine.ExtraArgumentsChangeWhoOrWhere(profile.ExtraSshArgs)
             && !OpenSshExecCommandLine.NamesAProxy(plan)
-            && request.OfferSavedPassword?.Invoke() == true;
+            && request.OfferSavedPassword is { } offerSavedPassword
+            && PrefixesKeyboardInteractivePrompts(launch.SshPath, openSshVersions, log)
+            && offerSavedPassword();
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
@@ -240,7 +288,39 @@ internal static class RemoteMuxHostFactory
             batchMode: !request.Interactive && !savedPasswordOnly,
             savedPasswordOnly: savedPasswordOnly,
             withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
-            askPassSession: request.AskPassSession);
+            askPassSession: request.AskPassSession,
+            exitGrace: ChannelExitGrace);
+    }
+
+    /// <summary>
+    /// Whether the OpenSSH client at <paramref name="sshPath"/>, the one the attempt runs, puts <c>(user@host) </c> in front
+    /// of its keyboard-interactive prompts (8.4 and later, <see cref="OpenSshClientVersion.PrefixesKeyboardInteractivePrompts"/>).
+    /// The vault-only askpass answers only a prompt that names the target. An older client's <c>Password: </c> would go
+    /// unanswered, and ssh then sends an empty answer, a failed login on every attempt. A second factor after a filled
+    /// password would not be recorded as declined either, so it would read as the saved password refused. A client that is
+    /// not OpenSSH counts as older, and so does one whose version could not be read this time - for this attempt only: that
+    /// answer is not kept, and the next attempt reads the version again (<see cref="OpenSshClientVersionCache"/>). Each probe
+    /// that leaves the attempt without the saved password is logged once, with why: a definitive answer once per executable,
+    /// not on every attempt.
+    /// </summary>
+    internal static bool PrefixesKeyboardInteractivePrompts(string sshPath, OpenSshClientVersionCache versions, Action<string>? log)
+    {
+        OpenSshClientProbe probe = versions.Lookup(sshPath, out bool probedHere);
+        bool prefixes = OpenSshClientVersion.PrefixesKeyboardInteractivePrompts(probe.Version);
+        if (!prefixes && probedHere)
+        {
+            log?.Invoke(probe.Kind switch
+            {
+                OpenSshClientProbeKind.Version =>
+                    $"[RemoteMux] {sshPath} is OpenSSH {probe.Version}, whose keyboard-interactive prompts do not name the target (8.4 and later do), so automatic OpenSSH reconnects are not offered the saved password",
+                OpenSshClientProbeKind.NotOpenSsh =>
+                    $"[RemoteMux] {sshPath} is not an OpenSSH client this can read ({probe.Reason}), so automatic OpenSSH reconnects are not offered the saved password",
+                _ =>
+                    $"[RemoteMux] the OpenSSH version of {sshPath} could not be read ({probe.Reason}), so this automatic reconnect is not offered the saved password; the next one reads it again",
+            });
+        }
+
+        return prefixes;
     }
 
     /// <summary>

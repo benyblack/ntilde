@@ -32,7 +32,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// (<see cref="RemoteMuxInteractionHandler.Attempt.MaySignInWithSavedPassword"/>), null otherwise: called by a transport
 /// whose prompts are answered outside the app - OpenSSH's askpass - when it is built, true when the vault holds the
 /// password, which the attempt then counts as offered (<see cref="RemoteMuxInteractionHandler.Attempt.OfferSavedPassword"/>).
-/// The native transport does not call it: its password prompt reaches <paramref name="Prompts"/>, which answers it.
+/// The native transport does not call it: its password prompt reaches <paramref name="Prompts"/>, which answers it. Nor
+/// does an OpenSSH transport whose ssh is older than 8.4 (<see cref="RemoteMuxHostFactory.PrefixesKeyboardInteractivePrompts"/>).
 /// </param>
 /// <param name="WithoutSavedPassword">
 /// A user's attempt that keeps the saved password away (<see cref="RemoteMuxInteractionHandler.Attempt.AvoidsSavedPassword"/>:
@@ -455,6 +456,17 @@ internal sealed class RemoteMuxConnector : IDisposable
                 RemoteFailureKind.NeedsUser,
                 $"signing in to {host} needs more than the saved password (a second factor), which an automatic reconnect does not ask for ({failure.Reason})");
         }
+        else if (failure.Kind == RemoteFailureKind.SshFailed && !prompts.Interactive && prompts.HostKeyRejected)
+        {
+            // Native: the automatic attempt rejected a host key the user does not trust - never seen, or changed - and the
+            // connection ended at the key exchange, before anything was sent. The next attempt meets the same key, so
+            // retrying on a timer would only knock for ten minutes: NeedsUser, and Enter shows the key. A user's attempt
+            // stays an SSH failure, as it was. (OpenSSH's own host-key failure is classified so already.)
+            failure = new RemoteMuxFailure(
+                RemoteFailureKind.NeedsUser,
+                $"the host key of {host} is not one the user trusts (unknown, or changed), and an automatic reconnect accepts no new key ({failure.Reason})",
+                RemoteNeedsUserCause.HostKey);
+        }
         else if (prompts.AbortedPrompt is { } aborted)
         {
             // We ended it at auth, rather than send the server an empty answer: a quiet failure that says
@@ -462,10 +474,12 @@ internal sealed class RemoteMuxConnector : IDisposable
             string needs = aborted == SshInteractionKind.KeyboardInteractive ? "keyboard-interactive input" : "a password";
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs {needs}, which an automatic reconnect does not ask for");
         }
-        else if (failure.Kind == RemoteFailureKind.SshFailed && prompts.DeclinedPrompt is not null)
+        else if (failure.Kind == RemoteFailureKind.SshFailed && prompts.DeclinedPrompt is not null && !prompts.HasAuthenticated)
         {
             // Codex D3: it cancelled a key's passphrase it had nothing to answer with, and nothing else got in. Only
             // the user can give it, so the same NeedsUser: retrying on a timer would fail the same way for ten minutes.
+            // Once sign-in was over, something else did get in (the agent, the saved password): the drop is the link's,
+            // and the retries go on.
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs a key passphrase, which an automatic reconnect does not ask for");
         }
 
@@ -484,7 +498,10 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// <summary>What a failed attempt's saved password had to do with the failure.</summary>
     private enum SavedPasswordVerdict
     {
-        /// <summary>Nothing known: none was offered, or it was never asked for, or the failure came after sign-in.</summary>
+        /// <summary>
+        /// Nothing known: none was offered, or it was never asked for, or the failure came after sign-in, or OpenSSH said
+        /// nothing of a refusal.
+        /// </summary>
         None,
 
         /// <summary>The server refused it.</summary>
@@ -497,18 +514,21 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// <summary>
     /// What the saved password <paramref name="prompts"/> offered had to do with an SSH failure (review I-1), on evidence,
     /// never guesswork. Given to a native password prompt - from the vault, or the same value remembered from an earlier
-    /// sign-in - it reached the server: the prompt after it says which - a code
-    /// question is a second factor; a password asked for again, or the attempt failing SSH with nothing after it, is a
-    /// refusal. Handed to OpenSSH's askpass, the helper's record of this attempt's ssh says: a declined prompt naming the
-    /// target (a second factor) is not a refusal; a refusal needs the helper to have filled the password - sshd refusing
-    /// without asking for it (agent keys past MaxAuthTries, password auth off) does not count. Nothing counts once the attempt
-    /// got past sign-in: the greeting proves the password was taken.
+    /// sign-in - it reached the server: the prompt after it says which - a code question is a second factor; anything else
+    /// before sign-in was over is a refusal, a second prompt or none. rusty_ssh tries the identity file and the agent's
+    /// keys first, so the password may be sshd's last try under MaxAuthTries, which it answers by cutting the connection:
+    /// a bare disconnect is all the native layer sees. Once the native transport said sign-in was over, nothing counts.
+    /// Handed to OpenSSH's askpass, the helper's record of this attempt's ssh says: a declined prompt naming the target (a
+    /// second factor) is not a refusal; a refusal needs the helper to have filled the password - sshd refusing without
+    /// asking for it (agent keys past MaxAuthTries, password auth off) does not count - and ssh to say the sign-in was
+    /// refused (<see cref="RemoteMuxFailure.SignInRefused"/>). Any other failure after the fill - the link dropping - says
+    /// nothing about it: no verdict, and the next attempt offers it again, once. Nothing counts once the greeting arrived.
     /// </summary>
     private static SavedPasswordVerdict SavedPasswordVerdictOf(RemoteMuxInteractionHandler.Attempt prompts, RemoteMuxFailure failure)
     {
-        // Past sign-in (the proxy's greeting arrived), the password got in: a later failure is the link's, not a refusal
-        // (re-review item 1), as Attempt.Refused keeps a remembered one.
-        if (prompts.HasSucceeded) return SavedPasswordVerdict.None;
+        // Past sign-in (the native transport said so, or the proxy's greeting arrived), the password got in: a later failure
+        // is the link's, not a refusal (re-review item 1), as Attempt.Refused keeps a remembered one.
+        if (prompts.HasSucceeded || prompts.HasAuthenticated) return SavedPasswordVerdict.None;
         bool sshFailed = failure.Kind is RemoteFailureKind.SshFailed or RemoteFailureKind.NeedsUser || prompts.AbortedPrompt is not null;
         if (!sshFailed) return SavedPasswordVerdict.None;
         if (prompts.StoredPasswordAnswered)
@@ -523,7 +543,7 @@ internal sealed class RemoteMuxConnector : IDisposable
         if (!prompts.SavedPasswordOffered) return SavedPasswordVerdict.None;
         Ntilde.SshAskPassRecord record = prompts.ReadAskPassRecord();
         if (record.Declined) return SavedPasswordVerdict.NotEnough;
-        return record.Answered ? SavedPasswordVerdict.Refused : SavedPasswordVerdict.None;
+        return record.Answered && failure.SignInRefused ? SavedPasswordVerdict.Refused : SavedPasswordVerdict.None;
     }
 
     private static Func<SshProfile> Fixed(SshProfile profile)

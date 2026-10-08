@@ -21,7 +21,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// A remembered secret that may have been refused is forgotten, never replayed: replaying a stale
 /// password every few seconds is a lockout waiting to happen. The native layer asks for a password once
 /// and then falls to keyboard-interactive, so a refusal shows as another auth prompt after it, or as the
-/// attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>.
+/// attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>. Once the native transport
+/// said sign-in was over (<see cref="Attempt.Authenticated"/>), a failure counts against nothing it offered.
 /// </para>
 /// <para>
 /// A native password prompt does not say which hop of a jump chain asks, and each hop asks the same
@@ -33,8 +34,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// dialog. An automatic one never does: it accepts a host key only when the known-hosts store already
 /// trusts it - the native layer asks about the host key on every connect, known or not - and leaves
 /// every other prompt unanswered (see <see cref="Attempt"/>), so the attempt fails quietly. One that
-/// failed for want of a secret only the user can give fails as needing the user, which stops the
-/// reconnect loop; a refused host key leaves it backing off.
+/// failed for want of a secret only the user can give, or that rejected a host key the user does not
+/// trust (<see cref="Attempt.HostKeyRejected"/>), fails as needing the user, which stops the reconnect loop.
 /// </para>
 /// <para>
 /// The one exception (the user's choice after the Phase 4 smoke test): the profile's password saved in the vault. An
@@ -292,8 +293,8 @@ internal sealed class RemoteMuxInteractionHandler
     /// if it came from memory, forgotten at once and not offered again in this attempt. A host-key prompt
     /// after it means the next hop's connection has begun, so it did get its hop in: it is proven, and the
     /// same secret may be offered to the next hop. <see cref="Succeeded"/> remembers what was not
-    /// superseded; <see cref="Refused"/>, unless the attempt succeeded, forgets everything it offered from
-    /// memory.
+    /// superseded; <see cref="Refused"/>, unless the attempt succeeded or its sign-in was over
+    /// (<see cref="Authenticated"/>), forgets everything it offered from memory.
     /// </para>
     /// <para>
     /// With nobody to ask (an automatic attempt, or no window handler) and nothing remembered, a password
@@ -304,8 +305,9 @@ internal sealed class RemoteMuxInteractionHandler
     /// exec channel close the session without answering (its documented contract), and closing wakes
     /// rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A passphrase
     /// is still cancelled: it only unlocks a local key, and nothing reaches the server. It is recorded,
-    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH, nothing else got
-    /// in, and the connector reports it as needing the user, as it does an aborted prompt.
+    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH before sign-in is
+    /// over, nothing else got in, and the connector reports it as needing the user, as it does an aborted
+    /// prompt.
     /// </para>
     /// <para>
     /// An automatic attempt that <see cref="MaySignInWithSavedPassword"/> answers a password prompt it has nothing
@@ -327,14 +329,16 @@ internal sealed class RemoteMuxInteractionHandler
         private readonly object _gate = new();
         private readonly List<Answer> _answers = []; // guarded by _gate; in the order given
         private bool _succeeded;                     // guarded by _gate
+        private bool _authenticated;                 // guarded by _gate; the native transport said sign-in is over
         private SshInteractionKind? _abortedPrompt;  // guarded by _gate
         private SshInteractionKind? _declinedPrompt; // guarded by _gate
+        private bool _hostKeyRejected;               // guarded by _gate; nobody to ask, and the key was not trusted
         private bool _savedPasswordOffered;          // guarded by _gate
         private byte[]? _offeredHash;                // guarded by _gate; HashOf the saved password offered
         private bool _storedPasswordAnswered;        // guarded by _gate; nobody to ask, and a stored password answered
         private bool _storedFromVault;               // guarded by _gate; that password came from the vault
         private byte[]? _storedHash;                 // guarded by _gate; HashOf that password
-        private AfterSavedPassword _afterSaved;      // guarded by _gate; the first prompt after the saved password
+        private bool? _secondFactorAfterSaved;       // guarded by _gate; null until the first prompt after the stored password
 
         internal Attempt(
             RemoteMuxInteractionHandler owner,
@@ -372,7 +376,7 @@ internal sealed class RemoteMuxInteractionHandler
         /// </summary>
         internal bool SecondFactorAfterSavedPassword
         {
-            get { lock (_gate) return _afterSaved == AfterSavedPassword.SecondFactor; }
+            get { lock (_gate) return _secondFactorAfterSaved == true; }
         }
 
         /// <summary>
@@ -494,6 +498,22 @@ internal sealed class RemoteMuxInteractionHandler
             get { lock (_gate) return _succeeded; }
         }
 
+        /// <summary>
+        /// The native transport saw sign-in end (<see cref="ISshInteractionHandler.Authenticated"/>): everything this attempt
+        /// answered got it in, so a failure from now on - the link dropping before the greeting - counts against none of it.
+        /// From now on <see cref="Refused"/> changes nothing.
+        /// </summary>
+        public void Authenticated()
+        {
+            lock (_gate) _authenticated = true;
+        }
+
+        /// <summary>The attempt's sign-in was over (<see cref="Authenticated"/>), whatever came after it.</summary>
+        internal bool HasAuthenticated
+        {
+            get { lock (_gate) return _authenticated; }
+        }
+
         /// <summary>The prompt this attempt refused to answer, ending the connection; null when it answered every one.</summary>
         public SshInteractionKind? AbortedPrompt
         {
@@ -503,11 +523,22 @@ internal sealed class RemoteMuxInteractionHandler
         /// <summary>
         /// A secret prompt this attempt cancelled for want of anyone to ask and anything remembered - an encrypted
         /// key's passphrase - without ending the connection (codex D3); null when there was none. The attempt may still
-        /// get in another way; if it fails SSH instead, signing in needs the user, as for an <see cref="AbortedPrompt"/>.
+        /// get in another way; if it fails SSH before sign-in is over (<see cref="HasAuthenticated"/>) instead, signing in
+        /// needs the user, as for an <see cref="AbortedPrompt"/>.
         /// </summary>
         public SshInteractionKind? DeclinedPrompt
         {
             get { lock (_gate) return _declinedPrompt; }
+        }
+
+        /// <summary>
+        /// With nobody to ask, this attempt rejected a host key the user does not trust - one never seen, or one that changed.
+        /// That ends the connection at the key exchange, before anything is sent, and the next attempt meets the same key:
+        /// only the user can review it. A user's own answer in the dialog is not recorded here.
+        /// </summary>
+        public bool HostKeyRejected
+        {
+            get { lock (_gate) return _hostKeyRejected; }
         }
 
         private ISshInteractionHandler? User => Interactive ? _owner._user : null;
@@ -562,7 +593,9 @@ internal sealed class RemoteMuxInteractionHandler
             {
                 // Nobody to ask: a known host key only. A cancel is submitted as a rejection, which ends
                 // the connection before any credential is sent.
-                return _owner._isTrustedHostKey(request) ? SshInteractionResponse.AcceptHostKey() : SshInteractionResponse.Cancel();
+                if (_owner._isTrustedHostKey(request)) return SshInteractionResponse.AcceptHostKey();
+                lock (_gate) _hostKeyRejected = true;
+                return SshInteractionResponse.Cancel();
             }
 
             // A keyboard-interactive round with questions has no answer here; one with none (some servers
@@ -603,14 +636,14 @@ internal sealed class RemoteMuxInteractionHandler
         /// from memory may be the reason, so each is forgotten, and the next user attempt asks instead. A
         /// password among them means the server's password changed: the host uses that value no more, from the vault
         /// either (the same value saved there is likely as stale). A no-op once the attempt
-        /// <see cref="Succeeded"/>: past the greeting, what it offered got it in.
+        /// <see cref="Succeeded"/>, or its sign-in was over (<see cref="Authenticated"/>): what it offered got it in.
         /// </summary>
         public void Refused()
         {
             List<Answer> answers;
             lock (_gate)
             {
-                if (_succeeded) return;
+                if (_succeeded || _authenticated) return;
                 answers = [.. _answers];
             }
 
@@ -654,7 +687,8 @@ internal sealed class RemoteMuxInteractionHandler
         /// Records the first prompt after a stored password (the saved one, or a remembered one) was answered with nobody to
         /// ask: a keyboard-interactive round whose questions all
         /// ask for something other than a password is a second factor; anything else - a password prompt, a question that
-        /// asks for a password, a passphrase - means the password was refused. An empty round says nothing.
+        /// asks for a password, a passphrase - is not, and a code question after it is none either. An empty round says
+        /// nothing.
         /// </summary>
         private void NoteWhatFollowsTheSavedPassword(SshInteractionRequest request)
         {
@@ -663,8 +697,8 @@ internal sealed class RemoteMuxInteractionHandler
                 && request.KeyboardPrompts.All(question => !question.Prompt.Contains("password", StringComparison.OrdinalIgnoreCase));
             lock (_gate)
             {
-                if (!_storedPasswordAnswered || _afterSaved != AfterSavedPassword.Nothing) return;
-                _afterSaved = secondFactor ? AfterSavedPassword.SecondFactor : AfterSavedPassword.Refusal;
+                if (!_storedPasswordAnswered || _secondFactorAfterSaved is not null) return;
+                _secondFactorAfterSaved = secondFactor;
             }
         }
 
@@ -729,18 +763,6 @@ internal sealed class RemoteMuxInteractionHandler
         private void Track(Answer answer)
         {
             lock (_gate) _answers.Add(answer);
-        }
-
-        private enum AfterSavedPassword
-        {
-            /// <summary>No prompt has come since the saved password, or none was given.</summary>
-            Nothing,
-
-            /// <summary>A password was asked for again: the saved one was refused.</summary>
-            Refusal,
-
-            /// <summary>Something other than a password was asked for: a second factor.</summary>
-            SecondFactor,
         }
 
         private enum AnswerState

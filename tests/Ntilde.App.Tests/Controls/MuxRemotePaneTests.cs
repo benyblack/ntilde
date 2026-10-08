@@ -80,7 +80,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         RemoteMuxHostFactory.ThrowIfNativeSshDisabled(profile, () => Volatile.Read(ref _nativeSshEnabled));
         if (!request.Interactive && profile.BackendKind == SshBackendKind.OpenSsh && request.OfferSavedPassword?.Invoke() == true)
         {
-            new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).RecordAnswered(request.AskPassSession!);
+            new Ntilde.SshAskPassSessionMarkers(() => _askPassRecords).TryClaim(request.AskPassSession!);
         }
 
         return _remote;
@@ -241,6 +241,13 @@ public sealed class MuxRemotePaneTests : IDisposable
 
     private void ShowsBanner(TerminalPane pane, string banner) =>
         PumpUntil(() => Text(pane).Contains(banner, StringComparison.Ordinal), $"the pane shows {banner}");
+
+    /// <summary>As <see cref="ShowsBanner"/>, for a line that may wrap at the pane's width: compared without line breaks or spaces.</summary>
+    private void ShowsWrapped(TerminalPane pane, string line) =>
+        PumpUntil(() => Unwrapped(Text(pane)).Contains(Unwrapped(line), StringComparison.Ordinal), $"the pane shows {line}");
+
+    private static string Unwrapped(string text) =>
+        text.Replace("\n", string.Empty, StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
 
     /// <summary>Raises one of the host's events as the host does, on a pool thread: the pane must decide from its own state.</summary>
     private static void Raise(MuxConnectionHost host, string name, params object?[] args)
@@ -413,7 +420,8 @@ public sealed class MuxRemotePaneTests : IDisposable
     [AvaloniaFact]
     public void A_refused_saved_password_says_so_under_the_enter_banner()
     {
-        Volatile.Write(ref _savedPassword, "stale");
+        const string Secret = "stale-pw-7f3a";
+        Volatile.Write(ref _savedPassword, Secret);
         TerminalPane pane = ShowPane();
         Attached(pane);
         _remote.Script = NeedsPassword;
@@ -427,6 +435,8 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.False(RemoteHost.IsReconnecting);
         Assert.DoesNotContain("Permission denied", Text(pane));
         Assert.DoesNotContain("can't sign in without you", Text(pane));
+        // Compared unwrapped, so a line break inside the secret cannot hide it.
+        Assert.DoesNotContain(Unwrapped(Secret), Unwrapped(Text(pane)));
     }
 
     /// <summary>
@@ -441,18 +451,87 @@ public sealed class MuxRemotePaneTests : IDisposable
 
         Assert.Equal(
             "[The saved password was refused \u2014 press Enter to sign in]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused)));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid, RemoteNeedsUserCause.SavedPasswordRefused), Host));
         Assert.Equal(
             "[Automatic reconnect can't sign in without you \u2014 press Enter]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid)));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, sshSaid), Host));
         Assert.Equal(
             "[Automatic reconnect can't sign in without you \u2014 press Enter]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for")));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for"), Host));
         Assert.Equal(
             $"[{nativeOff}]",
-            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, nativeOff, RemoteNeedsUserCause.NativeSshDisabled)));
-        Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid)));
-        Assert.Null(TerminalPane.RemoteNeedsUserLine(null));
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, nativeOff, RemoteNeedsUserCause.NativeSshDisabled), Host));
+        // A host key's line names the host as the app knows it, never as ssh's or the server's text has it.
+        Assert.Equal(
+            "[Host key for nova@fake-host is unknown or has changed \u2014 press Enter to review]",
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Host key for evil-host has changed", RemoteNeedsUserCause.HostKey), Host));
+        Assert.Equal(
+            ChangedHostKeyLine,
+            TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.NeedsUser, "Host key for evil-host has changed", RemoteNeedsUserCause.HostKeyChanged), Host));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(new RemoteMuxFailure(RemoteFailureKind.SshFailed, sshSaid), Host));
+        Assert.Null(TerminalPane.RemoteNeedsUserLine(null, Host));
+    }
+
+    /// <summary>The line under the Enter banner for an OpenSSH key that changed: ssh refuses it outright, so Enter cannot show it.</summary>
+    private const string ChangedHostKeyLine =
+        "[Host key for nova@fake-host has changed \u2014 if you trust the new key, remove the old one from known_hosts, then press Enter]";
+
+    /// <summary>
+    /// As the pane shows it: the automatic reconnect met a host key nobody trusts, and the loop stopped after that one
+    /// attempt. A key ssh does not know: the line under the Enter banner says to review it, which Enter does. A key that
+    /// changed: ssh refuses it and asks nothing, so the line says what to do first. Either names the host as the app knows
+    /// it; ssh's own words, and its warning banner, go to the log only.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(RemoteMuxFailureClassifierTests.UnknownHostKeyStderr, false)]
+    [InlineData(RemoteMuxFailureClassifierTests.ChangedHostKeyStderr, true)]
+    public void A_host_key_nobody_trusts_stops_the_loop_and_says_so_under_the_enter_banner(string sshSaid, bool changed)
+    {
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = new FakeRemoteScript(Stderr: sshSaid, ExitCode: FakeRemoteHost.LinkLostExitCode);
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        _clock.Advance(FirstRetry);
+
+        ShowsBanner(pane, TerminalPane.RemoteAbandonedBanner(Host));
+        if (changed) ShowsWrapped(pane, ChangedHostKeyLine);
+        else ShowsBanner(pane, "[Host key for nova@fake-host is unknown or has changed \u2014 press Enter to review]");
+        Assert.False(RemoteHost.IsReconnecting);
+        int started = _remote.StartCount;
+        _clock.Advance(MuxReconnectLoop.Budget);
+        Assert.Equal((2, 0), (started, _remote.StartCount - started));   // the first connect, then one automatic attempt
+        // Compared unwrapped, so a line break at the pane's width cannot hide them.
+        Assert.DoesNotContain(Unwrapped("verification failed"), Unwrapped(Text(pane)));
+        Assert.DoesNotContain(Unwrapped("IDENTIFICATION"), Unwrapped(Text(pane)));
+        Assert.DoesNotContain(Unwrapped("can't sign in without you"), Unwrapped(Text(pane)));
+    }
+
+    /// <summary>
+    /// The user's Enter meets an OpenSSH key that changed. ssh refuses it without asking, so this user's attempt cannot show
+    /// it either: unlike every other failed Enter, it needs the user, and the pane says what to do - not the bare Enter
+    /// banner again. (Here the loop first stopped on a key ssh did not know; the key then changed.)
+    /// </summary>
+    [AvaloniaFact]
+    public void An_enter_that_meets_a_changed_OpenSSH_host_key_says_what_to_do()
+    {
+        TerminalPane pane = ShowPane();
+        Attached(pane);
+        _remote.Script = new FakeRemoteScript(Stderr: RemoteMuxFailureClassifierTests.UnknownHostKeyStderr, ExitCode: FakeRemoteHost.LinkLostExitCode);
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+        _clock.Advance(FirstRetry);
+        ShowsBanner(pane, "[Host key for nova@fake-host is unknown or has changed \u2014 press Enter to review]");
+        Assert.DoesNotContain(Unwrapped("remove the old one"), Unwrapped(Text(pane)));
+
+        _remote.Script = new FakeRemoteScript(Stderr: RemoteMuxFailureClassifierTests.ChangedHostKeyStderr, ExitCode: FakeRemoteHost.LinkLostExitCode);
+        PressEnter(pane);
+
+        ShowsWrapped(pane, ChangedHostKeyLine);
+        Assert.Equal(3, _remote.StartCount);   // the first connect, the loop's one attempt, the Enter
+        Assert.False(RemoteHost.IsReconnecting);
+        Assert.DoesNotContain(Unwrapped("IDENTIFICATION"), Unwrapped(Text(pane)));
     }
 
     [AvaloniaFact]

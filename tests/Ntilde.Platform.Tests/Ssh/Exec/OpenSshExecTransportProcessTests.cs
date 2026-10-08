@@ -126,6 +126,36 @@ public sealed class OpenSshExecTransportProcessTests
         Assert.Equal(3, await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// The grace a transport is given is how long its channels' Dispose waits for ssh to exit on stdin's EOF: the mux's
+    /// are given a longer one than the default, ordered against the remote proxy's own wait. A short one here stops a
+    /// command that ignores the EOF well before the default grace would have.
+    /// </summary>
+    [Fact]
+    public async Task A_transport_given_an_exit_grace_waits_that_long_for_ssh_to_exit_on_EOF()
+    {
+        (string shell, string[] leading) = Shell();
+        var transport = new OpenSshExecTransport(
+            Profile(), shell, command => [.. leading, command], askPassHelperPath: null, log: _ => { }, exitGrace: TimeSpan.FromMilliseconds(200));
+        ISshExecChannel channel = transport.Start(Pick("ping -n 3 127.0.0.1 >nul & exit /b 3", "sleep 2; exit 3"), CancellationToken.None);
+
+        var clock = Stopwatch.StartNew();
+        channel.Dispose();
+        TimeSpan took = clock.Elapsed;
+
+        Assert.Equal(TimeSpan.FromMilliseconds(200), transport.ExitGrace);
+        Assert.True(took < OpenSshExecChannel.DefaultExitGrace, $"Dispose took {took}: it waited out the default grace, not the one given");
+        Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));   // stopped, before its own exit 3
+    }
+
+    [Fact]
+    public void The_exit_grace_is_the_default_unless_one_is_given_and_must_be_positive()
+    {
+        Assert.Equal(OpenSshExecChannel.DefaultExitGrace, new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["alias"], null).ExitGrace);
+        Assert.Equal(TimeSpan.FromSeconds(7), new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["alias"], null, exitGrace: TimeSpan.FromSeconds(7)).ExitGrace);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new OpenSshExecTransport(Profile(), "/usr/bin/ssh", ["alias"], null, exitGrace: TimeSpan.Zero));
+    }
+
     [Fact]
     public void A_kill_reads_as_unknown_but_an_exit_that_beat_the_kill_keeps_its_code()
     {
@@ -233,7 +263,7 @@ public sealed class OpenSshExecTransportProcessTests
         TimeSpan took = clock.Elapsed;
 
         Assert.True(HasExited(pid), $"pid {pid} is still running after Abort returned");
-        Assert.True(took < OpenSshExecChannel.ExitGrace, $"Abort took {took}: it waited for an EOF grace period");
+        Assert.True(took < OpenSshExecChannel.DefaultExitGrace, $"Abort took {took}: it waited for an EOF grace period");
         Assert.Null(await channel.Completion.WaitAsync(Bound, TestContext.Current.CancellationToken));
         channel.Abort();   // idempotent
         channel.Dispose(); // nothing left to end

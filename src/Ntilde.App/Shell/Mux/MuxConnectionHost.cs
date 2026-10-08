@@ -417,14 +417,20 @@ internal sealed class MuxConnectionHost : IDisposable
     internal Func<MuxClient, Task<MuxDisconnectKind>>? ClassifyDisconnect { get; init; }
 
     /// <summary>
-    /// The cap on <see cref="ClassifyDisconnect"/>: 2.5 s, above the remote classifier's own 2 s wait for the proxy's exit
-    /// status, which covers the proxy's 1.5 s wait for a closing daemon's process (codex D1). Tests: longer, to hold a
-    /// classification open.
+    /// The cap on <see cref="ClassifyDisconnect"/>: <see cref="RemoteMuxHostFactory.ClassifyTimeout"/>, the last of the
+    /// waits for a lost client's exit status (see their order at <see cref="RemoteMuxHostFactory.ChannelExitGrace"/>).
+    /// Tests: longer, to hold a classification open.
     /// </summary>
-    internal TimeSpan ClassifyTimeout { get; init; } = TimeSpan.FromSeconds(2.5);
+    internal TimeSpan ClassifyTimeout { get; init; } = RemoteMuxHostFactory.ClassifyTimeout;
 
     /// <summary>The liveness ping: <see cref="MuxClient.PingAsync"/>. Tests replace it to decide when, and how, a ping ends.</summary>
     internal Func<MuxClient, CancellationToken, Task> Ping { get; init; } = static (client, ct) => client.PingAsync(ct);
+
+    /// <summary>
+    /// One kill: <see cref="MuxClient.KillAsync"/>, not cancelled by the host's disposal - Dispose flushes kills in flight
+    /// with a bounded wait of its own. Tests replace it to decide when, and how, a kill ends.
+    /// </summary>
+    internal Func<MuxClient, Guid, Task> Kill { get; init; } = static (client, sessionId) => client.KillAsync(sessionId, CancellationToken.None);
 
     /// <summary>Tests: the client a remote host watches (pings, and handles the end of); null for a local host.</summary>
     internal MuxClient? WatchedClientForTest { get { lock (_gate) return _watched; } }
@@ -451,8 +457,10 @@ internal sealed class MuxConnectionHost : IDisposable
     /// Kills <paramref name="sessionId"/> on this host's daemon - a tab the user closed - at once when
     /// connected, otherwise right after the next successful connect, whatever starts it: sent with
     /// <see cref="MuxClient.KillAsync"/> and tracked like <see cref="TrackPendingKill"/> (Review Focus 1: a
-    /// remote tab closed while its link is down must not orphan its shell). A kill whose connection closes
-    /// before the daemon answers is queued again. Queued kills outlive the reconnect loop giving up
+    /// remote tab closed while its link is down must not orphan its shell). Connected, it is sent from the pool,
+    /// never on the caller's thread, which may be the UI thread: a stalled link's full send queue would hold it. A
+    /// kill whose connection closes before the daemon answers - or whose request times out once that connection is
+    /// gone - is queued again. Queued kills outlive the reconnect loop giving up
     /// (<see cref="ReconnectAbandoned"/>): a later connect - a user's Enter, or the next pane opened on the
     /// endpoint - still sends them (controller ruling). They are dropped, with a log line, in two cases only:
     /// <see cref="DaemonStopped"/> (that daemon's sessions ended with it) and the host's disposal. A release
@@ -497,7 +505,9 @@ internal sealed class MuxConnectionHost : IDisposable
             moot = live is null && _daemonStopped;
             if (live is null && !moot && !_queuedKills.Contains(sessionId)) _queuedKills.Add(sessionId);
             idle = live is null && !moot && Policy.IsRemote && _connecting is not { IsCompleted: false } && _episode != Episode.Reconnecting;
-            if (live is not null) _killsUnsettled++; // until SendKill's continuation settles it: not drained meanwhile
+            // Counted here, before the send is handed off: a release right behind this close waits for it, and
+            // the count holds until the send's continuation settles it.
+            if (live is not null) _killsUnsettled++;
         }
 
         if (moot)
@@ -513,26 +523,25 @@ internal sealed class MuxConnectionHost : IDisposable
         }
         else
         {
-            SendKill(live, sessionId);
+            HandOffKill(live, sessionId);
         }
 
         return true;
     }
 
     /// <summary>
-    /// Sends one kill and tracks it. The caller counted it in <see cref="_killsUnsettled"/> under the lock when it
-    /// decided to send it, and it stays counted until its continuation below has settled it: answered, or - its
-    /// connection closed first - queued again by <see cref="OnKillFailed"/>. Only then does the count drop and the
-    /// drain get checked (<see cref="WhenKillsDrained"/>), so a failed kill is never read as delivered, not even in
-    /// the moment between its task faulting (at once, on a client already dead) and its continuation running.
+    /// Sends one kill, on this thread, and tracks it. The caller counted it in <see cref="_killsUnsettled"/> under the
+    /// lock when it decided to send it, and it stays counted until <see cref="SettleWhenDone"/> has settled it. The caller
+    /// is <see cref="OnConnected"/>, on its attempt's pool thread: a fresh connection's queue has room, and its kills
+    /// must be queued before <see cref="Reconnected"/> lets the panes reattach. A caller that must not block hands the
+    /// kill off instead (<see cref="HandOffKill"/>).
     /// </summary>
     private void SendKill(MuxClient client, Guid sessionId)
     {
         Task kill;
         try
         {
-            // Not the host's disposal token: Dispose flushes kills in flight with a bounded wait of its own.
-            kill = client.KillAsync(sessionId, CancellationToken.None);
+            kill = Kill(client, sessionId);
         }
         catch (Exception ex)
         {
@@ -540,13 +549,43 @@ internal sealed class MuxConnectionHost : IDisposable
         }
 
         lock (_gate) TrackKillLocked(kill);
+        SettleWhenDone(client, sessionId, kill);
+    }
 
+    /// <summary>
+    /// <see cref="SendKill"/> for a caller that must not wait on the link - a pane closing, on the UI thread. On a
+    /// stalled link the client's send queue fills, and a send then waits until the link drains or is dropped (the
+    /// liveness ping is sent from the pool for the same reason). So the send runs on the pool, behind the kills handed
+    /// off before it: a stalled link holds one pool thread, however many panes close on it. The kill is tracked before
+    /// this returns, for <see cref="Dispose"/>'s flush, as the caller counted it for a release.
+    /// </summary>
+    private void HandOffKill(MuxClient client, Guid sessionId)
+    {
+        Task kill;
+        lock (_gate)
+        {
+            // Not ExecuteSynchronously: behind a send already done, that would send on this very thread.
+            Task<Task> sending = _killSends.ContinueWith(_ => Kill(client, sessionId), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            _killSends = sending;
+            kill = sending.Unwrap();
+            TrackKillLocked(kill);
+        }
+
+        SettleWhenDone(client, sessionId, kill);
+    }
+
+    /// <summary>
+    /// Settles a kill once it ends: answered, or failed (<see cref="OnKillFailed"/>, which may queue it again). Only then
+    /// does the count drop and the drain get checked (<see cref="WhenKillsDrained"/>), so a failed kill is never read as
+    /// delivered, not even in the moment between its task faulting (at once, on a client already dead) and this running.
+    /// </summary>
+    private void SettleWhenDone(MuxClient client, Guid sessionId, Task kill) =>
         _ = kill.ContinueWith(
             t =>
             {
                 try
                 {
-                    if (t.IsFaulted) OnKillFailed(sessionId, t.Exception!.GetBaseException());
+                    if (t.IsFaulted) OnKillFailed(client, sessionId, t.Exception!.GetBaseException());
                 }
                 finally
                 {
@@ -555,20 +594,29 @@ internal sealed class MuxConnectionHost : IDisposable
                 }
             },
             CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
-    }
 
-    private void OnKillFailed(Guid sessionId, Exception error)
+    /// <summary>
+    /// A kill <paramref name="client"/> did not get answered. Its connection closed first, or its request timed out and
+    /// by then the connection is gone (found dead, and still being closed when the request's time ran out): either way the
+    /// kill may never have arrived, so it goes out again on the next connection - a second kill of a session already gone
+    /// only fails. A timeout on a connection still up is logged and left: queued, the kill would wait for a next
+    /// connection a working one never needs, and hold the host's release meanwhile.
+    /// </summary>
+    private void OnKillFailed(MuxClient client, Guid sessionId, Exception error)
     {
-        if (error is IOException && !_closed)
+        bool timedOut = error is TimeoutException;
+        if (!_closed && (error is IOException || (timedOut && !client.IsConnected)))
         {
-            // The connection closed before the daemon answered, so the kill may never have arrived: again
-            // on the next connection. A second kill of a session already gone only fails.
-            _log?.Invoke($"[Mux] {Policy.DisplayName}: the connection closed before session {sessionId} was killed; trying again once connected");
+            _log?.Invoke(timedOut
+                ? $"[Mux] {Policy.DisplayName}: the kill of session {sessionId} timed out, and its connection is gone; trying again once connected"
+                : $"[Mux] {Policy.DisplayName}: the connection closed before session {sessionId} was killed; trying again once connected");
             KillWhenConnected(sessionId);
             return;
         }
 
-        _log?.Invoke($"[Mux] {Policy.DisplayName}: killing session {sessionId} failed: {error.Message}");
+        _log?.Invoke(timedOut && !_closed
+            ? $"[Mux] {Policy.DisplayName}: the daemon did not answer the kill of session {sessionId} in time; its connection is up, so it is not sent again"
+            : $"[Mux] {Policy.DisplayName}: killing session {sessionId} failed: {error.Message}");
     }
 
     private Guid[] DrainQueuedKillsLocked()
@@ -984,7 +1032,8 @@ internal sealed class MuxConnectionHost : IDisposable
 
     internal int PendingKillCountForTest { get { lock (_gate) return _pendingKills.Count(t => !t.IsCompleted); } }
 
-    private int _killsUnsettled; // guarded by _gate: kills decided on (OnConnected, KillWhenConnected) whose SendKill continuation has not finished
+    private int _killsUnsettled; // guarded by _gate: kills decided on (OnConnected, KillWhenConnected) whose SettleWhenDone continuation has not finished
+    private Task _killSends = Task.CompletedTask; // guarded by _gate: the last send HandOffKill gave the pool; the next waits for it
     private readonly List<Action> _drainWaiters = new(); // guarded by _gate: WhenKillsDrained callbacks still waiting
 
     /// <summary>

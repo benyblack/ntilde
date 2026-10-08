@@ -23,6 +23,61 @@ public sealed class RemoteMuxFailureClassifierTests
     private const string Musl =
         "Error loading shared library ld-linux-x86-64.so.2: No such file or directory (needed by /home/nova/.local/share/ntilde/bin/ntilde-mux)";
 
+    /// <summary>
+    /// OpenSSH meeting a host key it does not know (StrictHostKeyChecking=ask): the askpass helper refuses "Are you sure you
+    /// want to continue connecting" (or batch mode answers no for it), and ssh ends before signing in, with exit 255.
+    /// </summary>
+    internal const string UnknownHostKeyStderr = "Host key verification failed.\r\n";
+
+    /// <summary>The same with StrictHostKeyChecking=yes: ssh says why first.</summary>
+    internal const string StrictUnknownHostKeyStderr =
+        "No ED25519 host key is known for fake-host and you have requested strict checking.\r\nHost key verification failed.\r\n";
+
+    private const string ChangedHostKeyBanner =
+        "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n"
+        + "@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\r\n"
+        + "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n"
+        + "IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\r\n"
+        + "Someone could be eavesdropping on you right now (man-in-the-middle attack)!\r\n"
+        + "It is also possible that a host key has just been changed.\r\n"
+        + "The fingerprint for the ED25519 key sent by the remote host is\r\n"
+        + "SHA256:Zmx2b2hYc0h2a1hQbE5yN0x1T3FqY2tZbE5yN0x1T3E.\r\n"
+        + "Please contact your system administrator.\r\n"
+        + "Add correct host key in /home/nova/.ssh/known_hosts to get rid of this message.\r\n"
+        + "Offending ED25519 key in /home/nova/.ssh/known_hosts:3\r\n"
+        + "  remove with:\r\n"
+        + "  ssh-keygen -f '/home/nova/.ssh/known_hosts' -R 'fake-host'\r\n";
+
+    /// <summary>OpenSSH meeting a host key that changed since it was trusted (StrictHostKeyChecking=ask or yes): it refuses on its own.</summary>
+    internal const string ChangedHostKeyStderr =
+        ChangedHostKeyBanner
+        + "Host key for fake-host has changed and you have requested strict checking.\r\n"
+        + "Host key verification failed.\r\n";
+
+    /// <summary>The changed key's strict-checking line without the banner before it: either is enough.</summary>
+    private const string ChangedHostKeyWithoutBannerStderr =
+        "Offending ED25519 key in /home/nova/.ssh/known_hosts:3\r\n"
+        + "Host key for fake-host has changed and you have requested strict checking.\r\n"
+        + "Host key verification failed.\r\n";
+
+    /// <summary>
+    /// A changed host key under StrictHostKeyChecking=no: ssh goes on, with password and keyboard-interactive sign-in off, so
+    /// only a key could get in - here none did.
+    /// </summary>
+    internal const string ChangedHostKeyNotStrictStderr =
+        ChangedHostKeyBanner
+        + "Password authentication is disabled to avoid man-in-the-middle attacks.\r\n"
+        + "Keyboard-interactive authentication is disabled to avoid man-in-the-middle attacks.\r\n"
+        + "UpdateHostkeys is disabled because the host key is not trusted.\r\n"
+        + "nova@fake-host: Permission denied (publickey).\r\n";
+
+    private const string UnprotectedKeyStderr =
+        "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n"
+        + "@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @\r\n"
+        + "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n"
+        + "Permissions 0644 for '/home/nova/.ssh/id_ed25519' are too open.\r\n"
+        + "nova@fake-host: Permission denied (publickey).\r\n";
+
     [Theory]
     // dash, running the default command's exec of a binary that is not there
     [InlineData(127, "sh: 1: " + Binary + ": not found\n", nameof(RemoteFailureKind.NotInstalled), "ntilde-mux is not installed")]
@@ -75,6 +130,80 @@ public sealed class RemoteMuxFailureClassifierTests
 
         Assert.Equal(Enum.Parse<RemoteFailureKind>(kind), failure.Kind);
         Assert.Equal(RemoteMuxFailureClassifier.Classify(exitCode, string.Empty, stderr, Handshake("ended"), "nova@x").Reason, failure.Reason);
+    }
+
+    /// <summary>
+    /// Whether OpenSSH said the server refused the sign-in - the evidence a saved password it was handed was refused -
+    /// automatic attempt or not: ssh's own final refusal, <c>[user@host: ]Permission denied (methods).</c>, or sshd's
+    /// <c>Too many authentication failures</c>. A link that dropped, a host that was not there, is no such word; nor is a
+    /// remote shell's "Permission denied" (a profile script, a file) that reached stderr before the link dropped. An
+    /// automatic attempt is NeedsUser exactly when it is one.
+    /// </summary>
+    [Theory]
+    [InlineData("nova@x: Permission denied (publickey,password).\r\n", true)]
+    [InlineData("Permission denied (publickey,keyboard-interactive).\r\n", true)]   // OpenSSH before 7.x: no user@host
+    [InlineData("nova@fe80::1: Permission denied (publickey).\r\n", true)]
+    [InlineData("John Smith@x: Permission denied (password).\r\n", true)]   // ssh prints the server user as given: an AD name has a space
+    [InlineData("x.sh: Permission denied (publickey).\r\n", false)]         // ssh's own prefix is always user@host
+    [InlineData("Received disconnect from 10.0.0.2 port 22:2: Too many authentication failures\r\nDisconnected from 10.0.0.2 port 22\r\n", true)]
+    [InlineData("Connection closed by 10.0.0.2 port 22\r\n", false)]
+    [InlineData("ssh: connect to host x port 22: Connection refused\r\n", false)]
+    [InlineData("-bash: /etc/profile.d/x.sh: Permission denied\r\nConnection to x closed by remote host.\r\n", false)]
+    [InlineData("tool: Permission denied (os error 13)\r\nConnection to x closed by remote host.\r\n", false)]
+    [InlineData("nova@x: Permission denied (publickey,password). Bye\r\n", false)]
+    public void Says_whether_ssh_refused_the_sign_in(string stderr, bool refused)
+    {
+        RemoteMuxFailure automatic = RemoteMuxFailureClassifier.Classify(255, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: true);
+        RemoteMuxFailure user = RemoteMuxFailureClassifier.Classify(255, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: false);
+
+        Assert.Equal((refused, refused), (automatic.SignInRefused, user.SignInRefused));
+        Assert.Equal(refused ? RemoteFailureKind.NeedsUser : RemoteFailureKind.SshFailed, automatic.Kind);
+    }
+
+    /// <summary>
+    /// OpenSSH's own host-key failure ends ssh before sign-in, exit 255. A key it does not know, refused at its "Are you
+    /// sure" (or in batch mode), is "Host key verification failed.": an automatic attempt would meet the same key every
+    /// time, so it needs the user, with the host-key cause; a user's attempt stays an SSH failure, as it was, since its
+    /// Enter shows the key. A key that changed is ssh's banner (REMOTE HOST IDENTIFICATION HAS CHANGED) and, under strict
+    /// checking, "Host key for h has changed and you have requested strict checking." - either line is enough. ssh asks
+    /// nothing about it, so Enter cannot show it either: any attempt, a user's too, needs the user, with the changed-key
+    /// cause. Where ssh goes on (StrictHostKeyChecking=no) its refusal still sets SignInRefused, as before. The reason, for
+    /// the log, is still ssh's last line. Lines are parsed whole: another banner, or the words inside a remote shell's
+    /// line, are not it.
+    /// </summary>
+    [Theory]
+    [InlineData(UnknownHostKeyStderr, "unknown", false)]
+    [InlineData(StrictUnknownHostKeyStderr, "unknown", false)]
+    [InlineData(ChangedHostKeyStderr, "changed", false)]
+    [InlineData(ChangedHostKeyWithoutBannerStderr, "changed", false)]
+    [InlineData(ChangedHostKeyNotStrictStderr, "changed", true)]
+    [InlineData(UnprotectedKeyStderr, "neither", true)]
+    [InlineData("bash: line 1: Host key verification failed.: command not found\r\nConnection to x closed by remote host.\r\n", "neither", false)]
+    [InlineData("echo WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\r\nConnection to x closed by remote host.\r\n", "neither", false)]
+    [InlineData("echo Host key for x has changed and you have requested strict checking.\r\nConnection to x closed by remote host.\r\n", "neither", false)]
+    public void Ssh_s_own_host_key_failure_needs_the_user(string stderr, string hostKey, bool signInRefused)
+    {
+        RemoteMuxFailure automatic = RemoteMuxFailureClassifier.Classify(255, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: true);
+        RemoteMuxFailure user = RemoteMuxFailureClassifier.Classify(255, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: false);
+
+        switch (hostKey)
+        {
+            case "unknown":
+                Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKey), (automatic.Kind, automatic.Cause));
+                Assert.Equal(RemoteFailureKind.SshFailed, user.Kind);
+                break;
+            case "changed":
+                Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKeyChanged), (automatic.Kind, automatic.Cause));
+                Assert.Equal((RemoteFailureKind.NeedsUser, RemoteNeedsUserCause.HostKeyChanged), (user.Kind, user.Cause));
+                break;
+            default:
+                Assert.DoesNotContain(automatic.Cause, new[] { RemoteNeedsUserCause.HostKey, RemoteNeedsUserCause.HostKeyChanged });
+                Assert.Equal(RemoteFailureKind.SshFailed, user.Kind);
+                break;
+        }
+
+        Assert.Equal((signInRefused, signInRefused), (automatic.SignInRefused, user.SignInRefused));
+        Assert.Equal(user.Reason, automatic.Reason);
     }
 
     [Fact]

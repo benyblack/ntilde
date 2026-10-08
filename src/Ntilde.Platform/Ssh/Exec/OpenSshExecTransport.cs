@@ -58,10 +58,15 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// or null for a new one per ssh. A connect attempt's transport, started once, passes the attempt's own, so the app
     /// can read back what the helper did for it.
     /// </param>
+    /// <param name="exitGrace">
+    /// How long a channel's <see cref="ISshExecChannel">Dispose</see> lets ssh exit on stdin's EOF before it stops it
+    /// (<see cref="ExitGrace"/>); null for <see cref="OpenSshExecChannel.DefaultExitGrace"/>.
+    /// </param>
     /// <exception cref="ArgumentException">
     /// More than one of <paramref name="batchMode"/>, <paramref name="savedPasswordOnly"/> and <paramref name="withoutSavedPassword"/>;
     /// or an <paramref name="askPassSession"/> that is not a session token.
     /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">An <paramref name="exitGrace"/> that is not positive.</exception>
     public OpenSshExecTransport(
         SshProfile profile,
         string sshExecutablePath,
@@ -72,7 +77,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         bool batchMode = false,
         bool savedPasswordOnly = false,
         bool withoutSavedPassword = false,
-        string? askPassSession = null)
+        string? askPassSession = null,
+        TimeSpan? exitGrace = null)
         : this(
             profile,
             sshExecutablePath,
@@ -82,7 +88,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             batchMode,
             savedPasswordOnly,
             withoutSavedPassword,
-            askPassSession)
+            askPassSession,
+            exitGrace)
     {
     }
 
@@ -99,7 +106,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         bool batchMode = false,
         bool savedPasswordOnly = false,
         bool withoutSavedPassword = false,
-        string? askPassSession = null)
+        string? askPassSession = null,
+        TimeSpan? exitGrace = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         if (askPassSession is not null && !SshAskPassEnvironment.IsSessionToken(askPassSession))
@@ -107,6 +115,8 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             throw new ArgumentException("Not a session token: 32 lowercase hex digits.", nameof(askPassSession));
         }
 
+        TimeSpan grace = exitGrace ?? OpenSshExecChannel.DefaultExitGrace;
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(grace, TimeSpan.Zero, nameof(exitGrace));
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(buildArguments);
         PromptMode mode = ModeOf(batchMode, savedPasswordOnly, withoutSavedPassword, askPassHelperPath);
@@ -123,6 +133,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         BatchMode = batch;
         SavedPasswordOnly = mode == PromptMode.SavedPasswordOnly;
         WithoutSavedPassword = mode == PromptMode.WithoutSavedPassword;
+        ExitGrace = grace;
     }
 
     public string DisplayName =>
@@ -145,6 +156,9 @@ public sealed class OpenSshExecTransport : ISshExecTransport
 
     /// <summary>The askpass session token every ssh this transport starts gets, or null when each gets a new one.</summary>
     public string? AskPassSession => _askPassSession;
+
+    /// <summary>How long a channel's Dispose lets ssh exit on stdin's EOF before it stops it.</summary>
+    public TimeSpan ExitGrace { get; }
 
     /// <summary>How ssh may prompt: <see cref="ModeOf"/> decides it.</summary>
     private enum PromptMode
@@ -203,7 +217,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         }
 
         _log(string.Create(CultureInfo.InvariantCulture, $"[OpenSshExec] {DisplayName}: ssh started (pid {process.Id})"));
-        var channel = new OpenSshExecChannel(process, DisplayName, _log);
+        var channel = new OpenSshExecChannel(process, DisplayName, _log, ExitGrace);
         if (ct.IsCancellationRequested)
         {
             // Cancelled while ssh was starting: nobody has the channel yet, so stop it outright.
@@ -275,8 +289,12 @@ public sealed class OpenSshExecTransport : ISshExecTransport
 /// </summary>
 internal sealed class OpenSshExecChannel : ISshExecChannel
 {
-    /// <summary>How long <see cref="Dispose"/> lets ssh exit on stdin's EOF before stopping it.</summary>
-    internal static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(2);
+    /// <summary>
+    /// How long <see cref="Dispose"/> lets ssh exit on stdin's EOF before stopping it, unless the transport was given
+    /// another. The mux's channels get a longer one, ordered against the remote proxy's own wait: see
+    /// <c>RemoteMuxHostFactory.ChannelExitGrace</c> in the app.
+    /// </summary>
+    internal static readonly TimeSpan DefaultExitGrace = TimeSpan.FromSeconds(2);
 
     /// <summary>How long a stopped process may take to go, so its pipes are closed before stdout is released.</summary>
     private static readonly TimeSpan StopWait = TimeSpan.FromSeconds(5);
@@ -289,6 +307,7 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
     private readonly Process _process;
     private readonly string _displayName;
     private readonly Action<string> _log;
+    private readonly TimeSpan _exitGrace;
     private readonly Stream _stdout;
     private readonly ProcessStdinStream _stdin;
     private readonly BoundedTail _stderrTail = new(StderrTailBytes);
@@ -305,11 +324,13 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
     private int _stopIssued;
     private volatile bool _stoppedByChannel;
 
-    public OpenSshExecChannel(Process process, string displayName, Action<string> log)
+    /// <param name="exitGrace">How long <see cref="Dispose"/> lets ssh exit on stdin's EOF (<see cref="OpenSshExecTransport.ExitGrace"/>).</param>
+    public OpenSshExecChannel(Process process, string displayName, Action<string> log, TimeSpan exitGrace)
     {
         _process = process;
         _displayName = displayName;
         _log = log;
+        _exitGrace = exitGrace;
         _stdout = process.StandardOutput.BaseStream;
         _stdin = new ProcessStdinStream(process.StandardInput.BaseStream);
 
@@ -325,12 +346,12 @@ internal sealed class OpenSshExecChannel : ISshExecChannel
 
     /// <summary>
     /// Ends the command without hanging: stdin's EOF (ssh closes the channel and exits), at most
-    /// <see cref="ExitGrace"/> for that, then the process tree is stopped. Only then is stdout
-    /// released: on Windows, closing a pipe's read end does not wake a read pending on it - the
+    /// the transport's <see cref="OpenSshExecTransport.ExitGrace"/> for that, then the process tree is stopped. Only then
+    /// is stdout released: on Windows, closing a pipe's read end does not wake a read pending on it - the
     /// writer's exit does - so a reader blocked on <see cref="Stdout"/> (the mux client's) returns.
-    /// Blocks for up to <see cref="ExitGrace"/> plus the stop's bounded wait: never on the UI thread.
+    /// Blocks for up to that grace plus the stop's bounded wait: never on the UI thread.
     /// </summary>
-    public void Dispose() => Close(ExitGrace);
+    public void Dispose() => Close(_exitGrace);
 
     /// <summary>
     /// Kills the process tree at once, with no grace period (<see cref="ISshExecChannel.Abort"/>): for a

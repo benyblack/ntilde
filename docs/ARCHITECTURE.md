@@ -486,7 +486,10 @@ it).
   `BatchMode=no`, `-o NumberOfPasswordPrompts=1` and the askpass helper in its vault-only mode
   (`NTILDE_SSH_ASKPASS_VAULT_ONLY=1`), which answers the target's password from the vault and
   refuses every other prompt without building any UI; any other runs with `BatchMode=yes`, no
-  `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. An automatic native attempt goes
+  `SSH_ASKPASS`, `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. An ssh older than 8.4 is never offered
+  the saved password (`ssh -V` is read once per executable, `OpenSshClientVersionCache`, and an
+  unreadable version counts as older for that attempt): its keyboard-interactive prompts do not name
+  the target, so the helper could not recognise the target's `Password:`. An automatic native attempt goes
   through `RemoteMuxInteractionHandler`: it accepts a host key only when the app's native known-hosts
   store already trusts it; it offers a password or passphrase from the host's in-memory record of one
   that got an earlier attempt in (forgotten when an attempt that offered it fails SSH, and never kept
@@ -497,11 +500,20 @@ it).
   and a refused saved password, `RemoteNeedsUserCause.SavedPasswordRefused`), which stops the loop at
   once with `ReconnectAbandoned`: retrying would only feed fail2ban. A key's passphrase with nothing
   remembered is cancelled instead (it sends the server nothing, and the agent or another key may
-  still get in), but recorded: if the attempt then fails SSH, it is `NeedsUser` too. The pane's line
+  still get in), but recorded: if the attempt then fails SSH before sign-in is over, it is `NeedsUser`
+  too. A host key the user does not trust stops the loop the same way, after one attempt and before any
+  credential is sent (`RemoteNeedsUserCause.HostKey`): a native attempt rejects an unknown or changed
+  key, and OpenSSH's `Host key verification failed.` reads the same; a key OpenSSH reports changed is
+  `HostKeyChanged`, after Enter too, since ssh refuses it without asking. The pane's line
   under its Enter banner comes from the failure's `RemoteNeedsUserCause`, never from ssh's words.
 - **Kills while down** (`MuxConnectionHost.KillWhenConnected`). Every close of a remote pane goes
   through it, and so does the kill of a shell a stale result started (a result that came back to a pane
-  closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once; otherwise it is queued, kept across
+  closed or restarted meanwhile; the pane then asks the window for its release pass). On a live client the kill is sent at once,
+  from the pool (behind earlier kills to the same host, one at a time) and never on the closing (UI) thread, which a
+  stalled link's full send queue would block; it is
+  counted and tracked before the close returns, so a release or a dispose right behind it waits for it. A kill
+  whose connection closes before the daemon answers, or whose request times out once that connection is gone, is
+  queued again. With no live client it is queued, kept across
   `ReconnectAbandoned`, and sent before anything else on the next successful connect of any kind. An
   idle host (no client, no attempt, no loop) starts one automatic attempt to deliver it. Queued kills
   are dropped, with a log line, on `DaemonStopped` and on dispose.
@@ -567,7 +579,7 @@ deadline; the installer uses it.
 Each step is an exec over the same transports, with the same prompts as a connection:
 
 1. **Probe**: `uname -sm`, the libc line and `$HOME`. `RemoteHostProbe.Parse` (pure) maps the host to
-   linux-x64, linux-arm64 or osx-arm64, and refuses musl, glibc older than 2.35, Intel Macs and
+   linux-x64, linux-arm64 or osx-arm64, and refuses musl, glibc older than 2.34, Intel Macs and
    anything else, with the reason.
 2. **Asset** (`IMuxDaemonAssetSource`): the GitHub release's `ntilde-mux-<rid>`, verified against its
    `.sha256` and cached at `<app data>/cache/ntilde-mux/<version>/<rid>`; or a local file, whose ELF
@@ -596,7 +608,8 @@ Each step is an exec over the same transports, with the same prompts as a connec
 System.Security.Cryptography (hashes included), System.Net.Security and System.Net.Http; `ldd` does
 not show it, and a remote host may have no libssl (`serve` aborted on debian:12-slim until the
 endpoint hash moved to a managed SHA-256). `LayeringTests.Nothing_ntilde_mux_runs_references_an_OpenSSL_backed_assembly`
-walks everything it runs.
+walks everything it runs, and CI's `mux_daemon_no_openssl` runs the linux-x64 binary's smoke again in
+debian:12-slim once it has proved no libssl or libcrypto is there (`scripts/mux-daemon-smoke.sh --no-openssl`).
 
 ### 8.3 `ntilde.com`: the Windows console launcher
 

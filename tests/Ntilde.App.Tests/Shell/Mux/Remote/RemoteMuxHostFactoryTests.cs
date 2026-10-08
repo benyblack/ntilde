@@ -1,4 +1,5 @@
 using Ntilde.Mux;
+using Ntilde.Mux.Cli;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
@@ -412,7 +413,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
                 () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
                 static () => true,
                 askPassHelperPath: null,
-                log: null);
+                log: null,
+                openSshVersions: RemoteMuxConnectorTests.ModernSsh);
         }
 
         Assert.Equal(new[] { false, true }, asked);
@@ -544,7 +546,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             static () => true,
             askPassHelperPath: "/opt/ntilde/ntilde",
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.Equal(attempt.AskPassSession, Assert.IsType<OpenSshExecTransport>(transport).AskPassSession);
     }
@@ -562,7 +565,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             static () => true,
             askPassHelperPath: "/opt/ntilde/ntilde",
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.False(Assert.IsType<OpenSshExecTransport>(Build(interactive: true)).BatchMode);
         Assert.True(Assert.IsType<OpenSshExecTransport>(Build(interactive: false)).BatchMode);
@@ -582,7 +586,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => new NativeSshInterop(),
             static () => true,
             askPassHelperPath: null,
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.IsType<NativeSshExecTransport>(transport);
         Assert.Equal("nova@fake-host", transport.DisplayName);
@@ -618,7 +623,8 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
                 return enabled;
             },
             askPassHelperPath: null,
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         RemoteMuxUnavailableException refused = Assert.Throws<RemoteMuxUnavailableException>(() => Build());
 
@@ -647,8 +653,52 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
             () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
             static () => false,
             askPassHelperPath: null,
-            log: null);
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
 
         Assert.IsType<OpenSshExecTransport>(transport);
+    }
+
+    /// <summary>
+    /// The waits that tell a stopped daemon from a lost link keep their order (<see cref="RemoteMuxHostFactory.ChannelExitGrace"/>):
+    /// the channel's grace leaves ssh its teardown after the remote proxy's own wait for the daemon's process, the wait for
+    /// the exit status outlasts the grace, and the host's cap outlasts that wait - and is the host's default.
+    /// </summary>
+    [Fact]
+    public void The_waits_for_a_lost_clients_exit_status_keep_their_order()
+    {
+        Assert.True(MuxProxyCommand.DaemonExitWait + RemoteMuxHostFactory.SshTeardownAllowance <= RemoteMuxHostFactory.ChannelExitGrace);
+        Assert.True(RemoteMuxHostFactory.ChannelExitGrace < RemoteMuxHostFactory.DisconnectExitWait);
+        Assert.True(RemoteMuxHostFactory.DisconnectExitWait < RemoteMuxHostFactory.ClassifyTimeout);
+        Assert.Equal(RemoteMuxHostFactory.ClassifyTimeout, Create(RemoteMuxConnectorTests.Profile()).ClassifyTimeout);
+    }
+
+    /// <summary>Both backends' channels are given the grace the order above starts with, not the platform's default.</summary>
+    [Theory]
+    [InlineData(SshBackendKind.OpenSsh)]
+    [InlineData(SshBackendKind.Native)]
+    public void Both_backends_channels_get_the_factorys_exit_grace(SshBackendKind backend)
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = backend;
+        var prompts = new RemoteMuxInteractionHandler(user: null, _ => false);
+
+        ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(false, prompts.BeginAttempt(false)),
+            (_, _) => Launch,
+            () => new NativeSshInterop(),
+            static () => true,
+            askPassHelperPath: "/opt/ntilde/ntilde",
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
+
+        TimeSpan grace = transport switch
+        {
+            OpenSshExecTransport openSsh => openSsh.ExitGrace,
+            NativeSshExecTransport native => native.ExitGrace,
+            _ => throw new InvalidOperationException($"unexpected transport {transport.GetType().Name}"),
+        };
+        Assert.Equal(RemoteMuxHostFactory.ChannelExitGrace, grace);
     }
 }

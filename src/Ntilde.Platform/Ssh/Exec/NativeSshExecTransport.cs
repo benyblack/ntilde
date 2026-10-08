@@ -39,33 +39,46 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     /// channel fails as a transport failure carrying the exception's message. Refusing would not be the
     /// same: a refused password or keyboard-interactive prompt is submitted as an empty answer, which the
     /// server counts as a failed login. Closing wakes rusty_ssh's pending prompt with no answer
-    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there.
+    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there. Once sign-in is
+    /// over, the handler is told (<see cref="ISshInteractionHandler.Authenticated"/>).
     /// </param>
     /// <param name="optionsFactory">
     /// Builds the connection options. Production passes <see cref="NativeSshConnectionOptionsFactory.Create(SshProfile)"/>,
     /// the builder <see cref="Sessions.NativeSshSession"/> uses.
     /// </param>
     /// <param name="log">Where start, failure and exit are logged; <see cref="TerminalLogger.Log(string)"/> by default.</param>
+    /// <param name="exitGrace">
+    /// How long a channel's <see cref="ISshExecChannel">Dispose</see> lets the command end on stdin's EOF before it closes
+    /// the session (<see cref="ExitGrace"/>); null for <see cref="NativeSshExecChannel.DefaultExitGrace"/>.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">An <paramref name="exitGrace"/> that is not positive.</exception>
     public NativeSshExecTransport(
         SshProfile profile,
         INativeSshInterop interop,
         ISshInteractionHandler? interactionHandler,
         Func<SshProfile, NativeSshConnectionOptions> optionsFactory,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        TimeSpan? exitGrace = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(interop);
         ArgumentNullException.ThrowIfNull(optionsFactory);
+        TimeSpan grace = exitGrace ?? NativeSshExecChannel.DefaultExitGrace;
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(grace, TimeSpan.Zero, nameof(exitGrace));
 
         _profile = profile;
         _interop = interop;
         _interactionHandler = interactionHandler;
         _optionsFactory = optionsFactory;
         _log = log ?? TerminalLogger.Log;
+        ExitGrace = grace;
     }
 
     public string DisplayName =>
         string.IsNullOrWhiteSpace(_profile.User) ? _profile.Host : $"{_profile.User}@{_profile.Host}";
+
+    /// <summary>How long a channel's Dispose lets the command end on stdin's EOF before it closes the session.</summary>
+    public TimeSpan ExitGrace { get; }
 
     /// <summary>
     /// Starts <paramref name="remoteCommand"/> and returns its channel at once. Connect and auth have not
@@ -95,7 +108,7 @@ public sealed class NativeSshExecTransport : ISshExecTransport
             // shell session's. No session id, because this connection is not in ActiveSshSessionRegistry
             // (spec §8.4), so a password typed here is not kept for reconnects.
             channel = new NativeSshExecChannel(
-                handle, _interop, new NativeSshPromptResponder(_profile, sessionId: null), _interactionHandler, DisplayName, _log);
+                handle, _interop, new NativeSshPromptResponder(_profile, sessionId: null), _interactionHandler, DisplayName, _log, ExitGrace);
         }
         catch
         {
@@ -149,8 +162,12 @@ public sealed class NativeSshExecTransport : ISshExecTransport
 /// </remarks>
 internal sealed class NativeSshExecChannel : ISshExecChannel
 {
-    /// <summary>How long <see cref="Dispose"/> lets the command end on stdin's EOF before closing the session.</summary>
-    internal static readonly TimeSpan ExitGrace = TimeSpan.FromSeconds(2);
+    /// <summary>
+    /// How long <see cref="Dispose"/> lets the command end on stdin's EOF before closing the session, unless the
+    /// transport was given another. The mux's channels get a longer one, ordered against the remote proxy's own wait: see
+    /// <c>RemoteMuxHostFactory.ChannelExitGrace</c> in the app.
+    /// </summary>
+    internal static readonly TimeSpan DefaultExitGrace = TimeSpan.FromSeconds(2);
 
     /// <summary>How long a closed session's poll thread may take to stop.</summary>
     internal static readonly TimeSpan StopWait = TimeSpan.FromSeconds(2);
@@ -170,6 +187,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     private readonly ISshInteractionHandler? _interactionHandler;
     private readonly string _displayName;
     private readonly Action<string> _log;
+    private readonly TimeSpan _exitGrace;
     private readonly BoundedChunkQueue _stdoutQueue = new(StdoutPauseThresholdBytes, StdoutResumeThresholdBytes);
     private readonly StdoutStream _stdout;
     private readonly StdinStream _stdin;
@@ -195,7 +213,8 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         NativeSshPromptResponder promptResponder,
         ISshInteractionHandler? interactionHandler,
         string displayName,
-        Action<string> log)
+        Action<string> log,
+        TimeSpan exitGrace)
     {
         _handle = handle;
         _interop = interop;
@@ -203,6 +222,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         _interactionHandler = interactionHandler;
         _displayName = displayName;
         _log = log;
+        _exitGrace = exitGrace;
         _stdout = new StdoutStream(this, _stdoutQueue);
         _stdin = new StdinStream(this);
         Completion = _completion.Task;
@@ -218,13 +238,14 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
 
     /// <summary>
     /// Ends the command without hanging. It sends stdin's EOF, which ends a command reading its stdin
-    /// (the proxy exits 0 on it), and gives the command up to <see cref="ExitGrace"/> to end. Then it
+    /// (the proxy exits 0 on it), and gives the command up to the transport's
+    /// <see cref="NativeSshExecTransport.ExitGrace"/> to end. Then it
     /// closes the session, which drops the connection, and waits up to <see cref="StopWait"/> for the
     /// poll thread. A reader blocked on <see cref="Stdout"/> returns. Stdout that arrives after this
-    /// call is dropped. Blocks for up to <see cref="ExitGrace"/> plus <see cref="StopWait"/>, so never
+    /// call is dropped. Blocks for up to that grace plus <see cref="StopWait"/>, so never
     /// call it on the UI thread.
     /// </summary>
-    public void Dispose() => Close(ExitGrace);
+    public void Dispose() => Close(_exitGrace);
 
     /// <summary>
     /// Closes the session at once, with no grace period (<see cref="ISshExecChannel.Abort"/>): for a channel
@@ -371,6 +392,8 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 {
                     case NativeSshEventKind.Connected:
                         Log($"[NativeSshExec] {_displayName}: connected; the command is starting");
+                        // Sign-in is over: what fails from here on is the link or the command, never an answer it gave.
+                        _interactionHandler?.Authenticated();
                         break;
                     case NativeSshEventKind.Data:
                         // The payload is a fresh array per event, so the queue takes it without a copy.

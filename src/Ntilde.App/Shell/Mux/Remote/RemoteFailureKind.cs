@@ -24,10 +24,11 @@ internal enum RemoteFailureKind
 
     /// <summary>
     /// Signing in needs an answer nobody was asked for - a password, keyboard-interactive input, a key's
-    /// passphrase - because the attempt was automatic (or there was no window to ask through): the native
-    /// backend ended it at the prompt, or OpenSSH in batch mode was refused. An SSH failure in kind, but not
-    /// one another automatic try can fix: the reconnect loop stops on it (Phase 4 spec §7.3, by ruling), and
-    /// Enter - an interactive attempt - is the way back.
+    /// passphrase, a host key nobody trusts yet - because the attempt was automatic (or there was no window to
+    /// ask through): the native backend ended it at the prompt, or OpenSSH was refused or failed the host key. An SSH
+    /// failure in kind, but not one another automatic try can fix: the reconnect loop stops on it (Phase 4 spec
+    /// §7.3, by ruling), and Enter - an interactive attempt - is the way back. Why is its <see cref="RemoteNeedsUserCause"/>;
+    /// a host key that changed under OpenSSH is one even for a user's attempt (<see cref="RemoteNeedsUserCause.HostKeyChanged"/>).
     /// </summary>
     NeedsUser,
 }
@@ -53,13 +54,37 @@ internal enum RemoteNeedsUserCause
     /// and Enter alone does not fix it.
     /// </summary>
     NativeSshDisabled,
+
+    /// <summary>
+    /// The host's key is not one the user trusts, and an automatic attempt accepts no new key: the native backend rejected
+    /// one never seen or changed since, or OpenSSH refused one it did not know. Nothing was sent past the key exchange, and
+    /// the next automatic attempt would meet the same key. Enter is a user's attempt, which shows it.
+    /// </summary>
+    HostKey,
+
+    /// <summary>
+    /// OpenSSH met a host key that changed since it was trusted. ssh refuses it on its own and asks nothing - where it goes
+    /// on, it turns password sign-in off - so a user's attempt cannot show it either: the old key has to leave known_hosts
+    /// first. Nothing was sent past the key exchange. Any attempt, a user's too, fails with this cause.
+    /// </summary>
+    HostKeyChanged,
 }
 
 /// <summary>
 /// A classified remote failure: its <paramref name="Kind"/>, the reason (for the log, and the notices of failures past
 /// SSH), and, for a <see cref="RemoteFailureKind.NeedsUser"/> one, its <paramref name="Cause"/>.
 /// </summary>
-internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, RemoteNeedsUserCause Cause = RemoteNeedsUserCause.SignIn);
+internal sealed record RemoteMuxFailure(RemoteFailureKind Kind, string Reason, RemoteNeedsUserCause Cause = RemoteNeedsUserCause.SignIn)
+{
+    /// <summary>
+    /// OpenSSH said the server refused the sign-in: its own final <c>Permission denied (methods).</c> line, or sshd's <c>Too many
+    /// authentication failures</c> (exit 255) - whoever started the attempt. It is the evidence that the saved password
+    /// ssh's askpass filled was refused (<see cref="RemoteMuxConnector"/>); a failure without it - a link that dropped -
+    /// says nothing about the password. Never set for the native backend, whose refusal at sshd's MaxAuthTries is a bare
+    /// disconnect: there, whether sign-in was over decides.
+    /// </summary>
+    public bool SignInRefused { get; init; }
+}
 
 /// <summary>
 /// A remote host's connect attempt failed (Phase 4 spec §7.1). The App's own exception for a remote

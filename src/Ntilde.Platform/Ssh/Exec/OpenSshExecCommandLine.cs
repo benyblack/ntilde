@@ -32,8 +32,8 @@ public static class OpenSshExecCommandLine
     /// appended, because ssh keeps an option's first value. With <paramref name="savedPasswordOnly"/> (an
     /// automatic reconnect whose profile has a saved password, answered by the askpass helper's vault-only mode)
     /// it stays <c>BatchMode=no</c>, followed by <c>NumberOfPasswordPrompts=1</c>: a refused password is not
-    /// asked for again. ssh counts that per method, so a server that offers both keyboard-interactive and
-    /// password auth may still be sent it once by each.</item>
+    /// asked for again. ssh counts that per method, and not the prompts within one keyboard-interactive
+    /// round, so the helper itself fills the saved password at most once per ssh.</item>
     /// <item><c>ControlMaster=no</c>: a profile with connection sharing (<c>ControlMaster auto</c> in
     /// the generated config) still reuses an existing master, but this hidden ssh never becomes one.
     /// Were it the master, a visible tab of the same profile would multiplex through it, and the

@@ -473,7 +473,8 @@ change to the toast that recordings and notices already share.
   The helper path comes from `ISshAskPassLocator`. The App supplies `Environment.ProcessPath`; dev
   builds supply `Ntilde.Cli` when present.
 - **Old OpenSSH.** `SSH_ASKPASS_REQUIRE` needs OpenSSH 8.4 or later. Older clients still use askpass
-  when they have no tty and `DISPLAY` is set, and the process has no tty.
+  when they have no tty and `DISPLAY` is set, and the process has no tty. Automatic attempts never use the
+  saved password on a client before 8.4 (they run in batch mode, "After merge" below).
 - **Channel.** `Stdout`, `Stdin` and `StderrTail` (the last 8 KiB, kept by a dedicated reader
   thread); `Completion` is the exit code.
 
@@ -527,7 +528,7 @@ Entry points:
 
 Every step runs through `ISshExecTransport`, with the same askpass and prompts as the connection.
 
-1. **Probe.** One exec runs `uname -sm; (ldd --version 2>&1 || getconf GNU_LIBC_VERSION 2>&1) | head -n 1;
+1. **Probe.** One exec runs `uname -sm; (getconf GNU_LIBC_VERSION 2>/dev/null || ldd --version 2>&1) | head -n 1;
    printf 'HOME=%s\n' "$HOME"`, with stderr and the exit code captured. `RemoteHostProbe.Parse`, a
    pure function, maps the result:
 
@@ -538,7 +539,7 @@ Every step runs through `ISshExecTransport`, with the same askpass and prompts a
    | `Darwin arm64` | `osx-arm64` |
    | `Darwin x86_64` | refused: "Intel Macs are not supported" |
    | musl (`musl libc` in the ldd line) | refused, with the reason |
-   | glibc below 2.35 | refused: "glibc 2.31 is older than 2.35" |
+   | glibc below 2.34 | refused: "glibc 2.31 is older than 2.34" |
    | FreeBSD, OpenBSD, anything else | refused, with the reason |
 2. **Get the asset** (`IMuxDaemonAssetSource`):
    - **(a) GitHub release.** `https://github.com/benyblack/ntilde/releases/download/v<appVersion>/ntilde-mux-<rid>`
@@ -578,7 +579,10 @@ Every step runs through `ISshExecTransport`, with the same askpass and prompts a
    - **(c) Discard** (`DiscardUpload`), after a rejected trial, a commit that did not run, or a cancel
      after (a): `sh -c 'd="$HOME/.local/share/ntilde/bin"; t="$d/.ntilde-mux.upload-<T>"; rm -f "$t"'`.
      Best effort: it runs even after a cancel, a failure is only logged, and the result stays the reason
-     the install stopped. A failure or cancel during (a) needs no discard: the trap cleans up.
+     the install stopped. A failure or cancel during (a) needs no discard: the trap cleans up. A cancel
+     that lands once the commit's result is in changes nothing: the upload already replaced ntilde-mux, so
+     the install is verified and reported (and recorded); only a cancel the exec sees before that result
+     leaves the commit unknown, and discards.
 4. **Verify.** The commit exec's stdout is `--version --json`:
    `{"version":"…","protocolMin":1,"protocolMax":2,"rid":"…","path":"/abs/…/ntilde-mux"}`.
    - The protocol range must overlap this app's.
@@ -625,7 +629,7 @@ from the app). Compatibility itself is the handshake.
   - publishes `ntilde-mux`, where any IL2026/IL3050 fails the publish;
   - asserts one file plus nothing but `.dbg`/`.dSYM`;
   - runs `--version --json` and `serve`/`ls` smoke;
-  - on Linux, asserts that the highest `GLIBC_` symbol version in `objdump -T` is ≤ 2.35;
+  - on Linux, asserts that the highest `GLIBC_` symbol version in `objdump -T` is ≤ 2.34;
   - prints the size, and uploads `ntilde-mux-<rid>` as an artifact.
 - **`aot_gate` (win-x64)** also publishes `Ntilde.Launcher` and asserts the exe exists.
 - **`native_ssh_docker_e2e`** needs `mux_daemon_aot`, downloads the linux-x64 artifact, and also runs
@@ -838,12 +842,6 @@ Recorded during the build:
 - **Liveness knobs.** `RemoteMuxHostFactory.Create` does not expose `LivenessInterval` /
   `LivenessTimeout` (`init` on `MuxConnectionHost`), so the Docker E2E runs at the production
   15 s + 10 s.
-- **The probe's glibc floor is higher than the binary's.** `RemoteHostProbe` refuses glibc below 2.35,
-  but both Linux binaries' highest symbol is `GLIBC_2.34`, so RHEL 9 and its rebuilds (glibc 2.34)
-  are refused although the binary would run. Lowering the floor to 2.34 means the probe's constant
-  and the CI/release ceiling (§10.2) together.
-- **The probe needs `ldd`.** `(ldd --version || getconf GNU_LIBC_VERSION) | head -n 1` keeps ldd's
-  "not found" line on a glibc host without `ldd` and refuses it; ask `getconf` first.
 - **A captured GUI launch through `ntilde.com` waits for the GUI (greptile G2, PR #504).** When a
   caller captures `ntilde`'s output (`ntilde | Out-Null`, or a tool that reads stdout), it keeps
   waiting until the GUI exits: `Ntilde.exe` inherits the redirected standard handles and holds them
@@ -998,11 +996,12 @@ review; the section they change is named first.
 - **OpenSSH automatic attempts** run with `BatchMode=yes`, no `SSH_ASKPASS`,
   `SSH_ASKPASS_REQUIRE=never` and no `DISPLAY`. A ProxyJump hop may not inherit `BatchMode`, and an
   OpenSSH before 8.4 with no tty uses askpass whenever `DISPLAY` is set. The exception (since
-  2026-10-07): a profile with a saved password, no jump hops and its own destination runs
+  2026-10-07): a profile with a saved password, no jump hops, its own destination and an OpenSSH client of 8.4 or
+  later runs
   `BatchMode=no`, `-o NumberOfPasswordPrompts=1` and the askpass helper in its vault-only mode
   (`NTILDE_SSH_ASKPASS_VAULT_ONLY=1`, with `SSH_ASKPASS_REQUIRE=force` and `DISPLAY` as for a user's
-  attempt), which answers the target's password from the vault and refuses every other prompt
-  without building any UI.
+  attempt), which answers the target's password from the vault, once per ssh, and refuses every other
+  prompt without building any UI.
 - **Native automatic attempts** (`RemoteMuxInteractionHandler`) never reach the window's handler, so
   no dialogs: a host key is accepted only when the app's native known-hosts store
   already trusts it (rusty_ssh asks about the key on every connect); a password or passphrase is
@@ -1024,10 +1023,12 @@ review; the section they change is named first.
   cancels it, rather than aborting the session: a passphrase only unlocks a local key, so the cancel
   sends the server nothing, and the agent or another key may still get in. The attempt records it
   (`RemoteMuxInteractionHandler.Attempt.DeclinedPrompt`); if it then fails SSH (the classifier says
-  `SshFailed`), the connector reports `NeedsUser` ("signing in to <host> needs a key passphrase, which
-  an automatic reconnect does not ask for"), so the loop stops with `ReconnectAbandoned` instead of
-  retrying for its 10 minutes; if it connects, nothing changes. A keyboard-interactive round with
-  questions was already aborted, never answered empty; a remembered passphrase is offered as before.
+  `SshFailed`) before sign-in is over, the connector reports `NeedsUser` ("signing in to <host> needs
+  a key passphrase, which an automatic reconnect does not ask for"), so the loop stops with
+  `ReconnectAbandoned` instead of retrying for its 10 minutes; if it connects, nothing changes, and a
+  drop after sign-in (something else got in) is the link's: the retries go on. A keyboard-interactive
+  round with questions was already aborted, never answered empty; a remembered passphrase is offered as
+  before.
 - **The global native SSH switch refuses a native profile's remote attempts** (codex4 F). The plain SSH path
   refuses a Native profile while `ExperimentalNativeSshEnabled` (Settings > SSH) is off, and such a profile
   stays saved, so its persistent tabs connected around the switch. Each attempt's transport now reads it
@@ -1048,9 +1049,9 @@ review; the section they change is named first.
   10 s of the ping (a read-stream wrapper stamps every read), and a tick is skipped while the
   previous ping is unanswered. A ping queued behind a large snapshot on a slow link would otherwise
   cut a healthy link into a reattach loop.
-- **§7.3 A loss is classified by the lost client's own channel**, waiting at most 2 s for its exit
-  code (longer than the proxy's 1.5 s wait for a closing daemon's process, codex D1; the host's own cap is
-  2.5 s), and a host clears its last failure when a new attempt starts, so a stale `NotInstalled`
+- **§7.3 A loss is classified by the lost client's own channel**, waiting at most 4 s for its exit
+  code (`DisconnectExitWait`; longer than the channel's 3.5 s exit grace, which leaves ssh 2 s after the proxy's 1.5 s
+  wait for a closing daemon's process, codex D1; the host's own cap is 4.5 s), and a host clears its last failure when a new attempt starts, so a stale `NotInstalled`
   cannot label a later timeout.
 - **§8.1, §7.3 The proxy exits 3 only when the daemon's process is gone; a connection a live daemon
   drops exits 4** (codex D1). A live daemon ends single connections too and keeps their sessions: it
@@ -1062,12 +1063,12 @@ review; the section they change is named first.
   runs (`MuxDiscovery.IsProcessAlive` with its pid, process name and start token), every 50 ms for up
   to 1.5 s: gone is 3, still running is `MuxProxyExitCodes.ConnectionClosed` (4). A stdout that cannot
   be written, at the preamble or later, is 4 too: nobody reads the code, and it says nothing about the
-  daemon. The host counts every code but 3 as a lost link, as before. The 1.5 s fits inside the 2 s the
-  exec channels give a command to exit once their stdin closed, and the host's classification now waits
-  up to 2 s for the exit status (its own cap 2.5 s, both raised from 1 s), so a daemon that exits within
-  the proxy's 1.5 s reads as stopped. One that takes longer is read as a lost link, and the reconnect
+  daemon. The host counts every code but 3 as a lost link, as before. The 1.5 s plus ssh's 2 s teardown allowance fit inside the 3.5 s
+  the exec channels give a command to exit once their stdin closed, and the host's classification waits
+  up to 4 s for the exit status (its own cap 4.5 s; `RemoteMuxHostFactory` pins the order 1.5 s + 2 s <= 3.5 s < 4 s
+  < 4.5 s), so a daemon that exits within the proxy's 1.5 s reads as stopped. One that takes longer is read as a lost link, and the reconnect
   starts a new daemon, where each pane's reattach finds its session gone (`PreviousLost`). The cost: a
-  lost link's loop starts up to 1 s later when ssh has not exited. `MuxProxyCommand.Run` takes the
+  lost link's loop starts up to 4 s later (`DisconnectExitWait`, capped by `ClassifyTimeout`, 4.5 s) when ssh has not exited. `MuxProxyCommand.Run` takes the
   liveness check as an optional parameter, for tests whose daemon runs in their own process.
   - **Ending stdout and stderr for real** (residual R1). Closing the proxy's stdout stream ended
     nothing: .NET's console streams each hold a `dup` of their descriptor (`Console.OpenStandardOutput`,
@@ -1342,17 +1343,18 @@ review; the section they change is named first.
     whether the vault holds one - reading it and keeping nothing - and, with a helper, builds the
     saved-password-only transport (`OpenSshExecTransport(savedPasswordOnly)`): `BatchMode=no`,
     `-o NumberOfPasswordPrompts=1` ahead of the plan, and `SshAskPassEnvironment.ApplySavedPasswordOnly`. In that
-    mode `SshAskPassCommand` answers only a prompt that names the target's `user@host`, from the vault, and
-    exits 1 for anything else (a host key, a passphrase, a jump host's password, keyboard-interactive text that
-    asks for no password) or an empty vault, without building an Avalonia app. Otherwise, batch mode as before.
+    mode `SshAskPassCommand` answers only a password prompt that names the target's `user@host`, from the vault, at
+    most once per ssh, and exits 1 for anything else (a host key, a passphrase, a jump host's password,
+    keyboard-interactive text that is not a password prompt, a second prompt), an empty vault or no valid session
+    token, without building an Avalonia app. Otherwise, batch mode as before.
   - Native: a password prompt with nothing remembered is answered from the vault, once, and only if the attempt
     offered no other password; a second password prompt aborts (no empty answer). Keyboard-interactive still
     aborts any round with questions; a passphrase is still declined. The saved password is not copied into the
     host's memory.
   - Refused, it stops the loop at once: the connector reports `NeedsUser` with
-    `RemoteNeedsUserCause.SavedPasswordRefused` - native, for any SSH failure after the password was submitted
-    (the server may cut the connection rather than refuse); OpenSSH, for sshd's refusal, which the classifier now
-    also reads in `Too many authentication failures` (sshd past `MaxAuthTries` disconnects instead). A host that
+    `RemoteNeedsUserCause.SavedPasswordRefused` - native, for a failure before sign-in completes once the saved
+    password was answered (sshd may cut the connection rather than refuse); OpenSSH, when ssh's own final denial
+    line or `Too many authentication failures` follows the fill (A3 below). A host that
     was down never had it refused, and keeps offering it. The host then offers it no more until an attempt gets
     in, so kill deliveries and later losses add no failed login; a refused remembered password stops it too.
   - `TerminalPane.RemoteNeedsUserLine` maps the failure's `RemoteNeedsUserCause`, never its reason (which stays
@@ -1373,7 +1375,7 @@ review; the section they change is named first.
       each ssh the exec transport starts a session token (`NTILDE_SSH_ASKPASS_SESSION`). The helper records a fill as
       an empty file named by the token under `<app-data>/askpass` (`SshAskPassSessionMarkers`; records over a day old
       are swept), and the same ssh asking again goes to the dialog. A fill it cannot record is not made: the user is
-      asked instead. Vault-only mode is unaffected (`NumberOfPasswordPrompts=1` bounds it). Native already offers the
+      asked instead. Vault-only mode claims the token the same way (A1 below). Native already offers the
       vault once per connection (`NativeSshPromptResponder`). Plain OpenSSH tabs use no askpass (they prompt in the
       terminal), so this applies to the exec transport only.
   - Branch review fix round (same branch). Refusal now needs evidence (review I-1): before it, a password plus a second
@@ -1382,12 +1384,11 @@ review; the section they change is named first.
       `OpenSshExecTransport(askPassSession)`). In vault-only mode the helper records `<token>.answered` when it fills
       the target's password, and `<token>.declined` when it declines a prompt that names the target (`(user@host) ` /
       `user@host's `) but asks for no password (`SshAskPassSessionMarkers`). The connector counts `SavedPasswordRefused`
-      only for answered and not declined. A declined record is a second factor. No record at all - sshd refused
+      only for answered and not declined, and only when ssh's denial line followed (A3 below). A declined record is a second factor. No record at all - sshd refused
       without asking: agent keys past `MaxAuthTries`, password auth off, a prompt the helper did not recognise - counts
       nothing, and the line is the plain one.
-    - Native: after the saved password, a password prompt or a keyboard-interactive question that asks for a password
-      (case-insensitive "password"), or an SSH failure with nothing after it, is a refusal. A question asking for
-      anything else is a second factor. The saved password counts whether it came from the vault or from the host's
+    - Native: after the saved password was answered, a failure before sign-in completes is a refusal (A3 below). A
+      second factor after it reads as a second factor. The saved password counts whether it came from the vault or from the host's
       memory of an earlier sign-in holding the same value (the live smoke test: the window's handler had filled it on
       Enter, so the loop's attempt answered from memory, and rusty_ssh's "SSH authentication failed" left it SshFailed,
       costing one more attempt and the wrong line). A remembered password followed by a second factor is not marked
@@ -1406,8 +1407,8 @@ review; the section they change is named first.
       there stays skipped until the host is released (its window's tabs on that host close), even after the user saves
       the same value with Remember. Nothing is counted once an attempt got past sign-in (the proxy's greeting arrived;
       re-review item 1). So on OpenSSH a correct password is counted refused only when sshd failed the session between
-      accepting it and the command running - a disconnect there, or a server whose AuthenticationMethods want a key after
-      the password - and stays skipped until the host is released.
+      accepting it and the command running - a server whose AuthenticationMethods want a key after the password - and
+      stays skipped until the host is released.
     - Smaller fixes:
       - The saved password is offered to OpenSSH only for a profile with a user and a host (the helper must
         recognise the prompt; M2), whose own extra arguments do not change who signs in or where
@@ -1421,12 +1422,59 @@ review; the section they change is named first.
       - The saved password is offered to an OpenSSH askpass only when the helper's record folder takes a probe file
         (`SshAskPassSessionMarkers.CanRecord`, logged once per host; Greptile G1): without its record a refusal could
         never be counted, and every later attempt would send it again. If the folder fails after the probe (a race), the
-        helper still answers: declining would make ssh send an empty password, and the next attempt's probe stops it.
+        helper's claim cannot be written and it fills nothing (A1 below): ssh then sends an empty password once, and the
+        next attempt's probe stops the offers.
       - A native user attempt on a jump-hop profile passes password prompts on with vault reuse off (M9).
       - An askpass run never applies a staged update at startup (`Program.ShouldAutoApplyUpdateOnStartup`; I-2).
-  - Limits: ssh counts `NumberOfPasswordPrompts` per method, so a server that offers both keyboard-interactive
-    and password auth may be sent a wrong saved password once by each before the loop stops; a
-    keyboard-interactive second factor after the password is answered empty by ssh (the helper refuses it), one
-    failed round, also before the loop stops. Kill delivery and the host's release are unchanged.
+  - Limits: the helper answers once per ssh, so a server that offers both keyboard-interactive and password
+    auth is sent a wrong saved password once, never by each; a keyboard-interactive second factor after the
+    password gets no answer from the helper, and ssh then sends an empty answer, one failed round, before the loop
+    stops. Kill delivery and the host's release are unchanged.
   - Settings: "Keep shells running when the window closes" no longer says SSH panes are not affected, and
     "Native SSH backend" says a Native profile's persistent tab cannot reconnect while it is off.
+
+- **2026-10-07: Phase 4 hardening** (branch `fix/mux-phase4-hardening`). As built, for sign-in on automatic reconnects:
+  - **A1, the helper fills once.** The vault-only askpass helper fills the saved password at most once per ssh: it
+    claims the ssh's session token (`TryClaim`), and a claim that cannot be written (the record folder failing after
+    the probe) fills nothing: ssh then sends an empty password once, and the next attempt's probe stops the offers. A
+    later prompt in the keyboard-interactive form `(user@host) ...` (a PAM `New password:`, a code) gets no answer, is
+    recorded as declined (more than the password was asked: a second factor) and the helper exits 1. A later prompt in
+    the password-method form `user@host's password:` gets no answer and no record: it is ssh's next method re-asking
+    after a refusal. A keyboard-interactive prompt counts as the target's password only when its text ends with
+    `password:` or is exactly `Password for <account>:` (FreeBSD, pfSense, OPNsense, TrueNAS pam_unix; Kerberos);
+    Enter's vault fill and the "Remember password" box use the same rule. Limits: a password prompt in any other
+    wording is not filled, ssh sends an empty answer once, and the failure reads as a second factor (Enter then shows
+    the dialog); a user ssh config that tries password before keyboard-interactive reads a refused password as a second
+    factor.
+  - **A2, a host key stops the loop.** An unknown or changed host key on an automatic reconnect stops the loop after
+    one attempt, and no credential is sent. The pane line is `[Host key for <host> is unknown or has changed —
+    press Enter to review]` (native, both cases; OpenSSH, an unknown key). OpenSSH refuses a changed key outright
+    under strict checking, and it has its own line, after an automatic attempt and after Enter: `[Host key for <host>
+    has changed — if you trust the new key, remove the old one from known_hosts, then press Enter]`. A host-key
+    stop never marks the saved password refused. A server user name with a space in it still reads as ssh's refusal.
+    Limits: with jump hosts the line names the destination, though the key may be a hop's; OpenSSH with
+    `StrictHostKeyChecking=yes` and an unknown key, or a revoked key, shows "press Enter to review", but Enter cannot
+    review it (ssh refuses without asking); a remote login script that prints exactly ssh's `Host key verification
+    failed.` before the link drops can stop the loop with a false host-key line (Enter recovers).
+  - **A3, a refusal needs evidence.** OpenSSH: a saved password counts as refused only when ssh's own final denial
+    line (`[user@host: ]Permission denied (methods).`) or `Too many authentication failures` follows the fill. Any
+    other exit after the fill, a lost link, is an ordinary SSH failure: the loop goes on and the saved password is
+    offered again next attempt (still once per attempt). Native: after the saved password (from the vault or a
+    remembered copy) was answered, a failure before sign-in completes counts as refused, sshd cutting the connection
+    at `MaxAuthTries` included; nothing counts after sign-in - nor does a key passphrase the attempt cancelled on the
+    way, which then does not stop the loop - and a second factor after it still reads as a second factor. Limits: with
+    ssh's logging silenced (`-q`, `LogLevel QUIET`) neither line appears, so a wrong saved password is re-sent once per
+    attempt until the loop's budget or the server stops it; native, a link drop between the password and the end of
+    sign-in, or a server refusing the session channel after it (`MaxSessions`), reads as a refusal.
+  - **A4, old OpenSSH never uses the saved password on its own.** The app reads `ssh -V` once per ssh executable (and
+    again when the file changes; `OpenSshClientVersionCache`). Before 8.4 ssh puts no `(user@host)` prefix on
+    keyboard-interactive prompts, so the helper never recognises the bare keyboard-interactive `Password:`: ssh would
+    send an empty answer on every attempt, and a second factor after a filled password-method prompt would not be
+    recorded as declined, so it would read as the saved password refused. Automatic attempts there run in batch mode
+    (keys and agent). An unreadable version counts as old for that attempt and is read again the next time; the log
+    says why. Windows 10's built-in OpenSSH 8.1 and Ubuntu 20.04's 8.2 are affected, and a password-only server then
+    waits for Enter after every drop (a newer OpenSSH first on PATH, or the native backend, avoids it). The Enter path
+    is unchanged.
+  - **C2, glibc 2.34.** `RemoteHostProbe.MinimumGlibc` is 2.34 (RHEL, Rocky and Alma 9 work); the release binary
+    asks for nothing above `GLIBC_2.34`, which CI and the release assert. The probe reads `getconf GNU_LIBC_VERSION`
+    first, then `ldd --version`.

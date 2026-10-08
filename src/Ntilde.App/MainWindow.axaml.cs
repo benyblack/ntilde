@@ -4605,7 +4605,8 @@ namespace Ntilde
 
         /// <summary>
         /// The exec transport for <paramref name="profile"/> (spec §8.2, §8.3), by its backend: what the remote hosts'
-        /// attempts and the install flow both run over. May block (OpenSSH plans its config file): off the UI thread.
+        /// attempts and the install flow both run over. May block (OpenSSH plans its config file, and an automatic attempt
+        /// may run <c>ssh -V</c> once per ssh executable): off the UI thread.
         /// OpenSSH plans this very profile, which may be a host's blend of an edited or deleted one, self-contained once the
         /// host's destination is pinned (codex D2). A Native profile is refused while native SSH is off, as this window's
         /// settings say at that call (<see cref="NativeSshEnabledNow"/>; codex4 F).
@@ -4620,7 +4621,8 @@ namespace Ntilde
                 static () => new Ntilde.Platform.Ssh.Native.NativeSshInterop(),
                 NativeSshEnabledNow,
                 SshAskPassCommand.LocateHelper(),
-                AppLogger.Log);
+                AppLogger.Log,
+                Ntilde.Platform.Ssh.Exec.OpenSshClientVersionCache.Shared);
 
         /// <summary>
         /// The global native SSH switch (Settings &gt; SSH, <see cref="TerminalSettings.ExperimentalNativeSshEnabled"/>) as

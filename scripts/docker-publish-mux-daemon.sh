@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds ntilde-mux for a Linux RID inside ubuntu:22.04 (glibc 2.35 floor), the release recipe.
+# Builds ntilde-mux for a Linux RID inside ubuntu:22.04 (glibc 2.34 floor), the release recipe.
 # Usage: scripts/docker-publish-mux-daemon.sh linux-x64 artifacts/mux-daemon
 #
 # The local twin of ci.yml's mux_daemon_aot and release.yml's publish_mux_daemon Linux legs
@@ -10,7 +10,7 @@
 # container has neither, so they are exports. Keep the copies in step when release.yml changes.
 #
 # Writes <outdir>/<rid>/ntilde-mux: one file, rusty_pty linked in statically. Fails when the
-# publish leaves anything else beside it, or when the binary needs a glibc newer than 2.35.
+# publish leaves anything else beside it, or when the binary needs a glibc newer than 2.34.
 #
 # Runs from Linux, macOS or Git Bash on Windows. linux-arm64 on an x64 machine runs the container
 # under emulation (--platform): NativeAOT does not cross-compile between architectures.
@@ -132,11 +132,11 @@ if [[ "$listing" != "ntilde-mux" ]]; then
   exit 1
 fi
 
-# The glibc floor: no symbol version above GLIBC_2.35 (ubuntu:22.04).
+# The glibc floor: no symbol version above GLIBC_2.34 (RHEL 9; ubuntu:22.04 links against 2.35).
 glibc_max="$(objdump -T "$pub/ntilde-mux" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
 echo "highest GLIBC_ symbol version: $glibc_max"
-if [[ "$(printf '%s\n' "$glibc_max" GLIBC_2.35 | sort -V | tail -1)" != "GLIBC_2.35" ]]; then
-  echo "ntilde-mux needs $glibc_max, above the GLIBC_2.35 floor" >&2
+if [[ "$(printf '%s\n' "$glibc_max" GLIBC_2.34 | sort -V | tail -1)" != "GLIBC_2.34" ]]; then
+  echo "ntilde-mux needs $glibc_max, above the GLIBC_2.34 floor" >&2
   exit 1
 fi
 
