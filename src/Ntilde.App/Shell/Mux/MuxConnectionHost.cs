@@ -102,10 +102,35 @@ internal sealed class MuxConnectionHost : IDisposable
         _disposedToken = _disposed.Token;
     }
 
+    /// <summary>
+    /// The GUI's local host. On a Windows install the daemon it spawns runs from its own copy outside the install root,
+    /// and once connected the host starts pruning older versions' copies (<see cref="MuxDaemonImage"/>, Phase 5 spec R9).
+    /// </summary>
     public static MuxConnectionHost CreateDefault(Action<string>? log)
     {
-        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(log, MuxCommand.ServeArguments);
-        return new MuxConnectionHost(launcher.EnsureConnectedAsync, MuxDiscovery.GetDefaultEndpoint(), log);
+        string appDataRoot = AppPaths.RootDirectory;
+        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(log, MuxCommand.ServeArguments,
+            imageResolver: MuxDaemonImage.ResolverFor(appDataRoot, log));
+        return new MuxConnectionHost(
+            AfterFirstConnect(launcher.EnsureConnectedAsync, () => MuxDaemonImage.StartPruningOnce(appDataRoot, log)),
+            MuxDiscovery.GetDefaultEndpoint(), log);
+    }
+
+    /// <summary>
+    /// <paramref name="connect"/>, calling <paramref name="onConnected"/> once, after its first success, on the attempt's
+    /// own thread (never the UI thread: the host runs every attempt on the pool). It must not block or throw.
+    /// </summary>
+    internal static Func<CancellationToken, Task<T>> AfterFirstConnect<T>(Func<CancellationToken, Task<T>> connect, Action onConnected)
+    {
+        ArgumentNullException.ThrowIfNull(connect);
+        ArgumentNullException.ThrowIfNull(onConnected);
+        int done = 0;
+        return async ct =>
+        {
+            T result = await connect(ct).ConfigureAwait(false);
+            if (Interlocked.Exchange(ref done, 1) == 0) onConnected();
+            return result;
+        };
     }
 
     private static Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> IgnoringTheAttempt(Func<CancellationToken, Task<MuxClient>> connect)

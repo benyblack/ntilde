@@ -99,6 +99,7 @@ All paths are properties of
 | `backups\` | automatic configuration snapshots written by the backup subsystem |
 | `recordings\` | terminal recordings |
 | `logs\` | `debug.log`, `startup_error.txt`, `workspace_audit.log`, … |
+| `bin\<version>\` | Windows installs only: the local multiplexer daemon's own copy of `Ntilde.exe`, the DLLs beside it and `<arch>\OpenConsole.exe` (`MuxDaemonImage`, not an `AppPaths` member). A Velopack update kills every process whose image is under the install root, so the daemon runs from here instead. One folder per version (`<version>-<n>` after a re-pack under the same version), each with a `.complete` list of its files written last; `.<version>.<guid>.tmp\` folders are copies being staged. About 75 MB per version (0.11.0's AOT bundle). A launch deletes other versions' folders once no daemon runs from them. Not backed up; safe to delete when no daemon runs |
 
 ## Constraints
 

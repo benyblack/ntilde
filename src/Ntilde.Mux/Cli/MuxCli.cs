@@ -204,7 +204,7 @@ public static class MuxCli
 
         void Log(string line) => stderr.WriteLine($"[ntilde-mux] {line}");
         return MuxProxyCommand.Run(Console.OpenStandardInput(), Console.OpenStandardOutput(), stderr,
-            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths, KillServerCommand(host)).EnsureEndpointStreamAsync(ct),
+            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths, KillServerCommand(host), host.DaemonImageResolver).EnsureEndpointStreamAsync(ct),
             endStdio: OperatingSystem.IsWindows() ? null : UnixChannelStdio.EndStdoutAndStderr);
     }
 

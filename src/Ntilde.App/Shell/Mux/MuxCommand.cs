@@ -45,23 +45,31 @@ public static class MuxCommand
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
         // args[0] is "mux"; MuxCli takes the verb onwards.
-        return MuxCli.Execute(args.Length > 0 ? args[1..] : [], stdout, stderr, CreateHost(rootOverride));
+        return MuxCli.Execute(args.Length > 0 ? args[1..] : [], stdout, stderr, CreateHost(rootOverride, stderr));
     }
 
     /// <summary>What the App supplies to <see cref="MuxCli"/>: its own root, name, verbs, shells and console bindings.</summary>
-    internal static MuxCliHost CreateHost(string? rootOverride) => new()
+    /// <param name="stderr">Where a verb that starts the daemon says its copy could not be staged; null = nowhere.</param>
+    internal static MuxCliHost CreateHost(string? rootOverride, TextWriter? stderr = null)
     {
-        Paths = new MuxPaths(rootOverride ?? MuxDiscovery.GetRootDirectory()),
-        UsagePrefix = UsagePrefix,
-        ServeArguments = ServeArguments,
-        // The GUI's own daemon keeps the GUI's session factory, so local behaviour cannot change (Phase 4 spec §6.3).
-        SessionFactory = () => DefaultTerminalSessionFactory.Instance,
-        Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole,
-        // Program.cs skips CliConsoleBindings.Prepare for serve (a daemon must not attach to the
-        // launching console); serve --foreground binds it through this.
-        PrepareForegroundConsole = CliConsoleBindings.Prepare,
-        AttachedToParentConsole = AttachedToParentConsole,
-        // The daemon reports this build's version so a later GUI can tell it is from an older one.
-        Version = AppVersionInfo.Version,
-    };
+        string root = rootOverride ?? MuxDiscovery.GetRootDirectory();
+        return new MuxCliHost
+        {
+            Paths = new MuxPaths(root),
+            // ntilde.com runs this executable, so every way in starts the daemon the GUI would: on a Windows install, its
+            // own copy outside the install root (Phase 5 spec R9).
+            DaemonImageResolver = MuxDaemonImage.ResolverFor(root, stderr is null ? null : line => stderr.WriteLine(line)),
+            UsagePrefix = UsagePrefix,
+            ServeArguments = ServeArguments,
+            // The GUI's own daemon keeps the GUI's session factory, so local behaviour cannot change (Phase 4 spec §6.3).
+            SessionFactory = () => DefaultTerminalSessionFactory.Instance,
+            Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole,
+            // Program.cs skips CliConsoleBindings.Prepare for serve (a daemon must not attach to the
+            // launching console); serve --foreground binds it through this.
+            PrepareForegroundConsole = CliConsoleBindings.Prepare,
+            AttachedToParentConsole = AttachedToParentConsole,
+            // The daemon reports this build's version so a later GUI can tell it is from an older one.
+            Version = AppVersionInfo.Version,
+        };
+    }
 }
