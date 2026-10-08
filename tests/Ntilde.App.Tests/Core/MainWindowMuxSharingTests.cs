@@ -628,6 +628,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
+            Settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off },
         });
         Assert.Null(window.MuxHost);
 

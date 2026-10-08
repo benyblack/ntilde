@@ -28,8 +28,12 @@ public sealed class SessionPersistenceSettingTests
     }
 
     [Fact]
-    public void A_settings_file_without_the_key_gets_the_default() =>
-        Assert.Equal(TerminalSettings.DefaultSessionPersistence, JsonSerializer.Deserialize("{}", AppJsonContext.Default.TerminalSettings)!.SessionPersistence);
+    public void A_settings_file_without_the_key_gets_the_default()
+    {
+        string loaded = JsonSerializer.Deserialize("{}", AppJsonContext.Default.TerminalSettings)!.SessionPersistence;
+        Assert.Equal(TerminalSettings.DefaultSessionPersistence, loaded);
+        Assert.Equal("KeepOnClose", loaded); // spec R3: local shells keep running by default
+    }
 
     [Theory]
     [InlineData("Off")]
