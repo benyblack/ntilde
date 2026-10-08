@@ -19,6 +19,14 @@ directory: *"any data stored within it, such as settings or logs, will be lost"*
 narrower — only the `current\` subdirectory is replaced — so **uninstall is the destructive
 path, not update.**
 
+One exception reaches into the config root, by design: on Windows the local multiplexer daemon runs
+from its own copy under `bin\` (see the inventory), outside the install root, so an update leaves
+it running. Uninstall therefore stops it in Velopack's uninstall hook (`MuxUninstall`, as
+`ntilde mux kill-server --force` would: it is asked to shut down, and terminated by pid if it cannot
+be asked or has not exited within 5 s; its shells end with it), then deletes `bin\`. A copy a daemon
+still runs from is kept, and a junction or link is never deleted through. Nothing else in the config
+root is touched.
+
 This is why `--packId` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) is
 `NtildeApp` and not `Ntilde`. Aligning it with the app name would make the install
 root and the config root the same folder, and uninstalling would silently destroy every setting,
@@ -99,7 +107,7 @@ All paths are properties of
 | `backups\` | automatic configuration snapshots written by the backup subsystem |
 | `recordings\` | terminal recordings |
 | `logs\` | `debug.log`, `startup_error.txt`, `workspace_audit.log`, … |
-| `bin\<version>\` | Windows installs only: the local multiplexer daemon's own copy of `Ntilde.exe`, the DLLs beside it and `<arch>\OpenConsole.exe` (`MuxDaemonImage`, not an `AppPaths` member). A Velopack update kills every process whose image is under the install root, so the daemon runs from here instead. One folder per version (`<version>-<n>` after a re-pack under the same version), each with a `.complete` list of its files written last; `.<version>.<guid>.tmp\` folders are copies being staged. About 75 MB per version (0.11.0's AOT bundle). A launch deletes other versions' folders once no daemon runs from them. Not backed up; safe to delete when no daemon runs |
+| `bin\<version>\` | Windows installs only: the local multiplexer daemon's own copy of `Ntilde.exe`, the DLLs beside it and `<arch>\OpenConsole.exe` (`MuxDaemonImage`, not an `AppPaths` member). A Velopack update kills every process whose image is under the install root, so the daemon runs from here instead. One folder per version (`<version>-<n>` after another build under the same version), each with a `.complete` list written last: its files' sizes and the executable's SHA-256; `.<version>.<guid>.tmp\` folders are copies being staged. About 75 MB per version (0.11.0's AOT bundle). A launch deletes other versions' folders once no daemon runs from them; uninstall stops the daemon and deletes them all. Junctions and links in here are never deleted through. Not backed up; safe to delete when no daemon runs |
 
 ## Constraints
 

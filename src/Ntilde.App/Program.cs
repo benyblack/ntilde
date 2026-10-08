@@ -36,12 +36,19 @@ class Program
             // (Phase 4 spec §11.4). Fast callbacks run only when Velopack starts this exe for that
             // stage, and the process exits after them; a normal start never reaches them. Velopack
             // offers them on Windows only, which is where they are needed.
+            //
+            // Uninstall also stops the local multiplexer daemon and removes its copies (Phase 5 Task 21): the daemon runs
+            // from a copy outside the install root, so the uninstall would otherwise leave it, and every shell, running.
             if (OperatingSystem.IsWindows())
             {
                 velopack = velopack
                     .OnAfterInstallFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
                     .OnAfterUpdateFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
-                    .OnBeforeUninstallFastCallback(static _ => UserPathRegistration.Remove(InstallDirectory()));
+                    .OnBeforeUninstallFastCallback(static _ =>
+                    {
+                        UserPathRegistration.Remove(InstallDirectory());
+                        Ntilde.Shell.Mux.MuxUninstall.Run();
+                    });
             }
 
             velopack

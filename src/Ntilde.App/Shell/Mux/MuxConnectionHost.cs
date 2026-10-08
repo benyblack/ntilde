@@ -112,15 +112,16 @@ internal sealed class MuxConnectionHost : IDisposable
         MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(log, MuxCommand.ServeArguments,
             imageResolver: MuxDaemonImage.ResolverFor(appDataRoot, log));
         return new MuxConnectionHost(
-            AfterFirstConnect(launcher.EnsureConnectedAsync, () => MuxDaemonImage.StartPruningOnce(appDataRoot, log)),
+            AfterFirstConnect(launcher.EnsureConnectedAsync, () => MuxDaemonImage.StartPruningOnce(appDataRoot, log), log),
             MuxDiscovery.GetDefaultEndpoint(), log);
     }
 
     /// <summary>
     /// <paramref name="connect"/>, calling <paramref name="onConnected"/> once, after its first success, on the attempt's
-    /// own thread (never the UI thread: the host runs every attempt on the pool). It must not block or throw.
+    /// own thread (never the UI thread: the host runs every attempt on the pool). It must not block. If it throws, that
+    /// is logged and the connect still succeeds: its client must reach the host, or nothing would ever dispose it.
     /// </summary>
-    internal static Func<CancellationToken, Task<T>> AfterFirstConnect<T>(Func<CancellationToken, Task<T>> connect, Action onConnected)
+    internal static Func<CancellationToken, Task<T>> AfterFirstConnect<T>(Func<CancellationToken, Task<T>> connect, Action onConnected, Action<string>? log)
     {
         ArgumentNullException.ThrowIfNull(connect);
         ArgumentNullException.ThrowIfNull(onConnected);
@@ -128,7 +129,18 @@ internal sealed class MuxConnectionHost : IDisposable
         return async ct =>
         {
             T result = await connect(ct).ConfigureAwait(false);
-            if (Interlocked.Exchange(ref done, 1) == 0) onConnected();
+            if (Interlocked.Exchange(ref done, 1) == 0)
+            {
+                try
+                {
+                    onConnected();
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke($"[Mux] after connecting: {ex.Message}");
+                }
+            }
+
             return result;
         };
     }

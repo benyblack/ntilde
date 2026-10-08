@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Ntilde.Shell.Mux;
@@ -25,8 +26,13 @@ internal static class MuxDaemonImage
     /// <summary>Under the app-data root: one copy per version, <c>&lt;version&gt;</c> or <c>&lt;version&gt;-&lt;n&gt;</c>.</summary>
     internal const string DirectoryName = "bin";
 
-    /// <summary>In a copy, written last: one line per file, its size and its path relative to the copy.</summary>
+    /// <summary>
+    /// In a copy, written last: one line per file, its size and its path relative to the copy, and a <c>sha256</c> line
+    /// with the executable's hash - the sizes alone cannot tell two builds apart (PE sections pad to 512 bytes).
+    /// </summary>
     internal const string CompleteFileName = ".complete";
+
+    private const string HashKey = "sha256";
 
     /// <summary>A staging folder older than this is a crashed stager's, not one at work: pruning deletes it.</summary>
     internal static readonly TimeSpan StaleStagingAge = TimeSpan.FromHours(1);
@@ -67,10 +73,13 @@ internal static class MuxDaemonImage
     /// <remarks>
     /// The copy is built in <c>bin\.&lt;version&gt;.&lt;guid&gt;.tmp\</c>, its <see cref="CompleteFileName"/> written last,
     /// then renamed into place, so a folder under its version's name is always whole. One that exists is reused when its
-    /// <see cref="CompleteFileName"/> lists exactly this install's files at their sizes and they are all there. One whose
-    /// list names other sizes holds another build under the same version (a re-pack): it may be running a daemon, so it
-    /// is left alone and the next <c>&lt;version&gt;-&lt;n&gt;</c> is used. One without a valid list, or missing a file,
-    /// is replaced, unless a daemon runs from it. A stager that loses the rename to another uses the winner's copy.
+    /// <see cref="CompleteFileName"/> lists exactly this install's files at their sizes, and this install's executable's
+    /// hash, and the files are all there. One whose list names other sizes or another hash - or none, as the first Phase 5
+    /// build wrote - holds another build under the same version (a re-pack): it may be running a daemon, so it is left
+    /// alone and the next <c>&lt;version&gt;-&lt;n&gt;</c> is used. One without a valid list, or missing a file, is
+    /// replaced, unless a daemon runs from it. A junction or link is never used or touched. A stager that loses the
+    /// rename to another uses the winner's copy. The executable is hashed on every call (about 45 MB): the caller is a
+    /// spawn, which runs on the pool.
     /// </remarks>
     public static string Resolve(string exePath, string appDataRoot, string version, IMuxImageFileSystem fs, Action<string> log)
     {
@@ -94,12 +103,11 @@ internal static class MuxDaemonImage
                 return exePath;
             }
 
-            IReadOnlyList<ImageFile> image = ListImage(exePath, fs);
-            string exeName = Path.GetFileName(exePath);
+            var image = new Image(ListImage(exePath, fs), Path.GetFileName(exePath), fs.Sha256(exePath));
             for (int n = 0; n <= MaxRepacks; n++)
             {
                 string copy = Path.Combine(bin, n == 0 ? version : version + "-" + n.ToString(CultureInfo.InvariantCulture));
-                if (TryUse(copy, image, exeName, fs, log) is { } exe) return exe;
+                if (TryUse(copy, image, fs, log) is { } exe) return exe;
             }
 
             log($"[Mux] the multiplexer daemon runs from the install folder, and an update will stop it: no free folder for its own copy under {bin}");
@@ -116,7 +124,8 @@ internal static class MuxDaemonImage
     /// <summary>
     /// Deletes <c>&lt;app-data&gt;\bin\&lt;v&gt;</c> folders other than the current version's (<c>&lt;v&gt;</c> and its
     /// re-packs, <c>&lt;v&gt;-&lt;n&gt;</c>), and staging folders a crashed stager left. A folder in use (a running older
-    /// daemon) fails to delete and is kept whole. Best effort, never throws; the caller runs it off the UI thread.
+    /// daemon) fails to delete and is kept whole; a junction or link is never touched. Best effort, never throws; the
+    /// caller runs it off the UI thread.
     /// </summary>
     public static void PruneOldCopies(string appDataRoot, string currentVersion, IMuxImageFileSystem fs, Action<string> log)
     {
@@ -125,17 +134,48 @@ internal static class MuxDaemonImage
         // Without a version there is nothing to keep, and every copy - a running daemon's included - would look old.
         if (!IsFolderName(currentVersion)) return;
 
+        DeleteCopies(Path.Combine(appDataRoot, DirectoryName), name => IsCurrentVersion(name, currentVersion), onlyStaleStaging: true, fs, log);
+    }
+
+    /// <summary>
+    /// Uninstall (<see cref="MuxUninstall"/>): deletes every copy and staging folder, then <c>bin\</c> itself once it is
+    /// empty - unless it is a junction or link, which is left in place. A copy in use is kept whole, and a junction or
+    /// link inside is never touched, as for <see cref="PruneOldCopies"/>. Best effort, never throws.
+    /// </summary>
+    public static void RemoveAllCopies(string appDataRoot, IMuxImageFileSystem fs, Action<string> log)
+    {
+        ArgumentNullException.ThrowIfNull(fs);
+        ArgumentNullException.ThrowIfNull(log);
         string bin = Path.Combine(appDataRoot, DirectoryName);
+        if (!DeleteCopies(bin, static _ => false, onlyStaleStaging: false, fs, log)) return;
+
+        try
+        {
+            if (!fs.IsReparsePoint(bin) && fs.GetDirectories(bin).Count == 0 && fs.GetFiles(bin, "*").Count == 0) fs.DeleteDirectory(bin);
+        }
+        catch (Exception ex)
+        {
+            log($"[Mux] could not delete {bin}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Deletes the folders in <paramref name="bin"/> but those <paramref name="keep"/> names: copies through
+    /// <see cref="TryDeleteCopy"/>, staging folders outright (only once stale with <paramref name="onlyStaleStaging"/>:
+    /// a fresh one may be another process's at work). False when there is no <paramref name="bin"/> to look in.
+    /// </summary>
+    private static bool DeleteCopies(string bin, Func<string, bool> keep, bool onlyStaleStaging, IMuxImageFileSystem fs, Action<string> log)
+    {
         IReadOnlyList<string> folders;
         try
         {
-            if (!fs.DirectoryExists(bin)) return;
+            if (!fs.DirectoryExists(bin)) return false;
             folders = fs.GetDirectories(bin);
         }
         catch (Exception ex)
         {
             log($"[Mux] could not list the multiplexer daemon's copies in {bin}: {ex.Message}");
-            return;
+            return false;
         }
 
         foreach (string folder in folders)
@@ -143,14 +183,21 @@ internal static class MuxDaemonImage
             string name = Path.GetFileName(folder);
             try
             {
-                if (name.StartsWith('.'))
+                // What is "in" a junction or link is its target's: deleting through it would delete someone else's files.
+                if (fs.IsReparsePoint(folder))
                 {
-                    // A stager's folder: at work while fresh, a crashed one's once stale. Nothing ever runs from one.
-                    if (DateTime.UtcNow - fs.GetLastWriteTimeUtc(folder) >= StaleStagingAge) fs.DeleteDirectory(folder);
+                    log($"[Mux] left {folder} alone: it is a junction or link");
                     continue;
                 }
 
-                if (IsCurrentVersion(name, currentVersion)) continue;
+                if (name.StartsWith('.'))
+                {
+                    // A stager's folder: at work while fresh, a crashed one's once stale. Nothing ever runs from one.
+                    if (!onlyStaleStaging || DateTime.UtcNow - fs.GetLastWriteTimeUtc(folder) >= StaleStagingAge) fs.DeleteDirectory(folder);
+                    continue;
+                }
+
+                if (keep(name)) continue;
 
                 if (TryDeleteCopy(folder, fs, out string? kept)) log($"[Mux] deleted the multiplexer daemon's copy {folder}: no daemon runs from it");
                 else log($"[Mux] kept the multiplexer daemon's copy {folder}: {kept}");
@@ -160,6 +207,8 @@ internal static class MuxDaemonImage
                 log($"[Mux] could not delete the multiplexer daemon's copy {folder}: {ex.Message}");
             }
         }
+
+        return true;
     }
 
     /// <summary>
@@ -190,6 +239,12 @@ internal static class MuxDaemonImage
 
     /// <summary>One file of the image: where it is in the install, where it goes in a copy, and its size.</summary>
     private sealed record ImageFile(string SourcePath, string RelativePath, long Length);
+
+    /// <summary>This install's image: its files, the executable's name among them, and the executable's SHA-256.</summary>
+    private sealed record Image(IReadOnlyList<ImageFile> Files, string ExeName, string ExeSha256);
+
+    /// <summary>What a <see cref="CompleteFileName"/> lists: sizes by relative path, and the executable's hash when it has one.</summary>
+    private sealed record Listing(Dictionary<string, long> Sizes, string? ExeSha256);
 
     private enum CopyState
     {
@@ -230,12 +285,19 @@ internal static class MuxDaemonImage
     }
 
     /// <summary>The copy's executable when <paramref name="copy"/> is (or now holds) this install's image; null to try the next name.</summary>
-    private static string? TryUse(string copy, IReadOnlyList<ImageFile> image, string exeName, IMuxImageFileSystem fs, Action<string> log)
+    private static string? TryUse(string copy, Image image, IMuxImageFileSystem fs, Action<string> log)
     {
+        // A junction or link named like a copy: its files are its target's, which this cannot vouch for or delete.
+        if (fs.DirectoryExists(copy) && fs.IsReparsePoint(copy))
+        {
+            log($"[Mux] left {copy} alone: it is a junction or link; staging another");
+            return null;
+        }
+
         switch (Inspect(copy, image, fs))
         {
             case CopyState.Usable:
-                return Path.Combine(copy, exeName);
+                return Path.Combine(copy, image.ExeName);
             case CopyState.OtherBuild:
                 return null;
             case CopyState.Broken:
@@ -245,19 +307,21 @@ internal static class MuxDaemonImage
                     return null;
                 }
 
-                return Stage(copy, image, exeName, fs, log);
+                return Stage(copy, image, fs, log);
             default:
-                return Stage(copy, image, exeName, fs, log);
+                return Stage(copy, image, fs, log);
         }
     }
 
-    private static CopyState Inspect(string copy, IReadOnlyList<ImageFile> image, IMuxImageFileSystem fs)
+    private static CopyState Inspect(string copy, Image image, IMuxImageFileSystem fs)
     {
         if (!fs.DirectoryExists(copy)) return CopyState.Absent;
         string complete = Path.Combine(copy, CompleteFileName);
         if (!fs.FileExists(complete) || ParseComplete(fs.ReadAllText(complete)) is not { } listed) return CopyState.Broken;
-        if (listed.Count != image.Count || image.Any(f => !listed.TryGetValue(f.RelativePath, out long length) || length != f.Length)) return CopyState.OtherBuild;
-        foreach (ImageFile f in image)
+        if (listed.Sizes.Count != image.Files.Count || image.Files.Any(f => !listed.Sizes.TryGetValue(f.RelativePath, out long length) || length != f.Length)) return CopyState.OtherBuild;
+        // Same sizes is not the same build: a list without a hash (the first Phase 5 build's) cannot say which it holds.
+        if (!string.Equals(listed.ExeSha256, image.ExeSha256, StringComparison.OrdinalIgnoreCase)) return CopyState.OtherBuild;
+        foreach (ImageFile f in image.Files)
         {
             string path = Path.Combine(copy, f.RelativePath);
             if (!fs.FileExists(path) || fs.GetFileLength(path) != f.Length) return CopyState.Broken;
@@ -267,13 +331,13 @@ internal static class MuxDaemonImage
     }
 
     /// <summary>Builds the copy beside <paramref name="copy"/> and renames it into place; null when another build won that name.</summary>
-    private static string? Stage(string copy, IReadOnlyList<ImageFile> image, string exeName, IMuxImageFileSystem fs, Action<string> log)
+    private static string? Stage(string copy, Image image, IMuxImageFileSystem fs, Action<string> log)
     {
         string staging = Path.Combine(Path.GetDirectoryName(copy)!, "." + Path.GetFileName(copy) + "." + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
             fs.CreateDirectory(staging);
-            foreach (ImageFile f in image)
+            foreach (ImageFile f in image.Files)
             {
                 string target = Path.Combine(staging, f.RelativePath);
                 fs.CreateDirectory(Path.GetDirectoryName(target)!);
@@ -281,6 +345,10 @@ internal static class MuxDaemonImage
                 long copied = fs.GetFileLength(target);
                 if (copied != f.Length) throw new IOException($"{f.SourcePath} changed while it was copied ({f.Length} bytes listed, {copied} copied).");
             }
+
+            // The hash the list records is the copy's own: an install replaced mid-copy must not be listed as this one.
+            string copiedSha256 = fs.Sha256(Path.Combine(staging, image.ExeName));
+            if (!string.Equals(copiedSha256, image.ExeSha256, StringComparison.OrdinalIgnoreCase)) throw new IOException($"{image.ExeName} changed while it was copied.");
 
             fs.WriteAllText(Path.Combine(staging, CompleteFileName), FormatComplete(image));
             for (int attempt = 1; ; attempt++)
@@ -294,7 +362,7 @@ internal static class MuxDaemonImage
                 {
                     // Another stager's rename landed first: its copy is as good as ours when it holds the same files.
                     DeleteQuietly(staging, fs);
-                    return Inspect(copy, image, fs) == CopyState.Usable ? Path.Combine(copy, exeName) : null;
+                    return Inspect(copy, image, fs) == CopyState.Usable ? Path.Combine(copy, image.ExeName) : null;
                 }
                 catch (Exception ex) when (attempt < MoveAttempts && ex is (IOException or UnauthorizedAccessException))
                 {
@@ -310,18 +378,25 @@ internal static class MuxDaemonImage
         }
 
         log($"[Mux] staged the multiplexer daemon's own copy at {copy}, so updates leave it running");
-        return Path.Combine(copy, exeName);
+        return Path.Combine(copy, image.ExeName);
     }
 
     /// <summary>
     /// Deletes a copy unless a daemon runs from it. Windows refuses to delete a running executable, but would let its
     /// folder be renamed or its other files go: so the executables at the top go first, and a refusal there leaves the
-    /// copy whole. Null in <paramref name="kept"/> when it is gone; otherwise why not.
+    /// copy whole. A junction or link is never deleted through: its files are its target's. Null in
+    /// <paramref name="kept"/> when it is gone; otherwise why not.
     /// </summary>
     private static bool TryDeleteCopy(string folder, IMuxImageFileSystem fs, out string? kept)
     {
         try
         {
+            if (fs.IsReparsePoint(folder))
+            {
+                kept = "it is a junction or link";
+                return false;
+            }
+
             foreach (string exe in fs.GetFiles(folder, "*.exe"))
             {
                 try
@@ -337,7 +412,7 @@ internal static class MuxDaemonImage
 
             fs.DeleteDirectory(folder);
         }
-        catch (DirectoryNotFoundException)
+        catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException)
         {
             // Gone already: another launch deleted it first.
         }
@@ -363,28 +438,39 @@ internal static class MuxDaemonImage
         }
     }
 
-    private static string FormatComplete(IReadOnlyList<ImageFile> image)
+    /// <summary><c>sha256&lt;TAB&gt;&lt;hex&gt;</c>, then <c>&lt;size&gt;&lt;TAB&gt;&lt;relative path&gt;</c> per file.</summary>
+    private static string FormatComplete(Image image)
     {
         var text = new StringBuilder();
-        foreach (ImageFile f in image) text.Append(f.Length.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(f.RelativePath).Append('\n');
+        text.Append(HashKey).Append('\t').Append(image.ExeSha256).Append('\n');
+        foreach (ImageFile f in image.Files) text.Append(f.Length.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(f.RelativePath).Append('\n');
         return text.ToString();
     }
 
-    /// <summary>The sizes <see cref="CompleteFileName"/> lists by relative path; null when it is not a valid list.</summary>
-    private static Dictionary<string, long>? ParseComplete(string text)
+    /// <summary>What <see cref="CompleteFileName"/> lists; null when it is not a valid list. A list without a hash is valid.</summary>
+    private static Listing? ParseComplete(string text)
     {
-        var listed = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var sizes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        string? sha256 = null;
         foreach (string line in text.Split('\n'))
         {
             string entry = line.TrimEnd('\r');
             if (entry.Length == 0) continue;
             int tab = entry.IndexOf('\t', StringComparison.Ordinal);
-            if (tab <= 0 || !long.TryParse(entry.AsSpan(0, tab), NumberStyles.None, CultureInfo.InvariantCulture, out long length)) return null;
-            string path = entry[(tab + 1)..];
-            if (path.Length == 0 || Path.IsPathRooted(path) || !listed.TryAdd(path, length)) return null;
+            if (tab <= 0) return null;
+            string value = entry[(tab + 1)..];
+            if (entry.AsSpan(0, tab).SequenceEqual(HashKey))
+            {
+                if (sha256 is not null || value.Length != 64 || !value.All(char.IsAsciiHexDigit)) return null;
+                sha256 = value;
+                continue;
+            }
+
+            if (!long.TryParse(entry.AsSpan(0, tab), NumberStyles.None, CultureInfo.InvariantCulture, out long length)) return null;
+            if (value.Length == 0 || Path.IsPathRooted(value) || !sizes.TryAdd(value, length)) return null;
         }
 
-        return listed.Count > 0 ? listed : null;
+        return sizes.Count > 0 ? new Listing(sizes, sha256) : null;
     }
 
     /// <summary>A version that can name a folder of its own under <c>bin</c>: not empty, not hidden, no separators.</summary>
@@ -421,7 +507,13 @@ internal interface IMuxImageFileSystem
 
     bool DirectoryExists(string path);
 
+    /// <summary>A junction, symbolic link or other reparse point: what is "in" it belongs to its target.</summary>
+    bool IsReparsePoint(string path);
+
     long GetFileLength(string path);
+
+    /// <summary>The file's SHA-256, lowercase hex.</summary>
+    string Sha256(string path);
 
     /// <summary>The files directly in <paramref name="directory"/> matching <paramref name="searchPattern"/> (<c>*</c> or <c>*.ext</c>).</summary>
     IReadOnlyList<string> GetFiles(string directory, string searchPattern);
@@ -462,7 +554,15 @@ internal sealed class MuxImageFileSystem : IMuxImageFileSystem
 
     public bool DirectoryExists(string path) => Directory.Exists(path);
 
+    public bool IsReparsePoint(string path) => (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+
     public long GetFileLength(string path) => new FileInfo(path).Length;
+
+    public string Sha256(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        return Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
 
     public IReadOnlyList<string> GetFiles(string directory, string searchPattern) => Directory.GetFiles(directory, searchPattern, SearchOption.TopDirectoryOnly);
 

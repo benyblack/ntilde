@@ -5,8 +5,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 using Ntilde.VT;
-using Velopack.Locators;
-using Velopack.Logging;
 
 namespace Ntilde.Shell;
 
@@ -161,21 +159,8 @@ internal static class UserPathRegistration
             throw new IOException(Marshal.GetPInvokeErrorMessage(Marshal.GetLastPInvokeError()));
     }
 
-    /// <summary>
-    /// A hook process exits inside Velopack's <c>Run</c>, long before <c>AppLogger.Initialize</c>, so
-    /// <see cref="TerminalLogger"/> has no sink there; Velopack's own log, beside its install, update and
-    /// uninstall lines, is where these belong. Anywhere else (the tests) they go to <see cref="TerminalLogger"/>.
-    /// </summary>
-    private static void Log(LogLevel level, string message)
-    {
-        if (VelopackLocator.IsCurrentSet)
-        {
-            VelopackLocator.Current.Log.Log(level >= LogLevel.Warning ? VelopackLogLevel.Warning : VelopackLogLevel.Information, message, null);
-            return;
-        }
-
-        TerminalLogger.Log(level, message);
-    }
+    /// <summary>Velopack's own log in a hook process, <see cref="TerminalLogger"/> elsewhere (<see cref="VelopackHookLog"/>).</summary>
+    private static void Log(LogLevel level, string message) => VelopackHookLog.Write(level, message);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

@@ -305,16 +305,14 @@ public static class MuxCli
         }
 
         MuxDiscovery.TryReadDescriptor(descriptorPath, out MuxEndpointDescriptor? d);
-        try
+        switch (MuxDaemonStop.RequestShutdown(descriptorPath, new MuxClientOptions { ClientKind = "ntilde-cli" }))
         {
-            using MuxClient? client = Connect(descriptorPath, stderr, host);
-            if (client is null) return 1;
-            client.ShutdownServerAsync().GetAwaiter().GetResult();
-        }
-        catch (MuxUnavailableException ex) when (ex.VersionMismatch)
-        {
-            // It cannot be asked to stop: it does not speak our protocol (PR #489 follow-up).
-            return KillByPid(descriptorPath, force, stdout, stderr);
+            case MuxDaemonStop.ShutdownRequest.NotRunning:
+                stderr.WriteLine("No multiplexer is running.");
+                return 1;
+            case MuxDaemonStop.ShutdownRequest.VersionMismatch:
+                // It cannot be asked to stop: it does not speak our protocol (PR #489 follow-up).
+                return KillByPid(descriptorPath, force, stdout, stderr);
         }
 
         // Wait for it to really be gone, so "kill-server && start" cannot race the old daemon.
@@ -324,7 +322,7 @@ public static class MuxCli
         return 0;
     }
 
-    /// <summary>Shared by <see cref="KillServer"/> and <see cref="KillByPid"/>: report and fail if the daemon is still there after 5 s.</summary>
+    /// <summary><see cref="KillServer"/>'s wait (<see cref="KillByPid"/>'s is <see cref="MuxDaemonStop.Terminate"/>'s): report and fail if the daemon is still there after 5 s.</summary>
     private static bool WaitForExitOrReport(string descriptorPath, MuxEndpointDescriptor? before, TextWriter stderr)
     {
         if (MuxDaemonExit.WaitForExit(descriptorPath, before, TimeSpan.FromSeconds(5), Environment.ProcessId)) return true;
@@ -360,37 +358,13 @@ public static class MuxCli
             return 1;
         }
 
-        try
+        // Re-verified on the process about to be killed, then waited for (5 s) and its descriptor deleted.
+        if (MuxDaemonStop.Terminate(descriptorPath, d, TimeSpan.FromSeconds(5), out string? failure) != MuxDaemonStop.TerminateResult.Terminated)
         {
-            using System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(d.Pid);
-            // The live check above and this Kill are not atomic: the pid could have exited and been
-            // recycled for an unrelated process in between. Re-verify on this exact Process object,
-            // right before killing it, so that window never kills the wrong process.
-            if (!string.Equals(process.ProcessName, d.ProcessName, StringComparison.OrdinalIgnoreCase))
-            {
-                stderr.WriteLine($"pid {d.Pid} is no longer the multiplexer; nothing was terminated.");
-                return 1;
-            }
-
-            // The name alone does not tell a recycled pid from the daemon (another ntilde, say):
-            // the start time recorded in the descriptor does.
-            if (!MuxDiscovery.StartTimeMatches(process, d.StartTime))
-            {
-                stderr.WriteLine($"pid {d.Pid} is no longer the multiplexer; nothing was terminated.");
-                return 1;
-            }
-
-            process.Kill(entireProcessTree: true);
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
-        {
-            stderr.WriteLine($"Could not terminate pid {d.Pid}: {ex.Message}");
+            stderr.WriteLine(failure);
             return 1;
         }
 
-        if (!WaitForExitOrReport(descriptorPath, d, stderr)) return 1;
-
-        MuxDiscovery.DeleteDescriptorIfOwned(descriptorPath, d.Pid);
         stdout.WriteLine($"Multiplexer (pid {d.Pid}) terminated.");
         return 0;
     }

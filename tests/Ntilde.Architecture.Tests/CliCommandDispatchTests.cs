@@ -278,6 +278,35 @@ public class CliCommandDispatchTests
             "The hooks' delegate targets must be referenced only by Program.Main, which registers them; they are referenced by: " + Describe(targetRefs));
     }
 
+    /// <summary>
+    /// Phase 5 Task 21 review fix 2: on a Windows install the local daemon runs from its own copy outside the install
+    /// root, so uninstalling no longer stops it by itself. Velopack's uninstall hook does - <c>MuxUninstall.Run</c> stops
+    /// the daemon and removes the copies - and nothing else calls it: anywhere else it would end the user's shells on an
+    /// ordinary start. Found as <see cref="The_PATH_is_registered_only_from_the_Velopack_hooks"/> finds the hook's target.
+    /// </summary>
+    [Fact]
+    public void The_uninstall_hook_stops_the_multiplexer_and_removes_its_copies()
+    {
+        Type program = App.GetType("Ntilde.Program", throwOnError: true)!;
+        MethodInfo main = program.GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        MethodInfo run = App.GetType("Ntilde.Shell.Mux.MuxUninstall", throwOnError: true)!.GetMethod("Run", CommandMemberFlags)!;
+
+        List<(OpCode Op, int Token)> mainRefs = MethodReferences(main);
+        MethodBase Resolve(int token) => main.Module.ResolveMethod(token)!;
+        int site = Enumerable.Range(0, mainRefs.Count).FirstOrDefault(
+            i => (mainRefs[i].Op == OpCodes.Callvirt || mainRefs[i].Op == OpCodes.Call)
+                && Resolve(mainRefs[i].Token) is { Name: "OnBeforeUninstallFastCallback" } m && m.DeclaringType?.FullName == "Velopack.VelopackApp",
+            -1);
+        Assert.True(site >= 0, "App Program.Main no longer registers VelopackApp.OnBeforeUninstallFastCallback.");
+        int ftn = mainRefs.FindLastIndex(site, r => r.Op == OpCodes.Ldftn);
+        Assert.True(ftn >= 0, "No delegate target found before VelopackApp.OnBeforeUninstallFastCallback in App Program.Main.");
+        MethodBase uninstall = Resolve(mainRefs[ftn].Token);
+
+        var runRefs = AllMethodBodies(App).Where(m => MethodReferences(m).Exists(r => r.Token == run.MetadataToken)).ToHashSet();
+        Assert.True(runRefs.SetEquals([uninstall]),
+            "MuxUninstall.Run must be called from the uninstall hook's delegate and nowhere else; it is referenced by: " + Describe(runRefs));
+    }
+
     private static string Describe(IEnumerable<MethodBase> methods) =>
         string.Join(", ", methods.Select(m => $"{m.DeclaringType?.FullName}.{m.Name}").DefaultIfEmpty("<nothing>"));
 
