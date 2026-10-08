@@ -546,7 +546,8 @@ internal static class MuxDaemonImage
         return n.Length > 0 && n.All(char.IsAsciiDigit);
     }
 
-    private static bool IsSameOrUnder(string path, string directory)
+    /// <summary>Whether <paramref name="path"/> is <paramref name="directory"/> or inside it, ignoring case; also the update path's "inside the install root".</summary>
+    internal static bool IsSameOrUnder(string path, string directory)
     {
         string p = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
         string d = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));

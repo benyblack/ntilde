@@ -1,8 +1,12 @@
+using Ntilde.Mux.Contracts;
+using Ntilde.Update;
+
 namespace Ntilde.Tests.Update;
 
 /// <summary>
 /// Final-fix item 2: Velopack's apply-on-startup must not bypass the in-app apply path, which asks
-/// before closing multiplexed sessions and shuts the daemon down first.
+/// before closing multiplexed sessions and shuts the daemon down first. Since Phase 5 R10 that holds
+/// only for a live daemon the apply would kill (<see cref="MuxUpdateCompatibility.BlocksStartupApply"/>).
 /// </summary>
 public sealed class StartupAutoApplyTests
 {
@@ -55,6 +59,53 @@ public sealed class StartupAutoApplyTests
     {
         int probes = 0;
         Program.ShouldAutoApplyUpdateOnStartup(["mux", "serve"], () => { probes++; return false; });
+        Assert.Equal(0, probes);
+    }
+
+    // ---- Phase 5 R10: only a live daemon the apply would kill - its image inside the install root - is in the way.
+
+    private static readonly string InstallRoot = Path.Combine(OperatingSystem.IsWindows() ? @"C:\Users\u\AppData\Local" : "/home/u/.local/share", "NtildeApp");
+
+    private static readonly MuxEndpointDescriptor Daemon = new() { Endpoint = "test", Pid = 4242, ProcessName = "Ntilde", MinVersion = 1, MaxVersion = 2 };
+
+    [Fact]
+    public void A_daemon_running_from_its_own_copy_does_not_block_auto_apply()
+    {
+        string copy = Path.Combine(Path.GetDirectoryName(InstallRoot)!, "ntilde", "bin", "0.12.0", "Ntilde.exe");
+
+        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => copy));
+    }
+
+    [Fact]
+    public void A_daemon_running_from_inside_the_install_root_blocks_auto_apply()
+    {
+        string inside = Path.Combine(InstallRoot, "current", "Ntilde.exe");
+
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => inside));
+    }
+
+    /// <summary>Never "outside" without evidence: an image that cannot be read, or a descriptor gone after the probe, blocks.</summary>
+    [Fact]
+    public void A_live_daemon_whose_image_cannot_be_told_blocks_auto_apply()
+    {
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => null));
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => null, _ => throw new InvalidOperationException("no descriptor to look up")));
+    }
+
+    [Fact]
+    public void No_live_daemon_never_looks_its_image_up()
+    {
+        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(
+            InstallRoot, () => false, () => throw new InvalidOperationException("not read"), _ => throw new InvalidOperationException("not looked up")));
+    }
+
+    /// <summary>Off a Windows Velopack install the apply kills nothing, so a daemon is never in the way - and is not even probed.</summary>
+    [Fact]
+    public void Without_an_install_root_nothing_blocks_and_nothing_is_probed()
+    {
+        int probes = 0;
+
+        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(null, () => { probes++; return true; }, () => Daemon, _ => null));
         Assert.Equal(0, probes);
     }
 }

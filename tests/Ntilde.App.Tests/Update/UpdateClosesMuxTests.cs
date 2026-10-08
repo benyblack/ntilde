@@ -6,6 +6,7 @@ using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Mux.Transport;
 using Ntilde.Shell;
+using Ntilde.Shell.Mux;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
 using Ntilde.Tests.Core; // TestMainWindowFactory, TestAppDataRoot
 using Ntilde.Update;
@@ -16,16 +17,28 @@ namespace Ntilde.Tests.Update;
 /// Spec §9: applying a staged update must not leave a daemon of the old build running beside the
 /// new one. <see cref="MainWindow.ApplyStagedUpdateAsync"/> probes for a live daemon (never
 /// spawning one), asks for confirmation when it has running sessions, and sends <c>shutdown</c>
-/// before teardown + apply.
+/// before teardown + apply - unless the update keeps it (Phase 5 R10): the new build speaks its
+/// protocol (the release notes' marker) and the apply cannot kill it (its image is outside the
+/// install root). A daemon whose descriptor cannot be read is never kept.
 /// </summary>
 /// <remarks>
 /// <see cref="TestAppDataRoot"/> is taken for its lifetime for the same reason
 /// <see cref="Ntilde.Tests.Core.MainWindowMuxLifecycleTests"/> takes it: a real MainWindow's
-/// teardown saves the session, which must not land in the developer's own profile.
+/// teardown saves the session, which must not land in the developer's own profile. Inside it no
+/// descriptor exists, so a test that does not script one takes the path that closes the sessions.
 /// </remarks>
 public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
+    private const string CompatibleNotes = "Fixes and features.\n\n<!-- ntilde-mux-protocol: 1-2 -->";
+    private const string IncompatibleNotes = "<!-- ntilde-mux-protocol: 3-4 -->";
+    private const string ClosesOneSession = "1 multiplexed session will be closed by the update (the new version cannot keep it).";
+
+    private static readonly string InstallRoot = Path.Combine(Path.GetTempPath(), "ntilde-update-tests", "NtildeApp");
+
+    private static readonly MuxEndpointDescriptor Daemon = new() { Endpoint = "test", Pid = 4242, ProcessName = "Ntilde", MinVersion = 1, MaxVersion = 2 };
+
     private readonly MuxTestHost _mux = new();
+    private readonly List<MuxConnectionHost> _hosts = [];
 
     public UpdateClosesMuxTests()
     {
@@ -35,6 +48,7 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     public void Dispose()
     {
         TestMainWindowFactory.DisposeCreatedWindows();
+        foreach (MuxConnectionHost host in _hosts) host.Dispose();
         _mux.Dispose();
     }
 
@@ -73,9 +87,33 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         return window;
     }
 
-    private static FakeApplyUpdateService StageUpdate(MainWindow window)
+    /// <summary>A window whose panes are the test daemon's shells (persistence on), probing that daemon for the update.</summary>
+    private MainWindow CreateMuxWindow()
     {
-        var service = new FakeApplyUpdateService();
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        _hosts.Add(host);
+        var factory = new MuxTerminalSessionFactory(
+            new MuxConnectionHosts(host, _ => null), new RecordingSessionFactory(new FakeTerminalSession()), null);
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = factory,
+            Settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose },
+        });
+        window.MuxProbeForUpdate = async ct => await _mux.ConnectClientAsync();
+        window.Show();
+        PumpUntil(() => LocalSession(window) is { IsAttached: true }, "the first pane attached");
+        // The attach posts a coalesced session save (spec §9); let it run, so none is pending when the test starts.
+        PumpUntil(() => File.Exists(AppPaths.SessionFilePath), "the attach's session save ran");
+        return window;
+    }
+
+    private static MuxClientSession? LocalSession(MainWindow window) =>
+        window.AllPanesForTest().Select(p => p.Session).OfType<MuxClientSession>().FirstOrDefault();
+
+    private static FakeApplyUpdateService StageUpdate(MainWindow window, string? releaseNotes = null)
+    {
+        var service = new FakeApplyUpdateService { StagedReleaseNotes = releaseNotes };
         var coordinator = new UpdateCoordinator(service, () => true, _ => { }, _ => { });
         Assert.Equal(UpdateCheckOutcome.UpdateReady,
             Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)
@@ -88,9 +126,132 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     {
         public bool IsSupported => true;
         public int ApplyCount { get; private set; }
+        public string? StagedReleaseNotes { get; init; }
         public Task<UpdateAvailability> CheckAndDownloadAsync(CancellationToken ct) =>
             Task.FromResult(new UpdateAvailability(true, "99.0.0"));
         public void ApplyAndRestart() => ApplyCount++;
+    }
+
+    /// <summary>
+    /// R10: the new build speaks the daemon's protocol, and the daemon runs from its own copy outside the install root,
+    /// so the apply does not kill it. Nothing is asked and no <c>shutdown</c> is sent: the teardown detaches as any close
+    /// does, and saves the session naming the shell, which the new build reattaches.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_compatible_daemon_outside_the_install_root_is_kept_without_asking()
+    {
+        MainWindow window = CreateMuxWindow();
+        Guid own = LocalSession(window)!.Id;
+        FakeApplyUpdateService service = StageUpdate(window, CompatibleNotes);
+        int confirms = 0;
+        int shutdowns = 0;
+        _mux.Server.ShutdownRequested += () => Interlocked.Increment(ref shutdowns);
+        window.ConfirmSessionLossForUpdate = _ => { confirms++; return Task.FromResult(true); };
+        window.MuxReadDescriptorForUpdate = () => Daemon;
+        window.MuxInstallRootForUpdate = () => InstallRoot;
+        window.MuxDaemonImagePathForUpdate = _ => Path.Combine(Path.GetTempPath(), "ntilde-update-tests", "ntilde", "bin", "0.12.0", "Ntilde.exe");
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.Equal(0, confirms);
+        Assert.Equal(1, service.ApplyCount);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(0, Volatile.Read(ref shutdowns));
+        Assert.Contains(own, _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(own).IsExited);
+        Assert.Contains(own.ToString(), File.ReadAllText(AppPaths.SessionFilePath)); // named for the new build to reattach
+    }
+
+    /// <summary>
+    /// The new build cannot speak the daemon's protocol: today's question (worded for why), then <c>shutdown</c>. The
+    /// session is saved before the shutdown is sent, naming none of the shells about to die, so the next launch starts
+    /// fresh ones quietly instead of reporting the sessions the user just agreed to close as lost; and the teardown that
+    /// follows does not save over it with the panes the shutdown has since ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_incompatible_daemon_is_closed_after_asking_and_the_session_is_saved_before_the_shutdown()
+    {
+        MainWindow window = CreateMuxWindow();
+        Guid own = LocalSession(window)!.Id;
+        FakeApplyUpdateService service = StageUpdate(window, IncompatibleNotes);
+        var steps = new List<string>();
+        string? savedAtShutdown = null;
+        var shutdownSeen = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mux.Server.ShutdownRequested += () =>
+        {
+            savedAtShutdown = File.Exists(AppPaths.SessionFilePath) ? File.ReadAllText(AppPaths.SessionFilePath) : null;
+            // Removed once recorded: a save after the shutdown would bring it back.
+            if (savedAtShutdown is not null) File.Delete(AppPaths.SessionFilePath);
+            lock (steps) steps.Add("shutdown");
+            shutdownSeen.TrySetResult(true);
+        };
+        string? asked = null;
+        window.ConfirmSessionLossForUpdate = message =>
+        {
+            lock (steps) steps.Add("confirm");
+            asked = message;
+            return Task.FromResult(true);
+        };
+        window.MuxReadDescriptorForUpdate = () => Daemon;
+        window.MuxInstallRootForUpdate = () => null; // not a Velopack install: the protocol ranges alone decide
+        // The teardown cannot run before the shutdown was seen: the apply waits for the daemon's exit first.
+        window.MuxWaitForDaemonExitForUpdate = _ => shutdownSeen.Task;
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        lock (steps) Assert.Equal(["confirm", "shutdown"], steps);
+        Assert.NotNull(savedAtShutdown); // saved before the shutdown was sent
+        Assert.DoesNotContain(own.ToString(), savedAtShutdown);
+        Assert.Equal(1, service.ApplyCount);
+        Assert.False(File.Exists(AppPaths.SessionFilePath), "the teardown saved over the session saved before the shutdown");
+        Assert.Equal(ClosesOneSession, asked);
+    }
+
+    /// <summary>
+    /// The coalesced save each attach posts (spec §9) can run after the update saved the session for its shutdown. It
+    /// leaves out the shells already ended, as every other save does, so it never names them again.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_save_posted_by_an_attach_leaves_out_the_shells_already_ended()
+    {
+        MainWindow window = CreateMuxWindow();
+        var pane = window.AllPanesForTest().Single(p => p.Session is MuxClientSession);
+        Guid own = ((MuxClientSession)pane.Session!).Id;
+        const System.Reflection.BindingFlags Private = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        ((HashSet<Guid>)typeof(MainWindow).GetField("_localSessionsEndedOnClose", Private)!.GetValue(window)!).Add(own);
+        File.Delete(AppPaths.SessionFilePath);
+
+        typeof(MainWindow).GetMethod("OnPanePersistentSessionAttached", Private)!.Invoke(window, [pane]);
+        PumpUntil(() => File.Exists(AppPaths.SessionFilePath), "the posted save ran");
+
+        Assert.DoesNotContain(own.ToString(), File.ReadAllText(AppPaths.SessionFilePath));
+    }
+
+    /// <summary>
+    /// R10: a daemon whose image is inside the install root - one a pre-Phase-5 build started from <c>current\</c> -
+    /// or whose image cannot be read is killed by the apply whatever the protocol says: today's question and shutdown.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_compatible_daemon_the_apply_would_kill_is_closed_after_asking(bool imageKnown)
+    {
+        MainWindow window = CreateMuxWindow();
+        FakeApplyUpdateService service = StageUpdate(window, CompatibleNotes);
+        int shutdowns = 0;
+        _mux.Server.ShutdownRequested += () => Interlocked.Increment(ref shutdowns);
+        string? asked = null;
+        window.ConfirmSessionLossForUpdate = message => { asked = message; return Task.FromResult(true); };
+        window.MuxReadDescriptorForUpdate = () => Daemon;
+        window.MuxInstallRootForUpdate = () => InstallRoot;
+        window.MuxDaemonImagePathForUpdate = _ => imageKnown ? Path.Combine(InstallRoot, "current", "Ntilde.exe") : null;
+        window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(true);
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.Equal(ClosesOneSession, asked);
+        PumpUntil(() => Volatile.Read(ref shutdowns) == 1, "the daemon received shutdown");
+        Assert.Equal(1, service.ApplyCount);
     }
 
     [AvaloniaFact]
@@ -122,14 +283,17 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         bool shutdownRaised = false;
         _mux.Server.ShutdownRequested += () => shutdownRaised = true;
         window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!;
+        // Recorded, not asserted, in the seam: a throw there counts as a decline and would pass unseen.
+        string? asked = null;
         window.ConfirmSessionLossForUpdate = message =>
         {
-            Assert.Equal("1 multiplexed session will be closed by the update.", message);
+            asked = message;
             return Task.FromResult(false);
         };
 
         RunToCompletion(window).GetAwaiter().GetResult();
 
+        Assert.Equal(ClosesOneSession, asked);
         Assert.Equal(0, service.ApplyCount);
         Assert.False(shutdownRaised);
         Assert.Contains(sessionId, _mux.Server.GetSessionIds());
@@ -187,13 +351,14 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     /// <summary>
     /// Final-fix item 5: after <c>shutdown</c>, the apply waits for the daemon process named by the
     /// descriptor to be gone (the apply replaces the executable it runs from), without blocking the
-    /// UI thread. The wait is gated here so the ordering is deterministic.
+    /// UI thread. The wait is gated here so the ordering is deterministic. The update's build cannot
+    /// speak the daemon's protocol, so it is shut down (R10).
     /// </summary>
     [AvaloniaFact]
     public void The_apply_waits_for_the_daemon_to_exit_after_shutdown()
     {
         MainWindow window = CreateWindow();
-        FakeApplyUpdateService service = StageUpdate(window);
+        FakeApplyUpdateService service = StageUpdate(window, IncompatibleNotes);
         bool shutdownRaised = false;
         _mux.Server.ShutdownRequested += () => shutdownRaised = true;
         var descriptor = new MuxEndpointDescriptor { Endpoint = "test", Pid = 4242, ProcessName = "ntilde", MinVersion = 1, MaxVersion = 1 };
@@ -360,8 +525,14 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(1, service.ApplyCount);
     }
 
-    [AvaloniaFact]
-    public void A_failed_update_apply_leaves_the_teardown_runnable_for_the_later_close()
+    /// <summary>
+    /// Also when the daemon was shut down first: that path saves the session before the shutdown and its teardown does
+    /// not save again, but only that once - the close after the failed apply saves as any close does.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_failed_update_apply_leaves_the_teardown_runnable_for_the_later_close(bool daemonShutDown)
     {
         MainWindow window = CreateWindow();
         var coordinator = new UpdateCoordinator(new ThrowingApplyUpdateService(), () => true, _ => { }, _ => { });
@@ -369,11 +540,16 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
             Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)
                 .GetAwaiter().GetResult());
         window.SetUpdateCoordinatorForTest(coordinator);
-        window.MuxProbeForUpdate = _ => Task.FromResult<MuxClient?>(null);
+        int shutdowns = 0;
+        _mux.Server.ShutdownRequested += () => Interlocked.Increment(ref shutdowns);
+        window.MuxProbeForUpdate = daemonShutDown
+            ? ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!
+            : _ => Task.FromResult<MuxClient?>(null);
 
         RunToCompletion(window).GetAwaiter().GetResult();
 
-        Assert.True(File.Exists(AppPaths.SessionFilePath), "the apply's own teardown saved the session");
+        if (daemonShutDown) PumpUntil(() => Volatile.Read(ref shutdowns) == 1, "the daemon (no descriptor: not kept) received shutdown");
+        Assert.True(File.Exists(AppPaths.SessionFilePath), "the apply saved the session");
         File.Delete(AppPaths.SessionFilePath);
 
         // The user closes the window as the failure toast asks: the session is saved again.

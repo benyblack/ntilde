@@ -52,6 +52,9 @@ namespace Ntilde.Update
         /// <summary>The staged version, or null when nothing is staged.</summary>
         public string? StagedVersion { get; private set; }
 
+        /// <summary>The staged release's notes (<see cref="IUpdateService.StagedReleaseNotes"/>), or null when nothing is staged.</summary>
+        public string? StagedReleaseNotes => IsUpdateStaged ? _service.StagedReleaseNotes : null;
+
         /// <summary>The startup check. Honours the settings toggle and never surfaces a failure.</summary>
         public Task<UpdateCheckOutcome> RunAutomaticCheckAsync(CancellationToken ct = default)
         {

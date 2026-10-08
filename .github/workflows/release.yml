@@ -928,6 +928,22 @@ jobs:
           # is shared.
           vpk download github --repoUrl https://github.com/benyblack/ntilde --token $env:GH_TOKEN --outputDir artifacts/velopack
 
+      # The release notes both packs below ship (Phase 5 R10): this build's multiplexer protocol
+      # range, as the marker line an installed app reads from the staged update
+      # (MuxUpdateCompatibility.ParseProtocolRange) to decide whether applying it keeps the running
+      # multiplexer and its shells. Read from MuxProtocol.cs, since this job has no ntilde-mux binary
+      # to ask; publish_mux_daemon checks the binary reports the same range. The script fails
+      # rather than guess, and a missing marker would read as "compatible" in the field.
+      - name: Write the Velopack release notes (multiplexer protocol)
+        if: matrix.rid == 'win-x64' || matrix.rid == 'osx-arm64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          mkdir -p artifacts
+          printf '<!-- ntilde-mux-protocol: %s -->\n' "$range" > artifacts/velopack-release-notes.md
+          cat artifacts/velopack-release-notes.md
+
       - name: Pack Windows installer (Velopack)
         if: matrix.rid == 'win-x64'
         shell: pwsh
@@ -1023,10 +1039,12 @@ jobs:
             --packTitle Ntilde `
             --packAuthors benyblack `
             --icon src/Ntilde.App/Assets/ntilde_icon.ico `
+            --releaseNotes artifacts/velopack-release-notes.md `
             --outputDir artifacts/velopack `
             --noPortable
           # --noPortable: the release already ships ntilde-win-x64-<tag>.zip, and two
           # near-identical zips on the releases page is a support question waiting to happen.
+          # --releaseNotes: the multiplexer protocol marker (see "Write the Velopack release notes").
 
           # The installer's file name is ours to choose - nothing resolves it by name - so
           # give it one that reads clearly next to the zips. Matched by glob because vpk
@@ -1196,6 +1214,7 @@ jobs:
             --bundleId com.benyblack.Ntilde \
             --icon artifacts/icon/ntilde_icon.icns \
             --exclude 'Ntilde\.dSYM' \
+            --releaseNotes artifacts/velopack-release-notes.md \
             --outputDir artifacts/velopack \
             ${sign_args[@]+"${sign_args[@]}"}
 
@@ -1780,6 +1799,16 @@ jobs:
             --channel "$RID" \
             --outputDir artifacts/linux
 
+      # The release notes the pack below ships: the multiplexer protocol marker, exactly as the
+      # win and osx lanes write it (see "Write the Velopack release notes" in publish_aot).
+      - name: Write the Velopack release notes (multiplexer protocol)
+        run: |
+          set -euo pipefail
+          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          mkdir -p artifacts
+          printf '<!-- ntilde-mux-protocol: %s -->\n' "$range" > artifacts/velopack-release-notes.md
+          cat artifacts/velopack-release-notes.md
+
       - name: Pack AppImage (Velopack)
         env:
           RELEASE_TAG: ${{ needs.release_metadata.outputs.release_tag }}
@@ -1892,6 +1921,7 @@ jobs:
             --channel "$channel" \
             --icon src/Ntilde.App/Assets/ntilde_icon.png \
             --exclude '.*\.pdb|Ntilde\.dbg' \
+            --releaseNotes artifacts/velopack-release-notes.md \
             --outputDir artifacts/linux
 
           echo "Velopack output:"
@@ -2218,6 +2248,13 @@ jobs:
           echo "$version_json"
           grep -qF "\"version\":\"$RELEASE_VERSION\"" <<<"$version_json" \
             || { echo "::error::ntilde-mux --version --json does not report version $RELEASE_VERSION" >&2; exit 1; }
+          # The Velopack release notes state the protocol range read from MuxProtocol.cs by
+          # scripts/ci/mux-protocol-range.sh (Phase 5 R10); the built binary must report the same one.
+          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          if ! grep -qF "\"protocolMin\":${range%-*}," <<<"$version_json" || ! grep -qF "\"protocolMax\":${range#*-}," <<<"$version_json"; then
+            echo "::error::ntilde-mux --version --json reports another protocol range than MuxProtocol.cs ($range)" >&2
+            exit 1
+          fi
 
       # Sign and notarize ntilde-mux for macOS (Phase 5 Task 10), BEFORE the checksum is written: the
       # .sha256 must describe the bytes users download, and the App pins that hash. A bare executable

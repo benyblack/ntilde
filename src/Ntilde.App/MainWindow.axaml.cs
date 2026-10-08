@@ -282,6 +282,20 @@ namespace Ntilde
         /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>
         internal Func<string, Task<bool>> ConfirmSessionLossForUpdate { get; set; }
 
+        /// <summary>
+        /// Test seam: the Velopack install root whose every process an update's apply kills (Phase 5 R9), or null when
+        /// this is not a Windows Velopack install, whose apply kills nothing.
+        /// </summary>
+        internal Func<string?> MuxInstallRootForUpdate { get; set; } =
+            () => Environment.ProcessPath is { } exe ? Ntilde.Shell.Mux.MuxDaemonImage.VelopackInstallRoot(exe, System.IO.File.Exists) : null;
+
+        /// <summary>
+        /// Test seam: the executable the daemon a descriptor names runs from, or null when that cannot be told
+        /// (<see cref="Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath"/>). Runs off the UI thread.
+        /// </summary>
+        internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?> MuxDaemonImagePathForUpdate { get; set; } =
+            Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath;
+
         /// <summary>Shows the "Attach to session…" picker; null = cancelled. A seam so tests choose without a modal.</summary>
         internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow>, Task<Guid?>> PickMuxSession { get; set; }
 
@@ -5184,6 +5198,9 @@ namespace Ntilde
         /// <summary>
         /// A crash right after launch must still know which daemon sessions are this window's
         /// (spec §9): save the session file after each attach, coalesced into one Background pass.
+        /// Shells already ended for a close or an update (<see cref="_localSessionsEndedOnClose"/>)
+        /// stay out of it, as from every other save: a pass that runs after the update's own save
+        /// must not name them again.
         /// </summary>
         private void OnPanePersistentSessionAttached(TerminalPane pane)
         {
@@ -5194,7 +5211,7 @@ namespace Ntilde
                 Volatile.Write(ref _sessionSaveQueued, 0);
                 // After teardown the connection is gone; the teardown's own save is the last word.
                 if (_teardownDone) return;
-                if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs);
+                if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
             }, DispatcherPriority.Background);
         }
 
@@ -10270,7 +10287,7 @@ namespace Ntilde
             TeardownFaultForTest?.Invoke();
 
             var tabs = this.FindControl<TabControl>("Tabs");
-            if (tabs != null)
+            if (tabs != null && !_sessionSavedBeforeUpdate)
             {
                 SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
             }
@@ -10816,18 +10833,21 @@ namespace Ntilde
         /// for real reasons: a missing or locked <c>Update.exe</c>, or the update lock already
         /// held by another instance.
         ///
-        /// Before any of that, a live daemon is probed (spec §9): the new build must not start
-        /// beside a daemon of the old one - the protocol version range is the backstop, not the
-        /// mechanism. If it has running sessions, the user is asked to confirm the loss; declining
-        /// leaves everything untouched (no teardown, no apply). Confirming - or no daemon at all -
-        /// sends <c>shutdown</c> so no old-build daemon survives beside the new one, then proceeds
-        /// exactly as before. If listing sessions fails, the count is unknown so there is nothing
-        /// to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative is the
-        /// exact bug this method exists to prevent, an old-build daemon surviving beside the new
-        /// one, just because a request on the way in happened to fail. A confirmation dialog that
-        /// itself throws is treated as a decline (logged, toasted, no shutdown, no apply) rather
-        /// than letting the exception escape this fire-and-forget method as an unobserved fault -
-        /// "yes" must never be inferred from a question that could not be asked.
+        /// Before any of that, a live daemon is probed (spec §9). Phase 5 R10: when the update keeps
+        /// it - the new build speaks its protocol (the staged release notes' marker) and the apply
+        /// does not kill it (its image is outside the install root) - nothing is asked and nothing
+        /// is shut down: the teardown detaches as any close does, and the new build reattaches.
+        /// Otherwise, if it has running sessions, the user is asked to confirm the loss; declining
+        /// leaves everything untouched (no teardown, no apply). Confirming - or no running session -
+        /// saves the session without the shells about to die, then sends <c>shutdown</c>, then
+        /// proceeds exactly as before. If listing sessions fails, the count is unknown so there is
+        /// nothing to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative
+        /// is the exact bug this method exists to prevent, a daemon the new build cannot use (or the
+        /// apply would kill mid-flight) surviving the decision, just because a request on the way in
+        /// happened to fail. A confirmation dialog that itself throws is treated as a decline
+        /// (logged, toasted, no shutdown, no apply) rather than letting the exception escape this
+        /// fire-and-forget method as an unobserved fault - "yes" must never be inferred from a
+        /// question that could not be asked.
         ///
         /// Re-entrant: the toast button, the palette command and About's button can all reach this
         /// (see <see cref="ApplyStagedUpdate"/>), and nothing stops two of them firing before the
@@ -10849,11 +10869,14 @@ namespace Ntilde
             _applyStagedUpdateInProgress = true;
             try
             {
-                if (!await PrepareMuxDaemonForUpdateAsync())
+                MuxUpdatePreparation prepared = await PrepareMuxDaemonForUpdateAsync();
+                if (prepared == MuxUpdatePreparation.Cancel)
                 {
                     return;
                 }
 
+                // The session was saved before the daemon was shut down: this teardown must not save over it.
+                _sessionSavedBeforeUpdate = prepared == MuxUpdatePreparation.ApplySessionSaved;
                 try
                 {
                     PerformAppTeardown();
@@ -10872,6 +10895,11 @@ namespace Ntilde
                         null,
                         autoHide: false);
                     return;
+                }
+                finally
+                {
+                    // Only for that teardown: one run again after a failed apply saves as any close does.
+                    _sessionSavedBeforeUpdate = false;
                 }
 
                 try
@@ -10902,29 +10930,104 @@ namespace Ntilde
             }
         }
 
+        /// <summary>What the mux half of <see cref="ApplyStagedUpdateAsync"/> decided.</summary>
+        private enum MuxUpdatePreparation
+        {
+            /// <summary>Declined, or the question could not be asked: nothing is torn down or applied.</summary>
+            Cancel,
+
+            /// <summary>Go ahead: no daemon, or one the update keeps. The teardown saves the session as any close does.</summary>
+            Apply,
+
+            /// <summary>Go ahead: the daemon was shut down, and the session saved just before; the teardown leaves that file alone.</summary>
+            ApplySessionSaved,
+        }
+
         /// <summary>
-        /// The mux half of <see cref="ApplyStagedUpdateAsync"/> (spec §9): probes for a live daemon
-        /// and, when there is one, confirms the loss of its running sessions and shuts it down.
-        /// False means the user declined (or could not be asked): leave everything untouched.
+        /// Set only around the update's own <see cref="PerformAppTeardown"/> call when the session was saved before the daemon
+        /// was shut down: that teardown does not save again (a save after the shutdown would capture panes it ended, or
+        /// closed by the exit policy).
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> PrepareMuxDaemonForUpdateAsync()
+        private bool _sessionSavedBeforeUpdate;
+
+        /// <summary>
+        /// The mux half of <see cref="ApplyStagedUpdateAsync"/> (spec §9, Phase 5 R10): probes for a live daemon and, when
+        /// the update does not keep it, confirms the loss of its running sessions, saves the session without them, and shuts
+        /// it down. A daemon the update keeps is left alone, unasked.
+        /// </summary>
+        private async System.Threading.Tasks.Task<MuxUpdatePreparation> PrepareMuxDaemonForUpdateAsync()
         {
             Ntilde.Mux.MuxClient? daemon = await ProbeMuxDaemonForUpdateAsync();
             if (daemon is null)
             {
-                return true;
+                return MuxUpdatePreparation.Apply;
             }
 
             using (daemon)
             {
+                if (await UpdateKeepsMuxDaemonAsync())
+                {
+                    return MuxUpdatePreparation.Apply;
+                }
+
                 if (!await ConfirmMuxSessionLossForUpdateAsync(daemon))
                 {
+                    return MuxUpdatePreparation.Cancel;
+                }
+
+                SaveSessionWithoutLocalShellsForUpdate();
+                await ShutdownMuxDaemonForUpdateAsync(daemon);
+                return MuxUpdatePreparation.ApplySessionSaved;
+            }
+        }
+
+        /// <summary>
+        /// Phase 5 R10: whether the staged update keeps the live daemon - the new build speaks its protocol (the release
+        /// notes' marker; none counts as compatible) and the apply does not kill it (its image is outside the install root).
+        /// A daemon whose descriptor cannot be read, or anything failing on the way, is not kept: today's question and
+        /// shutdown. The image lookup runs off the UI thread. Never throws.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> UpdateKeepsMuxDaemonAsync()
+        {
+            try
+            {
+                Ntilde.Mux.Contracts.MuxEndpointDescriptor? descriptor = MuxReadDescriptorForUpdate();
+                if (descriptor is null)
+                {
+                    AppLogger.Log("[MainWindow] the multiplexer's descriptor could not be read; the update closes its sessions");
                     return false;
                 }
 
-                await ShutdownMuxDaemonForUpdateAsync(daemon);
-                return true;
+                (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(_updateCoordinator?.StagedReleaseNotes);
+                string? installRoot = MuxInstallRootForUpdate();
+                string? image = installRoot is null ? null : await Task.Run(() => MuxDaemonImagePathForUpdate(descriptor));
+                bool keep = Ntilde.Update.MuxUpdateCompatibility.KeepsDaemon((descriptor.MinVersion, descriptor.MaxVersion), newBuild, image, installRoot);
+                string newRange = newBuild is { } b ? $"{b.Min}-{b.Max}" : "not stated";
+                string where = installRoot is null ? "the apply kills no process" : $"its image is {image ?? "unknown"}, the install root {installRoot}";
+                AppLogger.Log($"[MainWindow] the update {(keep ? "keeps" : "closes")} the multiplexer: protocol {descriptor.MinVersion}-{descriptor.MaxVersion}, the new build's {newRange}; {where}");
+                return keep;
             }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] deciding whether the update keeps the multiplexer failed; it closes its sessions: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// The update is about to shut the daemon down, and every local shell with it: those shells are marked ended
+        /// (<see cref="_localSessionsEndedOnClose"/>, as Task 17's quit does) and the session is saved now, before the
+        /// shutdown. The file names none of them, so the next launch starts fresh shells quietly instead of reporting the
+        /// sessions the user just agreed to close as lost.
+        /// </summary>
+        private void SaveSessionWithoutLocalShellsForUpdate()
+        {
+            foreach (TerminalPane pane in _paneOwnerTab.Keys)
+            {
+                if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
+            }
+
+            if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
         }
 
         private async System.Threading.Tasks.Task<Ntilde.Mux.MuxClient?> ProbeMuxDaemonForUpdateAsync()
@@ -10966,8 +11069,9 @@ namespace Ntilde
 
             try
             {
-                return await ConfirmSessionLossForUpdate(
-                    $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update.");
+                return await ConfirmSessionLossForUpdate(running == 1
+                    ? "1 multiplexed session will be closed by the update (the new version cannot keep it)."
+                    : $"{running} multiplexed sessions will be closed by the update (the new version cannot keep them).");
             }
             catch (Exception ex)
             {

@@ -109,6 +109,16 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/build_wrapper_sdk_guard_tests.py
 
+      # release.yml writes the multiplexer protocol range this script reads from MuxProtocol.cs into
+      # every Velopack release's notes (Phase 5 R10); a release must fail rather than ship a guessed
+      # one, so the parse is tested here, against the real file, before any release depends on it.
+      - name: Self-test the release's multiplexer protocol range script
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/mux_protocol_range_tests.py
+
       # ── Rust native ────────────────────────────────────────────────────────────
       # Cache the compiled binary keyed on all Rust source files.
       # On a hit the toolchain install, Swatinem, and cargo build are all skipped.

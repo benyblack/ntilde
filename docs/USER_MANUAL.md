@@ -190,11 +190,15 @@ below.
     [Persistent SSH tabs (remote)](#persistent-ssh-tabs-remote)). Every other SSH pane works
     exactly as before and does not persist.
   - Inline images (sixel, kitty graphics) are not shown in persistent panes.
-  - Applying an update closes persistent sessions. Ntilde asks first ("N multiplexed sessions
-    will be closed by the update", buttons *Close sessions and update* / *Cancel*) and leaves
-    the update unapplied if you decline. While a daemon is running, a downloaded update is not
-    applied automatically when Ntilde starts; apply it from the update toast or the command
-    palette so Ntilde can ask first.
+  - Applying an update keeps persistent sessions running when the new version can use the
+    running daemon: Ntilde restarts and reattaches to them. When it cannot - the new version
+    speaks another multiplexer protocol, or, on Windows, the daemon runs from the install folder
+    (an earlier Ntilde version started it there), which the update replaces - Ntilde asks first
+    ("N multiplexed sessions will be closed by the update (the new version cannot keep them)",
+    buttons *Close sessions and update* / *Cancel*) and leaves the update unapplied if you
+    decline. While a daemon runs from the install folder, a downloaded update is not applied
+    automatically when Ntilde starts; apply it from the update toast or the command palette so
+    Ntilde can ask first.
   - If the daemon crashes, or is killed, its shells are gone.
   - A shell inherits the daemon's environment, not the window's. The daemon's environment is
     the one Ntilde had when it first started the daemon.

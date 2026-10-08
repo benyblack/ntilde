@@ -84,10 +84,8 @@ public static class MuxDaemonStop
         {
             using Process process = Process.GetProcessById(descriptor.Pid);
             // The caller's live check and this Kill are not atomic: the pid could have exited and been recycled for an
-            // unrelated process in between. The name alone does not tell a recycled pid from the daemon (another ntilde,
-            // say): the start time recorded in the descriptor does.
-            if (!string.Equals(process.ProcessName, descriptor.ProcessName, StringComparison.OrdinalIgnoreCase)
-                || !MuxDiscovery.StartTimeMatches(process, descriptor.StartTime))
+            // unrelated process in between.
+            if (!IsDescribedDaemon(process, descriptor))
             {
                 failure = $"pid {descriptor.Pid} is no longer the multiplexer; nothing was terminated.";
                 return TerminateResult.NotTheDaemon;
@@ -110,6 +108,19 @@ public static class MuxDaemonStop
         MuxDiscovery.DeleteDescriptorIfOwned(descriptorPath, descriptor.Pid);
         failure = null;
         return TerminateResult.Terminated;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="process"/> is the daemon <paramref name="descriptor"/> names: the process name and the start
+    /// time it recorded. The name alone does not tell a recycled pid from the daemon (another ntilde, say): the start time
+    /// does. Shared with the App's update path (Phase 5 Task 22), which reads the daemon's image from the process.
+    /// </summary>
+    public static bool IsDescribedDaemon(Process process, MuxEndpointDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        ArgumentNullException.ThrowIfNull(descriptor);
+        return string.Equals(process.ProcessName, descriptor.ProcessName, StringComparison.OrdinalIgnoreCase)
+            && MuxDiscovery.StartTimeMatches(process, descriptor.StartTime);
     }
 
     private sealed class NoSpawn : IMuxDaemonSpawner

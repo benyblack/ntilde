@@ -143,6 +143,12 @@ namespace Ntilde.Update
             return new UpdateAvailability(true, version);
         }
 
+        /// <summary>
+        /// The downloaded release's notes as packed: <c>UpdateInfo.TargetFullRelease.NotesMarkdown</c>, which the feed
+        /// (<c>releases.&lt;channel&gt;.json</c>) carries verbatim from <c>vpk pack --releaseNotes</c>, HTML comments included.
+        /// </summary>
+        public string? StagedReleaseNotes => _downloaded?.TargetFullRelease?.NotesMarkdown;
+
         public void ApplyAndRestart()
         {
             if (_downloaded == null)
