@@ -4484,10 +4484,11 @@ namespace Ntilde.Controls
         internal bool MuxAttachSharedToRestore { get; set; }
 
         /// <summary>
-        /// Set by MainWindow's startup restore (spec R2) on a pane reopening a local daemon session from a session file
-        /// saved before the machine last booted: if that session is gone, the reboot ended it, so the fresh shell starts
-        /// without the "previous session lost" notice. Covers that restore only: the first result that settles the id
-        /// clears it, so a loss later in the pane's life is announced as usual.
+        /// Set with <see cref="MuxSessionIdToRestore"/> by SessionManager.RestorePaneTree (spec R2) on a pane reopening a
+        /// local daemon session that a reboot or logoff ended (the startup restore marks such sessions in the loaded file,
+        /// and the session file keeps the mark until the pane spawns): the fresh shell starts without the "previous session
+        /// lost" notice. Covers that restore only: the first result that settles the id clears it, so a loss later in the
+        /// pane's life is announced as usual.
         /// </summary>
         internal bool MuxQuietPreviousLost { get; set; }
 

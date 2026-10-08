@@ -19,11 +19,9 @@ public sealed record AppServiceBundle(
     ITerminalSessionFactory? SessionFactory = null)
 {
     /// <summary>
-    /// The window's wall clock (UTC) for its startup restore, which compares the session file's save time with the
-    /// machine's boot time (spec R2). A seam here, not on the window: the restore runs in the window's constructor.
+    /// For the window's startup restore (spec R2): the time no live local daemon session can predate - the boot, or on
+    /// Windows the later of the boot and this logon - or null when the OS will not say. A session file saved before it
+    /// restores quietly. A seam here, not on the window: the restore runs in the window's constructor.
     /// </summary>
-    internal Func<DateTime> UtcNow { get; init; } = static () => DateTime.UtcNow;
-
-    /// <summary>Milliseconds since the machine booted, for the same restore: with <see cref="UtcNow"/>, the boot time.</summary>
-    internal Func<long> TickCount64 { get; init; } = static () => Environment.TickCount64;
+    internal Func<DateTime?> SessionsCannotPredateUtc { get; init; } = Ntilde.Shell.Native.SessionStartBoundary.Read;
 }

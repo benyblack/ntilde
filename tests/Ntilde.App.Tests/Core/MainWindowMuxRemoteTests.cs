@@ -86,7 +86,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     }
 
     /// <summary>The app's wiring over the test's daemons: the local one in memory, the remote one behind <see cref="_remote"/>.</summary>
-    /// <param name="bootTimeUtc">The machine's boot time the window's startup restore sees (spec R2); the real one when null.</param>
+    /// <param name="bootTimeUtc">The boot (or logon) the window's startup restore sees (spec R2); the real one when null.</param>
     /// <param name="beforeShow">Runs on the built window before it is shown, when no pane has spawned yet.</param>
     private MainWindow CreateWindow(DateTime? bootTimeUtc = null, Action<MainWindow>? beforeShow = null)
     {
@@ -108,8 +108,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         };
         if (bootTimeUtc is { } boot)
         {
-            TimeSpan uptime = TimeSpan.FromHours(3);
-            services = services with { UtcNow = () => boot + uptime, TickCount64 = () => (long)uptime.TotalMilliseconds };
+            services = services with { SessionsCannotPredateUtc = () => boot };
         }
 
         MainWindow window = TestMainWindowFactory.Create(services);

@@ -41,7 +41,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         _mux.Dispose();
     }
 
-    /// <param name="bootTimeUtc">The machine's boot time the window's startup restore sees (spec R2); the real one when null.</param>
+    /// <param name="bootTimeUtc">The boot (or logon) the window's startup restore sees (spec R2); the real one when null.</param>
     /// <param name="beforeShow">Runs on the built window before it is shown, when no pane has spawned yet.</param>
     private MainWindow CreateWindow(TimeSpan? disposeFlush = null, Func<MuxEndpointId, MuxConnectionHost?>? createRemote = null, DateTime? bootTimeUtc = null,
         Action<MainWindow>? beforeShow = null)
@@ -59,7 +59,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         };
         if (bootTimeUtc is { } boot)
         {
-            services = services with { UtcNow = () => boot + Uptime, TickCount64 = () => (long)Uptime.TotalMilliseconds };
+            services = services with { SessionsCannotPredateUtc = () => boot };
         }
 
         MainWindow window = TestMainWindowFactory.Create(services);
@@ -411,9 +411,6 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, MuxTestText.VisibleText(pane.Buffer!));
     }
 
-    /// <summary>How long the injected machine has been up when the window starts (<see cref="CreateWindow"/>).</summary>
-    private static readonly TimeSpan Uptime = TimeSpan.FromHours(3);
-
     private static readonly DateTime Boot = new(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc);
 
     /// <summary>A pane as the window saved it: reopening local daemon session <paramref name="id"/>.</summary>
@@ -496,6 +493,41 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => Toast(window).Title == TerminalPane.MuxPreviousLostNoticeTitle, "the lost-session toast is shown");
         Assert.Equal((true, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Toast(window));
         Assert.DoesNotContain(gone, AttachedIds(window));
+    }
+
+    /// <summary>
+    /// Spec R2 across launches in one boot. Launch 1 restores after a reboot and never shows tab B, so B keeps its
+    /// pre-boot id - and launch 1's save gives the file a post-boot time. Launch 2 must still open B quietly: the
+    /// quiet mark travels with the id in the session file.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_background_tab_restored_after_a_reboot_stays_quiet_in_the_next_launch()
+    {
+        Guid goneA = Guid.NewGuid(), goneB = Guid.NewGuid();
+        SaveTabs(Boot - TimeSpan.FromMinutes(5), LocalLeaf(goneA), LocalLeaf(goneB));
+
+        // Launch 1: tab A starts a fresh shell; tab B is built but never shown.
+        MainWindow first = CreateWindow(bootTimeUtc: Boot);
+        PumpUntil(() => AllPanes(first).Count == 2, "launch 1 built the background tab");
+        Guid freshA = AttachedIds(first).Single();
+        typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(first, null);
+        Assert.Contains(goneB.ToString("D"), File.ReadAllText(AppPaths.SessionFilePath)); // B still names its pre-boot session
+        Assert.True(File.GetLastWriteTimeUtc(AppPaths.SessionFilePath) > Boot, "launch 1's save is after the boot");
+
+        // Launch 2, same boot: A reattaches; B, shown for the first time, finds its session gone.
+        MainWindow second = CreateWindow(bootTimeUtc: Boot);
+        PumpUntil(() => AllPanes(second).Count == 2, "launch 2 built the background tab");
+        TerminalPane paneB = Assert.Single(AllPanes(second), p => p.MuxSessionIdToRestore == goneB);
+        var notices = new List<string>();
+        paneB.PersistenceNotice += (_, title, _, _) => notices.Add(title);
+        second.FindControl<TabControl>("Tabs")!.SelectedIndex = 1;
+        PumpUntil(() => paneB.Session is MuxClientSession { IsAttached: true }, "tab B started a fresh shell");
+
+        Guid freshB = paneB.Session!.Id;
+        Assert.NotEqual(goneB, freshB);
+        Assert.Contains(freshA, AttachedIds(second));
+        PumpUntilSaved([freshA, freshB]);
+        Assert.Empty(notices);
     }
 
     [AvaloniaFact]

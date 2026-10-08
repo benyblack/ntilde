@@ -94,6 +94,7 @@ namespace Ntilde.Shell
                     node.MuxSessionId = null;
                     node.MuxEndpoint = null;
                     node.MuxShared = false;
+                    node.MuxQuietPreviousLost = false;
                 }
 
                 foreach (PaneNode child in node.Children) Clear(child);
@@ -435,6 +436,7 @@ namespace Ntilde.Shell
                 {
                     node.MuxSessionId = null;
                     node.MuxEndpoint = null;
+                    node.MuxQuietPreviousLost = false;
                 }
 
                 foreach (PaneNode child in node.Children) Visit(child);
@@ -563,7 +565,33 @@ namespace Ntilde.Shell
                 leaf.MuxSessionId = pending.ToString("D");
                 leaf.MuxEndpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).ToString();
                 leaf.MuxShared = pane.MuxAttachSharedToRestore;
+                // Spec R2: still the restore that a reboot made quiet; the next launch's file will be newer than the boot.
+                leaf.MuxQuietPreviousLost = pane.MuxQuietPreviousLost;
             }
+        }
+
+        /// <summary>
+        /// Spec R2: <paramref name="session"/>'s file predates the boot or logon, so each local daemon session it names
+        /// ended with it. Marks those panes, in place and before any tab is built from them: the panes then start their
+        /// fresh shells quietly, a placeholder tab saved before it is built keeps the mark, and so does every save of a
+        /// pane that has not spawned yet. A remote daemon outlives a local reboot, so remote panes keep their notices.
+        /// </summary>
+        internal static void MarkLocalMuxSessionsEndedByReboot(NtildeSession session)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+
+            void Visit(PaneNode? node)
+            {
+                if (node == null) return;
+                if (Guid.TryParse(node.MuxSessionId, out _) && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal)
+                {
+                    node.MuxQuietPreviousLost = true;
+                }
+
+                foreach (PaneNode child in node.Children) Visit(child);
+            }
+
+            foreach (TabSession tab in session.Tabs) Visit(tab.Root);
         }
 
         /// <summary>
@@ -583,6 +611,8 @@ namespace Ntilde.Shell
                 pane.MuxSessionIdToRestore = muxId;
                 pane.MuxAttachSharedToRestore = node.MuxShared;
                 pane.MuxEndpoint = endpoint.ToString();
+                // Spec R2: local only, whatever a hand-edited file says - a remote daemon outlives a local reboot.
+                pane.MuxQuietPreviousLost = node.MuxQuietPreviousLost && endpoint.IsLocal;
             }
         }
 

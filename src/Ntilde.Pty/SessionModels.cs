@@ -77,6 +77,15 @@ namespace Ntilde.Pty
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool MuxShared { get; set; }
+
+        /// <summary>
+        /// True when <see cref="MuxSessionId"/> (a local daemon session) was saved before a reboot or logoff that ended
+        /// it (spec R2): the pane starts its fresh shell without a "previous session lost" notice. Kept with the id
+        /// while the pane has not spawned, so a later launch in the same boot - whose file is newer than the boot -
+        /// still opens it quietly. Omitted when false, so older files load unchanged.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool MuxQuietPreviousLost { get; set; }
     }
 
     public class WorkspaceBundlePackage
