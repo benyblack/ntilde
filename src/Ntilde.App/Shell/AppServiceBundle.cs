@@ -24,4 +24,13 @@ public sealed record AppServiceBundle(
     /// restores quietly. A seam here, not on the window: the restore runs in the window's constructor.
     /// </summary>
     internal Func<DateTime?> SessionsCannotPredateUtc { get; init; } = Ntilde.Shell.Native.SessionStartBoundary.Read;
+
+    /// <summary>
+    /// Builds the window's local daemon connection when persistence is on: in production the real one, which launches
+    /// <c>mux serve</c> if none runs. <see cref="AppServices.BuildForDesigner"/>'s refuses, and the window then falls
+    /// back to normal sessions, so a designer or test window cannot launch a daemon whatever its settings say. A seam
+    /// here for the same reason as <see cref="SessionsCannotPredateUtc"/>: the window's constructor uses it.
+    /// </summary>
+    internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; init; } =
+        static () => Ntilde.Shell.Mux.MuxConnectionHost.CreateDefault(AppLogger.Log);
 }

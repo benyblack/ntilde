@@ -34,6 +34,12 @@ public static class AppServices
             // Never persist: the designer and every test window built from this must not spawn a
             // daemon (the test host would be launched as `mux serve`). Pinned explicitly so a change
             // to the persistence default cannot reach them (spec R3).
-            new TerminalSettings { SessionPersistence = Ntilde.Shell.Mux.SessionPersistenceMode.Off });
+            new TerminalSettings { SessionPersistence = Ntilde.Shell.Mux.SessionPersistenceMode.Off })
+        {
+            // And structurally: a window whose settings say KeepOnClose anyway (a test's own settings, an
+            // imported file, a later settings apply) cannot build the real daemon host - the window catches
+            // this and falls back to normal sessions. A test that wants a daemon brings its own.
+            MuxHostFactory = static () => throw new InvalidOperationException("Designer and test windows never start a multiplexer daemon."),
+        };
     }
 }

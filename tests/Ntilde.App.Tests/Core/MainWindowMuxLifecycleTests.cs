@@ -289,7 +289,7 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
     }
 
     [AvaloniaFact]
-    public void Persistence_is_off_by_default()
+    public void Designer_windows_never_persist()
     {
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
@@ -300,6 +300,43 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         IReadOnlyList<TerminalPane> panes = AllPanes(window);
         Assert.NotEmpty(panes);
         Assert.All(panes, p => Assert.Same(DefaultTerminalSessionFactory.Instance, p.SessionFactory));
+    }
+
+    /// <summary>
+    /// Structural, not only a settings pin (spec R3): a designer or test window whose own settings say KeepOnClose
+    /// still gets normal sessions, because the designer bundle's daemon-host factory refuses. No `mux serve` is
+    /// launched, under the developer's real app-data root or any other.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_designer_window_set_to_keep_shells_running_still_starts_no_daemon()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            Settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose },
+        });
+
+        Assert.Null(window.MuxHost);
+        IReadOnlyList<TerminalPane> panes = AllPanes(window);
+        Assert.NotEmpty(panes);
+        Assert.All(panes, p => Assert.Same(DefaultTerminalSessionFactory.Instance, p.SessionFactory));
+    }
+
+    /// <summary>Likewise when a later settings apply turns persistence on in such a window.</summary>
+    [AvaloniaFact]
+    public void Turning_persistence_on_in_a_designer_window_starts_no_daemon()
+    {
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+        });
+        TerminalPane pane = AllPanes(window).Single();
+        Settings(window).SessionPersistence = SessionPersistenceMode.KeepOnClose;
+
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+
+        Assert.Null(window.MuxHost);
+        Assert.Same(DefaultTerminalSessionFactory.Instance, pane.SessionFactory);
     }
 
     [AvaloniaFact]

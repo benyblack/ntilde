@@ -3885,6 +3885,8 @@ namespace Ntilde
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
+            // Before the factory choice below, which builds the daemon host through it for KeepOnClose.
+            MuxHostFactory = services.MuxHostFactory;
             // Decided here, once _settings exists and long before the first tab (restore or
             // AddTab below) creates a pane: every pane is wired with this factory.
             _sessionFactory = ChooseSessionFactory(services.SessionFactory);
@@ -4563,9 +4565,11 @@ namespace Ntilde
             _muxHosts.Local.WarmUp();
         }
 
-        /// <summary>Builds the local daemon connection for KeepOnClose. A seam so a test can make it throw.</summary>
-        internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; set; } =
-            () => Ntilde.Shell.Mux.MuxConnectionHost.CreateDefault(AppLogger.Log);
+        /// <summary>
+        /// Builds the local daemon connection for KeepOnClose: <see cref="AppServiceBundle.MuxHostFactory"/>, whose
+        /// designer version refuses, so a designer or test window never launches a daemon. A test may replace it.
+        /// </summary>
+        internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; set; }
 
         /// <summary>
         /// Builds the connection for a remote endpoint the first time a pane uses it (Phase 4 spec §5), or
