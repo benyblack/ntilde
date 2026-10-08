@@ -10837,6 +10837,7 @@ namespace Ntilde
         /// it - the new build speaks its protocol (the staged release notes' marker) and the apply
         /// does not kill it (its image is outside the install root) - nothing is asked and nothing
         /// is shut down: the teardown detaches as any close does, and the new build reattaches.
+        /// With SessionPersistence off no daemon is kept, as before Phase 5.
         /// Otherwise, if it has running sessions, the user is asked to confirm the loss; declining
         /// leaves everything untouched (no teardown, no apply). Confirming - or no running session -
         /// saves the session without the shells about to die, then sends <c>shutdown</c>, then
@@ -10953,7 +10954,7 @@ namespace Ntilde
         /// <summary>
         /// The mux half of <see cref="ApplyStagedUpdateAsync"/> (spec §9, Phase 5 R10): probes for a live daemon and, when
         /// the update does not keep it, confirms the loss of its running sessions, saves the session without them, and shuts
-        /// it down. A daemon the update keeps is left alone, unasked.
+        /// it down. A daemon the update keeps is left alone, unasked; with SessionPersistence off none is kept.
         /// </summary>
         private async System.Threading.Tasks.Task<MuxUpdatePreparation> PrepareMuxDaemonForUpdateAsync()
         {
@@ -10965,12 +10966,19 @@ namespace Ntilde
 
             using (daemon)
             {
-                if (await UpdateKeepsMuxDaemonAsync())
+                // SessionPersistence off changes nothing from before Phase 5: no daemon is kept, and the question words it
+                // as it always did - "the new version cannot keep them" may not be true of a daemon it could keep.
+                bool persistenceOff = !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence);
+                if (persistenceOff)
+                {
+                    AppLogger.Log("[MainWindow] session persistence is off; the update closes the multiplexer's sessions, as before Phase 5");
+                }
+                else if (await UpdateKeepsMuxDaemonAsync())
                 {
                     return MuxUpdatePreparation.Apply;
                 }
 
-                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon))
+                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon, sayWhy: !persistenceOff))
                 {
                     return MuxUpdatePreparation.Cancel;
                 }
@@ -11045,8 +11053,12 @@ namespace Ntilde
             }
         }
 
-        /// <summary>True to go ahead: no running sessions, an unknown count, or the user confirmed.</summary>
-        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon)
+        /// <summary>
+        /// True to go ahead: no running sessions, an unknown count, or the user confirmed. <paramref name="sayWhy"/> adds
+        /// "(the new version cannot keep them)" - true only when the update was asked to keep the daemon and could not; with
+        /// persistence off the question is worded as before Phase 5.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon, bool sayWhy)
         {
             IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> sessions;
             try
@@ -11069,9 +11081,11 @@ namespace Ntilde
 
             try
             {
-                return await ConfirmSessionLossForUpdate(running == 1
-                    ? "1 multiplexed session will be closed by the update (the new version cannot keep it)."
-                    : $"{running} multiplexed sessions will be closed by the update (the new version cannot keep them).");
+                string sessionsClosed = running == 1
+                    ? "1 multiplexed session will be closed by the update"
+                    : $"{running} multiplexed sessions will be closed by the update";
+                string why = !sayWhy ? "" : running == 1 ? " (the new version cannot keep it)" : " (the new version cannot keep them)";
+                return await ConfirmSessionLossForUpdate(sessionsClosed + why + ".");
             }
             catch (Exception ex)
             {

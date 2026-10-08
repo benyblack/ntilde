@@ -198,7 +198,9 @@ below.
     buttons *Close sessions and update* / *Cancel*) and leaves the update unapplied if you
     decline. While a daemon runs from the install folder, a downloaded update is not applied
     automatically when Ntilde starts; apply it from the update toast or the command palette so
-    Ntilde can ask first.
+    Ntilde can ask first. With the setting off, an update never keeps a running daemon: Ntilde
+    asks first ("N multiplexed sessions will be closed by the update") and shuts it down, and
+    while any daemon is running a downloaded update is not applied automatically at start.
   - If the daemon crashes, or is killed, its shells are gone.
   - A shell inherits the daemon's environment, not the window's. The daemon's environment is
     the one Ntilde had when it first started the daemon.

@@ -26,12 +26,17 @@ namespace Ntilde.Tests.Update;
 /// <see cref="Ntilde.Tests.Core.MainWindowMuxLifecycleTests"/> takes it: a real MainWindow's
 /// teardown saves the session, which must not land in the developer's own profile. Inside it no
 /// descriptor exists, so a test that does not script one takes the path that closes the sessions.
+/// A <see cref="CreateWindow"/> window has the designer's settings, SessionPersistence Off, which
+/// never keeps a daemon and asks in the pre-Phase-5 wording.
 /// </remarks>
 public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
     private const string CompatibleNotes = "Fixes and features.\n\n<!-- ntilde-mux-protocol: 1-2 -->";
     private const string IncompatibleNotes = "<!-- ntilde-mux-protocol: 3-4 -->";
     private const string ClosesOneSession = "1 multiplexed session will be closed by the update (the new version cannot keep it).";
+
+    /// <summary>The question with SessionPersistence Off: the pre-Phase-5 wording, which gives no reason that may not be true.</summary>
+    private const string ClosesOneSessionPersistenceOff = "1 multiplexed session will be closed by the update.";
 
     private static readonly string InstallRoot = Path.Combine(Path.GetTempPath(), "ntilde-update-tests", "NtildeApp");
 
@@ -76,13 +81,16 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         return task; // rethrows if it faulted
     }
 
-    private MainWindow CreateWindow()
+    /// <summary>A window of plain panes with the designer's settings: SessionPersistence Off, unless <paramref name="settings"/> says otherwise.</summary>
+    private MainWindow CreateWindow(TerminalSettings? settings = null)
     {
-        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        var services = AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
             SessionFactory = new RecordingSessionFactory(new FakeTerminalSession()),
-        });
+        };
+        if (settings is not null) services = services with { Settings = settings };
+        MainWindow window = TestMainWindowFactory.Create(services);
         window.Show();
         return window;
     }
@@ -208,6 +216,41 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     }
 
     /// <summary>
+    /// SessionPersistence Off: nothing changes from before Phase 5. A daemon R10 would keep - compatible, and running from
+    /// its own copy outside the install root, or on an install with no root to kill under - is still asked about and shut
+    /// down, and the question words it as before, giving no reason that may not be true.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void With_persistence_off_a_compatible_daemon_is_still_closed_after_asking(bool installRoot)
+    {
+        MainWindow window = CreateWindow(new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off });
+        FakeApplyUpdateService service = StageUpdate(window, CompatibleNotes);
+        Guid sessionId = Task.Run(() =>
+        {
+            using MuxClient c = MuxClient.ConnectAsync(_mux.Listener.Connect(), null, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+            return MuxTestHost.SpawnAsync(c).GetAwaiter().GetResult();
+        }).GetAwaiter().GetResult();
+        Assert.NotEqual(Guid.Empty, sessionId);
+        int shutdowns = 0;
+        _mux.Server.ShutdownRequested += () => Interlocked.Increment(ref shutdowns);
+        string? asked = null;
+        window.ConfirmSessionLossForUpdate = message => { asked = message; return Task.FromResult(true); };
+        window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!;
+        window.MuxReadDescriptorForUpdate = () => Daemon;
+        window.MuxInstallRootForUpdate = () => installRoot ? InstallRoot : null;
+        window.MuxDaemonImagePathForUpdate = _ => Path.Combine(Path.GetTempPath(), "ntilde-update-tests", "ntilde", "bin", "0.12.0", "Ntilde.exe");
+        window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(true);
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.Equal(ClosesOneSessionPersistenceOff, asked);
+        PumpUntil(() => Volatile.Read(ref shutdowns) == 1, "the daemon received shutdown");
+        Assert.Equal(1, service.ApplyCount);
+    }
+
+    /// <summary>
     /// The coalesced save each attach posts (spec §9) can run after the update saved the session for its shutdown. It
     /// leaves out the shells already ended, as every other save does, so it never names them again.
     /// </summary>
@@ -293,7 +336,7 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
 
         RunToCompletion(window).GetAwaiter().GetResult();
 
-        Assert.Equal(ClosesOneSession, asked);
+        Assert.Equal(ClosesOneSessionPersistenceOff, asked); // a designer window: persistence off
         Assert.Equal(0, service.ApplyCount);
         Assert.False(shutdownRaised);
         Assert.Contains(sessionId, _mux.Server.GetSessionIds());

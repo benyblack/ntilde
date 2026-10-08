@@ -29,8 +29,9 @@ class Program
             //
             // Velopack also applies an already-downloaded update here by default. That must not
             // happen behind a live multiplexer daemon the apply would kill - one running from inside
-            // the install root (Phase 5 R10): the in-app apply path asks before closing its sessions
-            // and shuts it down first, and this one would do neither (spec §9).
+            // the install root (Phase 5 R10) - nor, with SessionPersistence off, behind any live daemon,
+            // as before Phase 5: the in-app apply path asks before closing its sessions and shuts it
+            // down first, and this one would do neither (spec §9).
             VelopackApp velopack = VelopackApp.Build();
 
             // The install directory goes on the user PATH, so a prompt finds ntilde.com there
@@ -54,7 +55,7 @@ class Program
             }
 
             velopack
-                .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(args, LiveDaemonInsideInstallRoot))
+                .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(args, LiveDaemonBlocksStartupApply))
                 .Run();
 
             if (VtReportCommand.IsSupportedCliMode(args))
@@ -153,7 +154,7 @@ class Program
     /// <summary>
     /// Whether Velopack may apply a staged update while starting up. Never for a <c>mux</c> CLI mode
     /// (the daemon, or a verb talking to it), and not for the GUI while a live daemon is in the
-    /// apply's way (<see cref="LiveDaemonInsideInstallRoot"/>): in both cases the staged update waits
+    /// apply's way (<see cref="LiveDaemonBlocksStartupApply"/>): in both cases the staged update waits
     /// for the in-app apply, which confirms and stops the daemon. <paramref name="liveDaemon"/> is
     /// only asked for the GUI case, so CLI starts never read the disk.
     /// </summary>
@@ -176,21 +177,25 @@ class Program
     }
 
     /// <summary>
-    /// The startup gate's question (Phase 5 R10): is a live local daemon one Velopack's apply would kill - its image
-    /// inside this install's root, or not known to be outside it? A daemon running from its own copy
-    /// (<see cref="Ntilde.Shell.Mux.MuxDaemonImage"/>) survives the apply and no longer holds the update back. Off a
-    /// Windows Velopack install nothing is killed, so nothing is probed. "Live" means a daemon that answers a 200 ms
+    /// The startup gate's question (Phase 5 R10): is a live local daemon in the apply's way? One Velopack's apply would
+    /// kill - its image inside this install's root, or not known to be outside it - always is; a daemon running from its
+    /// own copy (<see cref="Ntilde.Shell.Mux.MuxDaemonImage"/>) survives the apply and holds the update back only with
+    /// SessionPersistence off, which keeps the gate as it was before Phase 5. "Live" means a daemon that answers a 200 ms
     /// probe-connect, not merely a descriptor naming a pid that happens to still be alive - pids get recycled
-    /// (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>); then one descriptor read and one process lookup.
+    /// (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>). Only then are the descriptor, the image (one process lookup)
+    /// and the setting read - the setting straight from settings.json under the same root the descriptor is in
+    /// (<see cref="Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile"/>; AppPaths is not touched this early).
     /// </summary>
-    private static bool LiveDaemonInsideInstallRoot()
+    private static bool LiveDaemonBlocksStartupApply()
     {
-        string descriptorPath = Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath();
+        string root = Ntilde.Mux.Contracts.MuxDiscovery.GetRootDirectory();
+        string descriptorPath = Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(root);
         return Ntilde.Update.MuxUpdateCompatibility.BlocksStartupApply(
             Environment.ProcessPath is { } exe ? Ntilde.Shell.Mux.MuxDaemonImage.VelopackInstallRoot(exe, System.IO.File.Exists) : null,
             () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(descriptorPath, TimeSpan.FromMilliseconds(200)),
             () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadDescriptor(descriptorPath, out Ntilde.Mux.Contracts.MuxEndpointDescriptor? descriptor) ? descriptor : null,
-            Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath);
+            Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath,
+            () => Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile(System.IO.Path.Combine(root, "settings.json")));
     }
 
     /// <summary>

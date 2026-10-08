@@ -52,21 +52,26 @@ internal static partial class MuxUpdateCompatibility
 
     /// <summary>
     /// The startup gate (Program.ShouldAutoApplyUpdateOnStartup): whether a live daemon stops Velopack applying a staged
-    /// update as the app starts - only one the apply would kill, its image inside <paramref name="installRoot"/> or not
-    /// known to be outside it (a descriptor gone since the probe included). Without an install root nothing is killed,
-    /// so nothing blocks and nothing is probed. The protocol is not asked: the new build meets a mismatch at launch.
+    /// update as the app starts. One the apply would kill always does: its image inside <paramref name="installRoot"/> or
+    /// not known to be outside it (a descriptor gone since the probe included). Any other blocks only with
+    /// SessionPersistence off, which keeps the gate exactly as it was before Phase 5 (any live daemon). The protocol is
+    /// not asked: the new build meets a mismatch at launch. Only a live daemon costs more than the probe: its image is
+    /// read only under an install root, and the setting only when the image does not already decide.
     /// </summary>
     /// <param name="daemonLive">Whether a daemon answers its endpoint (the 200 ms probe).</param>
     /// <param name="readDescriptor">The descriptor, read after the probe said live; null when it cannot be read.</param>
     /// <param name="daemonImagePath">The descriptor's daemon's image (<see cref="DaemonImagePath"/>).</param>
+    /// <param name="persistenceOff">Whether the persisted SessionPersistence is off (false when it cannot be read).</param>
     public static bool BlocksStartupApply(string? installRoot, Func<bool> daemonLive, Func<MuxEndpointDescriptor?> readDescriptor,
-        Func<MuxEndpointDescriptor, string?> daemonImagePath)
+        Func<MuxEndpointDescriptor, string?> daemonImagePath, Func<bool> persistenceOff)
     {
         ArgumentNullException.ThrowIfNull(daemonLive);
         ArgumentNullException.ThrowIfNull(readDescriptor);
         ArgumentNullException.ThrowIfNull(daemonImagePath);
-        if (installRoot is null || !daemonLive()) return false;
-        return readDescriptor() is not { } descriptor || !SurvivesApply(daemonImagePath(descriptor), installRoot);
+        ArgumentNullException.ThrowIfNull(persistenceOff);
+        if (!daemonLive()) return false;
+        if (installRoot is not null && (readDescriptor() is not { } descriptor || !SurvivesApply(daemonImagePath(descriptor), installRoot))) return true;
+        return persistenceOff();
     }
 
     /// <summary>

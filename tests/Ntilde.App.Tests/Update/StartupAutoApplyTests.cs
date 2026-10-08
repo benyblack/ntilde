@@ -63,49 +63,67 @@ public sealed class StartupAutoApplyTests
     }
 
     // ---- Phase 5 R10: only a live daemon the apply would kill - its image inside the install root - is in the way.
+    // With SessionPersistence Off nothing changes from before Phase 5: any live daemon is in the way.
 
     private static readonly string InstallRoot = Path.Combine(OperatingSystem.IsWindows() ? @"C:\Users\u\AppData\Local" : "/home/u/.local/share", "NtildeApp");
 
+    private static readonly string OwnCopy = Path.Combine(Path.GetDirectoryName(InstallRoot)!, "ntilde", "bin", "0.12.0", "Ntilde.exe");
+
     private static readonly MuxEndpointDescriptor Daemon = new() { Endpoint = "test", Pid = 4242, ProcessName = "Ntilde", MinVersion = 1, MaxVersion = 2 };
+
+    private static readonly Func<bool> KeepOnClose = () => false;
+
+    private static readonly Func<bool> NotRead = () => throw new InvalidOperationException("the setting is not read");
 
     [Fact]
     public void A_daemon_running_from_its_own_copy_does_not_block_auto_apply()
     {
-        string copy = Path.Combine(Path.GetDirectoryName(InstallRoot)!, "ntilde", "bin", "0.12.0", "Ntilde.exe");
-
-        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => copy));
+        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => OwnCopy, KeepOnClose));
     }
 
     [Fact]
-    public void A_daemon_running_from_inside_the_install_root_blocks_auto_apply()
+    public void A_daemon_running_from_inside_the_install_root_blocks_auto_apply_whatever_the_setting()
     {
         string inside = Path.Combine(InstallRoot, "current", "Ntilde.exe");
 
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => inside));
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => inside, NotRead));
     }
 
     /// <summary>Never "outside" without evidence: an image that cannot be read, or a descriptor gone after the probe, blocks.</summary>
     [Fact]
     public void A_live_daemon_whose_image_cannot_be_told_blocks_auto_apply()
     {
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => null));
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => null, _ => throw new InvalidOperationException("no descriptor to look up")));
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => null, NotRead));
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => null, _ => throw new InvalidOperationException("no descriptor to look up"), NotRead));
     }
 
-    [Fact]
-    public void No_live_daemon_never_looks_its_image_up()
+    /// <summary>The common start: no live daemon. Nothing else is read - neither its image nor the setting.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void No_live_daemon_never_reads_its_image_or_the_setting(bool installRoot)
     {
         Assert.False(MuxUpdateCompatibility.BlocksStartupApply(
-            InstallRoot, () => false, () => throw new InvalidOperationException("not read"), _ => throw new InvalidOperationException("not looked up")));
+            installRoot ? InstallRoot : null, () => false, () => throw new InvalidOperationException("not read"),
+            _ => throw new InvalidOperationException("not looked up"), NotRead));
     }
 
-    /// <summary>Off a Windows Velopack install the apply kills nothing, so a daemon is never in the way - and is not even probed.</summary>
+    /// <summary>Off a Windows Velopack install the apply kills nothing: a live daemon is in the way only with persistence off.</summary>
     [Fact]
-    public void Without_an_install_root_nothing_blocks_and_nothing_is_probed()
+    public void Without_an_install_root_a_live_daemon_does_not_block_and_its_image_is_not_read()
     {
-        int probes = 0;
+        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(null, () => true, () => Daemon, _ => throw new InvalidOperationException("not looked up"), KeepOnClose));
+    }
 
-        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(null, () => { probes++; return true; }, () => Daemon, _ => null));
-        Assert.Equal(0, probes);
+    /// <summary>
+    /// SessionPersistence Off behaves as before Phase 5: any live daemon holds the update back for the in-app apply, which
+    /// asks - one running from its own copy, and one on an install with no root to kill under (macOS, Linux).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void With_persistence_off_any_live_daemon_blocks_auto_apply(bool installRoot)
+    {
+        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(installRoot ? InstallRoot : null, () => true, () => Daemon, _ => OwnCopy, () => true));
     }
 }
