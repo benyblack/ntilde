@@ -335,6 +335,18 @@ namespace Ntilde
         /// <summary>Every endpoint's connection (Phase 4 spec §5); null while persistence has never been on.</summary>
         internal Ntilde.Shell.Mux.MuxConnectionHosts? MuxHosts => _muxHosts;
 
+        private Ntilde.Shell.Mux.MuxWindowlessSessions? _windowlessSessions;
+
+        /// <summary>
+        /// The agent host's windowless sessions of this window (Phase 5 spec §3, ruling R4): its daemons' sessions that no
+        /// pane of it shows. Null while persistence has never been on (no hosts, so nothing to list); built once with the
+        /// hosts, which are never replaced. UI thread.
+        /// </summary>
+        internal AgentHost.IWindowlessSessionSource? WindowlessSessions =>
+            _windowlessSessions ??= _muxHosts is { } hosts
+                ? new Ntilde.Shell.Mux.MuxWindowlessSessions(hosts, MuxSessionsShownHereAsync, AppLogger.Log)
+                : null;
+
         private sealed class PaneZoomState
         {
             public required Control OriginalRoot { get; init; }
@@ -3875,6 +3887,7 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ActEnabled = _settings.AgentAccessActEnabled;
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
+            AgentHost.AgentHostService.Instance.SetWindowlessSource(WindowlessSessions);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
             AgentHost.AgentHostService.Instance.ObserveActivityChanged += OnAgentObserveActivityChanged;
             RefreshAgentObserveIndicator();
@@ -6298,6 +6311,29 @@ namespace Ntilde
             });
         }
 
+        /// <summary>
+        /// Every (endpoint, mux session id) a pane of this window shows, or is about to (a pending
+        /// <see cref="TerminalPane.MuxSessionIdToRestore"/>: a restored tab not shown yet, an adopted orphan), on every
+        /// endpoint: <see cref="OfferMuxSessionsAsync"/>'s "open here", not only the local daemon's. The windowless source
+        /// asks it from the agent host's thread; this is its one touch of the window, posted to the UI thread and
+        /// awaited there, never waited for.
+        /// </summary>
+        private async Task<IReadOnlySet<(string Endpoint, Guid Id)>> MuxSessionsShownHereAsync()
+        {
+            return await Dispatcher.UIThread.InvokeAsync<IReadOnlySet<(string Endpoint, Guid Id)>>(() =>
+            {
+                var shown = new HashSet<(string Endpoint, Guid Id)>();
+                foreach (TerminalPane p in AllPanes())
+                {
+                    string endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint).ToString();
+                    if (p.Session is Ntilde.Mux.MuxClientSession m) shown.Add((endpoint, m.Id));
+                    if (p.MuxSessionIdToRestore is Guid pending) shown.Add((endpoint, pending));
+                }
+
+                return shown;
+            });
+        }
+
         private void CloseTab(TabItem ti) => CloseTabCore(ti, Ntilde.Shell.Mux.PaneDisposition.EndSession, null);
 
         /// <param name="detach">Panes the user chose to detach rather than close; they override <paramref name="disposition"/>.</param>
@@ -6926,6 +6962,8 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ActEnabled = _settings.AgentAccessActEnabled;
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
+            // After ApplySessionPersistenceSetting, which builds the hosts when persistence was just turned on.
+            AgentHost.AgentHostService.Instance.SetWindowlessSource(WindowlessSessions);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
             // RefreshTabAgentAttention already ends by calling
             // RefreshAgentObserveIndicator, so this covers both surfaces.
@@ -9821,6 +9859,8 @@ namespace Ntilde
 
             if (_muxHosts is { } muxHosts)
             {
+                // The agent host stops asking these hosts before they close (the Stop below clears it again).
+                AgentHost.AgentHostService.Instance.SetWindowlessSource(null);
                 // Local panes only: the log line points at `ntilde mux ls`, which lists the local daemon.
                 int kept = _paneOwnerTab.Keys.Count(p => ShowsLocalMuxEndpoint(p) && p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true });
                 // Explicit detach: closing each connection makes its daemon drop this client's

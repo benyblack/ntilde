@@ -114,6 +114,31 @@ internal sealed class MuxConnectionHosts : IDisposable
         }
     }
 
+    /// <summary>
+    /// <see cref="All"/>, each host with its endpoint: <see cref="MuxEndpointId.Local"/> first, then the remote ones in
+    /// the order they were built. One consistent picture, taken under the lock.
+    /// </summary>
+    public IReadOnlyList<(MuxEndpointId Id, MuxConnectionHost Host)> AllByEndpoint
+    {
+        get
+        {
+            lock (_gate)
+            {
+                var all = new List<(MuxEndpointId, MuxConnectionHost)>(_remoteOrder.Count + 1) { (MuxEndpointId.Local, Local) };
+                foreach (MuxConnectionHost host in _remoteOrder)
+                {
+                    // Registered and forgotten together (GetOrCreate, ForgetLocked): every host in the order has its entry.
+                    foreach ((MuxEndpointId id, MuxConnectionHost registered) in _remotes)
+                    {
+                        if (ReferenceEquals(registered, host)) all.Add((id, host));
+                    }
+                }
+
+                return all;
+            }
+        }
+    }
+
     /// <summary>Whether <see cref="Dispose"/> has begun: from then on <see cref="GetOrCreate"/> answers null for every remote endpoint.</summary>
     public bool IsDisposed
     {

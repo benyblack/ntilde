@@ -212,6 +212,18 @@ namespace Ntilde.AgentHost
         /// <summary>Publishes (or clears) the spawn/close UI executor. UI thread.</summary>
         public void SetActionExecutor(IAgentActionExecutor? executor) => _actionExecutor = executor;
 
+        // The window's windowless mux sessions (Phase 5 §3), published by MainWindow
+        // while it has mux hosts. Its shownHere delegate closes over the window, so
+        // it is cleared on Stop like the executor. Volatile: published from UI, read
+        // on IPC. Stored only, for now: the methods that use it are Phase 5 Task 13's.
+        private volatile IWindowlessSessionSource? _windowlessSource;
+
+        /// <summary>Publishes (or clears) the window's windowless-session source. UI thread.</summary>
+        internal void SetWindowlessSource(IWindowlessSessionSource? source) => _windowlessSource = source;
+
+        /// <summary>The published windowless-session source; null when none is.</summary>
+        internal IWindowlessSessionSource? WindowlessSource => _windowlessSource;
+
         private bool AllowsAgentActOnProfile(Guid profileId)
         {
             var probe = _sshProfileAllowlist;
@@ -358,6 +370,7 @@ namespace Ntilde.AgentHost
             // do not leak, so they are left as-is.
             _sshProfileAllowlist = null;
             _actionExecutor = null; // closes over the window too — same pinning reason
+            _windowlessSource = null; // so does its shownHere
         }
 
         /// <summary>

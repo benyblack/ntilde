@@ -823,4 +823,39 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == shared && MuxEndpointId.Parse(p.MuxEndpoint).IsLocal),
             "the local session opened in a new tab");
     }
+
+    /// <summary>
+    /// Phase 5 spec §3, ruling R4: the window's windowless sessions are its daemons' sessions that none of its panes
+    /// shows or is about to show (a restored tab not shown yet keeps its id pending), on the local daemon and on a remote
+    /// endpoint it is connected to. Asked from the pool, as the agent host asks: the window's look at its panes is posted
+    /// to the UI thread, which this test pumps.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_windowless_sessions_are_those_no_pane_of_the_window_shows_or_will_show()
+    {
+        Guid[] ids = SpawnOnRemote(3);
+        SaveTabs(
+            new PaneNode { Type = NodeType.Split, SplitOrientation = 0, Children = [RemoteLeaf(ids[0]), LocalLeaf()] },
+            RemoteLeaf(ids[1]));   // the second tab restores in the background, unshown: ids[1] stays pending
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the shown remote pane reattached");
+        PumpUntil(() => AllPanes(window).Any(p => MuxEndpointId.Parse(p.MuxEndpoint).IsLocal && p.Session is MuxClientSession { IsAttached: true }), "the local pane attached");
+        Assert.Equal(ids[1], RemotePanes(window).Single(p => p.Session is null).MuxSessionIdToRestore);
+        // Another instance's local shell, attached there: not an orphan this window adopts, and windowless here.
+        Guid theirs = Task.Run(async () =>
+        {
+            MuxClient other = await _localMux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(other);
+            return (await MuxTestHost.AttachPaneAsync(other, id)).Session.Id;
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        Ntilde.AgentHost.IWindowlessSessionSource? source = window.WindowlessSessions;
+        Assert.NotNull(source);
+
+        Task<IReadOnlyList<Ntilde.AgentHost.WindowlessSessionInfo>> listing = Task.Run(() => source.ListAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        PumpUntil(() => listing.IsCompleted, "the source listed");
+
+        Assert.Equal(
+            [("local", theirs, "this computer"), (Endpoint, ids[2], "nova@fake-host")],
+            listing.Result.Select(s => (s.Endpoint, s.SessionId, s.HostDisplayName)));
+    }
 }
