@@ -48,7 +48,19 @@ public sealed class NativeKnownHostsStore
     {
         lock (_syncRoot)
         {
-            KnownHostEntry? existing = LoadEntriesLocked().FirstOrDefault(entry =>
+            List<KnownHostEntry> loaded;
+            try
+            {
+                loaded = LoadEntriesLocked();
+            }
+            catch (IOException ex)
+            {
+                // Unreadable store: report Unknown (the caller will prompt); never write here.
+                Debug.WriteLine($"[KnownHosts] {ex.Message}");
+                return NativeKnownHostMatch.Unknown;
+            }
+
+            KnownHostEntry? existing = loaded.FirstOrDefault(entry =>
                 string.Equals(entry.Host, NormalizeHost(host), StringComparison.OrdinalIgnoreCase) &&
                 entry.Port == NormalizePort(port));
 
@@ -64,6 +76,7 @@ public sealed class NativeKnownHostsStore
         }
     }
 
+    /// <summary>Throws <see cref="IOException"/> (and writes nothing) if the existing store cannot be read or set aside.</summary>
     public void TrustHost(string host, int port, string algorithm, string fingerprint)
     {
         lock (_syncRoot)
@@ -100,51 +113,82 @@ public sealed class NativeKnownHostsStore
         }
     }
 
+    // Outcomes of a load: no file -> empty list; parsed -> its entries; unparseable (bad JSON or a
+    // literal null) -> moved aside, empty list; unreadable, or unparseable and not movable ->
+    // IOException. Callers must never persist after an IOException, or they would overwrite
+    // entries they could not read.
     private List<KnownHostEntry> LoadEntriesLocked()
     {
-        if (!File.Exists(_storeFilePath))
+        string json;
+        for (int attempt = 0; ; attempt++)
         {
-            return new List<KnownHostEntry>();
+            try
+            {
+                if (!File.Exists(_storeFilePath))
+                {
+                    return new List<KnownHostEntry>();
+                }
+
+                json = File.ReadAllText(_storeFilePath);
+                break;
+            }
+            catch (FileNotFoundException)
+            {
+                return new List<KnownHostEntry>();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                if (attempt >= 4)
+                {
+                    throw new IOException($"The known-hosts store '{_storeFilePath}' could not be read: {ex.Message}", ex);
+                }
+
+                Thread.Sleep(20);
+            }
         }
 
+        List<KnownHostEntry>? entries = null;
+        string reason = "the file contains JSON null";
         try
         {
-            string json = File.ReadAllText(_storeFilePath);
-            return JsonSerializer.Deserialize(json, SshJsonContext.Default.ListKnownHostEntry) ?? new List<KnownHostEntry>();
+            entries = JsonSerializer.Deserialize(json, SshJsonContext.Default.ListKnownHostEntry);
         }
         catch (JsonException ex)
         {
-            // Never let the next TrustHost overwrite an unparseable store: keep it aside.
-            KeepCorruptFileAside(ex);
-            return new List<KnownHostEntry>();
+            reason = ex.Message;
         }
-        catch
+
+        if (entries != null)
         {
-            return new List<KnownHostEntry>();
+            return entries;
         }
+
+        // Never let the next TrustHost overwrite an unparseable store: keep it aside.
+        KeepCorruptFileAside(reason);
+        return new List<KnownHostEntry>();
     }
 
-    private void KeepCorruptFileAside(Exception cause)
+    private void KeepCorruptFileAside(string reason)
     {
         try
         {
             string stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
             string target = $"{_storeFilePath}.corrupt-{stamp}";
-            for (int n = 1; File.Exists(target); n++)
+            for (int n = 1; File.Exists(target) || Directory.Exists(target); n++)
             {
                 target = $"{_storeFilePath}.corrupt-{stamp}-{n}";
             }
 
             File.Move(_storeFilePath, target);
-            Debug.WriteLine($"[KnownHosts] Unparseable store moved to {target}: {cause.Message}");
-            PruneCorruptFiles();
+            Debug.WriteLine($"[KnownHosts] Unparseable store moved to {target}: {reason}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Debug.WriteLine($"[KnownHosts] Could not set aside unparseable store: {ex.Message}");
+            throw new IOException($"The known-hosts store '{_storeFilePath}' is unparseable ({reason}) and could not be set aside: {ex.Message}", ex);
         }
-    }
 
+        PruneCorruptFiles();
+    }
     private void PruneCorruptFiles()
     {
         try

@@ -166,7 +166,16 @@ public sealed class SshInteractionService : ISshInteractionService
         SshInteractionResponse response = await _hostKeyPresenter(owner, CreateHostKeyViewModel(requestToPresent), cancellationToken);
         if (response.IsAccepted && !response.IsCanceled)
         {
-            _knownHostsStore.TrustHost(request.Host, request.Port, request.Algorithm, request.Fingerprint);
+            try
+            {
+                _knownHostsStore.TrustHost(request.Host, request.Port, request.Algorithm, request.Fingerprint);
+            }
+            catch (IOException ex)
+            {
+                // The store could not be read, so it was left untouched. The user's decision still
+                // applies to this connection; the key is simply not remembered.
+                System.Diagnostics.Debug.WriteLine($"[KnownHosts] Host key not remembered: {ex.Message}");
+            }
         }
 
         return response;
