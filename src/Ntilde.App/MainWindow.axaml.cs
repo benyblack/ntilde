@@ -6773,12 +6773,17 @@ namespace Ntilde
         ///
         /// See <see cref="IsPaneReadInvisibleWithoutWindowLight"/> for the
         /// per-pane half of that decision.
+        ///
+        /// A read of a windowless session (Phase 5 §3: a daemon session no pane
+        /// shows) is the third case: there is no pane to mark at all, so
+        /// <paramref name="windowlessWatched"/> (the service's decaying
+        /// <see cref="AgentHost.AgentHostService.WindowlessWatched"/>) lights it too.
         /// </summary>
         internal static (bool Visible, bool Active) ComputeObserveIndicatorState(
-            bool observeRunning, bool polling, bool anyUnmarkedPaneWatched)
+            bool observeRunning, bool polling, bool anyUnmarkedPaneWatched, bool windowlessWatched)
         {
             if (!observeRunning) return (false, false);
-            return (true, polling || anyUnmarkedPaneWatched);
+            return (true, polling || anyUnmarkedPaneWatched || windowlessWatched);
         }
 
         /// <summary>
@@ -6891,7 +6896,7 @@ namespace Ntilde
                     && r.AttentionMachine.Snapshot().Tier == AgentHost.AgentAttentionTier.Watched);
 
             var (visible, active) = ComputeObserveIndicatorState(
-                service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched);
+                service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched, service.WindowlessWatched);
 
             indicator.IsVisible = visible;
             if (!visible) return;
@@ -6899,9 +6904,12 @@ namespace Ntilde
         }
 
         // Raised on an IPC thread when the in-flight poll count leaves or
-        // returns to zero.
+        // returns to zero, and on an IPC or the sweep's timer thread when a
+        // windowless read lights or decays. Posted through the window's own
+        // dispatcher, never the Dispatcher.UIThread static: an off-thread read
+        // of that static is what poisoned headless test runs (#81).
         private void OnAgentObserveActivityChanged()
-            => Dispatcher.UIThread.Post(RefreshAgentObserveIndicator);
+            => Dispatcher.Post(RefreshAgentObserveIndicator);
 
         /// <summary>
         /// Recomputes each tab's agent marker from the loudest attention tier
@@ -9470,7 +9478,8 @@ namespace Ntilde
         }
 
         // A3: visible agent activity journal ("nothing is silent"). Read-only
-        // snapshot of recent acting attempts (allowed and denied), newest first,
+        // snapshot of recent acting attempts (allowed and denied) and reads of
+        // windowless sessions (Phase 5 ruling R5), newest first,
         // with a Refresh button. The journal data layer lives in
         // AgentActivityJournal; this is its window.
         internal async Task ShowAgentActivityJournalAsync()
@@ -9502,7 +9511,7 @@ namespace Ntilde
 
             var empty = new TextBlock
             {
-                Text = "No agent activity recorded yet. Actions taken by AI agents (typing, opening or closing sessions) appear here \u2014 including attempts that were denied.",
+                Text = "No agent activity recorded yet. Actions and windowless reads by AI agents (typing, opening or closing sessions, reading a session no window shows) appear here \u2014 including attempts that were denied.",
                 TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.7,
             };
@@ -9540,7 +9549,7 @@ namespace Ntilde
                     {
                         new TextBlock
                         {
-                            Text = "Recent actions taken (or attempted) by AI agents with 'Agent access (act)' enabled. Newest first; the list is in-memory and bounded.",
+                            Text = "Recent actions and windowless reads by AI agents, including attempts that were denied. Acting needs 'Agent access (act)'; a windowless read is a read of a session no window shows. Newest first; the list is in-memory and bounded.",
                             TextWrapping = TextWrapping.Wrap,
                             Margin = new Thickness(0, 0, 0, 12),
                             [DockPanel.DockProperty] = Dock.Top,

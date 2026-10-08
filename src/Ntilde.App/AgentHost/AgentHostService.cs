@@ -9,7 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ntilde.AgentHost.Contracts;
 using Ntilde.Replay;
+using Ntilde.Shell;
 using Ntilde.VT;
+using MuxReadScreenResult = Ntilde.Mux.Contracts.ReadScreenResult;
 
 namespace Ntilde.AgentHost
 {
@@ -32,13 +34,42 @@ namespace Ntilde.AgentHost
     public sealed class AgentHostService : IDisposable
     {
         /// <summary>Process-wide instance used by the app wiring. Tests construct their own.</summary>
-        public static AgentHostService Instance { get; } = new(AgentSessionRegistry.Instance);
+        public static AgentHostService Instance => _instanceOverride ?? ProcessInstance;
+
+        private static readonly AgentHostService ProcessInstance = new(AgentSessionRegistry.Instance);
+
+        // Thread-local for the reason AgentSessionRegistry's override is: a window built by one test must not
+        // publish into a service another test is using at the same moment.
+        [ThreadStatic]
+        private static AgentHostService? _instanceOverride;
+
+        /// <summary>
+        /// Redirects <see cref="Instance"/> on the current thread to <paramref name="service"/> until the returned
+        /// scope is disposed. Test seam: MainWindow publishes its bridges to <see cref="Instance"/> and turns it on when
+        /// observe is on, and the process instance would then listen on the real endpoint name. A window test scopes
+        /// this around the window's whole life, on the UI thread, with a service of its own.
+        /// </summary>
+        internal static IDisposable OverrideInstanceForTesting(AgentHostService service)
+        {
+            ArgumentNullException.ThrowIfNull(service);
+            var scope = new InstanceOverrideScope(_instanceOverride);
+            _instanceOverride = service;
+            return scope;
+        }
+
+        private sealed class InstanceOverrideScope : IDisposable
+        {
+            private readonly AgentHostService? _previous;
+            public InstanceOverrideScope(AgentHostService? previous) => _previous = previous;
+            public void Dispose() => _instanceOverride = _previous;
+        }
 
         private readonly AgentSessionRegistry _registry;
         private readonly string? _endpointOverride;
         private readonly string? _discoveryDirectoryOverride;
         private readonly string? _exportDirectoryOverride;
         private readonly AgentActivityJournal _journal;
+        private readonly Func<DateTimeOffset> _now;
         private readonly object _gate = new();
 
         private CancellationTokenSource? _cts;
@@ -59,13 +90,15 @@ namespace Ntilde.AgentHost
             string? endpointOverride = null,
             string? discoveryDirectoryOverride = null,
             string? exportDirectoryOverride = null,
-            AgentActivityJournal? journal = null)
+            AgentActivityJournal? journal = null,
+            Func<DateTimeOffset>? nowProvider = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _endpointOverride = endpointOverride;
             _discoveryDirectoryOverride = discoveryDirectoryOverride;
             _exportDirectoryOverride = exportDirectoryOverride;
             _journal = journal ?? AgentActivityJournal.Instance;
+            _now = nowProvider ?? (() => DateTimeOffset.UtcNow);
         }
 
         // Volatile: written by the UI thread (settings apply), read by the IPC
@@ -118,7 +151,47 @@ namespace Ntilde.AgentHost
         /// </summary>
         public int InFlightPollCount => Volatile.Read(ref _inFlightPolls);
 
-        /// <summary>Raised when <see cref="InFlightPollCount"/> transitions between zero and non-zero.</summary>
+        // When the window light's windowless half goes out (Phase 5 §3): set on an IPC thread by every windowless read,
+        // cleared by the 1 s sweep. Its own lock, never taken with _gate held except by StopLocked's reset.
+        private readonly object _windowlessWatchGate = new();
+        private DateTimeOffset? _windowlessWatchedUntil;
+
+        /// <summary>
+        /// True from a read of a windowless session (Phase 5 §3) until <see cref="AgentAttentionMachine.ReadDecaySeconds"/>
+        /// after the last one, when the 1 s sweep clears it. Such a session has no pane, so no pane indicator can show the
+        /// read: the window-level light is where it appears.
+        /// </summary>
+        public bool WindowlessWatched
+        {
+            get { lock (_windowlessWatchGate) { return _windowlessWatchedUntil.HasValue; } }
+        }
+
+        private void NoteWindowlessRead()
+        {
+            bool lit;
+            lock (_windowlessWatchGate)
+            {
+                lit = !_windowlessWatchedUntil.HasValue;
+                _windowlessWatchedUntil = _now() + TimeSpan.FromSeconds(AgentAttentionMachine.ReadDecaySeconds);
+            }
+            if (lit) RaiseObserveActivityChanged();
+        }
+
+        private void SweepWindowlessWatched()
+        {
+            bool cleared;
+            lock (_windowlessWatchGate)
+            {
+                cleared = _windowlessWatchedUntil is { } until && _now() >= until;
+                if (cleared) _windowlessWatchedUntil = null;
+            }
+            if (cleared) RaiseObserveActivityChanged();
+        }
+
+        /// <summary>
+        /// Raised when <see cref="InFlightPollCount"/> transitions between zero and non-zero, and when
+        /// <see cref="WindowlessWatched"/> changes. On whichever thread made the change (an IPC or timer thread).
+        /// </summary>
         public event Action? ObserveActivityChanged;
 
         /// <summary>
@@ -213,9 +286,10 @@ namespace Ntilde.AgentHost
         public void SetActionExecutor(IAgentActionExecutor? executor) => _actionExecutor = executor;
 
         // The window's windowless mux sessions (Phase 5 §3), published by MainWindow
-        // while it has mux hosts. Its shownHere delegate closes over the window, so
-        // it is cleared on Stop like the executor. Volatile: published from UI, read
-        // on IPC. Stored only, for now: the methods that use it are Phase 5 Task 13's.
+        // while it has mux hosts; the per-session handlers ask it for an id no pane
+        // has (see the "Windowless sessions" section). Its shownHere delegate closes
+        // over the window, so it is cleared on Stop like the executor: with observe
+        // off nothing asks a daemon anything. Volatile: published from UI, read on IPC.
         private volatile IWindowlessSessionSource? _windowlessSource;
 
         /// <summary>Publishes (or clears) the window's windowless-session source. UI thread.</summary>
@@ -371,6 +445,13 @@ namespace Ntilde.AgentHost
             _sshProfileAllowlist = null;
             _actionExecutor = null; // closes over the window too — same pinning reason
             _windowlessSource = null; // so does its shownHere
+
+            // The sweep that would put the windowless light out stops with the endpoint. Nobody is told: a stopped
+            // endpoint hides the light anyway, and the window refreshes it after every Apply.
+            lock (_windowlessWatchGate)
+            {
+                _windowlessWatchedUntil = null;
+            }
         }
 
         /// <summary>
@@ -546,7 +627,8 @@ namespace Ntilde.AgentHost
             registration.StatusMachine.EventEmitted += Handler;
         }
 
-        private void SweepStatuses()
+        /// <summary>The 1 s timer's work while the endpoint runs. Internal so a test can drive it with its own clock.</summary>
+        internal void SweepStatuses()
         {
             foreach (var registration in _registry.GetRegistrations())
             {
@@ -580,6 +662,15 @@ namespace Ntilde.AgentHost
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AgentHost] actability refresh failed: {ex.Message}");
+            }
+
+            try
+            {
+                SweepWindowlessWatched();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AgentHost] windowless light sweep failed: {ex.Message}");
             }
         }
 
@@ -795,16 +886,16 @@ namespace Ntilde.AgentHost
             {
                 return request.Method switch
                 {
-                    AgentHostProtocol.Methods.ListSessions => HandleListSessions(request),
-                    AgentHostProtocol.Methods.ReadScreen => HandleReadScreen(request),
-                    AgentHostProtocol.Methods.ReadScrollback => HandleReadScrollback(request),
-                    AgentHostProtocol.Methods.GetSessionStatus => HandleGetSessionStatus(request),
+                    AgentHostProtocol.Methods.ListSessions => await HandleListSessionsAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ReadScreen => await HandleReadScreenAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.ReadScrollback => await HandleReadScrollbackAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.GetSessionStatus => await HandleGetSessionStatusAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.WaitForEvents => await HandleWaitForEventsAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.ExportReplay => HandleExportReplay(request),
-                    AgentHostProtocol.Methods.CaptureScreen => await HandleCaptureScreenAsync(request).ConfigureAwait(false),
-                    AgentHostProtocol.Methods.SendInput => HandleSendInput(request),
+                    AgentHostProtocol.Methods.CaptureScreen => await HandleCaptureScreenAsync(request, cancellationToken).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.SendInput => await HandleSendInputAsync(request, cancellationToken).ConfigureAwait(false),
                     AgentHostProtocol.Methods.SpawnSession => await HandleSpawnSessionAsync(request).ConfigureAwait(false),
-                    AgentHostProtocol.Methods.CloseSession => await HandleCloseSessionAsync(request).ConfigureAwait(false),
+                    AgentHostProtocol.Methods.CloseSession => await HandleCloseSessionAsync(request, cancellationToken).ConfigureAwait(false),
                     _ => Error(request.Id, AgentHostProtocol.ErrorCodes.UnknownMethod, $"Unknown method '{request.Method}'."),
                 };
             }
@@ -822,7 +913,7 @@ namespace Ntilde.AgentHost
             }
         }
 
-        private AgentHostResponse HandleGetSessionStatus(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleGetSessionStatusAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             var p = DeserializeParams(request, AgentHostJsonContext.Default.GetSessionStatusParams);
             if (p == null)
@@ -831,6 +922,10 @@ namespace Ntilde.AgentHost
             }
             if (!_registry.TryGet(p.PaneId, out var registration))
             {
+                if (_windowlessSource is { } source)
+                {
+                    return await WindowlessStatusAsync(request, source, p.PaneId, cancellationToken).ConfigureAwait(false);
+                }
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
@@ -973,7 +1068,7 @@ namespace Ntilde.AgentHost
         /// through the UI-thread bridge, which carries the background image and
         /// window opacity that the render path structurally cannot.
         /// </summary>
-        private async Task<AgentHostResponse> HandleCaptureScreenAsync(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleCaptureScreenAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             CaptureScreenParams? p;
             try
@@ -1017,6 +1112,10 @@ namespace Ntilde.AgentHost
 
             if (!_registry.TryGet(p.PaneId, out var registration))
             {
+                if (_windowlessSource is { } source)
+                {
+                    return await WindowlessCaptureAsync(request, source, p, live, maxWidth, scale, cancellationToken).ConfigureAwait(false);
+                }
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
@@ -1098,6 +1197,17 @@ namespace Ntilde.AgentHost
                 downscaled = capture.Downscaled;
             }
 
+            return CaptureResult(request, png, imageWidth, imageHeight, cols, rows, downscaled, live, scale, p.Inline);
+        }
+
+        /// <summary>
+        /// The end of every capture, a pane's or a windowless session's: writes the PNG beside the agent replay exports
+        /// and builds the result.
+        /// </summary>
+        private AgentHostResponse CaptureResult(
+            AgentHostRequest request, byte[] png, int imageWidth, int imageHeight, int cols, int rows, bool downscaled,
+            bool live, double scale, bool inlineRequested)
+        {
             string filePath;
             try
             {
@@ -1115,7 +1225,6 @@ namespace Ntilde.AgentHost
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.CaptureUnavailable, $"The screenshot could not be written: {ex.Message}");
             }
 
-            var inlineRequested = p.Inline;
             var inlineFits = png.Length <= AgentHostProtocol.MaxInlineCaptureBytes;
             var result = new CaptureScreenResult
             {
@@ -1145,7 +1254,7 @@ namespace Ntilde.AgentHost
                 $"ntilde_screen_{timestamp:yyyyMMdd_HHmmss}_{shortSuffix}.png");
         }
 
-        private AgentHostResponse HandleSendInput(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleSendInputAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             SendInputParams? p;
             try
@@ -1190,6 +1299,16 @@ namespace Ntilde.AgentHost
 
             if (!_registry.TryGet(p.PaneId, out var registration))
             {
+                if (_windowlessSource is { } source)
+                {
+                    // The allowlist check rides inside the source's own look-up (MayActOnEndpoint), so the act and
+                    // its check share one survey of the daemons and one time budget.
+                    var outcome = await source.SendInputAsync(p.PaneId, payload, MayActOnEndpoint, cancellationToken).ConfigureAwait(false);
+                    return Journaled(request, AgentHostProtocol.Methods.SendInput, p.PaneId, WindowlessActTarget(outcome, "input"),
+                        outcome == WindowlessOutcome.Ok
+                            ? Ok(request.Id, JsonSerializer.SerializeToElement(new SendInputResult { BytesSent = byteCount }, AgentHostJsonContext.Default.SendInputResult))
+                            : WindowlessError(request.Id, p.PaneId, AgentHostProtocol.Methods.SendInput, outcome));
+                }
                 return Journaled(request, AgentHostProtocol.Methods.SendInput, p.PaneId, "input",
                     Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'."));
             }
@@ -1284,7 +1403,7 @@ namespace Ntilde.AgentHost
                 Ok(request.Id, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.SpawnSessionResult)));
         }
 
-        private async Task<AgentHostResponse> HandleCloseSessionAsync(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleCloseSessionAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             CloseSessionParams? p;
             try
@@ -1308,13 +1427,23 @@ namespace Ntilde.AgentHost
                         "Acting is disabled. Enable Settings → Agent access (observe) → Agent access (act), then retry."));
             }
 
-            // Close is deliberately not SSH-allowlist-gated: it ends a session the
-            // user can see disappear and is journaled; it cannot exfiltrate or run
+            // Closing a pane is deliberately not SSH-allowlist-gated: it ends a session
+            // the user can see disappear and is journaled; it cannot exfiltrate or run
             // anything. It still requires a live registration, so unknown panes 404.
             // Looked up now, before the executor tears the pane down below, so
             // there is still something to mark once the close succeeds.
             if (!_registry.TryGet(p.PaneId, out var registration))
             {
+                if (_windowlessSource is { } source)
+                {
+                    // A windowless session's kill IS allowlist-gated on a remote endpoint (ruling R5): nobody sees it
+                    // go, and it destroys a shell on another machine.
+                    var outcome = await source.KillAsync(p.PaneId, MayActOnEndpoint, cancellationToken).ConfigureAwait(false);
+                    return Journaled(request, AgentHostProtocol.Methods.CloseSession, p.PaneId, WindowlessActTarget(outcome, "session"),
+                        outcome == WindowlessOutcome.Ok
+                            ? Ok(request.Id, JsonSerializer.SerializeToElement(new CloseSessionResult { Closed = true }, AgentHostJsonContext.Default.CloseSessionResult))
+                            : WindowlessError(request.Id, p.PaneId, AgentHostProtocol.Methods.CloseSession, outcome));
+                }
                 return Journaled(request, AgentHostProtocol.Methods.CloseSession, p.PaneId, "session",
                     Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'."));
             }
@@ -1347,9 +1476,10 @@ namespace Ntilde.AgentHost
         /// <summary>
         /// Records an attempt to the journal (allowed or denied) and returns the
         /// response unchanged. Outcome = "ok" or the error code, so the user sees
-        /// everything an agent tried. Every acting call goes through here, plus
-        /// <c>captureScreen</c>: it acts on nothing, but a screenshot of the
-        /// user's screen is the kind of thing they should be able to see happened.
+        /// everything an agent tried. Every acting call goes through here, and every
+        /// read of a windowless session (ruling R5: it has no pane indicator to show
+        /// the read). Pane reads, <c>captureScreen</c> included, are not journaled:
+        /// the pane's own indicator shows them.
         /// </summary>
         private AgentHostResponse Journaled(AgentHostRequest request, string method, Guid? paneId, string target, AgentHostResponse response)
         {
@@ -1357,13 +1487,30 @@ namespace Ntilde.AgentHost
             return response;
         }
 
-        private AgentHostResponse HandleListSessions(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleListSessionsAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
-            var result = new ListSessionsResult { Sessions = _registry.ListSessions() };
+            SessionInfo[] sessions = _registry.ListSessions();
+            if (_windowlessSource is { } source)
+            {
+                var windowless = await source.ListAsync(cancellationToken).ConfigureAwait(false);
+                // A pane wins an id it shares with a daemon session (see the "Windowless sessions" section), so one
+                // session is never listed twice.
+                SessionInfo[] rows = windowless
+                    .Where(s => !_registry.TryGet(s.SessionId, out _))
+                    .Select(ToSessionInfo)
+                    .ToArray();
+                if (rows.Length > 0)
+                {
+                    sessions = [.. sessions, .. rows];
+                    _journal.Record(AgentHostProtocol.Methods.ListSessions, null, WindowlessTarget, "ok");
+                }
+            }
+
+            var result = new ListSessionsResult { Sessions = sessions };
             return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ListSessionsResult));
         }
 
-        private AgentHostResponse HandleReadScreen(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleReadScreenAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             var p = DeserializeParams(request, AgentHostJsonContext.Default.ReadScreenParams);
             if (p == null)
@@ -1372,18 +1519,31 @@ namespace Ntilde.AgentHost
             }
             if (!_registry.TryGet(p.PaneId, out var registration))
             {
+                if (_windowlessSource is { } source)
+                {
+                    return await WindowlessReadScreenAsync(request, source, p, cancellationToken).ConfigureAwait(false);
+                }
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
             TryNoteRead(registration);
-            var buffer = registration.Buffer;
+            return Ok(request.Id, ScreenResult(registration.Buffer, p.IncludeAttributes));
+        }
+
+        /// <summary>
+        /// The <c>readScreen</c> result for <paramref name="buffer"/>: a pane's, or the private buffer a windowless
+        /// session's screen was imported into. Read under the buffer's read lock, through the deterministic
+        /// <see cref="BufferSnapshot"/> path.
+        /// </summary>
+        private static JsonElement ScreenResult(TerminalBuffer buffer, bool includeAttributes)
+        {
             BufferSnapshot snapshot;
             bool cursorVisible;
             int rows, cols;
             buffer.Lock.EnterReadLock();
             try
             {
-                snapshot = BufferSnapshot.Capture(buffer, p.IncludeAttributes);
+                snapshot = BufferSnapshot.Capture(buffer, includeAttributes);
                 cursorVisible = buffer.IsCursorVisible;
                 rows = buffer.Rows;
                 cols = buffer.Cols;
@@ -1403,10 +1563,10 @@ namespace Ntilde.AgentHost
                 Rows = rows,
                 Cols = cols,
             };
-            return Ok(request.Id, JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.ScreenSnapshotDto));
+            return JsonSerializer.SerializeToElement(dto, AgentHostJsonContext.Default.ScreenSnapshotDto);
         }
 
-        private AgentHostResponse HandleReadScrollback(AgentHostRequest request)
+        private async Task<AgentHostResponse> HandleReadScrollbackAsync(AgentHostRequest request, CancellationToken cancellationToken)
         {
             var p = DeserializeParams(request, AgentHostJsonContext.Default.ReadScrollbackParams);
             if (p == null)
@@ -1415,11 +1575,23 @@ namespace Ntilde.AgentHost
             }
             if (!_registry.TryGet(p.PaneId, out var registration))
             {
+                if (_windowlessSource is { } source)
+                {
+                    return await WindowlessScrollbackAsync(request, source, p, cancellationToken).ConfigureAwait(false);
+                }
                 return Error(request.Id, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{p.PaneId}'.");
             }
 
             TryNoteRead(registration);
-            var buffer = registration.Buffer;
+            return Ok(request.Id, ScrollbackResult(registration.Buffer, p.StartLine, p.MaxLines));
+        }
+
+        /// <summary>
+        /// One page of <paramref name="buffer"/>'s scrollback, oldest line = 0, as the <c>readScrollback</c> result: a
+        /// pane's buffer, or a windowless session's imported one. Read under the buffer's read lock.
+        /// </summary>
+        private static JsonElement ScrollbackResult(TerminalBuffer buffer, int startLine, int maxLines)
+        {
             string[] lines;
             int effectiveStart;
             int total;
@@ -1427,8 +1599,8 @@ namespace Ntilde.AgentHost
             try
             {
                 total = buffer.Scrollback.Count;
-                effectiveStart = Math.Clamp(p.StartLine, 0, total);
-                var count = Math.Clamp(p.MaxLines, 0, AgentHostProtocol.MaxScrollbackLinesPerRequest);
+                effectiveStart = Math.Clamp(startLine, 0, total);
+                var count = Math.Clamp(maxLines, 0, AgentHostProtocol.MaxScrollbackLinesPerRequest);
                 count = Math.Min(count, total - effectiveStart);
 
                 lines = new string[count];
@@ -1451,8 +1623,281 @@ namespace Ntilde.AgentHost
                 StartLine = effectiveStart,
                 TotalLines = total,
             };
-            return Ok(request.Id, JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ReadScrollbackResult));
+            return JsonSerializer.SerializeToElement(result, AgentHostJsonContext.Default.ReadScrollbackResult);
         }
+
+        // ── Windowless sessions (Phase 5 spec §3, rulings R4 and R5) ────────
+        //
+        // A windowless session is a multiplexer daemon session no pane of the window shows (MainWindow's
+        // IWindowlessSessionSource, published with its other bridges and cleared on Stop). Its paneId on the wire is its
+        // mux session id. Each per-session handler asks the registry first and comes here only for an id no pane has,
+        // so a pane id never reaches the source; were a daemon session ever to share a pane's id (both are random
+        // GUIDs), the pane would win.
+        //
+        // Reads of a windowless session are journaled, unlike pane reads, and light the window (WindowlessWatched):
+        // there is no pane indicator to show them (R5). A read whose id no daemon has named no session and records
+        // nothing. Acts need the act toggle and, on a remote endpoint, that SSH profile's allowlist, for input and kill
+        // alike (R5); the check runs inside the source's own look-up (MayActOnEndpoint), so check and act share one
+        // survey of the daemons and one time budget.
+        //
+        // Known limits, by design:
+        // - Scrollback is the newest MuxReadScreenLimits.MaxScrollbackRows (2000) rows the daemon holds: one read
+        //   carries no more, and readScrollback pages within that read.
+        // - Status is heuristic (the daemon's child-process probe and the alt screen); there is no status machine, so
+        //   waitForEvents reports nothing for these sessions.
+        // - Render capture borrows a pane's font metrics and theme: the session was never measured.
+        // - A brand-new remote tab whose spawn is still running holds no session id yet, so for a call or so its shell
+        //   can be listed (and read) as windowless.
+        // - Every source call ends within the source's own budget (7 s), inside the MCP server's 10 s round trip; one
+        //   that runs out is sessionNotFound, saying a daemon did not answer in time.
+        //
+        // The source can finish a call on the UI thread (the window says which sessions its panes show). The awaits on
+        // it are ConfigureAwait(false), and the runtime never inlines such a continuation on a thread that has a
+        // SynchronizationContext, as the UI thread does: the import, render and file write below run on the pool.
+
+        /// <summary>The journal's target for a windowless session.</summary>
+        private const string WindowlessTarget = "windowless";
+
+        private static SessionInfo ToSessionInfo(WindowlessSessionInfo session) => new()
+        {
+            PaneId = session.SessionId,
+            Title = session.Title,
+            ProfileName = session.HostDisplayName,
+            Kind = session.SshProfileId is null ? "local" : "ssh",
+            Rows = session.Rows,
+            Cols = session.Cols,
+            IsActive = false,
+            Windowless = true,
+            Endpoint = session.Endpoint,
+            // No status machine: the daemon's exit is the one status known without a read.
+            Status = session.Running ? null : AgentHostProtocol.StatusKinds.Exited,
+            Confidence = session.Running ? null : AgentHostProtocol.StatusConfidences.Heuristic,
+        };
+
+        private async Task<AgentHostResponse> WindowlessReadScreenAsync(
+            AgentHostRequest request, IWindowlessSessionSource source, ReadScreenParams p, CancellationToken cancellationToken)
+        {
+            var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
+            var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScreen, screen);
+            return WindowlessRead(request, AgentHostProtocol.Methods.ReadScreen, p.PaneId, screen,
+                failure ?? Ok(request.Id, ScreenResult(buffer!, p.IncludeAttributes)));
+        }
+
+        private async Task<AgentHostResponse> WindowlessScrollbackAsync(
+            AgentHostRequest request, IWindowlessSessionSource source, ReadScrollbackParams p, CancellationToken cancellationToken)
+        {
+            var screen = await source.ReadScreenAsync(
+                p.PaneId, Ntilde.Mux.Contracts.MuxReadScreenLimits.MaxScrollbackRows, cancellationToken).ConfigureAwait(false);
+            var (buffer, failure) = ImportScreen(request.Id, p.PaneId, AgentHostProtocol.Methods.ReadScrollback, screen);
+            return WindowlessRead(request, AgentHostProtocol.Methods.ReadScrollback, p.PaneId, screen,
+                failure ?? Ok(request.Id, ScrollbackResult(buffer!, p.StartLine, p.MaxLines)));
+        }
+
+        private async Task<AgentHostResponse> WindowlessStatusAsync(
+            AgentHostRequest request, IWindowlessSessionSource source, Guid sessionId, CancellationToken cancellationToken)
+        {
+            // The status comes with a read of the screen (the alt screen is part of it); an old daemon's comes from
+            // sessionInfo instead, with no screen.
+            var screen = await source.ReadScreenAsync(sessionId, 0, cancellationToken).ConfigureAwait(false);
+            AgentHostResponse response;
+            if (screen.Outcome is WindowlessOutcome.Ok or WindowlessOutcome.Unsupported && screen.Status is { } status)
+            {
+                response = Ok(request.Id, JsonSerializer.SerializeToElement(
+                    WindowlessStatus(sessionId, status, screen.Snapshot?.IsAltScreenActive == true),
+                    AgentHostJsonContext.Default.SessionStatusDto));
+            }
+            else if (screen.Outcome == WindowlessOutcome.NotRunning && screen.Session is { } session)
+            {
+                // Listed, then gone from its daemon before the read: it has exited.
+                response = Ok(request.Id, JsonSerializer.SerializeToElement(
+                    WindowlessStatus(sessionId, new MuxReadScreenResult { Running = false, ExitCode = session.ExitCode }, altScreen: false),
+                    AgentHostJsonContext.Default.SessionStatusDto));
+            }
+            else
+            {
+                response = WindowlessError(request.Id, sessionId, AgentHostProtocol.Methods.GetSessionStatus,
+                    screen.Outcome == WindowlessOutcome.Ok ? WindowlessOutcome.Unreachable : screen.Outcome);
+            }
+            return WindowlessRead(request, AgentHostProtocol.Methods.GetSessionStatus, sessionId, screen, response);
+        }
+
+        /// <summary>
+        /// A windowless session's status from its daemon's facts: exited when it is not running; running while it has
+        /// child processes or a full-screen app (the alt screen) up; otherwise at a prompt. Always heuristic, never
+        /// stalled, and both timestamps are the daemon's last output (0 before any).
+        /// </summary>
+        internal static SessionStatusDto WindowlessStatus(Guid sessionId, MuxReadScreenResult status, bool altScreen)
+        {
+            long lastOutputMs = status.LastOutputUnixMs ?? 0;
+            return new SessionStatusDto
+            {
+                PaneId = sessionId,
+                Status = !status.Running
+                    ? AgentHostProtocol.StatusKinds.Exited
+                    : status.HasActiveChildProcesses || altScreen
+                        ? AgentHostProtocol.StatusKinds.Running
+                        : AgentHostProtocol.StatusKinds.AwaitingInput,
+                Confidence = AgentHostProtocol.StatusConfidences.Heuristic,
+                ExitCode = status.ExitCode,
+                StatusSinceMs = lastOutputMs,
+                LastOutputAtMs = lastOutputMs,
+                IsStalled = false,
+                StallThresholdSeconds = AgentSessionStatusMachine.StallThresholdSeconds,
+                IdleThresholdSeconds = AgentSessionStatusMachine.IdleThresholdSeconds,
+            };
+        }
+
+        private async Task<AgentHostResponse> WindowlessCaptureAsync(
+            AgentHostRequest request, IWindowlessSessionSource source, CaptureScreenParams p, bool live, int maxWidth, double scale,
+            CancellationToken cancellationToken)
+        {
+            const string method = AgentHostProtocol.Methods.CaptureScreen;
+            var inputs = live ? null : BorrowRenderInputs();
+            if (inputs is not { } render)
+            {
+                // Nothing will be drawn, so nothing is read: the look-up alone says whether there is such a session.
+                var (outcome, _) = await source.ResolveAsync(p.PaneId, cancellationToken).ConfigureAwait(false);
+                if (outcome != WindowlessOutcome.Ok)
+                {
+                    return WindowlessError(request.Id, p.PaneId, method, outcome);
+                }
+                return Journaled(request, method, p.PaneId, WindowlessTarget, Error(request.Id, AgentHostProtocol.ErrorCodes.CaptureUnavailable, live
+                    ? "A windowless session has no window to capture. Use mode 'render', which draws it from its screen."
+                    : "There is no open pane to take font metrics from, so this windowless session cannot be rendered. Open a tab, then retry; ntilde.read_screen works regardless."));
+            }
+
+            var screen = await source.ReadScreenAsync(p.PaneId, 0, cancellationToken).ConfigureAwait(false);
+            var (buffer, failure) = ImportScreen(request.Id, p.PaneId, method, screen, render.Theme);
+            if (failure != null)
+            {
+                return WindowlessRead(request, method, p.PaneId, screen, failure);
+            }
+
+            if (!AgentSessionRegistration.TryRenderPng(buffer!, render.Parameters, maxWidth, scale, out var capture, out var captureError))
+            {
+                var message = captureError == AgentCaptureError.TooLarge
+                    ? $"This session would render larger than the {AgentHostProtocol.MaxCapturePixels:N0}-pixel per-capture budget at scale {scale:0.##}. Lower the scale."
+                    : "This session's screen could not be rendered right now. Retry shortly; ntilde.read_screen works regardless.";
+                return WindowlessRead(request, method, p.PaneId, screen, Error(request.Id, AgentHostProtocol.ErrorCodes.CaptureUnavailable, message));
+            }
+
+            return WindowlessRead(request, method, p.PaneId, screen, CaptureResult(
+                request, capture.Png, capture.Width, capture.Height, capture.Cols, capture.Rows, capture.Downscaled,
+                live: false, scale, p.Inline));
+        }
+
+        /// <summary>
+        /// What a windowless render borrows, since the session was never measured: the active pane's font metrics and
+        /// theme, else any measured pane's. Null when no pane has been measured.
+        /// </summary>
+        private (PaneRenderParameters Parameters, TerminalTheme Theme)? BorrowRenderInputs()
+        {
+            PaneRenderParameters? borrowed = null;
+            TerminalBuffer? themeFrom = null;
+            foreach (var registration in _registry.GetRegistrations())
+            {
+                if (registration.RenderParameters is not { IsUsable: true } parameters) continue;
+                borrowed = parameters;
+                themeFrom = registration.Buffer;
+                if (registration.IsActive) break;
+            }
+            if (borrowed is not { } found || themeFrom is null) return null;
+
+            TerminalTheme theme;
+            themeFrom.Lock.EnterReadLock();
+            try
+            {
+                theme = themeFrom.Theme;
+            }
+            finally
+            {
+                themeFrom.Lock.ExitReadLock();
+            }
+            return (found, theme);
+        }
+
+        /// <summary>
+        /// A read's screen in a private buffer of its own, or the response saying why there is none. The buffer takes
+        /// <paramref name="theme"/> (a render's borrowed one) before the import.
+        /// </summary>
+        private static (TerminalBuffer? Buffer, AgentHostResponse? Failure) ImportScreen(
+            long requestId, Guid sessionId, string method, WindowlessScreen screen, TerminalTheme? theme = null)
+        {
+            if (screen.Outcome != WindowlessOutcome.Ok || screen.Snapshot is not { } snapshot)
+            {
+                var outcome = screen.Outcome == WindowlessOutcome.Ok ? WindowlessOutcome.Unreachable : screen.Outcome;
+                return (null, WindowlessError(requestId, sessionId, method, outcome));
+            }
+
+            try
+            {
+                var buffer = new TerminalBuffer(snapshot.Cols, snapshot.Rows);
+                if (theme != null)
+                {
+                    buffer.Theme = theme;
+                }
+                buffer.ImportState(snapshot);
+                return (buffer, null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AgentHost] windowless screen of {sessionId} could not be imported: {ex}");
+                return (null, Error(requestId, AgentHostProtocol.ErrorCodes.Internal,
+                    $"The daemon's copy of this session's screen could not be read: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// The end of every windowless read: journaled when the source found the session (R5), whatever the outcome,
+        /// and lighting the window when the read succeeded. A read of an id no daemon has named no session, and
+        /// records nothing.
+        /// </summary>
+        private AgentHostResponse WindowlessRead(AgentHostRequest request, string method, Guid sessionId, WindowlessScreen screen, AgentHostResponse response)
+        {
+            if (screen.Session is null)
+            {
+                return response;
+            }
+            if (response.Error is null)
+            {
+                NoteWindowlessRead();
+            }
+            return Journaled(request, method, sessionId, WindowlessTarget, response);
+        }
+
+        /// <summary>
+        /// The act check a windowless act hands its source (R5): a session on this computer needs the act toggle alone;
+        /// one on an SSH host needs that profile allowlisted, as an SSH pane does. The source calls it synchronously on
+        /// whichever thread it resumed on, the UI thread possibly: the probe (MainWindow.IsSshProfileAgentAllowed) reads
+        /// the SSH profile store, which takes its own lock around a small file read and never waits on the dispatcher,
+        /// and both it and <see cref="AllowsAgentActOnProfile"/> fail closed.
+        /// </summary>
+        private bool MayActOnEndpoint(Guid? sshProfileId) => sshProfileId is not { } profileId || AllowsAgentActOnProfile(profileId);
+
+        /// <summary>
+        /// The journal's target for a windowless act: <see cref="WindowlessTarget"/> once the source took it on, or the
+        /// pane path's <paramref name="notFoundTarget"/> for an id no daemon has.
+        /// </summary>
+        private static string WindowlessActTarget(WindowlessOutcome outcome, string notFoundTarget)
+            => outcome == WindowlessOutcome.NotFound ? notFoundTarget : WindowlessTarget;
+
+        /// <summary>A windowless call's failure as the protocol error the agent sees.</summary>
+        private static AgentHostResponse WindowlessError(long requestId, Guid sessionId, string method, WindowlessOutcome outcome) => outcome switch
+        {
+            WindowlessOutcome.Unsupported => Error(requestId, AgentHostProtocol.ErrorCodes.Unsupported,
+                "The multiplexer daemon that holds this session is too old to read its screen. Its status is still available from ntilde.get_session_status; a daemon started by a newer ntilde can read it."),
+            WindowlessOutcome.NotRunning => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotRunning, method switch
+            {
+                AgentHostProtocol.Methods.SendInput => "The session is not accepting input (its process has exited).",
+                AgentHostProtocol.Methods.CloseSession => "The session has already exited, so there is nothing to close.",
+                _ => "The session has ended, and its daemon no longer holds its screen.",
+            }),
+            WindowlessOutcome.NotAllowed => Error(requestId, AgentHostProtocol.ErrorCodes.ProfileNotAllowed,
+                "This windowless session runs on an SSH host whose profile is not allowlisted for agent access. Enable it in the connection's settings, then retry."),
+            WindowlessOutcome.Unreachable => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotFound,
+                $"No session with paneId '{sessionId}' could be reached: a multiplexer daemon did not answer in time. Retry shortly."),
+            _ => Error(requestId, AgentHostProtocol.ErrorCodes.SessionNotFound, $"No live session with paneId '{sessionId}'."),
+        };
 
         /// <summary>
         /// Same text semantics as <see cref="BufferSnapshot.Capture"/>: skip wide

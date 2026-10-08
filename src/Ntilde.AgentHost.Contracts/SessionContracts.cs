@@ -2,7 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace Ntilde.AgentHost.Contracts;
 
-/// <summary>One live terminal session (pane) as reported by <c>listSessions</c>.</summary>
+/// <summary>
+/// One live terminal session as reported by <c>listSessions</c>: a pane, or a windowless session (a multiplexer
+/// session no pane of the window shows; <see cref="Windowless"/> is true and <see cref="PaneId"/> is its mux session id).
+/// </summary>
 public sealed record SessionInfo
 {
     [JsonPropertyName("paneId")]
@@ -49,6 +52,20 @@ public sealed record SessionInfo
     /// <summary>How the status was derived (<see cref="AgentHostProtocol.StatusConfidences"/>); null when status is null.</summary>
     [JsonPropertyName("confidence")]
     public string? Confidence { get; init; }
+
+    /// <summary>
+    /// True for a windowless session: one running in a multiplexer daemon (this computer's, or a connected SSH host's)
+    /// that no pane of the window shows. Its <see cref="PaneId"/> is its mux session id, and every per-session method
+    /// takes it. Null for a pane, so a pane's row is unchanged on the wire (WhenWritingNull).
+    /// </summary>
+    [JsonPropertyName("windowless")]
+    public bool? Windowless { get; init; }
+
+    /// <summary>
+    /// A windowless session's daemon: <c>local</c>, or <c>ssh:</c> and the SSH profile id. Null for a pane.
+    /// </summary>
+    [JsonPropertyName("endpoint")]
+    public string? Endpoint { get; init; }
 }
 
 /// <summary>Result payload for <c>listSessions</c>.</summary>
@@ -236,7 +253,10 @@ public sealed record ReadScrollbackResult
     [JsonPropertyName("startLine")]
     public required int StartLine { get; init; }
 
-    /// <summary>Total scrollback lines available at capture time.</summary>
+    /// <summary>
+    /// Total scrollback lines available at capture time. For a windowless session (<see cref="SessionInfo.Windowless"/>)
+    /// that is at most the newest 2000 rows its daemon holds, the most one read of it carries.
+    /// </summary>
     [JsonPropertyName("totalLines")]
     public required int TotalLines { get; init; }
 }

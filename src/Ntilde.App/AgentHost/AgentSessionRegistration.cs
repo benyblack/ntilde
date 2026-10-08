@@ -411,15 +411,33 @@ namespace Ntilde.AgentHost
         /// </summary>
         public bool TryCapturePng(int maxWidth, double scale, out AgentCaptureInfo info, out AgentCaptureError error)
         {
+            if (RenderParameters is not { } parameters || !parameters.IsUsable)
+            {
+                info = default;
+                error = AgentCaptureError.Unavailable;
+                return false;
+            }
+
+            return TryRenderPng(Buffer, parameters, maxWidth, scale, out info, out error);
+        }
+
+        /// <summary>
+        /// The render behind <see cref="TryCapturePng"/>, for any buffer: a pane's, or the private buffer a windowless
+        /// session's screen was imported into (Phase 5 §3), drawn with a pane's <paramref name="parameters"/>. Off the UI
+        /// thread; takes the buffer's read lock only for the values it needs.
+        /// </summary>
+        internal static bool TryRenderPng(
+            TerminalBuffer buffer, PaneRenderParameters parameters, int maxWidth, double scale,
+            out AgentCaptureInfo info, out AgentCaptureError error)
+        {
             info = default;
             error = AgentCaptureError.Unavailable;
 
-            if (RenderParameters is not { } parameters || !parameters.IsUsable)
+            if (!parameters.IsUsable)
             {
                 return false;
             }
 
-            var buffer = Buffer;
             int cols, rows;
             bool cursorVisible;
             buffer.Lock.EnterReadLock();
