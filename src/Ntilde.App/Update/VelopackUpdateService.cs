@@ -11,7 +11,7 @@ namespace Ntilde.Update
 {
     /// <summary>
     /// <see cref="IUpdateService"/> over Velopack, reading releases straight off this repo's
-    /// GitHub releases.
+    /// GitHub releases - or, for a verification run, off the local feed <see cref="UpdateSourceOverride"/> names.
     /// </summary>
     /// <remarks>
     /// This is the only file in the app that names a Velopack type besides the
@@ -25,6 +25,9 @@ namespace Ntilde.Update
         // execute new code from" into a user- or file-controlled value. Compiling it in is the
         // security property, not an oversight. Splitting it into concatenated parts would satisfy
         // the analyzer while making the code worse, so suppress it here with the reason attached.
+        // NTILDE_UPDATE_SOURCE_DIR (UpdateSourceOverride) is no exception to that: a verification hook read from the
+        // process environment only, never from a setting or a file, and whoever can set it can already replace the
+        // binaries in the user's own install folder.
         [SuppressMessage("Minor Code Smell", "S1075:URIs should not be hardcoded",
             Justification = "The update feed's origin is a trust anchor and must not be configurable.")]
         public const string DefaultRepoUrl = "https://github.com/benyblack/ntilde";
@@ -109,7 +112,26 @@ namespace Ntilde.Update
             var locator = VelopackLocator.IsCurrentSet
                 ? VelopackLocator.Current
                 : VelopackLocator.CreateDefaultForPlatform(null, null);
-            _manager = new UpdateManager(new GithubSource(repoUrl, null, false), BuildUpdateOptions(), locator);
+            _manager = new UpdateManager(CreateSource(repoUrl, Environment.GetEnvironmentVariable(UpdateSourceOverride.Variable), log), BuildUpdateOptions(), locator);
+        }
+
+        /// <summary>
+        /// Where updates come from: the local feed directory <paramref name="sourceDirectoryValue"/> names (the value of
+        /// <see cref="UpdateSourceOverride.Variable"/>, a verification hook), else <paramref name="repoUrl"/>'s GitHub
+        /// releases. What was chosen goes to <paramref name="log"/> whenever the variable is set, and nothing when it is not.
+        /// </summary>
+        internal static IUpdateSource CreateSource(string repoUrl, string? sourceDirectoryValue, Action<string> log)
+        {
+            ArgumentNullException.ThrowIfNull(log);
+            string? localFeed = UpdateSourceOverride.Resolve(sourceDirectoryValue, out string? note);
+            if (note is not null)
+            {
+                log(note);
+            }
+
+            return localFeed is null
+                ? new GithubSource(repoUrl, null, false)
+                : new SimpleFileSource(new System.IO.DirectoryInfo(localFeed));
         }
 
         /// <summary>

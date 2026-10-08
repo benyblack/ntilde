@@ -134,6 +134,12 @@ class Program
             TerminalLogger.Log("Ntilde started with args: " + string.Join(" ", args));
             TerminalLogger.Log("Log file path: " + AppLogger.GetLogFilePath());
             TerminalLogger.Log("Build: " + DescribeBuild());
+
+            // A verification run's local update feed (NTILDE_UPDATE_SOURCE_DIR), or a value of it that is ignored: said
+            // at startup, before any update check, so the log never hides where updates come from.
+            _ = Ntilde.Update.UpdateSourceOverride.Resolve(out string? updateSourceNote);
+            if (updateSourceNote is not null) TerminalLogger.Log(updateSourceNote);
+
             StartupPerformanceTracker.StartNewCurrent();
 
             // GUI path only (CLI and installer-hook invocations returned above), and not from App:

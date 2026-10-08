@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Ntilde.Update;
+using Velopack.Sources;
 
 namespace Ntilde.AppTests.Update;
 
@@ -93,5 +94,79 @@ public class VelopackUpdateServiceTests
     public void Resolves_no_explicit_channel_for_unpublished_architectures(Architecture architecture)
     {
         Assert.Null(VelopackUpdateService.ResolveExplicitChannel(true, architecture));
+    }
+
+    // NTILDE_UPDATE_SOURCE_DIR (Phase 5 Task 24): the verification hook that points the updater at a local
+    // Velopack feed. The variable's value is passed in, so no test touches this process's environment.
+
+    [Fact]
+    public void A_local_update_directory_replaces_github_and_is_logged()
+    {
+        DirectoryInfo feed = Directory.CreateTempSubdirectory("ntilde-feed-");
+        try
+        {
+            var log = new List<string>();
+
+            IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, feed.FullName, log.Add);
+
+            SimpleFileSource local = Assert.IsType<SimpleFileSource>(source);
+            Assert.Equal(feed.FullName, local.BaseDirectory.FullName);
+            string line = Assert.Single(log);
+            Assert.Contains(UpdateSourceOverride.Variable, line, StringComparison.Ordinal);
+            Assert.Contains(feed.FullName, line, StringComparison.Ordinal);
+        }
+        finally
+        {
+            feed.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Without_the_variable_updates_come_from_github_and_nothing_is_logged()
+    {
+        var log = new List<string>();
+
+        IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, null, log.Add);
+
+        GithubSource github = Assert.IsType<GithubSource>(source);
+        Assert.Equal(new Uri(VelopackUpdateService.DefaultRepoUrl), github.RepoUri);
+        Assert.Empty(log);
+    }
+
+    /// <summary>
+    /// A value that names no directory - blank, missing, or a file - is a mistake in a verification run, not a feed:
+    /// updates stay on GitHub, and the log says the variable was ignored, so the run does not quietly test the wrong feed.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("missing")]
+    [InlineData("file")]
+    public void A_value_naming_no_directory_falls_back_to_github_and_says_so(string kind)
+    {
+        DirectoryInfo scratch = Directory.CreateTempSubdirectory("ntilde-feed-");
+        try
+        {
+            string file = Path.Combine(scratch.FullName, "releases.win.json");
+            File.WriteAllText(file, "{}");
+            string value = kind switch
+            {
+                "missing" => Path.Combine(scratch.FullName, "no-such-feed"),
+                "file" => file,
+                _ => kind,
+            };
+            var log = new List<string>();
+
+            IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, value, log.Add);
+
+            Assert.IsType<GithubSource>(source);
+            string line = Assert.Single(log);
+            Assert.Contains(UpdateSourceOverride.Variable, line, StringComparison.Ordinal);
+            Assert.Contains("GitHub", line, StringComparison.Ordinal);
+        }
+        finally
+        {
+            scratch.Delete(recursive: true);
+        }
     }
 }

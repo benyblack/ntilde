@@ -112,6 +112,16 @@ All paths are properties of
 | `logs\` | `debug.log`, `startup_error.txt`, `workspace_audit.log`, … |
 | `bin\<version>\` | Windows installs only: the local multiplexer daemon's own copy of `Ntilde.exe`, the DLLs beside it and `<arch>\OpenConsole.exe` (`MuxDaemonImage`, not an `AppPaths` member). A Velopack update kills every process whose image is under the install root, so the daemon runs from here instead. One folder per version (`<version>-<n>` after another build under the same version), each with a `.complete` list written last: its files' sizes and the executable's SHA-256; `.<version>.<guid>.tmp\` folders are copies being staged. About 75 MB per version (0.11.0's AOT bundle). A launch deletes other versions' folders once no daemon runs from them; uninstall stops the daemon and deletes them all. Only copy-shaped folders are ever deleted (a version's name plus `.complete`, or `.<version>.<32-hex guid>.tmp`); anything else here, and any junction or link, is left alone. Not backed up; safe to delete when no daemon runs |
 
+## Environment variables
+
+Two variables change where Ntilde reads and writes. Both are read from the process environment
+only, never from `settings.json` or any other file.
+
+| Variable | Effect |
+|---|---|
+| `NTILDE_APPDATA_ROOT` | Replaces the config root (see Constraints). Tests, portable setups and sandboxed verification runs use it to point the app, its multiplexer daemon and the MCP server at a scratch folder. Every process of such a run must see it, including the ones Velopack starts. Its install, update and uninstall hooks and the restart after an apply all inherit the environment of whatever started `Setup.exe`, `Update.exe` or the app (measured with Velopack 1.2.0 on Windows in Phase 5 Task 24). |
+| `NTILDE_UPDATE_SOURCE_DIR` | **A verification hook.** When it names a directory, the updater reads that local Velopack feed (`releases.<channel>.json` and the packages `vpk pack` writes beside it) instead of this repository's GitHub releases (`UpdateSourceOverride`, `VelopackUpdateService`). A value that is blank or names no directory is ignored, and updates come from GitHub. When the variable is set, the app logs which source it uses, at startup and again when the updater is built; unset, it logs nothing. `scripts/mux-update-survival.ps1` uses it to apply a real update to a sandboxed install. It is not a setting: for users, the feed's origin stays compiled in, and whoever can set a user's environment can already replace the binaries in that user's install folder. |
+
 ## Constraints
 
 **Resolve paths through `AppPaths`, never a hardcoded `%LocalAppData%\Ntilde`.**
