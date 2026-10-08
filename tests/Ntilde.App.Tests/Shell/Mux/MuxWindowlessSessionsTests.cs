@@ -60,22 +60,26 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
         await Task.Run(() => host.GetClient(TimeSpan.FromSeconds(10)), Ct)
         ?? throw new InvalidOperationException($"{host.Endpoint} did not connect: {host.LastFailure?.Message}");
 
-    private MuxWindowlessSessions Source(MuxConnectionHosts hosts) =>
-        new(hosts, () => Task.FromResult<IReadOnlySet<(string Endpoint, Guid Id)>>(new HashSet<(string, Guid)>(_shown)), _log.Enqueue);
+    /// <summary>The source, asking <paramref name="shownHere"/> what the window's panes show; by default the <see cref="_shown"/> stub.</summary>
+    private MuxWindowlessSessions Source(MuxConnectionHosts hosts, Func<Task<IReadOnlySet<(string Endpoint, Guid Id)>>>? shownHere = null) =>
+        new(hosts, shownHere ?? (() => Task.FromResult<IReadOnlySet<(string Endpoint, Guid Id)>>(new HashSet<(string, Guid)>(_shown))), _log.Enqueue);
 
     /// <summary>
     /// The window most tests need: connected to the local daemon and to the remote endpoint of <see cref="_profileId"/>.
     /// The clients returned are the test's own, to spawn with; the hosts' clients are the window's.
     /// </summary>
-    private async Task<(MuxWindowlessSessions Source, MuxClient Local, MuxClient Remote)> ConnectedAsync()
+    private async Task<(MuxWindowlessSessions Source, MuxClient Local, MuxClient Remote)> ConnectedAsync(
+        Func<Task<IReadOnlySet<(string Endpoint, Guid Id)>>>? shownHere = null)
     {
         MuxConnectionHost local = LocalHost(To(_localMux));
         MuxConnectionHost remote = RemoteHost(To(_remoteMux));
         MuxConnectionHosts hosts = Hosts(local, (MuxEndpointId.ForSsh(_profileId), remote));
         await ConnectAsync(local);
         await ConnectAsync(remote);
-        return (Source(hosts), await _localMux.ConnectClientAsync(), await _remoteMux.ConnectClientAsync());
+        return (Source(hosts, shownHere), await _localMux.ConnectClientAsync(), await _remoteMux.ConnectClientAsync());
     }
+
+    private static readonly Func<Guid?, bool> Allowed = _ => true;
 
     private static async Task FaultAsync(MuxTestHost mux, Guid id)
     {
@@ -171,7 +175,7 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
     [Fact]
     public async Task A_daemon_that_never_answers_costs_one_call_timeout_and_the_others_are_still_listed()
     {
-        var hung = new ScriptedDaemon(answer: null); // reads every request, answers none
+        var hung = ScriptedDaemon.Answering(_ => null); // reads every request, answers none
         _owned.Add(hung);
         MuxConnectionHost local = LocalHost(To(_localMux));
         MuxConnectionHost remote = RemoteHost(ct => hung.ConnectAsync(2, ct), "hung");
@@ -189,16 +193,181 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
 
         Assert.Equal([onLocal], (await listing).Select(s => s.SessionId));
         Assert.Equal((WindowlessOutcome.Unreachable, (Guid?)null), await lookUp);
-        Assert.True(took < TimeSpan.FromSeconds(4.5), $"the calls took {took}");
+        // Both calls asked both daemons at once: together they cost one call timeout, not one per daemon or per call.
+        Assert.True(took < 2 * MuxWindowlessSessions.CallTimeout, $"the calls took {took}");
         Assert.True(took >= TimeSpan.FromSeconds(3.5), $"the calls took {took}: shorter than the call timeout");
-        Assert.Equal(2, _log.Count(l => l.Contains("hung", StringComparison.Ordinal))); // once per call
+        string[] lines = [.. _log.Where(l => l.Contains("hung", StringComparison.Ordinal))];
+        Assert.Equal(2, lines.Length); // once per call
+        Assert.All(lines, l => Assert.Contains("no answer within 4 s", l, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Fix round 1: one budget per operation, however slowly the daemons answer. A half-open remote link costs every
+    /// look-up a whole call timeout; then the session's own daemon refuses each read as too large only after a second, is
+    /// slow to say it has no readScreen, and never answers sessionInfo or a kill. Every operation still ends within the
+    /// budget (and a little), Unreachable, the read logging its spent budget once.
+    /// </summary>
+    [Fact]
+    public async Task Every_operation_ends_within_its_budget_however_slowly_the_daemons_answer()
+    {
+        Guid wide = Guid.NewGuid(), stalled = Guid.NewGuid(), old = Guid.NewGuid();
+        var slow = new ScriptedDaemon(async request =>
+        {
+            switch (request.Method)
+            {
+                case MuxMethods.ListSessions:
+                    return Answer(new ListSessionsResult { Sessions = [Running(wide), Running(stalled), Running(old)] }, MuxJsonContext.Default.ListSessionsResult);
+                case MuxMethods.ReadScreen:
+                    Guid id = MuxFrames.ParseParams(request.Params, MuxJsonContext.Default.ReadScreenParams).SessionId;
+                    if (id == wide) return await After(TimeSpan.FromSeconds(1), Refuse(MuxErrorCodes.SnapshotTooLarge)); // at every size
+                    if (id == old) return await After(TimeSpan.FromSeconds(2.5), Refuse(MuxErrorCodes.ProtocolError)); // an older daemon
+                    return null;
+                default:
+                    return null; // sessionInfo, kill: never answered
+            }
+        });
+        var hung = ScriptedDaemon.Answering(_ => null);
+        _owned.Add(slow);
+        _owned.Add(hung);
+        MuxConnectionHost remote = RemoteHost(ct => hung.ConnectAsync(2, ct), "hung");
+        MuxConnectionHosts hosts = Hosts(LocalHost(ct => slow.ConnectAsync(2, ct)), (MuxEndpointId.ForSsh(_profileId), remote));
+        await ConnectAsync(hosts.Local);
+        await ConnectAsync(remote);
+        MuxWindowlessSessions source = Source(hosts);
+
+        var clock = Stopwatch.StartNew();
+        Task<(WindowlessScreen Result, TimeSpan Took)> readWide = TimedAsync(source.ReadScreenAsync(wide, 2000, Ct), clock);
+        Task<(WindowlessScreen Result, TimeSpan Took)> readStalled = TimedAsync(source.ReadScreenAsync(stalled, 0, Ct), clock);
+        Task<(WindowlessScreen Result, TimeSpan Took)> readOld = TimedAsync(source.ReadScreenAsync(old, 0, Ct), clock);
+        Task<(WindowlessOutcome Result, TimeSpan Took)> kill = TimedAsync(source.KillAsync(stalled, Allowed, Ct), clock);
+        // Input makes no daemon call after the look-up: an id no daemon that answered has may be on the hung one.
+        Task<(WindowlessOutcome Result, TimeSpan Took)> send = TimedAsync(source.SendInputAsync(Guid.NewGuid(), "x", Allowed, Ct), clock);
+        await Task.WhenAll(readWide, readStalled, readOld, kill, send);
+
+        var ceiling = TimeSpan.FromSeconds(9);
+        Assert.All(
+            new[] { ("read wide", (await readWide).Took), ("read stalled", (await readStalled).Took), ("read old", (await readOld).Took), ("kill", (await kill).Took), ("send", (await send).Took) },
+            t => Assert.True(t.Took < ceiling, $"{t.Item1} took {t.Took}"));
+        Assert.Equal(
+            [WindowlessOutcome.Unreachable, WindowlessOutcome.Unreachable, WindowlessOutcome.Unreachable, WindowlessOutcome.Unreachable, WindowlessOutcome.Unreachable],
+            new[] { (await readWide).Result.Outcome, (await readStalled).Result.Outcome, (await readOld).Result.Outcome, (await kill).Result, (await send).Result });
+        Assert.Single(_log, l => l.Contains(wide.ToString(), StringComparison.Ordinal));
+        Assert.Contains("budget", _log.Single(l => l.Contains(wide.ToString(), StringComparison.Ordinal)), StringComparison.Ordinal);
+    }
+
+    private static SessionSummary Running(Guid id) => new() { SessionId = id, Title = "slow", Command = "sh", Cols = 80, Rows = 24, Running = true };
+
+    private static async Task<MuxResponse?> After(TimeSpan delay, MuxResponse? response)
+    {
+        await Task.Delay(delay, Ct);
+        return response;
+    }
+
+    private static async Task<(T Result, TimeSpan Took)> TimedAsync<T>(Task<T> operation, Stopwatch clock)
+    {
+        T result = await operation;
+        return (result, clock.Elapsed);
+    }
+
+    /// <summary>
+    /// Fix round 1: the window is asked what its panes show once the listings are in, not alongside them, so a pane that
+    /// attached or spawned while they ran is counted.
+    /// </summary>
+    [Fact]
+    public async Task The_window_is_asked_what_its_panes_show_once_every_listing_is_in()
+    {
+        Guid id = Guid.NewGuid();
+        var daemon = new ScriptedDaemon(async request => request.Method == MuxMethods.ListSessions
+            ? await After(TimeSpan.FromMilliseconds(300), Answer(new ListSessionsResult { Sessions = [Running(id)] }, MuxJsonContext.Default.ListSessionsResult))
+            : Refuse(MuxErrorCodes.ProtocolError));
+        _owned.Add(daemon);
+        MuxConnectionHosts hosts = Hosts(LocalHost(ct => daemon.ConnectAsync(2, ct)));
+        await ConnectAsync(hosts.Local);
+        int answeredWhenAsked = -1;
+        MuxWindowlessSessions source = Source(hosts, () =>
+        {
+            answeredWhenAsked = daemon.Answered;
+            // A pane that spawned the session while the listing ran.
+            return Task.FromResult<IReadOnlySet<(string Endpoint, Guid Id)>>(new HashSet<(string, Guid)> { ("local", id) });
+        });
+
+        Assert.Empty(await source.ListAsync(Ct));
+        Assert.Equal(1, answeredWhenAsked);
+    }
+
+    [Fact]
+    public async Task A_window_that_fails_to_say_what_its_panes_show_offers_nothing()
+    {
+        (MuxWindowlessSessions source, MuxClient local, _) = await ConnectedAsync(() => throw new InvalidOperationException("the window is gone"));
+        Guid id = await MuxTestHost.SpawnAsync(local);
+
+        Assert.Empty(await source.ListAsync(Ct));
+        Assert.Equal((WindowlessOutcome.Unreachable, (Guid?)null), await source.ResolveAsync(id, Ct));
+        Assert.Equal(WindowlessOutcome.Unreachable, (await source.ReadScreenAsync(id, 0, Ct)).Outcome);
+        Assert.Equal(WindowlessOutcome.Unreachable, await source.SendInputAsync(id, "x", Allowed, Ct));
+        Assert.Equal(WindowlessOutcome.Unreachable, await source.KillAsync(id, Allowed, Ct));
+        Assert.Contains(id, _localMux.Server.GetSessionIds());
+    }
+
+    [Fact]
+    public async Task A_window_that_never_says_what_its_panes_show_offers_nothing_within_the_budget()
+    {
+        var never = new TaskCompletionSource<IReadOnlySet<(string Endpoint, Guid Id)>>();
+        (MuxWindowlessSessions source, MuxClient local, _) = await ConnectedAsync(() => never.Task);
+        Guid id = await MuxTestHost.SpawnAsync(local);
+
+        var clock = Stopwatch.StartNew();
+        Task<IReadOnlyList<WindowlessSessionInfo>> listing = source.ListAsync(Ct);
+        Task<(WindowlessOutcome, Guid?)> lookUp = source.ResolveAsync(id, Ct);
+        Task<WindowlessOutcome> send = source.SendInputAsync(id, "x", Allowed, Ct);
+        await Task.WhenAll(listing, lookUp, send);
+        TimeSpan took = clock.Elapsed;
+
+        Assert.True(took < TimeSpan.FromSeconds(9), $"the calls took {took}");
+        Assert.Empty(await listing);
+        Assert.Equal((WindowlessOutcome.Unreachable, (Guid?)null), await lookUp);
+        Assert.Equal(WindowlessOutcome.Unreachable, await send);
+    }
+
+    /// <summary>
+    /// Fix round 1, ruling R5: the act check rides the act's own look-up. It gets the endpoint's SSH profile (null for this
+    /// computer); refused - or throwing - nothing reaches the daemon.
+    /// </summary>
+    [Fact]
+    public async Task An_act_the_check_refuses_is_not_allowed_and_nothing_reaches_the_daemon()
+    {
+        (MuxWindowlessSessions source, MuxClient local, MuxClient remote) = await ConnectedAsync();
+        Guid onRemote = await MuxTestHost.SpawnAsync(remote);
+        Guid onLocal = await MuxTestHost.SpawnAsync(local);
+        var checkedProfiles = new ConcurrentQueue<Guid?>();
+        Func<Guid?, bool> refuse = profile =>
+        {
+            checkedProfiles.Enqueue(profile);
+            return false;
+        };
+
+        Assert.Equal(WindowlessOutcome.NotAllowed, await source.SendInputAsync(onRemote, "refused\r", refuse, Ct));
+        Assert.Equal(WindowlessOutcome.NotAllowed, await source.KillAsync(onRemote, refuse, Ct));
+        Assert.Equal(WindowlessOutcome.NotAllowed, await source.SendInputAsync(onLocal, "refused\r", refuse, Ct));
+        Assert.Equal(WindowlessOutcome.NotAllowed, await source.KillAsync(onLocal, refuse, Ct));
+        Assert.Equal(WindowlessOutcome.NotAllowed, await source.KillAsync(onRemote, _ => throw new InvalidOperationException("no profile store"), Ct));
+        Assert.Equal(new Guid?[] { _profileId, _profileId, null, null }, checkedProfiles);
+
+        // Allowed input on the same connection: once it is in, a refused one sent before it would be in too.
+        Assert.Equal(WindowlessOutcome.Ok, await source.SendInputAsync(onRemote, "allowed\r", Allowed, Ct));
+        await TestWait.UntilAsync(() => _remoteMux.Fake(onRemote).SentInput.Contains("allowed\r"), "the allowed input reached the shell");
+        Assert.Equal(["allowed\r"], _remoteMux.Fake(onRemote).SentInput.ToArray());
+        Assert.Contains(onRemote, _remoteMux.Server.GetSessionIds());
+        Assert.Contains(onLocal, _localMux.Server.GetSessionIds());
+        Assert.False(_remoteMux.Mux(onRemote).IsExited);
+        Assert.False(_localMux.Mux(onLocal).IsExited);
     }
 
     [Fact]
     public async Task A_read_from_a_daemon_without_readScreen_is_unsupported_with_the_status_sessionInfo_gives()
     {
         Guid id = Guid.NewGuid();
-        var old = new ScriptedDaemon(request => request.Method switch
+        var old = ScriptedDaemon.Answering(request => request.Method switch
         {
             MuxMethods.ListSessions => Answer(
                 new ListSessionsResult { Sessions = [new SessionSummary { SessionId = id, Title = "old", Command = "sh", Cols = 80, Rows = 24, Running = true }] },
@@ -283,9 +452,9 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
         Guid exited = await MuxTestHost.SpawnAsync(remote);
         await ExitAsync(_remoteMux, exited, 0);
 
-        Assert.Equal(WindowlessOutcome.NotRunning, await source.SendInputAsync(exited, "ls\r", Ct));
-        Assert.Equal(WindowlessOutcome.NotFound, await source.SendInputAsync(Guid.NewGuid(), "ls\r", Ct));
-        Assert.Equal(WindowlessOutcome.Ok, await source.SendInputAsync(running, "ls\r", Ct));
+        Assert.Equal(WindowlessOutcome.NotRunning, await source.SendInputAsync(exited, "ls\r", Allowed, Ct));
+        Assert.Equal(WindowlessOutcome.NotFound, await source.SendInputAsync(Guid.NewGuid(), "ls\r", Allowed, Ct));
+        Assert.Equal(WindowlessOutcome.Ok, await source.SendInputAsync(running, "ls\r", Allowed, Ct));
 
         await TestWait.UntilAsync(() => _remoteMux.Fake(running).SentInput.Contains("ls\r"), "the input reached the shell");
     }
@@ -299,37 +468,48 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
         Guid other = await MuxTestHost.SpawnAsync(remote);
         await ExitAsync(_remoteMux, exited, 0);
 
-        Assert.Equal(WindowlessOutcome.Ok, await source.KillAsync(killed, Ct));
-        Assert.Equal(WindowlessOutcome.NotRunning, await source.KillAsync(exited, Ct));
-        Assert.Equal(WindowlessOutcome.NotFound, await source.KillAsync(killed, Ct));
+        Assert.Equal(WindowlessOutcome.Ok, await source.KillAsync(killed, Allowed, Ct));
+        Assert.Equal(WindowlessOutcome.NotRunning, await source.KillAsync(exited, Allowed, Ct));
+        Assert.Equal(WindowlessOutcome.NotFound, await source.KillAsync(killed, Allowed, Ct));
 
         Assert.Equal(new[] { exited, other }.Order(), (await remote.ListSessionsAsync(Ct)).Select(s => s.SessionId).Order());
     }
 
     /// <summary>
     /// "One id on two daemons is two sessions": an agent's id names neither, so it is not offered and not acted on, even
-    /// when a pane of the window shows one of them (an SSH profile can reach this computer's own daemon).
+    /// when a pane of the window shows one of them (an SSH profile can reach this computer's own daemon). Reported in one
+    /// log line per call, however many ids are ambiguous.
     /// </summary>
     [Fact]
     public async Task An_id_on_two_endpoints_is_ambiguous_so_it_is_neither_listed_nor_found()
     {
         (MuxWindowlessSessions source, MuxClient local, MuxClient remote) = await ConnectedAsync();
-        Guid twin = Guid.NewGuid();
+        Guid twin = Guid.NewGuid(), otherTwin = Guid.NewGuid();
         var spawn = new SpawnParams { Command = "scripted", Cols = 80, Rows = 24, Title = "test" };
-        Assert.Equal(twin, await local.SpawnAsync(spawn, twin, Ct));
-        Assert.Equal(twin, await remote.SpawnAsync(spawn, twin, Ct));
+        foreach (Guid id in new[] { twin, otherTwin })
+        {
+            Assert.Equal(id, await local.SpawnAsync(spawn, id, Ct));
+            Assert.Equal(id, await remote.SpawnAsync(spawn, id, Ct));
+        }
+
         Guid single = await MuxTestHost.SpawnAsync(local);
         _shown.Add(("local", twin));
 
         Assert.Equal([single], (await source.ListAsync(Ct)).Select(s => s.SessionId));
         Assert.Equal((WindowlessOutcome.NotFound, (Guid?)null), await source.ResolveAsync(twin, Ct));
         Assert.Equal(WindowlessOutcome.NotFound, (await source.ReadScreenAsync(twin, 0, Ct)).Outcome);
-        Assert.Equal(WindowlessOutcome.NotFound, await source.SendInputAsync(twin, "x", Ct));
-        Assert.Equal(WindowlessOutcome.NotFound, await source.KillAsync(twin, Ct));
+        Assert.Equal(WindowlessOutcome.NotFound, await source.SendInputAsync(twin, "x", Allowed, Ct));
+        Assert.Equal(WindowlessOutcome.NotFound, await source.KillAsync(twin, Allowed, Ct));
 
         Assert.Contains(twin, _localMux.Server.GetSessionIds());
         Assert.Contains(twin, _remoteMux.Server.GetSessionIds());
-        Assert.Contains(_log, l => l.Contains(twin.ToString(), StringComparison.Ordinal) && l.Contains("ambiguous", StringComparison.Ordinal));
+        string[] lines = [.. _log.Where(l => l.Contains("ambiguous", StringComparison.Ordinal))];
+        Assert.Equal(5, lines.Length); // one per call
+        Assert.All(lines, l =>
+        {
+            Assert.Contains(twin.ToString(), l, StringComparison.Ordinal);
+            Assert.Contains(otherTwin.ToString(), l, StringComparison.Ordinal);
+        });
     }
 
     private static MuxResponse Answer<T>(T result, JsonTypeInfo<T> info) => new() { Result = MuxFrames.ToElement(result, info) };
@@ -339,7 +519,7 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
     /// <summary>A daemon with one session, <paramref name="id"/>, whose screen fits in a reply only when <paramref name="fits"/> says so.</summary>
     private ScriptedDaemon ReadScreenDaemon(Guid id, Func<int, bool> fits)
     {
-        var daemon = new ScriptedDaemon(request =>
+        var daemon = ScriptedDaemon.Answering(request =>
         {
             switch (request.Method)
             {
@@ -365,13 +545,21 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
 
     /// <summary>
     /// A daemon the test scripts, over a <see cref="FakeMuxServerEnd"/>: after the hello it answers each request with what
-    /// <c>answer</c> returns, in order, or - with no <c>answer</c> - reads every request and answers none.
+    /// <c>answer</c> gives - in its own time, serving the next requests meanwhile - or, given null, never.
     /// </summary>
-    private sealed class ScriptedDaemon(Func<MuxRequest, MuxResponse>? answer) : IDisposable
+    private sealed class ScriptedDaemon(Func<MuxRequest, Task<MuxResponse?>> answer) : IDisposable
     {
         private readonly FakeMuxServerEnd _end = FakeMuxServerEnd.Create();
+        private readonly object _sendGate = new(); // answers that took their time may be ready together
+        private int _answered;
+
+        /// <summary>A daemon that answers each request at once: with what <paramref name="answer"/> returns, or never for null.</summary>
+        public static ScriptedDaemon Answering(Func<MuxRequest, MuxResponse?> answer) => new(request => Task.FromResult(answer(request)));
 
         public ConcurrentQueue<MuxRequest> Requests { get; } = new();
+
+        /// <summary>How many requests have been answered, counted just before each answer goes out.</summary>
+        public int Answered => Volatile.Read(ref _answered);
 
         public async Task<MuxClient> ConnectAsync(int version, CancellationToken ct)
         {
@@ -397,7 +585,24 @@ public sealed class MuxWindowlessSessionsTests : IDisposable
                 }
 
                 Requests.Enqueue(request);
-                if (answer is not null) _end.Raw.Send(MuxFrames.Response(answer(request) with { Id = request.Id }));
+                _ = AnswerAsync(request);
+            }
+        }
+
+        private async Task AnswerAsync(MuxRequest request)
+        {
+            try
+            {
+                if (await answer(request) is not { } response) return;
+                lock (_sendGate)
+                {
+                    Interlocked.Increment(ref _answered);
+                    _end.Raw.Send(MuxFrames.Response(response with { Id = request.Id }));
+                }
+            }
+            catch (Exception)
+            {
+                // The test ended while the answer took its time: nobody is left to answer.
             }
         }
 
