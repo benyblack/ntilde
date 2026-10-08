@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Ntilde.Mux.Daemon;
@@ -43,17 +44,17 @@ public static class AgentSocketLink
     }
 
     /// <summary>
-    /// Points the link at target when target is a live socket; atomic (symlink to tmp + rename). Returns false (and
-    /// changes nothing) otherwise. Ownership is not checked: managed code has no portable owner query, so "a socket
-    /// that accepts a connection from this user" is the test - the kernel already refuses a connection to a socket
-    /// this user may not write to.
+    /// Points the link at target when target is a live socket whose listener runs as this user (see
+    /// <see cref="IsLiveSocket"/>); atomic (symlink to tmp + rename). Returns false (and changes nothing) otherwise.
     /// </summary>
-    public static bool TryRepoint(string linkPath, string? target)
+    public static bool TryRepoint(string linkPath, string? target) => TryRepoint(linkPath, target, null);
+
+    internal static bool TryRepoint(string linkPath, string? target, Func<uint?>? effectiveUid)
     {
         if (OperatingSystem.IsWindows()) return false;
         if (string.IsNullOrEmpty(linkPath) || string.IsNullOrWhiteSpace(target) || !Path.IsPathRooted(target)) return false;
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(linkPath), StringComparison.Ordinal)) return false;
-        if (!IsLiveSocket(target)) return false;
+        if (!IsLiveSocket(target, effectiveUid)) return false;
 
         string? directory = Path.GetDirectoryName(Path.GetFullPath(linkPath));
         if (directory is null) return false;
@@ -87,20 +88,46 @@ public static class AgentSocketLink
     }
 
     /// <summary>
-    /// Whether <paramref name="path"/> is a socket that accepts a connection. Connecting proves both "is a socket" and
-    /// "is alive" (a stale agent socket left by a closed connection refuses), which a stat could not.
+    /// Whether <paramref name="path"/> is a socket that accepts a connection and whose listener runs as this user
+    /// (peer credentials, compared with <paramref name="effectiveUid"/>; null = <c>geteuid()</c>). Connecting proves
+    /// "is a socket" and "is alive" (a stale agent socket refuses), which a stat could not. Never blocks: the connect is
+    /// non-blocking, so a listener whose backlog is full (a hung agent) is simply "not live". Fails closed: a check that
+    /// cannot be made (another OS, a failing option) says no.
     /// </summary>
-    internal static bool IsLiveSocket(string path)
+    internal static bool IsLiveSocket(string path, Func<uint?>? effectiveUid = null)
     {
         try
         {
-            using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified) { Blocking = false };
             socket.Connect(new UnixDomainSocketEndPoint(path));
-            return true;
+            uint? peer = PeerUid(socket);
+            uint? self = effectiveUid is null ? EffectiveUid() : effectiveUid();
+            return peer is not null && self is not null && peer == self;
         }
         catch (Exception ex) when (ex is SocketException or IOException or ArgumentException or UnauthorizedAccessException or PlatformNotSupportedException)
         {
-            return false;
+            return false; // includes WouldBlock/TryAgain/InProgress: a full backlog, not a live agent
         }
     }
+
+    /// <summary>The uid of the process that listens on the connected socket; Linux <c>SO_PEERCRED</c>, macOS <c>LOCAL_PEERCRED</c>.</summary>
+    private static uint? PeerUid(Socket socket)
+    {
+        // struct ucred { int pid; uid_t uid; gid_t gid; } and struct xucred { u_int version; uid_t uid; ... }: uid at offset 4 in both.
+        Span<byte> buffer = stackalloc byte[128];
+        int length;
+        if (OperatingSystem.IsLinux()) length = socket.GetRawSocketOption(1 /* SOL_SOCKET */, 17 /* SO_PEERCRED */, buffer);
+        else if (OperatingSystem.IsMacOS()) length = socket.GetRawSocketOption(0 /* SOL_LOCAL */, 1 /* LOCAL_PEERCRED */, buffer);
+        else return null;
+        return length >= 8 ? BitConverter.ToUInt32(buffer.Slice(4, 4)) : null;
+    }
+
+    private static uint? EffectiveUid()
+    {
+        try { return geteuid(); }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return null; }
+    }
+
+    [DllImport("libc")]
+    private static extern uint geteuid();
 }

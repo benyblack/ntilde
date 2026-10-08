@@ -97,6 +97,42 @@ public sealed class AgentSocketLinkTests : IDisposable
     }
 
     [Fact]
+    public void A_probe_against_a_full_backlog_returns_promptly_as_not_live()
+    {
+        SkipOnWindows();
+        string path = Path.Combine(_dir, "hung.sock");
+        var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+        listener.Bind(new UnixDomainSocketEndPoint(path));
+        listener.Listen(0);
+        _sockets.Add(listener);
+        // Fill the backlog with connects nobody accepts.
+        for (int i = 0; i < 4; i++)
+        {
+            var filler = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified) { Blocking = false };
+            _sockets.Add(filler);
+            try { filler.Connect(new UnixDomainSocketEndPoint(path)); } catch (SocketException) { }
+        }
+
+        Task<bool> probe = Task.Run(() => AgentSocketLink.IsLiveSocket(path), TestContext.Current.CancellationToken);
+
+        Assert.True(probe.Wait(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken), "the probe blocked on a full backlog");
+        Assert.False(probe.Result);
+    }
+
+    [Fact]
+    public void TryRepoint_refuses_a_socket_whose_listener_is_another_user()
+    {
+        SkipOnWindows();
+        string a = Listen("a.sock");
+        string link = AgentSocketLink.PathFor(_dir);
+
+        Assert.False(AgentSocketLink.TryRepoint(link, a, () => uint.MaxValue - 1));
+        Assert.False(new FileInfo(link).Exists || new FileInfo(link).LinkTarget is not null);
+        Assert.False(AgentSocketLink.TryRepoint(link, a, () => null), "an euid that cannot be read fails closed");
+        Assert.True(AgentSocketLink.TryRepoint(link, a));
+    }
+
+    [Fact]
     public void LinkPathForEndpoint_is_beside_the_endpoint_socket()
     {
         SkipOnWindows();

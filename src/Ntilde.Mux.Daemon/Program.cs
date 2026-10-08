@@ -17,7 +17,8 @@ internal static class Program
             UsagePrefix = "ntilde-mux",
             ServeArguments = ["serve"],
             // The shells' stable SSH_AUTH_SOCK: a link beside the endpoint that every proxy keeps pointed at its own agent.
-            SessionFactory = () => new LocalShellSessionFactory(AgentSocketLink.LinkPathForEndpoint(paths.Endpoint, line => Console.Error.WriteLine($"[ntilde-mux] {line}"))),
+            // No log here: the daemon has not reassigned its stdio yet (MuxServeHost); the proxy logs a too-long path.
+            SessionFactory = () => new LocalShellSessionFactory(AgentSocketLink.LinkPathForEndpoint(paths.Endpoint)),
             Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Proxy | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.Version,
             Version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "0.0.0",
         });
