@@ -1,4 +1,5 @@
 using Ntilde.Mux.Cli;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Shell.Mux.Remote;
 
@@ -266,6 +267,31 @@ public sealed class RemoteMuxInstallerTests
             host.Commands);
     }
 
+    /// <summary>
+    /// A cancel that lands as the commit finishes still discards it and throws. Here the commit's output and exit status are
+    /// in before the cancel - the order a loaded CI runner produced - so the exec has nothing left to wait for and returns
+    /// the result; the installer must still see the cancellation.
+    /// </summary>
+    [Fact]
+    public async Task A_cancel_that_lands_as_the_commit_finishes_still_discards_it_and_throws()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var inner = new RecordingExecTransport((command, _) =>
+            command == RemoteHostProbe.Command ? new FakeExecReply(UbuntuProbe)
+            : command == Discard ? new FakeExecReply()
+            : new FakeExecReply(InstalledJson));
+        var host = new CommitFinishedBeforeTheCancel(inner, cts);
+        var installer = new RemoteMuxInstaller(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x")), (_, _) => { })
+        {
+            NewUploadToken = () => Token,
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => installer.InstallAsync(cts.Token));
+
+        Assert.True(host.CommitRan);
+        Assert.Equal([RemoteHostProbe.Command, Trial, Discard], inner.Commands);
+    }
+
     [Fact]
     public async Task A_cancel_during_the_upload_leaves_the_cleanup_to_its_trap()
     {
@@ -469,6 +495,54 @@ public sealed class RemoteMuxInstallerTests
         RemoteHostProbeOutcome outcome = await Installer(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x"))).ProbeAsync(Ct);
 
         Assert.Equal(new RemoteHostRefusal("Running a command on nova@fake-host failed: ssh was not found"), outcome);
+    }
+
+    /// <summary>
+    /// <paramref name="inner"/> for every command but the commit, whose channel has its output and exit status (0) ready from
+    /// the start and lands <paramref name="cancel"/> as the exec collects its result (reading its stderr, the last thing it
+    /// does): the commit has finished, the exec has waited for everything, and only then is the caller cancelled.
+    /// </summary>
+    private sealed class CommitFinishedBeforeTheCancel(RecordingExecTransport inner, CancellationTokenSource cancel) : ISshExecTransport
+    {
+        private int _commitRan;
+
+        public string DisplayName => inner.DisplayName;
+
+        public bool CommitRan => Volatile.Read(ref _commitRan) == 1;
+
+        public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
+        {
+            if (remoteCommand != Commit) return inner.Start(remoteCommand, ct);
+            ct.ThrowIfCancellationRequested();
+            Volatile.Write(ref _commitRan, 1);
+            return new FinishedChannel(cancel);
+        }
+
+        private sealed class FinishedChannel(CancellationTokenSource cancel) : ISshExecChannel
+        {
+            public Stream Stdout { get; } = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(InstalledJson));
+
+            public Stream Stdin { get; } = new MemoryStream();
+
+            public string StderrTail
+            {
+                get
+                {
+                    cancel.Cancel();
+                    return string.Empty;
+                }
+            }
+
+            public Task<int?> Completion { get; } = Task.FromResult<int?>(0);
+
+            public void Dispose()
+            {
+            }
+
+            public void Abort()
+            {
+            }
+        }
     }
 
     /// <summary>Hands out one asset, or throws one exception, and keeps the RIDs it was asked for.</summary>
