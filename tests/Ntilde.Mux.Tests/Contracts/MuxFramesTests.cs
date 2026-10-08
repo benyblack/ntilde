@@ -14,6 +14,22 @@ public sealed class MuxFramesTests
     }
 
     [Fact]
+    public void A_bulk_mark_changes_the_accounting_and_nothing_on_the_wire()
+    {
+        var response = new MuxResponse { Id = 7, Result = MuxFrames.ToElement(new MuxEmpty(), MuxJsonContext.Default.MuxEmpty) };
+        MuxOutboundFrame plain = MuxFrames.Response(response);
+        MuxOutboundFrame bulk = MuxFrames.Response(response).MarkBulk();
+        MuxOutboundFrame snapshot = MuxFrames.Snapshot(1, Id, 0, "{}"u8);
+        MuxOutboundFrame output = MuxFrames.Output(Id, 0, "x"u8);
+
+        Assert.Equal((false, true, true, false), (plain.IsBulk, bulk.IsBulk, snapshot.IsBulk, output.IsBulk));
+        Assert.Equal(MuxFrameKind.Response, bulk.Kind);
+        Assert.Equal(plain.Bytes.ToArray(), bulk.Bytes.ToArray());
+        foreach (MuxOutboundFrame f in new[] { plain, bulk, snapshot, output }) f.Release();
+        Assert.True(bulk.IsBulk); // the connection's accounting reads it after the last Release
+    }
+
+    [Fact]
     public void Output_round_trips_session_seq_and_bytes()
     {
         byte[] payload = PayloadOf(MuxFrames.Output(Id, 123_456_789_012, "abc"u8));

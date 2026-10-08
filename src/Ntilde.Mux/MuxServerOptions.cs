@@ -15,15 +15,16 @@ public sealed class MuxServerOptions
 
     /// <summary>
     /// Stream bytes (Output, ResizeEvent, responses, notifications) queued-but-unwritten per client
-    /// before it is disconnected as too slow. Snapshot frames are accounted separately, against
-    /// <see cref="MaxQueuedSnapshotBytes"/>, so an attach never costs the connection its budget (spec §7).
+    /// before it is disconnected as too slow. Snapshot frames, and the <c>readScreen</c> responses that
+    /// carry one, are accounted separately, against <see cref="MaxQueuedSnapshotBytes"/>, so neither an
+    /// attach nor a screen read costs the connection its budget (spec §7).
     /// </summary>
     public long ClientSendBudgetBytes { get; init; } = 16L * 1024 * 1024;
 
     /// <summary>
-    /// Sanity bound on snapshot bytes queued-but-unwritten per client. One snapshot is always
-    /// accepted when none is queued (whatever its size); more are accepted while the total stays
-    /// within this bound, so parallel attaches at GUI start-up fit. Over it: client_too_slow.
+    /// Sanity bound on snapshot bytes (Snapshot frames and <c>readScreen</c> responses) queued-but-unwritten
+    /// per client. One is always accepted when none is queued (whatever its size); more are accepted while
+    /// the total stays within this bound, so parallel attaches at GUI start-up fit. Over it: client_too_slow.
     /// </summary>
     public long MaxQueuedSnapshotBytes { get; init; } = 256L * 1024 * 1024;
 
@@ -31,7 +32,7 @@ public sealed class MuxServerOptions
 
     /// <summary>
     /// The cap on a <c>readScreen</c> snapshot (serialized bytes): <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/>.
-    /// Tests lower it; it cannot be raised, since that cap is what keeps one reply inside the stream budget.
+    /// Tests lower it; it cannot be raised past that protocol cap.
     /// </summary>
     internal int MaxReadScreenBytes { get; init; } = MuxReadScreenLimits.MaxSnapshotBytes;
 

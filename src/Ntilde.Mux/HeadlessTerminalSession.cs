@@ -913,8 +913,7 @@ public sealed class HeadlessTerminalSession : IDisposable
             return;
         }
 
-        // The reply is a Response frame, charged to the connection's stream budget: past the cap it is refused,
-        // never risked against that budget's client_too_slow.
+        // The cap bounds what one read costs: the capture, the base64 reply, and the caller's decode.
         if (json.Length > maxSnapshotBytes)
         {
             Reply(sink, requestId, MuxErrorCodes.SnapshotTooLarge,
@@ -941,7 +940,7 @@ public sealed class HeadlessTerminalSession : IDisposable
                     Cwd = Cwd,
                     LastOutputUnixMs = LastOutputUnixMs,
                 }, MuxJsonContext.Default.ReadScreenResult),
-            });
+            }).MarkBulk(); // charged as the snapshot it carries: never against the connection's stream budget
         }
         catch (Exception ex)
         {

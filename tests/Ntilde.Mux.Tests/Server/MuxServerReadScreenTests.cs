@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization.Metadata;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Mux.Transport;
 using Ntilde.Replay;
 using Ntilde.VT;
 
@@ -45,6 +46,34 @@ public sealed class MuxServerReadScreenTests
         Assert.Null((await CallAsync(raw, MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty)).Error);
 
     private static string Lines(int count) => string.Concat(Enumerable.Range(0, count).Select(i => $"line {i}\r\n"));
+
+    /// <summary>Lines of <paramref name="width"/> characters, none wrapping at the session's width.</summary>
+    private static string WideLines(int count, int width) =>
+        string.Concat(Enumerable.Range(0, count).Select(i => $"{i:D6} " + new string((char)('a' + (i % 26)), width - 7) + "\r\n"));
+
+    /// <summary>
+    /// A connection driven by hand, as in <c>MuxServerSendBudgetTests</c>, so a test can read its accounts and queue
+    /// frames on it directly; the raw client end reads only when the test says so.
+    /// </summary>
+    private static async Task<(MuxServerConnection Connection, RawMuxConnection Raw)> ConnectDirectAsync(MuxServer server, int pipeCapacityBytes)
+    {
+        (Stream clientEnd, Stream serverEnd) = InMemoryDuplexPipe.Create(pipeCapacityBytes);
+        var raw = new RawMuxConnection(clientEnd);
+        var connection = new MuxServerConnection(server, serverEnd);
+        connection.Start();
+        await raw.HelloAsync(1, 2);
+        await TestWait.UntilAsync(() => connection.QueuedBytesForTest == (0, 0), "the welcome is off the books");
+        return (connection, raw);
+    }
+
+    private static async Task<Guid> SpawnFilledAsync(MuxServer server, ScriptedSessionFactory factory, int cols, string output)
+    {
+        Guid id = server.Spawn(new SpawnParams { Command = "scripted", Cols = cols, Rows = 24 });
+        factory.LastScriptedSession!.Emit(output);
+        Assert.True(server.TryGetSession(id, out HeadlessTerminalSession? mux));
+        await mux.FlushAsync();
+        return id;
+    }
 
     private static string[] ScreenLines(TerminalStateSnapshot snapshot)
     {
@@ -153,6 +182,94 @@ public sealed class MuxServerReadScreenTests
         await PingAsync(raw);
         Assert.Equal(4 * 1024 * 1024, new MuxServerOptions().MaxReadScreenBytes);
         Assert.Equal(MuxReadScreenLimits.MaxSnapshotBytes, new MuxServerOptions().MaxReadScreenBytes);
+    }
+
+    [Fact]
+    public async Task A_maximum_read_on_a_busy_connection_is_charged_to_the_snapshot_account()
+    {
+        // A GUI connection with a stream backlog inside its budget, but with less room left than one maximum reply
+        // (a 4 MiB snapshot is about 5.6 MB as base64). Charged to the stream account, the reply would drop the
+        // connection - every pane on it - as client_too_slow.
+        var factory = new ScriptedSessionFactory();
+        using var server = new MuxServer(factory, new MuxServerOptions { ForceConPtyFiltering = false });
+        (MuxServerConnection connection, RawMuxConnection raw) = await ConnectDirectAsync(server, pipeCapacityBytes: 64 * 1024);
+        using var _ = raw;
+        Guid id = await SpawnFilledAsync(server, factory, cols: 110, WideLines(3000, 100));
+
+        long budget = server.Options.ClientSendBudgetBytes;
+        int fillers = 0;
+        while (connection.QueuedBytesForTest.Stream < budget - (1024 * 1024))
+        {
+            // Larger than the pipe, so the first stays in flight and every one stays charged.
+            MuxOutboundFrame filler = MuxFrames.Output(Guid.NewGuid(), 0, new byte[256 * 1024]);
+            try { Assert.True(connection.TryEnqueue(filler)); }
+            finally { filler.Release(); }
+            fillers++;
+        }
+
+        long requestId = raw.Request(MuxMethods.ReadScreen,
+            new ReadScreenParams { SessionId = id, MaxScrollbackRows = MuxReadScreenLimits.MaxScrollbackRows }, MuxJsonContext.Default.ReadScreenParams);
+        await TestWait.UntilAsync(() => connection.QueuedBytesForTest.Snapshot > 0 || connection.CloseReason is not null,
+            "the reply was queued, or the connection dropped");
+
+        Assert.Null(connection.CloseReason);
+        for (int i = 0; i < fillers; i++)
+        {
+            using MuxInboundFrame? filler = await raw.ReadAsync();
+            Assert.Equal(MuxFrameKind.Output, filler?.Kind);
+        }
+
+        MuxResponse reply = await raw.ReadResponseAsync();
+        Assert.Equal(requestId, reply.Id);
+        int snapshotBytes = Result(reply).Snapshot.Length;
+        Assert.True(snapshotBytes > 3 * 1024 * 1024 && snapshotBytes <= MuxReadScreenLimits.MaxSnapshotBytes, $"a near-maximum read: {snapshotBytes} bytes");
+        await PingAsync(raw);
+        await TestWait.UntilAsync(() => connection.QueuedBytesForTest == (0, 0), "both accounts are released as their frames are written");
+        Assert.Null(connection.CloseReason);
+    }
+
+    [Fact]
+    public async Task Three_concurrent_maximum_reads_all_answer_and_the_connection_survives()
+    {
+        // Scaled down from 4 MiB reads and a 16 MiB stream budget: the cap and the budget are lowered together, and
+        // three replies at the cap (base64 adds a third to each) are more than the stream budget holds.
+        const int cap = 64 * 1024;
+        var factory = new ScriptedSessionFactory();
+        using var server = new MuxServer(factory, new MuxServerOptions { ForceConPtyFiltering = false, MaxReadScreenBytes = cap, ClientSendBudgetBytes = 3 * cap });
+        (MuxServerConnection connection, RawMuxConnection raw) = await ConnectDirectAsync(server, pipeCapacityBytes: 4096);
+        using var _ = raw;
+        Guid id = await SpawnFilledAsync(server, factory, cols: 80, "hello");
+        var read = new ReadScreenParams { SessionId = id, MaxScrollbackRows = 0 };
+
+        // One read with the client reading, for the reply's exact size: the screen does not change, so neither does it.
+        raw.Request(MuxMethods.ReadScreen, read, MuxJsonContext.Default.ReadScreenParams);
+        long replyBytes;
+        using (MuxInboundFrame? first = await raw.ReadAsync())
+        {
+            Assert.Equal(MuxFrameKind.Response, first?.Kind);
+            MuxResponse response = MuxFrames.ParseJson(first!.Payload, MuxJsonContext.Default.MuxResponse);
+            Assert.True(Result(response).Snapshot.Length > cap * 3 / 4, "a near-maximum read");
+            replyBytes = MuxProtocol.FrameHeaderBytes + first.Length;
+        }
+
+        Assert.True(3 * replyBytes > server.Options.ClientSendBudgetBytes, "three replies overflow the stream budget");
+        await TestWait.UntilAsync(() => connection.QueuedBytesForTest == (0, 0), "the measuring reply is off the books");
+
+        long[] ids = [.. Enumerable.Range(0, 3).Select(i => raw.Request(MuxMethods.ReadScreen, read, MuxJsonContext.Default.ReadScreenParams))];
+        await TestWait.UntilAsync(() => connection.QueuedBytesForTest.Snapshot == 3 * replyBytes || connection.CloseReason is not null,
+            "all three replies were queued unread, or the connection dropped");
+
+        Assert.Null(connection.CloseReason);
+        foreach (long expected in ids)
+        {
+            MuxResponse response = await raw.ReadResponseAsync();
+            Assert.Equal(expected, response.Id);
+            Assert.NotEmpty(Result(response).Snapshot);
+        }
+
+        await PingAsync(raw);
+        await TestWait.UntilAsync(() => connection.QueuedBytesForTest == (0, 0), "both accounts are released as their frames are written");
+        Assert.Null(connection.CloseReason);
     }
 
     [Fact]

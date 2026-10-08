@@ -77,6 +77,36 @@ public sealed class MuxClientReadScreenTests
     }
 
     [Fact]
+    public async Task A_reply_that_cannot_be_decoded_is_an_error_never_unsupported()
+    {
+        // Unsupported is a null return and nothing else: corruption inside a well-formed reply must not throw the
+        // code a caller would read as "an older daemon".
+        using var fake = FakeMuxServerEnd.Create();
+        Task<MuxClient> connect = MuxClient.ConnectAsync(fake.ClientEnd, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync(2);
+        using MuxClient client = await connect;
+
+        Task<MuxScreenRead?> corruptSnapshot = client.ReadScreenAsync(Guid.NewGuid(), 0, Ct);
+        MuxRequest first = await fake.ReadRequestAsync();
+        fake.Reply(first.Id, new ReadScreenResult { Snapshot = "not a snapshot"u8.ToArray(), Running = true }, MuxJsonContext.Default.ReadScreenResult);
+        var snapshotError = await Assert.ThrowsAsync<MuxProtocolException>(() => corruptSnapshot);
+
+        Task<MuxScreenRead?> malformedResult = client.ReadScreenAsync(Guid.NewGuid(), 0, Ct);
+        MuxRequest second = await fake.ReadRequestAsync();
+        using (System.Text.Json.JsonDocument bad = System.Text.Json.JsonDocument.Parse("{\"snapshot\":5}"))
+        {
+            fake.Raw.Send(MuxFrames.Response(new MuxResponse { Id = second.Id, Result = bad.RootElement.Clone() }));
+        }
+
+        var resultError = await Assert.ThrowsAsync<MuxProtocolException>(() => malformedResult);
+
+        Assert.NotEqual(MuxErrorCodes.ProtocolError, snapshotError.Code);
+        Assert.NotEqual(MuxErrorCodes.ProtocolError, resultError.Code);
+        Assert.Equal((MuxClient.MalformedReplyCode, MuxClient.MalformedReplyCode), (snapshotError.Code, resultError.Code));
+        Assert.True(client.IsConnected); // the frames were well-formed: only these calls failed
+    }
+
+    [Fact]
     public async Task Any_other_refusal_is_an_error_not_unsupported()
     {
         using var host = new MuxTestHost();

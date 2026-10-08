@@ -61,7 +61,7 @@ public sealed class MuxServer : IDisposable
         if (o.MaxReadScreenBytes <= 0 || o.MaxReadScreenBytes > MuxReadScreenLimits.MaxSnapshotBytes)
         {
             throw new ArgumentOutOfRangeException(nameof(options), o.MaxReadScreenBytes,
-                $"MaxReadScreenBytes must be in 1..{MuxReadScreenLimits.MaxSnapshotBytes}: past that a readScreen reply risks the stream budget.");
+                $"MaxReadScreenBytes must be in 1..{MuxReadScreenLimits.MaxSnapshotBytes} (the protocol's readScreen cap).");
         }
 
         if (o.MaxAttachScrollbackRows < 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxAttachScrollbackRows, "MaxAttachScrollbackRows cannot be negative.");

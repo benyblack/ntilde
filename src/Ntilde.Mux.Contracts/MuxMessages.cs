@@ -230,8 +230,9 @@ public static class MuxReadScreenLimits
 
     /// <summary>
     /// The largest serialized snapshot a <see cref="MuxMethods.ReadScreen"/> returns; a larger one is refused with
-    /// <see cref="MuxErrorCodes.SnapshotTooLarge"/>. The reply is a Response frame, charged to the connection's stream
-    /// budget (16 MiB by default), and base64 grows it by a third: 4 MiB keeps one reply well inside that budget.
+    /// <see cref="MuxErrorCodes.SnapshotTooLarge"/>, and a smaller row count may fit. It bounds what one read costs the
+    /// daemon and the caller; base64 makes the reply about a third larger. A server charges the reply to the
+    /// connection's snapshot account, as it does an attach's snapshot, never to its stream budget.
     /// </summary>
     public const int MaxSnapshotBytes = 4 * 1024 * 1024;
 }

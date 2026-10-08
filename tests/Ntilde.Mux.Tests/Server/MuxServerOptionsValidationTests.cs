@@ -44,7 +44,7 @@ public sealed class MuxServerOptionsValidationTests
     [InlineData("accept-log-negative")]
     [InlineData("session-changed-negative")]
     [InlineData("read-screen-zero")]
-    [InlineData("read-screen-over-limit")] // only lowered (tests): past 4 MiB the reply would risk the stream budget
+    [InlineData("read-screen-over-limit")] // only lowered (tests): never past the protocol's 4 MiB cap
     public void Nonsensical_options_are_refused_at_construction(string name)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new MuxServer(new ScriptedSessionFactory(), Invalid(name)).Dispose());

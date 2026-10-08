@@ -29,6 +29,14 @@ public sealed class MuxClient : IDisposable
     private const string ReasonSendOverflow = "send overflow";
 
     /// <summary>
+    /// <see cref="MuxProtocolException.Code"/> when a reply arrived whole but its content cannot be used: a
+    /// <see cref="ReadScreenAsync"/> result or snapshot that does not decode. Raised by this client, never sent on the
+    /// wire, so not in <see cref="MuxErrorCodes"/>; and never <c>protocol_error</c>, which a caller may read as
+    /// "this daemon does not know the method".
+    /// </summary>
+    public const string MalformedReplyCode = "malformed_reply";
+
+    /// <summary>
     /// How many frames may wait for the sender: once that many do, a frame sent next waits in the overflow
     /// (<see cref="Send"/>) until the link takes one. Tests fill it to stand in for a stalled link.
     /// </summary>
@@ -187,12 +195,16 @@ public sealed class MuxClient : IDisposable
     /// 0..<see cref="MuxReadScreenLimits.MaxScrollbackRows"/>. The snapshot passes the same
     /// <see cref="MuxClientOptions.AttachLimits"/> checks an attach's does.
     /// </summary>
-    /// <returns>Null when the daemon does not know <c>readScreen</c> (it answers <c>protocol_error</c>, on any negotiated version).</returns>
+    /// <returns>
+    /// Null when the daemon does not know <c>readScreen</c> (it answers <c>protocol_error</c>, on any negotiated version).
+    /// Unsupported is signalled by this null and nothing else: no exception from this method carries <c>protocol_error</c>.
+    /// </returns>
     /// <exception cref="MuxProtocolException">
     /// Any other refusal, with its code: <c>unknown_session</c>, <c>session_exited</c> (the session stopped before the
     /// read ran), <c>snapshot_too_large</c> (past the daemon's <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/> or this
-    /// client's limits: ask for fewer rows), <c>internal_error</c> (a faulted session). A snapshot this client cannot
-    /// decode fails this call only, never the connection: it arrived inside a well-formed reply.
+    /// client's limits: ask for fewer rows), <c>internal_error</c> (a faulted session). A result or snapshot this client
+    /// cannot decode is <see cref="MalformedReplyCode"/>, and fails this call only, never the connection: it arrived
+    /// inside a well-formed reply.
     /// </exception>
     public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default)
     {
@@ -208,9 +220,17 @@ public sealed class MuxClient : IDisposable
             throw new MuxProtocolException(error.Code, error.Message);
         }
 
-        ReadScreenResult result = MuxFrames.ParseParams(response.Result, MuxJsonContext.Default.ReadScreenResult);
-        TerminalStateSnapshot snapshot = DecodeSnapshot(result.Snapshot);
-        return new MuxScreenRead(snapshot, result with { Snapshot = [] }); // the bytes are decoded: do not hold both
+        try
+        {
+            ReadScreenResult result = MuxFrames.ParseParams(response.Result, MuxJsonContext.Default.ReadScreenResult);
+            TerminalStateSnapshot snapshot = DecodeSnapshot(result.Snapshot);
+            return new MuxScreenRead(snapshot, result with { Snapshot = [] }); // the bytes are decoded: do not hold both
+        }
+        catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.ProtocolError)
+        {
+            // Corruption inside a well-formed reply. snapshot_too_large (a limit) keeps its own code.
+            throw new MuxProtocolException(MalformedReplyCode, $"The readScreen reply cannot be decoded: {ex.Message}", ex);
+        }
     }
 
     /// <summary>
@@ -690,7 +710,8 @@ public sealed class MuxClient : IDisposable
     /// The one decode of a daemon's snapshot, shared by attach (<see cref="OnSnapshot"/>, on the reader thread) and
     /// <see cref="ReadScreenAsync"/> (on the caller's): <see cref="MuxClientOptions.AttachLimits"/> is checked here, so
     /// neither path can adopt more than the other. Throws <see cref="MuxProtocolException"/>: <c>snapshot_too_large</c>
-    /// past a limit, <c>protocol_error</c> when malformed. What that costs is each caller's own decision.
+    /// past a limit, <c>protocol_error</c> when malformed. What that costs is each caller's own decision: attach drops the
+    /// connection, and <see cref="ReadScreenAsync"/> fails its call with <see cref="MalformedReplyCode"/>.
     /// </summary>
     private TerminalStateSnapshot DecodeSnapshot(ReadOnlySpan<byte> json)
     {
