@@ -14,8 +14,11 @@ own the install. Once accepted into the community repo it installs with:
 winget install benyblack.ntilde
 ```
 
-`benyblack.NovaTerminal` remains in winget-pkgs as an orphan; winget cannot rename identifiers, so
-`benyblack.ntilde` is a first-time submission (`submit-first-time.ps1`) on the first Ntilde release.
+Neither identifier has been accepted yet: the `benyblack.NovaTerminal` 0.4.0 submission
+(microsoft/winget-pkgs#419465) was closed for inactivity after a moderator asked for
+`ArchiveBinariesDependOnPath: true`. `benyblack.ntilde` is therefore a first-time submission
+(`submit-first-time.ps1`); the template now carries that field and manifest schema 1.10.0 (`winget validate`
+flags the field as unknown under 1.6.0).
 
 ## Layout
 

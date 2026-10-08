@@ -1,7 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.10.0.schema.json
-# __VERSION__ is a placeholder; render with the recipe in ../README.md before validating.
 PackageIdentifier: benyblack.ntilde
-PackageVersion: __VERSION__
+PackageVersion: 0.11.0
 DefaultLocale: en-US
 ManifestType: version
 ManifestVersion: 1.10.0
