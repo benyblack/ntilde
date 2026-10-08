@@ -86,7 +86,9 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     }
 
     /// <summary>The app's wiring over the test's daemons: the local one in memory, the remote one behind <see cref="_remote"/>.</summary>
-    private MainWindow CreateWindow()
+    /// <param name="bootTimeUtc">The machine's boot time the window's startup restore sees (spec R2); the real one when null.</param>
+    /// <param name="beforeShow">Runs on the built window before it is shown, when no pane has spawned yet.</param>
+    private MainWindow CreateWindow(DateTime? bootTimeUtc = null, Action<MainWindow>? beforeShow = null)
     {
         Volatile.Write(ref _uiThread, Environment.CurrentManagedThreadId);
         _local = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_localMux.Listener.Connect(), null, ct), "test", null)
@@ -99,11 +101,19 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             return _remote;
         }, log: null, userPrompts: null, scheduler: _clock));
         var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
-        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        AppServiceBundle services = AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
             SessionFactory = factory,
-        });
+        };
+        if (bootTimeUtc is { } boot)
+        {
+            TimeSpan uptime = TimeSpan.FromHours(3);
+            services = services with { UtcNow = () => boot + uptime, TickCount64 = () => (long)uptime.TotalMilliseconds };
+        }
+
+        MainWindow window = TestMainWindowFactory.Create(services);
+        beforeShow?.Invoke(window);
         window.Show();
         Dispatcher.UIThread.RunJobs();
         return window;
@@ -269,6 +279,39 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(1, _remote.StartCount);
         Assert.Equal(ids.Order(), RemotePanes(window).Select(p => p.Session!.Id).Order());
         Assert.All(RemotePanes(window), p => Assert.Equal(MuxAttachMode.IfUnattached, ((MuxClientSession)p.Session!).AttachMode));
+    }
+
+    /// <summary>
+    /// Spec R2 is about the local daemon. A remote daemon outlives a local reboot, so a remote session found gone after
+    /// one is still news; the local pane beside it, whose session the reboot ended, starts its fresh shell quietly.
+    /// </summary>
+    [AvaloniaFact]
+    public void After_a_reboot_only_the_remote_panes_lost_session_is_announced()
+    {
+        DateTime boot = new(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc);
+        Guid remoteGone = Guid.NewGuid(), localGone = Guid.NewGuid();
+        var localLeaf = new PaneNode { Type = NodeType.Leaf, Command = "scripted", MuxSessionId = localGone.ToString("D"), MuxEndpoint = MuxEndpointId.Local.ToString() };
+        SaveSession(RemoteLeaf(remoteGone), localLeaf);
+        File.SetLastWriteTimeUtc(AppPaths.SessionFilePath, boot - TimeSpan.FromMinutes(5));
+        var lost = new List<TerminalPane>();
+
+        MainWindow window = CreateWindow(bootTimeUtc: boot, beforeShow: w =>
+        {
+            TerminalPane remote = Assert.Single(RemotePanes(w));
+            TerminalPane local = Assert.Single(AllPanes(w), p => p != remote);
+            Assert.False(remote.MuxQuietPreviousLost);
+            Assert.True(local.MuxQuietPreviousLost);
+            foreach (TerminalPane p in AllPanes(w))
+                p.PersistenceNotice += (pane, title, _, _) => { if (title == TerminalPane.MuxPreviousLostNoticeTitle) lost.Add(pane); };
+        });
+
+        PumpUntil(() => AllPanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "both panes started fresh shells");
+        List<Guid> fresh = AllPanes(window).Select(p => p.Session!.Id).ToList();
+        Assert.DoesNotContain(remoteGone, fresh);
+        Assert.DoesNotContain(localGone, fresh);
+        // Each pane raises its notice in the callback that then asks for the session save: once the file names both, both have spoken.
+        PumpUntil(() => File.ReadAllText(AppPaths.SessionFilePath) is var saved && fresh.All(id => saved.Contains(id.ToString("D"))), "the session file names both new sessions");
+        Assert.Equal(RemotePanes(window), lost);
     }
 
     /// <summary>Review Focus 1: the user meant to end that shell; the kill waits for the link, it is not dropped.</summary>

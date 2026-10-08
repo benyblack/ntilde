@@ -3019,16 +3019,43 @@ namespace Ntilde
             SetupCommandPalette();
         }
 
-        private bool TryRestoreStartupSession(TabControl tabs, out NtildeSession? loadedSession)
+        /// <summary>
+        /// Spec R2, decided once by the startup restore: the session file was saved before the machine last booted,
+        /// so the reboot ended the local daemon sessions it names. Read for every tab that restore builds, the
+        /// deferred ones too.
+        /// </summary>
+        private bool _restoredMuxSessionsEndedByReboot;
+
+        /// <summary>
+        /// UI thread, startup restore, before any pane in <paramref name="content"/> spawns: after a reboot each pane
+        /// reopening a local daemon session starts its fresh shell quietly. A remote daemon outlives a local reboot, so
+        /// a remote pane keeps today's notices.
+        /// </summary>
+        private void MarkRebootEndedMuxPanes(Control? content)
+        {
+            if (!_restoredMuxSessionsEndedByReboot) return;
+            foreach (TerminalPane pane in EnumeratePanes(content))
+            {
+                if (pane.MuxSessionIdToRestore is not null && ShowsLocalMuxEndpoint(pane)) pane.MuxQuietPreviousLost = true;
+            }
+        }
+
+        private bool TryRestoreStartupSession(TabControl tabs, DateTime bootTimeUtc, out NtildeSession? loadedSession)
         {
             loadedSession = null;
-            if (!SessionManager.TryLoadSavedSession(out NtildeSession? session) ||
+            if (!SessionManager.TryLoadSavedSession(out NtildeSession? session, out DateTime? savedUtc) ||
                 session == null ||
                 session.Tabs.Count == 0)
             {
                 return false;
             }
             loadedSession = session;
+            _restoredMuxSessionsEndedByReboot = Ntilde.Shell.Mux.MuxRestoreExpectations.SessionsEndedByReboot(savedUtc, bootTimeUtc);
+            if (_restoredMuxSessionsEndedByReboot)
+            {
+                TerminalLogger.Log($"TryRestoreStartupSession: the session file ({savedUtc:o}) predates this boot ({bootTimeUtc:o}); its local shells start fresh, quietly");
+            }
+
             _startup.Checkpoint("StartupRestore.AfterSessionLoad");
 
             try
@@ -3046,6 +3073,7 @@ namespace Ntilde
 
                         if (tabItem != null)
                         {
+                            if (index == immediate.OriginalIndex) MarkRebootEndedMuxPanes(tabItem.Content as Control);
                             tabs.Items.Add(tabItem);
                         }
                     }
@@ -3130,6 +3158,7 @@ namespace Ntilde
                 return;
             }
 
+            MarkRebootEndedMuxPanes(content);
             tabItem.Content = content;
             tabItem.Tag = deferredTab.Tab;
             InitializeRestoredTabs(tabs);
@@ -4154,7 +4183,7 @@ namespace Ntilde
             NtildeSession? restoredSession = null;
             if (tabs != null)
             {
-                if (!TryRestoreStartupSession(tabs, out NtildeSession? loadedSession))
+                if (!TryRestoreStartupSession(tabs, Ntilde.Shell.Mux.MuxRestoreExpectations.BootTimeUtc(services.UtcNow, services.TickCount64), out NtildeSession? loadedSession))
                 {
                     AddTab(defaultProfile);
                     _startup.CompleteWithoutRestore();

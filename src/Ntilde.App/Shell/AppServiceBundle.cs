@@ -16,4 +16,14 @@ public sealed record AppServiceBundle(
     StartupOrchestrator Startup,
     CommandAssistServices CommandAssist,
     TerminalSettings? Settings = null,
-    ITerminalSessionFactory? SessionFactory = null);
+    ITerminalSessionFactory? SessionFactory = null)
+{
+    /// <summary>
+    /// The window's wall clock (UTC) for its startup restore, which compares the session file's save time with the
+    /// machine's boot time (spec R2). A seam here, not on the window: the restore runs in the window's constructor.
+    /// </summary>
+    internal Func<DateTime> UtcNow { get; init; } = static () => DateTime.UtcNow;
+
+    /// <summary>Milliseconds since the machine booted, for the same restore: with <see cref="UtcNow"/>, the boot time.</summary>
+    internal Func<long> TickCount64 { get; init; } = static () => Environment.TickCount64;
+}

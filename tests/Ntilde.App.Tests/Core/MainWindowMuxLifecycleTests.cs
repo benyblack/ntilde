@@ -41,7 +41,10 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         _mux.Dispose();
     }
 
-    private MainWindow CreateWindow(TimeSpan? disposeFlush = null, Func<MuxEndpointId, MuxConnectionHost?>? createRemote = null)
+    /// <param name="bootTimeUtc">The machine's boot time the window's startup restore sees (spec R2); the real one when null.</param>
+    /// <param name="beforeShow">Runs on the built window before it is shown, when no pane has spawned yet.</param>
+    private MainWindow CreateWindow(TimeSpan? disposeFlush = null, Func<MuxEndpointId, MuxConnectionHost?>? createRemote = null, DateTime? bootTimeUtc = null,
+        Action<MainWindow>? beforeShow = null)
     {
         _host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null)
         {
@@ -49,12 +52,19 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         };
         var factory = new MuxTerminalSessionFactory(
             new MuxConnectionHosts(_host, createRemote ?? (_ => null)), new RecordingSessionFactory(new FakeTerminalSession()), null);
-        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        AppServiceBundle services = AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
             SessionFactory = factory,
-        });
+        };
+        if (bootTimeUtc is { } boot)
+        {
+            services = services with { UtcNow = () => boot + Uptime, TickCount64 = () => (long)Uptime.TotalMilliseconds };
+        }
+
+        MainWindow window = TestMainWindowFactory.Create(services);
         Assert.Same(_host, window.MuxHost);
+        beforeShow?.Invoke(window);
         window.Show();
         PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the first pane attached");
         return window;
@@ -399,6 +409,93 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.True(visible);
         Assert.Equal(TerminalPane.MuxPreviousLostBanner, message);
         Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, MuxTestText.VisibleText(pane.Buffer!));
+    }
+
+    /// <summary>How long the injected machine has been up when the window starts (<see cref="CreateWindow"/>).</summary>
+    private static readonly TimeSpan Uptime = TimeSpan.FromHours(3);
+
+    private static readonly DateTime Boot = new(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>A pane as the window saved it: reopening local daemon session <paramref name="id"/>.</summary>
+    private static Ntilde.Pty.PaneNode LocalLeaf(Guid id) => new()
+    {
+        Type = Ntilde.Pty.NodeType.Leaf,
+        Command = "scripted",
+        MuxSessionId = id.ToString("D"),
+        MuxEndpoint = MuxEndpointId.Local.ToString(),
+    };
+
+    /// <summary>A session file with one tab per root, the first selected, last written at <paramref name="savedUtc"/>.</summary>
+    private static void SaveTabs(DateTime savedUtc, params Ntilde.Pty.PaneNode[] roots)
+    {
+        var session = new Ntilde.Pty.NtildeSession { ActiveTabIndex = 0 };
+        foreach (Ntilde.Pty.PaneNode root in roots) session.Tabs.Add(new Ntilde.Pty.TabSession { Title = $"tab {session.Tabs.Count}", Root = root });
+        Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.SessionFilePath)!);
+        File.WriteAllText(AppPaths.SessionFilePath, System.Text.Json.JsonSerializer.Serialize(session, Ntilde.Pty.SessionSerializationContext.Default.NtildeSession));
+        File.SetLastWriteTimeUtc(AppPaths.SessionFilePath, savedUtc);
+    }
+
+    /// <summary>
+    /// Waits until the session file names each pane's new session. A pane raises its lost notice in the UI-thread
+    /// callback that also asks for that save, and the toast is flushed at the save's priority, ahead of it: once the
+    /// file names them all, every lost notice there will be is on the toast.
+    /// </summary>
+    private static void PumpUntilSaved(IEnumerable<Guid> ids) => PumpUntil(
+        () => File.Exists(AppPaths.SessionFilePath) && File.ReadAllText(AppPaths.SessionFilePath) is var saved && ids.All(id => saved.Contains(id.ToString("D"))),
+        "the session file names every new session");
+
+    private static List<Guid> AttachedIds(MainWindow window) =>
+        AllPanes(window).Select(p => p.Session).OfType<MuxClientSession>().Where(m => m.IsAttached).Select(m => m.Id).ToList();
+
+    /// <summary>
+    /// Spec R2: the session file predates the boot, so the reboot ended its daemon sessions. Each restored pane starts
+    /// a fresh shell with no "previous sessions were lost" toast - the selected tab's panes at startup, and a
+    /// background tab's when it is first shown.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_restore_saved_before_boot_starts_fresh_shells_without_the_lost_toast()
+    {
+        Guid[] gone = [Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()];
+        var split = new Ntilde.Pty.PaneNode { Type = Ntilde.Pty.NodeType.Split, SplitOrientation = 0, Children = [LocalLeaf(gone[0]), LocalLeaf(gone[1])] };
+        SaveTabs(Boot - TimeSpan.FromMinutes(5), split, LocalLeaf(gone[2]));
+        // Heard from the panes as well as read off the toast: a toast hides itself after a few seconds.
+        var notices = new List<string>();
+        var heard = new HashSet<TerminalPane>();
+        void Listen(MainWindow w)
+        {
+            foreach (TerminalPane p in AllPanes(w))
+                if (heard.Add(p)) p.PersistenceNotice += (_, title, _, _) => notices.Add(title);
+        }
+
+        MainWindow window = CreateWindow(bootTimeUtc: Boot, beforeShow: Listen);
+        PumpUntil(() => AttachedIds(window).Count == 2, "the selected tab's panes started fresh shells");
+        PumpUntil(() => AllPanes(window).Count == 3, "the background tab was built");
+        Listen(window); // before it is first shown: it spawns only then
+        window.FindControl<TabControl>("Tabs")!.SelectedIndex = 1;
+        PumpUntil(() => AttachedIds(window).Count == 3, "the background tab's pane started a fresh shell");
+
+        List<Guid> fresh = AttachedIds(window);
+        Assert.Empty(fresh.Intersect(gone));
+        PumpUntilSaved(fresh);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(3, heard.Count);
+        Assert.Empty(notices);
+        (bool visible, string? title, string? message) = Toast(window);
+        Assert.False(visible && message?.Contains("lost", StringComparison.Ordinal) == true, $"no lost toast; got '{title}': '{message}'");
+    }
+
+    /// <summary>Spec R2: a file saved after the boot names sessions that ended since, without a reboot - still news.</summary>
+    [AvaloniaFact]
+    public void A_restore_saved_after_boot_whose_sessions_are_gone_still_toasts()
+    {
+        Guid gone = Guid.NewGuid();
+        SaveTabs(Boot + TimeSpan.FromMinutes(5), LocalLeaf(gone));
+
+        MainWindow window = CreateWindow(bootTimeUtc: Boot);
+
+        PumpUntil(() => Toast(window).Title == TerminalPane.MuxPreviousLostNoticeTitle, "the lost-session toast is shown");
+        Assert.Equal((true, TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Toast(window));
+        Assert.DoesNotContain(gone, AttachedIds(window));
     }
 
     [AvaloniaFact]

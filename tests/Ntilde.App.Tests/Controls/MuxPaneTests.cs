@@ -230,6 +230,112 @@ public sealed class MuxPaneTests : IDisposable
         Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, BufferText(_pane.Buffer!));
     }
 
+    /// <summary>
+    /// A shown pane restoring <paramref name="id"/>, as the startup restore builds it; returns once it has said its
+    /// session attached. A lost notice is raised just before that, in the same UI-thread callback, so by then
+    /// <paramref name="notices"/> holds any there will be.
+    /// </summary>
+    private MuxClientSession StartRestoringPane(Guid id, bool quiet, out System.Collections.Generic.List<(string Title, string Message)> notices)
+    {
+        _pane = new TerminalPane("scripted") { MuxSessionIdToRestore = id, MuxQuietPreviousLost = quiet };
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = _factory;
+        notices = RecordNotices();
+        int attached = 0;
+        _pane.PersistentSessionAttached += _ => attached++;
+        _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
+        _window.Show();
+        PumpUntil(() => attached == 1, "the restored pane attached");
+        return Assert.IsType<MuxClientSession>(_pane.Session);
+    }
+
+    /// <summary>Spec R2: after a reboot the lost session is expected, so its fresh shell starts with no notice and no banner.</summary>
+    [AvaloniaFact]
+    public void A_quiet_restore_whose_session_is_gone_starts_a_fresh_shell_with_no_notice()
+    {
+        Guid gone = Guid.NewGuid();
+        MuxClientSession fresh = StartRestoringPane(gone, quiet: true, out var notices);
+
+        Assert.NotEqual(gone, fresh.Id);
+        Assert.Empty(notices);
+        Settle(fresh.Id);
+        Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, BufferText(_pane!.Buffer!));
+        Assert.False(_pane.MuxQuietPreviousLost); // spent on this restore
+    }
+
+    /// <summary>Without the reboot rule a restore that finds its session gone says so, as a notice and never in the buffer.</summary>
+    [AvaloniaFact]
+    public void A_restore_whose_session_is_gone_raises_the_lost_notice()
+    {
+        Guid gone = Guid.NewGuid();
+        MuxClientSession fresh = StartRestoringPane(gone, quiet: false, out var notices);
+
+        Assert.NotEqual(gone, fresh.Id);
+        Assert.Equal((TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), Assert.Single(notices));
+        Settle(fresh.Id);
+        Assert.DoesNotContain(TerminalPane.MuxPreviousLostBanner, BufferText(_pane!.Buffer!));
+    }
+
+    /// <summary>
+    /// Spec R2's other half: the quiet covers the restore only. The fresh shell lost later in this boot (the daemon
+    /// died since) is announced as today.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_quiet_restore_does_not_silence_a_later_loss()
+    {
+        MuxClientSession fresh = StartRestoringPane(Guid.NewGuid(), quiet: true, out var notices);
+        Assert.Empty(notices);
+
+        _host.CurrentClient!.Dispose();
+        PumpUntil(() => BufferText(_pane!.Buffer!).Contains("[Multiplexer disconnected]"), "the banner is shown");
+        _mux.Server.KillAllSessions();
+        _pane!.Reconnect();
+
+        var again = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.NotEqual(fresh.Id, again.Id);
+        PumpUntil(() => notices.Count == 1, "the later loss is announced");
+        Assert.Equal((TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner), notices.Single());
+    }
+
+    /// <summary>
+    /// A daemon not up yet when a quiet restore runs keeps the id for Enter's retry
+    /// (<see cref="An_unreachable_daemon_on_restore_keeps_the_id_and_Enter_reattaches_it"/>); the retry is still that
+    /// restore, so a session the reboot ended is still not announced.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_quiet_restore_stays_quiet_through_an_unreachable_daemon()
+    {
+        bool reachable = false;
+        using var gatedHost = new MuxConnectionHost(
+            ct => Volatile.Read(ref reachable)
+                ? MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)
+                : throw new MuxUnavailableException("daemon not ready"),
+            "test", null)
+        { FailureCooldown = TimeSpan.Zero };
+        var factory = new MuxTerminalSessionFactory(gatedHost, new RecordingSessionFactory(new FakeTerminalSession()), null) { ConnectTimeout = TimeSpan.FromSeconds(2) };
+        Guid gone = Guid.NewGuid();
+        _pane = new TerminalPane("scripted") { MuxSessionIdToRestore = gone, MuxQuietPreviousLost = true };
+        PaneSpawnTestHelpers.DisableShellIntegration(_pane);
+        _pane.SessionFactory = factory;
+        var notices = RecordNotices();
+        int attached = 0;
+        _pane.PersistentSessionAttached += _ => attached++;
+        _window = new Avalonia.Controls.Window { Content = _pane, Width = 900, Height = 500 };
+        _window.Show();
+        PumpUntil(() => BufferText(_pane.Buffer!).Contains(TerminalPane.MuxUnreachableBanner), "the not-reachable banner is shown");
+        Assert.Equal(gone, _pane.MuxSessionIdToRestore);
+        Assert.True(_pane.MuxQuietPreviousLost);
+
+        Volatile.Write(ref reachable, true);
+        PressEnter();
+
+        var fresh = Assert.IsType<MuxClientSession>(_pane.Session);
+        Assert.NotEqual(gone, fresh.Id);
+        PumpUntil(() => attached == 1, "the fresh shell attached");
+        Assert.Empty(notices);
+        Assert.False(_pane.MuxQuietPreviousLost);
+    }
+
     [AvaloniaFact]
     public void Late_snapshot_after_pane_dispose_is_ignored()
     {

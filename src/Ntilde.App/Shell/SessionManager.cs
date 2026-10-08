@@ -282,7 +282,7 @@ namespace Ntilde.Shell
             int payloadBytes = 0;
             try
             {
-                if (!TryLoadSavedSession(out NtildeSession? session, out payloadBytes) ||
+                if (!TryLoadSavedSessionCore(out NtildeSession? session, out payloadBytes, out _) ||
                     session == null ||
                     session.Tabs.Count == 0)
                 {
@@ -325,7 +325,16 @@ namespace Ntilde.Shell
 
         public static bool TryLoadSavedSession(out NtildeSession? session)
         {
-            return TryLoadSavedSession(out session, out _);
+            return TryLoadSavedSession(out session, out DateTime? _);
+        }
+
+        /// <param name="savedUtc">
+        /// When the session file was last written (UTC): the save time the startup restore compares with the
+        /// machine's boot time (spec R2). Null when it cannot be read.
+        /// </param>
+        public static bool TryLoadSavedSession(out NtildeSession? session, out DateTime? savedUtc)
+        {
+            return TryLoadSavedSessionCore(out session, out _, out savedUtc);
         }
 
         public static TabItem? CreateRestoredTabItem(TabSession tabSession, TerminalSettings settings)
@@ -373,21 +382,36 @@ namespace Ntilde.Shell
             }
         }
 
-        private static bool TryLoadSavedSession(out NtildeSession? session, out int payloadBytes)
+        private static bool TryLoadSavedSessionCore(out NtildeSession? session, out int payloadBytes, out DateTime? savedUtc)
         {
             session = null;
             payloadBytes = 0;
+            savedUtc = null;
 
             if (!File.Exists(SessionPath))
             {
                 return false;
             }
 
+            savedUtc = TryGetLastWriteTimeUtc(SessionPath);
             var json = File.ReadAllText(SessionPath);
             payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
             session = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession);
             if (session != null) DedupeMuxIds(session);
             return session != null;
+        }
+
+        private static DateTime? TryGetLastWriteTimeUtc(string path)
+        {
+            try
+            {
+                return File.GetLastWriteTimeUtc(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                AppLogger.Log($"[SessionManager] could not read the session file's save time: {ex.Message}");
+                return null;
+            }
         }
 
         /// <summary>

@@ -3698,6 +3698,10 @@ namespace Ntilde.Controls
         private ITerminalSession? ApplyPersistentResult(TerminalSessionRequest request, PersistentSessionResult result, out bool previousLost)
         {
             previousLost = false;
+            // Spec R2: the quiet restore is this one result's. Anything but an unreachable daemon (whose id is kept
+            // for Enter's retry, which is still the restore) settles the id, and a later loss is announced.
+            bool quietPreviousLost = MuxQuietPreviousLost;
+            if (result.Outcome != PersistentSessionOutcome.DaemonUnreachable && result.Session is not null) MuxQuietPreviousLost = false;
             // A share that fell back to a fresh spawn is this pane's own shell, not a share.
             _muxSessionIsShare = request.AttachShared && result.Outcome == PersistentSessionOutcome.Reattached;
             MuxShareOfExitedSession = _muxSessionIsShare && result.AlreadyExited;
@@ -3746,8 +3750,16 @@ namespace Ntilde.Controls
             }
             else if (result.Outcome == PersistentSessionOutcome.PreviousLost)
             {
-                // Raised only after the attach: a failed attach shows its own banner instead.
-                previousLost = true;
+                if (quietPreviousLost)
+                {
+                    // Spec R2: a reboot ends every daemon session, so after one a fresh shell is expected, not news.
+                    TerminalLogger.Log("[TerminalPane] previous session ended by a reboot; started a new shell");
+                }
+                else
+                {
+                    // Raised only after the attach: a failed attach shows its own banner instead.
+                    previousLost = true;
+                }
             }
             else if (result.Outcome == PersistentSessionOutcome.AttachedElsewhere)
             {
@@ -4470,6 +4482,14 @@ namespace Ntilde.Controls
 
         /// <summary>Set with <see cref="MuxSessionIdToRestore"/> by "Attach to session…": join it shared (consumed once).</summary>
         internal bool MuxAttachSharedToRestore { get; set; }
+
+        /// <summary>
+        /// Set by MainWindow's startup restore (spec R2) on a pane reopening a local daemon session from a session file
+        /// saved before the machine last booted: if that session is gone, the reboot ended it, so the fresh shell starts
+        /// without the "previous session lost" notice. Covers that restore only: the first result that settles the id
+        /// clears it, so a loss later in the pane's life is announced as usual.
+        /// </summary>
+        internal bool MuxQuietPreviousLost { get; set; }
 
         /// <summary>
         /// The endpoint (a <see cref="MuxEndpointId"/> string, Phase 4 spec §5) the current session lives on,
