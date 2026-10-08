@@ -190,6 +190,7 @@ public sealed class MuxAssetSourceTests : IDisposable
         var ex = await Assert.ThrowsAsync<InvalidDataException>(() => PinnedSource(Hex(Binary(10))).GetAsync(Rid, null, Ct));
 
         Assert.Equal(PinMismatchMessage, ex.Message);
+        Assert.Equal([AssetUrl + ".sha256"], _http.Requests);
         Assert.False(File.Exists(Path.Combine(CacheDirectory, Version, Rid, "ntilde-mux")));
     }
 

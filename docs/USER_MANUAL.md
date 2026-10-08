@@ -343,7 +343,8 @@ the binary at `~/.local/share/ntilde/bin/ntilde-mux`. It needs no root and chang
 the host: not your `PATH`, not your shell's startup files. It has three ways to get the binary:
 
 - **Install** downloads `ntilde-mux-<platform>` for this Ntilde version from the project's GitHub
-  release, checks it against the release's `.sha256` file, and keeps the checked copy in Ntilde's
+  release, checks it against the hash built into this Ntilde (a development build checks it against the
+  release's `.sha256` file instead), and keeps the checked copy in Ntilde's
   data folder (`cache/ntilde-mux/<version>/<platform>`), so the next host of the same platform
   installs without downloading. The macOS `ntilde-mux` is signed and notarized; a copy you drag in
   through Finder from a browser download still gets Gatekeeper's prompt the first time, because of the

@@ -1954,6 +1954,9 @@ jobs:
   # in statically (spec §2 decision 1); should the osx-arm64 static link ever fail, that RID
   # alone falls back to {exe, librusty_pty.dylib}, and this job is where that change would land.
   # ===========================================================================
+  # RE-RUNS: "Re-run failed jobs" is safe. "Re-run all jobs", or a re-dispatch of an already published
+  # tag, re-signs the macOS binary, which changes its hash and breaks the pin in Apps of that version
+  # that were already downloaded. Don't do that; cut a new tag instead.
   publish_mux_daemon:
     name: Publish ntilde-mux (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
@@ -2191,11 +2194,25 @@ jobs:
         run: |
           set -euo pipefail
           bin="artifacts/mux-daemon/$RID/ntilde-mux"
-          codesign --force --timestamp --options runtime --keychain "$KEYCHAIN" --sign "$MAC_SIGN_APP_IDENTITY" "$bin"
+          codesign --force --timestamp --options runtime --identifier com.benyblack.ntilde-mux --keychain "$KEYCHAIN" --sign "$MAC_SIGN_APP_IDENTITY" "$bin"
           codesign --verify --strict --verbose=2 "$bin"
           zip_dir="$(mktemp -d)"
           ditto -c -k --keepParent "$bin" "$zip_dir/mux.zip"
-          xcrun notarytool submit "$zip_dir/mux.zip" --keychain-profile "$MAC_NOTARY_PROFILE" --keychain "$KEYCHAIN" --wait
+          # The JSON status decides, not the exit code: an Invalid submission has been reported to exit 0,
+          # and a missed rejection would be hashed and pinned into every App of this release. A non-zero
+          # exit is handled too: `|| rc=$?` keeps set -e from killing the step before the log is fetched.
+          rc=0
+          out="$(xcrun notarytool submit "$zip_dir/mux.zip" --keychain-profile "$MAC_NOTARY_PROFILE" --keychain "$KEYCHAIN" --wait --output-format json)" || rc=$?
+          echo "$out"
+          status="$(jq -r '.status // "unknown"' <<<"$out" 2>/dev/null || echo unknown)"
+          id="$(jq -r '.id // empty' <<<"$out" 2>/dev/null || true)"
+          if [[ "$rc" != "0" || "$status" != "Accepted" ]]; then
+            if [[ -n "$id" ]]; then
+              xcrun notarytool log "$id" --keychain-profile "$MAC_NOTARY_PROFILE" --keychain "$KEYCHAIN" || true
+            fi
+            echo "::error::ntilde-mux notarization status: $status (notarytool exit $rc)" >&2
+            exit 1
+          fi
           # Signing and notarizing must not have changed what the binary reports.
           version_json="$("$bin" --version --json)"
           echo "$version_json"

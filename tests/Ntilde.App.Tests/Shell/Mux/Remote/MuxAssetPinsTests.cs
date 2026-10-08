@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Tests.Shell.Mux.Remote;
@@ -44,6 +45,40 @@ public sealed class MuxAssetPinsTests
     public void No_resources_means_no_pins()
     {
         Assert.Empty(MuxAssetPins.Parse([]));
+    }
+
+    [Fact]
+    public void The_csproj_resource_name_is_the_one_MuxAssetPins_reads()
+    {
+        // Ntilde.App.csproj's LogicalName and MuxAssetPins.ResourcePrefix are two halves of one contract
+        // that nothing else ties together: a rename of either would silently embed pins nobody reads.
+        string csproj = Path.Combine(FindRepositoryRoot(), "src", "Ntilde.App", "Ntilde.App.csproj");
+        XElement item = XDocument.Load(csproj).Descendants("EmbeddedResource")
+            .Single(e => ((string?)e.Attribute("Condition"))?.Contains("NtildeMuxSha256Dir", StringComparison.Ordinal) == true);
+        Assert.Contains("NtildeMuxSha256Dir", (string?)item.Attribute("Include"), StringComparison.Ordinal);
+
+        string logicalName = (string?)item.Attribute("LogicalName") ?? item.Element("LogicalName")?.Value ?? "";
+        string expanded = logicalName
+            .Replace("%(Filename)", "ntilde-mux-linux-x64", StringComparison.Ordinal)
+            .Replace("%(Extension)", ".sha256", StringComparison.Ordinal);
+
+        Assert.Equal(MuxAssetPins.ResourcePrefix + "linux-x64.sha256", expanded);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Ntilde.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root from test output path.");
     }
 
     [Fact]
