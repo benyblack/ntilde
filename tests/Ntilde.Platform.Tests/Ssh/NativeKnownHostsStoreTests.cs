@@ -240,6 +240,41 @@ public sealed class NativeKnownHostsStoreTests
     }
 
     [Fact]
+    public void TrustHost_blocked_by_an_open_reader_fails_with_IOException_and_changes_nothing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "A reader that blocks the rename's delete is a Windows sharing behaviour.");
+
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            string path = Path.Combine(tempRoot, "native_known_hosts.json");
+            var store = new NativeKnownHostsStore(path);
+            store.TrustHost("seed", 22, "ssh-ed25519", "SHA256:seed");
+            byte[] before = File.ReadAllBytes(path);
+
+            // Like rusty_ssh listing the store: shares read only, so the rename over it is refused.
+            // Held for far longer than the store's retry budget (about 250 ms).
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Exception ex = Assert.ThrowsAny<Exception>(
+                    () => store.TrustHost("blocked", 22, "ssh-ed25519", "SHA256:blocked"));
+                Assert.IsType<IOException>(ex);
+                Assert.IsNotType<UnauthorizedAccessException>(ex);
+            }
+
+            Assert.Equal(before, File.ReadAllBytes(path));
+            Assert.Empty(Directory.GetFiles(tempRoot, "*.tmp"));
+
+            store.TrustHost("blocked", 22, "ssh-ed25519", "SHA256:blocked");
+            Assert.Equal(NativeKnownHostMatch.Trusted, store.CheckHost("blocked", 22, "ssh-ed25519", "SHA256:blocked"));
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void A_literal_json_null_store_is_kept_aside_as_corrupt()
     {
         string tempRoot = CreateTempDirectory();

@@ -76,7 +76,12 @@ public sealed class NativeKnownHostsStore
         }
     }
 
-    /// <summary>Throws <see cref="IOException"/> (and writes nothing) if the existing store cannot be read or set aside.</summary>
+    /// <summary>
+    /// Throws <see cref="IOException"/> (and writes nothing) if the existing store cannot be read or set
+    /// aside, or the new content cannot be moved into place (for example a reader holds the file open for
+    /// longer than the retry budget). It never throws <see cref="UnauthorizedAccessException"/>: that is
+    /// wrapped in an <see cref="IOException"/> with the original as its InnerException.
+    /// </summary>
     public void TrustHost(string host, int port, string algorithm, string fingerprint)
     {
         lock (_syncRoot)
@@ -216,6 +221,18 @@ public sealed class NativeKnownHostsStore
 
     private void PersistEntriesLocked(List<KnownHostEntry> entries)
     {
+        try
+        {
+            WriteEntriesAtomically(entries);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new IOException($"The known-hosts store '{_storeFilePath}' could not be written: {ex.Message}", ex);
+        }
+    }
+
+    private void WriteEntriesAtomically(List<KnownHostEntry> entries)
+    {
         string? directory = Path.GetDirectoryName(_storeFilePath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -243,10 +260,11 @@ public sealed class NativeKnownHostsStore
                     return;
                 }
                 catch (Exception ex) when (OperatingSystem.IsWindows()
-                                           && attempt < 4
+                                           && attempt < 9
                                            && ex is IOException or UnauthorizedAccessException)
                 {
-                    Thread.Sleep(20);
+                    // About 250 ms in all: TrustHost runs after a confirmed dialog, so a short wait is fine.
+                    Thread.Sleep(25);
                 }
             }
         }
