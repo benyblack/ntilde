@@ -300,6 +300,13 @@ namespace Ntilde
         /// </summary>
         internal Func<int, Task<FirstCloseAnswer>> ConfirmFirstClose { get; set; }
 
+        /// <summary>
+        /// The "Quit and close all shells" confirmation (Task 17), given how many shells the local daemon is running
+        /// (-1 when that is unknown). A seam so tests answer without a modal; the constructor assigns
+        /// <see cref="ShowQuitAndCloseAllDialogAsync"/>.
+        /// </summary>
+        internal Func<int, Task<bool>> ConfirmQuitAndCloseAll { get; set; }
+
         /// <summary>Where "Don't ask again" keeps the first-close answer (R1). A seam so tests use a scratch root.</summary>
         internal Ntilde.Shell.Mux.MuxCloseChoiceStore MuxCloseChoiceStore { get; set; } = Ntilde.Shell.Mux.MuxCloseChoiceStore.Default;
 
@@ -3863,6 +3870,7 @@ namespace Ntilde
             PickMuxSession = ShowMuxSessionPickerAsync;
             ConfirmSharedClose = ShowSharedCloseDialogAsync;
             ConfirmFirstClose = ShowFirstCloseDialogAsync;
+            ConfirmQuitAndCloseAll = ShowQuitAndCloseAllDialogAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
@@ -4358,6 +4366,13 @@ namespace Ntilde
                 {
                     RecordCommandUsage(ShortcutCatalog.DetachPaneId);
                     DetachActivePane();
+                    e.Handled = true;
+                    return;
+                }
+                if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.QuitAndCloseAllShellsId, ""))
+                {
+                    RecordCommandUsage(ShortcutCatalog.QuitAndCloseAllShellsId);
+                    _ = QuitAndCloseAllShellsAsync();
                     e.Handled = true;
                     return;
                 }
@@ -8486,6 +8501,7 @@ namespace Ntilde
             {
                 CommandRegistry.Register("Session: Attach to Session\u2026", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.AttachSessionId, ""), ShortcutCatalog.AttachSessionId);
                 CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding(ShortcutCatalog.DetachPaneId, ""), ShortcutCatalog.DetachPaneId);
+                CommandRegistry.Register("Session: Quit and Close All Shells", "General", () => _ = QuitAndCloseAllShellsAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.QuitAndCloseAllShellsId, ""), ShortcutCatalog.QuitAndCloseAllShellsId);
             }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");
             CommandRegistry.Register("Focus Pane Right", "View", () => NavigatePane(MoveDirection.Right), "Alt+Right");
@@ -9229,9 +9245,16 @@ namespace Ntilde
             UpdateTabVisuals();
         };
 
+            // "Quit and close all shells…" (Task 17): Settings closes without saving, then the quit runs.
+            sw.SessionPersistenceActive = IsMuxPersistenceActive;
+            bool quitRequested = false;
+            sw.OnQuitAndCloseAllShellsRequested += () => quitRequested = true;
+
             bool saved = await sw.ShowDialog<bool>(this);
 
             ApplySettingsWindowResult(sw, saved, previewSnapshot);
+
+            if (quitRequested) await QuitAndCloseAllShellsAsync();
         }
 
         /// <summary>
@@ -10112,6 +10135,112 @@ namespace Ntilde
             if (shared > 0) AppLogger.Log($"[MainWindow] {shared} shared local session(s) left running for the other clients that show them");
         }
 
+        private bool _quitAndCloseAllInProgress;
+
+        /// <summary>
+        /// "Quit and close all shells" (Task 17): ends EVERY shell in the local daemon - this window's panes, shells
+        /// shared with other clients, and detached ones - shuts the daemon down, and closes the window. Remote shells
+        /// are untouched. Asks first, naming the daemon's running count. The ended shells are not saved for reattach,
+        /// so the next launch starts fresh ones quietly. A daemon that cannot be reached or does not stop is logged and
+        /// the window closes anyway.
+        /// </summary>
+        internal async Task QuitAndCloseAllShellsAsync()
+        {
+            if (_quitAndCloseAllInProgress || _teardownDone || !IsMuxPersistenceActive || _muxHosts?.Local is not { } host) return;
+            _quitAndCloseAllInProgress = true;
+            try
+            {
+                // Off the UI thread: GetClient blocks while a connect is in flight.
+                IReadOnlyList<Guid>? running = await Task.Run(async () =>
+                {
+                    Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(3));
+                    if (client is null) return null;
+                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    try
+                    {
+                        IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
+                        return (IReadOnlyList<Guid>)all.Where(s => s.Running).Select(s => s.SessionId).ToList();
+                    }
+                    catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
+                    {
+                        AppLogger.Log($"[MainWindow] listing mux sessions before quit failed: {ex.Message}");
+                        return null;
+                    }
+                });
+
+                if (running is null || running.Count > 0)
+                {
+                    bool confirmed;
+                    try
+                    {
+                        confirmed = await ConfirmQuitAndCloseAll(running?.Count ?? -1);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Log($"[MainWindow] the quit confirmation failed; not quitting: {ex.Message}");
+                        return;
+                    }
+
+                    if (!confirmed) return;
+                }
+
+                // The panes' shells go through the host (tracked, flushed at teardown); then every other shell the daemon
+                // runs - shared and detached ones - is killed on this connection, and the daemon is shut down.
+                EndLocalSessionsOnTeardown();
+                var others = running?.Where(id => !_localSessionsEndedOnClose.Contains(id)).ToList() ?? [];
+                foreach (TerminalPane pane in _paneOwnerTab.Keys)
+                {
+                    if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
+                }
+
+                await Task.Run(async () =>
+                {
+                    if (others.Count > 0 && host.GetClient(TimeSpan.FromSeconds(3)) is { } client)
+                    {
+                        foreach (Guid id in others)
+                        {
+                            try
+                            {
+                                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                                await client.KillAsync(id, cts.Token).ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppLogger.Log($"[MainWindow] killing session {id} before quit failed: {ex.Message}");
+                            }
+                        }
+                    }
+                });
+
+                await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5));
+
+                _closeConfirmed = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] quit and close all shells failed: {ex}");
+            }
+            finally
+            {
+                _quitAndCloseAllInProgress = false;
+            }
+        }
+
+        /// <summary>The production "Quit and close all shells" question; <paramref name="count"/> is -1 when unknown.</summary>
+        private Task<bool> ShowQuitAndCloseAllDialogAsync(int count)
+        {
+            string what = count switch
+            {
+                < 0 => "All shells running in the background will be closed, including detached and shared ones.",
+                1 => "1 shell running in the background will be closed, including detached and shared ones.",
+                _ => $"{count} shells running in the background will be closed, including detached and shared ones.",
+            };
+            bool remote = _paneOwnerTab.Keys.Any(p => !ShowsLocalMuxEndpoint(p) && p.Session is Ntilde.Mux.MuxClientSession);
+            if (remote) what += " Remote shells keep running.";
+            return ShowConfirmationDialogAsync("Quit Ntilde", "Close every shell?", what, "Quit and close", 140);
+        }
+
         /// <summary>
         /// The teardown a normal close performs: save the session, stop the toast timers, and
         /// dispose/stop what OnOpened set up. Extracted so <see cref="ApplyStagedUpdate"/> can run
@@ -10843,7 +10972,24 @@ namespace Ntilde
             }
         }
 
-        private async System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon)
+        /// <summary>
+        /// Probes for the local daemon and, when one is up, sends it <c>shutdown</c> and waits up to
+        /// <paramref name="wait"/> for it to exit (the update path's probe-and-shutdown, shared with Task 17's quit).
+        /// Never throws: a daemon that cannot be reached or does not stop is logged, and the caller carries on.
+        /// </summary>
+        private async System.Threading.Tasks.Task ShutdownLocalDaemonAsync(TimeSpan wait)
+        {
+            using Ntilde.Mux.MuxClient? daemon = await ProbeMuxDaemonForUpdateAsync();
+            if (daemon is null) return;
+            await ShutdownMuxDaemonForUpdateAsync(daemon, wait);
+        }
+
+        private System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon) =>
+            ShutdownMuxDaemonForUpdateAsync(daemon, System.Threading.Timeout.InfiniteTimeSpan);
+
+        /// <param name="daemon">A connection to the daemon.</param>
+        /// <param name="wait">How long to wait for the exit on top of the exit seam's own limit; infinite adds none.</param>
+        private async System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon, TimeSpan wait)
         {
             // Read before the shutdown: the daemon deletes its descriptor on the way out,
             // and the pid in it is what says when the process is really gone.
@@ -10869,7 +11015,18 @@ namespace Ntilde
             }
 
             bool gone = false;
-            try { gone = await MuxWaitForDaemonExitForUpdate(before); }
+            try
+            {
+                Task<bool> exit = MuxWaitForDaemonExitForUpdate(before);
+                if (wait != System.Threading.Timeout.InfiniteTimeSpan && await Task.WhenAny(exit, Task.Delay(wait)) != exit)
+                {
+                    gone = false;
+                }
+                else
+                {
+                    gone = await exit;
+                }
+            }
             catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
             if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; applying the update anyway");
         }

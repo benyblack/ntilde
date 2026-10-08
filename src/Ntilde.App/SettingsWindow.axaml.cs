@@ -138,11 +138,38 @@ namespace Ntilde
         /// </summary>
         private readonly SettingsSection _targetSection;
 
+        /// <summary>
+        /// Whether the owning window has session persistence on: the "Quit and close all shells…" link is shown only
+        /// then. Set by <c>MainWindow.OpenSettings</c>; false for a window opened any other way.
+        /// </summary>
+        internal bool SessionPersistenceActive
+        {
+            get => this.FindControl<Button>("QuitAndCloseAllShellsLink")?.IsVisible ?? false;
+            set
+            {
+                if (this.FindControl<Button>("QuitAndCloseAllShellsLink") is { } link) link.IsVisible = value;
+            }
+        }
+
+        /// <summary>
+        /// Raised when the "Quit and close all shells…" link is clicked, just before this window closes without
+        /// saving; the owner runs the quit once the dialog is gone.
+        /// </summary>
+        internal event Action? OnQuitAndCloseAllShellsRequested;
+
         public SettingsWindow() : this(0, null) { }
 
         public SettingsWindow(int initialTab = 0, Guid? initialProfileId = null, SettingsSection section = SettingsSection.None)
         {
             InitializeComponent();
+            if (this.FindControl<Button>("QuitAndCloseAllShellsLink") is { } quitLink)
+            {
+                quitLink.Click += (_, _) =>
+                {
+                    OnQuitAndCloseAllShellsRequested?.Invoke();
+                    Close(false); // nothing is saved
+                };
+            }
             // Hold this window at the interface scale it opened with, then size it for that scale
             // (its 880x620 layout keeps 880x620 of logical room - pinning alone shrank it to 440
             // DIPs at 200% and clipped the slider). A held window ignores later UiScale.Apply

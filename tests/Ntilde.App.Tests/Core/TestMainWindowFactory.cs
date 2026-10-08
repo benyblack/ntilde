@@ -24,6 +24,8 @@ internal static class TestMainWindowFactory
         // Never the real first-close modal (spec R1): a test that closes a persistent window with live shells and
         // sets no answer of its own gets Cancel - the window stays open - rather than a dialog nobody dismisses.
         window.ConfirmFirstClose = static _ => Task.FromResult(new Ntilde.MainWindow.FirstCloseAnswer(Ntilde.MainWindow.FirstCloseAction.Cancel, Remember: false));
+        // Likewise never the real "Quit and close all shells" modal (Task 17): the default answer is no.
+        window.ConfirmQuitAndCloseAll = static _ => Task.FromResult(false);
 
         lock (Gate)
         {
