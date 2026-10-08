@@ -163,6 +163,7 @@ public sealed class NativeKnownHostsStoreTests
             int failures = 0;
             int reads = 0;
             using var stop = new CancellationTokenSource();
+            using var readerStarted = new ManualResetEventSlim();
             // Reads the file directly, bypassing the store's lock, like rusty_ssh does.
             Task readerTask = Task.Run(() =>
             {
@@ -183,6 +184,7 @@ public sealed class NativeKnownHostsStoreTests
                     }
 
                     Interlocked.Increment(ref reads);
+                    readerStarted.Set();
                     try
                     {
                         var entries = System.Text.Json.JsonSerializer.Deserialize(
@@ -196,18 +198,38 @@ public sealed class NativeKnownHostsStoreTests
                     {
                         Interlocked.Increment(ref failures);
                     }
+
+                    // Yield between reads: a Windows rename can only retry so long against a reader
+                    // that holds the file open back to back, and this is not a stress test of that.
+                    Thread.Sleep(1);
                 }
             }, TestContext.Current.CancellationToken);
 
-            for (int i = 0; i < 300; i++)
+            // The reader must be running before the first write, or a fast runner finishes
+            // every write before it reads once and the test proves nothing.
+            Assert.True(
+                readerStarted.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken),
+                "The unlocked reader never completed a read within 10 s, so it could not overlap the writes.");
+
+            // Write at least 300 entries and keep going until the reader has read at least 20 times
+            // during the writes, capped at 5000 writes or 5 s.
+            int readsAtStart = Volatile.Read(ref reads);
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            int writes = 0;
+            while (writes < 5000
+                && clock.Elapsed < TimeSpan.FromSeconds(5)
+                && (writes < 300 || Volatile.Read(ref reads) - readsAtStart < 20))
             {
-                writer.TrustHost($"h{i}", 22, "ssh-ed25519", $"SHA256:{i}");
+                writer.TrustHost($"h{writes}", 22, "ssh-ed25519", $"SHA256:{writes}");
+                writes++;
             }
+
+            int readsDuringWrites = Volatile.Read(ref reads) - readsAtStart;
 
             stop.Cancel();
             readerTask.Wait(TestContext.Current.CancellationToken);
 
-            Assert.True(reads > 0);
+            Assert.True(readsDuringWrites >= 20, $"Only {readsDuringWrites} reads overlapped {writes} writes.");
             Assert.Equal(0, failures);
             Assert.Empty(Directory.GetFiles(tempRoot, "*.tmp"));
         }
