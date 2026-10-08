@@ -66,6 +66,10 @@ internal static class MuxDaemonImage
         return fileExists(Path.Combine(root, UpdateExeName)) ? root : null;
     }
 
+    /// <summary>This process's install root: <see cref="VelopackInstallRoot"/> of <see cref="Environment.ProcessPath"/>, or null.</summary>
+    public static string? CurrentVelopackInstallRoot() =>
+        Environment.ProcessPath is { } exe ? VelopackInstallRoot(exe, File.Exists) : null;
+
     /// <summary>
     /// Stages the copy if needed and returns its executable; returns <paramref name="exePath"/> when no copy is needed or
     /// staging failed (logged: the daemon then dies with the next update, as before Phase 5). Never throws.
@@ -256,7 +260,7 @@ internal static class MuxDaemonImage
     internal static void StartPruningOnce(string appDataRoot, Action<string>? log)
     {
         if (!OperatingSystem.IsWindows()) return;
-        if (Environment.ProcessPath is not { } exe || VelopackInstallRoot(exe, File.Exists) is null) return;
+        if (CurrentVelopackInstallRoot() is null) return;
         if (Interlocked.Exchange(ref s_pruneStarted, 1) != 0) return;
         Action<string> sink = log ?? (static _ => { });
         _ = Task.Run(() => PruneOldCopies(appDataRoot, AppVersionInfo.Version, MuxImageFileSystem.Instance, sink));

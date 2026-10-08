@@ -191,9 +191,9 @@ below.
     exactly as before and does not persist.
   - Inline images (sixel, kitty graphics) are not shown in persistent panes.
   - Applying an update keeps persistent sessions running when the new version can use the
-    running daemon: Ntilde restarts and reattaches to them. When it cannot - the new version
+    running daemon: Ntilde restarts and reattaches to them. When it cannot — the new version
     speaks another multiplexer protocol, or, on Windows, the daemon runs from the install folder
-    (an earlier Ntilde version started it there), which the update replaces - Ntilde asks first
+    (an earlier Ntilde version started it there), which the update replaces — Ntilde asks first
     ("N multiplexed sessions will be closed by the update (the new version cannot keep them)",
     buttons *Close sessions and update* / *Cancel*) and leaves the update unapplied if you
     decline. While a daemon runs from the install folder, a downloaded update is not applied

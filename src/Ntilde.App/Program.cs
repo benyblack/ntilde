@@ -186,16 +186,23 @@ class Program
     /// and the setting read - the setting straight from settings.json under the same root the descriptor is in
     /// (<see cref="Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile"/>; AppPaths is not touched this early).
     /// </summary>
-    private static bool LiveDaemonBlocksStartupApply()
+    private static bool LiveDaemonBlocksStartupApply() =>
+        LiveDaemonBlocksStartupApplyAt(Ntilde.Mux.Contracts.MuxDiscovery.GetRootDirectory(), Ntilde.Shell.Mux.MuxDaemonImage.CurrentVelopackInstallRoot());
+
+    /// <summary>
+    /// <see cref="LiveDaemonBlocksStartupApply"/>'s composition for the app-data root <paramref name="appDataRoot"/>: the
+    /// descriptor and settings.json are both read under it. <paramref name="installRoot"/> is this install's Velopack root
+    /// (null when there is none); <paramref name="connect"/> is the probe's connect, a seam for tests.
+    /// </summary>
+    internal static bool LiveDaemonBlocksStartupApplyAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null)
     {
-        string root = Ntilde.Mux.Contracts.MuxDiscovery.GetRootDirectory();
-        string descriptorPath = Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(root);
+        string descriptorPath = Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(appDataRoot);
         return Ntilde.Update.MuxUpdateCompatibility.BlocksStartupApply(
-            Environment.ProcessPath is { } exe ? Ntilde.Shell.Mux.MuxDaemonImage.VelopackInstallRoot(exe, System.IO.File.Exists) : null,
-            () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(descriptorPath, TimeSpan.FromMilliseconds(200)),
+            installRoot,
+            () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(descriptorPath, TimeSpan.FromMilliseconds(200), connect),
             () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadDescriptor(descriptorPath, out Ntilde.Mux.Contracts.MuxEndpointDescriptor? descriptor) ? descriptor : null,
             Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath,
-            () => Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile(System.IO.Path.Combine(root, "settings.json")));
+            () => Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile(System.IO.Path.Combine(appDataRoot, "settings.json")));
     }
 
     /// <summary>

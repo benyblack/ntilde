@@ -82,7 +82,7 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     }
 
     /// <summary>A window of plain panes with the designer's settings: SessionPersistence Off, unless <paramref name="settings"/> says otherwise.</summary>
-    private MainWindow CreateWindow(TerminalSettings? settings = null)
+    private static MainWindow CreateWindow(TerminalSettings? settings = null)
     {
         var services = AppServices.BuildForDesigner() with
         {
@@ -247,6 +247,37 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
 
         Assert.Equal(ClosesOneSessionPersistenceOff, asked);
         PumpUntil(() => Volatile.Read(ref shutdowns) == 1, "the daemon received shutdown");
+        Assert.Equal(1, service.ApplyCount);
+    }
+
+    /// <summary>
+    /// SessionPersistence Off: the session is saved as before Phase 5, by the teardown after the shutdown and its exit wait,
+    /// not ahead of the shutdown - with persistence off no shell is named for reattach, so an early save would only miss
+    /// what changed during the wait.
+    /// </summary>
+    [AvaloniaFact]
+    public void With_persistence_off_the_session_is_saved_by_the_teardown_after_the_shutdown()
+    {
+        MainWindow window = CreateWindow(new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off });
+        FakeApplyUpdateService service = StageUpdate(window, CompatibleNotes);
+        Assert.False(File.Exists(AppPaths.SessionFilePath)); // plain panes post no attach-save
+        bool? savedAtShutdown = null;
+        var shutdownSeen = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mux.Server.ShutdownRequested += () =>
+        {
+            savedAtShutdown = File.Exists(AppPaths.SessionFilePath);
+            shutdownSeen.TrySetResult(true);
+        };
+        window.ConfirmSessionLossForUpdate = _ => Task.FromResult(true);
+        window.MuxProbeForUpdate = ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct)!;
+        window.MuxReadDescriptorForUpdate = () => Daemon;
+        // The teardown cannot run before the shutdown was seen: the apply waits for the daemon's exit first.
+        window.MuxWaitForDaemonExitForUpdate = _ => shutdownSeen.Task;
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.False(savedAtShutdown, "the session was saved before the shutdown");
+        Assert.True(File.Exists(AppPaths.SessionFilePath), "the teardown saved the session");
         Assert.Equal(1, service.ApplyCount);
     }
 
@@ -569,15 +600,16 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     }
 
     /// <summary>
-    /// Also when the daemon was shut down first: that path saves the session before the shutdown and its teardown does
-    /// not save again, but only that once - the close after the failed apply saves as any close does.
+    /// Also when the daemon was shut down first (persistence on, so not Off's path): that path saves the session before
+    /// the shutdown and its teardown does not save again, but only that once - the close after the failed apply saves as
+    /// any close does.
     /// </summary>
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
     public void A_failed_update_apply_leaves_the_teardown_runnable_for_the_later_close(bool daemonShutDown)
     {
-        MainWindow window = CreateWindow();
+        MainWindow window = CreateWindow(daemonShutDown ? new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose } : null);
         var coordinator = new UpdateCoordinator(new ThrowingApplyUpdateService(), () => true, _ => { }, _ => { });
         Assert.Equal(UpdateCheckOutcome.UpdateReady,
             Task.Run(() => coordinator.RunManualCheckAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)

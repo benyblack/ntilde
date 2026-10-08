@@ -126,4 +126,84 @@ public sealed class StartupAutoApplyTests
     {
         Assert.True(MuxUpdateCompatibility.BlocksStartupApply(installRoot ? InstallRoot : null, () => true, () => Daemon, _ => OwnCopy, () => true));
     }
+
+    // ---- Program's wiring of the gate: the descriptor and settings.json under one app-data root, and the install root.
+
+    /// <summary>
+    /// A live daemon (a real descriptor under a scratch app-data root, naming this test process; the probe's connect is
+    /// stubbed) with settings.json under the same root. Off blocks, as before Phase 5; the default or KeepOnClose does
+    /// not. With an install root the image decides first: this process's own pid has no image, so it blocks unread.
+    /// </summary>
+    [Theory]
+    [InlineData("Off", false, true)]
+    [InlineData("KeepOnClose", false, false)]
+    [InlineData(null, false, false)]
+    [InlineData("KeepOnClose", true, true)]
+    public void The_gate_reads_the_descriptor_and_the_setting_under_the_app_data_root(string? persistence, bool installRoot, bool blocks)
+    {
+        string root = ScratchRoot();
+        try
+        {
+            WriteDescriptorNamingThisProcess(root);
+            if (persistence is not null) File.WriteAllText(Path.Combine(root, "settings.json"), $"{{\"SessionPersistence\":\"{persistence}\"}}");
+            int connects = 0;
+
+            bool blocked = Program.LiveDaemonBlocksStartupApplyAt(root, installRoot ? InstallRoot : null, (_, _) =>
+            {
+                connects++;
+                return new MemoryStream();
+            });
+
+            Assert.Equal(blocks, blocked);
+            Assert.Equal(1, connects);
+        }
+        finally
+        {
+            DeleteQuietly(root);
+        }
+    }
+
+    [Fact]
+    public void The_gate_finds_no_daemon_without_a_descriptor_under_the_root_whatever_the_setting()
+    {
+        string root = ScratchRoot();
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "settings.json"), "{\"SessionPersistence\":\"Off\"}");
+
+            Assert.False(Program.LiveDaemonBlocksStartupApplyAt(root, null, (_, _) => throw new InvalidOperationException("nothing to connect to")));
+        }
+        finally
+        {
+            DeleteQuietly(root);
+        }
+    }
+
+    private static string ScratchRoot()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"ntilde_gate_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
+    private static void WriteDescriptorNamingThisProcess(string root)
+    {
+        using var self = System.Diagnostics.Process.GetCurrentProcess();
+        MuxDiscovery.WriteDescriptor(MuxDiscovery.GetDescriptorPath(root), new MuxEndpointDescriptor
+        {
+            Endpoint = MuxDiscovery.GetDefaultEndpoint(root),
+            Pid = self.Id,
+            ProcessName = self.ProcessName,
+            StartTime = MuxDiscovery.GetProcessStartToken(self),
+            MinVersion = 1,
+            MaxVersion = 2,
+        });
+    }
+
+    private static void DeleteQuietly(string root)
+    {
+        try { Directory.Delete(root, recursive: true); }
+        catch (IOException) { /* best effort */ }
+        catch (UnauthorizedAccessException) { /* best effort */ }
+    }
 }

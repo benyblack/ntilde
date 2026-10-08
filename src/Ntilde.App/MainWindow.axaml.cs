@@ -286,8 +286,7 @@ namespace Ntilde
         /// Test seam: the Velopack install root whose every process an update's apply kills (Phase 5 R9), or null when
         /// this is not a Windows Velopack install, whose apply kills nothing.
         /// </summary>
-        internal Func<string?> MuxInstallRootForUpdate { get; set; } =
-            () => Environment.ProcessPath is { } exe ? Ntilde.Shell.Mux.MuxDaemonImage.VelopackInstallRoot(exe, System.IO.File.Exists) : null;
+        internal Func<string?> MuxInstallRootForUpdate { get; set; } = Ntilde.Shell.Mux.MuxDaemonImage.CurrentVelopackInstallRoot;
 
         /// <summary>
         /// Test seam: the executable the daemon a descriptor names runs from, or null when that cannot be told
@@ -5211,7 +5210,7 @@ namespace Ntilde
                 Volatile.Write(ref _sessionSaveQueued, 0);
                 // After teardown the connection is gone; the teardown's own save is the last word.
                 if (_teardownDone) return;
-                if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
+                SaveSessionWithoutEndedShells();
             }, DispatcherPriority.Background);
         }
 
@@ -10218,10 +10217,7 @@ namespace Ntilde
                 // runs - shared and detached ones - is killed on this connection, and the daemon is shut down.
                 EndLocalSessionsOnTeardown();
                 var others = running?.Where(id => !_localSessionsEndedOnClose.Contains(id)).ToList() ?? [];
-                foreach (TerminalPane pane in _paneOwnerTab.Keys)
-                {
-                    if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
-                }
+                MarkLocalShellsEnded();
 
                 await Task.Run(async () =>
                 {
@@ -10286,11 +10282,7 @@ namespace Ntilde
             _teardownDone = true;
             TeardownFaultForTest?.Invoke();
 
-            var tabs = this.FindControl<TabControl>("Tabs");
-            if (tabs != null && !_sessionSavedBeforeUpdate)
-            {
-                SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
-            }
+            if (!_sessionSavedBeforeUpdate) SaveSessionWithoutEndedShells();
 
             if (_muxHosts is { } muxHosts)
             {
@@ -10840,8 +10832,9 @@ namespace Ntilde
         /// With SessionPersistence off no daemon is kept, as before Phase 5.
         /// Otherwise, if it has running sessions, the user is asked to confirm the loss; declining
         /// leaves everything untouched (no teardown, no apply). Confirming - or no running session -
-        /// saves the session without the shells about to die, then sends <c>shutdown</c>, then
-        /// proceeds exactly as before. If listing sessions fails, the count is unknown so there is
+        /// saves the session without the shells about to die (with persistence on; off, the teardown
+        /// saves it afterwards, as before Phase 5), then sends <c>shutdown</c>, then proceeds exactly
+        /// as before. If listing sessions fails, the count is unknown so there is
         /// nothing to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative
         /// is the exact bug this method exists to prevent, a daemon the new build cannot use (or the
         /// apply would kill mid-flight) surviving the decision, just because a request on the way in
@@ -10937,7 +10930,10 @@ namespace Ntilde
             /// <summary>Declined, or the question could not be asked: nothing is torn down or applied.</summary>
             Cancel,
 
-            /// <summary>Go ahead: no daemon, or one the update keeps. The teardown saves the session as any close does.</summary>
+            /// <summary>
+            /// Go ahead: no daemon, one the update keeps, or - with persistence off - one shut down as before Phase 5. The
+            /// teardown saves the session as any close does.
+            /// </summary>
             Apply,
 
             /// <summary>Go ahead: the daemon was shut down, and the session saved just before; the teardown leaves that file alone.</summary>
@@ -10983,7 +10979,17 @@ namespace Ntilde
                     return MuxUpdatePreparation.Cancel;
                 }
 
-                SaveSessionWithoutLocalShellsForUpdate();
+                if (persistenceOff)
+                {
+                    // As before Phase 5: the teardown saves the session after the shutdown and its exit wait.
+                    await ShutdownMuxDaemonForUpdateAsync(daemon);
+                    return MuxUpdatePreparation.Apply;
+                }
+
+                // The shells about to die are left out of the session, saved now, before the shutdown: the file names
+                // none of them, and the teardown does not save over it with panes the shutdown has since ended.
+                MarkLocalShellsEnded();
+                SaveSessionWithoutEndedShells();
                 await ShutdownMuxDaemonForUpdateAsync(daemon);
                 return MuxUpdatePreparation.ApplySessionSaved;
             }
@@ -11023,18 +11029,24 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// The update is about to shut the daemon down, and every local shell with it: those shells are marked ended
-        /// (<see cref="_localSessionsEndedOnClose"/>, as Task 17's quit does) and the session is saved now, before the
-        /// shutdown. The file names none of them, so the next launch starts fresh shells quietly instead of reporting the
-        /// sessions the user just agreed to close as lost.
+        /// Marks every local pane's shell ended (<see cref="_localSessionsEndedOnClose"/>): the local daemon is about to be
+        /// shut down with all of them - Task 17's quit, an update that does not keep it - so no save names them for
+        /// reattach, and the next launch starts fresh shells quietly instead of reporting them lost. Idempotent.
         /// </summary>
-        private void SaveSessionWithoutLocalShellsForUpdate()
+        private void MarkLocalShellsEnded()
         {
             foreach (TerminalPane pane in _paneOwnerTab.Keys)
             {
                 if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
             }
+        }
 
+        /// <summary>
+        /// Saves the startup session file, leaving out the local shells already ended (<see cref="_localSessionsEndedOnClose"/>).
+        /// Every save of that file goes through here: the teardown's, each attach's coalesced one, and the update's.
+        /// </summary>
+        private void SaveSessionWithoutEndedShells()
+        {
             if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
         }
 
