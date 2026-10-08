@@ -199,6 +199,40 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         Assert.DoesNotContain(id.ToString(), File.ReadAllText(AppPaths.SessionFilePath));
     }
 
+    /// <summary>
+    /// Fix round 1: "Close them" never ends a shell another client is also typing into - a pane close never does
+    /// that without asking (the shared-close question). That pane detaches, as Keep does; the unshared one is killed.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_them_never_ends_a_shared_shell()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        Guid own = LocalSession(window)!.Id;
+        // Another instance spawned and shows a shell; this window attaches it too ("Attach to session…").
+        (MuxClient _, ClientPaneModel theirs) = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        Guid shared = theirs.Session.Id;
+        window.PickMuxSession = _ => Task.FromResult<Guid?>(shared);
+        Task attach = window.AttachToMuxSessionAsync();
+        PumpUntil(() => attach.IsCompleted, "the attach command finished");
+        TerminalPane mine = window.AllPanesForTest().Single(p => p.Session is MuxClientSession m && m.Id == shared);
+        PumpUntil(() => mine.MuxOtherClients == 1 && ((MuxClientSession)mine.Session!).InteractiveOthers == 1, "this window knows the shell is shared");
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([2], _asked); // both are counted as shells the close would otherwise keep
+        Assert.DoesNotContain(own, _mux.Server.GetSessionIds());
+        Assert.Contains(shared, _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(shared).IsExited);
+        PumpUntil(() => _mux.Mux(shared).AttachedClients == 1, "this window detached; the other instance still shows it");
+        Assert.Contains(shared.ToString(), File.ReadAllText(AppPaths.SessionFilePath)); // kept, so still named for reattach
+    }
+
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
@@ -300,29 +334,152 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         }
     }
 
-    /// <summary>
-    /// A lifetime shutdown (the OS ending the session, or the application lifetime's own shutdown - macOS Cmd+Q)
-    /// never asks and never kills, whatever was remembered: it behaves like Keep. Only a window close asks.
-    /// </summary>
+    /// <summary>The OS ending the session never asks and never kills, whatever was remembered: it behaves like Keep.</summary>
     [AvaloniaTheory]
-    [InlineData(WindowCloseReason.OSShutdown, false)]
-    [InlineData(WindowCloseReason.OSShutdown, true)]
-    [InlineData(WindowCloseReason.ApplicationShutdown, false)]
-    [InlineData(WindowCloseReason.ApplicationShutdown, true)]
-    public void OS_shutdown_never_asks(WindowCloseReason reason, bool closeRemembered)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OS_shutdown_never_asks(bool closeRemembered)
     {
         MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
         if (closeRemembered) Store.Remember(MuxCloseChoice.Close);
         MuxConnectionHost host = window.MuxHost!;
         Guid id = LocalSession(window)!.Id;
 
-        bool held = window.HandleClosingForTest(reason);
+        bool held = window.HandleClosingForTest(WindowCloseReason.OSShutdown);
 
         Assert.False(held);
         Dispatcher.UIThread.RunJobs();
         Assert.Empty(_asked);
         Assert.Null(host.CurrentClient); // the teardown ran
         AssertKeptRunning(id);
+    }
+
+    /// <summary>
+    /// Fix round 1: the application lifetime's shutdown (macOS Cmd+Q, TryShutdown) never asks - holding it would
+    /// cancel the shutdown - but applies a remembered answer: a remembered "close" ends the shells. With nothing
+    /// remembered it keeps them.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("nothing")]
+    [InlineData("keep")]
+    [InlineData("close")]
+    public void Application_shutdown_applies_a_remembered_answer_without_asking(string remembered)
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        if (remembered != "nothing") Store.Remember(remembered == "close" ? MuxCloseChoice.Close : MuxCloseChoice.Keep);
+        MuxConnectionHost host = window.MuxHost!;
+        Guid id = LocalSession(window)!.Id;
+
+        bool held = window.HandleClosingForTest(WindowCloseReason.ApplicationShutdown);
+
+        Assert.False(held);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(_asked);
+        Assert.Null(host.CurrentClient); // the teardown ran
+        if (remembered == "close")
+        {
+            Assert.DoesNotContain(id, _mux.Server.GetSessionIds()); // killed, flushed before the disconnect
+        }
+        else
+        {
+            AssertKeptRunning(id);
+        }
+    }
+
+    /// <summary>Fix round 1: a close that the question's post has not reached yet, overtaken by a shutdown, never shows it.</summary>
+    [AvaloniaFact]
+    public void A_question_overtaken_by_a_shutdown_is_never_shown()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        Guid id = LocalSession(window)!.Id;
+
+        window.Close(); // held; the question is posted, not yet run
+        Assert.False(window.HandleClosingForTest(WindowCloseReason.OSShutdown));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Empty(_asked);
+        AssertKeptRunning(id);
+    }
+
+    /// <summary>A shutdown while the question is open is not held; the answer that arrives afterwards is dropped.</summary>
+    [AvaloniaFact]
+    public void A_shutdown_while_the_question_is_open_drops_the_late_answer()
+    {
+        var pending = new TaskCompletionSource<FirstCloseAnswer>();
+        MainWindow window = CreateWindow(_ => pending.Task);
+        Guid id = LocalSession(window)!.Id;
+        window.Close();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal([1], _asked);
+
+        Assert.False(window.HandleClosingForTest(WindowCloseReason.ApplicationShutdown));
+        pending.SetResult(new FirstCloseAnswer(FirstCloseAction.Close, Remember: true));
+        Dispatcher.UIThread.RunJobs();
+
+        AssertKeptRunning(id); // no kill was sent for the late "Close them"
+        Assert.False(File.Exists(FlagPath)); // nor was it remembered
+    }
+
+    /// <summary>A question that cannot be shown closes the window as Keep: nothing is lost, and the window is not stuck open.</summary>
+    [AvaloniaFact]
+    public void A_question_that_cannot_be_shown_closes_as_Keep()
+    {
+        MainWindow window = CreateWindow(_ => throw new InvalidOperationException("Cannot show window with non-visible owner."));
+        Guid id = LocalSession(window)!.Id;
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed anyway");
+
+        Assert.Equal([1], _asked);
+        AssertKeptRunning(id);
+        Assert.False(File.Exists(FlagPath));
+    }
+
+    /// <summary>
+    /// Fix round 1: the last tab closing while the question is open (its shell exited) closes the window: there is
+    /// nothing left to ask about, and a Cancel would otherwise leave a window with no tabs. The late answer is dropped.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_close_with_nothing_left_to_keep_goes_through_while_the_question_is_open()
+    {
+        var pending = new TaskCompletionSource<FirstCloseAnswer>();
+        MainWindow window = CreateWindow(_ => pending.Task);
+        MuxClientSession mux = LocalSession(window)!;
+        window.Close();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal([1], _asked);
+        _mux.Fake(mux.Id).Exit(3);
+        PumpUntil(() => !mux.IsProcessRunning, "the pane saw the exit");
+
+        window.Close();
+
+        Assert.False(window.IsVisible);
+        pending.SetResult(new FirstCloseAnswer(FirstCloseAction.Close, Remember: true));
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(File.Exists(FlagPath));
+    }
+
+    /// <summary>Fix round 1: a window from the test factory never opens the real modal, whatever a test forgets to set.</summary>
+    [AvaloniaFact]
+    public void Test_windows_never_show_the_real_dialog()
+    {
+        var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
+        _hosts.Add(host);
+        MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+        {
+            CommandAssist = TestCommandAssistServices.Instance,
+            SessionFactory = new MuxTerminalSessionFactory(new MuxConnectionHosts(host, _ => null), new RecordingSessionFactory(new FakeTerminalSession()), null),
+            Settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose },
+        });
+        window.MuxCloseChoiceStore = Store;
+        window.Show();
+        PumpUntil(() => LocalSession(window) is { IsAttached: true }, "the first pane attached");
+
+        window.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Empty(window.OwnedWindows);
+        Assert.True(window.IsVisible); // the factory's default answer is Cancel
     }
 
     [AvaloniaFact]
@@ -365,6 +522,37 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         }
     }
 
+    /// <summary>
+    /// Fix round 1: an Import or Restore inside Settings replaces settings.json and the window adopts it whatever the
+    /// dialog does next; when that changed the effective persistence mode, the remembered answer is forgotten too.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void An_import_that_changes_the_setting_forgets_the_choice(bool change)
+    {
+        Assert.StartsWith(_appData.RootPath, MuxCloseChoiceStore.Default.FilePath, StringComparison.Ordinal);
+        try
+        {
+            var settings = new SettingsWindow();
+            string loaded = TerminalSettings.Load().SessionPersistence;
+            string imported = change == SessionPersistenceMode.IsKeepOnClose(loaded) ? SessionPersistenceMode.Off : SessionPersistenceMode.KeepOnClose;
+            new TerminalSettings { SessionPersistence = imported }.Save(); // what a successful Import/Restore leaves on disk
+            MuxCloseChoiceStore.Default.Remember(MuxCloseChoice.Close);
+
+            var reload = (Task)typeof(SettingsWindow).GetMethod("ReloadSettingsAfterExternalChangeAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(settings, null)!;
+            PumpUntil(() => reload.IsCompleted, "the reload finished");
+
+            Assert.Equal(!change, File.Exists(MuxCloseChoiceStore.Default.FilePath));
+        }
+        finally
+        {
+            MuxCloseChoiceStore.Default.Forget();
+            if (File.Exists(AppPaths.SettingsFilePath)) File.Delete(AppPaths.SettingsFilePath);
+        }
+    }
+
     private static List<string?> Texts(Window dialog) =>
         dialog.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
 
@@ -382,7 +570,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         Assert.Equal("Close Ntilde", dialog.Title);
         List<string?> texts = Texts(dialog);
         Assert.Contains("Your shells keep running in the background.", texts);
-        Assert.Contains("Reopen ntilde to get them back. (3 shells)", texts);
+        Assert.Contains("Reopen Ntilde to get them back. (3 shells)", texts);
         Assert.Contains("Turn this off in Settings → Keep shells running when the window closes.", texts);
         CheckBox dontAsk = Assert.Single(dialog.GetLogicalDescendants().OfType<CheckBox>());
         Assert.Equal("Don't ask again", dontAsk.Content);
@@ -405,7 +593,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
     {
         MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel));
         (Window dialog, Task<FirstCloseAnswer> result) = window.BuildFirstCloseDialog(1);
-        Assert.Contains("Reopen ntilde to get them back.", Texts(dialog)); // one shell: no count
+        Assert.Contains("Reopen Ntilde to get them back.", Texts(dialog)); // one shell: no count
         dialog.Show();
         Dispatcher.UIThread.RunJobs();
 
@@ -450,6 +638,30 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
 
         PumpUntil(() => result.IsCompleted, "the dialog closed");
         Assert.Equal(new FirstCloseAnswer(FirstCloseAction.Keep, Remember: false), result.Result);
+    }
+
+    /// <summary>
+    /// Fix round 1: ticking "Don't ask again" leaves focus on the CheckBox, which would take Enter for itself (toggling
+    /// the box off) before Keep running's IsDefault is consulted. Enter still keeps, and remembers.
+    /// </summary>
+    [AvaloniaFact]
+    public void Enter_after_ticking_dont_ask_again_keeps_and_remembers()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel));
+        Dispatcher.UIThread.RunJobs();
+        (Window dialog, Task<FirstCloseAnswer> result) = window.BuildFirstCloseDialog(2);
+        dialog.Show();
+        Dispatcher.UIThread.RunJobs();
+        CheckBox dontAsk = Assert.Single(dialog.GetLogicalDescendants().OfType<CheckBox>());
+        dontAsk.IsChecked = true; // what a click does: it ticks the box and takes focus
+        dontAsk.Focus();
+        Dispatcher.UIThread.RunJobs();
+        Assert.Same(dontAsk, dialog.FocusManager?.GetFocusedElement());
+
+        PressKey(dialog, PhysicalKey.Enter);
+
+        PumpUntil(() => result.IsCompleted, "the dialog closed", ms: 3_000);
+        Assert.Equal(new FirstCloseAnswer(FirstCloseAction.Keep, Remember: true), result.Result);
     }
 
     /// <summary>

@@ -32,10 +32,23 @@ namespace Ntilde
         public TerminalSettings Settings => _settings; // Expose for main window to grab without reloading disk
 
         /// <summary>
-        /// The session persistence setting as this window opened (spec R1): saving a different one forgets the
-        /// first-close dialog's remembered answer, so turning persistence back on asks again.
+        /// The session persistence setting as this window last loaded it - when it opened, or after an Import/Restore
+        /// reloaded settings.json (spec R1): saving a different one forgets the first-close dialog's remembered answer.
         /// </summary>
-        private readonly string? _sessionPersistenceAtOpen;
+        private string? _sessionPersistenceLoaded;
+
+        /// <summary>
+        /// R1: when the effective persistence mode changed from <paramref name="before"/> to <paramref name="after"/>,
+        /// the first-close answer is forgotten, so turning persistence back on asks again. A spelling that does not
+        /// change the mode (a typo read as Off, saved as "Off") is not a change.
+        /// </summary>
+        private static void ForgetCloseChoiceIfPersistenceChanged(string? before, string? after)
+        {
+            if (Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(before) != Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(after))
+            {
+                Ntilde.Shell.Mux.MuxCloseChoiceStore.Default.Forget();
+            }
+        }
 
         /// <summary>
         /// F1: set once a successful Import or Restore has replaced configuration on disk out from
@@ -141,7 +154,7 @@ namespace Ntilde
             UiScale.PinScale(this, UiScale.Current);
             UiScale.FitWindow(this);
             _settings = TerminalSettings.Load();
-            _sessionPersistenceAtOpen = _settings.SessionPersistence;
+            _sessionPersistenceLoaded = _settings.SessionPersistence;
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))
             {
@@ -1262,6 +1275,10 @@ namespace Ntilde
             Guid? previousSelectedProfileId = _selectedProfile?.Id;
 
             _settings = TerminalSettings.Load();
+            // R1: the main window adopts these settings whatever this dialog does next (F1), so a changed persistence
+            // mode forgets the first-close answer here, as a Save would.
+            ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, _settings.SessionPersistence);
+            _sessionPersistenceLoaded = _settings.SessionPersistence;
 
             _profilesList = BuildLocalProfilesForEditor(_settings.Profiles);
             _settings.DefaultProfileId = ResolveDefaultLocalProfileId(_settings.DefaultProfileId, _profilesList);
@@ -3472,11 +3489,7 @@ namespace Ntilde
 
             _settings.Save();
             // R1: a changed persistence setting forgets the first-close answer; turned back on, the next close asks again.
-            if (Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_sessionPersistenceAtOpen)
-                != Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence))
-            {
-                Ntilde.Shell.Mux.MuxCloseChoiceStore.Default.Forget();
-            }
+            ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, _settings.SessionPersistence);
 
             Close(true); // Return true to indicate saved
         }

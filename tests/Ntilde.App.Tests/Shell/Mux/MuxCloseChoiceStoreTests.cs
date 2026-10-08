@@ -103,6 +103,7 @@ public sealed class MuxCloseChoiceStoreTests : IDisposable
     public void The_default_store_lives_at_the_app_data_root()
     {
         Assert.Equal("mux-close-choice", MuxCloseChoiceStore.FileName);
-        Assert.Equal(Path.Combine(Ntilde.Shell.AppPaths.RootDirectory, MuxCloseChoiceStore.FileName), MuxCloseChoiceStore.Default.FilePath);
+        Assert.Equal(Path.Combine(Ntilde.Shell.AppPaths.RootDirectory, MuxCloseChoiceStore.FileName), Ntilde.Shell.AppPaths.MuxCloseChoiceFilePath);
+        Assert.Equal(Ntilde.Shell.AppPaths.MuxCloseChoiceFilePath, MuxCloseChoiceStore.Default.FilePath);
     }
 }

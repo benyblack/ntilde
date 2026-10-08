@@ -6,24 +6,46 @@ internal enum MuxCloseChoice { Keep, Close }
 /// <summary>
 /// The remembered answer to the first-close dialog: a flag file under the app-data root, not a setting (R1).
 /// Its content is <c>keep</c> or <c>close</c>. "Don't ask again" writes it; saving Settings with a changed
-/// session persistence deletes it, so turning persistence back on asks again. Deleting it by hand is safe:
-/// the next close with live shells asks again.
+/// session persistence (or an Import/Restore that changes it) deletes it, so turning persistence back on asks
+/// again. Deleting it by hand is safe: the next close with live shells asks again. Not backed up: it is a
+/// machine-local answer, listed in <c>BackupCatalog.ExcludedRelativePaths</c>.
 /// </summary>
-internal sealed class MuxCloseChoiceStore(string rootDirectory)
+internal sealed class MuxCloseChoiceStore
 {
-    public const string FileName = "mux-close-choice";
+    public const string FileName = AppPaths.MuxCloseChoiceFileName;
 
     private const string KeepText = "keep";
     private const string CloseText = "close";
 
+    private readonly string _directory;
+
+    /// <summary>The store for the flag file under <paramref name="rootDirectory"/> (a test's scratch root).</summary>
+    public MuxCloseChoiceStore(string rootDirectory)
+        : this(rootDirectory, Path.Combine(rootDirectory, FileName))
+    {
+    }
+
+    private MuxCloseChoiceStore(string directory, string filePath)
+    {
+        _directory = directory;
+        FilePath = filePath;
+    }
+
     /// <summary>
-    /// The store at <see cref="AppPaths.RootDirectory"/>, resolved on each access rather than once: the root follows
-    /// <c>NTILDE_APPDATA_ROOT</c>, and a store pinned to whichever root was current first could write into a
+    /// The store at <see cref="AppPaths.MuxCloseChoiceFilePath"/>, resolved on each access rather than once: the root
+    /// follows <c>NTILDE_APPDATA_ROOT</c>, and a store pinned to whichever root was current first could write into a
     /// developer's real profile from a test that had moved it.
     /// </summary>
-    public static MuxCloseChoiceStore Default => new(AppPaths.RootDirectory);
+    public static MuxCloseChoiceStore Default
+    {
+        get
+        {
+            string path = AppPaths.MuxCloseChoiceFilePath;
+            return new MuxCloseChoiceStore(Path.GetDirectoryName(path)!, path);
+        }
+    }
 
-    public string FilePath { get; } = Path.Combine(rootDirectory, FileName);
+    public string FilePath { get; }
 
     /// <summary>The remembered answer: <c>keep</c> or <c>close</c>, trimmed and ignoring case. Anything else, no file, or a read error is null (ask).</summary>
     public MuxCloseChoice? Read()
@@ -51,7 +73,7 @@ internal sealed class MuxCloseChoiceStore(string rootDirectory)
         string tmp = FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            Directory.CreateDirectory(rootDirectory);
+            Directory.CreateDirectory(_directory);
             File.WriteAllText(tmp, choice == MuxCloseChoice.Close ? CloseText : KeepText);
             File.Move(tmp, FilePath, overwrite: true);
         }

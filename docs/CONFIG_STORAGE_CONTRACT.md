@@ -87,7 +87,7 @@ All paths are properties of
 |---|---|
 | `settings.json` | all app settings |
 | `command-palette-usage.json` | command-palette ranking data |
-| `mux-close-choice` | `keep` or `close`: the first-close dialog's "Don't ask again" answer (`MuxCloseChoiceStore.FileName`). Written by that dialog, deleted when Settings saves a changed session persistence; safe to delete (the next close with live shells asks again) |
+| `mux-close-choice` | `keep` or `close`: the first-close dialog's "Don't ask again" answer (`AppPaths.MuxCloseChoiceFilePath`, written by `MuxCloseChoiceStore`). Deleted when Settings saves, imports or restores a changed session persistence; excluded from backups (`BackupCatalog.ExcludedRelativePaths`); safe to delete (the next close with live shells asks again) |
 | `themes\` | user-installed themes |
 | `sessions\last_session.json` | restored tab/pane layout |
 | `workspaces\`, `workspace_templates\` | saved and templated workspaces |
