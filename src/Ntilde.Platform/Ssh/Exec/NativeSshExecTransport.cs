@@ -172,7 +172,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     /// <summary>How long a closed session's poll thread may take to stop.</summary>
     internal static readonly TimeSpan StopWait = TimeSpan.FromSeconds(2);
 
-    private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(10);
+    private static readonly TimeSpan IdleWait = TimeSpan.FromMilliseconds(100);
 
     /// <summary>Unread stdout at which the poll thread stops and waits for the reader.</summary>
     internal const long StdoutPauseThresholdBytes = 16L * 1024 * 1024;
@@ -384,7 +384,9 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 NativeSshEvent? next = _interop.PollEvent(handle);
                 if (next is null)
                 {
-                    Thread.Sleep(PollDelay);
+                    // Parks until the native side queues something. Bounded so _stop is seen and the
+                    // handle's reference (held for the call) never delays a close for long.
+                    _interop.WaitForEvent(handle, IdleWait);
                     continue;
                 }
 

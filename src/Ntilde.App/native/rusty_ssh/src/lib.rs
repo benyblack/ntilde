@@ -155,6 +155,14 @@ pub const NOVA_SSH_RESULT_WOULD_BLOCK: c_int = -8;
 /// retry a channel.
 pub const NOVA_SSH_RESULT_REMOTE_FORWARD_FAILED: c_int = -9;
 
+/// nova_ssh_wait_event's timeout elapsed with no event queued. Not an error: the caller polls again.
+/// Appended after the existing codes; the numbering of those never changes.
+pub const NOVA_SSH_RESULT_TIMEOUT: c_int = -10;
+
+/// The longest one nova_ssh_wait_event parks. The managed caller holds a SafeHandle reference for
+/// the whole call, which defers the handle's release, so an unbounded wait would stall a close.
+const MAX_EVENT_WAIT_MS: u32 = 1000;
+
 /// Per-forward-channel ceiling on bytes queued toward the remote, mirroring the managed side's
 /// budget for the opposite direction. Reaching it makes nova_ssh_channel_write report
 /// NOVA_SSH_RESULT_WOULD_BLOCK rather than growing the queue without limit.
@@ -279,6 +287,9 @@ struct SharedState {
     events: Mutex<VecDeque<QueuedEvent>>,
     responses: Mutex<VecDeque<QueuedResponse>>,
     response_cv: Condvar,
+    // Wakes nova_ssh_wait_event: notified after every push to `events` and on close. Waits on the
+    // `events` mutex, whose guard the waiter holds while it checks "empty and not closed".
+    events_cv: Condvar,
     closed: Mutex<bool>,
     // Async-side companion to `closed`/`response_cv`: lets the worker's session
     // establishment race against nova_ssh_close so a stuck connect/auth can be
@@ -333,6 +344,18 @@ struct EventMeta {
     payload_len: usize,
     status_code: i32,
     flags: u32,
+}
+
+/// Outcome of `wait_for_event`.
+#[derive(Debug, Eq, PartialEq)]
+enum EventWait {
+    Ready,
+    Timeout,
+    Closed,
+}
+
+fn clamp_event_wait(timeout_ms: u32) -> Duration {
+    Duration::from_millis(u64::from(timeout_ms.min(MAX_EVENT_WAIT_MS)))
 }
 
 /// Outcome of a single `take_event_if_fits`.
@@ -814,6 +837,7 @@ impl SharedState {
             events: Mutex::new(VecDeque::new()),
             responses: Mutex::new(VecDeque::new()),
             response_cv: Condvar::new(),
+            events_cv: Condvar::new(),
             closed: Mutex::new(false),
             closed_notify: tokio::sync::Notify::new(),
             forward_write_budgets: Mutex::new(HashMap::new()),
@@ -898,6 +922,37 @@ impl SharedState {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .push_back(event);
+        // After the push, with the lock released: a waiter either saw the event before it parked,
+        // or parked while holding the lock the push needed, so the notify cannot be lost.
+        self.events_cv.notify_all();
+    }
+
+    /// Parks until an event is queued, the session closes, or `timeout` passes. Queued events win
+    /// over a close, so the poll drains everything (including Closed) before the caller sees CLOSED.
+    /// Does not consume the event: the caller polls for it.
+    fn wait_for_event(&self, timeout: Duration) -> EventWait {
+        let deadline = std::time::Instant::now() + timeout;
+        let mut events = self.events.lock().unwrap_or_else(|e| e.into_inner());
+        loop {
+            if !events.is_empty() {
+                return EventWait::Ready;
+            }
+            if self.is_closed() {
+                return EventWait::Closed;
+            }
+
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                return EventWait::Timeout;
+            }
+
+            // Loops on spurious wake-ups and re-checks both conditions.
+            events = self
+                .events_cv
+                .wait_timeout(events, remaining)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
     }
 
     /// Queues a data-bearing event, parking until the queue is under MAX_QUEUED_EVENT_BYTES
@@ -1036,6 +1091,10 @@ impl SharedState {
     fn mark_closed(&self) {
         *self.closed.lock().unwrap_or_else(|e| e.into_inner()) = true;
         self.response_cv.notify_all();
+        // Take the events lock before notifying: a waiter checks `closed` while holding it, so this
+        // cannot slip between its check and its park.
+        drop(self.events.lock().unwrap_or_else(|e| e.into_inner()));
+        self.events_cv.notify_all();
         self.closed_notify.notify_waiters();
         // A producer parked in queue_data_event must observe the close and bail, or
         // nova_ssh_close would join a worker that is waiting for a drain that will never come.
@@ -1269,6 +1328,28 @@ fn spawn_session(config: ConnectConfig, mode: SessionMode) -> usize {
     };
 
     registry_insert(session) as usize
+}
+
+/// Waits up to `timeout_ms` (clamped to 1000) for an event to be queued or the session to close,
+/// so a poll thread can park instead of sleeping between polls. Does not consume anything: poll
+/// with nova_ssh_poll_event afterwards.
+///
+/// Returns NOVA_SSH_RESULT_OK when an event is ready, NOVA_SSH_RESULT_TIMEOUT when none came, and
+/// NOVA_SSH_RESULT_CLOSED when the session closed with nothing left queued.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_wait_event(handle: usize, timeout_ms: u32) -> c_int {
+    ffi_guard(NOVA_SSH_RESULT_PANIC, || {
+        let session = match registry_get(handle) {
+            Some(s) => s,
+            None => return NOVA_SSH_RESULT_INVALID_ARGUMENT,
+        };
+
+        match session.shared.wait_for_event(clamp_event_wait(timeout_ms)) {
+            EventWait::Ready => NOVA_SSH_RESULT_OK,
+            EventWait::Timeout => NOVA_SSH_RESULT_TIMEOUT,
+            EventWait::Closed => NOVA_SSH_RESULT_CLOSED,
+        }
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -6671,6 +6752,149 @@ mod event_queue_budget_tests {
             shared.queue_data_event(data_event(1)).await,
             "the counter must still admit producers after the unaccounted pop"
         );
+    }
+}
+
+/// `nova_ssh_wait_event`: the exec poll thread parks here instead of sleeping between polls.
+#[cfg(test)]
+mod event_wait_tests {
+    use super::*;
+    use std::time::Instant;
+
+    fn control_event() -> QueuedEvent {
+        QueuedEvent {
+            kind: NovaSshEventKind::ExitStatus,
+            payload: Vec::new(),
+            status_code: 0,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
+        }
+    }
+
+    fn session_with(shared: &Arc<SharedState>) -> usize {
+        registry_insert(NovaSshSession {
+            shared: shared.clone(),
+            command_tx: Mutex::new(None),
+            worker: Mutex::new(None),
+        }) as usize
+    }
+
+    #[test]
+    fn an_empty_queue_times_out_after_the_timeout() {
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+
+        let started = Instant::now();
+        let rc = nova_ssh_wait_event(handle, 80);
+
+        assert_eq!(NOVA_SSH_RESULT_TIMEOUT, rc);
+        assert!(
+            started.elapsed() >= Duration::from_millis(80),
+            "it returned early: {:?}",
+            started.elapsed()
+        );
+        nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn a_queued_event_makes_it_return_ok_without_waiting() {
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+        shared.queue_event(control_event());
+
+        let started = Instant::now();
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_wait_event(handle, 1000));
+        assert!(started.elapsed() < Duration::from_millis(500));
+
+        // It only waits: the event is still there for the poll.
+        assert!(matches!(
+            shared.take_event_if_fits(usize::MAX),
+            EventRead::Ready(_)
+        ));
+        nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn an_event_queued_from_another_thread_wakes_the_wait_promptly() {
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+
+        let producer = {
+            let shared = shared.clone();
+            thread::spawn(move || {
+                thread::sleep(Duration::from_millis(100));
+                shared.queue_event(control_event());
+            })
+        };
+
+        let started = Instant::now();
+        let rc = nova_ssh_wait_event(handle, 1000);
+        let waited = started.elapsed();
+        producer.join().unwrap();
+
+        assert_eq!(NOVA_SSH_RESULT_OK, rc);
+        assert!(waited >= Duration::from_millis(90), "woke before the event: {waited:?}");
+        assert!(waited < Duration::from_millis(800), "slept through the wake-up: {waited:?}");
+        nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn closing_wakes_the_wait_with_closed() {
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+
+        let closer = {
+            let shared = shared.clone();
+            thread::spawn(move || {
+                thread::sleep(Duration::from_millis(100));
+                shared.mark_closed();
+            })
+        };
+
+        let started = Instant::now();
+        let rc = nova_ssh_wait_event(handle, 1000);
+        let waited = started.elapsed();
+        closer.join().unwrap();
+
+        assert_eq!(NOVA_SSH_RESULT_CLOSED, rc);
+        assert!(waited < Duration::from_millis(800), "slept through the close: {waited:?}");
+        nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn an_already_closed_session_reports_closed_at_once() {
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+        shared.mark_closed();
+
+        let started = Instant::now();
+        assert_eq!(NOVA_SSH_RESULT_CLOSED, nova_ssh_wait_event(handle, 1000));
+        assert!(started.elapsed() < Duration::from_millis(500));
+        nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn events_queued_before_the_close_are_still_reported_ready() {
+        let shared = Arc::new(SharedState::new());
+        let handle = session_with(&shared);
+        shared.queue_event(control_event());
+        shared.mark_closed();
+
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_wait_event(handle, 1000));
+        nova_ssh_close(handle);
+    }
+
+    #[test]
+    fn an_unknown_handle_is_an_invalid_argument() {
+        assert_eq!(
+            NOVA_SSH_RESULT_INVALID_ARGUMENT,
+            nova_ssh_wait_event(0, 10)
+        );
+    }
+
+    #[test]
+    fn the_timeout_is_clamped_to_one_second() {
+        assert_eq!(Duration::from_millis(1000), clamp_event_wait(u32::MAX));
+        assert_eq!(Duration::from_millis(5), clamp_event_wait(5));
     }
 }
 

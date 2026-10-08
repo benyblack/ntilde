@@ -16,6 +16,8 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     private readonly List<byte[]> _writes = [];
     private readonly List<(NativeSshResponseKind Kind, string PayloadJson)> _submissions = [];
     private int _execCalls;
+    private readonly SemaphoreSlim _arrived = new(0);
+    private int _waits;
     private int _polls;
     private int _dequeued;
     private int _sendEofCount;
@@ -38,6 +40,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     public string? ExecCommand { get; private set; }
     public int ExecCalls => Volatile.Read(ref _execCalls);
     public int Polls => Volatile.Read(ref _polls);
+    public int Waits => Volatile.Read(ref _waits);
     public int Dequeued => Volatile.Read(ref _dequeued);
     public int SendEofCount => Volatile.Read(ref _sendEofCount);
     public int CloseCount => Volatile.Read(ref _closeCount);
@@ -58,7 +61,29 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
         foreach (NativeSshEvent next in events)
         {
             _events.Enqueue(next);
+            _arrived.Release(); // after the enqueue, so a waiter that sees the count finds the event
         }
+    }
+
+    /// <summary>
+    /// As the real wait: returns at once when an event is queued, otherwise blocks until one is
+    /// scripted or <paramref name="timeout"/> passes. Counts the calls.
+    /// </summary>
+    public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+    {
+        Interlocked.Increment(ref _waits);
+
+        // Drop stale releases first, then look: an Enqueue landing after this check also releases after the drain.
+        while (_arrived.Wait(0))
+        {
+        }
+
+        if (!_events.IsEmpty)
+        {
+            return true;
+        }
+
+        return _arrived.Wait(timeout);
     }
 
     public static NativeSshEvent Connected() =>

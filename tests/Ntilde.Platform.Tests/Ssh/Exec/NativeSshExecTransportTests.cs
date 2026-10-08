@@ -134,6 +134,39 @@ public sealed class NativeSshExecTransportTests
         Assert.Equal("Failed to create native SSH session.", ex.Message);
     }
 
+    // --- Idle wait -------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task An_idle_session_waits_for_events_instead_of_polling_on_a_timer()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        using ISshExecChannel channel = Start(interop);
+
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+
+        // A 10 ms sleep loop polled about 50 times in this window.
+        Assert.True(interop.Polls <= 10, $"The idle poll thread polled {interop.Polls} times in 500 ms.");
+        Assert.True(interop.Waits >= 1, "The idle poll thread never waited for an event.");
+    }
+
+    [Fact]
+    public async Task An_event_scripted_during_the_idle_wait_is_delivered_promptly()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        using ISshExecChannel channel = Start(interop);
+        await Task.Delay(200, TestContext.Current.CancellationToken); // parked in the wait
+
+        var read = new byte[16];
+        Task<int> pending = channel.Stdout.ReadAsync(read, TestContext.Current.CancellationToken).AsTask();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        interop.Enqueue(ScriptedNativeSshInterop.Stdout("hello"));
+        int count = await pending.WaitAsync(Bound, TestContext.Current.CancellationToken);
+        clock.Stop();
+
+        Assert.Equal("hello", Encoding.UTF8.GetString(read, 0, count));
+        Assert.True(clock.ElapsedMilliseconds < 50, $"The event took {clock.ElapsedMilliseconds} ms to arrive.");
+    }
+
     // --- Events ----------------------------------------------------------------------------------
 
     [Fact]
