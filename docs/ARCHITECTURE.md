@@ -312,7 +312,10 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   say); the close is held for that listing. `ApplicationShutdown` (macOS Cmd+Q) applies a remembered answer and never asks;
   `OSShutdown` never kills. "Quit and close all shells" (`QuitAndCloseAllShellsAsync`) kills every
   session the local daemon lists and shuts it down (`ShutdownLocalDaemonAsync`). Ended shells are
-  saved as gone (`MarkLocalShellsEnded`), so the next launch starts fresh ones without a notice.
+  saved as gone (`MarkLocalShellsEnded`), so the next launch starts fresh ones without a notice; when
+  the whole daemon stops (this quit, an update that cannot keep it) that covers every local id the
+  window holds without a live pane too, shares included (`HeldLocalMuxSessionIds`). Task 23's restart
+  marks nothing: its panes let go of their ids, and a pending id stays named in case the stop failed.
 - **Quiet restore (R2).** `Shell/Native/SessionStartBoundary.Read` gives the time no live local session
   can predate: on Windows the later of the boot (`UtcNow - TickCount64`) and this logon session's start
   (`WTSQuerySessionInformationW`, `WTSSessionInfo`), since Fast Startup's "Shut down" is a logoff that

@@ -11550,9 +11550,13 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Marks every local pane's shell ended (<see cref="_localSessionsEndedOnClose"/>): the local daemon is about to be
-        /// shut down with all of them - Task 17's quit, an update that does not keep it - so no save names them for
-        /// reattach, and the next launch starts fresh shells quietly instead of reporting them lost. Idempotent.
+        /// Marks every local shell this window names ended (<see cref="_localSessionsEndedOnClose"/>): the local daemon is
+        /// about to be shut down with all of them - Task 17's quit, an update that does not keep it - so no save names them
+        /// for reattach, and the next launch starts fresh shells quietly instead of reporting them lost. A live pane's, and
+        /// (PR #511 review, Greptile P2) every id held without a live pane: a pane's pending one and a startup placeholder's
+        /// (<see cref="HeldLocalMuxSessionIds"/>). Shares included: the whole daemon stops, so a shared shell ends with it
+        /// (the quit kills it by name, R20), as a live share pane's always was marked here; a tab not shown yet then reopens
+        /// as a shown one does, with a fresh shell. Idempotent.
         /// </summary>
         private void MarkLocalShellsEnded()
         {
@@ -11560,6 +11564,8 @@ namespace Ntilde
             {
                 if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
             }
+
+            foreach ((Guid id, _, _) in HeldLocalMuxSessionIds()) _localSessionsEndedOnClose.Add(id);
         }
 
         /// <summary>

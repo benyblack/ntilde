@@ -21,6 +21,26 @@ internal static class TestMainWindowFactory
     public static Ntilde.MainWindow Create(AppServiceBundle services) => Track(new Ntilde.MainWindow(services));
 
     /// <summary>
+    /// Startup restore builds the selected tab and leaves the others placeholders - no pane, their trees only in the tab's
+    /// <see cref="Ntilde.Pty.TabSession"/> - until a background pass builds them. Consuming that pass's plan before the
+    /// window is shown keeps them placeholders for good (the queued pass then does nothing), as a close or a quit that comes
+    /// before that pass finds them. Builds no pane and no shell.
+    /// </summary>
+    public static void KeepStartupPlaceholders(Ntilde.MainWindow window)
+    {
+        var startup = (StartupOrchestrator)typeof(Ntilde.MainWindow)
+            .GetField("_startup", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(window)!;
+        Assert.True(startup.HasPendingDeferredRestore);
+        startup.DrainDeferred(static _ => { });
+    }
+
+    /// <summary>The window's tabs whose content is still a startup placeholder: no pane and no split.</summary>
+    public static int PlaceholderTabs(Ntilde.MainWindow window) =>
+        Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.TabControl>(window, "Tabs")!.Items.OfType<Avalonia.Controls.TabItem>()
+            .Count(t => t.Content is not (Ntilde.Controls.TerminalPane or Avalonia.Controls.Grid));
+
+    /// <summary>
     /// A window a test built itself (a subclass that overrides the window's dialog seams), given the same defaults and torn
     /// down with everyone else's.
     /// </summary>

@@ -96,7 +96,9 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     }
 
     /// <summary>A window whose panes are the test daemon's shells (persistence on), probing that daemon for the update.</summary>
-    private MainWindow CreateMuxWindow()
+    /// <param name="keepPlaceholders">The restored background tabs stay startup placeholders (<see cref="TestMainWindowFactory.KeepStartupPlaceholders"/>).</param>
+    /// <param name="beforeShow">Runs just before the window is shown: its restored selected tab is built, and has not spawned yet.</param>
+    private MainWindow CreateMuxWindow(bool keepPlaceholders = false, Action<MainWindow>? beforeShow = null)
     {
         var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
         _hosts.Add(host);
@@ -107,8 +109,12 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
             CommandAssist = TestCommandAssistServices.Instance,
             SessionFactory = factory,
             Settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.KeepOnClose },
+            // Long before any session file these tests write: a restore is never quietened by a reboot (spec R2).
+            SessionsCannotPredateUtc = static () => new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         });
         window.MuxProbeForUpdate = async ct => await _mux.ConnectClientAsync();
+        if (keepPlaceholders) TestMainWindowFactory.KeepStartupPlaceholders(window);
+        beforeShow?.Invoke(window);
         window.Show();
         PumpUntil(() => LocalSession(window) is { IsAttached: true }, "the first pane attached");
         // The attach posts a coalesced session save (spec §9); let it run, so none is pending when the test starts.
@@ -213,6 +219,47 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Equal(1, service.ApplyCount);
         Assert.False(File.Exists(AppPaths.SessionFilePath), "the teardown saved over the session saved before the shutdown");
         Assert.Equal(ClosesOneSession, asked);
+    }
+
+    /// <summary>
+    /// PR #511 review (Greptile P2): an update that cannot keep the daemon stops it, and every shell it runs with it - those
+    /// of restored tabs not shown yet among them, built (a pane holding the id pending) or still a startup placeholder, and
+    /// a share's. The session saved before the shutdown names none of them, so the next window starts each tab's fresh
+    /// shell quietly, with no "previous session lost" notice.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void An_update_that_closes_the_daemon_names_no_shell_of_tabs_not_shown_yet_for_the_next_launch(bool placeholders)
+    {
+        Guid[] ids = MainWindowQuitAndCloseAllTests.SpawnUnshown(_mux, 4);
+        MainWindowQuitAndCloseAllTests.SaveTabs(
+            MainWindowQuitAndCloseAllTests.LocalLeaf(ids[0]),
+            MainWindowQuitAndCloseAllTests.LocalLeaf(ids[1]),
+            MainWindowQuitAndCloseAllTests.LocalLeaf(ids[2]),
+            MainWindowQuitAndCloseAllTests.LocalLeaf(ids[3], shared: true));
+        MainWindow window = CreateMuxWindow(keepPlaceholders: placeholders);
+        if (placeholders) Assert.Equal(3, TestMainWindowFactory.PlaceholderTabs(window));
+        else PumpUntil(() => window.AllPanesForTest().Count(p => p.MuxSessionIdToRestore is not null) == 3, "every restored tab was built");
+        FakeApplyUpdateService service = StageUpdate(window, IncompatibleNotes);
+        window.ConfirmSessionLossForUpdate = _ => Task.FromResult(true);
+        window.MuxReadDescriptorForUpdate = () => Daemon;
+        window.MuxInstallRootForUpdate = () => null;
+        window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(true);
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.Equal(1, service.ApplyCount);
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+
+        // The daemon's stop ends every shell it runs; this in-process one only records that it was asked to stop.
+        Task.Run(async () =>
+        {
+            using MuxClient client = await _mux.ConnectClientAsync();
+            foreach (Guid id in ids) await client.KillAsync(id, TestContext.Current.CancellationToken);
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        MainWindowQuitAndCloseAllTests.AssertTheNextWindowStartsFreshShellsQuietly(listen => CreateMuxWindow(beforeShow: listen), 4, ids);
     }
 
     /// <summary>

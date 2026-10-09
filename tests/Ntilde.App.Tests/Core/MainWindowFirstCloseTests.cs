@@ -65,7 +65,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
     /// <summary>A window with session persistence on (unless <paramref name="persistence"/> says otherwise) over the test's daemon.</summary>
     /// <param name="keepPlaceholders">
     /// The restored background tabs stay placeholders for the window's life, as they are for a close that comes before the
-    /// startup restore's background pass has built them (<see cref="KeepPlaceholders"/>).
+    /// startup restore's background pass has built them (<see cref="TestMainWindowFactory.KeepStartupPlaceholders"/>).
     /// </param>
     private MainWindow CreateWindow(
         Func<int, Task<FirstCloseAnswer>> answer,
@@ -94,7 +94,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
             _asked.Add(count);
             return answer(count);
         };
-        if (keepPlaceholders) KeepPlaceholders(window);
+        if (keepPlaceholders) TestMainWindowFactory.KeepStartupPlaceholders(window);
         window.Show();
         PumpUntil(() => LocalSession(window) is { IsAttached: true }, "the first pane attached");
         return window;
@@ -510,23 +510,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
 
     // ── PR #511 review (Greptile P1): startup tabs not built yet are placeholders, not panes ──
 
-    /// <summary>
-    /// Startup restore builds the selected tab and leaves the others placeholders - no pane, their trees only in the tab's
-    /// <see cref="Ntilde.Pty.TabSession"/> - until a background pass builds them. Consuming that pass's plan first keeps them
-    /// placeholders (the queued pass then does nothing), as a close that comes before it finds them.
-    /// </summary>
-    private static void KeepPlaceholders(MainWindow window)
-    {
-        var startup = (StartupOrchestrator)typeof(MainWindow)
-            .GetField("_startup", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(window)!;
-        Assert.True(startup.HasPendingDeferredRestore);
-        startup.DrainDeferred(_ => { });
-    }
-
-    /// <summary>The tabs whose content is still a placeholder: no pane and no split.</summary>
-    private static int PlaceholderTabs(MainWindow window) =>
-        window.FindControl<TabControl>("Tabs")!.Items.OfType<TabItem>().Count(t => t.Content is not (TerminalPane or Grid));
+    private static int PlaceholderTabs(MainWindow window) => TestMainWindowFactory.PlaceholderTabs(window);
 
     /// <summary>
     /// A restore brings back three tabs; a remembered "Close them" closes the window before the two background tabs are

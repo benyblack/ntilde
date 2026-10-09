@@ -38,7 +38,10 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
         _mux.Dispose();
     }
 
-    private MainWindow CreateWindow(Func<int, Task<bool>> confirm, string persistence = SessionPersistenceMode.KeepOnClose)
+    /// <param name="keepPlaceholders">The restored background tabs stay startup placeholders (<see cref="TestMainWindowFactory.KeepStartupPlaceholders"/>).</param>
+    /// <param name="beforeShow">Runs just before the window is shown: its restored selected tab is built, and has not spawned yet.</param>
+    private MainWindow CreateWindow(Func<int, Task<bool>> confirm, string persistence = SessionPersistenceMode.KeepOnClose,
+        bool keepPlaceholders = false, Action<MainWindow>? beforeShow = null)
     {
         var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_mux.Listener.Connect(), null, ct), "test", null);
         _hosts.Add(host);
@@ -49,11 +52,15 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
             CommandAssist = TestCommandAssistServices.Instance,
             SessionFactory = factory,
             Settings = new TerminalSettings { SessionPersistence = persistence },
+            // Long before any session file these tests write: a restore is never quietened by a reboot (spec R2).
+            SessionsCannotPredateUtc = static () => new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         });
         window.ConfirmQuitAndCloseAll = confirm;
         // The real probe would look for the machine's daemon; the test's daemon is the one to shut down.
         window.MuxProbeForUpdate = async ct => await _mux.ConnectClientAsync();
         window.MuxReadDescriptorForUpdate = () => null;
+        if (keepPlaceholders) TestMainWindowFactory.KeepStartupPlaceholders(window);
+        beforeShow?.Invoke(window);
         window.Show();
         PumpUntil(() => LocalSession(window) is { IsAttached: true }, "the first pane attached");
         return window;
@@ -137,6 +144,105 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
             Assert.Contains(id, _mux.Server.GetSessionIds());
             Assert.False(_mux.Mux(id).IsExited);
         }
+    }
+
+    // ── PR #511 review (Greptile P2): restored tabs not shown yet ──
+
+    /// <summary>Shells running in <paramref name="mux"/>'s daemon that no client shows, as a window's Keep left them.</summary>
+    internal static Guid[] SpawnUnshown(MuxTestHost mux, int count) => Task.Run(async () =>
+    {
+        MuxClient client = await mux.ConnectClientAsync();
+        var ids = new Guid[count];
+        for (int i = 0; i < count; i++) ids[i] = await MuxTestHost.SpawnAsync(client);
+        return ids;
+    }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+    /// <summary>A pane as the window saved it, reopening local daemon session <paramref name="id"/>; <paramref name="shared"/> for one joined through "Attach to session…".</summary>
+    internal static Ntilde.Pty.PaneNode LocalLeaf(Guid id, bool shared = false) => new()
+    {
+        Type = Ntilde.Pty.NodeType.Leaf,
+        Command = "scripted",
+        MuxSessionId = id.ToString("D"),
+        MuxEndpoint = MuxEndpointId.Local.ToString(),
+        MuxShared = shared,
+    };
+
+    /// <summary>A session file with one tab per root, the first selected: the others are not shown, so their panes do not spawn.</summary>
+    internal static void SaveTabs(params Ntilde.Pty.PaneNode[] roots)
+    {
+        var session = new Ntilde.Pty.NtildeSession { ActiveTabIndex = 0 };
+        foreach (Ntilde.Pty.PaneNode root in roots) session.Tabs.Add(new Ntilde.Pty.TabSession { Title = $"tab {session.Tabs.Count}", Root = root });
+        Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.SessionFilePath)!);
+        File.WriteAllText(AppPaths.SessionFilePath, System.Text.Json.JsonSerializer.Serialize(session, Ntilde.Pty.SessionSerializationContext.Default.NtildeSession));
+    }
+
+    private static List<Guid> AttachedIds(MainWindow window) =>
+        window.AllPanesForTest().Select(p => p.Session).OfType<MuxClientSession>().Where(m => m.IsAttached).Select(m => m.Id).ToList();
+
+    /// <summary>
+    /// The window the next launch opens over the same daemon restores <paramref name="tabs"/> tabs whose panes name no
+    /// daemon session: each, shown in turn, starts a fresh shell - none of <paramref name="ended"/> - and none says a
+    /// previous session was lost, or raises any other persistence notice. Heard from the panes, from before each spawns.
+    /// </summary>
+    internal static void AssertTheNextWindowStartsFreshShellsQuietly(Func<Action<MainWindow>, MainWindow> createWindow, int tabs, IReadOnlyCollection<Guid> ended)
+    {
+        var notices = new List<string>();
+        var heard = new HashSet<TerminalPane>();
+        void Listen(MainWindow w)
+        {
+            foreach (TerminalPane p in w.AllPanesForTest())
+                if (heard.Add(p)) p.PersistenceNotice += (_, title, _, _) => notices.Add(title);
+        }
+
+        MainWindow next = createWindow(Listen);
+        PumpUntil(() => next.AllPanesForTest().Count == tabs, "the next window built every restored tab");
+        Listen(next); // before each is first shown: it spawns only then
+        Assert.All(next.AllPanesForTest(), p => Assert.Null(p.MuxSessionIdToRestore));
+        TabControl tabControl = next.FindControl<TabControl>("Tabs")!;
+        for (int i = 1; i < tabs; i++)
+        {
+            tabControl.SelectedIndex = i;
+            int shown = i + 1;
+            PumpUntil(() => AttachedIds(next).Count == shown, $"tab {i} started a shell");
+        }
+
+        Assert.Empty(AttachedIds(next).Intersect(ended));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(tabs, heard.Count);
+        Assert.Empty(notices);
+    }
+
+    /// <summary>
+    /// PR #511 review (Greptile P2): the quit ends every shell the daemon runs, those of restored tabs not shown yet among
+    /// them - built (a pane holding the id pending) or still a startup placeholder - and a share's, which the stop ends as
+    /// surely. None stays named in the session file, so the next window starts each tab's fresh shell quietly, with no
+    /// "previous session lost" notice.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Quitting_with_tabs_not_shown_yet_names_none_of_their_shells_for_the_next_launch(bool placeholders)
+    {
+        Guid[] ids = SpawnUnshown(_mux, 4);
+        SaveTabs(LocalLeaf(ids[0]), LocalLeaf(ids[1]), LocalLeaf(ids[2]), LocalLeaf(ids[3], shared: true));
+        MainWindow window = CreateWindow(_ => Task.FromResult(true), keepPlaceholders: placeholders);
+        if (placeholders)
+        {
+            Assert.Equal(3, TestMainWindowFactory.PlaceholderTabs(window));
+        }
+        else
+        {
+            PumpUntil(() => window.AllPanesForTest().Count == 4, "every restored tab was built");
+            Assert.Equal(3, window.AllPanesForTest().Count(p => p.MuxSessionIdToRestore is not null));
+        }
+
+        Task quit = window.QuitAndCloseAllShellsAsync();
+        PumpUntil(() => quit.IsCompleted && !window.IsVisible, "the window closed");
+
+        PumpUntil(() => !ids.Any(id => _mux.Server.GetSessionIds().Contains(id)), "every shell was killed");
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+        AssertTheNextWindowStartsFreshShellsQuietly(listen => CreateWindow(_ => Task.FromResult(false), beforeShow: listen), 4, ids);
     }
 
     [AvaloniaTheory]
