@@ -104,6 +104,10 @@ public sealed class MuxUpdateCompatibilityTests
 
     // ---- whether the update keeps the daemon (the daemon speaks 1-2)
 
+    /// <summary>Whether the update keeps the daemon: its answer is a reason to stop it, and None keeps it.</summary>
+    private static bool Keeps((int Min, int Max) daemon, (int Min, int Max)? newBuild, string? daemonImagePath, string? installRoot) =>
+        MuxUpdateCompatibility.WhyUpdateStopsDaemon(daemon, newBuild, daemonImagePath, installRoot) == MuxUpdateStopReason.None;
+
     [Theory]
     // An install root: kept only when the ranges overlap (or the new one is unknown) AND the image is known to be outside.
     [InlineData(2, 3, Image.OwnCopy, true, true)]
@@ -129,7 +133,7 @@ public sealed class MuxUpdateCompatibilityTests
     {
         (int, int)? newBuild = newMin is int min && newMax is int max ? (min, max) : null;
 
-        Assert.Equal(kept, MuxUpdateCompatibility.KeepsDaemon((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null));
+        Assert.Equal(kept, Keeps((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null));
     }
 
     /// <summary>
@@ -153,7 +157,6 @@ public sealed class MuxUpdateCompatibilityTests
         MuxUpdateStopReason why = MuxUpdateCompatibility.WhyUpdateStopsDaemon((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null);
 
         Assert.Equal(Enum.Parse<MuxUpdateStopReason>(reason), why);
-        Assert.Equal(why == MuxUpdateStopReason.None, MuxUpdateCompatibility.KeepsDaemon((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null));
     }
 
     /// <summary>The update's question names the reason it gives (none with persistence off, worded as before Phase 5).</summary>
@@ -173,8 +176,8 @@ public sealed class MuxUpdateCompatibilityTests
     [Fact]
     public void A_root_given_with_a_trailing_separator_still_contains_its_folders()
     {
-        Assert.False(MuxUpdateCompatibility.KeepsDaemon((1, 2), null, PathOf(Image.InsideCurrent), InstallRoot + Path.DirectorySeparatorChar));
-        Assert.True(MuxUpdateCompatibility.KeepsDaemon((1, 2), null, PathOf(Image.OwnCopy), InstallRoot + Path.DirectorySeparatorChar));
+        Assert.False(Keeps((1, 2), null, PathOf(Image.InsideCurrent), InstallRoot + Path.DirectorySeparatorChar));
+        Assert.True(Keeps((1, 2), null, PathOf(Image.OwnCopy), InstallRoot + Path.DirectorySeparatorChar));
     }
 
     [Fact]
@@ -182,7 +185,7 @@ public sealed class MuxUpdateCompatibilityTests
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows paths are case-insensitive; the install root exists only there.");
 
-        Assert.False(MuxUpdateCompatibility.KeepsDaemon((1, 2), null, PathOf(Image.InsideCurrent)!.ToUpperInvariant(), InstallRoot.ToLowerInvariant()));
+        Assert.False(Keeps((1, 2), null, PathOf(Image.InsideCurrent)!.ToUpperInvariant(), InstallRoot.ToLowerInvariant()));
     }
 
     // ---- the daemon's image, from its descriptor

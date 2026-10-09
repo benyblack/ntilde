@@ -6,7 +6,7 @@ namespace Ntilde.Tests.Update;
 /// <summary>
 /// Final-fix item 2: Velopack's apply-on-startup must not bypass the in-app apply path, which asks
 /// before closing multiplexed sessions and shuts the daemon down first. Since Phase 5 R10 that holds
-/// only for a live daemon the apply would kill (<see cref="MuxUpdateCompatibility.BlocksStartupApply"/>).
+/// only for a live daemon the apply would kill (<see cref="MuxUpdateCompatibility.StartupApplyHoldFor"/>).
 /// </summary>
 public sealed class StartupAutoApplyTests
 {
@@ -75,10 +75,20 @@ public sealed class StartupAutoApplyTests
 
     private static readonly Func<bool> NotRead = () => throw new InvalidOperationException("the setting is not read");
 
+    /// <summary>Whether the startup gate holds the apply: its answer is a reason, and any but None holds.</summary>
+    private static bool Blocks(string? installRoot, Func<bool> daemonLive, Func<MuxEndpointDescriptor?> readDescriptor,
+        Func<MuxEndpointDescriptor, string?> daemonImagePath, Func<bool> persistenceOff) =>
+        MuxUpdateCompatibility.StartupApplyHoldFor(installRoot, daemonLive, readDescriptor, daemonImagePath, persistenceOff) != StartupApplyHold.None;
+
+    /// <summary><see cref="Blocks"/> through Program's composition under an app-data root.</summary>
+    private static bool BlocksAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, Stream>? connect = null,
+        Func<MuxEndpointDescriptor, string?>? daemonImagePath = null) =>
+        Program.StartupApplyHoldAt(appDataRoot, installRoot, connect, daemonImagePath) != StartupApplyHold.None;
+
     [Fact]
     public void A_daemon_running_from_its_own_copy_does_not_block_auto_apply()
     {
-        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => OwnCopy, KeepOnClose));
+        Assert.False(Blocks(InstallRoot, () => true, () => Daemon, _ => OwnCopy, KeepOnClose));
     }
 
     [Fact]
@@ -86,15 +96,15 @@ public sealed class StartupAutoApplyTests
     {
         string inside = Path.Combine(InstallRoot, "current", "Ntilde.exe");
 
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => inside, NotRead));
+        Assert.True(Blocks(InstallRoot, () => true, () => Daemon, _ => inside, NotRead));
     }
 
     /// <summary>Never "outside" without evidence: an image that cannot be read, or a descriptor gone after the probe, blocks.</summary>
     [Fact]
     public void A_live_daemon_whose_image_cannot_be_told_blocks_auto_apply()
     {
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => Daemon, _ => null, NotRead));
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(InstallRoot, () => true, () => null, _ => throw new InvalidOperationException("no descriptor to look up"), NotRead));
+        Assert.True(Blocks(InstallRoot, () => true, () => Daemon, _ => null, NotRead));
+        Assert.True(Blocks(InstallRoot, () => true, () => null, _ => throw new InvalidOperationException("no descriptor to look up"), NotRead));
     }
 
     /// <summary>The common start: no live daemon. Nothing else is read - neither its image nor the setting.</summary>
@@ -103,7 +113,7 @@ public sealed class StartupAutoApplyTests
     [InlineData(false)]
     public void No_live_daemon_never_reads_its_image_or_the_setting(bool installRoot)
     {
-        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(
+        Assert.False(Blocks(
             installRoot ? InstallRoot : null, () => false, () => throw new InvalidOperationException("not read"),
             _ => throw new InvalidOperationException("not looked up"), NotRead));
     }
@@ -112,7 +122,7 @@ public sealed class StartupAutoApplyTests
     [Fact]
     public void Without_an_install_root_a_live_daemon_does_not_block_and_its_image_is_not_read()
     {
-        Assert.False(MuxUpdateCompatibility.BlocksStartupApply(null, () => true, () => Daemon, _ => throw new InvalidOperationException("not looked up"), KeepOnClose));
+        Assert.False(Blocks(null, () => true, () => Daemon, _ => throw new InvalidOperationException("not looked up"), KeepOnClose));
     }
 
     /// <summary>
@@ -124,7 +134,7 @@ public sealed class StartupAutoApplyTests
     [InlineData(false)]
     public void With_persistence_off_any_live_daemon_blocks_auto_apply(bool installRoot)
     {
-        Assert.True(MuxUpdateCompatibility.BlocksStartupApply(installRoot ? InstallRoot : null, () => true, () => Daemon, _ => OwnCopy, () => true));
+        Assert.True(Blocks(installRoot ? InstallRoot : null, () => true, () => Daemon, _ => OwnCopy, () => true));
     }
 
     // ---- Program's wiring of the gate: the descriptor and settings.json under one app-data root, and the install root.
@@ -148,7 +158,7 @@ public sealed class StartupAutoApplyTests
             if (persistence is not null) File.WriteAllText(Path.Combine(root, "settings.json"), $"{{\"SessionPersistence\":\"{persistence}\"}}");
             int connects = 0;
 
-            bool blocked = Program.LiveDaemonBlocksStartupApplyAt(root, installRoot ? InstallRoot : null, (_, _) =>
+            bool blocked = BlocksAt(root, installRoot ? InstallRoot : null, (_, _) =>
             {
                 connects++;
                 return new MemoryStream();
@@ -186,7 +196,7 @@ public sealed class StartupAutoApplyTests
                 return new MemoryStream();
             }
 
-            Assert.Equal(blocks, Program.LiveDaemonBlocksStartupApplyAt(root, InstallRoot, Connect, _ => image));
+            Assert.Equal(blocks, BlocksAt(root, InstallRoot, Connect, _ => image));
             Assert.Equal(imageInsideRoot ? StartupApplyHold.InstallFolder : StartupApplyHold.None, Program.StartupApplyHoldAt(root, InstallRoot, Connect, _ => image));
             Assert.Equal(2, connects); // the daemon was live both times: the gate decided on its image and the setting
         }
@@ -230,7 +240,7 @@ public sealed class StartupAutoApplyTests
         {
             File.WriteAllText(Path.Combine(root, "settings.json"), "{\"SessionPersistence\":\"Off\"}");
 
-            Assert.False(Program.LiveDaemonBlocksStartupApplyAt(root, null, (_, _) => throw new InvalidOperationException("nothing to connect to")));
+            Assert.False(BlocksAt(root, null, (_, _) => throw new InvalidOperationException("nothing to connect to")));
         }
         finally
         {

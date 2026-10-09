@@ -212,15 +212,11 @@ class Program
 
     /// <summary>
     /// <see cref="LiveDaemonBlocksStartupApply"/>'s composition for the app-data root <paramref name="appDataRoot"/>: the
-    /// descriptor and settings.json are both read under it. <paramref name="installRoot"/> is this install's Velopack root
-    /// (null when there is none); <paramref name="connect"/> is the probe's connect, and <paramref name="daemonImagePath"/>
+    /// gate's reason (<see cref="Ntilde.Update.MuxUpdateCompatibility.StartupApplyHoldFor"/>; any but None holds), with the
+    /// descriptor and settings.json both read under that root. <paramref name="installRoot"/> is this install's Velopack
+    /// root (null when there is none); <paramref name="connect"/> is the probe's connect, and <paramref name="daemonImagePath"/>
     /// the descriptor's daemon's image (<see cref="Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath"/>), seams for tests.
     /// </summary>
-    internal static bool LiveDaemonBlocksStartupApplyAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null,
-        Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?>? daemonImagePath = null) =>
-        StartupApplyHoldAt(appDataRoot, installRoot, connect, daemonImagePath) != Ntilde.Update.StartupApplyHold.None;
-
-    /// <summary><see cref="LiveDaemonBlocksStartupApplyAt"/>'s answer with its reason (<see cref="Ntilde.Update.MuxUpdateCompatibility.StartupApplyHoldFor"/>).</summary>
     internal static Ntilde.Update.StartupApplyHold StartupApplyHoldAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null,
         Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?>? daemonImagePath = null)
     {

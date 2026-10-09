@@ -79,18 +79,12 @@ internal static partial class MuxUpdateCompatibility
     }
 
     /// <summary>
-    /// Whether the update keeps the daemon: the ranges overlap (a null new range counts as overlapping) and the daemon's
-    /// image is outside the install root (a daemon inside it would be killed). With no install root - not a Windows
-    /// Velopack install - the apply kills nothing and the ranges alone decide; with one, an unknown image is never taken
-    /// to be outside it.
-    /// </summary>
-    public static bool KeepsDaemon((int Min, int Max) daemon, (int Min, int Max)? newBuild, string? daemonImagePath, string? installRoot) =>
-        WhyUpdateStopsDaemon(daemon, newBuild, daemonImagePath, installRoot) == MuxUpdateStopReason.None;
-
-    /// <summary>
-    /// <see cref="KeepsDaemon"/>'s answer with its reason: <see cref="MuxUpdateStopReason.None"/> when the update keeps the
-    /// daemon. The protocol decides first - a daemon the new build cannot speak to is not kept wherever it runs - then
-    /// where it runs from (<see cref="WhereApplyLeaves"/>).
+    /// Whether the update keeps the daemon, and if not why: <see cref="MuxUpdateStopReason.None"/> keeps it. It is kept
+    /// when the ranges overlap (a null new range counts as overlapping) and the daemon's image is outside the install root
+    /// (a daemon inside it would be killed). With no install root - not a Windows Velopack install - the apply kills
+    /// nothing and the ranges alone decide; with one, an unknown image is never taken to be outside it. The protocol
+    /// decides first - a daemon the new build cannot speak to is not kept wherever it runs - then where it runs from
+    /// (<see cref="WhereApplyLeaves"/>).
     /// </summary>
     public static MuxUpdateStopReason WhyUpdateStopsDaemon((int Min, int Max) daemon, (int Min, int Max)? newBuild, string? daemonImagePath, string? installRoot)
     {
@@ -125,21 +119,17 @@ internal static partial class MuxUpdateCompatibility
 
     /// <summary>
     /// The startup gate (Program.ShouldAutoApplyUpdateOnStartup): whether a live daemon stops Velopack applying a staged
-    /// update as the app starts. One the apply would kill always does: its image inside <paramref name="installRoot"/> or
-    /// not known to be outside it (a descriptor gone since the probe included). Any other blocks only with
-    /// SessionPersistence off, which keeps the gate exactly as it was before Phase 5 (any live daemon). The protocol is
-    /// not asked: the new build meets a mismatch at launch. Only a live daemon costs more than the probe: its image is
-    /// read only under an install root, and the setting only when the image does not already decide.
+    /// update as the app starts, and why - any reason but <see cref="StartupApplyHold.None"/> holds it, and Program.Main
+    /// logs the reason. One the apply would kill always does: its image inside <paramref name="installRoot"/> or not known
+    /// to be outside it (a descriptor gone since the probe included). Any other holds it only with SessionPersistence off,
+    /// which keeps the gate exactly as it was before Phase 5 (any live daemon). The protocol is not asked: the new build
+    /// meets a mismatch at launch. Only a live daemon costs more than the probe: its image is read only under an install
+    /// root, and the setting only when the image does not already decide.
     /// </summary>
     /// <param name="daemonLive">Whether a daemon answers its endpoint (the 200 ms probe).</param>
     /// <param name="readDescriptor">The descriptor, read after the probe said live; null when it cannot be read.</param>
     /// <param name="daemonImagePath">The descriptor's daemon's image (<see cref="DaemonImagePath"/>).</param>
     /// <param name="persistenceOff">Whether the persisted SessionPersistence is off (false when it cannot be read).</param>
-    public static bool BlocksStartupApply(string? installRoot, Func<bool> daemonLive, Func<MuxEndpointDescriptor?> readDescriptor,
-        Func<MuxEndpointDescriptor, string?> daemonImagePath, Func<bool> persistenceOff) =>
-        StartupApplyHoldFor(installRoot, daemonLive, readDescriptor, daemonImagePath, persistenceOff) != StartupApplyHold.None;
-
-    /// <summary><see cref="BlocksStartupApply"/>'s answer with its reason, for the startup log: <see cref="StartupApplyHold.None"/> when it does not block.</summary>
     public static StartupApplyHold StartupApplyHoldFor(string? installRoot, Func<bool> daemonLive, Func<MuxEndpointDescriptor?> readDescriptor,
         Func<MuxEndpointDescriptor, string?> daemonImagePath, Func<bool> persistenceOff)
     {
