@@ -363,10 +363,13 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   update, the GUI reads it (`MuxUpdateCompatibility.ParseProtocolRange`; no marker counts as
   compatible) and keeps the daemon when the ranges overlap and its image is outside the install root
   (`KeepsDaemon`): no question, no `shutdown`, and the teardown detaches as on any close. Otherwise it
-  asks, saves the session without the shells about to end, and sends `shutdown`. Velopack's startup
-  auto-apply is vetoed (`MuxUpdateCompatibility.BlocksStartupApply`) only for a live daemon the apply
-  would kill. With `SessionPersistence` explicitly off, both paths keep their pre-Phase-5 behaviour:
-  any live daemon is asked about and shut down, and vetoes the startup apply.
+  asks, giving the reason (`WhyUpdateStopsDaemon`: the protocol, the install folder, or an image or
+  descriptor it cannot read; `SessionLossQuestion`), saves the session without the shells about to end,
+  and sends `shutdown`. Velopack's startup auto-apply is vetoed (`MuxUpdateCompatibility.BlocksStartupApply`)
+  only for a live daemon the apply would kill; `Program.Main` logs why once AppLogger is up
+  (`StartupApplyHoldFor`, `DescribeStartupApplyHold`). With `SessionPersistence` explicitly off, both
+  paths keep their pre-Phase-5 behaviour: any live daemon is asked about and shut down, and vetoes the
+  startup apply.
 - **"Attach to session…" (Phase 5 spec §5).** `MuxSessionPicker` builds the rows: each listed host's
   sessions (the local daemon first; a remote host only while it is connected, `CurrentClient`, and its
   profile keeps its sessions), a `MuxSessionPickerConnectRow` for each such profile with no connection,
