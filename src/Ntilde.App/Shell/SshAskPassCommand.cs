@@ -80,7 +80,7 @@ internal static class SshAskPassCommand
             Environment.GetEnvironmentVariable,
             static profile => new VaultService().GetSshPasswordForProfile(profile),
             AskUser,
-            new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory));
+            new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory, stderr.WriteLine));
 
     /// <summary>
     /// Answers one ssh prompt: the target's own password (<see cref="IsTargetPasswordPrompt"/>) from

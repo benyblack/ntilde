@@ -49,6 +49,117 @@ public sealed class SshAskPassVaultOnlyTests : IDisposable
         Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(_markers));
     }
 
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+
+    /// <summary>0755: what a folder made under the usual umask gets.</summary>
+    private const UnixFileMode Listable = OwnerOnly | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+
+    /// <summary>
+    /// Codex review of PR #511 (P2): an upgrade finds the folder an earlier build made under the umask, often 0755, and
+    /// <see cref="Ntilde.Mux.Contracts.PrivateDirectory"/> leaves an existing folder as it is (the daemon judges its own). So
+    /// the records' writer makes it 0700 - before the first record goes in, and only when it is not 0700 already.
+    /// </summary>
+    [Fact]
+    public void An_existing_0755_marker_folder_is_made_private_before_a_record_is_written()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
+        Directory.CreateDirectory(_markers);
+        File.SetUnixFileMode(_markers, Listable);
+        var entriesAtChmod = new List<int>();
+        var markers = new SshAskPassSessionMarkers(() => _markers, setMode: (path, mode) =>
+        {
+            entriesAtChmod.Add(Directory.EnumerateFileSystemEntries(path).Count());
+            File.SetUnixFileMode(path, mode);
+        });
+
+        Assert.True(markers.TryClaim(Token));
+
+        Assert.Equal(OwnerOnly, File.GetUnixFileMode(_markers));
+        Assert.Equal([0], entriesAtChmod); // before anything was written
+        Assert.True(RecordOf(Token).Answered);
+
+        Assert.True(markers.CanRecord());
+        markers.RecordDeclined(Token);
+        Assert.Single(entriesAtChmod);     // 0700 already: no chmod
+    }
+
+    /// <summary>
+    /// chmod works only for the folder's owner (or root), so a failure means the folder is not ours: no record goes in it,
+    /// and each side takes the path it takes for a folder it cannot write. The app offers no saved password to an automatic
+    /// reconnect (no askpass record could count its refusal), the helper fills nothing from the vault, so there is no
+    /// evidence either way: never "answered", never "declined". Logged.
+    /// </summary>
+    [Fact]
+    public void A_marker_folder_that_cannot_be_made_private_gets_no_record_and_leaves_no_evidence()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
+        Directory.CreateDirectory(_markers);
+        File.SetUnixFileMode(_markers, Listable);
+        var log = new List<string>();
+        SshAskPassSessionMarkers NotOurs() => new(() => _markers, log.Add, setMode: (_, _) => throw new UnauthorizedAccessException("Operation not permitted"));
+
+        Assert.False(NotOurs().CanRecord());
+        Assert.False(NotOurs().TryClaim(Token));
+        NotOurs().RecordDeclined(Token);
+
+        // The helper in vault-only mode (an automatic reconnect): no fill, so no answer.
+        var vaultOnly = new StringWriter();
+        Assert.Equal(1, SshAskPassCommand.Execute(
+            [TargetPrompt], vaultOnly, new StringWriter(), name => VaultOnlySsh.GetValueOrDefault(name), _ => "s3cret",
+            _ => throw new InvalidOperationException("vault-only mode builds no UI"), NotOurs()));
+        Assert.Equal(string.Empty, vaultOnly.ToString());
+
+        // A user's attempt: the dialog instead of the vault.
+        var asked = new StringWriter();
+        var dialogs = new List<string>();
+        Assert.Equal(0, SshAskPassCommand.Execute(
+            [TargetPrompt], asked, new StringWriter(), name => With(Interactive, SshAskPassEnvironment.SessionVariable, Token).GetValueOrDefault(name), _ => "s3cret",
+            state => { dialogs.Add(state.Prompt); return "typed"; }, NotOurs()));
+        Assert.Equal("typed" + Environment.NewLine, asked.ToString());
+        Assert.Single(dialogs);
+
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_markers));
+        Assert.Equal(Listable, File.GetUnixFileMode(_markers));
+        Assert.Equal(default, RecordOf(Token));
+        Assert.Contains(log, line => line.Contains(_markers, StringComparison.Ordinal));
+    }
+
+    /// <summary>A symbolic link where the folder should be is not followed: no chmod through it, and no record behind it.</summary>
+    [Fact]
+    public void A_symbolic_link_in_place_of_the_marker_folder_is_not_followed()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "POSIX modes only; Windows has ACLs.");
+        string root = _markers + "-link";
+        string elsewhere = Path.Combine(root, "elsewhere");
+        string link = Path.Combine(root, "askpass");
+        Directory.CreateDirectory(elsewhere);
+        File.SetUnixFileMode(elsewhere, Listable);
+        Directory.CreateSymbolicLink(link, elsewhere);
+        var log = new List<string>();
+        int chmods = 0;
+        var markers = new SshAskPassSessionMarkers(() => link, log.Add, (path, mode) =>
+        {
+            chmods++;
+            File.SetUnixFileMode(path, mode);
+        });
+
+        try
+        {
+            Assert.False(markers.CanRecord());
+            Assert.False(markers.TryClaim(Token));
+            markers.RecordDeclined(Token);
+
+            Assert.Equal(0, chmods);
+            Assert.Empty(Directory.EnumerateFileSystemEntries(elsewhere));
+            Assert.Equal(Listable, File.GetUnixFileMode(elsewhere));
+            Assert.Contains(log, line => line.Contains(link, StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private Run NewRun(IReadOnlyDictionary<string, string> environment, string? saved, string? typed = null) =>
         new(environment, saved, typed, _markers);
 

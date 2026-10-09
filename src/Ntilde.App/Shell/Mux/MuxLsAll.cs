@@ -124,7 +124,7 @@ internal static class MuxLsAll
                 profile,
                 TransportFor,
                 p => RemoteMuxHostFactory.ReadSavedPassword(vault.Value, p),
-                new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory),
+                new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory, log),
                 log),
             RemoteMuxLister.PerHostTimeout,
             log,
