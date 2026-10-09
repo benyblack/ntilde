@@ -318,6 +318,17 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         return ids;
     }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
 
+    /// <summary>A shell in the test's daemon that the user detached ("Detach"): no client shows it, and startup never adopts it.</summary>
+    private Guid SpawnDetachedByUser() => Task.Run(async () =>
+    {
+        MuxClient client = await _mux.ConnectClientAsync();
+        Guid id = await MuxTestHost.SpawnAsync(client);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(client, id);
+        pane.Session.Detach(userDetached: true);
+        await TestWait.UntilAsync(() => _mux.Mux(id).DetachedByUser && _mux.Mux(id).AttachedClients == 0, "the daemon recorded the user detach");
+        return id;
+    }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
     private static int PendingPanes(MainWindow window) => window.AllPanesForTest().Count(p => p.MuxSessionIdToRestore is not null);
 
     /// <summary>
@@ -580,6 +591,60 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         string saved = File.ReadAllText(AppPaths.SessionFilePath);
         Assert.Contains(shared.ToString(), saved, StringComparison.Ordinal);
         Assert.DoesNotContain(own.ToString(), saved, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PR #511 residual M4: the other exclusions, in a placeholder's tree. A leaf a reboot or logoff already ended (spec R2's
+    /// quiet mark), and a leaf on a remote endpoint whose id the local daemon happens to run too, are neither counted nor
+    /// ended - even though the local daemon says nobody shows that id - and both stay named for the next launch.
+    /// </summary>
+    /// <remarks>
+    /// The remote row's local shell is one the user detached: a crash orphan that no local leaf names would be adopted into
+    /// a tab of its own at startup, and that tab's pending id is rightly the window's to count and end.
+    /// </remarks>
+    [AvaloniaTheory]
+    [InlineData("quiet-lost")]
+    [InlineData("remote")]
+    public void Close_them_never_ends_a_quiet_lost_or_remote_leaf_in_a_tab_still_holding_a_placeholder(string kind)
+    {
+        Guid[] ids = [SpawnUnshown(1)[0], kind == "remote" ? SpawnDetachedByUser() : SpawnUnshown(1)[0]];
+        Ntilde.Pty.PaneNode leaf = LocalLeaf(ids[1]);
+        if (kind == "remote") leaf.MuxEndpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString();
+        else leaf.MuxQuietPreviousLost = true;
+        SaveTabs(LocalLeaf(ids[0]), leaf);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close), keepPlaceholders: true);
+        Assert.Equal(1, PlaceholderTabs(window));
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([1], _asked); // the shown tab's shell only
+        Assert.DoesNotContain(ids[0], _mux.Server.GetSessionIds());
+        Assert.Contains(ids[1], _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(ids[1]).IsExited);
+        Assert.Contains(ids[1].ToString(), File.ReadAllText(AppPaths.SessionFilePath), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PR #511 residual M2: a hand-edited or merged session file can hold a null child in a split. A close before that tab
+    /// is built walks its saved tree without throwing, and the leaf beside the null is counted and ended as any other.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_null_child_in_a_placeholders_tree_is_skipped()
+    {
+        Guid[] ids = SpawnUnshown(2);
+        var split = new Ntilde.Pty.PaneNode { Type = Ntilde.Pty.NodeType.Split, SplitOrientation = 0, Children = [null!, LocalLeaf(ids[1])] };
+        SaveTabs(LocalLeaf(ids[0]), split);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close), keepPlaceholders: true);
+        Assert.Equal(1, PlaceholderTabs(window));
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([2], _asked);
+        Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
     }
 
     [AvaloniaTheory]
