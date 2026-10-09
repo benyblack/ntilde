@@ -63,12 +63,17 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         _ => Task.FromResult(new FirstCloseAnswer(action, remember));
 
     /// <summary>A window with session persistence on (unless <paramref name="persistence"/> says otherwise) over the test's daemon.</summary>
+    /// <param name="keepPlaceholders">
+    /// The restored background tabs stay placeholders for the window's life, as they are for a close that comes before the
+    /// startup restore's background pass has built them (<see cref="KeepPlaceholders"/>).
+    /// </param>
     private MainWindow CreateWindow(
         Func<int, Task<FirstCloseAnswer>> answer,
         string persistence = SessionPersistenceMode.KeepOnClose,
         Func<MuxEndpointId, MuxConnectionHost?>? createRemote = null,
         TimeSpan? disposeFlush = null,
-        Func<Stream, Stream>? link = null)
+        Func<Stream, Stream>? link = null,
+        bool keepPlaceholders = false)
     {
         var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(link is null ? _mux.Listener.Connect() : link(_mux.Listener.Connect()), null, ct), "test", null)
         {
@@ -89,6 +94,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
             _asked.Add(count);
             return answer(count);
         };
+        if (keepPlaceholders) KeepPlaceholders(window);
         window.Show();
         PumpUntil(() => LocalSession(window) is { IsAttached: true }, "the first pane attached");
         return window;
@@ -500,6 +506,96 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
         string saved = File.ReadAllText(AppPaths.SessionFilePath);
         Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    // ── PR #511 review (Greptile P1): startup tabs not built yet are placeholders, not panes ──
+
+    /// <summary>
+    /// Startup restore builds the selected tab and leaves the others placeholders - no pane, their trees only in the tab's
+    /// <see cref="Ntilde.Pty.TabSession"/> - until a background pass builds them. Consuming that pass's plan first keeps them
+    /// placeholders (the queued pass then does nothing), as a close that comes before it finds them.
+    /// </summary>
+    private static void KeepPlaceholders(MainWindow window)
+    {
+        var startup = (StartupOrchestrator)typeof(MainWindow)
+            .GetField("_startup", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(window)!;
+        Assert.True(startup.HasPendingDeferredRestore);
+        startup.DrainDeferred(_ => { });
+    }
+
+    /// <summary>The tabs whose content is still a placeholder: no pane and no split.</summary>
+    private static int PlaceholderTabs(MainWindow window) =>
+        window.FindControl<TabControl>("Tabs")!.Items.OfType<TabItem>().Count(t => t.Content is not (TerminalPane or Grid));
+
+    /// <summary>
+    /// A restore brings back three tabs; a remembered "Close them" closes the window before the two background tabs are
+    /// built. Their shells run all the same, named only in the placeholders' saved trees: all three are ended, without
+    /// asking, and the session file names none of them.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remembered_close_ends_the_shells_of_tabs_still_holding_placeholders()
+    {
+        Guid[] ids = SpawnUnshown(3);
+        SaveTabs([.. ids.Select(id => LocalLeaf(id))]);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel), keepPlaceholders: true);
+        Store.Remember(MuxCloseChoice.Close);
+        Assert.Single(window.AllPanesForTest());
+        Assert.Equal(2, PlaceholderTabs(window));
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);
+        Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    /// <summary>The same restore, asked: the question counts the placeholders' shells too, and "Close them" ends all three.</summary>
+    [AvaloniaFact]
+    public void Close_them_counts_and_ends_the_shells_of_tabs_still_holding_placeholders()
+    {
+        Guid[] ids = SpawnUnshown(3);
+        SaveTabs([.. ids.Select(id => LocalLeaf(id))]);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close), keepPlaceholders: true);
+        Assert.Equal(2, PlaceholderTabs(window));
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([3], _asked);
+        Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A placeholder's tree can name a share ("Attach to session…" joined it). It is never counted or ended, even when the
+    /// daemon says nobody shows it now - the saved node's share mark decides, as a pane's does - and it stays named for the
+    /// next launch. Its own-shell sibling in the same split, and the shown tab's shell, are counted and ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_them_never_ends_a_share_in_a_tab_still_holding_a_placeholder()
+    {
+        Guid[] ids = SpawnUnshown(3);
+        Guid own = ids[1], shared = ids[2];
+        var split = new Ntilde.Pty.PaneNode { Type = Ntilde.Pty.NodeType.Split, SplitOrientation = 0, Children = [LocalLeaf(own), LocalLeaf(shared, shared: true)] };
+        SaveTabs(LocalLeaf(ids[0]), split);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close), keepPlaceholders: true);
+        Assert.Equal(1, PlaceholderTabs(window));
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([2], _asked); // the shown tab's shell and the placeholder's own one
+        Assert.DoesNotContain(ids[0], _mux.Server.GetSessionIds());
+        Assert.DoesNotContain(own, _mux.Server.GetSessionIds());
+        Assert.Contains(shared, _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(shared).IsExited);
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.Contains(shared.ToString(), saved, StringComparison.Ordinal);
+        Assert.DoesNotContain(own.ToString(), saved, StringComparison.Ordinal);
     }
 
     [AvaloniaTheory]

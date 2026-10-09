@@ -306,7 +306,8 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   the window's local shells through `EndLocalSessionsOnTeardown` (tracked kills, flushed by the
   hosts' dispose), skipping a shell another interactive client shows or a share whose sharing is
   unknown. The ids that tabs not shown yet hold pending (`PendingLocalMuxSessionIds`, shares and
-  quiet-lost ids excluded) are counted and ended too, once the local daemon's current connection lists
+  quiet-lost ids excluded; a startup tab not built yet is a placeholder with no pane, so its ids come
+  from its saved tree, `HeldLocalMuxSessionIds`) are counted and ended too, once the local daemon's current connection lists
   them running with no interactive client (`UnshownLocalMuxSessionsAsync`, 2 s; none when it cannot
   say); the close is held for that listing. `ApplicationShutdown` (macOS Cmd+Q) applies a remembered answer and never asks;
   `OSShutdown` never kills. "Quit and close all shells" (`QuitAndCloseAllShellsAsync`) kills every

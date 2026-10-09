@@ -10534,30 +10534,57 @@ namespace Ntilde
         /// <summary>
         /// Final review M3: the local shells panes of this window are about to reopen - a restored tab not shown yet, a
         /// placeholder holding a pending id (<see cref="TerminalPane.MuxSessionIdToRestore"/>) - which a close leaves running
-        /// as surely as a live pane's. Not a share's: "Attach to session…" joined it because another client shows it, and a
-        /// close never ends a share. Not one a reboot or logoff ended (<see cref="TerminalPane.MuxQuietPreviousLost"/>), one a
-        /// pane shows live, or one already ended. Whether each still runs, and whether another client shows it, only the
-        /// daemon can say (<see cref="UnshownLocalMuxSessionsAsync"/>).
+        /// as surely as a live pane's. PR #511 review (Greptile P1): also those of a startup tab not built yet, whose ids are
+        /// only in its saved tree (<see cref="HeldLocalMuxSessionIds"/>). Not a share's: "Attach to session…" joined it
+        /// because another client shows it, and a close never ends a share. Not one a reboot or logoff ended
+        /// (<see cref="TerminalPane.MuxQuietPreviousLost"/>), one a pane shows live, or one already ended. Whether each still
+        /// runs, and whether another client shows it, only the daemon can say (<see cref="UnshownLocalMuxSessionsAsync"/>).
         /// </summary>
         private HashSet<Guid> PendingLocalMuxSessionIds()
         {
+            HashSet<Guid> pending = HeldLocalMuxSessionIds().Where(h => !h.Shared && !h.QuietLost).Select(h => h.Id).ToHashSet();
+            pending.ExceptWith(_localSessionsEndedOnClose);
+            return pending;
+        }
+
+        /// <summary>
+        /// Every local daemon session this window names but no pane shows live: a pane's pending id
+        /// (<see cref="TerminalPane.MuxSessionIdToRestore"/>), and each id in the saved tree of a startup tab not built yet -
+        /// a placeholder (CreateStartupPlaceholderTab), which has no pane at all until the restore's background pass builds
+        /// it, and whose tree the session save writes back as it was. Each with whether it is a share and whether a reboot or
+        /// logoff already ended it (spec R2), as the pane would be told. An id a pane shows live is left out.
+        /// </summary>
+        private List<(Guid Id, bool Shared, bool QuietLost)> HeldLocalMuxSessionIds()
+        {
             var live = new HashSet<Guid>();
-            var pending = new HashSet<Guid>();
+            var held = new List<(Guid Id, bool Shared, bool QuietLost)>();
             foreach (TerminalPane pane in _paneOwnerTab.Keys)
             {
                 if (!ShowsLocalMuxEndpoint(pane)) continue;
-                if (pane.Session is Ntilde.Mux.MuxClientSession mux)
-                {
-                    live.Add(mux.Id);
-                    continue;
-                }
-
-                if (pane.MuxSessionIdToRestore is Guid id && !pane.MuxAttachSharedToRestore && !pane.MuxQuietPreviousLost) pending.Add(id);
+                if (pane.Session is Ntilde.Mux.MuxClientSession mux) live.Add(mux.Id);
+                else if (pane.MuxSessionIdToRestore is Guid id) held.Add((id, pane.MuxAttachSharedToRestore, pane.MuxQuietPreviousLost));
             }
 
-            pending.ExceptWith(live);
-            pending.ExceptWith(_localSessionsEndedOnClose);
-            return pending;
+            if (this.FindControl<TabControl>("Tabs") is { } tabs)
+            {
+                foreach (TabItem tab in tabs.Items.OfType<TabItem>())
+                {
+                    // A placeholder as the save tells one: no pane tree to capture, and the restored tree in its Tag.
+                    if (GetLayoutRootForTab(tab) is TerminalPane or Grid || tab.Tag is not TabSession { Root: { } root }) continue;
+                    var nodes = new Stack<PaneNode>([root]);
+                    while (nodes.TryPop(out PaneNode? node))
+                    {
+                        foreach (PaneNode child in node.Children) nodes.Push(child);
+                        if (Guid.TryParse(node.MuxSessionId, out Guid id) && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal)
+                        {
+                            held.Add((id, node.MuxShared, node.MuxQuietPreviousLost));
+                        }
+                    }
+                }
+            }
+
+            held.RemoveAll(h => live.Contains(h.Id));
+            return held;
         }
 
         /// <summary>How long a closing window waits for the local daemon to list its shells (final review M3).</summary>
@@ -10611,8 +10638,8 @@ namespace Ntilde
         /// </summary>
         /// <param name="pending">
         /// Final review M3: shells of tabs not shown yet that the daemon said it runs and no other client shows
-        /// (<see cref="UnshownLocalMuxSessionsAsync"/>), ended the same way - each only while a pane still holds it pending
-        /// (one that has spawned since is a live pane's, and judged as one).
+        /// (<see cref="UnshownLocalMuxSessionsAsync"/>), ended the same way - each only while a pane, or a startup tab not
+        /// built yet, still holds it pending (one that has spawned since is a live pane's, and judged as one).
         /// </param>
         private void EndLocalSessionsOnTeardown(IReadOnlySet<Guid>? pending = null)
         {
