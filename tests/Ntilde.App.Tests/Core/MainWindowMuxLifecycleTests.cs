@@ -467,6 +467,29 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         }
     }
 
+    /// <summary>Greptile on PR 512: a window that closes before its post runs leaves the notice for one that can show it.</summary>
+    [AvaloniaFact]
+    public void A_window_closed_before_it_could_show_the_install_folder_notice_leaves_it_untaken()
+    {
+        MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        try
+        {
+            MainWindow window = CreateWindow();
+            MuxDaemonImage.MarkRanFromInstallFolder();
+            // The local host connects (its event arrives on the pool), and the window closes before the post it made runs.
+            typeof(MainWindow).GetMethod("OnMuxHostConnected", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(window, [MuxEndpointId.Local, _host!, _host!.CurrentClient!]);
+            typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(MuxDaemonImage.TakeInstallFolderNotice());   // still there for the next window
+        }
+        finally
+        {
+            MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        }
+    }
+
     [Fact]
     public void Only_a_Velopack_install_that_got_its_own_executable_back_ran_from_the_install_folder()
     {

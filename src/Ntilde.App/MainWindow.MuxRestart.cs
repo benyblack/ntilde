@@ -86,11 +86,12 @@ namespace Ntilde
         {
             // Release hardening (optional): once per launch, when this launch had to start the local daemon from the install
             // folder (MuxDaemonImage.Resolve could not stage its copy), so every update stops it - said here, not only logged.
-            if (id.IsLocal && MuxDaemonImage.TakeInstallFolderNotice())
+            // Taken in the post, after the teardown check: a window closing meanwhile leaves the notice for one that can show it.
+            if (id.IsLocal)
             {
                 Dispatcher.Post(() =>
                 {
-                    if (!_teardownDone) EnqueueNotice(SessionPersistenceNoticeTitle, MuxDaemonImage.InstallFolderNotice);
+                    if (!_teardownDone && MuxDaemonImage.TakeInstallFolderNotice()) EnqueueNotice(SessionPersistenceNoticeTitle, MuxDaemonImage.InstallFolderNotice);
                 });
             }
 

@@ -20,9 +20,15 @@ for rid in linux-x64 linux-arm64 osx-arm64; do
     status=1
     continue
   fi
-  # wc -l counts newlines: 0 for a lone unterminated line, 1 for a terminated one. More is never right.
-  lines="$(wc -l < "$file" | tr -d ' ')"
-  if [ "$lines" -gt 1 ] || ! grep -Eq "^[0-9a-f]{64}  ntilde-mux-$rid\$" "$file"; then
+  # The whole file, byte for byte: exactly the line, plus at most its LF. Counted in bytes because grep alone cannot
+  # say it - Git Bash's grep drops a CR before matching, and grep matches any one line of several. With the length
+  # pinned, the anchored match below can only be the file's one line, and the last byte, when there is one more, an LF.
+  line="ntilde-mux-$rid"
+  expected=$((64 + 2 + ${#line}))
+  size="$(wc -c < "$file" | tr -d ' ')"
+  last="$(tail -c 1 "$file" | od -An -tx1 | tr -d ' \n')"
+  if { [ "$size" -ne "$expected" ] && { [ "$size" -ne $((expected + 1)) ] || [ "$last" != "0a" ]; }; } \
+    || ! grep -Eq "^[0-9a-f]{64}  ntilde-mux-$rid\$" "$file"; then
     echo "::error::ntilde-mux-$rid.sha256 is not exactly '<64 lowercase hex>  ntilde-mux-$rid'" >&2
     status=1
   fi

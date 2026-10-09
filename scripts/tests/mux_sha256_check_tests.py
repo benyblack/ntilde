@@ -89,6 +89,9 @@ def main():
     bad("a path in the name", "osx-arm64", f"{HEX}  artifacts/release/ntilde-mux-osx-arm64\n".encode("ascii"))
     bad("CRLF", "linux-x64", f"{HEX}  ntilde-mux-linux-x64\r\n".encode("ascii"))
     bad("two lines", "linux-x64", good("linux-x64") + good("linux-x64"))
+    bad("a good line, then junk with no newline", "linux-x64", good("linux-x64") + b"junk")
+    bad("a good line, then a blank line", "linux-x64", good("linux-x64") + b"\n")
+    bad("a lone CR at the end", "linux-x64", f"{HEX}  ntilde-mux-linux-x64\r".encode("ascii"))
     bad("an HTML error page", "linux-x64", b"<html>Not Found</html>\n")
 
     print(f"\n{passed} passed, {failures} failed")
