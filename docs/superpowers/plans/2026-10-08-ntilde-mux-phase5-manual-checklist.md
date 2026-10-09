@@ -63,7 +63,7 @@ export NTILDE_APPDATA_ROOT="${TMPDIR:-/tmp}/ntilde-smoke"
 ```
 
 The multiplexer's pipe or socket, its descriptor, its `bin\<version>\` copies, settings, the session file, SSH profiles and
-the native known-hosts file all move with it. **Three things do not**, so check them before you start:
+the native known-hosts file all move with it. **Four things do not**, so check them before you start:
 
 - **The agent host's pipe on Windows**, `ntilde-agent-<user>`, is one per user. A sandbox Ntilde with *Agent access
   (observe)* on joins your real Ntilde's pipe, and your MCP clients may reach either. Keep agent access off in the
@@ -76,6 +76,12 @@ the native known-hosts file all move with it. **Three things do not**, so check 
   password: first by the profile's id, then by older name-based keys that can match a real profile of yours. Use key
   authentication in the sandbox, never tick *Remember password*, and test the saved-password paths only with a
   throwaway account.
+- **The Windows update-survival harness** (`scripts/mux-update-survival.ps1`, steps 36-38 and 50) installs a real
+  Velopack package (`NtildeSurvival`, never `NtildeApp`). That edits machine state outside the sandbox: your user `PATH`
+  in `HKCU\Environment`, the `HKCU\...\Uninstall\NtildeSurvival` key, and (if a pack ever makes them) Start Menu and
+  Desktop shortcuts. The script snapshots each one first and restores and checks it at the end, even when a step fails.
+  While it runs, do not open new terminals that read `PATH` or change your `PATH` yourself. If a run is killed before
+  its cleanup, run it again with `-CleanupOnly` and compare `PATH` with the snapshot it printed.
 
 **2. A sandbox `settings.json`** (in `$NTILDE_APPDATA_ROOT`):
 
@@ -343,7 +349,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ### 14. Cmd+Q on macOS, and shutdown or sign-out
 *Phase 5 Task 16.*
 - **Preconditions:** shells running; no `mux-close-choice`.
-- **Actions:** on macOS, Cmd+Q. On any OS, sign out or shut down with Ntilde open.
+- **Actions:** on macOS, Cmd+Q. On any OS, sign out or shut down with Ntilde open. Save your work first: signing out
+  or shutting down also ends your real Ntilde, if it is running, and whatever else you have open.
 - **Expected:** Cmd+Q never asks: it applies a remembered answer, and otherwise keeps the shells. A shutdown or
   sign-out never makes Ntilde end a shell itself.
 - **Result / log:**
@@ -378,7 +385,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 *Phase 5 Task 19 (spec R2/R3).*
 - **Preconditions:** a sandbox with shells in two tabs, one tab never shown since launch, and the window closed with
   **Keep running**.
-- **Actions:** restart the computer. Start the sandbox Ntilde.
+- **Actions:** save your work (the restart also ends your real Ntilde and its local shells), then restart the
+  computer. Start the sandbox Ntilde.
 - **Expected:** each saved pane starts a fresh shell where it was. No notification is shown, the never-shown tab
   included. On Windows, the same after signing out and in, and after *Shut down* with Fast Startup on.
 - **Result / log:**
@@ -403,7 +411,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Preconditions:** a persistent SSH tab running `top -d 1` on a host that is **not** this computer: another machine,
   or a VM that stays up. The Docker container does not do here, because it restarts with Docker, and that ends its
   `ntilde-mux`.
-- **Actions:** note `top`'s pid on the host. Restart this computer, and start Ntilde.
+- **Actions:** note `top`'s pid on the host. Save your work (the restart also ends your real Ntilde and its local
+  shells), then restart this computer, and start Ntilde.
 - **Expected:** the remote tab reattaches to the same `top` (the same pid), with no notification.
 - **Result / log:**
   - Windows: OPEN — maintainer
@@ -575,7 +584,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
      -f /etc/ssh/ssh_host_* && ssh-keygen -A && kill -HUP 1'` (sshd is PID 1 and re-execs on SIGHUP). Recreating the
      container does not change them: the image carries host keys from its build. Then drop and restore the link, and
      press Enter in the tab. (The command was checked: a new key is served and `ntilde-mux` keeps its pid,
-     `<logs>\54-hostkey-rotation-check.log`.)
+     `<logs>\54-hostkey-rotation-check.log`.) An OpenSSH profile without the sandbox `UserKnownHostsFile` override
+     leaves the old key in your real `~/.ssh/known_hosts`; remove it afterwards with `ssh-keygen -R "[127.0.0.1]:2230"`.
 - **Expected:**
   1. After 10 minutes, `[Connection to nova@127.0.0.1 lost] [Press Enter to reconnect]`; Enter reconnects.
   2. The retries stop after one attempt, with `[Host key for nova@127.0.0.1 is unknown or has changed — press Enter to
@@ -670,7 +680,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ### 36. Shells survive an update (the update-survival harness)
 *Phase 5 Tasks 20-24 (R9, R10).*
 - **Preconditions:** the repository; nothing else. The harness makes its own sandbox and installs as `NtildeSurvival`,
-  never as `NtildeApp`.
+  never as `NtildeApp`. On Windows it edits your real user `PATH`, the `Uninstall\NtildeSurvival` key and any
+  shortcuts, and restores them at the end (the setup block's fourth "do not move" item): open no new terminals while it
+  runs.
 - **Actions:**
   - Windows: `scripts/mux-update-survival.ps1 -Sandbox <dir under %TEMP%>`.
   - Linux: `zsh scripts/mux-update-survival.sh --sandbox <dir>`, with zsh, FUSE and Xvfb (Task 24 ran it in
@@ -715,7 +727,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ### 38. The no-overlap path: an update that cannot keep the multiplexer
 *The Task 24 carry (report §7).*
 - **Preconditions:** step 37's sandbox after its `-CleanupOnly`. The run below installs afresh, and `-SkipBuild` reuses
-  that sandbox's builds, so the daemon it leaves running has not been through step 37's restart.
+  that sandbox's builds, so the daemon it leaves running has not been through step 37's restart. As in step 36, the
+  harness edits your real user `PATH` and `Uninstall` key until its `-CleanupOnly`.
 - **Actions:**
   1. `scripts/mux-update-survival.ps1 -Sandbox <dir> -SkipBuild -LeaveRunning` (Linux: `--skip-build
      --leave-running`). It runs steps 1-8, packs `0.12.0-survival.3` (the .2 build with the marker
@@ -939,7 +952,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ### 50. The installer puts `ntilde` on PATH
 *Phase 4 §11.4.*
 - **Preconditions:** a Velopack install. Use the survival harness's `NtildeSurvival` install (step 36 with
-  `-LeaveRunning`), not your real one.
+  `-LeaveRunning`), not your real one. Until its `-CleanupOnly`, your real user `PATH` carries that install's
+  `current` folder: this step checks exactly that.
 - **Actions:** open a new terminal and run `ntilde mux ls`. Uninstall (the harness's `-CleanupOnly`), then open another
   terminal.
 - **Expected:** the install folder's `current` is on the user PATH, so `ntilde` runs `ntilde.com` in a new terminal. An
