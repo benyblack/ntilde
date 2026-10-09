@@ -305,7 +305,10 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   Settings deletes that file when a save, import or restore changes `SessionPersistence`. Close ends
   the window's local shells through `EndLocalSessionsOnTeardown` (tracked kills, flushed by the
   hosts' dispose), skipping a shell another interactive client shows or a share whose sharing is
-  unknown. `ApplicationShutdown` (macOS Cmd+Q) applies a remembered answer and never asks;
+  unknown. The ids that tabs not shown yet hold pending (`PendingLocalMuxSessionIds`, shares and
+  quiet-lost ids excluded) are counted and ended too, once the local daemon's current connection lists
+  them running with no interactive client (`UnshownLocalMuxSessionsAsync`, 2 s; none when it cannot
+  say); the close is held for that listing. `ApplicationShutdown` (macOS Cmd+Q) applies a remembered answer and never asks;
   `OSShutdown` never kills. "Quit and close all shells" (`QuitAndCloseAllShellsAsync`) kills every
   session the local daemon lists and shuts it down (`ShutdownLocalDaemonAsync`). Ended shells are
   saved as gone (`MarkLocalShellsEnded`), so the next launch starts fresh ones without a notice.

@@ -279,6 +279,152 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         GC.KeepAlive(other);
     }
 
+    // ── Final review M3: restored tabs not shown yet hold their shells' ids pending ──
+
+    /// <summary>
+    /// A pane as the window saved it: a fresh shell when <paramref name="id"/> is null, else reopening local daemon session
+    /// <paramref name="id"/>; <paramref name="shared"/> for one joined through "Attach to session…".
+    /// </summary>
+    private static Ntilde.Pty.PaneNode LocalLeaf(Guid? id = null, bool shared = false) => new()
+    {
+        Type = Ntilde.Pty.NodeType.Leaf,
+        Command = "scripted",
+        MuxSessionId = id?.ToString("D"),
+        MuxEndpoint = id is null ? null : MuxEndpointId.Local.ToString(),
+        MuxShared = shared,
+    };
+
+    /// <summary>A session file with one tab per root, the first selected: the others are built but not shown, so their panes do not spawn.</summary>
+    private static void SaveTabs(params Ntilde.Pty.PaneNode[] roots)
+    {
+        var session = new Ntilde.Pty.NtildeSession { ActiveTabIndex = 0 };
+        foreach (Ntilde.Pty.PaneNode root in roots) session.Tabs.Add(new Ntilde.Pty.TabSession { Title = $"tab {session.Tabs.Count}", Root = root });
+        Directory.CreateDirectory(Path.GetDirectoryName(AppPaths.SessionFilePath)!);
+        File.WriteAllText(AppPaths.SessionFilePath, System.Text.Json.JsonSerializer.Serialize(session, Ntilde.Pty.SessionSerializationContext.Default.NtildeSession));
+    }
+
+    /// <summary>Shells running in the test's daemon that no client shows, as a window's Keep left them.</summary>
+    private Guid[] SpawnUnshown(int count) => Task.Run(async () =>
+    {
+        MuxClient client = await _mux.ConnectClientAsync();
+        var ids = new Guid[count];
+        for (int i = 0; i < count; i++) ids[i] = await MuxTestHost.SpawnAsync(client);
+        return ids;
+    }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+    private static int PendingPanes(MainWindow window) => window.AllPanesForTest().Count(p => p.MuxSessionIdToRestore is not null);
+
+    /// <summary>
+    /// Final review M3: a restore brings back 5 tabs and the user looks at one. The 4 not shown yet hold their shells' ids
+    /// pending, and those shells run all the same: "Close them" counts all 5 and ends all 5, and the session file names
+    /// none of them, so they do not come back at the next launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_them_counts_and_ends_the_shells_of_tabs_not_shown_yet()
+    {
+        Guid[] ids = SpawnUnshown(5);
+        SaveTabs([.. ids.Select(id => LocalLeaf(id))]);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        PumpUntil(() => window.AllPanesForTest().Count == 5, "every restored tab was built");
+        Assert.Equal(4, PendingPanes(window));
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([5], _asked);
+        Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Final review M3: the only running shells are in tabs not shown yet (the shown tab's shell exited). The question is
+    /// still asked, counting them, and Keep keeps them, named for the next launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void Shells_only_in_tabs_not_shown_yet_are_still_asked_about()
+    {
+        Guid[] ids = SpawnUnshown(2);
+        SaveTabs(LocalLeaf(), LocalLeaf(ids[0]), LocalLeaf(ids[1]));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep));
+        PumpUntil(() => window.AllPanesForTest().Count == 3, "every restored tab was built");
+        Assert.Equal(2, PendingPanes(window));
+        MuxClientSession shown = LocalSession(window)!;
+        // Non-zero: under the default "Graceful" ShellExitPolicy the pane stays (exit 0 would close the tab).
+        _mux.Fake(shown.Id).Exit(3);
+        PumpUntil(() => !shown.IsProcessRunning, "the pane saw the exit");
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([2], _asked);
+        Assert.All(ids, id => Assert.Contains(id, _mux.Server.GetSessionIds()));
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.Contains(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Final review M3, as for live panes: "Close them" never ends a pending shell another client may be typing into. A
+    /// share's pending id ("Attach to session…" joined it shared) is neither counted nor ended; nor is a pending id the
+    /// daemon says another client shows (an <c>ntilde mux attach</c> in a terminal, say). The shown tab's shell and the
+    /// window's own pending one beside them are ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_them_never_ends_a_pending_share_or_a_pending_shell_another_client_shows()
+    {
+        Guid[] own = SpawnUnshown(1);
+        (Guid shared, Guid shownElsewhere, ClientPaneModel[] theirs) = Task.Run(async () =>
+        {
+            MuxClient other = await _mux.ConnectClientAsync();
+            Guid a = await MuxTestHost.SpawnAsync(other);
+            Guid b = await MuxTestHost.SpawnAsync(other);
+            ClientPaneModel[] panes = [await MuxTestHost.AttachPaneAsync(other, a), await MuxTestHost.AttachPaneAsync(other, b)];
+            return (a, b, panes);
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        SaveTabs(LocalLeaf(), LocalLeaf(own[0]), LocalLeaf(shared, shared: true), LocalLeaf(shownElsewhere));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        PumpUntil(() => window.AllPanesForTest().Count == 4, "every restored tab was built");
+        Assert.Equal(3, PendingPanes(window));
+        Guid first = LocalSession(window)!.Id;
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([2], _asked); // the shown tab's shell and the window's own pending one
+        Assert.DoesNotContain(first, _mux.Server.GetSessionIds());
+        Assert.DoesNotContain(own[0], _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(shared).IsExited);
+        Assert.False(_mux.Mux(shownElsewhere).IsExited);
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.Contains(shared.ToString(), saved, StringComparison.Ordinal);
+        Assert.Contains(shownElsewhere.ToString(), saved, StringComparison.Ordinal);
+        GC.KeepAlive(theirs);
+    }
+
+    /// <summary>
+    /// Final review M3: a remembered "Close them" (Don't ask again) ends the shells of tabs not shown yet too, without
+    /// asking - once the daemon has said no other client shows them - and they are not named for the next launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remembered_close_ends_the_shells_of_tabs_not_shown_yet()
+    {
+        Guid[] ids = SpawnUnshown(2);
+        SaveTabs(LocalLeaf(), LocalLeaf(ids[0]), LocalLeaf(ids[1]));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel));
+        Store.Remember(MuxCloseChoice.Close);
+        PumpUntil(() => window.AllPanesForTest().Count == 3, "every restored tab was built");
+        Guid first = LocalSession(window)!.Id;
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);
+        Assert.DoesNotContain(first, _mux.Server.GetSessionIds());
+        Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]

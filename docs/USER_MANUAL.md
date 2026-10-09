@@ -498,8 +498,12 @@ restoring settings that change it, forgets it, so you are asked again.
 
 - Ntilde asks only when local shells would be left running. Remote shells never ask: they keep
   running on their host either way.
+- The shells of tabs you have not opened since Ntilde restored them count as this window's too, and
+  *Close them* ends them - except one you joined through **Attach to session…**, or one another
+  window or `ntilde mux attach` has open. Ntilde asks the multiplexer which those are first; if it
+  does not answer, they keep running.
 - On macOS, quitting with Cmd+Q never asks: it applies a remembered answer, and otherwise keeps the
-  shells.
+  shells. A remembered *Close them* then ends only the shells of tabs you have opened.
 - When the computer shuts down or you sign out, Ntilde ends no shell itself, whatever you chose
   (the shutdown ends them anyway, 12.3).
 - Shells that *Close them* ended are not looked for at the next launch: their panes start fresh

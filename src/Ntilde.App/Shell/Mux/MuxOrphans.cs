@@ -30,9 +30,10 @@ internal static class MuxOrphans
     /// <summary>
     /// A running, healthy shell nobody shows. A read-only viewer (<c>mux attach --read-only</c>) only
     /// peeks: on v2, where <see cref="SessionSummary.InteractiveClients"/> is reported, it does not count.
-    /// A v1 daemon reports only the total.
+    /// A v1 daemon reports only the total. Also what a closing window's "Close them" may end of the shells its tabs not shown
+    /// yet hold pending (final review M3).
     /// </summary>
-    private static bool IsUnshown(SessionSummary s, bool reportsInteractive) =>
+    internal static bool IsUnshown(SessionSummary s, bool reportsInteractive) =>
         s.Running && !s.Faulted && (reportsInteractive ? s.InteractiveClients : s.AttachedClients) == 0;
 
     /// <summary>Crash orphans only: a shell the user detached on purpose stays detached (spec §7.7).</summary>
