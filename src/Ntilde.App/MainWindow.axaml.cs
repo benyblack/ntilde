@@ -10445,8 +10445,16 @@ namespace Ntilde
             if (count == 0)
             {
                 _firstCloseQuestionOpen = false;
-                _closeConfirmed = true;
-                Close();
+                try
+                {
+                    _closeConfirmed = true;
+                    Close();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Log($"[MainWindow] closing with nothing left to keep failed: {ex}");
+                }
+
                 return;
             }
 

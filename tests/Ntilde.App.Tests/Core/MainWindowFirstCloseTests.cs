@@ -364,6 +364,27 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
     }
 
     /// <summary>
+    /// Final review M3: tabs not shown yet whose shells no longer run (ended while Ntilde was closed) leave nothing to keep:
+    /// once the daemon has said so, the window closes without asking.
+    /// </summary>
+    [AvaloniaFact]
+    public void Tabs_not_shown_yet_whose_shells_are_gone_do_not_ask()
+    {
+        SaveTabs(LocalLeaf(), LocalLeaf(Guid.NewGuid()), LocalLeaf(Guid.NewGuid()));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel));
+        PumpUntil(() => window.AllPanesForTest().Count == 3, "every restored tab was built");
+        Assert.Equal(2, PendingPanes(window));
+        MuxClientSession shown = LocalSession(window)!;
+        _mux.Fake(shown.Id).Exit(3);
+        PumpUntil(() => !shown.IsProcessRunning, "the pane saw the exit");
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed without asking");
+
+        Assert.Empty(_asked);
+    }
+
+    /// <summary>
     /// Final review M3, as for live panes: "Close them" never ends a pending shell another client may be typing into. A
     /// share's pending id ("Attach to session…" joined it shared) is neither counted nor ended; nor is a pending id the
     /// daemon says another client shows (an <c>ntilde mux attach</c> in a terminal, say). The shown tab's shell and the
