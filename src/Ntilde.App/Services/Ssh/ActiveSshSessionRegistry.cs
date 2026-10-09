@@ -201,6 +201,40 @@ public sealed class ActiveSshSessionRegistry
     }
 
     /// <summary>
+    /// Removes (and zeroes) the password <paramref name="sessionId"/> holds for <paramref name="user"/> on
+    /// <paramref name="host"/>:<paramref name="port"/> while it is still <paramref name="refused"/>, and returns whether it
+    /// did: that server refused the value (Codex review of PR #511, P1), so nothing that reads this scope may offer it again.
+    /// A different value - one written after the refused one was offered - stays, as does every other server's.
+    /// </summary>
+    public bool RemoveRuntimePassword(Guid sessionId, string host, int port, string user, string refused)
+    {
+        if (sessionId == Guid.Empty || string.IsNullOrEmpty(refused) || !RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
+        {
+            return false;
+        }
+
+        byte[] candidate = Encoding.UTF8.GetBytes(refused);
+        try
+        {
+            lock (_runtimePasswordGate)
+            {
+                if (!_runtimePasswords.TryGetValue(key, out byte[]? stored) || !CryptographicOperations.FixedTimeEquals(stored, candidate))
+                {
+                    return false;
+                }
+
+                _runtimePasswords.Remove(key);
+                CryptographicOperations.ZeroMemory(stored);
+                return true;
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(candidate);
+        }
+    }
+
+    /// <summary>
     /// Returns the password this session holds for <paramref name="user"/> on
     /// <paramref name="host"/>:<paramref name="port"/>, or <c>null</c> when none is held. Never
     /// returns a password entered for a different server of the same session.

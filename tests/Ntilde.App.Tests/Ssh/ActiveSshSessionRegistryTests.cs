@@ -190,6 +190,65 @@ public sealed class ActiveSshSessionRegistryTests
         Assert.Equal("session-secret", sessionPassword);
     }
 
+    /// <summary>
+    /// Codex review of PR #511 (P1): a password a server refused leaves its scope - that one server's entry, and only while it
+    /// still holds the refused value (a newer one written since stays).
+    /// </summary>
+    [Fact]
+    public void RemoveRuntimePassword_removes_that_servers_entry_while_it_holds_the_refused_value()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid scope = Guid.NewGuid();
+        Guid other = Guid.NewGuid();
+        registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", "stale");
+        registry.SetRuntimePassword(scope, "prod.internal", 22, "root", "stale");
+        registry.SetRuntimePassword(scope, "prod.internal", 2222, "ops", "stale");
+        registry.SetRuntimePassword(scope, "other.internal", 22, "ops", "stale");
+        registry.SetRuntimePassword(other, "prod.internal", 22, "ops", "stale");
+
+        Assert.True(registry.RemoveRuntimePassword(scope, "PROD.internal", 0, "ops", "stale")); // the key's own defaults
+
+        Assert.False(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out _));
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "root", out _));
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 2222, "ops", out _));
+        Assert.True(registry.TryGetRuntimePassword(scope, "other.internal", 22, "ops", out _));
+        Assert.True(registry.TryGetRuntimePassword(other, "prod.internal", 22, "ops", out _));
+        Assert.False(registry.RemoveRuntimePassword(scope, "prod.internal", 22, "ops", "stale")); // already gone
+    }
+
+    [Theory]
+    [InlineData("newer")]
+    [InlineData("stal")]
+    [InlineData("stale ")]
+    public void RemoveRuntimePassword_leaves_a_different_value(string held)
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid scope = Guid.NewGuid();
+        registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", held);
+
+        Assert.False(registry.RemoveRuntimePassword(scope, "prod.internal", 22, "ops", "stale"));
+
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out string? password));
+        Assert.Equal(held, password);
+    }
+
+    [Theory]
+    [InlineData("", 22, "ops", "stale")]
+    [InlineData("prod.internal", 22, "", "stale")]
+    [InlineData("prod.internal", 70000, "ops", "stale")]
+    [InlineData("prod.internal", 22, "ops", "")]
+    public void RemoveRuntimePassword_with_no_server_or_no_value_removes_nothing(string host, int port, string user, string refused)
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid scope = Guid.NewGuid();
+        registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", "stale");
+
+        Assert.False(registry.RemoveRuntimePassword(scope, host, port, user, refused));
+        Assert.False(registry.RemoveRuntimePassword(Guid.Empty, "prod.internal", 22, "ops", "stale"));
+
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out _));
+    }
+
     /// <summary>A plain session, registered or not, keeps its passwords under its own id, as before Task 28.</summary>
     [Fact]
     public void A_session_without_a_scope_is_its_own_scope()

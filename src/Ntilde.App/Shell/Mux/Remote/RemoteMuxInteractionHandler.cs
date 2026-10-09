@@ -23,7 +23,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// tabs' SFTP, listing and path completion - each a connection of its own - through the host's password scope in
 /// <see cref="ActiveSshSessionRegistry"/> (<see cref="PasswordScopeId"/>), in memory only as well. Typed ones only: one the
 /// window's handler filled from the vault is not copied (those connections read the vault themselves), nor one recalled,
-/// superseded or blank, nor any on a profile with jump hops. <see cref="Forget"/> clears the scope.
+/// superseded or blank, nor any on a profile with jump hops. <see cref="Forget"/> clears the scope, and a password the host
+/// offered from memory and then forgets as refused leaves it, under the server it was offered to (Codex review of PR #511).
 /// </para>
 /// <para>
 /// A remembered secret that may have been refused is forgotten, never replayed: replaying a stale
@@ -183,6 +184,24 @@ internal sealed class RemoteMuxInteractionHandler
         {
             if (generation != _generation) return;
             foreach ((string host, int port, string user, string secret) in typed) scopes.SetRuntimePassword(PasswordScopeId, host, port, user, secret);
+        }
+    }
+
+    /// <summary>
+    /// The other half of <see cref="KeepForTransfers"/> (Codex review of PR #511, P1): <paramref name="refused"/> - passwords
+    /// this host offered from memory, which it now forgets as refused - leave <see cref="PasswordScopeId"/> too, each under
+    /// the server it was offered to and only while the scope still holds that value there. Else the host's SFTP and listing
+    /// connections, which read the scope before the vault, keep offering a stale password and pile up failed logins. Under
+    /// the gate and generation check as the write is, so a refusal from before <see cref="Forget"/> clears nothing written
+    /// since.
+    /// </summary>
+    private void DropFromTransfers(int generation, IEnumerable<(string Host, int Port, string User, string Secret)> refused)
+    {
+        if (_passwordScopes is not { } scopes) return;
+        lock (_gate)
+        {
+            if (generation != _generation) return;
+            foreach ((string host, int port, string user, string secret) in refused) scopes.RemoveRuntimePassword(PasswordScopeId, host, port, user, secret);
         }
     }
 
@@ -705,6 +724,8 @@ internal sealed class RemoteMuxInteractionHandler
             }
 
             _owner.Settle(_generation, forget: answers.Where(a => a.FromMemory).Select(a => (a.Kind, a.Secret)), remember: []);
+            // What memory forgets leaves the host's scope too, under the server each was offered to (Codex review of PR #511).
+            _owner.DropFromTransfers(_generation, PasswordsByServer(answers.Where(a => a.FromMemory)));
             // A second factor after it means the remembered password was taken: the attempt failed at the factor, so the
             // password is not marked refused (it may be the saved one, which the user's Enter must still fill; review I-1).
             if (!SecondFactorAfterSavedPassword && answers.LastOrDefault(a => a.FromMemory && a.Kind == SshInteractionKind.Password) is { } refusedFromMemory)
@@ -803,19 +824,28 @@ internal sealed class RemoteMuxInteractionHandler
         /// </summary>
         private void Advance(bool newHop)
         {
-            List<(SshInteractionKind, string)> refused = [];
+            List<Answer> refused = [];
             lock (_gate)
             {
                 foreach (Answer answer in _answers)
                 {
                     if (answer.State != AnswerState.Open) continue;
                     answer.State = newHop ? AnswerState.Proven : AnswerState.Superseded;
-                    if (answer.State == AnswerState.Superseded && answer.FromMemory) refused.Add((answer.Kind, answer.Secret));
+                    if (answer.State == AnswerState.Superseded && answer.FromMemory) refused.Add(answer);
                 }
             }
 
-            if (refused.Count > 0) _owner.Settle(_generation, forget: refused, remember: []);
+            if (refused.Count == 0) return;
+            _owner.Settle(_generation, forget: refused.Select(a => (a.Kind, a.Secret)), remember: []);
+            // Also when the attempt then gets in another way (Succeeded): the value was still refused (Codex review of PR #511).
+            _owner.DropFromTransfers(_generation, PasswordsByServer(refused));
         }
+
+        /// <summary>The password answers among <paramref name="answers"/> whose prompt named its server, keyed as the host's scope keys them.</summary>
+        private static IEnumerable<(string Host, int Port, string User, string Secret)> PasswordsByServer(IEnumerable<Answer> answers) =>
+            answers
+                .Where(a => a.Kind == SshInteractionKind.Password && a.Prompt.HasHostIdentity)
+                .Select(a => (a.Prompt.Host, a.Prompt.Port, a.Prompt.User, a.Secret));
 
         private void Track(Answer answer)
         {
