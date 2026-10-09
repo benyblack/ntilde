@@ -207,19 +207,28 @@ internal static class RemoteMuxLister
         _ = listing.ContinueWith(
             static (done, state) =>
             {
-                var (connector, connected, release, cut) = ((RemoteMuxConnector, StrongBox<MuxClient?>, Action<MuxClient>, CancellationTokenSource))state!;
+                var (connector, connected, release, cut, host, log) =
+                    ((RemoteMuxConnector, StrongBox<MuxClient?>, Action<MuxClient>, CancellationTokenSource, string, Action<string>?))state!;
                 _ = done.Exception;   // observed: a failure was reported as the wait's, or came after it
                 try
                 {
-                    if (connected.Value is { } client) release(client);
+                    try
+                    {
+                        if (connected.Value is { } client) release(client);
+                    }
+                    finally
+                    {
+                        connector.Dispose();
+                        cut.Dispose();
+                    }
                 }
-                finally
+                catch (Exception ex)
                 {
-                    connector.Dispose();
-                    cut.Dispose();
+                    // Nothing awaits this continuation, so a throw here would surface only as an unobserved task exception.
+                    log?.Invoke($"[RemoteMux] ls --all: {host}: release failed: {ex.GetType().Name}: {ex.Message}");
                 }
             },
-            (connector, connected, releaseClient, cut),
+            (connector, connected, releaseClient, cut, host, log),
             CancellationToken.None,
             TaskContinuationOptions.None,
             TaskScheduler.Default);

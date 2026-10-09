@@ -344,8 +344,8 @@ public sealed class MuxCommandLsAllTests : IDisposable
                     Row("this computer", local, "running", 0, "80x24", "local shell"),
                     Row("nova@a-host", remote, "running", 0, "100x30", "remote shell")),
                 output);
+            // The command has returned the host's rows while that release cannot finish before the finally below.
             Assert.True(releasing.Wait(Patient, Ct), "the listed host's client was let go");
-            Assert.False(mayRelease.IsSet);   // the command returned with that release still blocked
         }
         finally
         {
