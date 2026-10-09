@@ -499,10 +499,12 @@ usual prompts. This happens for:
   picker lists the shells of every host the window is connected to, each line starting with the
   host (`[user@host]`), after this computer's. A host you have no tab on any more is offered as
   *Connect to user@host…* (for each profile with **Keep remote sessions running** ticked):
-  choosing it connects — asking for a password if the host needs one — and reopens the picker with
-  that host's shells. A host that does not answer is listed as `[user@host] not reachable: …` and
-  does not hold up the others. On the host itself, `ntilde-mux attach <id>` works too, with the id
-  `ntilde-mux ls` lists.
+  choosing it connects — asking for a password if the host needs one, with a *Connecting to
+  user@host…* notification meanwhile — and reopens the picker with that host's shells. A host that
+  does not answer is listed as `[user@host] not reachable: …` and does not hold up the others. The
+  *Shell detached* notification names the host. If the profile's checkbox is unticked, the picker
+  does not offer that host, and the notification gives the command for the host instead:
+  `ntilde-mux attach <id>`, with the id `ntilde-mux ls` lists.
 - Unticking the profile's checkbox makes its new tabs, and its saved tabs at the next launch, open
   plain SSH. Their shells keep running on the host, and Ntilde keeps their ids in its saved
   session, so once the checkbox is ticked again they reattach at the following launch. Closing such

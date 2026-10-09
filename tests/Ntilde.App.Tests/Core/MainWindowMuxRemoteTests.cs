@@ -75,6 +75,9 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// </summary>
     private (SshProfile Profile, FakeRemoteHost Host)? _twin;
 
+    /// <summary>Every remote host's request wait (its policy's <c>RpcTimeout</c>), set by a test before <see cref="CreateWindow"/>; the policy's own when null.</summary>
+    private TimeSpan? _remoteRpcTimeout;
+
     private string Endpoint => MuxEndpointId.ForSsh(_sshProfile.Id).ToString();
 
     private volatile bool _profileGone; // the profile is deleted: every lookup misses it from then on
@@ -113,7 +116,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         {
             _transportRequests.Enqueue(request);
             return _twin is { } twin && profile.Id == twin.Profile.Id ? twin.Host : remote ?? _remote;
-        }, log: null, userPrompts: null, scheduler: _clock));
+        }, log: null, userPrompts: null, scheduler: _clock, rpcTimeout: _remoteRpcTimeout));
         var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
         AppServiceBundle services = AppServices.BuildForDesigner() with
         {
@@ -761,7 +764,31 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         Assert.True(detach.Result);
         PumpUntil(() => Toast(window).Title == "Shell detached", "the detach toast is shown");
-        Assert.Equal("Detached \u2014 Attach to session\u2026 reopens it", Toast(window).Message);
+        Assert.Equal("Shell kept running on nova@fake-host \u2014 Attach to session\u2026 reopens it", Toast(window).Message);
+        Assert.Contains(ids[0], _remote.Server.GetSessionIds());
+    }
+
+    /// <summary>
+    /// Fix round 1: a profile that stopped keeping its sessions is not offered by the picker, so its detached shell is told
+    /// to come back through ntilde-mux on its own host, by the id ntilde-mux ls shows - read at the detach.
+    /// </summary>
+    [AvaloniaFact]
+    public void Detaching_a_remote_pane_whose_profile_stopped_keeping_sessions_gives_the_ntilde_mux_command()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
+        TerminalPane pane = RemotePanes(window).Single();
+        _sshProfile.MuxOptions.PersistRemoteSessions = false;
+        new JsonSshProfileStore().SaveProfile(_sshProfile);
+
+        Task<bool> detach = window.DetachPaneAsync(pane);
+        PumpUntil(() => detach.IsCompleted, "the detach finished");
+
+        Assert.True(detach.Result);
+        PumpUntil(() => Toast(window).Title == "Shell detached", "the detach toast is shown");
+        Assert.Equal($"Shell kept running on nova@fake-host \u2014 run 'ntilde-mux attach {ids[0]}' on that host to get it back", Toast(window).Message);
         Assert.Contains(ids[0], _remote.Server.GetSessionIds());
     }
 
@@ -1144,6 +1171,238 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal((RemoteId, "[nova@fake-host] not reachable: it did not answer in time"), (error.Endpoint, error.Display));
         Assert.NotNull(MuxPickerChoice.Find(items, twinIds[0], twinEndpoint));
         _remote.CutLink(); // the stalled channel ends, so the window's teardown does not wait on it
+    }
+
+    /// <summary>
+    /// Review minor 3: the hosts are listed in parallel. Two hosts that do not answer are each waited for up to their request
+    /// wait, together: the picker is offered after about one wait, not two.
+    /// </summary>
+    [AvaloniaFact]
+    public void Two_hosts_that_do_not_answer_are_waited_for_together()
+    {
+        TimeSpan wait = TimeSpan.FromSeconds(3);
+        _remoteRpcTimeout = wait;
+        Guid[] ids = SpawnOnRemote(1);
+        (SshProfile twin, FakeRemoteHost twinHost, MuxEndpointId twinEndpoint) = AddTwin();
+        Guid[] twinIds = SpawnOnRemote(1, twinHost);
+        SaveSession(RemoteLeaf(ids[0]), LeafOf(twin, twinIds[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => AllPanes(window).Count(p => !MuxEndpointId.Parse(p.MuxEndpoint).IsLocal && p.Session is MuxClientSession { IsAttached: true }) == 2, "both remote panes reattached");
+        LocalSessionId(window);
+        _remote.StallLink();
+        twinHost.StallLink();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        TimeSpan offeredAfter = TimeSpan.Zero;
+
+        IReadOnlyList<MuxPickerItem> items = Assert.Single(Attach(window, (_, _) =>
+        {
+            offeredAfter = clock.Elapsed;
+            return null;
+        }));
+
+        List<MuxSessionPickerErrorRow> errors = [.. items.OfType<MuxSessionPickerErrorRow>()];
+        Assert.Equal(2, errors.Count);
+        Assert.Equal([RemoteId, twinEndpoint], errors.Select(e => e.Endpoint).OrderBy(e => e == RemoteId ? 0 : 1));
+        Assert.Equal(2, errors.Count(e => e.Error == MuxPickerHostError.TimedOut));
+        Assert.InRange(offeredAfter, wait * 0.9, wait * 1.5);
+        _remote.CutLink(); // the stalled channels end, so the window's teardown does not wait on them
+        twinHost.CutLink();
+    }
+
+    /// <summary>The connecting notice of a "Connect to …" row for <see cref="_sshProfile"/>'s host.</summary>
+    private const string ConnectingLine = "Connecting to nova@fake-host…";
+
+    /// <summary>Holds every connect to <see cref="_remote"/> until the returned gate is set (or the attempt is cancelled).</summary>
+    private ManualResetEventSlim HoldConnects()
+    {
+        var gate = new ManualResetEventSlim();
+        _remote.OnStart = ct => gate.Wait(ct);
+        return gate;
+    }
+
+    /// <summary>A picker seam whose first picker chooses <see cref="_sshProfile"/>'s connect row; later ones answer <paramref name="then"/>.</summary>
+    private Func<IReadOnlyList<MuxPickerItem>, Task<MuxPickerItem?>> ConnectFirst(List<IReadOnlyList<MuxPickerItem>> offered, Func<IReadOnlyList<MuxPickerItem>, Task<MuxPickerItem?>> then) =>
+        items =>
+        {
+            offered.Add(items);
+            return offered.Count == 1
+                ? Task.FromResult<MuxPickerItem?>(items.OfType<MuxSessionPickerConnectRow>().Single(r => r.ProfileId == _sshProfile.Id))
+                : then(items);
+        };
+
+    /// <summary>
+    /// Fix round 1: a connect row says it is connecting, under the name the row shows, for as long as the connect takes,
+    /// and the notice is gone before the reopened picker comes up - it never sits under a modal.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_connect_row_shows_connecting_until_the_picker_reopens()
+    {
+        SpawnOnRemote(1);
+        SaveSession(LocalLeaf());
+        MainWindow window = CreateWindow();
+        LocalSessionId(window);
+        using ManualResetEventSlim gate = HoldConnects();
+        var offered = new List<IReadOnlyList<MuxPickerItem>>();
+        string[]? linesWhenReopened = null;
+        window.PickMuxSession = ConnectFirst(offered, _ =>
+        {
+            linesWhenReopened = ToastLines(window);
+            return Task.FromResult<MuxPickerItem?>(null);
+        });
+
+        Task command = window.AttachToMuxSessionAsync();
+        PumpUntil(() => _remote.StartCount == 1, "the connect is under way");
+        PumpUntil(() => ToastLines(window).Contains(ConnectingLine), "the connecting notice is shown");
+        PumpFor(100);
+        Assert.Contains(ConnectingLine, ToastLines(window)); // it stays while the connect does
+
+        gate.Set();
+        PumpUntil(() => command.IsCompleted, "the attach command finished");
+        Assert.Equal(2, offered.Count);
+        Assert.NotNull(linesWhenReopened);
+        Assert.DoesNotContain(ConnectingLine, linesWhenReopened);
+        Assert.DoesNotContain(ConnectingLine, ToastLines(window));
+    }
+
+    /// <summary>Fix round 1: a connect that fails replaces its connecting notice with the failure's.</summary>
+    [AvaloniaFact]
+    public void A_connect_row_that_fails_replaces_its_notice_with_the_failure()
+    {
+        SaveSession(LocalLeaf());
+        MainWindow window = CreateWindow();
+        LocalSessionId(window);
+        _remote.Script = FakeRemoteScript.ConnectionRefused;
+        using ManualResetEventSlim gate = HoldConnects();
+        var offered = new List<IReadOnlyList<MuxPickerItem>>();
+        window.PickMuxSession = ConnectFirst(offered, _ => Task.FromResult<MuxPickerItem?>(null));
+
+        Task command = window.AttachToMuxSessionAsync();
+        PumpUntil(() => ToastLines(window).Contains(ConnectingLine), "the connecting notice is shown");
+        gate.Set();
+        PumpUntil(() => command.IsCompleted, "the attach command finished");
+
+        PumpUntil(() => ToastLines(window).Contains("Could not connect to nova@fake-host."), "the failure is shown");
+        Assert.DoesNotContain(ConnectingLine, ToastLines(window));
+        Assert.Single(offered); // no picker reopened
+    }
+
+    /// <summary>
+    /// Fix round 1: a connect the window gives up on - here the window closes while it is held - takes its connecting notice
+    /// away with it, and says nothing more.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_connect_row_cancelled_by_the_window_closing_takes_its_notice_away()
+    {
+        SaveSession(LocalLeaf());
+        MainWindow window = CreateWindow();
+        LocalSessionId(window);
+        using ManualResetEventSlim gate = HoldConnects();
+        var offered = new List<IReadOnlyList<MuxPickerItem>>();
+        window.PickMuxSession = ConnectFirst(offered, _ => Task.FromResult<MuxPickerItem?>(null));
+
+        Task command = window.AttachToMuxSessionAsync();
+        PumpUntil(() => ToastLines(window).Contains(ConnectingLine), "the connecting notice is shown");
+        window.Close();
+        PumpUntil(() => command.IsCompleted, "the attach command finished");
+        PumpFor(100);
+
+        Assert.DoesNotContain(ConnectingLine, ToastLines(window));
+        Assert.DoesNotContain(ToastLines(window), l => l.StartsWith("Could not connect", StringComparison.Ordinal));
+        Assert.Single(offered);
+    }
+
+    /// <summary>
+    /// Review minor 1: "Attach to session…" again while one runs (here its connect is held) starts nothing - no second
+    /// connect, no second picker - and the first goes on as before.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_second_attach_while_one_runs_starts_nothing()
+    {
+        SpawnOnRemote(1);
+        SaveSession(LocalLeaf());
+        MainWindow window = CreateWindow();
+        LocalSessionId(window);
+        using ManualResetEventSlim gate = HoldConnects();
+        var offered = new List<IReadOnlyList<MuxPickerItem>>();
+        window.PickMuxSession = ConnectFirst(offered, _ => Task.FromResult<MuxPickerItem?>(null));
+
+        Task first = window.AttachToMuxSessionAsync();
+        PumpUntil(() => _remote.StartCount == 1, "the first command's connect is under way");
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        Task second = window.AttachToMuxSessionAsync();
+        PumpFor(200);
+
+        Assert.True(second.IsCompleted, "the second command waited on the first");
+        Assert.Single(offered);
+        Assert.Equal(1, host.ConnectAttempts);
+        gate.Set();
+        PumpUntil(() => first.IsCompleted, "the first command finished");
+        Assert.Equal(2, offered.Count); // the first's reopened picker, and nothing else
+        Assert.Equal(1, _remote.StartCount);
+    }
+
+    /// <summary>
+    /// Review minor 2: every remote host the picker lists is held while it is open. The last pane of a listed host closing
+    /// meanwhile does not let its connection go, and a row of that host chosen afterwards attaches over it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_listed_hosts_connection_stays_while_the_picker_is_open()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
+        LocalSessionId(window);
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        var offered = new List<IReadOnlyList<MuxPickerItem>>();
+        var pick = new TaskCompletionSource<MuxPickerItem?>();
+        window.PickMuxSession = items =>
+        {
+            offered.Add(items);
+            return pick.Task;
+        };
+
+        Task command = window.AttachToMuxSessionAsync();
+        PumpUntil(() => offered.Count == 1, "the picker is open");
+        Task<bool> close = Close(window, RemotePanes(window).Single());
+        PumpUntil(() => close.IsCompleted, "the host's last pane closed");
+        KillLands(host, ids[0], "the closed pane's shell ended");
+        PumpFor(300);
+        Assert.False(host.IsClosed, "the connection of a host the open picker lists was let go");
+        Assert.Same(host, RemoteHostOf(window));
+
+        pick.SetResult(Row(offered[0], ids[1], RemoteId));
+        PumpUntil(() => command.IsCompleted, "the attach command finished");
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == ids[1]), "the chosen remote shell attached");
+        Assert.Equal(1, _remote.StartCount);
+        Assert.Same(host, RemoteHostOf(window));
+    }
+
+    /// <summary>
+    /// Review minor 3: the profile's <c>PersistRemoteSessions</c> is read again at the pick. Turned off while the picker was
+    /// open, the row opens nothing (it would run plain SSH with the id pending), and a notice says why.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_remote_row_whose_profile_stopped_keeping_sessions_before_the_pick_opens_nothing()
+    {
+        Guid[] ids = SpawnOnRemote(2);
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
+        LocalSessionId(window);
+        int panes = AllPanes(window).Count;
+
+        Attach(window, (items, _) =>
+        {
+            _sshProfile.MuxOptions.PersistRemoteSessions = false; // turned off while the picker was open
+            new JsonSshProfileStore().SaveProfile(_sshProfile);
+            return Row(items, ids[1], RemoteId);
+        });
+        PumpFor(200);
+
+        Assert.Equal(panes, AllPanes(window).Count);
+        Assert.DoesNotContain(AllPanes(window), p => p.MuxSessionIdToRestore == ids[1]);
+        PumpUntil(() => ToastLines(window).Contains("The profile for nova@fake-host no longer keeps remote sessions running."), "the notice says why");
     }
 
     /// <summary>

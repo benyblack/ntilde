@@ -332,6 +332,79 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.Empty(window.OwnedWindows);
     }
 
+    /// <summary>Review minor 1: "Attach to session…" while its picker is open brings that picker forward; it never opens a second one.</summary>
+    [AvaloniaFact]
+    public void A_second_attach_while_the_picker_is_open_opens_no_second_picker()
+    {
+        MainWindow window = CreateWindow();
+        OtherInstance();
+
+        Task first = window.AttachToMuxSessionAsync();
+        (Window dialog, _, _, Button cancel) = PickerDialog(window);
+        Task second = window.AttachToMuxSessionAsync();
+        PumpUntil(() => second.IsCompleted, "the second command returned");
+        PumpFor(200);
+
+        Assert.Same(dialog, Assert.Single(window.OwnedWindows));
+        Assert.False(first.IsCompleted);
+        cancel.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        PumpUntil(() => first.IsCompleted, "the first command finished");
+        Assert.Empty(window.OwnedWindows);
+    }
+
+    /// <summary>
+    /// Two clicks at the middle of <paramref name="target"/>, through the dialog's real input: a double-tap. The second
+    /// press is the double-tap, and when it closes the dialog there is nothing left to release the button on.
+    /// </summary>
+    private static void DoubleClick(Window dialog, Control target)
+    {
+        Avalonia.Point at = Avalonia.VisualExtensions.TranslatePoint(target, new Avalonia.Point(10, target.Bounds.Height / 2), dialog)
+            ?? throw new InvalidOperationException("the target is not in the dialog");
+        bool closed = false;
+        void OnClosed(object? sender, EventArgs e) => closed = true;
+        dialog.Closed += OnClosed;
+        for (int i = 0; i < 2 && !closed; i++)
+        {
+            dialog.MouseDown(at, MouseButton.Left);
+            if (!closed) dialog.MouseUp(at, MouseButton.Left);
+        }
+
+        dialog.Closed -= OnClosed;
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>
+    /// Review minor 4: a double-tap on a disabled line (a host that could not be listed) never accepts the line selected
+    /// elsewhere. A double-tap on a line that can be chosen still attaches it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_double_tap_on_a_disabled_row_does_not_accept_the_selected_one()
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs();
+        MuxPickerItem[] rows =
+        [
+            new MuxSessionPickerErrorRow(MuxEndpointId.ForSsh(Guid.NewGuid()), "nova@down", MuxPickerHostError.TimedOut),
+            new MuxSessionPickerRow(MuxEndpointId.Local, "this computer", Guid.NewGuid(), "t", "scripted", null, 80, 24, 0, true, null, false),
+        ];
+        (Window dialog, Task<MuxPickerItem?> result) = window.BuildMuxSessionPickerWindow(rows);
+        dialog.Show();
+        Dispatcher.UIThread.RunJobs();
+        ListBox list = Assert.Single(Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(dialog).OfType<ListBox>());
+        List<ListBoxItem> lines = [.. list.ItemsSource!.Cast<ListBoxItem>()];
+        Assert.Equal(2, lines.Count);
+        Assert.Equal(1, list.SelectedIndex);
+
+        DoubleClick(dialog, lines[0]);
+
+        Assert.False(result.IsCompleted, "a double-tap on the disabled line accepted the selected one");
+        Assert.Equal(1, list.SelectedIndex);
+
+        DoubleClick(dialog, lines[1]);
+        PumpUntil(() => result.IsCompleted, "a double-tap on a line that can be chosen attached it");
+        Assert.Same(rows[1], result.Result);
+    }
+
     [AvaloniaFact]
     public void Cancel_in_the_default_picker_opens_nothing()
     {

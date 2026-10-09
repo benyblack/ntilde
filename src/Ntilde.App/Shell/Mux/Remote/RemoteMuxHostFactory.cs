@@ -106,6 +106,7 @@ internal static class RemoteMuxHostFactory
     /// <see cref="SshAskPassSessionMarkers.DefaultDirectory"/> in the app), so a saved password counts as refused only when
     /// the helper filled it, and a second factor does not count.
     /// </param>
+    /// <param name="rpcTimeout">The host's request wait in place of <see cref="MuxHostPolicy.Remote"/>'s; null (the app) keeps it. Tests shorten it.</param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
@@ -115,7 +116,8 @@ internal static class RemoteMuxHostFactory
         IMuxTimerScheduler? scheduler = null,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
         Func<SshProfile, string?>? savedPassword = null,
-        SshAskPassSessionMarkers? askPassRecords = null)
+        SshAskPassSessionMarkers? askPassRecords = null,
+        TimeSpan? rpcTimeout = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -130,6 +132,7 @@ internal static class RemoteMuxHostFactory
         }
 
         MuxHostPolicy policy = MuxHostPolicy.Remote(RemoteMuxConnector.DisplayNameOf(profile));
+        if (rpcTimeout is { } wait) policy = policy with { RpcTimeout = wait };
 
         // A profile deleted since keeps connecting as the store last had it (the panes that use it decide when to
         // stop); once an attempt connected, the connector keeps that one's target anyway (codex D2).
