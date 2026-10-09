@@ -989,6 +989,145 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Equal((first.Id.ToString("D"), Endpoint), (node.MuxSessionId, node.MuxEndpoint));
     }
 
+    /// <summary>
+    /// A shell another machine's client spawned on the remote daemon and shows, over a daemon connection of its own that a
+    /// cut link leaves alone. That client is disposed with the test.
+    /// </summary>
+    private Guid AnotherClientsShell()
+    {
+        (MuxClient client, ClientPaneModel shown) = Task.Run(async () =>
+        {
+            (Stream stream, _) = await _remote.ConnectDaemonAsync(Ct);
+            MuxClient c = await MuxClient.ConnectAsync(stream, null, Ct);
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        }, Ct).GetAwaiter().GetResult();
+        Own(client);
+        return shown.Session.Id;
+    }
+
+    /// <summary>A pane joining <paramref name="id"/> shared, as "Attach to session…" opens one; <paramref name="offUi"/> as for <see cref="ShowPane"/>.</summary>
+    private TerminalPane ShowShare(Guid id, Func<Func<PersistentSessionResult>, Task<PersistentSessionResult>>? offUi = null) =>
+        ShowPane(restore: id, offUi: offUi, configure: p => p.MuxAttachSharedToRestore = true);
+
+    /// <summary>
+    /// Phase 5 Task 26: a share stays a share through a dropped link. Taken back once the link is back, it is joined shared
+    /// and still known as a share - which its close and the session file read. Before, the drop forgot it, and the
+    /// reconnected share came back as the pane's own shell.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_shared_pane_dropped_and_reconnected_is_still_a_share()
+    {
+        Guid theirs = AnotherClientsShell();
+        TerminalPane pane = ShowShare(theirs);
+        MuxClientSession first = Attached(pane);
+        Assert.Equal((theirs, MuxAttachMode.Shared, true), (first.Id, first.AttachMode, pane.MuxSessionIsShare));
+
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+        _clock.Advance(FirstRetry); // the loop's first attempt connects: Reconnected
+
+        MuxClientSession again = Reattached(pane, theirs, first);
+        Assert.Equal(MuxAttachMode.Shared, again.AttachMode);
+        Assert.True(pane.MuxSessionIsShare, "the reconnected share came back as the pane's own shell");
+        Assert.True(SessionManager.BuildPaneTree(pane)!.MuxShared);
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26: a share whose shell ended while the link was down is not replaced on reconnect - the user chose that
+    /// shell, not a new one. The pane takes the share-ended path (the window closes it), and nothing is started on the
+    /// daemon. Before, the reattach fell through to "previous session lost" and started a fresh shell.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_shared_pane_whose_shell_is_gone_on_reconnect_ends_the_share()
+    {
+        Guid theirs = AnotherClientsShell();
+        TerminalPane pane = ShowShare(theirs);
+        Attached(pane);
+        int ended = 0;
+        pane.MuxShareEnded += _ => ended++;
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+        _remote.Server.KillAllSessions(); // the shell ends while the link is down
+
+        _clock.Advance(FirstRetry);
+
+        PumpUntil(() => ended > 0 || pane.Session is MuxClientSession { IsAttached: true }, "the reattach was decided");
+        Assert.Equal(1, ended);
+        ShowsBanner(pane, TerminalPane.MuxShareEndedBanner);
+        Assert.Null(pane.Session);
+        Assert.Empty(_remote.Server.GetSessionIds()); // no fresh shell in its place
+        Assert.Empty(_notices);                      // and so no "previous session lost"
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26: when a share's close may not end its shell. The share's sharing cannot be known while its connect or
+    /// reattach is pending and while its link is down; it is known once attached. A pane that let go of its shell for a
+    /// multiplexer restart (Task 23) has no share left to protect, and a pane's own shell never counts.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_shares_sharing_is_unknown_while_its_link_is_down_or_its_attach_pending()
+    {
+        Guid theirs = AnotherClientsShell();
+        TerminalPane owned = ShowPane();
+        Attached(owned);
+        using var open = new ManualResetEventSlim();
+        int calls = 0;
+        TerminalPane share = ShowShare(theirs, offUi: create => OffUiThread(() =>
+        {
+            Interlocked.Increment(ref calls);
+            open.Wait(Patient);
+            return create();
+        }));
+
+        PumpUntil(() => Volatile.Read(ref calls) == 1, "the share's connect is under way");
+        Assert.True(share.IsMuxShareWithSharingUnknown, "a share whose connect is pending");
+        open.Set();
+        MuxClientSession first = Attached(share);
+        Assert.False(share.IsMuxShareWithSharingUnknown, "an attached share on a live link");
+
+        open.Reset();
+        _remote.CutLink();
+        ShowsBanner(share, TerminalPane.RemoteReconnectingBanner(Host));
+        ShowsBanner(owned, TerminalPane.RemoteReconnectingBanner(Host));
+        Assert.True(share.IsMuxShareWithSharingUnknown, "a share whose link is down");
+        Assert.False(owned.IsMuxShareWithSharingUnknown, "a pane's own shell");
+
+        _clock.Advance(FirstRetry);
+        PumpUntil(() => Volatile.Read(ref calls) == 2, "the share's reattach is under way");
+        Assert.True(share.IsMuxShareWithSharingUnknown, "a share whose reattach is pending");
+        open.Set();
+        Reattached(share, theirs, first);
+        Assert.False(share.IsMuxShareWithSharingUnknown, "a reattached share");
+
+        Assert.True(share.LetGoOfMuxSessionForRestart());
+        Assert.False(share.IsMuxShareWithSharingUnknown, "a share let go of for a restart");
+        share.EndMuxRestartHold();
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26, as <see cref="A_dropped_remote_session_respawned_as_plain_ssh_stays_saved"/> for a share: its id is
+    /// another client's session, so the plain SSH pane lets it go - neither saved, nor ended by the pane's close.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_dropped_share_respawned_as_plain_ssh_lets_go_of_the_shared_id()
+    {
+        Guid theirs = AnotherClientsShell();
+        TerminalPane pane = ShowShare(theirs);
+        Attached(pane);
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+
+        pane.SessionFactory = _fallback; // what turning persistence off does to every pane
+        pane.Reconnect();
+
+        Assert.IsType<FakeTerminalSession>(pane.Session);
+        Assert.Null(pane.MuxSessionIdToRestore);
+        Ntilde.Pty.PaneNode node = SessionManager.BuildPaneTree(pane)!;
+        Assert.Equal((null, null), (node.MuxSessionId, node.MuxEndpoint));
+        Assert.False(pane.IsMuxShareWithSharingUnknown);
+    }
+
     /// <summary>Task 21 review: a plain SSH spawn is not routed again inside the factory, where a flipped flag would connect on the UI thread.</summary>
     [AvaloniaFact]
     public void A_plain_ssh_spawn_goes_straight_to_the_fallback()

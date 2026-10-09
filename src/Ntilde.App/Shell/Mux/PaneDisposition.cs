@@ -9,7 +9,10 @@ internal enum PaneDisposition
     /// <summary>The user closed the pane: the shell ends, even one living in the daemon.</summary>
     EndSession,
 
-    /// <summary>"Pane: Detach" or the shared-close prompt's Detach: only the view goes, the daemon keeps the shell.</summary>
+    /// <summary>
+    /// "Pane: Detach" or the shared-close prompt's Detach: only the view goes, the daemon keeps the shell. Also any close
+    /// of a share whose sharing cannot be known at that moment (Phase 5 Task 26): its shell may be another client's.
+    /// </summary>
     Detach,
 
     /// <summary>

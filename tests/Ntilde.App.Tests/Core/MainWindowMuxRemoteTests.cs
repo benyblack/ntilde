@@ -26,8 +26,8 @@ namespace Ntilde.Tests.Core;
 /// The window's side of persisted remote panes (Phase 4 spec §5, §7.6, §8.4): a restored session file
 /// whose SSH panes name sessions on their profile's remote daemon - a <see cref="FakeRemoteHost"/> on a clock
 /// the test advances - reattaches them over one connection, a remote tab closed while its link is down still
-/// ends its shell, the window's lists of "its" daemon sessions mean the local daemon only, and the remote-files
-/// sidebar is not offered on such a tab.
+/// ends its shell (a shared one detaches instead: Phase 5 Task 26), the window's lists of "its" daemon sessions mean the
+/// local daemon only, and the remote-files sidebar is not offered on such a tab.
 /// </summary>
 /// <remarks>
 /// <see cref="TestAppDataRoot"/> is taken for its lifetime: the test writes the session file and the SSH
@@ -62,6 +62,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         // The window's hosts, remote ones included: closing a remote pane above can start a host's connect for its kill.
         _hosts?.Dispose();
         _local?.Dispose();
+        foreach (MuxClient client in _otherClients) client.Dispose();
         foreach (FakeRemoteHost other in _otherRemotes) other.Dispose();
         _remote.Dispose();
         _localMux.Dispose();
@@ -96,9 +97,17 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// <summary>The factory's own lookup, counting the calls made off the UI thread (the panes' remote factory calls).</summary>
     private SshProfile? FactoryResolve(Guid id)
     {
-        if (Environment.CurrentManagedThreadId != Volatile.Read(ref _uiThread)) Interlocked.Increment(ref _factoryCallsOffUi);
+        if (Environment.CurrentManagedThreadId != Volatile.Read(ref _uiThread))
+        {
+            Interlocked.Increment(ref _factoryCallsOffUi);
+            if (Interlocked.Exchange(ref _stopPersistingInTheNextFactoryCall, 0) == 1) _sshProfile.MuxOptions.PersistRemoteSessions = false;
+        }
+
         return Resolve(id);
     }
+
+    /// <summary>1: the next remote factory call finds the profile no longer keeping its sessions (it was routed while it did).</summary>
+    private int _stopPersistingInTheNextFactoryCall;
 
     /// <summary>The app's wiring over the test's daemons: the local one in memory, the remote one behind <see cref="_remote"/>.</summary>
     /// <param name="bootTimeUtc">The boot (or logon) the window's startup restore sees (spec R2); the real one when null.</param>
@@ -1029,15 +1038,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     public void Choosing_a_remote_row_opens_a_shared_ssh_tab_on_that_host()
     {
         Guid[] ids = SpawnOnRemote(1);
-        // Another machine's client shows a second shell on that host.
-        (MuxClient other, ClientPaneModel theirs) = Task.Run(async () =>
-        {
-            (Stream stream, _) = await _remote.ConnectDaemonAsync(TestContext.Current.CancellationToken);
-            MuxClient c = await MuxClient.ConnectAsync(stream, null, TestContext.Current.CancellationToken);
-            Guid id = await MuxTestHost.SpawnAsync(c);
-            return (c, await MuxTestHost.AttachPaneAsync(c, id));
-        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
-        Guid shared = theirs.Session.Id;
+        Guid shared = AnotherClientsShell(); // another machine's client shows a second shell on that host
         SaveSession(RemoteLeaf(ids[0]));
         MainWindow window = CreateWindow();
         PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
@@ -1056,7 +1057,6 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         PumpUntil(() => pane.MuxOtherClients == 1, "the pane counts the other machine's client");
         TabItem tab = window.FindControl<TabControl>("Tabs")!.Items.OfType<TabItem>().Single(t => ReferenceEquals(t.Content, pane));
         PumpUntil(() => (ToolTip.GetTip((Control)tab.Header!) as string)?.Contains(MainWindow.SharedGlyph, StringComparison.Ordinal) == true, "the tab is marked shared");
-        GC.KeepAlive(other);
     }
 
     /// <summary>One connection cannot hold two views of one session: a remote session this window shows is focused, not opened again.</summary>
@@ -1404,6 +1404,146 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(panes, AllPanes(window).Count);
         Assert.DoesNotContain(AllPanes(window), p => p.MuxSessionIdToRestore == ids[1]);
         PumpUntil(() => ToastLines(window).Contains("The profile for nova@fake-host no longer keeps remote sessions running."), "the notice says why");
+    }
+
+    /// <summary>The daemon clients of other machines a test started (<see cref="AnotherClientsShell"/>); disposed with it.</summary>
+    private readonly List<MuxClient> _otherClients = [];
+
+    /// <summary>
+    /// A shell another machine's client spawned on the remote daemon and shows, over a daemon connection of its own that a
+    /// cut link leaves alone.
+    /// </summary>
+    private Guid AnotherClientsShell()
+    {
+        (MuxClient client, ClientPaneModel shown) = Task.Run(async () =>
+        {
+            (Stream stream, _) = await _remote.ConnectDaemonAsync(TestContext.Current.CancellationToken);
+            MuxClient c = await MuxClient.ConnectAsync(stream, null, TestContext.Current.CancellationToken);
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        _otherClients.Add(client);
+        return shown.Session.Id;
+    }
+
+    /// <summary>Whether <paramref name="id"/> still runs on the remote daemon: there, and not exited.</summary>
+    private bool RunsOnRemote(Guid id) => _remote.Server.TryGetSession(id, out HeadlessTerminalSession? session) && !session.IsExited;
+
+    /// <summary>
+    /// Phase 5 Task 26: a window with two tabs on the profile's host, both attached over one connection: <c>Owned</c>, restored,
+    /// whose shell is its own (split with a local pane, which keeps the window open), and <c>Share</c>, opened from "Attach to
+    /// session…" on <c>Theirs</c> (<see cref="AnotherClientsShell"/>).
+    /// </summary>
+    private (MainWindow Window, TerminalPane Owned, TerminalPane Share, Guid Theirs) WindowWithAnOwnedAndASharedRemoteTab()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        Guid theirs = AnotherClientsShell();
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the owned tab reattached");
+        TerminalPane owned = RemotePanes(window).Single();
+
+        Attach(window, (items, _) => Row(items, theirs, RemoteId));
+
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == theirs), "the shared tab attached");
+        TerminalPane share = RemotePanes(window).Single(p => p.Session?.Id == theirs);
+        Assert.True(share.MuxSessionIsShare);
+        Assert.Equal(1, _remote.StartCount); // one connection for both
+        return (window, owned, share, theirs);
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26: a shared tab closed while its host reconnects cannot learn who else shows that shell, so it detaches:
+    /// nothing is queued for the next connect, and the other client's shell runs on. Before, the close queued a kill that
+    /// ended another client's shell as soon as the link was back. The owned tab's reattach is the proof that the link came
+    /// back: the kills queued meanwhile go out on the new connection before any pane reattaches over it.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_shared_remote_tab_while_its_host_reconnects_kills_nothing()
+    {
+        (MainWindow window, TerminalPane owned, TerminalPane share, Guid theirs) = WindowWithAnOwnedAndASharedRemoteTab();
+        var ownedBefore = (MuxClientSession)owned.Session!;
+        _remote.CutLink();
+        PumpUntil(() => Shows(share, TerminalPane.RemoteReconnectingBanner("nova@fake-host")), "the shared tab is reconnecting");
+
+        Task<bool> close = Close(window, share);
+        PumpUntil(() => close.IsCompleted, "the shared tab closed");
+        Assert.True(close.Result);
+
+        _clock.Advance(FirstRetry); // the link is back
+        PumpUntil(() => owned.Session is MuxClientSession { IsAttached: true } m && !ReferenceEquals(m, ownedBefore), "the owned tab reattached over the new connection");
+
+        Assert.True(RunsOnRemote(theirs), "the other client's shell was killed");
+        Assert.Equal(ownedBefore.Id, owned.Session!.Id);
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26 leaves an owned tab's close as it was: closed while its host reconnects, it queues its kill, which ends
+    /// its shell once the link is back. A shared tab beside it changes nothing, and its shell runs on.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_an_owned_remote_tab_while_its_host_reconnects_still_kills_it()
+    {
+        (MainWindow window, TerminalPane owned, _, Guid theirs) = WindowWithAnOwnedAndASharedRemoteTab();
+        Guid mine = owned.Session!.Id;
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        _remote.CutLink();
+        PumpUntil(() => Shows(owned, TerminalPane.RemoteReconnectingBanner("nova@fake-host")), "the owned tab is reconnecting");
+
+        Task<bool> close = Close(window, owned);
+        PumpUntil(() => close.IsCompleted, "the owned tab closed");
+        Assert.True(close.Result);
+        Assert.Contains(mine, _remote.Server.GetSessionIds()); // nothing could be sent yet
+
+        _clock.Advance(FirstRetry); // the link is back: the queued kill goes first
+
+        KillLands(host, mine, "the queued kill ended the owned tab's shell");
+        Assert.True(RunsOnRemote(theirs), "the shared tab's shell was killed");
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26, the lost route: the profile stopped keeping its sessions after the pick - before the pane routed its
+    /// spawn, or while its connect ran - so the shared tab opens plain SSH. It lets go of the shared id (another client's
+    /// shell, which it neither saves nor ends), and its close sends no kill. Before, the id stayed pending and the close
+    /// killed it. The owned tab's kill, sent after the plain tab's close, is the proof: a kill from that close would have
+    /// gone out before it, on the same connection.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_share_whose_profile_stopped_keeping_sessions_opens_plain_ssh_and_its_close_kills_nothing(bool whileConnecting)
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        Guid theirs = AnotherClientsShell();
+        SaveSession(RemoteLeaf(ids[0]), LocalLeaf());
+        MainWindow window = CreateWindow();
+        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the owned tab reattached");
+        TerminalPane owned = RemotePanes(window).Single();
+        MuxConnectionHost host = RemoteHostOf(window)!;
+
+        Attach(window, (items, _) =>
+        {
+            // The store still keeps the profile's sessions, so the pick goes ahead; the pane's spawn reads the flag off.
+            if (whileConnecting) Volatile.Write(ref _stopPersistingInTheNextFactoryCall, 1);
+            else _sshProfile.MuxOptions.PersistRemoteSessions = false;
+            return Row(items, theirs, RemoteId);
+        });
+
+        PumpUntil(() => AllPanes(window).Any(p => p.Session is FakeTerminalSession), "the shared tab opened plain SSH");
+        TerminalPane plain = AllPanes(window).Single(p => p.Session is FakeTerminalSession);
+        Assert.Null(plain.MuxSessionIdToRestore);
+        Assert.Null(SessionManager.BuildPaneTree(plain)!.MuxSessionId);
+
+        Task<bool> close = Close(window, plain);
+        PumpUntil(() => close.IsCompleted, "the plain tab closed");
+        Assert.True(close.Result);
+        Guid mine = owned.Session!.Id;
+        Task<bool> closeOwned = Close(window, owned);
+        PumpUntil(() => closeOwned.IsCompleted, "the owned tab closed");
+
+        KillLands(host, mine, "the owned tab's kill landed");
+        Assert.True(RunsOnRemote(theirs), "the other client's shell was killed");
+        Assert.Equal(1, _remote.StartCount); // one connection carried every kill, so their order held
     }
 
     /// <summary>

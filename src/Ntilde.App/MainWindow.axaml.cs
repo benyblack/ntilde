@@ -6853,12 +6853,16 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Close, Detach or Cancel for one pane. A mux pane whose shell other clients also show asks the
-        /// three-way question first; the count comes from listSessions (bounded, works on v1 too).
-        /// Otherwise the Phase 2 decision (<see cref="ShouldClosePaneAsync"/>) stands.
+        /// Close, Detach or Cancel for one pane. A share whose sharing cannot be known now detaches, unasked (Phase 5 Task 26).
+        /// A mux pane whose shell other clients also show asks the three-way question first; the count comes from listSessions
+        /// (bounded, works on v1 too). Otherwise the Phase 2 decision (<see cref="ShouldClosePaneAsync"/>) stands.
         /// </summary>
         private async Task<Ntilde.Shell.Mux.SharedCloseChoice> DecidePaneCloseAsync(TerminalPane pane)
         {
+            // Its link is down or reconnecting, or its attach pending: nobody can say who else uses that shell, and a close
+            // only detaches it (DisposeControlTree), so there is nothing to ask - not even the running-process question.
+            if (pane.IsMuxShareWithSharingUnknown) return Ntilde.Shell.Mux.SharedCloseChoice.Detach;
+
             // One budget for both daemon reads (the sharing count here, the child-process probe in
             // ShouldClosePaneAsync): a stalled daemon costs a close about a second, not two.
             var budget = System.Diagnostics.Stopwatch.StartNew();
@@ -7732,6 +7736,8 @@ namespace Ntilde
 
             if (control is TerminalPane pane)
             {
+                // Read first: the teardown below lets go of the pane's session and remote host.
+                bool shareOfUnknownSharing = pane.IsMuxShareWithSharingUnknown;
                 UnwirePane(pane);
 
                 // The pane's scrollback and glyph atlases are only reclaimable after a full GC, and
@@ -7745,6 +7751,15 @@ namespace Ntilde
                 // disposed, leaking the PTY and its child shell.
                 var session = pane.DetachFromUiThread();
                 Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.EndSession && shareOfUnknownSharing)
+                {
+                    // Phase 5 Task 26, local and remote alike: a share whose sharing cannot be known now (its link down or
+                    // reconnecting, its attach pending) may be another client's shell. However the close came - an agent's,
+                    // one that skipped the question - it detaches: no kill now, and none queued for the next connect.
+                    TerminalLogger.Log("[MainWindow] closing a shared pane whose other clients cannot be known now; detaching it, not ending its shell");
+                    effective = Ntilde.Shell.Mux.PaneDisposition.Detach;
+                }
+
                 // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
                 KillMuxSessionOnClose(session, effective, pane.MuxEndpoint);
                 if (session is not Ntilde.Mux.MuxClientSession)
@@ -7785,7 +7800,8 @@ namespace Ntilde
         /// reply means the kill landed, and the host waits for it on dispose, so closing the last tab
         /// cannot drop it. Still enqueued synchronously on the UI thread (RequestAsync enqueues before
         /// its first await). A session that already exited is left alone, and so is a local one whose
-        /// connection is gone; a remote one goes through its host whatever its connection says.
+        /// connection is gone; a remote one goes through its host whatever its connection says. A share
+        /// whose sharing cannot be known never gets here with EndSession: DisposeControlTree detaches it.
         /// </summary>
         /// <param name="muxEndpoint">The pane's <see cref="TerminalPane.MuxEndpoint"/>: its own endpoint's host tracks the kill (Phase 4 spec §5).</param>
         private void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
@@ -7866,7 +7882,8 @@ namespace Ntilde
         /// tab never shown, a connect or reattach in flight, a reattach that failed, a restore that could not reach
         /// the host. The user meant to end that shell too, and nobody can adopt a remote one, so its host kills it -
         /// connecting for it if nothing else is (<see cref="Ntilde.Shell.Mux.MuxConnectionHost.KillWhenConnected"/>).
-        /// A local pending id is left to orphan adoption, as before.
+        /// A local pending id is left to orphan adoption, as before; a share's pending id is never killed (Phase 5 Task 26:
+        /// DisposeControlTree detaches a share whose attach is pending, and a plain SSH pane lets a share's id go).
         /// </summary>
         private void KillPendingRemoteMuxSessionOnClose(Guid? pendingId, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
         {

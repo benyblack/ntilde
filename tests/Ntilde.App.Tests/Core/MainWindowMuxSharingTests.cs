@@ -1111,6 +1111,41 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.Equal(SharedCloseChoice.Close, task.Result);
     }
 
+    /// <summary>
+    /// Phase 5 Task 26, the local side of the rule a remote share follows (MainWindowMuxRemoteTests'
+    /// Closing_a_shared_remote_tab_while_its_host_reconnects_kills_nothing): a share whose connection is gone cannot learn who
+    /// else shows its shell, so its close detaches without asking, and the other instance keeps the shell. Before, the close
+    /// asked the running-process question and, answered, closed the pane as if its shell were its own; no kill went out only
+    /// because the dead connection could not carry one.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_local_share_whose_connection_is_gone_detaches_without_asking()
+    {
+        MainWindow window = CreateWindow();
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        var mineSession = (MuxClientSession)mine.Session!;
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        window.ConfirmSharedClose = _ => throw new InvalidOperationException("a share whose sharing is unknown is not asked about");
+
+        _host!.CurrentClient!.Dispose(); // this window's connection is gone; the other instance's is not
+        PumpUntil(() => !mineSession.IsConnected && _mux.Mux(id).AttachedClients == 1, "the daemon saw this window's connection go");
+        var decide = typeof(MainWindow).GetMethod("DecidePaneCloseAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var task = (Task<SharedCloseChoice>)decide.Invoke(window, [mine])!;
+        PumpUntil(() => task.IsCompleted, "the decision finished");
+
+        Assert.Equal(SharedCloseChoice.Detach, task.Result);
+        Assert.True(mine.IsMuxShareWithSharingUnknown);
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [mine, false])!;
+        PumpUntil(() => close.IsCompleted, "the shared tab closed");
+        Assert.True(close.Result);
+        Assert.DoesNotContain(mine, AllPanes(window));
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.True(theirs.Session.IsAttached);
+        GC.KeepAlive(other);
+    }
+
     /// <summary>Final review: a persistent pane that lost its daemon connection is not "not a persistent shell".</summary>
     [AvaloniaFact]
     public void Detaching_a_disconnected_persistent_pane_says_the_connection_was_lost()

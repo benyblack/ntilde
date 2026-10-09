@@ -3517,10 +3517,18 @@ namespace Ntilde.Controls
                 if (plainSsh && _muxReattachId is Guid dropped)
                 {
                     // A remote pane's dropped session, now respawning as plain SSH (its profile stopped persisting):
-                    // the id stays pending where the session file reads it.
-                    MuxSessionIdToRestore ??= dropped;
+                    // the id stays pending where the session file reads it - a share's with its flag, and so let go below.
+                    if (MuxSessionIdToRestore is null)
+                    {
+                        MuxSessionIdToRestore = dropped;
+                        MuxAttachSharedToRestore = _muxReattachShared;
+                    }
+
                     _muxReattachId = null;
+                    _muxReattachShared = false;
                 }
+
+                if (plainSsh) LetGoOfPendingShareOnPlainSsh();
 
                 bool attachShared = TakeMuxAttachShared(plainSsh); // before TakeMuxSessionIdToRestore clears the id
                 Guid? existingMuxSessionId = TakeMuxSessionIdToRestore(plainSsh);
@@ -3805,6 +3813,7 @@ namespace Ntilde.Controls
         private void EnterRemoteUnreachable(TerminalSessionRequest request, PersistentSessionResult result, string host)
         {
             MuxSessionIdToRestore = request.ExistingMuxSessionId;
+            MuxAttachSharedToRestore = request.AttachShared; // a share retried is still a share (Task 26)
             TermView.SetSession(null);
             TerminalLogger.Log($"[TerminalPane] no session from {host} for {request.ExistingMuxSessionId?.ToString() ?? "a new tab"} ({result.Detail}); kept for a retry");
             string? needsUser = RemoteNeedsUserLine(result.RemoteFailure, host);
@@ -3845,8 +3854,10 @@ namespace Ntilde.Controls
             int generation = _remoteGen;
             _remoteHostName = factory.RemoteHostDisplayName(request) ?? profile.Name;
             _remoteConnecting = true;
-            // Until the result is back the id is still this pane's: a save meanwhile writes it, with its endpoint.
+            // Until the result is back the id is still this pane's: a save meanwhile writes it, with its endpoint - and a
+            // share's with its flag, which a close meanwhile reads too (Task 26: its attach is pending, so it detaches).
             MuxSessionIdToRestore = request.ExistingMuxSessionId;
+            MuxAttachSharedToRestore = request.AttachShared;
             MuxEndpoint = MuxEndpointId.ForSsh(request.Ssh!.ProfileId).ToString();
             TermView.SetSession(null); // a previous, disposed session must not get keys meanwhile
             WriteBanner($"\r\n\x1b[90m{RemoteConnectingBanner(SanitizeBannerValue(_remoteHostName))}\x1b[0m\r\n");
@@ -3892,6 +3903,7 @@ namespace Ntilde.Controls
             }
 
             MuxSessionIdToRestore = null; // consumed by this result (an unreachable one keeps it again)
+            MuxAttachSharedToRestore = false;
             MuxEndpointId endpoint = MuxEndpointId.Parse(result.Endpoint);
             FollowRemoteHost(endpoint.IsLocal ? null : factory.Hosts.TryGet(endpoint));
 
@@ -3903,9 +3915,12 @@ namespace Ntilde.Controls
                 if (result.Endpoint is null)
                 {
                     // NotPersistent: the profile stopped persisting after the route was chosen (or the window is
-                    // closing), and plain SSH stood in. As for any plain SSH pane, the id stays pending on its endpoint.
+                    // closing), and plain SSH stood in. As for any plain SSH pane, the id stays pending on its endpoint -
+                    // unless it is a share's.
                     MuxSessionIdToRestore = request.ExistingMuxSessionId;
-                    MuxEndpoint = MuxEndpointId.ForSsh(request.Ssh!.ProfileId).ToString();
+                    MuxAttachSharedToRestore = request.AttachShared;
+                    LetGoOfPendingShareOnPlainSsh();
+                    if (MuxSessionIdToRestore is not null) MuxEndpoint = MuxEndpointId.ForSsh(request.Ssh!.ProfileId).ToString();
                 }
 
                 Session = session;
@@ -4115,7 +4130,7 @@ namespace Ntilde.Controls
         /// </summary>
         private void EnterRemoteReconnecting()
         {
-            if (Session is MuxClientSession mux) _muxReattachId = mux.Id;
+            if (Session is MuxClientSession mux) KeepForReattach(mux.Id);
             _muxReattachAfterDrop = true;
             _muxReconnecting = true;
             _muxConnectionLost = false;
@@ -4134,7 +4149,7 @@ namespace Ntilde.Controls
         /// </summary>
         private void EnterRemoteWaitingForEnter(string banner, bool reattachOnReconnect = true, string? detail = null)
         {
-            if (Session is MuxClientSession mux && MuxSessionIdToRestore is null) _muxReattachId = mux.Id;
+            if (Session is MuxClientSession mux && MuxSessionIdToRestore is null) KeepForReattach(mux.Id);
             _muxReattachAfterDrop = reattachOnReconnect;
             _muxReconnecting = false;
             _muxConnectionLost = true;
@@ -4152,7 +4167,7 @@ namespace Ntilde.Controls
         private void HandleRemoteMuxDisconnected(MuxClientSession source)
         {
             if (!IsCurrentMux(source) || _muxConnectionLost || _muxReconnecting) return;
-            _muxReattachId = source.Id;
+            KeepForReattach(source.Id);
             _muxReattachAfterDrop = true;
             ApplyMuxSharing(null);
             TermView.SetSession(null);
@@ -4171,9 +4186,20 @@ namespace Ntilde.Controls
             if (_remoteHost?.Host.IsReconnecting == true) EnterRemoteReconnecting();
             else
             {
-                _muxReattachId = source.Id;
+                KeepForReattach(source.Id);
                 EnterRemoteWaitingForEnter(RemoteAbandonedBanner(_remoteHostName));
             }
+        }
+
+        /// <summary>
+        /// UI thread. A remote session whose connection dropped, kept for the next spawn to take back - as a share when it was
+        /// one (Phase 5 Task 26): a reconnected share is joined shared and stays a share, and one whose shell ended meanwhile
+        /// takes the share-ended path, never a fresh shell in its place.
+        /// </summary>
+        private void KeepForReattach(Guid sessionId)
+        {
+            _muxReattachId = sessionId;
+            _muxReattachShared = _muxSessionIsShare;
         }
 
         /// <summary>UI thread: the first key dropped in a reconnect episode says so, once.</summary>
@@ -4425,6 +4451,28 @@ namespace Ntilde.Controls
         }
 
         /// <summary>
+        /// UI thread. Phase 5 Task 26: this pane is a share - it joined its session through "Attach to session…", shown or
+        /// still pending - and who else shows that session cannot be known right now: its connection is down or reconnecting,
+        /// its attach has not completed, or its remote host has no connection. Its close then detaches, local or remote, and
+        /// never ends the shell, which may be another client's. False for a session of the pane's own, and for a pane that let
+        /// go of its shell for a multiplexer restart (Task 23): with no session and no id, it has no share left to protect.
+        /// </summary>
+        internal bool IsMuxShareWithSharingUnknown
+        {
+            get
+            {
+                bool share = (_muxSessionIsShare && Session is MuxClientSession)
+                    || (MuxAttachSharedToRestore && MuxSessionIdToRestore is not null)
+                    || (_muxReattachShared && _muxReattachId is not null);
+                if (!share) return false;
+                bool known = Session is MuxClientSession { IsConnected: true, IsAttached: true }
+                    && !_muxConnectionLost && !_muxReconnecting && MuxSessionIdToRestore is null
+                    && (MuxEndpointId.Parse(MuxEndpoint).IsLocal || _remoteHost?.Host.CurrentClient is not null);
+                return !known;
+            }
+        }
+
+        /// <summary>
         /// Set by startup adoption (spec §9 orphans): this pane was opened only to show an orphaned
         /// daemon session. Cleared once it attached. Losing the attach to another instance then closes
         /// the pane instead of starting a new shell.
@@ -4561,6 +4609,19 @@ namespace Ntilde.Controls
             _muxReattachId = null;
             MuxSessionIdToRestore = null;
             return id;
+        }
+
+        /// <summary>
+        /// UI thread, for a pane that runs plain SSH: its profile no longer keeps remote sessions. Such a pane keeps a pending id
+        /// for the session file and its close's kill (Phase 4 spec §7.6) - but not a share's (Phase 5 Task 26). That shell is
+        /// another client's, which this pane neither saves nor ends: the id is let go, and the log says so.
+        /// </summary>
+        private void LetGoOfPendingShareOnPlainSsh()
+        {
+            if (!MuxAttachSharedToRestore || MuxSessionIdToRestore is not Guid share) return;
+            TerminalLogger.Log($"[TerminalPane] the profile no longer keeps remote sessions, so this tab runs plain SSH; letting go of shared session {share}, which stays with its other clients");
+            MuxSessionIdToRestore = null;
+            MuxAttachSharedToRestore = false;
         }
 
         /// <summary>
