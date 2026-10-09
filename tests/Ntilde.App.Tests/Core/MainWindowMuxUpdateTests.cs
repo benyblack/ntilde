@@ -500,7 +500,7 @@ public sealed class MainWindowMuxUpdateTests : IClassFixture<TestAppDataRoot>, I
         Assert.All(ids, id => Assert.False(_old.Mux(id).IsExited)); // still running
         File.Delete(AppPaths.SessionFilePath);
 
-        window.PickMuxSession = _ => Task.FromResult<Guid?>(ids[0]);
+        window.PickMuxSession = MuxPickerChoice.Session(ids[0]);
         Task attach = window.AttachToMuxSessionAsync();
         PumpUntil(() => attach.IsCompleted && Attached(window).Any(s => s.Id == ids[0]), "the shell was reopened");
         PumpUntil(() => File.Exists(AppPaths.SessionFilePath) && File.ReadAllText(AppPaths.SessionFilePath).Contains(ids[0].ToString("D"), StringComparison.Ordinal),

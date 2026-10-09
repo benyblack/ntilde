@@ -98,10 +98,11 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     /// <summary>Runs "Attach to session…", choosing <paramref name="id"/>, and returns the pane that attached it.</summary>
     private static TerminalPane AttachShared(MainWindow window, Guid id)
     {
-        window.PickMuxSession = rows =>
+        window.PickMuxSession = items =>
         {
-            Assert.Contains(rows, r => r.SessionId == id);
-            return Task.FromResult<Guid?>(id);
+            MuxSessionPickerRow? row = MuxPickerChoice.Find(items, id);
+            Assert.NotNull(row);
+            return Task.FromResult<MuxPickerItem?>(row);
         };
         Task command = window.AttachToMuxSessionAsync();
         PumpUntil(() => command.IsCompleted, "the attach command finished");
@@ -192,17 +193,17 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         MainWindow window = CreateWindow();
         TerminalPane own = AllPanes(window).Single();
         Guid id = ((MuxClientSession)own.Session!).Id;
-        IReadOnlyList<MuxSessionPickerRow>? offered = null;
-        window.PickMuxSession = rows =>
+        IReadOnlyList<MuxPickerItem>? offered = null;
+        window.PickMuxSession = items =>
         {
-            offered = rows;
-            return Task.FromResult<Guid?>(id);
+            offered = items;
+            return Task.FromResult<MuxPickerItem?>(MuxPickerChoice.Find(items, id));
         };
 
         Task command = window.AttachToMuxSessionAsync();
         PumpUntil(() => command.IsCompleted, "the attach command finished");
 
-        Assert.True(Assert.Single(offered!, r => r.SessionId == id).OpenHere);
+        Assert.True(Assert.Single(offered!.OfType<MuxSessionPickerRow>(), r => r.SessionId == id).OpenHere);
         Assert.Same(own, Assert.Single(AllPanes(window)));
     }
 
@@ -267,14 +268,15 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         TerminalPane own = AllPanes(window).Single();
         Guid id = Task.Run(async () => await MuxTestHost.SpawnAsync(await _mux.ConnectClientAsync())).GetAwaiter().GetResult();
         int sessionsBefore = _mux.Server.GetSessionIds().Count();
-        window.PickMuxSession = rows =>
+        window.PickMuxSession = items =>
         {
-            Assert.Contains(rows, r => r.SessionId == id);
+            MuxSessionPickerRow? row = MuxPickerChoice.Find(items, id);
+            Assert.NotNull(row);
             // Gone while the picker was open: exited with nobody attached, and reaped.
             _mux.Fake(id).Exit(0);
             PumpUntil(() => _mux.Mux(id).IsExited, "the mux saw the exit");
             Assert.Equal(1, _mux.Server.ReapExitedSessions(TimeSpan.Zero));
-            return Task.FromResult<Guid?>(id);
+            return Task.FromResult<MuxPickerItem?>(row);
         };
 
         Task command = window.AttachToMuxSessionAsync();
@@ -299,6 +301,9 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         return (dialog, list, attach, cancel);
     }
 
+    /// <summary>The picker's lines as it shows them.</summary>
+    private static List<string?> Lines(ListBox list) => [.. list.ItemsSource!.Cast<ListBoxItem>().Select(i => i.Content as string)];
+
     /// <summary>Review fix 2: the default picker, driven through its dialog.</summary>
     [AvaloniaFact]
     public void The_default_picker_lists_the_sessions_and_Attach_opens_the_chosen_one_shared()
@@ -312,10 +317,13 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         (_, ListBox list, Button attach, _) = PickerDialog(window);
 
         IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> listed = Task.Run(() => other.ListSessionsAsync()).GetAwaiter().GetResult();
-        IReadOnlyList<MuxSessionPickerRow> expected = MuxSessionPicker.BuildRows(listed, new HashSet<Guid> { own });
-        Assert.Equal(expected.Select(r => r.Display).ToList(), list.ItemsSource!.Cast<string>().ToList());
+        IReadOnlyList<MuxPickerItem> expected = MuxSessionPicker.BuildRows(
+            [new MuxPickerHostListing(MuxEndpointId.Local, "this computer", listed, null)],
+            new HashSet<(MuxEndpointId, Guid)> { (MuxEndpointId.Local, own) });
+        Assert.Equal(2, expected.Count);
+        Assert.Equal(expected.Select(r => r.Display).ToList(), Lines(list));
 
-        list.SelectedIndex = expected.ToList().FindIndex(r => r.SessionId == id);
+        list.SelectedIndex = expected.ToList().FindIndex(r => r is MuxSessionPickerRow row && row.SessionId == id);
         attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
         PumpUntil(() => command.IsCompleted, "the attach command finished");
@@ -373,7 +381,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         window.PickMuxSession = _ =>
         {
             picks++;
-            return Task.FromResult<Guid?>(null);
+            return Task.FromResult<MuxPickerItem?>(null);
         };
         MethodInfo setupPalette = typeof(MainWindow).GetMethod("SetupCommandPalette", BindingFlags.NonPublic | BindingFlags.Instance)!;
         Avalonia.Input.KeyEventArgs Chord() => new()
@@ -713,14 +721,51 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     {
         MainWindow window = CreateWindow();
         Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
-        Guid id = Guid.NewGuid();
-        var rows = new[] { new MuxSessionPickerRow(id, "t", "scripted", null, 80, 24, 1, true, null, false) };
-        (Window dialog, Task<Guid?> result) = window.BuildMuxSessionPickerWindow(rows);
+        MuxPickerItem[] rows = [new MuxSessionPickerRow(MuxEndpointId.Local, "this computer", Guid.NewGuid(), "t", "scripted", null, 80, 24, 1, true, null, false)];
+        (Window dialog, Task<MuxPickerItem?> result) = window.BuildMuxSessionPickerWindow(rows);
 
         PressKey(dialog, enter ? PhysicalKey.Enter : PhysicalKey.Escape);
 
         PumpUntil(() => result.IsCompleted, "the picker closed");
-        Assert.Equal(enter ? id : null, result.Result);
+        Assert.Equal(enter ? rows[0] : null, result.Result);
+    }
+
+    /// <summary>
+    /// Phase 5 spec §5: a host that could not be listed is a line of its own, shown disabled; the first line that can be
+    /// chosen is selected, Attach on the disabled one does nothing, and a connect row is chosen like a session.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_picker_shows_an_error_row_disabled_and_never_returns_it()
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
+        MuxEndpointId remote = MuxEndpointId.ForSsh(Guid.NewGuid());
+        MuxPickerItem[] rows =
+        [
+            new MuxSessionPickerErrorRow(MuxEndpointId.Local, "this computer", MuxPickerHostError.TimedOut),
+            new MuxSessionPickerRow(remote, "nova@host", Guid.NewGuid(), "t", "bash", null, 80, 24, 0, true, null, false),
+            new MuxSessionPickerConnectRow(Guid.NewGuid(), "nova@other"),
+        ];
+        (Window dialog, Task<MuxPickerItem?> result) = window.BuildMuxSessionPickerWindow(rows);
+        dialog.Show();
+        Dispatcher.UIThread.RunJobs();
+        var descendants = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(dialog).ToList();
+        ListBox list = Assert.Single(descendants.OfType<ListBox>());
+        Button attach = descendants.OfType<Button>().Single(b => b.Content as string == "Attach");
+
+        Assert.Equal(rows.Select(r => r.Display).ToList(), Lines(list));
+        Assert.Equal([false, true, true], list.ItemsSource!.Cast<ListBoxItem>().Select(i => i.IsEnabled).ToArray());
+        Assert.Equal(1, list.SelectedIndex);
+
+        list.SelectedIndex = 0;
+        attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(result.IsCompleted);
+
+        list.SelectedIndex = 2;
+        attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        PumpUntil(() => result.IsCompleted, "the picker closed");
+        Assert.Same(rows[2], result.Result);
     }
 
     /// <summary>Carry-over 10: Enter detaches (the safe default), Escape cancels, and nothing ends the shell by key.</summary>

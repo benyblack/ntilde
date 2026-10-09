@@ -83,7 +83,7 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
             MuxClient c = await _mux.ConnectClientAsync();
             return (await MuxTestHost.SpawnAsync(c), await MuxTestHost.SpawnAsync(c));
         }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
-        window.PickMuxSession = _ => Task.FromResult<Guid?>(attached);
+        window.PickMuxSession = MuxPickerChoice.Session(attached);
         Task attach = window.AttachToMuxSessionAsync();
         PumpUntil(() => attach.IsCompleted, "the attach command finished");
         PumpUntil(() => window.AllPanesForTest().Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == attached), "the second shell attached");

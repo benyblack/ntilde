@@ -495,9 +495,13 @@ usual prompts. This happens for:
   cannot be sent because reconnecting gave up, the connection waits, idle, and sends it the next
   time you open a tab on that host. The daemon then exits on its own 10 minutes after its last
   shell has ended.
-- **Pane: Detach** leaves the remote shell running, but *Attach to session…* lists local shells
-  only. Reattach a detached remote shell on the host with `ntilde-mux attach <id>`: the *Shell
-  detached* notification names the host and gives the command with the shell's id, the one
+- **Pane: Detach** leaves the remote shell running, and *Attach to session…* brings it back. The
+  picker lists the shells of every host the window is connected to, each line starting with the
+  host (`[user@host]`), after this computer's. A host you have no tab on any more is offered as
+  *Connect to user@host…* (for each profile with **Keep remote sessions running** ticked):
+  choosing it connects — asking for a password if the host needs one — and reopens the picker with
+  that host's shells. A host that does not answer is listed as `[user@host] not reachable: …` and
+  does not hold up the others. On the host itself, `ntilde-mux attach <id>` works too, with the id
   `ntilde-mux ls` lists.
 - Unticking the profile's checkbox makes its new tabs, and its saved tabs at the next launch, open
   plain SSH. Their shells keep running on the host, and Ntilde keeps their ids in its saved

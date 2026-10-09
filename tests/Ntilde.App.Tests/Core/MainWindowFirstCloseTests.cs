@@ -216,7 +216,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
             return (c, await MuxTestHost.AttachPaneAsync(c, id));
         }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
         Guid shared = theirs.Session.Id;
-        window.PickMuxSession = _ => Task.FromResult<Guid?>(shared);
+        window.PickMuxSession = MuxPickerChoice.Session(shared);
         Task attach = window.AttachToMuxSessionAsync();
         PumpUntil(() => attach.IsCompleted, "the attach command finished");
         TerminalPane mine = window.AllPanesForTest().Single(p => p.Session is MuxClientSession m && m.Id == shared);

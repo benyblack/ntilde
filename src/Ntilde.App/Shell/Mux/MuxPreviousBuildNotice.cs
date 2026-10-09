@@ -301,5 +301,11 @@ internal static class MuxPreviousBuildNotice
         {
             lock (_restarting) _restarting.Remove(endpoint);
         }
+
+        /// <summary>Whether a restart of <paramref name="endpoint"/>'s daemon runs now ("Attach to session…" opens nothing on it).</summary>
+        public bool IsRestarting(MuxEndpointId endpoint)
+        {
+            lock (_restarting) return _restarting.Contains(endpoint);
+        }
     }
 }

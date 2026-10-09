@@ -296,7 +296,7 @@ namespace Ntilde
             Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath;
 
         /// <summary>Shows the "Attach to session…" picker; null = cancelled. A seam so tests choose without a modal.</summary>
-        internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow>, Task<Guid?>> PickMuxSession { get; set; }
+        internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxPickerItem>, Task<Ntilde.Shell.Mux.MuxPickerItem?>> PickMuxSession { get; set; }
 
         /// <summary>The shared-close prompt (spec §7.4), given how many other clients show the shell. A seam so tests answer without a modal.</summary>
         internal Func<int, Task<Ntilde.Shell.Mux.SharedCloseChoice>> ConfirmSharedClose { get; set; }
@@ -5324,31 +5324,17 @@ namespace Ntilde
         private bool IsMuxPersistenceActive => _muxHosts is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
 
         /// <summary>
-        /// "Attach to session…" (spec §7.2). Lists the daemon's sessions off the UI thread, lets the
-        /// user pick one, and opens it in a new tab attached shared. A session this window already
-        /// shows is focused instead: one connection cannot hold two views of one session.
+        /// "Attach to session…" (spec §7.2, Phase 5 spec §5). Lists the sessions of the local daemon and of every connected
+        /// remote host off the UI thread, offers a "Connect to …" row for each profile that keeps its remote sessions but
+        /// has no connection now, lets the user pick, and opens the chosen session in a new tab attached shared. A session
+        /// this window already shows is focused instead: one connection cannot hold two views of one session.
         /// </summary>
         internal async Task AttachToMuxSessionAsync()
         {
-            if (!IsMuxPersistenceActive || _muxHosts?.Local is not { } host) return;
-            IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions = await Task.Run(async () =>
-            {
-                Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(5));
-                if (client is null) return null;
-                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
-                try
-                {
-                    return await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
-                {
-                    AppLogger.Log($"[MainWindow] listing mux sessions failed: {ex.Message}");
-                    return null;
-                }
-            });
+            if (!IsMuxPersistenceActive || _muxHosts is not { } hosts) return;
             try
             {
-                await OfferMuxSessionsAsync(sessions);
+                await OfferMuxSessionsAsync(hosts);
             }
             catch (Exception ex)
             {
@@ -5357,56 +5343,213 @@ namespace Ntilde
             }
         }
 
-        private async Task OfferMuxSessionsAsync(IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions)
-        {
-            if (_teardownDone) return;
-            if (sessions is null)
-            {
-                EnqueueNotice("Attach to session", "The multiplexer is not reachable.");
-                return;
-            }
+        /// <summary>What the picker offers: each listed host's sessions (or why not), and a connect row for each profile with no connection.</summary>
+        private sealed record MuxPickerSources(
+            IReadOnlyList<Ntilde.Shell.Mux.MuxPickerHostListing> Hosts,
+            IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerConnectRow> Connect);
 
-            // Pending ids count too: an adopted background tab has not attached (spawned) yet. The local
-            // daemon's panes only: one id on two daemons is two sessions (Phase 4 spec §5).
-            var openHere = new HashSet<Guid>();
+        /// <summary>UI thread. Lists every host, opens the picker, and acts on its choice.</summary>
+        private async Task OfferMuxSessionsAsync(Ntilde.Shell.Mux.MuxConnectionHosts hosts)
+        {
+            MuxPickerSources sources = await ListMuxPickerSourcesAsync(hosts, MuxPreviousBuildLaunch);
+            if (_teardownDone) return;
+
+            // Pending ids count too: an adopted background tab has not attached (spawned) yet. Keyed by endpoint: one id
+            // on two daemons is two sessions (Phase 4 spec §5).
+            var openHere = new HashSet<(Ntilde.Shell.Mux.MuxEndpointId, Guid)>();
             foreach (TerminalPane p in AllPanes())
             {
-                if (!ShowsLocalMuxEndpoint(p)) continue;
-                if (p.Session is Ntilde.Mux.MuxClientSession m) openHere.Add(m.Id);
-                if (p.MuxSessionIdToRestore is Guid pending) openHere.Add(pending);
+                Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint);
+                if (p.Session is Ntilde.Mux.MuxClientSession m) openHere.Add((endpoint, m.Id));
+                if (p.MuxSessionIdToRestore is Guid pending) openHere.Add((endpoint, pending));
             }
 
-            IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows = Ntilde.Shell.Mux.MuxSessionPicker.BuildRows(sessions, openHere);
-            if (rows.Count == 0)
+            List<Ntilde.Shell.Mux.MuxPickerItem> items = [.. Ntilde.Shell.Mux.MuxSessionPicker.BuildRows(sources.Hosts, openHere), .. sources.Connect];
+            if (!items.Exists(i => i.IsSelectable))
             {
-                EnqueueNotice("Attach to session", "No sessions are running in the multiplexer.");
+                // Nothing to choose: the hosts that could not be listed say why, in the error rows' words.
+                string[] errors = [.. items.OfType<Ntilde.Shell.Mux.MuxSessionPickerErrorRow>().Select(r => r.Display)];
+                EnqueueNotice("Attach to session", errors.Length > 0 ? string.Join("\n", errors) : "No sessions are running in the multiplexer.");
                 return;
             }
 
-            Guid? chosen = await PickMuxSession(rows);
-            if (chosen is not Guid id || _teardownDone) return;
-            // Re-checked, not read from the row: the picker is modal, and a tab may have opened it meanwhile.
-            if (FocusPaneShowingMuxSession(id)) return;
-            if (sessions.FirstOrDefault(s => s.SessionId == id) is not { } summary) return;
-
-            var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(summary.Command), summary.Arguments ?? string.Empty, _settings)
+            Ntilde.Shell.Mux.MuxPickerItem? chosen = await PickMuxSession(items);
+            if (_teardownDone) return;
+            switch (chosen)
             {
-                MuxSessionIdToRestore = id,
-                MuxAttachSharedToRestore = true,
-            };
-            AddTabWithPane(pane, string.IsNullOrWhiteSpace(summary.Title) ? summary.Command : summary.Title, select: true);
+                case Ntilde.Shell.Mux.MuxSessionPickerConnectRow connect:
+                    await ConnectForMuxPickerAsync(hosts, connect);
+                    break;
+                case Ntilde.Shell.Mux.MuxSessionPickerRow row:
+                    OpenMuxPickerRow(row, sources.Hosts);
+                    break;
+            }
         }
 
         /// <summary>
-        /// The pane's daemon session (shown or pending) is on the local daemon, the one "Attach to session…", orphan
-        /// adoption and the teardown count speak of (Phase 4 spec §5): a remote pane's id names another daemon's session.
+        /// Off the UI thread: every host's sessions, each within its own wait and all at once, so a slow or failed host gives
+        /// its error row and holds up nobody else; complete once each has answered or timed out. The local daemon is listed
+        /// as before (connected, or spawned, for it). A remote host is listed only while it is connected - listing never
+        /// starts a connect, which could prompt - and while its profile keeps its remote sessions: read from the store now,
+        /// so a profile whose setting was turned off since gives neither rows nor a connect row (a tab opened from either
+        /// would run plain SSH with the id pending). A daemon being restarted (Phase 5 Task 23) is not listed: its sessions
+        /// are about to end.
+        /// </summary>
+        private Task<MuxPickerSources> ListMuxPickerSourcesAsync(Ntilde.Shell.Mux.MuxConnectionHosts hosts, Ntilde.Shell.Mux.MuxPreviousBuildNotice.Launch launch) => Task.Run(async () =>
+        {
+            List<(Guid Id, string Host)> persisted = PersistedRemoteMuxProfiles();
+            var listings = new List<Task<Ntilde.Shell.Mux.MuxPickerHostListing>>();
+            var connected = new HashSet<Guid>();
+            foreach ((Ntilde.Shell.Mux.MuxEndpointId id, Ntilde.Shell.Mux.MuxConnectionHost host) in hosts.AllByEndpoint)
+            {
+                Ntilde.Mux.MuxClient? client = null;
+                if (id.SshProfileId is Guid profileId)
+                {
+                    if (!persisted.Exists(p => p.Id == profileId) || (client = host.CurrentClient) is null) continue;
+                    connected.Add(profileId);
+                }
+
+                listings.Add(launch.IsRestarting(id)
+                    ? Task.FromResult(new Ntilde.Shell.Mux.MuxPickerHostListing(id, host.Policy.DisplayName, null, Ntilde.Shell.Mux.MuxPickerHostError.Restarting))
+                    : Task.Run(() => ListMuxSessionsForPickerAsync(id, host, client)));
+            }
+
+            Ntilde.Shell.Mux.MuxPickerHostListing[] listed = await Task.WhenAll(listings).ConfigureAwait(false);
+            List<Ntilde.Shell.Mux.MuxSessionPickerConnectRow> connect = [.. persisted
+                .Where(p => !connected.Contains(p.Id))
+                .Select(p => new Ntilde.Shell.Mux.MuxSessionPickerConnectRow(p.Id, p.Host))];
+            return new MuxPickerSources(listed, connect);
+        });
+
+        /// <summary>
+        /// One host's sessions: <paramref name="connected"/>'s (a remote host's live client, asked within its policy's request
+        /// wait), or for the local daemon its host's client, as before. A failure is logged and kept as a kind only.
+        /// </summary>
+        private static async Task<Ntilde.Shell.Mux.MuxPickerHostListing> ListMuxSessionsForPickerAsync(
+            Ntilde.Shell.Mux.MuxEndpointId id, Ntilde.Shell.Mux.MuxConnectionHost host, Ntilde.Mux.MuxClient? connected)
+        {
+            string name = host.Policy.DisplayName;
+            Ntilde.Mux.MuxClient? client = connected ?? host.GetClient(TimeSpan.FromSeconds(5));
+            if (client is null) return new(id, name, null, Ntilde.Shell.Mux.MuxPickerHostError.ConnectionFailed);
+            using var cts = new System.Threading.CancellationTokenSource(id.IsLocal ? TimeSpan.FromSeconds(5) : host.Policy.RpcTimeout);
+            try
+            {
+                return new(id, name, await client.ListSessionsAsync(cts.Token).ConfigureAwait(false), null);
+            }
+            catch (Exception ex)
+            {
+                // Any failure: one host's must never stop the others from being listed.
+                AppLogger.Log($"[MainWindow] listing the sessions on {name} failed: {ex.Message}");
+                return new(id, name, null, Ntilde.Shell.Mux.MuxSessionPicker.ErrorOf(ex));
+            }
+        }
+
+        /// <summary>The SSH profiles that keep their remote sessions, read from the store now, in the connection list's order, with their hosts' names.</summary>
+        private List<(Guid Id, string Host)> PersistedRemoteMuxProfiles() =>
+        [
+            .. _sshConnectionService.GetConnectionProfiles()
+                .Select(p => _sshConnectionService.GetStoredProfile(p.Id))
+                .OfType<Ntilde.Platform.Ssh.Models.SshProfile>()
+                .Where(p => p is { MuxOptions.PersistRemoteSessions: true })
+                .Select(p => (p.Id, Ntilde.Shell.Mux.Remote.RemoteMuxConnector.DisplayNameOf(p))),
+        ];
+
+        /// <summary>UI thread: remote hosts a picker's "Connect to …" row connected (or took back), held until that picker is done.</summary>
+        private readonly HashSet<Ntilde.Shell.Mux.MuxEndpointId> _muxPickerHeldHosts = [];
+
+        /// <summary>
+        /// A "Connect to …" row (Phase 5 spec §5). A remote host is connected only while a pane needs it, so the shell just
+        /// detached from it is listed once it is connected again. The user is waiting, so this connects the usual
+        /// interactive way, off the UI thread - any prompt comes from that connect, at most as it always does - then lists
+        /// every host again and reopens the picker. The host is held meanwhile, so no release pass lets it go; afterwards
+        /// the usual pass (<see cref="ScheduleRemoteMuxHostRelease"/>) lets it go unless a pane now uses it. A connect that
+        /// failed or was cancelled says so once and offers nothing more.
+        /// </summary>
+        private async Task ConnectForMuxPickerAsync(Ntilde.Shell.Mux.MuxConnectionHosts hosts, Ntilde.Shell.Mux.MuxSessionPickerConnectRow row)
+        {
+            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.ForSsh(row.ProfileId);
+            _muxPickerHeldHosts.Add(endpoint);
+            try
+            {
+                bool connected = await Task.Run(() => hosts.GetOrCreate(endpoint) is { } host && host.GetClient(host.Policy.ConnectTimeout) is not null);
+                if (_teardownDone) return;
+                if (!connected)
+                {
+                    EnqueueNotice("Attach to session", $"Could not connect to {row.HostDisplayName}.");
+                    return;
+                }
+
+                await OfferMuxSessionsAsync(hosts);
+            }
+            finally
+            {
+                _muxPickerHeldHosts.Remove(endpoint);
+                ScheduleRemoteMuxHostRelease();
+            }
+        }
+
+        /// <summary>
+        /// UI thread. Opens <paramref name="row"/>'s session in a new tab attached shared, or focuses the pane already showing
+        /// it. A remote session opens in an SSH tab of its profile, not a shell tab: its spawn goes to that profile's daemon
+        /// and joins the session shared there (MuxTerminalSessionFactory's shared attach is the same for every endpoint).
+        /// </summary>
+        private void OpenMuxPickerRow(Ntilde.Shell.Mux.MuxSessionPickerRow row, IReadOnlyList<Ntilde.Shell.Mux.MuxPickerHostListing> listed)
+        {
+            // Re-checked, not read from the row: the picker is modal, and a tab may have opened it meanwhile, or a restart
+            // of its daemon begun.
+            if (FocusPaneShowingMuxSession(row.Endpoint, row.SessionId)) return;
+            if (MuxPreviousBuildLaunch.IsRestarting(row.Endpoint))
+            {
+                EnqueueNotice("Attach to session", new Ntilde.Shell.Mux.MuxSessionPickerErrorRow(row.Endpoint, row.HostDisplayName, Ntilde.Shell.Mux.MuxPickerHostError.Restarting).Display);
+                return;
+            }
+
+            TerminalPane pane;
+            if (row.Endpoint.SshProfileId is not Guid profileId)
+            {
+                if (listed.FirstOrDefault(l => l.Endpoint.IsLocal)?.Sessions?.FirstOrDefault(s => s.SessionId == row.SessionId) is not { } summary) return;
+                pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(summary.Command), summary.Arguments ?? string.Empty, _settings)
+                {
+                    MuxSessionIdToRestore = row.SessionId,
+                    MuxAttachSharedToRestore = true,
+                };
+            }
+            else
+            {
+                // Read again: a profile that stopped keeping its sessions while the picker was open would open plain SSH
+                // with the id pending.
+                if (_sshConnectionService.GetStoredProfile(profileId) is not { MuxOptions.PersistRemoteSessions: true }
+                    || _sshConnectionService.GetConnectionProfile(profileId) is not { } profile)
+                {
+                    AppLogger.Log($"[MainWindow] Attach to session: the profile of {row.Endpoint} no longer keeps its sessions; not opening {row.SessionId}");
+                    return;
+                }
+
+                // A fresh runtime copy, made an ssh launch as AddTab makes one. The endpoint is set up front, so the pending
+                // id is on it - for "open here", saves and the host release - before the spawn runs.
+                profile.Command = OperatingSystem.IsWindows() ? "ssh.exe" : "ssh";
+                profile.Arguments = string.Empty;
+                pane = new TerminalPane(profile, _settings, SshDiagnosticsLevel.None)
+                {
+                    MuxSessionIdToRestore = row.SessionId,
+                    MuxAttachSharedToRestore = true,
+                    MuxEndpoint = row.Endpoint.ToString(),
+                };
+            }
+
+            AddTabWithPane(pane, row.Name, select: true);
+        }
+
+        /// <summary>
+        /// The pane's daemon session (shown or pending) is on the local daemon, the one orphan adoption and the teardown
+        /// count speak of (Phase 4 spec §5): a remote pane's id names another daemon's session.
         /// </summary>
         private static bool ShowsLocalMuxEndpoint(TerminalPane pane) => Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).IsLocal;
 
-        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) local <paramref name="id"/>; false when none does.</summary>
-        private bool FocusPaneShowingMuxSession(Guid id)
+        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) <paramref name="id"/> on <paramref name="endpoint"/>; false when none does.</summary>
+        private bool FocusPaneShowingMuxSession(Ntilde.Shell.Mux.MuxEndpointId endpoint, Guid id)
         {
-            TerminalPane? pane = AllPanes().FirstOrDefault(p => ShowsLocalMuxEndpoint(p)
+            TerminalPane? pane = AllPanes().FirstOrDefault(p => Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint) == endpoint
                 && ((p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id));
             if (pane is null) return false;
             if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
@@ -5415,31 +5558,37 @@ namespace Ntilde
             return true;
         }
 
-        private async Task<Guid?> ShowMuxSessionPickerAsync(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
+        private async Task<Ntilde.Shell.Mux.MuxPickerItem?> ShowMuxSessionPickerAsync(IReadOnlyList<Ntilde.Shell.Mux.MuxPickerItem> rows)
         {
-            (Window dialog, Task<Guid?> result) = BuildMuxSessionPickerWindow(rows);
+            (Window dialog, Task<Ntilde.Shell.Mux.MuxPickerItem?> result) = BuildMuxSessionPickerWindow(rows);
             await dialog.ShowDialog(this);
             return await result;
         }
 
         /// <summary>
-        /// The "Attach to Session" dialog, not yet shown; the task completes with the chosen session
-        /// (null: cancelled) when the window closes. Enter attaches, Escape cancels. Separate from
+        /// The "Attach to Session" dialog, not yet shown; the task completes with the chosen line - a session, or a host
+        /// to connect to - (null: cancelled) when the window closes. A line that only informs (a host that could not be
+        /// listed) is shown disabled and never chosen. Enter attaches, Escape cancels. Separate from
         /// <see cref="ShowMuxSessionPickerAsync"/> so a headless test can show it and press keys.
         /// </summary>
-        internal (Window Window, Task<Guid?> Result) BuildMuxSessionPickerWindow(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
+        internal (Window Window, Task<Ntilde.Shell.Mux.MuxPickerItem?> Result) BuildMuxSessionPickerWindow(IReadOnlyList<Ntilde.Shell.Mux.MuxPickerItem> rows)
         {
-            Guid? chosen = null;
+            Ntilde.Shell.Mux.MuxPickerItem? chosen = null;
             var dialog = CreateThemedDialogWindow("Attach to Session", 640, 360, canResize: true);
-            var list = new ListBox { ItemsSource = rows.Select(r => r.Display).ToList(), SelectedIndex = 0, MaxHeight = 240 };
+            var list = new ListBox
+            {
+                ItemsSource = rows.Select(r => new ListBoxItem { Content = r.Display, IsEnabled = r.IsSelectable }).ToList(),
+                SelectedIndex = rows.ToList().FindIndex(r => r.IsSelectable),
+                MaxHeight = 240,
+            };
             var attach = new Button { Content = "Attach", Width = 92, IsDefault = true };
             var cancel = new Button { Content = "Cancel", Width = 92, IsCancel = true };
-            var closed = new TaskCompletionSource<Guid?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var closed = new TaskCompletionSource<Ntilde.Shell.Mux.MuxPickerItem?>(TaskCreationOptions.RunContinuationsAsynchronously);
             dialog.Closed += (_, _) => closed.TrySetResult(chosen);
             void Accept()
             {
-                if (list.SelectedIndex < 0) return;
-                chosen = rows[list.SelectedIndex].SessionId;
+                if (list.SelectedIndex < 0 || !rows[list.SelectedIndex].IsSelectable) return;
+                chosen = rows[list.SelectedIndex];
                 dialog.Close();
             }
 
@@ -6792,16 +6941,12 @@ namespace Ntilde
             if (!mux.IsProcessRunning) return await ClosePaneAsync(pane, skipConfirm: true);
 
             // Read before the close: the pane is gone after it.
-            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint);
-            bool remote = !endpoint.IsLocal;
-            string remoteHost = pane.RemoteHostName is { Length: > 0 } named
-                ? named
-                : _muxHosts?.TryGet(endpoint)?.Policy.DisplayName ?? "its host";
+            bool remote = !Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).IsLocal;
             bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
             if (closed && !_teardownDone)
             {
                 EnqueueNotice("Shell detached", remote
-                    ? RemoteDetachedMessage(remoteHost, mux.Id)
+                    ? RemoteDetachedMessage
                     : "Shell kept running \u2014 Attach to session\u2026 to get it back");
             }
 
@@ -6809,12 +6954,10 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Final review F2: "Attach to session…" lists local shells only, and a remote shell is never adopted, so a
-        /// detached remote shell comes back through <c>ntilde-mux attach</c> on its own host (USER_MANUAL §3.3), by the
-        /// full id <c>ntilde-mux ls</c> shows. <paramref name="host"/> is <c>user@host</c>, as the remote banners say.
+        /// A detached remote shell comes back through "Attach to session…" too (Phase 5 spec §5): its host is listed while
+        /// connected, and offered as "Connect to …" once the detach let its connection go.
         /// </summary>
-        internal static string RemoteDetachedMessage(string host, Guid sessionId) =>
-            $"Shell kept running on {host} \u2014 run 'ntilde-mux attach {sessionId}' on that host to get it back";
+        internal const string RemoteDetachedMessage = "Detached \u2014 Attach to session\u2026 reopens it";
 
         /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
         internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }
@@ -7582,7 +7725,8 @@ namespace Ntilde
 
         /// <summary>
         /// UI thread. Releases every remote host whose endpoint no pane of this window needs
-        /// (<see cref="TerminalPane.RemoteMuxEndpointInUse"/>): closed once its kills are delivered
+        /// (<see cref="TerminalPane.RemoteMuxEndpointInUse"/>) and no open "Attach to session…" picker holds
+        /// (<see cref="ConnectForMuxPickerAsync"/>): closed once its kills are delivered
         /// (<see cref="Ntilde.Shell.Mux.MuxConnectionHosts.Release"/>), so it stops pinging and reconnecting, the remote
         /// proxy and daemon are let go, and its remembered secret is forgotten. Not during teardown, which closes every host.
         /// </summary>
@@ -7590,7 +7734,7 @@ namespace Ntilde
         {
             _remoteMuxReleasePosted = false;
             if (_teardownDone || _muxHosts is not { } hosts) return;
-            HashSet<Ntilde.Shell.Mux.MuxEndpointId> needed = [.. AllPanes().Select(p => p.RemoteMuxEndpointInUse).OfType<Ntilde.Shell.Mux.MuxEndpointId>()];
+            HashSet<Ntilde.Shell.Mux.MuxEndpointId> needed = [.. AllPanes().Select(p => p.RemoteMuxEndpointInUse).OfType<Ntilde.Shell.Mux.MuxEndpointId>(), .. _muxPickerHeldHosts];
             foreach (Ntilde.Shell.Mux.MuxEndpointId endpoint in hosts.RemoteEndpoints)
             {
                 if (!needed.Contains(endpoint)) hosts.Release(endpoint);
