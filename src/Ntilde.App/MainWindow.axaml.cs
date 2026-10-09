@@ -10424,39 +10424,45 @@ namespace Ntilde
         /// <paramref name="live"/> is how many live shells the close would keep; <paramref name="pending"/> the ids tabs not
         /// shown yet hold (final review M3). Those count, and "Close them" ends them, only once the daemon has said it runs
         /// them and no other client shows them (<see cref="UnshownLocalMuxSessionsAsync"/>); when that leaves nothing to
-        /// keep, the window closes without asking, as it does with nothing to ask about.
+        /// keep, the window closes without asking, as it does with nothing to ask about. The question can stay open for
+        /// minutes, so "Close them" asks the daemon again just before it ends any of them (residual N2): one another client
+        /// opened meanwhile keeps running.
+        /// </para>
+        /// <para>
+        /// Residual N3: whatever fails on the way, the hold is let go (<see cref="_firstCloseQuestionOpen"/>), so the next
+        /// close is never held behind a question that is gone.
         /// </para>
         /// </summary>
         private async Task AskFirstCloseAsync(int live, IReadOnlySet<Guid> pending)
         {
-            // Overtaken before the post ran (an OS shutdown, an update restart): never show the question at all.
-            if (_teardownDone)
+            try
+            {
+                await SettleFirstCloseAsync(live, pending);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] settling the first-close question failed; the window stays open: {ex}");
+            }
+            finally
             {
                 _firstCloseQuestionOpen = false;
-                return;
             }
+        }
+
+        /// <summary><see cref="AskFirstCloseAsync"/>'s body, the hold still on throughout.</summary>
+        private async Task SettleFirstCloseAsync(int live, IReadOnlySet<Guid> pending)
+        {
+            // Overtaken before the post ran (an OS shutdown, an update restart): never show the question at all.
+            if (_teardownDone) return;
 
             IReadOnlySet<Guid> unshown = pending.Count == 0 ? NoMuxSessionIds : await UnshownLocalMuxSessionsAsync(pending);
-            if (_teardownDone)
-            {
-                _firstCloseQuestionOpen = false;
-                return;
-            }
+            if (_teardownDone) return;
 
             int count = live + unshown.Count;
             if (count == 0)
             {
-                _firstCloseQuestionOpen = false;
-                try
-                {
-                    _closeConfirmed = true;
-                    Close();
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.Log($"[MainWindow] closing with nothing left to keep failed: {ex}");
-                }
-
+                _closeConfirmed = true;
+                Close();
                 return;
             }
 
@@ -10470,40 +10476,36 @@ namespace Ntilde
                 AppLogger.Log($"[MainWindow] the first-close question failed; keeping the shells running: {ex.Message}");
                 answer = new FirstCloseAnswer(FirstCloseAction.Keep, Remember: false);
             }
-            finally
-            {
-                _firstCloseQuestionOpen = false;
-            }
 
             if (_teardownDone || answer.Action is not (FirstCloseAction.Keep or FirstCloseAction.Close)) return;
 
-            try
+            bool end = answer.Action == FirstCloseAction.Close;
+            if (answer.Remember) MuxCloseChoiceStore.Remember(end ? Ntilde.Shell.Mux.MuxCloseChoice.Close : Ntilde.Shell.Mux.MuxCloseChoice.Keep);
+            if (end && unshown.Count > 0)
             {
-                bool end = answer.Action == FirstCloseAction.Close;
-                if (answer.Remember) MuxCloseChoiceStore.Remember(end ? Ntilde.Shell.Mux.MuxCloseChoice.Close : Ntilde.Shell.Mux.MuxCloseChoice.Keep);
-                if (end) EndLocalSessionsOnTeardown(unshown);
-                _closeConfirmed = true;
-                Close();
+                // Residual N2: a client may have opened one of them while the question was open.
+                unshown = await UnshownLocalMuxSessionsAsync(unshown);
+                if (_teardownDone) return;
             }
-            catch (Exception ex)
-            {
-                AppLogger.Log($"[MainWindow] closing after the first-close question failed: {ex}");
-            }
+
+            if (end) EndLocalSessionsOnTeardown(unshown);
+            _closeConfirmed = true;
+            Close();
         }
 
         /// <summary>
         /// UI thread. Final review M3: a remembered "Close them" (R1) on a close with tabs not shown yet. Their shells end
         /// with the live ones once the daemon has said which it runs and no other client shows; then the window closes.
-        /// A close that happened meanwhile by another way already applied its own rules.
+        /// A close that happened meanwhile by another way already applied its own rules. Whatever fails, the hold is let go
+        /// (residual N3).
         /// </summary>
         private async Task EndLocalSessionsAndCloseAsync(IReadOnlySet<Guid> pending)
         {
-            IReadOnlySet<Guid> unshown = _teardownDone ? NoMuxSessionIds : await UnshownLocalMuxSessionsAsync(pending);
-            _firstCloseQuestionOpen = false;
-            if (_teardownDone) return;
-
             try
             {
+                if (_teardownDone) return;
+                IReadOnlySet<Guid> unshown = await UnshownLocalMuxSessionsAsync(pending);
+                if (_teardownDone) return;
                 EndLocalSessionsOnTeardown(unshown);
                 _closeConfirmed = true;
                 Close();
@@ -10511,6 +10513,10 @@ namespace Ntilde
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] closing with a remembered \"Close them\" failed: {ex}");
+            }
+            finally
+            {
+                _firstCloseQuestionOpen = false;
             }
         }
 
@@ -10557,6 +10563,10 @@ namespace Ntilde
         /// <summary>How long a closing window waits for the local daemon to list its shells (final review M3).</summary>
         internal static readonly TimeSpan PendingShellsListTimeout = TimeSpan.FromSeconds(2);
 
+        /// <summary>Test seam: how a closing window lists the local daemon's shells (<see cref="UnshownLocalMuxSessionsAsync"/>). Called off the UI thread.</summary>
+        internal Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> MuxListSessionsForClose { get; set; } =
+            static (client, ct) => client.ListSessionsAsync(ct);
+
         /// <summary>
         /// Final review M3: of <paramref name="pending"/> (<see cref="PendingLocalMuxSessionIds"/>), the shells the local
         /// daemon runs and no interactive client shows - what "Close them" may end, as it ends a live pane's shell only
@@ -10567,12 +10577,13 @@ namespace Ntilde
         private async Task<IReadOnlySet<Guid>> UnshownLocalMuxSessionsAsync(IReadOnlySet<Guid> pending)
         {
             if (_muxHosts?.Local.CurrentClient is not { IsConnected: true } client) return NoMuxSessionIds;
+            Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> list = MuxListSessionsForClose;
             try
             {
                 return await Task.Run(async () =>
                 {
                     using var cts = new System.Threading.CancellationTokenSource(PendingShellsListTimeout);
-                    IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
+                    IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await list(client, cts.Token).ConfigureAwait(false);
                     bool v2 = client.ProtocolVersion >= Ntilde.Mux.Contracts.MuxProtocol.SessionEventsVersion;
                     return (IReadOnlySet<Guid>)all
                         .Where(s => pending.Contains(s.SessionId) && Ntilde.Shell.Mux.MuxOrphans.IsUnshown(s, v2))
@@ -10580,9 +10591,10 @@ namespace Ntilde
                         .ToHashSet();
                 });
             }
-            catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
+            catch (Exception ex)
             {
-                AppLogger.Log($"[MainWindow] listing the shells of tabs not shown yet failed; they keep running: {ex.Message}");
+                // Any failure (residual N3): none is the safe answer - those shells keep running, as with Keep.
+                AppLogger.Log($"[MainWindow] listing the shells of tabs not shown yet failed; they keep running: {ex.GetType().Name}: {ex.Message}");
                 return NoMuxSessionIds;
             }
         }

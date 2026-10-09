@@ -423,6 +423,62 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
     }
 
     /// <summary>
+    /// Residual N2: the question can stay open for minutes. A client that opens a pending shell meanwhile (an
+    /// <c>ntilde mux attach</c>, another window's Attach to session…) keeps it: "Close them" asks the daemon again just
+    /// before it ends anything, and ends only what is still shown by nobody. The shown tab's shell is ended as asked.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_them_spares_a_pending_shell_another_client_opened_while_the_question_was_open()
+    {
+        Guid[] own = SpawnUnshown(1);
+        SaveTabs(LocalLeaf(), LocalLeaf(own[0]));
+        ClientPaneModel? theirs = null;
+        MainWindow window = CreateWindow(_ =>
+        {
+            theirs = Task.Run(async () => await MuxTestHost.AttachPaneAsync(await _mux.ConnectClientAsync(), own[0]), TestContext.Current.CancellationToken)
+                .GetAwaiter().GetResult();
+            return Task.FromResult(new FirstCloseAnswer(FirstCloseAction.Close, Remember: false));
+        });
+        PumpUntil(() => window.AllPanesForTest().Count == 2, "every restored tab was built");
+        Guid first = LocalSession(window)!.Id;
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+        Assert.Equal([2], _asked); // asked when nobody else showed it
+        Assert.DoesNotContain(first, _mux.Server.GetSessionIds());
+        Assert.Contains(own[0], _mux.Server.GetSessionIds());
+        Assert.False(_mux.Mux(own[0]).IsExited);
+        Assert.True(theirs!.Session.IsAttached);
+        Assert.Contains(own[0].ToString(), File.ReadAllText(AppPaths.SessionFilePath), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Residual N3: the listing for tabs not shown yet fails in a way nobody planned for. That is "none" - the safe answer,
+    /// those shells keep running - and the window still closes: the close is never left held for good.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_listing_that_throws_anything_never_leaves_the_window_unclosable()
+    {
+        Guid[] ids = SpawnUnshown(1);
+        SaveTabs(LocalLeaf(), LocalLeaf(ids[0]));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        window.MuxListSessionsForClose = (_, _) => throw new InvalidOperationException("not planned for");
+        PumpUntil(() => window.AllPanesForTest().Count == 2, "every restored tab was built");
+        MuxClientSession shown = LocalSession(window)!;
+        _mux.Fake(shown.Id).Exit(3);
+        PumpUntil(() => !shown.IsProcessRunning, "the pane saw the exit");
+
+        window.Close();
+        for (int i = 0; i < 50 && window.IsVisible; i++) { Thread.Sleep(10); Dispatcher.UIThread.RunJobs(); }
+        if (window.IsVisible) window.Close(); // the next attempt
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);
+        Assert.Contains(ids[0], _mux.Server.GetSessionIds());
+    }
+
+    /// <summary>
     /// Final review M3: a remembered "Close them" (Don't ask again) ends the shells of tabs not shown yet too, without
     /// asking - once the daemon has said no other client shows them - and they are not named for the next launch.
     /// </summary>
