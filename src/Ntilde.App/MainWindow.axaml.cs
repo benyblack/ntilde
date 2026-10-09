@@ -5368,6 +5368,18 @@ namespace Ntilde
         /// </summary>
         private bool IsMuxPersistenceActive => _muxHosts is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
 
+        /// <summary>
+        /// Release hardening item 1: SessionPersistence was turned Off during this window's life. The factory followed
+        /// (<see cref="ApplySessionPersistenceSetting"/>), but the panes opened while it was on still show daemon shells, and
+        /// the hosts stay for them. Off means "a shell ends when its window closes", so the close ends them, as a
+        /// "Close them" does (<see cref="EndLocalSessionsOnTeardown"/>). A window whose setting was Off from the start has no
+        /// hosts (or, in tests, still the injected mux factory), so nothing changes for it.
+        /// </summary>
+        private bool IsMuxPersistenceTurnedOff =>
+            _muxHosts is not null
+            && _sessionFactory is not Ntilde.Shell.Mux.MuxTerminalSessionFactory
+            && !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence);
+
         /// <summary>UI thread: an "Attach to session…" runs - its listing, picker or connect - so another is not started (review minor 1).</summary>
         private bool _muxAttachRunning;
 
@@ -10382,6 +10394,7 @@ namespace Ntilde
         private bool HoldCloseForFirstCloseQuestion(WindowCloseReason reason)
         {
             if (_closeConfirmed || _teardownDone || reason == WindowCloseReason.OSShutdown) return false;
+            if (IsMuxPersistenceTurnedOff) return HoldCloseToEndShellsWithPersistenceOff(reason);
             if (!IsMuxPersistenceActive || !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)) return false;
             bool applicationShutdown = reason == WindowCloseReason.ApplicationShutdown;
             int live = CountKeptLocalSessions();
@@ -10412,6 +10425,30 @@ namespace Ntilde
                     Dispatcher.Post(() => _ = AskFirstCloseAsync(live, pending));
                     return true;
             }
+        }
+
+        /// <summary>
+        /// Release hardening item 1 (<see cref="IsMuxPersistenceTurnedOff"/>): with Off nothing is asked, and the close ends
+        /// the local shells as a remembered "Close them" would - a share, or a shell another client also shows, detaches. The
+        /// shells of tabs not shown yet end too once the daemon has said no other client shows them, so the close is held for
+        /// that answer; a shutdown cannot be held, and ends the live ones only (<see cref="PerformAppTeardown"/> does that for
+        /// every teardown, an OS shutdown's included). True holds this close.
+        /// </summary>
+        private bool HoldCloseToEndShellsWithPersistenceOff(WindowCloseReason reason)
+        {
+            HashSet<Guid> pending = PendingLocalMuxSessionIds();
+            if (_firstCloseQuestionOpen && reason != WindowCloseReason.ApplicationShutdown) return CountKeptLocalSessions() + pending.Count > 0;
+            if (pending.Count == 0 || reason == WindowCloseReason.ApplicationShutdown)
+            {
+                if (pending.Count > 0) AppLogger.Log($"[MainWindow] persistence is off: {pending.Count} local session(s) of tabs not shown yet left running: a shutdown cannot wait for the multiplexer to say who shows them");
+                EndLocalSessionsOnTeardown();
+                return false;
+            }
+
+            _firstCloseQuestionOpen = true;
+            // Posted, as a remembered "Close them" is: it closes the window again once the daemon has answered.
+            Dispatcher.Post(() => _ = EndLocalSessionsAndCloseAsync(pending));
+            return true;
         }
 
         /// <summary>
@@ -10819,6 +10856,9 @@ namespace Ntilde
             _teardownDone = true;
             TeardownFaultForTest?.Invoke();
 
+            // Release hardening item 1: every way to tear down - an OS shutdown, an update restart - ends the live local shells
+            // when persistence was turned off, before the save, so none is named for a reattach Off never makes.
+            if (IsMuxPersistenceTurnedOff) EndLocalSessionsOnTeardown();
             if (!_sessionSavedBeforeUpdate) SaveSessionWithoutEndedShells();
 
             if (_muxHosts is { } muxHosts)

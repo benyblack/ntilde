@@ -288,6 +288,30 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.True(((MuxClientSession)pane.Session!).IsAttached);
     }
 
+    /// <summary>
+    /// Release hardening item 1: the Settings row says "With Off, a shell ends when its window closes". The panes opened
+    /// while it was on stay connected until then (above), but the close ends them, without asking, and the session file
+    /// does not name them for a reattach that Off will never make.
+    /// </summary>
+    [AvaloniaFact]
+    public void Turning_persistence_off_then_closing_ends_the_open_shells()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)pane.Session!).Id;
+        var settings = (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+        settings.SessionPersistence = SessionPersistenceMode.Off;
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        Assert.True(((MuxClientSession)pane.Session!).IsAttached);   // until the close
+
+        window.Close();
+
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the close ended the shell");
+        Assert.False(window.IsVisible);
+        Assert.Null(_host!.CurrentClient);
+        Assert.DoesNotContain(id.ToString(), File.ReadAllText(AppPaths.SessionFilePath), StringComparison.Ordinal);
+    }
+
     [AvaloniaFact]
     public void Designer_windows_never_persist()
     {

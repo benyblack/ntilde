@@ -711,6 +711,84 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         Assert.Empty(_asked);
     }
 
+    // ---- release hardening item 1: persistence turned Off while shells were open; the close ends them, as "Close them" does
+
+    /// <summary>Settings saved with SessionPersistence Off: the factory swaps, the open panes stay connected until the close.</summary>
+    private static void TurnPersistenceOff(MainWindow window)
+    {
+        var settings = (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+        settings.SessionPersistence = SessionPersistenceMode.Off;
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+    }
+
+    [AvaloniaFact]
+    public void With_persistence_turned_off_a_close_never_ends_a_shared_shell()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep));
+        Guid own = LocalSession(window)!.Id;
+        (MuxClient _, ClientPaneModel theirs) = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        Guid shared = theirs.Session.Id;
+        window.PickMuxSession = MuxPickerChoice.Session(shared);
+        Task attach = window.AttachToMuxSessionAsync();
+        PumpUntil(() => attach.IsCompleted, "the attach command finished");
+        TerminalPane mine = window.AllPanesForTest().Single(p => p.Session is MuxClientSession m && m.Id == shared);
+        PumpUntil(() => mine.MuxOtherClients == 1 && ((MuxClientSession)mine.Session!).InteractiveOthers == 1, "this window knows the shell is shared");
+        TurnPersistenceOff(window);
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);   // Off asks nothing
+        Assert.DoesNotContain(own, _mux.Server.GetSessionIds());
+        Assert.Contains(shared, _mux.Server.GetSessionIds());
+        PumpUntil(() => _mux.Mux(shared).AttachedClients == 1, "this window detached; the other instance still shows it");
+    }
+
+    /// <summary>
+    /// Tabs still holding placeholders keep their shells' ids pending: once the daemon has said no other client shows them,
+    /// the close ends them too and the session file names none of them. A pending share is never ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void With_persistence_turned_off_a_close_ends_the_shells_of_tabs_still_holding_placeholders()
+    {
+        Guid[] ids = SpawnUnshown(4);
+        SaveTabs(LocalLeaf(ids[0]), LocalLeaf(ids[1]), LocalLeaf(ids[2]), LocalLeaf(ids[3], shared: true));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep), keepPlaceholders: true);
+        Assert.Equal(3, PlaceholderTabs(window));
+        TurnPersistenceOff(window);
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);
+        Assert.All(ids[..3], id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        Assert.Contains(ids[3], _mux.Server.GetSessionIds());
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids[..3], id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    /// <summary>A shutdown cannot be held for the daemon's answer: the live shells end, the pending ones are left as they are.</summary>
+    [AvaloniaTheory]
+    [InlineData(WindowCloseReason.OSShutdown)]
+    [InlineData(WindowCloseReason.ApplicationShutdown)]
+    public void With_persistence_turned_off_a_shutdown_ends_the_live_shells(WindowCloseReason reason)
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep));
+        Guid id = LocalSession(window)!.Id;
+        TurnPersistenceOff(window);
+
+        Assert.False(window.HandleClosingForTest(reason));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Empty(_asked);
+        Assert.DoesNotContain(id, _mux.Server.GetSessionIds());
+    }
+
     /// <summary>A window whose only pane shows a live shell on a remote daemon (a second in-memory one).</summary>
     private MainWindow CreateRemoteOnlyWindow()
     {

@@ -1075,10 +1075,12 @@ From then on:
 - An update never keeps a running multiplexer (12.7).
 - SSH tabs open plain, whatever their profile says.
 
-Turning it off does not stop shells that are already running, and panes already open keep theirs.
-The next time Ntilde saves your session it forgets which panes the running shells belonged to. To end
-them, use **Quit and close all shells** before you turn the setting off, or run
-`ntilde mux kill-server` afterwards. Saving the change also forgets a remembered first-close answer
+Turning it off does not stop shells that are already running, and panes already open keep theirs
+until their window closes. Closing that window then ends them, without asking, as *Close them* would
+(12.2): so do the shells of restored tabs you have not looked at yet, while a shell another window or
+`ntilde mux attach` also shows keeps running there. Shells no window shows - detached ones - keep
+running, and the next time Ntilde saves your session it forgets them. To end those, use **Quit and
+close all shells** before you turn the setting off, or run `ntilde mux kill-server` afterwards. Saving the change also forgets a remembered first-close answer
 (12.2), so turning it back on asks again.
 
 To keep local shells running but stop one SSH profile from keeping its remote shells, untick
