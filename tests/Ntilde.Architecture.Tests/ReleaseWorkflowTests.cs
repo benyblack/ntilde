@@ -78,6 +78,38 @@ public sealed partial class ReleaseWorkflowTests
         Assert.True(checksum > upload + 1, $"{MuxDaemonJob} hands its checksum to the App builds before its release upload is checked.");
     }
 
+    /// <summary>
+    /// Release hardening item 4: a release build refuses a remote install for any RID it has no usable pin for, so every
+    /// App build that embeds the ntilde-mux checksums checks their exact shape first (<c>scripts/ci/check-mux-sha256.sh</c>,
+    /// tested by <c>scripts/tests/mux_sha256_check_tests.py</c>) rather than only that the files are not empty.
+    /// </summary>
+    [Fact]
+    public void Every_app_build_that_embeds_the_ntilde_mux_pins_checks_their_format_first()
+    {
+        Dictionary<string, Job> jobs = ParseJobs(File.ReadAllLines(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml")));
+        var embedding = new List<string>();
+        foreach (Job job in jobs.Values)
+        {
+            List<string>[] steps = Steps(job.Body);
+            int embed = Array.FindIndex(steps, s => s.Any(l => StripComment(l).Contains("-p:NtildeMuxSha256Dir=", StringComparison.Ordinal)));
+            if (embed < 0) continue;
+            embedding.Add(job.Name);
+
+            int check = Array.FindIndex(steps, s => s.Any(l => StripComment(l).Contains("bash scripts/ci/check-mux-sha256.sh \"$MUX_SHA256_DIR\"", StringComparison.Ordinal)));
+            Assert.True(check >= 0 && check < embed,
+                $"{job.Name} embeds the ntilde-mux checksums without first running scripts/ci/check-mux-sha256.sh on them: a malformed one would ship an App that refuses remote installs for that platform.");
+        }
+
+        Assert.True(embedding.Count >= 2, $"Expected the Windows/macOS and the Linux App builds to embed the ntilde-mux pins; found: {string.Join(", ", embedding)}.");
+    }
+
+    /// <summary>A job's steps: the items six spaces in, under its <c>steps:</c>.</summary>
+    private static List<string>[] Steps(List<string> body)
+    {
+        int[] starts = Enumerable.Range(0, body.Count).Where(i => body[i].StartsWith("      - ", StringComparison.Ordinal)).Append(body.Count).ToArray();
+        return Enumerable.Range(0, starts.Length - 1).Select(i => body.GetRange(starts[i], starts[i + 1] - starts[i])).ToArray();
+    }
+
     private sealed record Job(string Name, IReadOnlyList<string> Needs, bool UploadsToRelease, List<string> Body);
 
     private static bool DependsOn(Dictionary<string, Job> jobs, string job, string dependency)

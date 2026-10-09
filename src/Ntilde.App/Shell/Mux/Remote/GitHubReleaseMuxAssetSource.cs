@@ -33,7 +33,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <param name="pins">
 /// RID to the SHA-256 this app was released with (<see cref="MuxAssetPins.Load"/>; null or empty in a dev
 /// build). With a pin for the RID the pin, not the release's own <c>.sha256</c>, decides what is accepted,
-/// and a cached copy is checked against it too.
+/// and a cached copy is checked against it too. With pins but none usable for the RID (a release build missing
+/// one, or one <see cref="MuxAssetPins.Unusable"/>), the RID is refused: only a dev build, with no pins at
+/// all, trusts the release's <c>.sha256</c> alone.
 /// </param>
 internal sealed class GitHubReleaseMuxAssetSource(
     HttpClient http,
@@ -49,6 +51,13 @@ internal sealed class GitHubReleaseMuxAssetSource(
 
     /// <summary>The release's <c>.sha256</c> is not the one this app was released with.</summary>
     internal const string PinMismatchMessage = "The release's checksum does not match the one built into this app.";
+
+    /// <summary>
+    /// This app is a release build (it carries pins) but has no usable pin for <paramref name="rid"/>: the release's own
+    /// <c>.sha256</c> is not trusted in its place.
+    /// </summary>
+    internal static string NoPinMessage(string rid) =>
+        $"This build of ntilde carries no checksum for ntilde-mux-{rid}, so a download for that platform cannot be verified. Install ntilde-mux from a file instead.";
 
     private const string CachedBinaryName = "ntilde-mux";
     private const int MaxChecksumBytes = 4096;
@@ -87,7 +96,7 @@ internal sealed class GitHubReleaseMuxAssetSource(
     }
 
     /// <exception cref="MuxReleaseNotFoundException">This version has no release (or is unknown), or the release has no asset for <paramref name="rid"/>.</exception>
-    /// <exception cref="InvalidDataException">The checksum does not match (<c>checksum mismatch …</c>), the checksum file is malformed, or the asset is too large.</exception>
+    /// <exception cref="InvalidDataException">The checksum does not match (<c>checksum mismatch …</c>), the checksum file is malformed, the asset is too large, or this release build has no usable pin for <paramref name="rid"/> (<see cref="NoPinMessage"/>).</exception>
     /// <exception cref="HttpRequestException">Another HTTP failure.</exception>
     /// <exception cref="TimeoutException">The downloads outlasted <see cref="DownloadTimeout"/>.</exception>
     public async Task<MuxDaemonAsset> GetAsync(string rid, IProgress<long>? progress, CancellationToken ct)
@@ -101,7 +110,13 @@ internal sealed class GitHubReleaseMuxAssetSource(
         string directory = Path.Combine(cacheDirectory, appVersion, rid);
         string binaryPath = Path.Combine(directory, CachedBinaryName);
         string checksumPath = binaryPath + ".sha256";
-        string? pin = pins is not null && pins.TryGetValue(rid, out string? pinned) ? pinned.ToLowerInvariant() : null;
+        string? pin = pins is not null && pins.TryGetValue(rid, out string? pinned) && pinned.Length > 0 ? pinned.ToLowerInvariant() : null;
+        if (pin is null && pins is { Count: > 0 })
+        {
+            // A release build: the release's own .sha256 sits beside the binary it would vouch for, so it is no check.
+            throw new InvalidDataException(NoPinMessage(rid));
+        }
+
         if (await TryReadCacheAsync(binaryPath, checksumPath, pin, ct).ConfigureAwait(false) is { } cached)
         {
             progress?.Report(cached.Bytes.Length);

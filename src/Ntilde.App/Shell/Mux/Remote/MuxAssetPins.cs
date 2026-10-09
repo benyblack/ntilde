@@ -16,6 +16,12 @@ internal static class MuxAssetPins
 
     private const string ResourceSuffix = ".sha256";
 
+    /// <summary>
+    /// The value <see cref="Parse"/> keeps for a RID whose checksum resource is there but holds no SHA-256: never a
+    /// hash, so nothing matches it, and <see cref="GitHubReleaseMuxAssetSource"/> refuses that RID.
+    /// </summary>
+    internal const string Unusable = "";
+
     /// <summary>RID to lowercase hex, from the checksum files embedded in this assembly; empty when none are.</summary>
     internal static IReadOnlyDictionary<string, string> Load()
     {
@@ -31,6 +37,8 @@ internal static class MuxAssetPins
             using Stream? stream = assembly.GetManifestResourceStream(name);
             if (stream is null || stream.Length > 4096)
             {
+                // There but unreadable: Parse keeps it as Unusable, so the RID is refused rather than unpinned.
+                resources.Add(new(name, string.Empty));
                 continue;
             }
 
@@ -43,8 +51,10 @@ internal static class MuxAssetPins
 
     /// <summary>
     /// Pins from (resource name, file text) pairs. A resource that is not
-    /// <c>Ntilde.Resources.mux-sha256.ntilde-mux-&lt;rid&gt;.sha256</c>, whose RID is no plain name, or whose
-    /// text holds no SHA-256 is ignored: a pin is only ever stricter than none, never a way to fail the app.
+    /// <c>Ntilde.Resources.mux-sha256.ntilde-mux-&lt;rid&gt;.sha256</c>, or whose RID is no plain name, is ignored.
+    /// One whose text holds no SHA-256 is kept as <see cref="Unusable"/>, never dropped: dropping it would leave a
+    /// release build unpinned for that RID, and so trusting the release's own <c>.sha256</c> (release hardening item 4).
+    /// Neither ever fails the app; only remote installs for that RID are refused.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> Parse(IEnumerable<KeyValuePair<string, string>> resources)
     {
@@ -57,12 +67,12 @@ internal static class MuxAssetPins
             }
 
             string rid = name[ResourcePrefix.Length..^ResourceSuffix.Length];
-            if (!MuxDaemonAsset.IsPlainName(rid) || !MuxDaemonAsset.TryParseChecksum(text, out string hex))
+            if (!MuxDaemonAsset.IsPlainName(rid))
             {
                 continue;
             }
 
-            pins[rid] = hex;
+            pins[rid] = MuxDaemonAsset.TryParseChecksum(text, out string hex) ? hex : Unusable;
         }
 
         return pins;
