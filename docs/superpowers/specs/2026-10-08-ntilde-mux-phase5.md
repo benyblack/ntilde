@@ -369,3 +369,42 @@ see its own typed password (it recovers when the share closes). While the host s
 destination the profile no longer names, the sidebar, listing and transfers are refused, checked at
 every listing and again once each transfer dialog is answered, and an open sidebar closes with the
 notice. Port forwards and OpenSSH ControlMaster reuse stay deferred (R8).
+
+## H. Release hardening (before `dev-mux` → `main`)
+
+Fixes found reviewing the merged tree (ee75a32); each has a test that failed first. Where one changes a ruling above, it
+says which.
+
+H1 (item 1). SessionPersistence turned Off during a window's life (the setting is Off, the factory swapped, the hosts still
+there): the close ends the local shells as a remembered "Close them" does, without asking. Shares, and shells another
+client shows, detach; pending ids (tabs not shown yet, placeholder trees) end once the daemon says no other client shows
+them, the close held meanwhile. A shutdown cannot be held: it ends the live shells only, and `PerformAppTeardown` ends
+them on every teardown route before the save. A window Off from the start has no hosts: nothing changes for it.
+
+H2 (item 2; amends R19). macOS Cmd+Q asks the first-close question: App cancels the lifetime's `ShutdownRequested` when
+the window would hold a window close (the same decision, run dry), the window closes as its close button does, and a
+close that went through quits. A logout, restart or shutdown never asks (the quit Apple event's `'why?'`, read through
+the Objective-C runtime, since Avalonia's `IsOSShutdown` is internal). Windows and X11 raise `ShutdownRequested` only for
+the session ending and are not subscribed. A remembered answer that needs no daemon still applies without holding.
+
+H3 (item 3). A listing never forwards an agent: OpenSSH gets `-o ForwardAgent=no` ahead of the plan and loses a `-A`
+from the profile's extra arguments; native never requests forwarding. A `--no-spawn` proxy also leaves the agent link
+(R15) alone.
+
+H4 (item 4; amends R16). A build with any embedded pin is a release build: a RID without a usable pin is refused, never
+verified against the release's own `.sha256`. A pin resource that cannot be read is kept as unusable, not dropped.
+release.yml checks each checksum is exactly `<64 lowercase hex>  ntilde-mux-<rid>` (`scripts/ci/check-mux-sha256.sh`).
+
+H5 (item 5; extends R30). A transfer, sidebar listing or path completion refused at sign-in (rusty_ssh status
+`auth-failed`, same result code) forgets the target password it offered from a host's scope, compare-and-remove, so a
+password typed since stays. Only a host scope, never a plain session's own, never with jump hops.
+
+H6 (item 6; R10 unchanged). A missing or unreadable marker still reads as compatible; a release build logs a
+`[Warning]`. A workflow test pins every `vpk pack`'s `--releaseNotes` and the step that writes them.
+
+H7 (item 7; reverses R28(a)). `ls --all` never starts a daemon: `proxy --stdio --no-spawn` exits 5 (`NotRunning`) when none
+runs, listed as "no multiplexer is running". An older ntilde-mux refuses the option (exit 2 with its usage), listed as
+needing an update. The picker's Connect row still starts one, and says so.
+
+H8 (item 8). The kill path (`MuxDaemonStop.Terminate`: kill-server `--force`, the GUI restart, the uninstall hook) needs a
+recorded start time that matches the process's readable one. The liveness probe keeps "no evidence against".
