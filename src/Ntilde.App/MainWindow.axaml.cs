@@ -11554,7 +11554,14 @@ namespace Ntilde
                     return Ntilde.Update.MuxUpdateStopReason.UnknownImage;
                 }
 
-                (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(_updateCoordinator?.StagedReleaseNotes);
+                string? notes = _updateCoordinator?.StagedReleaseNotes;
+                (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(notes);
+                // A release build embeds the ntilde-mux pins; a dev build embeds none and stages no release's notes.
+                if (Ntilde.Update.MuxUpdateCompatibility.MissingProtocolMarkerWarning(notes, Ntilde.Shell.Mux.Remote.MuxAssetPins.Load().Count > 0) is { } warning)
+                {
+                    AppLogger.Log(warning);
+                }
+
                 string? installRoot = MuxInstallRootForUpdate();
                 string? image = installRoot is null ? null : await Task.Run(() => MuxDaemonImagePathForUpdate(descriptor));
                 Ntilde.Update.MuxUpdateStopReason why = Ntilde.Update.MuxUpdateCompatibility.WhyUpdateStopsDaemon((descriptor.MinVersion, descriptor.MaxVersion), newBuild, image, installRoot);

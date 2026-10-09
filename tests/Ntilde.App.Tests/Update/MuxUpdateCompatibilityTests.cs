@@ -102,6 +102,29 @@ public sealed class MuxUpdateCompatibilityTests
         Assert.Equal((1, 2), MuxUpdateCompatibility.ParseProtocolRange(notes));
     }
 
+    // Release hardening item 6: the runtime stays fail-open (an edited note must not strand users), but a release build
+    // says so in debug.log at warning level when the marker is absent or unreadable.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Release notes, edited by hand.")]
+    [InlineData("<!-- ntilde-mux-protocol: x-y -->")]
+    public void A_release_build_warns_when_the_marker_is_missing(string? notes)
+    {
+        string? warning = MuxUpdateCompatibility.MissingProtocolMarkerWarning(notes, releaseBuild: true);
+
+        Assert.NotNull(warning);
+        Assert.StartsWith("[Warning]", warning, StringComparison.Ordinal);
+        Assert.Null(MuxUpdateCompatibility.ParseProtocolRange(notes));   // still compatible: WhyUpdateStopsDaemon gets null
+    }
+
+    [Fact]
+    public void A_dev_build_or_a_present_marker_does_not_warn()
+    {
+        Assert.Null(MuxUpdateCompatibility.MissingProtocolMarkerWarning(null, releaseBuild: false));
+        Assert.Null(MuxUpdateCompatibility.MissingProtocolMarkerWarning("<!-- ntilde-mux-protocol: 1-2 -->", releaseBuild: true));
+    }
+
     // ---- whether the update keeps the daemon (the daemon speaks 1-2)
 
     /// <summary>Whether the update keeps the daemon: its answer is a reason to stop it, and None keeps it.</summary>

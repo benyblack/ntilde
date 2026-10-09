@@ -103,6 +103,43 @@ public sealed partial class ReleaseWorkflowTests
         Assert.True(embedding.Count >= 2, $"Expected the Windows/macOS and the Linux App builds to embed the ntilde-mux pins; found: {string.Join(", ", embedding)}.");
     }
 
+    private const string ReleaseNotesFile = "artifacts/velopack-release-notes.md";
+
+    /// <summary>
+    /// Release hardening item 6 (Phase 5 R10): an installed app reads the new build's multiplexer protocol range from the
+    /// staged update's release notes, and a missing marker reads as compatible. So every <c>vpk pack</c> ships the notes
+    /// file, and an earlier step of the same job writes it from <c>scripts/ci/mux-protocol-range.sh</c>.
+    /// </summary>
+    [Fact]
+    public void Every_vpk_pack_ships_the_multiplexer_protocol_marker()
+    {
+        Dictionary<string, Job> jobs = ParseJobs(File.ReadAllLines(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml")));
+        int packs = 0;
+        foreach (Job job in jobs.Values)
+        {
+            List<string>[] steps = Steps(job.Body);
+            for (int i = 0; i < steps.Length; i++)
+            {
+                List<string> lines = steps[i].Select(StripComment).ToList();
+                int pack = lines.FindIndex(l => l.TrimStart().StartsWith("vpk pack", StringComparison.Ordinal));
+                if (pack < 0) continue;
+                packs++;
+
+                // The command's continuation lines, up to the first that does not continue (`\` in bash, a backtick in pwsh).
+                int end = pack;
+                while (end + 1 < lines.Count && (lines[end].TrimEnd().EndsWith('\\') || lines[end].TrimEnd().EndsWith('`'))) end++;
+                Assert.True(lines.Skip(pack).Take(end - pack + 1).Any(l => l.Trim().TrimEnd('\\', '`').Trim() == $"--releaseNotes {ReleaseNotesFile}"),
+                    $"A vpk pack in {job.Name} does not pass --releaseNotes {ReleaseNotesFile}: installed apps would read its update as protocol-compatible whatever it speaks.");
+
+                bool written = steps.Take(i).Any(s => s.Any(l => StripComment(l).Contains("bash scripts/ci/mux-protocol-range.sh", StringComparison.Ordinal))
+                    && s.Any(l => StripComment(l).Contains($"ntilde-mux-protocol: %s -->\\n' \"$range\" > {ReleaseNotesFile}", StringComparison.Ordinal)));
+                Assert.True(written, $"No step before {job.Name}'s vpk pack writes {ReleaseNotesFile} from scripts/ci/mux-protocol-range.sh.");
+            }
+        }
+
+        Assert.True(packs >= 3, $"Expected the Windows, macOS and Linux vpk packs; found {packs}.");
+    }
+
     /// <summary>A job's steps: the items six spaces in, under its <c>steps:</c>.</summary>
     private static List<string>[] Steps(List<string> body)
     {

@@ -79,6 +79,17 @@ internal static partial class MuxUpdateCompatibility
     }
 
     /// <summary>
+    /// The debug.log line for a release build whose staged update's notes carry no readable marker, else null. The update
+    /// is still treated as compatible - an edited note must not strand users behind a question - but release.yml writes the
+    /// marker into every pack (pinned by ReleaseWorkflowTests), so its absence is worth a warning (release hardening item 6).
+    /// </summary>
+    /// <param name="releaseBuild">Whether this app is a release build; a dev build's notes have no marker to miss.</param>
+    public static string? MissingProtocolMarkerWarning(string? releaseNotes, bool releaseBuild) =>
+        releaseBuild && ParseProtocolRange(releaseNotes) is null
+            ? "[Warning] [Update] the staged update's release notes carry no readable multiplexer protocol marker (<!-- ntilde-mux-protocol: <min>-<max> -->); treating the new build as compatible with the running multiplexer"
+            : null;
+
+    /// <summary>
     /// Whether the update keeps the daemon, and if not why: <see cref="MuxUpdateStopReason.None"/> keeps it. It is kept
     /// when the ranges overlap (a null new range counts as overlapping) and the daemon's image is outside the install root
     /// (a daemon inside it would be killed). With no install root - not a Windows Velopack install - the apply kills
