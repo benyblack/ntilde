@@ -1082,6 +1082,26 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
     }
 
     /// <summary>
+    /// Fix round 1: a keyboard-interactive round after a typed password also says the password was refused - and, unlike a
+    /// second password, writes nothing over it. What then gets in is no password at all, so nothing is kept.
+    /// </summary>
+    [Fact]
+    public async Task A_typed_password_followed_by_a_keyboard_interactive_round_is_not_kept()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typo"), SshInteractionResponse.FromKeyboardResponses("123456"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(TargetPassword(), Ct);
+        Assert.Equal("123456", Assert.Single((await enter.HandleAsync(Keyboard, Ct)).KeyboardResponses));
+
+        enter.Succeeded();
+
+        Assert.Equal(2, user.Asked.Count);
+        Assert.Null(InScope(scopes, handler));
+    }
+
+    /// <summary>
     /// The window's handler filled the saved password from the vault: SFTP and listing read the vault themselves, so it is
     /// not copied - nor later, when the host replays it from memory, nor when an automatic attempt signs in with it.
     /// </summary>

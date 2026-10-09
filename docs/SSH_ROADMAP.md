@@ -180,8 +180,9 @@ apart, so neither serves (or adopts, or shuts down) the other's shells.
 
 - Port forwards on a persistent remote tab: the exec channel carries no forwards (Phase 5 spec R8:
   they would share the mux link's event queue, drop on every reconnect and collide with plain tabs
-  of the profile). The SFTP sidebar and transfers work there since Phase 5: the pane registers in
-  `ActiveSshSessionRegistry` with its remote host's password scope.
+  of the profile). Since Phase 5 the SFTP sidebar and transfers work there for native profiles: the
+  pane registers in `ActiveSshSessionRegistry` with its remote host's password scope. OpenSSH
+  persisted tabs get the palette's transfers (scp on its own connection), not the sidebar.
 - Remote sessions in the "Attach to session…" picker, and adoption of remote orphans.
 - Password memory keyed by (kind, host, user), so a jump-chain profile with passwords can
   reconnect on its own; this needs the native `PasswordPrompt` to carry the host and user.

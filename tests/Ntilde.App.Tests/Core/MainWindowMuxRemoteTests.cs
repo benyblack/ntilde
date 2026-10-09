@@ -195,13 +195,25 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         public List<TransferJob> Queued { get; } = [];
 
+        /// <summary>What happens while the transfer dialog or a file picker is open (the user edits the profile, say); nothing when null.</summary>
+        public Action? WhileTheDialogIsOpen { get; set; }
+
         internal override Task<TransferDialogResult?> ShowTransferDialogAsync(TransferDialogRequest request)
         {
             Dialogs.Add(request);
+            WhileTheDialogIsOpen?.Invoke();
             return Task.FromResult<TransferDialogResult?>(TransferDialogResult.CreateConfirmed(localPath: @"D:\transfers\a.txt", remotePath: "/srv/a.txt"));
         }
 
-        internal override Task<string?> PickLocalDownloadFilePathAsync(string suggestedFileName) => Task.FromResult<string?>(@"D:\transfers\" + suggestedFileName);
+        /// <summary>How many local file pickers were shown.</summary>
+        public int Pickers { get; private set; }
+
+        internal override Task<string?> PickLocalDownloadFilePathAsync(string suggestedFileName)
+        {
+            Pickers++;
+            WhileTheDialogIsOpen?.Invoke();
+            return Task.FromResult<string?>(@"D:\transfers\" + suggestedFileName);
+        }
 
         internal override void EnqueueTransferJob(TransferJob job) => Queued.Add(job);
     }
@@ -896,7 +908,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         WaitUntilRegistered(ids[0]);
         Assert.True(ActiveSshSessionRegistry.Instance.TryGetActiveNativeSession(_sshProfile.Id, ids[0], out ActiveSshSessionDescriptor? descriptor));
         Assert.Equal(RemoteHostOf(window)!.PasswordScopeId, descriptor!.PasswordScopeId);
-        var native = new CapturingNativeInterop();
+        var native = new ConnectionRecordingNativeInterop();
         pane.ConfigureRemoteFilesSidebarForTest(new RemoteDirectoryBrowserService(native, ActiveSshSessionRegistry.Instance, () => new SshConnectionService(), passwordResolver: _ => null));
         var notices = new List<string>();
         pane.PersistenceNotice += (_, title, message, _) => notices.Add($"{title}: {message}");
@@ -934,7 +946,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(2, window.Queued.Count);
         Assert.All(window.Queued, job => Assert.Equal((_sshProfile.Id, ids[0]), (job.ProfileId, job.SessionId)));
         Assert.Equal("/etc/hosts", window.Queued[1].RemotePath);
-        var native = new CapturingNativeInterop();
+        var native = new ConnectionRecordingNativeInterop();
         SftpService.ExecuteNativeSftpTransfer(
             window.Queued[0],
             pane.Profile!,
@@ -983,6 +995,61 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     }
 
     /// <summary>
+    /// Fix round 1: a sidebar opened before the profile was edited lists nothing more - not the first listing only is
+    /// refused, but every one (a refresh, a navigation): it closes, and the toast says why.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_open_sidebar_lists_nothing_more_once_the_profile_is_retargeted_and_closes_saying_why()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]));
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AttachedRemotePane(window);
+        WaitUntilRegistered(ids[0]);
+        var native = new ConnectionRecordingNativeInterop();
+        pane.ConfigureRemoteFilesSidebarForTest(new RemoteDirectoryBrowserService(native, ActiveSshSessionRegistry.Instance, () => new SshConnectionService(), passwordResolver: _ => null));
+        pane.ToggleRemoteFilesSidebar();
+        PumpUntil(() => pane.IsRemoteFilesSidebarVisibleForTest() && native.Listings == 1, "the sidebar opened and listed");
+
+        _sshProfile.Host = "moved-host";
+        Task refresh = pane.RefreshRemoteFilesSidebarForTest();
+
+        PumpUntil(() => refresh.IsCompleted && ToastLines(window).Contains(TerminalPane.RemoteFilesRetargetedMessage) && !pane.IsRemoteFilesSidebarVisibleForTest(),
+            "the refresh was refused, the toast says why and the sidebar closed");
+        Assert.Equal(1, native.Listings);
+    }
+
+    /// <summary>
+    /// Fix round 1: a transfer is checked again when its dialog (or the sidebar's file picker) is answered. A profile edited
+    /// while it was open would otherwise send the job - which reads the stored profile when it starts, at once - to the new
+    /// destination.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_transfer_whose_profile_was_retargeted_while_its_dialog_was_open_is_not_started()
+    {
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]));
+        var window = (TransferWindow)CreateWindow(build: services => new TransferWindow(services));
+        TerminalPane pane = AttachedRemotePane(window);
+        WaitUntilRegistered(ids[0]);
+        window.WhileTheDialogIsOpen = () => _sshProfile.Host = "moved-host";
+
+        Task palette = Palette(window, pane, TransferDirection.Upload, TransferKind.File);
+
+        PumpUntil(() => palette.IsCompleted && ToastLines(window).Contains(TerminalPane.RemoteFilesRetargetedMessage), "the confirmed transfer was refused");
+        Assert.Single(window.Dialogs);
+        Assert.Empty(window.Queued);
+
+        _sshProfile.Host = "fake-host"; // back, and moved again while the sidebar's file picker is open
+        HideToast(window);
+        SidebarTransfer(window, pane, "/etc/hosts");
+
+        PumpUntil(() => ToastLines(window).Contains(TerminalPane.RemoteFilesRetargetedMessage), "the picked transfer was refused");
+        Assert.Equal(1, window.Pickers);
+        Assert.Empty(window.Queued);
+    }
+
+    /// <summary>
     /// Phase 5 spec R8: an OpenSSH persisted tab gets the palette's transfers - scp in batch mode on a connection of its own,
     /// as on a plain OpenSSH tab - and, as there, no Remote Files sidebar.
     /// </summary>
@@ -1008,38 +1075,6 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         pane.ToggleRemoteFilesSidebar();
         Dispatcher.UIThread.RunJobs();
         Assert.False(pane.IsRemoteFilesSidebarVisibleForTest());
-    }
-
-    /// <summary>The native layer for a remote listing and an SFTP transfer: records the connection options each was given.</summary>
-    private sealed class CapturingNativeInterop : Ntilde.Platform.Ssh.Native.INativeSshInterop
-    {
-        public Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions? Listed { get; private set; }
-
-        public Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions? Transferred { get; private set; }
-
-        public IReadOnlyList<Ntilde.Platform.Ssh.Native.NativeRemotePathEntry> ListRemoteDirectory(
-            Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions connectionOptions, string remotePath, CancellationToken cancellationToken)
-        {
-            Listed = connectionOptions;
-            return [new Ntilde.Platform.Ssh.Native.NativeRemotePathEntry("notes.txt", "/home/nova/notes.txt", false)];
-        }
-
-        public void RunSftpTransfer(
-            Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions connectionOptions,
-            Ntilde.Platform.Ssh.Native.NativeSftpTransferOptions transferOptions,
-            Action<Ntilde.Platform.Ssh.Native.NativeSftpTransferProgress>? progress,
-            CancellationToken cancellationToken) => Transferred = connectionOptions;
-
-        public Ntilde.Platform.Ssh.Native.NovaSshSafeHandle Connect(Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions options) => throw new NotSupportedException();
-        public Ntilde.Platform.Ssh.Native.NativeSshEvent? PollEvent(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
-        public void Write(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
-        public void Resize(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int cols, int rows) => throw new NotSupportedException();
-        public int OpenDirectTcpIp(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, Ntilde.Platform.Ssh.Native.NativePortForwardOpenOptions options) => throw new NotSupportedException();
-        public void WriteChannel(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data) => throw new NotSupportedException();
-        public void SendChannelEof(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
-        public void CloseChannel(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
-        public void SubmitResponse(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, Ntilde.Platform.Ssh.Native.NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) => throw new NotSupportedException();
-        public void Close(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
     }
 
     /// <summary>

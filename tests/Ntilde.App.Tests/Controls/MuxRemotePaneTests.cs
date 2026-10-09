@@ -137,7 +137,8 @@ public sealed class MuxRemotePaneTests : IDisposable
         Guid? restore = null,
         Func<Func<PersistentSessionResult>, Task<PersistentSessionResult>>? offUi = null,
         SshBackendKind backend = SshBackendKind.OpenSsh,
-        Action<TerminalPane>? configure = null)
+        Action<TerminalPane>? configure = null,
+        MuxTerminalSessionFactory? factory = null)
     {
         var pane = new TerminalPane(new TerminalProfile
         {
@@ -149,7 +150,7 @@ public sealed class MuxRemotePaneTests : IDisposable
             SshBackendKind = backend,
         });
         PaneSpawnTestHelpers.DisableShellIntegration(pane);
-        pane.SessionFactory = _factory;
+        pane.SessionFactory = factory ?? _factory;
         pane.RunOffUiThread = offUi ?? OffUiThread;
         if (restore is Guid id)
         {
@@ -391,6 +392,64 @@ public sealed class MuxRemotePaneTests : IDisposable
         PumpUntil(() => attachHandled, "the pane handled its attach");
 
         Assert.False(IsRegistered(session.Id));
+    }
+
+    /// <summary>
+    /// Another window's hosts and its persistent factory, over the same remote: a connection of its own, so a host - and a
+    /// password scope - of its own. Disposed with the test.
+    /// </summary>
+    private (MuxConnectionHosts Hosts, MuxTerminalSessionFactory Factory) AnotherWindowsHosts()
+    {
+        MuxConnectionHost local = Own(new MuxConnectionHost(_ => throw new InvalidOperationException("a remote pane never uses the local daemon"), "local-2", null));
+        MuxConnectionHosts hosts = Own(new MuxConnectionHosts(local, id => RemoteMuxHostFactory.Create(
+            id, Resolve, NativeSwitchedRemote, log: null, userPrompts: null, scheduler: _clock)));
+        return (hosts, new MuxTerminalSessionFactory(hosts, _fallback, Resolve, log: null));
+    }
+
+    /// <summary>The SSH profile store with this test's profile alone in it.</summary>
+    private sealed class OneProfileStore(SshProfile profile) : Ntilde.Platform.Ssh.Storage.ISshProfileStore
+    {
+        public IReadOnlyList<SshProfile> GetProfiles() => [profile];
+
+        public SshProfile? GetProfile(Guid profileId) => profileId == profile.Id ? profile : null;
+
+        public void SaveProfile(SshProfile saved) => throw new NotSupportedException();
+
+        public bool DeleteProfile(Guid profileId) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Fix round 1 (review: Important): the owner's window shows a session, and a share in another window - its own host, its
+    /// own password scope - shows it too. Closing the share leaves the owner's registration, with the owner's scope: its
+    /// sidebar still lists, with the password typed in its own window. Before, the share's registration had replaced it,
+    /// and its close left none.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_share_closed_in_another_window_leaves_the_owners_registration_and_its_scope()
+    {
+        _sshProfile.BackendKind = SshBackendKind.Native; // the store's profile: what the listing reads
+        TerminalPane owner = ShowPane(backend: SshBackendKind.Native);
+        MuxClientSession owned = Attached(owner);
+        AssertRegisteredWithItsHostsScope(owned.Id);
+        Guid ownersScope = RemoteHost.PasswordScopeId!.Value;
+        (MuxConnectionHosts otherHosts, MuxTerminalSessionFactory otherFactory) = AnotherWindowsHosts();
+        TerminalPane share = ShowPane(restore: owned.Id, backend: SshBackendKind.Native, factory: otherFactory, configure: p => p.MuxAttachSharedToRestore = true);
+        Attached(share);
+        Guid sharesScope = otherHosts.TryGet(MuxEndpointId.ForSsh(_sshProfile.Id))!.PasswordScopeId!.Value;
+        Assert.NotEqual(ownersScope, sharesScope);
+        PumpUntil(() => ActiveSshSessionRegistry.Instance.PasswordScopeOf(owned.Id) == sharesScope, "the share registered too");
+        ActiveSshSessionRegistry.Instance.SetRuntimePassword(ownersScope, "fake-host", 22, "nova", "typed-in-the-owners-window");
+
+        _windows[1].Close();
+        share.Dispose();
+
+        AssertRegisteredWithItsHostsScope(owned.Id);
+        var native = new ConnectionRecordingNativeInterop();
+        owner.ConfigureRemoteFilesSidebarForTest(new RemoteDirectoryBrowserService(
+            native, ActiveSshSessionRegistry.Instance, () => new SshConnectionService(new OneProfileStore(_sshProfile)), passwordResolver: _ => null));
+        owner.ToggleRemoteFilesSidebar();
+        PumpUntil(() => owner.IsRemoteFilesSidebarVisibleForTest() && native.Listings == 1, "the owner's sidebar listed");
+        Assert.Equal("typed-in-the-owners-window", native.Listed!.Password);
     }
 
     [AvaloniaFact]

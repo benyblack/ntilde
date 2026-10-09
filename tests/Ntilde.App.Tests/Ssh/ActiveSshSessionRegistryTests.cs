@@ -226,13 +226,59 @@ public sealed class ActiveSshSessionRegistryTests
         registry.Register(later);
         registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", "typed-secret");
 
-        Assert.False(registry.Unregister(first));
+        Assert.True(registry.Unregister(first));
+        Assert.False(registry.Unregister(first)); // once only
         Assert.True(registry.TryGet(sessionId, out ActiveSshSessionDescriptor? still));
         Assert.Same(later, still);
 
         Assert.True(registry.Unregister(later));
         Assert.False(registry.TryGet(sessionId, out _));
         Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out _));
+    }
+
+    /// <summary>
+    /// Task 28 fix round 1: the owner's window registered the session first, a share in another window (its own host, its
+    /// own scope) after it. The latest is what a lookup sees; once the share lets go, the owner's registration - with the
+    /// owner's scope - is what it sees again, not nothing.
+    /// </summary>
+    [Fact]
+    public void A_later_registration_let_go_reveals_the_earlier_one_with_its_own_scope()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        Guid profileId = Guid.NewGuid();
+        Guid ownersScope = Guid.NewGuid();
+        Guid sharesScope = Guid.NewGuid();
+        var owner = new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, ownersScope);
+        var share = new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, sharesScope);
+        registry.Register(owner);
+        registry.Register(share);
+        Assert.Equal(sharesScope, registry.PasswordScopeOf(sessionId));
+
+        Assert.True(registry.Unregister(share));
+
+        Assert.True(registry.TryGetActiveNativeSession(profileId, sessionId, out ActiveSshSessionDescriptor? found));
+        Assert.Same(owner, found);
+        Assert.Equal(ownersScope, registry.PasswordScopeOf(sessionId));
+    }
+
+    /// <summary>A plain tab's unregister by id is unchanged: every registration of the id goes, with the session's passwords.</summary>
+    [Fact]
+    public void Unregistering_by_id_lets_go_of_every_registration_of_the_session()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        var one = new ActiveSshSessionDescriptor(sessionId, Guid.NewGuid(), SshBackendKind.Native);
+        var two = new ActiveSshSessionDescriptor(sessionId, one.ProfileId, SshBackendKind.Native);
+        registry.Register(one);
+        registry.Register(two);
+        registry.SetRuntimePassword(sessionId, "prod.internal", 22, "ops", "session-secret");
+
+        registry.Unregister(sessionId);
+
+        Assert.False(registry.TryGet(sessionId, out _));
+        Assert.False(registry.Unregister(one));
+        Assert.False(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out _));
     }
 
     [Fact]

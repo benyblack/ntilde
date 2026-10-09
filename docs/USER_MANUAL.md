@@ -536,8 +536,9 @@ usual prompts. This happens for:
   of its own; with the native backend it reuses a password you typed to sign in to that host. With
   the OpenSSH backend only the palette's transfers work (there is no *Remote Files* sidebar, as on a
   plain OpenSSH tab). After you change the profile's host, port, user or jump hosts, a tab opened
-  before still runs on the old host, and *Remote Files* and its transfers say "Not available while
-  this tab still runs on the host it was opened on — reopen the tab to use the new host".
+  before still runs on the old host, and *Remote Files*, its transfers and the palette's SFTP
+  commands are refused there with "Not available while this tab still runs on the host it was opened
+  on — reopen the tab to use the new host" (an open *Remote Files* sidebar closes).
 - Windows hosts are not supported, nor are the hosts the installer refuses (see *Supported hosts*).
 - Linux hosts where systemd-logind ends a user's processes at logout (`KillUserProcesses=yes` in
   `/etc/systemd/logind.conf`) end the daemon and its shells when your last SSH session closes. Run

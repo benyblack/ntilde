@@ -1018,7 +1018,7 @@ namespace Ntilde.Controls
             }
 
             _remoteDirectoryBrowserService = directoryBrowserService;
-            _remoteFilesSidebarViewModel = new RemoteFilesSidebarViewModel(directoryBrowserService);
+            _remoteFilesSidebarViewModel = new RemoteFilesSidebarViewModel(new RetargetGuardedDirectoryBrowser(this, directoryBrowserService));
             _remoteFilesSidebarViewModel.PropertyChanged += OnRemoteFilesSidebarViewModelPropertyChanged;
 
             if (_remoteFilesSidebarHost != null)
@@ -1027,6 +1027,28 @@ namespace Ntilde.Controls
             }
 
             UpdateRemoteFilesSidebarHostIdentity();
+        }
+
+        /// <summary>
+        /// The sidebar's listings, each checked on its own (Task 28 fix round 1): the first, a navigation, a refresh. A sidebar
+        /// opened before its profile was retargeted (<see cref="IsOnRetargetedHost"/>) would otherwise go on listing the
+        /// profile's new destination, not where this tab's shell runs. A refused listing reaches nothing: the sidebar closes and
+        /// the toast says why, as at its open (<see cref="ToggleRemoteFilesSidebarAsync"/>). Called on the UI thread, by the
+        /// sidebar's view model.
+        /// </summary>
+        private sealed class RetargetGuardedDirectoryBrowser(TerminalPane pane, IRemoteDirectoryBrowserService inner) : IRemoteDirectoryBrowserService
+        {
+            public Task<RemoteSidebarListingResult> ListDirectoryAsync(Guid profileId, Guid sessionId, string remotePath, CancellationToken cancellationToken)
+            {
+                if (!pane.IsOnRetargetedHost) return inner.ListDirectoryAsync(profileId, sessionId, remotePath, cancellationToken);
+                pane.RaisePersistenceNotice(RemoteFilesUnavailableNoticeTitle, RemoteFilesRetargetedMessage);
+                // Posted: the view model is in the middle of this load, and closing resets what it is about to read.
+                pane.Dispatcher.Post(() =>
+                {
+                    if (!Volatile.Read(ref pane._disposed)) pane.CloseRemoteFilesSidebar();
+                });
+                return Task.FromResult(RemoteSidebarListingResult.Failure(remotePath, RemoteFilesRetargetedMessage));
+            }
         }
 
         private void OnRemoteFilesSidebarViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -5766,6 +5788,9 @@ namespace Ntilde.Controls
         {
             return _remoteFilesSidebarViewModel?.IsDisconnected == true;
         }
+
+        /// <summary>Tests: the sidebar's Refresh, as its button runs it.</summary>
+        internal Task RefreshRemoteFilesSidebarForTest() => _remoteFilesSidebarViewModel?.RefreshAsync() ?? Task.CompletedTask;
 
         internal void HandleSessionExitForTesting(int code)
         {

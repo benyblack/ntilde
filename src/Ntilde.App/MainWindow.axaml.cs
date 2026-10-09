@@ -9013,7 +9013,7 @@ namespace Ntilde
 
             var profile = pane.Profile;
             var sessionId = pane.Session?.Id ?? Guid.Empty;
-            await InitiateSftpTransferAsync(profile, sessionId, direction, kind);
+            await InitiateSftpTransferAsync(profile, sessionId, direction, kind, pane);
         }
 
         internal Task InitiateSftpTransferForTest(
@@ -9056,11 +9056,17 @@ namespace Ntilde
                 remoteDirectory);
         }
 
+        /// <param name="pane">
+        /// The tab the transfer is for, checked again once its dialog is answered (<see cref="RefusedOnARetargetedHost"/>):
+        /// the job reads the stored profile as it starts, at once, so a profile retargeted while the dialog was open would
+        /// send it to the new destination. Null: no tab to check (tests).
+        /// </param>
         private async Task InitiateSftpTransferAsync(
             TerminalProfile profile,
             Guid sessionId,
             TransferDirection direction,
-            TransferKind kind)
+            TransferKind kind,
+            TerminalPane? pane = null)
         {
             var request = TransferDialogRequest.ForAction(
                 direction,
@@ -9070,7 +9076,7 @@ namespace Ntilde
                 sessionId);
 
             TransferDialogResult? result = await ShowTransferDialogAsync(request);
-            if (result is not { IsConfirmed: true })
+            if (result is not { IsConfirmed: true } || (pane is not null && RefusedOnARetargetedHost(pane)))
             {
                 return;
             }
@@ -9105,22 +9111,25 @@ namespace Ntilde
                 srcPane.Session.Id,
                 direction,
                 kind,
-                remotePath);
+                remotePath,
+                srcPane);
         }
 
+        /// <param name="pane">As for <see cref="InitiateSftpTransferAsync"/>: checked again once a local path is picked.</param>
         private async Task InitiateSidebarSftpTransferAsync(
             TerminalProfile profile,
             Guid sessionId,
             TransferDirection direction,
             TransferKind kind,
-            string remotePath)
+            string remotePath,
+            TerminalPane? pane = null)
         {
             if (direction == TransferDirection.Upload)
             {
                 string? localPath = kind == TransferKind.File
                     ? await PickLocalUploadFilePathAsync()
                     : await PickLocalUploadFolderPathAsync();
-                if (string.IsNullOrWhiteSpace(localPath))
+                if (string.IsNullOrWhiteSpace(localPath) || (pane is not null && RefusedOnARetargetedHost(pane)))
                 {
                     return;
                 }
@@ -9143,7 +9152,7 @@ namespace Ntilde
             string? localDownloadPath = kind == TransferKind.File
                 ? await PickLocalDownloadFilePathAsync(ResolveSuggestedDownloadFileName(remotePath))
                 : await PickLocalDownloadFolderPathAsync();
-            if (string.IsNullOrWhiteSpace(localDownloadPath))
+            if (string.IsNullOrWhiteSpace(localDownloadPath) || (pane is not null && RefusedOnARetargetedHost(pane)))
             {
                 return;
             }
