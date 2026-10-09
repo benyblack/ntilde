@@ -1180,7 +1180,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     [AvaloniaFact]
     public void Two_hosts_that_do_not_answer_are_waited_for_together()
     {
-        TimeSpan wait = TimeSpan.FromSeconds(3);
+        TimeSpan wait = TimeSpan.FromSeconds(4);
         _remoteRpcTimeout = wait;
         Guid[] ids = SpawnOnRemote(1);
         (SshProfile twin, FakeRemoteHost twinHost, MuxEndpointId twinEndpoint) = AddTwin();
@@ -1204,7 +1204,8 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(2, errors.Count);
         Assert.Equal([RemoteId, twinEndpoint], errors.Select(e => e.Endpoint).OrderBy(e => e == RemoteId ? 0 : 1));
         Assert.Equal(2, errors.Count(e => e.Error == MuxPickerHostError.TimedOut));
-        Assert.InRange(offeredAfter, wait * 0.9, wait * 1.5);
+        // Waiting in turn takes at least 2 x wait (8 s); the 1.75 x bound leaves 3 s for a loaded CI runner.
+        Assert.InRange(offeredAfter, wait * 0.9, wait * 1.75);
         _remote.CutLink(); // the stalled channels end, so the window's teardown does not wait on them
         twinHost.CutLink();
     }
