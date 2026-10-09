@@ -444,6 +444,37 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.Equal(ids.Count, ids.Distinct().Count());
     }
 
+    /// <summary>
+    /// Release hardening (optional): when the local daemon had to run from the install folder because its own copy could not
+    /// be staged, every update closes the shells and every startup update is held - so the user hears of it once per launch,
+    /// when the local daemon connects, not only in debug.log.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_daemon_that_runs_from_the_install_folder_is_noticed_once_per_launch()
+    {
+        MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        MuxDaemonImage.MarkRanFromInstallFolder();
+        try
+        {
+            MainWindow window = CreateWindow();
+
+            PumpUntil(() => Toast(window).Message?.Contains(MuxDaemonImage.InstallFolderNotice, StringComparison.Ordinal) == true, "the notice was shown");
+            Assert.False(MuxDaemonImage.TakeInstallFolderNotice());   // once per launch
+        }
+        finally
+        {
+            MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        }
+    }
+
+    [Fact]
+    public void Only_a_Velopack_install_that_got_its_own_executable_back_ran_from_the_install_folder()
+    {
+        Assert.True(MuxDaemonImage.FellBackToInstallFolder(@"C:\i\current\Ntilde.exe", @"C:\i\current\Ntilde.exe", @"C:\i"));
+        Assert.False(MuxDaemonImage.FellBackToInstallFolder(@"C:\i\current\Ntilde.exe", @"C:\data\bin\1.0\Ntilde.exe", @"C:\i"));
+        Assert.False(MuxDaemonImage.FellBackToInstallFolder(@"C:\dev\Ntilde.exe", @"C:\dev\Ntilde.exe", installRoot: null));
+    }
+
     private static (bool Visible, string? Title, string? Message) Toast(MainWindow window) =>
         (window.FindControl<Border>("RecordingToast")!.IsVisible,
          window.FindControl<TextBlock>("RecordingToastTitle")!.Text,
