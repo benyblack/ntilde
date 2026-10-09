@@ -195,7 +195,10 @@ user said. — Cost if wrong: one file and one branch in the close path.
 
 R2 (§1). After a reboot, restored panes start fresh shells **silently** (no "previous sessions were
 lost" toast, no per-pane banner) when the session file was saved before the current boot. A daemon
-that died *since* boot still gets today's notices. — Default-on users reboot; a loss toast after every
+that died *since* boot still gets today's notices. **Amended in Task 19:** the boundary is the later of
+the boot and, on Windows, the current logon session's start (Fast Startup's "Shut down" is a logoff
+that keeps the tick count), read from the OS (`SessionStartBoundary`); a boundary that cannot be read
+is not quiet, so the loss is announced. — Default-on users reboot; a loss toast after every
 boot would read as an error. — Cost if wrong: a crash that coincides with a reboot is not announced.
 
 R3 (§1). The flip itself is its own commit (`SessionPersistence` default `"KeepOnClose"`), on top of
@@ -259,3 +262,89 @@ staged update.
 - The full hand-off (passing the PTY fds to a new daemon with SCM_RIGHTS on Unix) stays out of scope and
   is the follow-up. Windows has no SCM_RIGHTS; it would need `DuplicateHandle` into the new daemon plus
   re-creating each pseudoconsole's client side, which ConPTY does not support today.
+
+Rulings made while executing the plan (`.superpowers/sdd/2026-10-08-ntilde-mux-phase5/progress.md` has
+each with its reason), where they change user-visible behaviour or a contract:
+
+R11 (§4, Task 2). The OpenSSH askpass helper withholds the vault password on a user's attempt through a
+jump host whenever the prompt could be the hop's: ssh before 8.4, a hop named like the target, or a proxy
+in the profile's extra SSH arguments (not parsed, so fail closed). A ProxyJump only `~/.ssh/config` names
+is not seen.
+
+R12 (§4, Task 3). One known-hosts store per path (`ForPath(AppPaths.NativeKnownHostsFilePath)`; Platform
+has no `Default`). `TrustHost` writes atomically, fails only with `IOException` (a contended Windows
+rename is retried 10 x 25 ms), and two processes trusting at once may lose an entry, never tear the file.
+
+R13 (§4, Tasks 4, 6). The install dir is `$XDG_DATA_HOME/ntilde/bin` when set and absolute, else
+`~/.local/share/ntilde/bin`; a recorded path sh double quotes can hold is escaped, not replaced. The
+offline one-liner resolves the dir in the user's own shell and prints it, so an `XDG_DATA_HOME` set only
+interactively can disagree with the exec channel's (accepted).
+
+R14 (§4, Task 5). New askpass record folders are `0700`; one that already exists at `0755` is not
+tightened (only dev-mux testers can have one, and the daemon's "never chmod an existing dir" stands).
+
+R15 (§4, Task 8). The agent link is repointed only at a socket that answers and whose listener runs as
+this user (`SO_PEERCRED` / `LOCAL_PEERCRED` against `geteuid()`); when that cannot be checked, never.
+
+R16 (§4, Task 10). The release fails on a notarization whose status is not `Accepted`. The app verifies
+a downloaded `ntilde-mux` against the hashes it embeds, and against the `.sha256` only without them.
+
+R17 (§3, Task 11). `readScreen` replies are charged to the snapshot account, never the stream budget.
+"Unsupported" is signalled only by a null result (a decode failure is a `protocol_error` exception);
+`snapshot_too_large` is retried with fewer scrollback rows.
+
+R18 (§3, Tasks 12, 13). One 7 s deadline per windowless operation. Act checks (`mayAct`: act on, the same
+source, the profile's allowlist) run inside that one survey, so turning act off mid-survey stops it;
+`NotAllowed` outranks `NotRunning`. Repeated windowless reads fold into one journal entry with a count
+(`×N`); acts never fold.
+
+R19 (§1, Task 16). "Close them" (asked or remembered) never ends a shell another interactive client
+shows, nor a share whose sharing is unknown: those detach. macOS Cmd+Q (`ApplicationShutdown`) applies a
+remembered answer and never asks; `OSShutdown` never kills. Enter answers Keep. Settings saves, imports
+and restores that change the mode forget the answer.
+
+R20 (§1, Task 17). "Quit and close all shells" asks even when the count is unknown and proceeds once
+confirmed; it ends shared and detached local shells too, and never remote ones.
+
+R21 (§1, Task 19). The quiet mark is kept per node in the session file (`PaneNode.MuxQuietPreviousLost`),
+so an unvisited tab stays quiet in the next launch of the same boot. A restored share whose shell is gone
+is announced even after a reboot (`ShareEnded`). The `MuxHostFactory` seam lives in `AppServiceBundle`,
+and `BuildForDesigner`'s refuses, so no designer or test window can spawn a daemon (R3 made structural).
+
+R22 (§2, Tasks 20, 23). An unknown version (null or `0.0.0`) is never another build's. "The previous
+build" only when SemVer says older, else "a newer build" / "a different build"; no shell-count clause
+at 0. A restored pane's mismatch banner stays text-only (the action is on the notice); the action labels
+are the brief's, without an ellipsis.
+
+R23 (§2, Task 21). A copy is reused only when its `.complete` sizes and the executable's SHA-256 match.
+Velopack's uninstall hook stops the daemon and removes the copies, deleting only copy-shaped folders.
+Measured in Task 24: Velopack 1.2.0's uninstall runs a kill pass, then the hook, then a second kill pass.
+
+R24 (§2, Task 22). With `SessionPersistence` explicitly Off, both update paths keep their pre-Phase-5
+behaviour: any live daemon is asked about and shut down, and vetoes the startup apply. A corrupt
+`settings.json` whose `.bak` says Off reads as not-Off at startup (accepted).
+
+R25 (§2, Task 24). (R1) `NTILDE_UPDATE_SOURCE_DIR` is honoured only when the install's Velopack app id is
+the compiled-in `NtildeSurvival` (an allow-list, pinned against the scripts' pack id). (R3) On macOS the
+survival script never lets Velopack restart the app (`open -n` drops the sandbox environment). (R4) The
+scripts refuse a sandbox they did not create (a marker file) or outside an allowed location, before any
+cleanup is armed. The hidden `spawn-for-test` verb ships: it adds nothing the same-user pipe does not.
+
+R26 (§5, Task 25). The remote detach notice names the host: "Shell kept running on {host} — Attach to
+session… reopens it", or the `ntilde-mux attach <id>` text when the profile no longer keeps sessions.
+Picker error rows are worded from `MuxPickerHostError`, never server or exception text, and an empty
+picker's notice is those rows. A connect row shows "Connecting to {host}…" while it waits; connect rows
+sort by profile name.
+
+R27 (§5, Task 26). A share whose sharing is unknown (link down or reconnecting, attach pending) detaches
+on close without the running-process question - a detach never ends a shell - and the *Shell detached*
+notice says so.
+
+R28 (§5, Task 27). (a) `ls --all` may start an idle remote daemon, as the picker's connect does (it exits
+after 10 idle minutes). (b) Off Windows it skips OpenSSH profiles through a jump host or proxy
+(`MuxListingError.ThroughJumpHost`): BatchMode does not reach a ProxyJump hop, whose prompt would reach
+the user's terminal. The picker still lists them.
+
+R29 (all, pre-flight P2). A toast that quotes a value a daemon or remote host reported (a version, a
+host, an unreachable reason) passes it through `RemoteOutputText.Quote` (control and format characters
+dropped, length capped).

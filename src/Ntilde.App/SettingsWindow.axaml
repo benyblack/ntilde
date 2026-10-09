@@ -723,7 +723,7 @@
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Keep shells running when the window closes"/>
-                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Your shells run in a background process (the multiplexer), so closing the window or a crash does not end them; Ntilde reattaches them when it starts. Turn this off to end shells when their window closes. SSH tabs keep running on the host only when their connection also turns on 'Keep remote sessions running'. Applies to new tabs."/>
+                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="With Keep running, your shells run in a background process (the multiplexer), so closing the window or a crash does not end them, and Ntilde reattaches them when it starts. With Off, a shell ends when its window closes. SSH tabs keep running on the host only when their connection also turns on 'Keep remote sessions running (ntilde-mux)'. Applies to new tabs."/>
                                 </StackPanel>
                                 <ComboBox Name="SessionPersistenceList" Grid.Column="1" HorizontalAlignment="Right" MinWidth="180">
                                     <ComboBoxItem Tag="Off">Off</ComboBoxItem>

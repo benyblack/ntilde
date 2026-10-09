@@ -208,7 +208,8 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 
 ### 8.1 Persistent sessions: the mux daemon
 
-With `TerminalSettings.SessionPersistence = "KeepOnClose"` (default `"Off"`), local panes run their
+With `TerminalSettings.SessionPersistence = "KeepOnClose"` (the default is
+`TerminalSettings.DefaultSessionPersistence`, Phase 5 spec R3), local panes run their
 shells in a separate daemon process and survive window close, an app crash and a restart. SSH panes
 whose profile sets `SshMuxOptions.PersistRemoteSessions` do the same on the remote host (section
 8.2). The local daemon is **a CLI mode of the app executable** (`Ntilde mux serve`), not a separate
@@ -225,7 +226,8 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
 | `Paths` (`MuxPaths`: root, descriptor, endpoint, log folder) | the app-data root, or `NTILDE_APPDATA_ROOT` (`MuxPaths.Default`); a daemon spawned for another root is handed it through `NTILDE_APPDATA_ROOT` | its own root beneath it, `<app-data root>/ntilde-mux`, or `NTILDE_MUX_ROOT` (`MuxPaths.Standalone`); a daemon spawned for another root is handed it through `NTILDE_MUX_ROOT`. On a host that also runs the GUI, the two daemons share no descriptor, socket, lock or log |
 | `ServeArguments` | `mux serve` | `serve` |
 | `SessionFactory` | `DefaultTerminalSessionFactory` (the GUI's shells, unchanged) | `LocalShellSessionFactory`: an empty command is the user's login shell with `-l`; `~` is `$HOME`; SSH is refused |
-| `Verbs` | serve, ls, kill, kill-server, attach, probe-console | serve, proxy, ls, kill, kill-server, attach, `--version` |
+| `Verbs` | serve, ls, kill, kill-server, attach, probe-console, and the hidden `spawn-for-test` (verification runs, Phase 5 Task 24). `ls --all` is taken by the App's adapter before `MuxCli` (`MuxLsAll`, section 8.2) | serve, proxy, ls, kill, kill-server, attach, `--version`; `ls --all` exits 2 ("--all needs the ntilde app") |
+| `DaemonImageResolver` | `MuxDaemonImage.ResolverFor`: on a Windows Velopack install, the daemon's own copy outside the install root (below) | none: the running executable |
 | `PrepareForegroundConsole` | `CliConsoleBindings.Prepare` | none |
 
 ```
@@ -290,6 +292,77 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
     socket itself is `0600`. A stale socket is probe-connected before it is unlinked; a live one
     means refuse.
   - Never TCP.
+- **Sends never block (Phase 5 spec R6).** `MuxClient` takes a send from any thread without
+  blocking: a frame that finds the bounded send queue full waits in a per-client overflow, which one
+  pump moves into the queue in call order, so input, resize, detach and kill reach the wire in the
+  order they were sent whichever way they went. More than `MuxClientOptions.MaxOverflowBytes` (8 MiB)
+  waiting behind a stalled link ends the connection (`send overflow`). So the UI thread never waits on
+  a full queue, local or remote.
+- **Closing the window (R1, Task 17).** With live local shells, `OnClosing` holds the close and asks
+  the first-close question (`BuildFirstCloseDialog`: Keep running / Close them / Don't ask again),
+  unless `MuxCloseChoiceStore` (`<app-data>/mux-close-choice`, `keep` or `close`) remembers an answer.
+  Settings deletes that file when a save, import or restore changes `SessionPersistence`. Close ends
+  the window's local shells through `EndLocalSessionsOnTeardown` (tracked kills, flushed by the
+  hosts' dispose), skipping a shell another interactive client shows or a share whose sharing is
+  unknown. `ApplicationShutdown` (macOS Cmd+Q) applies a remembered answer and never asks;
+  `OSShutdown` never kills. "Quit and close all shells" (`QuitAndCloseAllShellsAsync`) kills every
+  session the local daemon lists and shuts it down (`ShutdownLocalDaemonAsync`). Ended shells are
+  saved as gone (`MarkLocalShellsEnded`), so the next launch starts fresh ones without a notice.
+- **Quiet restore (R2).** `Shell/Native/SessionStartBoundary.Read` gives the time no live local session
+  can predate: on Windows the later of the boot (`UtcNow - TickCount64`) and this logon session's start
+  (`WTSQuerySessionInformationW`, `WTSSessionInfo`), since Fast Startup's "Shut down" is a logoff that
+  keeps the tick count; on Linux `/proc/stat`'s `btime`; on macOS `kern.boottime`; null when it cannot
+  be read. A session file last written before it (`MuxRestoreExpectations`) marks every restored local
+  node `PaneNode.MuxQuietPreviousLost`, and such a pane whose shell is gone starts a fresh one with no
+  banner and no notice. A null boundary keeps every notice; remote nodes are never marked; a pane that
+  has not spawned writes the mark back, so an unvisited background tab stays quiet in the next launch
+  of the same boot.
+- **Designer and test windows never spawn (R3).** `AppServiceBundle` carries the `MuxHostFactory` seam;
+  `AppServices.BuildForDesigner`'s refuses, and `CreatePersistentSessionFactory` falls back to normal
+  sessions, whatever the settings say.
+- **Build version (Phase 5 Tasks 20, 23).** The daemon reports its build in `WelcomeResult.ServerVersion`
+  and the descriptor's `AppVersion` (both optional, absent from older daemons). A connection to a
+  daemon of another build raises one *Multiplexer* notice per endpoint per launch
+  (`MuxPreviousBuildNotice`, `MainWindow.MuxRestart.cs`): "previous", "newer" or "different" by
+  SemVer precedence, and never for an unknown version (null or `0.0.0`). Its restart lets every pane
+  of that daemon go first (`TerminalPane.LetGoOfMuxSessionForRestart`: a plain detach, so the stop
+  cannot reach a pane as its shell's exit), sends `shutdown`, terminates a local daemon by pid after
+  5 s (`MuxDaemonStop.Terminate`), and holds Enter until it is over. A launch-wide `Launch` keeps one
+  restart per endpoint across windows.
+- **The daemon image on a Windows install (R9).** Velopack's Windows apply kills every process whose
+  image is under the install root, `<arch>\OpenConsole.exe` console hosts included. So on a Velopack
+  install `MuxDaemonImage.Resolve` stages `Ntilde.exe`, the DLLs beside it and every
+  `<arch>\OpenConsole.exe` into `<app-data>\bin\.<version>.<guid>.tmp\`, writes `.complete` (the
+  files' sizes and the executable's SHA-256) last, and renames it to `<app-data>\bin\<version>\`
+  (`<version>-<n>` when a re-pack under the same version differs). `ProcessMuxDaemonSpawner` starts that
+  copy (`MuxCliHost.DaemonImageResolver`), so the GUI, `ntilde mux` and `ntilde.com` spawn the same
+  image; elsewhere, and in dev builds, the running executable. The daemon's working directory is the
+  user profile, never under the install root (a working directory in `current\` makes the apply's
+  rename fail). `StartPruningOnce` removes other versions' copies once per launch, after the first
+  connect; Velopack's uninstall hook (`MuxUninstall`) stops the daemon as `kill-server --force` does
+  (`MuxDaemonStop`) and removes every copy. Only copy-shaped folders are ever deleted
+  (`docs/CONFIG_STORAGE_CONTRACT.md`).
+- **Updates (R10).** `release.yml` puts `<!-- ntilde-mux-protocol: <min>-<max> -->` in the release notes
+  every `vpk pack` ships (`scripts/ci/mux-protocol-range.sh` reads `MuxProtocol.cs`). Applying a staged
+  update, the GUI reads it (`MuxUpdateCompatibility.ParseProtocolRange`; no marker counts as
+  compatible) and keeps the daemon when the ranges overlap and its image is outside the install root
+  (`KeepsDaemon`): no question, no `shutdown`, and the teardown detaches as on any close. Otherwise it
+  asks, saves the session without the shells about to end, and sends `shutdown`. Velopack's startup
+  auto-apply is vetoed (`MuxUpdateCompatibility.BlocksStartupApply`) only for a live daemon the apply
+  would kill. With `SessionPersistence` explicitly off, both paths keep their pre-Phase-5 behaviour:
+  any live daemon is asked about and shut down, and vetoes the startup apply.
+- **"Attach to session…" (Phase 5 spec §5).** `MuxSessionPicker` builds the rows: each listed host's
+  sessions (the local daemon first; a remote host only while it is connected, `CurrentClient`, and its
+  profile keeps its sessions), a `MuxSessionPickerConnectRow` for each such profile with no connection,
+  and a disabled `MuxSessionPickerErrorRow` worded from `MuxPickerHostError` for a host that could not
+  be listed. Every host is listed at once, each within its own wait. The remote hosts it lists are held
+  until the choice is acted on, so a release pass cannot close one whose rows are on screen. A remote
+  row opens an SSH-profile pane attached `Shared` on `ssh:<profileId>`; a connect row connects
+  interactively and reopens the picker.
+- **Windowless sessions (R4, R5).** `MuxWindowlessSessions`, over the window's `MuxConnectionHosts`
+  (`CurrentClient` only, so the agent path never connects or prompts), is the agent host's
+  `IWindowlessSessionSource`: the sessions no pane of the window shows, listed, read with `readScreen`,
+  typed into and killed, each operation under one 7 s deadline. See `docs/agent-host/DIRECTION.md`.
 
 #### Protocol v2
 
@@ -317,6 +390,14 @@ Fallback matrix (spec §2.1):
 | v2 GUI ↔ v1 daemon | 1 | Spawn, attach (shared), detach and kill work as in Phase 2. `UserDetached` is never sent and the daemon has no `DetachedByUser`, so a deliberately detached shell is re-adopted as a background tab at the next launch until the daemon is replaced. The factory keeps its client-side `AttachedClients == 0` pre-check, and refuses `IfUnattached`/`ReadOnly` on the client before sending anything (`version_mismatch`), rather than let a v1 server silently share |
 | v2 text client ↔ v1 daemon | 1 | Shared attach works; `--read-only` exits 2 ("too old for --read-only") |
 | v1 client ↔ v2 daemon | 1 | Unchanged: the server never sends `sessionChanged` or `killed` to a client that didn't negotiate v2 |
+
+Phase 5 adds three optional members, on any negotiated version; the range stays 1..2:
+
+| Item | Phase 5 addition |
+|---|---|
+| Method `readScreen` | `ReadScreenParams { SessionId, MaxScrollbackRows }` → `ReadScreenResult`: the headless buffer as a serialized `TerminalStateSnapshot` (`CaptureSnapshot`) plus the `sessionInfo` status, taken together on the session's parse thread. Rows are clamped to 0..2000 (`MuxReadScreenLimits`), never refused; a snapshot over 4 MiB is `snapshot_too_large`, and the caller retries with fewer rows. The reply is charged to the connection's snapshot account, never its stream budget, so reads never look like a slow client. A daemon that predates it answers `protocol_error`, which `MuxClient.ReadScreenAsync` returns as null ("unsupported"); every other failure is an exception |
+| `WelcomeResult.ServerVersion` | the daemon's build version (no build metadata); absent when unknown |
+| `MuxEndpointDescriptor.AppVersion` | the same, in the descriptor |
 
 #### Attach modes
 
@@ -419,12 +500,16 @@ it).
   | `RpcTimeout` | 3 s | 10 s |
   | Liveness ping | none | every 15 s, 10 s to answer |
   | Reconnect loop | none | 10 minutes |
-- **Connecting** (`Shell/Mux/Remote/RemoteMuxConnector`). The remote command is `<path> proxy --stdio`
-  when the install flow recorded a path made only of characters no shell treats specially
-  (`RemoteMuxCommand.IsSafeAbsolutePath`), and otherwise
-  `sh -c 'exec "$HOME/.local/share/ntilde/bin/ntilde-mux" proxy --stdio'`: one single-quoted script
-  with no single quote inside, which every login shell (bash, zsh, fish, tcsh, nushell) hands to `sh`
-  untouched. Neither form looks anything up on `PATH`. The transport starts off the UI thread;
+- **Connecting** (`Shell/Mux/Remote/RemoteMuxConnector`). The remote command (`RemoteMuxCommand`) is
+  `<path> proxy --stdio` when the install flow recorded a path made only of characters no shell treats
+  specially; `sh -c 'exec "<path>" proxy --stdio'`, with `$`, a backtick and `"` escaped, when the
+  recorded path can sit in sh's double quotes (`IsQuotableAbsolutePath`: absolute, and no `'`, `\`, `!`,
+  control, Unicode format or separator character, nor an unpaired surrogate); and otherwise
+  `sh -c '<RemoteInstallDir.Assign> exec "$d/ntilde-mux" proxy --stdio'`, where `$d` is
+  `$XDG_DATA_HOME/ntilde/bin` when that is set and absolute, else `$HOME/.local/share/ntilde/bin` (the
+  rule the daemon's own root follows). Each is one single-quoted script with no single quote inside,
+  which every login shell (bash, zsh, fish, tcsh, nushell) hands to `sh` untouched. None looks anything
+  up on `PATH`. The transport starts off the UI thread;
   `StdioMuxTransport.ConnectAsync` discards whatever rc files and the MOTD print until the line
   `NTILDE-MUX-PROXY 1 <pid>` (bounded at 64 KiB and by the 120 s connect timeout, after which the
   captured text is the error), and `MuxClient.ConnectAsync` sends the host's `ClientInstanceId`.
@@ -454,6 +539,13 @@ it).
   the remote client's sessions as orphans and end them with its update flow's `shutdown`. The
   sun_path fallback (`$XDG_RUNTIME_DIR` or the temp directory) is named by a hash of the root, so it
   stays apart too.
+- **A stable agent socket** (`Ntilde.Mux.Daemon.AgentSocketLink`, Unix, Phase 5 Task 8). The daemon
+  outlives the connection that forwarded an agent, so its shells get `SSH_AUTH_SOCK` = `agent.sock`
+  beside the endpoint (in its `0700` directory), and every `proxy --stdio` repoints that link at its own
+  connection's `SSH_AUTH_SOCK` (symlink to a temp name, then rename) - only once that socket answers a
+  connect and its listener runs as this user (`SO_PEERCRED` on Linux, `LOCAL_PEERCRED` on macOS, against
+  `geteuid()`; fail closed when it cannot be checked). A link path too long for `sun_path` is skipped,
+  logged once.
 - **Dead twins.** A host's `MuxClient` sends the same random `ClientInstanceId` in every hello for
   the host's life. The server closes every other connection carrying that id before it replies, so
   the half-open connection a drop leaves behind neither keeps the session "shared with 1" nor blocks
@@ -533,9 +625,33 @@ it).
   stand-in; `NotInstalled`, `Unsupported`, `VersionMismatch` and `ProxyFailed` on a new tab give the
   plain SSH session with a notice, which offers the install flow for `NotInstalled` and
   `VersionMismatch`.
-- **Not on remote panes, this phase.** A persisted remote pane is not an `ActiveSshSessionRegistry`
-  session, so the SFTP sidebar, remote files and the palette's SFTP transfers are disabled for it, and the profile's port forwards
-  are not set up (`ClearAllForwardings=yes`; the native exec mode has no forward router).
+- **SFTP and remote files (Phase 5 spec R8).** A native persisted pane registers in
+  `ActiveSshSessionRegistry` as its mux session id, with its host's `PasswordScopeId`; the registry
+  keeps every live descriptor per id, so two windows on one shared session each keep theirs. The
+  sidebar, path completion and transfers open their own non-interactive connections, as a plain native
+  tab's do. `RemoteMuxInteractionHandler` writes a password into the host's scope only when the user
+  typed it in an attempt that got in - never a vault-filled answer, an empty one, or anything on a
+  profile with jump hops (R7) - and the scope is cleared when the host goes. While the host still runs
+  on a destination the profile no longer names (`MuxConnectionHost.IsRetargeted`), the sidebar,
+  listing and transfers are refused on that tab, checked again at every listing and once each dialog
+  is answered. An OpenSSH persisted pane gets the palette's transfers (`scp -B`, its own connection),
+  and no sidebar, as a plain OpenSSH tab. Port forwards are still not set up (`ClearAllForwardings=yes`;
+  the native exec mode has no forward router): they would ride the exec channel's single event queue,
+  drop on every reconnect and collide with plain tabs of the profile.
+- **Shared remote panes (Phase 5 Task 26).** A pane opened from the picker keeps its share through a
+  drop (`_muxReattachShared` on the remote paths), so a reconnect reattaches `Shared` and a share whose
+  session is gone takes `ShareEnded`, not a fresh shell. A share whose sharing cannot be known now -
+  link down or reconnecting, attach pending, no connection to its host - closes as a detach, unasked,
+  local or remote, and queues no kill; the *Shell detached* notice says so.
+- **`ntilde mux ls --all`** (`Shell/Mux/MuxLsAll`, `Remote/RemoteMuxLister`, Phase 5 spec §5). The App's
+  `mux` adapter takes `ls --all [--json]` before `MuxCli`: it lists the local daemon as `ls` does
+  (never spawning one) and, all at once, every profile with `PersistRemoteSessions`, each through a
+  connector of its own with the automatic attempt's rules (never interactive: keys, agent, the vault's
+  saved password once, an existing ControlMaster), its own `ClientInstanceId` (so it never evicts a
+  window's connection), and a 15 s wait. Off Windows it skips an OpenSSH profile that goes through a
+  jump host or proxy (`MuxListingError.ThroughJumpHost`): BatchMode does not reach a ProxyJump hop, so
+  its prompt could reach the user's terminal. Reasons are worded from `MuxListingError`, remote titles
+  are `RemoteOutputText.Quote`d, and each failure's own text goes to `logs/mux-ls-all.log`.
 
 #### Exec transports (`Ntilde.Platform/Ssh/Exec/`)
 
@@ -573,7 +689,9 @@ deadline; the installer uses it.
   `ExtendedData` (kind 14), the command's EOF as `Eof` (kind 15, which ends `Stdout` at once), the
   exit status (kind 7) before `Closed`, and `nova_ssh_send_eof` ends
   stdin. One dedicated poll thread per channel routes the events: stdout into a bounded byte queue
-  read without the thread pool, stderr into the tail, prompts to the handler. A native connection
+  read without the thread pool, stderr into the tail, prompts to the handler. Between events it waits
+  in `nova_ssh_wait_event` (up to 100 ms, woken by an event or a close) instead of sleeping, which took
+  the ~15 ms floor off every request round trip (Phase 5 Task 9). A native connection
   lives exactly as long as its channel, so an exec never shares a pane's connection.
 
 #### Install flow (`Shell/Mux/Remote/RemoteMuxInstaller.cs`, `Views/Ssh/RemoteMuxInstallDialog.cs`)
@@ -583,8 +701,10 @@ Each step is an exec over the same transports, with the same prompts as a connec
 1. **Probe**: `uname -sm`, the libc line and `$HOME`. `RemoteHostProbe.Parse` (pure) maps the host to
    linux-x64, linux-arm64 or osx-arm64, and refuses musl, glibc older than 2.34, Intel Macs and
    anything else, with the reason.
-2. **Asset** (`IMuxDaemonAssetSource`): the GitHub release's `ntilde-mux-<rid>`, verified against its
-   `.sha256` and cached at `<app data>/cache/ntilde-mux/<version>/<rid>`; or a local file, whose ELF
+2. **Asset** (`IMuxDaemonAssetSource`): the GitHub release's `ntilde-mux-<rid>`, verified against the
+   SHA-256 built into the app (`MuxAssetPins`: the release embeds the hashes `publish_mux_daemon`
+   computed; a build without them, dev or CI, falls back to the release's `.sha256`) and cached at
+   `<app data>/cache/ntilde-mux/<version>/<rid>`; or a local file, whose ELF
    or Mach-O header must name the probed RID. `MuxDaemonRid` reads the header.
 3. **Upload, validate, commit** (`RemoteMuxInstallCommands`): two `sh -c` execs that name the upload by
    a fresh token. `UploadForTrial` has the binary on stdin: it sweeps upload temps over an hour old,
@@ -603,7 +723,7 @@ Each step is an exec over the same transports, with the same prompts as a connec
 
 | Binary | Project | Built and shipped |
 |---|---|---|
-| `ntilde-mux` | `src/Ntilde.Mux.Daemon` | NativeAOT, one file per RID: linux-x64, linux-arm64, osx-arm64 (about 6 MB). `librusty_pty.a` is linked statically (`DirectPInvoke` + `NativeLibrary`; `native/Cargo.toml` builds `cdylib` and `staticlib`), so the only dynamic dependencies are libc, libm, libgcc_s and the loader; the highest `GLIBC_` symbol is 2.34. CI's `mux_daemon_aot` builds the three RIDs (ubuntu:22.04 containers, macos-latest), asserts one file and the glibc ceiling, and smokes `--version --json`, `serve`, `ls` and `kill-server`. The release's `publish_mux_daemon` uploads `ntilde-mux-<rid>` and `ntilde-mux-<rid>.sha256`. Not bundled with the app: the install flow downloads it. |
+| `ntilde-mux` | `src/Ntilde.Mux.Daemon` | NativeAOT, one file per RID: linux-x64, linux-arm64, osx-arm64 (about 6 MB). `librusty_pty.a` is linked statically (`DirectPInvoke` + `NativeLibrary`; `native/Cargo.toml` builds `cdylib` and `staticlib`), so the only dynamic dependencies are libc, libm, libgcc_s and the loader; the highest `GLIBC_` symbol is 2.34. CI's `mux_daemon_aot` builds the three RIDs (ubuntu:22.04 containers, macos-latest), asserts one file and the glibc ceiling, and smokes `--version --json`, `serve`, `ls` and `kill-server`. The release's `publish_mux_daemon` signs and notarizes the osx-arm64 binary (notarytool's status must be `Accepted`), uploads `ntilde-mux-<rid>` and `ntilde-mux-<rid>.sha256`, and hands the hashes to the app builds, which embed them (`MuxAssetPins`). Not bundled with the app: the install flow downloads it. |
 | `ntilde.com` | `src/Ntilde.Launcher` | NativeAOT win-x64 (about 0.9 MB), no project or package references, kernel32 P/Invokes only. The release copies it into the win-x64 bundle beside `Ntilde.exe` before the zip and `vpk pack`; CI's `aot_gate` and the release smoke it with a `cmd.exe` stand-in (`/d /c exit 7` must exit 7). Section 8.3. |
 
 `ntilde-mux` must run on libc alone. On Linux, .NET loads OpenSSL at run time for
@@ -640,7 +760,8 @@ PATHEXT makes `ntilde` resolve to it first. `Ntilde.Launcher`'s `Program`:
   in `Main`'s IL.
 - **PATH.** The installer put nothing on `PATH` before. Velopack's `OnAfterInstall` and
   `OnAfterUpdate` fast callbacks call `UserPathRegistration.Ensure(<install dir>)`, and
-  `OnBeforeUninstall` calls `Remove`, where the install dir is the directory of
+  `OnBeforeUninstall` calls `MuxUninstall.Run` (section 8.1: it stops the daemon that runs from outside
+  the install root) and then `Remove`, where the install dir is the directory of
   `Environment.ProcessPath` (Velopack's stable `current` folder). `Merge` is pure: case-insensitive,
   tolerant of trailing separators, and it keeps order and `%VAR%` spellings. The write is HKCU
   `Environment\Path` as `REG_EXPAND_SZ`, only when the value changed, followed by a
