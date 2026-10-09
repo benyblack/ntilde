@@ -1028,6 +1028,8 @@ public sealed class MuxRemotePaneTests : IDisposable
         _clock.Advance(FirstRetry); // the loop's first attempt connects: Reconnected
 
         MuxClientSession again = Reattached(pane, theirs, first);
+        // Not what tells a share from an owned shell: an owned pane's own dropped session is reattached Shared too (its
+        // ghost may still hold it). The two below are, and they failed before Task 26.
         Assert.Equal(MuxAttachMode.Shared, again.AttachMode);
         Assert.True(pane.MuxSessionIsShare, "the reconnected share came back as the pane's own shell");
         Assert.True(SessionManager.BuildPaneTree(pane)!.MuxShared);
@@ -1061,9 +1063,9 @@ public sealed class MuxRemotePaneTests : IDisposable
     }
 
     /// <summary>
-    /// Phase 5 Task 26: when a share's close may not end its shell. The share's sharing cannot be known while its connect or
-    /// reattach is pending and while its link is down; it is known once attached. A pane that let go of its shell for a
-    /// multiplexer restart (Task 23) has no share left to protect, and a pane's own shell never counts.
+    /// Phase 5 Task 26: when a share's close may not end its shell. The share's sharing cannot be known while its connect,
+    /// its attach or its reattach is pending and while its link is down; it is known once attached. A pane that let go of
+    /// its shell for a multiplexer restart (Task 23) has no share left to protect, and a pane's own shell never counts.
     /// </summary>
     [AvaloniaFact]
     public void A_shares_sharing_is_unknown_while_its_link_is_down_or_its_attach_pending()
@@ -1072,6 +1074,7 @@ public sealed class MuxRemotePaneTests : IDisposable
         TerminalPane owned = ShowPane();
         Attached(owned);
         using var open = new ManualResetEventSlim();
+        using var parsing = new ManualResetEventSlim();
         int calls = 0;
         TerminalPane share = ShowShare(theirs, offUi: create => OffUiThread(() =>
         {
@@ -1082,7 +1085,15 @@ public sealed class MuxRemotePaneTests : IDisposable
 
         PumpUntil(() => Volatile.Read(ref calls) == 1, "the share's connect is under way");
         Assert.True(share.IsMuxShareWithSharingUnknown, "a share whose connect is pending");
+        // The session's parse thread is held, so the attach queued behind it is not answered: the factory's result is back,
+        // the session wired, and its attach still in flight.
+        Task<bool> held = OnDaemon(theirs).InvokeAsync(() => parsing.Wait(Patient));
         open.Set();
+        PumpUntil(() => share.Session is MuxClientSession, "the share's session is wired");
+        Assert.False(((MuxClientSession)share.Session!).IsAttached);
+        Assert.True(share.IsMuxShareWithSharingUnknown, "a share whose attach is in flight");
+        parsing.Set();
+        Assert.True(held.Wait(Patient, Ct));
         MuxClientSession first = Attached(share);
         Assert.False(share.IsMuxShareWithSharingUnknown, "an attached share on a live link");
 

@@ -233,6 +233,52 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         Assert.Contains(shared.ToString(), File.ReadAllText(AppPaths.SessionFilePath)); // kept, so still named for reattach
     }
 
+    /// <summary>
+    /// Phase 5 Task 26 review, M1: a share whose attach is still in flight has no count yet that would say another client
+    /// shows it - but it was joined because one does. "Close them" leaves it running, as it does a share it knows of. The
+    /// unshared shell beside it, ended in the same pass and flushed by the same teardown, is the proof the kills went out.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_them_never_ends_a_share_whose_attach_is_in_flight()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        Guid own = LocalSession(window)!.Id;
+        (MuxClient other, ClientPaneModel theirs) = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        Guid shared = theirs.Session.Id;
+        using var parsing = new ManualResetEventSlim(); // holds the shell's parse thread: this window's attach is not answered
+        Task<bool> held = _mux.Mux(shared).InvokeAsync(() => parsing.Wait(TimeSpan.FromSeconds(30)));
+        try
+        {
+            window.PickMuxSession = MuxPickerChoice.Session(shared);
+            Task attach = window.AttachToMuxSessionAsync();
+            PumpUntil(() => attach.IsCompleted, "the attach command finished");
+            TerminalPane mine = window.AllPanesForTest().Single(p => p.Session is MuxClientSession m && m.Id == shared);
+            Assert.False(((MuxClientSession)mine.Session!).IsAttached);
+            Assert.Equal((0, (int?)null), (mine.MuxOtherClients, ((MuxClientSession)mine.Session!).InteractiveOthers));
+
+            window.Close();
+            PumpUntil(() => !window.IsVisible, "the window closed after the answer");
+
+            Assert.Equal([2], _asked);
+            Assert.DoesNotContain(own, _mux.Server.GetSessionIds()); // the teardown waited for the kills' replies
+            Assert.Contains(shared, _mux.Server.GetSessionIds());
+        }
+        finally
+        {
+            parsing.Set();
+            Assert.True(held.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+        }
+
+        Assert.False(_mux.Mux(shared).IsExited);
+        Assert.True(theirs.Session.IsAttached);
+        GC.KeepAlive(other);
+    }
+
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]

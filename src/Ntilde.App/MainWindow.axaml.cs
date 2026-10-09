@@ -6860,8 +6860,13 @@ namespace Ntilde
         private async Task<Ntilde.Shell.Mux.SharedCloseChoice> DecidePaneCloseAsync(TerminalPane pane)
         {
             // Its link is down or reconnecting, or its attach pending: nobody can say who else uses that shell, and a close
-            // only detaches it (DisposeControlTree), so there is nothing to ask - not even the running-process question.
-            if (pane.IsMuxShareWithSharingUnknown) return Ntilde.Shell.Mux.SharedCloseChoice.Detach;
+            // only detaches it (DisposeControlTree, which says so), so there is nothing to ask - not even the running-process
+            // question.
+            if (pane.MuxShareIdWithSharingUnknown is Guid share)
+            {
+                TerminalLogger.Log($"[MainWindow] closing shared session {share}, whose other clients cannot be known now: detaching it, unasked");
+                return Ntilde.Shell.Mux.SharedCloseChoice.Detach;
+            }
 
             // One budget for both daemon reads (the sharing count here, the child-process probe in
             // ShouldClosePaneAsync): a stalled daemon costs a close about a second, not two.
@@ -7052,24 +7057,33 @@ namespace Ntilde
             // sends no kill for an exited shell) and no "kept running" toast.
             if (!mux.IsProcessRunning) return await ClosePaneAsync(pane, skipConfirm: true);
 
-            // Read before the close: the pane is gone after it.
+            // Read before the close: the pane is gone after it. A share whose sharing is unknown gets the notice from the
+            // close itself (DisposeControlTree), so it is not said twice.
+            string detached = ShellDetachedMessage(pane, mux.Id);
+            bool noticedByTheClose = pane.IsMuxShareWithSharingUnknown;
+            bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
+            if (closed && !_teardownDone && !noticedByTheClose) EnqueueNotice(ShellDetachedNoticeTitle, detached);
+            return closed;
+        }
+
+        private const string ShellDetachedNoticeTitle = "Shell detached";
+
+        /// <summary>
+        /// The "Shell detached" notice's line for <paramref name="pane"/>'s shell <paramref name="sessionId"/> ("Pane: Detach",
+        /// spec §7.4): it kept running, and how to get it back - for a remote shell, on which host
+        /// (<see cref="RemoteDetachedMessage"/>). Read before the pane's close, which lets go of what it names.
+        /// </summary>
+        private string ShellDetachedMessage(TerminalPane pane, Guid sessionId)
+        {
             Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint);
-            bool remote = !endpoint.IsLocal;
+            if (endpoint.IsLocal) return "Shell kept running \u2014 Attach to session\u2026 to get it back";
             string remoteHost = pane.RemoteHostName is { Length: > 0 } named
                 ? named
                 : _muxHosts?.TryGet(endpoint)?.Policy.DisplayName ?? "its host";
             // The picker offers that host only while its profile keeps its sessions: read now, at the detach.
             bool reopenable = endpoint.SshProfileId is Guid profileId
                 && _sshConnectionService.GetStoredProfile(profileId) is { MuxOptions.PersistRemoteSessions: true };
-            bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
-            if (closed && !_teardownDone)
-            {
-                EnqueueNotice("Shell detached", remote
-                    ? RemoteDetachedMessage(remoteHost, mux.Id, reopenable)
-                    : "Shell kept running \u2014 Attach to session\u2026 to get it back");
-            }
-
-            return closed;
+            return RemoteDetachedMessage(remoteHost, sessionId, reopenable);
         }
 
         /// <summary>
@@ -7737,7 +7751,8 @@ namespace Ntilde
             if (control is TerminalPane pane)
             {
                 // Read first: the teardown below lets go of the pane's session and remote host.
-                bool shareOfUnknownSharing = pane.IsMuxShareWithSharingUnknown;
+                Guid? shareOfUnknownSharing = pane.MuxShareIdWithSharingUnknown;
+                string? detachedMessage = shareOfUnknownSharing is Guid share ? ShellDetachedMessage(pane, share) : null;
                 UnwirePane(pane);
 
                 // The pane's scrollback and glyph atlases are only reclaimable after a full GC, and
@@ -7751,13 +7766,21 @@ namespace Ntilde
                 // disposed, leaking the PTY and its child shell.
                 var session = pane.DetachFromUiThread();
                 Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
-                if (effective == Ntilde.Shell.Mux.PaneDisposition.EndSession && shareOfUnknownSharing)
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.EndSession && shareOfUnknownSharing is not null)
                 {
                     // Phase 5 Task 26, local and remote alike: a share whose sharing cannot be known now (its link down or
                     // reconnecting, its attach pending) may be another client's shell. However the close came - an agent's,
-                    // one that skipped the question - it detaches: no kill now, and none queued for the next connect.
-                    TerminalLogger.Log("[MainWindow] closing a shared pane whose other clients cannot be known now; detaching it, not ending its shell");
+                    // one that skipped the question, a Close answered as the link dropped - it detaches: no kill now, and
+                    // none queued for the next connect.
+                    TerminalLogger.Log($"[MainWindow] closing shared session {shareOfUnknownSharing}, whose other clients cannot be known now: detaching it, not ending it");
                     effective = Ntilde.Shell.Mux.PaneDisposition.Detach;
+                }
+
+                // Fix round 1, I1: the pane goes and its shell does not, so the window says so, as "Pane: Detach" does - unless
+                // the window itself is going, which leaves every shell running anyway.
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.Detach && detachedMessage is not null && !_teardownDone)
+                {
+                    EnqueueNotice(ShellDetachedNoticeTitle, detachedMessage);
                 }
 
                 // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
@@ -10421,9 +10444,9 @@ namespace Ntilde
         /// sent at once and tracked, and the teardown's <see cref="Ntilde.Shell.Mux.MuxConnectionHosts.Dispose"/> waits
         /// for the replies before it disconnects, so none is dropped behind the close. The ended shells are not saved for
         /// reattach either: the next launch starts fresh shells quietly, as with persistence off, rather than report
-        /// them lost. Remote shells are left alone, and so is a shell another client is also typing into: a pane close
-        /// never ends one without asking (the shared-close question), so it detaches, as Keep does, and stays counted
-        /// as kept. Idempotent.
+        /// them lost. Remote shells are left alone, and so is a shell another client is also typing into, or a share whose
+        /// other clients cannot be known yet (Phase 5 Task 26): a pane close never ends one without asking (the shared-close
+        /// question), so it detaches, as Keep does, and stays counted as kept. Idempotent.
         /// </summary>
         private void EndLocalSessionsOnTeardown()
         {
@@ -10439,8 +10462,9 @@ namespace Ntilde
                     continue;
                 }
 
-                // The session's cached count (read-only observers excluded) or the pane's, whichever knows of another client.
-                if (mux.InteractiveOthers > 0 || pane.MuxOtherClients > 0)
+                // The session's cached count (read-only observers excluded) or the pane's, whichever knows of another client -
+                // or a share none of them can speak for yet (its attach in flight: Phase 5 Task 26).
+                if (mux.InteractiveOthers > 0 || pane.MuxOtherClients > 0 || pane.IsMuxShareWithSharingUnknown)
                 {
                     shared++;
                     continue;

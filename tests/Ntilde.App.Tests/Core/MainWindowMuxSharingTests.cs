@@ -1143,6 +1143,95 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         Assert.DoesNotContain(mine, AllPanes(window));
         Assert.False(_mux.Mux(id).IsExited);
         Assert.True(theirs.Session.IsAttached);
+        // Fix round 1, I1: the pane went, its shell did not - said as "Pane: Detach" says it.
+        PumpUntil(() => WindowToast.ToastLines(window).Contains(LocalDetachedLine), "the detach notice is shown");
+        GC.KeepAlive(other);
+    }
+
+    /// <summary>"Pane: Detach"'s notice line for a local shell (pinned by <see cref="Detach_pane_keeps_the_shell_running_and_the_count_drops"/>).</summary>
+    private const string LocalDetachedLine = "Shell kept running — Attach to session… to get it back";
+
+    /// <summary>Opens "Attach to session…" on <paramref name="id"/> with its parse thread held: the pane's attach stays in flight until <c>Release</c>.</summary>
+    private (TerminalPane Pane, Action Release) AttachSharedWithTheAttachHeld(MainWindow window, Guid id)
+    {
+        var parsing = new ManualResetEventSlim();
+        Task<bool> held = _mux.Mux(id).InvokeAsync(() => parsing.Wait(TimeSpan.FromSeconds(30)));
+        window.PickMuxSession = MuxPickerChoice.Session(id);
+        Task command = window.AttachToMuxSessionAsync();
+        PumpUntil(() => command.IsCompleted, "the attach command finished");
+        PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession m && m.Id == id), "the shared tab's session is wired");
+        TerminalPane pane = AllPanes(window).Single(p => p.Session is MuxClientSession m && m.Id == id);
+        Assert.False(((MuxClientSession)pane.Session!).IsAttached);
+        return (pane, () =>
+        {
+            parsing.Set();
+            Assert.True(held.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+            parsing.Dispose();
+        });
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26 review, M2: the local case Task 26 fixed. A share whose attach is still in flight, on a live
+    /// connection, cannot yet learn who else shows its shell. Closed by the user, it detaches - no kill - and says so. Before
+    /// Task 26 it was closed as the pane's own shell and killed: the other instance's shell ended with it.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_local_share_whose_attach_is_in_flight_detaches_and_kills_nothing()
+    {
+        MainWindow window = CreateWindow();
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        window.ConfirmSharedClose = _ => throw new InvalidOperationException("a share whose sharing is unknown is not asked about");
+        (TerminalPane mine, Action release) = AttachSharedWithTheAttachHeld(window, id);
+        try
+        {
+            var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [mine, false])!;
+            PumpUntil(() => close.IsCompleted, "the shared tab closed");
+            Assert.True(close.Result);
+            // A kill from that close was queued on this window's connection before this ping: its answer means the daemon has
+            // handled both, in order.
+            Task.Run(() => _host!.CurrentClient!.PingAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+            Assert.Contains(id, _mux.Server.GetSessionIds());
+            PumpUntil(() => WindowToast.ToastLines(window).Contains(LocalDetachedLine), "the detach notice is shown");
+        }
+        finally
+        {
+            release();
+        }
+
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.True(theirs.Session.IsAttached);
+        GC.KeepAlive(other);
+    }
+
+    /// <summary>
+    /// Fix round 1, I1: the notice is for a window that stays. The last tab closed - a share whose connection is gone - closes
+    /// the window too, and nothing is said: the shell keeps running, as it does for every shell a closing window leaves.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_the_last_tab_a_share_whose_sharing_is_unknown_closes_the_window_without_the_notice()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        var closeMethod = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var closeOwn = (Task<bool>)closeMethod.Invoke(window, [own, true])!;
+        PumpUntil(() => closeOwn.IsCompleted, "the first tab closed");
+        Assert.Same(mine, Assert.Single(AllPanes(window)));
+        var mineSession = (MuxClientSession)mine.Session!;
+        _host!.CurrentClient!.Dispose(); // this window's connection is gone
+        PumpUntil(() => !mineSession.IsConnected, "the connection is gone");
+        Assert.True(mine.IsMuxShareWithSharingUnknown);
+
+        var close = (Task<bool>)closeMethod.Invoke(window, [mine, false])!;
+        PumpUntil(() => close.IsCompleted && !window.IsVisible, "the last tab closed, and the window with it");
+        PumpFor(200); // the notices' Background flush has run
+
+        Assert.DoesNotContain(LocalDetachedLine, WindowToast.ToastLines(window));
+        Assert.False(_mux.Mux(id).IsExited);
         GC.KeepAlive(other);
     }
 

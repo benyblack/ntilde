@@ -1469,12 +1469,37 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Task<bool> close = Close(window, share);
         PumpUntil(() => close.IsCompleted, "the shared tab closed");
         Assert.True(close.Result);
+        // Fix round 1, I1: the close that skipped the question still says the shell kept running, as "Pane: Detach" does.
+        PumpUntil(() => ToastLines(window).Contains(MainWindow.RemoteDetachedMessage("nova@fake-host", theirs, reopenable: true)), "the detach notice is shown");
 
         _clock.Advance(FirstRetry); // the link is back
         PumpUntil(() => owned.Session is MuxClientSession { IsAttached: true } m && !ReferenceEquals(m, ownedBefore), "the owned tab reattached over the new connection");
 
         Assert.True(RunsOnRemote(theirs), "the other client's shell was killed");
         Assert.Equal(ownedBefore.Id, owned.Session!.Id);
+    }
+
+    /// <summary>
+    /// Fix round 1, I1: the user closes a shared tab while its host reconnects. Nothing is asked - no shared-close question,
+    /// no running-process confirmation, since nothing will end - the tab detaches, and the notice "Pane: Detach" shows
+    /// says its shell kept running on that host. Before, the tab went with no word, and the shell's fate was unsaid.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_reconnecting_shared_remote_tab_by_hand_detaches_unasked_and_says_so()
+    {
+        (MainWindow window, _, TerminalPane share, Guid theirs) = WindowWithAnOwnedAndASharedRemoteTab();
+        window.ConfirmSharedClose = _ => throw new InvalidOperationException("a share whose sharing is unknown is not asked about");
+        int dialogs = window.OwnedWindows.Count;
+        _remote.CutLink();
+        PumpUntil(() => Shows(share, TerminalPane.RemoteReconnectingBanner("nova@fake-host")), "the shared tab is reconnecting");
+
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [share, false])!;
+
+        PumpUntil(() => close.IsCompleted || window.OwnedWindows.Count > dialogs, "the close finished or asked");
+        Assert.Equal(dialogs, window.OwnedWindows.Count);
+        Assert.True(close.Result);
+        Assert.DoesNotContain(share, AllPanes(window));
+        PumpUntil(() => ToastLines(window).Contains(MainWindow.RemoteDetachedMessage("nova@fake-host", theirs, reopenable: true)), "the detach notice is shown");
     }
 
     /// <summary>

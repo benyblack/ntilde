@@ -4457,18 +4457,25 @@ namespace Ntilde.Controls
         /// never ends the shell, which may be another client's. False for a session of the pane's own, and for a pane that let
         /// go of its shell for a multiplexer restart (Task 23): with no session and no id, it has no share left to protect.
         /// </summary>
-        internal bool IsMuxShareWithSharingUnknown
+        internal bool IsMuxShareWithSharingUnknown => MuxShareIdWithSharingUnknown is not null;
+
+        /// <summary>
+        /// UI thread. The shared session's id when <see cref="IsMuxShareWithSharingUnknown"/> holds - the one a detach notice
+        /// names (fix round 1) - else null.
+        /// </summary>
+        internal Guid? MuxShareIdWithSharingUnknown
         {
             get
             {
-                bool share = (_muxSessionIsShare && Session is MuxClientSession)
-                    || (MuxAttachSharedToRestore && MuxSessionIdToRestore is not null)
-                    || (_muxReattachShared && _muxReattachId is not null);
-                if (!share) return false;
+                Guid? share = _muxSessionIsShare && Session is MuxClientSession shown ? shown.Id
+                    : MuxAttachSharedToRestore && MuxSessionIdToRestore is Guid pending ? pending
+                    : _muxReattachShared ? _muxReattachId
+                    : null;
+                if (share is null) return null;
                 bool known = Session is MuxClientSession { IsConnected: true, IsAttached: true }
                     && !_muxConnectionLost && !_muxReconnecting && MuxSessionIdToRestore is null
                     && (MuxEndpointId.Parse(MuxEndpoint).IsLocal || _remoteHost?.Host.CurrentClient is not null);
-                return !known;
+                return known ? null : share;
             }
         }
 
