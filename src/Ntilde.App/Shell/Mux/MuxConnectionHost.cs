@@ -172,6 +172,12 @@ internal sealed class MuxConnectionHost : IDisposable
     internal bool IsRetargeted => Connector is Remote.RemoteMuxConnector { IsRetargeted: true };
 
     /// <summary>
+    /// A remote host's recorded installed ntilde-mux version (<c>RemoteMuxConnector.InstalledDaemonVersion</c>, read at each
+    /// call): what a restart there would start (final review I1). Null for the local host.
+    /// </summary>
+    internal string? RecordedRemoteDaemonVersion => (Connector as Remote.RemoteMuxConnector)?.InstalledDaemonVersion;
+
+    /// <summary>
     /// Told each client this host takes as its own, before anything else happens on it; never a client the host throws
     /// away (an automatic attempt's that a user's request superseded). A remote host's connector pins the SSH
     /// destination there (<c>RemoteMuxConnector.Accept</c>; codex D2, residual R5). Called under the host's lock, so it

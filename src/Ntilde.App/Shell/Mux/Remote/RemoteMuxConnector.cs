@@ -158,6 +158,25 @@ internal sealed class RemoteMuxConnector : IDisposable
         }
     }
 
+    /// <summary>
+    /// Final review I1: the ntilde-mux version the install flow recorded (<see cref="SshMuxOptions.RemoteDaemonVersion"/>)
+    /// for where this connector's attempts go - what a daemon started there now would run. That is the profile's, read now;
+    /// while the profile names another destination than the pinned one (<see cref="Accept"/>), the last one seen for the
+    /// pinned destination, as <see cref="ProfileForAttempt"/> keeps the install metadata. Empty or null when none is recorded.
+    /// </summary>
+    internal string? InstalledDaemonVersion
+    {
+        get
+        {
+            SshProfile current = _profile();
+            lock (_gate)
+            {
+                SshProfile source = _pinned is { } pinned && !SameDestination(pinned, current) ? pinned : current;
+                return source.MuxOptions?.RemoteDaemonVersion;
+            }
+        }
+    }
+
     /// <summary><c>user@host</c>, or the bare host when the profile names no user.</summary>
     internal static string DisplayNameOf(SshProfile profile) =>
         string.IsNullOrWhiteSpace(profile.User) ? profile.Host : $"{profile.User}@{profile.Host}";

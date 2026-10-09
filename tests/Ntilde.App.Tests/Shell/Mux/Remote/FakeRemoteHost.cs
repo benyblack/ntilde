@@ -33,7 +33,7 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
     private const int PipeCapacityBytes = 1 << 20;
 
     private readonly object _gate = new();
-    private readonly MuxServerOptions _serverOptions;
+    private MuxServerOptions _serverOptions; // guarded by _gate: what the next daemon started runs (Install)
     private readonly List<FakeRemoteChannel> _channels = [];
     private readonly List<string> _commands = [];
     private MuxServer? _server;
@@ -146,6 +146,16 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
     public void StallLink()
     {
         foreach (FakeRemoteChannel channel in Channels) channel.Stall();
+    }
+
+    /// <summary>
+    /// The install flow replaces ntilde-mux's binary on the host (a rename): the daemon running now keeps its own, and the
+    /// next one started - after <see cref="StopDaemon"/> - runs <paramref name="options"/> (another version, say).
+    /// </summary>
+    public void Install(MuxServerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        lock (_gate) _serverOptions = options;
     }
 
     /// <summary>

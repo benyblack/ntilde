@@ -704,15 +704,27 @@ When this Ntilde version has no release (a development build), **Install** says 
 leaves only **Choose file…**. The upload replaces an installed `ntilde-mux` only once the new file
 has arrived complete and has run once on the host, so a cancelled or broken upload leaves the old
 one in place. A multiplexer that is already running keeps running the binary it started with, and
-so do its shells. Once per launch, when Ntilde connects to an `ntilde-mux` whose version is not the
-one this Ntilde installs, a *Multiplexer* notification says so: "ntilde-mux on <user@host> is from a
-previous version (0.12.0); restart it when convenient — this closes its 2 shells." (A newer one is
-"from a newer version", one whose version cannot be compared "from a different version", and the
-last clause is left out when it runs no shells.) Its **Restart ntilde-mux on <user@host>** button
-asks first, then stops that multiplexer - and only it; if the connection is down, or it is already
-the installed version, nothing is sent and a notification says so. Its tabs show
-`[ntilde-mux on <user@host> stopped] [Press Enter to reconnect]`, and Enter starts the installed
-version once the old one has stopped. When the install succeeds, the dialog offers to tick the
+so do its shells: installing never stops it. Updating Ntilde itself changes nothing on your hosts.
+Once per launch, when Ntilde connects to an `ntilde-mux`, a *Multiplexer* notification may say one
+of two things:
+
+- The running `ntilde-mux` is not the version installed on the host (you installed another one while
+  it ran): "ntilde-mux on <user@host> is from a previous version (0.12.0); restart it when convenient
+  — this closes its 2 shells." (One newer than the installed binary is "from a newer version", one
+  whose version cannot be compared "from a different version", and the last clause is left out when
+  it runs no shells.) Its **Restart ntilde-mux on <user@host>** button asks first, then stops that
+  multiplexer - and only it; if the connection is down, or by then it is the installed version,
+  nothing is sent and a notification says so. Its tabs show
+  `[ntilde-mux on <user@host> stopped] [Press Enter to reconnect]`, and Enter starts the installed
+  version once the old one has stopped.
+- The running `ntilde-mux` is the installed one, or Ntilde has no record of what is installed (an
+  install by hand, say), and it is older than this Ntilde: "ntilde-mux on <user@host> is older
+  (0.12.0) than this app (0.12.1); update it when convenient. Updating replaces the binary; your
+  shells keep running until you restart it." Its **Update ntilde-mux on <user@host>…** button opens
+  this dialog. No restart is offered then, since it would start the same old version again; once the
+  update is installed, the next launch offers the restart.
+
+When the install succeeds, the dialog offers to tick the
 profile's checkbox. The editor's status line shows what was installed:
 `ntilde-mux 0.12.1 installed`, `ntilde-mux not installed`, or `ntilde-mux 0.12.0 installed — this app is 0.12.1`. The
 versions do not have to match: Ntilde and `ntilde-mux` agree on a protocol version when they
@@ -917,8 +929,8 @@ version. The panes keep their place: each shows
 the restart is over, it writes
 `[The multiplexer is restarting — the new shell starts once it is back]` and starts the shell once it
 is. If the multiplexer is already this version's by then, or does not answer, nothing is stopped and
-a *Multiplexer* notification says so. `ntilde-mux` on your remote hosts has the same notice and
-button (12.6).
+a *Multiplexer* notification says so. `ntilde-mux` on your remote hosts has a notice of its own,
+judged against the version installed on each host rather than this Ntilde's (12.6).
 
 **An update that cannot keep the multiplexer.** When the new version speaks no multiplexer protocol
 in common with the running one, or, on Windows, the multiplexer runs from the install folder (which

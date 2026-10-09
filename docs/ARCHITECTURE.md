@@ -325,7 +325,12 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   and the descriptor's `AppVersion` (both optional, absent from older daemons). A connection to a
   daemon of another build raises one *Multiplexer* notice per endpoint per launch
   (`MuxPreviousBuildNotice`, `MainWindow.MuxRestart.cs`): "previous", "newer" or "different" by
-  SemVer precedence, and never for an unknown version (null or `0.0.0`). Its restart lets every pane
+  SemVer precedence, and never for an unknown version (null or `0.0.0`). A remote daemon is judged
+  against the version installed on its host (`SshMuxOptions.RemoteDaemonVersion`, read through the
+  host's `RemoteMuxConnector`), since a restart there starts that binary and an app update never
+  replaces it (`MuxPreviousBuildNotice.DecideRemote`): a restart only when the two are known and differ,
+  else "Update ntilde-mux on {host}…" (the install dialog) when the running one is older than the app;
+  the click-time last look compares against the installed version too. Its restart lets every pane
   of that daemon go first (`TerminalPane.LetGoOfMuxSessionForRestart`: a plain detach, so the stop
   cannot reach a pane as its shell's exit), sends `shutdown`, terminates a local daemon by pid after
   5 s (`MuxDaemonStop.Terminate`), and holds Enter until it is over. A launch-wide `Launch` keeps one
@@ -718,7 +723,8 @@ Each step is an exec over the same transports, with the same prompts as a connec
 4. **Record**: `SshConnectionService.RecordRemoteMuxInstall` writes only `RemoteDaemonPath`,
    `RemoteDaemonVersion`, `RemoteDaemonRid` and, when the user ticks it, `PersistRemoteSessions`, on
    the store's own copy of the profile. Compatibility is decided by the handshake;
-   `RemoteDaemonVersion` only drives the editor's status line and the notice's wording.
+   `RemoteDaemonVersion` drives the editor's status line, the install dialog's first line, and whether
+   the *Multiplexer* notice offers a running remote daemon a restart or the update.
 
 #### The two AOT binaries
 

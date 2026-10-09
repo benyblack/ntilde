@@ -10,6 +10,7 @@ using Ntilde.Mux.Contracts;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Shell.Mux.Remote;
+using NoticeOffer = Ntilde.Shell.Mux.MuxPreviousBuildNotice.NoticeOffer;
 using RestartOutcome = Ntilde.Shell.Mux.MuxPreviousBuildNotice.RestartOutcome;
 
 namespace Ntilde
@@ -17,13 +18,16 @@ namespace Ntilde
     /// <summary>
     /// A daemon from another build (Phase 5 Task 23). An update keeps a compatible daemon running (R9, R10), and the remote
     /// install flow replaces ntilde-mux's binary under a daemon that keeps running: either way the window can be served by
-    /// another build's daemon. It says so once per launch for each endpoint, offering a restart, and runs that restart.
+    /// another build's daemon. It says so once per launch for each endpoint, offering a restart, and runs that restart. A
+    /// remote daemon is judged against the ntilde-mux installed on its host, which is what a restart there starts (final
+    /// review I1): one as old as the installed binary but older than this app is offered the update instead.
     /// </summary>
     public partial class MainWindow
     {
         /// <summary>
         /// This build's version: what its own daemon reports, and the ntilde-mux version its install flow installs (the
-        /// source <see cref="RemoteMuxStatusText"/> compares against). A seam so tests pin it.
+        /// source <see cref="RemoteMuxStatusText"/> compares against). A local daemon is judged against it, and a remote one
+        /// is offered the update when older. A seam so tests pin it.
         /// </summary>
         internal string MuxThisBuildVersion { get; set; } = AppVersionInfo.Version;
 
@@ -78,11 +82,17 @@ namespace Ntilde
             Dispatcher.UIThread.Post(() => _ = OfferMuxRestartAsync(id, host, client));
 
         /// <summary>
-        /// UI thread. A daemon of another build - both versions known and different - is offered a restart once per launch
-        /// for its endpoint, with persistence on (nothing new appears with "Off"). Offered first, so a reconnect to the same
-        /// daemon, or another window's connection to it, offers nothing more; then its running shells are counted (after the
-        /// panes this launch spawned there) and the notice raised, under its endpoint's own merge key. A count that cannot be
-        /// had, or a connection gone by then, releases the offer: the next connection may make it.
+        /// UI thread, with persistence on (nothing new appears with "Off"); once per launch for each endpoint, offered first,
+        /// so a reconnect to the same daemon, or another window's connection to it, offers nothing more:
+        /// <list type="bullet">
+        /// <item>A daemon of another build than the one a restart would start - both versions known and different - is
+        /// offered a restart. For the local daemon that is this build's; for a remote one, the version installed on its
+        /// host (final review I1, <see cref="MuxPreviousBuildNotice.DecideRemote"/>). Its running shells are counted (after
+        /// the panes this launch spawned there) and the notice raised, under its endpoint's own merge key. A count that
+        /// cannot be had, or a connection gone by then, releases the offer: the next connection may make it.</item>
+        /// <item>A remote daemon as old as the installed binary (or with none recorded) but older than this app is offered
+        /// the update - the install dialog - never a restart, which would start that same old binary again.</item>
+        /// </list>
         /// </summary>
         private async Task OfferMuxRestartAsync(MuxEndpointId id, MuxConnectionHost host, MuxClient client)
         {
@@ -91,10 +101,32 @@ namespace Ntilde
                 if (_teardownDone
                     || !client.IsConnected
                     || client.ServerVersion is not { } daemonVersion
-                    || !MuxPreviousBuildNotice.IsFromAnotherBuild(daemonVersion, MuxThisBuildVersion)
-                    || !SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)
-                    || !MuxPreviousBuildLaunch.TryOffer(id))
+                    || !SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence))
                 {
+                    return;
+                }
+
+                // What a restart would start: this build for the local daemon (its binary is this app's), the binary
+                // installed on the host for a remote one.
+                string? restartsAs = id.IsLocal ? MuxThisBuildVersion : host.RecordedRemoteDaemonVersion;
+                NoticeOffer offer;
+                if (id.IsLocal)
+                {
+                    offer = MuxPreviousBuildNotice.IsFromAnotherBuild(daemonVersion, restartsAs) ? NoticeOffer.Restart : NoticeOffer.None;
+                }
+                else
+                {
+                    offer = MuxPreviousBuildNotice.DecideRemote(daemonVersion, restartsAs, MuxThisBuildVersion);
+                }
+
+                if (offer == NoticeOffer.None || !MuxPreviousBuildLaunch.TryOffer(id)) return;
+
+                string where = host.Policy.DisplayName;
+                // Keyed by endpoint (review item 5): two daemons whose hosts share a name raise the same words, and must not merge.
+                string key = $"{MuxPreviousBuildNotice.Title}\n{id}";
+                if (offer == NoticeOffer.Update)
+                {
+                    OfferRemoteMuxUpdate(id, where, daemonVersion, key);
                     return;
                 }
 
@@ -105,16 +137,13 @@ namespace Ntilde
                     return;
                 }
 
-                string where = host.Policy.DisplayName;
                 string message = id.IsLocal
                     ? MuxPreviousBuildNotice.LocalMessage(daemonVersion, MuxThisBuildVersion, count)
-                    : MuxPreviousBuildNotice.RemoteMessage(where, daemonVersion, MuxThisBuildVersion, count);
+                    : MuxPreviousBuildNotice.RemoteMessage(where, daemonVersion, restartsAs!, count);
                 PersistenceNoticeAction action = id.IsLocal
                     ? new PersistenceNoticeAction(MuxPreviousBuildNotice.LocalActionLabel, () => _ = RestartLocalMuxAsync())
                     : new PersistenceNoticeAction(MuxPreviousBuildNotice.RemoteActionLabel(where), () => _ = RestartRemoteMuxAsync(id, where));
-                // Keyed by endpoint (review item 5): two daemons whose hosts share a name raise the same words, and must not merge.
-                string key = $"{MuxPreviousBuildNotice.Title}\n{id}";
-                AppLogger.Log($"[MainWindow] the multiplexer on {where} is from another build ({RemoteOutputText.Quote(daemonVersion)}, this is {MuxThisBuildVersion}); offering a restart");
+                AppLogger.Log($"[MainWindow] the multiplexer on {where} is from another build ({RemoteOutputText.Quote(daemonVersion)}, a restart starts {RemoteOutputText.Quote(restartsAs)}); offering a restart");
                 MuxNoticeRaisedForTest?.Invoke(new MuxPreviousBuildNotice.Raised(id, null, key, message, action));
                 EnqueueNotice(MuxPreviousBuildNotice.Title, message, action, key);
             }
@@ -122,6 +151,24 @@ namespace Ntilde
             {
                 _muxRestartDecisions[id] = _muxRestartDecisions.GetValueOrDefault(id) + 1;
             }
+        }
+
+        /// <summary>
+        /// UI thread. Final review I1: the ntilde-mux on a remote host is older than this app, and a restart would start the
+        /// same old binary again, so the notice offers "Update ntilde-mux on {host}…" - the install dialog for the profile
+        /// (<see cref="OpenRemoteMuxInstall"/>; no button while there is none). The install renames the new binary over the
+        /// old one and never stops the running daemon, so its shells keep running; a later launch, finding the running
+        /// version behind the installed one, offers the restart. The offer is not released: once per launch for the host.
+        /// </summary>
+        private void OfferRemoteMuxUpdate(MuxEndpointId id, string where, string daemonVersion, string key)
+        {
+            string message = MuxPreviousBuildNotice.RemoteUpdateMessage(where, daemonVersion, MuxThisBuildVersion);
+            PersistenceNoticeAction? action = OpenRemoteMuxInstall is { } open && id.SshProfileId is Guid profileId
+                ? new PersistenceNoticeAction(TerminalPane.RemoteMuxUpdateActionLabel(RemoteOutputText.Quote(where)), () => open(profileId))
+                : null;
+            AppLogger.Log($"[MainWindow] ntilde-mux on {where} is older ({RemoteOutputText.Quote(daemonVersion)}) than this app ({MuxThisBuildVersion}); offering the update");
+            MuxNoticeRaisedForTest?.Invoke(new MuxPreviousBuildNotice.Raised(id, null, key, message, action));
+            EnqueueNotice(MuxPreviousBuildNotice.Title, message, action, key);
         }
 
         /// <summary>
@@ -314,7 +361,8 @@ namespace Ntilde
 
         /// <summary>
         /// "Restart ntilde-mux on {host}". UI thread. One restart of that daemon at a time, process-wide; then it needs the
-        /// host's connection, and a daemon still of another version, both when it asks and again just before it sends
+        /// host's connection, and a daemon still of another version than the one installed on the host (final review I1),
+        /// both when it asks and again just before it sends
         /// <c>shutdown</c> over that connection - nothing else is touched: not the local daemon, not another host's. Just
         /// before, this window's panes on that host let go of their shells (<see cref="LetGoOfShellsForRestart"/>). The daemon
         /// exits and its proxy with it, so the host reports it stopped, and the panes' Enter - once that connection is gone -
@@ -382,7 +430,11 @@ namespace Ntilde
             }
         }
 
-        /// <summary>The remote host's live connection, to a daemon still of another version; otherwise false, with the notice that says why.</summary>
+        /// <summary>
+        /// The remote host's live connection, to a daemon still of another version than the one installed on the host now -
+        /// what a restart would start (final review I1); otherwise false, with the notice that says why. A daemon that is the
+        /// installed version, or a host with no installed version known, is never restarted.
+        /// </summary>
         private bool TryGetRemoteDaemonToRestart(
             MuxEndpointId id,
             string where,
@@ -397,9 +449,10 @@ namespace Ntilde
                 return false;
             }
 
-            if (!MuxPreviousBuildNotice.IsFromAnotherBuild(client.ServerVersion, MuxThisBuildVersion))
+            string? installed = host.RecordedRemoteDaemonVersion;
+            if (!MuxPreviousBuildNotice.IsFromAnotherBuild(client.ServerVersion, installed))
             {
-                RaiseMuxRestartOutcome(id, MuxPreviousBuildNotice.NothingToRestart(client.ServerVersion), where);
+                RaiseMuxRestartOutcome(id, MuxPreviousBuildNotice.NothingToRestartRemote(client.ServerVersion, installed), where);
                 return false;
             }
 
