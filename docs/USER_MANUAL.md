@@ -313,13 +313,13 @@ at all, and the server still answers the offline repo/documentation tools.
 Settings → **Agent Access**:
 
 - **Agent access (observe)** — the master switch. Lets an agent list sessions, read
-  the screen and scrollback, query status, and wait for events.
-- **Replay export** — additionally lets an agent save a session's recent output as a
-  replay file. Exports contain output and window resizes only, never anything you
-  type. Requires observe.
-- **Agent screenshots** — additionally lets an agent render a pane to a PNG. A
-  picture shows everything drawn in the pane, inline images included. Requires
-  observe; every capture is journaled.
+  the screen and scrollback, query status, wait for events, and capture a pane as a
+  PNG (`capture_screen`). A picture shows everything drawn in the pane, inline images
+  included; the pane's agent indicator lights when it is captured, as it does for
+  any read.
+- **Agent replay export** — additionally lets an agent save a session's recent
+  output as a replay file. Exports contain output and window resizes only, never
+  anything you type. Requires observe.
 - **Agent access (act)** — additionally lets an agent type into, open and close
   sessions. SSH connections must *also* be allowlisted individually. Requires
   observe; every action is journaled.
@@ -329,9 +329,10 @@ no pane of the window shows: see
 [Agents and windowless sessions](#128-agents-and-windowless-sessions).
 
 ### 9.1 Seeing what an agent did
-Panes carry a live indicator while an agent is observing or acting on them, and
-every acting call — allowed or denied — plus every screenshot is recorded in the
-**agent activity journal**. Open it from the title-bar menu → **Agent Activity...**,
+Panes carry a live indicator while an agent is observing (reading or capturing) or
+acting on them, and every acting call — allowed or denied — is recorded in the
+**agent activity journal**, as is every read of a windowless session (12.8): reads of
+a pane show on its indicator instead. Open it from the title-bar menu → **Agent Activity...**,
 or put the Agent Activity button on the title bar from Settings → Appearance.
 
 For an agent's own view of a session, `export_replay` plus
