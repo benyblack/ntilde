@@ -1500,7 +1500,10 @@ namespace Ntilde.AgentHost
                 if (rows.Length > 0)
                 {
                     sessions = [.. sessions, .. rows];
-                    // A read, so a polling agent's listings fold into one entry rather than push acts out.
+                    // A read, so a polling agent's listings fold into one entry rather than push acts out. It discloses the
+                    // rows' titles, hosts and status, so it lights the window as every journaled read does (PR #511 review);
+                    // a listing with no windowless row disclosed nothing about one, and does neither.
+                    NoteWindowlessRead();
                     _journal.RecordRead(AgentHostProtocol.Methods.ListSessions, null, WindowlessTarget(null), "ok", windowless: true);
                 }
             }

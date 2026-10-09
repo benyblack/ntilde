@@ -976,7 +976,8 @@ profile column, and their id is the multiplexer's session id, the one `ntilde mu
 - Asking about them never connects anywhere and never asks you anything: only the multiplexers the
   window is already connected to are asked, and one that does not answer within 7 seconds counts as
   not found. A multiplexer too old to read screens answers `unsupported`.
-- There is no pane to light up, so the window's agent indicator shows these reads, and the
+- There is no pane to light up, so the window's agent indicator shows these reads - a listing that
+  includes windowless shells counts as one - and the
   **Agent Activity** journal records every read of a windowless shell, as
   `windowless · <host> · session <id>`; repeated reads fold into one line with a count (`×N`). Every
   act is recorded too, as for panes.

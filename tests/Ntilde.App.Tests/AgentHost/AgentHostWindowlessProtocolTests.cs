@@ -728,6 +728,34 @@ public class AgentHostWindowlessProtocolTests
         Assert.Equal(2, raised);
     }
 
+    /// <summary>
+    /// PR #511 review (Greptile P2): a listing that returns windowless rows discloses their titles, hosts and status, and is
+    /// journaled as a read, so it lights the window as any windowless read does. One that returns none - no daemon session,
+    /// or only ids a pane shows - discloses nothing about a windowless session and leaves the light alone.
+    /// </summary>
+    [Fact]
+    public void A_listing_lights_the_window_only_when_it_returns_windowless_rows()
+    {
+        var registry = new AgentSessionRegistry();
+        var pane = RegisterPane(registry);
+        var source = new StubWindowlessSource();
+        using var service = NewService(registry, new AgentActivityJournal());
+        service.SetWindowlessSource(source);
+        int raised = 0;
+        service.ObserveActivityChanged += () => raised++;
+
+        Assert.Single(Result(Handle(service, Line(AgentHostProtocol.Methods.ListSessions, null)), AgentHostJsonContext.Default.ListSessionsResult).Sessions);
+        source.Add(id: pane.PaneId); // a daemon session the pane shows: listed once, as the pane
+        Assert.Single(Result(Handle(service, Line(AgentHostProtocol.Methods.ListSessions, null)), AgentHostJsonContext.Default.ListSessionsResult).Sessions);
+        Assert.False(service.WindowlessWatched);
+        Assert.Equal(0, raised);
+
+        source.Add("watched");
+        Assert.Equal(2, Result(Handle(service, Line(AgentHostProtocol.Methods.ListSessions, null)), AgentHostJsonContext.Default.ListSessionsResult).Sessions.Length);
+        Assert.True(service.WindowlessWatched);
+        Assert.Equal(1, raised);
+    }
+
     [Fact]
     public void A_failed_windowless_read_and_a_pane_read_leave_the_window_light_alone()
     {
