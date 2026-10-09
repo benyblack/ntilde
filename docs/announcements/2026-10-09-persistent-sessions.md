@@ -3,6 +3,7 @@ DRAFT: the release notes for 0.12.0, the release that ships the multiplexer.
 
 Before publishing, check:
   1. The maintainer's call on the default (the PR's "keep local shells running by default" commit).
+     The section "On by default" below belongs to that call: drop it with the flip.
   2. The three-OS manual checklist (Phase 5 Task 30) passed, including an update applied with shells
      running, on Windows and on macOS.
   3. The release notes Velopack ships carry the protocol marker line (release.yml writes it; an
@@ -38,6 +39,12 @@ window closes* on:
   terminal.
 - **From the command line:** `ntilde mux ls` lists the shells, `--all` adds those on your SSH hosts,
   and `ntilde mux kill` / `kill-server` end them.
+
+## On by default
+
+Local shells keep running by default from 0.12.0 on. If you never changed the setting, updating
+turns it on; if you set it to *Off*, it stays off. SSH tabs keep running only for the connections
+you opt in.
 
 ## Turning it on or off
 

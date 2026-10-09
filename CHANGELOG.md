@@ -16,6 +16,9 @@ it all.
   Reopening Ntilde reattaches every tab to its shell, screen and scrollback included. Settings →
   Appearance → *Keep shells running when the window closes* switches it between *Keep running* and
   *Off*.
+- **On by default** for local shells. A settings file without `SessionPersistence` - every install
+  that never changed it - gets *Keep running*; one that says `"Off"` stays off. SSH tabs keep
+  running only for the connections you opt in.
 - **The first close asks** whether the shells keep running (*Keep running* or *Close them*, with
   *Don't ask again*). **Session: Quit and Close All Shells** in the command palette, or the link
   under the setting, ends every shell and the multiplexer.

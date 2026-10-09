@@ -208,8 +208,9 @@ Shell composition glue (startup orchestration, app paths/logging/services, sessi
 
 ### 8.1 Persistent sessions: the mux daemon
 
-With `TerminalSettings.SessionPersistence = "KeepOnClose"` (the default is
-`TerminalSettings.DefaultSessionPersistence`, Phase 5 spec R3), local panes run their
+With `TerminalSettings.SessionPersistence = "KeepOnClose"` (the default since 0.12.0,
+`TerminalSettings.DefaultSessionPersistence`; a settings file that says `"Off"` keeps Off, Phase 5
+spec R3), local panes run their
 shells in a separate daemon process and survive window close, an app crash and a restart. SSH panes
 whose profile sets `SshMuxOptions.PersistRemoteSessions` do the same on the remote host (section
 8.2). The local daemon is **a CLI mode of the app executable** (`Ntilde mux serve`), not a separate

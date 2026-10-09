@@ -109,7 +109,8 @@ Panes allow you to split a single tab into multiple terminal windows.
 
 ### 3.3 Persistent sessions (multiplexer)
 Local shells can keep running in a background process, the multiplexer, when Ntilde's window
-closes, and come back when Ntilde starts again; SSH tabs can keep running on their host. Chapter 12,
+closes, and come back when Ntilde starts again; SSH tabs can keep running on their host. It is on by
+default for local shells. Chapter 12,
 [Persistent sessions and the multiplexer](#12-persistent-sessions-and-the-multiplexer), covers
 closing and reopening, detaching and attaching, remote tabs, updates, agents, the `ntilde mux`
 command line and how to turn it off.
@@ -408,6 +409,10 @@ The setting is Settings → Appearance → *Scrollback* → **Keep shells runnin
 closes**: *Keep running* or *Off*. It applies to tabs and panes opened after you save it; the ones
 already open stay as they are. This chapter describes *Keep running*; 12.11 says what *Off*
 changes.
+
+*Keep running* is the default for local shells. A settings file that never set it - every install
+that did not change it, a new one included - gets *Keep running*; one that says *Off* stays *Off*,
+updates included. SSH tabs keep running on their host only for the connections you opt in (12.6).
 
 ### 12.1 What runs
 
@@ -1029,7 +1034,8 @@ nothing to `PATH`.
 ### 12.11 Turning it off
 
 Set Settings → Appearance → *Scrollback* → **Keep shells running when the window closes** to
-*Off*. From then on:
+*Off*. It is on (*Keep running*) by default; once you save *Off*, it stays off, updates included.
+From then on:
 
 - New tabs and panes run normal shells, which end when their window closes, and no multiplexer is
   started for them.

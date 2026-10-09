@@ -293,8 +293,8 @@ of in the window ([user manual, chapter 12](docs/USER_MANUAL.md#12-persistent-se
   by itself (Linux x64/arm64 hosts with glibc 2.34+, and Apple-silicon macOS)
 - `ntilde mux ls [--all]`, `attach`, `kill` and `kill-server` from any terminal
 - Agents (MCP) can also see and, with the act opt-in, drive shells no window shows
-- Settings → Appearance → *Keep shells running when the window closes* switches it; SSH tabs opt
-  in per connection
+- On by default for local shells: Settings → Appearance → *Keep shells running when the window
+  closes* turns it off; SSH tabs opt in per connection
 
 ### Cross-platform parity
 Ntilde guarantees identical terminal behavior across operating systems

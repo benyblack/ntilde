@@ -821,7 +821,7 @@ Phase 5 ([spec](2026-10-08-ntilde-mux-phase5.md)) took most of these; each is ma
 
 - Flip the `SessionPersistence` default. **RESOLVED** in Phase 5 ([§1](2026-10-08-ntilde-mux-phase5.md#1-the-default-decision--implementation),
   rulings R1-R3): the UX a default-on reader needs, and the flip in a commit of its own, the
-  maintainer's call in the PR.
+  maintainer's call in the PR. Local shells default to `KeepOnClose`.
 - Agent-host `read_screen` for windowless sessions. **RESOLVED** in Phase 5
   ([§3](2026-10-08-ntilde-mux-phase5.md#3-agent-host-sees-windowless-sessions), R4, R5): the optional `readScreen` method,
   and every session tool but `spawn_session`, `export_replay` and `wait_for_events` on windowless ids.
