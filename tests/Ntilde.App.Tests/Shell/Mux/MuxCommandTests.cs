@@ -41,14 +41,14 @@ public sealed class MuxCommandTests : IDisposable
     }
 
     // The App's text before the verbs moved to Ntilde.Mux.Cli (Phase 4 Task 9), copied verbatim from
-    // the old MuxCommand. The adapter prints it with the platform's newline throughout: on Windows
+    // the old MuxCommand, plus ls's [--all] (Phase 5 Task 27). The adapter prints it with the platform's newline throughout: on Windows
     // that is the old output byte for byte (these literals carry the checkout's CRLF, as the old ones
     // did); elsewhere the old output had that CRLF inside the text, which the CLI now normalises. The
     // comparisons below are exact, so a stray \r on Linux fails them.
     private const string PreMoveUsageLiteral = """
         Usage:
           ntilde mux serve [--idle-exit-minutes N] [--foreground]
-          ntilde mux ls [--json]
+          ntilde mux ls [--json] [--all]
           ntilde mux kill <sessionId>
           ntilde mux kill-server [--force]
           ntilde mux attach <sessionId|prefix> [--read-only]
@@ -73,6 +73,7 @@ public sealed class MuxCommandTests : IDisposable
     [InlineData("mux")]
     [InlineData("mux", "frobnicate")]
     [InlineData("mux", "ls", "--bogus")]
+    [InlineData("mux", "ls", "--all", "--bogus")]   // ls --all is the App's only with nothing but --json beside it
     public void The_usage_text_is_unchanged(params string[] args)
     {
         var (code, output, err) = Run(args);

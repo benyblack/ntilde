@@ -178,6 +178,7 @@ below.
   |---|---|
   | `ntilde mux ls` | Lists sessions: id, state (running / exited *code* / faulted), attached windows, size, title. |
   | `ntilde mux ls --json` | The same list as JSON. |
+  | `ntilde mux ls --all [--json]` | The same list with a HOST column (`this computer`, or `user@host`), followed by the sessions on the host of every SSH profile that keeps its remote sessions. It connects to those hosts on its own, all at once, and never asks for anything: it signs in with keys, the SSH agent, a saved password or an existing shared connection. A host where no multiplexer runs yet starts one, as opening a persistent tab there does. A host that cannot be reached within 15 seconds gets an `unreachable:` line, and the reason goes to `logs/mux-ls-all.log`. The exit code is the plain list's: 1 when no multiplexer runs on this computer. |
   | `ntilde mux kill <id>` | Ends one session. |
   | `ntilde mux kill-server` | Ends every session and stops the daemon. Waits up to 5 seconds for it to exit; if it has not, prints "Multiplexer did not stop within 5 s." and exits with code 1. |
   | `ntilde mux kill-server --force` | Also stops a daemon this Ntilde cannot talk to at all (no protocol version in common), once its pid and process name are re-verified — see below. A daemon from the previous version still talks to it, so plain `kill-server` stops that one. |

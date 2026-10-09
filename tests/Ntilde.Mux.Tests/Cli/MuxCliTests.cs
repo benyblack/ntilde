@@ -90,7 +90,7 @@ public sealed class MuxCliTests : IDisposable
 
         Assert.Equal(usage.ReplaceLineEndings(), usage);
         Assert.Equal(help.ReplaceLineEndings(), help);
-        Assert.Contains(Environment.NewLine + "  ntilde-mux ls [--json]" + Environment.NewLine, usage, StringComparison.Ordinal);
+        Assert.Contains(Environment.NewLine + "  ntilde-mux ls [--json] [--all]" + Environment.NewLine, usage, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -138,7 +138,7 @@ public sealed class MuxCliTests : IDisposable
         Assert.Equal("""
             Usage:
               ntilde-mux serve [--idle-exit-minutes N] [--foreground]
-              ntilde-mux ls [--json]
+              ntilde-mux ls [--json] [--all]
               ntilde-mux kill <sessionId>
               ntilde-mux kill-server [--force]
               ntilde-mux attach <sessionId|prefix> [--read-only]
@@ -158,6 +158,25 @@ public sealed class MuxCliTests : IDisposable
         var (code, _, err) = Run("ls");
         Assert.Equal(1, code);
         Assert.Contains("No multiplexer is running", err);
+    }
+
+    /// <summary>
+    /// --all lists the hosts of the user's SSH profiles too (Phase 5 spec §5), which only the App can reach: its adapter takes
+    /// <c>ls --all</c> before MuxCli. Here, with or without a daemon, it is refused before anything connects.
+    /// </summary>
+    [Theory]
+    [InlineData(false, "ls", "--all")]
+    [InlineData(false, "ls", "--json", "--all")]
+    [InlineData(true, "ls", "--all")]
+    public async Task Ls_all_needs_the_app_and_exits_2(bool daemonRunning, params string[] verbArgs)
+    {
+        if (daemonRunning) await StartDaemonWithOneSessionAsync();
+
+        var (code, output, err) = Run(verbArgs);
+
+        Assert.Equal(2, code);
+        Assert.Equal(string.Empty, output);
+        Assert.Equal("--all needs the ntilde app (it connects to your SSH profiles)" + Environment.NewLine, err);
     }
 
     [Fact]

@@ -40,7 +40,7 @@ public static class MuxCli
     private static readonly (MuxCliVerbs Verb, string Line)[] UsageLines =
     [
         (MuxCliVerbs.Serve, "serve [--idle-exit-minutes N] [--foreground]"),
-        (MuxCliVerbs.Ls, "ls [--json]"),
+        (MuxCliVerbs.Ls, "ls [--json] [--all]"),
         (MuxCliVerbs.Kill, "kill <sessionId>"),
         (MuxCliVerbs.KillServer, "kill-server [--force]"),
         (MuxCliVerbs.Attach, "attach <sessionId|prefix> [--read-only]"),
@@ -131,9 +131,9 @@ public static class MuxCli
     /// Failures a verb reports as "mux: ..." with exit 1. SocketException is listed on its own: it is
     /// not an IOException, and one escaping here reached the executable's top-level catch (the GUI's
     /// Program.Main writes its startup-error file and rethrows) - a crash for what is an "endpoint
-    /// unusable" error.
+    /// unusable" error. Public for a host that lists the daemon its own way (<see cref="ListSessions"/>).
     /// </summary>
-    internal static bool IsReportableFailure(Exception ex) =>
+    public static bool IsReportableFailure(Exception ex) =>
         ex is IOException or TimeoutException or MuxProtocolException or UnauthorizedAccessException or MuxUnavailableException
             or System.Net.Sockets.SocketException;
 
@@ -231,19 +231,31 @@ public static class MuxCli
 
     private static MuxClient? Connect(string descriptorPath, TextWriter stderr, MuxCliHost host)
     {
-        var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-cli" },
-            killServerCommand: KillServerCommand(host));
-        MuxClient? client = launcher.TryConnectExistingAsync(CancellationToken.None).GetAwaiter().GetResult();
+        MuxClient? client = TryConnect(descriptorPath, host);
         if (client is null) stderr.WriteLine("No multiplexer is running.");
         return client;
     }
 
+    /// <summary>The running daemon's client, or null when none runs: never starts one.</summary>
+    private static MuxClient? TryConnect(string descriptorPath, MuxCliHost host)
+    {
+        var launcher = new MuxDaemonLauncher(descriptorPath, new NoSpawn(), new MuxClientOptions { ClientKind = "ntilde-cli" },
+            killServerCommand: KillServerCommand(host));
+        return launcher.TryConnectExistingAsync(CancellationToken.None).GetAwaiter().GetResult();
+    }
+
     private sealed class NoSpawn : IMuxDaemonSpawner { public void Spawn() => throw new InvalidOperationException("CLI verbs never start a daemon."); }
+
+    /// <summary>ls's option for every host's sessions, this computer's and its SSH profiles' (Phase 5 spec §5).</summary>
+    private const string AllHostsOption = "--all";
 
     private static int List(string[] verbArgs, TextWriter stdout, TextWriter stderr, string descriptorPath, MuxCliHost host)
     {
         bool json = verbArgs.Skip(1).Any(a => a == "--json");
-        if (verbArgs.Skip(1).Any(a => a != "--json")) return Fail(stderr, Usage(host));
+        if (verbArgs.Skip(1).Any(a => a is not ("--json" or AllHostsOption))) return Fail(stderr, Usage(host));
+        // Listing the SSH hosts needs the App's profiles and SSH, which this assembly does not reference: the App's adapter
+        // takes ls --all before it gets here, so only the standalone ntilde-mux says this.
+        if (verbArgs.Skip(1).Contains(AllHostsOption)) return Fail(stderr, "--all needs the ntilde app (it connects to your SSH profiles)");
         using MuxClient? client = Connect(descriptorPath, stderr, host);
         if (client is null) return 1;
 
@@ -260,16 +272,39 @@ public static class MuxCli
             return 0;
         }
 
-        stdout.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0,-36}  {1,-18}  {2,8}  {3,-9}  {4}", "ID", "STATE", "ATTACHED", "SIZE", "TITLE"));
-        foreach (SessionSummary s in sessions)
-        {
-            string state = DescribeState(s);
-            stdout.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0,-36}  {1,-18}  {2,8}  {3,-9}  {4}",
-                s.SessionId, state, s.AttachedClients, $"{s.Cols}x{s.Rows}", s.Title));
-        }
-
+        stdout.WriteLine(ListHeader);
+        foreach (SessionSummary s in sessions) stdout.WriteLine(ListRow(s, s.Title));
         return 0;
     }
+
+    /// <summary>
+    /// The running daemon's sessions as <c>ls</c> reads them, for a host that prints them its own way (the App's
+    /// <c>ls --all</c>, Phase 5 spec §5). Null when no daemon runs: <c>ls</c> says "No multiplexer is running." and exits 1
+    /// then. Never starts one.
+    /// </summary>
+    /// <exception cref="Exception">One <c>ls</c> reports as "mux: ..." with exit 1 (<see cref="IsReportableFailure"/>).</exception>
+    public static IReadOnlyList<SessionSummary>? ListSessions(MuxCliHost host)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        using MuxClient? client = TryConnect(host.Paths.DescriptorPath, host);
+        return client?.ListSessionsAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary><c>ls</c>'s table header: ID, STATE, ATTACHED, SIZE and TITLE.</summary>
+    public static string ListHeader { get; } = ListLine("ID", "STATE", "ATTACHED", "SIZE", "TITLE");
+
+    /// <summary>
+    /// One session's line in <c>ls</c>'s table, with <paramref name="title"/> in its TITLE column: the session's own, or a
+    /// host's cleaned copy of it.
+    /// </summary>
+    public static string ListRow(SessionSummary session, string title)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        return ListLine(session.SessionId, DescribeState(session), session.AttachedClients, $"{session.Cols}x{session.Rows}", title);
+    }
+
+    private static string ListLine(object id, string state, object attached, string size, string title) =>
+        string.Format(CultureInfo.InvariantCulture, "{0,-36}  {1,-18}  {2,8}  {3,-9}  {4}", id, state, attached, size, title);
 
     private static string DescribeState(SessionSummary s)
     {
