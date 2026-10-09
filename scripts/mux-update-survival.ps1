@@ -837,12 +837,15 @@ function Invoke-Run {
 
     Section '8. Verify'
     # The apply came from the relaunch's startup auto-apply, not from anything else: that very process decided to apply,
-    # and Update.exe waited for it.
+    # and Update.exe was started to wait for it. Whether the wait itself worked is Velopack's business (here it cannot
+    # open the pid: "Failed to wait ... Access is denied"), so that line is reported, not checked.
     $relaunchId = $gui2.Id
     $autoApply = $applyLog | Where-Object { $_ -match "\[lib-csharp:$relaunchId\].*Auto apply is true" } | Select-Object -First 1
     $waitedFor = $applyLog | Where-Object { $_ -match "Update\.exe apply .*--waitPid $relaunchId(\s|$)" -or $_ -match "Wait: WaitPid\($relaunchId\)" } | Select-Object -First 1
+    $waitFailed = $applyLog | Where-Object { $_ -match 'Failed to wait for process' } | Select-Object -First 1
     Check "the first build's relaunch (pid $relaunchId) decided the startup auto-apply" ([bool]$autoApply) "$autoApply"
-    Check "Update.exe's apply waited for that pid (--waitPid $relaunchId)" ([bool]$waitedFor) "$waitedFor"
+    Check "Update.exe was started with --waitPid $relaunchId" ([bool]$waitedFor) "$waitedFor"
+    if ($waitFailed) { Say "observation (not a check): $waitFailed" }
     Check "current\sq.version is $V2" ((Get-SqVersion) -eq $V2) "$(Get-SqVersion)"
     Check "the second build's GUI runs" ([bool]$newGui) "$(if ($newGui) { "pid $($newGui.ProcessId), image version $(Get-ImageVersion $newGui.ProcessId)" })"
     $after = Get-ProcInfo $daemon.Pid

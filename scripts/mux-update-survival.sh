@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
+[ -n "${ZSH_VERSION:-}" ] || { echo "mux-update-survival.sh: run it with zsh (zsh $0 ...)" >&2; exit 2; }
 # Update-survival evidence for the local multiplexer on macOS and Linux (Phase 5 Task 24, spec R9/R10): a real Velopack
 # update, applied while the daemon runs, in a sandbox, with the daemon's shells intact afterwards. The Windows run is
 # scripts/mux-update-survival.ps1; this follows it step for step. Written for the maintainer's macOS run (zsh); the
@@ -60,8 +61,9 @@
 #   - APPIMAGE_EXTRACT_AND_RUN=1 avoids FUSE, but then the code runs from an extracted copy in /tmp while $APPIMAGE
 #     still names the file, which a real install never does; prefer FUSE so the run matches one.
 #   - The Velopack channel is linux-x64 / linux-arm64, as release.yml packs and the app asks for.
-#   - Velopack keeps a staged update in /var/tmp/velopack/<packId>/packages and logs to /tmp/velopack_<packId>.log; the
-#     script removes both (named for NtildeSurvival) before and after the run.
+#   - Velopack keeps a staged update in /var/tmp/velopack/<packId>/packages and logs to $TMPDIR (or /tmp)/
+#     velopack_<packId>.log; the script removes exactly those paths, built from NtildeSurvival, before and after the run
+#     (velopack_state_paths, with the Velopack 1.2.0 source lines it follows).
 
 emulate -L zsh
 setopt err_exit pipe_fail no_unset
@@ -136,6 +138,8 @@ if (( ! ALLOW_ANY_LOCATION )); then
 fi
 [[ "$S" != *[[:space:]]* ]] || refuse "the sandbox path must not contain whitespace: $S"
 [[ ! -f "$S" ]] || refuse "the sandbox $S is a file"
+# An unreadable folder would list as empty: refuse it rather than treat it as new.
+if [[ -e "$S" ]] && [[ ! -r "$S" || ! -x "$S" ]]; then refuse "the sandbox $S cannot be read; it is not this script's to use"; fi
 if [[ -d "$S" && -n "$(ls -A "$S")" && ! -f "$MARKER" ]]; then
   refuse "$S is not empty and does not carry ${MARKER:t}: it is not this script's sandbox; choose a new or empty folder"
 fi
@@ -212,27 +216,65 @@ stop_ours() {  # stop_ours <pid> <why>
   kill -KILL "$1" 2>/dev/null || true
 }
 
-# Velopack's own state outside the sandbox, named for the packId: on Linux its packages folder
-# (/var/tmp/velopack/<packId>, where a staged update waits) and its log (/tmp/velopack_<packId>.log); on macOS the
-# same under ~/Library (~/Library/Caches/velopack/<packId>/packages). Anything named for this run's packId is the run's
-# own; the sandbox itself is never part of it.
+# Velopack's own state outside the sandbox: the exact paths Velopack 1.2.0 builds from the app id ($PACK_ID). No name
+# search: a search of the temp folders would also find other sandboxes' install/, feed/ and evidence files.
+#   packages, Linux: /var/tmp/velopack/<id>/packages
+#       (src/lib-csharp/Locators/LinuxVelopackLocator.cs:45-51; src/lib-rust/src/locator.rs:541)
+#   packages, macOS: ~/Library/Caches/velopack/<id>/packages
+#       (src/lib-csharp/Locators/OsxVelopackLocator.cs:39-44; src/lib-rust/src/locator.rs:595-605)
+#   log, Linux: <temp>/velopack_<id>.log, temp being $TMPDIR, else /tmp
+#       (LinuxVelopackLocator.cs:92, Path.GetTempPath(); src/lib-rust/src/logging.rs:23-30, std::env::temp_dir())
+#   log, macOS: ~/Library/Logs/velopack_<id>.log when ~/Library/Logs exists, else <temp>/velopack_<id>.log
+#       (OsxVelopackLocator.cs:71-102; logging.rs:32-52)
+#   app temp: <base>/<id>, base being $VELOPACK_TEMP, else $TMPDIR, $TEMP or $TMP plus /velopack, else /tmp/velopack
+#       (src/lib-csharp/Util/TempUtil.cs:9-33; both locators' AppTempDir; created only when the app asks for it)
+# The folders are the <id> folders, never their velopack/ parents.
+velopack_state_paths() {
+  local temp="${TMPDIR:-/tmp}" base
+  if [[ -n "${VELOPACK_TEMP:-}" ]]; then base="$VELOPACK_TEMP"
+  elif [[ -n "${TMPDIR:-}${TEMP:-}${TMP:-}" ]]; then base="${TMPDIR:-${TEMP:-$TMP}}/velopack"
+  else base=/tmp/velopack; fi
+  if [[ "$OS" == Darwin ]]; then
+    print -r -- "$HOME/Library/Caches/velopack/$PACK_ID"
+    if [[ -d "$HOME/Library/Logs" ]]; then print -r -- "$HOME/Library/Logs/velopack_$PACK_ID.log"
+    else print -r -- "$temp/velopack_$PACK_ID.log"; fi
+  else
+    print -r -- "/var/tmp/velopack/$PACK_ID"
+    print -r -- "$temp/velopack_$PACK_ID.log"
+  fi
+  print -r -- "$base/$PACK_ID"
+}
+# Whether <path> lies in a sandbox: this one (either way round), or any folder above it carrying the marker.
+in_a_sandbox() {  # in_a_sandbox <canonical path>
+  local p="$1"
+  if inside "$p" "$S" || inside "$S" "$p"; then return 0; fi
+  while [[ "$p" != / && -n "$p" ]]; do
+    if [[ -f "$p/.ntilde-survival-sandbox" ]]; then return 0; fi
+    p="${p:h}"
+  done
+  return 1
+}
+# The state paths that exist, canonical (${p:A}: on macOS /var is /private/var, as in $S).
 velopack_state() {
-  local root
-  {
-    for root in /var/tmp/velopack /tmp "${TMPDIR:-/tmp}" "$HOME/Library/Caches" "$HOME/Library/Logs" "$HOME/.cache" "$HOME/.local/share/velopack"; do
-      if [[ -d "$root" ]]; then find "$root" -maxdepth 3 -name "*$PACK_ID*" -not -path "$S" -not -path "$S/*" -not -path "*/.mount_*" 2>/dev/null || true; fi
-    done
-  } | sort -u
+  local p
+  for p in ${(f)"$(velopack_state_paths)"}; do if [[ -e "$p" ]]; then print -r -- "${p:A}"; fi; done
   return 0
 }
 remove_velopack_state() {  # remove_velopack_state <why>
-  local p
+  local p copy
   for p in ${(f)"$(velopack_state)"}; do
-    if [[ "$p" != *"$PACK_ID"* || ! -e "$p" ]]; then continue; fi   # a file inside a folder already removed
-    if inside "$S" "$p"; then say "refusing to delete $p: it is, or contains, the sandbox"; continue; fi
-    if [[ -f "$p" && "$p" == *.log ]]; then cp "$p" "$EVIDENCE/${p:t}" 2>/dev/null || true; fi
-    say "removing Velopack's $p ($1)"
-    rm -rf -- "$p"
+    if [[ ! -e "$p" ]]; then continue; fi
+    if in_a_sandbox "$p"; then say "refusing to delete $p: it lies in a sandbox"; continue; fi
+    if [[ -f "$p" && "$p" == *.log ]]; then
+      # Kept under a new name, so no later run or step ever deletes the evidence copy; only the source goes.
+      copy="$EVIDENCE/${p:t:r}-$(date +%Y%m%d-%H%M%S).log"
+      cp "$p" "$copy" 2>/dev/null || true
+      say "removing Velopack's $p ($1); a copy is $copy"
+      rm -f -- "$p"
+    else
+      say "removing Velopack's $p ($1)"
+      rm -rf -- "$p"
+    fi
   done
   return 0
 }
@@ -418,8 +460,12 @@ HB_IDS=()
 for n in 1 2; do
   id="$(ntilde mux spawn-for-test /bin/sh "$SHELLS/heartbeat.sh $SHELLS/hb$n.txt")" || die "spawn-for-test failed"
   say "ntilde mux spawn-for-test /bin/sh \"$SHELLS/heartbeat.sh $SHELLS/hb$n.txt\" -> $id"
+  # zsh drops empty elements when it expands $HB_IDS below, so an empty id must stop the run here.
+  uuid_re='^[0-9a-f-]{36}$'
+  [[ "$id" =~ $uuid_re ]] || die "spawn-for-test printed no session id: '$id'"
   HB_IDS+=("$id")
 done
+(( ${#HB_IDS} == 2 )) || die "expected 2 heartbeat session ids, got ${#HB_IDS}"
 beating() { [[ -f "$SHELLS/hb1.txt" && -f "$SHELLS/hb2.txt" ]] && (( $(wc -l < "$SHELLS/hb1.txt") >= 3 && $(wc -l < "$SHELLS/hb2.txt") >= 3 )); }
 if wait_for 30 beating; then check 'both heartbeats are writing' 1; else check 'both heartbeats are writing' 0; fi
 
@@ -448,18 +494,28 @@ watch_until_next_gui() {  # samples the daemon until the next GUI opens its log,
   done
   return 1
 }
-VELOPACK_LOG="/tmp/velopack_$PACK_ID.log"
+VELOPACK_LOG="${TMPDIR:-/tmp}/velopack_$PACK_ID.log"   # Linux's log path (velopack_state_paths)
 T0="$(date +%s)"
 if [[ "$OS" == Darwin ]]; then
   # Never a Velopack restart on macOS: `open -n` would start .2 without the sandbox's environment.
   say "macOS: the startup auto-apply is NOT exercised here. Velopack 1.2.0 restarts the app with 'open -n', which drops"
   say "the sandbox's environment, so the staged $V2 is applied with 'UpdateMac apply --norestart' and started by this script."
-  staged=("$HOME/Library/Caches/velopack/$PACK_ID/packages/"*"$V2"*-full.nupkg(N))
-  (( ${#staged} )) || die "no staged $V2 package under ~/Library/Caches/velopack/$PACK_ID/packages"
-  "$APP/Contents/MacOS/UpdateMac" apply --norestart --package "$staged[1]" --log "$EVIDENCE/updatemac-apply.log" \
+  packages="$HOME/Library/Caches/velopack/$PACK_ID/packages"
+  staged=("$packages/"*"$V2"*-full.nupkg(N))
+  (( ${#staged} )) || die "no staged $V2 package under $packages"
+  sandboxed "$APP/Contents/MacOS/UpdateMac" apply --norestart --package "$staged[1]" --log "$EVIDENCE/updatemac-apply.log" \
     >> "$LOG" 2>&1 || die "UpdateMac apply --norestart failed; see $EVIDENCE/updatemac-apply.log"
+  # Gate the launch: an apply that left the bundle at .1, with .2 still staged, would make the launch below apply at
+  # startup and restart through `open -n` - the hazard this path exists to avoid. So the bundle must be .2, and nothing
+  # may stay staged.
   sq="$(cat "$APP/Contents/MacOS/sq.version" "$APP/Contents/Resources/sq.version" 2>/dev/null || true)"
-  if [[ "$sq" == *"<version>$V2</version>"* ]]; then check "the .app's sq.version is $V2" 1; else check "the .app's sq.version is $V2" 0; fi
+  [[ "$sq" == *"<version>$V2</version>"* ]] || die "after UpdateMac apply the .app's sq.version is not $V2; not starting it"
+  check "the .app's sq.version is $V2" 1
+  if [[ -d "$packages" ]] && ! in_a_sandbox "${packages:A}"; then
+    say "removing the staged packages $packages before starting $V2"
+    rm -rf -- "$packages"
+  fi
+  [[ ! -e "$packages" ]] || die "$packages is still there; not starting $V2"
   start_gui "$EVIDENCE/gui-$V2.out"
   GUI2=$GUI_PID
   say "started the second build (pid $GUI2) with the sandbox's environment"
@@ -478,15 +534,18 @@ say "from the apply to the next GUI: about $(( T1 - T0 )) s; the daemon $( (( SE
 
 section '8. Verify'
 if [[ "$OS" == Linux ]]; then
-  # The apply came from the relaunch's startup auto-apply: that very process decided it, and UpdateNix waited for it.
+  # The apply came from the relaunch's startup auto-apply: that very process decided it, and UpdateNix was started to
+  # wait for it. Whether the wait itself worked is Velopack's business: its "Failed to wait" line is only reported.
   apply_log="$(tail -n +$(( velopack_lines_before + 1 )) "$VELOPACK_LOG" 2>/dev/null || true)"
   print -r -- "$apply_log" > "$EVIDENCE/velopack-apply.log"
   auto="$(print -r -- "$apply_log" | grep -m1 -E "\[lib-csharp:$GUI2\].*Auto apply is true" || true)"
   waited="$(print -r -- "$apply_log" | grep -m1 -E "WaitPid\($GUI2\)|--waitPid $GUI2( |\$)" || true)"
+  wait_failed="$(print -r -- "$apply_log" | grep -m1 -E "Failed to wait for process" || true)"
   if [[ -n "$auto" ]]; then check "the first build's relaunch (pid $GUI2) decided the startup auto-apply" 1 "$auto"
   else check "the first build's relaunch (pid $GUI2) decided the startup auto-apply" 0; fi
-  if [[ -n "$waited" ]]; then check "the updater's apply waited for that pid" 1 "$waited"
-  else check "the updater's apply waited for that pid" 0; fi
+  if [[ -n "$waited" ]]; then check "UpdateNix was started with --waitPid $GUI2" 1 "$waited"
+  else check "UpdateNix was started with --waitPid $GUI2" 0; fi
+  if [[ -n "$wait_failed" ]]; then say "observation (not a check): $wait_failed"; fi
 fi
 sleep 6
 if alive "$DAEMON" && (( ! SEEN_DOWN )); then check "the daemon's pid is unchanged, and it never went down" 1 "pid $DAEMON"
