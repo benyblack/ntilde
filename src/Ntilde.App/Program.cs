@@ -136,8 +136,11 @@ class Program
             TerminalLogger.Log("Build: " + DescribeBuild());
 
             // A verification run's local update feed (NTILDE_UPDATE_SOURCE_DIR), or a value of it that is ignored: said
-            // at startup, before any update check, so the log never hides where updates come from.
-            _ = Ntilde.Update.UpdateSourceOverride.Resolve(out string? updateSourceNote);
+            // at startup, before any update check, so the log never hides where updates come from. Only the verification
+            // install honours it (ruling R1), so the running install's app id goes in: VelopackApp.Run() above has set
+            // the locator by now when this process is a Velopack install, and nothing has when it is not.
+            string? veloAppId = Velopack.Locators.VelopackLocator.IsCurrentSet ? Velopack.Locators.VelopackLocator.Current.AppId : null;
+            _ = Ntilde.Update.UpdateSourceOverride.ResolveFromEnvironment(veloAppId, out string? updateSourceNote);
             if (updateSourceNote is not null) TerminalLogger.Log(updateSourceNote);
 
             StartupPerformanceTracker.StartNewCurrent();

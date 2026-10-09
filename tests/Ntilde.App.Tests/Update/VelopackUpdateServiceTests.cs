@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Ntilde.Update;
@@ -96,18 +97,22 @@ public class VelopackUpdateServiceTests
         Assert.Null(VelopackUpdateService.ResolveExplicitChannel(true, architecture));
     }
 
-    // NTILDE_UPDATE_SOURCE_DIR (Phase 5 Task 24): the verification hook that points the updater at a local
-    // Velopack feed. The variable's value is passed in, so no test touches this process's environment.
+    // NTILDE_UPDATE_SOURCE_DIR (Phase 5 Task 24): the verification hook that points the updater at a local Velopack
+    // feed, honoured only for an install packed under the verification id (UpdateSourceOverride.VerificationAppId). The
+    // variable's value and the app id are passed in, so no test touches this process's environment or install.
+
+    private const string ProductionAppId = "NtildeApp";
 
     [Fact]
-    public void A_local_update_directory_replaces_github_and_is_logged()
+    public void A_local_update_directory_replaces_github_for_the_verification_install_and_is_logged()
     {
         DirectoryInfo feed = Directory.CreateTempSubdirectory("ntilde-feed-");
         try
         {
             var log = new List<string>();
 
-            IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, feed.FullName, log.Add);
+            IUpdateSource source = VelopackUpdateService.CreateSource(
+                VelopackUpdateService.DefaultRepoUrl, feed.FullName, UpdateSourceOverride.VerificationAppId, log.Add);
 
             SimpleFileSource local = Assert.IsType<SimpleFileSource>(source);
             Assert.Equal(feed.FullName, local.BaseDirectory.FullName);
@@ -121,12 +126,46 @@ public class VelopackUpdateServiceTests
         }
     }
 
-    [Fact]
-    public void Without_the_variable_updates_come_from_github_and_nothing_is_logged()
+    /// <summary>
+    /// Ruling R1: an allow-list, not a deny-list. Any install but the verification one - the production NtildeApp, an id
+    /// it was or might be renamed to, or no install at all - ignores even a valid directory, and says so once.
+    /// </summary>
+    [Theory]
+    [InlineData(ProductionAppId)]
+    [InlineData("NovaTerminalApp")]
+    [InlineData("ntildesurvival")]     // ordinal: the id must match exactly
+    [InlineData(null)]                 // not a Velopack install
+    public void Any_other_install_ignores_a_valid_directory_and_says_so(string? appId)
+    {
+        DirectoryInfo feed = Directory.CreateTempSubdirectory("ntilde-feed-");
+        try
+        {
+            var log = new List<string>();
+
+            IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, feed.FullName, appId, log.Add);
+
+            GithubSource github = Assert.IsType<GithubSource>(source);
+            Assert.Equal(new Uri(VelopackUpdateService.DefaultRepoUrl), github.RepoUri);
+            string line = Assert.Single(log);
+            Assert.Contains(UpdateSourceOverride.Variable, line, StringComparison.Ordinal);
+            Assert.Contains("ignored: this install is not a verification install", line, StringComparison.Ordinal);
+            Assert.DoesNotContain(feed.FullName, line, StringComparison.Ordinal);
+        }
+        finally
+        {
+            feed.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(UpdateSourceOverride.VerificationAppId)]
+    [InlineData(ProductionAppId)]
+    [InlineData(null)]
+    public void Without_the_variable_updates_come_from_github_and_nothing_is_logged(string? appId)
     {
         var log = new List<string>();
 
-        IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, null, log.Add);
+        IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, null, appId, log.Add);
 
         GithubSource github = Assert.IsType<GithubSource>(source);
         Assert.Equal(new Uri(VelopackUpdateService.DefaultRepoUrl), github.RepoUri);
@@ -134,8 +173,9 @@ public class VelopackUpdateServiceTests
     }
 
     /// <summary>
-    /// A value that names no directory - blank, missing, or a file - is a mistake in a verification run, not a feed:
-    /// updates stay on GitHub, and the log says the variable was ignored, so the run does not quietly test the wrong feed.
+    /// For the verification install, a value that names no directory - blank, missing, or a file - is a mistake in the
+    /// run, not a feed: updates stay on GitHub, and the log says the variable was ignored, so the run does not quietly
+    /// test the wrong feed.
     /// </summary>
     [Theory]
     [InlineData("")]
@@ -157,7 +197,8 @@ public class VelopackUpdateServiceTests
             };
             var log = new List<string>();
 
-            IUpdateSource source = VelopackUpdateService.CreateSource(VelopackUpdateService.DefaultRepoUrl, value, log.Add);
+            IUpdateSource source = VelopackUpdateService.CreateSource(
+                VelopackUpdateService.DefaultRepoUrl, value, UpdateSourceOverride.VerificationAppId, log.Add);
 
             Assert.IsType<GithubSource>(source);
             string line = Assert.Single(log);
@@ -168,5 +209,45 @@ public class VelopackUpdateServiceTests
         {
             scratch.Delete(recursive: true);
         }
+    }
+
+    /// <summary>
+    /// The update-survival scripts pack their builds under the id the hook allows. Were either to drift from the
+    /// constant, the hook would ignore the run's feed and the run would test GitHub instead, or the constant would allow
+    /// an id no script packs. Parsed from each script's single PackId assignment.
+    /// </summary>
+    [Fact]
+    public void The_survival_scripts_pack_under_the_verification_id()
+    {
+        string scripts = Path.Combine(FindRepositoryRoot(), "scripts");
+
+        string ps1 = File.ReadAllText(Path.Combine(scripts, "mux-update-survival.ps1"));
+        string sh = File.ReadAllText(Path.Combine(scripts, "mux-update-survival.sh"));
+
+        Assert.Equal(UpdateSourceOverride.VerificationAppId, SingleAssignment(ps1, @"^\$PackId\s*=\s*'([^']*)'", "ps1"));
+        Assert.Equal(UpdateSourceOverride.VerificationAppId, SingleAssignment(sh, @"^PACK_ID=([A-Za-z0-9._-]+)", "sh"));
+    }
+
+    private static string SingleAssignment(string script, string pattern, string which)
+    {
+        MatchCollection matches = Regex.Matches(script, pattern, RegexOptions.Multiline);
+        Assert.True(matches.Count == 1, $"expected exactly one PackId assignment in the {which} script, found {matches.Count}");
+        return matches[0].Groups[1].Value;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Ntilde.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root from test output path.");
     }
 }

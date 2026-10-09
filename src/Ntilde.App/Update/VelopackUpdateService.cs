@@ -14,8 +14,9 @@ namespace Ntilde.Update
     /// GitHub releases - or, for a verification run, off the local feed <see cref="UpdateSourceOverride"/> names.
     /// </summary>
     /// <remarks>
-    /// This is the only file in the app that names a Velopack type besides the
-    /// <c>VelopackApp.Build().Run()</c> hook in <c>Program.Main</c>.
+    /// This is the only file in the app that uses Velopack's updater types. Besides it, <c>Program.Main</c> runs the
+    /// <c>VelopackApp.Build().Run()</c> hook and reads the locator's app id for its startup log, and
+    /// <c>VelopackHookLog</c> writes to the locator's log.
     /// </remarks>
     public sealed class VelopackUpdateService : IUpdateService
     {
@@ -25,9 +26,9 @@ namespace Ntilde.Update
         // execute new code from" into a user- or file-controlled value. Compiling it in is the
         // security property, not an oversight. Splitting it into concatenated parts would satisfy
         // the analyzer while making the code worse, so suppress it here with the reason attached.
-        // NTILDE_UPDATE_SOURCE_DIR (UpdateSourceOverride) is no exception to that: a verification hook read from the
-        // process environment only, never from a setting or a file, and whoever can set it can already replace the
-        // binaries in the user's own install folder.
+        // NTILDE_UPDATE_SOURCE_DIR (UpdateSourceOverride) leaves that property intact for the released app: it only
+        // works for an install packed under the verification id (UpdateSourceOverride.VerificationAppId), and the
+        // released app, packed as NtildeApp, ignores it.
         [SuppressMessage("Minor Code Smell", "S1075:URIs should not be hardcoded",
             Justification = "The update feed's origin is a trust anchor and must not be configurable.")]
         public const string DefaultRepoUrl = "https://github.com/benyblack/ntilde";
@@ -112,18 +113,23 @@ namespace Ntilde.Update
             var locator = VelopackLocator.IsCurrentSet
                 ? VelopackLocator.Current
                 : VelopackLocator.CreateDefaultForPlatform(null, null);
-            _manager = new UpdateManager(CreateSource(repoUrl, Environment.GetEnvironmentVariable(UpdateSourceOverride.Variable), log), BuildUpdateOptions(), locator);
+            _manager = new UpdateManager(
+                CreateSource(repoUrl, Environment.GetEnvironmentVariable(UpdateSourceOverride.Variable), locator.AppId, log),
+                BuildUpdateOptions(),
+                locator);
         }
 
         /// <summary>
         /// Where updates come from: the local feed directory <paramref name="sourceDirectoryValue"/> names (the value of
-        /// <see cref="UpdateSourceOverride.Variable"/>, a verification hook), else <paramref name="repoUrl"/>'s GitHub
-        /// releases. What was chosen goes to <paramref name="log"/> whenever the variable is set, and nothing when it is not.
+        /// <see cref="UpdateSourceOverride.Variable"/>, a verification hook) when <paramref name="appId"/>, this install's
+        /// Velopack app id, is <see cref="UpdateSourceOverride.VerificationAppId"/>; else <paramref name="repoUrl"/>'s
+        /// GitHub releases. What was chosen goes to <paramref name="log"/> whenever the variable is set, and nothing when
+        /// it is not.
         /// </summary>
-        internal static IUpdateSource CreateSource(string repoUrl, string? sourceDirectoryValue, Action<string> log)
+        internal static IUpdateSource CreateSource(string repoUrl, string? sourceDirectoryValue, string? appId, Action<string> log)
         {
             ArgumentNullException.ThrowIfNull(log);
-            string? localFeed = UpdateSourceOverride.Resolve(sourceDirectoryValue, out string? note);
+            string? localFeed = UpdateSourceOverride.Resolve(sourceDirectoryValue, appId, out string? note);
             if (note is not null)
             {
                 log(note);
