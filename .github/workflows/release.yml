@@ -90,6 +90,30 @@ jobs:
           # Velopack versions are SemVer without a leading 'v'; the tag has one.
           echo "release_version=${tag#v}" >> "$GITHUB_OUTPUT"
 
+      # THE RERUN GUARD (Codex review of PR #511, P1). Every installed App pins the SHA-256 of its own
+      # version's ntilde-mux-<rid> (Phase 5 Task 10). A second run for a tag that already has them -
+      # "Re-run all jobs", or a re-dispatch of the tag - signs the macOS binary again with a new secure
+      # timestamp, so new bytes and a new hash, and would replace the asset those Apps verify against.
+      # So the run stops here when the tag's release already carries ANY ntilde-mux asset. Here because
+      # every other job needs this one: nothing is built, signed or uploaded before it, and it runs
+      # before create_release, so none of this run's own uploads can exist yet and no run_attempt check
+      # is needed. A release that does not exist yet passes. "Re-run failed jobs" skips this job (it
+      # succeeded); publish_mux_daemon checks its own upload for that case. The script comes from the
+      # workflow's own ref, like the signing action, never from checkout_ref.
+      - name: Checkout workflow ref (provides the rerun guard)
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/ci
+          persist-credentials: false
+
+      - name: Refuse to replace a published ntilde-mux
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
+        run: bash scripts/ci/mux-release-guard.sh preflight "$RELEASE_TAG"
+
   create_release:
     name: Create Release
     runs-on: ubuntu-latest
@@ -2003,9 +2027,11 @@ jobs:
   # in statically (spec §2 decision 1); should the osx-arm64 static link ever fail, that RID
   # alone falls back to {exe, librusty_pty.dylib}, and this job is where that change would land.
   # ===========================================================================
-  # RE-RUNS: "Re-run failed jobs" is safe. "Re-run all jobs", or a re-dispatch of an already published
-  # tag, re-signs the macOS binary, which changes its hash and breaks the pin in Apps of that version
-  # that were already downloaded. Don't do that; cut a new tag instead.
+  # RE-RUNS: "Re-run failed jobs" is safe for a leg that failed before its upload. "Re-run all jobs", or
+  # a re-dispatch of an already published tag, would re-sign the macOS binary, which changes its hash and
+  # breaks the pin in Apps of that version that were already downloaded. Both are refused: release_metadata
+  # stops a run whose tag already has any ntilde-mux asset, and a leg rerun on its own fails right after
+  # an upload that found its assets already there (scripts/ci/mux-release-guard.sh). Cut a new tag instead.
   publish_mux_daemon:
     name: Publish ntilde-mux (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
@@ -2297,14 +2323,28 @@ jobs:
           test -f "artifacts/release/ntilde-mux-$RID.sha256" || { echo "::error::no ntilde-mux-$RID.sha256" >&2; exit 1; }
           (cd artifacts/release && cat "ntilde-mux-$RID.sha256" && ls -la "ntilde-mux-$RID")
 
+      # Never replaces an asset that is already there (overwrite_files defaults to true): installed Apps
+      # pin its hash. At this pinned SHA (v2.6.2) `false` SKIPS an existing asset and the step still
+      # succeeds, leaving it out of the `assets` output, so the next step fails the leg on any skip.
       - name: Upload ntilde-mux release assets
+        id: mux_upload
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.release_metadata.outputs.release_tag }}
           fail_on_unmatched_files: true
+          overwrite_files: false
           files: |
             artifacts/release/ntilde-mux-${{ matrix.rid }}
             artifacts/release/ntilde-mux-${{ matrix.rid }}.sha256
+
+      # A leg rerun on its own skips release_metadata's guard. If its assets were already published, the
+      # upload above kept them and this run's checksum describes bytes the release does not carry: fail
+      # here, before the next step hands that checksum to the App builds.
+      - name: Check this run uploaded both ntilde-mux assets
+        env:
+          RID: ${{ matrix.rid }}
+          UPLOADED_ASSETS: ${{ steps.mux_upload.outputs.assets }}
+        run: bash scripts/ci/mux-release-guard.sh uploaded "$RID"
 
       # The checksum again, as a workflow artifact: publish_aot and publish_linux embed all three in the
       # App (-p:NtildeMuxSha256Dir) so a download is verified against what THIS release shipped, not

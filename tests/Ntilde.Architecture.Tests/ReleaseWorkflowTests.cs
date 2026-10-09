@@ -40,7 +40,45 @@ public sealed partial class ReleaseWorkflowTests
             "A failed ntilde-mux leg would then ship an App version that can never install ntilde-mux on that platform.");
     }
 
-    private sealed record Job(string Name, IReadOnlyList<string> Needs, bool UploadsToRelease);
+    /// <summary>Runs the rerun guard (Codex review of PR #511, P1); every other job must wait for it.</summary>
+    private const string GuardJob = "release_metadata";
+
+    [Fact]
+    public void Every_job_waits_for_the_ntilde_mux_rerun_guard()
+    {
+        Dictionary<string, Job> jobs = ParseJobs(File.ReadAllLines(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml")));
+        Assert.Contains(GuardJob, jobs.Keys);
+        Assert.True(jobs[GuardJob].Body.Any(l => l.Contains("scripts/ci/mux-release-guard.sh preflight", StringComparison.Ordinal)),
+            $"{GuardJob} no longer runs scripts/ci/mux-release-guard.sh preflight: a rerun could sign ntilde-mux again and replace the asset installed Apps pin.");
+
+        string[] unguarded = jobs.Keys.Where(name => name != GuardJob && !DependsOn(jobs, name, GuardJob)).ToArray();
+        Assert.True(unguarded.Length == 0,
+            $"These release.yml jobs can start before the ntilde-mux rerun guard in {GuardJob}: {string.Join(", ", unguarded)}.");
+    }
+
+    [Fact]
+    public void The_ntilde_mux_upload_never_overwrites_and_is_checked_before_its_checksum_reaches_the_app()
+    {
+        Dictionary<string, Job> jobs = ParseJobs(File.ReadAllLines(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml")));
+        List<string> body = jobs[MuxDaemonJob].Body;
+
+        // Steps are the items six spaces in, under the job's `steps:`.
+        int[] starts = Enumerable.Range(0, body.Count).Where(i => body[i].StartsWith("      - ", StringComparison.Ordinal)).Append(body.Count).ToArray();
+        List<string>[] steps = Enumerable.Range(0, starts.Length - 1).Select(i => body.GetRange(starts[i], starts[i + 1] - starts[i])).ToArray();
+
+        int upload = Array.FindIndex(steps, s => s.Any(l => l.TrimStart().StartsWith("uses: softprops/action-gh-release", StringComparison.Ordinal)));
+        Assert.True(upload >= 0, $"{MuxDaemonJob} no longer uploads with softprops/action-gh-release; revisit this test.");
+        Assert.True(steps[upload].Any(l => StripComment(l).Trim() == "overwrite_files: false"),
+            $"{MuxDaemonJob}'s release upload must set overwrite_files: false: installed Apps pin the hash of what is already there.");
+
+        Assert.True(upload + 1 < steps.Length && steps[upload + 1].Any(l => l.Contains("scripts/ci/mux-release-guard.sh uploaded", StringComparison.Ordinal)),
+            $"The step right after {MuxDaemonJob}'s release upload must run scripts/ci/mux-release-guard.sh uploaded: overwrite_files: false skips an existing asset and succeeds.");
+
+        int checksum = Array.FindIndex(steps, s => s.Any(l => l.TrimStart().StartsWith("uses: actions/upload-artifact", StringComparison.Ordinal)));
+        Assert.True(checksum > upload + 1, $"{MuxDaemonJob} hands its checksum to the App builds before its release upload is checked.");
+    }
+
+    private sealed record Job(string Name, IReadOnlyList<string> Needs, bool UploadsToRelease, List<string> Body);
 
     private static bool DependsOn(Dictionary<string, Job> jobs, string job, string dependency)
     {
@@ -71,7 +109,7 @@ public sealed partial class ReleaseWorkflowTests
             Match key = line is null ? Match.Empty : JobKey().Match(line);
             if (line is null || newTopLevel || key.Success)
             {
-                if (name is not null) jobs[name] = new Job(name, ParseNeeds(body), body.Any(l => l.TrimStart().StartsWith("uses: softprops/action-gh-release", StringComparison.Ordinal)));
+                if (name is not null) jobs[name] = new Job(name, ParseNeeds(body), body.Any(l => l.TrimStart().StartsWith("uses: softprops/action-gh-release", StringComparison.Ordinal)), [.. body]);
                 if (line is null || newTopLevel) break;
                 name = key.Groups[1].Value;
                 body.Clear();

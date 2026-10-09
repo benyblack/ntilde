@@ -119,6 +119,15 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/mux_protocol_range_tests.py
 
+      # release.yml refuses a run that would replace a published ntilde-mux, whose hash every installed App
+      # pins (Codex review of PR #511): scripts/ci/mux-release-guard.sh, tested here against a fake gh.
+      - name: Self-test the release's ntilde-mux rerun guard
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/mux_release_guard_tests.py
+
       # ── Rust native ────────────────────────────────────────────────────────────
       # Cache the compiled binary keyed on all Rust source files.
       # On a hit the toolchain install, Swatinem, and cargo build are all skipped.
