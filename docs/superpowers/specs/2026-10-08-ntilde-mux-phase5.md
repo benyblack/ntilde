@@ -282,8 +282,11 @@ R13 (§4, Tasks 4, 6). The install dir is `$XDG_DATA_HOME/ntilde/bin` when set a
 offline one-liner resolves the dir in the user's own shell and prints it, so an `XDG_DATA_HOME` set only
 interactively can disagree with the exec channel's (accepted).
 
-R14 (§4, Task 5). New askpass record folders are `0700`; one that already exists at `0755` is not
-tightened (only dev-mux testers can have one, and the daemon's "never chmod an existing dir" stands).
+R14 (§4, Task 5; amended after the Codex review of PR #511). New askpass record folders are `0700`. One
+that already exists with another mode (an older build made it under the umask) is tightened to `0700` by the
+askpass writer before any record is written; when that fails (the folder is not ours, or is a link), no record
+is written and askpass takes its no-evidence path. `PrivateDirectory` itself still never changes an existing
+folder: the daemon's "never chmod an existing dir" rule for its socket folder stands.
 
 R15 (§4, Task 8). The agent link is repointed only at a socket that answers and whose listener runs as
 this user (`SO_PEERCRED` / `LOCAL_PEERCRED` against `geteuid()`); when that cannot be checked, never.
