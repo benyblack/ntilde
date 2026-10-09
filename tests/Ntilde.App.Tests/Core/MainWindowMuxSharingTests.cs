@@ -1162,12 +1162,13 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession m && m.Id == id), "the shared tab's session is wired");
         TerminalPane pane = AllPanes(window).Single(p => p.Session is MuxClientSession m && m.Id == id);
         Assert.False(((MuxClientSession)pane.Session!).IsAttached);
-        return (pane, () =>
+        void Release()
         {
             parsing.Set();
             Assert.True(held.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
             parsing.Dispose();
-        });
+        }
+        return (pane, Release);
     }
 
     /// <summary>
