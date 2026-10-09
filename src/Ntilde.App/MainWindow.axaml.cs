@@ -10574,6 +10574,8 @@ namespace Ntilde
                     var nodes = new Stack<PaneNode>([root]);
                     while (nodes.TryPop(out PaneNode? node))
                     {
+                        // A hand-edited or merged file can hold a null child, as DedupeMuxIds and WithoutMuxIds allow for.
+                        if (node is null) continue;
                         foreach (PaneNode child in node.Children) nodes.Push(child);
                         if (Guid.TryParse(node.MuxSessionId, out Guid id) && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal)
                         {
@@ -10590,7 +10592,11 @@ namespace Ntilde
         /// <summary>How long a closing window waits for the local daemon to list its shells (final review M3).</summary>
         internal static readonly TimeSpan PendingShellsListTimeout = TimeSpan.FromSeconds(2);
 
-        /// <summary>Test seam: how a closing window lists the local daemon's shells (<see cref="UnshownLocalMuxSessionsAsync"/>). Called off the UI thread.</summary>
+        /// <summary>
+        /// Test seam: how a closing window lists the local daemon's shells - for the first-close question
+        /// (<see cref="UnshownLocalMuxSessionsAsync"/>) and before "Quit and close all shells" (<see cref="QuitAndCloseAllShellsAsync"/>).
+        /// Called off the UI thread.
+        /// </summary>
         internal Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> MuxListSessionsForClose { get; set; } =
             static (client, ct) => client.ListSessionsAsync(ct);
 
@@ -10689,7 +10695,8 @@ namespace Ntilde
         /// "Quit and close all shells" (Task 17): ends EVERY shell in the local daemon - this window's panes, shells
         /// shared with other clients, and detached ones - shuts the daemon down, and closes the window. Remote shells
         /// are untouched. Asks first, naming the daemon's running count. The ended shells are not saved for reattach,
-        /// so the next launch starts fresh ones quietly. A daemon that cannot be reached or does not stop is logged and
+        /// so the next launch starts fresh ones quietly - those of tabs not shown yet only once they are known gone (the
+        /// stop went through, or each was killed by name). A daemon that cannot be reached or does not stop is logged and
         /// the window closes anyway.
         /// </summary>
         internal async Task QuitAndCloseAllShellsAsync()
@@ -10699,6 +10706,7 @@ namespace Ntilde
             try
             {
                 // Off the UI thread: GetClient blocks while a connect is in flight.
+                Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> list = MuxListSessionsForClose;
                 IReadOnlyList<Guid>? running = await Task.Run(async () =>
                 {
                     Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(3));
@@ -10706,7 +10714,7 @@ namespace Ntilde
                     using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
                     try
                     {
-                        IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
+                        IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await list(client, cts.Token).ConfigureAwait(false);
                         return (IReadOnlyList<Guid>)all.Where(s => s.Running).Select(s => s.SessionId).ToList();
                     }
                     catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
@@ -10736,10 +10744,11 @@ namespace Ntilde
                 // runs - shared and detached ones - is killed on this connection, and the daemon is shut down.
                 EndLocalSessionsOnTeardown();
                 var others = running?.Where(id => !_localSessionsEndedOnClose.Contains(id)).ToList() ?? [];
-                MarkLocalShellsEnded();
+                MarkLivePaneShellsEnded();
 
-                await Task.Run(async () =>
+                HashSet<Guid> killed = await Task.Run(async () =>
                 {
+                    var done = new HashSet<Guid>();
                     if (others.Count > 0 && host.GetClient(TimeSpan.FromSeconds(3)) is { } client)
                     {
                         foreach (Guid id in others)
@@ -10748,6 +10757,7 @@ namespace Ntilde
                             {
                                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
                                 await client.KillAsync(id, cts.Token).ConfigureAwait(false);
+                                done.Add(id);
                             }
                             catch (Exception ex)
                             {
@@ -10755,9 +10765,17 @@ namespace Ntilde
                             }
                         }
                     }
+
+                    return done;
                 });
 
-                await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), "quitting");
+                LocalDaemonStop stop = await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), "quitting");
+
+                // PR #511 residual M1: the shells of tabs not shown yet are left out of the session only once they are known
+                // to be gone - the daemon stopped (or was sent shutdown with no process to watch), or each was killed by name.
+                // Otherwise they may still run, and stay named, so the next launch reopens them in their tabs. Marked before
+                // Close(): its OnClosing runs the teardown, whose save is the one that reads the marks.
+                MarkHeldLocalShellsEnded(stop is LocalDaemonStop.Gone or LocalDaemonStop.StopUnconfirmed ? null : killed);
 
                 _closeConfirmed = true;
                 Close();
@@ -11560,16 +11578,34 @@ namespace Ntilde
         /// (PR #511 review, Greptile P2) every id held without a live pane: a pane's pending one and a startup placeholder's
         /// (<see cref="HeldLocalMuxSessionIds"/>). Shares included: the whole daemon stops, so a shared shell ends with it
         /// (the quit kills it by name, R20), as a live share pane's always was marked here; a tab not shown yet then reopens
-        /// as a shown one does, with a fresh shell. Idempotent.
+        /// as a shown one does, with a fresh shell. Idempotent. The update marks them all before its shutdown, as it saves
+        /// before it; the quit marks the held ids only once their end is known (<see cref="MarkHeldLocalShellsEnded"/>).
         /// </summary>
         private void MarkLocalShellsEnded()
+        {
+            MarkLivePaneShellsEnded();
+            MarkHeldLocalShellsEnded(only: null);
+        }
+
+        /// <summary>The live local panes' half of <see cref="MarkLocalShellsEnded"/>.</summary>
+        private void MarkLivePaneShellsEnded()
         {
             foreach (TerminalPane pane in _paneOwnerTab.Keys)
             {
                 if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
             }
+        }
 
-            foreach ((Guid id, _, _) in HeldLocalMuxSessionIds()) _localSessionsEndedOnClose.Add(id);
+        /// <summary>
+        /// The held half of <see cref="MarkLocalShellsEnded"/> (<see cref="HeldLocalMuxSessionIds"/>): every such id, or with
+        /// <paramref name="only"/> just those in it - the quit's, when its stop failed, are the ones it killed by name.
+        /// </summary>
+        private void MarkHeldLocalShellsEnded(IReadOnlySet<Guid>? only)
+        {
+            foreach ((Guid id, _, _) in HeldLocalMuxSessionIds())
+            {
+                if (only is null || only.Contains(id)) _localSessionsEndedOnClose.Add(id);
+            }
         }
 
         /// <summary>

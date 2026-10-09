@@ -245,6 +245,78 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
         AssertTheNextWindowStartsFreshShellsQuietly(listen => CreateWindow(_ => Task.FromResult(false), beforeShow: listen), 4, ids);
     }
 
+    private static readonly Ntilde.Mux.Contracts.MuxEndpointDescriptor Described =
+        new() { Endpoint = "test", Pid = 4242, ProcessName = "Ntilde", MinVersion = 1, MaxVersion = 2 };
+
+    /// <summary>The quit's stop fails: none answers its probe (<paramref name="reached"/> false), or it never exits after <c>shutdown</c>.</summary>
+    private static void FailTheStop(MainWindow window, bool reached)
+    {
+        if (reached)
+        {
+            window.MuxReadDescriptorForUpdate = () => Described;
+            window.MuxWaitForDaemonExitForUpdate = _ => Task.FromResult(false);
+        }
+        else
+        {
+            window.MuxProbeForUpdate = _ => Task.FromResult<MuxClient?>(null);
+        }
+    }
+
+    /// <summary>
+    /// PR #511 residual M1: the listing before the quit timed out, so no shell of a tab not shown yet is killed by name, and
+    /// the daemon's stop fails (nothing answers it, or it never exits). Those shells still run, so they stay named for the
+    /// next launch, which reopens them in their tabs - only the shown tab's shell, ended through the host, is dropped.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void A_quit_that_cannot_list_or_stop_keeps_the_shells_of_tabs_not_shown_yet_named(bool reached, bool placeholders)
+    {
+        Guid[] ids = SpawnUnshown(_mux, 3);
+        SaveTabs(LocalLeaf(ids[0]), LocalLeaf(ids[1]), LocalLeaf(ids[2]));
+        var asked = new List<int>();
+        MainWindow window = CreateWindow(count => { asked.Add(count); return Task.FromResult(true); }, keepPlaceholders: placeholders);
+        if (!placeholders) PumpUntil(() => window.AllPanesForTest().Count(p => p.MuxSessionIdToRestore is not null) == 2, "every restored tab was built");
+        window.MuxListSessionsForClose = (_, _) => throw new TimeoutException("scripted: the listing timed out");
+        FailTheStop(window, reached);
+
+        Task quit = window.QuitAndCloseAllShellsAsync();
+        PumpUntil(() => quit.IsCompleted && !window.IsVisible, "the window closed");
+
+        Assert.Equal([-1], asked); // the count was unknown
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(ids[0]), "the shown tab's shell was ended through the host");
+        Assert.Contains(ids[1], _mux.Server.GetSessionIds());
+        Assert.Contains(ids[2], _mux.Server.GetSessionIds());
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.DoesNotContain(ids[0].ToString(), saved, StringComparison.Ordinal);
+        Assert.Contains(ids[1].ToString(), saved, StringComparison.Ordinal);
+        Assert.Contains(ids[2].ToString(), saved, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PR #511 residual M1, the other half: when the stop fails but the listing worked, each shell of a tab not shown yet
+    /// that was killed by name is known to be gone, and is dropped from the session file as before.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_quit_whose_stop_fails_still_drops_the_shells_it_killed_by_name(bool reached)
+    {
+        Guid[] ids = SpawnUnshown(_mux, 3);
+        SaveTabs(LocalLeaf(ids[0]), LocalLeaf(ids[1]), LocalLeaf(ids[2]));
+        MainWindow window = CreateWindow(_ => Task.FromResult(true), keepPlaceholders: true);
+        FailTheStop(window, reached);
+
+        Task quit = window.QuitAndCloseAllShellsAsync();
+        PumpUntil(() => quit.IsCompleted && !window.IsVisible, "the window closed");
+
+        PumpUntil(() => !ids.Any(id => _mux.Server.GetSessionIds().Contains(id)), "every shell was killed");
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids, id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
     [AvaloniaTheory]
     [InlineData(SessionPersistenceMode.KeepOnClose, true)]
     [InlineData(SessionPersistenceMode.Off, false)]

@@ -314,8 +314,14 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   session the local daemon lists and shuts it down (`ShutdownLocalDaemonAsync`). Ended shells are
   saved as gone (`MarkLocalShellsEnded`), so the next launch starts fresh ones without a notice; when
   the whole daemon stops (this quit, an update that cannot keep it) that covers every local id the
-  window holds without a live pane too, shares included (`HeldLocalMuxSessionIds`). Task 23's restart
-  marks nothing: its panes let go of their ids, and a pending id stays named in case the stop failed.
+  window holds without a live pane too, shares included (`HeldLocalMuxSessionIds`). The quit marks
+  those only once they are known gone (`MarkHeldLocalShellsEnded`: the stop returned `Gone` or
+  `StopUnconfirmed`, or each id was killed by name), before `Close()`, whose teardown save reads the
+  marks; otherwise they stay named and reopen in their tabs. The update marks them all before its
+  shutdown, as it saves before it; the accepted corner is a daemon judged `UnknownImage` that really
+  runs outside the root and survives a failed shutdown: its shells keep running unnamed, and the next
+  launch adopts them as orphans. Task 23's restart marks nothing: its panes let go of their ids, and a
+  pending id stays named in case the stop failed.
 - **Quiet restore (R2).** `Shell/Native/SessionStartBoundary.Read` gives the time no live local session
   can predate: on Windows the later of the boot (`UtcNow - TickCount64`) and this logon session's start
   (`WTSQuerySessionInformationW`, `WTSSessionInfo`), since Fast Startup's "Shut down" is a logoff that
