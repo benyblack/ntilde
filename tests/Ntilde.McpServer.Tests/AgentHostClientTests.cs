@@ -337,6 +337,12 @@ public class SessionToolsFormattingTests
         Assert.Contains($"| {muxId} | build | this computer | local (windowless) | 100x30 | no | - | - |", text, StringComparison.Ordinal);
         Assert.Contains($"| {sshId} | deploy | nova@box | ssh (windowless) | 80x24 | no | exited (heuristic) | - |", text, StringComparison.Ordinal);
         Assert.Contains("windowless: running in the multiplexer with no window here", text, StringComparison.Ordinal);
+        // Final review M2: the footnote names exactly the tools that take a windowless id, and the two that do not.
+        Assert.Contains(
+            "Its id works with ntilde.read_screen, ntilde.read_scrollback, ntilde.get_session_status, ntilde.capture_screen (mode='render' only), "
+            + "ntilde.send_input and ntilde.close_session; ntilde.export_replay and ntilde.wait_for_events do not cover it.",
+            text, StringComparison.Ordinal);
+        Assert.DoesNotContain("every session tool", text, StringComparison.Ordinal);
 
         var panesOnly = SessionTools.FormatSessionList(new[]
         {
