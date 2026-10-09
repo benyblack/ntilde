@@ -77,9 +77,13 @@ namespace Ntilde
             hosts.HostConnected += OnMuxHostConnected;
         }
 
-        /// <summary>A host connected (on the pool, from its event queue, which must not wait): decided on the UI thread.</summary>
+        /// <summary>
+        /// A host connected (on the pool, from its event queue, which must not wait): decided on the UI thread, posted
+        /// through this window's own dispatcher - never the <c>Dispatcher.UIThread</c> static, whose read off the UI thread
+        /// is what poisoned headless test runs (#81): a test window's host can connect after its test returned.
+        /// </summary>
         private void OnMuxHostConnected(MuxEndpointId id, MuxConnectionHost host, MuxClient client) =>
-            Dispatcher.UIThread.Post(() => _ = OfferMuxRestartAsync(id, host, client));
+            Dispatcher.Post(() => _ = OfferMuxRestartAsync(id, host, client));
 
         /// <summary>
         /// UI thread, with persistence on (nothing new appears with "Off"); once per launch for each endpoint, offered first,

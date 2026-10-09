@@ -6652,11 +6652,12 @@ namespace Ntilde
         /// <see cref="TerminalPane.MuxSessionIdToRestore"/>: a restored tab not shown yet, an adopted orphan), on every
         /// endpoint: <see cref="OfferMuxSessionsAsync"/>'s "open here", not only the local daemon's. The windowless source
         /// asks it from the agent host's thread; this is its one touch of the window, posted to the UI thread and
-        /// awaited there, never waited for.
+        /// awaited there, never waited for. Posted through this window's own dispatcher, never the
+        /// <c>Dispatcher.UIThread</c> static: an off-thread read of that is what poisoned headless test runs (#81).
         /// </summary>
         private async Task<IReadOnlySet<(string Endpoint, Guid Id)>> MuxSessionsShownHereAsync()
         {
-            return await Dispatcher.UIThread.InvokeAsync<IReadOnlySet<(string Endpoint, Guid Id)>>(() =>
+            return await Dispatcher.InvokeAsync<IReadOnlySet<(string Endpoint, Guid Id)>>(() =>
             {
                 var shown = new HashSet<(string Endpoint, Guid Id)>();
                 foreach (TerminalPane p in AllPanes())
