@@ -11486,16 +11486,18 @@ namespace Ntilde
                 // SessionPersistence off changes nothing from before Phase 5: no daemon is kept, and the question words it
                 // as it always did - "the new version cannot keep them" may not be true of a daemon it could keep.
                 bool persistenceOff = !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence);
+                // None with persistence off: the question then gives no reason, as before Phase 5.
+                Ntilde.Update.MuxUpdateStopReason why = Ntilde.Update.MuxUpdateStopReason.None;
                 if (persistenceOff)
                 {
                     AppLogger.Log("[MainWindow] session persistence is off; the update closes the multiplexer's sessions, as before Phase 5");
                 }
-                else if (await UpdateKeepsMuxDaemonAsync())
+                else if ((why = await WhyUpdateStopsMuxDaemonAsync()) == Ntilde.Update.MuxUpdateStopReason.None)
                 {
                     return MuxUpdatePreparation.Apply;
                 }
 
-                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon, sayWhy: !persistenceOff))
+                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon, why))
                 {
                     return MuxUpdatePreparation.Cancel;
                 }
@@ -11518,11 +11520,12 @@ namespace Ntilde
 
         /// <summary>
         /// Phase 5 R10: whether the staged update keeps the live daemon - the new build speaks its protocol (the release
-        /// notes' marker; none counts as compatible) and the apply does not kill it (its image is outside the install root).
-        /// A daemon whose descriptor cannot be read, or anything failing on the way, is not kept: today's question and
-        /// shutdown. The image lookup runs off the UI thread. Never throws.
+        /// notes' marker; none counts as compatible) and the apply does not kill it (its image is outside the install root) -
+        /// and if not, why (<see cref="Ntilde.Update.MuxUpdateStopReason"/>, which the question gives: PR #511 heads-up). A
+        /// daemon whose descriptor cannot be read, or anything failing on the way, is not kept, as one whose image is unknown:
+        /// today's question and shutdown. The image lookup runs off the UI thread. Never throws.
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> UpdateKeepsMuxDaemonAsync()
+        private async System.Threading.Tasks.Task<Ntilde.Update.MuxUpdateStopReason> WhyUpdateStopsMuxDaemonAsync()
         {
             try
             {
@@ -11530,22 +11533,23 @@ namespace Ntilde
                 if (descriptor is null)
                 {
                     AppLogger.Log("[MainWindow] the multiplexer's descriptor could not be read; the update closes its sessions");
-                    return false;
+                    return Ntilde.Update.MuxUpdateStopReason.UnknownImage;
                 }
 
                 (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(_updateCoordinator?.StagedReleaseNotes);
                 string? installRoot = MuxInstallRootForUpdate();
                 string? image = installRoot is null ? null : await Task.Run(() => MuxDaemonImagePathForUpdate(descriptor));
-                bool keep = Ntilde.Update.MuxUpdateCompatibility.KeepsDaemon((descriptor.MinVersion, descriptor.MaxVersion), newBuild, image, installRoot);
+                Ntilde.Update.MuxUpdateStopReason why = Ntilde.Update.MuxUpdateCompatibility.WhyUpdateStopsDaemon((descriptor.MinVersion, descriptor.MaxVersion), newBuild, image, installRoot);
                 string newRange = newBuild is { } b ? $"{b.Min}-{b.Max}" : "not stated";
                 string where = installRoot is null ? "the apply kills no process" : $"its image is {image ?? "unknown"}, the install root {installRoot}";
-                AppLogger.Log($"[MainWindow] the update {(keep ? "keeps" : "closes")} the multiplexer: protocol {descriptor.MinVersion}-{descriptor.MaxVersion}, the new build's {newRange}; {where}");
-                return keep;
+                string verdict = why == Ntilde.Update.MuxUpdateStopReason.None ? "keeps" : $"closes ({why})";
+                AppLogger.Log($"[MainWindow] the update {verdict} the multiplexer: protocol {descriptor.MinVersion}-{descriptor.MaxVersion}, the new build's {newRange}; {where}");
+                return why;
             }
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] deciding whether the update keeps the multiplexer failed; it closes its sessions: {ex.Message}");
-                return false;
+                return Ntilde.Update.MuxUpdateStopReason.UnknownImage;
             }
         }
 
@@ -11601,11 +11605,12 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// True to go ahead: no running sessions, an unknown count, or the user confirmed. <paramref name="sayWhy"/> adds
-        /// "(the new version cannot keep them)" - true only when the update was asked to keep the daemon and could not; with
-        /// persistence off the question is worded as before Phase 5.
+        /// True to go ahead: no running sessions, an unknown count, or the user confirmed. <paramref name="why"/> is the reason
+        /// the question gives (<see cref="Ntilde.Update.MuxUpdateCompatibility.SessionLossQuestion"/>): the protocol, the install
+        /// folder, or a daemon that could not be checked - each only when the update was asked to keep the daemon and could
+        /// not. <see cref="Ntilde.Update.MuxUpdateStopReason.None"/> (persistence off) words it as before Phase 5.
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon, bool sayWhy)
+        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon, Ntilde.Update.MuxUpdateStopReason why)
         {
             IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> sessions;
             try
@@ -11628,11 +11633,7 @@ namespace Ntilde
 
             try
             {
-                string sessionsClosed = running == 1
-                    ? "1 multiplexed session will be closed by the update"
-                    : $"{running} multiplexed sessions will be closed by the update";
-                string why = !sayWhy ? "" : running == 1 ? " (the new version cannot keep it)" : " (the new version cannot keep them)";
-                return await ConfirmSessionLossForUpdate(sessionsClosed + why + ".");
+                return await ConfirmSessionLossForUpdate(Ntilde.Update.MuxUpdateCompatibility.SessionLossQuestion(running, why));
             }
             catch (Exception ex)
             {

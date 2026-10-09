@@ -9,6 +9,44 @@ using Ntilde.Shell.Mux;
 namespace Ntilde.Update;
 
 /// <summary>
+/// Why applying a staged update does not keep the live local daemon (<see cref="MuxUpdateCompatibility.WhyUpdateStopsDaemon"/>):
+/// the reason the update's question gives (<see cref="MuxUpdateCompatibility.SessionLossQuestion"/>).
+/// </summary>
+internal enum MuxUpdateStopReason
+{
+    /// <summary>The update keeps it - or, for the question, no reason is given (SessionPersistence off, as before Phase 5).</summary>
+    None,
+
+    /// <summary>The new build's protocol range does not overlap the daemon's: the new version cannot speak to it.</summary>
+    Protocol,
+
+    /// <summary>
+    /// Its image is under the install root, which Velopack's apply kills every process under (R9): a daemon a pre-Phase-5
+    /// build started from <c>current\</c>, or one whose own copy could not be staged (<c>MuxDaemonImage.Resolve</c>).
+    /// </summary>
+    InstallFolder,
+
+    /// <summary>Where it runs from cannot be told - its image or its descriptor cannot be read - so it is never taken to be outside.</summary>
+    UnknownImage,
+}
+
+/// <summary>Why the startup gate holds back a staged update (<see cref="MuxUpdateCompatibility.StartupApplyHoldFor"/>), for debug.log.</summary>
+internal enum StartupApplyHold
+{
+    /// <summary>It does not: no live daemon, or one the apply leaves alone with persistence on.</summary>
+    None,
+
+    /// <summary>The live daemon's image is under the install root: the apply would kill it.</summary>
+    InstallFolder,
+
+    /// <summary>The live daemon's image, or its descriptor, cannot be read: never taken to be outside the install root.</summary>
+    UnknownImage,
+
+    /// <summary>SessionPersistence is off: any live daemon holds it, as before Phase 5.</summary>
+    PersistenceOff,
+}
+
+/// <summary>
 /// Whether applying a staged update keeps the running local multiplexer daemon (Phase 5 R10). The daemon survives when
 /// the new build speaks its protocol and the apply does not kill it. Velopack's Windows apply kills every process whose
 /// image is under the install root (R9), so a daemon a pre-Phase-5 build started from <c>current\</c> dies whatever the
@@ -47,8 +85,43 @@ internal static partial class MuxUpdateCompatibility
     /// to be outside it.
     /// </summary>
     public static bool KeepsDaemon((int Min, int Max) daemon, (int Min, int Max)? newBuild, string? daemonImagePath, string? installRoot) =>
-        (newBuild is not { } build || MuxProtocol.NegotiateVersion(daemon.Min, daemon.Max, build.Min, build.Max) is not null)
-        && SurvivesApply(daemonImagePath, installRoot);
+        WhyUpdateStopsDaemon(daemon, newBuild, daemonImagePath, installRoot) == MuxUpdateStopReason.None;
+
+    /// <summary>
+    /// <see cref="KeepsDaemon"/>'s answer with its reason: <see cref="MuxUpdateStopReason.None"/> when the update keeps the
+    /// daemon. The protocol decides first - a daemon the new build cannot speak to is not kept wherever it runs - then
+    /// where it runs from (<see cref="WhereApplyLeaves"/>).
+    /// </summary>
+    public static MuxUpdateStopReason WhyUpdateStopsDaemon((int Min, int Max) daemon, (int Min, int Max)? newBuild, string? daemonImagePath, string? installRoot)
+    {
+        if (newBuild is { } build && MuxProtocol.NegotiateVersion(daemon.Min, daemon.Max, build.Min, build.Max) is null) return MuxUpdateStopReason.Protocol;
+        return WhereApplyLeaves(daemonImagePath, installRoot) switch
+        {
+            ApplyKills.No => MuxUpdateStopReason.None,
+            ApplyKills.Yes => MuxUpdateStopReason.InstallFolder,
+            _ => MuxUpdateStopReason.UnknownImage,
+        };
+    }
+
+    /// <summary>
+    /// The in-app update's question for <paramref name="running"/> sessions: "N multiplexed session(s) will be closed by the
+    /// update", with <paramref name="reason"/> in brackets - none for <see cref="MuxUpdateStopReason.None"/> (persistence
+    /// off: worded as before Phase 5, giving no reason that may not be true).
+    /// </summary>
+    public static string SessionLossQuestion(int running, MuxUpdateStopReason reason)
+    {
+        string sessionsClosed = running == 1
+            ? "1 multiplexed session will be closed by the update"
+            : $"{running} multiplexed sessions will be closed by the update";
+        string why = reason switch
+        {
+            MuxUpdateStopReason.Protocol => running == 1 ? " (the new version cannot keep it)" : " (the new version cannot keep them)",
+            MuxUpdateStopReason.InstallFolder => " (the multiplexer is running from the install folder, so the update has to stop it)",
+            MuxUpdateStopReason.UnknownImage => " (the multiplexer could not be checked, so the update has to stop it)",
+            _ => "",
+        };
+        return sessionsClosed + why + ".";
+    }
 
     /// <summary>
     /// The startup gate (Program.ShouldAutoApplyUpdateOnStartup): whether a live daemon stops Velopack applying a staged
@@ -63,15 +136,42 @@ internal static partial class MuxUpdateCompatibility
     /// <param name="daemonImagePath">The descriptor's daemon's image (<see cref="DaemonImagePath"/>).</param>
     /// <param name="persistenceOff">Whether the persisted SessionPersistence is off (false when it cannot be read).</param>
     public static bool BlocksStartupApply(string? installRoot, Func<bool> daemonLive, Func<MuxEndpointDescriptor?> readDescriptor,
+        Func<MuxEndpointDescriptor, string?> daemonImagePath, Func<bool> persistenceOff) =>
+        StartupApplyHoldFor(installRoot, daemonLive, readDescriptor, daemonImagePath, persistenceOff) != StartupApplyHold.None;
+
+    /// <summary><see cref="BlocksStartupApply"/>'s answer with its reason, for the startup log: <see cref="StartupApplyHold.None"/> when it does not block.</summary>
+    public static StartupApplyHold StartupApplyHoldFor(string? installRoot, Func<bool> daemonLive, Func<MuxEndpointDescriptor?> readDescriptor,
         Func<MuxEndpointDescriptor, string?> daemonImagePath, Func<bool> persistenceOff)
     {
         ArgumentNullException.ThrowIfNull(daemonLive);
         ArgumentNullException.ThrowIfNull(readDescriptor);
         ArgumentNullException.ThrowIfNull(daemonImagePath);
         ArgumentNullException.ThrowIfNull(persistenceOff);
-        if (!daemonLive()) return false;
-        if (installRoot is not null && (readDescriptor() is not { } descriptor || !SurvivesApply(daemonImagePath(descriptor), installRoot))) return true;
-        return persistenceOff();
+        if (!daemonLive()) return StartupApplyHold.None;
+        if (installRoot is not null)
+        {
+            ApplyKills kills = readDescriptor() is { } descriptor ? WhereApplyLeaves(daemonImagePath(descriptor), installRoot) : ApplyKills.Unknown;
+            if (kills == ApplyKills.Yes) return StartupApplyHold.InstallFolder;
+            if (kills == ApplyKills.Unknown) return StartupApplyHold.UnknownImage;
+        }
+
+        return persistenceOff() ? StartupApplyHold.PersistenceOff : StartupApplyHold.None;
+    }
+
+    /// <summary>
+    /// The debug.log line for a startup gate that held (Program.Main logs it once the log is up); null for
+    /// <see cref="StartupApplyHold.None"/>. Velopack is not asked whether an update is staged, so the line says "if any".
+    /// </summary>
+    public static string? DescribeStartupApplyHold(StartupApplyHold hold)
+    {
+        string? why = hold switch
+        {
+            StartupApplyHold.InstallFolder => "the multiplexer is running from the install folder, so applying it would stop every shell",
+            StartupApplyHold.UnknownImage => "where the multiplexer is running from could not be checked, so applying it might stop every shell",
+            StartupApplyHold.PersistenceOff => "session persistence is off and the multiplexer is running, as before Phase 5",
+            _ => null,
+        };
+        return why is null ? null : $"[Update] a staged update, if any, was not applied at startup: {why}; the in-app update asks first";
     }
 
     /// <summary>
@@ -97,21 +197,34 @@ internal static partial class MuxUpdateCompatibility
         }
     }
 
+    /// <summary>Whether the apply kills a process with a given image (<see cref="WhereApplyLeaves"/>).</summary>
+    private enum ApplyKills
+    {
+        /// <summary>No install root to kill under, or the image is known and outside it.</summary>
+        No,
+
+        /// <summary>The image is under the install root.</summary>
+        Yes,
+
+        /// <summary>The image is unknown or unreadable: never taken to be outside.</summary>
+        Unknown,
+    }
+
     /// <summary>
     /// Whether the apply leaves a process with this image alone: there is no install root to kill under, or the image is
-    /// known and outside it. An unknown or unreadable path is inside.
+    /// known and outside it. An unknown or unreadable path counts as inside (<see cref="ApplyKills.Unknown"/>).
     /// </summary>
-    private static bool SurvivesApply(string? imagePath, string? installRoot)
+    private static ApplyKills WhereApplyLeaves(string? imagePath, string? installRoot)
     {
-        if (installRoot is null) return true;
-        if (string.IsNullOrEmpty(imagePath)) return false;
+        if (installRoot is null) return ApplyKills.No;
+        if (string.IsNullOrEmpty(imagePath)) return ApplyKills.Unknown;
         try
         {
-            return !MuxDaemonImage.IsSameOrUnder(imagePath, installRoot);
+            return MuxDaemonImage.IsSameOrUnder(imagePath, installRoot) ? ApplyKills.Yes : ApplyKills.No;
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException)
         {
-            return false;
+            return ApplyKills.Unknown;
         }
     }
 

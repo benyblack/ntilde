@@ -132,6 +132,44 @@ public sealed class MuxUpdateCompatibilityTests
         Assert.Equal(kept, MuxUpdateCompatibility.KeepsDaemon((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null));
     }
 
+    /// <summary>
+    /// PR #511 heads-up: why an update does not keep the daemon, for the question it asks. The protocol decides first - a
+    /// daemon the new build cannot speak to is not kept wherever it runs - then where it runs from.
+    /// </summary>
+    [Theory]
+    [InlineData(3, 4, Image.OwnCopy, true, nameof(MuxUpdateStopReason.Protocol))]
+    [InlineData(3, 4, Image.InsideCurrent, true, nameof(MuxUpdateStopReason.Protocol))]
+    [InlineData(3, 4, Image.Unknown, false, nameof(MuxUpdateStopReason.Protocol))]
+    [InlineData(2, 3, Image.InsideCurrent, true, nameof(MuxUpdateStopReason.InstallFolder))]
+    [InlineData(null, null, Image.InsideAnotherFolder, true, nameof(MuxUpdateStopReason.InstallFolder))]
+    [InlineData(2, 3, Image.Unknown, true, nameof(MuxUpdateStopReason.UnknownImage))]
+    [InlineData(null, null, Image.Unknown, true, nameof(MuxUpdateStopReason.UnknownImage))]
+    [InlineData(2, 3, Image.OwnCopy, true, nameof(MuxUpdateStopReason.None))]
+    [InlineData(2, 3, Image.Unknown, false, nameof(MuxUpdateStopReason.None))]
+    public void Why_the_update_stops_the_daemon(int? newMin, int? newMax, Image image, bool installRoot, string reason)
+    {
+        (int, int)? newBuild = newMin is int min && newMax is int max ? (min, max) : null;
+
+        MuxUpdateStopReason why = MuxUpdateCompatibility.WhyUpdateStopsDaemon((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null);
+
+        Assert.Equal(Enum.Parse<MuxUpdateStopReason>(reason), why);
+        Assert.Equal(why == MuxUpdateStopReason.None, MuxUpdateCompatibility.KeepsDaemon((1, 2), newBuild, PathOf(image), installRoot ? InstallRoot : null));
+    }
+
+    /// <summary>The update's question names the reason it gives (none with persistence off, worded as before Phase 5).</summary>
+    [Theory]
+    [InlineData(1, nameof(MuxUpdateStopReason.Protocol), "1 multiplexed session will be closed by the update (the new version cannot keep it).")]
+    [InlineData(2, nameof(MuxUpdateStopReason.Protocol), "2 multiplexed sessions will be closed by the update (the new version cannot keep them).")]
+    [InlineData(1, nameof(MuxUpdateStopReason.InstallFolder), "1 multiplexed session will be closed by the update (the multiplexer is running from the install folder, so the update has to stop it).")]
+    [InlineData(3, nameof(MuxUpdateStopReason.InstallFolder), "3 multiplexed sessions will be closed by the update (the multiplexer is running from the install folder, so the update has to stop it).")]
+    [InlineData(2, nameof(MuxUpdateStopReason.UnknownImage), "2 multiplexed sessions will be closed by the update (the multiplexer could not be checked, so the update has to stop it).")]
+    [InlineData(1, nameof(MuxUpdateStopReason.None), "1 multiplexed session will be closed by the update.")]
+    [InlineData(4, nameof(MuxUpdateStopReason.None), "4 multiplexed sessions will be closed by the update.")]
+    public void The_update_question_gives_the_reason(int running, string reason, string question)
+    {
+        Assert.Equal(question, MuxUpdateCompatibility.SessionLossQuestion(running, Enum.Parse<MuxUpdateStopReason>(reason)));
+    }
+
     [Fact]
     public void A_root_given_with_a_trailing_separator_still_contains_its_folders()
     {

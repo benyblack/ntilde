@@ -945,11 +945,14 @@ judged against the version installed on each host rather than this Ntilde's (12.
 **An update that cannot keep the multiplexer.** When the new version speaks no multiplexer protocol
 in common with the running one, or, on Windows, the multiplexer runs from the install folder (which
 the update replaces), Ntilde asks first. The *Apply Update* dialog reads "Multiplexed sessions are
-still running." and "N multiplexed sessions will be closed by the update (the new version cannot
-keep them).", with **Close sessions and update** and **Cancel**; Cancel leaves the update unapplied.
-While a multiplexer runs from the install folder, a downloaded update is not applied automatically
-when Ntilde starts: apply it from the update notification or the command palette, so Ntilde can ask
-first.
+still running." and "N multiplexed sessions will be closed by the update", then the reason: "(the
+new version cannot keep them)", "(the multiplexer is running from the install folder, so the update
+has to stop it)", or, when Ntilde cannot tell where it runs from, "(the multiplexer could not be
+checked, so the update has to stop it)". The buttons are **Close sessions and update** and
+**Cancel**; Cancel leaves the update unapplied. A multiplexer runs from the install folder when an
+Ntilde without the copy above started it, or when Ntilde could not make its copy (a full disk, say).
+While one does, a downloaded update is not applied automatically when Ntilde starts (`debug.log`
+says why): apply it from the update notification or the command palette, so Ntilde can ask first.
 
 **A multiplexer this Ntilde cannot talk to.** If one is running when Ntilde starts (an update applied
 while Ntilde started, say), new panes start normal shells with the *Session not persistent*

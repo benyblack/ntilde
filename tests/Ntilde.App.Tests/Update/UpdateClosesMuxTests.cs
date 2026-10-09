@@ -35,6 +35,14 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     private const string IncompatibleNotes = "<!-- ntilde-mux-protocol: 3-4 -->";
     private const string ClosesOneSession = "1 multiplexed session will be closed by the update (the new version cannot keep it).";
 
+    /// <summary>PR #511 heads-up: the daemon runs from inside the install root, which the apply kills under - not a protocol matter.</summary>
+    private const string ClosesOneSessionInstallFolder =
+        "1 multiplexed session will be closed by the update (the multiplexer is running from the install folder, so the update has to stop it).";
+
+    /// <summary>Where the daemon runs from cannot be told, so it is never taken to be outside the install root.</summary>
+    private const string ClosesOneSessionUnchecked =
+        "1 multiplexed session will be closed by the update (the multiplexer could not be checked, so the update has to stop it).";
+
     /// <summary>The question with SessionPersistence Off: the pre-Phase-5 wording, which gives no reason that may not be true.</summary>
     private const string ClosesOneSessionPersistenceOff = "1 multiplexed session will be closed by the update.";
 
@@ -349,13 +357,14 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
     }
 
     /// <summary>
-    /// R10: a daemon whose image is inside the install root - one a pre-Phase-5 build started from <c>current\</c> -
-    /// or whose image cannot be read is killed by the apply whatever the protocol says: today's question and shutdown.
+    /// R10: a daemon whose image is inside the install root - one a pre-Phase-5 build started from <c>current\</c>, or one
+    /// whose own copy could not be staged - or whose image cannot be read is killed by the apply whatever the protocol
+    /// says: today's question and shutdown. The question gives that reason, not the protocol's (PR #511 heads-up).
     /// </summary>
     [AvaloniaTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void A_compatible_daemon_the_apply_would_kill_is_closed_after_asking(bool imageKnown)
+    [InlineData(true, ClosesOneSessionInstallFolder)]
+    [InlineData(false, ClosesOneSessionUnchecked)]
+    public void A_compatible_daemon_the_apply_would_kill_is_closed_after_asking(bool imageKnown, string question)
     {
         MainWindow window = CreateMuxWindow();
         FakeApplyUpdateService service = StageUpdate(window, CompatibleNotes);
@@ -370,8 +379,24 @@ public sealed class UpdateClosesMuxTests : IClassFixture<TestAppDataRoot>, IDisp
 
         RunToCompletion(window).GetAwaiter().GetResult();
 
-        Assert.Equal(ClosesOneSession, asked);
+        Assert.Equal(question, asked);
         PumpUntil(() => Volatile.Read(ref shutdowns) == 1, "the daemon received shutdown");
+        Assert.Equal(1, service.ApplyCount);
+    }
+
+    /// <summary>A daemon whose descriptor cannot be read is never kept: the question says it could not be checked.</summary>
+    [AvaloniaFact]
+    public void A_daemon_whose_descriptor_cannot_be_read_is_closed_after_asking_why()
+    {
+        MainWindow window = CreateMuxWindow();
+        FakeApplyUpdateService service = StageUpdate(window, CompatibleNotes);
+        string? asked = null;
+        window.ConfirmSessionLossForUpdate = message => { asked = message; return Task.FromResult(true); };
+        window.MuxReadDescriptorForUpdate = () => null;
+
+        RunToCompletion(window).GetAwaiter().GetResult();
+
+        Assert.Equal(ClosesOneSessionUnchecked, asked);
         Assert.Equal(1, service.ApplyCount);
     }
 
