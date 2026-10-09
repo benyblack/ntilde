@@ -66,7 +66,8 @@ public static class MuxDaemonStop
 
     /// <summary>
     /// Terminates the process tree of the daemon <paramref name="descriptor"/> names - after re-verifying, on the very
-    /// process about to be killed, its name and the start time the descriptor recorded, so a recycled pid is never
+    /// process about to be killed, its name and the start time the descriptor recorded (both required: a descriptor
+    /// without one, or a process whose start time cannot be read, is never killed), so a recycled pid is never
     /// killed, and never this process - then waits up to <paramref name="wait"/> for it to be gone and deletes its
     /// descriptor. <paramref name="failure"/> says why when the result is not <see cref="TerminateResult.Terminated"/>.
     /// </summary>
@@ -85,9 +86,11 @@ public static class MuxDaemonStop
             using Process process = Process.GetProcessById(descriptor.Pid);
             // The caller's live check and this Kill are not atomic: the pid could have exited and been recycled for an
             // unrelated process in between.
-            if (!IsDescribedDaemon(process, descriptor))
+            if (!IsDescribedDaemon(process, descriptor, requireStartTime: true))
             {
-                failure = $"pid {descriptor.Pid} is no longer the multiplexer; nothing was terminated.";
+                failure = descriptor.StartTime is null
+                    ? $"pid {descriptor.Pid} could not be verified as the multiplexer (its descriptor records no start time); nothing was terminated."
+                    : $"pid {descriptor.Pid} is no longer the multiplexer; nothing was terminated.";
                 return TerminateResult.NotTheDaemon;
             }
 
@@ -115,12 +118,17 @@ public static class MuxDaemonStop
     /// time it recorded. The name alone does not tell a recycled pid from the daemon (another ntilde, say): the start time
     /// does. Shared with the App's update path (Phase 5 Task 22), which reads the daemon's image from the process.
     /// </summary>
-    public static bool IsDescribedDaemon(Process process, MuxEndpointDescriptor descriptor)
+    /// <param name="requireStartTime">
+    /// For a kill: a descriptor without a start time, or a process whose start time cannot be read, is not shown to
+    /// be the daemon (<see cref="MuxDiscovery.StartTimeMatches"/>). Without it, as for a liveness probe, either counts
+    /// as no evidence against.
+    /// </param>
+    public static bool IsDescribedDaemon(Process process, MuxEndpointDescriptor descriptor, bool requireStartTime = false)
     {
         ArgumentNullException.ThrowIfNull(process);
         ArgumentNullException.ThrowIfNull(descriptor);
         return string.Equals(process.ProcessName, descriptor.ProcessName, StringComparison.OrdinalIgnoreCase)
-            && MuxDiscovery.StartTimeMatches(process, descriptor.StartTime);
+            && MuxDiscovery.StartTimeMatches(process, descriptor.StartTime, requireStartTime);
     }
 
     private sealed class NoSpawn : IMuxDaemonSpawner

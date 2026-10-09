@@ -214,13 +214,16 @@ public static class MuxDiscovery
     /// <summary>
     /// True when <paramref name="startToken"/> is null (an older descriptor) or the process's own
     /// token matches it: exactly on Linux, within a second elsewhere. A token that cannot be read
-    /// also answers true: this check only ever refuses, so the conservative answer is "no evidence against".
+    /// also answers true: for a liveness probe this check only ever refuses, so the conservative answer
+    /// is "no evidence against". With <paramref name="requireStartTime"/> (a kill path) both must be known
+    /// and match: there the conservative answer is "not shown to be the daemon", since the GUI shares the
+    /// daemon's process name.
     /// </summary>
-    public static bool StartTimeMatches(Process process, long? startToken)
+    public static bool StartTimeMatches(Process process, long? startToken, bool requireStartTime = false)
     {
         ArgumentNullException.ThrowIfNull(process);
-        if (startToken is not long expected) return true;
-        if (GetProcessStartToken(process) is not long actual) return true;
+        if (startToken is not long expected) return !requireStartTime;
+        if (GetProcessStartToken(process) is not long actual) return !requireStartTime;
         return OperatingSystem.IsLinux() ? actual == expected : Math.Abs(actual - expected) < TimeSpan.TicksPerSecond;
     }
 
