@@ -50,6 +50,9 @@ public sealed class ActiveSshSessionRegistry
     /// session, a bastion's password was replayed to the target (and handed to every hop of a later
     /// transfer). A lookup has to name the server, so a password can only be returned for the server
     /// it was entered for.
+    ///
+    /// The "session" of a key is a scope: a plain session's own id, or (Phase 5 spec R8) a remote host's
+    /// password scope, which the persisted tabs on that host share (<see cref="PasswordScopeOf"/>).
     /// </remarks>
     private readonly Dictionary<RuntimePasswordKey, byte[]> _runtimePasswords = new();
     private readonly object _runtimePasswordGate = new();
@@ -88,6 +91,47 @@ public sealed class ActiveSshSessionRegistry
         _sessions.TryRemove(sessionId, out _);
         ClearRuntimePasswords(sessionId);
     }
+
+    /// <summary>
+    /// Removes <paramref name="descriptor"/> if it is still the one registered under its session id, and returns whether
+    /// it was. Two panes can show one remote daemon session (a share opened in another window), and each registers it:
+    /// one letting go must not unregister the other's. A descriptor without a <see cref="ActiveSshSessionDescriptor.PasswordScopeId"/>
+    /// takes its session's passwords with it, as <see cref="Unregister(Guid)"/> does; a scoped one leaves them, since
+    /// they are its host's (<see cref="UnregisterScope"/>).
+    /// </summary>
+    public bool Unregister(ActiveSshSessionDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        if (!_sessions.TryRemove(new KeyValuePair<Guid, ActiveSshSessionDescriptor>(descriptor.SessionId, descriptor)))
+        {
+            return false;
+        }
+
+        if (descriptor.PasswordScopeId is null)
+        {
+            ClearRuntimePasswords(descriptor.SessionId);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The id <paramref name="sessionId"/>'s runtime passwords are kept under: its descriptor's
+    /// <see cref="ActiveSshSessionDescriptor.PasswordScopeId"/> when it has one (a persisted remote tab: its host's), else
+    /// the session's own id - also for a session that is not registered, as before scopes existed. What a lookup made
+    /// for a session passes to <see cref="TryGetRuntimePassword"/>.
+    /// </summary>
+    public Guid PasswordScopeOf(Guid sessionId) =>
+        _sessions.TryGetValue(sessionId, out ActiveSshSessionDescriptor? descriptor) && descriptor.PasswordScopeId is Guid scope
+            ? scope
+            : sessionId;
+
+    /// <summary>
+    /// Clears (and zeroes) every password held under <paramref name="scopeId"/>: a remote host's scope, when the host is
+    /// disposed - which is also how its release ends. Descriptors that name the scope stay until their panes let go; a
+    /// lookup through them then finds nothing, and a host built again has a scope of its own.
+    /// </summary>
+    public void UnregisterScope(Guid scopeId) => ClearRuntimePasswords(scopeId);
 
     /// <summary>
     /// Holds <paramref name="password"/> as the password of <paramref name="user"/> on
@@ -221,14 +265,23 @@ public sealed class ActiveSshSessionRegistry
 
 public sealed class ActiveSshSessionDescriptor
 {
-    public ActiveSshSessionDescriptor(Guid sessionId, Guid profileId, SshBackendKind backendKind)
+    public ActiveSshSessionDescriptor(Guid sessionId, Guid profileId, SshBackendKind backendKind, Guid? passwordScopeId = null)
     {
         SessionId = sessionId;
         ProfileId = profileId;
         BackendKind = backendKind;
+        PasswordScopeId = passwordScopeId;
     }
 
     public Guid SessionId { get; }
     public Guid ProfileId { get; }
     public SshBackendKind BackendKind { get; }
+
+    /// <summary>
+    /// Where this session's runtime passwords are kept, when not under <see cref="SessionId"/>: a persisted remote tab's
+    /// (Phase 5 spec R8) are its remote host's, which every tab on that host shares and which outlives any one of them, so
+    /// they are kept under the host's scope (<see cref="ActiveSshSessionRegistry.UnregisterScope"/>). Null for a plain
+    /// session, whose own id is its scope.
+    /// </summary>
+    public Guid? PasswordScopeId { get; }
 }

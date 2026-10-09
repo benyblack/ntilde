@@ -626,8 +626,9 @@ namespace Ntilde.Shell
         }
 
         /// <param name="sessionRegistry">
-        /// Where the job's terminal session keeps the passwords it entered, per server. Each server
-        /// of the chain is offered only its own (see <see cref="NativeHopPasswordResolver"/>); null
+        /// Where the job's terminal session keeps the passwords it entered, per server - a persisted remote
+        /// tab's under its host's password scope (<see cref="ActiveSshSessionRegistry.PasswordScopeOf"/>). Each
+        /// server of the chain is offered only its own (see <see cref="NativeHopPasswordResolver"/>); null
         /// means only the profile's saved password, and only for the target.
         /// </param>
         internal static void ExecuteNativeSftpTransfer(

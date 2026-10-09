@@ -166,6 +166,9 @@
                     <StackPanel Grid.Row="4" Grid.Column="1" Spacing="4">
                         <CheckBox IsChecked="{Binding PersistRemoteSessions}"
                                   Content="Keep remote sessions running (ntilde-mux)" />
+                        <TextBlock x:Name="PersistentTabLimitsHint"
+                                   Text="Persistent tabs do not run this connection's port forwards. With the OpenSSH backend they also have no Remote Files sidebar (transfers from the command palette work)."
+                                   Opacity="0.7" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding RemoteDaemonStatusText}" Opacity="0.7" TextWrapping="Wrap" />
                         <Button x:Name="InstallMuxButton"
                                 Content="Install ntilde-mux on this host&#x2026;"

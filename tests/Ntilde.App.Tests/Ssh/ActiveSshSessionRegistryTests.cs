@@ -149,6 +149,92 @@ public sealed class ActiveSshSessionRegistryTests
         Assert.False(registry.TryGetActiveNativeSession(Guid.NewGuid(), sessionId, out _));
     }
 
+    /// <summary>
+    /// Phase 5 Task 28 (spec R8): a persisted remote tab registers under its daemon session id with its host's password
+    /// scope, and a lookup through its descriptor finds the passwords that scope holds - none under the session id itself.
+    /// </summary>
+    [Fact]
+    public void A_lookup_through_a_scoped_descriptor_reads_its_hosts_scope()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        Guid scope = Guid.NewGuid();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, Guid.NewGuid(), SshBackendKind.Native, scope));
+        registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", "typed-secret");
+
+        Assert.Equal(scope, registry.PasswordScopeOf(sessionId));
+        Assert.True(registry.TryGetRuntimePassword(registry.PasswordScopeOf(sessionId), "prod.internal", 22, "ops", out string? password));
+        Assert.Equal("typed-secret", password);
+        Assert.False(registry.TryGetRuntimePassword(sessionId, "prod.internal", 22, "ops", out _));
+    }
+
+    [Fact]
+    public void UnregisterScope_clears_that_scopes_passwords_and_nothing_else()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid gone = Guid.NewGuid();
+        Guid kept = Guid.NewGuid();
+        Guid session = Guid.NewGuid();
+        registry.SetRuntimePassword(gone, "prod.internal", 22, "ops", "gone-secret");
+        registry.SetRuntimePassword(gone, "other.internal", 22, "ops", "gone-too");
+        registry.SetRuntimePassword(kept, "prod.internal", 22, "ops", "kept-secret");
+        registry.SetRuntimePassword(session, "prod.internal", 22, "ops", "session-secret");
+
+        registry.UnregisterScope(gone);
+
+        Assert.False(registry.TryGetRuntimePassword(gone, "prod.internal", 22, "ops", out _));
+        Assert.False(registry.TryGetRuntimePassword(gone, "other.internal", 22, "ops", out _));
+        Assert.True(registry.TryGetRuntimePassword(kept, "prod.internal", 22, "ops", out string? keptPassword));
+        Assert.Equal("kept-secret", keptPassword);
+        Assert.True(registry.TryGetRuntimePassword(session, "prod.internal", 22, "ops", out string? sessionPassword));
+        Assert.Equal("session-secret", sessionPassword);
+    }
+
+    /// <summary>A plain session, registered or not, keeps its passwords under its own id, as before Task 28.</summary>
+    [Fact]
+    public void A_session_without_a_scope_is_its_own_scope()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid registered = Guid.NewGuid();
+        Guid unregistered = Guid.NewGuid();
+        registry.Register(new ActiveSshSessionDescriptor(registered, Guid.NewGuid(), SshBackendKind.Native));
+        registry.SetRuntimePassword(registered, "prod.internal", 22, "ops", "session-secret");
+
+        Assert.Equal(registered, registry.PasswordScopeOf(registered));
+        Assert.Equal(unregistered, registry.PasswordScopeOf(unregistered));
+        Assert.True(registry.TryGetRuntimePassword(registry.PasswordScopeOf(registered), "prod.internal", 22, "ops", out string? password));
+        Assert.Equal("session-secret", password);
+
+        registry.Unregister(registered);
+
+        Assert.False(registry.TryGetRuntimePassword(registered, "prod.internal", 22, "ops", out _));
+    }
+
+    /// <summary>
+    /// Two panes can show one remote session (a share opened in another window): a pane lets go of its own registration
+    /// only, never one registered after it. A scoped registration's passwords are its host's, so they stay.
+    /// </summary>
+    [Fact]
+    public void Unregistering_a_descriptor_leaves_a_later_registration_of_the_same_session_and_the_hosts_scope()
+    {
+        var registry = new ActiveSshSessionRegistry();
+        Guid sessionId = Guid.NewGuid();
+        Guid scope = Guid.NewGuid();
+        var first = new ActiveSshSessionDescriptor(sessionId, Guid.NewGuid(), SshBackendKind.Native, scope);
+        var later = new ActiveSshSessionDescriptor(sessionId, first.ProfileId, SshBackendKind.Native, scope);
+        registry.Register(first);
+        registry.Register(later);
+        registry.SetRuntimePassword(scope, "prod.internal", 22, "ops", "typed-secret");
+
+        Assert.False(registry.Unregister(first));
+        Assert.True(registry.TryGet(sessionId, out ActiveSshSessionDescriptor? still));
+        Assert.Same(later, still);
+
+        Assert.True(registry.Unregister(later));
+        Assert.False(registry.TryGet(sessionId, out _));
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 22, "ops", out _));
+    }
+
     [Fact]
     public void TryGetActiveNativeSession_WhenBackendIsNotNative_ReturnsFalse()
     {

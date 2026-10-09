@@ -1153,13 +1153,6 @@ namespace Ntilde.Controls
                 return;
             }
 
-            if (IsPersistentRemoteTab)
-            {
-                // Phase 4 spec §8.4: no native SSH session stands behind this tab, so there is nothing to browse.
-                RaisePersistenceNotice(RemoteFilesUnavailableNoticeTitle, RemoteFilesUnavailableMessage);
-                return;
-            }
-
             if (!IsRemoteFilesSidebarSupported() ||
                 Profile == null ||
                 Session == null ||
@@ -1169,6 +1162,15 @@ namespace Ntilde.Controls
                 return;
             }
 
+            if (IsOnRetargetedHost)
+            {
+                // Spec §15 (codex D2): the listing would go where the profile points now, not where this tab's shell runs.
+                RaisePersistenceNotice(RemoteFilesUnavailableNoticeTitle, RemoteFilesRetargetedMessage);
+                return;
+            }
+
+            // A persisted remote tab lists as a plain one does (Phase 5 spec R8): over a connection of its own, through its
+            // registration (RegisterRemoteMuxSession).
             await OpenRemoteFilesSidebarAsync(Profile.Id, Session.Id);
         }
 
@@ -3430,6 +3432,8 @@ namespace Ntilde.Controls
             UpdateRemoteFilesSidebarEntryPointState();
 
             string startingDir = profile?.StartingDirectory ?? "";
+            // Whatever comes next registers on its own attach (a reattach of the same session too).
+            UnregisterRemoteMuxSession();
             Session = null;
             // MuxEndpoint is reset below, once it is known whether a pending id stays pending (a plain
             // SSH pane's does, and the endpoint must go on naming it: Phase 4 spec §5).
@@ -3613,7 +3617,8 @@ namespace Ntilde.Controls
                     HandleSessionExit(session, code);
                 });
             };
-            // Phase 4 spec §8.4: a session on a remote daemon is no native SSH session (no SFTP, no forwards).
+            // A session on a remote daemon registers once its attach is through, with its host's password scope
+            // (RegisterRemoteMuxSession, Phase 5 spec R8); a local daemon's never does.
             if (session is not MuxClientSession) RegisterActiveSshSession(session, profile);
             UpdateCommandAssistContext();
 
@@ -4088,7 +4093,12 @@ namespace Ntilde.Controls
                     break;
                 case RemoteHostEvent.DaemonStopped:
                     // Its sessions are gone with it: no Reconnected brings this one back, only the user's Enter.
-                    if (ownSessionDropped || _muxReconnecting) EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName), reattachOnReconnect: false);
+                    if (ownSessionDropped || _muxReconnecting)
+                    {
+                        UnregisterRemoteMuxSession();
+                        EnterRemoteWaitingForEnter(RemoteDaemonStoppedBanner(_remoteHostName), reattachOnReconnect: false);
+                    }
+
                     break;
                 case RemoteHostEvent.ReconnectAbandoned:
                     // A give-up because signing in needs the user has recorded that failure by now: the banner says why.
@@ -4232,6 +4242,7 @@ namespace Ntilde.Controls
         /// </summary>
         private void EnterMuxShareEnded(Guid? sessionId)
         {
+            UnregisterRemoteMuxSession();
             _muxConnectionLost = true;
             TermView.SetSession(null);
             TerminalLogger.Log($"[TerminalPane] shared session {sessionId} has ended; nothing to attach");
@@ -4369,11 +4380,29 @@ namespace Ntilde.Controls
             _ => RemoteSignInNeedsYouLine,
         };
 
-        /// <summary>Phase 4 spec §8.4: the remote-files sidebar on a persisted remote tab (title of the toast).</summary>
+        /// <summary>The title of the toast that refuses the remote-files sidebar or a transfer on a persisted remote tab.</summary>
         internal const string RemoteFilesUnavailableNoticeTitle = "Remote Files";
 
-        /// <summary>Phase 4 spec §8.4: the toast's line.</summary>
-        internal const string RemoteFilesUnavailableMessage = "Not available on a persistent remote tab";
+        /// <summary>Spec §15 (codex D2), Phase 5 Task 28: the toast's line while the tab's host is retargeted (<see cref="IsOnRetargetedHost"/>).</summary>
+        internal const string RemoteFilesRetargetedMessage = "Not available while this tab still runs on the host it was opened on — reopen the tab to use the new host";
+
+        /// <summary>
+        /// UI thread. This persisted remote tab's host still runs where it first connected while its profile names another
+        /// destination now (spec §15, codex D2): SFTP, the listing and transfers rebuild their options from the stored profile
+        /// and would reach the new destination, so they are refused on this tab. The profile is read at each call - this is
+        /// asked at the moment of a request. The host is the one this pane follows, else (a tab that has not attached yet)
+        /// its window's host for the endpoint.
+        /// </summary>
+        internal bool IsOnRetargetedHost
+        {
+            get
+            {
+                if (!IsPersistentRemoteTab) return false;
+                MuxConnectionHost? host = _remoteHost?.Host
+                    ?? (SessionFactory as MuxTerminalSessionFactory)?.Hosts.TryGet(MuxEndpointId.Parse(MuxEndpoint));
+                return host?.IsRetargeted == true;
+            }
+        }
 
         /// <summary>Tests: bumped by every (re)spawn; a remote result that comes back under an older one is stale.</summary>
         internal int RemoteConnectGenerationForTest => _remoteGen;
@@ -4413,9 +4442,10 @@ namespace Ntilde.Controls
         internal Action? RemoteMuxReleaseCheck { get; set; }
 
         /// <summary>
-        /// UI thread. This pane is (or is about to be) a session on a remote daemon (Phase 4 spec §8.4): not a
-        /// native SSH session, so no remote-files sidebar or SFTP. False for the plain SSH session that stands
-        /// in when the remote ntilde-mux could not be used.
+        /// UI thread. This pane is (or is about to be) a session on a remote daemon (Phase 4 spec §8.4). Its remote files
+        /// and transfers open connections of their own, as a plain SSH tab's do (Phase 5 spec R8), unless its host is
+        /// retargeted (<see cref="IsOnRetargetedHost"/>). False for the plain SSH session that stands in when the remote
+        /// ntilde-mux could not be used.
         /// </summary>
         internal bool IsPersistentRemoteTab => !MuxEndpointId.Parse(MuxEndpoint).IsLocal && Session is null or MuxClientSession;
 
@@ -4720,6 +4750,7 @@ namespace Ntilde.Controls
             if (Session is not MuxClientSession mux) return false;
             _muxRestartHold = true; // first: whatever fails below, the window ends the hold it sees here
             _muxReleasedForRestart = true;
+            UnregisterRemoteMuxSession(); // the restart ends that shell
             _muxRestartHoldRemote = FollowsRemoteSession;
             if (_muxRestartHoldRemote)
             {
@@ -4789,6 +4820,7 @@ namespace Ntilde.Controls
             if (!IsCurrentMux(source) || _muxConnectionLost) return;
             _muxConnectionLost = true;
             ApplyMuxSharing(null);
+            if (!reattach) UnregisterRemoteMuxSession(); // a faulted session is gone for good
             _muxReattachId = reattach ? source.Id : null;
             _muxReattachShared = reattach && _muxSessionIsShare;
             // Input must not reach a daemon session this pane is not showing (after a failed attach
@@ -4812,6 +4844,7 @@ namespace Ntilde.Controls
                 {
                     if (!IsCurrentMux(mux)) return;
                     _muxReattachAfterDrop = false; // the drop (if any) is over: this session is shown again
+                    if (remote) RegisterRemoteMuxSession(mux);
                     if (previousLost)
                     {
                         TerminalLogger.Log($"[TerminalPane] previous multiplexer session was lost; started {mux.Id}");
@@ -5746,6 +5779,7 @@ namespace Ntilde.Controls
                 return;
             }
 
+            if (session is MuxClientSession) UnregisterRemoteMuxSession(); // its shell ended: nothing left to browse
             LastExitCode = code;
 
             if (Profile?.Type == ConnectionType.SSH)
@@ -5929,6 +5963,7 @@ namespace Ntilde.Controls
             _statusTimer?.Stop();
             _statusTimer = null;
             SftpService.Instance.JobUpdated -= Sftp_JobUpdated;
+            UnregisterRemoteMuxSession(); // also when the pane's session is gone already
             if (Session != null)
             {
                 ITerminalSession session = Session;
@@ -5953,9 +5988,51 @@ namespace Ntilde.Controls
                 profile.SshBackendKind));
         }
 
-        private static void UnregisterActiveSshSession(ITerminalSession session)
+        private void UnregisterActiveSshSession(ITerminalSession session)
         {
+            // A daemon session is registered (if at all) through RegisterRemoteMuxSession, and let go of the same way: by id,
+            // it could take another pane's registration of the same shared session with it.
+            if (session is MuxClientSession)
+            {
+                UnregisterRemoteMuxSession();
+                return;
+            }
+
             ActiveSshSessionRegistry.Instance.Unregister(session.Id);
+        }
+
+        /// <summary>UI thread: what this pane registered for its remote daemon session (Phase 5 spec R8); null for none.</summary>
+        private ActiveSshSessionDescriptor? _remoteMuxRegistration;
+
+        /// <summary>
+        /// UI thread, once <paramref name="mux"/>'s attach is through (Phase 5 spec R8 and its rulings): a session on a remote
+        /// daemon, of a Native profile, registers in <see cref="ActiveSshSessionRegistry"/> under its daemon session id - the
+        /// id the sidebar, path completion and transfers name it by - with its host's password scope, so each opens a
+        /// connection of its own with the passwords typed for that host, as a plain native tab's do. A share registers as an
+        /// owned session does: it is the user's own profile either way. An OpenSSH profile does not: its tab has no sidebar,
+        /// and its transfers run scp, as a plain OpenSSH tab's do. Replaces this pane's previous registration, if any.
+        /// </summary>
+        /// <remarks>
+        /// The registration follows the session, not the connection: it stays while the link is down and the host
+        /// reconnects (those connections are their own), and goes when the session ends - its exit, a stopped daemon, a share
+        /// that ended, a new spawn, a restart that let it go - and with the pane (a close, a detach).
+        /// </remarks>
+        private void RegisterRemoteMuxSession(MuxClientSession mux)
+        {
+            UnregisterRemoteMuxSession();
+            if (Profile is not { Type: ConnectionType.SSH, SshBackendKind: SshBackendKind.Native } profile) return;
+            if (_remoteHost?.Host.PasswordScopeId is not Guid scope) return;
+            var registration = new ActiveSshSessionDescriptor(mux.Id, profile.Id, SshBackendKind.Native, scope);
+            ActiveSshSessionRegistry.Instance.Register(registration);
+            _remoteMuxRegistration = registration;
+        }
+
+        /// <summary>UI thread: lets go of this pane's own registration (<see cref="RegisterRemoteMuxSession"/>), never another pane's.</summary>
+        private void UnregisterRemoteMuxSession()
+        {
+            if (_remoteMuxRegistration is not { } registration) return;
+            _remoteMuxRegistration = null;
+            ActiveSshSessionRegistry.Instance.Unregister(registration);
         }
 
         // Every dispatch in this class goes to this.Dispatcher - the pane's own, captured by

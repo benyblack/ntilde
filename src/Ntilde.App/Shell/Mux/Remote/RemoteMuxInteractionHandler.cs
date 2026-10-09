@@ -3,6 +3,7 @@ using System.Text;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
+using Ntilde.Services.Ssh;
 
 namespace Ntilde.Shell.Mux.Remote;
 
@@ -16,6 +17,13 @@ namespace Ntilde.Shell.Mux.Remote;
 /// A password or passphrase that got a connection in is remembered, in memory only and per prompt kind,
 /// until <see cref="Forget"/> (the host's dispose). Every attempt offers it first: a network drop then
 /// reconnects without asking again, as a plain native SSH tab's reconnect does.
+/// </para>
+/// <para>
+/// Phase 5 spec R8: a password the user typed for this host, which got a connection in, also reaches the host's persisted
+/// tabs' SFTP, listing and path completion - each a connection of its own - through the host's password scope in
+/// <see cref="ActiveSshSessionRegistry"/> (<see cref="PasswordScopeId"/>), in memory only as well. Typed ones only: one the
+/// window's handler filled from the vault is not copied (those connections read the vault themselves), nor one recalled,
+/// superseded or blank, nor any on a profile with jump hops. <see cref="Forget"/> clears the scope.
 /// </para>
 /// <para>
 /// A remembered secret that may have been refused is forgotten, never replayed: replaying a stale
@@ -63,6 +71,7 @@ internal sealed class RemoteMuxInteractionHandler
     private readonly Func<SshProfile, string?>? _savedPassword;
     private readonly SshAskPassSessionMarkers? _askPassRecords;
     private readonly Action<string>? _log;
+    private readonly ActiveSshSessionRegistry? _passwordScopes;
     private readonly object _gate = new();
     private readonly Dictionary<SshInteractionKind, string> _remembered = []; // guarded by _gate
     private int _generation;                                                  // guarded by _gate; bumped by Forget
@@ -95,19 +104,33 @@ internal sealed class RemoteMuxInteractionHandler
     /// as refused.
     /// </param>
     /// <param name="log">Where a saved password that cannot be read is logged.</param>
+    /// <param name="passwordScopes">
+    /// Where the passwords a user typed for this host, which got its connection in, are handed to the host's own SFTP and
+    /// listing connections (Phase 5 spec R8): <see cref="PasswordScopeId"/> in this registry. Null: nowhere.
+    /// </param>
     public RemoteMuxInteractionHandler(
         ISshInteractionHandler? user,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
         Func<SshProfile, string?>? savedPassword = null,
         SshAskPassSessionMarkers? askPassRecords = null,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        ActiveSshSessionRegistry? passwordScopes = null)
     {
         _user = user;
         _isTrustedHostKey = isTrustedHostKey ?? IsTrustedInTheAppsKnownHosts;
         _savedPassword = savedPassword;
         _askPassRecords = askPassRecords;
         _log = log;
+        _passwordScopes = passwordScopes;
     }
+
+    /// <summary>
+    /// This host's password scope in <see cref="ActiveSshSessionRegistry"/> (Phase 5 spec R8): its persisted tabs register
+    /// with it, so their sidebar, path completion and SFTP transfers - each a connection of its own - get the passwords the
+    /// user typed to sign in here (<see cref="Attempt.Succeeded"/>). New for every host, and cleared by <see cref="Forget"/>
+    /// (the host's dispose, which is also how its release ends), so a scope never outlives its host or serves another.
+    /// </summary>
+    internal Guid PasswordScopeId { get; } = Guid.NewGuid();
 
     /// <summary>
     /// The handler for one connect attempt; <paramref name="interactive"/> when a user is waiting on it.
@@ -130,7 +153,10 @@ internal sealed class RemoteMuxInteractionHandler
         }
     }
 
-    /// <summary>Drops every remembered secret, and any an attempt still running would have remembered.</summary>
+    /// <summary>
+    /// Drops every remembered secret, and any an attempt still running would have remembered, and clears this host's
+    /// password scope (<see cref="PasswordScopeId"/>), which such an attempt then writes nothing to either.
+    /// </summary>
     public void Forget()
     {
         lock (_gate)
@@ -139,6 +165,24 @@ internal sealed class RemoteMuxInteractionHandler
             _generation++;
             _refusedPasswords.Clear();
             _savedPasswordNotEnough = false;
+            // Under the gate, as KeepForTransfers writes: a write checked against the old generation cannot land after this.
+            _passwordScopes?.UnregisterScope(PasswordScopeId);
+        }
+    }
+
+    /// <summary>
+    /// Phase 5 spec R8: hands <paramref name="typed"/> - passwords the user typed for this host, which got an attempt in - to
+    /// the host's own SFTP and listing connections, each under the server it was typed for, through
+    /// <see cref="PasswordScopeId"/>. Nothing once the host forgot everything since <paramref name="generation"/>: it is
+    /// going away, and its scope with it.
+    /// </summary>
+    private void KeepForTransfers(int generation, IEnumerable<(string Host, int Port, string User, string Secret)> typed)
+    {
+        if (_passwordScopes is not { } scopes) return;
+        lock (_gate)
+        {
+            if (generation != _generation) return;
+            foreach ((string host, int port, string user, string secret) in typed) scopes.SetRuntimePassword(PasswordScopeId, host, port, user, secret);
         }
     }
 
@@ -556,7 +600,7 @@ internal sealed class RemoteMuxInteractionHandler
             {
                 if (Recall(kind) is { } remembered)
                 {
-                    Track(new Answer(kind, remembered, FromMemory: true));
+                    Track(new Answer(kind, remembered, FromMemory: true, Typed: false, request));
                     if (kind == SshInteractionKind.Password && User is null) NoteStoredPassword(remembered, fromVault: false);
                     return SshInteractionResponse.FromSecret(remembered);
                 }
@@ -582,7 +626,8 @@ internal sealed class RemoteMuxInteractionHandler
                 SshInteractionResponse response = await user.HandleAsync(forUser, cancellationToken).ConfigureAwait(false);
                 if (IsRememberable(kind) && !response.IsCanceled && !string.IsNullOrEmpty(response.Secret))
                 {
-                    Track(new Answer(kind, response.Secret, FromMemory: false));
+                    // Typed, unless the window's handler filled it from the vault (or a session's memory) on its own.
+                    Track(new Answer(kind, response.Secret, FromMemory: false, Typed: !response.FilledFromStore, request));
                 }
 
                 return response;
@@ -630,6 +675,17 @@ internal sealed class RemoteMuxInteractionHandler
             _owner.ClearRefusedIfAny(answers
                 .Where(a => a.Kind == SshInteractionKind.Password && a.State != AnswerState.Superseded)
                 .Select(a => HashOf(a.Secret)));
+            // Phase 5 spec R8: a password the user typed and the server took goes to the host's own SFTP and listing
+            // connections too, under the server that asked for it. Never one from memory (the first success kept it), nor one
+            // filled from the vault (SFTP reads the vault itself), nor a superseded or blank one; and nothing on a profile with
+            // jump hops (spec R7: it remembers no password, and tracks none).
+            if (_passwordsReplayable)
+            {
+                _owner.KeepForTransfers(_generation, answers
+                    .Where(a => a.Kind == SshInteractionKind.Password && a.Typed && a.State != AnswerState.Superseded
+                        && !string.IsNullOrWhiteSpace(a.Secret) && a.Prompt.HasHostIdentity)
+                    .Select(a => (a.Prompt.Host, a.Prompt.Port, a.Prompt.User, a.Secret)));
+            }
         }
 
         /// <summary>
@@ -778,7 +834,9 @@ internal sealed class RemoteMuxInteractionHandler
             Superseded,
         }
 
-        private sealed record Answer(SshInteractionKind Kind, string Secret, bool FromMemory)
+        /// <param name="Typed">The user typed it at the window's prompt in this attempt: not recalled, and not filled from a store.</param>
+        /// <param name="Prompt">The prompt it answered, which names the server (host, port, user) it is for.</param>
+        private sealed record Answer(SshInteractionKind Kind, string Secret, bool FromMemory, bool Typed, SshInteractionRequest Prompt)
         {
             public AnswerState State { get; set; } = AnswerState.Open;
         }

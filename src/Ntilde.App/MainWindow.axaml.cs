@@ -5821,14 +5821,21 @@ namespace Ntilde
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
         {
-            if (srcPane.IsPersistentRemoteTab)
-            {
-                // Phase 4 spec §8.4: no native SSH session stands behind a persisted remote tab; say so, do nothing else.
-                EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesUnavailableMessage);
-                return;
-            }
-
+            if (RefusedOnARetargetedHost(srcPane)) return;
             _ = InitiateSidebarSftpTransfer(srcPane, request.Direction, request.Kind, request.RemotePath);
+        }
+
+        /// <summary>
+        /// A transfer on a persisted remote tab runs as on a plain SSH tab, over a connection of its own (Phase 5 spec R8) -
+        /// unless the tab's host is retargeted (<see cref="TerminalPane.IsOnRetargetedHost"/>; spec §15, codex D2): the
+        /// transfer rebuilds its options from the stored profile and would reach the profile's new destination, not the
+        /// one this tab's shell runs on. Then the window says why and does nothing else.
+        /// </summary>
+        private bool RefusedOnARetargetedHost(TerminalPane pane)
+        {
+            if (!pane.IsOnRetargetedHost) return false;
+            EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesRetargetedMessage);
+            return true;
         }
 
         private void OnPaneWorkingDirectoryChanged(TerminalPane srcPane, string cwd)
@@ -9000,13 +9007,9 @@ namespace Ntilde
                 return;
             }
 
-            if (pane.IsPersistentRemoteTab)
-            {
-                // Phase 4 spec §8.4, final review I3: as for the sidebar and its transfers - no SSH session of this app
-                // stands behind a persisted remote tab (its session id names a daemon session), so say so and do nothing else.
-                EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesUnavailableMessage);
-                return;
-            }
+            // Phase 5 spec R8: a persisted remote tab's transfers run as a plain tab's - native SFTP through its registration
+            // (its daemon session id, with its host's password scope), or scp in batch mode on its own connection (OpenSSH).
+            if (RefusedOnARetargetedHost(pane)) return;
 
             var profile = pane.Profile;
             var sessionId = pane.Session?.Id ?? Guid.Empty;

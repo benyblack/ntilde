@@ -137,6 +137,7 @@ internal sealed class RemoteMuxInstallDialog
         CopyCommandButton = new Button { Content = CopyText, IsVisible = hasRelease && clipboard is not null };
         CloseButton = new Button { Content = "Close", MinWidth = 92, IsCancel = true };
         KeepRunningCheckBox = new CheckBox { Content = "Keep remote sessions running (ntilde-mux)", IsChecked = true, IsVisible = false };
+        KeepRunningHint = new TextBlock { Text = RemoteMuxStatusText.PersistentTabLimits, Opacity = 0.7, TextWrapping = TextWrapping.Wrap, IsVisible = false };
         LogBox = new TextBox
         {
             IsReadOnly = true,
@@ -216,7 +217,7 @@ internal sealed class RemoteMuxInstallDialog
                     {
                         Spacing = 8,
                         Margin = new Thickness(0, 10, 0, 0),
-                        Children = { OutcomeText, KeepRunningCheckBox },
+                        Children = { OutcomeText, KeepRunningCheckBox, KeepRunningHint },
                     }, Dock.Bottom),
                     LogBox,
                 },
@@ -246,6 +247,9 @@ internal sealed class RemoteMuxInstallDialog
     internal Button CloseButton { get; }
 
     internal CheckBox KeepRunningCheckBox { get; }
+
+    /// <summary>Under <see cref="KeepRunningCheckBox"/>, shown with it: what a persistent tab lacks, in the connection editor's words.</summary>
+    internal TextBlock KeepRunningHint { get; }
 
     internal TextBox LogBox { get; }
 
@@ -591,6 +595,7 @@ internal sealed class RemoteMuxInstallDialog
         CloseButton.IsDefault = true;
         // Offered only when it is off: the install flow never changes it on its own (spec §9 step 4).
         KeepRunningCheckBox.IsVisible = !_flagWasOn;
+        KeepRunningHint.IsVisible = KeepRunningCheckBox.IsVisible;
     }
 
     private void ShowFailed(string reason)

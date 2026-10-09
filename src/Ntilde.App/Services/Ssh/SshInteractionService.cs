@@ -110,7 +110,7 @@ public sealed class SshInteractionService : ISshInteractionService
             _sessionRegistry.TryGetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, out string? runtimePassword) &&
             !string.IsNullOrEmpty(runtimePassword))
         {
-            response = SshInteractionResponse.FromSecret(runtimePassword);
+            response = SshInteractionResponse.FromStoredSecret(runtimePassword);
             return true;
         }
 
@@ -127,7 +127,7 @@ public sealed class SshInteractionService : ISshInteractionService
             return false;
         }
 
-        response = SshInteractionResponse.FromSecret(password);
+        response = SshInteractionResponse.FromStoredSecret(password);
         return true;
     }
 

@@ -160,6 +160,18 @@ internal sealed class MuxConnectionHost : IDisposable
     internal IDisposable? Connector { get; init; }
 
     /// <summary>
+    /// A remote host's password scope (Phase 5 spec R8): what its persisted tabs register with, so their SFTP connections
+    /// get the passwords typed for this host. Null for a host without a <c>RemoteMuxConnector</c> (the local daemon's).
+    /// </summary>
+    internal Guid? PasswordScopeId => (Connector as Remote.RemoteMuxConnector)?.PasswordScopeId;
+
+    /// <summary>
+    /// A remote host still connects where it first did while its profile names another destination now
+    /// (<c>RemoteMuxConnector.IsRetargeted</c>, read at each call). False for the local host.
+    /// </summary>
+    internal bool IsRetargeted => Connector is Remote.RemoteMuxConnector { IsRetargeted: true };
+
+    /// <summary>
     /// Told each client this host takes as its own, before anything else happens on it; never a client the host throws
     /// away (an automatic attempt's that a user's request superseded). A remote host's connector pins the SSH
     /// destination there (<c>RemoteMuxConnector.Accept</c>; codex D2, residual R5). Called under the host's lock, so it

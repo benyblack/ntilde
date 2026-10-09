@@ -174,6 +174,28 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
         Assert.Equal(keepRunning, profile.MuxOptions.PersistRemoteSessions);
     }
 
+    /// <summary>
+    /// Phase 5 spec R8: the keep-running choice an install offers says, under it, what a persistent tab lacks - in the
+    /// connection editor's words.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_keep_running_choice_says_what_a_persistent_tab_lacks()
+    {
+        RemoteMuxInstallDialog dialog = Open(Profile(), Host(new FakeExecReply(InstalledJson)), Release());
+        Assert.False(dialog.KeepRunningHint.IsVisible);
+
+        Click(dialog.InstallButton);
+        PumpUntil(() => !dialog.IsRunning, "the install ended");
+
+        Assert.True(dialog.KeepRunningCheckBox.IsVisible);
+        Assert.True(dialog.KeepRunningHint.IsVisible);
+        Assert.Equal(Ntilde.Shell.Mux.RemoteMuxStatusText.PersistentTabLimits, dialog.KeepRunningHint.Text);
+        Assert.Equal(Avalonia.Media.TextWrapping.Wrap, dialog.KeepRunningHint.TextWrapping);
+        Assert.Equal(0.7, dialog.KeepRunningHint.Opacity, precision: 3);
+        var panel = Assert.IsType<StackPanel>(dialog.KeepRunningHint.Parent);
+        Assert.Equal(panel.Children.IndexOf(dialog.KeepRunningCheckBox) + 1, panel.Children.IndexOf(dialog.KeepRunningHint));
+    }
+
     [AvaloniaFact]
     public void A_profile_that_already_keeps_its_sessions_is_not_asked_again()
     {
@@ -183,6 +205,7 @@ public sealed class RemoteMuxInstallDialogTests : IDisposable
         Click(dialog.InstallButton);
         PumpUntil(() => !dialog.IsRunning, "the install ended");
         Assert.False(dialog.KeepRunningCheckBox.IsVisible);
+        Assert.False(dialog.KeepRunningHint.IsVisible);
         Click(dialog.CloseButton);
         PumpUntil(() => dialog.Result.IsCompleted, "the dialog closed");
 

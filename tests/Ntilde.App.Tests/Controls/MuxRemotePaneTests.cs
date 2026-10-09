@@ -261,6 +261,20 @@ public sealed class MuxRemotePaneTests : IDisposable
     private static bool IsDisposed(MuxClientSession session) =>
         (int)typeof(MuxClientSession).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(session)! != 0;
 
+    /// <summary>
+    /// Phase 5 spec R8: <paramref name="id"/> is registered - once its attach is through - as a native SSH session of this
+    /// test's profile, with the password scope of the remote host it is attached through.
+    /// </summary>
+    private void AssertRegisteredWithItsHostsScope(Guid id)
+    {
+        PumpUntil(() => IsRegistered(id), $"session {id} is registered");
+        Assert.True(ActiveSshSessionRegistry.Instance.TryGetActiveNativeSession(_sshProfile.Id, id, out ActiveSshSessionDescriptor? descriptor));
+        Assert.NotNull(RemoteHost.PasswordScopeId);
+        Assert.Equal(RemoteHost.PasswordScopeId, descriptor!.PasswordScopeId);
+    }
+
+    private static bool IsRegistered(Guid id) => ActiveSshSessionRegistry.Instance.TryGet(id, out _);
+
     [AvaloniaFact]
     public void Persisted_ssh_pane_connects_off_the_ui_thread_and_attaches()
     {
@@ -289,13 +303,94 @@ public sealed class MuxRemotePaneTests : IDisposable
         Assert.Equal(Endpoint, pane.MuxEndpoint);
         Assert.Same(session, pane.TermView.SessionForTest);
         Assert.Null(_fallback.LastRequest);
-        // Spec §8.4: a persisted remote pane is not a native SSH session the sidebar or forwards could use.
-        Assert.False(ActiveSshSessionRegistry.Instance.TryGet(session.Id, out _));
+        // Phase 5 spec R8: registered for the sidebar and SFTP, which open their own connection, with its host's passwords.
+        AssertRegisteredWithItsHostsScope(session.Id);
 
         Shell(session.Id).Emit("hello from the remote\r\n");
         AssertPaneEqualsDaemon(pane, session.Id, "after remote output");
         Assert.Contains("hello from the remote", Text(pane));
         Assert.DoesNotContain(TerminalPane.RemoteConnectingBanner(Host), Text(pane)); // the snapshot replaced it
+    }
+
+    /// <summary>
+    /// Phase 5 Task 28 rulings: the registration follows the pane's session, not its connection. It is kept while the link is
+    /// down - the sidebar and SFTP open their own connection - and held again by the session the reattach brings back; the
+    /// session's end lets it go.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_native_persisted_panes_registration_outlives_a_dropped_link_and_ends_with_its_shell()
+    {
+        TerminalPane pane = ShowPane(backend: SshBackendKind.Native);
+        MuxClientSession first = Attached(pane);
+        AssertRegisteredWithItsHostsScope(first.Id);
+
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+        AssertRegisteredWithItsHostsScope(first.Id);
+
+        _clock.Advance(FirstRetry);
+        MuxClientSession again = Reattached(pane, first.Id, first);
+        AssertRegisteredWithItsHostsScope(again.Id);
+
+        Shell(again.Id).Exit(0);
+
+        PumpUntil(() => !IsRegistered(again.Id), "the ended shell's registration is gone");
+    }
+
+    /// <summary>Phase 5 Task 28: a stopped daemon took the shell with it, and a disposed pane (a close, a detach) lets go of its own.</summary>
+    [AvaloniaFact]
+    public void A_stopped_daemon_and_a_disposed_pane_end_the_registration()
+    {
+        TerminalPane stopped = ShowPane(backend: SshBackendKind.Native);
+        MuxClientSession lost = Attached(stopped);
+        TerminalPane closed = ShowPane(backend: SshBackendKind.Native);
+        MuxClientSession detached = Attached(closed);
+        AssertRegisteredWithItsHostsScope(lost.Id);
+        AssertRegisteredWithItsHostsScope(detached.Id);
+
+        _windows[1].Close();
+        closed.Dispose();
+        Assert.False(IsRegistered(detached.Id));
+
+        _remote.StopDaemon();
+        ShowsBanner(stopped, TerminalPane.RemoteDaemonStoppedBanner(Host));
+        Assert.False(IsRegistered(lost.Id));
+    }
+
+    /// <summary>
+    /// Phase 5 Task 28 ruling: a share opened through "Attach to session…" is the user's own SSH profile, so it registers as
+    /// an owned pane does; a share whose shell is gone on reconnect is registered no more.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_shared_native_pane_registers_like_an_owned_one_until_its_share_ends()
+    {
+        Guid theirs = AnotherClientsShell();
+        TerminalPane pane = ShowPane(restore: theirs, backend: SshBackendKind.Native, configure: p => p.MuxAttachSharedToRestore = true);
+        MuxClientSession shared = Attached(pane);
+        Assert.True(pane.MuxSessionIsShare);
+        AssertRegisteredWithItsHostsScope(shared.Id);
+        int ended = 0;
+        pane.MuxShareEnded += _ => ended++;
+
+        _remote.CutLink();
+        ShowsBanner(pane, TerminalPane.RemoteReconnectingBanner(Host));
+        _remote.Server.KillAllSessions();
+        _clock.Advance(FirstRetry);
+
+        PumpUntil(() => ended > 0, "the share ended");
+        Assert.False(IsRegistered(theirs));
+    }
+
+    /// <summary>Phase 5 spec R8: an OpenSSH persisted tab has no sidebar, as a plain OpenSSH tab has none, so nothing registers it.</summary>
+    [AvaloniaFact]
+    public void An_OpenSSH_persisted_pane_is_not_registered()
+    {
+        bool attachHandled = false; // raised where a native pane registers: after it, nothing more is coming
+        TerminalPane pane = ShowPane(backend: SshBackendKind.OpenSsh, configure: p => p.PersistentSessionAttached += _ => attachHandled = true);
+        MuxClientSession session = Attached(pane);
+        PumpUntil(() => attachHandled, "the pane handled its attach");
+
+        Assert.False(IsRegistered(session.Id));
     }
 
     [AvaloniaFact]

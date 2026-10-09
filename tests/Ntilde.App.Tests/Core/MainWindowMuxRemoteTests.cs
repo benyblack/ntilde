@@ -5,6 +5,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Ntilde.Controls;
+using Ntilde.Models;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Tests.Support;
@@ -114,18 +115,21 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// <param name="beforeShow">Runs on the built window before it is shown, when no pane has spawned yet.</param>
     /// <param name="remote">The profile's host; <see cref="_remote"/> when null.</param>
     /// <param name="settings">The window's settings; the designer's (SessionPersistence Off) when null.</param>
-    private MainWindow CreateWindow(DateTime? bootTimeUtc = null, Action<MainWindow>? beforeShow = null, FakeRemoteHost? remote = null, TerminalSettings? settings = null)
+    /// <param name="build">Builds the window from its services (a subclass overriding its dialogs); a plain one when null.</param>
+    private MainWindow CreateWindow(DateTime? bootTimeUtc = null, Action<MainWindow>? beforeShow = null, FakeRemoteHost? remote = null, TerminalSettings? settings = null, Func<AppServiceBundle, MainWindow>? build = null)
     {
         Volatile.Write(ref _uiThread, Environment.CurrentManagedThreadId);
         _local = new MuxConnectionHost(ct => MuxClient.ConnectAsync(_localMux.Listener.Connect(), null, ct), "test", null)
         {
             DisposeFlushTimeout = TimeSpan.FromSeconds(1),
         };
+        string? typed = _typedPassword;
         var hosts = _hosts = new MuxConnectionHosts(_local, id => RemoteMuxHostFactory.Create(id, Resolve, (profile, request) =>
         {
             _transportRequests.Enqueue(request);
+            if (typed is not null && request.Interactive) AskTheTargetsPassword(profile, request);
             return _twin is { } twin && profile.Id == twin.Profile.Id ? twin.Host : remote ?? _remote;
-        }, log: null, userPrompts: null, scheduler: _clock, rpcTimeout: _remoteRpcTimeout));
+        }, log: null, userPrompts: typed is null ? null : new TypingUser(typed), scheduler: _clock, rpcTimeout: _remoteRpcTimeout));
         var factory = new MuxTerminalSessionFactory(hosts, new RecordingSessionFactory(new FakeTerminalSession()), FactoryResolve, null);
         AppServiceBundle services = AppServices.BuildForDesigner() with
         {
@@ -141,11 +145,65 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
             services = services with { SessionsCannotPredateUtc = () => boot };
         }
 
-        MainWindow window = TestMainWindowFactory.Create(services);
+        MainWindow window = build is null ? TestMainWindowFactory.Create(services) : TestMainWindowFactory.Track(build(services));
         beforeShow?.Invoke(window);
         window.Show();
         Dispatcher.UIThread.RunJobs();
         return window;
+    }
+
+    /// <summary>
+    /// Set by a test before <see cref="CreateWindow"/>: the password the user types when a user's attempt meets the target's
+    /// password prompt (Phase 5 Task 28); with none, no prompt is raised and the window has no prompts to ask.
+    /// </summary>
+    private string? _typedPassword;
+
+    /// <summary>
+    /// The target's password prompt as the native exec transport raises it before the proxy runs: answered by the attempt's
+    /// prompts (<see cref="RemoteMuxTransportRequest.Prompts"/>), which ask the window's handler - here a user typing
+    /// <see cref="_typedPassword"/>. Off the UI thread, inside the connector's start.
+    /// </summary>
+    private static void AskTheTargetsPassword(SshProfile profile, RemoteMuxTransportRequest request) =>
+        request.Prompts.HandleAsync(new Ntilde.Platform.Ssh.Interactions.SshInteractionRequest
+        {
+            Kind = Ntilde.Platform.Ssh.Interactions.SshInteractionKind.Password,
+            Prompt = "Password:",
+            ProfileId = profile.Id,
+            ProfileName = profile.Name,
+            ProfileUser = profile.User,
+            ProfileHost = profile.Host,
+            AllowVaultPasswordReuse = true,
+            RememberPasswordInVault = true,
+            Host = profile.Host,
+            Port = profile.Port > 0 ? profile.Port : 22,
+            User = profile.User,
+        }, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>A user at the window's password dialog who types the same password every time.</summary>
+    private sealed class TypingUser(string password) : Ntilde.Platform.Ssh.Interactions.ISshInteractionHandler
+    {
+        public Task<Ntilde.Platform.Ssh.Interactions.SshInteractionResponse> HandleAsync(Ntilde.Platform.Ssh.Interactions.SshInteractionRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(request.Kind == Ntilde.Platform.Ssh.Interactions.SshInteractionKind.Password
+                ? Ntilde.Platform.Ssh.Interactions.SshInteractionResponse.FromSecret(password)
+                : Ntilde.Platform.Ssh.Interactions.SshInteractionResponse.Cancel());
+    }
+
+    /// <summary>A window whose transfer dialog and local file pickers answer at once, and whose transfers are only recorded.</summary>
+    private sealed class TransferWindow(AppServiceBundle services) : MainWindow(services)
+    {
+        public List<TransferDialogRequest> Dialogs { get; } = [];
+
+        public List<TransferJob> Queued { get; } = [];
+
+        internal override Task<TransferDialogResult?> ShowTransferDialogAsync(TransferDialogRequest request)
+        {
+            Dialogs.Add(request);
+            return Task.FromResult<TransferDialogResult?>(TransferDialogResult.CreateConfirmed(localPath: @"D:\transfers\a.txt", remotePath: "/srv/a.txt"));
+        }
+
+        internal override Task<string?> PickLocalDownloadFilePathAsync(string suggestedFileName) => Task.FromResult<string?>(@"D:\transfers\" + suggestedFileName);
+
+        internal override void EnqueueTransferJob(TransferJob job) => Queued.Add(job);
     }
 
     /// <summary>A session file with one tab: these leaves side by side.</summary>
@@ -801,58 +859,187 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Contains(ids[0], _remote.Server.GetSessionIds());
     }
 
-    /// <summary>Spec §8.4: no native SSH session stands behind a persisted remote tab, so the sidebar has nothing to browse.</summary>
-    [AvaloniaFact]
-    public void Remote_files_sidebar_is_unavailable_on_a_persistent_remote_tab()
+    /// <summary>The window's restored remote pane once its session is attached and registered (Phase 5 spec R8: registration follows the attach).</summary>
+    private TerminalPane AttachedRemotePane(MainWindow window)
     {
-        Guid[] ids = SpawnOnRemote(1);
-        SaveSession(RemoteLeaf(ids[0]));
-        MainWindow window = CreateWindow();
         PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
         TerminalPane pane = RemotePanes(window).Single();
         Assert.True(pane.IsPersistentRemoteTab);
-        Assert.False(ActiveSshSessionRegistry.Instance.TryGet(pane.Session!.Id, out _));
+        return pane;
+    }
+
+    private static void WaitUntilRegistered(Guid id) => PumpUntil(() => ActiveSshSessionRegistry.Instance.TryGet(id, out _), $"session {id} is registered");
+
+    private static Task Palette(MainWindow window, TerminalPane pane, TransferDirection direction, TransferKind kind) =>
+        (Task)typeof(MainWindow).GetMethod("InitiateSftpTransfer", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [pane, direction, kind])!;
+
+    private static void SidebarTransfer(MainWindow window, TerminalPane pane, string remotePath) =>
+        typeof(MainWindow).GetMethod("OnPaneRequestRemoteFilesSidebarTransfer", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(window, [pane, new SidebarTransferRequest(TransferDirection.Download, TransferKind.File, remotePath)]);
+
+    private static void HideToast(MainWindow window) =>
+        typeof(MainWindow).GetMethod("HideRecordingToast", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+
+    /// <summary>
+    /// Phase 5 spec R8: a persisted tab of a Native profile registers as its profile's native session with its host's
+    /// password scope, so its Remote Files sidebar opens - no notice - and lists over a connection of its own, as a plain
+    /// native tab's does, which carries the password the user typed to sign in to that host (and not the vault's: none is saved).
+    /// </summary>
+    [AvaloniaFact]
+    public void A_native_persistent_tabs_remote_files_list_over_their_own_connection_with_the_password_typed_for_the_host()
+    {
+        _typedPassword = "typed-for-fake-host";
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]));
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AttachedRemotePane(window);
+        WaitUntilRegistered(ids[0]);
+        Assert.True(ActiveSshSessionRegistry.Instance.TryGetActiveNativeSession(_sshProfile.Id, ids[0], out ActiveSshSessionDescriptor? descriptor));
+        Assert.Equal(RemoteHostOf(window)!.PasswordScopeId, descriptor!.PasswordScopeId);
+        var native = new CapturingNativeInterop();
+        pane.ConfigureRemoteFilesSidebarForTest(new RemoteDirectoryBrowserService(native, ActiveSshSessionRegistry.Instance, () => new SshConnectionService(), passwordResolver: _ => null));
+        var notices = new List<string>();
+        pane.PersistenceNotice += (_, title, message, _) => notices.Add($"{title}: {message}");
 
         pane.ToggleRemoteFilesSidebar();
 
-        PumpUntil(() => Toast(window).Message == TerminalPane.RemoteFilesUnavailableMessage, "the toast says why");
-        Assert.True(Toast(window).Visible);
-        Assert.False(pane.IsRemoteFilesSidebarVisibleForTest());
-
-        // A transfer request from such a pane (the sidebar's buttons) gets the same answer and nothing else.
-        typeof(MainWindow).GetMethod("HideRecordingToast", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
-        Assert.False(Toast(window).Visible);
-        typeof(MainWindow).GetMethod("OnPaneRequestRemoteFilesSidebarTransfer", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(window, [pane, new SidebarTransferRequest(TransferDirection.Download, TransferKind.File, "/etc/hosts")]);
-        PumpUntil(() => ToastLines(window).Contains(TerminalPane.RemoteFilesUnavailableMessage), "the toast is shown again");
+        PumpUntil(() => pane.IsRemoteFilesSidebarVisibleForTest() && native.Listed is not null, "the sidebar opened and listed");
+        Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions listed = native.Listed!;
+        Assert.Equal(("fake-host", "nova", "typed-for-fake-host"), (listed.Host, listed.User, listed.Password));
+        Assert.Empty(notices);
     }
 
     /// <summary>
-    /// Final review I3: the palette's SFTP upload and download are refused on a persistent remote tab the way the
-    /// sidebar and its transfers are - the same notice, and no transfer dialog. Before, they opened the dialog with
-    /// the mux session's id, which names no SSH session of this app (no remote-path completion, no remembered
-    /// password), and the job then opened an SSH connection of its own.
+    /// Phase 5 spec R8: the palette's transfers and the sidebar's on a native persisted tab name its daemon session, as a
+    /// plain tab's name its SSH session: the transfer then opens its own connection with the password typed for the host.
+    /// Before (final review I3), both were refused with a notice.
     /// </summary>
-    [AvaloniaTheory]
-    [InlineData(TransferDirection.Upload, TransferKind.File)]
-    [InlineData(TransferDirection.Upload, TransferKind.Folder)]
-    [InlineData(TransferDirection.Download, TransferKind.File)]
-    [InlineData(TransferDirection.Download, TransferKind.Folder)]
-    public void The_palettes_sftp_transfers_are_unavailable_on_a_persistent_remote_tab(TransferDirection direction, TransferKind kind)
+    [AvaloniaFact]
+    public void A_native_persistent_tabs_transfers_run_over_their_own_connection_with_the_password_typed_for_the_host()
+    {
+        _typedPassword = "typed-for-fake-host";
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]));
+        var window = (TransferWindow)CreateWindow(build: services => new TransferWindow(services));
+        TerminalPane pane = AttachedRemotePane(window);
+        WaitUntilRegistered(ids[0]);
+
+        Task palette = Palette(window, pane, TransferDirection.Upload, TransferKind.File);
+        PumpUntil(() => palette.IsCompleted, "the palette's transfer was queued");
+        SidebarTransfer(window, pane, "/etc/hosts");
+        PumpUntil(() => window.Queued.Count == 2, "the sidebar's transfer was queued");
+
+        TransferDialogRequest dialog = Assert.Single(window.Dialogs);
+        Assert.Equal((_sshProfile.Id, ids[0]), (dialog.ProfileId, dialog.SessionId)); // its remote-path completion lists through the session
+        Assert.Equal(2, window.Queued.Count);
+        Assert.All(window.Queued, job => Assert.Equal((_sshProfile.Id, ids[0]), (job.ProfileId, job.SessionId)));
+        Assert.Equal("/etc/hosts", window.Queued[1].RemotePath);
+        var native = new CapturingNativeInterop();
+        SftpService.ExecuteNativeSftpTransfer(
+            window.Queued[0],
+            pane.Profile!,
+            new SshConnectionService(),
+            interop: native,
+            passwordResolver: _ => null,
+            sessionRegistry: ActiveSshSessionRegistry.Instance);
+        Assert.Equal(("fake-host", "typed-for-fake-host"), (native.Transferred!.Host, native.Transferred.Password));
+    }
+
+    /// <summary>
+    /// Spec §15 (codex D2): SFTP rebuilds its options from the stored profile. While the profile names another destination
+    /// than the one this tab's host connected to, its files would be the other host's: the sidebar, its transfers and the
+    /// palette's are refused with why, and nothing else happens. The profile is read at each request: back as it was, the
+    /// tab is no longer refused.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_persistent_tab_whose_profile_was_retargeted_refuses_remote_files_and_transfers_and_says_why()
     {
         Guid[] ids = SpawnOnRemote(1);
         SaveSession(RemoteLeaf(ids[0]));
-        MainWindow window = CreateWindow();
-        PumpUntil(() => RemotePanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true }), "the remote pane reattached");
-        TerminalPane pane = RemotePanes(window).Single();
-        Assert.True(pane.IsPersistentRemoteTab);
-        int ownedBefore = window.OwnedWindows.Count;
+        var window = (TransferWindow)CreateWindow(build: services => new TransferWindow(services));
+        TerminalPane pane = AttachedRemotePane(window);
+        WaitUntilRegistered(ids[0]);
+        Assert.False(pane.IsOnRetargetedHost);
 
-        var transfer = (Task)typeof(MainWindow).GetMethod("InitiateSftpTransfer", BindingFlags.NonPublic | BindingFlags.Instance)!
-            .Invoke(window, [pane, direction, kind])!;
+        _sshProfile.Host = "moved-host"; // edited after the host connected: its shells still run on fake-host
+        pane.ToggleRemoteFilesSidebar();
 
-        PumpUntil(() => transfer.IsCompleted && ToastLines(window).Contains(TerminalPane.RemoteFilesUnavailableMessage), "the toast says why, and nothing waits on a dialog");
-        Assert.Equal(ownedBefore, window.OwnedWindows.Count);
+        PumpUntil(() => ToastLines(window).Contains(TerminalPane.RemoteFilesRetargetedMessage), "the toast says why");
+        Assert.Equal(TerminalPane.RemoteFilesUnavailableNoticeTitle, Toast(window).Title);
+        Assert.False(pane.IsRemoteFilesSidebarVisibleForTest());
+
+        HideToast(window);
+        SidebarTransfer(window, pane, "/etc/hosts");
+        PumpUntil(() => ToastLines(window).Contains(TerminalPane.RemoteFilesRetargetedMessage), "the sidebar's transfer is refused");
+
+        HideToast(window);
+        Task palette = Palette(window, pane, TransferDirection.Download, TransferKind.Folder);
+        PumpUntil(() => palette.IsCompleted && ToastLines(window).Contains(TerminalPane.RemoteFilesRetargetedMessage), "the palette's transfer is refused");
+        Assert.Empty(window.Dialogs);
+        Assert.Empty(window.Queued);
+
+        _sshProfile.Host = "fake-host";
+        Assert.False(pane.IsOnRetargetedHost);
+    }
+
+    /// <summary>
+    /// Phase 5 spec R8: an OpenSSH persisted tab gets the palette's transfers - scp in batch mode on a connection of its own,
+    /// as on a plain OpenSSH tab - and, as there, no Remote Files sidebar.
+    /// </summary>
+    [AvaloniaFact]
+    public void An_OpenSSH_persistent_tabs_palette_transfer_runs_scp_on_its_own_connection_and_it_has_no_sidebar()
+    {
+        _sshProfile.BackendKind = SshBackendKind.OpenSsh;
+        new JsonSshProfileStore().SaveProfile(_sshProfile);
+        Guid[] ids = SpawnOnRemote(1);
+        SaveSession(RemoteLeaf(ids[0]));
+        var window = (TransferWindow)CreateWindow(build: services => new TransferWindow(services));
+        TerminalPane pane = AttachedRemotePane(window);
+        Assert.Equal(SshBackendKind.OpenSsh, pane.Profile!.SshBackendKind);
+
+        Task palette = Palette(window, pane, TransferDirection.Upload, TransferKind.File);
+        PumpUntil(() => palette.IsCompleted, "the palette's transfer was queued");
+
+        TransferJob job = Assert.Single(window.Queued);
+        Assert.Equal((_sshProfile.Id, TransferDirection.Upload, "/srv/a.txt"), (job.ProfileId, job.Direction, job.RemotePath));
+        Assert.Equal(SftpTransferBackend.ExternalScp, SftpService.SelectExecutionBackend(pane.Profile!, job));
+        Assert.Contains(" -B ", SftpService.BuildScpArguments(job, pane.Profile!, launchDetails: null), StringComparison.Ordinal);
+
+        pane.ToggleRemoteFilesSidebar();
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(pane.IsRemoteFilesSidebarVisibleForTest());
+    }
+
+    /// <summary>The native layer for a remote listing and an SFTP transfer: records the connection options each was given.</summary>
+    private sealed class CapturingNativeInterop : Ntilde.Platform.Ssh.Native.INativeSshInterop
+    {
+        public Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions? Listed { get; private set; }
+
+        public Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions? Transferred { get; private set; }
+
+        public IReadOnlyList<Ntilde.Platform.Ssh.Native.NativeRemotePathEntry> ListRemoteDirectory(
+            Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions connectionOptions, string remotePath, CancellationToken cancellationToken)
+        {
+            Listed = connectionOptions;
+            return [new Ntilde.Platform.Ssh.Native.NativeRemotePathEntry("notes.txt", "/home/nova/notes.txt", false)];
+        }
+
+        public void RunSftpTransfer(
+            Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions connectionOptions,
+            Ntilde.Platform.Ssh.Native.NativeSftpTransferOptions transferOptions,
+            Action<Ntilde.Platform.Ssh.Native.NativeSftpTransferProgress>? progress,
+            CancellationToken cancellationToken) => Transferred = connectionOptions;
+
+        public Ntilde.Platform.Ssh.Native.NovaSshSafeHandle Connect(Ntilde.Platform.Ssh.Native.NativeSshConnectionOptions options) => throw new NotSupportedException();
+        public Ntilde.Platform.Ssh.Native.NativeSshEvent? PollEvent(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+        public void Write(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Resize(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int cols, int rows) => throw new NotSupportedException();
+        public int OpenDirectTcpIp(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, Ntilde.Platform.Ssh.Native.NativePortForwardOpenOptions options) => throw new NotSupportedException();
+        public void WriteChannel(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void SendChannelEof(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void CloseChannel(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void SubmitResponse(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle, Ntilde.Platform.Ssh.Native.NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Close(Ntilde.Platform.Ssh.Native.NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
     }
 
     /// <summary>

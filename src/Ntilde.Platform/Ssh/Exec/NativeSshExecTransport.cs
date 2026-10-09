@@ -105,8 +105,10 @@ public sealed class NativeSshExecTransport : ISshExecTransport
         try
         {
             // A responder per connection: the vault's password is offered once per connection, like a
-            // shell session's. No session id, because this connection is not in ActiveSshSessionRegistry
-            // (spec §8.4), so a password typed here is not kept for reconnects.
+            // shell session's. Never a session id (Phase 5 Task 28): the window's handler would then keep a
+            // password typed here under it and replay it on the next prompt, around the remote host's own
+            // rules (a refused password is not offered again; a profile with jump hops replays none). The
+            // host's prompts hand what was typed to its SFTP connections themselves, through its password scope.
             channel = new NativeSshExecChannel(
                 handle, _interop, new NativeSshPromptResponder(_profile, sessionId: null), _interactionHandler, DisplayName, _log, ExitGrace);
         }

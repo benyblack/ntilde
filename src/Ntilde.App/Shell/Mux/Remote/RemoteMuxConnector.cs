@@ -140,6 +140,24 @@ internal sealed class RemoteMuxConnector : IDisposable
 
     internal RemoteMuxInteractionHandler Prompts { get; }
 
+    /// <summary>This host's password scope (<see cref="RemoteMuxInteractionHandler.PasswordScopeId"/>, Phase 5 spec R8).</summary>
+    internal Guid PasswordScopeId => Prompts.PasswordScopeId;
+
+    /// <summary>
+    /// Whether the host's destination is pinned (<see cref="Accept"/>) and the profile, read now, names another one (codex
+    /// D2): its shells run where it first connected, while SFTP rebuilds its options from the stored profile and would go
+    /// to the new destination. False until a client was accepted. Reads the profile on every call (the store, in the app):
+    /// a caller asks at the moment of its request.
+    /// </summary>
+    internal bool IsRetargeted
+    {
+        get
+        {
+            SshProfile current = _profile();
+            lock (_gate) return _pinned is { } pinned && !SameDestination(pinned, current);
+        }
+    }
+
     /// <summary><c>user@host</c>, or the bare host when the profile names no user.</summary>
     internal static string DisplayNameOf(SshProfile profile) =>
         string.IsNullOrWhiteSpace(profile.User) ? profile.Host : $"{profile.User}@{profile.Host}";

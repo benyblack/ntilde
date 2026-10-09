@@ -18,9 +18,14 @@ internal static class TestMainWindowFactory
     /// down with everyone else's — a window built with a custom bundle still opens a real tab with
     /// a real shell behind it.
     /// </summary>
-    public static Ntilde.MainWindow Create(AppServiceBundle services)
+    public static Ntilde.MainWindow Create(AppServiceBundle services) => Track(new Ntilde.MainWindow(services));
+
+    /// <summary>
+    /// A window a test built itself (a subclass that overrides the window's dialog seams), given the same defaults and torn
+    /// down with everyone else's.
+    /// </summary>
+    public static T Track<T>(T window) where T : Ntilde.MainWindow
     {
-        var window = new Ntilde.MainWindow(services);
         // Never the real first-close modal (spec R1): a test that closes a persistent window with live shells and
         // sets no answer of its own gets Cancel - the window stays open - rather than a dialog nobody dismisses.
         window.ConfirmFirstClose = static _ => Task.FromResult(new Ntilde.MainWindow.FirstCloseAnswer(Ntilde.MainWindow.FirstCloseAction.Cancel, Remember: false));

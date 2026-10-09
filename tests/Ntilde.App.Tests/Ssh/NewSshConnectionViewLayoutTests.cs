@@ -81,6 +81,32 @@ public sealed class NewSshConnectionViewLayoutTests
             view.Close();
         }
     }
+
+    /// <summary>
+    /// Phase 5 spec R8: under "Keep remote sessions running", what a persistent tab does not have - this connection's port
+    /// forwards, and with OpenSSH the Remote Files sidebar - in the same words as the install dialog's.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_keep_running_checkbox_says_what_a_persistent_tab_lacks()
+    {
+        var view = ShowAt(height: 620);
+        try
+        {
+            var hint = view.FindControl<TextBlock>("PersistentTabLimitsHint");
+            Assert.NotNull(hint);
+            Assert.Equal(Ntilde.Shell.Mux.RemoteMuxStatusText.PersistentTabLimits, hint!.Text);
+            Assert.Contains("port forwards", hint.Text, StringComparison.Ordinal);
+            Assert.Equal(Avalonia.Media.TextWrapping.Wrap, hint.TextWrapping);
+            Assert.Equal(0.7, hint.Opacity, precision: 3);
+            var panel = Assert.IsType<StackPanel>(hint.Parent);
+            int checkbox = panel.Children.IndexOf(panel.Children.OfType<CheckBox>().Single(box => Equals(box.Content, "Keep remote sessions running (ntilde-mux)")));
+            Assert.Equal(checkbox + 1, panel.Children.IndexOf(hint));
+        }
+        finally
+        {
+            view.Close();
+        }
+    }
 }
 
 internal static class VisualTreeTestExtensions

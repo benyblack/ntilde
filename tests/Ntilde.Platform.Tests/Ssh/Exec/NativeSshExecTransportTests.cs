@@ -340,7 +340,9 @@ public sealed class NativeSshExecTransportTests
         Assert.True(first.RememberPasswordInVault);
         Assert.False(handler.Requests[1].AllowVaultPasswordReuse);
 
-        // Not an ActiveSshSessionRegistry session (spec §8.4): no session id to key a runtime password by.
+        // Never a session id (Phase 5 Task 28): the window's handler would keep a typed password under it and replay it,
+        // around the remote host's refused-password and jump-hop rules. A persisted tab's typed passwords reach its SFTP
+        // connections through the host's password scope instead.
         Assert.Null(first.SessionId);
         Assert.All(interop.Submissions, submission =>
         {

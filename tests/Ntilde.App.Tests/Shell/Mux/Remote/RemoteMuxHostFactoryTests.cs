@@ -500,6 +500,71 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         Assert.Single(user.Asked);
     }
 
+    /// <summary>
+    /// Phase 5 Task 28 (spec R8): what the user typed to sign in to a host reaches that host's own SFTP and listing
+    /// connections through a password scope of the host's own - once the connect it was typed for got in. The host's
+    /// dispose (also how a release ends) clears it, and a host built again for the same profile gets a new scope, so a
+    /// stale one never serves it.
+    /// </summary>
+    [Fact]
+    public void Each_host_keeps_what_its_user_typed_in_a_scope_of_its_own_until_it_is_disposed()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        var typedTarget = new SshInteractionRequest { Kind = SshInteractionKind.Password, Prompt = "Password:", Host = "fake-host", Port = 22, User = "nova" };
+        MuxConnectionHost Build() => Own(RemoteMuxHostFactory.Create(
+            MuxEndpointId.ForSsh(profile.Id),
+            _ => profile,
+            (_, request) =>
+            {
+                // The native transport's password prompt, before the command runs: answered by the attempt's prompts.
+                if (request.Interactive) request.Prompts.HandleAsync(typedTarget, Ct).GetAwaiter().GetResult();
+                return _remote;
+            },
+            log: null,
+            userPrompts: new ScriptedUser(SshInteractionResponse.FromSecret("typed")),
+            passwordScopes: scopes)!);
+        MuxConnectionHost first = Build();
+        Guid scope = Assert.IsType<RemoteMuxConnector>(first.Connector).PasswordScopeId;
+        Assert.Equal(scope, first.PasswordScopeId);
+
+        Assert.NotNull(first.GetClient(Patient));
+
+        Assert.True(scopes.TryGetRuntimePassword(scope, "fake-host", 22, "nova", out string? typed));
+        Assert.Equal("typed", typed);
+
+        first.Dispose();
+
+        Assert.False(scopes.TryGetRuntimePassword(scope, "fake-host", 22, "nova", out _));
+        MuxConnectionHost again = Build();
+        Assert.NotNull(again.PasswordScopeId);
+        Assert.NotEqual(scope, again.PasswordScopeId);
+    }
+
+    /// <summary>
+    /// Spec §15 (codex D2): SFTP rebuilds its options from the stored profile, so a tab whose host still runs where it first
+    /// connected must know when the profile names another destination now - read at the moment it is asked, never cached.
+    /// </summary>
+    [Fact]
+    public void A_host_is_retargeted_while_the_profile_names_another_destination_than_the_one_it_connected_to()
+    {
+        SshProfile first = RemoteMuxConnectorTests.Profile();
+        SshProfile current = first;
+        MuxConnectionHost host = Own(RemoteMuxHostFactory.Create(MuxEndpointId.ForSsh(first.Id), _ => current, (_, _) => _remote, log: null)!);
+        current = RemoteMuxConnectorTests.Edited(first, host: "host-b");
+        Assert.False(host.IsRetargeted); // nothing pinned yet: its next attempt goes where the profile says
+        current = first;
+        Assert.NotNull(host.GetClient(Patient));
+        Assert.False(host.IsRetargeted);
+
+        current = RemoteMuxConnectorTests.Edited(first, host: "host-b");
+        Assert.True(host.IsRetargeted);
+        current = RemoteMuxConnectorTests.Edited(first, host: "fake-host", port: 2222);
+        Assert.True(host.IsRetargeted);
+        current = RemoteMuxConnectorTests.Edited(first, host: "fake-host");
+        Assert.False(host.IsRetargeted);
+    }
+
     private static readonly SshLaunchDetails Launch = new()
     {
         SshPath = "/usr/bin/ssh",

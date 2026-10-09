@@ -107,6 +107,11 @@ internal static class RemoteMuxHostFactory
     /// the helper filled it, and a second factor does not count.
     /// </param>
     /// <param name="rpcTimeout">The host's request wait in place of <see cref="MuxHostPolicy.Remote"/>'s; null (the app) keeps it. Tests shorten it.</param>
+    /// <param name="passwordScopes">
+    /// Where the host's password scope lives (Phase 5 spec R8: what its user typed, for its persisted tabs' SFTP
+    /// connections; <see cref="MuxConnectionHost.PasswordScopeId"/>): the app's <see cref="ActiveSshSessionRegistry.Instance"/>
+    /// when null, which the panes register in.
+    /// </param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
@@ -117,7 +122,8 @@ internal static class RemoteMuxHostFactory
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
         Func<SshProfile, string?>? savedPassword = null,
         SshAskPassSessionMarkers? askPassRecords = null,
-        TimeSpan? rpcTimeout = null)
+        TimeSpan? rpcTimeout = null,
+        ActiveSshSessionRegistry? passwordScopes = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -151,7 +157,7 @@ internal static class RemoteMuxHostFactory
         var connector = new RemoteMuxConnector(
             CurrentProfile,
             transportFor,
-            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword, askPassRecords, log),
+            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword, askPassRecords, log, passwordScopes ?? ActiveSshSessionRegistry.Instance),
             Guid.NewGuid().ToString("N"),
             log)
         {
