@@ -83,7 +83,7 @@ public static class MuxDiscovery
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         string dir = Path.GetDirectoryName(Path.GetFullPath(path))!;
-        CreatePrivateDirectory(dir);
+        PrivateDirectory.Create(dir);
         string temp = Path.Combine(dir, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         try
         {
@@ -145,7 +145,7 @@ public static class MuxDiscovery
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         string dir = Path.GetDirectoryName(Path.GetFullPath(path))!;
-        CreatePrivateDirectory(dir);
+        PrivateDirectory.Create(dir);
         string temp = Path.Combine(dir, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         try
         {
@@ -265,29 +265,6 @@ public static class MuxDiscovery
         try { RetryWhileBusy(() => File.Delete(path)); }
         catch (IOException) { /* best effort: a stale descriptor is harmless (its pid is checked on read) */ }
         catch (UnauthorizedAccessException) { /* best effort, as above */ }
-    }
-
-    /// <summary>
-    /// Creates a missing descriptor directory owner-only (0700) off Windows. On Linux/macOS the
-    /// default socket endpoint lives in this same directory, and the daemon refuses to serve from
-    /// one that already exists with any other mode (UnixSocketMuxListener.EnsurePrivateDirectory) -
-    /// so a descriptor written first (a crashed daemon's leftover, a client, a test) must not
-    /// leave it at the umask default (typically 0755). An existing directory is left untouched:
-    /// judging it is the daemon's job, not a writer's. Windows has ACLs, not POSIX modes.
-    /// </summary>
-    private static void CreatePrivateDirectory(string dir)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            Directory.CreateDirectory(dir);
-            return;
-        }
-
-        if (Directory.Exists(dir)) return;
-        const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
-        Directory.CreateDirectory(dir, OwnerOnly);
-        // CreateDirectory's mode is filtered by the umask, which can only remove bits: re-assert it.
-        File.SetUnixFileMode(dir, OwnerOnly);
     }
 
     private static void RetryWhileBusy(Action fileOperation)

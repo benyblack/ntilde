@@ -19,7 +19,11 @@ namespace Ntilde.Shell
     {
         private static string SessionPath => AppPaths.SessionFilePath;
 
-        public static void SaveSession(Window window, TabControl tabs)
+        /// <param name="endedLocalMuxSessions">
+        /// Local daemon sessions the closing window has just ended (spec R1's "Close them"): left out, so the next
+        /// launch starts fresh shells quietly, as with persistence off, instead of reporting them lost.
+        /// </param>
+        public static void SaveSession(Window window, TabControl tabs, IReadOnlySet<Guid>? endedLocalMuxSessions = null)
         {
             var sw = Stopwatch.StartNew();
             int payloadBytes = 0;
@@ -28,6 +32,13 @@ namespace Ntilde.Shell
                 // The startup session file is the one snapshot that names daemon sessions: the next
                 // launch reattaches to them (spec §9).
                 var session = CaptureSession(window, tabs, includeMuxIds: true);
+                if (endedLocalMuxSessions is { Count: > 0 })
+                {
+                    session = WithoutMuxIds(session, node =>
+                        Guid.TryParse(node.MuxSessionId, out Guid id)
+                        && endedLocalMuxSessions.Contains(id)
+                        && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal);
+                }
 
                 var json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
                 payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
@@ -65,18 +76,27 @@ namespace Ntilde.Shell
         /// A copy, never in place: a capture can share PaneNodes with a restored tab's Tag (see the
         /// placeholder fallback in <see cref="CaptureSessionCore"/>), which the startup save still needs.
         /// </summary>
-        internal static NtildeSession WithoutMuxIds(NtildeSession session)
+        internal static NtildeSession WithoutMuxIds(NtildeSession session) => WithoutMuxIds(session, static _ => true);
+
+        /// <summary><see cref="WithoutMuxIds(NtildeSession)"/> for the panes <paramref name="clear"/> picks only; the same deep copy.</summary>
+        internal static NtildeSession WithoutMuxIds(NtildeSession session, Func<PaneNode, bool> clear)
         {
             ArgumentNullException.ThrowIfNull(session);
+            ArgumentNullException.ThrowIfNull(clear);
             string json = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
             NtildeSession copy = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession) ?? new NtildeSession();
 
-            static void Clear(PaneNode? node)
+            void Clear(PaneNode? node)
             {
                 if (node == null) return;
-                node.MuxSessionId = null;
-                node.MuxEndpoint = null;
-                node.MuxShared = false;
+                if (clear(node))
+                {
+                    node.MuxSessionId = null;
+                    node.MuxEndpoint = null;
+                    node.MuxShared = false;
+                    node.MuxQuietPreviousLost = false;
+                }
+
                 foreach (PaneNode child in node.Children) Clear(child);
             }
 
@@ -263,7 +283,7 @@ namespace Ntilde.Shell
             int payloadBytes = 0;
             try
             {
-                if (!TryLoadSavedSession(out NtildeSession? session, out payloadBytes) ||
+                if (!TryLoadSavedSessionCore(out NtildeSession? session, out payloadBytes, out _) ||
                     session == null ||
                     session.Tabs.Count == 0)
                 {
@@ -306,7 +326,16 @@ namespace Ntilde.Shell
 
         public static bool TryLoadSavedSession(out NtildeSession? session)
         {
-            return TryLoadSavedSession(out session, out _);
+            return TryLoadSavedSession(out session, out DateTime? _);
+        }
+
+        /// <param name="savedUtc">
+        /// When the session file was last written (UTC): the save time the startup restore compares with the
+        /// machine's boot time (spec R2). Null when it cannot be read.
+        /// </param>
+        public static bool TryLoadSavedSession(out NtildeSession? session, out DateTime? savedUtc)
+        {
+            return TryLoadSavedSessionCore(out session, out _, out savedUtc);
         }
 
         public static TabItem? CreateRestoredTabItem(TabSession tabSession, TerminalSettings settings)
@@ -354,21 +383,36 @@ namespace Ntilde.Shell
             }
         }
 
-        private static bool TryLoadSavedSession(out NtildeSession? session, out int payloadBytes)
+        private static bool TryLoadSavedSessionCore(out NtildeSession? session, out int payloadBytes, out DateTime? savedUtc)
         {
             session = null;
             payloadBytes = 0;
+            savedUtc = null;
 
             if (!File.Exists(SessionPath))
             {
                 return false;
             }
 
+            savedUtc = TryGetLastWriteTimeUtc(SessionPath);
             var json = File.ReadAllText(SessionPath);
             payloadBytes = System.Text.Encoding.UTF8.GetByteCount(json);
             session = JsonSerializer.Deserialize(json, SessionSerializationContext.Default.NtildeSession);
             if (session != null) DedupeMuxIds(session);
             return session != null;
+        }
+
+        private static DateTime? TryGetLastWriteTimeUtc(string path)
+        {
+            try
+            {
+                return File.GetLastWriteTimeUtc(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                AppLogger.Log($"[SessionManager] could not read the session file's save time: {ex.Message}");
+                return null;
+            }
         }
 
         /// <summary>
@@ -392,6 +436,7 @@ namespace Ntilde.Shell
                 {
                     node.MuxSessionId = null;
                     node.MuxEndpoint = null;
+                    node.MuxQuietPreviousLost = false;
                 }
 
                 foreach (PaneNode child in node.Children) Visit(child);
@@ -520,7 +565,33 @@ namespace Ntilde.Shell
                 leaf.MuxSessionId = pending.ToString("D");
                 leaf.MuxEndpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).ToString();
                 leaf.MuxShared = pane.MuxAttachSharedToRestore;
+                // Spec R2: still the restore that a reboot made quiet; the next launch's file will be newer than the boot.
+                leaf.MuxQuietPreviousLost = pane.MuxQuietPreviousLost;
             }
+        }
+
+        /// <summary>
+        /// Spec R2: <paramref name="session"/>'s file predates the boot or logon, so each local daemon session it names
+        /// ended with it. Marks those panes, in place and before any tab is built from them: the panes then start their
+        /// fresh shells quietly, a placeholder tab saved before it is built keeps the mark, and so does every save of a
+        /// pane that has not spawned yet. A remote daemon outlives a local reboot, so remote panes keep their notices.
+        /// </summary>
+        internal static void MarkLocalMuxSessionsEndedByReboot(NtildeSession session)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+
+            void Visit(PaneNode? node)
+            {
+                if (node == null) return;
+                if (Guid.TryParse(node.MuxSessionId, out _) && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal)
+                {
+                    node.MuxQuietPreviousLost = true;
+                }
+
+                foreach (PaneNode child in node.Children) Visit(child);
+            }
+
+            foreach (TabSession tab in session.Tabs) Visit(tab.Root);
         }
 
         /// <summary>
@@ -540,6 +611,8 @@ namespace Ntilde.Shell
                 pane.MuxSessionIdToRestore = muxId;
                 pane.MuxAttachSharedToRestore = node.MuxShared;
                 pane.MuxEndpoint = endpoint.ToString();
+                // Spec R2: local only, whatever a hand-edited file says - a remote daemon outlives a local reboot.
+                pane.MuxQuietPreviousLost = node.MuxQuietPreviousLost && endpoint.IsLocal;
             }
         }
 

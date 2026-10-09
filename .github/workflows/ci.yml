@@ -109,6 +109,25 @@ jobs:
           command -v "$py" >/dev/null 2>&1 || py=python
           "$py" scripts/tests/build_wrapper_sdk_guard_tests.py
 
+      # release.yml writes the multiplexer protocol range this script reads from MuxProtocol.cs into
+      # every Velopack release's notes (Phase 5 R10); a release must fail rather than ship a guessed
+      # one, so the parse is tested here, against the real file, before any release depends on it.
+      - name: Self-test the release's multiplexer protocol range script
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/mux_protocol_range_tests.py
+
+      # release.yml refuses a run that would replace a published ntilde-mux, whose hash every installed App
+      # pins (Codex review of PR #511): scripts/ci/mux-release-guard.sh, tested here against a fake gh.
+      - name: Self-test the release's ntilde-mux rerun guard
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/mux_release_guard_tests.py
+
       # ── Rust native ────────────────────────────────────────────────────────────
       # Cache the compiled binary keyed on all Rust source files.
       # On a hit the toolchain install, Swatinem, and cargo build are all skipped.
@@ -1542,6 +1561,14 @@ jobs:
           # linux_packaging_detect, which this job deliberately mirrors.
           fetch-depth: 0
 
+      - name: Self-test the AOT gate path filter
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          "$py" scripts/tests/aot_gate_paths_tests.py
+          "$py" scripts/tests/aot_smoke_verdict_tests.py
+
       # Dependency-free path filter, matching linux_packaging_detect rather than
       # introducing a third-party action this repo uses nowhere.
       #
@@ -1581,18 +1608,17 @@ jobs:
           changed="$(git diff --name-only "$base"...HEAD)"
           echo "Changed files vs merge base:"
           echo "$changed"
-          # Here-string, not `echo | grep`: under pipefail a changed-file list bigger than
-          # the pipe buffer makes echo take SIGPIPE, the pipeline non-zero, this `if` false,
-          # and the gate skip itself SILENTLY. Same trap linux_packaging_detect calls out.
-          # scripts/mux-daemon-smoke.sh: mux_daemon_aot and mux_daemon_no_openssl run it, so an
-          # edit to it alone must run them.
-          if grep -qE '^(src/|Directory\.(Build|Packages)\.props$|global\.json$|\.github/workflows/[^/]+\.ya?ml$|scripts/mux-daemon-smoke\.sh$)' <<<"$changed"; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "Production sources or build inputs changed - running the AOT gate."
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Nothing under src/ or the build inputs changed - skipping the AOT gate."
-          fi
+          # The path rule lives in scripts/ci/aot-gate-paths.sh (self-tested by the step above),
+          # so it is a directory rule with one place to read it. It reads the changed paths on
+          # stdin, as a here-string rather than `echo |` for the SIGPIPE reason
+          # linux_packaging_detect calls out, and prints run=true or run=false.
+          # Beyond src/ and the build inputs it covers the test directories that feed
+          # native_ssh_docker_e2e: that job needs the linux-x64 ntilde-mux binary this gate
+          # builds, and without it the remote-persistence step skips with a notice and stays
+          # green, so a PR changing only those tests never ran them.
+          result="$(bash scripts/ci/aot-gate-paths.sh <<<"$changed")"
+          echo "$result" >> "$GITHUB_OUTPUT"
+          echo "AOT gate decision: $result"
 
   aot_gate:
     name: AOT Gate (windows-latest)
@@ -1663,79 +1689,97 @@ jobs:
           $env:NTILDE_APPDATA_ROOT = $root
           $errorFile = Join-Path $root 'logs/startup_error.txt'
           $debugLog  = Join-Path $root 'logs/debug.log'
+          $muxLog    = Join-Path $root 'logs/mux.log'
 
           $exe = Join-Path $PWD 'artifacts/publish/win-x64/Ntilde.exe'
           if (-not (Test-Path $exe)) { throw "The publish produced no Ntilde.exe at $exe." }
 
-          $proc = Start-Process -FilePath $exe -PassThru
-          Write-Output "Started pid $($proc.Id); watching for 45s."
+          try {
+            $proc = Start-Process -FilePath $exe -PassThru
+            Write-Output "Started pid $($proc.Id); watching for 45s."
 
-          # Poll rather than sleep-then-look, so a fast crash is reported as a crash
-          # instead of waiting out the full window first.
-          $deadline = (Get-Date).AddSeconds(45)
-          while ((Get-Date) -lt $deadline) {
-            if ($proc.HasExited -or (Test-Path $errorFile)) { break }
-            Start-Sleep -Seconds 2
-          }
-
-          # Diagnostics BEFORE the assertions: whatever the outcome, the log is what a
-          # human needs, and an assertion that throws first would take it away.
-          foreach ($f in @($debugLog, $errorFile)) {
-            if (Test-Path $f) {
-              Write-Output "---- $f ----"
-              Get-Content $f -Tail 60
+            # Poll rather than sleep-then-look, so a fast crash is reported as a crash
+            # instead of waiting out the full window first.
+            $deadline = (Get-Date).AddSeconds(45)
+            while ((Get-Date) -lt $deadline) {
+              if ($proc.HasExited -or (Test-Path $errorFile)) { break }
+              Start-Sleep -Seconds 2
             }
-          }
 
-          if (Test-Path $errorFile) {
-            throw "The bundle failed during startup and wrote startup_error.txt (contents above). Read the exception before retrying: a trimmed-away type or a missing native is a real AOT break and reruns will not clear it. The one environmental cause to rule out is the runner being unable to host a desktop window at all, which shows up as an Avalonia/windowing exception on StartWithClassicDesktopLifetime rather than as anything about types or files."
-          }
-          if ($proc.HasExited) {
-            throw "The bundle exited on its own within 45s (exit code $($proc.ExitCode)) without writing startup_error.txt, so it died outside Program.cs's own try/catch - suspect the native side or the host."
-          }
-          if (-not (Test-Path $debugLog)) {
-            throw "The process is alive but never wrote $debugLog, so managed Main did not reach its startup logging. Suspect a failure before the log sink is wired, in the AOT host itself."
-          }
-
-          # Program.cs logs three lines at startup, and this asserts on the THIRD, not the
-          # first. The first ("Ntilde started with args: ...") never reaches the file -
-          # not in CI and not in a local install either - so the obvious assertion is a
-          # guaranteed false failure. That is its own bug, worth fixing separately; it is not
-          # this gate's job to depend on it.
-          #
-          # Build: is the better anchor anyway. It proves managed Main got through its startup
-          # sequence, and it proves DescribeBuild resolved the executable path - the one
-          # remaining IL3000 in the tree is Assembly.Location in that very method, and
-          # `path=...Ntilde.exe` appearing here is the standing proof that
-          # Environment.ProcessPath carries it and the warned fallback never runs.
-          if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
-            throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
-          }
-
-          # One assertion beyond "Main ran": the window and a terminal view actually came up.
-          # This is the half that matters for a trimming break, which typically survives startup
-          # and dies when the UI is constructed. Both lines are emitted on a pristine profile -
-          # the default pane is created and themed before anything is interactive.
-          #
-          # If a log-message reword breaks this, re-anchor it to whatever the renderer now says
-          # on first paint. Do not delete the check: without it this step only proves the
-          # process launched, which the palette bug did too.
-          #
-          # `Spawned ... pid=<n>` rather than the `Spawning` line this step first shipped with:
-          # RustPtySession logs `Spawning` BEFORE calling pty_spawn, so a PTY that fails to
-          # spawn writes it anyway and then throws into TerminalPane.InitializeSessionCore's
-          # catch, which shows an error banner and leaves the process alive and themed - all
-          # four assertions green over a terminal that cannot open a shell. `Spawned` is
-          # emitted after the IsInvalid check and carries the child pid, so it is only
-          # reachable with a real session behind it. (Codex P1 on #445.)
-          foreach ($pattern in @('\[TerminalView\] Theme applied', '\[RustPtySession\] Spawned .*pid=\d+')) {
-            if (-not (Select-String -Path $debugLog -Pattern $pattern -Quiet)) {
-              throw "$debugLog has no line matching '$pattern', so the bundle started but its UI never finished coming up. A trimmed-away type reached only while building the terminal view looks exactly like this."
+            # Diagnostics BEFORE the assertions: whatever the outcome, the log is what a
+            # human needs, and an assertion that throws first would take it away.
+            foreach ($f in @($debugLog, $muxLog, $errorFile)) {
+              if (Test-Path $f) {
+                Write-Output "---- $f ----"
+                Get-Content $f -Tail 60
+              }
             }
-          }
 
-          Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
-          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            if (Test-Path $errorFile) {
+              throw "The bundle failed during startup and wrote startup_error.txt (contents above). Read the exception before retrying: a trimmed-away type or a missing native is a real AOT break and reruns will not clear it. The one environmental cause to rule out is the runner being unable to host a desktop window at all, which shows up as an Avalonia/windowing exception on StartWithClassicDesktopLifetime rather than as anything about types or files."
+            }
+            if ($proc.HasExited) {
+              throw "The bundle exited on its own within 45s (exit code $($proc.ExitCode)) without writing startup_error.txt, so it died outside Program.cs's own try/catch - suspect the native side or the host."
+            }
+            if (-not (Test-Path $debugLog)) {
+              throw "The process is alive but never wrote $debugLog, so managed Main did not reach its startup logging. Suspect a failure before the log sink is wired, in the AOT host itself."
+            }
+
+            # Program.cs logs three lines at startup, and this asserts on the THIRD, not the
+            # first. The first ("Ntilde started with args: ...") never reaches the file -
+            # not in CI and not in a local install either - so the obvious assertion is a
+            # guaranteed false failure. That is its own bug, worth fixing separately; it is not
+            # this gate's job to depend on it.
+            #
+            # Build: is the better anchor anyway. It proves managed Main got through its startup
+            # sequence, and it proves DescribeBuild resolved the executable path - the one
+            # remaining IL3000 in the tree is Assembly.Location in that very method, and
+            # `path=...Ntilde.exe` appearing here is the standing proof that
+            # Environment.ProcessPath carries it and the warned fallback never runs.
+            if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
+              throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
+            }
+
+            # The verdict lives in scripts/ci/aot-smoke-verdict.ps1 (self-tested by
+            # scripts/tests/aot_smoke_verdict_tests.py). The smoke runs on the real default
+            # (KeepOnClose), so the shell is spawned by the multiplexer daemon (`Ntilde.exe mux
+            # serve`), not the GUI, and this also proves the AOT daemon path. When the GUI started
+            # the daemon, the daemon must have served AND spawned a shell (mux.log): a GUI-side
+            # `Spawned` line alone would be the local fallback hiding a broken daemon. The GUI-only
+            # line is accepted only when no daemon was started (persistence off).
+            # `Spawned ... pid=<n>` rather than `Spawning`: Spawning is logged BEFORE pty_spawn
+            # (Codex P1 on #445). If a log reword breaks this, re-anchor it; do not delete it.
+            & (Join-Path $PWD 'scripts/ci/aot-smoke-verdict.ps1') -DebugLog $debugLog -MuxLog $muxLog
+
+            Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
+          }
+          finally {
+            # The daemon outlives the GUI process and must never be left running: stop it by its
+            # own verb first (-Wait: the exe is a WinExe, so a bare call returns at once), then by
+            # command line (it runs from a staged copy under the profile root, or from the publish
+            # directory). Nothing here may fail the step.
+            try { Start-Process -FilePath $exe -ArgumentList 'mux', 'kill-server' -Wait -WindowStyle Hidden } catch { Write-Output "kill-server failed: $_" }
+            if ($proc) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+            Start-Sleep -Seconds 1
+            try {
+              $publishDir = Split-Path $exe -Parent
+              Get-CimInstance Win32_Process -Filter "Name = 'Ntilde.exe'" |
+                Where-Object {
+                  $_.CommandLine -match 'mux\s+serve' -and $_.ExecutablePath -and
+                  ($_.ExecutablePath.StartsWith($publishDir, [StringComparison]::OrdinalIgnoreCase) -or
+                   $_.ExecutablePath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase))
+                } |
+                ForEach-Object {
+                  Write-Output "Stopping leftover daemon pid $($_.ProcessId)"
+                  Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+                }
+            }
+            catch { Write-Output "daemon sweep failed: $_" }
+          }
+          # The runner's pwsh wrapper ends the step with `exit $LASTEXITCODE`; kill-server's code
+          # must not leak into it.
+          $global:LASTEXITCODE = 0
+          exit 0
 
       # ntilde.com (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md §10.2, §11): the
       # console launcher release.yml ships beside Ntilde.exe, so a prompt waits for

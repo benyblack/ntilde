@@ -17,7 +17,7 @@ namespace Ntilde.McpServer.Tools;
 public static class SessionTools
 {
     [McpServerTool(Name = "ntilde.list_sessions"),
-     Description("Lists the live terminal sessions in the running Ntilde app: pane id, title, profile, kind (local/ssh), size, and active state. Requires Ntilde to be running with 'Agent access (observe)' enabled; returns instructions if it isn't. Use the paneId with ntilde.read_screen / ntilde.read_scrollback.")]
+     Description("Lists the live terminal sessions in the running Ntilde app: pane id, title, profile, kind (local/ssh), size, and active state, plus windowless multiplexer sessions that no window shows (marked 'windowless'; their id is the multiplexer session id). Requires Ntilde to be running with 'Agent access (observe)' enabled; returns instructions if it isn't. Use the paneId with ntilde.read_screen / ntilde.read_scrollback.")]
     public static async Task<string> ListSessions(AgentHostClient client, CancellationToken cancellationToken)
     {
         var outcome = await client.CallAsync(AgentHostProtocol.Methods.ListSessions, null, cancellationToken).ConfigureAwait(false);
@@ -29,7 +29,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.read_screen"),
-     Description("Reads the visible screen of a live Ntilde session as text: the exact deterministic snapshot a human sees (viewport lines, cursor position/visibility, size). Optionally includes per-row attribute encodings. Read-only. Get paneId from ntilde.list_sessions.")]
+     Description("Reads the visible screen of a live Ntilde session as text: the exact deterministic snapshot a human sees (viewport lines, cursor position/visibility, size). Optionally includes per-row attribute encodings. Also works on windowless sessions, answering 'unsupported' if the daemon is too old. Read-only. Get paneId from ntilde.list_sessions.")]
     public static async Task<string> ReadScreen(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -53,7 +53,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.capture_screen"),
-     Description("Captures a live Ntilde session as a PNG image and returns its path — use it when the pixels matter and text does not carry them: inline images (sixel), box-drawing and TUI layout, colour and theme problems, or a rendering bug you need to see. Two modes: mode='render' (default) re-renders the pane offscreen from its buffer, so it works even if the window is minimized, occluded, or on another desktop, no other window can leak in, and the same screen always produces the same bytes; mode='live' photographs the pane as drawn on screen, which additionally carries the user's background image and window opacity but only works while the pane is visible and is not reproducible. Raise scale (up to 3) to render more detail — a 1x capture of an 80x24 pane is only about 640x384, which is thin for reading text back out of the image; maxWidth shrinks the result instead. Set inline=true to also get the image itself back (capped; the file is written either way). Read-only, and requires 'Agent access (observe)' like every other read; the pane's agent indicator lights when you capture it. For reading text, ntilde.read_screen is cheaper. Get paneId from ntilde.list_sessions.")]
+     Description("Captures a live Ntilde session as a PNG image and returns its path — use it when the pixels matter and text does not carry them: inline images (sixel), box-drawing and TUI layout, colour and theme problems, or a rendering bug you need to see. Two modes: mode='render' (default) re-renders the pane offscreen from its buffer, so it works even if the window is minimized, occluded, or on another desktop, no other window can leak in, and the same screen always produces the same bytes; mode='live' photographs the pane as drawn on screen, which additionally carries the user's background image and window opacity but only works while the pane is visible and is not reproducible. Raise scale (up to 3) to render more detail — a 1x capture of an 80x24 pane is only about 640x384, which is thin for reading text back out of the image; maxWidth shrinks the result instead. Set inline=true to also get the image itself back (capped; the file is written either way). Read-only, and requires 'Agent access (observe)' like every other read; the pane's agent indicator lights when you capture it. A windowless session supports mode='render' only (live is refused), borrowing an open pane's font metrics. For reading text, ntilde.read_screen is cheaper. Get paneId from ntilde.list_sessions.")]
     public static async Task<IEnumerable<ContentBlock>> CaptureScreen(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -124,7 +124,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.read_scrollback"),
-     Description("Reads a range of scrollback (history) lines from a live Ntilde session, oldest first. Ranged and capped per request; the result reports the effective start line and the total lines available so you can page. Read-only. Get paneId from ntilde.list_sessions.")]
+     Description("Reads a range of scrollback (history) lines from a live Ntilde session, oldest first. Ranged and capped per request; the result reports the effective start line and the total lines available so you can page. A windowless session keeps only its newest 2000 rows. Read-only. Get paneId from ntilde.list_sessions.")]
     public static async Task<string> ReadScrollback(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -160,7 +160,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.get_session_status"),
-     Description("Reports what a live Ntilde session is doing right now: running / awaitingInput / idle / exited, with a confidence tier (precise = shell-integration events; heuristic = PTY signals), the in-flight command when known, exit code, and stall state. Read-only. Get paneId from ntilde.list_sessions. Limitation: the heuristic tier detects a running command via the OS process tree, which cannot see processes running inside a WSL distribution or on a remote SSH host — so a genuinely-running command in a WSL or SSH session may report awaitingInput/idle. Native local shells (cmd/PowerShell) are accurate; enabling shell integration upgrades a session to the precise tier, which is accurate regardless.")]
+     Description("Reports what a live Ntilde session is doing right now: running / awaitingInput / idle / exited, with a confidence tier (precise = shell-integration events; heuristic = PTY signals), the in-flight command when known, exit code, and stall state. For a windowless session the status is always heuristic, from the daemon's child-process probe. Read-only. Get paneId from ntilde.list_sessions. Limitation: the heuristic tier detects a running command via the OS process tree, which cannot see processes running inside a WSL distribution or on a remote SSH host — so a genuinely-running command in a WSL or SSH session may report awaitingInput/idle. Native local shells (cmd/PowerShell) are accurate; enabling shell integration upgrades a session to the precise tier, which is accurate regardless.")]
     public static async Task<string> GetSessionStatus(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -183,7 +183,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.wait_for_events"),
-     Description("Waits for session events from the running Ntilde app: status changes, command completions (with exit code and duration), bells, stalls, and sessions opening/closing. Long-poll with a cursor: pass sinceSeq=0 on the first call, then the nextSeq from each result. Returns immediately when events are pending, otherwise parks up to timeoutMs (server-capped at 25000). An empty result means the timeout elapsed — call again with the same cursor. Read-only.")]
+     Description("Waits for session events from the running Ntilde app: status changes, command completions (with exit code and duration), bells, stalls, and sessions opening/closing (never for windowless sessions). Long-poll with a cursor: pass sinceSeq=0 on the first call, then the nextSeq from each result. Returns immediately when events are pending, otherwise parks up to timeoutMs (server-capped at 25000). An empty result means the timeout elapsed — call again with the same cursor. Read-only.")]
     public static async Task<string> WaitForEvents(
         AgentHostClient client,
         [Description("Cursor: deliver events newer than this sequence number. 0 on the first call, then the previous result's nextSeq.")] long sinceSeq = 0,
@@ -235,7 +235,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.send_input"),
-     Description("Types input into a live Ntilde session, exactly as a human would at the keyboard — the bytes are queued to the terminal and recorded like any keystroke. Use for driving an interactive program or answering a prompt. 'text' is sent byte-for-byte and may include control characters (e.g. \\u0003 for Ctrl-C). To submit a command, set submit=true to append a carriage return (Enter) — do NOT rely on putting a newline in 'text': it arrives as a line feed, which PowerShell/PSReadLine treats as a soft line-continuation rather than the carriage return a console treats as Enter. This is an ACTING tool: it requires the user to have enabled BOTH 'Agent access (observe)' and its 'Agent access (act)' sub-toggle in Ntilde settings; SSH sessions must also be individually allowlisted. Every call (allowed or denied) is shown in the app's agent activity journal. Get paneId from ntilde.list_sessions.")]
+     Description("Types input into a live Ntilde session, exactly as a human would at the keyboard — the bytes are queued to the terminal and recorded like any keystroke. Use for driving an interactive program or answering a prompt. 'text' is sent byte-for-byte and may include control characters (e.g. \\u0003 for Ctrl-C). To submit a command, set submit=true to append a carriage return (Enter) — do NOT rely on putting a newline in 'text': it arrives as a line feed, which PowerShell/PSReadLine treats as a soft line-continuation rather than the carriage return a console treats as Enter. This is an ACTING tool: it requires the user to have enabled BOTH 'Agent access (observe)' and its 'Agent access (act)' sub-toggle in Ntilde settings; SSH sessions, including windowless ones on a remote host, must also be individually allowlisted. Every call (allowed or denied) is shown in the app's agent activity journal. Get paneId from ntilde.list_sessions.")]
     public static async Task<string> SendInput(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -282,7 +282,7 @@ public static class SessionTools
     }
 
     [McpServerTool(Name = "ntilde.close_session"),
-     Description("Closes a live terminal session (pane) in the running Ntilde app. This is an ACTING tool requiring 'Agent access (observe)' + 'Agent access (act)'. The close is not blocked by a confirmation dialog, so use it deliberately; it is recorded in the agent activity journal. Get paneId from ntilde.list_sessions.")]
+     Description("Closes a live terminal session (pane) in the running Ntilde app. This is an ACTING tool requiring 'Agent access (observe)' + 'Agent access (act)'. A windowless session is killed in its daemon, and on a remote host that needs the SSH profile's allowlist. The close is not blocked by a confirmation dialog, so use it deliberately; it is recorded in the agent activity journal. Get paneId from ntilde.list_sessions.")]
     public static async Task<string> CloseSession(
         AgentHostClient client,
         [Description("The pane id (GUID) from ntilde.list_sessions.")] string paneId,
@@ -338,7 +338,7 @@ public static class SessionTools
         }
     }
 
-    private static bool TryUnwrap(AgentHostClient.CallOutcome outcome, out JsonElement result, out string error)
+    internal static bool TryUnwrap(AgentHostClient.CallOutcome outcome, out JsonElement result, out string error)
     {
         result = default;
         if (!outcome.Available)
@@ -371,7 +371,7 @@ public static class SessionTools
     {
         if (sessions.Length == 0)
         {
-            return "No live sessions. Ntilde is running with Agent Access enabled, but no terminal panes are open.";
+            return "No live sessions. Ntilde is running with Agent Access enabled, but no terminal sessions are open.";
         }
 
         var sb = new StringBuilder();
@@ -379,11 +379,23 @@ public static class SessionTools
         sb.AppendLine();
         sb.AppendLine("| paneId | title | profile | kind | size | active | status | tabId |");
         sb.AppendLine("|---|---|---|---|---|---|---|---|");
+        var anyWindowless = false;
         foreach (var s in sessions)
         {
             var status = s.Status == null ? "-" : $"{s.Status} ({s.Confidence})";
+            var windowless = s.Windowless == true;
+            anyWindowless |= windowless;
+            var kind = windowless ? $"{s.Kind} (windowless)" : s.Kind;
             sb.AppendLine(
-                $"| {s.PaneId} | {s.Title} | {s.ProfileName} | {s.Kind} | {s.Cols}x{s.Rows} | {(s.IsActive ? "yes" : "no")} | {status} | {(s.TabId?.ToString() ?? "-")} |");
+                $"| {s.PaneId} | {s.Title} | {s.ProfileName} | {kind} | {s.Cols}x{s.Rows} | {(s.IsActive ? "yes" : "no")} | {status} | {(s.TabId?.ToString() ?? "-")} |");
+        }
+        if (anyWindowless)
+        {
+            sb.AppendLine();
+            sb.AppendLine(
+                "windowless: running in the multiplexer with no window here. The profile column names its host. "
+                + "Its id works with ntilde.read_screen, ntilde.read_scrollback, ntilde.get_session_status, ntilde.capture_screen (mode='render' only), "
+                + "ntilde.send_input and ntilde.close_session; ntilde.export_replay and ntilde.wait_for_events do not cover it.");
         }
         return sb.ToString().TrimEnd();
     }

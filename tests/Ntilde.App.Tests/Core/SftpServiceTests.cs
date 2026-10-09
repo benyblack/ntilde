@@ -255,6 +255,55 @@ public sealed class SftpServiceTests
         Assert.Empty(interop.ConnectionOptions.JumpHopPasswords);
     }
 
+    /// <summary>
+    /// Phase 5 Task 28 (spec R8): a persisted remote tab's job names its daemon session, registered with its host's password
+    /// scope; the transfer's own connection gets the target password typed for that host, not the vault's.
+    /// </summary>
+    [Fact]
+    public void ExecuteNativeSftpTransfer_ForAPersistedTab_UsesThePasswordTypedForItsHost()
+    {
+        Guid profileId = Guid.Parse("01984e12-7c4d-7e5f-8a6b-7c8d9e0f1a03");
+        var store = new InMemorySshProfileStore();
+        store.SaveProfile(new SshProfile
+        {
+            Id = profileId,
+            Name = "Persisted",
+            BackendKind = SshBackendKind.Native,
+            Host = "prod.internal",
+            User = "ops",
+            Port = 2200,
+            AuthMode = SshAuthMode.Default
+        });
+        var service = new SshConnectionService(store);
+        TerminalProfile profile = service.GetConnectionProfiles().Single(connection => connection.Id == profileId);
+        Guid muxSessionId = Guid.NewGuid();
+        Guid hostScope = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(muxSessionId, profileId, SshBackendKind.Native, hostScope));
+        registry.SetRuntimePassword(hostScope, "prod.internal", 2200, "ops", "typed-for-the-host");
+        var job = new TransferJob
+        {
+            SessionId = muxSessionId,
+            ProfileId = profileId,
+            Direction = TransferDirection.Upload,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\upload.txt",
+            RemotePath = "/tmp/upload.txt"
+        };
+        var interop = new CapturingNativeSshInterop();
+
+        SftpService.ExecuteNativeSftpTransfer(
+            job,
+            profile,
+            service,
+            interop: interop,
+            passwordResolver: static _ => "stale-vault-secret",
+            sessionRegistry: registry,
+            knownHostsFilePath: @"C:\ssh\native_known_hosts.json");
+
+        Assert.Equal("typed-for-the-host", interop.ConnectionOptions!.Password);
+    }
+
     [Fact]
     public void ExecuteNativeSftpTransfer_ForwardsCancellationTokenToInterop()
     {

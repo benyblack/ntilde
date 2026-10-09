@@ -817,32 +817,54 @@ longer names `cmd /c`.
 
 ## 14. Follow-ups (Phase 5 candidates)
 
-- Flip the `SessionPersistence` default.
-- Agent-host `read_screen` for windowless sessions.
-- Update hand-off between daemon builds: a running daemon replaced without losing sessions.
-- SFTP sidebar, remote files and port forwards on persisted remote panes (§8.4).
-- Remote endpoints in the "Attach to session…" picker; adoption of remote orphans.
+Phase 5 ([spec](2026-10-08-ntilde-mux-phase5.md)) took most of these; each is marked with where it went.
+
+- Flip the `SessionPersistence` default. **RESOLVED** in Phase 5 ([§1](2026-10-08-ntilde-mux-phase5.md#1-the-default-decision--implementation),
+  rulings R1-R3): the UX a default-on reader needs, and the flip in a commit of its own, the
+  maintainer's call in the PR. Local shells default to `KeepOnClose`.
+- Agent-host `read_screen` for windowless sessions. **RESOLVED** in Phase 5
+  ([§3](2026-10-08-ntilde-mux-phase5.md#3-agent-host-sees-windowless-sessions), R4, R5): the optional `readScreen` method,
+  and every session tool but `spawn_session`, `export_replay` and `wait_for_events` on windowless ids.
+- Update hand-off between daemon builds: a running daemon replaced without losing sessions. **PARTLY
+  RESOLVED** in Phase 5 ([§2](2026-10-08-ntilde-mux-phase5.md#2-sessions-survive-app-updates-cheap-path), R9, R10): an update
+  keeps a protocol-compatible daemon running (on Windows from its own copy outside the install root), and
+  a daemon of another build offers "Restart multiplexer now". Handing sessions to a new daemon (SCM_RIGHTS
+  on Unix; Windows has no equivalent for a pseudoconsole) is still a follow-up.
+- SFTP sidebar, remote files and port forwards on persisted remote panes (§8.4). **PARTLY RESOLVED** in
+  Phase 5 ([§6](2026-10-08-ntilde-mux-phase5.md#6-sftp-remote-files-and-forwards-on-persisted-remote-tabs-native-first), R8):
+  SFTP and remote files on native persisted tabs, palette transfers on OpenSSH ones. Port forwards and
+  OpenSSH ControlMaster reuse are deferred (R8 says why).
+- Remote endpoints in the "Attach to session…" picker; adoption of remote orphans. **Picker RESOLVED** in
+  Phase 5 ([§5](2026-10-08-ntilde-mux-phase5.md#5-remote-endpoints-in-the-picker-and-mux-ls), with `ntilde mux ls --all`);
+  remote orphans are listed there but still not adopted on their own.
 - Embed the release's `ntilde-mux` SHA-256s in the app at build time, instead of trusting the
-  `.sha256` next to the asset.
-- Refresh `SSH_AUTH_SOCK` in long-lived remote shells (tmux's `update-environment`).
-- A winget alias for `ntilde.com`.
+  `.sha256` next to the asset. **RESOLVED** in Phase 5
+  ([§4](2026-10-08-ntilde-mux-phase5.md#4-remaining-review-items-fixes-each-with-a-pinning-test), Task 10: `MuxAssetPins`).
+- Refresh `SSH_AUTH_SOCK` in long-lived remote shells (tmux's `update-environment`). **RESOLVED** in
+  Phase 5 ([§4](2026-10-08-ntilde-mux-phase5.md#4-remaining-review-items-fixes-each-with-a-pinning-test), Task 8: a stable
+  `agent.sock` link every proxy repoints).
+- A winget alias for `ntilde.com`. Open.
 
 Recorded during the build:
 
-- **Native exec latency floor.** `NativeSshExecTransport`'s poll thread sleeps 10 ms when idle, which
+- **Native exec latency floor. RESOLVED** in Phase 5 ([§4](2026-10-08-ntilde-mux-phase5.md#4-remaining-review-items-fixes-each-with-a-pinning-test),
+  Task 9: the poll thread waits in `nova_ssh_wait_event`). `NativeSshExecTransport`'s poll thread sleeps 10 ms when idle, which
   puts about 15 ms under every request round trip (attach of an empty session: 15 ms native against
   2 ms over OpenSSH, §15). An event-driven wakeup from rusty_ssh would remove it; plain native tabs
   poll at 25 ms.
-- **Password memory per (kind, host, user).** Add the host and user to the native `PasswordPrompt`
+- **Password memory per (kind, host, user).** Still open (Phase 5 [R7](2026-10-08-ntilde-mux-phase5.md#r-rulings) keeps the
+  stricter jump-profile rule). Add the host and user to the native `PasswordPrompt`
   payload and key `RemoteMuxInteractionHandler`'s remembered secrets by them, so a profile with jump
   hops and passwords can reconnect on its own (today it reconnects on Enter, §15).
-- **Vault password to a jump host (pre-existing, plain native tabs too).** `NativeSshPromptResponder`
+- **Vault password to a jump host (pre-existing, plain native tabs too). RESOLVED** (native by d1972b7, whose prompts name
+  their hop; OpenSSH askpass by Phase 5 Task 2, `SshAskPassVaultPolicy`). `NativeSshPromptResponder`
   allows vault reuse on the *first* Password prompt, and with jump hops that may be a jump host's
   prompt, so the target's vault password can be sent to the jump host.
 - **Liveness knobs.** `RemoteMuxHostFactory.Create` does not expose `LivenessInterval` /
   `LivenessTimeout` (`init` on `MuxConnectionHost`), so the Docker E2E runs at the production
   15 s + 10 s.
-- **A captured GUI launch through `ntilde.com` waits for the GUI (greptile G2, PR #504).** When a
+- **A captured GUI launch through `ntilde.com` waits for the GUI (greptile G2, PR #504). Documented**
+  in the user manual (12.10, Phase 5 §4), not fixed. When a
   caller captures `ntilde`'s output (`ntilde | Out-Null`, or a tool that reads stdout), it keeps
   waiting until the GUI exits: `Ntilde.exe` inherits the redirected standard handles and holds them
   after the launcher has returned. Launching `Ntilde.exe` directly behaves the same, so this is not a

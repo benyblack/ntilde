@@ -10,24 +10,34 @@ public sealed class MuxServerOptions
     /// <summary>Passed to every session's parser and reported in Welcome so clients parse identically.</summary>
     public bool ForceConPtyFiltering { get; init; } = OperatingSystem.IsWindows();
 
+    /// <summary>The host's build version, reported in Welcome (<c>ServerVersion</c>) and the endpoint descriptor. Null/empty: none reported.</summary>
+    public string? AppVersion { get; init; }
+
     /// <summary>Server-side cap on an attach's <c>maxScrollbackRows</c> (spec §7).</summary>
     public int MaxAttachScrollbackRows { get; init; } = 20_000;
 
     /// <summary>
     /// Stream bytes (Output, ResizeEvent, responses, notifications) queued-but-unwritten per client
-    /// before it is disconnected as too slow. Snapshot frames are accounted separately, against
-    /// <see cref="MaxQueuedSnapshotBytes"/>, so an attach never costs the connection its budget (spec §7).
+    /// before it is disconnected as too slow. Snapshot frames, and the <c>readScreen</c> responses that
+    /// carry one, are accounted separately, against <see cref="MaxQueuedSnapshotBytes"/>, so neither an
+    /// attach nor a screen read costs the connection its budget (spec §7).
     /// </summary>
     public long ClientSendBudgetBytes { get; init; } = 16L * 1024 * 1024;
 
     /// <summary>
-    /// Sanity bound on snapshot bytes queued-but-unwritten per client. One snapshot is always
-    /// accepted when none is queued (whatever its size); more are accepted while the total stays
-    /// within this bound, so parallel attaches at GUI start-up fit. Over it: client_too_slow.
+    /// Sanity bound on snapshot bytes (Snapshot frames and <c>readScreen</c> responses) queued-but-unwritten
+    /// per client. One is always accepted when none is queued (whatever its size); more are accepted while
+    /// the total stays within this bound, so parallel attaches at GUI start-up fit. Over it: client_too_slow.
     /// </summary>
     public long MaxQueuedSnapshotBytes { get; init; } = 256L * 1024 * 1024;
 
     public int MaxSnapshotBytes { get; init; } = MuxProtocol.MaxFrameBytes - MuxFrames.SnapshotHeaderBytes;
+
+    /// <summary>
+    /// The cap on a <c>readScreen</c> snapshot (serialized bytes): <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/>.
+    /// Tests lower it; it cannot be raised past that protocol cap.
+    /// </summary>
+    internal int MaxReadScreenBytes { get; init; } = MuxReadScreenLimits.MaxSnapshotBytes;
 
     public int MaxInboundFrameBytes { get; init; } = MuxProtocol.MaxFrameBytes;
 

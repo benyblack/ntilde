@@ -106,6 +106,12 @@ internal static class RemoteMuxHostFactory
     /// <see cref="SshAskPassSessionMarkers.DefaultDirectory"/> in the app), so a saved password counts as refused only when
     /// the helper filled it, and a second factor does not count.
     /// </param>
+    /// <param name="rpcTimeout">The host's request wait in place of <see cref="MuxHostPolicy.Remote"/>'s; null (the app) keeps it. Tests shorten it.</param>
+    /// <param name="passwordScopes">
+    /// Where the host's password scope lives (Phase 5 spec R8: what its user typed, for its persisted tabs' SFTP
+    /// connections; <see cref="MuxConnectionHost.PasswordScopeId"/>): the app's <see cref="ActiveSshSessionRegistry.Instance"/>
+    /// when null, which the panes register in.
+    /// </param>
     public static MuxConnectionHost? Create(
         MuxEndpointId id,
         Func<Guid, SshProfile?> resolveProfile,
@@ -115,7 +121,9 @@ internal static class RemoteMuxHostFactory
         IMuxTimerScheduler? scheduler = null,
         Func<SshInteractionRequest, bool>? isTrustedHostKey = null,
         Func<SshProfile, string?>? savedPassword = null,
-        SshAskPassSessionMarkers? askPassRecords = null)
+        SshAskPassSessionMarkers? askPassRecords = null,
+        TimeSpan? rpcTimeout = null,
+        ActiveSshSessionRegistry? passwordScopes = null)
     {
         ArgumentNullException.ThrowIfNull(resolveProfile);
         ArgumentNullException.ThrowIfNull(transportFor);
@@ -130,6 +138,7 @@ internal static class RemoteMuxHostFactory
         }
 
         MuxHostPolicy policy = MuxHostPolicy.Remote(RemoteMuxConnector.DisplayNameOf(profile));
+        if (rpcTimeout is { } wait) policy = policy with { RpcTimeout = wait };
 
         // A profile deleted since keeps connecting as the store last had it (the panes that use it decide when to
         // stop); once an attempt connected, the connector keeps that one's target anyway (codex D2).
@@ -148,7 +157,7 @@ internal static class RemoteMuxHostFactory
         var connector = new RemoteMuxConnector(
             CurrentProfile,
             transportFor,
-            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword, askPassRecords, log),
+            new RemoteMuxInteractionHandler(userPrompts, isTrustedHostKey, savedPassword, askPassRecords, log, passwordScopes ?? ActiveSshSessionRegistry.Instance),
             Guid.NewGuid().ToString("N"),
             log)
         {
@@ -212,7 +221,8 @@ internal static class RemoteMuxHostFactory
     /// runs in batch mode, without askpass, so it fails rather than prompt - such a password-only OpenSSH profile then
     /// reconnects on Enter, or through keys, the agent or an existing ControlMaster. A user's attempt after a password was
     /// refused on the host (<see cref="RemoteMuxTransportRequest.WithoutSavedPassword"/>) runs the helper without the
-    /// vault, so the user is asked at once; any other user's attempt has it fill the saved password once per ssh.</item>
+    /// vault, so the user is asked at once, as does one through a jump host that could ask as the target
+    /// (<see cref="SshAskPassVaultPolicy.MayOfferVault"/>); any other user's attempt has it fill the saved password once per ssh.</item>
     /// <item>Native: the native exec transport, its prompts answered by
     /// <see cref="RemoteMuxTransportRequest.Prompts"/> - unless the global native SSH switch is off, which
     /// refuses the attempt before anything is built (<see cref="ThrowIfNativeSshDisabled"/>).</item>
@@ -278,6 +288,13 @@ internal static class RemoteMuxHostFactory
             && request.OfferSavedPassword is { } offerSavedPassword
             && PrefixesKeyboardInteractivePrompts(launch.SshPath, openSshVersions, log)
             && offerSavedPassword();
+        // A user's attempt through a jump host: the helper's target-prompt match can be forged by a hop (an ssh before 8.4 puts
+        // no (user@host) in front of a keyboard-interactive prompt; a hop with the target's user@host is indistinguishable),
+        // so it runs without the vault and the user types the password. The version is read only when a jump host is in play.
+        bool noVaultForJumpHost = request.Interactive
+            && askPassHelperPath is not null
+            && SshAskPassVaultPolicy.GoesThroughJumpHost(profile)
+            && !SshAskPassVaultPolicy.MayOfferVault(profile, PrefixesKeyboardInteractivePrompts(launch.SshPath, openSshVersions, log));
         return new OpenSshExecTransport(
             profile,
             launch.SshPath,
@@ -287,7 +304,7 @@ internal static class RemoteMuxHostFactory
             log,
             batchMode: !request.Interactive && !savedPasswordOnly,
             savedPasswordOnly: savedPasswordOnly,
-            withoutSavedPassword: request.Interactive && request.WithoutSavedPassword,
+            withoutSavedPassword: request.Interactive && (request.WithoutSavedPassword || noVaultForJumpHost),
             askPassSession: request.AskPassSession,
             exitGrace: ChannelExitGrace);
     }

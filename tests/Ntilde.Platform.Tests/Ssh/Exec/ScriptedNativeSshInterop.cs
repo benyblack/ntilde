@@ -16,6 +16,9 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     private readonly List<byte[]> _writes = [];
     private readonly List<(NativeSshResponseKind Kind, string PayloadJson)> _submissions = [];
     private int _execCalls;
+    private readonly SemaphoreSlim _arrived = new(0);
+    private int _waits;
+    private long _lastDequeueTimestamp;
     private int _polls;
     private int _dequeued;
     private int _sendEofCount;
@@ -38,6 +41,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     public string? ExecCommand { get; private set; }
     public int ExecCalls => Volatile.Read(ref _execCalls);
     public int Polls => Volatile.Read(ref _polls);
+    public int Waits => Volatile.Read(ref _waits);
     public int Dequeued => Volatile.Read(ref _dequeued);
     public int SendEofCount => Volatile.Read(ref _sendEofCount);
     public int CloseCount => Volatile.Read(ref _closeCount);
@@ -58,8 +62,44 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
         foreach (NativeSshEvent next in events)
         {
             _events.Enqueue(next);
+            _arrived.Release(); // after the enqueue, so a waiter that sees the count finds the event
         }
     }
+
+    /// <summary>
+    /// As the real wait: returns at once when an event is queued, otherwise blocks until one is
+    /// scripted or <paramref name="timeout"/> passes. Counts the calls.
+    /// </summary>
+    public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+    {
+        Interlocked.Increment(ref _waits);
+
+        // Drop stale releases first, then look: an Enqueue landing after this check also releases after the drain.
+        while (_arrived.Wait(0))
+        {
+        }
+
+        if (!_events.IsEmpty)
+        {
+            return true;
+        }
+
+        if (sessionHandle.IsClosed)
+        {
+            return false; // as the native wait: a closed session has nothing to wait for
+        }
+
+        return _arrived.Wait(IdleWaitOverride ?? timeout);
+    }
+
+    /// <summary>
+    /// When set, <see cref="WaitForEvent"/> waits this long whatever the caller asks for: a wake-up the
+    /// transport loses then costs seconds, not one 100 ms tick, so a test can tell the two apart.
+    /// </summary>
+    public TimeSpan? IdleWaitOverride { get; set; }
+
+    /// <summary>The <see cref="Stopwatch.GetTimestamp"/> at which the last event was dequeued by a poll.</summary>
+    public long LastDequeueTimestamp => Volatile.Read(ref _lastDequeueTimestamp);
 
     public static NativeSshEvent Connected() =>
         new(NativeSshEventKind.Connected, """{"host":"example.com","port":2200,"user":"alice"}"""u8.ToArray(), flags: NativeSshEventFlags.Json);
@@ -123,6 +163,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
             return null;
         }
 
+        Volatile.Write(ref _lastDequeueTimestamp, System.Diagnostics.Stopwatch.GetTimestamp());
         Interlocked.Increment(ref _dequeued);
         return next;
     }
@@ -153,6 +194,7 @@ internal sealed class ScriptedNativeSshInterop : INativeSshInterop
     {
         Interlocked.Increment(ref _closeCount);
         sessionHandle.Dispose();
+        _arrived.Release(); // as mark_closed wakes the native wait, so a close never waits out the override
     }
 
     public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) =>

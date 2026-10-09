@@ -384,6 +384,33 @@ public sealed class SshInteractionServiceTests
         Assert.False(response.IsCanceled);
     }
 
+    /// <summary>
+    /// Phase 5 Task 28: a persisted remote tab hands only what the user typed to its host's SFTP connections, so a
+    /// password filled from the vault, or from a session's remembered one, says so; a typed one does not.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task PasswordAnswers_SayWhetherTheyWereFilledFromAStoreOrTyped()
+    {
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var registry = new ActiveSshSessionRegistry();
+        TerminalProfile profile = CreateProfile("0a6f3e1d-2b4c-4d5e-8f60-718293a4b5c6");
+        vault.SetSshPasswordForProfile(profile, "vault-secret");
+        Guid sessionId = Guid.NewGuid();
+        registry.SetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, "remembered-secret");
+        var service = new SshInteractionService(
+            vaultService: vault,
+            sessionRegistry: registry,
+            authPresenter: (_, _, _) => Task.FromResult(SshInteractionResponse.FromSecret("typed-secret")));
+
+        SshInteractionResponse fromVault = await service.HandleAsync(TargetPasswordRequest(profile, allowVaultPasswordReuse: true), CancellationToken.None);
+        SshInteractionResponse fromSession = await service.HandleAsync(TargetPasswordRequest(profile, sessionId), CancellationToken.None);
+        SshInteractionResponse typed = await service.HandleAsync(TargetPasswordRequest(profile), CancellationToken.None);
+
+        Assert.Equal(("vault-secret", true), (fromVault.Secret, fromVault.FilledFromStore));
+        Assert.Equal(("remembered-secret", true), (fromSession.Secret, fromSession.FilledFromStore));
+        Assert.Equal(("typed-secret", false), (typed.Secret, typed.FilledFromStore));
+    }
+
     [Fact]
     public async Task PasswordRequests_UseLegacyVaultSecret_WhenFullProfileIdentityIsProvided()
     {

@@ -20,6 +20,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     [ThreadStatic]
     private static byte[]? _pollBuffer;
     private const int ResultClosed = -3;
+    private const int ResultTimeout = -10;
     private const int ResultCanceled = -6;
     private const int ResultPanic = -7;
 
@@ -608,6 +609,38 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
     }
 
+    public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+    {
+        if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed)
+        {
+            return false;
+        }
+
+        uint milliseconds = (uint)Math.Clamp(timeout.TotalMilliseconds, 0, 1000);
+        try
+        {
+            // The handle's reference is held for the whole wait, so the native side bounds it (1 s)
+            // and a close wakes it. OK: an event is ready. TIMEOUT: none came. CLOSED: the session
+            // ended with nothing queued; the poll that follows finds the handle gone or empty.
+            int rc = NativeMethods.nova_ssh_wait_event(sessionHandle, milliseconds);
+            if (rc == ResultOk)
+            {
+                return true;
+            }
+
+            if (rc is ResultTimeout or ResultClosed or ResultInvalidArgument)
+            {
+                return false;
+            }
+
+            throw new InvalidOperationException($"Native SSH wait failed with result {rc}.");
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
     public void SendEof(NovaSshSafeHandle sessionHandle)
     {
         if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed)
@@ -645,10 +678,10 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             return;
         }
 
-        byte[] payload = data.ToArray();
         try
         {
-            int rc = NativeMethods.nova_ssh_submit_response(sessionHandle, (uint)responseKind, payload, (nuint)payload.Length);
+            // Passed by reference to the caller's own bytes: no second copy of a password to clear.
+            int rc = NativeMethods.nova_ssh_submit_response(sessionHandle, (uint)responseKind, ref MemoryMarshal.GetReference(data), (nuint)data.Length);
             if (rc is ResultOk or ResultInvalidArgument)
             {
                 return;
@@ -1131,6 +1164,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_exec")]
         public static extern NovaSshSafeHandle nova_ssh_exec(in NativeConnectArgs args, IntPtr command);
 
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_wait_event")]
+        public static extern int nova_ssh_wait_event(NovaSshSafeHandle session, uint timeoutMs);
+
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_send_eof")]
         public static extern int nova_ssh_send_eof(NovaSshSafeHandle session);
 
@@ -1166,7 +1202,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         public static extern int nova_ssh_close_raw(IntPtr session);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_submit_response")]
-        public static extern int nova_ssh_submit_response(NovaSshSafeHandle session, uint responseKind, byte[] data, nuint dataLength);
+        public static extern int nova_ssh_submit_response(NovaSshSafeHandle session, uint responseKind, ref byte data, nuint dataLength);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_sftp_transfer")]
         public static extern int nova_ssh_sftp_transfer(

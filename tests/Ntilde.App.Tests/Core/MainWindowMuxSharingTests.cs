@@ -98,10 +98,11 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     /// <summary>Runs "Attach to session…", choosing <paramref name="id"/>, and returns the pane that attached it.</summary>
     private static TerminalPane AttachShared(MainWindow window, Guid id)
     {
-        window.PickMuxSession = rows =>
+        window.PickMuxSession = items =>
         {
-            Assert.Contains(rows, r => r.SessionId == id);
-            return Task.FromResult<Guid?>(id);
+            MuxSessionPickerRow? row = MuxPickerChoice.Find(items, id);
+            Assert.NotNull(row);
+            return Task.FromResult<MuxPickerItem?>(row);
         };
         Task command = window.AttachToMuxSessionAsync();
         PumpUntil(() => command.IsCompleted, "the attach command finished");
@@ -192,17 +193,17 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         MainWindow window = CreateWindow();
         TerminalPane own = AllPanes(window).Single();
         Guid id = ((MuxClientSession)own.Session!).Id;
-        IReadOnlyList<MuxSessionPickerRow>? offered = null;
-        window.PickMuxSession = rows =>
+        IReadOnlyList<MuxPickerItem>? offered = null;
+        window.PickMuxSession = items =>
         {
-            offered = rows;
-            return Task.FromResult<Guid?>(id);
+            offered = items;
+            return Task.FromResult<MuxPickerItem?>(MuxPickerChoice.Find(items, id));
         };
 
         Task command = window.AttachToMuxSessionAsync();
         PumpUntil(() => command.IsCompleted, "the attach command finished");
 
-        Assert.True(Assert.Single(offered!, r => r.SessionId == id).OpenHere);
+        Assert.True(Assert.Single(offered!.OfType<MuxSessionPickerRow>(), r => r.SessionId == id).OpenHere);
         Assert.Same(own, Assert.Single(AllPanes(window)));
     }
 
@@ -267,14 +268,15 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         TerminalPane own = AllPanes(window).Single();
         Guid id = Task.Run(async () => await MuxTestHost.SpawnAsync(await _mux.ConnectClientAsync())).GetAwaiter().GetResult();
         int sessionsBefore = _mux.Server.GetSessionIds().Count();
-        window.PickMuxSession = rows =>
+        window.PickMuxSession = items =>
         {
-            Assert.Contains(rows, r => r.SessionId == id);
+            MuxSessionPickerRow? row = MuxPickerChoice.Find(items, id);
+            Assert.NotNull(row);
             // Gone while the picker was open: exited with nobody attached, and reaped.
             _mux.Fake(id).Exit(0);
             PumpUntil(() => _mux.Mux(id).IsExited, "the mux saw the exit");
             Assert.Equal(1, _mux.Server.ReapExitedSessions(TimeSpan.Zero));
-            return Task.FromResult<Guid?>(id);
+            return Task.FromResult<MuxPickerItem?>(row);
         };
 
         Task command = window.AttachToMuxSessionAsync();
@@ -299,6 +301,9 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         return (dialog, list, attach, cancel);
     }
 
+    /// <summary>The picker's lines as it shows them.</summary>
+    private static List<string?> Lines(ListBox list) => [.. list.ItemsSource!.Cast<ListBoxItem>().Select(i => i.Content as string)];
+
     /// <summary>Review fix 2: the default picker, driven through its dialog.</summary>
     [AvaloniaFact]
     public void The_default_picker_lists_the_sessions_and_Attach_opens_the_chosen_one_shared()
@@ -312,16 +317,92 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         (_, ListBox list, Button attach, _) = PickerDialog(window);
 
         IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> listed = Task.Run(() => other.ListSessionsAsync()).GetAwaiter().GetResult();
-        IReadOnlyList<MuxSessionPickerRow> expected = MuxSessionPicker.BuildRows(listed, new HashSet<Guid> { own });
-        Assert.Equal(expected.Select(r => r.Display).ToList(), list.ItemsSource!.Cast<string>().ToList());
+        IReadOnlyList<MuxPickerItem> expected = MuxSessionPicker.BuildRows(
+            [new MuxPickerHostListing(MuxEndpointId.Local, "this computer", listed, null)],
+            new HashSet<(MuxEndpointId, Guid)> { (MuxEndpointId.Local, own) });
+        Assert.Equal(2, expected.Count);
+        Assert.Equal(expected.Select(r => r.Display).ToList(), Lines(list));
 
-        list.SelectedIndex = expected.ToList().FindIndex(r => r.SessionId == id);
+        list.SelectedIndex = expected.ToList().FindIndex(r => r is MuxSessionPickerRow row && row.SessionId == id);
         attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
         PumpUntil(() => command.IsCompleted, "the attach command finished");
         PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession { IsAttached: true } m && m.Id == id), "the chosen session attached");
         PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "attached shared, beside the other instance");
         Assert.Empty(window.OwnedWindows);
+    }
+
+    /// <summary>Review minor 1: "Attach to session…" while its picker is open brings that picker forward; it never opens a second one.</summary>
+    [AvaloniaFact]
+    public void A_second_attach_while_the_picker_is_open_opens_no_second_picker()
+    {
+        MainWindow window = CreateWindow();
+        OtherInstance();
+
+        Task first = window.AttachToMuxSessionAsync();
+        (Window dialog, _, _, Button cancel) = PickerDialog(window);
+        Task second = window.AttachToMuxSessionAsync();
+        PumpUntil(() => second.IsCompleted, "the second command returned");
+        PumpFor(200);
+
+        Assert.Same(dialog, Assert.Single(window.OwnedWindows));
+        Assert.False(first.IsCompleted);
+        cancel.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        PumpUntil(() => first.IsCompleted, "the first command finished");
+        Assert.Empty(window.OwnedWindows);
+    }
+
+    /// <summary>
+    /// Two clicks at the middle of <paramref name="target"/>, through the dialog's real input: a double-tap. The second
+    /// press is the double-tap, and when it closes the dialog there is nothing left to release the button on.
+    /// </summary>
+    private static void DoubleClick(Window dialog, Control target)
+    {
+        Avalonia.Point at = Avalonia.VisualExtensions.TranslatePoint(target, new Avalonia.Point(10, target.Bounds.Height / 2), dialog)
+            ?? throw new InvalidOperationException("the target is not in the dialog");
+        bool closed = false;
+        void OnClosed(object? sender, EventArgs e) => closed = true;
+        dialog.Closed += OnClosed;
+        for (int i = 0; i < 2 && !closed; i++)
+        {
+            dialog.MouseDown(at, MouseButton.Left);
+            if (!closed) dialog.MouseUp(at, MouseButton.Left);
+        }
+
+        dialog.Closed -= OnClosed;
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>
+    /// Review minor 4: a double-tap on a disabled line (a host that could not be listed) never accepts the line selected
+    /// elsewhere. A double-tap on a line that can be chosen still attaches it.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_double_tap_on_a_disabled_row_does_not_accept_the_selected_one()
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs();
+        MuxPickerItem[] rows =
+        [
+            new MuxSessionPickerErrorRow(MuxEndpointId.ForSsh(Guid.NewGuid()), "nova@down", MuxPickerHostError.TimedOut),
+            new MuxSessionPickerRow(MuxEndpointId.Local, "this computer", Guid.NewGuid(), "t", "scripted", null, 80, 24, 0, true, null, false),
+        ];
+        (Window dialog, Task<MuxPickerItem?> result) = window.BuildMuxSessionPickerWindow(rows);
+        dialog.Show();
+        Dispatcher.UIThread.RunJobs();
+        ListBox list = Assert.Single(Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(dialog).OfType<ListBox>());
+        List<ListBoxItem> lines = [.. list.ItemsSource!.Cast<ListBoxItem>()];
+        Assert.Equal(2, lines.Count);
+        Assert.Equal(1, list.SelectedIndex);
+
+        DoubleClick(dialog, lines[0]);
+
+        Assert.False(result.IsCompleted, "a double-tap on the disabled line accepted the selected one");
+        Assert.Equal(1, list.SelectedIndex);
+
+        DoubleClick(dialog, lines[1]);
+        PumpUntil(() => result.IsCompleted, "a double-tap on a line that can be chosen attached it");
+        Assert.Same(rows[1], result.Result);
     }
 
     [AvaloniaFact]
@@ -373,7 +454,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         window.PickMuxSession = _ =>
         {
             picks++;
-            return Task.FromResult<Guid?>(null);
+            return Task.FromResult<MuxPickerItem?>(null);
         };
         MethodInfo setupPalette = typeof(MainWindow).GetMethod("SetupCommandPalette", BindingFlags.NonPublic | BindingFlags.Instance)!;
         Avalonia.Input.KeyEventArgs Chord() => new()
@@ -628,6 +709,7 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
         MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
         {
             CommandAssist = TestCommandAssistServices.Instance,
+            Settings = new TerminalSettings { SessionPersistence = SessionPersistenceMode.Off },
         });
         Assert.Null(window.MuxHost);
 
@@ -712,14 +794,51 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
     {
         MainWindow window = CreateWindow();
         Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
-        Guid id = Guid.NewGuid();
-        var rows = new[] { new MuxSessionPickerRow(id, "t", "scripted", null, 80, 24, 1, true, null, false) };
-        (Window dialog, Task<Guid?> result) = window.BuildMuxSessionPickerWindow(rows);
+        MuxPickerItem[] rows = [new MuxSessionPickerRow(MuxEndpointId.Local, "this computer", Guid.NewGuid(), "t", "scripted", null, 80, 24, 1, true, null, false)];
+        (Window dialog, Task<MuxPickerItem?> result) = window.BuildMuxSessionPickerWindow(rows);
 
         PressKey(dialog, enter ? PhysicalKey.Enter : PhysicalKey.Escape);
 
         PumpUntil(() => result.IsCompleted, "the picker closed");
-        Assert.Equal(enter ? id : null, result.Result);
+        Assert.Equal(enter ? rows[0] : null, result.Result);
+    }
+
+    /// <summary>
+    /// Phase 5 spec §5: a host that could not be listed is a line of its own, shown disabled; the first line that can be
+    /// chosen is selected, Attach on the disabled one does nothing, and a connect row is chosen like a session.
+    /// </summary>
+    [AvaloniaFact]
+    public void The_picker_shows_an_error_row_disabled_and_never_returns_it()
+    {
+        MainWindow window = CreateWindow();
+        Dispatcher.UIThread.RunJobs(); // the window's startup focus jobs run before the dialog opens (see PressKey)
+        MuxEndpointId remote = MuxEndpointId.ForSsh(Guid.NewGuid());
+        MuxPickerItem[] rows =
+        [
+            new MuxSessionPickerErrorRow(MuxEndpointId.Local, "this computer", MuxPickerHostError.TimedOut),
+            new MuxSessionPickerRow(remote, "nova@host", Guid.NewGuid(), "t", "bash", null, 80, 24, 0, true, null, false),
+            new MuxSessionPickerConnectRow(Guid.NewGuid(), "nova@other"),
+        ];
+        (Window dialog, Task<MuxPickerItem?> result) = window.BuildMuxSessionPickerWindow(rows);
+        dialog.Show();
+        Dispatcher.UIThread.RunJobs();
+        var descendants = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(dialog).ToList();
+        ListBox list = Assert.Single(descendants.OfType<ListBox>());
+        Button attach = descendants.OfType<Button>().Single(b => b.Content as string == "Attach");
+
+        Assert.Equal(rows.Select(r => r.Display).ToList(), Lines(list));
+        Assert.Equal([false, true, true], list.ItemsSource!.Cast<ListBoxItem>().Select(i => i.IsEnabled).ToArray());
+        Assert.Equal(1, list.SelectedIndex);
+
+        list.SelectedIndex = 0;
+        attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(result.IsCompleted);
+
+        list.SelectedIndex = 2;
+        attach.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        PumpUntil(() => result.IsCompleted, "the picker closed");
+        Assert.Same(rows[2], result.Result);
     }
 
     /// <summary>Carry-over 10: Enter detaches (the safe default), Escape cancels, and nothing ends the shell by key.</summary>
@@ -990,6 +1109,131 @@ public sealed class MainWindowMuxSharingTests : IClassFixture<TestAppDataRoot>, 
 
         Assert.Equal(-1, asked);
         Assert.Equal(SharedCloseChoice.Close, task.Result);
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26, the local side of the rule a remote share follows (MainWindowMuxRemoteTests'
+    /// Closing_a_shared_remote_tab_while_its_host_reconnects_kills_nothing): a share whose connection is gone cannot learn who
+    /// else shows its shell, so its close detaches without asking, and the other instance keeps the shell. Before, the close
+    /// asked the running-process question and, answered, closed the pane as if its shell were its own; no kill went out only
+    /// because the dead connection could not carry one.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_local_share_whose_connection_is_gone_detaches_without_asking()
+    {
+        MainWindow window = CreateWindow();
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        var mineSession = (MuxClientSession)mine.Session!;
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "both attached");
+        window.ConfirmSharedClose = _ => throw new InvalidOperationException("a share whose sharing is unknown is not asked about");
+
+        _host!.CurrentClient!.Dispose(); // this window's connection is gone; the other instance's is not
+        PumpUntil(() => !mineSession.IsConnected && _mux.Mux(id).AttachedClients == 1, "the daemon saw this window's connection go");
+        var decide = typeof(MainWindow).GetMethod("DecidePaneCloseAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var task = (Task<SharedCloseChoice>)decide.Invoke(window, [mine])!;
+        PumpUntil(() => task.IsCompleted, "the decision finished");
+
+        Assert.Equal(SharedCloseChoice.Detach, task.Result);
+        Assert.True(mine.IsMuxShareWithSharingUnknown);
+        var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [mine, false])!;
+        PumpUntil(() => close.IsCompleted, "the shared tab closed");
+        Assert.True(close.Result);
+        Assert.DoesNotContain(mine, AllPanes(window));
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.True(theirs.Session.IsAttached);
+        // Fix round 1, I1: the pane went, its shell did not - said as "Pane: Detach" says it.
+        PumpUntil(() => WindowToast.ToastLines(window).Contains(LocalDetachedLine), "the detach notice is shown");
+        GC.KeepAlive(other);
+    }
+
+    /// <summary>"Pane: Detach"'s notice line for a local shell (pinned by <see cref="Detach_pane_keeps_the_shell_running_and_the_count_drops"/>).</summary>
+    private const string LocalDetachedLine = "Shell kept running — Attach to session… to get it back";
+
+    /// <summary>Opens "Attach to session…" on <paramref name="id"/> with its parse thread held: the pane's attach stays in flight until <c>Release</c>.</summary>
+    private (TerminalPane Pane, Action Release) AttachSharedWithTheAttachHeld(MainWindow window, Guid id)
+    {
+        var parsing = new ManualResetEventSlim();
+        Task<bool> held = _mux.Mux(id).InvokeAsync(() => parsing.Wait(TimeSpan.FromSeconds(30)));
+        window.PickMuxSession = MuxPickerChoice.Session(id);
+        Task command = window.AttachToMuxSessionAsync();
+        PumpUntil(() => command.IsCompleted, "the attach command finished");
+        PumpUntil(() => AllPanes(window).Any(p => p.Session is MuxClientSession m && m.Id == id), "the shared tab's session is wired");
+        TerminalPane pane = AllPanes(window).Single(p => p.Session is MuxClientSession m && m.Id == id);
+        Assert.False(((MuxClientSession)pane.Session!).IsAttached);
+        void Release()
+        {
+            parsing.Set();
+            Assert.True(held.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
+            parsing.Dispose();
+        }
+        return (pane, Release);
+    }
+
+    /// <summary>
+    /// Phase 5 Task 26 review, M2: the local case Task 26 fixed. A share whose attach is still in flight, on a live
+    /// connection, cannot yet learn who else shows its shell. Closed by the user, it detaches - no kill - and says so. Before
+    /// Task 26 it was closed as the pane's own shell and killed: the other instance's shell ended with it.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_a_local_share_whose_attach_is_in_flight_detaches_and_kills_nothing()
+    {
+        MainWindow window = CreateWindow();
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        window.ConfirmSharedClose = _ => throw new InvalidOperationException("a share whose sharing is unknown is not asked about");
+        (TerminalPane mine, Action release) = AttachSharedWithTheAttachHeld(window, id);
+        try
+        {
+            var close = (Task<bool>)typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [mine, false])!;
+            PumpUntil(() => close.IsCompleted, "the shared tab closed");
+            Assert.True(close.Result);
+            // A kill from that close was queued on this window's connection before this ping: its answer means the daemon has
+            // handled both, in order.
+            Task.Run(() => _host!.CurrentClient!.PingAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+
+            Assert.Contains(id, _mux.Server.GetSessionIds());
+            PumpUntil(() => WindowToast.ToastLines(window).Contains(LocalDetachedLine), "the detach notice is shown");
+        }
+        finally
+        {
+            release();
+        }
+
+        Assert.False(_mux.Mux(id).IsExited);
+        Assert.True(theirs.Session.IsAttached);
+        GC.KeepAlive(other);
+    }
+
+    /// <summary>
+    /// Fix round 1, I1: the notice is for a window that stays. The last tab closed - a share whose connection is gone - closes
+    /// the window too, and nothing is said: the shell keeps running, as it does for every shell a closing window leaves.
+    /// </summary>
+    [AvaloniaFact]
+    public void Closing_the_last_tab_a_share_whose_sharing_is_unknown_closes_the_window_without_the_notice()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane own = AllPanes(window).Single();
+        (MuxClient other, ClientPaneModel theirs) = OtherInstance();
+        Guid id = theirs.Session.Id;
+        TerminalPane mine = AttachShared(window, id);
+        var closeMethod = typeof(MainWindow).GetMethod("ClosePaneAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var closeOwn = (Task<bool>)closeMethod.Invoke(window, [own, true])!;
+        PumpUntil(() => closeOwn.IsCompleted, "the first tab closed");
+        Assert.Same(mine, Assert.Single(AllPanes(window)));
+        var mineSession = (MuxClientSession)mine.Session!;
+        _host!.CurrentClient!.Dispose(); // this window's connection is gone
+        PumpUntil(() => !mineSession.IsConnected, "the connection is gone");
+        Assert.True(mine.IsMuxShareWithSharingUnknown);
+
+        var close = (Task<bool>)closeMethod.Invoke(window, [mine, false])!;
+        PumpUntil(() => close.IsCompleted && !window.IsVisible, "the last tab closed, and the window with it");
+        PumpFor(200); // the notices' Background flush has run
+
+        Assert.DoesNotContain(LocalDetachedLine, WindowToast.ToastLines(window));
+        Assert.False(_mux.Mux(id).IsExited);
+        GC.KeepAlive(other);
     }
 
     /// <summary>Final review: a persistent pane that lost its daemon connection is not "not a persistent shell".</summary>

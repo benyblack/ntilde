@@ -128,6 +128,7 @@ public sealed class MuxDaemonHost : IDisposable
         Pid = _options.Pid,
         ProcessName = _options.ProcessName,
         StartTime = _options.StartToken,
+        AppVersion = string.IsNullOrEmpty(_server.Options.AppVersion) ? null : _server.Options.AppVersion,
     };
 
     /// <summary>

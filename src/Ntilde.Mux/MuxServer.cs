@@ -58,6 +58,12 @@ public sealed class MuxServer : IDisposable
             throw new ArgumentOutOfRangeException(nameof(options), o.MaxInboundFrameBytes, $"MaxInboundFrameBytes must be in 1..{MuxProtocol.MaxFrameBytes}.");
         }
 
+        if (o.MaxReadScreenBytes <= 0 || o.MaxReadScreenBytes > MuxReadScreenLimits.MaxSnapshotBytes)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), o.MaxReadScreenBytes,
+                $"MaxReadScreenBytes must be in 1..{MuxReadScreenLimits.MaxSnapshotBytes} (the protocol's readScreen cap).");
+        }
+
         if (o.MaxAttachScrollbackRows < 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxAttachScrollbackRows, "MaxAttachScrollbackRows cannot be negative.");
         if (o.MaxCells <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxCells, "MaxCells must be positive.");
         if (o.MaxDimension <= 0) throw new ArgumentOutOfRangeException(nameof(options), o.MaxDimension, "MaxDimension must be positive.");

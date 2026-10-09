@@ -51,6 +51,11 @@ public static class BackupCatalog
         "backups",
         "command-palette-usage.json",
         "vault.dat",
+
+        // The first-close dialog's "Don't ask again" answer (AppPaths.MuxCloseChoiceFilePath): a machine-local choice
+        // about this machine's background shells, forgotten whenever the persistence setting changes - restoring it
+        // elsewhere would answer a question that machine's user never saw.
+        "mux-close-choice",
         Path.Combine(CommandAssist, "history.jsonl"),
         Path.Combine(CommandAssist, "history.json"),
 

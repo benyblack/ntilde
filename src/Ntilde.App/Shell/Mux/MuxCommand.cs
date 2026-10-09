@@ -6,7 +6,8 @@ namespace Ntilde.Shell.Mux;
 
 /// <summary>
 /// <c>ntilde mux serve|ls|kill|kill-server|attach</c>: the App's adapter over
-/// <see cref="MuxCli"/>, which holds the verbs (Phase 4 spec §6.4). This keeps the public static
+/// <see cref="MuxCli"/>, which holds the verbs (Phase 4 spec §6.4) - all but <c>ls --all</c>, which is the App's own
+/// (<see cref="MuxLsAll"/>). This keeps the public static
 /// surface <c>Program.cs</c> and <c>CliCommandDispatchTests</c> rely on, and supplies what only the
 /// App knows: its root, its name in the usage text, its session factory and its console bindings.
 /// Exit codes and text are <see cref="MuxCli"/>'s.
@@ -39,27 +40,52 @@ public static class MuxCommand
         IsAttach(args) || (IsSupportedCliMode(args) && args.Length > 1 && string.Equals(args[1], "probe-console", StringComparison.OrdinalIgnoreCase));
 
     /// <param name="rootOverride">Test seam: app-data root. Null uses <see cref="MuxDiscovery.GetRootDirectory"/>.</param>
-    public static int Execute(string[] args, TextWriter stdout, TextWriter stderr, string? rootOverride = null)
+    public static int Execute(string[] args, TextWriter stdout, TextWriter stderr, string? rootOverride = null) =>
+        Execute(args, stdout, stderr, rootOverride, MuxLsAll.ForThisApp);
+
+    /// <param name="lsAllRemotes">
+    /// Where <c>ls --all</c> finds the SSH profiles and connects to them, built only for <c>ls --all</c>: the app's
+    /// (<see cref="MuxLsAll.ForThisApp"/>), or a test's.
+    /// </param>
+    internal static int Execute(string[] args, TextWriter stdout, TextWriter stderr, string? rootOverride, Func<MuxCliHost, MuxLsAllRemotes> lsAllRemotes)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
+        ArgumentNullException.ThrowIfNull(lsAllRemotes);
         // args[0] is "mux"; MuxCli takes the verb onwards.
-        return MuxCli.Execute(args.Length > 0 ? args[1..] : [], stdout, stderr, CreateHost(rootOverride));
+        string[] verbArgs = args.Length > 0 ? args[1..] : [];
+        MuxCliHost host = CreateHost(rootOverride, stderr);
+        // ls --all reaches the SSH profiles' hosts, which MuxCli (no Platform reference) cannot: the App takes it first
+        // (Phase 5 spec §5). Every other command line, ls with an unknown option beside --all too, is MuxCli's.
+        if (MuxLsAll.Handles(verbArgs)) return MuxLsAll.Run(verbArgs, stdout, host, lsAllRemotes(host));
+        return MuxCli.Execute(verbArgs, stdout, stderr, host);
     }
 
     /// <summary>What the App supplies to <see cref="MuxCli"/>: its own root, name, verbs, shells and console bindings.</summary>
-    internal static MuxCliHost CreateHost(string? rootOverride) => new()
+    /// <param name="stderr">Where a verb that starts the daemon says its copy could not be staged; null = nowhere.</param>
+    internal static MuxCliHost CreateHost(string? rootOverride, TextWriter? stderr = null)
     {
-        Paths = new MuxPaths(rootOverride ?? MuxDiscovery.GetRootDirectory()),
-        UsagePrefix = UsagePrefix,
-        ServeArguments = ServeArguments,
-        // The GUI's own daemon keeps the GUI's session factory, so local behaviour cannot change (Phase 4 spec §6.3).
-        SessionFactory = () => DefaultTerminalSessionFactory.Instance,
-        Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole,
-        // Program.cs skips CliConsoleBindings.Prepare for serve (a daemon must not attach to the
-        // launching console); serve --foreground binds it through this.
-        PrepareForegroundConsole = CliConsoleBindings.Prepare,
-        AttachedToParentConsole = AttachedToParentConsole,
-    };
+        string root = rootOverride ?? MuxDiscovery.GetRootDirectory();
+        return new MuxCliHost
+        {
+            Paths = new MuxPaths(root),
+            // ntilde.com runs this executable, so every way in starts the daemon the GUI would: on a Windows install, its
+            // own copy outside the install root (Phase 5 spec R9).
+            DaemonImageResolver = MuxDaemonImage.ResolverFor(root, stderr is null ? null : line => stderr.WriteLine(line)),
+            UsagePrefix = UsagePrefix,
+            ServeArguments = ServeArguments,
+            // The GUI's own daemon keeps the GUI's session factory, so local behaviour cannot change (Phase 4 spec §6.3).
+            SessionFactory = () => DefaultTerminalSessionFactory.Instance,
+            // spawn-for-test is hidden: verification runs start their own sessions with it (Phase 5 Task 24).
+            Verbs = MuxCliVerbs.Serve | MuxCliVerbs.Ls | MuxCliVerbs.Kill | MuxCliVerbs.KillServer | MuxCliVerbs.Attach | MuxCliVerbs.ProbeConsole
+                | MuxCliVerbs.SpawnForTest,
+            // Program.cs skips CliConsoleBindings.Prepare for serve (a daemon must not attach to the
+            // launching console); serve --foreground binds it through this.
+            PrepareForegroundConsole = CliConsoleBindings.Prepare,
+            AttachedToParentConsole = AttachedToParentConsole,
+            // The daemon reports this build's version so a later GUI can tell it is from an older one.
+            Version = AppVersionInfo.Version,
+        };
+    }
 }

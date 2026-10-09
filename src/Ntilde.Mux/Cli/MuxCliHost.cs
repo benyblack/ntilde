@@ -39,4 +39,11 @@ public sealed class MuxCliHost
 
     /// <summary>This build's version, for the <c>version</c> verb.</summary>
     public string Version { get; init; } = "";
+
+    /// <summary>
+    /// The file a verb that starts the daemon runs for this executable (<see cref="ProcessMuxDaemonSpawner"/>): the App's
+    /// copy outside a Windows install root, so the GUI, <c>ntilde mux</c> and ntilde.com all start the same image
+    /// (Phase 5 spec R9). Null: the executable itself.
+    /// </summary>
+    public Func<string, string>? DaemonImageResolver { get; init; }
 }

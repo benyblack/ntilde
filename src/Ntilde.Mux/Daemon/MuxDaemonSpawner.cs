@@ -26,6 +26,7 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     private readonly IReadOnlyList<string> _leadingArgs;
     private readonly IReadOnlyList<string> _serveArguments;
     private readonly MuxPaths? _paths;
+    private readonly Func<string, string>? _imageResolver;
     private readonly object _gate = new();
     private Process? _last; // the latest daemon started, kept to read its exit code; guarded by _gate
 
@@ -35,12 +36,18 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     /// The paths the daemon serves - the GUI's or <c>ntilde-mux</c>'s (<see cref="MuxPaths.IsStandalone"/>); null =
     /// whatever the daemon resolves from the environment it inherits. See <see cref="CreateStartInfo"/>.
     /// </param>
-    public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs, IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
+    /// <param name="imageResolver">
+    /// Maps <paramref name="executable"/> to the file actually started, asked at each spawn: the App's copy outside a
+    /// Windows install root, which an update would otherwise kill (Phase 5 spec R9). Null = the executable itself.
+    /// </param>
+    public ProcessMuxDaemonSpawner(string executable, IReadOnlyList<string> leadingArgs, IReadOnlyList<string> serveArguments, MuxPaths? paths = null,
+        Func<string, string>? imageResolver = null)
     {
         _executable = executable;
         _leadingArgs = leadingArgs;
         _serveArguments = serveArguments;
         _paths = paths;
+        _imageResolver = imageResolver;
     }
 
     /// <summary>
@@ -48,7 +55,8 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     /// mount, which is unmounted when the GUI exits and would pull the daemon's files out from under it.
     /// </summary>
     /// <param name="paths">The paths the daemon serves; null = the ones it resolves from the inherited environment.</param>
-    public static ProcessMuxDaemonSpawner CreateDefault(IReadOnlyList<string> serveArguments, MuxPaths? paths = null)
+    /// <param name="imageResolver">See the constructor: the App's copy of its executable outside a Windows install root.</param>
+    public static ProcessMuxDaemonSpawner CreateDefault(IReadOnlyList<string> serveArguments, MuxPaths? paths = null, Func<string, string>? imageResolver = null)
     {
         string exe = ResolveDaemonExecutable(
             Environment.GetEnvironmentVariable("APPIMAGE"),
@@ -56,7 +64,7 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
             Environment.ProcessPath,
             File.Exists)
             ?? throw new InvalidOperationException("The executable path is unknown.");
-        return new ProcessMuxDaemonSpawner(exe, [], serveArguments, paths);
+        return new ProcessMuxDaemonSpawner(exe, [], serveArguments, paths, imageResolver);
     }
 
     /// <summary>
@@ -101,7 +109,8 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     /// </summary>
     internal ProcessStartInfo CreateStartInfo()
     {
-        var psi = new ProcessStartInfo(_executable)
+        // Asked at each spawn, not once: a copy whose staging failed is tried again by the next daemon start.
+        var psi = new ProcessStartInfo(_imageResolver is null ? _executable : _imageResolver(_executable))
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -169,11 +178,20 @@ public sealed partial class ProcessMuxDaemonSpawner : IMuxDaemonSpawner
     /// The daemon's own cwd - not a shared, world-writable one like the temp directory. Shells never
     /// inherit it: each spawn request carries its own starting directory.
     /// </summary>
-    internal static string GetDaemonWorkingDirectory()
+    internal static string GetDaemonWorkingDirectory() =>
+        GetDaemonWorkingDirectory(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Directory.Exists, MuxDiscovery.GetRootDirectory);
+
+    /// <summary>
+    /// <paramref name="profile"/> when it exists, else <paramref name="appDataRoot"/> (created). Never the caller's own
+    /// cwd, nor the executable's directory: Velopack starts the GUI in its install's <c>current\</c>, and a process
+    /// whose cwd is in there makes every update fail (Phase 5 spec R9).
+    /// </summary>
+    internal static string GetDaemonWorkingDirectory(string? profile, Func<string, bool> directoryExists, Func<string> appDataRoot)
     {
-        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        if (!string.IsNullOrEmpty(profile) && Directory.Exists(profile)) return profile;
-        string root = MuxDiscovery.GetRootDirectory();
+        ArgumentNullException.ThrowIfNull(directoryExists);
+        ArgumentNullException.ThrowIfNull(appDataRoot);
+        if (!string.IsNullOrEmpty(profile) && directoryExists(profile)) return profile;
+        string root = appDataRoot();
         Directory.CreateDirectory(root);
         return root;
     }

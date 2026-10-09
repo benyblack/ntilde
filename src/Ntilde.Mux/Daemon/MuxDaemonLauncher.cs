@@ -64,11 +64,12 @@ public sealed class MuxDaemonLauncher
     /// <param name="serveArguments">What the spawned executable is given to serve: <c>["mux","serve"]</c> for the GUI's exe.</param>
     /// <param name="paths">The daemon's root, where the launcher looks and the spawned daemon serves; null = <see cref="MuxPaths.Default"/>.</param>
     /// <param name="killServerCommand">The command the version-mismatch hint names: the host's own.</param>
+    /// <param name="imageResolver">The file a spawn starts for this executable (<see cref="ProcessMuxDaemonSpawner"/>); null = itself.</param>
     public static MuxDaemonLauncher CreateDefault(Action<string>? log, IReadOnlyList<string> serveArguments, MuxPaths? paths = null,
-        string killServerCommand = DefaultKillServerCommand)
+        string killServerCommand = DefaultKillServerCommand, Func<string, string>? imageResolver = null)
     {
         MuxPaths p = paths ?? MuxPaths.Default();
-        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p), log: log,
+        return new MuxDaemonLauncher(p.DescriptorPath, ProcessMuxDaemonSpawner.CreateDefault(serveArguments, p, imageResolver), log: log,
             killServerCommand: killServerCommand);
     }
 

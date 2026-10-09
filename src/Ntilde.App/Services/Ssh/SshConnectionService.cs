@@ -64,6 +64,12 @@ public sealed class SshConnectionService
         return _profileStore.GetProfile(profileId);
     }
 
+    /// <summary>Every stored profile, from one read of the store (copies, as <see cref="GetStoredProfile"/> hands out).</summary>
+    internal IReadOnlyList<SshProfile> GetStoredProfiles()
+    {
+        return _profileStore.GetProfiles();
+    }
+
     public NewSshConnectionViewModel CreateEditorViewModel(TerminalProfile? profile)
     {
         if (profile == null)

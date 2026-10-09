@@ -11,6 +11,7 @@ public sealed class MuxOutboundFrame
 {
     private byte[]? _buffer;
     private int _refCount = 1;
+    private bool _bulk;
 
     private MuxOutboundFrame(MuxFrameKind kind, byte[] buffer, int payloadLength)
     {
@@ -22,6 +23,23 @@ public sealed class MuxOutboundFrame
     public MuxFrameKind Kind { get; }
     public int PayloadLength { get; }
     public int Length => MuxProtocol.FrameHeaderBytes + PayloadLength;
+
+    /// <summary>
+    /// A server charges this frame to a connection's snapshot account, not its stream account (spec §7): every
+    /// <see cref="MuxFrameKind.Snapshot"/> frame, and any frame its creator marked with <see cref="MarkBulk"/>. Not
+    /// part of the frame's bytes. Stays readable after <see cref="Release"/>, which the accounting relies on.
+    /// </summary>
+    public bool IsBulk => _bulk || Kind == MuxFrameKind.Snapshot;
+
+    /// <summary>
+    /// For the creator, before the frame is shared: accounts it as a snapshot is (<see cref="IsBulk"/>). For a reply as
+    /// large as a snapshot that is not one by kind, the <c>readScreen</c> Response. The kind, and so the wire, are unchanged.
+    /// </summary>
+    public MuxOutboundFrame MarkBulk()
+    {
+        _bulk = true;
+        return this;
+    }
 
     /// <summary>Writable payload area; for the creator, before the frame is shared.</summary>
     public Span<byte> Payload => Buffer.AsSpan(MuxProtocol.FrameHeaderBytes, PayloadLength);

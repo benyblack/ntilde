@@ -18,13 +18,13 @@ internal static class RemoteMuxInstallCommands
 {
     /// <summary>
     /// The upload's temp file is this, then the token, beside the installed binary (in
-    /// <c>$HOME/.local/share/ntilde/bin</c>, <see cref="RemoteMuxCommand.DefaultRelativePath"/>'s directory).
+    /// <see cref="RemoteInstallDir"/>).
     /// </summary>
     public const string UploadTempPrefix = ".ntilde-mux.upload-";
 
     /// <summary>
     /// Step 1, the upload of a binary of <paramref name="byteCount"/> bytes, streamed to its stdin and then EOF.
-    /// It commits nothing. In <c>$HOME/.local/share/ntilde/bin</c>, it:
+    /// It commits nothing. In <see cref="RemoteInstallDir"/>, it:
     /// <list type="number">
     /// <item>removes upload temp files more than an hour old, which interrupted installs left (best effort);</item>
     /// <item><c>cat</c>s stdin into the token's temp file, which a <c>trap</c> removes on any failure;</item>
@@ -89,7 +89,7 @@ internal static class RemoteMuxInstallCommands
     /// The offline install command for the clipboard (spec §9 step 2(c)): it downloads the release asset on
     /// the host itself, checks it against its <c>.sha256</c> (<c>shasum -a 256</c> on macOS, which has no
     /// <c>sha256sum</c>), then <c>chmod</c>s it and moves it over the installed name. The user pastes it into
-    /// their own shell, so it is not wrapped in <c>sh -c</c>.
+    /// their own shell (bash, zsh or fish), so it is one single-quoted <c>sh -c</c> script.
     /// </summary>
     /// <exception cref="ArgumentException"><paramref name="version"/> is not a release version, or <paramref name="rid"/> is not a published RID.</exception>
     public static string OfflineOneLiner(string version, string rid)
@@ -100,14 +100,16 @@ internal static class RemoteMuxInstallCommands
 
         string url = GitHubReleaseMuxAssetSource.AssetUrl(version, rid);
         string check = rid == MuxDaemonRid.OsxArm64 ? "shasum -a 256 -c -" : "sha256sum -c -";
-        return "mkdir -p ~/.local/share/ntilde/bin && cd ~/.local/share/ntilde/bin && "
+        // One single-quoted sh script, so it runs the same in the fish or zsh it is pasted into: the sed program
+        // is double-quoted (it holds no $ or backtick) because a single quote would end the script.
+        return "sh -c '" + RemoteInstallDir.Assign + "mkdir -p \"$d\" && cd \"$d\" && "
             + $"curl -fsSLo ntilde-mux.new {url} && "
-            + $"curl -fsSL {url}.sha256 | sed 's/ .*/  ntilde-mux.new/' | {check} && "
-            + "chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux";
+            + $"curl -fsSL {url}.sha256 | sed \"s/ .*/  ntilde-mux.new/\" | {check} && "
+            + "chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux && echo \"installed to $d/ntilde-mux\"'";
     }
 
-    /// <summary>Sets <c>$d</c>, the directory <see cref="RemoteMuxCommand.DefaultRelativePath"/> names.</summary>
-    private const string DirectoryVariable = "d=\"$HOME/.local/share/ntilde/bin\"; ";
+    /// <summary>Sets <c>$d</c>, the install directory (<see cref="RemoteInstallDir.Assign"/>).</summary>
+    private const string DirectoryVariable = RemoteInstallDir.Assign;
 
     /// <summary>Sets <c>$t</c>, the token's temp file in <c>$d</c>.</summary>
     private static string TempFileVariable(Guid token) =>

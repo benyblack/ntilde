@@ -51,10 +51,12 @@ internal static class NativeHopPasswordResolver
             return NativeHopPasswords.None;
         }
 
-        string? target = SessionPassword(sessionRegistry, sessionId, baseOptions.Host, baseOptions.Port, baseOptions.User)
+        // A persisted remote tab's session keeps its passwords under its host's scope (Phase 5 spec R8).
+        Guid scope = sessionRegistry == null || sessionId == Guid.Empty ? Guid.Empty : sessionRegistry.PasswordScopeOf(sessionId);
+        string? target = SessionPassword(sessionRegistry, scope, baseOptions.Host, baseOptions.Port, baseOptions.User)
             ?? savedTargetPassword();
         string?[] jumpHops = baseOptions.JumpHops
-            .Select(hop => SessionPassword(sessionRegistry, sessionId, hop.Host, hop.Port, hop.User))
+            .Select(hop => SessionPassword(sessionRegistry, scope, hop.Host, hop.Port, hop.User))
             .ToArray();
 
         return new NativeHopPasswords(NullIfBlank(target), jumpHops);
@@ -62,17 +64,17 @@ internal static class NativeHopPasswordResolver
 
     private static string? SessionPassword(
         ActiveSshSessionRegistry? sessionRegistry,
-        Guid sessionId,
+        Guid scope,
         string host,
         int port,
         string user)
     {
-        if (sessionRegistry == null || sessionId == Guid.Empty)
+        if (sessionRegistry == null || scope == Guid.Empty)
         {
             return null;
         }
 
-        return sessionRegistry.TryGetRuntimePassword(sessionId, host, port, user, out string? password)
+        return sessionRegistry.TryGetRuntimePassword(scope, host, port, user, out string? password)
             ? NullIfBlank(password)
             : null;
     }

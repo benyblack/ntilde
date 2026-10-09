@@ -32,24 +32,27 @@ public class AgentObserveIndicatorTests : IDisposable
 
     [Theory]
     // Observe off: invisible, and nothing else matters.
-    [InlineData(false, false, false, false, false)]
-    [InlineData(false, true, true, false, false)]
+    [InlineData(false, false, false, false, false, false)]
+    [InlineData(false, true, true, true, false, false)]
     // Observe on, nothing happening: visible but quiet.
-    [InlineData(true, false, false, true, false)]
+    [InlineData(true, false, false, false, true, false)]
     // A long poll is parked: active, because the subscription names no pane and
     // this is the only surface for it.
-    [InlineData(true, true, false, true, true)]
+    [InlineData(true, true, false, false, true, true)]
     // A pane with no bar of its own is being read: active. This is the only
     // place that read can appear.
-    [InlineData(true, false, true, true, true)]
-    // Both at once: still just active.
-    [InlineData(true, true, true, true, true)]
+    [InlineData(true, false, true, false, true, true)]
+    // A windowless session (Phase 5 §3) is being read: active. It has no pane,
+    // so no pane indicator can show the read.
+    [InlineData(true, false, false, true, true, true)]
+    // All at once: still just active.
+    [InlineData(true, true, true, true, true, true)]
     public void Observe_indicator_state(
-        bool observeRunning, bool polling, bool anyUnmarkedPaneWatched,
+        bool observeRunning, bool polling, bool anyUnmarkedPaneWatched, bool windowlessWatched,
         bool expectedVisible, bool expectedActive)
     {
         var (visible, active) = MainWindow.ComputeObserveIndicatorState(
-            observeRunning, polling, anyUnmarkedPaneWatched);
+            observeRunning, polling, anyUnmarkedPaneWatched, windowlessWatched);
 
         Assert.Equal(expectedVisible, visible);
         Assert.Equal(expectedActive, active);
@@ -69,7 +72,7 @@ public class AgentObserveIndicatorTests : IDisposable
         // The act toggle is no longer an input at all, which is the fix: the
         // decision is about the *watched pane*, not the global permission.
         var (visible, active) = MainWindow.ComputeObserveIndicatorState(
-            observeRunning: true, polling: false, anyUnmarkedPaneWatched: true);
+            observeRunning: true, polling: false, anyUnmarkedPaneWatched: true, windowlessWatched: false);
 
         Assert.True(visible);
         Assert.True(active);
@@ -81,7 +84,7 @@ public class AgentObserveIndicatorTests : IDisposable
         // The other half: an actable pane already shows "agent reading" on its
         // own status bar, so lighting the window light too would double-report.
         var (visible, active) = MainWindow.ComputeObserveIndicatorState(
-            observeRunning: true, polling: false, anyUnmarkedPaneWatched: false);
+            observeRunning: true, polling: false, anyUnmarkedPaneWatched: false, windowlessWatched: false);
 
         Assert.True(visible);
         Assert.False(active);

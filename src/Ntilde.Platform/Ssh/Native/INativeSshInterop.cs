@@ -41,6 +41,23 @@ public interface INativeSshInterop
         Action<NativeSftpTransferProgress>? progress,
         CancellationToken cancellationToken);
     NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle);
+
+    /// <summary>
+    /// Blocks until the session has an event to poll, it closes, or <paramref name="timeout"/> passes
+    /// (the native side caps it at one second). Lets a poll thread wait instead of sleeping between
+    /// <see cref="PollEvent"/> calls. Returns false only when the wait ended with nothing to poll.
+    /// </summary>
+    /// <remarks>
+    /// Default implementation sleeps at most 10 ms and returns true: what the poll loops did before
+    /// the native wait existed, so a test double behaves as it always has. Only the real FFI can
+    /// wake early, and only it overrides.
+    /// </remarks>
+    bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+    {
+        TimeSpan sleep = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout; // Infinite must not sleep forever
+        Thread.Sleep(sleep > TimeSpan.FromMilliseconds(10) ? TimeSpan.FromMilliseconds(10) : sleep);
+        return true;
+    }
     void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data);
     void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows);
     int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options);

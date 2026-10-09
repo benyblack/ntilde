@@ -10,8 +10,9 @@ namespace Ntilde.Mux;
 /// <summary>
 /// One client: a reader thread that parses and dispatches frames, and a sender thread that drains
 /// a byte-budgeted queue. <see cref="TryEnqueue"/> is called from session parse threads and never
-/// blocks - overflowing the budget disconnects this client instead (spec §7). Snapshots are
-/// accounted apart from the stream budget (<see cref="MuxServerOptions.MaxQueuedSnapshotBytes"/>).
+/// blocks - overflowing the budget disconnects this client instead (spec §7). Snapshots, and the
+/// <c>readScreen</c> replies that carry one (<see cref="MuxOutboundFrame.IsBulk"/>), are accounted
+/// apart from the stream budget (<see cref="MuxServerOptions.MaxQueuedSnapshotBytes"/>).
 /// </summary>
 internal sealed class MuxServerConnection : IMuxFrameSink
 {
@@ -42,8 +43,8 @@ internal sealed class MuxServerConnection : IMuxFrameSink
     /// </summary>
     private readonly ConcurrentDictionary<Guid, byte> _readOnlySessions = new();
     private readonly HashSet<(Guid Session, string What)> _readOnlyDropLogged = new(); // reader thread only
-    private long _queuedBytes;       // stream frames queued + in flight (everything but snapshots)
-    private long _queuedSnapshotBytes; // snapshot frames queued + in flight
+    private long _queuedBytes;       // stream frames queued + in flight (everything but bulk frames)
+    private long _queuedSnapshotBytes; // bulk frames (snapshots, readScreen replies) queued + in flight
     private bool _closed;            // stream closed or closing now; nothing more is accepted
     private bool _closeAfterFlush;   // the queue ends with a final frame; the sender closes after it
     private int _version;
@@ -100,6 +101,12 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         get { lock (_gate) return _closed || _closeAfterFlush; }
     }
 
+    /// <summary>Tests: bytes charged to the stream account and to the snapshot account, queued or in flight.</summary>
+    internal (long Stream, long Snapshot) QueuedBytesForTest
+    {
+        get { lock (_gate) return (_queuedBytes, _queuedSnapshotBytes); }
+    }
+
     public void Start()
     {
         _senderThread.Start();
@@ -115,11 +122,12 @@ internal sealed class MuxServerConnection : IMuxFrameSink
             // Two accounts sharing one FIFO queue. Snapshots are charged to their own bound, never
             // to the stream budget: one snapshot can be bigger than the whole budget (10k rows at
             // 200 cols is ~32 MB), and parallel attaches on one GUI connection must not read as a
-            // slow client. Either account takes any frame while it is empty; otherwise the frame
-            // must fit what is left of it.
-            bool snapshot = frame.Kind == MuxFrameKind.Snapshot;
-            long queued = snapshot ? _queuedSnapshotBytes : _queuedBytes;
-            long limit = snapshot ? _server.Options.MaxQueuedSnapshotBytes : _server.Options.ClientSendBudgetBytes;
+            // slow client. A readScreen reply carries a snapshot too (up to ~5.6 MB as base64), so it
+            // is charged the same way although its kind is Response (IsBulk). Either account takes
+            // any frame while it is empty; otherwise the frame must fit what is left of it.
+            bool bulk = frame.IsBulk;
+            long queued = bulk ? _queuedSnapshotBytes : _queuedBytes;
+            long limit = bulk ? _server.Options.MaxQueuedSnapshotBytes : _server.Options.ClientSendBudgetBytes;
             if (queued == 0 || queued + frame.Length <= limit)
             {
                 frame.AddRef();
@@ -134,10 +142,13 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         return false;
     }
 
-    /// <summary>Caller holds <see cref="_gate"/>. Charges (positive) or refunds (negative) the frame's own account.</summary>
+    /// <summary>
+    /// Caller holds <see cref="_gate"/>. Charges (positive) or refunds (negative) the frame's own account: the one
+    /// <see cref="MuxOutboundFrame.IsBulk"/> chose at enqueue, since a frame's kind and mark never change.
+    /// </summary>
     private void Account(MuxOutboundFrame frame, long delta)
     {
-        if (frame.Kind == MuxFrameKind.Snapshot) _queuedSnapshotBytes += delta;
+        if (frame.IsBulk) _queuedSnapshotBytes += delta;
         else _queuedBytes += delta;
     }
 
@@ -250,7 +261,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                     }
                     finally
                     {
-                        lock (_gate) Account(frame, -length); // Kind stays readable after Release
+                        lock (_gate) Account(frame, -length); // Kind and IsBulk stay readable after Release
                         frame.Release();
                     }
 
@@ -444,7 +455,7 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         }
 
         Volatile.Write(ref _version, chosen);
-        Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering }, MuxJsonContext.Default.WelcomeResult);
+        Reply(request, new WelcomeResult { Version = chosen, ForceConPtyFiltering = o.ForceConPtyFiltering, ServerVersion = string.IsNullOrEmpty(o.AppVersion) ? null : o.AppVersion }, MuxJsonContext.Default.WelcomeResult);
     }
 
     private void HandleRequest(MuxRequest request)
@@ -559,6 +570,9 @@ internal sealed class MuxServerConnection : IMuxFrameSink
                 case MuxMethods.ExportFlight:
                     Reply(request, Session(Params(request, MuxJsonContext.Default.SessionIdParams).SessionId).ExportFlight(), MuxJsonContext.Default.ExportFlightResult);
                     break;
+                case MuxMethods.ReadScreen:
+                    HandleReadScreen(request);
+                    break;
                 case MuxMethods.Hello:
                     throw new MuxProtocolException(MuxErrorCodes.ProtocolError, "hello may only be sent once.");
                 default:
@@ -606,6 +620,24 @@ internal sealed class MuxServerConnection : IMuxFrameSink
         // never this request: a refused or failed attach leaves the connection as it was. Not a
         // security boundary: any same-user process can open another, interactive connection.
         session.PostAttach(this, request.Id, rows, p.Presentation, _server.Options.MaxSnapshotBytes, mode);
+    }
+
+    /// <summary>
+    /// Phase 5: a session's screen and status for a connection that need not be attached to it. Only the parse thread
+    /// may capture, so the reply comes from there, as an attach's does, and subscribes nothing. The row count is
+    /// clamped, never refused: <c>protocol_error</c> must keep meaning "this daemon does not know readScreen".
+    /// </summary>
+    private void HandleReadScreen(MuxRequest request)
+    {
+        ReadScreenParams p = Params(request, MuxJsonContext.Default.ReadScreenParams);
+        HeadlessTerminalSession session = Session(p.SessionId);
+        if (request.Id == 0) return; // a read does nothing but answer
+
+        int rows = Math.Clamp(p.MaxScrollbackRows, 0, MuxReadScreenLimits.MaxScrollbackRows);
+
+        // Probed here, as sessionInfo does: the probe can walk the process table, and the parse thread is the output path.
+        bool hasChildren = !session.IsExited && session.Inner.HasActiveChildProcesses;
+        session.PostReadScreen(this, request.Id, rows, _server.Options.MaxReadScreenBytes, hasChildren);
     }
 
     /// <summary>Reader thread. Once per (session, kind) per connection lifetime, so a client typing into a read-only view does not flood the log.</summary>

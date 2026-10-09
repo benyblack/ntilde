@@ -1,10 +1,43 @@
 using System.Text;
+using System.Text.Json;
 using Ntilde.Mux.Contracts;
 
 namespace Ntilde.Mux.Tests.Contracts;
 
 public sealed class MuxJsonTests
 {
+    [Fact]
+    public void A_welcome_and_descriptor_without_a_version_have_no_version_key()
+    {
+        string welcome = JsonSerializer.Serialize(new WelcomeResult { Version = 2 }, MuxJsonContext.Default.WelcomeResult);
+        string descriptor = JsonSerializer.Serialize(new MuxEndpointDescriptor { Endpoint = "e", ProcessName = "p" }, MuxJsonContext.Default.MuxEndpointDescriptor);
+
+        Assert.DoesNotContain("erverVersion", welcome, StringComparison.Ordinal);
+        Assert.DoesNotContain("ppVersion", descriptor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_version_serializes_as_serverVersion_and_appVersion_and_round_trips()
+    {
+        string welcome = JsonSerializer.Serialize(new WelcomeResult { Version = 2, ServerVersion = "1.2.3" }, MuxJsonContext.Default.WelcomeResult);
+        string descriptor = JsonSerializer.Serialize(new MuxEndpointDescriptor { Endpoint = "e", ProcessName = "p", AppVersion = "1.2.3" }, MuxJsonContext.Default.MuxEndpointDescriptor);
+
+        Assert.Contains("\"serverVersion\":\"1.2.3\"", welcome, StringComparison.Ordinal);
+        Assert.Contains("\"appVersion\":\"1.2.3\"", descriptor, StringComparison.Ordinal);
+        Assert.Equal("1.2.3", JsonSerializer.Deserialize(welcome, MuxJsonContext.Default.WelcomeResult)!.ServerVersion);
+        Assert.Equal("1.2.3", JsonSerializer.Deserialize(descriptor, MuxJsonContext.Default.MuxEndpointDescriptor)!.AppVersion);
+    }
+
+    [Fact]
+    public void Old_json_without_a_version_key_deserializes_to_null()
+    {
+        WelcomeResult welcome = JsonSerializer.Deserialize("{\"version\":1,\"forceConPtyFiltering\":false}", MuxJsonContext.Default.WelcomeResult)!;
+        MuxEndpointDescriptor descriptor = JsonSerializer.Deserialize("{\"minVersion\":1,\"maxVersion\":1,\"endpoint\":\"e\",\"pid\":1,\"processName\":\"p\"}", MuxJsonContext.Default.MuxEndpointDescriptor)!;
+
+        Assert.Null(welcome.ServerVersion);
+        Assert.Null(descriptor.AppVersion);
+    }
+
     [Fact]
     public void Requests_round_trip_with_camel_case_params()
     {
@@ -142,6 +175,47 @@ public sealed class MuxJsonTests
         Assert.Equal(1, MuxProtocol.MinSupportedVersion);
         Assert.Equal(2, MuxProtocol.MaxSupportedVersion);
         Assert.Equal(2, MuxProtocol.SessionEventsVersion);
+    }
+
+    [Fact]
+    public void ReadScreen_params_have_the_documented_wire_shape()
+    {
+        string json = System.Text.Json.JsonSerializer.Serialize(
+            new ReadScreenParams { SessionId = new Guid("00000000-0000-0000-0000-000000000007"), MaxScrollbackRows = 0 },
+            MuxJsonContext.Default.ReadScreenParams);
+
+        Assert.Equal("{\"sessionId\":\"00000000-0000-0000-0000-000000000007\",\"maxScrollbackRows\":0}", json);
+        Assert.Equal("readScreen", MuxMethods.ReadScreen);
+        Assert.Equal((2000, 4 * 1024 * 1024), (MuxReadScreenLimits.MaxScrollbackRows, MuxReadScreenLimits.MaxSnapshotBytes));
+    }
+
+    [Fact]
+    public void A_readScreen_result_carries_the_snapshot_as_base64_and_omits_what_is_unknown()
+    {
+        string bare = System.Text.Json.JsonSerializer.Serialize(
+            new ReadScreenResult { Snapshot = [1, 2, 3], Running = true, AttachedClients = 1 }, MuxJsonContext.Default.ReadScreenResult);
+        var full = new ReadScreenResult
+        {
+            Snapshot = [4, 5],
+            Running = false,
+            ExitCode = 3,
+            HasActiveChildProcesses = true,
+            AttachedClients = 2,
+            InteractiveClients = 0,
+            Title = "t",
+            Cwd = "/w",
+            LastOutputUnixMs = 1_700_000_000_123,
+        };
+        ReadScreenResult back = System.Text.Json.JsonSerializer.Deserialize(
+            System.Text.Json.JsonSerializer.Serialize(full, MuxJsonContext.Default.ReadScreenResult), MuxJsonContext.Default.ReadScreenResult)!;
+
+        Assert.Contains("\"snapshot\":\"AQID\"", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("exitCode", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("interactiveClients", bare, StringComparison.Ordinal);
+        Assert.DoesNotContain("lastOutputUnixMs", bare, StringComparison.Ordinal);
+        Assert.Equal(new byte[] { 4, 5 }, back.Snapshot);
+        Assert.Equal((false, (int?)3, true, 2, (int?)0, "t", "/w", (long?)1_700_000_000_123),
+            (back.Running, back.ExitCode, back.HasActiveChildProcesses, back.AttachedClients, back.InteractiveClients, back.Title, back.Cwd, back.LastOutputUnixMs));
     }
 
     [Fact]

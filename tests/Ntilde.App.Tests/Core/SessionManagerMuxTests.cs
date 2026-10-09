@@ -85,6 +85,76 @@ public sealed class SessionManagerMuxTests : IClassFixture<TestAppDataRoot>
     }
 
     /// <summary>
+    /// Spec R2: a pane whose restore a reboot made quiet keeps that mark in the session file until it spawns, so a
+    /// later launch in the same boot (whose file is newer than the boot) still opens it quietly. Absent when false.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_pending_quiet_restore_writes_its_mark_back_and_others_write_none()
+    {
+        var quiet = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(
+            new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = Guid.NewGuid().ToString(), MuxEndpoint = "local", MuxQuietPreviousLost = true },
+            new TerminalSettings()));
+        var plain = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(
+            new PaneNode { Type = NodeType.Leaf, Command = "pwsh.exe", MuxSessionId = Guid.NewGuid().ToString(), MuxEndpoint = "local" },
+            new TerminalSettings()));
+        Assert.True(quiet.MuxQuietPreviousLost);
+        Assert.False(plain.MuxQuietPreviousLost);
+
+        PaneNode quietNode = SessionManager.BuildPaneTree(quiet)!;
+        string quietJson = System.Text.Json.JsonSerializer.Serialize(quietNode, SessionSerializationContext.Default.PaneNode);
+        string plainJson = System.Text.Json.JsonSerializer.Serialize(SessionManager.BuildPaneTree(plain)!, SessionSerializationContext.Default.PaneNode);
+
+        Assert.True(quietNode.MuxQuietPreviousLost);
+        Assert.Contains("MuxQuietPreviousLost", quietJson);
+        Assert.DoesNotContain("MuxQuietPreviousLost", plainJson);
+        quiet.Dispose();
+        plain.Dispose();
+    }
+
+    /// <summary>A remote daemon outlives a local reboot: a mark on a remote pane (a hand-edited file) is not honoured.</summary>
+    [AvaloniaFact]
+    public void A_quiet_mark_on_a_remote_pane_is_ignored()
+    {
+        var node = new PaneNode
+        {
+            Type = NodeType.Leaf,
+            Command = "pwsh.exe",
+            MuxSessionId = Guid.NewGuid().ToString(),
+            MuxEndpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString(),
+            MuxQuietPreviousLost = true,
+        };
+
+        var restored = Assert.IsType<TerminalPane>(SessionManager.RestorePaneTree(node, new TerminalSettings()));
+
+        Assert.False(restored.MuxQuietPreviousLost);
+        restored.Dispose();
+    }
+
+    [Fact]
+    public void A_reboot_marks_only_the_local_daemon_sessions_and_a_layout_snapshot_drops_the_mark()
+    {
+        PaneNode local = new() { Type = NodeType.Leaf, MuxSessionId = Guid.NewGuid().ToString(), MuxEndpoint = "local" };
+        PaneNode legacyLocal = new() { Type = NodeType.Leaf, MuxSessionId = Guid.NewGuid().ToString() };
+        PaneNode remote = new() { Type = NodeType.Leaf, MuxSessionId = Guid.NewGuid().ToString(), MuxEndpoint = MuxEndpointId.ForSsh(Guid.NewGuid()).ToString() };
+        PaneNode plain = new() { Type = NodeType.Leaf, Command = "pwsh.exe" };
+        var session = new NtildeSession
+        {
+            Tabs =
+            {
+                new TabSession { Title = "a", Root = new PaneNode { Type = NodeType.Split, Children = [local, remote] } },
+                new TabSession { Title = "b", Root = new PaneNode { Type = NodeType.Split, Children = [legacyLocal, plain] } },
+            },
+        };
+
+        SessionManager.MarkLocalMuxSessionsEndedByReboot(session);
+
+        Assert.Equal((true, true, false, false), (local.MuxQuietPreviousLost, legacyLocal.MuxQuietPreviousLost, remote.MuxQuietPreviousLost, plain.MuxQuietPreviousLost));
+        NtildeSession layout = SessionManager.WithoutMuxIds(session);
+        Assert.False(layout.Tabs[0].Root!.Children[0].MuxQuietPreviousLost);
+        Assert.True(local.MuxQuietPreviousLost); // the caller's session is not mutated
+    }
+
+    /// <summary>
     /// Phase 4 spec §5: restore dedupes on (endpoint, id). Two daemons can each hold a session with
     /// one id (a copied session file, a restored machine image); both panes keep theirs. Every
     /// spelling of local (none, "local", a legacy pipe name) is one endpoint.

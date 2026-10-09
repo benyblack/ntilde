@@ -106,6 +106,27 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
     }
 
     /// <summary>
+    /// Phase 5 Task 23, review item 5: a notice raised under a key of its own - a daemon's endpoint - merges only with
+    /// notices of that key. Two daemons whose hosts share a display name raise the same words; they keep a line each, so
+    /// the toast's one button is never offered under a line that also stands for the other daemon.
+    /// </summary>
+    [AvaloniaFact]
+    public void Notices_of_the_same_words_with_their_own_keys_keep_a_line_each()
+    {
+        MainWindow window = CreateWindow();
+        var ran = new List<string>();
+        string words = Ntilde.Shell.Mux.MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", 2);
+
+        window.EnqueueNotice(Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title, words, new PersistenceNoticeAction("Restart A", () => ran.Add("a")), key: "ssh:a");
+        window.EnqueueNotice(Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title, words, new PersistenceNoticeAction("Restart B", () => ran.Add("b")), key: "ssh:b");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(new[] { words, words }, Toast(window).Message!.Split('\n'));
+        Click(ActionButton(window));
+        Assert.Equal("b", Assert.Single(ran));
+    }
+
+    /// <summary>
     /// Task 21 (the Task 19 note): remote notices are merged per host and reason, not per title, so the toast's
     /// one action is always offered next to its own message - never under another host's line.
     /// </summary>

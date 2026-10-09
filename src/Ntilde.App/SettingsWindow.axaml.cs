@@ -32,6 +32,25 @@ namespace Ntilde
         public TerminalSettings Settings => _settings; // Expose for main window to grab without reloading disk
 
         /// <summary>
+        /// The session persistence setting as this window last loaded it - when it opened, or after an Import/Restore
+        /// reloaded settings.json (spec R1): saving a different one forgets the first-close dialog's remembered answer.
+        /// </summary>
+        private string? _sessionPersistenceLoaded;
+
+        /// <summary>
+        /// R1: when the effective persistence mode changed from <paramref name="before"/> to <paramref name="after"/>,
+        /// the first-close answer is forgotten, so turning persistence back on asks again. A spelling that does not
+        /// change the mode (a typo read as Off, saved as "Off") is not a change.
+        /// </summary>
+        private static void ForgetCloseChoiceIfPersistenceChanged(string? before, string? after)
+        {
+            if (Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(before) != Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(after))
+            {
+                Ntilde.Shell.Mux.MuxCloseChoiceStore.Default.Forget();
+            }
+        }
+
+        /// <summary>
         /// F1: set once a successful Import or Restore has replaced configuration on disk out from
         /// under this window (see <see cref="ReloadSettingsAfterExternalChangeAsync"/>). The owning
         /// <c>MainWindow.OpenSettings</c> must adopt the reloaded <see cref="Settings"/> regardless
@@ -119,11 +138,38 @@ namespace Ntilde
         /// </summary>
         private readonly SettingsSection _targetSection;
 
+        /// <summary>
+        /// Whether the owning window has session persistence on: the "Quit and close all shells…" link is shown only
+        /// then. Set by <c>MainWindow.OpenSettings</c>; false for a window opened any other way.
+        /// </summary>
+        internal bool SessionPersistenceActive
+        {
+            get => this.FindControl<Button>("QuitAndCloseAllShellsLink")?.IsVisible ?? false;
+            set
+            {
+                if (this.FindControl<Button>("QuitAndCloseAllShellsLink") is { } link) link.IsVisible = value;
+            }
+        }
+
+        /// <summary>
+        /// True once the "Quit and close all shells…" link was clicked; the window then closes without
+        /// saving, and the owner runs the quit once the dialog is gone.
+        /// </summary>
+        internal bool QuitAndCloseAllRequested { get; private set; }
+
         public SettingsWindow() : this(0, null) { }
 
         public SettingsWindow(int initialTab = 0, Guid? initialProfileId = null, SettingsSection section = SettingsSection.None)
         {
             InitializeComponent();
+            if (this.FindControl<Button>("QuitAndCloseAllShellsLink") is { } quitLink)
+            {
+                quitLink.Click += (_, _) =>
+                {
+                    QuitAndCloseAllRequested = true;
+                    Close(false); // nothing is saved
+                };
+            }
             // Hold this window at the interface scale it opened with, then size it for that scale
             // (its 880x620 layout keeps 880x620 of logical room - pinning alone shrank it to 440
             // DIPs at 200% and clipped the slider). A held window ignores later UiScale.Apply
@@ -135,6 +181,7 @@ namespace Ntilde
             UiScale.PinScale(this, UiScale.Current);
             UiScale.FitWindow(this);
             _settings = TerminalSettings.Load();
+            _sessionPersistenceLoaded = _settings.SessionPersistence;
             var sshMigration = new SshLegacyProfileMigrationService();
             if (sshMigration.MigrateLegacyProfiles(_settings))
             {
@@ -1255,6 +1302,10 @@ namespace Ntilde
             Guid? previousSelectedProfileId = _selectedProfile?.Id;
 
             _settings = TerminalSettings.Load();
+            // R1: the main window adopts these settings whatever this dialog does next (F1), so a changed persistence
+            // mode forgets the first-close answer here, as a Save would.
+            ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, _settings.SessionPersistence);
+            _sessionPersistenceLoaded = _settings.SessionPersistence;
 
             _profilesList = BuildLocalProfilesForEditor(_settings.Profiles);
             _settings.DefaultProfileId = ResolveDefaultLocalProfileId(_settings.DefaultProfileId, _profilesList);
@@ -3464,6 +3515,9 @@ namespace Ntilde
             _settings.TitleBarOrder = _titleBarDraft.BuildSaveOrder();
 
             _settings.Save();
+            // R1: a changed persistence setting forgets the first-close answer; turned back on, the next close asks again.
+            ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, _settings.SessionPersistence);
+
             Close(true); // Return true to indicate saved
         }
 

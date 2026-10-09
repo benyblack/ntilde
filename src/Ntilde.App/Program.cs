@@ -28,27 +28,34 @@ class Program
             // app was not installed by Velopack (portable zip, winget, dev runs).
             //
             // Velopack also applies an already-downloaded update here by default. That must not
-            // happen behind a live multiplexer daemon: the in-app apply path asks before closing
-            // its sessions and shuts it down first, and this one would do neither (spec §9).
+            // happen behind a live multiplexer daemon the apply would kill - one running from inside
+            // the install root (Phase 5 R10) - nor, with SessionPersistence off, behind any live daemon,
+            // as before Phase 5: the in-app apply path asks before closing its sessions and shuts it
+            // down first, and this one would do neither (spec §9).
             VelopackApp velopack = VelopackApp.Build();
 
             // The install directory goes on the user PATH, so a prompt finds ntilde.com there
             // (Phase 4 spec §11.4). Fast callbacks run only when Velopack starts this exe for that
             // stage, and the process exits after them; a normal start never reaches them. Velopack
             // offers them on Windows only, which is where they are needed.
+            //
+            // Uninstall also stops the local multiplexer daemon and removes its copies (Phase 5 Task 21): the daemon runs
+            // from a copy outside the install root, so the uninstall would otherwise leave it, and every shell, running.
+            // First, within the hook's time budget: the PATH's WM_SETTINGCHANGE broadcast can wait seconds on hung windows.
             if (OperatingSystem.IsWindows())
             {
                 velopack = velopack
                     .OnAfterInstallFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
                     .OnAfterUpdateFastCallback(static _ => UserPathRegistration.Ensure(InstallDirectory()))
-                    .OnBeforeUninstallFastCallback(static _ => UserPathRegistration.Remove(InstallDirectory()));
+                    .OnBeforeUninstallFastCallback(static _ =>
+                    {
+                        Ntilde.Shell.Mux.MuxUninstall.Run();
+                        UserPathRegistration.Remove(InstallDirectory());
+                    });
             }
 
             velopack
-                .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(
-                    args,
-                    static () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(
-                        Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(), TimeSpan.FromMilliseconds(200))))
+                .SetAutoApplyOnStartup(ShouldAutoApplyUpdateOnStartup(args, LiveDaemonBlocksStartupApply))
                 .Run();
 
             if (VtReportCommand.IsSupportedCliMode(args))
@@ -127,6 +134,18 @@ class Program
             TerminalLogger.Log("Ntilde started with args: " + string.Join(" ", args));
             TerminalLogger.Log("Log file path: " + AppLogger.GetLogFilePath());
             TerminalLogger.Log("Build: " + DescribeBuild());
+
+            // Why Velopack was told not to apply a staged update at this start, decided before the log was up.
+            if (Ntilde.Update.MuxUpdateCompatibility.DescribeStartupApplyHold(s_startupApplyHold) is { } held) TerminalLogger.Log(held);
+
+            // A verification run's local update feed (NTILDE_UPDATE_SOURCE_DIR), or a value of it that is ignored: said
+            // at startup, before any update check, so the log never hides where updates come from. Only the verification
+            // install honours it (ruling R1), so the running install's app id goes in: VelopackApp.Run() above has set
+            // the locator by now when this process is a Velopack install, and nothing has when it is not.
+            string? veloAppId = Velopack.Locators.VelopackLocator.IsCurrentSet ? Velopack.Locators.VelopackLocator.Current.AppId : null;
+            _ = Ntilde.Update.UpdateSourceOverride.ResolveFromEnvironment(veloAppId, out string? updateSourceNote);
+            if (updateSourceNote is not null) TerminalLogger.Log(updateSourceNote);
+
             StartupPerformanceTracker.StartNewCurrent();
 
             // GUI path only (CLI and installer-hook invocations returned above), and not from App:
@@ -146,11 +165,10 @@ class Program
 
     /// <summary>
     /// Whether Velopack may apply a staged update while starting up. Never for a <c>mux</c> CLI mode
-    /// (the daemon, or a verb talking to it), and not for the GUI while a daemon is live: in both
-    /// cases the staged update waits for the in-app apply, which confirms and stops the daemon.
-    /// <paramref name="liveDaemon"/> is only asked for the GUI case, so CLI starts never read the disk.
-    /// "Live" means a daemon that answers a 200 ms probe-connect, not merely a descriptor naming a
-    /// pid that happens to still be alive - pids get recycled (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>).
+    /// (the daemon, or a verb talking to it), and not for the GUI while a live daemon is in the
+    /// apply's way (<see cref="LiveDaemonBlocksStartupApply"/>): in both cases the staged update waits
+    /// for the in-app apply, which confirms and stops the daemon. <paramref name="liveDaemon"/> is
+    /// only asked for the GUI case, so CLI starts never read the disk.
     /// </summary>
     internal static bool ShouldAutoApplyUpdateOnStartup(string[] args, Func<bool> liveDaemon) =>
         ShouldAutoApplyUpdateOnStartup(args, liveDaemon, Environment.GetEnvironmentVariable);
@@ -168,6 +186,47 @@ class Program
         if (Ntilde.Shell.Mux.MuxCommand.IsSupportedCliMode(args)) return false;
         if (SshAskPassCommand.IsSupportedCliMode(args, environment)) return false;
         return !liveDaemon();
+    }
+
+    /// <summary>
+    /// The startup gate's question (Phase 5 R10): is a live local daemon in the apply's way? One Velopack's apply would
+    /// kill - its image inside this install's root, or not known to be outside it - always is; a daemon running from its
+    /// own copy (<see cref="Ntilde.Shell.Mux.MuxDaemonImage"/>) survives the apply and holds the update back only with
+    /// SessionPersistence off, which keeps the gate as it was before Phase 5. "Live" means a daemon that answers a 200 ms
+    /// probe-connect, not merely a descriptor naming a pid that happens to still be alive - pids get recycled
+    /// (<see cref="Ntilde.Mux.Daemon.MuxStartupProbe"/>). Only then are the descriptor, the image (one process lookup)
+    /// and the setting read - the setting straight from settings.json under the same root the descriptor is in
+    /// (<see cref="Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile"/>; AppPaths is not touched this early).
+    /// </summary>
+    private static bool LiveDaemonBlocksStartupApply()
+    {
+        s_startupApplyHold = StartupApplyHoldAt(Ntilde.Mux.Contracts.MuxDiscovery.GetRootDirectory(), Ntilde.Shell.Mux.MuxDaemonImage.CurrentVelopackInstallRoot());
+        return s_startupApplyHold != Ntilde.Update.StartupApplyHold.None;
+    }
+
+    /// <summary>
+    /// What the startup gate decided (<see cref="LiveDaemonBlocksStartupApply"/>), kept for debug.log: the gate runs before
+    /// AppLogger is up, and Main logs why it held once it is (PR #511 heads-up). None when it did not hold or never ran.
+    /// </summary>
+    private static Ntilde.Update.StartupApplyHold s_startupApplyHold;
+
+    /// <summary>
+    /// <see cref="LiveDaemonBlocksStartupApply"/>'s composition for the app-data root <paramref name="appDataRoot"/>: the
+    /// gate's reason (<see cref="Ntilde.Update.MuxUpdateCompatibility.StartupApplyHoldFor"/>; any but None holds), with the
+    /// descriptor and settings.json both read under that root. <paramref name="installRoot"/> is this install's Velopack
+    /// root (null when there is none); <paramref name="connect"/> is the probe's connect, and <paramref name="daemonImagePath"/>
+    /// the descriptor's daemon's image (<see cref="Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath"/>), seams for tests.
+    /// </summary>
+    internal static Ntilde.Update.StartupApplyHold StartupApplyHoldAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null,
+        Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?>? daemonImagePath = null)
+    {
+        string descriptorPath = Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(appDataRoot);
+        return Ntilde.Update.MuxUpdateCompatibility.StartupApplyHoldFor(
+            installRoot,
+            () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(descriptorPath, TimeSpan.FromMilliseconds(200), connect),
+            () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadDescriptor(descriptorPath, out Ntilde.Mux.Contracts.MuxEndpointDescriptor? descriptor) ? descriptor : null,
+            daemonImagePath ?? Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath,
+            () => Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile(System.IO.Path.Combine(appDataRoot, "settings.json")));
     }
 
     /// <summary>

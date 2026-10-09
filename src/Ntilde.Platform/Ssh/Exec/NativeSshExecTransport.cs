@@ -105,8 +105,10 @@ public sealed class NativeSshExecTransport : ISshExecTransport
         try
         {
             // A responder per connection: the vault's password is offered once per connection, like a
-            // shell session's. No session id, because this connection is not in ActiveSshSessionRegistry
-            // (spec §8.4), so a password typed here is not kept for reconnects.
+            // shell session's. Never a session id (Phase 5 Task 28): the window's handler would then keep a
+            // password typed here under it and replay it on the next prompt, around the remote host's own
+            // rules (a refused password is not offered again; a profile with jump hops replays none). The
+            // host's prompts hand what was typed to its SFTP connections themselves, through its password scope.
             channel = new NativeSshExecChannel(
                 handle, _interop, new NativeSshPromptResponder(_profile, sessionId: null), _interactionHandler, DisplayName, _log, ExitGrace);
         }
@@ -172,7 +174,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     /// <summary>How long a closed session's poll thread may take to stop.</summary>
     internal static readonly TimeSpan StopWait = TimeSpan.FromSeconds(2);
 
-    private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(10);
+    private static readonly TimeSpan IdleWait = TimeSpan.FromMilliseconds(100);
 
     /// <summary>Unread stdout at which the poll thread stops and waits for the reader.</summary>
     internal const long StdoutPauseThresholdBytes = 16L * 1024 * 1024;
@@ -384,7 +386,13 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                 NativeSshEvent? next = _interop.PollEvent(handle);
                 if (next is null)
                 {
-                    Thread.Sleep(PollDelay);
+                    // Parks until the native side queues something. Bounded so _stop is seen and the
+                    // handle's reference (held for the call) never delays a close for long. Relies on
+                    // the native worker queueing Closed before it marks the session closed: otherwise
+                    // a closed, empty session would return at once and this loop would spin. The
+                    // native close now usually completes on this thread (the SafeHandle release
+                    // runs when the last reference drops), bounded by Close's StopWait.
+                    _interop.WaitForEvent(handle, IdleWait);
                     continue;
                 }
 

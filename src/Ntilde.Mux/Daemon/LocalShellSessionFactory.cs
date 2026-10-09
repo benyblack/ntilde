@@ -12,6 +12,17 @@ public sealed class LocalShellSessionFactory : ITerminalSessionFactory
 {
     public static readonly LocalShellSessionFactory Instance = new();
 
+    private readonly string? _agentLinkPath;
+
+    public LocalShellSessionFactory() : this(null) { }
+
+    /// <param name="agentLinkPath">
+    /// The stable <see cref="AgentSocketLink"/> this daemon's shells get as <c>SSH_AUTH_SOCK</c> (null: none, so the
+    /// environment is untouched). Set only by the standalone daemon, whose shells outlive the ssh connection that
+    /// forwarded the agent; the GUI's own daemon never uses this factory.
+    /// </param>
+    public LocalShellSessionFactory(string? agentLinkPath) => _agentLinkPath = agentLinkPath;
+
     /// <summary>The shells that take <c>-l</c> for a login shell, by basename.</summary>
     private static readonly HashSet<string> LoginShells = new(StringComparer.Ordinal) { "bash", "zsh", "fish", "ksh", "sh", "dash" };
 
@@ -32,7 +43,23 @@ public sealed class LocalShellSessionFactory : ITerminalSessionFactory
             arguments,
             cwd,
             skipPowerShellPostLaunchInit: request.SkipPowerShellPostLaunchInit,
-            environmentOverrides: request.EnvironmentOverrides);
+            environmentOverrides: WithAgentLink(request.EnvironmentOverrides, _agentLinkPath, Environment.GetEnvironmentVariable, AgentSocketLink.LinkExists));
+    }
+
+    /// <summary>
+    /// <paramref name="overrides"/> plus <c>SSH_AUTH_SOCK=<paramref name="linkPath"/></c>, when there is a link path and
+    /// the daemon was started with an <c>SSH_AUTH_SOCK</c> or the link already exists; otherwise
+    /// <paramref name="overrides"/> itself, so hosts without agent forwarding see no change.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string>? WithAgentLink(
+        IReadOnlyDictionary<string, string>? overrides, string? linkPath, Func<string, string?> getEnvironmentVariable, Func<string, bool> linkExists)
+    {
+        if (string.IsNullOrEmpty(linkPath)) return overrides;
+        if (string.IsNullOrEmpty(getEnvironmentVariable("SSH_AUTH_SOCK")) && !linkExists(linkPath)) return overrides;
+
+        var merged = overrides is null ? new Dictionary<string, string>() : new Dictionary<string, string>(overrides);
+        merged["SSH_AUTH_SOCK"] = linkPath;
+        return merged;
     }
 
     /// <summary>

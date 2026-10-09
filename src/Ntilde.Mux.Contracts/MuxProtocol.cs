@@ -76,6 +76,14 @@ public static class MuxMethods
     /// <summary>Request: the daemon kills every session and exits (spec §4). Additive.</summary>
     public const string Shutdown = "shutdown";
 
+    /// <summary>
+    /// Request (Phase 5, optional): a session's headless screen and status for a caller that need not be attached
+    /// (<see cref="ReadScreenParams"/> → <see cref="ReadScreenResult"/>). Optional on any negotiated version: a daemon
+    /// older than it answers with a request-level <see cref="MuxErrorCodes.ProtocolError"/>, which a client reads as
+    /// "unsupported", so a daemon that knows it never refuses with that code.
+    /// </summary>
+    public const string ReadScreen = "readScreen";
+
     /// <summary>Notification (server → client).</summary>
     public const string Exited = "exited";
 

@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Threading;
+using Ntilde.Mux.Contracts;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Shell;
 
@@ -33,13 +35,25 @@ internal sealed class SshAskPassSessionMarkers
     private const string AnsweredExtension = ".answered";
     private const string DeclinedExtension = ".declined";
 
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+
     private readonly Lazy<string> _directory;
+    private readonly Action<string>? _log;
+    private readonly Action<string, UnixFileMode> _setMode;
+    private int _refusalLogged; // 1 once a folder that cannot be made private was logged
 
     /// <param name="directory">Where the records go; read only when one is looked up or written.</param>
-    public SshAskPassSessionMarkers(Func<string> directory)
+    /// <param name="log">Where a folder that cannot be made private is reported, once (<see cref="PrepareFolder"/>).</param>
+    /// <param name="setMode">chmod, off Windows; the seam a test makes fail.</param>
+    public SshAskPassSessionMarkers(Func<string> directory, Action<string>? log = null, Action<string, UnixFileMode>? setMode = null)
     {
         ArgumentNullException.ThrowIfNull(directory);
         _directory = new Lazy<string>(directory);
+        _log = log;
+        _setMode = setMode ?? ((path, mode) =>
+        {
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, mode);
+        });
     }
 
     /// <summary>The app's own folder for them: <c>askpass</c> under the app-data root.</summary>
@@ -60,7 +74,7 @@ internal sealed class SshAskPassSessionMarkers
     public void RecordDeclined(string token) => Create(token, DeclinedExtension, claim: false);
 
     /// <summary>
-    /// Whether records can be written now (Greptile G1): the folder exists or can be created, and takes a new file - a probe
+    /// Whether records can be written now (Greptile G1): the folder exists or can be created, is private (<see cref="PrepareFolder"/>), and takes a new file - a probe
     /// created and deleted at once. An automatic attempt offers the saved password only then: without its record, a refused
     /// saved password could not be counted, and every later attempt would send it again.
     /// </summary>
@@ -68,7 +82,7 @@ internal sealed class SshAskPassSessionMarkers
     {
         try
         {
-            Directory.CreateDirectory(_directory.Value);
+            if (!PrepareFolder()) return false;
             string probe = Path.Combine(_directory.Value, "probe-" + Guid.NewGuid().ToString("N") + ".tmp");
             using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 1, FileOptions.DeleteOnClose))
             {
@@ -104,7 +118,7 @@ internal sealed class SshAskPassSessionMarkers
         RequireToken(token);
         try
         {
-            Directory.CreateDirectory(_directory.Value);
+            if (!PrepareFolder()) return false;
             using (new FileStream(PathOf(token, extension), FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
             {
             }
@@ -120,6 +134,56 @@ internal sealed class SshAskPassSessionMarkers
 
         SweepStale();
         return true;
+    }
+
+    /// <summary>
+    /// Creates the folder (0700 when new, <see cref="PrivateDirectory.Create"/>) and, off Windows, makes sure it is private
+    /// before a record goes in (Codex review of PR #511, P2). An upgrade usually finds the folder an earlier build made under
+    /// the umask, often 0755, and <see cref="PrivateDirectory"/> leaves an existing folder as it is: judging it is its
+    /// owner's job, and the askpass records are this class's. So: a symbolic link in its place is refused, never followed;
+    /// a mode other than exactly 0700 is set to 0700 and read back. chmod works only for the owner (or root), so a failure
+    /// means the folder is not ours. Then, or on any failure, false: nothing is written there, logged once. Every caller
+    /// already treats that as "cannot record": the app offers no saved password to an automatic reconnect, and the helper
+    /// fills nothing from the vault, so there is no evidence either way - never "answered", never "declined".
+    /// </summary>
+    private bool PrepareFolder()
+    {
+        string folder = _directory.Value;
+        if (OperatingSystem.IsWindows())
+        {
+            PrivateDirectory.Create(folder);
+            return true;
+        }
+
+        try
+        {
+            // Before anything that follows a link: Directory.Exists (in PrivateDirectory.Create) and chmod both do.
+            if (IsLink(folder)) return Refuse($"{folder} is a symbolic link");
+            PrivateDirectory.Create(folder);
+            if (IsLink(folder)) return Refuse($"{folder} is a symbolic link");
+
+            UnixFileMode mode = File.GetUnixFileMode(folder);
+            if (mode == OwnerOnly) return true;
+            _setMode(folder, OwnerOnly);
+            mode = File.GetUnixFileMode(folder);
+            return mode == OwnerOnly || Refuse($"{folder} still has mode {Convert.ToString((int)mode, 8)} after a chmod to 700");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return Refuse($"{folder} could not be made private (mode 700): {ex.Message}");
+        }
+
+        static bool IsLink(string path) => new DirectoryInfo(path).LinkTarget is not null;
+    }
+
+    private bool Refuse(string why)
+    {
+        if (Interlocked.Exchange(ref _refusalLogged, 1) == 0)
+        {
+            _log?.Invoke($"[askpass] {why}; no askpass record is written there, and without one the saved password is not filled from the vault");
+        }
+
+        return false;
     }
 
     private static void RequireToken(string token)

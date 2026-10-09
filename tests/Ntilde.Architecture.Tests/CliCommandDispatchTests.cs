@@ -278,6 +278,58 @@ public class CliCommandDispatchTests
             "The hooks' delegate targets must be referenced only by Program.Main, which registers them; they are referenced by: " + Describe(targetRefs));
     }
 
+    /// <summary>
+    /// Phase 5 Task 21 review fix 2: on a Windows install the local daemon runs from its own copy outside the install
+    /// root, so uninstalling no longer stops it by itself. Velopack's uninstall hook does - <c>MuxUninstall.Run</c> stops
+    /// the daemon and removes the copies - and nothing else reaches that code: anywhere else it would end the user's
+    /// shells, or delete the copy a running daemon needs, on an ordinary start. So the chain is pinned link by link: the
+    /// hook's delegate calls <c>Run</c>, <c>Run</c> alone calls <c>MuxUninstall.StopDaemonAndRemoveCopies</c>, and that
+    /// alone calls <c>MuxDaemonImage.RemoveAllCopies</c>. The hook's target is found as
+    /// <see cref="The_PATH_is_registered_only_from_the_Velopack_hooks"/> finds it.
+    /// </summary>
+    [Fact]
+    public void The_uninstall_hook_stops_the_multiplexer_and_removes_its_copies()
+    {
+        Type program = App.GetType("Ntilde.Program", throwOnError: true)!;
+        MethodInfo main = program.GetMethod("Main", CommandMemberFlags, StringArrayParameter)!;
+        Type uninstallType = App.GetType("Ntilde.Shell.Mux.MuxUninstall", throwOnError: true)!;
+        MethodInfo run = uninstallType.GetMethod("Run", CommandMemberFlags)!;
+        MethodInfo stopAndRemove = uninstallType.GetMethod("StopDaemonAndRemoveCopies", CommandMemberFlags)!;
+        MethodInfo removeAll = App.GetType("Ntilde.Shell.Mux.MuxDaemonImage", throwOnError: true)!.GetMethod("RemoveAllCopies", CommandMemberFlags)!;
+
+        List<(OpCode Op, int Token)> mainRefs = MethodReferences(main);
+        MethodBase Resolve(int token) => main.Module.ResolveMethod(token)!;
+        int site = Enumerable.Range(0, mainRefs.Count).FirstOrDefault(
+            i => (mainRefs[i].Op == OpCodes.Callvirt || mainRefs[i].Op == OpCodes.Call)
+                && Resolve(mainRefs[i].Token) is { Name: "OnBeforeUninstallFastCallback" } m && m.DeclaringType?.FullName == "Velopack.VelopackApp",
+            -1);
+        Assert.True(site >= 0, "App Program.Main no longer registers VelopackApp.OnBeforeUninstallFastCallback.");
+        int ftn = mainRefs.FindLastIndex(site, r => r.Op == OpCodes.Ldftn);
+        Assert.True(ftn >= 0, "No delegate target found before VelopackApp.OnBeforeUninstallFastCallback in App Program.Main.");
+        MethodBase uninstall = Resolve(mainRefs[ftn].Token);
+
+        List<MethodBase> bodies = AllMethodBodies(App).ToList();
+        HashSet<MethodBase> ReferencesTo(MethodInfo target) =>
+            bodies.Where(m => MethodReferences(m).Exists(r => r.Token == target.MetadataToken)).ToHashSet();
+
+        HashSet<MethodBase> runRefs = ReferencesTo(run);
+        Assert.True(runRefs.SetEquals([uninstall]),
+            "MuxUninstall.Run must be called from the uninstall hook's delegate and nowhere else; it is referenced by: " + Describe(runRefs));
+        HashSet<MethodBase> stopAndRemoveRefs = ReferencesTo(stopAndRemove);
+        Assert.True(stopAndRemoveRefs.SetEquals([run]),
+            "MuxUninstall.StopDaemonAndRemoveCopies must be called from MuxUninstall.Run and nowhere else; it is referenced by: " + Describe(stopAndRemoveRefs));
+        HashSet<MethodBase> removeAllRefs = ReferencesTo(removeAll);
+        Assert.True(removeAllRefs.SetEquals([stopAndRemove]),
+            "MuxDaemonImage.RemoveAllCopies must be called from MuxUninstall.StopDaemonAndRemoveCopies and nowhere else; it is referenced by: " + Describe(removeAllRefs));
+
+        // Before the PATH: its WM_SETTINGCHANGE broadcast may wait seconds on hung windows, out of the hook's budget.
+        MethodInfo removePath = App.GetType("Ntilde.Shell.UserPathRegistration", throwOnError: true)!.GetMethod("Remove", CommandMemberFlags)!;
+        List<(OpCode Op, int Token)> hookRefs = MethodReferences(uninstall);
+        int runAt = hookRefs.FindIndex(r => r.Token == run.MetadataToken);
+        int removePathAt = hookRefs.FindIndex(r => r.Token == removePath.MetadataToken);
+        Assert.True(runAt >= 0 && removePathAt > runAt, "The uninstall hook must call MuxUninstall.Run before UserPathRegistration.Remove.");
+    }
+
     private static string Describe(IEnumerable<MethodBase> methods) =>
         string.Join(", ", methods.Select(m => $"{m.DeclaringType?.FullName}.{m.Name}").DefaultIfEmpty("<nothing>"));
 

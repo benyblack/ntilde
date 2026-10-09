@@ -50,6 +50,7 @@
     <Compile Include="..\Ntilde.Mux.Tests\Support\ParserFaultInjection.cs" Link="MuxSupport\ParserFaultInjection.cs" />
     <Compile Include="..\Ntilde.Mux.Tests\Support\FakeConsoleSurface.cs" Link="MuxSupport\FakeConsoleSurface.cs" />
     <Compile Include="..\Ntilde.Mux.Tests\Support\FakeMuxServerEnd.cs" Link="MuxSupport\FakeMuxServerEnd.cs" />
+    <Compile Include="..\Ntilde.Mux.Tests\Support\FullSendQueue.cs" Link="MuxSupport\FullSendQueue.cs" />
     <Compile Include="..\Ntilde.VT.Tests\StateTransfer\TerminalStateAssert.cs" Link="MuxSupport\TerminalStateAssert.cs" />
   </ItemGroup>
 

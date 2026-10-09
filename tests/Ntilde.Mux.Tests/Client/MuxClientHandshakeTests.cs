@@ -18,6 +18,24 @@ public sealed class MuxClientHandshakeTests
     }
 
     [Fact]
+    public async Task ServerVersion_is_the_servers_AppVersion()
+    {
+        using var host = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = "9.9.9" });
+        MuxClient client = await host.ConnectClientAsync();
+
+        Assert.Equal("9.9.9", client.ServerVersion);
+    }
+
+    [Fact]
+    public async Task ServerVersion_is_null_against_a_v1_server_built_without_one()
+    {
+        using var host = new MuxTestHost(new MuxServerOptions { MaxProtocolVersion = 1, ForceConPtyFiltering = false });
+        MuxClient client = await host.ConnectClientAsync();
+
+        Assert.Null(client.ServerVersion);
+    }
+
+    [Fact]
     public async Task Disjoint_ranges_throw_version_mismatch_and_the_server_drops_the_connection()
     {
         using var host = new MuxTestHost();

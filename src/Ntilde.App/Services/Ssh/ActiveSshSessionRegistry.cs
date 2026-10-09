@@ -10,7 +10,14 @@ namespace Ntilde.Services.Ssh;
 public sealed class ActiveSshSessionRegistry
 {
     private static readonly Lazy<ActiveSshSessionRegistry> Shared = new(() => new ActiveSshSessionRegistry());
-    private readonly ConcurrentDictionary<Guid, ActiveSshSessionDescriptor> _sessions = new();
+
+    /// <summary>
+    /// Every live registration of each session id, oldest first; a lookup sees the latest. A plain session has one. A remote
+    /// daemon session can have several (Task 28 fix round 1): the owner's window and a share opened in another window each
+    /// register it, with their own host's password scope. When one lets go, the one before it is what a lookup sees again.
+    /// </summary>
+    private readonly Dictionary<Guid, List<ActiveSshSessionDescriptor>> _sessions = new(); // guarded by _sessionsGate
+    private readonly object _sessionsGate = new();
 
     /// <summary>
     /// Session passwords, held as UTF-8 in pinned buffers rather than as <see cref="string"/>.
@@ -25,7 +32,7 @@ public sealed class ActiveSshSessionRegistry
     /// Two properties change here, and both are about the long-lived copy specifically:
     ///
     /// <list type="bullet">
-    /// <item><b>Clearable.</b> Bytes are zeroed on overwrite and on <see cref="Unregister"/>, so the
+    /// <item><b>Clearable.</b> Bytes are zeroed on overwrite and on <see cref="Unregister(Guid)"/>, so the
     /// window shrinks from "process lifetime" to "session lifetime".</item>
     /// <item><b>Not relocatable.</b> The buffer is allocated pinned, so compaction cannot leave a stale
     /// copy elsewhere in the heap that nothing has a reference to and nothing can clear.</item>
@@ -50,23 +57,43 @@ public sealed class ActiveSshSessionRegistry
     /// session, a bastion's password was replayed to the target (and handed to every hop of a later
     /// transfer). A lookup has to name the server, so a password can only be returned for the server
     /// it was entered for.
+    ///
+    /// The "session" of a key is a scope: a plain session's own id, or (Phase 5 spec R8) a remote host's
+    /// password scope, which the persisted tabs on that host share (<see cref="PasswordScopeOf"/>).
     /// </remarks>
     private readonly Dictionary<RuntimePasswordKey, byte[]> _runtimePasswords = new();
     private readonly object _runtimePasswordGate = new();
 
     public static ActiveSshSessionRegistry Instance => Shared.Value;
 
+    /// <summary>
+    /// Adds <paramref name="descriptor"/> as its session's latest registration; registrations made before it stay, and are
+    /// seen again once it is unregistered (<see cref="Unregister(ActiveSshSessionDescriptor)"/>). The same instance
+    /// registered again moves to the latest place.
+    /// </summary>
     public void Register(ActiveSshSessionDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
-        _sessions[descriptor.SessionId] = descriptor;
+        lock (_sessionsGate)
+        {
+            if (!_sessions.TryGetValue(descriptor.SessionId, out List<ActiveSshSessionDescriptor>? live))
+            {
+                _sessions[descriptor.SessionId] = live = new List<ActiveSshSessionDescriptor>(1);
+            }
+
+            live.RemoveAll(registered => ReferenceEquals(registered, descriptor));
+            live.Add(descriptor);
+        }
     }
 
+    /// <summary>The latest live registration of <paramref name="sessionId"/>, if it has one.</summary>
     public bool TryGet(Guid sessionId, out ActiveSshSessionDescriptor? descriptor)
     {
-        bool found = _sessions.TryGetValue(sessionId, out ActiveSshSessionDescriptor? stored);
-        descriptor = found ? stored : null;
-        return found;
+        lock (_sessionsGate)
+        {
+            descriptor = _sessions.TryGetValue(sessionId, out List<ActiveSshSessionDescriptor>? live) ? live[^1] : null;
+            return descriptor is not null;
+        }
     }
 
     public bool TryGetActiveNativeSession(Guid profileId, Guid sessionId, out ActiveSshSessionDescriptor? descriptor)
@@ -83,11 +110,60 @@ public sealed class ActiveSshSessionRegistry
         return true;
     }
 
+    /// <summary>A plain tab's teardown: every registration of <paramref name="sessionId"/> goes, with the passwords kept under its id.</summary>
     public void Unregister(Guid sessionId)
     {
-        _sessions.TryRemove(sessionId, out _);
+        lock (_sessionsGate) _sessions.Remove(sessionId);
         ClearRuntimePasswords(sessionId);
     }
+
+    /// <summary>
+    /// Removes <paramref name="descriptor"/> - that instance, compared by reference - from its session's live registrations,
+    /// and returns whether it was there. Two panes can show one remote daemon session (a share opened in another window),
+    /// and each registers it: one letting go removes its own registration only, and the other's is what a lookup sees from
+    /// then on. A descriptor without a <see cref="ActiveSshSessionDescriptor.PasswordScopeId"/> that was its session's last
+    /// takes the session's passwords with it, as <see cref="Unregister(Guid)"/> does; a scoped one leaves them, since they
+    /// are its host's (<see cref="UnregisterScope"/>).
+    /// </summary>
+    public bool Unregister(ActiveSshSessionDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        bool wasTheLast;
+        lock (_sessionsGate)
+        {
+            if (!_sessions.TryGetValue(descriptor.SessionId, out List<ActiveSshSessionDescriptor>? live)) return false;
+            int at = live.FindLastIndex(registered => ReferenceEquals(registered, descriptor));
+            if (at < 0) return false;
+            live.RemoveAt(at);
+            wasTheLast = live.Count == 0;
+            if (wasTheLast) _sessions.Remove(descriptor.SessionId);
+        }
+
+        if (wasTheLast && descriptor.PasswordScopeId is null)
+        {
+            ClearRuntimePasswords(descriptor.SessionId);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The id <paramref name="sessionId"/>'s runtime passwords are kept under: its latest registration's
+    /// <see cref="ActiveSshSessionDescriptor.PasswordScopeId"/> when it has one (a persisted remote tab: its host's), else
+    /// the session's own id - also for a session that is not registered, as before scopes existed. What a lookup made
+    /// for a session passes to <see cref="TryGetRuntimePassword"/>.
+    /// </summary>
+    public Guid PasswordScopeOf(Guid sessionId) =>
+        TryGet(sessionId, out ActiveSshSessionDescriptor? descriptor) && descriptor!.PasswordScopeId is Guid scope
+            ? scope
+            : sessionId;
+
+    /// <summary>
+    /// Clears (and zeroes) every password held under <paramref name="scopeId"/>: a remote host's scope, when the host is
+    /// disposed - which is also how its release ends. Descriptors that name the scope stay until their panes let go; a
+    /// lookup through them then finds nothing, and a host built again has a scope of its own.
+    /// </summary>
+    public void UnregisterScope(Guid scopeId) => ClearRuntimePasswords(scopeId);
 
     /// <summary>
     /// Holds <paramref name="password"/> as the password of <paramref name="user"/> on
@@ -121,6 +197,40 @@ public sealed class ActiveSshSessionRegistry
             }
 
             _runtimePasswords[key] = buffer;
+        }
+    }
+
+    /// <summary>
+    /// Removes (and zeroes) the password <paramref name="sessionId"/> holds for <paramref name="user"/> on
+    /// <paramref name="host"/>:<paramref name="port"/> while it is still <paramref name="refused"/>, and returns whether it
+    /// did: that server refused the value (Codex review of PR #511, P1), so nothing that reads this scope may offer it again.
+    /// A different value - one written after the refused one was offered - stays, as does every other server's.
+    /// </summary>
+    public bool RemoveRuntimePassword(Guid sessionId, string host, int port, string user, string refused)
+    {
+        if (sessionId == Guid.Empty || string.IsNullOrEmpty(refused) || !RuntimePasswordKey.TryCreate(sessionId, host, port, user, out RuntimePasswordKey key))
+        {
+            return false;
+        }
+
+        byte[] candidate = Encoding.UTF8.GetBytes(refused);
+        try
+        {
+            lock (_runtimePasswordGate)
+            {
+                if (!_runtimePasswords.TryGetValue(key, out byte[]? stored) || !CryptographicOperations.FixedTimeEquals(stored, candidate))
+                {
+                    return false;
+                }
+
+                _runtimePasswords.Remove(key);
+                CryptographicOperations.ZeroMemory(stored);
+                return true;
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(candidate);
         }
     }
 
@@ -221,14 +331,23 @@ public sealed class ActiveSshSessionRegistry
 
 public sealed class ActiveSshSessionDescriptor
 {
-    public ActiveSshSessionDescriptor(Guid sessionId, Guid profileId, SshBackendKind backendKind)
+    public ActiveSshSessionDescriptor(Guid sessionId, Guid profileId, SshBackendKind backendKind, Guid? passwordScopeId = null)
     {
         SessionId = sessionId;
         ProfileId = profileId;
         BackendKind = backendKind;
+        PasswordScopeId = passwordScopeId;
     }
 
     public Guid SessionId { get; }
     public Guid ProfileId { get; }
     public SshBackendKind BackendKind { get; }
+
+    /// <summary>
+    /// Where this session's runtime passwords are kept, when not under <see cref="SessionId"/>: a persisted remote tab's
+    /// (Phase 5 spec R8) are its remote host's, which every tab on that host shares and which outlives any one of them, so
+    /// they are kept under the host's scope (<see cref="ActiveSshSessionRegistry.UnregisterScope"/>). Null for a plain
+    /// session, whose own id is its scope.
+    /// </summary>
+    public Guid? PasswordScopeId { get; }
 }

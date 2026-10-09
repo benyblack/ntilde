@@ -12,16 +12,33 @@ namespace Ntilde.Mux;
 /// session opened on it: snapshots, output, resizes, exits and faults are raised there, strictly in
 /// frame order. RPC continuations are forced asynchronous so no awaiting caller ever runs on it.
 /// <see cref="Disconnected"/> (and each session's) is the exception: it is raised on whichever of the
-/// reader thread, the sender thread or the <see cref="Dispose"/> caller ends the connection first.
+/// reader thread, the sender thread, the <see cref="Dispose"/> caller or a caller whose send overflowed
+/// (<see cref="MuxClientOptions.MaxOverflowBytes"/>) ends the connection first.
 /// </summary>
+/// <remarks>
+/// No send blocks its caller (Phase 5, ruling R6): the UI thread types, resizes, detaches and kills through
+/// here, and a stalled link must not freeze it. A frame that finds the send queue full waits in an overflow
+/// behind it, and frames reach the wire in the order of their calls whichever way they went.
+/// </remarks>
 public sealed class MuxClient : IDisposable
 {
     /// <summary>Disconnect reason when the transport simply went away: not an error code, so not in MuxErrorCodes.</summary>
     private const string ReasonDisconnected = "disconnected";
 
+    /// <summary>Disconnect reason when more than <see cref="MuxClientOptions.MaxOverflowBytes"/> waited behind a stalled link.</summary>
+    private const string ReasonSendOverflow = "send overflow";
+
     /// <summary>
-    /// How many frames may wait for the sender: once that many do, a caller sending another blocks until the
-    /// link takes one. Tests fill it to stand in for a stalled link.
+    /// <see cref="MuxProtocolException.Code"/> when a reply arrived whole but its content cannot be used: a
+    /// <see cref="ReadScreenAsync"/> result or snapshot that does not decode. Raised by this client, never sent on the
+    /// wire, so not in <see cref="MuxErrorCodes"/>; and never <c>protocol_error</c>, which a caller may read as
+    /// "this daemon does not know the method".
+    /// </summary>
+    public const string MalformedReplyCode = "malformed_reply";
+
+    /// <summary>
+    /// How many frames may wait for the sender: once that many do, a frame sent next waits in the overflow
+    /// (<see cref="Send"/>) until the link takes one. Tests fill it to stand in for a stalled link.
     /// </summary>
     internal const int OutboundCapacity = 1024;
 
@@ -31,6 +48,23 @@ public sealed class MuxClient : IDisposable
     private readonly Thread _readerThread;
     private readonly Thread _senderThread;
     private readonly BlockingCollection<MuxOutboundFrame> _outbound = new(boundedCapacity: OutboundCapacity);
+
+    /// <summary>
+    /// Guards the overflow, and orders every send against every other and against <see cref="OnDisconnected"/>'s
+    /// <c>CompleteAdding</c>. Held only for non-blocking work.
+    /// </summary>
+    private readonly object _sendGate = new();
+
+    /// <summary>
+    /// Frames sent while <see cref="_outbound"/> was full, or while earlier ones still waited here: in call order.
+    /// The pump moves the head into <see cref="_outbound"/>, and dequeues it only once it is in, so a later send
+    /// cannot overtake it.
+    /// </summary>
+    private readonly Queue<MuxOutboundFrame> _overflow = new();
+
+    private long _overflowBytes; // guarded by _sendGate: the payload bytes waiting in _overflow
+    private bool _pumping;       // guarded by _sendGate: a PumpOverflow work item is queued or running, and owns the head
+
     private readonly ConcurrentDictionary<long, TaskCompletionSource<MuxResponse>> _pending = new();
     private readonly ConcurrentDictionary<long, MuxClientSession> _pendingAttaches = new();
 
@@ -64,6 +98,9 @@ public sealed class MuxClient : IDisposable
 
     /// <summary>From Welcome. Construct the pane's parser with this so both halves of a snapshot parse identically.</summary>
     public bool ForceConPtyFiltering { get; private set; }
+
+    /// <summary>From Welcome: the daemon's build version; null for a server that reports none.</summary>
+    public string? ServerVersion { get; private set; }
 
     public bool IsConnected => Volatile.Read(ref _disconnected) == 0;
     public string? DisconnectReason => Volatile.Read(ref _disconnectReason);
@@ -108,6 +145,7 @@ public sealed class MuxClient : IDisposable
 
             client.ProtocolVersion = welcome.Version;
             client.ForceConPtyFiltering = welcome.ForceConPtyFiltering;
+            client.ServerVersion = welcome.ServerVersion;
             return client;
         }
         catch
@@ -146,6 +184,58 @@ public sealed class MuxClient : IDisposable
 
     public Task PingAsync(CancellationToken cancellationToken = default) =>
         RequestAsync(MuxMethods.Ping, new MuxEmpty(), MuxJsonContext.Default.MuxEmpty, MuxJsonContext.Default.MuxEmpty, cancellationToken);
+
+    /// <summary>
+    /// The daemon's <c>sessionInfo</c> for any session, open on this client or not (Phase 5: the agent host's windowless
+    /// sessions). An unknown id throws <see cref="MuxProtocolException"/> with <see cref="MuxErrorCodes.UnknownSession"/>.
+    /// </summary>
+    public Task<SessionInfoResult> GetSessionInfoAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
+        RequestAsync(MuxMethods.SessionInfo, new SessionIdParams { SessionId = sessionId }, MuxJsonContext.Default.SessionIdParams,
+            MuxJsonContext.Default.SessionInfoResult, cancellationToken);
+
+    /// <summary>
+    /// A session's screen as the daemon's headless parser holds it, and its status, without attaching (Phase 5: the
+    /// agent host's windowless sessions). The daemon clamps <paramref name="maxScrollbackRows"/> to
+    /// 0..<see cref="MuxReadScreenLimits.MaxScrollbackRows"/>. The snapshot passes the same
+    /// <see cref="MuxClientOptions.AttachLimits"/> checks an attach's does.
+    /// </summary>
+    /// <returns>
+    /// Null when the daemon does not know <c>readScreen</c> (it answers <c>protocol_error</c>, on any negotiated version).
+    /// Unsupported is signalled by this null and nothing else: no exception from this method carries <c>protocol_error</c>.
+    /// </returns>
+    /// <exception cref="MuxProtocolException">
+    /// Any other refusal, with its code: <c>unknown_session</c>, <c>session_exited</c> (the session stopped before the
+    /// read ran), <c>snapshot_too_large</c> (past the daemon's <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/> or this
+    /// client's limits: ask for fewer rows), <c>internal_error</c> (a faulted session). A result or snapshot this client
+    /// cannot decode is <see cref="MalformedReplyCode"/>, and fails this call only, never the connection: it arrived
+    /// inside a well-formed reply.
+    /// </exception>
+    public async Task<MuxScreenRead?> ReadScreenAsync(Guid sessionId, int maxScrollbackRows, CancellationToken cancellationToken = default)
+    {
+        long id = Interlocked.Increment(ref _nextId);
+        JsonElement p = MuxFrames.ToElement(new ReadScreenParams { SessionId = sessionId, MaxScrollbackRows = maxScrollbackRows },
+            MuxJsonContext.Default.ReadScreenParams);
+        MuxResponse response = await SendAndAwaitAsync(id, MuxMethods.ReadScreen, p, cancellationToken).ConfigureAwait(false);
+        if (response.Error is { } error)
+        {
+            // An older daemon's answer to a method it does not know. A daemon that knows readScreen never refuses with
+            // this code (it clamps instead), so it means "unsupported" whichever version was negotiated.
+            if (error.Code == MuxErrorCodes.ProtocolError) return null;
+            throw new MuxProtocolException(error.Code, error.Message);
+        }
+
+        try
+        {
+            ReadScreenResult result = MuxFrames.ParseParams(response.Result, MuxJsonContext.Default.ReadScreenResult);
+            TerminalStateSnapshot snapshot = DecodeSnapshot(result.Snapshot);
+            return new MuxScreenRead(snapshot, result with { Snapshot = [] }); // the bytes are decoded: do not hold both
+        }
+        catch (MuxProtocolException ex) when (ex.Code == MuxErrorCodes.ProtocolError)
+        {
+            // Corruption inside a well-formed reply. snapshot_too_large (a limit) keeps its own code.
+            throw new MuxProtocolException(MalformedReplyCode, $"The readScreen reply cannot be decoded: {ex.Message}", ex);
+        }
+    }
 
     /// <summary>
     /// Asks the daemon to kill every session and exit (spec §4). Completes once the server has
@@ -256,6 +346,19 @@ public sealed class MuxClient : IDisposable
 
     internal void SendInput(Guid sessionId, string text) => Post(MuxFrames.Input(sessionId, Encoding.UTF8.GetBytes(text)));
 
+    /// <summary>
+    /// Input for a session this client has not opened or attached (Phase 5: the agent host's windowless sessions): the
+    /// daemon takes Input frames from any connection. Never blocks, like every send (ruling R6). Fire-and-forget, so
+    /// nothing reports an unknown or exited session: ask <see cref="GetSessionInfoAsync"/> first. Empty text sends
+    /// nothing. The daemon drops it while this connection is attached to the session read-only.
+    /// </summary>
+    public void SendInputTo(Guid sessionId, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (text.Length == 0) return;
+        SendInput(sessionId, text);
+    }
+
     internal void SendResize(Guid sessionId, int cols, int rows, MuxPresentation? presentation) =>
         PostRequest(MuxMethods.Resize, new ResizeParams { SessionId = sessionId, Cols = cols, Rows = rows, Presentation = presentation },
             MuxJsonContext.Default.ResizeParams);
@@ -306,29 +409,113 @@ public sealed class MuxClient : IDisposable
         }
     }
 
+    /// <summary>A request's frame. Never blocks; a frame that cannot be sent fails the request (<see cref="IOException"/>).</summary>
     private void Enqueue(MuxOutboundFrame frame)
     {
-        try
+        if (!Send(frame)) throw Closed();
+    }
+
+    /// <summary>A fire-and-forget frame. Never blocks; a frame that cannot be sent is dropped: there is nobody to tell.</summary>
+    private void Post(MuxOutboundFrame frame) => Send(frame);
+
+    /// <summary>
+    /// The one send path, which never blocks its caller. The frame joins the send queue when the queue has room and
+    /// nothing waits in the overflow; otherwise it joins the overflow, which one pool work item at a time
+    /// (<see cref="PumpOverflow"/>) moves into the queue in order. Takes the frame's reference either way. False when
+    /// the frame is not sent and never will be: the client is disconnected, or this frame took the overflow past
+    /// <see cref="MuxClientOptions.MaxOverflowBytes"/>, and that disconnected it.
+    /// </summary>
+    private bool Send(MuxOutboundFrame frame)
+    {
+        bool overflowed = false;
+        lock (_sendGate)
         {
-            _outbound.Add(frame);
+            if (_outbound.IsAddingCompleted)
+            {
+                frame.Release();
+                return false;
+            }
+
+            if (_overflow.Count == 0 && _outbound.TryAdd(frame)) return true;
+
+            _overflow.Enqueue(frame);
+            _overflowBytes += frame.PayloadLength;
+            if (_overflowBytes > _options.MaxOverflowBytes)
+            {
+                overflowed = true;
+            }
+            else if (!_pumping)
+            {
+                _pumping = true;
+                ThreadPool.UnsafeQueueUserWorkItem(static client => client.PumpOverflow(), this, preferLocal: false);
+            }
         }
-        catch (InvalidOperationException)
+
+        if (!overflowed) return true;
+        FaultFromSendOverflow(); // outside the gate: the disconnect raises host code
+        return false;
+    }
+
+    /// <summary>
+    /// Moves the overflow into the send queue, head first, blocking this pool thread - never a caller - while the queue
+    /// is full. One runs at a time per client (<see cref="_pumping"/>). The head leaves the overflow only once the queue
+    /// has taken it, so a send meanwhile lines up behind it instead of overtaking it. Once the client is disconnected it
+    /// releases whatever is left: <see cref="OnDisconnected"/> leaves that to a pump, whose head may be in flight.
+    /// </summary>
+    private void PumpOverflow()
+    {
+        while (true)
         {
-            frame.Release();
-            throw Closed();
+            MuxOutboundFrame next;
+            lock (_sendGate)
+            {
+                if (_outbound.IsAddingCompleted) DropOverflowLocked();
+                if (_overflow.Count == 0)
+                {
+                    _pumping = false;
+                    return;
+                }
+
+                next = _overflow.Peek();
+            }
+
+            bool added;
+            try
+            {
+                _outbound.Add(next);
+                added = true;
+            }
+            catch (InvalidOperationException)
+            {
+                added = false; // CompleteAdding: the client disconnected while this waited for room
+            }
+
+            lock (_sendGate)
+            {
+                _overflow.Dequeue();
+                _overflowBytes -= next.PayloadLength;
+                if (!added) next.Release();
+            }
         }
     }
 
-    private void Post(MuxOutboundFrame frame)
+    private void DropOverflowLocked()
     {
-        try
-        {
-            _outbound.Add(frame);
-        }
-        catch (InvalidOperationException)
-        {
-            frame.Release(); // disconnected: fire-and-forget has nobody to tell
-        }
+        while (_overflow.TryDequeue(out MuxOutboundFrame? frame)) frame.Release();
+        _overflowBytes = 0;
+    }
+
+    /// <summary>
+    /// More than <see cref="MuxClientOptions.MaxOverflowBytes"/> waits behind the link: it is given up, with the
+    /// teardown a read error gets. Pending requests fail, the overflow is released, and <see cref="Disconnected"/>
+    /// hands the connection to the host's reconnect or drop path. Raised on the sending caller's thread.
+    /// </summary>
+    private void FaultFromSendOverflow()
+    {
+        if (!IsConnected) return; // another send's overflow, or anything else, ended it first
+        SafeLog($"[MuxClient] outbound overflow past {_options.MaxOverflowBytes} bytes; disconnecting");
+        try { OnDisconnected(ReasonSendOverflow); }
+        catch (Exception ex) { SafeLog($"[MuxClient] a Disconnected handler threw: {ex}"); }
     }
 
     private IOException Closed() => new($"The mux connection is closed ({DisconnectReason ?? ReasonDisconnected}).");
@@ -523,6 +710,13 @@ public sealed class MuxClient : IDisposable
         tcs?.TrySetResult(new MuxResponse { Id = requestId });
     }
 
+    /// <summary>
+    /// The one decode of a daemon's snapshot, shared by attach (<see cref="OnSnapshot"/>, on the reader thread) and
+    /// <see cref="ReadScreenAsync"/> (on the caller's): <see cref="MuxClientOptions.AttachLimits"/> is checked here, so
+    /// neither path can adopt more than the other. Throws <see cref="MuxProtocolException"/>: <c>snapshot_too_large</c>
+    /// past a limit, <c>protocol_error</c> when malformed. What that costs is each caller's own decision: attach drops the
+    /// connection, and <see cref="ReadScreenAsync"/> fails its call with <see cref="MalformedReplyCode"/>.
+    /// </summary>
     private TerminalStateSnapshot DecodeSnapshot(ReadOnlySpan<byte> json)
     {
         MuxAttachLimits limits = _options.AttachLimits;
@@ -566,7 +760,14 @@ public sealed class MuxClient : IDisposable
     {
         if (Interlocked.Exchange(ref _disconnected, 1) != 0) return;
         Interlocked.CompareExchange(ref _disconnectReason, reason ?? ReasonDisconnected, null);
-        _outbound.CompleteAdding();
+        lock (_sendGate)
+        {
+            // No send queues anything after this, and a pump blocked in Add throws out of it. A pump that runs
+            // releases what is left itself: its head may be in flight into the queue, which then owns it.
+            _outbound.CompleteAdding();
+            if (!_pumping) DropOverflowLocked();
+        }
+
         try { _stream.Dispose(); }
         catch (IOException) { /* closing a transport the peer already dropped - the goal is reached */ }
 

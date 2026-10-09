@@ -132,7 +132,8 @@ An SSH tab whose profile opts in (`SshMuxOptions.PersistRemoteSessions`, the edi
 its shell inside `ntilde-mux`, Ntilde's multiplexer daemon, on the remote host. The GUI reaches the
 daemon through an SSH exec channel running `ntilde-mux proxy --stdio`, so the shell survives a
 network drop, a closed window and an app restart, and a reconnect reattaches with a snapshot. The
-user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCHITECTURE.md` §8.2.
+user-facing description is `docs/USER_MANUAL.md` chapter 12 (12.6 for SSH tabs); the design is
+`docs/ARCHITECTURE.md` §8.2.
 
 ### Both backends
 
@@ -143,8 +144,10 @@ user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCH
   `-M`, `-W`/`-O`/`-Q` with their argument, and the `-o` keywords `RequestTTY`, `SessionType`,
   `ForkAfterAuthentication`, `StdinNull`, `RemoteCommand` and `PermitLocalCommand`. A user-started connect uses Ntilde as
   `SSH_ASKPASS`, so prompts appear as Ntilde dialogs (the vault password is offered only to a
-  prompt that names the target's `user@host`). An automatic reconnect runs in batch mode with no
-  askpass at all, so a password-only OpenSSH profile reconnects on Enter.
+  prompt that names the target's `user@host`, and not through a jump host it cannot tell from the
+  target). An automatic reconnect never prompts: it runs in batch mode, or, when the profile's password
+  is saved in the vault and ssh is 8.4 or newer, with the askpass helper in its vault-only mode, which
+  answers the target's password once and refuses everything else.
 - **Native** (`NativeSshExecTransport`) uses rusty_ssh's exec mode: `nova_ssh_exec(args, command)`
   takes the same hop, auth and prompt path as a shell session (jump chains, identity files, agent,
   known hosts, keepalive), then opens a session channel and `exec`s the command with no PTY and no
@@ -166,30 +169,35 @@ user-facing description is `docs/USER_MANUAL.md` §3.3; the design is `docs/ARCH
 The connection editor's **Install ntilde-mux on this host…** probes the host over an exec channel
 (`uname`, the C library, `$HOME`), takes the matching `ntilde-mux-<rid>` from the GitHub release
 (SHA-256-verified and cached) or from a file the user picks, and streams it over another exec into
-`~/.local/share/ntilde/bin/ntilde-mux` (upload by `cat` to a temp file, size check, trial run, then
-rename: this replaces a running binary safely, answers prompts, and sets the mode, none of which
-`RunSftpTransfer` does). Supported hosts: Linux x64/arm64 with glibc 2.35 or newer, macOS arm64.
+`~/.local/share/ntilde/bin/ntilde-mux`, or under `$XDG_DATA_HOME` when the host sets it (upload by
+`cat` to a temp file, size check, trial run, then rename: this replaces a running binary safely,
+answers prompts, and sets the mode, none of which `RunSftpTransfer` does). The release's hashes are
+built into the app, so a download must match them. Supported hosts: Linux x64/arm64 with glibc 2.34
+or newer, macOS arm64.
 musl, BSD, Intel Macs and Windows hosts are refused with the reason, and the tab stays plain SSH.
 
 On the host, `ntilde-mux` keeps its descriptor, socket, lock and log under a root of its own,
-`~/.local/share/ntilde/ntilde-mux` (`~/Library/Application Support/ntilde/ntilde-mux` on macOS),
+`~/.local/share/ntilde/ntilde-mux` (under `$XDG_DATA_HOME` when set;
+`~/Library/Application Support/ntilde/ntilde-mux` on macOS),
 never the Ntilde app's: on a host that also runs the app, the app's daemon and `ntilde-mux` stay
 apart, so neither serves (or adopts, or shuts down) the other's shells.
 
 ### Deferred
 
-- SFTP sidebar, remote files and port forwards on a persistent remote tab: such a tab is not an
-  `ActiveSshSessionRegistry` native session, and the exec channel carries no forwards. The
-  follow-up runs forwards on the exec connection and registers the pane for the sidebar.
-- Remote sessions in the "Attach to session…" picker, and adoption of remote orphans.
+- Port forwards on a persistent remote tab: the exec channel carries no forwards (Phase 5 spec R8:
+  they would share the mux link's event queue, drop on every reconnect and collide with plain tabs
+  of the profile). Since Phase 5 the SFTP sidebar and transfers work there for native profiles: the
+  pane registers in `ActiveSshSessionRegistry` with its remote host's password scope. OpenSSH
+  persisted tabs get the palette's transfers (scp on its own connection), not the sidebar.
+- Adoption of remote orphans: a remote shell no saved tab names is listed by "Attach to session…"
+  (Phase 5) but not reopened on its own.
 - Password memory keyed by (kind, host, user), so a jump-chain profile with passwords can
   reconnect on its own; this needs the native `PasswordPrompt` to carry the host and user.
-- The native exec channel polls with a 10 ms idle sleep, which puts a floor of about 15 ms under
-  each request round trip (OpenSSH: about 2 ms); an event-driven wakeup from rusty_ssh would remove
-  it.
-- Refreshing `SSH_AUTH_SOCK` in long-lived remote shells (tmux's `update-environment`).
-- Embedding the release's `ntilde-mux` SHA-256s in the app at build time instead of trusting the
-  `.sha256` next to each asset.
+
+Done in Phase 5 (`docs/superpowers/specs/2026-10-08-ntilde-mux-phase5.md`): remote hosts in the
+"Attach to session…" picker and in `ntilde mux ls --all`; a stable `SSH_AUTH_SOCK` link in daemon
+shells that every reconnect repoints; the native exec channel waits for events instead of a 10 ms
+sleep; the release's `ntilde-mux` SHA-256s built into the app.
 
 ---
 

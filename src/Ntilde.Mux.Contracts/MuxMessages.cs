@@ -52,6 +52,13 @@ public sealed record WelcomeResult
 {
     public int Version { get; init; }
     public bool ForceConPtyFiltering { get; init; }
+
+    /// <summary>
+    /// The daemon's build version (informational, no build metadata). Absent from a daemon that predates it
+    /// or was given none; null on the client then.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServerVersion { get; init; }
 }
 
 /// <summary>What the client looks like: applied to the mux parser so its replies describe it.</summary>
@@ -189,6 +196,54 @@ public sealed record SessionInfoResult
     public int? InteractiveClients { get; init; }
 }
 
+/// <summary>Params of <see cref="MuxMethods.ReadScreen"/>.</summary>
+public sealed record ReadScreenParams
+{
+    public Guid SessionId { get; init; }
+
+    /// <summary>Clamped by the daemon to 0..<see cref="MuxReadScreenLimits.MaxScrollbackRows"/>, never refused.</summary>
+    public int MaxScrollbackRows { get; init; }
+}
+
+/// <summary>
+/// Result of <see cref="MuxMethods.ReadScreen"/>: the screen, and the status <see cref="SessionInfoResult"/> reports,
+/// taken together on the session's parse thread. This assembly is a leaf and cannot name the VT snapshot type, so the
+/// screen travels as its serialized bytes (base64 in JSON, as <see cref="ExportFlightResult.Bytes"/>).
+/// </summary>
+public sealed record ReadScreenResult
+{
+    /// <summary><c>TerminalStateSerializer.ToBytes</c> of the session's snapshot; at most <see cref="MuxReadScreenLimits.MaxSnapshotBytes"/>.</summary>
+    public byte[] Snapshot { get; init; } = [];
+
+    public bool Running { get; init; }
+    public int? ExitCode { get; init; }
+    public bool HasActiveChildProcesses { get; init; }
+    public int AttachedClients { get; init; }
+
+    /// <summary><see cref="AttachedClients"/> without read-only observers; null for a v1 peer, as in <see cref="SessionInfoResult"/>.</summary>
+    public int? InteractiveClients { get; init; }
+
+    public string? Title { get; init; }
+    public string? Cwd { get; init; }
+
+    /// <summary>Wall-clock time (Unix milliseconds) the session last produced output; null before any.</summary>
+    public long? LastOutputUnixMs { get; init; }
+}
+
+public static class MuxReadScreenLimits
+{
+    /// <summary>The most scrollback rows a <see cref="MuxMethods.ReadScreen"/> returns; a larger request is clamped.</summary>
+    public const int MaxScrollbackRows = 2000;
+
+    /// <summary>
+    /// The largest serialized snapshot a <see cref="MuxMethods.ReadScreen"/> returns; a larger one is refused with
+    /// <see cref="MuxErrorCodes.SnapshotTooLarge"/>, and a smaller row count may fit. It bounds what one read costs the
+    /// daemon and the caller; base64 makes the reply about a third larger. A server charges the reply to the
+    /// connection's snapshot account, as it does an attach's snapshot, never to its stream budget.
+    /// </summary>
+    public const int MaxSnapshotBytes = 4 * 1024 * 1024;
+}
+
 public sealed record StartRecordingParams
 {
     public Guid SessionId { get; init; }
@@ -271,4 +326,8 @@ public sealed record MuxEndpointDescriptor
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? StartTime { get; init; }
+
+    /// <summary>The daemon's build version, so a GUI can tell a daemon left over from an older build. Absent from older daemons.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AppVersion { get; init; }
 }

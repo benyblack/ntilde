@@ -46,9 +46,19 @@ internal sealed class MuxConnectionHosts : IDisposable
         Local = local;
         _createRemote = createRemote;
         _log = log;
+        local.Connected += client => OnHostConnected(MuxEndpointId.Local, local, client);
     }
 
     public MuxConnectionHost Local { get; }
+
+    /// <summary>
+    /// Every host's <see cref="MuxConnectionHost.Connected"/> - the local one's, and each remote one's from when it is
+    /// registered - with its endpoint and host (Phase 5 Task 23: the window offers to restart a daemon of another build,
+    /// wherever it runs). Raised as the host raises it: on the pool, in order for each host, never under this registry's lock.
+    /// </summary>
+    public event Action<MuxEndpointId, MuxConnectionHost, Ntilde.Mux.MuxClient>? HostConnected;
+
+    private void OnHostConnected(MuxEndpointId id, MuxConnectionHost host, Ntilde.Mux.MuxClient client) => HostConnected?.Invoke(id, host, client);
 
     /// <summary>
     /// The host for <paramref name="id"/>, building a remote one on first use. Null when the creator declines, or once disposed.
@@ -84,6 +94,7 @@ internal sealed class MuxConnectionHosts : IDisposable
                 _remotes.Add(id, created);
                 _remoteOrder.Add(created);
                 created.Closed += closed => Forget(id, closed);
+                created.Connected += client => OnHostConnected(id, created, client);
                 return created;
             }
             else
@@ -111,6 +122,31 @@ internal sealed class MuxConnectionHosts : IDisposable
         get
         {
             lock (_gate) return [Local, .. _remoteOrder];
+        }
+    }
+
+    /// <summary>
+    /// <see cref="All"/>, each host with its endpoint: <see cref="MuxEndpointId.Local"/> first, then the remote ones in
+    /// the order they were built. One consistent picture, taken under the lock.
+    /// </summary>
+    public IReadOnlyList<(MuxEndpointId Id, MuxConnectionHost Host)> AllByEndpoint
+    {
+        get
+        {
+            lock (_gate)
+            {
+                var all = new List<(MuxEndpointId, MuxConnectionHost)>(_remoteOrder.Count + 1) { (MuxEndpointId.Local, Local) };
+                foreach (MuxConnectionHost host in _remoteOrder)
+                {
+                    // Registered and forgotten together (GetOrCreate, ForgetLocked): every host in the order has its entry.
+                    foreach ((MuxEndpointId id, MuxConnectionHost registered) in _remotes)
+                    {
+                        if (ReferenceEquals(registered, host)) all.Add((id, host));
+                    }
+                }
+
+                return all;
+            }
         }
     }
 

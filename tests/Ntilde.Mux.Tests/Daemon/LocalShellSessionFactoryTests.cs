@@ -81,4 +81,41 @@ public sealed class LocalShellSessionFactoryTests
 
         Assert.Throws<NotSupportedException>(() => LocalShellSessionFactory.Instance.Create(request));
     }
+
+    [Fact]
+    public void Shells_get_the_agent_link_when_the_daemon_had_an_SSH_AUTH_SOCK()
+    {
+        var env = LocalShellSessionFactory.WithAgentLink(
+            new Dictionary<string, string> { ["FOO"] = "1", ["SSH_AUTH_SOCK"] = "/tmp/ssh-x/agent.9" },
+            "/run/mux/agent.sock", name => name == "SSH_AUTH_SOCK" ? "/tmp/ssh-x/agent.1" : null, _ => false);
+
+        Assert.NotNull(env);
+        Assert.Equal("/run/mux/agent.sock", env["SSH_AUTH_SOCK"]);
+        Assert.Equal("1", env["FOO"]);
+    }
+
+    [Fact]
+    public void Shells_get_the_agent_link_when_it_exists_even_without_an_inherited_SSH_AUTH_SOCK()
+    {
+        var env = LocalShellSessionFactory.WithAgentLink(null, "/run/mux/agent.sock", _ => null, p => p == "/run/mux/agent.sock");
+
+        Assert.Equal("/run/mux/agent.sock", env?["SSH_AUTH_SOCK"]);
+    }
+
+    [Fact]
+    public void Hosts_without_agent_forwarding_see_no_change()
+    {
+        var overrides = new Dictionary<string, string> { ["FOO"] = "1" };
+
+        Assert.Same(overrides, LocalShellSessionFactory.WithAgentLink(overrides, "/run/mux/agent.sock", _ => null, _ => false));
+    }
+
+    [Fact]
+    public void No_link_path_means_no_change_even_with_an_SSH_AUTH_SOCK()
+    {
+        var overrides = new Dictionary<string, string> { ["FOO"] = "1" };
+
+        Assert.Same(overrides, LocalShellSessionFactory.WithAgentLink(overrides, null, _ => "/x", _ => true));
+        Assert.Null(LocalShellSessionFactory.WithAgentLink(null, null, _ => "/x", _ => true));
+    }
 }

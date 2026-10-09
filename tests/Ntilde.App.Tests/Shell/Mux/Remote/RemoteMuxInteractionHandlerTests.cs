@@ -1,5 +1,6 @@
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Native;
+using Ntilde.Services.Ssh;
 using Ntilde.Shell.Mux.Remote;
 
 namespace Ntilde.Tests.Shell.Mux.Remote;
@@ -994,5 +995,341 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
         automatic.Refused();
 
         Assert.True(handler.BeginAttempt(interactive: false, savedPasswordProfile: Box).MaySignInWithSavedPassword);
+    }
+
+    // Phase 5 Task 28 (spec R8): a password the user typed for this host, which got a connection in, is handed to the host's
+    // own SFTP and listing connections through its password scope in ActiveSshSessionRegistry - nothing else ever is.
+
+    /// <summary>The target's password prompt as a native connection raises it: it names the server that asks.</summary>
+    private static SshInteractionRequest TargetPassword(int port = 22, string user = "nova") => new()
+    {
+        Kind = SshInteractionKind.Password,
+        Prompt = "Password:",
+        ProfileId = Box.Id,
+        ProfileName = Box.Name,
+        ProfileUser = Box.User,
+        ProfileHost = Box.Host,
+        AllowVaultPasswordReuse = true,
+        RememberPasswordInVault = true,
+        Host = "fake-host",
+        Port = port,
+        User = user,
+    };
+
+    /// <summary>A jump host's password prompt in front of the target.</summary>
+    private static SshInteractionRequest JumpHostPassword { get; } = new()
+    {
+        Kind = SshInteractionKind.Password,
+        Prompt = "Password:",
+        ProfileId = Box.Id,
+        Host = "bastion",
+        Port = 22,
+        User = "jump",
+        IsJumpHop = true,
+    };
+
+    private RemoteMuxInteractionHandler Scoped(ISshInteractionHandler? user, ActiveSshSessionRegistry scopes, SavedPasswords? saved = null) =>
+        new(user, request => request.Fingerprint == "SHA256:trusted", saved is null ? null : saved.Read, new Ntilde.SshAskPassSessionMarkers(() => _records), log: null, passwordScopes: scopes);
+
+    /// <summary>What the host's scope holds for <paramref name="host"/>:<paramref name="port"/> as <paramref name="user"/>, or null.</summary>
+    private static string? InScope(ActiveSshSessionRegistry scopes, RemoteMuxInteractionHandler handler, string host = "fake-host", int port = 22, string user = "nova") =>
+        scopes.TryGetRuntimePassword(handler.PasswordScopeId, host, port, user, out string? password) ? password : null;
+
+    [Fact]
+    public async Task A_typed_target_password_that_got_in_is_kept_in_the_hosts_scope_under_its_server()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(SshInteractionResponse.FromSecret("typed")), scopes);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(TargetPassword(port: 2222), Ct);
+        Assert.Null(InScope(scopes, handler, port: 2222)); // not before the attempt got in
+
+        enter.Succeeded();
+
+        Assert.Equal("typed", InScope(scopes, handler, port: 2222));
+        Assert.Null(InScope(scopes, handler, port: 22));            // only the server that asked
+        Assert.Null(InScope(scopes, handler, port: 2222, user: "root"));
+    }
+
+    [Fact]
+    public async Task A_refused_attempts_typed_password_is_not_kept()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(SshInteractionResponse.FromSecret("typo")), scopes);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(TargetPassword(), Ct);
+
+        enter.Refused();
+
+        Assert.Null(InScope(scopes, handler));
+    }
+
+    /// <summary>Another password prompt after it says the first answer was refused: only the answer that got in is kept.</summary>
+    [Fact]
+    public async Task A_typed_password_superseded_within_the_attempt_is_not_kept_and_the_one_that_got_in_is()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typo"), SshInteractionResponse.FromSecret("right"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(TargetPassword(), Ct);
+        await enter.HandleAsync(TargetPassword(), Ct);
+
+        enter.Succeeded();
+
+        Assert.Equal(2, user.Asked.Count);
+        Assert.Equal("right", InScope(scopes, handler));
+    }
+
+    /// <summary>
+    /// Fix round 1: a keyboard-interactive round after a typed password also says the password was refused - and, unlike a
+    /// second password, writes nothing over it. What then gets in is no password at all, so nothing is kept.
+    /// </summary>
+    [Fact]
+    public async Task A_typed_password_followed_by_a_keyboard_interactive_round_is_not_kept()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("typo"), SshInteractionResponse.FromKeyboardResponses("123456"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(TargetPassword(), Ct);
+        Assert.Equal("123456", Assert.Single((await enter.HandleAsync(Keyboard, Ct)).KeyboardResponses));
+
+        enter.Succeeded();
+
+        Assert.Equal(2, user.Asked.Count);
+        Assert.Null(InScope(scopes, handler));
+    }
+
+    /// <summary>
+    /// The window's handler filled the saved password from the vault: SFTP and listing read the vault themselves, so it is
+    /// not copied - nor later, when the host replays it from memory, nor when an automatic attempt signs in with it.
+    /// </summary>
+    [Fact]
+    public async Task A_password_filled_from_the_vault_is_never_copied_into_the_scope()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var saved = new SavedPasswords("s3cret");
+        var filled = new SshInteractionResponse { Secret = "s3cret", FilledFromStore = true };
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(filled), scopes, saved);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        Assert.Equal("s3cret", (await enter.HandleAsync(TargetPassword(), Ct)).Secret);
+        enter.Succeeded();
+        Assert.True(handler.Remembers(SshInteractionKind.Password));
+        Assert.Null(InScope(scopes, handler));
+
+        RemoteMuxInteractionHandler.Attempt replay = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("s3cret", (await replay.HandleAsync(TargetPassword(), Ct)).Secret); // from memory
+        replay.Succeeded();
+        Assert.Null(InScope(scopes, handler));
+
+        RemoteMuxInteractionHandler automatic = Scoped(user: null, scopes, saved);
+        RemoteMuxInteractionHandler.Attempt fromVault = automatic.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("s3cret", (await fromVault.HandleAsync(TargetPassword(), Ct)).Secret); // the saved password, with no UI
+        fromVault.Succeeded();
+        Assert.Null(InScope(scopes, automatic));
+    }
+
+    /// <summary>Spec R7: a profile with jump hops remembers no password, so its host's scope gets none - the target's neither.</summary>
+    [Fact]
+    public async Task A_jump_hop_profiles_typed_passwords_are_not_kept()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(
+            SshInteractionResponse.FromSecret("bastion-typed"),
+            SshInteractionResponse.AcceptHostKey(),
+            SshInteractionResponse.FromSecret("target-typed"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, passwordsReplayable: false, savedPasswordProfile: Box);
+        await enter.HandleAsync(JumpHostPassword, Ct);
+        await enter.HandleAsync(HostKey("SHA256:trusted"), Ct); // the target's connection begins: the bastion's answer got in
+        await enter.HandleAsync(TargetPassword(), Ct);
+
+        enter.Succeeded();
+
+        Assert.Equal(2, user.Asked.Count(asked => asked.Kind == SshInteractionKind.Password));
+        Assert.Null(InScope(scopes, handler, "bastion", 22, "jump"));
+        Assert.Null(InScope(scopes, handler));
+    }
+
+    /// <summary>
+    /// The never-empty rule: a blank answer is not kept - and is not handed to the registry at all, where an empty value
+    /// would clear the password a user typed before.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public async Task A_blank_typed_password_is_never_kept_and_leaves_an_earlier_one_alone(string blank)
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(SshInteractionResponse.FromSecret(blank)), scopes);
+        scopes.SetRuntimePassword(handler.PasswordScopeId, "fake-host", 22, "nova", "kept-before");
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await enter.HandleAsync(TargetPassword(), Ct);
+
+        enter.Succeeded();
+
+        Assert.Equal("kept-before", InScope(scopes, handler));
+    }
+
+    /// <summary>The host's dispose (<see cref="RemoteMuxInteractionHandler.Forget"/>) clears its scope, and an attempt still running then keeps nothing.</summary>
+    [Fact]
+    public async Task Forgetting_clears_the_scope_and_an_attempt_that_succeeds_afterwards_keeps_nothing()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(SshInteractionResponse.FromSecret("typed"), SshInteractionResponse.FromSecret("late")), scopes);
+        RemoteMuxInteractionHandler.Attempt first = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        await first.HandleAsync(TargetPassword(), Ct);
+        first.Succeeded();
+        Assert.Equal("typed", InScope(scopes, handler));
+        RemoteMuxInteractionHandler.Attempt running = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        handler.Forget();
+        Assert.Null(InScope(scopes, handler));
+
+        await running.HandleAsync(TargetPassword(), Ct);
+        running.Succeeded();
+
+        Assert.Null(InScope(scopes, handler));
+    }
+
+    // Codex review of PR #511 (P1): a password kept in the scope that a server later refuses - a reconnect after the password
+    // was changed - leaves the scope with the host's memory, under the server it was offered to. Else every SFTP, sidebar and
+    // path-completion connection keeps offering the stale value, piling up failed logins until the account locks.
+
+    /// <summary>The user typed <paramref name="typed"/> at the target's prompt, and it got the host in: memory and scope hold it.</summary>
+    private static async Task KeepTypedAsync(RemoteMuxInteractionHandler handler, ActiveSshSessionRegistry scopes, string typed, int port = 22)
+    {
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        Assert.Equal(typed, (await enter.HandleAsync(TargetPassword(port), Ct)).Secret);
+        enter.Succeeded();
+        Assert.Equal(typed, InScope(scopes, handler, port: port));
+    }
+
+    /// <summary>What an SFTP transfer or a listing of a persisted tab on this host would offer the target now.</summary>
+    private static string? TransferWouldOffer(ActiveSshSessionRegistry scopes, RemoteMuxInteractionHandler handler)
+    {
+        Guid session = Guid.NewGuid();
+        scopes.Register(new ActiveSshSessionDescriptor(session, Box.Id, Ntilde.Platform.Ssh.Models.SshBackendKind.Native, handler.PasswordScopeId));
+        var options = new NativeSshConnectionOptions { Host = "fake-host", Port = 22, User = "nova" };
+        return NativeHopPasswordResolver.Resolve(options, scopes, session, savedTargetPassword: () => null).Target;
+    }
+
+    [Fact]
+    public async Task A_kept_password_a_later_attempt_offers_and_the_server_refuses_leaves_the_scope()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(SshInteractionResponse.FromSecret("rotated-away")), scopes);
+        await KeepTypedAsync(handler, scopes, "rotated-away");
+        Assert.Equal("rotated-away", TransferWouldOffer(scopes, handler));
+
+        // The automatic reconnect after the password changed: memory answers, and the server drops the connection.
+        RemoteMuxInteractionHandler.Attempt reconnect = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("rotated-away", (await reconnect.HandleAsync(TargetPassword(), Ct)).Secret);
+        reconnect.Refused();
+
+        Assert.False(handler.Remembers(SshInteractionKind.Password));
+        Assert.Null(InScope(scopes, handler));
+        Assert.Null(TransferWouldOffer(scopes, handler));
+    }
+
+    /// <summary>
+    /// The refusal shows as the prompt after it (the native layer falls to keyboard-interactive), and the user then gets in
+    /// another way: the attempt succeeds, but the remembered password it offered first was still refused.
+    /// </summary>
+    [Fact]
+    public async Task A_kept_password_superseded_in_an_attempt_that_then_gets_in_another_way_leaves_the_scope()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("rotated-away"), SshInteractionResponse.FromKeyboardResponses("new-password"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        await KeepTypedAsync(handler, scopes, "rotated-away");
+
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        Assert.Equal("rotated-away", (await enter.HandleAsync(TargetPassword(), Ct)).Secret); // from memory
+        await enter.HandleAsync(Keyboard, Ct);
+        enter.Succeeded();
+
+        Assert.Null(InScope(scopes, handler));
+        Assert.Null(TransferWouldOffer(scopes, handler));
+    }
+
+    [Fact]
+    public async Task A_refusal_for_another_server_leaves_the_kept_password()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(SshInteractionResponse.FromSecret("typed")), scopes);
+        await KeepTypedAsync(handler, scopes, "typed");
+
+        // Memory is per prompt kind, so the remembered value is offered to whatever server asks; port 2222 refuses it.
+        RemoteMuxInteractionHandler.Attempt other = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("typed", (await other.HandleAsync(TargetPassword(port: 2222), Ct)).Secret);
+        other.Refused();
+
+        Assert.Equal("typed", InScope(scopes, handler));
+        Assert.Equal("typed", TransferWouldOffer(scopes, handler));
+    }
+
+    /// <summary>A password the window's handler filled from the vault is not one the host offered from memory: its refusal clears nothing kept.</summary>
+    [Fact]
+    public async Task A_vault_filled_refusal_leaves_a_typed_password_kept_for_another_user()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var filled = new SshInteractionResponse { Secret = "vault-value", FilledFromStore = true };
+        RemoteMuxInteractionHandler handler = Scoped(new ScriptedUser(filled), scopes, new SavedPasswords("vault-value"));
+        scopes.SetRuntimePassword(handler.PasswordScopeId, "fake-host", 22, "root", "typed-for-root");
+
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        Assert.Equal("vault-value", (await enter.HandleAsync(TargetPassword(), Ct)).Secret);
+        enter.Refused();
+
+        Assert.Equal("typed-for-root", InScope(scopes, handler, user: "root"));
+    }
+
+    /// <summary>
+    /// A refusal arriving late - after another attempt typed a new password for the same server, which the scope now holds -
+    /// takes only the value it offered: the newer one stays.
+    /// </summary>
+    [Fact]
+    public async Task A_late_refusal_of_the_old_value_leaves_a_newer_typed_one()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromSecret("new"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        await KeepTypedAsync(handler, scopes, "old");
+        RemoteMuxInteractionHandler.Attempt late = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("old", (await late.HandleAsync(TargetPassword(), Ct)).Secret);
+
+        RemoteMuxInteractionHandler.Attempt enter = handler.BeginAttempt(interactive: true, savedPasswordProfile: Box);
+        Assert.Equal("old", (await enter.HandleAsync(TargetPassword(), Ct)).Secret); // from memory, refused:
+        Assert.Equal("new", (await enter.HandleAsync(TargetPassword(), Ct)).Secret); // the user types the new one
+        enter.Succeeded();
+        Assert.Equal("new", InScope(scopes, handler));
+
+        late.Refused();
+
+        Assert.Equal("new", InScope(scopes, handler));
+    }
+
+    /// <summary>
+    /// A refusal from an attempt begun before the host forgot everything clears nothing written since: the generation check,
+    /// as for <c>KeepForTransfers</c> - even when the newer write holds the same value.
+    /// </summary>
+    [Fact]
+    public async Task A_refusal_from_before_a_forget_leaves_what_a_later_attempt_kept()
+    {
+        var scopes = new ActiveSshSessionRegistry();
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("same"), SshInteractionResponse.FromSecret("same"));
+        RemoteMuxInteractionHandler handler = Scoped(user, scopes);
+        await KeepTypedAsync(handler, scopes, "same");
+        RemoteMuxInteractionHandler.Attempt stale = handler.BeginAttempt(interactive: false, savedPasswordProfile: Box);
+        Assert.Equal("same", (await stale.HandleAsync(TargetPassword(), Ct)).Secret);
+
+        handler.Forget();
+        await KeepTypedAsync(handler, scopes, "same");
+
+        stale.Refused();
+
+        Assert.Equal("same", InScope(scopes, handler));
     }
 }

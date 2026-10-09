@@ -10,6 +10,14 @@ public sealed class MuxClientOptions
     /// <summary>Sent in the hello so a reconnect evicts its dead twin on the daemon; null opts out (spec §2.5).</summary>
     public string? ClientInstanceId { get; init; }
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// How many payload bytes may wait behind a full send queue (a stalled link) before the client gives the link up:
+    /// a send never blocks its caller, so this bounds what a link that stops reading can hold. Past it the client
+    /// disconnects (reason <c>send overflow</c>) and the host's reconnect or drop path takes over.
+    /// </summary>
+    public long MaxOverflowBytes { get; init; } = 8 * 1024 * 1024;
+
     public MuxAttachLimits AttachLimits { get; init; } = new();
     public Action<string>? Log { get; init; }
 }

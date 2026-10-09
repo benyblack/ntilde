@@ -28,7 +28,7 @@ public sealed class RemoteMuxInstallCommandsTests
     {
         Assert.Equal(
             "sh -c 'set -e; trap \"\" PIPE; trap \"exit 1\" HUP TERM; "
-            + "d=\"$HOME/.local/share/ntilde/bin\"; mkdir -p \"$d\"; "
+            + RemoteInstallDir.Assign + "mkdir -p \"$d\"; "
             + "find \"$d\" -maxdepth 1 -name \".ntilde-mux.upload-*\" -mmin +60 -exec rm -f {} + 2>/dev/null || :; "
             + "t=\"$d/" + TempName + "\"; trap \"rm -f \\\"\\$t\\\"\" EXIT; cat > \"$t\"; "
             + "n=$(wc -c < \"$t\"); [ $n -eq 1834567 ] || { echo \"ntilde-mux upload incomplete: expected 1834567 bytes\" >&2; exit 1; }; "
@@ -109,7 +109,7 @@ public sealed class RemoteMuxInstallCommandsTests
     public void CommitUpload_moves_the_token_s_temp_file_over_the_installed_binary_and_reports_its_version()
     {
         Assert.Equal(
-            "sh -c 'set -e; d=\"$HOME/.local/share/ntilde/bin\"; t=\"$d/" + TempName + "\"; "
+            "sh -c 'set -e; " + RemoteInstallDir.Assign + "t=\"$d/" + TempName + "\"; "
             + "mv -f \"$t\" \"$d/ntilde-mux\"; exec \"$d/ntilde-mux\" --version --json'",
             RemoteMuxInstallCommands.CommitUpload(Token));
     }
@@ -118,7 +118,7 @@ public sealed class RemoteMuxInstallCommandsTests
     public void DiscardUpload_removes_the_token_s_temp_file_and_nothing_else()
     {
         Assert.Equal(
-            "sh -c 'd=\"$HOME/.local/share/ntilde/bin\"; t=\"$d/" + TempName + "\"; rm -f \"$t\"'",
+            "sh -c '" + RemoteInstallDir.Assign + "t=\"$d/" + TempName + "\"; rm -f \"$t\"'",
             RemoteMuxInstallCommands.DiscardUpload(Token));
     }
 
@@ -158,21 +158,61 @@ public sealed class RemoteMuxInstallCommandsTests
     [Fact]
     public void Each_step_works_in_the_directory_the_remote_command_runs_from()
     {
-        const string dir = "d=\"$HOME/.local/share/ntilde/bin\";";
+        const string dir = RemoteInstallDir.Assign;
         Assert.Contains(dir, RemoteMuxInstallCommands.UploadForTrial(10, Token), StringComparison.Ordinal);
         Assert.Contains(dir, RemoteMuxInstallCommands.CommitUpload(Token), StringComparison.Ordinal);
         Assert.Contains(dir, RemoteMuxInstallCommands.DiscardUpload(Token), StringComparison.Ordinal);
-        Assert.Equal(".local/share/ntilde/bin/ntilde-mux", RemoteMuxCommand.DefaultRelativePath);
+        Assert.Equal(
+            "case \"${XDG_DATA_HOME-}\" in /*) d=\"$XDG_DATA_HOME/ntilde/bin\";; *) d=\"$HOME/.local/share/ntilde/bin\";; esac; ",
+            dir);
+    }
+
+    [Theory]
+    [InlineData("/tmp/x", "/tmp/x/ntilde/bin")]
+    [InlineData("rel", "/home/nova/.local/share/ntilde/bin")]
+    [InlineData("", "/home/nova/.local/share/ntilde/bin")]
+    [InlineData(null, "/home/nova/.local/share/ntilde/bin")]
+    public void The_install_dir_follows_an_absolute_XDG_DATA_HOME_else_HOME(string? xdg, string expected)
+    {
+        var env = new Dictionary<string, string?> { ["XDG_DATA_HOME"] = xdg, ["HOME"] = "/home/nova" };
+
+        (int exit, string stdout, string stderr) = PosixShell.Run("sh -c '" + RemoteInstallDir.Assign + "echo \"$d\"'", env);
+
+        Assert.True(exit == 0, stderr);
+        Assert.Equal(expected, stdout.Trim());
+    }
+
+    [Fact]
+    public void Commit_and_discard_use_the_XDG_install_dir()
+    {
+        string data = Path.Combine(Path.GetTempPath(), "ntilde-xdg-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            PosixShell.Require();
+            string bin = Path.Combine(data, "ntilde", "bin");
+            PosixShell.WriteEchoScript(Path.Combine(bin, RemoteMuxInstallCommands.UploadTempPrefix + Token.ToString("N")));
+            var env = new Dictionary<string, string?> { ["XDG_DATA_HOME"] = PosixShell.ToShellPath(data), ["HOME"] = "/nonexistent" };
+
+            (int exit, string stdout, string stderr) = PosixShell.Run(RemoteMuxInstallCommands.CommitUpload(Token), env);
+
+            Assert.True(exit == 0, stderr);
+            Assert.Contains("--version --json", stdout, StringComparison.Ordinal);
+            Assert.True(File.Exists(Path.Combine(bin, "ntilde-mux")));
+        }
+        finally
+        {
+            if (Directory.Exists(data)) Directory.Delete(data, recursive: true);
+        }
     }
 
     [Fact]
     public void OfflineOneLiner_for_linux_uses_sha256sum()
     {
         Assert.Equal(
-            "mkdir -p ~/.local/share/ntilde/bin && cd ~/.local/share/ntilde/bin && "
+            "sh -c '" + RemoteInstallDir.Assign + "mkdir -p \"$d\" && cd \"$d\" && "
             + "curl -fsSLo ntilde-mux.new https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-linux-x64 && "
             + "curl -fsSL https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-linux-x64.sha256 "
-            + "| sed 's/ .*/  ntilde-mux.new/' | sha256sum -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux",
+            + "| sed \"s/ .*/  ntilde-mux.new/\" | sha256sum -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux && echo \"installed to $d/ntilde-mux\"'",
             RemoteMuxInstallCommands.OfflineOneLiner("0.11.0", "linux-x64"));
     }
 
@@ -180,11 +220,20 @@ public sealed class RemoteMuxInstallCommandsTests
     public void OfflineOneLiner_for_macos_uses_shasum()
     {
         Assert.Equal(
-            "mkdir -p ~/.local/share/ntilde/bin && cd ~/.local/share/ntilde/bin && "
+            "sh -c '" + RemoteInstallDir.Assign + "mkdir -p \"$d\" && cd \"$d\" && "
             + "curl -fsSLo ntilde-mux.new https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-osx-arm64 && "
             + "curl -fsSL https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-mux-osx-arm64.sha256 "
-            + "| sed 's/ .*/  ntilde-mux.new/' | shasum -a 256 -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux",
+            + "| sed \"s/ .*/  ntilde-mux.new/\" | shasum -a 256 -c - && chmod 755 ntilde-mux.new && mv -f ntilde-mux.new ntilde-mux && echo \"installed to $d/ntilde-mux\"'",
             RemoteMuxInstallCommands.OfflineOneLiner("0.11.0", "osx-arm64"));
+    }
+
+    [Theory]
+    [InlineData("linux-x64")]
+    [InlineData("osx-arm64")]
+    public void OfflineOneLiner_is_one_single_quoted_sh_script(string rid)
+    {
+        // Pasted into fish or zsh as well as bash: the sed program is double-quoted so none ends the script early.
+        AssertOneSingleQuotedShScript(RemoteMuxInstallCommands.OfflineOneLiner("0.11.0", rid));
     }
 
     [Fact]

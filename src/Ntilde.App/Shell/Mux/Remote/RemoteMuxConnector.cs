@@ -140,6 +140,43 @@ internal sealed class RemoteMuxConnector : IDisposable
 
     internal RemoteMuxInteractionHandler Prompts { get; }
 
+    /// <summary>This host's password scope (<see cref="RemoteMuxInteractionHandler.PasswordScopeId"/>, Phase 5 spec R8).</summary>
+    internal Guid PasswordScopeId => Prompts.PasswordScopeId;
+
+    /// <summary>
+    /// Whether the host's destination is pinned (<see cref="Accept"/>) and the profile, read now, names another one (codex
+    /// D2): its shells run where it first connected, while SFTP rebuilds its options from the stored profile and would go
+    /// to the new destination. False until a client was accepted. Reads the profile on every call (the store, in the app):
+    /// a caller asks at the moment of its request.
+    /// </summary>
+    internal bool IsRetargeted
+    {
+        get
+        {
+            SshProfile current = _profile();
+            lock (_gate) return _pinned is { } pinned && !SameDestination(pinned, current);
+        }
+    }
+
+    /// <summary>
+    /// Final review I1: the ntilde-mux version the install flow recorded (<see cref="SshMuxOptions.RemoteDaemonVersion"/>)
+    /// for where this connector's attempts go - what a daemon started there now would run. That is the profile's, read now;
+    /// while the profile names another destination than the pinned one (<see cref="Accept"/>), the last one seen for the
+    /// pinned destination, as <see cref="ProfileForAttempt"/> keeps the install metadata. Empty or null when none is recorded.
+    /// </summary>
+    internal string? InstalledDaemonVersion
+    {
+        get
+        {
+            SshProfile current = _profile();
+            lock (_gate)
+            {
+                SshProfile source = _pinned is { } pinned && !SameDestination(pinned, current) ? pinned : current;
+                return source.MuxOptions?.RemoteDaemonVersion;
+            }
+        }
+    }
+
     /// <summary><c>user@host</c>, or the bare host when the profile names no user.</summary>
     internal static string DisplayNameOf(SshProfile profile) =>
         string.IsNullOrWhiteSpace(profile.User) ? profile.Host : $"{profile.User}@{profile.Host}";
@@ -160,7 +197,13 @@ internal sealed class RemoteMuxConnector : IDisposable
 
         (SshProfile profile, bool pinned, bool retargeted) = ProfileForAttempt();
         string host = DisplayNameOf(profile);
-        string command = RemoteMuxCommand.Proxy(profile.MuxOptions ?? new SshMuxOptions());
+        SshMuxOptions muxOptions = profile.MuxOptions ?? new SshMuxOptions();
+        string command = RemoteMuxCommand.Proxy(muxOptions);
+        if (RemoteMuxCommand.RefusedRecordedPath(muxOptions.RemoteDaemonPath))
+        {
+            _log?.Invoke("[RemoteMux] recorded ntilde-mux path refused (unsafe characters); using the default install path");
+        }
+
         // A native password prompt does not say which hop asks: with jump hops, a remembered password
         // could reach the jump host, so none is remembered or replayed - nor the saved one offered. Nor is the saved
         // password offered to a destination the profile no longer names (retargeted): it is the profile's, for where
@@ -399,6 +442,19 @@ internal sealed class RemoteMuxConnector : IDisposable
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Stops the latest attempt's channel at once, on the caller's thread (<see cref="ISshExecChannel.Abort"/>), whether a
+    /// client holds it or not: for a caller that gives up on this connector and may exit before a graceful end would finish
+    /// (<c>ls --all</c>'s cut, <see cref="RemoteMuxLister"/>). On a dead link that end waits out its grace before it stops
+    /// ssh, which would outlive the caller. A graceful end already running is cut short. Never throws.
+    /// </summary>
+    public void Abort()
+    {
+        OwnedChannel? latest;
+        lock (_gate) latest = _latest;
+        latest?.Abort();
     }
 
     /// <summary>

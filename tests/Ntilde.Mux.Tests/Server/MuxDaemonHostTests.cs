@@ -67,6 +67,15 @@ public sealed class MuxDaemonHostTests : IDisposable
     }
 
     [Fact]
+    public void Daemon_descriptor_records_the_app_version()
+    {
+        var (host, _, o) = NewHost(serverOptions: new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = "9.9.9" });
+        host.Start();
+        Assert.True(MuxDiscovery.TryReadDescriptor(o.DescriptorPath, out MuxEndpointDescriptor? d));
+        Assert.Equal("9.9.9", d.AppVersion);
+    }
+
+    [Fact]
     public async Task Shutdown_request_stops_the_host_and_deletes_the_descriptor()
     {
         var (host, _, o) = NewHost();

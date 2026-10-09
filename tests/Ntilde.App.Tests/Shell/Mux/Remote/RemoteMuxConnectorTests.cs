@@ -116,6 +116,30 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_recorded_path_with_a_space_is_quoted_and_not_logged_as_refused()
+    {
+        var logged = new List<string>();
+        var connector = Own(new RemoteMuxConnector(Profile("/home/a b/ntilde-mux"), _remote, "i", logged.Add));
+
+        Own(await connector.ConnectAsync(Ct));
+
+        Assert.Equal("sh -c 'exec \"/home/a b/ntilde-mux\" proxy --stdio'", Assert.Single(_remote.Commands));
+        Assert.DoesNotContain(logged, line => line.Contains("path refused", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_refused_recorded_path_is_logged_once_and_the_default_install_path_is_used()
+    {
+        var logged = new List<string>();
+        var connector = Own(new RemoteMuxConnector(Profile("/home/it's/ntilde-mux"), _remote, "i", logged.Add));
+
+        Own(await connector.ConnectAsync(Ct));
+
+        Assert.Equal(RemoteMuxCommand.Proxy(new SshMuxOptions()), Assert.Single(_remote.Commands));
+        Assert.Single(logged, "[RemoteMux] recorded ntilde-mux path refused (unsafe characters); using the default install path");
+    }
+
+    [Fact]
     public async Task Noise_before_the_greeting_is_skipped()
     {
         _remote.Noise = "Welcome to Ubuntu 24.04 LTS\r\n\r\nLast login: Mon Oct  5 09:00:00 2026 from 10.0.0.2\r\n";

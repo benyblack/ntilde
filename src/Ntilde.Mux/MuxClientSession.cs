@@ -244,8 +244,7 @@ public sealed class MuxClientSession : ITerminalSession, ITerminalSessionCapabil
 
     public async Task<SessionInfoResult> RefreshSessionInfoAsync(CancellationToken cancellationToken = default)
     {
-        SessionInfoResult info = await _client.RequestAsync(MuxMethods.SessionInfo, new SessionIdParams { SessionId = Id },
-            MuxJsonContext.Default.SessionIdParams, MuxJsonContext.Default.SessionInfoResult, cancellationToken).ConfigureAwait(false);
+        SessionInfoResult info = await _client.GetSessionInfoAsync(Id, cancellationToken).ConfigureAwait(false);
         Volatile.Write(ref _hasActiveChildren, info.HasActiveChildProcesses ? 1 : 0);
         Interlocked.Exchange(ref _sessionInfoAtMs, Environment.TickCount64);
         return info;

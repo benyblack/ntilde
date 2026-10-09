@@ -11,6 +11,8 @@ namespace Ntilde.Shell.Mux.Remote;
 /// decision 2): <c>ntilde-mux-&lt;rid&gt;</c>, verified against <c>ntilde-mux-&lt;rid&gt;.sha256</c>, both
 /// published by <c>release.yml</c>'s <c>publish_mux_daemon</c> job. A verified download is cached under
 /// <c>&lt;cacheDirectory&gt;/&lt;version&gt;/&lt;rid&gt;/</c>, and a cache hit is verified again before it is used.
+/// A release build also carries the expected hashes (<see cref="MuxAssetPins"/>) and holds both the download
+/// and the cache to them.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -28,13 +30,25 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <param name="http">Used as is; tests pass one over a fake handler.</param>
 /// <param name="appVersion">The release version, without build metadata (<see cref="AppVersionInfo.Version"/>).</param>
 /// <param name="cacheDirectory">Usually <see cref="DefaultCacheDirectory"/>.</param>
-internal sealed class GitHubReleaseMuxAssetSource(HttpClient http, string appVersion, string cacheDirectory) : IMuxDaemonAssetSource
+/// <param name="pins">
+/// RID to the SHA-256 this app was released with (<see cref="MuxAssetPins.Load"/>; null or empty in a dev
+/// build). With a pin for the RID the pin, not the release's own <c>.sha256</c>, decides what is accepted,
+/// and a cached copy is checked against it too.
+/// </param>
+internal sealed class GitHubReleaseMuxAssetSource(
+    HttpClient http,
+    string appVersion,
+    string cacheDirectory,
+    IReadOnlyDictionary<string, string>? pins = null) : IMuxDaemonAssetSource
 {
     /// <summary>Where release assets are downloaded from: <c>&lt;base&gt;v&lt;version&gt;/&lt;asset&gt;</c>.</summary>
     public const string ReleaseDownloadBase = "https://github.com/benyblack/ntilde/releases/download/";
 
     /// <summary>How long one <see cref="GetAsync"/> may take, both downloads together.</summary>
     public static readonly TimeSpan DefaultDownloadTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>The release's <c>.sha256</c> is not the one this app was released with.</summary>
+    internal const string PinMismatchMessage = "The release's checksum does not match the one built into this app.";
 
     private const string CachedBinaryName = "ntilde-mux";
     private const int MaxChecksumBytes = 4096;
@@ -87,7 +101,8 @@ internal sealed class GitHubReleaseMuxAssetSource(HttpClient http, string appVer
         string directory = Path.Combine(cacheDirectory, appVersion, rid);
         string binaryPath = Path.Combine(directory, CachedBinaryName);
         string checksumPath = binaryPath + ".sha256";
-        if (await TryReadCacheAsync(binaryPath, checksumPath, ct).ConfigureAwait(false) is { } cached)
+        string? pin = pins is not null && pins.TryGetValue(rid, out string? pinned) ? pinned.ToLowerInvariant() : null;
+        if (await TryReadCacheAsync(binaryPath, checksumPath, pin, ct).ConfigureAwait(false) is { } cached)
         {
             progress?.Report(cached.Bytes.Length);
             return cached;
@@ -105,6 +120,11 @@ internal sealed class GitHubReleaseMuxAssetSource(HttpClient http, string appVer
             if (!MuxDaemonAsset.TryParseChecksum(Encoding.ASCII.GetString(checksumFile), out expected))
             {
                 throw new InvalidDataException($"{url}.sha256 is not a SHA-256 checksum file.");
+            }
+
+            if (pin is not null && !string.Equals(expected, pin, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException(PinMismatchMessage);
             }
 
             bytes = await DownloadAsync(url, MaxAssetBytes, progress, deadline.Token).ConfigureAwait(false);
@@ -180,7 +200,7 @@ internal sealed class GitHubReleaseMuxAssetSource(HttpClient http, string appVer
             : $"{url} is larger than {maxBytes.ToString(CultureInfo.InvariantCulture)} bytes.");
 
     /// <summary>The cached binary, when it and its <c>.sha256</c> are there and agree; otherwise null.</summary>
-    private async Task<MuxDaemonAsset?> TryReadCacheAsync(string binaryPath, string checksumPath, CancellationToken ct)
+    private async Task<MuxDaemonAsset?> TryReadCacheAsync(string binaryPath, string checksumPath, string? pin, CancellationToken ct)
     {
         try
         {
@@ -193,6 +213,13 @@ internal sealed class GitHubReleaseMuxAssetSource(HttpClient http, string appVer
 
             string checksumText = await File.ReadAllTextAsync(checksumPath, Encoding.ASCII, ct).ConfigureAwait(false);
             if (!MuxDaemonAsset.TryParseChecksum(checksumText, out string expected))
+            {
+                return null;
+            }
+
+            // A copy that agrees with its own .sha256 but not with the app's pin is a miss: it is replaced
+            // by a download, which the pin then verifies.
+            if (pin is not null && !string.Equals(expected, pin, StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }

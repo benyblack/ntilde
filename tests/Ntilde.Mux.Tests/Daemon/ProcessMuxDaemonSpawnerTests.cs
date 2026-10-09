@@ -88,4 +88,66 @@ public sealed class ProcessMuxDaemonSpawnerTests
         Assert.Equal(Path.GetFullPath(OtherRoot), StandaloneRootOverride(psi));
         Assert.Equal(new[] { "serve" }, psi.ArgumentList);
     }
+
+    /// <summary>Phase 5 R9: the App's resolver maps the installed exe to its copy outside the install root.</summary>
+    [Fact]
+    public void The_image_resolvers_answer_is_the_executable_started()
+    {
+        string? asked = null;
+
+        ProcessStartInfo psi = new ProcessMuxDaemonSpawner("installed-ntilde", [], ["mux", "serve"], imageResolver: exe =>
+        {
+            asked = exe;
+            return "copied-ntilde";
+        }).CreateStartInfo();
+
+        Assert.Equal("installed-ntilde", asked);
+        Assert.Equal("copied-ntilde", psi.FileName);
+        Assert.Equal(new[] { "mux", "serve" }, psi.ArgumentList);
+    }
+
+    [Fact]
+    public void CreateDefault_hands_the_image_resolver_to_the_spawner()
+    {
+        MuxDaemonLauncher launcher = MuxDaemonLauncher.CreateDefault(null, ["mux", "serve"], new MuxPaths(OtherRoot), imageResolver: _ => "copied-ntilde");
+
+        var spawner = Assert.IsType<ProcessMuxDaemonSpawner>(launcher.SpawnerForTest);
+        Assert.Equal("copied-ntilde", spawner.CreateStartInfo().FileName);
+    }
+
+    /// <summary>
+    /// Velopack starts the GUI with its working directory in <c>current\</c>, and a process whose working directory is
+    /// there makes the next update fail (spec R9). The daemon's is the profile, else the app-data root: never inherited,
+    /// never the executable's directory.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("missing")]
+    public void Without_a_profile_directory_the_daemon_works_in_the_app_data_root(string? profile)
+    {
+        string appData = Path.Combine(OtherRoot, "data");
+        string install = Path.Combine(OtherRoot, "NtildeApp");
+        try
+        {
+            string cwd = ProcessMuxDaemonSpawner.GetDaemonWorkingDirectory(
+                profile == "missing" ? Path.Combine(OtherRoot, "no-such-profile") : profile, Directory.Exists, () => appData);
+
+            Assert.Equal(appData, cwd);
+            Assert.True(Directory.Exists(appData));
+            Assert.False(cwd.StartsWith(install, StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            try { Directory.Delete(OtherRoot, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    [Fact]
+    public void With_a_profile_directory_the_daemon_works_there()
+    {
+        string profile = Path.GetTempPath();
+
+        Assert.Equal(profile, ProcessMuxDaemonSpawner.GetDaemonWorkingDirectory(profile, Directory.Exists, () => throw new InvalidOperationException("not asked")));
+    }
 }

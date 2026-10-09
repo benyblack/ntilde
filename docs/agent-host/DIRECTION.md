@@ -241,6 +241,26 @@ Each milestone is independently shippable and announceable. Estimates assume
 - [x] An unrecognized mode is a malformed request rather than being coerced to
       the default
 
+### Windowless sessions (multiplexer)
+
+With session persistence on, the agent host also serves **windowless** sessions: sessions in the
+multiplexer that no pane of this window shows, including ones another process attaches to. The
+observe and act tools take their id (the multiplexer session id) like a pane id, and the pane
+registry wins when both name the same id.
+
+- **Reach (R4).** Only endpoints the window is already connected to are asked, so the agent path
+  never connects or prompts. Every windowless operation has a 7 s budget inside the MCP round trip;
+  an unreachable daemon gives `sessionNotFound`, and a daemon too old for `readScreen` gives
+  `unsupported`.
+- **Acting (R4).** `send_input` and `close_session` on a remote endpoint's session need that SSH
+  profile's agent allowlist.
+- **Journal (R5).** Windowless reads are journaled and light the window-level agent light, because
+  there is no pane indicator to show them; repeated reads fold into one "×N" entry. Pane reads stay
+  unjournaled.
+- **Limits.** Scrollback is limited to the newest 2000 rows. Windowless sessions emit no events, so
+  `wait_for_events` never mentions them. Status is heuristic. Render capture borrows an open pane's
+  font metrics, and live capture is refused (`captureUnavailable`).
+
 ### Parallel track — Distribution
 
 - [ ] Homebrew cask/formula (macOS, Linux)

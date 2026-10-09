@@ -164,6 +164,20 @@
             <Setter Property="Background" Value="#4a2024"/>
         </Style>
 
+        <!-- Link-styled button -->
+        <Style Selector="Button.LinkBtn">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#4C8DFF"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Button.LinkBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#7FB0FF"/>
+        </Style>
+
         <!-- Icon-only ghost button -->
         <Style Selector="Button.IconBtn">
             <Setter Property="Background" Value="Transparent"/>
@@ -709,13 +723,15 @@
                             <Grid ColumnDefinitions="*,360">
                                 <StackPanel Grid.Column="0" Spacing="2">
                                     <TextBlock Classes="RowLabel" Text="Keep shells running when the window closes"/>
-                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="Local shells run in a background multiplexer, survive closing the window or a crash, and reattach when Ntilde starts. SSH panes persist only when their profile also turns on 'Keep remote sessions running (ntilde-mux)'; their shells then keep running on the host. Applies to panes opened after saving."/>
+                                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="With Keep running, your shells run in a background process (the multiplexer), so closing the window or a crash does not end them, and Ntilde reattaches them when it starts. With Off, a shell ends when its window closes. SSH tabs keep running on the host only when their connection also turns on 'Keep remote sessions running (ntilde-mux)'. Applies to new tabs."/>
                                 </StackPanel>
                                 <ComboBox Name="SessionPersistenceList" Grid.Column="1" HorizontalAlignment="Right" MinWidth="180">
                                     <ComboBoxItem Tag="Off">Off</ComboBoxItem>
                                     <ComboBoxItem Tag="KeepOnClose">Keep running</ComboBoxItem>
                                 </ComboBox>
                             </Grid>
+                            <Button Name="QuitAndCloseAllShellsLink" Classes="LinkBtn" Margin="0,10,0,0" IsVisible="False"
+                                    Content="Quit and close all shells…"/>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

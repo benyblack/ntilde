@@ -134,6 +134,51 @@ public sealed class NativeSshExecTransportTests
         Assert.Equal("Failed to create native SSH session.", ex.Message);
     }
 
+    // --- Idle wait -------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task An_idle_session_waits_for_events_instead_of_polling_on_a_timer()
+    {
+        var interop = new ScriptedNativeSshInterop();
+        using ISshExecChannel channel = Start(interop);
+
+        int pollsBefore = interop.Polls;
+        var window = System.Diagnostics.Stopwatch.StartNew();
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+        window.Stop();
+        int polls = interop.Polls - pollsBefore;
+
+        // A 10 ms sleep loop polled once per 10 ms; the wait polls about once per 100 ms. The window is
+        // measured, not assumed, so a late Task.Delay cannot fail this.
+        Assert.True(
+            polls <= window.Elapsed.TotalMilliseconds / 50 + 2,
+            $"The idle poll thread polled {polls} times in {window.ElapsedMilliseconds} ms.");
+        Assert.True(interop.Waits >= 1, "The idle poll thread never waited for an event.");
+    }
+
+    [Fact]
+    public async Task An_event_scripted_during_the_idle_wait_is_delivered_promptly()
+    {
+        // The fake waits 5 s whatever the transport asks for, so a wake-up the transport loses costs
+        // seconds. What is asserted is that the event wakes the wait, not how fast a CI box is.
+        var interop = new ScriptedNativeSshInterop { IdleWaitOverride = TimeSpan.FromSeconds(5) };
+        using ISshExecChannel channel = Start(interop);
+        await WaitUntilAsync(() => interop.Waits >= 1, "the poll thread to park in the wait");
+        Assert.Equal(0, interop.Dequeued);
+
+        var read = new byte[16];
+        Task<int> pending = channel.Stdout.ReadAsync(read, TestContext.Current.CancellationToken).AsTask();
+        long enqueued = System.Diagnostics.Stopwatch.GetTimestamp();
+        interop.Enqueue(ScriptedNativeSshInterop.Stdout("hello"));
+        int count = await pending.WaitAsync(Bound, TestContext.Current.CancellationToken);
+        TimeSpan delivery = System.Diagnostics.Stopwatch.GetElapsedTime(enqueued);
+        TimeSpan dequeue = System.Diagnostics.Stopwatch.GetElapsedTime(enqueued, interop.LastDequeueTimestamp);
+
+        Assert.Equal("hello", Encoding.UTF8.GetString(read, 0, count));
+        Assert.True(dequeue < TimeSpan.FromSeconds(1), $"The poll thread took {dequeue.TotalMilliseconds} ms to wake.");
+        Assert.True(delivery < TimeSpan.FromSeconds(1), $"The event took {delivery.TotalMilliseconds} ms to arrive.");
+    }
+
     // --- Events ----------------------------------------------------------------------------------
 
     [Fact]
@@ -295,7 +340,9 @@ public sealed class NativeSshExecTransportTests
         Assert.True(first.RememberPasswordInVault);
         Assert.False(handler.Requests[1].AllowVaultPasswordReuse);
 
-        // Not an ActiveSshSessionRegistry session (spec §8.4): no session id to key a runtime password by.
+        // Never a session id (Phase 5 Task 28): the window's handler would keep a typed password under it and replay it,
+        // around the remote host's refused-password and jump-hop rules. A persisted tab's typed passwords reach its SFTP
+        // connections through the host's password scope instead.
         Assert.Null(first.SessionId);
         Assert.All(interop.Submissions, submission =>
         {

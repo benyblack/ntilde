@@ -266,6 +266,40 @@ public sealed class MuxProxyTests : IDisposable
         Assert.Equal(MuxProxyExitCodes.ConnectionClosed, code);
     }
 
+    /// <summary>Phase 5 task 8: every proxy points the daemon's stable agent link at its own connection's agent.</summary>
+    [Fact]
+    public void The_proxy_repoints_the_agent_link_to_its_own_SSH_AUTH_SOCK()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets and symlinks only.");
+        string dir = Path.Combine(_root, "mux");
+        Directory.CreateDirectory(dir);
+        string agentA = Path.Combine(dir, "a.sock");
+        string agentB = Path.Combine(dir, "b.sock");
+        using var a = ListenOn(agentA);
+        using var b = ListenOn(agentB);
+        string link = AgentSocketLink.PathFor(dir);
+        var descriptor = new MuxEndpointDescriptor { Endpoint = Path.Combine(dir, "mux.sock"), ProcessName = "x", Pid = 1 };
+        Task<(Stream, MuxEndpointDescriptor)> Connect(CancellationToken _) => Task.FromResult<(Stream, MuxEndpointDescriptor)>((new MemoryStream(), descriptor));
+
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false, getEnvironmentVariable: n => n == "SSH_AUTH_SOCK" ? agentA : null);
+        Assert.Equal(agentA, new FileInfo(link).LinkTarget);
+
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false, getEnvironmentVariable: n => n == "SSH_AUTH_SOCK" ? agentB : null);
+        Assert.Equal(agentB, new FileInfo(link).LinkTarget);
+
+        // No SSH_AUTH_SOCK on a later connection: the last good link stays.
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false, getEnvironmentVariable: _ => null);
+        Assert.Equal(agentB, new FileInfo(link).LinkTarget);
+    }
+
+    private static System.Net.Sockets.Socket ListenOn(string path)
+    {
+        var socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Unspecified);
+        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(path));
+        socket.Listen(4);
+        return socket;
+    }
+
     [Theory]
     [InlineData("unavailable")]
     [InlineData("io")]

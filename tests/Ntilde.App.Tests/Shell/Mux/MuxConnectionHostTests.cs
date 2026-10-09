@@ -90,6 +90,53 @@ public sealed class MuxConnectionHostTests
         Assert.Same(failure, host.LastFailure);
     }
 
+    /// <summary>
+    /// Phase 5 Task 23: a restart removed what made the last attempt fail (a daemon of another protocol version), so the
+    /// warm-up that follows must try at once instead of answering nothing until the cooldown runs out.
+    /// </summary>
+    [Fact]
+    public void Ending_the_failure_cooldown_lets_the_next_warm_up_try_at_once()
+    {
+        int attempts = 0;
+        using var host = new MuxConnectionHost(_ => { Interlocked.Increment(ref attempts); throw new MuxUnavailableException("other version", versionMismatch: true); }, "test", null)
+        {
+            FailureCooldown = TimeSpan.FromHours(1),
+        };
+        Assert.Null(host.GetClient(TimeSpan.FromSeconds(1)));
+        host.WarmUp();
+        Assert.Equal(1, Volatile.Read(ref attempts)); // cooling down: no second attempt
+
+        host.EndFailureCooldown();
+        host.WarmUp();
+
+        Assert.Equal(2, host.ConnectAttempts);
+    }
+
+    /// <summary>
+    /// Phase 5 Task 23: every connection the host takes is reported once, with its client - local hosts included - so the
+    /// window can read the version its daemon reported. A second connection (after the first dropped) is reported too.
+    /// </summary>
+    [Fact]
+    public async Task Each_connection_is_reported_once_with_its_client()
+    {
+        using var mux = new MuxTestHost(new MuxServerOptions { ForceConPtyFiltering = false, AppVersion = "9.9.9" });
+        using var host = new MuxConnectionHost(ct => MuxClient.ConnectAsync(mux.Listener.Connect(), null, ct), "test", null);
+        var reported = new System.Collections.Concurrent.ConcurrentQueue<MuxClient>();
+        host.Connected += reported.Enqueue;
+
+        MuxClient first = host.GetClient(TimeSpan.FromSeconds(5))!;
+        await host.EventsForTest;
+        Assert.Same(first, Assert.Single(reported));
+        Assert.Equal("9.9.9", first.ServerVersion);
+
+        Assert.Same(first, host.GetClient(TimeSpan.FromSeconds(5))); // the same connection: not reported again
+        first.Dispose();
+        MuxClient second = host.GetClient(TimeSpan.FromSeconds(5))!;
+        await host.EventsForTest;
+
+        Assert.Equal([first, second], reported);
+    }
+
     [Fact]
     public void A_GetClient_that_times_out_also_enters_the_cooldown()
     {

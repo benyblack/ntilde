@@ -8,6 +8,7 @@ public static class ShortcutCatalog
 {
     public const string AttachSessionId = "attach_session";
     public const string DetachPaneId = "detach_pane";
+    public const string QuitAndCloseAllShellsId = "quit_close_all_shells";
 
     private static readonly IReadOnlyList<ShortcutCatalogEntry> Entries =
     [
@@ -41,6 +42,7 @@ public static class ShortcutCatalog
         // registers or dispatches them.
         new(AttachSessionId, "Session: Attach to Session…", "General", ShortcutScope.App, "", RequiresSessionPersistence: true),
         new(DetachPaneId, "Pane: Detach", "General", ShortcutScope.Pane, "", RequiresSessionPersistence: true),
+        new(QuitAndCloseAllShellsId, "Session: Quit and Close All Shells", "General", ShortcutScope.App, "", RequiresSessionPersistence: true),
         new("paste", "Paste", "Edit", ShortcutScope.Pane, "Ctrl+V"),
         new("command_assist_toggle", "Command Assist Toggle", "Command Assist", ShortcutScope.CommandAssist, "Ctrl+Space"),
         new("command_assist_help", "Command Assist Help", "Command Assist", ShortcutScope.CommandAssist, "Ctrl+Shift+H"),

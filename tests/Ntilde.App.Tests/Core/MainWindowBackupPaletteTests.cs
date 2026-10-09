@@ -178,7 +178,9 @@ public sealed class MainWindowBackupPaletteTests : IDisposable, IClassFixture<Te
     public async Task ImportReplace_ThenCancelSettings_ThenOrdinarySave_KeepsTheImportedConfiguration()
     {
         using var source = BackupTestTree.CreatePopulated();
-        source.WriteFile("settings.json", """{"FontSize":77,"ThemeName":"FromImport"}""");
+        // SessionPersistence explicit: applying the imported file would otherwise give the window its
+        // default, and a KeepOnClose window launches a daemon.
+        source.WriteFile("settings.json", """{"FontSize":77,"ThemeName":"FromImport","SessionPersistence":"Off"}""");
         string bundle = Path.Combine(source.Root, "import.ntildebackup");
         Assert.True(new BackupService(source.Root).Export(bundle).Success);
 
@@ -219,6 +221,7 @@ public sealed class MainWindowBackupPaletteTests : IDisposable, IClassFixture<Te
 
             // saved: false - the dialog closed via Cancel or the window's X, not Save.
             window.ApplySettingsWindowResult(settingsWindow, saved: false, previewSnapshot);
+            Assert.Null(window.MuxHost); // the imported file says Off: a test window never spawns a daemon (spec R3)
 
             var setupMethod = typeof(Ntilde.MainWindow).GetMethod("SetupCommandPalette", BindingFlags.NonPublic | BindingFlags.Instance)!;
             setupMethod.Invoke(window, null);

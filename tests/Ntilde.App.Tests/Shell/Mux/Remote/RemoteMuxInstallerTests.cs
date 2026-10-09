@@ -86,6 +86,29 @@ public sealed class RemoteMuxInstallerTests
         Assert.Contains(_steps, s => s.Step == RemoteMuxInstallStep.Downloading && s.Message.Contains("ab12", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Phase 5 Task 23 ("the same rule for remote daemons"): an update - the same flow as an install, over a host whose
+    /// ntilde-mux is already running - replaces the binary by a rename, which the running daemon survives on its old
+    /// inode, and never stops that daemon: its shells keep running, and the "from a previous version" notice offers the
+    /// restart when the user is ready. Every word of every command the flow ran is checked, not just its known lines.
+    /// </summary>
+    [Fact]
+    public async Task An_update_leaves_the_running_daemon_alone()
+    {
+        RecordingExecTransport host = Host(new FakeExecReply(InstalledJson));
+
+        RemoteMuxInstallResult result = await Installer(host, new FakeAssetSource(new MuxDaemonAsset(Binary, "ab12", "x"))).InstallAsync(Ct);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Contains(host.Commands, c => c.Contains("mv -f", StringComparison.Ordinal)); // the binary was replaced
+        string[] stops = ["kill-server", "shutdown", "kill", "pkill", "killall"];
+        foreach (string command in host.Commands)
+        {
+            string[] words = System.Text.RegularExpressions.Regex.Split(command, @"[\s;'""&|(){}]+");
+            Assert.False(words.Any(stops.Contains), $"a command of the update stops the daemon: {command}");
+        }
+    }
+
     [Fact]
     public async Task Upload_progress_counts_the_bytes_written()
     {

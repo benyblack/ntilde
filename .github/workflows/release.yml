@@ -90,6 +90,30 @@ jobs:
           # Velopack versions are SemVer without a leading 'v'; the tag has one.
           echo "release_version=${tag#v}" >> "$GITHUB_OUTPUT"
 
+      # THE RERUN GUARD (Codex review of PR #511, P1). Every installed App pins the SHA-256 of its own
+      # version's ntilde-mux-<rid> (Phase 5 Task 10). A second run for a tag that already has them -
+      # "Re-run all jobs", or a re-dispatch of the tag - signs the macOS binary again with a new secure
+      # timestamp, so new bytes and a new hash, and would replace the asset those Apps verify against.
+      # So the run stops here when the tag's release already carries ANY ntilde-mux asset. Here because
+      # every other job needs this one: nothing is built, signed or uploaded before it, and it runs
+      # before create_release, so none of this run's own uploads can exist yet and no run_attempt check
+      # is needed. A release that does not exist yet passes. "Re-run failed jobs" skips this job (it
+      # succeeded); publish_mux_daemon checks its own upload for that case. The script comes from the
+      # workflow's own ref, like the signing action, never from checkout_ref.
+      - name: Checkout workflow ref (provides the rerun guard)
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/ci
+          persist-credentials: false
+
+      - name: Refuse to replace a published ntilde-mux
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
+        run: bash scripts/ci/mux-release-guard.sh preflight "$RELEASE_TAG"
+
   create_release:
     name: Create Release
     runs-on: ubuntu-latest
@@ -607,6 +631,27 @@ jobs:
           name: native-${{ matrix.os }}
           path: src/Ntilde.App/native
 
+      # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
+      # below so remote installs verify their download against them (Phase 5 Task 10). Counted: a download
+      # that silently found nothing would build an App with no pins.
+      - name: Download the ntilde-mux checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mux-sha256-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/mux-sha256
+
+      - name: Check the ntilde-mux checksums
+        shell: bash
+        env:
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: |
+          set -euo pipefail
+          ls -la "$MUX_SHA256_DIR"
+          for rid in linux-x64 linux-arm64 osx-arm64; do
+            test -s "$MUX_SHA256_DIR/ntilde-mux-$rid.sha256" || { echo "::error::no ntilde-mux-$rid.sha256 to embed" >&2; exit 1; }
+          done
+
       - name: Restore
         run: dotnet restore
 
@@ -625,7 +670,8 @@ jobs:
         env:
           SKIP_RUST_NATIVE_BUILD: "1"
           RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
-        run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/publish/${{ matrix.rid }}
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" "-p:NtildeMuxSha256Dir=$MUX_SHA256_DIR" -o artifacts/publish/${{ matrix.rid }}
 
       # ---- ntilde.com, the console launcher (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md
       # ---- §10.3, §11). A GUI-subsystem Ntilde.exe is started and forgotten by a prompt, so
@@ -729,72 +775,91 @@ jobs:
           $env:NTILDE_APPDATA_ROOT = $root
           $errorFile = Join-Path $root 'logs/startup_error.txt'
           $debugLog  = Join-Path $root 'logs/debug.log'
+          $muxLog    = Join-Path $root 'logs/mux.log'
 
           $exe = Join-Path $PWD 'artifacts/publish/win-x64/Ntilde.exe'
           if (-not (Test-Path $exe)) { throw "The publish produced no Ntilde.exe at $exe." }
 
-          $proc = Start-Process -FilePath $exe -PassThru
-          Write-Output "Started pid $($proc.Id); watching for 45s."
+          try {
+            $proc = Start-Process -FilePath $exe -PassThru
+            Write-Output "Started pid $($proc.Id); watching for 45s."
 
-          # Poll rather than sleep-then-look, so a fast crash is reported as a crash instead
-          # of waiting out the full window first.
-          $deadline = (Get-Date).AddSeconds(45)
-          while ((Get-Date) -lt $deadline) {
-            if ($proc.HasExited -or (Test-Path $errorFile)) { break }
-            Start-Sleep -Seconds 2
-          }
-
-          # Diagnostics BEFORE the assertions: on a tag build this log is the whole
-          # diagnosis, and an assertion that throws first would take it away.
-          foreach ($f in @($debugLog, $errorFile)) {
-            if (Test-Path $f) {
-              Write-Output "---- $f ----"
-              Get-Content $f -Tail 60
+            # Poll rather than sleep-then-look, so a fast crash is reported as a crash instead
+            # of waiting out the full window first.
+            $deadline = (Get-Date).AddSeconds(45)
+            while ((Get-Date) -lt $deadline) {
+              if ($proc.HasExited -or (Test-Path $errorFile)) { break }
+              Start-Sleep -Seconds 2
             }
-          }
 
-          if (Test-Path $errorFile) {
-            throw "The bundle failed during startup and wrote startup_error.txt (contents above). A trimmed-away type or a native that will not load is a real break in the artifact about to be released - do not retry it away."
-          }
-          if ($proc.HasExited) {
-            throw "The bundle exited on its own within 45s (exit code $($proc.ExitCode)) without writing startup_error.txt, so it died outside Program.cs's own try/catch - suspect the native side or the host."
-          }
-          if (-not (Test-Path $debugLog)) {
-            throw "The process is alive but never wrote $debugLog, so managed Main did not reach its startup logging. Suspect a failure before the log sink is wired, in the AOT host itself."
-          }
-
-          # Asserts on the THIRD line Program.cs logs at startup, not the first: the first
-          # ("Ntilde started with args: ...") never reaches the file, on any machine, so
-          # the obvious assertion is a guaranteed false failure. Build: is the better anchor
-          # anyway - it proves managed Main got through startup AND that DescribeBuild
-          # resolved the executable path, the one remaining IL3000 in the tree.
-          if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
-            throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
-          }
-
-          # Beyond "Main ran": the window and a terminal view came up, and the downloaded
-          # native PTY loaded and spawned a shell with a live child. Both lines are emitted on
-          # a pristine profile. If a log reword breaks this, re-anchor to whatever the renderer
-          # and the PTY now say on first paint - do not delete the check, or this step goes
-          # back to proving only that a process launched, which #443 also did.
-          #
-          # `Spawned ... pid=<n>`, NOT the `Spawning` line this step first shipped with:
-          # RustPtySession logs `Spawning` BEFORE calling pty_spawn, so a rusty_pty that is
-          # missing, ABI-incompatible, or simply unable to spawn writes it and then throws
-          # into TerminalPane.InitializeSessionCore's catch, which shows an error banner and
-          # leaves the process alive and themed. Every assertion in this step would pass and
-          # the PTY-less bundle would be published - the precise failure this gate exists to
-          # stop, since this job's natives come from `Download Native Artifact` and are never
-          # compiled or run anywhere else. `Spawned` sits after the IsInvalid check and carries
-          # the child pid, so it cannot be reached without a working native. (Codex P1 on #445.)
-          foreach ($pattern in @('\[TerminalView\] Theme applied', '\[RustPtySession\] Spawned .*pid=\d+')) {
-            if (-not (Select-String -Path $debugLog -Pattern $pattern -Quiet)) {
-              throw "$debugLog has no line matching '$pattern', so the bundle started but its UI never finished coming up. A trimmed-away type reached only while building the terminal view, or a native that failed to load, looks exactly like this."
+            # Diagnostics BEFORE the assertions: on a tag build this log is the whole
+            # diagnosis, and an assertion that throws first would take it away.
+            foreach ($f in @($debugLog, $muxLog, $errorFile)) {
+              if (Test-Path $f) {
+                Write-Output "---- $f ----"
+                Get-Content $f -Tail 60
+              }
             }
-          }
 
-          Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
-          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            if (Test-Path $errorFile) {
+              throw "The bundle failed during startup and wrote startup_error.txt (contents above). A trimmed-away type or a native that will not load is a real break in the artifact about to be released - do not retry it away."
+            }
+            if ($proc.HasExited) {
+              throw "The bundle exited on its own within 45s (exit code $($proc.ExitCode)) without writing startup_error.txt, so it died outside Program.cs's own try/catch - suspect the native side or the host."
+            }
+            if (-not (Test-Path $debugLog)) {
+              throw "The process is alive but never wrote $debugLog, so managed Main did not reach its startup logging. Suspect a failure before the log sink is wired, in the AOT host itself."
+            }
+
+            # Asserts on the THIRD line Program.cs logs at startup, not the first: the first
+            # ("Ntilde started with args: ...") never reaches the file, on any machine, so
+            # the obvious assertion is a guaranteed false failure. Build: is the better anchor
+            # anyway - it proves managed Main got through startup AND that DescribeBuild
+            # resolved the executable path, the one remaining IL3000 in the tree.
+            if (-not (Select-String -Path $debugLog -Pattern 'Build:.*path=.*Ntilde\.exe' -Quiet)) {
+              throw "$debugLog carries no 'Build: ... path=...Ntilde.exe' line. Either managed Main did not reach its startup logging, or DescribeBuild could not resolve the executable path - which in an AOT bundle means Environment.ProcessPath came back empty and the Assembly.Location fallback (IL3000) was reached after all."
+            }
+
+            # The verdict lives in scripts/ci/aot-smoke-verdict.ps1 (self-tested by
+            # scripts/tests/aot_smoke_verdict_tests.py). The smoke runs on the real default
+            # (KeepOnClose), so the shell is spawned by the multiplexer daemon (`Ntilde.exe mux
+            # serve`), not the GUI, and this also proves the AOT daemon path. When the GUI started
+            # the daemon, the daemon must have served AND spawned a shell (mux.log): a GUI-side
+            # `Spawned` line alone would be the local fallback hiding a broken daemon. The GUI-only
+            # line is accepted only when no daemon was started (persistence off).
+            # `Spawned ... pid=<n>` rather than `Spawning`: Spawning is logged BEFORE pty_spawn
+            # (Codex P1 on #445). If a log reword breaks this, re-anchor it; do not delete it.
+            & (Join-Path $PWD 'scripts/ci/aot-smoke-verdict.ps1') -DebugLog $debugLog -MuxLog $muxLog
+
+            Write-Output "Bundle started from a pristine profile, brought up its UI, and stayed up."
+          }
+          finally {
+            # The daemon outlives the GUI process and must never be left running: stop it by its
+            # own verb first (-Wait: the exe is a WinExe, so a bare call returns at once), then by
+            # command line (it runs from a staged copy under the profile root, or from the publish
+            # directory). Nothing here may fail the step.
+            try { Start-Process -FilePath $exe -ArgumentList 'mux', 'kill-server' -Wait -WindowStyle Hidden } catch { Write-Output "kill-server failed: $_" }
+            if ($proc) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+            Start-Sleep -Seconds 1
+            try {
+              $publishDir = Split-Path $exe -Parent
+              Get-CimInstance Win32_Process -Filter "Name = 'Ntilde.exe'" |
+                Where-Object {
+                  $_.CommandLine -match 'mux\s+serve' -and $_.ExecutablePath -and
+                  ($_.ExecutablePath.StartsWith($publishDir, [StringComparison]::OrdinalIgnoreCase) -or
+                   $_.ExecutablePath.StartsWith($root, [StringComparison]::OrdinalIgnoreCase))
+                } |
+                ForEach-Object {
+                  Write-Output "Stopping leftover daemon pid $($_.ProcessId)"
+                  Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+                }
+            }
+            catch { Write-Output "daemon sweep failed: $_" }
+          }
+          # The runner's pwsh wrapper ends the step with `exit $LASTEXITCODE`; kill-server's code
+          # must not leak into it.
+          $global:LASTEXITCODE = 0
+          exit 0
 
       # win-x64 only. osx-arm64's user-facing zip is the Velopack Portable bundle
       # (Ntilde.app inside a ditto zip) built by the macOS Velopack steps below and
@@ -863,6 +928,22 @@ jobs:
           # each lane only ever sees its own channel's packages even though the step body
           # is shared.
           vpk download github --repoUrl https://github.com/benyblack/ntilde --token $env:GH_TOKEN --outputDir artifacts/velopack
+
+      # The release notes both packs below ship (Phase 5 R10): this build's multiplexer protocol
+      # range, as the marker line an installed app reads from the staged update
+      # (MuxUpdateCompatibility.ParseProtocolRange) to decide whether applying it keeps the running
+      # multiplexer and its shells. Read from MuxProtocol.cs, since this job has no ntilde-mux binary
+      # to ask; publish_mux_daemon checks the binary reports the same range. The script fails
+      # rather than guess, and a missing marker would read as "compatible" in the field.
+      - name: Write the Velopack release notes (multiplexer protocol)
+        if: matrix.rid == 'win-x64' || matrix.rid == 'osx-arm64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          mkdir -p artifacts
+          printf '<!-- ntilde-mux-protocol: %s -->\n' "$range" > artifacts/velopack-release-notes.md
+          cat artifacts/velopack-release-notes.md
 
       - name: Pack Windows installer (Velopack)
         if: matrix.rid == 'win-x64'
@@ -959,10 +1040,12 @@ jobs:
             --packTitle Ntilde `
             --packAuthors benyblack `
             --icon src/Ntilde.App/Assets/ntilde_icon.ico `
+            --releaseNotes artifacts/velopack-release-notes.md `
             --outputDir artifacts/velopack `
             --noPortable
           # --noPortable: the release already ships ntilde-win-x64-<tag>.zip, and two
           # near-identical zips on the releases page is a support question waiting to happen.
+          # --releaseNotes: the multiplexer protocol marker (see "Write the Velopack release notes").
 
           # The installer's file name is ours to choose - nothing resolves it by name - so
           # give it one that reads clearly next to the zips. Matched by glob because vpk
@@ -1132,6 +1215,7 @@ jobs:
             --bundleId com.benyblack.Ntilde \
             --icon artifacts/icon/ntilde_icon.icns \
             --exclude 'Ntilde\.dSYM' \
+            --releaseNotes artifacts/velopack-release-notes.md \
             --outputDir artifacts/velopack \
             ${sign_args[@]+"${sign_args[@]}"}
 
@@ -1366,7 +1450,9 @@ jobs:
     # restore + AOT publish + build-deb.sh + vpk pack, with no preinstalled anything
     # to fall back on. Not 90 like publish_aot - there is no notarization wait here.
     timeout-minutes: 60
-    needs: [release_metadata, create_release, build_native_linux, release_tests]
+    # publish_mux_daemon: the App embeds its checksums (Phase 5 Task 10). It needs only
+    # [release_metadata, create_release, release_tests], so this adds no cycle.
+    needs: [release_metadata, create_release, build_native_linux, release_tests, publish_mux_daemon]
     permissions:
       contents: read
     strategy:
@@ -1534,6 +1620,27 @@ jobs:
           name: native-${{ matrix.os }}
           path: src/Ntilde.App/native
 
+      # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
+      # below so remote installs verify their download against them (Phase 5 Task 10). Counted: a download
+      # that silently found nothing would build an App with no pins.
+      - name: Download the ntilde-mux checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mux-sha256-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/mux-sha256
+
+      - name: Check the ntilde-mux checksums
+        shell: bash
+        env:
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: |
+          set -euo pipefail
+          ls -la "$MUX_SHA256_DIR"
+          for rid in linux-x64 linux-arm64 osx-arm64; do
+            test -s "$MUX_SHA256_DIR/ntilde-mux-$rid.sha256" || { echo "::error::no ntilde-mux-$rid.sha256 to embed" >&2; exit 1; }
+          done
+
       - name: Restore
         run: dotnet restore
 
@@ -1546,12 +1653,14 @@ jobs:
         env:
           SKIP_RUST_NATIVE_BUILD: "1"
           RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
         run: |
           set -euo pipefail
           dotnet publish src/Ntilde.App/Ntilde.App.csproj \
             -c "$CONFIGURATION" -r ${{ matrix.rid }} --self-contained true \
             -p:PublishAot=true -p:SkipCliShim=true \
             "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" \
+            "-p:NtildeMuxSha256Dir=$MUX_SHA256_DIR" \
             -o artifacts/publish/${{ matrix.rid }}
 
       # BEFORE anything packages this directory, not after. StripSymbols=true
@@ -1691,6 +1800,16 @@ jobs:
             --channel "$RID" \
             --outputDir artifacts/linux
 
+      # The release notes the pack below ships: the multiplexer protocol marker, exactly as the
+      # win and osx lanes write it (see "Write the Velopack release notes" in publish_aot).
+      - name: Write the Velopack release notes (multiplexer protocol)
+        run: |
+          set -euo pipefail
+          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          mkdir -p artifacts
+          printf '<!-- ntilde-mux-protocol: %s -->\n' "$range" > artifacts/velopack-release-notes.md
+          cat artifacts/velopack-release-notes.md
+
       - name: Pack AppImage (Velopack)
         env:
           RELEASE_TAG: ${{ needs.release_metadata.outputs.release_tag }}
@@ -1803,6 +1922,7 @@ jobs:
             --channel "$channel" \
             --icon src/Ntilde.App/Assets/ntilde_icon.png \
             --exclude '.*\.pdb|Ntilde\.dbg' \
+            --releaseNotes artifacts/velopack-release-notes.md \
             --outputDir artifacts/linux
 
           echo "Velopack output:"
@@ -1907,6 +2027,11 @@ jobs:
   # in statically (spec §2 decision 1); should the osx-arm64 static link ever fail, that RID
   # alone falls back to {exe, librusty_pty.dylib}, and this job is where that change would land.
   # ===========================================================================
+  # RE-RUNS: "Re-run failed jobs" is safe for a leg that failed before its upload. "Re-run all jobs", or
+  # a re-dispatch of an already published tag, would re-sign the macOS binary, which changes its hash and
+  # breaks the pin in Apps of that version that were already downloaded. Both are refused: release_metadata
+  # stops a run whose tag already has any ntilde-mux asset, and a leg rerun on its own fails right after
+  # an upload that found its assets already there (scripts/ci/mux-release-guard.sh). Cut a new tag instead.
   publish_mux_daemon:
     name: Publish ntilde-mux (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
@@ -1917,12 +2042,19 @@ jobs:
     defaults:
       run:
         shell: bash
-    timeout-minutes: 45
+    # 90, like publish_aot: the macOS leg now waits on Apple's notarization queue (see the signing
+    # steps below), which alone can run 10-30+ minutes on a slow day. Every other leg ends in minutes.
+    timeout-minutes: 90
     # release_tests as well, like every other job that publishes assets (publish_aot,
     # publish_linux): a release whose tests failed gets no ntilde-mux assets either (#156).
     needs: [release_metadata, create_release, release_tests]
     permissions:
       contents: write
+    # The secrets context is not allowed in step-level `if`, so the signing gate is an env boolean,
+    # exactly as in publish_aot. Without the secrets (a fork) the macOS leg still builds and publishes,
+    # unsigned; it says so in a ::notice::.
+    env:
+      MAC_SIGNING_ENABLED: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -1947,6 +2079,30 @@ jobs:
           echo "--- container identity (the glibc floor this lane pins) ---"
           head -2 /etc/os-release
           sed -n '1p' <<<"$(ldd --version)"
+
+      # macOS signing setup precedes the checkout_ref checkout on purpose, as in publish_aot: that ref
+      # can name a revision that lacks the local action, so the workflow's own ref is checked out first,
+      # the keychain imported (it lives outside the workspace, so the re-checkout cannot disturb it),
+      # and only then the release revision. Gated like publish_aot's, so every other leg and the
+      # unsigned lane keep a single checkout.
+      - name: Checkout workflow ref (provides the local signing action)
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up macOS signing keychain
+        id: mac_signing
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED == 'true'
+        uses: ./.github/actions/setup-mac-signing
+        with:
+          cert-p12-base64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          installer-p12-base64: ${{ secrets.MAC_INSTALLER_CERT_P12_BASE64 }}
+          cert-password: ${{ secrets.MAC_CERT_PASSWORD }}
+          sign-app-identity: ${{ secrets.MAC_SIGN_APP_IDENTITY }}
+          sign-install-identity: ${{ secrets.MAC_SIGN_INSTALL_IDENTITY }}
+          notary-profile: ${{ secrets.MAC_NOTARY_PROFILE }}
+          apple-id: ${{ secrets.MAC_APPLE_ID }}
+          team-id: ${{ secrets.MAC_TEAM_ID }}
+          app-specific-password: ${{ secrets.MAC_APP_SPECIFIC_PASSWORD }}
 
       - uses: actions/checkout@v4
         with:
@@ -2095,6 +2251,59 @@ jobs:
           echo "$version_json"
           grep -qF "\"version\":\"$RELEASE_VERSION\"" <<<"$version_json" \
             || { echo "::error::ntilde-mux --version --json does not report version $RELEASE_VERSION" >&2; exit 1; }
+          # The Velopack release notes state the protocol range read from MuxProtocol.cs by
+          # scripts/ci/mux-protocol-range.sh (Phase 5 R10); the built binary must report the same one.
+          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          if ! grep -qF "\"protocolMin\":${range%-*}," <<<"$version_json" || ! grep -qF "\"protocolMax\":${range#*-}," <<<"$version_json"; then
+            echo "::error::ntilde-mux --version --json reports another protocol range than MuxProtocol.cs ($range)" >&2
+            exit 1
+          fi
+
+      # Sign and notarize ntilde-mux for macOS (Phase 5 Task 10), BEFORE the checksum is written: the
+      # .sha256 must describe the bytes users download, and the App pins that hash. A bare executable
+      # cannot carry a stapled ticket, so Gatekeeper checks the notarization online on first run.
+      # The hardened runtime (--options runtime) is what notarization requires; ntilde-mux needs no
+      # entitlement for it. Identities reach the script through env, never by interpolation: they contain
+      # spaces and parentheses.
+      - name: Sign and notarize ntilde-mux (macOS)
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED == 'true'
+        env:
+          RID: ${{ matrix.rid }}
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+          KEYCHAIN: ${{ steps.mac_signing.outputs.keychain }}
+          MAC_SIGN_APP_IDENTITY: ${{ secrets.MAC_SIGN_APP_IDENTITY }}
+          MAC_NOTARY_PROFILE: ${{ secrets.MAC_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          bin="artifacts/mux-daemon/$RID/ntilde-mux"
+          codesign --force --timestamp --options runtime --identifier com.benyblack.ntilde-mux --keychain "$KEYCHAIN" --sign "$MAC_SIGN_APP_IDENTITY" "$bin"
+          codesign --verify --strict --verbose=2 "$bin"
+          zip_dir="$(mktemp -d)"
+          ditto -c -k --keepParent "$bin" "$zip_dir/mux.zip"
+          # The JSON status decides, not the exit code: an Invalid submission has been reported to exit 0,
+          # and a missed rejection would be hashed and pinned into every App of this release. A non-zero
+          # exit is handled too: `|| rc=$?` keeps set -e from killing the step before the log is fetched.
+          rc=0
+          out="$(xcrun notarytool submit "$zip_dir/mux.zip" --keychain-profile "$MAC_NOTARY_PROFILE" --keychain "$KEYCHAIN" --wait --output-format json)" || rc=$?
+          echo "$out"
+          status="$(jq -r '.status // "unknown"' <<<"$out" 2>/dev/null || echo unknown)"
+          id="$(jq -r '.id // empty' <<<"$out" 2>/dev/null || true)"
+          if [[ "$rc" != "0" || "$status" != "Accepted" ]]; then
+            if [[ -n "$id" ]]; then
+              xcrun notarytool log "$id" --keychain-profile "$MAC_NOTARY_PROFILE" --keychain "$KEYCHAIN" || true
+            fi
+            echo "::error::ntilde-mux notarization status: $status (notarytool exit $rc)" >&2
+            exit 1
+          fi
+          # Signing and notarizing must not have changed what the binary reports.
+          version_json="$("$bin" --version --json)"
+          echo "$version_json"
+          grep -qF "\"version\":\"$RELEASE_VERSION\"" <<<"$version_json" \
+            || { echo "::error::signed ntilde-mux --version --json does not report version $RELEASE_VERSION" >&2; exit 1; }
+
+      - name: Note that ntilde-mux is not signed (macOS)
+        if: matrix.rid == 'osx-arm64' && env.MAC_SIGNING_ENABLED != 'true'
+        run: echo "::notice::ntilde-mux is not signed (no signing secrets)"
 
       # Flat release-asset names, then the checksum beside each, written from inside the
       # directory so the .sha256 names the bare asset (`<hash>  ntilde-mux-<rid>`).
@@ -2114,14 +2323,38 @@ jobs:
           test -f "artifacts/release/ntilde-mux-$RID.sha256" || { echo "::error::no ntilde-mux-$RID.sha256" >&2; exit 1; }
           (cd artifacts/release && cat "ntilde-mux-$RID.sha256" && ls -la "ntilde-mux-$RID")
 
+      # Never replaces an asset that is already there (overwrite_files defaults to true): installed Apps
+      # pin its hash. At this pinned SHA (v2.6.2) `false` SKIPS an existing asset and the step still
+      # succeeds, leaving it out of the `assets` output, so the next step fails the leg on any skip.
       - name: Upload ntilde-mux release assets
+        id: mux_upload
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.release_metadata.outputs.release_tag }}
           fail_on_unmatched_files: true
+          overwrite_files: false
           files: |
             artifacts/release/ntilde-mux-${{ matrix.rid }}
             artifacts/release/ntilde-mux-${{ matrix.rid }}.sha256
+
+      # A leg rerun on its own skips release_metadata's guard. If its assets were already published, the
+      # upload above kept them and this run's checksum describes bytes the release does not carry: fail
+      # here, before the next step hands that checksum to the App builds.
+      - name: Check this run uploaded both ntilde-mux assets
+        env:
+          RID: ${{ matrix.rid }}
+          UPLOADED_ASSETS: ${{ steps.mux_upload.outputs.assets }}
+        run: bash scripts/ci/mux-release-guard.sh uploaded "$RID"
+
+      # The checksum again, as a workflow artifact: publish_aot and publish_linux embed all three in the
+      # App (-p:NtildeMuxSha256Dir) so a download is verified against what THIS release shipped, not
+      # against a .sha256 that sits beside a possibly swapped binary.
+      - name: Upload the ntilde-mux checksum for the App builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: mux-sha256-${{ matrix.rid }}
+          path: artifacts/release/ntilde-mux-${{ matrix.rid }}.sha256
+          if-no-files-found: error
 
   # THE GATE, plus the only upload. Runs on a plain runner because both halves need
   # what a `container:` job does not have: a docker daemon (smoke-test.sh) - see the

@@ -36,7 +36,7 @@ public sealed class SshInteractionService : ISshInteractionService
         _prepareDialog = prepareDialog;
         _hostKeyPresenter = hostKeyPresenter ?? PresentHostKeyAsync;
         _authPresenter = authPresenter ?? PresentAuthAsync;
-        _knownHostsStore = knownHostsStore ?? new NativeKnownHostsStore(AppPaths.NativeKnownHostsFilePath);
+        _knownHostsStore = knownHostsStore ?? NativeKnownHostsStore.ForPath(AppPaths.NativeKnownHostsFilePath);
         _vaultService = vaultService ?? new VaultService();
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
     }
@@ -110,7 +110,7 @@ public sealed class SshInteractionService : ISshInteractionService
             _sessionRegistry.TryGetRuntimePassword(request.SessionId.Value, request.Host, request.Port, request.User, out string? runtimePassword) &&
             !string.IsNullOrEmpty(runtimePassword))
         {
-            response = SshInteractionResponse.FromSecret(runtimePassword);
+            response = SshInteractionResponse.FromStoredSecret(runtimePassword);
             return true;
         }
 
@@ -127,7 +127,7 @@ public sealed class SshInteractionService : ISshInteractionService
             return false;
         }
 
-        response = SshInteractionResponse.FromSecret(password);
+        response = SshInteractionResponse.FromStoredSecret(password);
         return true;
     }
 
@@ -166,7 +166,16 @@ public sealed class SshInteractionService : ISshInteractionService
         SshInteractionResponse response = await _hostKeyPresenter(owner, CreateHostKeyViewModel(requestToPresent), cancellationToken);
         if (response.IsAccepted && !response.IsCanceled)
         {
-            _knownHostsStore.TrustHost(request.Host, request.Port, request.Algorithm, request.Fingerprint);
+            try
+            {
+                _knownHostsStore.TrustHost(request.Host, request.Port, request.Algorithm, request.Fingerprint);
+            }
+            catch (IOException ex)
+            {
+                // The store could not be read, so it was left untouched. The user's decision still
+                // applies to this connection; the key is simply not remembered.
+                System.Diagnostics.Debug.WriteLine($"[KnownHosts] Host key not remembered: {ex.Message}");
+            }
         }
 
         return response;

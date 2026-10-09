@@ -42,9 +42,6 @@ internal static class RemoteMuxFailureClassifier
 {
     public const string NotInstalledReason = "ntilde-mux is not installed";
 
-    /// <summary>The longest reason quoted from the remote side's output.</summary>
-    private const int MaxQuotedLength = 200;
-
     private const string BinaryName = "ntilde-mux";
 
     /// <param name="exitCode">The channel's exit status; null when unknown (killed, native failure, a signal).</param>
@@ -289,9 +286,6 @@ internal static class RemoteMuxFailureClassifier
     private static IEnumerable<string> CapturedLines(string captured) =>
         Lines(captured.Replace("\\x0D", string.Empty, StringComparison.Ordinal).Replace("\\x0A", "\n", StringComparison.Ordinal));
 
-    private static string Quote(string text)
-    {
-        string trimmed = text.Trim();
-        return trimmed.Length <= MaxQuotedLength ? trimmed : trimmed[..MaxQuotedLength];
-    }
+    /// <summary>Server-controlled text for a toast: trimmed, cut short, and without control or bidi characters.</summary>
+    private static string Quote(string text) => RemoteOutputText.Cut(RemoteOutputText.Clean(text).Trim(), RemoteOutputText.MaxLength);
 }

@@ -282,11 +282,46 @@ namespace Ntilde
         /// <summary>Test seam: the confirmation shown when an update would close running mux sessions.</summary>
         internal Func<string, Task<bool>> ConfirmSessionLossForUpdate { get; set; }
 
+        /// <summary>
+        /// Test seam: the Velopack install root whose every process an update's apply kills (Phase 5 R9), or null when
+        /// this is not a Windows Velopack install, whose apply kills nothing.
+        /// </summary>
+        internal Func<string?> MuxInstallRootForUpdate { get; set; } = Ntilde.Shell.Mux.MuxDaemonImage.CurrentVelopackInstallRoot;
+
+        /// <summary>
+        /// Test seam: the executable the daemon a descriptor names runs from, or null when that cannot be told
+        /// (<see cref="Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath"/>). Runs off the UI thread.
+        /// </summary>
+        internal Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?> MuxDaemonImagePathForUpdate { get; set; } =
+            Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath;
+
         /// <summary>Shows the "Attach to session…" picker; null = cancelled. A seam so tests choose without a modal.</summary>
-        internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow>, Task<Guid?>> PickMuxSession { get; set; }
+        internal Func<IReadOnlyList<Ntilde.Shell.Mux.MuxPickerItem>, Task<Ntilde.Shell.Mux.MuxPickerItem?>> PickMuxSession { get; set; }
 
         /// <summary>The shared-close prompt (spec §7.4), given how many other clients show the shell. A seam so tests answer without a modal.</summary>
         internal Func<int, Task<Ntilde.Shell.Mux.SharedCloseChoice>> ConfirmSharedClose { get; set; }
+
+        /// <summary>The first-close question's three outcomes (spec R1): Escape or the dialog's X is <see cref="FirstCloseAction.Cancel"/>.</summary>
+        internal enum FirstCloseAction { Cancel, Keep, Close }
+
+        /// <summary>An answer to the first-close question; <paramref name="Remember"/> is its "Don't ask again".</summary>
+        internal readonly record struct FirstCloseAnswer(FirstCloseAction Action, bool Remember);
+
+        /// <summary>
+        /// The first-close question (spec R1), given how many local shells the close would leave running. A seam so
+        /// tests answer without a modal; the constructor assigns <see cref="ShowFirstCloseDialogAsync"/>.
+        /// </summary>
+        internal Func<int, Task<FirstCloseAnswer>> ConfirmFirstClose { get; set; }
+
+        /// <summary>
+        /// The "Quit and close all shells" confirmation (Task 17), given how many shells the local daemon is running
+        /// (-1 when that is unknown). A seam so tests answer without a modal; the constructor assigns
+        /// <see cref="ShowQuitAndCloseAllDialogAsync"/>.
+        /// </summary>
+        internal Func<int, Task<bool>> ConfirmQuitAndCloseAll { get; set; }
+
+        /// <summary>Where "Don't ask again" keeps the first-close answer (R1). A seam so tests use a scratch root.</summary>
+        internal Ntilde.Shell.Mux.MuxCloseChoiceStore MuxCloseChoiceStore { get; set; } = Ntilde.Shell.Mux.MuxCloseChoiceStore.Default;
 
         /// <summary>Test seam: runs inside <see cref="PerformAppTeardown"/> right after its one-shot guard.</summary>
         internal Action? TeardownFaultForTest { get; set; }
@@ -334,6 +369,18 @@ namespace Ntilde
 
         /// <summary>Every endpoint's connection (Phase 4 spec §5); null while persistence has never been on.</summary>
         internal Ntilde.Shell.Mux.MuxConnectionHosts? MuxHosts => _muxHosts;
+
+        private Ntilde.Shell.Mux.MuxWindowlessSessions? _windowlessSessions;
+
+        /// <summary>
+        /// The agent host's windowless sessions of this window (Phase 5 spec §3, ruling R4): its daemons' sessions that no
+        /// pane of it shows. Null while persistence has never been on (no hosts, so nothing to list); built once with the
+        /// hosts, which are never replaced. UI thread.
+        /// </summary>
+        internal AgentHost.IWindowlessSessionSource? WindowlessSessions =>
+            _windowlessSessions ??= _muxHosts is { } hosts
+                ? new Ntilde.Shell.Mux.MuxWindowlessSessions(hosts, MuxSessionsShownHereAsync, AppLogger.Log)
+                : null;
 
         private sealed class PaneZoomState
         {
@@ -2985,16 +3032,27 @@ namespace Ntilde
             SetupCommandPalette();
         }
 
-        private bool TryRestoreStartupSession(TabControl tabs, out NtildeSession? loadedSession)
+        /// <param name="sessionsCannotPredateUtc">Read only when there is a session to restore (an OS call).</param>
+        private bool TryRestoreStartupSession(TabControl tabs, Func<DateTime?> sessionsCannotPredateUtc, out NtildeSession? loadedSession)
         {
             loadedSession = null;
-            if (!SessionManager.TryLoadSavedSession(out NtildeSession? session) ||
+            if (!SessionManager.TryLoadSavedSession(out NtildeSession? session, out DateTime? savedUtc) ||
                 session == null ||
                 session.Tabs.Count == 0)
             {
                 return false;
             }
             loadedSession = session;
+            // Spec R2, decided once per launch: the file predates the boot (or, on Windows, this logon), so a reboot or
+            // a logoff ended the local daemon sessions it names. The mark goes on the loaded nodes, before any tab is
+            // built from them, so deferred tabs carry it too - and so does the session file until each pane spawns.
+            DateTime? boundary = sessionsCannotPredateUtc();
+            if (Ntilde.Shell.Mux.MuxRestoreExpectations.SessionsEndedByReboot(savedUtc, boundary))
+            {
+                TerminalLogger.Log($"TryRestoreStartupSession: the session file ({savedUtc:o}) predates this boot or logon ({boundary:o}); its local shells start fresh, quietly");
+                SessionManager.MarkLocalMuxSessionsEndedByReboot(session);
+            }
+
             _startup.Checkpoint("StartupRestore.AfterSessionLoad");
 
             try
@@ -3835,9 +3893,14 @@ namespace Ntilde
             ConfirmSessionLossForUpdate = ShowUpdateSessionLossConfirmationAsync;
             PickMuxSession = ShowMuxSessionPickerAsync;
             ConfirmSharedClose = ShowSharedCloseDialogAsync;
+            ConfirmFirstClose = ShowFirstCloseDialogAsync;
+            ConfirmQuitAndCloseAll = ShowQuitAndCloseAllDialogAsync;
+            ConfirmMuxRestart = ShowMuxRestartDialogAsync;
             InitializeComponent();
             _startup.Checkpoint("MainWindow.AfterInitializeComponent");
             _settings = services.Settings ?? TerminalSettings.Load();
+            // Before the factory choice below, which builds the daemon host through it for KeepOnClose.
+            MuxHostFactory = services.MuxHostFactory;
             // Decided here, once _settings exists and long before the first tab (restore or
             // AddTab below) creates a pane: every pane is wired with this factory.
             _sessionFactory = ChooseSessionFactory(services.SessionFactory);
@@ -3875,6 +3938,7 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ActEnabled = _settings.AgentAccessActEnabled;
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
+            AgentHost.AgentHostService.Instance.SetWindowlessSource(WindowlessSessions);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
             AgentHost.AgentHostService.Instance.ObserveActivityChanged += OnAgentObserveActivityChanged;
             RefreshAgentObserveIndicator();
@@ -4117,7 +4181,7 @@ namespace Ntilde
             NtildeSession? restoredSession = null;
             if (tabs != null)
             {
-                if (!TryRestoreStartupSession(tabs, out NtildeSession? loadedSession))
+                if (!TryRestoreStartupSession(tabs, services.SessionsCannotPredateUtc, out NtildeSession? loadedSession))
                 {
                     AddTab(defaultProfile);
                     _startup.CompleteWithoutRestore();
@@ -4332,6 +4396,13 @@ namespace Ntilde
                     e.Handled = true;
                     return;
                 }
+                if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.QuitAndCloseAllShellsId, ""))
+                {
+                    RecordCommandUsage(ShortcutCatalog.QuitAndCloseAllShellsId);
+                    _ = QuitAndCloseAllShellsAsync();
+                    e.Handled = true;
+                    return;
+                }
                 if (IsShortcut(e, "find", "Ctrl+F") || IsShortcut(e, "find_alt", "Ctrl+Shift+F"))
                 {
                     RecordCommandUsage("find");
@@ -4491,6 +4562,7 @@ namespace Ntilde
             if (injected is Ntilde.Shell.Mux.MuxTerminalSessionFactory mux)
             {
                 _muxHosts = mux.Hosts;
+                WatchMuxDaemonVersions();
                 return mux;
             }
 
@@ -4508,9 +4580,11 @@ namespace Ntilde
             _muxHosts.Local.WarmUp();
         }
 
-        /// <summary>Builds the local daemon connection for KeepOnClose. A seam so a test can make it throw.</summary>
-        internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; set; } =
-            () => Ntilde.Shell.Mux.MuxConnectionHost.CreateDefault(AppLogger.Log);
+        /// <summary>
+        /// Builds the local daemon connection for KeepOnClose: <see cref="AppServiceBundle.MuxHostFactory"/>, whose
+        /// designer version refuses, so a designer or test window never launches a daemon. A test may replace it.
+        /// </summary>
+        internal Func<Ntilde.Shell.Mux.MuxConnectionHost> MuxHostFactory { get; set; }
 
         /// <summary>
         /// Builds the connection for a remote endpoint the first time a pane uses it (Phase 4 spec §5), or
@@ -4601,6 +4675,7 @@ namespace Ntilde
                 }
 
                 RefreshProfileUIs();
+                DecideMuxNoticeAgainAfterInstall(saved.Id);
             }
             catch (Exception ex)
             {
@@ -4640,6 +4715,7 @@ namespace Ntilde
                 }
 
                 RefreshProfileUIs();
+                DecideMuxNoticeAgainAfterInstall(profileId);
             }
             catch (Exception ex)
             {
@@ -4673,7 +4749,8 @@ namespace Ntilde
                 source ?? new Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource(
                     MuxReleaseHttp.Value,
                     AppVersionInfo.Version,
-                    Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource.DefaultCacheDirectory),
+                    Ntilde.Shell.Mux.Remote.GitHubReleaseMuxAssetSource.DefaultCacheDirectory,
+                    Ntilde.Shell.Mux.Remote.MuxAssetPins.Load()),
                 report)
             {
                 Progress = progress,
@@ -4730,7 +4807,7 @@ namespace Ntilde
                 AppLogger.Log,
                 _sshInteractionService,
                 savedPassword: static profile => Ntilde.Shell.Mux.Remote.RemoteMuxHostFactory.ReadSavedPassword(Vault ?? new VaultService(), profile),
-                askPassRecords: new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory));
+                askPassRecords: new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory, AppLogger.Log));
 
         /// <summary>
         /// Reuses the hosts kept from an earlier On period; only the first call builds them. Building
@@ -4749,6 +4826,8 @@ namespace Ntilde
                 AppLogger.Log($"[MainWindow] session persistence unavailable, using normal sessions: {ex.Message}");
                 return Ntilde.Shell.DefaultTerminalSessionFactory.Instance;
             }
+
+            WatchMuxDaemonVersions();
 
             // The SSH profile store, through a lambda: this runs before _sshConnectionService is assigned
             // (Task 19's note), and a profile's PersistRemoteSessions is read at each spawn. Panes make
@@ -5012,6 +5091,7 @@ namespace Ntilde
             pane.SshInteractionHandler = _sshInteractionService;
             // A method group: OpenRemoteMuxInstall is read when a notice is raised, not now.
             pane.RemoteNoticeAction = RemoteMuxNoticeAction;
+            pane.LocalMuxRestartAction = LocalMuxRestartNoticeAction;
             // Kept by UnwirePane: a stale remote result reaches a closed pane, and its shell's kill asks for the pass (codex C1).
             pane.RemoteMuxReleaseCheck = ScheduleRemoteMuxHostRelease;
             pane.RequestRemoteFilesSidebarTransfer -= OnPaneRequestRemoteFilesSidebarTransfer;
@@ -5124,6 +5204,9 @@ namespace Ntilde
         /// <summary>
         /// A crash right after launch must still know which daemon sessions are this window's
         /// (spec §9): save the session file after each attach, coalesced into one Background pass.
+        /// Shells already ended for a close or an update (<see cref="_localSessionsEndedOnClose"/>)
+        /// stay out of it, as from every other save: a pass that runs after the update's own save
+        /// must not name them again.
         /// </summary>
         private void OnPanePersistentSessionAttached(TerminalPane pane)
         {
@@ -5134,7 +5217,7 @@ namespace Ntilde
                 Volatile.Write(ref _sessionSaveQueued, 0);
                 // After teardown the connection is gone; the teardown's own save is the last word.
                 if (_teardownDone) return;
-                if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs);
+                SaveSessionWithoutEndedShells();
             }, DispatcherPriority.Background);
         }
 
@@ -5144,6 +5227,13 @@ namespace Ntilde
 
         // UI thread: the last action raised with those notices; the merged toast offers it (Phase 4 spec §7.5).
         private PersistenceNoticeAction? _pendingNoticeAction;
+
+        // UI thread: the notices the toast shows now - the last flush's - so DismissNotice can take one off. Empty once the
+        // toast hides or shows anything else.
+        private List<(string Key, string Title, string Message, int Count)> _shownPersistenceNotices = [];
+
+        // UI thread: the keys of notices that stay on the toast until DismissNotice takes them off (EnqueueNotice's untilDismissed).
+        private readonly HashSet<string> _noticesUntilDismissed = [];
 
         /// <summary>
         /// A pane's session will not persist, or replaced a lost one. Shown as a toast rather than
@@ -5176,14 +5266,24 @@ namespace Ntilde
         /// host and reason - not per title: merged by title, the longer of two hosts' lines was shown with the other
         /// host's action (the Task 19 note), so the button could install on a host its line did not name. Each
         /// action's own line is now always in the toast; panes of one host and reason still merge ("(n panes)").
+        /// <para>
+        /// <paramref name="key"/>, when given, is what the notice merges by instead: the "from another build" notices
+        /// (<see cref="Ntilde.Shell.Mux.MuxPreviousBuildNotice"/>) pass their endpoint, since two daemons whose hosts share
+        /// a display name raise the same words and must still keep a line each (Task 23, review item 5).
+        /// </para>
+        /// <para>
+        /// <paramref name="untilDismissed"/> keeps the toast up until <see cref="DismissNotice"/> takes this notice off (or the
+        /// user closes the toast), instead of the usual few seconds: "Connecting to …" lasts as long as the connect does.
+        /// </para>
         /// </remarks>
-        internal void EnqueueNotice(string title, string message, PersistenceNoticeAction? action = null)
+        internal void EnqueueNotice(string title, string message, PersistenceNoticeAction? action = null, string? key = null, bool untilDismissed = false)
         {
             if (action is not null) _pendingNoticeAction = action;
-            string key = title == TerminalPane.RemoteMuxUnavailableNoticeTitle ? $"{title}\n{message}" : title;
-            int index = _pendingPersistenceNotices.FindIndex(n => n.Key == key);
+            string mergeKey = key ?? (title == TerminalPane.RemoteMuxUnavailableNoticeTitle ? $"{title}\n{message}" : title);
+            if (untilDismissed) _noticesUntilDismissed.Add(mergeKey);
+            int index = _pendingPersistenceNotices.FindIndex(n => n.Key == mergeKey);
             bool first = _pendingPersistenceNotices.Count == 0;
-            if (index < 0) _pendingPersistenceNotices.Add((key, title, message, 1));
+            if (index < 0) _pendingPersistenceNotices.Add((mergeKey, title, message, 1));
             else
             {
                 (string k, string t, string m, int c) = _pendingPersistenceNotices[index];
@@ -5204,12 +5304,43 @@ namespace Ntilde
             _pendingNoticeAction = null;
             if (_teardownDone) return;
 
-            // One toast surface: the most recent kind wins its title, every kind keeps a line. A toast
-            // that offers an action stays until the user takes it or closes it: an offer that vanished
-            // after a few seconds could not be taken at all.
+            ShowPersistenceNotices(notices, action);
+        }
+
+        /// <summary>
+        /// UI thread. One toast surface: the most recent kind wins its title, every kind keeps a line. A toast that offers an
+        /// action stays until the user takes it or closes it: an offer that vanished after a few seconds could not be taken at
+        /// all. So does one with a notice raised to stay until dismissed.
+        /// </summary>
+        private void ShowPersistenceNotices(List<(string Key, string Title, string Message, int Count)> notices, PersistenceNoticeAction? action)
+        {
             string title = notices[^1].Title;
             string message = string.Join('\n', notices.Select(n => BuildPersistenceNoticeMessage(n.Title, n.Message, n.Count)));
-            ShowRecordingToast(title, message, filePath: null, folderPath: null, autoHide: action is null, action);
+            bool stays = action is not null || notices.Exists(n => _noticesUntilDismissed.Contains(n.Key));
+            ShowRecordingToast(title, message, filePath: null, folderPath: null, autoHide: !stays, action);
+            _shownPersistenceNotices = notices;
+        }
+
+        /// <summary>
+        /// UI thread. Takes the notice raised under <paramref name="key"/> (<see cref="EnqueueNotice"/>'s merge key) off: out of
+        /// the queue if it is not shown yet, otherwise off the toast - which hides when that was its only line, and shows the
+        /// others again without it. A notice the toast no longer shows (another one replaced it) is left as it is.
+        /// </summary>
+        internal void DismissNotice(string key)
+        {
+            _noticesUntilDismissed.Remove(key);
+            _pendingPersistenceNotices.RemoveAll(n => n.Key == key);
+            int index = _shownPersistenceNotices.FindIndex(n => n.Key == key);
+            if (index < 0) return;
+            List<(string Key, string Title, string Message, int Count)> rest = [.. _shownPersistenceNotices];
+            rest.RemoveAt(index);
+            if (rest.Count == 0)
+            {
+                HideRecordingToast();
+                return;
+            }
+
+            ShowPersistenceNotices(rest, _recordingToastAction);
         }
 
         internal static string BuildPersistenceNoticeMessage(string title, string message, int count)
@@ -5237,90 +5368,285 @@ namespace Ntilde
         /// </summary>
         private bool IsMuxPersistenceActive => _muxHosts is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
 
+        /// <summary>UI thread: an "Attach to session…" runs - its listing, picker or connect - so another is not started (review minor 1).</summary>
+        private bool _muxAttachRunning;
+
+        /// <summary>UI thread: the picker dialog while it is shown, so "Attach to session…" asked again brings it forward.</summary>
+        private Window? _muxPickerDialog;
+
         /// <summary>
-        /// "Attach to session…" (spec §7.2). Lists the daemon's sessions off the UI thread, lets the
-        /// user pick one, and opens it in a new tab attached shared. A session this window already
-        /// shows is focused instead: one connection cannot hold two views of one session.
+        /// "Attach to session…" (spec §7.2, Phase 5 spec §5). Lists the sessions of the local daemon and of every connected
+        /// remote host off the UI thread, offers a "Connect to …" row for each profile that keeps its remote sessions but
+        /// has no connection now, lets the user pick, and opens the chosen session in a new tab attached shared. A session
+        /// this window already shows is focused instead: one connection cannot hold two views of one session.
         /// </summary>
+        /// <remarks>
+        /// One runs at a time. Asked again meanwhile, it brings its picker forward if one is open, and otherwise does
+        /// nothing: modal pickers never stack, and a second connect never starts.
+        /// </remarks>
         internal async Task AttachToMuxSessionAsync()
         {
-            if (!IsMuxPersistenceActive || _muxHosts?.Local is not { } host) return;
-            IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions = await Task.Run(async () =>
+            if (!IsMuxPersistenceActive || _muxHosts is not { } hosts) return;
+            if (_muxAttachRunning)
             {
-                Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(5));
-                if (client is null) return null;
-                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
-                try
-                {
-                    return await client.ListSessionsAsync(cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
-                {
-                    AppLogger.Log($"[MainWindow] listing mux sessions failed: {ex.Message}");
-                    return null;
-                }
-            });
+                _muxPickerDialog?.Activate();
+                return;
+            }
+
+            _muxAttachRunning = true;
             try
             {
-                await OfferMuxSessionsAsync(sessions);
+                await OfferMuxSessionsAsync(hosts);
             }
             catch (Exception ex)
             {
                 // Fire-and-forget from the palette and the shortcut: nothing else observes a throw.
                 AppLogger.Log($"[MainWindow] Attach to session failed: {ex.Message}");
             }
+            finally
+            {
+                _muxAttachRunning = false;
+            }
         }
 
-        private async Task OfferMuxSessionsAsync(IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>? sessions)
+        /// <summary>What the picker offers: each listed host's sessions (or why not), and a connect row for each profile with no connection.</summary>
+        private sealed record MuxPickerSources(
+            IReadOnlyList<Ntilde.Shell.Mux.MuxPickerHostListing> Hosts,
+            IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerConnectRow> Connect);
+
+        /// <summary>
+        /// UI thread. Lists every host, opens the picker, and acts on its choice. Every remote host it may list is held from
+        /// before the listing until the choice is acted on (review minor 2): a release pass meanwhile - its last pane closing,
+        /// say - must not let go of a connection whose rows are on screen, and a row chosen from it then attaches over it.
+        /// </summary>
+        private async Task OfferMuxSessionsAsync(Ntilde.Shell.Mux.MuxConnectionHosts hosts)
         {
-            if (_teardownDone) return;
-            if (sessions is null)
+            IReadOnlyList<(Ntilde.Shell.Mux.MuxEndpointId Id, Ntilde.Shell.Mux.MuxConnectionHost Host)> candidates = hosts.AllByEndpoint;
+            List<Ntilde.Shell.Mux.MuxEndpointId> held = [.. candidates.Select(c => c.Id).Where(id => !id.IsLocal)];
+            _muxPickerHeldHosts.AddRange(held);
+            try
             {
-                EnqueueNotice("Attach to session", "The multiplexer is not reachable.");
-                return;
+                MuxPickerSources sources = await ListMuxPickerSourcesAsync(candidates, MuxPreviousBuildLaunch);
+                if (_teardownDone) return;
+
+                // Pending ids count too: an adopted background tab has not attached (spawned) yet. Keyed by endpoint: one id
+                // on two daemons is two sessions (Phase 4 spec §5).
+                var openHere = new HashSet<(Ntilde.Shell.Mux.MuxEndpointId, Guid)>();
+                foreach (TerminalPane p in AllPanes())
+                {
+                    Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint);
+                    if (p.Session is Ntilde.Mux.MuxClientSession m) openHere.Add((endpoint, m.Id));
+                    if (p.MuxSessionIdToRestore is Guid pending) openHere.Add((endpoint, pending));
+                }
+
+                List<Ntilde.Shell.Mux.MuxPickerItem> items = [.. Ntilde.Shell.Mux.MuxSessionPicker.BuildRows(sources.Hosts, openHere), .. sources.Connect];
+                if (!items.Exists(i => i.IsSelectable))
+                {
+                    // Nothing to choose: the hosts that could not be listed say why, in the error rows' words.
+                    string[] errors = [.. items.OfType<Ntilde.Shell.Mux.MuxSessionPickerErrorRow>().Select(r => r.Display)];
+                    EnqueueNotice("Attach to session", errors.Length > 0 ? string.Join("\n", errors) : "No sessions are running in the multiplexer.");
+                    return;
+                }
+
+                Ntilde.Shell.Mux.MuxPickerItem? chosen = await PickMuxSession(items);
+                if (_teardownDone) return;
+                switch (chosen)
+                {
+                    case Ntilde.Shell.Mux.MuxSessionPickerConnectRow connect:
+                        await ConnectForMuxPickerAsync(hosts, connect);
+                        break;
+                    case Ntilde.Shell.Mux.MuxSessionPickerRow row:
+                        OpenMuxPickerRow(row, sources.Hosts);
+                        break;
+                }
             }
-
-            // Pending ids count too: an adopted background tab has not attached (spawned) yet. The local
-            // daemon's panes only: one id on two daemons is two sessions (Phase 4 spec §5).
-            var openHere = new HashSet<Guid>();
-            foreach (TerminalPane p in AllPanes())
+            finally
             {
-                if (!ShowsLocalMuxEndpoint(p)) continue;
-                if (p.Session is Ntilde.Mux.MuxClientSession m) openHere.Add(m.Id);
-                if (p.MuxSessionIdToRestore is Guid pending) openHere.Add(pending);
+                // A tab opened from a row needs its host by now (its pending id); the others go unless a pane uses them.
+                foreach (Ntilde.Shell.Mux.MuxEndpointId id in held) _muxPickerHeldHosts.Remove(id);
+                if (held.Count > 0) ScheduleRemoteMuxHostRelease();
             }
-
-            IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows = Ntilde.Shell.Mux.MuxSessionPicker.BuildRows(sessions, openHere);
-            if (rows.Count == 0)
-            {
-                EnqueueNotice("Attach to session", "No sessions are running in the multiplexer.");
-                return;
-            }
-
-            Guid? chosen = await PickMuxSession(rows);
-            if (chosen is not Guid id || _teardownDone) return;
-            // Re-checked, not read from the row: the picker is modal, and a tab may have opened it meanwhile.
-            if (FocusPaneShowingMuxSession(id)) return;
-            if (sessions.FirstOrDefault(s => s.SessionId == id) is not { } summary) return;
-
-            var pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(summary.Command), summary.Arguments ?? string.Empty, _settings)
-            {
-                MuxSessionIdToRestore = id,
-                MuxAttachSharedToRestore = true,
-            };
-            AddTabWithPane(pane, string.IsNullOrWhiteSpace(summary.Title) ? summary.Command : summary.Title, select: true);
         }
 
         /// <summary>
-        /// The pane's daemon session (shown or pending) is on the local daemon, the one "Attach to session…", orphan
-        /// adoption and the teardown count speak of (Phase 4 spec §5): a remote pane's id names another daemon's session.
+        /// Off the UI thread: every host's sessions, each within its own wait and all at once, so a slow or failed host gives
+        /// its error row and holds up nobody else; complete once each has answered or timed out. The local daemon is listed
+        /// as before (connected, or spawned, for it). A remote host is listed only while it is connected - listing never
+        /// starts a connect, which could prompt - and while its profile keeps its remote sessions: read from the store now,
+        /// so a profile whose setting was turned off since gives neither rows nor a connect row (a tab opened from either
+        /// would run plain SSH with the id pending). A daemon being restarted (Phase 5 Task 23) is not listed: its sessions
+        /// are about to end.
+        /// </summary>
+        /// <param name="candidates">The hosts to list, as <see cref="OfferMuxSessionsAsync"/> took and holds them.</param>
+        private Task<MuxPickerSources> ListMuxPickerSourcesAsync(
+            IReadOnlyList<(Ntilde.Shell.Mux.MuxEndpointId Id, Ntilde.Shell.Mux.MuxConnectionHost Host)> candidates,
+            Ntilde.Shell.Mux.MuxPreviousBuildNotice.Launch launch) => Task.Run(async () =>
+        {
+            List<(Guid Id, string Host)> persisted = PersistedRemoteMuxProfiles();
+            var listings = new List<Task<Ntilde.Shell.Mux.MuxPickerHostListing>>();
+            var connected = new HashSet<Guid>();
+            foreach ((Ntilde.Shell.Mux.MuxEndpointId id, Ntilde.Shell.Mux.MuxConnectionHost host) in candidates)
+            {
+                Ntilde.Mux.MuxClient? client = null;
+                if (id.SshProfileId is Guid profileId)
+                {
+                    if (!persisted.Exists(p => p.Id == profileId) || (client = host.CurrentClient) is null) continue;
+                    connected.Add(profileId);
+                }
+
+                listings.Add(launch.IsRestarting(id)
+                    ? Task.FromResult(new Ntilde.Shell.Mux.MuxPickerHostListing(id, host.Policy.DisplayName, null, Ntilde.Shell.Mux.MuxPickerHostError.Restarting))
+                    : Task.Run(() => ListMuxSessionsForPickerAsync(id, host, client)));
+            }
+
+            Ntilde.Shell.Mux.MuxPickerHostListing[] listed = await Task.WhenAll(listings).ConfigureAwait(false);
+            List<Ntilde.Shell.Mux.MuxSessionPickerConnectRow> connect = [.. persisted
+                .Where(p => !connected.Contains(p.Id))
+                .Select(p => new Ntilde.Shell.Mux.MuxSessionPickerConnectRow(p.Id, p.Host))];
+            return new MuxPickerSources(listed, connect);
+        });
+
+        /// <summary>
+        /// One host's sessions: <paramref name="connected"/>'s (a remote host's live client, asked within its policy's request
+        /// wait), or for the local daemon its host's client, as before. A failure is logged and kept as a kind only.
+        /// </summary>
+        private static async Task<Ntilde.Shell.Mux.MuxPickerHostListing> ListMuxSessionsForPickerAsync(
+            Ntilde.Shell.Mux.MuxEndpointId id, Ntilde.Shell.Mux.MuxConnectionHost host, Ntilde.Mux.MuxClient? connected)
+        {
+            string name = host.Policy.DisplayName;
+            Ntilde.Mux.MuxClient? client = connected ?? host.GetClient(TimeSpan.FromSeconds(5));
+            if (client is null) return new(id, name, null, Ntilde.Shell.Mux.MuxPickerHostError.ConnectionFailed);
+            using var cts = new System.Threading.CancellationTokenSource(id.IsLocal ? TimeSpan.FromSeconds(5) : host.Policy.RpcTimeout);
+            try
+            {
+                return new(id, name, await client.ListSessionsAsync(cts.Token).ConfigureAwait(false), null);
+            }
+            catch (Exception ex)
+            {
+                // Any failure: one host's must never stop the others from being listed.
+                AppLogger.Log($"[MainWindow] listing the sessions on {name} failed: {ex.Message}");
+                return new(id, name, null, Ntilde.Shell.Mux.MuxSessionPicker.ErrorOf(ex));
+            }
+        }
+
+        /// <summary>The SSH profiles that keep their remote sessions, from one read of the store now, by name, with their hosts' names.</summary>
+        private List<(Guid Id, string Host)> PersistedRemoteMuxProfiles() =>
+        [
+            .. _sshConnectionService.GetStoredProfiles()
+                .Where(p => p is { MuxOptions.PersistRemoteSessions: true })
+                .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(p => p.Id)
+                .Select(p => (p.Id, Ntilde.Shell.Mux.Remote.RemoteMuxConnector.DisplayNameOf(p))),
+        ];
+
+        /// <summary>
+        /// UI thread: the remote hosts an "Attach to session…" holds - those its picker lists, and one its "Connect to …" row
+        /// connects - so no release pass lets them go meanwhile. A host held twice (a picker reopened after a connect) is in
+        /// it twice: each holder removes its own.
+        /// </summary>
+        private readonly List<Ntilde.Shell.Mux.MuxEndpointId> _muxPickerHeldHosts = [];
+
+        /// <summary>
+        /// A "Connect to …" row (Phase 5 spec §5). A remote host is connected only while a pane needs it, so the shell just
+        /// detached from it is listed once it is connected again. The user is waiting, so this connects the usual
+        /// interactive way, off the UI thread - any prompt comes from that connect, at most as it always does - then lists
+        /// every host again and reopens the picker. The host is held meanwhile, so no release pass lets it go; afterwards
+        /// the usual pass (<see cref="ScheduleRemoteMuxHostRelease"/>) lets it go unless a pane now uses it.
+        /// </summary>
+        /// <remarks>
+        /// "Connecting to user@host…" shows for as long as the connect takes (fix round 1). It is gone before the reopened
+        /// picker comes up, so it never sits under that modal; a failed connect replaces it with its own line; a connect
+        /// given up on (the window closing) or a throw takes it away with nothing more.
+        /// </remarks>
+        private async Task ConnectForMuxPickerAsync(Ntilde.Shell.Mux.MuxConnectionHosts hosts, Ntilde.Shell.Mux.MuxSessionPickerConnectRow row)
+        {
+            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.ForSsh(row.ProfileId);
+            string connecting = $"Attach to session\nconnecting\n{endpoint}"; // by endpoint: two profiles may share a user@host
+            _muxPickerHeldHosts.Add(endpoint);
+            EnqueueNotice("Attach to session", $"Connecting to {row.HostDisplayName}\u2026", key: connecting, untilDismissed: true);
+            try
+            {
+                bool connected = await Task.Run(() => hosts.GetOrCreate(endpoint) is { } host && host.GetClient(host.Policy.ConnectTimeout) is not null);
+                if (_teardownDone) return;
+                DismissNotice(connecting);
+                if (!connected)
+                {
+                    EnqueueNotice("Attach to session", $"Could not connect to {row.HostDisplayName}.");
+                    return;
+                }
+
+                await OfferMuxSessionsAsync(hosts);
+            }
+            finally
+            {
+                DismissNotice(connecting); // given up on, or thrown: a no-op once dismissed above
+                _muxPickerHeldHosts.Remove(endpoint);
+                ScheduleRemoteMuxHostRelease();
+            }
+        }
+
+        /// <summary>
+        /// UI thread. Opens <paramref name="row"/>'s session in a new tab attached shared, or focuses the pane already showing
+        /// it. A remote session opens in an SSH tab of its profile, not a shell tab: its spawn goes to that profile's daemon
+        /// and joins the session shared there (MuxTerminalSessionFactory's shared attach is the same for every endpoint).
+        /// </summary>
+        private void OpenMuxPickerRow(Ntilde.Shell.Mux.MuxSessionPickerRow row, IReadOnlyList<Ntilde.Shell.Mux.MuxPickerHostListing> listed)
+        {
+            // Re-checked, not read from the row: the picker is modal, and a tab may have opened it meanwhile, or a restart
+            // of its daemon begun.
+            if (FocusPaneShowingMuxSession(row.Endpoint, row.SessionId)) return;
+            if (MuxPreviousBuildLaunch.IsRestarting(row.Endpoint))
+            {
+                EnqueueNotice("Attach to session", new Ntilde.Shell.Mux.MuxSessionPickerErrorRow(row.Endpoint, row.HostDisplayName, Ntilde.Shell.Mux.MuxPickerHostError.Restarting).Display);
+                return;
+            }
+
+            TerminalPane pane;
+            if (row.Endpoint.SshProfileId is not Guid profileId)
+            {
+                if (listed.FirstOrDefault(l => l.Endpoint.IsLocal)?.Sessions?.FirstOrDefault(s => s.SessionId == row.SessionId) is not { } summary) return;
+                pane = new TerminalPane(ShellHelper.ResolveExecutableOrDefault(summary.Command), summary.Arguments ?? string.Empty, _settings)
+                {
+                    MuxSessionIdToRestore = row.SessionId,
+                    MuxAttachSharedToRestore = true,
+                };
+            }
+            else
+            {
+                // Read again: a profile that stopped keeping its sessions while the picker was open would open plain SSH
+                // with the id pending.
+                if (_sshConnectionService.GetStoredProfile(profileId) is not { MuxOptions.PersistRemoteSessions: true }
+                    || _sshConnectionService.GetConnectionProfile(profileId) is not { } profile)
+                {
+                    EnqueueNotice("Attach to session", $"The profile for {row.HostDisplayName} no longer keeps remote sessions running.");
+                    return;
+                }
+
+                // A fresh runtime copy, made an ssh launch as AddTab makes one. The endpoint is set up front, so the pending
+                // id is on it - for "open here", saves and the host release - before the spawn runs.
+                profile.Command = OperatingSystem.IsWindows() ? "ssh.exe" : "ssh";
+                profile.Arguments = string.Empty;
+                pane = new TerminalPane(profile, _settings, SshDiagnosticsLevel.None)
+                {
+                    MuxSessionIdToRestore = row.SessionId,
+                    MuxAttachSharedToRestore = true,
+                    MuxEndpoint = row.Endpoint.ToString(),
+                };
+            }
+
+            AddTabWithPane(pane, row.Name, select: true);
+        }
+
+        /// <summary>
+        /// The pane's daemon session (shown or pending) is on the local daemon, the one orphan adoption and the teardown
+        /// count speak of (Phase 4 spec §5): a remote pane's id names another daemon's session.
         /// </summary>
         private static bool ShowsLocalMuxEndpoint(TerminalPane pane) => Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint).IsLocal;
 
-        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) local <paramref name="id"/>; false when none does.</summary>
-        private bool FocusPaneShowingMuxSession(Guid id)
+        /// <summary>UI thread. Selects and focuses the pane showing (or about to attach) <paramref name="id"/> on <paramref name="endpoint"/>; false when none does.</summary>
+        private bool FocusPaneShowingMuxSession(Ntilde.Shell.Mux.MuxEndpointId endpoint, Guid id)
         {
-            TerminalPane? pane = AllPanes().FirstOrDefault(p => ShowsLocalMuxEndpoint(p)
+            TerminalPane? pane = AllPanes().FirstOrDefault(p => Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint) == endpoint
                 && ((p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id));
             if (pane is null) return false;
             if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
@@ -5329,36 +5655,55 @@ namespace Ntilde
             return true;
         }
 
-        private async Task<Guid?> ShowMuxSessionPickerAsync(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
+        private async Task<Ntilde.Shell.Mux.MuxPickerItem?> ShowMuxSessionPickerAsync(IReadOnlyList<Ntilde.Shell.Mux.MuxPickerItem> rows)
         {
-            (Window dialog, Task<Guid?> result) = BuildMuxSessionPickerWindow(rows);
-            await dialog.ShowDialog(this);
-            return await result;
+            (Window dialog, Task<Ntilde.Shell.Mux.MuxPickerItem?> result) = BuildMuxSessionPickerWindow(rows);
+            _muxPickerDialog = dialog;
+            try
+            {
+                await dialog.ShowDialog(this);
+                return await result;
+            }
+            finally
+            {
+                _muxPickerDialog = null;
+            }
         }
 
         /// <summary>
-        /// The "Attach to Session" dialog, not yet shown; the task completes with the chosen session
-        /// (null: cancelled) when the window closes. Enter attaches, Escape cancels. Separate from
+        /// The "Attach to Session" dialog, not yet shown; the task completes with the chosen line - a session, or a host
+        /// to connect to - (null: cancelled) when the window closes. A line that only informs (a host that could not be
+        /// listed) is shown disabled and never chosen. Enter attaches, Escape cancels. Separate from
         /// <see cref="ShowMuxSessionPickerAsync"/> so a headless test can show it and press keys.
         /// </summary>
-        internal (Window Window, Task<Guid?> Result) BuildMuxSessionPickerWindow(IReadOnlyList<Ntilde.Shell.Mux.MuxSessionPickerRow> rows)
+        internal (Window Window, Task<Ntilde.Shell.Mux.MuxPickerItem?> Result) BuildMuxSessionPickerWindow(IReadOnlyList<Ntilde.Shell.Mux.MuxPickerItem> rows)
         {
-            Guid? chosen = null;
+            Ntilde.Shell.Mux.MuxPickerItem? chosen = null;
             var dialog = CreateThemedDialogWindow("Attach to Session", 640, 360, canResize: true);
-            var list = new ListBox { ItemsSource = rows.Select(r => r.Display).ToList(), SelectedIndex = 0, MaxHeight = 240 };
+            var list = new ListBox
+            {
+                ItemsSource = rows.Select(r => new ListBoxItem { Content = r.Display, IsEnabled = r.IsSelectable }).ToList(),
+                SelectedIndex = rows.ToList().FindIndex(r => r.IsSelectable),
+                MaxHeight = 240,
+            };
             var attach = new Button { Content = "Attach", Width = 92, IsDefault = true };
             var cancel = new Button { Content = "Cancel", Width = 92, IsCancel = true };
-            var closed = new TaskCompletionSource<Guid?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var closed = new TaskCompletionSource<Ntilde.Shell.Mux.MuxPickerItem?>(TaskCreationOptions.RunContinuationsAsynchronously);
             dialog.Closed += (_, _) => closed.TrySetResult(chosen);
             void Accept()
             {
-                if (list.SelectedIndex < 0) return;
-                chosen = rows[list.SelectedIndex].SessionId;
+                if (list.SelectedIndex < 0 || !rows[list.SelectedIndex].IsSelectable) return;
+                chosen = rows[list.SelectedIndex];
                 dialog.Close();
             }
 
             attach.Click += (_, _) => Accept();
-            list.DoubleTapped += (_, _) => Accept();
+            // Only a double-tap on a line that can be chosen accepts. A disabled line takes no input, so a double-tap on it
+            // reaches the list itself, and must not accept whatever line is selected elsewhere (review minor 4).
+            list.DoubleTapped += (_, e) =>
+            {
+                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { IsEnabled: true }) Accept();
+            };
             cancel.Click += (_, _) => dialog.Close();
             dialog.Content = new Border
             {
@@ -5478,14 +5823,21 @@ namespace Ntilde
 
         private void OnPaneRequestRemoteFilesSidebarTransfer(TerminalPane srcPane, SidebarTransferRequest request)
         {
-            if (srcPane.IsPersistentRemoteTab)
-            {
-                // Phase 4 spec §8.4: no native SSH session stands behind a persisted remote tab; say so, do nothing else.
-                EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesUnavailableMessage);
-                return;
-            }
-
+            if (RefusedOnARetargetedHost(srcPane)) return;
             _ = InitiateSidebarSftpTransfer(srcPane, request.Direction, request.Kind, request.RemotePath);
+        }
+
+        /// <summary>
+        /// A transfer on a persisted remote tab runs as on a plain SSH tab, over a connection of its own (Phase 5 spec R8) -
+        /// unless the tab's host is retargeted (<see cref="TerminalPane.IsOnRetargetedHost"/>; spec §15, codex D2): the
+        /// transfer rebuilds its options from the stored profile and would reach the profile's new destination, not the
+        /// one this tab's shell runs on. Then the window says why and does nothing else.
+        /// </summary>
+        private bool RefusedOnARetargetedHost(TerminalPane pane)
+        {
+            if (!pane.IsOnRetargetedHost) return false;
+            EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesRetargetedMessage);
+            return true;
         }
 
         private void OnPaneWorkingDirectoryChanged(TerminalPane srcPane, string cwd)
@@ -6297,6 +6649,30 @@ namespace Ntilde
             });
         }
 
+        /// <summary>
+        /// Every (endpoint, mux session id) a pane of this window shows, or is about to (a pending
+        /// <see cref="TerminalPane.MuxSessionIdToRestore"/>: a restored tab not shown yet, an adopted orphan), on every
+        /// endpoint: <see cref="OfferMuxSessionsAsync"/>'s "open here", not only the local daemon's. The windowless source
+        /// asks it from the agent host's thread; this is its one touch of the window, posted to the UI thread and
+        /// awaited there, never waited for. Posted through this window's own dispatcher, never the
+        /// <c>Dispatcher.UIThread</c> static: an off-thread read of that is what poisoned headless test runs (#81).
+        /// </summary>
+        private async Task<IReadOnlySet<(string Endpoint, Guid Id)>> MuxSessionsShownHereAsync()
+        {
+            return await Dispatcher.InvokeAsync<IReadOnlySet<(string Endpoint, Guid Id)>>(() =>
+            {
+                var shown = new HashSet<(string Endpoint, Guid Id)>();
+                foreach (TerminalPane p in AllPanes())
+                {
+                    string endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint).ToString();
+                    if (p.Session is Ntilde.Mux.MuxClientSession m) shown.Add((endpoint, m.Id));
+                    if (p.MuxSessionIdToRestore is Guid pending) shown.Add((endpoint, pending));
+                }
+
+                return shown;
+            });
+        }
+
         private void CloseTab(TabItem ti) => CloseTabCore(ti, Ntilde.Shell.Mux.PaneDisposition.EndSession, null);
 
         /// <param name="detach">Panes the user chose to detach rather than close; they override <paramref name="disposition"/>.</param>
@@ -6487,12 +6863,21 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// Close, Detach or Cancel for one pane. A mux pane whose shell other clients also show asks the
-        /// three-way question first; the count comes from listSessions (bounded, works on v1 too).
-        /// Otherwise the Phase 2 decision (<see cref="ShouldClosePaneAsync"/>) stands.
+        /// Close, Detach or Cancel for one pane. A share whose sharing cannot be known now detaches, unasked (Phase 5 Task 26).
+        /// A mux pane whose shell other clients also show asks the three-way question first; the count comes from listSessions
+        /// (bounded, works on v1 too). Otherwise the Phase 2 decision (<see cref="ShouldClosePaneAsync"/>) stands.
         /// </summary>
         private async Task<Ntilde.Shell.Mux.SharedCloseChoice> DecidePaneCloseAsync(TerminalPane pane)
         {
+            // Its link is down or reconnecting, or its attach pending: nobody can say who else uses that shell, and a close
+            // only detaches it (DisposeControlTree, which says so), so there is nothing to ask - not even the running-process
+            // question.
+            if (pane.MuxShareIdWithSharingUnknown is Guid share)
+            {
+                TerminalLogger.Log($"[MainWindow] closing shared session {share}, whose other clients cannot be known now: detaching it, unasked");
+                return Ntilde.Shell.Mux.SharedCloseChoice.Detach;
+            }
+
             // One budget for both daemon reads (the sharing count here, the child-process probe in
             // ShouldClosePaneAsync): a stalled daemon costs a close about a second, not two.
             var budget = System.Diagnostics.Stopwatch.StartNew();
@@ -6585,6 +6970,83 @@ namespace Ntilde
             return (dialog, closed.Task);
         }
 
+        private async Task<FirstCloseAnswer> ShowFirstCloseDialogAsync(int count)
+        {
+            // A close from the taskbar can reach a minimized window, and a dialog it owns would open out of sight:
+            // the close would seem to do nothing. (A hidden owner makes ShowDialog throw, which closes as Keep.)
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            (Window dialog, Task<FirstCloseAnswer> result) = BuildFirstCloseDialog(count);
+            await dialog.ShowDialog(this);
+            return await result;
+        }
+
+        /// <summary>
+        /// The first-close question (spec R1), not yet shown; the task completes with the answer when it closes.
+        /// Enter keeps the shells (the safe default) wherever focus is, with "Don't ask again" as it stands; Escape or
+        /// closing the dialog cancels the window's close; Close them (which ends the shells) is never the default and
+        /// never answered by Enter. Separate from <see cref="ShowFirstCloseDialogAsync"/> so a headless test can show
+        /// it and press keys.
+        /// </summary>
+        internal (Window Window, Task<FirstCloseAnswer> Result) BuildFirstCloseDialog(int count)
+        {
+            var answer = new FirstCloseAnswer(FirstCloseAction.Cancel, Remember: false);
+            var dialog = CreateThemedDialogWindow("Close Ntilde", 480, 250, canResize: false);
+            var dontAskAgain = new CheckBox { Content = "Don't ask again" };
+            var keep = new Button { Content = "Keep running", MinWidth = 110, IsDefault = true };
+            var close = new Button { Content = "Close them", MinWidth = 110 };
+            var closed = new TaskCompletionSource<FirstCloseAnswer>(TaskCreationOptions.RunContinuationsAsynchronously);
+            dialog.Closed += (_, _) => closed.TrySetResult(answer);
+            dialog.Opened += (_, _) => keep.Focus();
+            // Tunnel, so the dialog sees the key before whatever holds focus: after a click on "Don't ask again" that is
+            // the CheckBox, which would take Enter for itself (toggling the box) before IsDefault is consulted. Enter
+            // always keeps, with the box as it stands - nothing ends the shells by key; Space still presses a button.
+            dialog.AddHandler(InputElement.KeyDownEvent, (_, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    answer = new FirstCloseAnswer(FirstCloseAction.Keep, dontAskAgain.IsChecked == true);
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    answer = new FirstCloseAnswer(FirstCloseAction.Cancel, Remember: false);
+                }
+                else
+                {
+                    return;
+                }
+
+                e.Handled = true;
+                dialog.Close();
+            }, RoutingStrategies.Tunnel);
+            keep.Click += (_, _) => { answer = new FirstCloseAnswer(FirstCloseAction.Keep, dontAskAgain.IsChecked == true); dialog.Close(); };
+            close.Click += (_, _) => { answer = new FirstCloseAnswer(FirstCloseAction.Close, dontAskAgain.IsChecked == true); dialog.Close(); };
+            string body = count > 1 ? $"Reopen Ntilde to get them back. ({count} shells)" : "Reopen Ntilde to get them back.";
+            dialog.Content = new Border
+            {
+                Padding = new Thickness(16),
+                Child = new StackPanel
+                {
+                    Spacing = 12,
+                    Children =
+                    {
+                        new TextBlock { Text = "Your shells keep running in the background.", FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap },
+                        new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap },
+                        dontAskAgain,
+                        new TextBlock { Text = "Turn this off in Settings → Keep shells running when the window closes.", FontSize = 12, Opacity = 0.75, TextWrapping = TextWrapping.Wrap },
+                        new StackPanel
+                        {
+                            Orientation = Avalonia.Layout.Orientation.Horizontal,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Spacing = 8,
+                            Children = { keep, close },
+                        },
+                    },
+                },
+            };
+
+            return (dialog, closed.Task);
+        }
+
         private void DetachActivePane()
         {
             if (_currentPane is { } pane) _ = DetachPaneAsync(pane);
@@ -6605,30 +7067,45 @@ namespace Ntilde
             // sends no kill for an exited shell) and no "kept running" toast.
             if (!mux.IsProcessRunning) return await ClosePaneAsync(pane, skipConfirm: true);
 
-            // Read before the close: the pane is gone after it.
-            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint);
-            bool remote = !endpoint.IsLocal;
-            string remoteHost = pane.RemoteHostName is { Length: > 0 } named
-                ? named
-                : _muxHosts?.TryGet(endpoint)?.Policy.DisplayName ?? "its host";
+            // Read before the close: the pane is gone after it. A share whose sharing is unknown gets the notice from the
+            // close itself (DisposeControlTree), so it is not said twice.
+            string detached = ShellDetachedMessage(pane, mux.Id);
+            bool noticedByTheClose = pane.IsMuxShareWithSharingUnknown;
             bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
-            if (closed && !_teardownDone)
-            {
-                EnqueueNotice("Shell detached", remote
-                    ? RemoteDetachedMessage(remoteHost, mux.Id)
-                    : "Shell kept running \u2014 Attach to session\u2026 to get it back");
-            }
-
+            if (closed && !_teardownDone && !noticedByTheClose) EnqueueNotice(ShellDetachedNoticeTitle, detached);
             return closed;
         }
 
+        private const string ShellDetachedNoticeTitle = "Shell detached";
+
         /// <summary>
-        /// Final review F2: "Attach to session…" lists local shells only, and a remote shell is never adopted, so a
-        /// detached remote shell comes back through <c>ntilde-mux attach</c> on its own host (USER_MANUAL §3.3), by the
-        /// full id <c>ntilde-mux ls</c> shows. <paramref name="host"/> is <c>user@host</c>, as the remote banners say.
+        /// The "Shell detached" notice's line for <paramref name="pane"/>'s shell <paramref name="sessionId"/> ("Pane: Detach",
+        /// spec §7.4): it kept running, and how to get it back - for a remote shell, on which host
+        /// (<see cref="RemoteDetachedMessage"/>). Read before the pane's close, which lets go of what it names.
         /// </summary>
-        internal static string RemoteDetachedMessage(string host, Guid sessionId) =>
-            $"Shell kept running on {host} \u2014 run 'ntilde-mux attach {sessionId}' on that host to get it back";
+        private string ShellDetachedMessage(TerminalPane pane, Guid sessionId)
+        {
+            Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.Parse(pane.MuxEndpoint);
+            if (endpoint.IsLocal) return "Shell kept running \u2014 Attach to session\u2026 to get it back";
+            string remoteHost = pane.RemoteHostName is { Length: > 0 } named
+                ? named
+                : _muxHosts?.TryGet(endpoint)?.Policy.DisplayName ?? "its host";
+            // The picker offers that host only while its profile keeps its sessions: read now, at the detach.
+            bool reopenable = endpoint.SshProfileId is Guid profileId
+                && _sshConnectionService.GetStoredProfile(profileId) is { MuxOptions.PersistRemoteSessions: true };
+            return RemoteDetachedMessage(remoteHost, sessionId, reopenable);
+        }
+
+        /// <summary>
+        /// The remote detach toast, naming the shell's host (<c>user@host</c>, as the remote banners say). A detached remote
+        /// shell comes back through "Attach to session…" (Phase 5 spec §5) - its host listed while connected, offered as
+        /// "Connect to …" once the detach let its connection go - while its profile keeps its sessions
+        /// (<paramref name="reopenable"/>). Otherwise the picker does not offer it, and it comes back through
+        /// <c>ntilde-mux attach</c> on its own host, by the full id <c>ntilde-mux ls</c> shows.
+        /// </summary>
+        internal static string RemoteDetachedMessage(string host, Guid sessionId, bool reopenable) => reopenable
+            ? $"Shell kept running on {host} \u2014 Attach to session\u2026 reopens it"
+            : $"Shell kept running on {host} \u2014 run 'ntilde-mux attach {sessionId}' on that host to get it back";
 
         /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
         internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }
@@ -6736,12 +7213,17 @@ namespace Ntilde
         ///
         /// See <see cref="IsPaneReadInvisibleWithoutWindowLight"/> for the
         /// per-pane half of that decision.
+        ///
+        /// A read of a windowless session (Phase 5 §3: a daemon session no pane
+        /// shows) is the third case: there is no pane to mark at all, so
+        /// <paramref name="windowlessWatched"/> (the service's decaying
+        /// <see cref="AgentHost.AgentHostService.WindowlessWatched"/>) lights it too.
         /// </summary>
         internal static (bool Visible, bool Active) ComputeObserveIndicatorState(
-            bool observeRunning, bool polling, bool anyUnmarkedPaneWatched)
+            bool observeRunning, bool polling, bool anyUnmarkedPaneWatched, bool windowlessWatched)
         {
             if (!observeRunning) return (false, false);
-            return (true, polling || anyUnmarkedPaneWatched);
+            return (true, polling || anyUnmarkedPaneWatched || windowlessWatched);
         }
 
         /// <summary>
@@ -6854,7 +7336,7 @@ namespace Ntilde
                     && r.AttentionMachine.Snapshot().Tier == AgentHost.AgentAttentionTier.Watched);
 
             var (visible, active) = ComputeObserveIndicatorState(
-                service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched);
+                service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched, service.WindowlessWatched);
 
             indicator.IsVisible = visible;
             if (!visible) return;
@@ -6862,9 +7344,12 @@ namespace Ntilde
         }
 
         // Raised on an IPC thread when the in-flight poll count leaves or
-        // returns to zero.
+        // returns to zero, and on an IPC or the sweep's timer thread when a
+        // windowless read lights or decays. Posted through the window's own
+        // dispatcher, never the Dispatcher.UIThread static: an off-thread read
+        // of that static is what poisoned headless test runs (#81).
         private void OnAgentObserveActivityChanged()
-            => Dispatcher.UIThread.Post(RefreshAgentObserveIndicator);
+            => Dispatcher.Post(RefreshAgentObserveIndicator);
 
         /// <summary>
         /// Recomputes each tab's agent marker from the loudest attention tier
@@ -6925,6 +7410,8 @@ namespace Ntilde
             AgentHost.AgentHostService.Instance.ActEnabled = _settings.AgentAccessActEnabled;
             AgentHost.AgentHostService.Instance.SetSshProfileAllowlist(IsSshProfileAgentAllowed);
             AgentHost.AgentHostService.Instance.SetActionExecutor(this);
+            // After ApplySessionPersistenceSetting, which builds the hosts when persistence was just turned on.
+            AgentHost.AgentHostService.Instance.SetWindowlessSource(WindowlessSessions);
             AgentHost.AgentHostService.Instance.Apply(_settings.AgentAccessObserveEnabled);
             // RefreshTabAgentAttention already ends by calling
             // RefreshAgentObserveIndicator, so this covers both surfaces.
@@ -7273,6 +7760,9 @@ namespace Ntilde
 
             if (control is TerminalPane pane)
             {
+                // Read first: the teardown below lets go of the pane's session and remote host.
+                Guid? shareOfUnknownSharing = pane.MuxShareIdWithSharingUnknown;
+                string? detachedMessage = shareOfUnknownSharing is Guid share ? ShellDetachedMessage(pane, share) : null;
                 UnwirePane(pane);
 
                 // The pane's scrollback and glyph atlases are only reclaimable after a full GC, and
@@ -7286,6 +7776,23 @@ namespace Ntilde
                 // disposed, leaking the PTY and its child shell.
                 var session = pane.DetachFromUiThread();
                 Ntilde.Shell.Mux.PaneDisposition effective = detach?.Contains(pane) == true ? Ntilde.Shell.Mux.PaneDisposition.Detach : disposition;
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.EndSession && shareOfUnknownSharing is not null)
+                {
+                    // Phase 5 Task 26, local and remote alike: a share whose sharing cannot be known now (its link down or
+                    // reconnecting, its attach pending) may be another client's shell. However the close came - an agent's,
+                    // one that skipped the question, a Close answered as the link dropped - it detaches: no kill now, and
+                    // none queued for the next connect.
+                    TerminalLogger.Log($"[MainWindow] closing shared session {shareOfUnknownSharing}, whose other clients cannot be known now: detaching it, not ending it");
+                    effective = Ntilde.Shell.Mux.PaneDisposition.Detach;
+                }
+
+                // Fix round 1, I1: the pane goes and its shell does not, so the window says so, as "Pane: Detach" does - unless
+                // the window itself is going, which leaves every shell running anyway.
+                if (effective == Ntilde.Shell.Mux.PaneDisposition.Detach && detachedMessage is not null && !_teardownDone)
+                {
+                    EnqueueNotice(ShellDetachedNoticeTitle, detachedMessage);
+                }
+
                 // Here on the UI thread, not in the Task.Run below (see KillMuxSessionOnClose). Detach: no kill.
                 KillMuxSessionOnClose(session, effective, pane.MuxEndpoint);
                 if (session is not Ntilde.Mux.MuxClientSession)
@@ -7326,7 +7833,8 @@ namespace Ntilde
         /// reply means the kill landed, and the host waits for it on dispose, so closing the last tab
         /// cannot drop it. Still enqueued synchronously on the UI thread (RequestAsync enqueues before
         /// its first await). A session that already exited is left alone, and so is a local one whose
-        /// connection is gone; a remote one goes through its host whatever its connection says.
+        /// connection is gone; a remote one goes through its host whatever its connection says. A share
+        /// whose sharing cannot be known never gets here with EndSession: DisposeControlTree detaches it.
         /// </summary>
         /// <param name="muxEndpoint">The pane's <see cref="TerminalPane.MuxEndpoint"/>: its own endpoint's host tracks the kill (Phase 4 spec §5).</param>
         private void KillMuxSessionOnClose(ITerminalSession? session, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
@@ -7386,7 +7894,8 @@ namespace Ntilde
 
         /// <summary>
         /// UI thread. Releases every remote host whose endpoint no pane of this window needs
-        /// (<see cref="TerminalPane.RemoteMuxEndpointInUse"/>): closed once its kills are delivered
+        /// (<see cref="TerminalPane.RemoteMuxEndpointInUse"/>) and no open "Attach to session…" picker holds
+        /// (<see cref="ConnectForMuxPickerAsync"/>): closed once its kills are delivered
         /// (<see cref="Ntilde.Shell.Mux.MuxConnectionHosts.Release"/>), so it stops pinging and reconnecting, the remote
         /// proxy and daemon are let go, and its remembered secret is forgotten. Not during teardown, which closes every host.
         /// </summary>
@@ -7394,7 +7903,7 @@ namespace Ntilde
         {
             _remoteMuxReleasePosted = false;
             if (_teardownDone || _muxHosts is not { } hosts) return;
-            HashSet<Ntilde.Shell.Mux.MuxEndpointId> needed = [.. AllPanes().Select(p => p.RemoteMuxEndpointInUse).OfType<Ntilde.Shell.Mux.MuxEndpointId>()];
+            HashSet<Ntilde.Shell.Mux.MuxEndpointId> needed = [.. AllPanes().Select(p => p.RemoteMuxEndpointInUse).OfType<Ntilde.Shell.Mux.MuxEndpointId>(), .. _muxPickerHeldHosts];
             foreach (Ntilde.Shell.Mux.MuxEndpointId endpoint in hosts.RemoteEndpoints)
             {
                 if (!needed.Contains(endpoint)) hosts.Release(endpoint);
@@ -7406,7 +7915,8 @@ namespace Ntilde
         /// tab never shown, a connect or reattach in flight, a reattach that failed, a restore that could not reach
         /// the host. The user meant to end that shell too, and nobody can adopt a remote one, so its host kills it -
         /// connecting for it if nothing else is (<see cref="Ntilde.Shell.Mux.MuxConnectionHost.KillWhenConnected"/>).
-        /// A local pending id is left to orphan adoption, as before.
+        /// A local pending id is left to orphan adoption, as before; a share's pending id is never killed (Phase 5 Task 26:
+        /// DisposeControlTree detaches a share whose attach is pending, and a plain SSH pane lets a share's id go).
         /// </summary>
         private void KillPendingRemoteMuxSessionOnClose(Guid? pendingId, Ntilde.Shell.Mux.PaneDisposition disposition, string? muxEndpoint)
         {
@@ -8346,6 +8856,7 @@ namespace Ntilde
             {
                 CommandRegistry.Register("Session: Attach to Session\u2026", "General", () => _ = AttachToMuxSessionAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.AttachSessionId, ""), ShortcutCatalog.AttachSessionId);
                 CommandRegistry.Register("Pane: Detach", "View", () => DetachActivePane(), GetEffectiveShortcutBinding(ShortcutCatalog.DetachPaneId, ""), ShortcutCatalog.DetachPaneId);
+                CommandRegistry.Register("Session: Quit and Close All Shells", "General", () => _ = QuitAndCloseAllShellsAsync(), GetEffectiveShortcutBinding(ShortcutCatalog.QuitAndCloseAllShellsId, ""), ShortcutCatalog.QuitAndCloseAllShellsId);
             }
             CommandRegistry.Register("Focus Pane Left", "View", () => NavigatePane(MoveDirection.Left), "Alt+Left");
             CommandRegistry.Register("Focus Pane Right", "View", () => NavigatePane(MoveDirection.Right), "Alt+Right");
@@ -8499,17 +9010,13 @@ namespace Ntilde
                 return;
             }
 
-            if (pane.IsPersistentRemoteTab)
-            {
-                // Phase 4 spec §8.4, final review I3: as for the sidebar and its transfers - no SSH session of this app
-                // stands behind a persisted remote tab (its session id names a daemon session), so say so and do nothing else.
-                EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesUnavailableMessage);
-                return;
-            }
+            // Phase 5 spec R8: a persisted remote tab's transfers run as a plain tab's - native SFTP through its registration
+            // (its daemon session id, with its host's password scope), or scp in batch mode on its own connection (OpenSSH).
+            if (RefusedOnARetargetedHost(pane)) return;
 
             var profile = pane.Profile;
             var sessionId = pane.Session?.Id ?? Guid.Empty;
-            await InitiateSftpTransferAsync(profile, sessionId, direction, kind);
+            await InitiateSftpTransferAsync(profile, sessionId, direction, kind, pane);
         }
 
         internal Task InitiateSftpTransferForTest(
@@ -8552,11 +9059,17 @@ namespace Ntilde
                 remoteDirectory);
         }
 
+        /// <param name="pane">
+        /// The tab the transfer is for, checked again once its dialog is answered (<see cref="RefusedOnARetargetedHost"/>):
+        /// the job reads the stored profile as it starts, at once, so a profile retargeted while the dialog was open would
+        /// send it to the new destination. Null: no tab to check (tests).
+        /// </param>
         private async Task InitiateSftpTransferAsync(
             TerminalProfile profile,
             Guid sessionId,
             TransferDirection direction,
-            TransferKind kind)
+            TransferKind kind,
+            TerminalPane? pane = null)
         {
             var request = TransferDialogRequest.ForAction(
                 direction,
@@ -8566,7 +9079,7 @@ namespace Ntilde
                 sessionId);
 
             TransferDialogResult? result = await ShowTransferDialogAsync(request);
-            if (result is not { IsConfirmed: true })
+            if (result is not { IsConfirmed: true } || (pane is not null && RefusedOnARetargetedHost(pane)))
             {
                 return;
             }
@@ -8601,22 +9114,25 @@ namespace Ntilde
                 srcPane.Session.Id,
                 direction,
                 kind,
-                remotePath);
+                remotePath,
+                srcPane);
         }
 
+        /// <param name="pane">As for <see cref="InitiateSftpTransferAsync"/>: checked again once a local path is picked.</param>
         private async Task InitiateSidebarSftpTransferAsync(
             TerminalProfile profile,
             Guid sessionId,
             TransferDirection direction,
             TransferKind kind,
-            string remotePath)
+            string remotePath,
+            TerminalPane? pane = null)
         {
             if (direction == TransferDirection.Upload)
             {
                 string? localPath = kind == TransferKind.File
                     ? await PickLocalUploadFilePathAsync()
                     : await PickLocalUploadFolderPathAsync();
-                if (string.IsNullOrWhiteSpace(localPath))
+                if (string.IsNullOrWhiteSpace(localPath) || (pane is not null && RefusedOnARetargetedHost(pane)))
                 {
                     return;
                 }
@@ -8639,7 +9155,7 @@ namespace Ntilde
             string? localDownloadPath = kind == TransferKind.File
                 ? await PickLocalDownloadFilePathAsync(ResolveSuggestedDownloadFileName(remotePath))
                 : await PickLocalDownloadFolderPathAsync();
-            if (string.IsNullOrWhiteSpace(localDownloadPath))
+            if (string.IsNullOrWhiteSpace(localDownloadPath) || (pane is not null && RefusedOnARetargetedHost(pane)))
             {
                 return;
             }
@@ -9079,19 +9595,24 @@ namespace Ntilde
             sw.OnFontSizeChanged += (size) => { _settings.FontSize = size; ApplySettingsToAllTabs(); };
             sw.OnUiScaleChanged += (scale) => { _settings.UiScale = scale; UiScale.Apply(scale); };
             sw.OnThemeChanged += (theme) =>
-        {
-            _settings.ThemeName = theme;
-            // Force reload themes to pick up any changes from settings window.
-            _settings.ThemeManager.ReloadThemes();
-            _settings.RefreshActiveTheme();
-            ApplyThemeToUI();
-            ApplySettingsToAllTabs();
-            UpdateTabVisuals();
-        };
+            {
+                _settings.ThemeName = theme;
+                // Force reload themes to pick up any changes from settings window.
+                _settings.ThemeManager.ReloadThemes();
+                _settings.RefreshActiveTheme();
+                ApplyThemeToUI();
+                ApplySettingsToAllTabs();
+                UpdateTabVisuals();
+            };
+
+            // "Quit and close all shells…" (Task 17): Settings closes without saving, then the quit runs.
+            sw.SessionPersistenceActive = IsMuxPersistenceActive;
 
             bool saved = await sw.ShowDialog<bool>(this);
 
             ApplySettingsWindowResult(sw, saved, previewSnapshot);
+
+            if (sw.QuitAndCloseAllRequested) await QuitAndCloseAllShellsAsync();
         }
 
         /// <summary>
@@ -9430,8 +9951,23 @@ namespace Ntilde
             }
         }
 
+        /// <summary>
+        /// One line of the Agent Activity dialog. A windowless session's id is its mux session id, so it is called a
+        /// session, never a pane; a run of identical reads the journal folded says how many it stands for ("×N"). Pure,
+        /// so its wording is testable without a window.
+        /// </summary>
+        internal static string DescribeAgentActivity(AgentHost.AgentActivityEntry e)
+        {
+            string when = e.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+            string outcome = e.Outcome == "ok" ? "ok" : $"denied: {e.Outcome}";
+            string times = e.Count > 1 ? $" ×{e.Count}" : string.Empty;
+            string id = e.PaneId is { } paneId ? $" · {(e.Windowless ? "session" : "pane")} {paneId}" : string.Empty;
+            return $"{when}  {e.Method}{times}  [{outcome}]  {e.Target}{id}";
+        }
+
         // A3: visible agent activity journal ("nothing is silent"). Read-only
-        // snapshot of recent acting attempts (allowed and denied), newest first,
+        // snapshot of recent acting attempts (allowed and denied) and reads of
+        // windowless sessions (Phase 5 ruling R5), newest first,
         // with a Refresh button. The journal data layer lives in
         // AgentActivityJournal; this is its window.
         internal async Task ShowAgentActivityJournalAsync()
@@ -9443,17 +9979,12 @@ namespace Ntilde
                 // Bind to the data snapshot with a template; don't materialize
                 // controls as items (bypasses recycling, leaks on refresh).
                 ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<AgentHost.AgentActivityEntry>((e, _) =>
-                {
-                    string when = e.TimestampUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
-                    string outcome = e.Outcome == "ok" ? "ok" : $"denied: {e.Outcome}";
-                    string pane = e.PaneId is { } id ? $" \u00B7 pane {id}" : string.Empty;
-                    return new TextBlock
+                    new TextBlock
                     {
-                        Text = $"{when}  {e.Method}  [{outcome}]  {e.Target}{pane}",
+                        Text = DescribeAgentActivity(e),
                         TextWrapping = TextWrapping.Wrap,
                         Margin = new Thickness(0, 2, 0, 2),
-                    };
-                }),
+                    }),
             };
             var scroll = new ScrollViewer
             {
@@ -9463,7 +9994,7 @@ namespace Ntilde
 
             var empty = new TextBlock
             {
-                Text = "No agent activity recorded yet. Actions taken by AI agents (typing, opening or closing sessions) appear here \u2014 including attempts that were denied.",
+                Text = "No agent activity recorded yet. Actions and windowless reads by AI agents (typing, opening or closing sessions, reading a session no window shows) appear here \u2014 including attempts that were denied.",
                 TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.7,
             };
@@ -9501,7 +10032,7 @@ namespace Ntilde
                     {
                         new TextBlock
                         {
-                            Text = "Recent actions taken (or attempted) by AI agents with 'Agent access (act)' enabled. Newest first; the list is in-memory and bounded.",
+                            Text = "Recent actions and windowless reads by AI agents, including attempts that were denied. Acting needs 'Agent access (act)'; a windowless read is a read of a session no window shows. Newest first; the list is in-memory and bounded.",
                             TextWrapping = TextWrapping.Wrap,
                             Margin = new Thickness(0, 0, 0, 12),
                             [DockPanel.DockProperty] = Dock.Top,
@@ -9791,10 +10322,486 @@ namespace Ntilde
         }
         private bool _teardownDone;
 
+        /// <summary>
+        /// This close is settled - the first-close question was answered (R1), or Task 17's quit was confirmed - so
+        /// the close that follows goes straight to the teardown without asking.
+        /// </summary>
+        private bool _closeConfirmed;
+
+        /// <summary>The first-close question is posted or on screen: another close request meanwhile is held, not asked again.</summary>
+        private bool _firstCloseQuestionOpen;
+
+        /// <summary>Local shells <see cref="EndLocalSessionsOnTeardown"/> has ended: neither counted as kept nor saved for reattach.</summary>
+        private readonly HashSet<Guid> _localSessionsEndedOnClose = [];
+
         protected override void OnClosing(WindowClosingEventArgs e)
         {
             base.OnClosing(e);
+            if (!ProceedWithClose(e.CloseReason)) e.Cancel = true;
+        }
+
+        /// <summary>
+        /// Test seam: what <see cref="OnClosing"/> does for a close with <paramref name="reason"/> (only Avalonia can
+        /// build the event args, and only its lifetime raises the shutdown reasons). True when the close was held.
+        /// </summary>
+        internal bool HandleClosingForTest(WindowCloseReason reason) => !ProceedWithClose(reason);
+
+        /// <summary>OnClosing's body: false holds the close while the first-close question is asked; otherwise the teardown runs.</summary>
+        private bool ProceedWithClose(WindowCloseReason reason)
+        {
+            if (HoldCloseForFirstCloseQuestion(reason)) return false;
             PerformAppTeardown();
+            return true;
+        }
+
+        /// <summary>
+        /// Spec R1: a window closing with live local shells asks whether they keep running, unless the answer was
+        /// remembered ("Don't ask again"), which is then applied without asking. Not asked when this close is already
+        /// settled, when persistence is off (the setting, and the factory with it: with "Off" nothing new appears), or
+        /// when no local shell would be left running (remote shells never ask).
+        /// <para>
+        /// Only a window close asks; a shutdown is never held, since holding it would cancel the shutdown itself. The
+        /// application lifetime shutting down (<see cref="WindowCloseReason.ApplicationShutdown"/>: macOS Cmd+Q, the
+        /// usual way to quit there, and <c>TryShutdown</c>) applies a remembered answer - a remembered "close" ends the
+        /// shells - and with none keeps them. The OS ending the session (<see cref="WindowCloseReason.OSShutdown"/>)
+        /// never kills, whatever was remembered: it behaves like Keep, as every close did before R1.
+        /// </para>
+        /// <para>
+        /// While the question is open another window close is held, not asked again - unless nothing is left to keep
+        /// (the last tab closed because its shell exited): that close goes through, and the late answer is dropped,
+        /// rather than leave a Cancel with a window that has no tabs.
+        /// </para>
+        /// <para>
+        /// The shells of tabs not shown yet count too (final review M3, <see cref="PendingLocalMuxSessionIds"/>): their
+        /// panes hold the ids pending, and the shells run all the same. Only the daemon can say whether each still runs and
+        /// whether another client shows it, so with any pending the close is held while it is asked - for the question, or
+        /// for a remembered "Close them" - except by a shutdown, which cannot be held: it ends the live shells only.
+        /// </para>
+        /// True holds this close: the question is posted, never asked inside OnClosing, and its answer closes again.
+        /// </summary>
+        private bool HoldCloseForFirstCloseQuestion(WindowCloseReason reason)
+        {
+            if (_closeConfirmed || _teardownDone || reason == WindowCloseReason.OSShutdown) return false;
+            if (!IsMuxPersistenceActive || !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)) return false;
+            bool applicationShutdown = reason == WindowCloseReason.ApplicationShutdown;
+            int live = CountKeptLocalSessions();
+            HashSet<Guid> pending = PendingLocalMuxSessionIds();
+            if (_firstCloseQuestionOpen && !applicationShutdown) return live + pending.Count > 0; // one question at a time
+            if (live + pending.Count == 0) return false;
+
+            switch (MuxCloseChoiceStore.Read())
+            {
+                case Ntilde.Shell.Mux.MuxCloseChoice.Keep:
+                    return false;
+                case Ntilde.Shell.Mux.MuxCloseChoice.Close:
+                    if (pending.Count == 0 || applicationShutdown)
+                    {
+                        if (pending.Count > 0) AppLogger.Log($"[MainWindow] {pending.Count} local session(s) of tabs not shown yet left running: a shutdown cannot wait for the multiplexer to say who shows them");
+                        EndLocalSessionsOnTeardown();
+                        return false;
+                    }
+
+                    _firstCloseQuestionOpen = true;
+                    // Posted, as the question is: it closes the window again once the daemon has answered.
+                    Dispatcher.Post(() => _ = EndLocalSessionsAndCloseAsync(pending));
+                    return true;
+                default:
+                    if (applicationShutdown) return false; // never asked: kept
+                    _firstCloseQuestionOpen = true;
+                    // Posted: the answer closes the window again, and Close() must never re-enter this OnClosing.
+                    Dispatcher.Post(() => _ = AskFirstCloseAsync(live, pending));
+                    return true;
+            }
+        }
+
+        /// <summary>
+        /// Asks the first-close question (R1) and settles the held close with the answer: Cancel leaves the window
+        /// open; Keep closes it again, and Close ends the local shells first; either is remembered first when "Don't
+        /// ask again" was ticked. A question that could not be asked closes as Keep - nothing is lost, as before R1 -
+        /// rather than leave a window that cannot be closed. A close that happened meanwhile by another way (an OS
+        /// shutdown, an update restart) already applied its own rules, and the answer is dropped.
+        /// <para>
+        /// <paramref name="live"/> is how many live shells the close would keep; <paramref name="pending"/> the ids tabs not
+        /// shown yet hold (final review M3). Those count, and "Close them" ends them, only once the daemon has said it runs
+        /// them and no other client shows them (<see cref="UnshownLocalMuxSessionsAsync"/>); when that leaves nothing to
+        /// keep, the window closes without asking, as it does with nothing to ask about. The question can stay open for
+        /// minutes, so "Close them" asks the daemon again just before it ends any of them (residual N2): one another client
+        /// opened meanwhile keeps running.
+        /// </para>
+        /// <para>
+        /// Residual N3: whatever fails on the way, the hold is let go (<see cref="_firstCloseQuestionOpen"/>), so the next
+        /// close is never held behind a question that is gone.
+        /// </para>
+        /// </summary>
+        private async Task AskFirstCloseAsync(int live, IReadOnlySet<Guid> pending)
+        {
+            try
+            {
+                await SettleFirstCloseAsync(live, pending);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] settling the first-close question failed; the window stays open: {ex}");
+            }
+            finally
+            {
+                _firstCloseQuestionOpen = false;
+            }
+        }
+
+        /// <summary><see cref="AskFirstCloseAsync"/>'s body, the hold still on throughout.</summary>
+        private async Task SettleFirstCloseAsync(int live, IReadOnlySet<Guid> pending)
+        {
+            // Overtaken before the post ran (an OS shutdown, an update restart): never show the question at all.
+            if (_teardownDone) return;
+
+            IReadOnlySet<Guid> unshown = pending.Count == 0 ? NoMuxSessionIds : await UnshownLocalMuxSessionsAsync(pending);
+            if (_teardownDone) return;
+
+            int count = live + unshown.Count;
+            if (count == 0)
+            {
+                _closeConfirmed = true;
+                Close();
+                return;
+            }
+
+            FirstCloseAnswer answer;
+            try
+            {
+                answer = await ConfirmFirstClose(count);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] the first-close question failed; keeping the shells running: {ex.Message}");
+                answer = new FirstCloseAnswer(FirstCloseAction.Keep, Remember: false);
+            }
+
+            if (_teardownDone || answer.Action is not (FirstCloseAction.Keep or FirstCloseAction.Close)) return;
+
+            bool end = answer.Action == FirstCloseAction.Close;
+            if (answer.Remember) MuxCloseChoiceStore.Remember(end ? Ntilde.Shell.Mux.MuxCloseChoice.Close : Ntilde.Shell.Mux.MuxCloseChoice.Keep);
+            if (end && unshown.Count > 0)
+            {
+                // Residual N2: a client may have opened one of them while the question was open.
+                unshown = await UnshownLocalMuxSessionsAsync(unshown);
+                if (_teardownDone) return;
+            }
+
+            if (end) EndLocalSessionsOnTeardown(unshown);
+            _closeConfirmed = true;
+            Close();
+        }
+
+        /// <summary>
+        /// UI thread. Final review M3: a remembered "Close them" (R1) on a close with tabs not shown yet. Their shells end
+        /// with the live ones once the daemon has said which it runs and no other client shows; then the window closes.
+        /// A close that happened meanwhile by another way already applied its own rules. Whatever fails, the hold is let go
+        /// (residual N3).
+        /// </summary>
+        private async Task EndLocalSessionsAndCloseAsync(IReadOnlySet<Guid> pending)
+        {
+            try
+            {
+                if (_teardownDone) return;
+                IReadOnlySet<Guid> unshown = await UnshownLocalMuxSessionsAsync(pending);
+                if (_teardownDone) return;
+                EndLocalSessionsOnTeardown(unshown);
+                _closeConfirmed = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] closing with a remembered \"Close them\" failed: {ex}");
+            }
+            finally
+            {
+                _firstCloseQuestionOpen = false;
+            }
+        }
+
+        private static readonly IReadOnlySet<Guid> NoMuxSessionIds = new HashSet<Guid>();
+
+        /// <summary>
+        /// The local panes whose shells a close would leave running in the daemon: what the first-close question (R1)
+        /// counts and the teardown logs. Shells <see cref="EndLocalSessionsOnTeardown"/> has ended are not kept. The
+        /// shells of tabs not shown yet are <see cref="PendingLocalMuxSessionIds"/>.
+        /// </summary>
+        private int CountKeptLocalSessions() => _paneOwnerTab.Keys.Count(p => ShowsLocalMuxEndpoint(p)
+            && p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true } mux
+            && !_localSessionsEndedOnClose.Contains(mux.Id));
+
+        /// <summary>
+        /// Final review M3: the local shells panes of this window are about to reopen - a restored tab not shown yet, a
+        /// placeholder holding a pending id (<see cref="TerminalPane.MuxSessionIdToRestore"/>) - which a close leaves running
+        /// as surely as a live pane's. PR #511 review (Greptile P1): also those of a startup tab not built yet, whose ids are
+        /// only in its saved tree (<see cref="HeldLocalMuxSessionIds"/>). Not a share's: "Attach to session…" joined it
+        /// because another client shows it, and a close never ends a share. Not one a reboot or logoff ended
+        /// (<see cref="TerminalPane.MuxQuietPreviousLost"/>), one a pane shows live, or one already ended. Whether each still
+        /// runs, and whether another client shows it, only the daemon can say (<see cref="UnshownLocalMuxSessionsAsync"/>).
+        /// </summary>
+        private HashSet<Guid> PendingLocalMuxSessionIds()
+        {
+            HashSet<Guid> pending = HeldLocalMuxSessionIds().Where(h => !h.Shared && !h.QuietLost).Select(h => h.Id).ToHashSet();
+            pending.ExceptWith(_localSessionsEndedOnClose);
+            return pending;
+        }
+
+        /// <summary>
+        /// Every local daemon session this window names but no pane shows live: a pane's pending id
+        /// (<see cref="TerminalPane.MuxSessionIdToRestore"/>), and each id in the saved tree of a startup tab not built yet -
+        /// a placeholder (CreateStartupPlaceholderTab), which has no pane at all until the restore's background pass builds
+        /// it, and whose tree the session save writes back as it was. Each with whether it is a share and whether a reboot or
+        /// logoff already ended it (spec R2), as the pane would be told. An id a pane shows live is left out.
+        /// </summary>
+        private List<(Guid Id, bool Shared, bool QuietLost)> HeldLocalMuxSessionIds()
+        {
+            var live = new HashSet<Guid>();
+            var held = new List<(Guid Id, bool Shared, bool QuietLost)>();
+            foreach (TerminalPane pane in _paneOwnerTab.Keys)
+            {
+                if (!ShowsLocalMuxEndpoint(pane)) continue;
+                if (pane.Session is Ntilde.Mux.MuxClientSession mux) live.Add(mux.Id);
+                else if (pane.MuxSessionIdToRestore is Guid id) held.Add((id, pane.MuxAttachSharedToRestore, pane.MuxQuietPreviousLost));
+            }
+
+            if (this.FindControl<TabControl>("Tabs") is { } tabs)
+            {
+                foreach (TabItem tab in tabs.Items.OfType<TabItem>())
+                {
+                    // A placeholder as the save tells one: no pane tree to capture, and the restored tree in its Tag.
+                    if (GetLayoutRootForTab(tab) is TerminalPane or Grid || tab.Tag is not TabSession { Root: { } root }) continue;
+                    var nodes = new Stack<PaneNode>([root]);
+                    while (nodes.TryPop(out PaneNode? node))
+                    {
+                        // A hand-edited or merged file can hold a null child, as DedupeMuxIds and WithoutMuxIds allow for.
+                        if (node is null) continue;
+                        foreach (PaneNode child in node.Children) nodes.Push(child);
+                        if (Guid.TryParse(node.MuxSessionId, out Guid id) && Ntilde.Shell.Mux.MuxEndpointId.Parse(node.MuxEndpoint).IsLocal)
+                        {
+                            held.Add((id, node.MuxShared, node.MuxQuietPreviousLost));
+                        }
+                    }
+                }
+            }
+
+            held.RemoveAll(h => live.Contains(h.Id));
+            return held;
+        }
+
+        /// <summary>How long a closing window waits for the local daemon to list its shells (final review M3).</summary>
+        internal static readonly TimeSpan PendingShellsListTimeout = TimeSpan.FromSeconds(2);
+
+        /// <summary>
+        /// Test seam: how a closing window lists the local daemon's shells - for the first-close question
+        /// (<see cref="UnshownLocalMuxSessionsAsync"/>) and before "Quit and close all shells" (<see cref="QuitAndCloseAllShellsAsync"/>).
+        /// Called off the UI thread.
+        /// </summary>
+        internal Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> MuxListSessionsForClose { get; set; } =
+            static (client, ct) => client.ListSessionsAsync(ct);
+
+        /// <summary>
+        /// Final review M3: of <paramref name="pending"/> (<see cref="PendingLocalMuxSessionIds"/>), the shells the local
+        /// daemon runs and no interactive client shows - what "Close them" may end, as it ends a live pane's shell only
+        /// when no other client shows it. Asked off the UI thread over the local host's current connection only - a
+        /// closing window never connects, let alone starts a daemon - within <see cref="PendingShellsListTimeout"/>. None
+        /// when the daemon cannot say: those shells keep running, as with Keep, and stay named for the next launch.
+        /// </summary>
+        private async Task<IReadOnlySet<Guid>> UnshownLocalMuxSessionsAsync(IReadOnlySet<Guid> pending)
+        {
+            if (_muxHosts?.Local.CurrentClient is not { IsConnected: true } client) return NoMuxSessionIds;
+            Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> list = MuxListSessionsForClose;
+            try
+            {
+                return await Task.Run(async () =>
+                {
+                    using var cts = new System.Threading.CancellationTokenSource(PendingShellsListTimeout);
+                    IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await list(client, cts.Token).ConfigureAwait(false);
+                    bool v2 = client.ProtocolVersion >= Ntilde.Mux.Contracts.MuxProtocol.SessionEventsVersion;
+                    return (IReadOnlySet<Guid>)all
+                        .Where(s => pending.Contains(s.SessionId) && Ntilde.Shell.Mux.MuxOrphans.IsUnshown(s, v2))
+                        .Select(s => s.SessionId)
+                        .ToHashSet();
+                });
+            }
+            catch (Exception ex)
+            {
+                // Any failure (residual N3): none is the safe answer - those shells keep running, as with Keep.
+                AppLogger.Log($"[MainWindow] listing the shells of tabs not shown yet failed; they keep running: {ex.GetType().Name}: {ex.Message}");
+                return NoMuxSessionIds;
+            }
+        }
+
+        /// <summary>
+        /// Ends every local pane's live shell as the window closes: R1's "Close them" (asked or remembered), and Task
+        /// 17's quit. Each kill goes to the local host (<see cref="Ntilde.Shell.Mux.MuxConnectionHost.KillWhenConnected"/>),
+        /// sent at once and tracked, and the teardown's <see cref="Ntilde.Shell.Mux.MuxConnectionHosts.Dispose"/> waits
+        /// for the replies before it disconnects, so none is dropped behind the close. The ended shells are not saved for
+        /// reattach either: the next launch starts fresh shells quietly, as with persistence off, rather than report
+        /// them lost. Remote shells are left alone, and so is a shell another client is also typing into, or a share whose
+        /// other clients cannot be known yet (Phase 5 Task 26): a pane close never ends one without asking (the shared-close
+        /// question), so it detaches, as Keep does, and stays counted as kept. Idempotent.
+        /// </summary>
+        /// <param name="pending">
+        /// Final review M3: shells of tabs not shown yet that the daemon said it runs and no other client shows
+        /// (<see cref="UnshownLocalMuxSessionsAsync"/>), ended the same way - each only while a pane, or a startup tab not
+        /// built yet, still holds it pending (one that has spawned since is a live pane's, and judged as one).
+        /// </param>
+        private void EndLocalSessionsOnTeardown(IReadOnlySet<Guid>? pending = null)
+        {
+            if (_muxHosts is not { } hosts) return;
+            int ended = 0;
+            int shared = 0;
+            foreach (TerminalPane pane in _paneOwnerTab.Keys)
+            {
+                if (!ShowsLocalMuxEndpoint(pane)
+                    || pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true } mux
+                    || _localSessionsEndedOnClose.Contains(mux.Id))
+                {
+                    continue;
+                }
+
+                // The session's cached count (read-only observers excluded) or the pane's, whichever knows of another client -
+                // or a share none of them can speak for yet (its attach in flight: Phase 5 Task 26).
+                if (mux.InteractiveOthers > 0 || pane.MuxOtherClients > 0 || pane.IsMuxShareWithSharingUnknown)
+                {
+                    shared++;
+                    continue;
+                }
+
+                _localSessionsEndedOnClose.Add(mux.Id);
+                hosts.Local.KillWhenConnected(mux.Id);
+                ended++;
+            }
+
+            if (pending is { Count: > 0 })
+            {
+                foreach (Guid id in PendingLocalMuxSessionIds())
+                {
+                    if (!pending.Contains(id)) continue;
+                    _localSessionsEndedOnClose.Add(id);
+                    hosts.Local.KillWhenConnected(id);
+                    ended++;
+                }
+            }
+
+            if (ended > 0) AppLogger.Log($"[MainWindow] ending {ended} local session(s) as the window closes");
+            if (shared > 0) AppLogger.Log($"[MainWindow] {shared} shared local session(s) left running for the other clients that show them");
+        }
+
+        private bool _quitAndCloseAllInProgress;
+
+        /// <summary>
+        /// "Quit and close all shells" (Task 17): ends EVERY shell in the local daemon - this window's panes, shells
+        /// shared with other clients, and detached ones - shuts the daemon down, and closes the window. Remote shells
+        /// are untouched. Asks first, naming the daemon's running count. The ended shells are not saved for reattach,
+        /// so the next launch starts fresh ones quietly - those of tabs not shown yet only once they are known gone (the
+        /// stop went through, or each was killed by name). A daemon that cannot be reached or does not stop is logged and
+        /// the window closes anyway.
+        /// </summary>
+        internal async Task QuitAndCloseAllShellsAsync()
+        {
+            if (_quitAndCloseAllInProgress || _teardownDone || !IsMuxPersistenceActive || _muxHosts?.Local is not { } host) return;
+            _quitAndCloseAllInProgress = true;
+            try
+            {
+                // Off the UI thread: GetClient blocks while a connect is in flight.
+                Func<Ntilde.Mux.MuxClient, System.Threading.CancellationToken, Task<IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary>>> list = MuxListSessionsForClose;
+                IReadOnlyList<Guid>? running = await Task.Run(async () =>
+                {
+                    Ntilde.Mux.MuxClient? client = host.GetClient(TimeSpan.FromSeconds(3));
+                    if (client is null) return null;
+                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    try
+                    {
+                        IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> all = await list(client, cts.Token).ConfigureAwait(false);
+                        return (IReadOnlyList<Guid>)all.Where(s => s.Running).Select(s => s.SessionId).ToList();
+                    }
+                    catch (Exception ex) when (ex is Ntilde.Mux.Contracts.MuxProtocolException or IOException or TimeoutException or OperationCanceledException or ObjectDisposedException)
+                    {
+                        AppLogger.Log($"[MainWindow] listing mux sessions before quit failed: {ex.Message}");
+                        return null;
+                    }
+                });
+
+                if (running is null || running.Count > 0)
+                {
+                    bool confirmed;
+                    try
+                    {
+                        confirmed = await ConfirmQuitAndCloseAll(running?.Count ?? -1);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Log($"[MainWindow] the quit confirmation failed; not quitting: {ex.Message}");
+                        return;
+                    }
+
+                    if (!confirmed) return;
+                }
+
+                // The panes' shells go through the host (tracked, flushed at teardown); then every other shell the daemon
+                // runs - shared and detached ones - is killed on this connection, and the daemon is shut down.
+                EndLocalSessionsOnTeardown();
+                var others = running?.Where(id => !_localSessionsEndedOnClose.Contains(id)).ToList() ?? [];
+                MarkLivePaneShellsEnded();
+
+                HashSet<Guid> killed = await Task.Run(async () =>
+                {
+                    var done = new HashSet<Guid>();
+                    if (others.Count > 0 && host.GetClient(TimeSpan.FromSeconds(3)) is { } client)
+                    {
+                        foreach (Guid id in others)
+                        {
+                            try
+                            {
+                                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                                await client.KillAsync(id, cts.Token).ConfigureAwait(false);
+                                done.Add(id);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppLogger.Log($"[MainWindow] killing session {id} before quit failed: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    return done;
+                });
+
+                LocalDaemonStop stop = await ShutdownLocalDaemonAsync(TimeSpan.FromSeconds(5), "quitting");
+
+                // PR #511 residual M1: the shells of tabs not shown yet are left out of the session only once they are known
+                // to be gone - the daemon stopped (or was sent shutdown with no process to watch), or each was killed by name.
+                // Otherwise they may still run, and stay named, so the next launch reopens them in their tabs. Marked before
+                // Close(): its OnClosing runs the teardown, whose save is the one that reads the marks.
+                MarkHeldLocalShellsEnded(stop is LocalDaemonStop.Gone or LocalDaemonStop.StopUnconfirmed ? null : killed);
+
+                _closeConfirmed = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] quit and close all shells failed: {ex}");
+            }
+            finally
+            {
+                _quitAndCloseAllInProgress = false;
+            }
+        }
+
+        /// <summary>The production "Quit and close all shells" question; <paramref name="count"/> is -1 when unknown.</summary>
+        private Task<bool> ShowQuitAndCloseAllDialogAsync(int count)
+        {
+            string what = count switch
+            {
+                < 0 => "All shells running in the background will be closed, including detached and shared ones.",
+                1 => "1 shell running in the background will be closed, including detached and shared ones.",
+                _ => $"{count} shells running in the background will be closed, including detached and shared ones.",
+            };
+            bool remote = _paneOwnerTab.Keys.Any(p => !ShowsLocalMuxEndpoint(p) && p.Session is Ntilde.Mux.MuxClientSession);
+            if (remote) what += " Remote shells keep running.";
+            return ShowConfirmationDialogAsync("Quit Ntilde", "Close every shell?", what, "Quit and close", 140);
         }
 
         /// <summary>
@@ -9812,16 +10819,14 @@ namespace Ntilde
             _teardownDone = true;
             TeardownFaultForTest?.Invoke();
 
-            var tabs = this.FindControl<TabControl>("Tabs");
-            if (tabs != null)
-            {
-                SessionManager.SaveSession(this, tabs);
-            }
+            if (!_sessionSavedBeforeUpdate) SaveSessionWithoutEndedShells();
 
             if (_muxHosts is { } muxHosts)
             {
+                // The agent host stops asking these hosts before they close (the Stop below clears it again).
+                AgentHost.AgentHostService.Instance.SetWindowlessSource(null);
                 // Local panes only: the log line points at `ntilde mux ls`, which lists the local daemon.
-                int kept = _paneOwnerTab.Keys.Count(p => ShowsLocalMuxEndpoint(p) && p.Session is Ntilde.Mux.MuxClientSession { IsConnected: true, IsProcessRunning: true });
+                int kept = CountKeptLocalSessions();
                 // Explicit detach: closing each connection makes its daemon drop this client's
                 // subscriptions and keep every shell running. Panes are deliberately not disposed
                 // (that would kill them). Each host flushes what is already queued first, so a kill
@@ -10126,6 +11131,7 @@ namespace Ntilde
                 return;
             }
 
+            _shownPersistenceNotices = []; // replaced: ShowPersistenceNotices says again what it shows
             _recordingToastFilePath = filePath;
             _recordingToastFolderPath = folderPath;
             _recordingToastAction = action;
@@ -10162,6 +11168,7 @@ namespace Ntilde
             _recordingToastTimer.Stop();
             // A hidden toast offers nothing: a stray click must not run an action it no longer shows.
             _recordingToastAction = null;
+            _shownPersistenceNotices = [];
             var toast = this.FindControl<Border>("RecordingToast");
             if (toast != null)
             {
@@ -10357,18 +11364,23 @@ namespace Ntilde
         /// for real reasons: a missing or locked <c>Update.exe</c>, or the update lock already
         /// held by another instance.
         ///
-        /// Before any of that, a live daemon is probed (spec §9): the new build must not start
-        /// beside a daemon of the old one - the protocol version range is the backstop, not the
-        /// mechanism. If it has running sessions, the user is asked to confirm the loss; declining
-        /// leaves everything untouched (no teardown, no apply). Confirming - or no daemon at all -
-        /// sends <c>shutdown</c> so no old-build daemon survives beside the new one, then proceeds
-        /// exactly as before. If listing sessions fails, the count is unknown so there is nothing
-        /// to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative is the
-        /// exact bug this method exists to prevent, an old-build daemon surviving beside the new
-        /// one, just because a request on the way in happened to fail. A confirmation dialog that
-        /// itself throws is treated as a decline (logged, toasted, no shutdown, no apply) rather
-        /// than letting the exception escape this fire-and-forget method as an unobserved fault -
-        /// "yes" must never be inferred from a question that could not be asked.
+        /// Before any of that, a live daemon is probed (spec §9). Phase 5 R10: when the update keeps
+        /// it - the new build speaks its protocol (the staged release notes' marker) and the apply
+        /// does not kill it (its image is outside the install root) - nothing is asked and nothing
+        /// is shut down: the teardown detaches as any close does, and the new build reattaches.
+        /// With SessionPersistence off no daemon is kept, as before Phase 5.
+        /// Otherwise, if it has running sessions, the user is asked to confirm the loss; declining
+        /// leaves everything untouched (no teardown, no apply). Confirming - or no running session -
+        /// saves the session without the shells about to die (with persistence on; off, the teardown
+        /// saves it afterwards, as before Phase 5), then sends <c>shutdown</c>, then proceeds exactly
+        /// as before. If listing sessions fails, the count is unknown so there is
+        /// nothing to confirm, but <c>shutdown</c> is still attempted best-effort - the alternative
+        /// is the exact bug this method exists to prevent, a daemon the new build cannot use (or the
+        /// apply would kill mid-flight) surviving the decision, just because a request on the way in
+        /// happened to fail. A confirmation dialog that itself throws is treated as a decline
+        /// (logged, toasted, no shutdown, no apply) rather than letting the exception escape this
+        /// fire-and-forget method as an unobserved fault - "yes" must never be inferred from a
+        /// question that could not be asked.
         ///
         /// Re-entrant: the toast button, the palette command and About's button can all reach this
         /// (see <see cref="ApplyStagedUpdate"/>), and nothing stops two of them firing before the
@@ -10390,11 +11402,14 @@ namespace Ntilde
             _applyStagedUpdateInProgress = true;
             try
             {
-                if (!await PrepareMuxDaemonForUpdateAsync())
+                MuxUpdatePreparation prepared = await PrepareMuxDaemonForUpdateAsync();
+                if (prepared == MuxUpdatePreparation.Cancel)
                 {
                     return;
                 }
 
+                // The session was saved before the daemon was shut down: this teardown must not save over it.
+                _sessionSavedBeforeUpdate = prepared == MuxUpdatePreparation.ApplySessionSaved;
                 try
                 {
                     PerformAppTeardown();
@@ -10413,6 +11428,11 @@ namespace Ntilde
                         null,
                         autoHide: false);
                     return;
+                }
+                finally
+                {
+                    // Only for that teardown: one run again after a failed apply saves as any close does.
+                    _sessionSavedBeforeUpdate = false;
                 }
 
                 try
@@ -10443,48 +11463,190 @@ namespace Ntilde
             }
         }
 
+        /// <summary>What the mux half of <see cref="ApplyStagedUpdateAsync"/> decided.</summary>
+        private enum MuxUpdatePreparation
+        {
+            /// <summary>Declined, or the question could not be asked: nothing is torn down or applied.</summary>
+            Cancel,
+
+            /// <summary>
+            /// Go ahead: no daemon, one the update keeps, or - with persistence off - one shut down as before Phase 5. The
+            /// teardown saves the session as any close does.
+            /// </summary>
+            Apply,
+
+            /// <summary>Go ahead: the daemon was shut down, and the session saved just before; the teardown leaves that file alone.</summary>
+            ApplySessionSaved,
+        }
+
         /// <summary>
-        /// The mux half of <see cref="ApplyStagedUpdateAsync"/> (spec §9): probes for a live daemon
-        /// and, when there is one, confirms the loss of its running sessions and shuts it down.
-        /// False means the user declined (or could not be asked): leave everything untouched.
+        /// Set only around the update's own <see cref="PerformAppTeardown"/> call when the session was saved before the daemon
+        /// was shut down: that teardown does not save again (a save after the shutdown would capture panes it ended, or
+        /// closed by the exit policy).
         /// </summary>
-        private async System.Threading.Tasks.Task<bool> PrepareMuxDaemonForUpdateAsync()
+        private bool _sessionSavedBeforeUpdate;
+
+        /// <summary>
+        /// The mux half of <see cref="ApplyStagedUpdateAsync"/> (spec §9, Phase 5 R10): probes for a live daemon and, when
+        /// the update does not keep it, confirms the loss of its running sessions, saves the session without them, and shuts
+        /// it down. A daemon the update keeps is left alone, unasked; with SessionPersistence off none is kept.
+        /// </summary>
+        private async System.Threading.Tasks.Task<MuxUpdatePreparation> PrepareMuxDaemonForUpdateAsync()
         {
             Ntilde.Mux.MuxClient? daemon = await ProbeMuxDaemonForUpdateAsync();
             if (daemon is null)
             {
-                return true;
+                return MuxUpdatePreparation.Apply;
             }
 
             using (daemon)
             {
-                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon))
+                // SessionPersistence off changes nothing from before Phase 5: no daemon is kept, and the question words it
+                // as it always did - "the new version cannot keep them" may not be true of a daemon it could keep.
+                bool persistenceOff = !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence);
+                // None with persistence off: the question then gives no reason, as before Phase 5.
+                Ntilde.Update.MuxUpdateStopReason why = Ntilde.Update.MuxUpdateStopReason.None;
+                if (persistenceOff)
                 {
-                    return false;
+                    AppLogger.Log("[MainWindow] session persistence is off; the update closes the multiplexer's sessions, as before Phase 5");
+                }
+                else if ((why = await WhyUpdateStopsMuxDaemonAsync()) == Ntilde.Update.MuxUpdateStopReason.None)
+                {
+                    return MuxUpdatePreparation.Apply;
                 }
 
+                if (!await ConfirmMuxSessionLossForUpdateAsync(daemon, why))
+                {
+                    return MuxUpdatePreparation.Cancel;
+                }
+
+                if (persistenceOff)
+                {
+                    // As before Phase 5: the teardown saves the session after the shutdown and its exit wait.
+                    await ShutdownMuxDaemonForUpdateAsync(daemon);
+                    return MuxUpdatePreparation.Apply;
+                }
+
+                // The shells about to die are left out of the session, saved now, before the shutdown: the file names
+                // none of them, and the teardown does not save over it with panes the shutdown has since ended.
+                MarkLocalShellsEnded();
+                SaveSessionWithoutEndedShells();
                 await ShutdownMuxDaemonForUpdateAsync(daemon);
-                return true;
+                return MuxUpdatePreparation.ApplySessionSaved;
             }
         }
 
-        private async System.Threading.Tasks.Task<Ntilde.Mux.MuxClient?> ProbeMuxDaemonForUpdateAsync()
+        /// <summary>
+        /// Phase 5 R10: whether the staged update keeps the live daemon - the new build speaks its protocol (the release
+        /// notes' marker; none counts as compatible) and the apply does not kill it (its image is outside the install root) -
+        /// and if not, why (<see cref="Ntilde.Update.MuxUpdateStopReason"/>, which the question gives: PR #511 heads-up). A
+        /// daemon whose descriptor cannot be read, or anything failing on the way, is not kept, as one whose image is unknown:
+        /// today's question and shutdown. The image lookup runs off the UI thread. Never throws.
+        /// </summary>
+        private async System.Threading.Tasks.Task<Ntilde.Update.MuxUpdateStopReason> WhyUpdateStopsMuxDaemonAsync()
         {
             try
             {
-                return await MuxProbeForUpdate(CancellationToken.None);
+                Ntilde.Mux.Contracts.MuxEndpointDescriptor? descriptor = MuxReadDescriptorForUpdate();
+                if (descriptor is null)
+                {
+                    AppLogger.Log("[MainWindow] the multiplexer's descriptor could not be read; the update closes its sessions");
+                    return Ntilde.Update.MuxUpdateStopReason.UnknownImage;
+                }
+
+                (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(_updateCoordinator?.StagedReleaseNotes);
+                string? installRoot = MuxInstallRootForUpdate();
+                string? image = installRoot is null ? null : await Task.Run(() => MuxDaemonImagePathForUpdate(descriptor));
+                Ntilde.Update.MuxUpdateStopReason why = Ntilde.Update.MuxUpdateCompatibility.WhyUpdateStopsDaemon((descriptor.MinVersion, descriptor.MaxVersion), newBuild, image, installRoot);
+                string newRange = newBuild is { } b ? $"{b.Min}-{b.Max}" : "not stated";
+                string where = installRoot is null ? "the apply kills no process" : $"its image is {image ?? "unknown"}, the install root {installRoot}";
+                string verdict = why == Ntilde.Update.MuxUpdateStopReason.None ? "keeps" : $"closes ({why})";
+                AppLogger.Log($"[MainWindow] the update {verdict} the multiplexer: protocol {descriptor.MinVersion}-{descriptor.MaxVersion}, the new build's {newRange}; {where}");
+                return why;
             }
             catch (Exception ex)
             {
-                // Best-effort: a daemon that cannot even be reached is not one the update
-                // needs to wait on (there is no client to send `shutdown` to either).
-                AppLogger.Log($"[MainWindow] mux probe before update failed: {ex.Message}");
-                return null;
+                AppLogger.Log($"[MainWindow] deciding whether the update keeps the multiplexer failed; it closes its sessions: {ex.Message}");
+                return Ntilde.Update.MuxUpdateStopReason.UnknownImage;
             }
         }
 
-        /// <summary>True to go ahead: no running sessions, an unknown count, or the user confirmed.</summary>
-        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon)
+        /// <summary>
+        /// Marks every local shell this window names ended (<see cref="_localSessionsEndedOnClose"/>): the local daemon is
+        /// about to be shut down with all of them - Task 17's quit, an update that does not keep it - so no save names them
+        /// for reattach, and the next launch starts fresh shells quietly instead of reporting them lost. A live pane's, and
+        /// (PR #511 review, Greptile P2) every id held without a live pane: a pane's pending one and a startup placeholder's
+        /// (<see cref="HeldLocalMuxSessionIds"/>). Shares included: the whole daemon stops, so a shared shell ends with it
+        /// (the quit kills it by name, R20), as a live share pane's always was marked here; a tab not shown yet then reopens
+        /// as a shown one does, with a fresh shell. Idempotent. The update marks them all before its shutdown, as it saves
+        /// before it; the quit marks the held ids only once their end is known (<see cref="MarkHeldLocalShellsEnded"/>).
+        /// </summary>
+        private void MarkLocalShellsEnded()
+        {
+            MarkLivePaneShellsEnded();
+            MarkHeldLocalShellsEnded(only: null);
+        }
+
+        /// <summary>The live local panes' half of <see cref="MarkLocalShellsEnded"/>.</summary>
+        private void MarkLivePaneShellsEnded()
+        {
+            foreach (TerminalPane pane in _paneOwnerTab.Keys)
+            {
+                if (ShowsLocalMuxEndpoint(pane) && pane.Session is Ntilde.Mux.MuxClientSession mux) _localSessionsEndedOnClose.Add(mux.Id);
+            }
+        }
+
+        /// <summary>
+        /// The held half of <see cref="MarkLocalShellsEnded"/> (<see cref="HeldLocalMuxSessionIds"/>): every such id, or with
+        /// <paramref name="only"/> just those in it - the quit's, when its stop failed, are the ones it killed by name.
+        /// </summary>
+        private void MarkHeldLocalShellsEnded(IReadOnlySet<Guid>? only)
+        {
+            foreach ((Guid id, _, _) in HeldLocalMuxSessionIds())
+            {
+                if (only is null || only.Contains(id)) _localSessionsEndedOnClose.Add(id);
+            }
+        }
+
+        /// <summary>
+        /// Saves the startup session file, leaving out the local shells already ended (<see cref="_localSessionsEndedOnClose"/>).
+        /// Every save of that file goes through here: the teardown's, each attach's coalesced one, and the update's.
+        /// </summary>
+        private void SaveSessionWithoutEndedShells()
+        {
+            if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
+        }
+
+        private async System.Threading.Tasks.Task<Ntilde.Mux.MuxClient?> ProbeMuxDaemonForUpdateAsync() =>
+            (await ProbeLocalDaemonAsync("the update")).Daemon;
+
+        /// <summary>
+        /// The live local daemon, never starting one; null when none answers. <c>VersionMismatch</c> says the one there
+        /// speaks another protocol version (it cannot be asked anything, only terminated). <paramref name="purpose"/> is
+        /// what the caller is doing, for the log.
+        /// </summary>
+        private async System.Threading.Tasks.Task<(Ntilde.Mux.MuxClient? Daemon, bool VersionMismatch)> ProbeLocalDaemonAsync(string purpose)
+        {
+            try
+            {
+                return (await MuxProbeForUpdate(CancellationToken.None), false);
+            }
+            catch (Exception ex)
+            {
+                // Best-effort: a daemon that cannot even be reached is not one the caller
+                // needs to wait on (there is no client to send `shutdown` to either).
+                AppLogger.Log($"[MainWindow] mux probe before {purpose} failed: {ex.Message}");
+                return (null, ex is Ntilde.Mux.Daemon.MuxUnavailableException { VersionMismatch: true });
+            }
+        }
+
+        /// <summary>
+        /// True to go ahead: no running sessions, an unknown count, or the user confirmed. <paramref name="why"/> is the reason
+        /// the question gives (<see cref="Ntilde.Update.MuxUpdateCompatibility.SessionLossQuestion"/>): the protocol, the install
+        /// folder, or a daemon that could not be checked - each only when the update was asked to keep the daemon and could
+        /// not. <see cref="Ntilde.Update.MuxUpdateStopReason.None"/> (persistence off) words it as before Phase 5.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> ConfirmMuxSessionLossForUpdateAsync(Ntilde.Mux.MuxClient daemon, Ntilde.Update.MuxUpdateStopReason why)
         {
             IReadOnlyList<Ntilde.Mux.Contracts.SessionSummary> sessions;
             try
@@ -10507,8 +11669,7 @@ namespace Ntilde
 
             try
             {
-                return await ConfirmSessionLossForUpdate(
-                    $"{running} multiplexed session{(running == 1 ? "" : "s")} will be closed by the update.");
+                return await ConfirmSessionLossForUpdate(Ntilde.Update.MuxUpdateCompatibility.SessionLossQuestion(running, why));
             }
             catch (Exception ex)
             {
@@ -10526,13 +11687,131 @@ namespace Ntilde
             }
         }
 
-        private async System.Threading.Tasks.Task ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon)
+        /// <summary>How the probe before a stop found the local daemon.</summary>
+        private enum LocalDaemonProbe
+        {
+            /// <summary>It answered: there is a connection to it.</summary>
+            Reached,
+
+            /// <summary>None answered, and no descriptor advertises one.</summary>
+            NotRunning,
+
+            /// <summary>One is advertised, but none answered (hung, or just gone).</summary>
+            Unreachable,
+
+            /// <summary>One answered as another protocol version: it cannot be asked anything, only terminated.</summary>
+            VersionMismatch,
+        }
+
+        /// <summary>How <see cref="ShutdownLocalDaemonAsync"/> ended.</summary>
+        private enum LocalDaemonStop
+        {
+            /// <summary>The daemon is known to be gone: it exited after <c>shutdown</c>, or was terminated.</summary>
+            Gone,
+
+            /// <summary>No daemon was reached, and none was there to terminate.</summary>
+            NoneReached,
+
+            /// <summary>The restart's last look left the daemon alone: nothing was sent.</summary>
+            LeftAlone,
+
+            /// <summary><c>shutdown</c> went out, but no descriptor said which process to watch: the stop cannot be checked.</summary>
+            StopUnconfirmed,
+
+            /// <summary>A daemon was there, and is not known to be gone.</summary>
+            NotStopped,
+        }
+
+        /// <summary>
+        /// Probes for the local daemon and, when one is up, sends it <c>shutdown</c> and waits up to
+        /// <paramref name="wait"/> for it to exit (the update path's probe-and-shutdown, shared with Task 17's quit and
+        /// Task 23's restart). A daemon that cannot be reached or does not stop is logged, never thrown; only an exception
+        /// from <paramref name="restart"/> propagates.
+        /// </summary>
+        /// <param name="purpose">What the caller is doing, for the log ("quitting", "the restart").</param>
+        /// <param name="restart">
+        /// Task 23's restart, or null. It is shown the daemon the probe reached (null when none answered) and how the probe
+        /// found it, just before <c>shutdown</c> would be sent, and false leaves it alone (<see cref="LocalDaemonStop.LeftAlone"/>).
+        /// With it, a daemon still there after the wait, or one that could not be asked, is terminated by pid, as
+        /// <c>kill-server --force</c> does (<see cref="MuxTerminateDaemon"/>).
+        /// </param>
+        private async System.Threading.Tasks.Task<LocalDaemonStop> ShutdownLocalDaemonAsync(TimeSpan wait, string purpose, Func<Ntilde.Mux.MuxClient?, LocalDaemonProbe, bool>? restart = null)
+        {
+            // Read before the shutdown, as the exit wait's is: the daemon deletes its descriptor on the way out.
+            Ntilde.Mux.Contracts.MuxEndpointDescriptor? described = restart is not null ? ReadMuxDescriptorBeforeShutdown(purpose) : null;
+            (Ntilde.Mux.MuxClient? probed, bool versionMismatch) = await ProbeLocalDaemonAsync(purpose);
+            LocalDaemonProbe found = probed is not null ? LocalDaemonProbe.Reached
+                : versionMismatch ? LocalDaemonProbe.VersionMismatch
+                : described is null ? LocalDaemonProbe.NotRunning
+                : LocalDaemonProbe.Unreachable;
+            using (Ntilde.Mux.MuxClient? daemon = probed)
+            {
+                if (restart is not null && !restart(daemon, found)) return LocalDaemonStop.LeftAlone;
+                if (daemon is not null)
+                {
+                    switch (await ShutdownMuxDaemonForUpdateAsync(daemon, wait, purpose))
+                    {
+                        case DaemonShutdown.Exited: return LocalDaemonStop.Gone;
+                        case DaemonShutdown.Unwatched: return LocalDaemonStop.StopUnconfirmed;
+                    }
+                }
+                else if (!versionMismatch && restart is null)
+                {
+                    return LocalDaemonStop.NoneReached;
+                }
+            }
+
+            if (described is null) return LocalDaemonStop.NotStopped;
+            try
+            {
+                return await Task.Run(() => MuxTerminateDaemon(described)) ? LocalDaemonStop.Gone : LocalDaemonStop.NotStopped;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] terminating the multiplexer (pid {described.Pid}) for {purpose} failed: {ex.Message}");
+                return LocalDaemonStop.NotStopped;
+            }
+        }
+
+        /// <summary>What sending a daemon <c>shutdown</c> came to (<see cref="ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient, TimeSpan, string)"/>).</summary>
+        private enum DaemonShutdown
+        {
+            /// <summary>Sent, and the process the descriptor names exited.</summary>
+            Exited,
+
+            /// <summary>It could not be sent, or was not answered.</summary>
+            NotSent,
+
+            /// <summary>Sent, but no descriptor says which process to watch.</summary>
+            Unwatched,
+
+            /// <summary>Sent, and the process was still there when the wait ran out.</summary>
+            StillThere,
+        }
+
+        private System.Threading.Tasks.Task<DaemonShutdown> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon) =>
+            ShutdownMuxDaemonForUpdateAsync(daemon, System.Threading.Timeout.InfiniteTimeSpan, "the update");
+
+        /// <summary>The descriptor, read through <see cref="MuxReadDescriptorForUpdate"/>; null when it cannot be read.</summary>
+        private Ntilde.Mux.Contracts.MuxEndpointDescriptor? ReadMuxDescriptorBeforeShutdown(string purpose)
+        {
+            try { return MuxReadDescriptorForUpdate(); }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] reading the mux descriptor before {purpose} failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <param name="daemon">A connection to the daemon.</param>
+        /// <param name="wait">How long to wait for the exit on top of the exit seam's own limit; infinite adds none.</param>
+        /// <param name="purpose">What the caller is doing, for the log ("the update", "quitting", "the restart").</param>
+        /// <returns>Whether it went out, and whether the daemon is known to have exited (<see cref="DaemonShutdown"/>).</returns>
+        private async System.Threading.Tasks.Task<DaemonShutdown> ShutdownMuxDaemonForUpdateAsync(Ntilde.Mux.MuxClient daemon, TimeSpan wait, string purpose)
         {
             // Read before the shutdown: the daemon deletes its descriptor on the way out,
             // and the pid in it is what says when the process is really gone.
-            Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = null;
-            try { before = MuxReadDescriptorForUpdate(); }
-            catch (Exception ex) { AppLogger.Log($"[MainWindow] reading the mux descriptor before update failed: {ex.Message}"); }
+            Ntilde.Mux.Contracts.MuxEndpointDescriptor? before = ReadMuxDescriptorBeforeShutdown(purpose);
 
             try
             {
@@ -10540,21 +11819,33 @@ namespace Ntilde
             }
             catch (Exception ex)
             {
-                AppLogger.Log($"[MainWindow] mux shutdown before update failed: {ex.Message}");
-                return;
+                AppLogger.Log($"[MainWindow] mux shutdown before {purpose} failed: {ex.Message}");
+                return DaemonShutdown.NotSent;
             }
 
             // As kill-server does: the apply replaces the executable the daemon runs from,
             // so let it finish exiting first. Awaited, never blocking the UI thread.
             if (before is null)
             {
-                return;
+                return DaemonShutdown.Unwatched;
             }
 
             bool gone = false;
-            try { gone = await MuxWaitForDaemonExitForUpdate(before); }
+            try
+            {
+                Task<bool> exit = MuxWaitForDaemonExitForUpdate(before);
+                if (wait != System.Threading.Timeout.InfiniteTimeSpan && await Task.WhenAny(exit, Task.Delay(wait)) != exit)
+                {
+                    gone = false;
+                }
+                else
+                {
+                    gone = await exit;
+                }
+            }
             catch (Exception ex) { AppLogger.Log($"[MainWindow] waiting for the mux daemon to exit failed: {ex.Message}"); }
-            if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; applying the update anyway");
+            if (!gone) AppLogger.Log($"[MainWindow] the mux daemon (pid {before.Pid}) did not exit within 5 s; going on with {purpose}");
+            return gone ? DaemonShutdown.Exited : DaemonShutdown.StillThere;
         }
 
         /// <summary>
