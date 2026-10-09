@@ -52,6 +52,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
                 _sshServiceFactory,
                 _passwordResolver,
                 out NativeSshConnectionOptions? connectionOptions,
+                out NativeHopPasswords? passwords,
                 out string errorMessage))
         {
             return RemoteSidebarListingResult.Failure(resolvedPath, errorMessage);
@@ -80,6 +81,11 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         {
             throw;
         }
+        catch (NativeSshAuthenticationRefusedException ex)
+        {
+            passwords!.ForgetRefusedTarget(_sessionRegistry, connectionOptions!.Host, connectionOptions.Port, connectionOptions.User);
+            return RemoteSidebarListingResult.Failure(resolvedPath, GetErrorMessage(ex, ListingFailedErrorMessage));
+        }
         catch (Exception ex)
         {
             return RemoteSidebarListingResult.Failure(resolvedPath, GetErrorMessage(ex, ListingFailedErrorMessage));
@@ -93,6 +99,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         Func<SshConnectionService> sshServiceFactory,
         Func<TerminalProfile, string?> passwordResolver,
         out NativeSshConnectionOptions? connectionOptions,
+        out NativeHopPasswords? passwords,
         out string errorMessage)
     {
         ArgumentNullException.ThrowIfNull(sessionRegistry);
@@ -100,6 +107,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         ArgumentNullException.ThrowIfNull(passwordResolver);
 
         connectionOptions = null;
+        passwords = null;
         errorMessage = InactiveSessionErrorMessage;
 
         if (profileId == Guid.Empty || sessionId == Guid.Empty ||
@@ -128,7 +136,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
                 sshService,
                 profile,
                 sshService.GetConnectionProfiles());
-            NativeHopPasswords passwords = NativeHopPasswordResolver.Resolve(
+            passwords = NativeHopPasswordResolver.Resolve(
                 baseOptions,
                 sessionRegistry,
                 sessionId,
