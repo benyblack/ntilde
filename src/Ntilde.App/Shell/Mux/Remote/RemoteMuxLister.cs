@@ -97,7 +97,7 @@ internal static class RemoteMuxLister
         // Each on the pool: building a connector, or starting its transport, must not hold up the next host.
         return await Task.WhenAll(profiles.Select(p => SkipsJumpHosts(p, isWindows)
             ? Task.FromResult(Skipped(p, log))
-            : Task.Run(() => ListOneAsync(p, connectorFor, perHost, log, release, ct)))).ConfigureAwait(false);
+            : Task.Run(() => ListOneAsync(p, connectorFor, perHost, log, release, ct), ct))).ConfigureAwait(false);
     }
 
     /// <summary>
