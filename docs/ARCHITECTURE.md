@@ -331,9 +331,12 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   SemVer precedence, and never for an unknown version (null or `0.0.0`). A remote daemon is judged
   against the version installed on its host (`SshMuxOptions.RemoteDaemonVersion`, read through the
   host's `RemoteMuxConnector`), since a restart there starts that binary and an app update never
-  replaces it (`MuxPreviousBuildNotice.DecideRemote`): a restart only when the two are known and differ,
-  else "Update ntilde-mux on {host}…" (the install dialog) when the running one is older than the app;
-  the click-time last look compares against the installed version too. Its restart lets every pane
+  replaces it (`MuxPreviousBuildNotice.DecideRemote`): a restart only when the running one is older
+  than that record (a newer or unordered one means the per-profile record is stale), else "Update
+  ntilde-mux on {host}…" (the install dialog) when the running one is older than the app; the
+  click-time last look checks the same. A remote host's offer stays claimed for the launch once a
+  `shutdown` went out, and is released, and decided again, after each recorded install
+  (`DecideMuxNoticeAgainAfterInstall`). Its restart lets every pane
   of that daemon go first (`TerminalPane.LetGoOfMuxSessionForRestart`: a plain detach, so the stop
   cannot reach a pane as its shell's exit), sends `shutdown`, terminates a local daemon by pid after
   5 s (`MuxDaemonStop.Terminate`), and holds Enter until it is over. A launch-wide `Launch` keeps one

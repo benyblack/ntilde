@@ -115,7 +115,7 @@ public sealed class MainWindowNoticeActionTests : IClassFixture<TestAppDataRoot>
     {
         MainWindow window = CreateWindow();
         var ran = new List<string>();
-        string words = Ntilde.Shell.Mux.MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", "0.12.0", 2);
+        string words = Ntilde.Shell.Mux.MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", 2);
 
         window.EnqueueNotice(Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title, words, new PersistenceNoticeAction("Restart A", () => ran.Add("a")), key: "ssh:a");
         window.EnqueueNotice(Ntilde.Shell.Mux.MuxPreviousBuildNotice.Title, words, new PersistenceNoticeAction("Restart B", () => ran.Add("b")), key: "ssh:b");

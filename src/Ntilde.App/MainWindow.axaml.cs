@@ -4675,6 +4675,7 @@ namespace Ntilde
                 }
 
                 RefreshProfileUIs();
+                DecideMuxNoticeAgainAfterInstall(saved.Id);
             }
             catch (Exception ex)
             {
@@ -4714,6 +4715,7 @@ namespace Ntilde
                 }
 
                 RefreshProfileUIs();
+                DecideMuxNoticeAgainAfterInstall(profileId);
             }
             catch (Exception ex)
             {

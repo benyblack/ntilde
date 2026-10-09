@@ -1920,7 +1920,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// </summary>
     private readonly List<MuxPreviousBuildNotice.Raised> _notices = [];
 
-    private static readonly string TwoShellsNotice = MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", ThisBuild, 2);
+    private static readonly string TwoShellsNotice = MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.0.1", 2);
 
     private MuxEndpointId RemoteId => MuxEndpointId.ForSsh(_sshProfile.Id);
 
@@ -2229,17 +2229,27 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
     /// <summary>
     /// Final review I1: an app update replaces nothing on a remote host, so after one the running ntilde-mux and the
     /// installed one are the same old version. A restart would only start that version again, ending the host's shells
-    /// for nothing: the notice offers the update instead (the install dialog, for this profile), quoting both versions,
-    /// once per launch - not again when the link drops and comes back. Nothing is ever sent to the daemon.
+    /// for nothing: the notice offers the update instead, quoting both versions, once per launch - not again when the link
+    /// drops and comes back. Residual round, item 2: its button opens the install dialog for this profile, and once that
+    /// records the new version the restart is offered at once, in this session, replacing the update notice (same
+    /// endpoint key) - and, offered, it is not offered again on the next reconnect. Nothing is sent until it is pressed.
     /// </summary>
     [AvaloniaFact]
-    public void An_installed_ntilde_mux_as_old_as_the_running_one_is_offered_the_update_never_a_restart()
+    public void An_installed_ntilde_mux_as_old_as_the_running_one_is_offered_the_update_then_the_restart_once_installed()
     {
-        var opened = new List<Guid>();
+        var installedFor = new List<Guid>();
         int sent = 0;
         (MainWindow window, FakeRemoteHost remote) = TwoPanesOn(running: "0.12.0", installed: "0.12.0", app: NewerApp, beforeShow: w =>
         {
-            w.OpenRemoteMuxInstall = opened.Add;
+            w.ShowRemoteMuxInstall = (_, profile) =>
+            {
+                installedFor.Add(profile.Id);
+                // The dialog put 0.12.1 on the host; the window records it in the store, and the host's own lookup of the
+                // profile (this test's) sees it too.
+                _sshProfile.MuxOptions.RemoteDaemonVersion = NewerApp;
+                var installed = new Ntilde.Mux.Cli.MuxVersionInfo(NewerApp, 1, 2, "linux-x64", "/home/nova/.local/share/ntilde/bin/ntilde-mux");
+                return Task.FromResult<RemoteMuxInstallResult?>(new RemoteMuxInstallResult(true, $"ntilde-mux {NewerApp} installed", installed));
+            };
             w.MuxShutdownRemoteDaemon = (_, _) => { Interlocked.Increment(ref sent); return Task.CompletedTask; };
         });
 
@@ -2251,15 +2261,68 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal(TerminalPane.RemoteMuxUpdateActionLabel("nova@fake-host"), offer.Action!.Label);
         Assert.Equal($"{MuxPreviousBuildNotice.Title}\n{RemoteId}", offer.Key);
 
-        offer.Action.Run();
-        Dispatcher.UIThread.RunJobs();
-        Assert.Equal([_sshProfile.Id], opened);
-
-        Reconnect(remote, RemoteHostOf(window)!);
+        MuxConnectionHost host = RemoteHostOf(window)!;
+        Reconnect(remote, host);
         PumpUntilDecided(window, RemoteId, 2);
-        Assert.Single(Offers(RemoteId));
+        Assert.Single(Offers(RemoteId)); // the update, once per launch
+
+        offer.Action.Run();
+        PumpUntil(() => Offers(RemoteId).Count == 2, "the restart was offered once the install was recorded");
+        Assert.Equal([_sshProfile.Id], installedFor);
+        MuxPreviousBuildNotice.Raised restart = Offers(RemoteId)[1];
+        Assert.Equal("Restart ntilde-mux on nova@fake-host", restart.Action!.Label);
+        Assert.Equal("ntilde-mux on nova@fake-host is from a previous version (0.12.0); restart it when convenient — this closes its 2 shells.", restart.Message);
+        Assert.Equal(offer.Key, restart.Key); // it replaces the update notice
+
+        Reconnect(remote, host);
+        PumpUntilDecided(window, RemoteId, 4);
+        Assert.Equal(2, Offers(RemoteId).Count);
         Assert.Empty(Outcomes);
         Assert.Equal(0, Volatile.Read(ref sent));
+    }
+
+    /// <summary>
+    /// Residual N1, ruling (a): the profile's record of what is installed is stale - another profile for the same host, or
+    /// another computer, updated it to 0.12.1 and restarted it; this profile still says 0.12.0. A running version ahead
+    /// of the record is never offered a restart (it would start the same 0.12.1 again, ending every shell, every launch);
+    /// it is this app's, so nothing is offered at all.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_running_ntilde_mux_ahead_of_a_stale_record_is_offered_nothing()
+    {
+        (MainWindow _, FakeRemoteHost _) = TwoPanesOn(running: NewerApp, installed: "0.12.0", app: NewerApp);
+
+        Assert.Empty(Offers(RemoteId));
+        Assert.Empty(Outcomes);
+    }
+
+    /// <summary>
+    /// Residual N1, ruling (b): once a remote <c>shutdown</c> was sent, the host's offer stays claimed for the rest of the
+    /// launch. Here the record is stale the other way (it says 0.12.1, but the host still starts 0.12.0): the restart runs
+    /// once, the daemon comes back as 0.12.0, and no second restart is offered this launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_restart_against_a_stale_record_is_offered_once_per_launch()
+    {
+        int sent = 0;
+        (MainWindow window, FakeRemoteHost remote) = TwoPanesOn(running: "0.12.0", installed: NewerApp, app: NewerApp, beforeShow: w =>
+            w.MuxShutdownRemoteDaemon = (client, ct) => { Interlocked.Increment(ref sent); return client.ShutdownServerAsync(ct); });
+        remote.Server.ShutdownRequested += () => _ = Task.Run(remote.StopDaemon); // the next daemon still runs 0.12.0
+        window.ConfirmMuxRestart = (_, _) => Task.FromResult(true);
+        Assert.Single(Offers(RemoteId));
+
+        Offers(RemoteId)[0].Action!.Run();
+        PumpUntil(() => !window.IsMuxRestartRunningForTest, "the restart finished");
+        Assert.Equal(1, Volatile.Read(ref sent));
+        TerminalPane first = RemotePanes(window)[0];
+        PressEnter(first);
+        PumpUntil(() => first.Session is MuxClientSession { IsAttached: true }, "Enter started a new shell");
+        Assert.Equal("0.12.0", RemoteHostOf(window)!.CurrentClient!.ServerVersion);
+        PumpUntilDecided(window, RemoteId, 2);
+
+        Assert.Single(Offers(RemoteId));
+        Assert.Empty(Outcomes);
+        Assert.Equal(1, Volatile.Read(ref sent));
     }
 
     /// <summary>
@@ -2297,7 +2360,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
         window.ConfirmMuxRestart = (host, shells) => { asked.Add((host, shells)); return Task.FromResult(true); };
 
         MuxPreviousBuildNotice.Raised offer = Assert.Single(Offers(RemoteId));
-        Assert.Equal(MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.12.0", NewerApp, 2), offer.Message);
+        Assert.Equal(MuxPreviousBuildNotice.RemoteMessage("nova@fake-host", "0.12.0", 2), offer.Message);
         Assert.Equal("Restart ntilde-mux on nova@fake-host", offer.Action!.Label);
 
         offer.Action.Run();
@@ -2340,6 +2403,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         Assert.Equal(0, Volatile.Read(ref sent));
         Assert.Equal([MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild], Outcomes);
+        Assert.Equal(2, RemotePanes(window).Count);
         Assert.All(RemotePanes(window), p => Assert.True(p.Session is MuxClientSession { IsAttached: true }, "a pane let go of its shell"));
     }
 }

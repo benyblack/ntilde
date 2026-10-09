@@ -317,7 +317,10 @@ made structural).
 R22 (§2, Tasks 20, 23). An unknown version (null or `0.0.0`) is never another build's. "The previous
 build" only when SemVer says older, else "a newer build" / "a different build"; no shell-count clause
 at 0. A restored pane's mismatch banner stays text-only (the action is on the notice); the action labels
-are the brief's, without an ellipsis.
+are the brief's, without an ellipsis. Amended (final review I1, residual N1): a remote daemon is offered a
+restart only when it is older than the profile's recorded `RemoteDaemonVersion` ("a previous version"),
+otherwise "Update ntilde-mux on {host}…" when older than the app; a remote offer released "after a
+restart" stays claimed for the launch once `shutdown` went out, and is released by a recorded install.
 
 R23 (§2, Task 21). A copy is reused only when its `.complete` sizes and the executable's SHA-256 match.
 Velopack's uninstall hook stops the daemon and removes the copies, deleting only copy-shaped folders.

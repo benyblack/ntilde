@@ -31,14 +31,19 @@ public sealed class MuxPreviousBuildNoticeTests
 
     /// <summary>
     /// Final review I1: a remote restart starts the binary installed on the host, which an app update never replaces. So it
-    /// is offered only when the installed version is known and differs from the running one (the install flow replaced the
-    /// binary under it), whatever the app's version. Otherwise a host whose ntilde-mux is older than the app - installed
-    /// and running alike, or running with no installed version known - is offered the update; anything else, nothing.
+    /// is offered only when the version recorded as installed is known and newer than the running one (the install flow
+    /// replaced the binary under it), whatever the app's version. Residual N1, ruling (a): a running version newer than the
+    /// record, or one that has no order against it, is a stale record (another profile, another computer, a hand install),
+    /// never a restart. Otherwise a host whose ntilde-mux is older than the app - installed and running alike, running
+    /// ahead of a stale record, or running with no installed version known - is offered the update; anything else, nothing.
     /// </summary>
     [Theory]
     [InlineData("0.12.0", "0.12.1", "0.12.1", "restart")]
     [InlineData("0.12.0", "0.12.1", "0.12.0", "restart")]
-    [InlineData("0.12.1", "0.12.0", "0.12.1", "restart")] // installed older than running: a downgrade, still another binary
+    [InlineData("0.12.0-rc.1", "0.12.0", "0.12.0", "restart")]
+    [InlineData("0.12.1", "0.12.0", "0.12.1", "none")] // running ahead of the record: the record is stale
+    [InlineData("0.12.1", "0.12.0", "0.12.2", "update")] // ...and older than the app
+    [InlineData("custom", "0.12.1", "0.12.1", "none")] // no order against the record
     [InlineData("0.12.0", "0.12.0", "0.12.1", "update")]
     [InlineData("0.12.0+3f2c1ab", "0.12.0", "0.12.1", "update")]
     [InlineData("0.12.0", "0.12.0", "0.12.0", "none")]
@@ -66,6 +71,7 @@ public sealed class MuxPreviousBuildNoticeTests
     public void A_remote_daemon_not_to_restart_says_why()
     {
         Assert.Equal(MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild, MuxPreviousBuildNotice.NothingToRestartRemote("0.0.1", "0.0.1"));
+        Assert.Equal(MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild, MuxPreviousBuildNotice.NothingToRestartRemote("0.12.1", "0.12.0")); // ahead of a stale record
         Assert.Equal(MuxPreviousBuildNotice.RestartOutcome.InstalledVersionUnknown, MuxPreviousBuildNotice.NothingToRestartRemote("0.0.1", ""));
         Assert.Equal(MuxPreviousBuildNotice.RestartOutcome.InstalledVersionUnknown, MuxPreviousBuildNotice.NothingToRestartRemote("0.0.1", "0.0.0"));
         Assert.Equal(MuxPreviousBuildNotice.RestartOutcome.NoVersion, MuxPreviousBuildNotice.NothingToRestartRemote(null, "0.0.1"));
@@ -111,21 +117,20 @@ public sealed class MuxPreviousBuildNoticeTests
         Assert.Equal(-expected, MuxPreviousBuildNotice.CompareVersions(b, a));
     }
 
-    /// <summary>Ruling R-a: "previous" only for an older daemon; a newer one is called newer, and one with no order different.</summary>
+    /// <summary>
+    /// Ruling R-a: "previous" only for an older daemon; a newer one is called newer, and one with no order different. Local
+    /// only: a remote restart is offered only for a daemon behind the installed version (residual N1), so the remote notice
+    /// always says "a previous version".
+    /// </summary>
     [Theory]
-    [InlineData("0.11.0", "previous build", "a previous version")]
-    [InlineData("0.12.0-rc.1", "previous build", "a previous version")]
-    [InlineData("0.13.0", "a newer build", "a newer version")]
-    [InlineData("custom", "a different build", "a different version")]
-    public void The_notice_says_how_the_daemons_version_relates_to_this_one(string daemon, string local, string remote)
-    {
+    [InlineData("0.11.0", "the previous build")]
+    [InlineData("0.12.0-rc.1", "the previous build")]
+    [InlineData("0.13.0", "a newer build")]
+    [InlineData("custom", "a different build")]
+    public void The_local_notice_says_how_the_daemons_version_relates_to_this_one(string daemon, string local) =>
         Assert.Equal(
-            $"The multiplexer is from {(local == "previous build" ? "the previous build" : local)} ({daemon}); restart it when convenient \u2014 this closes its 3 shells.",
+            $"The multiplexer is from {local} ({daemon}); restart it when convenient \u2014 this closes its 3 shells.",
             MuxPreviousBuildNotice.LocalMessage(daemon, "0.12.0", 3));
-        Assert.Equal(
-            $"ntilde-mux on nova@box is from {remote} ({daemon}); restart it when convenient \u2014 this closes its 2 shells.",
-            MuxPreviousBuildNotice.RemoteMessage("nova@box", daemon, "0.12.0", 2));
-    }
 
     [Fact]
     public void The_local_notice_names_the_old_version_and_the_daemons_shells()
@@ -145,7 +150,10 @@ public sealed class MuxPreviousBuildNoticeTests
     {
         Assert.Equal(
             "ntilde-mux on nova@box is from a previous version (0.0.1); restart it when convenient \u2014 this closes its 2 shells.",
-            MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", "0.12.0", 2));
+            MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", 2));
+        Assert.Equal(
+            "ntilde-mux on nova@box is from a previous version (0.12.0-rc.1); restart it when convenient — this closes its 1 shell.",
+            MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.12.0-rc.1+3f2c1ab", 1));
         Assert.Equal("Restart ntilde-mux on nova@box", MuxPreviousBuildNotice.RemoteActionLabel("nova@box"));
     }
 
@@ -154,7 +162,7 @@ public sealed class MuxPreviousBuildNoticeTests
     public void A_daemon_with_no_shells_is_not_said_to_close_any()
     {
         Assert.Equal("The multiplexer is from the previous build (0.0.1); restart it when convenient.", MuxPreviousBuildNotice.LocalMessage("0.0.1", "0.12.0", 0));
-        Assert.Equal("ntilde-mux on nova@box is from a previous version (0.0.1); restart it when convenient.", MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", "0.12.0", 0));
+        Assert.Equal("ntilde-mux on nova@box is from a previous version (0.0.1); restart it when convenient.", MuxPreviousBuildNotice.RemoteMessage("nova@box", "0.0.1", 0));
         Assert.DoesNotContain("0", MuxPreviousBuildNotice.ConfirmMessage(null, 0), StringComparison.Ordinal);
         Assert.DoesNotContain("0", MuxPreviousBuildNotice.ConfirmMessage("nova@box", 0), StringComparison.Ordinal);
         Assert.DoesNotContain("closed", MuxPreviousBuildNotice.ConfirmMessage(null, 0), StringComparison.Ordinal);
@@ -173,7 +181,7 @@ public sealed class MuxPreviousBuildNoticeTests
         foreach (string message in new[]
         {
             MuxPreviousBuildNotice.LocalMessage(hostile, "0.12.0", 1),
-            MuxPreviousBuildNotice.RemoteMessage("nova@" + bidi + "box", hostile, "0.12.0", 1),
+            MuxPreviousBuildNotice.RemoteMessage("nova@" + bidi + "box", hostile, 1),
             MuxPreviousBuildNotice.RemoteUpdateMessage("nova@" + bidi + "box", hostile, "0.12.0"),
         })
         {
@@ -213,7 +221,7 @@ public sealed class MuxPreviousBuildNoticeTests
         (MuxPreviousBuildNotice.RestartOutcome Outcome, string Local, string Remote)[] said =
         [
             (MuxPreviousBuildNotice.RestartOutcome.AlreadyRestarting, "The multiplexer is already being restarted.", "ntilde-mux on nova@box is already being restarted."),
-            (MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild, "The multiplexer is already from this build; nothing to restart.", "ntilde-mux on nova@box is already the installed version; nothing to restart."),
+            (MuxPreviousBuildNotice.RestartOutcome.AlreadyThisBuild, "The multiplexer is already from this build; nothing to restart.", "ntilde-mux on nova@box is already the installed version or newer; nothing to restart."),
             (MuxPreviousBuildNotice.RestartOutcome.NoVersion, "The multiplexer does not report its build; it was not restarted.", "ntilde-mux on nova@box does not report its version; it was not restarted."),
             (MuxPreviousBuildNotice.RestartOutcome.InstalledVersionUnknown, "The installed multiplexer's version is not known; it was not restarted.", "The version of ntilde-mux installed on nova@box is not known; it was not restarted."),
             (MuxPreviousBuildNotice.RestartOutcome.NotRunning, "The multiplexer is not running; nothing to restart.", "ntilde-mux on nova@box is not running; nothing to restart."),

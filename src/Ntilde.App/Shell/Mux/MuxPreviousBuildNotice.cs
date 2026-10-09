@@ -65,17 +65,27 @@ internal static class MuxPreviousBuildNotice
     /// Final review I1: what a remote ntilde-mux running <paramref name="running"/> is offered. A remote restart only stops
     /// the daemon; the next connect's proxy starts the binary installed on the host, which an app update never replaces. So
     /// a restart is offered only when the version the install flow recorded for the host (<paramref name="installed"/>,
-    /// <c>SshMuxOptions.RemoteDaemonVersion</c>) is known and differs from the running one: the install flow replaced the
-    /// binary under a running daemon. A host whose ntilde-mux is older than this app (<paramref name="app"/>, by
-    /// <see cref="CompareVersions"/>) - running and installed alike, or running with no installed version known - is offered
-    /// the update instead. An unknown installed version (none, empty, or <c>0.0.0</c>) never gets a restart, and an unknown
-    /// running one gets nothing.
+    /// <c>SshMuxOptions.RemoteDaemonVersion</c>) is known and newer than the running one, by <see cref="CompareVersions"/>:
+    /// the install flow replaced the binary under a running daemon. The record is per profile and per computer, so it can
+    /// be stale (residual N1, ruling (a)): a running version ahead of it, or one with no order against it, is never offered
+    /// a restart - it would start the same binary again. A host whose ntilde-mux is older than this app (<paramref name="app"/>)
+    /// is offered the update instead. An unknown installed version (none, empty, or <c>0.0.0</c>) never gets a restart, and
+    /// an unknown running one gets nothing.
     /// </summary>
     public static NoticeOffer DecideRemote(string? running, string? installed, string? app)
     {
-        if (IsFromAnotherBuild(running, installed)) return NoticeOffer.Restart;
-        return Known(running).Length > 0 && CompareVersions(running, app) < 0 ? NoticeOffer.Update : NoticeOffer.None;
+        if (Known(running).Length == 0) return NoticeOffer.None;
+        if (IsBehindInstalled(running, installed)) return NoticeOffer.Restart;
+        return CompareVersions(running, app) < 0 ? NoticeOffer.Update : NoticeOffer.None;
     }
+
+    /// <summary>
+    /// Whether a remote daemon running <paramref name="running"/> is older than the version recorded as installed on its
+    /// host (<paramref name="installed"/>), both known: the only case a remote restart is offered for, and what its last look
+    /// checks again (residual N1).
+    /// </summary>
+    public static bool IsBehindInstalled(string? running, string? installed) =>
+        Known(running).Length > 0 && Known(installed).Length > 0 && CompareVersions(running, installed) < 0;
 
     /// <summary>
     /// Ruling R-a: how <paramref name="a"/> orders against <paramref name="b"/> - negative when it is older, positive when
@@ -118,19 +128,11 @@ internal static class MuxPreviousBuildNotice
     }
 
     /// <summary>
-    /// A remote daemon's restart notice: its host, how its version relates to the one installed on that host (what a
-    /// restart starts), and how many shells a restart closes.
+    /// A remote daemon's restart notice: its host, its version - always older than the one installed on that host, which
+    /// a restart starts (<see cref="DecideRemote"/>, residual N1) - and how many shells a restart closes.
     /// </summary>
-    public static string RemoteMessage(string host, string daemonVersion, string installed, int shells)
-    {
-        string from = CompareVersions(daemonVersion, installed) switch
-        {
-            < 0 => "a previous version",
-            > 0 => "a newer version",
-            _ => "a different version",
-        };
-        return $"ntilde-mux on {RemoteOutputText.Quote(host)} is from {from} ({Shown(daemonVersion)}); restart it when convenient{Closes(shells)}.";
-    }
+    public static string RemoteMessage(string host, string daemonVersion, int shells) =>
+        $"ntilde-mux on {RemoteOutputText.Quote(host)} is from a previous version ({Shown(daemonVersion)}); restart it when convenient{Closes(shells)}.";
 
     /// <summary>
     /// Final review I1: a remote daemon's update notice, when the ntilde-mux on its host is older than this app. The install
@@ -173,7 +175,10 @@ internal static class MuxPreviousBuildNotice
         /// <summary>A restart of that daemon, from this window or another, is still asking or stopping it.</summary>
         AlreadyRestarting,
 
-        /// <summary>At the last look the daemon is this build's - for a remote one, the version installed on its host - after all.</summary>
+        /// <summary>
+        /// At the last look the daemon is this build's after all - for a remote one, not behind the version installed on its
+        /// host (residual N1): the installed version or newer.
+        /// </summary>
         AlreadyThisBuild,
 
         /// <summary>At the last look the daemon reports no version.</summary>
@@ -214,7 +219,7 @@ internal static class MuxPreviousBuildNotice
             RestartOutcome.AlreadyRestarting => $"{it} is already being restarted.",
             RestartOutcome.AlreadyThisBuild => host is null
                 ? "The multiplexer is already from this build; nothing to restart."
-                : $"{it} is already the installed version; nothing to restart.",
+                : $"{it} is already the installed version or newer; nothing to restart.",
             RestartOutcome.NoVersion => host is null
                 ? "The multiplexer does not report its build; it was not restarted."
                 : $"{it} does not report its version; it was not restarted.",
@@ -242,8 +247,8 @@ internal static class MuxPreviousBuildNotice
         Known(daemonVersion).Length == 0 ? RestartOutcome.NoVersion : RestartOutcome.AlreadyThisBuild;
 
     /// <summary>
-    /// The outcome of a remote daemon found, at the last look, not to differ from the version installed on its host
-    /// (final review I1): it reports no version, no installed version is known, or it is the installed version.
+    /// The outcome of a remote daemon found, at the last look, not behind the version installed on its host (final review
+    /// I1, residual N1): it reports no version, no installed version is known, or it is the installed version or newer.
     /// </summary>
     public static RestartOutcome NothingToRestartRemote(string? running, string? installed) =>
         Known(running).Length == 0 ? RestartOutcome.NoVersion
