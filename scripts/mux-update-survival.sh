@@ -254,23 +254,34 @@ in_a_sandbox() {  # in_a_sandbox <canonical path>
   done
   return 1
 }
-# The state paths that exist, canonical (${p:A}: on macOS /var is /private/var, as in $S).
+# The state paths that exist, canonical (${p:A}: on macOS /var is /private/var, as in $S). A symlink is listed
+# as itself, so the leftover checks see it.
 velopack_state() {
   local p
-  for p in ${(f)"$(velopack_state_paths)"}; do if [[ -e "$p" ]]; then print -r -- "${p:A}"; fi; done
+  for p in ${(f)"$(velopack_state_paths)"}; do
+    if [[ -L "$p" ]]; then print -r -- "$p"
+    elif [[ -e "$p" ]]; then print -r -- "${p:A}"; fi
+  done
   return 0
 }
+# Works on the built paths, never their resolved form: /var/tmp is world-writable, so a symlink planted at
+# /var/tmp/velopack/<id> must not turn the rm -rf onto its target. Symlinks are refused, and stay as leftovers.
 remove_velopack_state() {  # remove_velopack_state <why>
   local p copy
-  for p in ${(f)"$(velopack_state)"}; do
+  for p in ${(f)"$(velopack_state_paths)"}; do
+    if [[ -L "$p" ]]; then say "refusing to delete $p: it is a symlink, not Velopack's own"; continue; fi
     if [[ ! -e "$p" ]]; then continue; fi
-    if in_a_sandbox "$p"; then say "refusing to delete $p: it lies in a sandbox"; continue; fi
+    if in_a_sandbox "${p:A}"; then say "refusing to delete ${p:A}: it lies in a sandbox"; continue; fi
     if [[ -f "$p" && "$p" == *.log ]]; then
-      # Kept under a new name, so no later run or step ever deletes the evidence copy; only the source goes.
+      # Kept under a new name, so no later run or step ever deletes the evidence copy; only the source goes,
+      # and only once the copy exists.
       copy="$EVIDENCE/${p:t:r}-$(date +%Y%m%d-%H%M%S).log"
-      cp "$p" "$copy" 2>/dev/null || true
-      say "removing Velopack's $p ($1); a copy is $copy"
-      rm -f -- "$p"
+      if cp "$p" "$copy" 2>/dev/null; then
+        say "removing Velopack's $p ($1); a copy is $copy"
+        rm -f -- "$p"
+      else
+        say "keeping Velopack's $p ($1): copying it to $copy failed"
+      fi
     else
       say "removing Velopack's $p ($1)"
       rm -rf -- "$p"
