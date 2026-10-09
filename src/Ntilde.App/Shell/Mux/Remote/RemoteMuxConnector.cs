@@ -135,6 +135,13 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// <summary>Sent in every hello: the same for every attempt of this connector.</summary>
     public string ClientInstanceId { get; }
 
+    /// <summary>
+    /// A listing's connector (<see cref="RemoteMuxLister"/>, release hardening item 7): its proxy runs
+    /// <see cref="RemoteMuxCommand.ProxyWithoutSpawn"/>, so a host with no daemon running says so
+    /// (<see cref="RemoteFailureKind.NotRunning"/>) instead of having one started.
+    /// </summary>
+    internal bool ForListing { get; init; }
+
     /// <summary>How long an attempt waits for the proxy's greeting, from the moment its channel starts.</summary>
     public TimeSpan PreambleTimeout { get; init; } = MuxHostPolicy.RemoteConnectTimeout;
 
@@ -198,7 +205,7 @@ internal sealed class RemoteMuxConnector : IDisposable
         (SshProfile profile, bool pinned, bool retargeted) = ProfileForAttempt();
         string host = DisplayNameOf(profile);
         SshMuxOptions muxOptions = profile.MuxOptions ?? new SshMuxOptions();
-        string command = RemoteMuxCommand.Proxy(muxOptions);
+        string command = ForListing ? RemoteMuxCommand.ProxyWithoutSpawn(muxOptions) : RemoteMuxCommand.Proxy(muxOptions);
         if (RemoteMuxCommand.RefusedRecordedPath(muxOptions.RemoteDaemonPath))
         {
             _log?.Invoke("[RemoteMux] recorded ntilde-mux path refused (unsafe characters); using the default install path");

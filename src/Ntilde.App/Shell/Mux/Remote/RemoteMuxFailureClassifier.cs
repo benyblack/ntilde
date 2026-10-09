@@ -22,9 +22,12 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <item>exit 127, or a line naming <c>ntilde-mux</c> with "not found" or "No such file or
 /// directory" → <see cref="RemoteFailureKind.NotInstalled"/>;</item>
 /// <item>exit 126 → <see cref="RemoteFailureKind.Unsupported"/>, with the last stderr line;</item>
+/// <item>exit 5 → <see cref="RemoteFailureKind.NotRunning"/>: a listing's <c>--no-spawn</c> proxy found no daemon (release
+/// hardening item 7); exit 2 with the proxy's usage line on stderr → <see cref="RemoteFailureKind.ProxyTooOld"/>: an older
+/// ntilde-mux refused <c>--no-spawn</c>;</item>
 /// <item>exit 255 → <see cref="RemoteFailureKind.SshFailed"/>, with the last stderr line, whichever
 /// backend ran it. It is OpenSSH's own failure; the remote command cannot be the source, since the proxy
-/// exits only 0 to 4 (spec §8.1) and a shell that cannot run it exits 126 or 127. A refusal - ssh's own
+/// exits only 0 to 5 (spec §8.1; 5 since release hardening item 7) and a shell that cannot run it exits 126 or 127. A refusal - ssh's own
 /// <c>[user@host: ]Permission denied (methods).</c>, or sshd's <c>Too many authentication failures</c> - sets
 /// <see cref="RemoteMuxFailure.SignInRefused"/>, and for an automatic attempt is
 /// <see cref="RemoteFailureKind.NeedsUser"/> instead, with the same reason: in batch mode ssh tried only what
@@ -81,6 +84,17 @@ internal static class RemoteMuxFailureClassifier
         if (exitCode == 126)
         {
             return new RemoteMuxFailure(RemoteFailureKind.Unsupported, Quote(lastStderrLine ?? "ntilde-mux cannot run there (exit 126)"));
+        }
+
+        if (exitCode == Ntilde.Mux.Cli.MuxProxyExitCodes.NotRunning)
+        {
+            return new RemoteMuxFailure(RemoteFailureKind.NotRunning, "no multiplexer is running there (none was started)");
+        }
+
+        // Its usage, not a shell's: sh exits 2 for a syntax error too, which says nothing about ntilde-mux's age.
+        if (exitCode == Ntilde.Mux.Cli.MuxProxyExitCodes.Usage && Lines(stderr).Any(line => line.Contains("proxy --stdio", StringComparison.Ordinal)))
+        {
+            return new RemoteMuxFailure(RemoteFailureKind.ProxyTooOld, "its ntilde-mux refused the proxy's options: it is older than this app");
         }
 
         if (exitCode == 255)

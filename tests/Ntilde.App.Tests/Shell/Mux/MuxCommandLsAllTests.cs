@@ -290,6 +290,7 @@ public sealed class MuxCommandLsAllTests : IDisposable
         TimeSpan perHost = TimeSpan.FromSeconds(2);
         Guid local = await StartLocalDaemonAsync("local shell");
         (_, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host");
+        _ = alphaHost.Server;   // running already: a listing never starts one (release hardening item 7)
         // The connector logs "connected" once the daemon said hello, before the listing is asked for: the link stalls there.
         _onLog = line =>
         {
@@ -565,6 +566,42 @@ public sealed class MuxCommandLsAllTests : IDisposable
         Assert.DoesNotContain(_requests, r => r.Interactive);
         Assert.Equal(2, _connectors.Count);
         Assert.Equal(2, _connectors.Select(c => c.ClientInstanceId).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    // ---- release hardening item 7: a listing has no side effects; it never starts a remote daemon
+
+    [Fact]
+    public async Task A_host_with_no_multiplexer_running_says_so_and_none_is_started()
+    {
+        Guid local = await StartLocalDaemonAsync("local shell");
+        (_, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host");
+
+        var (code, output, err) = await RunAsync(Remotes(), "ls", "--all");
+
+        Assert.Equal(0, code);
+        Assert.Equal(string.Empty, err);
+        Assert.Equal(
+            Lines(
+                Header,
+                Row("this computer", local, "running", 0, "80x24", "local shell"),
+                "nova@a-host    unreachable: no multiplexer is running"),
+            output);
+        Assert.Equal(0, alphaHost.DaemonStarts);
+        Assert.All(alphaHost.Commands, c => Assert.EndsWith("proxy --stdio --no-spawn'", c, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_host_whose_ntilde_mux_predates_no_spawn_is_asked_to_be_updated_and_nothing_is_started()
+    {
+        await StartLocalDaemonAsync("local shell");
+        (_, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host");
+        // An older ntilde-mux's proxy takes exactly --stdio: anything more is its usage error, exit 2, before it connects.
+        alphaHost.Script = new FakeRemoteScript(Stderr: "Usage:\n  ntilde-mux proxy --stdio\n", ExitCode: 2);
+
+        var (_, output, _) = await RunAsync(Remotes(), "ls", "--all");
+
+        Assert.EndsWith("nova@a-host    unreachable: its ntilde-mux is older than this app; update it to list its sessions" + Environment.NewLine, output, StringComparison.Ordinal);
+        Assert.Equal(0, alphaHost.DaemonStarts);
     }
 
     /// <summary>A window's connection to a remote daemon, attached to a session there, is still connected and attached afterwards.</summary>

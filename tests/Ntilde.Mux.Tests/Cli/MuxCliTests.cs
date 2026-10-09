@@ -142,7 +142,7 @@ public sealed class MuxCliTests : IDisposable
               ntilde-mux kill <sessionId>
               ntilde-mux kill-server [--force]
               ntilde-mux attach <sessionId|prefix> [--read-only]
-              ntilde-mux proxy --stdio
+              ntilde-mux proxy --stdio [--no-spawn]
               ntilde-mux --version [--json]
 
             """.ReplaceLineEndings("\n"), standalone);

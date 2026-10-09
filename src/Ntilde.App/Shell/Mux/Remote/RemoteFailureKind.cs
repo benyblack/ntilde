@@ -31,6 +31,18 @@ internal enum RemoteFailureKind
     /// a host key that changed under OpenSSH is one even for a user's attempt (<see cref="RemoteNeedsUserCause.HostKeyChanged"/>).
     /// </summary>
     NeedsUser,
+
+    /// <summary>
+    /// A listing's proxy (<c>--no-spawn</c>, release hardening item 7) found no daemon running and started none: exit
+    /// <see cref="Ntilde.Mux.Cli.MuxProxyExitCodes.NotRunning"/>. Only a listing's connect ends this way.
+    /// </summary>
+    NotRunning,
+
+    /// <summary>
+    /// The proxy refused its command line with its usage (exit <see cref="Ntilde.Mux.Cli.MuxProxyExitCodes.Usage"/>): an
+    /// ntilde-mux older than <c>--no-spawn</c>, which only a listing passes. Updating it fixes it.
+    /// </summary>
+    ProxyTooOld,
 }
 
 /// <summary>

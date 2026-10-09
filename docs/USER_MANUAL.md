@@ -593,8 +593,9 @@ shortcut; bind `attach_session` under Settings → Shortcuts) opens the *Attach 
 - This computer's shells come first, then those of every remote host the window is connected to,
   each line starting with the host: `[user@host]`.
 - For each SSH profile with **Keep remote sessions running (ntilde-mux)** ticked whose host the
-  window has no connection to now, the picker offers *Connect to user@host…*. Choosing it connects,
-  asking for a password if the host needs one, with a *Connecting to user@host…* notification
+  window has no connection to now, the picker offers *Connect to user@host… (starts its multiplexer
+  if none is running)*. Choosing it connects, starting the host's multiplexer if none runs there
+  (with no shells to keep, it exits after 10 idle minutes), asking for a password if the host needs one, with a *Connecting to user@host…* notification
   meanwhile, and then reopens the picker with that host's shells. If it cannot connect, a
   notification reads "Could not connect to user@host."
 - A host whose shells cannot be listed shows as `[user@host] not reachable: <reason>`, where the
@@ -905,7 +906,8 @@ add that folder to your `PATH`.
 | `ntilde-mux kill-server [--force]` | Ends every session and stops `ntilde-mux`. |
 | `ntilde-mux --version [--json]` | Prints the version. |
 
-`serve` and `proxy --stdio` are what Ntilde runs; you do not need them. `ntilde-mux` keeps its files
+`serve` and `proxy --stdio [--no-spawn]` are what Ntilde runs (`--no-spawn`, for `ls --all`, never
+starts a multiplexer); you do not need them. `ntilde-mux` keeps its files
 in a folder of its own: `~/.local/share/ntilde/ntilde-mux` on Linux (under `$XDG_DATA_HOME` when it
 is set), `~/Library/Application Support/ntilde/ntilde-mux` on macOS. Its log is `logs/mux.log`
 there. If you also run the Ntilde app on that host, its own multiplexer uses
@@ -1006,9 +1008,10 @@ With no shells, `ls` prints "No sessions."
 
 `ls --all` differs in four ways:
 
-- It never starts a multiplexer on this computer, but on a host where none runs yet, connecting
-  starts one, as opening a persistent tab there does. With no shells to keep, that one exits after
-  10 idle minutes.
+- It never starts a multiplexer, on this computer or on a host: a host where none runs gets
+  `unreachable: no multiplexer is running`. A host whose `ntilde-mux` is older than this Ntilde
+  cannot be listed that way and gets `unreachable: its ntilde-mux is older than this app; update it
+  to list its sessions` (open a persistent tab there and choose *Update ntilde-mux*).
 - With no multiplexer running on this computer, it still lists the remote hosts. This computer's
   line then reads `this computer  unreachable: no multiplexer is running`, and the exit code is 1,
   as for `ls`. Remote hosts it cannot reach do not change the exit code. A host with no shells gets a

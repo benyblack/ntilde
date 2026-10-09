@@ -56,7 +56,8 @@ internal sealed record MuxSessionPickerRow(
 /// </summary>
 internal sealed record MuxSessionPickerConnectRow(Guid ProfileId, string HostDisplayName) : MuxPickerItem
 {
-    public override string Display => $"Connect to {HostDisplayName}…";
+    // A connect, unlike ls --all's listing (release hardening item 7), starts the host's daemon on demand: the row says so.
+    public override string Display => $"Connect to {HostDisplayName}… (starts its multiplexer if none is running)";
 }
 
 /// <summary>A host whose sessions could not be listed: one line, worded from <paramref name="Error"/> alone.</summary>

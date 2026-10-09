@@ -68,6 +68,12 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
         get { lock (_gate) { EnsureDaemonLocked(); return _descriptor!.Pid; } }
     }
 
+    /// <summary>How many daemons were started on this host, on demand or by a test.</summary>
+    public int DaemonStarts
+    {
+        get { lock (_gate) return _daemonStarts; }
+    }
+
     /// <summary>How many times <see cref="Start"/> was called, a start that blocked or failed included.</summary>
     public int StartCount => Volatile.Read(ref _startCount);
 
@@ -207,6 +213,20 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
         {
             if (_disposed) throw new IOException("The fake remote host is gone.");
             EnsureDaemonLocked();
+            return Task.FromResult((_listener!.Connect(), _descriptor!));
+        }
+    }
+
+    /// <summary>
+    /// The proxy's <c>MuxDaemonLauncher.ConnectExistingEndpointStreamAsync</c>, as <c>proxy --stdio --no-spawn</c> runs it
+    /// (release hardening item 7): this host's daemon only if one runs; none is started.
+    /// </summary>
+    internal Task<(Stream Stream, MuxEndpointDescriptor Descriptor)> ConnectRunningDaemonAsync(CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            if (_disposed) throw new IOException("The fake remote host is gone.");
+            if (_server is null) throw new Ntilde.Mux.Daemon.MuxUnavailableException("No multiplexer is running.", notRunning: true);
             return Task.FromResult((_listener!.Connect(), _descriptor!));
         }
     }
@@ -407,7 +427,9 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
             }
             else
             {
-                exitCode = MuxProxyCommand.Run(_proxyStdin, _remoteStdout, _stderr, _host.ConnectDaemonAsync, _host.IsDaemonRunning);
+                // As MuxCli parses it: --no-spawn (a listing) connects only to a running daemon.
+                bool noSpawn = Command.Contains(" --no-spawn", StringComparison.Ordinal);
+                exitCode = MuxProxyCommand.Run(_proxyStdin, _remoteStdout, _stderr, noSpawn ? _host.ConnectRunningDaemonAsync : _host.ConnectDaemonAsync, _host.IsDaemonRunning);
             }
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException)

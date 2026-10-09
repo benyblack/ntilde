@@ -379,6 +379,67 @@ public sealed class MuxProxyTests : IDisposable
         Assert.Contains("ntilde-mux proxy --stdio", stderr.ToString(), StringComparison.Ordinal);
     }
 
+    // ---- release hardening item 7: a listing's proxy (--no-spawn) has no side effects
+
+    [Theory]
+    [InlineData("--stdio", false)]
+    [InlineData("--stdio --no-spawn", true)]
+    [InlineData("--no-spawn --stdio", true)]
+    public void Proxy_parses_stdio_and_an_optional_no_spawn(string optionLine, bool noSpawn)
+    {
+        Assert.True(MuxCli.TryParseProxy(["proxy", .. optionLine.Split(' ')], out bool parsed));
+        Assert.Equal(noSpawn, parsed);
+    }
+
+    [Theory]
+    [InlineData("--no-spawn")]
+    [InlineData("--stdio --no-spawn --no-spawn")]
+    [InlineData("--stdio --stdio")]
+    public void Proxy_refuses_no_spawn_without_exactly_one_stdio(string optionLine)
+    {
+        Assert.False(MuxCli.TryParseProxy(["proxy", .. optionLine.Split(' ')], out _));
+    }
+
+    [Fact]
+    public void A_no_spawn_proxy_with_no_daemon_exits_not_running_and_starts_nothing()
+    {
+        var spawner = new InProcessSpawner(this);
+        var stdout = new MemoryStream();
+        var stderr = new StringWriter();
+
+        int code = MuxProxyCommand.Run(new MemoryStream(), stdout, stderr, MuxCli.ProxyConnector(MuxDiscovery.GetDescriptorPath(_root), spawner, noSpawn: true));
+
+        Assert.Equal(MuxProxyExitCodes.NotRunning, code);
+        Assert.Equal(0, Volatile.Read(ref spawner.Spawns));
+        Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)), "no daemon was started");
+        Assert.Empty(stdout.ToArray());   // not even the preamble
+        Assert.Equal($"mux: No multiplexer is running.{Environment.NewLine}", stderr.ToString());
+    }
+
+    [Fact]
+    public async Task A_no_spawn_proxy_reaches_a_running_daemon()
+    {
+        StartDaemon();
+        ProxyRun proxy = Own(new ProxyRun(MuxCli.ProxyConnector(MuxDiscovery.GetDescriptorPath(_root), new NoSpawner(), noSpawn: true)));
+
+        StdioMuxConnection connection = await proxy.ConnectAsync();
+        MuxClient client = Own(await MuxClient.ConnectAsync(connection.Stream, null, Ct));
+
+        Assert.Empty(await client.ListSessionsAsync(Ct));
+    }
+
+    [Fact]
+    public void Without_no_spawn_the_proxy_connector_still_spawns_on_demand()
+    {
+        var spawner = new InProcessSpawner(this);
+        var stdout = new MemoryStream();
+
+        int code = MuxProxyCommand.Run(new MemoryStream(), stdout, new StringWriter(), MuxCli.ProxyConnector(MuxDiscovery.GetDescriptorPath(_root), spawner, noSpawn: false), isDaemonAlive: _ => false);
+
+        Assert.Equal(1, Volatile.Read(ref spawner.Spawns));
+        Assert.NotEqual(MuxProxyExitCodes.NotRunning, code);
+    }
+
     /// <summary>The daemon must already be running: a spawn here means the launcher missed it.</summary>
     private sealed class NoSpawner : IMuxDaemonSpawner
     {

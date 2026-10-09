@@ -7,11 +7,15 @@ public sealed class MuxUnavailableException : Exception
 {
     public MuxUnavailableException() : this("The multiplexer is unavailable.") { }
 
-    public MuxUnavailableException(string message, Exception? inner = null, bool versionMismatch = false, bool orphanedDaemon = false) : base(message, inner)
+    public MuxUnavailableException(string message, Exception? inner = null, bool versionMismatch = false, bool orphanedDaemon = false, bool notRunning = false) : base(message, inner)
     {
         VersionMismatch = versionMismatch;
         OrphanedDaemon = orphanedDaemon;
+        NotRunning = notRunning;
     }
+
+    /// <summary>No daemon runs, and the caller asked for none to be started (<see cref="MuxDaemonLauncher.ConnectExistingEndpointStreamAsync"/>).</summary>
+    public bool NotRunning { get; }
 
     /// <summary>A daemon is running but speaks a protocol version this build does not: spawning another cannot help.</summary>
     public bool VersionMismatch { get; }
@@ -165,6 +169,18 @@ public sealed class MuxDaemonLauncher
     {
         Attempt connected = await EnsureAsync(hello: false, cancellationToken).ConfigureAwait(false);
         return (connected.Stream, connected.Descriptor);
+    }
+
+    /// <summary>
+    /// The running daemon's endpoint, connected, with no hello - and never a spawn: <c>proxy --stdio --no-spawn</c>, a
+    /// listing's (release hardening item 7), which must have no side effects on the host. A version mismatch throws as
+    /// <see cref="EnsureEndpointStreamAsync"/>'s does.
+    /// </summary>
+    /// <exception cref="MuxUnavailableException">No trusted daemon answers (<see cref="MuxUnavailableException.NotRunning"/>), or one speaks another version.</exception>
+    public async Task<(Stream Stream, MuxEndpointDescriptor Descriptor)> ConnectExistingEndpointStreamAsync(CancellationToken cancellationToken)
+    {
+        if (await TryConnectExistingCoreAsync(hello: false, cancellationToken).ConfigureAwait(false) is { } existing) return (existing.Stream, existing.Descriptor);
+        throw new MuxUnavailableException("No multiplexer is running.", notRunning: true);
     }
 
     /// <summary>

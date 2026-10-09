@@ -14,7 +14,7 @@ public static class MuxProxyExitCodes
     /// <summary>The daemon could not be reached or spawned; <c>mux: …</c> on stderr says why.</summary>
     public const int DaemonUnavailable = 1;
 
-    /// <summary>The command line was not <c>proxy --stdio</c>.</summary>
+    /// <summary>The command line was not <c>proxy --stdio [--no-spawn]</c>; an ntilde-mux older than <c>--no-spawn</c> also says this of it.</summary>
     public const int Usage = 2;
 
     /// <summary>
@@ -30,6 +30,12 @@ public static class MuxProxyExitCodes
     /// since nobody reads the code then. The GUI counts it, like every code but 3, as a lost link.
     /// </summary>
     public const int ConnectionClosed = 4;
+
+    /// <summary>
+    /// <c>--no-spawn</c> (a listing, release hardening item 7) and no daemon runs: nothing was started. A proxy without the
+    /// option never exits with it. <c>mux: No multiplexer is running.</c> on stderr.
+    /// </summary>
+    public const int NotRunning = 5;
 }
 
 /// <summary>
@@ -138,7 +144,7 @@ public static class MuxProxyCommand
         {
             stderr.WriteLine($"mux: {ex.Message}");
             CloseQuietly(stdout);
-            return MuxProxyExitCodes.DaemonUnavailable;
+            return ex is MuxUnavailableException { NotRunning: true } ? MuxProxyExitCodes.NotRunning : MuxProxyExitCodes.DaemonUnavailable;
         }
 
         RepointAgentLink(descriptor, getEnvironmentVariable, stderr);
