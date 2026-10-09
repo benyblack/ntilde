@@ -289,8 +289,9 @@ of in the window ([user manual, chapter 12](docs/USER_MANUAL.md#12-persistent-se
 - Several windows can share one shell; *Attach to session…* reopens a detached shell, local or on a
   remote host
 - Persistent SSH tabs: the shell runs on the host in `ntilde-mux`, which Ntilde installs there for
-  you, so it survives network drops, a sleeping laptop and a closed window, and the tab reconnects
-  by itself (Linux x64/arm64 hosts with glibc 2.34+, and Apple-silicon macOS)
+  you, so it survives network drops, a sleeping laptop and a closed window; the tab reconnects by
+  itself when it can sign in without you (keys, agent or a saved password), and otherwise on Enter
+  (Linux x64/arm64 hosts with glibc 2.34+, and Apple-silicon macOS)
 - `ntilde mux ls [--all]`, `attach`, `kill` and `kill-server` from any terminal
 - Agents (MCP) can also see and, with the act opt-in, drive shells no window shows
 - On by default for local shells: Settings → Appearance → *Keep shells running when the window

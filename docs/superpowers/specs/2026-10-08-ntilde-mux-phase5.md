@@ -198,7 +198,9 @@ lost" toast, no per-pane banner) when the session file was saved before the curr
 that died *since* boot still gets today's notices. **Amended in Task 19:** the boundary is the later of
 the boot and, on Windows, the current logon session's start (Fast Startup's "Shut down" is a logoff
 that keeps the tick count), read from the OS (`SessionStartBoundary`); a boundary that cannot be read
-is not quiet, so the loss is announced. — Default-on users reboot; a loss toast after every
+is not quiet, so the loss is announced. When only the Windows logon time cannot be read, the boundary
+falls back to the tick-count boot, which is never later than the real boundary, so it can only make a
+restore louder. — Default-on users reboot; a loss toast after every
 boot would read as an error. — Cost if wrong: a crash that coincides with a reboot is not announced.
 
 R3 (§1). The flip itself is its own commit (`SessionPersistence` default `"KeepOnClose"`), on top of
@@ -309,7 +311,8 @@ confirmed; it ends shared and detached local shells too, and never remote ones.
 R21 (§1, Task 19). The quiet mark is kept per node in the session file (`PaneNode.MuxQuietPreviousLost`),
 so an unvisited tab stays quiet in the next launch of the same boot. A restored share whose shell is gone
 is announced even after a reboot (`ShareEnded`). The `MuxHostFactory` seam lives in `AppServiceBundle`,
-and `BuildForDesigner`'s refuses, so no designer or test window can spawn a daemon (R3 made structural).
+and `BuildForDesigner`'s `MuxHostFactory` refuses, so no designer or test window can spawn a daemon (R3
+made structural).
 
 R22 (§2, Tasks 20, 23). An unknown version (null or `0.0.0`) is never another build's. "The previous
 build" only when SemVer says older, else "a newer build" / "a different build"; no shell-count clause
@@ -348,3 +351,15 @@ the user's terminal. The picker still lists them.
 R29 (all, pre-flight P2). A toast that quotes a value a daemon or remote host reported (a version, a
 host, an unreachable reason) passes it through `RemoteOutputText.Quote` (control and format characters
 dropped, length capped).
+
+R30 (§6, Task 28). A native persisted tab registers in `ActiveSshSessionRegistry` with its host's
+password scope. A password is written to that scope only when the user typed it in an attempt that got
+in: never one filled from the vault, never an empty one, never on a profile with jump hops (R7); the
+scope is cleared when the host goes. The exec transport's `NativeSshPromptResponder` still gets no
+session id, so `SshInteractionService` never replays stored passwords past the handler's rules. The
+registry keeps every live descriptor per session id, so two windows on one shared session each keep
+theirs; a lookup sees the newest, so while a share is open in another window the owner window does not
+see its own typed password (it recovers when the share closes). While the host still runs on a
+destination the profile no longer names, the sidebar, listing and transfers are refused, checked at
+every listing and again once each transfer dialog is answered, and an open sidebar closes with the
+notice. Port forwards and OpenSSH ControlMaster reuse stay deferred (R8).

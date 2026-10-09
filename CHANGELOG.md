@@ -21,7 +21,7 @@ it all.
   running only for the connections you opt in.
 - **The first close asks** whether the shells keep running (*Keep running* or *Close them*, with
   *Don't ask again*). **Session: Quit and Close All Shells** in the command palette, or the link
-  under the setting, ends every shell and the multiplexer.
+  under the setting, ends every local shell and the multiplexer; remote shells keep running.
 - **After a restart of the computer** the tabs start fresh shells where they were, without a
   warning.
 - **Detach and attach.** **Pane: Detach** closes a pane and keeps its shell running.
@@ -30,8 +30,9 @@ it all.
 - **SSH tabs that survive network drops.** Tick *Keep remote sessions running (ntilde-mux)* on an SSH
   connection and install `ntilde-mux` on the host from the same tab of the connection editor. The
   tab's shell then runs on the host: it survives a dropped network, a sleeping laptop and a closed
-  window, and the tab reconnects by itself, without asking for anything. Hosts: Linux on x64 or
-  arm64 with glibc 2.34 or newer, and macOS on Apple silicon. *Remote Files* and SFTP transfers work
+  window. After a drop the tab reconnects by itself when it can sign in without you (your keys,
+  your agent or a saved password), and otherwise waits for Enter. Hosts: Linux on x64 or arm64 with
+  glibc 2.34 or newer, and macOS on Apple silicon. *Remote Files* and SFTP transfers work
   on these tabs (the sidebar with the native SSH backend); port forwards do not.
 - **Updates keep your shells** when the new version can talk to the running multiplexer. On Windows
   it runs from its own copy in Ntilde's data folder for this. When it is from an older build, a

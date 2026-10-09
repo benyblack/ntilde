@@ -507,7 +507,8 @@ restoring settings that change it, forgets it, so you are asked again.
 
 **Quit and close all shells.** To end everything at once, use **Session: Quit and Close All
 Shells** in the command palette, or the **Quit and close all shells…** link under the setting in
-Settings, which closes Settings without saving. Both ask first, in a *Quit Ntilde* dialog ("Close
+Settings, which closes Settings without saving. Both ask first when shells are running, in a
+*Quit Ntilde* dialog ("Close
 every shell?", "N shells running in the background will be closed, including detached and shared
 ones.", with "Remote shells keep running." added when the window has remote persistent tabs, and a
 **Quit and close** button). Then Ntilde ends every shell in the multiplexer - this window's, other

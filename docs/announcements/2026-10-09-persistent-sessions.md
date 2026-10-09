@@ -55,10 +55,11 @@ background process is started, and nothing new appears.
 ## SSH tabs that survive the network
 
 Tick *Keep remote sessions running (ntilde-mux)* on an SSH connection and install `ntilde-mux` on the
-host from the same tab of the connection editor (no root, and nothing else on the host changes). The tab's shell then runs on the host. When the connection drops, the tab keeps its screen
-and reconnects by itself - with your keys, your agent or the saved password, never by asking you -
-and the shell carries on as if nothing happened. *Attach to session…* lists your hosts' shells too,
-and connects to a host for you.
+host from the same tab of the connection editor (no root, and nothing else on the host changes). The
+tab's shell then runs on the host. When the connection drops, the tab keeps its screen and the shell
+carries on as if nothing happened. The tab reconnects by itself when it can sign in without you -
+with your keys, your agent or the saved password, never by asking you - and otherwise waits for you
+to press Enter. *Attach to session…* lists your hosts' shells too, and connects to a host for you.
 
 Supported hosts: Linux on x64 or arm64 with glibc 2.34 or newer, and macOS on Apple silicon. Native
 and OpenSSH profiles both work.
@@ -83,6 +84,15 @@ them. Every such read is in the activity journal, since there is no pane to ligh
 - A shell inherits the multiplexer's environment, not the window's.
 - Persistent SSH tabs run no port forwards, and with the OpenSSH backend have no *Remote Files*
   sidebar (the palette's transfers work). Windows hosts are not supported.
+- A persistent SSH tab reconnects only when you press Enter if signing in needs a typed answer (a
+  password that is not saved, a key passphrase or a one-time code; native profiles reuse a password
+  or passphrase already typed in the same window), if it signs in with a password through a jump
+  host, or if it uses an OpenSSH older than 8.4 with a password-only host (Windows 10's built-in
+  `ssh` is 8.1).
+- `ntilde mux ls --all` on Linux and macOS skips OpenSSH profiles that go through a jump host or a
+  proxy command; *Attach to session…* still lists those hosts.
+- *Attach to session…* lists remote shells that no saved tab names, but they do not reopen on their
+  own.
 - On Linux hosts that end a user's processes at logout (`KillUserProcesses=yes`), run
   `loginctl enable-linger $USER` once.
 - On macOS, Cmd+Q never asks the first-close question: it applies a remembered answer, and otherwise

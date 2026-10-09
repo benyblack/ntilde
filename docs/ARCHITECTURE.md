@@ -299,7 +299,7 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   order they were sent whichever way they went. More than `MuxClientOptions.MaxOverflowBytes` (8 MiB)
   waiting behind a stalled link ends the connection (`send overflow`). So the UI thread never waits on
   a full queue, local or remote.
-- **Closing the window (R1, Task 17).** With live local shells, `OnClosing` holds the close and asks
+- **Closing the window (Tasks 16, 17).** With live local shells, `OnClosing` holds the close and asks
   the first-close question (`BuildFirstCloseDialog`: Keep running / Close them / Don't ask again),
   unless `MuxCloseChoiceStore` (`<app-data>/mux-close-choice`, `keep` or `close`) remembers an answer.
   Settings deletes that file when a save, import or restore changes `SessionPersistence`. Close ends
@@ -319,8 +319,8 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   has not spawned writes the mark back, so an unvisited background tab stays quiet in the next launch
   of the same boot.
 - **Designer and test windows never spawn (R3).** `AppServiceBundle` carries the `MuxHostFactory` seam;
-  `AppServices.BuildForDesigner`'s refuses, and `CreatePersistentSessionFactory` falls back to normal
-  sessions, whatever the settings say.
+  `AppServices.BuildForDesigner`'s `MuxHostFactory` refuses, and `CreatePersistentSessionFactory` falls
+  back to normal sessions, whatever the settings say.
 - **Build version (Phase 5 Tasks 20, 23).** The daemon reports its build in `WelcomeResult.ServerVersion`
   and the descriptor's `AppVersion` (both optional, absent from older daemons). A connection to a
   daemon of another build raises one *Multiplexer* notice per endpoint per launch
