@@ -36,6 +36,33 @@ public sealed class SessionStartBoundaryTests
     [InlineData("")]
     public void Proc_stat_without_a_usable_btime_gives_none(string text) => Assert.Null(SessionStartBoundary.FromProcStat(text));
 
+    /// <summary>
+    /// Final review M5: an emulation layer or a container can report a nonsense btime. One past DateTime's range gives
+    /// none - the loud side, every notice kept - rather than an exception out of the window's constructor.
+    /// </summary>
+    [Theory]
+    [InlineData("btime 99999999999999\n")]
+    [InlineData("btime 253402300800\n")]            // one second past 9999-12-31T23:59:59Z
+    [InlineData("btime 9223372036854775807\n")]
+    public void Proc_stat_with_an_out_of_range_btime_gives_none(string text) => Assert.Null(SessionStartBoundary.FromProcStat(text));
+
+    [Fact]
+    public void Proc_stat_btime_at_the_end_of_the_range_still_reads() =>
+        Assert.Equal(new DateTime(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc), SessionStartBoundary.FromProcStat("btime 253402300799\n"));
+
+    /// <summary>
+    /// Final review M5: whatever the OS's answer throws, the boundary is none - "announced", the loud side - and the window
+    /// that reads it at construction still opens.
+    /// </summary>
+    [Fact]
+    public void A_boundary_that_cannot_be_read_for_any_reason_is_none()
+    {
+        Assert.Null(SessionStartBoundary.Read(() => throw new ArgumentOutOfRangeException("seconds")));
+        Assert.Null(SessionStartBoundary.Read(() => throw new OverflowException()));
+        Assert.Null(SessionStartBoundary.Read(() => throw new FormatException()));
+        Assert.Equal(Year2000, SessionStartBoundary.Read(() => Year2000));
+    }
+
     // ── macOS: struct timeval { long tv_sec; int tv_usec; } (16 bytes on 64-bit, padded) ──
 
     private static byte[] Timeval(long seconds, int micros)
@@ -58,6 +85,9 @@ public sealed class SessionStartBoundaryTests
         Assert.Null(SessionStartBoundary.FromTimeval(Timeval(0, 0)));
         Assert.Null(SessionStartBoundary.FromTimeval(Timeval(1_791_444_600, 1_000_000)));
         Assert.Null(SessionStartBoundary.FromTimeval(Timeval(1_791_444_600, -1)));
+        // Final review M5: seconds past DateTime's range (a nonsense kern.boottime) give none, not an exception.
+        Assert.Null(SessionStartBoundary.FromTimeval(Timeval(long.MaxValue, 0)));
+        Assert.Null(SessionStartBoundary.FromTimeval(Timeval(253_402_300_800, 0)));
     }
 
     // ── Windows: WTSINFOW, LogonTime a FILETIME (LARGE_INTEGER) at offset 200 of 216 bytes ──

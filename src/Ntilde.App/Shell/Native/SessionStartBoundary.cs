@@ -19,19 +19,35 @@ namespace Ntilde.Shell.Native;
 /// </remarks>
 internal static class SessionStartBoundary
 {
-    public static DateTime? Read()
+    public static DateTime? Read() => Read(ReadForThisOs);
+
+    /// <summary>
+    /// <see cref="Read"/> over <paramref name="readForThisOs"/>: a seam so tests can make the OS's answer throw. Any
+    /// exception - an unreadable file, a missing library, a nonsense time out of <see cref="DateTime"/>'s range - is none
+    /// (final review M5): the window reads this in its constructor, and none only keeps every notice, the loud side.
+    /// </summary>
+    internal static DateTime? Read(Func<DateTime?> readForThisOs)
     {
         try
         {
-            if (OperatingSystem.IsWindows()) return ForWindows(DateTime.UtcNow, Environment.TickCount64, ReadWindowsLogonUtc());
-            if (OperatingSystem.IsLinux()) return FromProcStat(File.ReadAllText("/proc/stat"));
-            if (OperatingSystem.IsMacOS()) return ReadMacBootTimeUtc();
+            return readForThisOs();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DllNotFoundException or EntryPointNotFoundException)
+        catch (Exception ex)
         {
-            AppLogger.Log($"[SessionStartBoundary] could not read the boot or logon time: {ex.Message}");
+            AppLogger.Log($"[SessionStartBoundary] could not read the boot or logon time: {ex.GetType().Name}: {ex.Message}");
         }
 
+        return null;
+    }
+
+    /// <summary>The most seconds after the Unix epoch a <see cref="DateTime"/> holds: 9999-12-31T23:59:59Z.</summary>
+    private static readonly long MaxUnixSeconds = (DateTime.MaxValue.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerSecond; // in ticks: TotalSeconds rounds up
+
+    private static DateTime? ReadForThisOs()
+    {
+        if (OperatingSystem.IsWindows()) return ForWindows(DateTime.UtcNow, Environment.TickCount64, ReadWindowsLogonUtc());
+        if (OperatingSystem.IsLinux()) return FromProcStat(File.ReadAllText("/proc/stat"));
+        if (OperatingSystem.IsMacOS()) return ReadMacBootTimeUtc();
         return null;
     }
 
@@ -46,13 +62,16 @@ internal static class SessionStartBoundary
         return logonUtc is { } logon && logon > boot ? logon : boot;
     }
 
-    /// <summary>The <c>btime</c> line of <c>/proc/stat</c>: the boot, in seconds since the Unix epoch.</summary>
+    /// <summary>
+    /// The <c>btime</c> line of <c>/proc/stat</c>: the boot, in seconds since the Unix epoch. None for a value no
+    /// <see cref="DateTime"/> can hold (final review M5).
+    /// </summary>
     internal static DateTime? FromProcStat(string procStat)
     {
         foreach (string line in procStat.Split('\n'))
         {
             if (!line.StartsWith("btime ", StringComparison.Ordinal)) continue;
-            return long.TryParse(line.AsSpan(6).Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out long seconds) && seconds > 0
+            return long.TryParse(line.AsSpan(6).Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out long seconds) && seconds > 0 && seconds <= MaxUnixSeconds
                 ? DateTime.UnixEpoch.AddSeconds(seconds)
                 : null;
         }
@@ -60,13 +79,16 @@ internal static class SessionStartBoundary
         return null;
     }
 
-    /// <summary>A <c>struct timeval { long tv_sec; int tv_usec; }</c> in native byte order (16 bytes on 64-bit).</summary>
+    /// <summary>
+    /// A <c>struct timeval { long tv_sec; int tv_usec; }</c> in native byte order (16 bytes on 64-bit). None for seconds
+    /// no <see cref="DateTime"/> can hold (final review M5).
+    /// </summary>
     internal static DateTime? FromTimeval(ReadOnlySpan<byte> timeval)
     {
         if (timeval.Length < sizeof(long) + sizeof(int)) return null;
         long seconds = BitConverter.ToInt64(timeval);
         int micros = BitConverter.ToInt32(timeval[sizeof(long)..]);
-        if (seconds <= 0 || micros is < 0 or >= 1_000_000) return null;
+        if (seconds <= 0 || seconds > MaxUnixSeconds || micros is < 0 or >= 1_000_000) return null;
         return DateTime.UnixEpoch.AddSeconds(seconds).AddTicks(micros * TimeSpan.TicksPerMicrosecond);
     }
 
