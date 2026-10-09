@@ -24,6 +24,49 @@ public sealed class OpenSshExecCommandLineTests
         Assert.Equal(ProxyArgv, argv);
     }
 
+    // Release hardening item 3: a listing connects for a moment; with ForwardAgent yes in the user's config, the proxy would
+    // repoint the daemon's agent link at an agent that dies with it. ClearAllForwardings does not clear ForwardAgent.
+    [Fact]
+    public void A_listing_turns_agent_forwarding_off_ahead_of_the_plan()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], Plan, "ntilde-mux proxy --stdio --no-spawn", batchMode: true, noAgentForwarding: true);
+
+        int off = IndexOfOption(argv, "ForwardAgent=no");
+        Assert.True(off >= 0 && off < argv.ToList().IndexOf(Plan[0]), string.Join(' ', argv));
+    }
+
+    [Theory]
+    [InlineData("-A", null)]
+    [InlineData("-vA", "-v")]
+    [InlineData("-Av", "-v")]
+    public void A_listing_drops_an_A_flag_which_would_beat_ForwardAgent_no(string extra, string? kept)
+    {
+        // ssh's -A sets forwarding outright, whatever an earlier -o said: so it goes, the rest of its cluster kept.
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, extra], "true", noAgentForwarding: true);
+
+        Assert.DoesNotContain(argv, a => a.StartsWith('-') && !a.StartsWith("--", StringComparison.Ordinal) && a.Contains('A', StringComparison.Ordinal) && a.Length <= 3);
+        if (kept is not null) Assert.Contains(kept, argv);
+    }
+
+    [Fact]
+    public void Without_a_listing_agent_forwarding_is_the_users()
+    {
+        IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], [.. Plan, "-A"], "true");
+
+        Assert.Equal(-1, IndexOfOption(argv, "ForwardAgent=no"));
+        Assert.Contains("-A", argv);
+    }
+
+    private static int IndexOfOption(IReadOnlyList<string> argv, string option)
+    {
+        for (int i = 0; i + 1 < argv.Count; i++)
+        {
+            if (argv[i] == "-o" && argv[i + 1] == option) return i;
+        }
+
+        return -1;
+    }
+
     [Fact]
     public void Build_puts_the_diagnostics_arguments_first()
     {

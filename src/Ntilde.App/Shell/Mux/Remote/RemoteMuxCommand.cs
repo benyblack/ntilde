@@ -24,7 +24,7 @@ internal static class RemoteMuxCommand
 
     /// <summary>
     /// The stdio proxy for a listing (release hardening item 7): it connects only to a daemon already running - none exits
-    /// <see cref="Ntilde.Mux.Cli.MuxProxyExitCodes.NotRunning"/>.
+    /// <see cref="Ntilde.Mux.Cli.MuxProxyExitCodes.NotRunning"/> - and leaves the daemon's agent link alone (item 3).
     /// </summary>
     public static string ProxyWithoutSpawn(SshMuxOptions options) => For(options, "proxy --stdio --no-spawn");
 

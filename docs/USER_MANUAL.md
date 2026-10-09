@@ -1011,7 +1011,8 @@ With no shells, `ls` prints "No sessions."
 - It never starts a multiplexer, on this computer or on a host: a host where none runs gets
   `unreachable: no multiplexer is running`. A host whose `ntilde-mux` is older than this Ntilde
   cannot be listed that way and gets `unreachable: its ntilde-mux is older than this app; update it
-  to list its sessions` (open a persistent tab there and choose *Update ntilde-mux*).
+  to list its sessions` (open a persistent tab there and choose *Update ntilde-mux*). Listing never
+  changes which SSH agent the host's shells use.
 - With no multiplexer running on this computer, it still lists the remote hosts. This computer's
   line then reads `this computer  unreachable: no multiplexer is running`, and the exit code is 1,
   as for `ls`. Remote hosts it cannot reach do not change the exit code. A host with no shells gets a

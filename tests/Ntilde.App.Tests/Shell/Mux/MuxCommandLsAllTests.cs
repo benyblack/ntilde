@@ -590,6 +590,20 @@ public sealed class MuxCommandLsAllTests : IDisposable
         Assert.All(alphaHost.Commands, c => Assert.EndsWith("proxy --stdio --no-spawn'", c, StringComparison.Ordinal));
     }
 
+    /// <summary>Release hardening item 3: every transport a listing asks for is a listing's, which forwards no agent.</summary>
+    [Fact]
+    public async Task Every_listing_transport_is_asked_to_forward_no_agent()
+    {
+        await StartLocalDaemonAsync("local shell");
+        AddProfile("alpha", "a-host");
+        AddProfile("beta", "b-host");
+
+        await RunAsync(Remotes(), "ls", "--all");
+
+        Assert.Equal(2, _requests.Count);
+        Assert.All(_requests, r => Assert.True(r.Listing));
+    }
+
     [Fact]
     public async Task A_host_whose_ntilde_mux_predates_no_spawn_is_asked_to_be_updated_and_nothing_is_started()
     {

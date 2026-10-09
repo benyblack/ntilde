@@ -59,8 +59,8 @@ internal enum MuxListingError
 /// sessions, listed all at once, each host within its own wait. The command cannot see what a window connected, so it
 /// connects on its own, non-interactively (<see cref="CreateConnector"/>): one connect, one listing, and the connection
 /// ends. A listing has no side effects on the host: its proxy never starts a daemon (release hardening item 7, which
-/// reverses R28(a)). A host that fails or does not answer in time gives its <see cref="MuxListingError"/>, and holds up
-/// no other.
+/// reverses R28(a)), and it forwards no agent, which the proxy would point the daemon's shells at (item 3). A host that
+/// fails or does not answer in time gives its <see cref="MuxListingError"/>, and holds up no other.
 /// </summary>
 internal static class RemoteMuxLister
 {

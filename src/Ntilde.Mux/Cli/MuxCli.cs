@@ -212,12 +212,13 @@ public static class MuxCli
         IMuxDaemonSpawner spawner = noSpawn ? new NoSpawn() : ProcessMuxDaemonSpawner.CreateDefault(host.ServeArguments, paths, host.DaemonImageResolver);
         return MuxProxyCommand.Run(Console.OpenStandardInput(), Console.OpenStandardOutput(), stderr,
             ProxyConnector(paths.DescriptorPath, spawner, noSpawn, Log, KillServerCommand(host)),
-            endStdio: OperatingSystem.IsWindows() ? null : UnixChannelStdio.EndStdoutAndStderr);
+            endStdio: OperatingSystem.IsWindows() ? null : UnixChannelStdio.EndStdoutAndStderr,
+            repointAgentLink: !noSpawn);
     }
 
     /// <summary>
     /// <c>proxy --stdio [--no-spawn]</c>, the options in either order, each once. <paramref name="noSpawn"/>: a listing's
-    /// proxy (release hardening item 7), which never starts a daemon.
+    /// proxy (release hardening item 7), which never starts a daemon and leaves the agent link alone (item 3).
     /// </summary>
     internal static bool TryParseProxy(string[] verbArgs, out bool noSpawn)
     {

@@ -427,9 +427,10 @@ internal sealed class FakeRemoteChannel : ISshExecChannel
             }
             else
             {
-                // As MuxCli parses it: --no-spawn (a listing) connects only to a running daemon.
+                // As MuxCli parses it: --no-spawn (a listing) connects only to a running daemon and leaves the agent link alone.
                 bool noSpawn = Command.Contains(" --no-spawn", StringComparison.Ordinal);
-                exitCode = MuxProxyCommand.Run(_proxyStdin, _remoteStdout, _stderr, noSpawn ? _host.ConnectRunningDaemonAsync : _host.ConnectDaemonAsync, _host.IsDaemonRunning);
+                exitCode = MuxProxyCommand.Run(_proxyStdin, _remoteStdout, _stderr, noSpawn ? _host.ConnectRunningDaemonAsync : _host.ConnectDaemonAsync, _host.IsDaemonRunning,
+                    repointAgentLink: !noSpawn);
             }
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException)

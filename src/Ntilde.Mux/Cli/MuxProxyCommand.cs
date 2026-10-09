@@ -118,6 +118,10 @@ public static class MuxProxyCommand
     /// daemon's stable agent link (<see cref="AgentSocketLink"/>) at this connection's agent, so the shells the
     /// daemon spawned earlier reach the agent of the newest connection. A missing or dead agent leaves the link alone.
     /// </param>
+    /// <param name="repointAgentLink">
+    /// False for a listing's proxy (<c>--no-spawn</c>, release hardening item 3): it connects for a moment and goes, so
+    /// the link must keep pointing at the agent of a connection that stays, not at one that is about to die.
+    /// </param>
     public static int Run(
         Stream stdin,
         Stream stdout,
@@ -125,7 +129,8 @@ public static class MuxProxyCommand
         Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> connectDaemon,
         Func<MuxEndpointDescriptor, bool>? isDaemonAlive = null,
         Action? endStdio = null,
-        Func<string, string?>? getEnvironmentVariable = null)
+        Func<string, string?>? getEnvironmentVariable = null,
+        bool repointAgentLink = true)
     {
         ArgumentNullException.ThrowIfNull(stdin);
         ArgumentNullException.ThrowIfNull(stdout);
@@ -147,7 +152,7 @@ public static class MuxProxyCommand
             return ex is MuxUnavailableException { NotRunning: true } ? MuxProxyExitCodes.NotRunning : MuxProxyExitCodes.DaemonUnavailable;
         }
 
-        RepointAgentLink(descriptor, getEnvironmentVariable, stderr);
+        if (repointAgentLink) RepointAgentLink(descriptor, getEnvironmentVariable, stderr);
 
         try
         {

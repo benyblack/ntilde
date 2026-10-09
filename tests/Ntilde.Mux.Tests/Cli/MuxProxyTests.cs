@@ -440,6 +440,32 @@ public sealed class MuxProxyTests : IDisposable
         Assert.NotEqual(MuxProxyExitCodes.NotRunning, code);
     }
 
+    /// <summary>
+    /// Release hardening item 3: a listing connects for a moment and goes; the shells' agent link must keep pointing at the
+    /// agent of the connection that stays, or every shell holds a dead SSH_AUTH_SOCK once the listing ends.
+    /// </summary>
+    [Fact]
+    public void A_listing_proxy_leaves_an_existing_agent_link_untouched()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets and symlinks only.");
+        string dir = Path.Combine(_root, "mux");
+        Directory.CreateDirectory(dir);
+        string agentA = Path.Combine(dir, "a.sock");
+        string agentB = Path.Combine(dir, "b.sock");
+        using var a = ListenOn(agentA);
+        using var b = ListenOn(agentB);
+        string link = AgentSocketLink.PathFor(dir);
+        var descriptor = new MuxEndpointDescriptor { Endpoint = Path.Combine(dir, "mux.sock"), ProcessName = "x", Pid = 1 };
+        Task<(Stream, MuxEndpointDescriptor)> Connect(CancellationToken _) => Task.FromResult<(Stream, MuxEndpointDescriptor)>((new MemoryStream(), descriptor));
+
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false, getEnvironmentVariable: n => n == "SSH_AUTH_SOCK" ? agentA : null);
+        Assert.Equal(agentA, new FileInfo(link).LinkTarget);
+
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false,
+            getEnvironmentVariable: n => n == "SSH_AUTH_SOCK" ? agentB : null, repointAgentLink: false);
+        Assert.Equal(agentA, new FileInfo(link).LinkTarget);
+    }
+
     /// <summary>The daemon must already be running: a spawn here means the launcher missed it.</summary>
     private sealed class NoSpawner : IMuxDaemonSpawner
     {
