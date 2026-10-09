@@ -122,7 +122,7 @@ fi
 refuse() { print -u2 "REFUSED: $*"; exit 2; }
 inside() { [[ "$1/" == "$2"/* ]]; }   # inside <child> <parent>: the child is the parent or lies under it
 
-TEMP_ROOTS=("${${TMPDIR:-/tmp}:A}" "${/tmp:A}" "${/var/tmp:A}")
+TEMP_ROOTS=("${${TMPDIR:-/tmp}:A}" "${${:-/tmp}:A}" "${${:-/var/tmp}:A}")
 for real in "$REAL_DATA"; do
   if inside "$S" "$real" || inside "$real" "$S"; then refuse "the sandbox $S overlaps $real, which this script must never touch"; fi
 done
