@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Ntilde.Mux;
 using Ntilde.Mux.Contracts;
 using Ntilde.Mux.Daemon;
@@ -39,6 +40,12 @@ internal enum MuxListingError
 
     /// <summary>The profile uses the native SSH backend, which is switched off in Settings.</summary>
     NativeSshOff,
+
+    /// <summary>
+    /// Off Windows, an OpenSSH profile that goes through a jump host or a proxy is not connected to: its hop's ssh could
+    /// prompt on the terminal <c>ls --all</c> runs in (<see cref="RemoteMuxLister.SkipsJumpHosts"/>).
+    /// </summary>
+    ThroughJumpHost,
 }
 
 /// <summary>
@@ -61,16 +68,24 @@ internal static class RemoteMuxLister
     /// <summary>
     /// The sessions of every profile in <paramref name="svc"/>'s store that keeps its remote sessions, read from the store now,
     /// in the picker's order (by name, then id). Completes once each host has answered, failed or been cut at
-    /// <paramref name="perHost"/>; never throws for one host's failure, which is logged and kept as a kind only.
+    /// <paramref name="perHost"/>; never throws for one host's failure, which is logged and kept as a kind only. Off Windows,
+    /// a profile <see cref="SkipsJumpHosts"/> names is reported without a connect.
     /// </summary>
     /// <param name="connectorFor">The connector for one profile (<see cref="CreateConnector"/> in the app); disposed here.</param>
     /// <param name="log">Where each failure is logged, with the exception's own text.</param>
+    /// <param name="isWindows">The OS this runs on (<see cref="OperatingSystem.IsWindows"/> in the app).</param>
+    /// <param name="releaseClient">
+    /// How a host's client is let go once its listing is over: disposed, unless a test slows it down. Outside the host's wait,
+    /// so a host whose sessions arrived in time is listed however long that takes.
+    /// </param>
     public static async Task<IReadOnlyList<RemoteListing>> ListAsync(
         SshConnectionService svc,
         Func<SshProfile, RemoteMuxConnector> connectorFor,
         TimeSpan perHost,
         Action<string>? log,
-        CancellationToken ct)
+        bool isWindows,
+        CancellationToken ct,
+        Action<MuxClient>? releaseClient = null)
     {
         ArgumentNullException.ThrowIfNull(svc);
         ArgumentNullException.ThrowIfNull(connectorFor);
@@ -78,8 +93,31 @@ internal static class RemoteMuxLister
             .Where(p => p is { MuxOptions.PersistRemoteSessions: true })
             .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(p => p.Id)];
+        Action<MuxClient> release = releaseClient ?? (static client => client.Dispose());
         // Each on the pool: building a connector, or starting its transport, must not hold up the next host.
-        return await Task.WhenAll(profiles.Select(p => Task.Run(() => ListOneAsync(p, connectorFor, perHost, log, ct)))).ConfigureAwait(false);
+        return await Task.WhenAll(profiles.Select(p => SkipsJumpHosts(p, isWindows)
+            ? Task.FromResult(Skipped(p, log))
+            : Task.Run(() => ListOneAsync(p, connectorFor, perHost, log, release, ct)))).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether <c>ls --all</c> leaves <paramref name="profile"/> unconnected (Task 27 fix round 1, the controller's ruling (b)):
+    /// off Windows, an OpenSSH profile that goes through a jump host or a proxy as ntilde can see it
+    /// (<see cref="SshAskPassVaultPolicy.GoesThroughJumpHost"/>: its jump hops, which the launch plan compiles into
+    /// <c>ProxyJump</c>, and its extra arguments' <c>-J</c>, <c>ProxyJump</c> or <c>ProxyCommand</c>, read as
+    /// <see cref="OpenSshExecCommandLine.NamesAProxy"/> reads them). Its hop's ssh does not inherit <c>BatchMode</c>, and with
+    /// askpass refused (<see cref="SshAskPassEnvironment.Suppress"/>) a prompt falls back to the terminal <c>ls --all</c> runs
+    /// in, which a cut could leave with echo off. A native profile's prompts go to its handler, which asks nobody; Windows'
+    /// ssh is unaffected. The window's picker still lists such hosts.
+    /// </summary>
+    internal static bool SkipsJumpHosts(SshProfile profile, bool isWindows) =>
+        !isWindows && profile.BackendKind == SshBackendKind.OpenSsh && SshAskPassVaultPolicy.GoesThroughJumpHost(profile);
+
+    private static RemoteListing Skipped(SshProfile profile, Action<string>? log)
+    {
+        string host = RemoteOutputText.Clean(RemoteMuxConnector.DisplayNameOf(profile));
+        log?.Invoke($"[RemoteMux] ls --all: {host}: not connected to: OpenSSH through a jump host or proxy could prompt on this terminal");
+        return new RemoteListing(profile.Id, host, null, MuxListingError.ThroughJumpHost);
     }
 
     /// <summary>
@@ -117,6 +155,7 @@ internal static class RemoteMuxLister
         MuxListingError.NotInstalled => "ntilde-mux is not installed there",
         MuxListingError.NeedsSignIn => "signing in needs an answer, which ls --all never asks for",
         MuxListingError.NativeSshOff => "the native SSH backend is turned off in Settings",
+        MuxListingError.ThroughJumpHost => "it goes through a jump host, which ls --all does not sign in through",
         _ => "the connection failed",
     };
 
@@ -137,27 +176,52 @@ internal static class RemoteMuxLister
     };
 
     /// <summary>
-    /// One host, cut at <paramref name="perHost"/>. The cut cancels the connect and the listing, which stops the host's ssh
-    /// or native channel at once, inside the cancel (<see cref="RemoteMuxConnector.ConnectAsync(bool, CancellationToken)"/>).
-    /// The wait is bounded on its own as well, <see cref="CutGrace"/> later, for what a cancel cannot cut short.
+    /// One host, cut at <paramref name="perHost"/>. The cut cancels the connect and the listing; before the greeting that
+    /// stops the host's ssh or native channel inside the cancel (<see cref="RemoteMuxConnector.ConnectAsync(bool, CancellationToken)"/>).
+    /// The wait is bounded on its own as well, <see cref="CutGrace"/> later, for what a cancel cannot cut short. A host given
+    /// up on - cut, bounded, or failed - has its channel killed before this returns (<see cref="RemoteMuxConnector.Abort"/>),
+    /// greeting or not: the command may exit as soon as it has printed, and a graceful end on a dead link would leave its ssh
+    /// running past it. The sessions are taken out before anything is let go, and the client and the connector are let go
+    /// once the listing is over, outside the wait: a slow release never makes a host that answered in time look timed out.
     /// </summary>
     private static async Task<RemoteListing> ListOneAsync(
-        SshProfile profile, Func<SshProfile, RemoteMuxConnector> connectorFor, TimeSpan perHost, Action<string>? log, CancellationToken ct)
+        SshProfile profile, Func<SshProfile, RemoteMuxConnector> connectorFor, TimeSpan perHost, Action<string>? log, Action<MuxClient> releaseClient, CancellationToken ct)
     {
         string host = RemoteOutputText.Clean(RemoteMuxConnector.DisplayNameOf(profile));
+        RemoteMuxConnector connector;
+        try
+        {
+            connector = connectorFor(profile);
+        }
+        catch (Exception ex)
+        {
+            return Failed(profile, host, ex, log);
+        }
+
         var cut = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cut.CancelAfter(perHost);
-        Task<IReadOnlyList<SessionSummary>> listing = ConnectAndListAsync(profile, connectorFor, cut.Token);
-        // Disposed only once the listing is over: one still running after the bounded wait below needs its cancel.
+        var connected = new StrongBox<MuxClient?>();
+        Task<IReadOnlyList<SessionSummary>> listing = ConnectAndListAsync(connector, connected, cut.Token);
+        // On the pool once the listing is over, however it ended - the cut's source too: a listing still running after the
+        // bounded wait below needs its cancel.
         _ = listing.ContinueWith(
             static (done, state) =>
             {
-                _ = done.Exception;   // observed: a late failure was already reported as the wait's
-                ((CancellationTokenSource)state!).Dispose();
+                var (connector, connected, release, cut) = ((RemoteMuxConnector, StrongBox<MuxClient?>, Action<MuxClient>, CancellationTokenSource))state!;
+                _ = done.Exception;   // observed: a failure was reported as the wait's, or came after it
+                try
+                {
+                    if (connected.Value is { } client) release(client);
+                }
+                finally
+                {
+                    connector.Dispose();
+                    cut.Dispose();
+                }
             },
-            cut,
+            (connector, connected, releaseClient, cut),
             CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
+            TaskContinuationOptions.None,
             TaskScheduler.Default);
         try
         {
@@ -165,25 +229,25 @@ internal static class RemoteMuxLister
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            // Any failure: one host's must never stop the others from being listed.
-            MuxListingError error = ErrorOf(ex);
-            log?.Invoke($"[RemoteMux] ls --all: {host}: {error}: {ex.GetType().Name}: {ex.Message}");
-            return new(profile.Id, host, null, error);
+            connector.Abort();
+            return Failed(profile, host, ex, log);
         }
     }
 
-    private static async Task<IReadOnlyList<SessionSummary>> ConnectAndListAsync(
-        SshProfile profile, Func<SshProfile, RemoteMuxConnector> connectorFor, CancellationToken ct)
+    /// <summary>Any failure: one host's must never stop the others from being listed. Logged with its own text, kept as a kind.</summary>
+    private static RemoteListing Failed(SshProfile profile, string host, Exception ex, Action<string>? log)
     {
-        RemoteMuxConnector connector = connectorFor(profile);
-        try
-        {
-            using MuxClient client = await connector.ConnectAsync(interactive: false, ct).ConfigureAwait(false);
-            return await client.ListSessionsAsync(ct).ConfigureAwait(false);
-        }
-        finally
-        {
-            connector.Dispose();
-        }
+        MuxListingError error = ErrorOf(ex);
+        log?.Invoke($"[RemoteMux] ls --all: {host}: {error}: {ex.GetType().Name}: {ex.Message}");
+        return new RemoteListing(profile.Id, host, null, error);
+    }
+
+    /// <summary>The connect, then the listing; <paramref name="connected"/> holds the client for its release afterwards.</summary>
+    private static async Task<IReadOnlyList<SessionSummary>> ConnectAndListAsync(
+        RemoteMuxConnector connector, StrongBox<MuxClient?> connected, CancellationToken ct)
+    {
+        MuxClient client = await connector.ConnectAsync(interactive: false, ct).ConfigureAwait(false);
+        connected.Value = client;
+        return await client.ListSessionsAsync(ct).ConfigureAwait(false);
     }
 }

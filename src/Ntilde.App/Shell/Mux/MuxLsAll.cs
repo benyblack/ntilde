@@ -16,7 +16,13 @@ namespace Ntilde.Shell.Mux;
 /// Where <c>ntilde mux ls --all</c> finds its remote hosts: the SSH profile store, the connector for each profile
 /// (<see cref="RemoteMuxLister.CreateConnector"/>), the wait per host, and the run's log.
 /// </summary>
-internal sealed record MuxLsAllRemotes(SshConnectionService Profiles, Func<SshProfile, RemoteMuxConnector> ConnectorFor, TimeSpan PerHost, Action<string>? Log);
+internal sealed record MuxLsAllRemotes(
+    SshConnectionService Profiles,
+    Func<SshProfile, RemoteMuxConnector> ConnectorFor,
+    TimeSpan PerHost,
+    Action<string>? Log,
+    bool IsWindows,
+    Action<Ntilde.Mux.MuxClient>? ReleaseClient = null);
 
 /// <summary>
 /// <c>ntilde mux ls --all [--json]</c> (Phase 5 spec §5): this computer's sessions, read as <c>ls</c> reads them, then those of
@@ -71,7 +77,8 @@ internal static class MuxLsAll
         ArgumentNullException.ThrowIfNull(remotes);
 
         // The remote hosts all at once, on the pool; this computer's daemon answers meanwhile.
-        Task<IReadOnlyList<RemoteListing>> remote = RemoteMuxLister.ListAsync(remotes.Profiles, remotes.ConnectorFor, remotes.PerHost, remotes.Log, CancellationToken.None);
+        Task<IReadOnlyList<RemoteListing>> remote = RemoteMuxLister.ListAsync(
+            remotes.Profiles, remotes.ConnectorFor, remotes.PerHost, remotes.Log, remotes.IsWindows, CancellationToken.None, remotes.ReleaseClient);
         HostListing local = ListLocal(host, remotes.Log);
         IReadOnlyList<RemoteListing> others = remote.GetAwaiter().GetResult();
         HostListing[] hosts =
@@ -120,7 +127,8 @@ internal static class MuxLsAll
                 new SshAskPassSessionMarkers(static () => SshAskPassSessionMarkers.DefaultDirectory),
                 log),
             RemoteMuxLister.PerHostTimeout,
-            log);
+            log,
+            OperatingSystem.IsWindows());
     }
 
     /// <summary>This computer's sessions, as <c>ls</c> reads them: never starting a daemon.</summary>

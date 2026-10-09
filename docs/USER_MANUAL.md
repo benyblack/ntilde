@@ -178,7 +178,7 @@ below.
   |---|---|
   | `ntilde mux ls` | Lists sessions: id, state (running / exited *code* / faulted), attached windows, size, title. |
   | `ntilde mux ls --json` | The same list as JSON. |
-  | `ntilde mux ls --all [--json]` | The same list with a HOST column (`this computer`, or `user@host`), followed by the sessions on the host of every SSH profile that keeps its remote sessions. It connects to those hosts on its own, all at once, and never asks for anything: it signs in with keys, the SSH agent, a saved password or an existing shared connection. A host where no multiplexer runs yet starts one, as opening a persistent tab there does. A host that cannot be reached within 15 seconds gets an `unreachable:` line, and the reason goes to `logs/mux-ls-all.log`. The exit code is the plain list's: 1 when no multiplexer runs on this computer. |
+  | `ntilde mux ls --all [--json]` | The same list with a HOST column (`this computer`, or `user@host`), followed by the sessions on the host of every SSH profile that keeps its remote sessions. It connects to those hosts on its own, all at once, and never asks for anything: it signs in with keys, the SSH agent, a saved password or an existing shared connection. A host it cannot list within 15 seconds gets an `unreachable:` line, and the reason goes to `logs/mux-ls-all.log`. See below for how it differs from the other commands. |
   | `ntilde mux kill <id>` | Ends one session. |
   | `ntilde mux kill-server` | Ends every session and stops the daemon. Waits up to 5 seconds for it to exit; if it has not, prints "Multiplexer did not stop within 5 s." and exits with code 1. |
   | `ntilde mux kill-server --force` | Also stops a daemon this Ntilde cannot talk to at all (no protocol version in common), once its pid and process name are re-verified — see below. A daemon from the previous version still talks to it, so plain `kill-server` stops that one. |
@@ -187,6 +187,18 @@ below.
   These commands never start a daemon. With none running they print "No multiplexer is
   running." and exit with code 1 (`attach` exits with code 2, its code for any connection
   error). The daemon writes its log to `logs/mux.log` in Ntilde's data folder.
+
+  `ls --all` differs in three ways:
+  - It never starts a daemon on this computer, but on a host where none runs yet, connecting
+    starts one, as opening a persistent tab there does. With no sessions to keep, that daemon
+    exits after 10 idle minutes.
+  - With no daemon running on this computer, it still lists the remote hosts. This computer's
+    line then reads `this computer  unreachable: no multiplexer is running`, and the exit code
+    is 1, as for `ls`.
+  - On Linux and macOS it does not sign in through a jump host with the OpenSSH backend. A
+    profile that goes through a jump host or a proxy command gets an `unreachable:` line instead,
+    because a jump host's password prompt would appear in your terminal. "Attach to session…"
+    in Ntilde still lists such hosts, and profiles on the native SSH backend are listed as usual.
 - **Limitations:**
   - SSH panes persist only when their profile opts in, on the remote host (see
     [Persistent SSH tabs (remote)](#persistent-ssh-tabs-remote)). Every other SSH pane works

@@ -408,6 +408,19 @@ internal sealed class RemoteMuxConnector : IDisposable
     }
 
     /// <summary>
+    /// Stops the latest attempt's channel at once, on the caller's thread (<see cref="ISshExecChannel.Abort"/>), whether a
+    /// client holds it or not: for a caller that gives up on this connector and may exit before a graceful end would finish
+    /// (<c>ls --all</c>'s cut, <see cref="RemoteMuxLister"/>). On a dead link that end waits out its grace before it stops
+    /// ssh, which would outlive the caller. A graceful end already running is cut short. Never throws.
+    /// </summary>
+    public void Abort()
+    {
+        OwnedChannel? latest;
+        lock (_gate) latest = _latest;
+        latest?.Abort();
+    }
+
+    /// <summary>
     /// Forgets the remembered secrets, and ends the latest channel if its client has not already (the
     /// host closes its client first, which ends it). Never blocks: the channel ends on a pool thread.
     /// </summary>

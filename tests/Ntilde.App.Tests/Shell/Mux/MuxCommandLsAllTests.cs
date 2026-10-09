@@ -70,7 +70,8 @@ public sealed class MuxCommandLsAllTests : IDisposable
     }
 
     /// <summary>A profile <c>user@host</c> in the test's store, and the host it reaches.</summary>
-    private (SshProfile Profile, FakeRemoteHost Host) AddProfile(string name, string host, bool keepsSessions = true)
+    /// <param name="configure">Sets the profile up further (its backend, its jump hosts) before it is saved.</param>
+    private (SshProfile Profile, FakeRemoteHost Host) AddProfile(string name, string host, bool keepsSessions = true, Action<SshProfile>? configure = null)
     {
         var profile = new SshProfile
         {
@@ -80,6 +81,7 @@ public sealed class MuxCommandLsAllTests : IDisposable
             User = "nova",
             MuxOptions = new SshMuxOptions { PersistRemoteSessions = keepsSessions },
         };
+        configure?.Invoke(profile);
         _profiles.SaveProfile(profile);
         var remote = new FakeRemoteHost("nova@" + host);
         _remotes[profile.Id] = remote;
@@ -97,7 +99,9 @@ public sealed class MuxCommandLsAllTests : IDisposable
     }
 
     /// <summary>The remote half the command is handed: the test's store, and each profile's connector as the command builds it.</summary>
-    private MuxLsAllRemotes Remotes(TimeSpan? perHost = null) => new(
+    /// <param name="isWindows">The OS the command decides for; this one's when null.</param>
+    /// <param name="releaseClient">How a listed host's client is let go; disposed when null.</param>
+    private MuxLsAllRemotes Remotes(TimeSpan? perHost = null, bool? isWindows = null, Action<MuxClient>? releaseClient = null) => new(
         new SshConnectionService(_profiles),
         profile =>
         {
@@ -110,12 +114,24 @@ public sealed class MuxCommandLsAllTests : IDisposable
                 },
                 savedPassword: null,
                 askPassRecords: null,
-                _log.Enqueue);
+                Log);
             _connectors.Enqueue(connector);
             return connector;
         },
         perHost ?? Patient,
-        _log.Enqueue);
+        Log,
+        isWindows ?? OperatingSystem.IsWindows(),
+        releaseClient);
+
+    /// <summary>The command's and its connectors' log: kept, and shown to <see cref="_onLog"/> as it is written.</summary>
+    private void Log(string line)
+    {
+        _log.Enqueue(line);
+        _onLog?.Invoke(line);
+    }
+
+    /// <summary>Set by a test that acts on a log line as it is written (the connector's "connected", say).</summary>
+    private Action<string>? _onLog;
 
     /// <summary>Runs <c>ntilde mux &lt;args&gt;</c> off the test's thread, and waits for it to finish.</summary>
     private async Task<(int Code, string Out, string Err)> RunAsync(MuxLsAllRemotes remotes, params string[] args)
@@ -219,8 +235,9 @@ public sealed class MuxCommandLsAllTests : IDisposable
     }
 
     /// <summary>
-    /// Two hosts that never answer are each cut at the wait the command is given, at once - in turn would take twice as long -
-    /// while this computer and the host that answers still print. The cut stops each hung channel: nothing of it runs on.
+    /// Two hosts that never answer are each cut at the wait the command is given, while this computer and the host that
+    /// answers still print. They are connected to at once: each one's start waits at a barrier for the other's, which a
+    /// listing in turn would never reach before the first was cut. The cut stops each hung channel: nothing of it runs on.
     /// </summary>
     [Fact]
     public async Task A_host_that_hangs_is_cut_at_the_timeout_and_the_others_still_print()
@@ -233,6 +250,15 @@ public sealed class MuxCommandLsAllTests : IDisposable
         betaHost.Script = FakeRemoteScript.Silent;
         (_, FakeRemoteHost gammaHost) = AddProfile("gamma", "c-host");
         gammaHost.Script = FakeRemoteScript.Silent;
+        using var bothStarting = new Barrier(2);
+        int metAtTheBarrier = 0;
+        void MeetTheOther(CancellationToken ct)
+        {
+            if (bothStarting.SignalAndWait(Patient, ct)) Interlocked.Increment(ref metAtTheBarrier);
+        }
+
+        betaHost.OnStart = MeetTheOther;
+        gammaHost.OnStart = MeetTheOther;
 
         var clock = Stopwatch.StartNew();
         var (code, output, _) = await RunAsync(Remotes(perHost), "ls", "--all");
@@ -247,10 +273,163 @@ public sealed class MuxCommandLsAllTests : IDisposable
                 "nova@b-host    unreachable: it did not answer in time",
                 "nova@c-host    unreachable: it did not answer in time"),
             output);
+        Assert.Equal(2, Volatile.Read(ref metAtTheBarrier));   // both were starting at once, before either was cut
         Assert.True(Assert.Single(betaHost.Channels).AbortCount >= 1, "the hung channel was stopped by the cut");
         Assert.True(Assert.Single(gammaHost.Channels).AbortCount >= 1, "the hung channel was stopped by the cut");
-        // Waiting in turn takes at least 2 x perHost (8 s); 1.75 x leaves 3 s for a loaded CI runner.
-        Assert.InRange(took, perHost * 0.9, perHost * 1.75);
+        Assert.True(took < perHost * 3, $"took {took}: a guard against a hang, not a measure of the parallelism");
+    }
+
+    /// <summary>
+    /// A host that goes silent after its greeting - the listing is asked for and never answered - is cut, and its channel is
+    /// killed in the cut, not ended gracefully: on a dead link a graceful end waits out its grace, past the command's exit,
+    /// and its ssh would outlive the command.
+    /// </summary>
+    [Fact]
+    public async Task A_host_that_stalls_after_its_greeting_is_cut_and_its_channel_killed()
+    {
+        TimeSpan perHost = TimeSpan.FromSeconds(2);
+        Guid local = await StartLocalDaemonAsync("local shell");
+        (_, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host");
+        // The connector logs "connected" once the daemon said hello, before the listing is asked for: the link stalls there.
+        _onLog = line =>
+        {
+            if (line.Contains("nova@a-host: connected (", StringComparison.Ordinal)) alphaHost.StallLink();
+        };
+
+        var clock = Stopwatch.StartNew();
+        var (code, output, _) = await RunAsync(Remotes(perHost), "ls", "--all");
+        TimeSpan took = clock.Elapsed;
+
+        Assert.Equal(0, code);
+        Assert.Equal(
+            Lines(
+                Header,
+                Row("this computer", local, "running", 0, "80x24", "local shell"),
+                "nova@a-host    unreachable: it did not answer in time"),
+            output);
+        FakeRemoteChannel channel = Assert.Single(alphaHost.Channels);
+        Assert.True(channel.AbortCount >= 1, "the cut killed the channel; it was not left to end gracefully");
+        Assert.Null(await channel.Completion.WaitAsync(Patient, Ct));   // killed: no exit status
+        Assert.True(took < perHost * 3, $"took {took}");
+    }
+
+    /// <summary>
+    /// A host whose sessions arrived in time is listed, however long letting its connection go takes afterwards: the
+    /// sessions are taken out first, and the release happens outside the host's wait.
+    /// </summary>
+    [Fact]
+    public async Task A_host_listed_in_time_is_listed_however_slow_its_release()
+    {
+        TimeSpan perHost = TimeSpan.FromSeconds(2);
+        Guid local = await StartLocalDaemonAsync("local shell");
+        (SshProfile alpha, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host");
+        Guid remote = await SpawnOnAsync(alpha, alphaHost, "remote shell");
+        using var releasing = new ManualResetEventSlim();
+        using var mayRelease = new ManualResetEventSlim();
+        void SlowRelease(MuxClient client)
+        {
+            releasing.Set();
+            mayRelease.Wait(Patient, CancellationToken.None);
+            client.Dispose();
+        }
+
+        try
+        {
+            var (code, output, _) = await RunAsync(Remotes(perHost, releaseClient: SlowRelease), "ls", "--all");
+
+            Assert.Equal(0, code);
+            Assert.Equal(
+                Lines(
+                    Header,
+                    Row("this computer", local, "running", 0, "80x24", "local shell"),
+                    Row("nova@a-host", remote, "running", 0, "100x30", "remote shell")),
+                output);
+            Assert.True(releasing.Wait(Patient, Ct), "the listed host's client was let go");
+            Assert.False(mayRelease.IsSet);   // the command returned with that release still blocked
+        }
+        finally
+        {
+            mayRelease.Set();
+        }
+    }
+
+    /// <summary>
+    /// Ruling (fix round 1): on Linux and macOS a jump host's ssh does not inherit batch mode, and with askpass refused its
+    /// prompt falls back to the terminal <c>ls --all</c> runs in, which a cut could leave with echo off. So there an OpenSSH
+    /// profile that goes through a jump host or a proxy - its jump hosts, or <c>-J</c>, <c>ProxyJump</c> or
+    /// <c>ProxyCommand</c> in its extra arguments - is reported, not connected to: no transport is built for it.
+    /// </summary>
+    [Theory]
+    [InlineData(true, "")]
+    [InlineData(false, "-J ops@bastion")]
+    [InlineData(false, "-o ProxyCommand=nc-to-bastion")]
+    public async Task Off_Windows_an_OpenSSH_profile_through_a_jump_host_or_proxy_is_reported_not_connected(bool jumpHops, string extraArgs)
+    {
+        Guid local = await StartLocalDaemonAsync("local shell");
+        (SshProfile alpha, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host", configure: p =>
+        {
+            p.BackendKind = SshBackendKind.OpenSsh;
+            if (jumpHops) p.JumpHops = [new SshJumpHop { Host = "bastion", User = "ops" }];
+            p.ExtraSshArgs = extraArgs;
+        });
+
+        var (code, output, _) = await RunAsync(Remotes(isWindows: false), "ls", "--all");
+        var (jsonCode, json, _) = await RunAsync(Remotes(isWindows: false), "ls", "--all", "--json");
+
+        Assert.Equal(0, code);
+        Assert.Equal(
+            Lines(
+                Header,
+                Row("this computer", local, "running", 0, "80x24", "local shell"),
+                "nova@a-host    unreachable: it goes through a jump host, which ls --all does not sign in through"),
+            output);
+        Assert.Equal(0, jsonCode);
+        using JsonDocument doc = JsonDocument.Parse(json);
+        JsonElement[] endpoints = [.. doc.RootElement.GetProperty("endpoints").EnumerateArray()];
+        Assert.Equal(2, endpoints.Length);
+        Assert.Equal("ssh:" + alpha.Id.ToString("N"), endpoints[1].GetProperty("endpoint").GetString());
+        Assert.Equal("it goes through a jump host, which ls --all does not sign in through", endpoints[1].GetProperty("error").GetString());
+        Assert.Empty(_connectors);
+        Assert.Empty(_requests);
+        Assert.Equal(0, alphaHost.StartCount);
+    }
+
+    /// <summary>A native profile's prompts go to its handler, never to a terminal: with jump hosts it is connected to anywhere.</summary>
+    [Fact]
+    public async Task Off_Windows_a_native_profile_through_a_jump_host_is_still_connected()
+    {
+        await StartLocalDaemonAsync("local shell");
+        (SshProfile alpha, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host", configure: p =>
+        {
+            p.BackendKind = SshBackendKind.Native;
+            p.JumpHops = [new SshJumpHop { Host = "bastion", User = "ops" }];
+        });
+        Guid remote = await SpawnOnAsync(alpha, alphaHost, "remote shell");
+
+        var (code, output, _) = await RunAsync(Remotes(isWindows: false), "ls", "--all");
+
+        Assert.Equal(0, code);
+        Assert.Contains(Row("nova@a-host", remote, "running", 0, "100x30", "remote shell") + Environment.NewLine, output, StringComparison.Ordinal);
+        Assert.Single(_requests);
+    }
+
+    /// <summary>On Windows an OpenSSH profile with jump hosts is connected to, as before: the ruling is for Linux and macOS.</summary>
+    [Fact]
+    public async Task On_Windows_an_OpenSSH_profile_through_a_jump_host_is_still_connected()
+    {
+        await StartLocalDaemonAsync("local shell");
+        (SshProfile alpha, FakeRemoteHost alphaHost) = AddProfile("alpha", "a-host", configure: p =>
+        {
+            p.BackendKind = SshBackendKind.OpenSsh;
+            p.JumpHops = [new SshJumpHop { Host = "bastion", User = "ops" }];
+        });
+        Guid remote = await SpawnOnAsync(alpha, alphaHost, "remote shell");
+
+        var (code, output, _) = await RunAsync(Remotes(isWindows: true), "ls", "--all");
+
+        Assert.Equal(0, code);
+        Assert.Contains(Row("nova@a-host", remote, "running", 0, "100x30", "remote shell") + Environment.NewLine, output, StringComparison.Ordinal);
+        Assert.Single(_requests);
     }
 
     /// <summary>
