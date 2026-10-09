@@ -163,6 +163,65 @@ public sealed class StartupAutoApplyTests
         }
     }
 
+    /// <summary>
+    /// PR #511 heads-up: the default flip (SessionPersistence on) leans on the update-survival work. With a settings file
+    /// that does not name SessionPersistence - the default, so on - and a live daemon running from its own copy outside the
+    /// install root, the startup apply goes ahead; one running from inside the root holds it, as the apply would kill it.
+    /// </summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void With_the_default_setting_only_a_daemon_inside_the_install_root_holds_the_startup_apply(bool imageInsideRoot, bool blocks)
+    {
+        string root = ScratchRoot();
+        try
+        {
+            WriteDescriptorNamingThisProcess(root);
+            File.WriteAllText(Path.Combine(root, "settings.json"), "{\"FontSize\":14,\"Theme\":\"Default\"}");
+            string image = imageInsideRoot ? Path.Combine(InstallRoot, "current", "Ntilde.exe") : OwnCopy;
+            int connects = 0;
+            Stream Connect(string endpoint, TimeSpan timeout)
+            {
+                connects++;
+                return new MemoryStream();
+            }
+
+            Assert.Equal(blocks, Program.LiveDaemonBlocksStartupApplyAt(root, InstallRoot, Connect, _ => image));
+            Assert.Equal(imageInsideRoot ? StartupApplyHold.InstallFolder : StartupApplyHold.None, Program.StartupApplyHoldAt(root, InstallRoot, Connect, _ => image));
+            Assert.Equal(2, connects); // the daemon was live both times: the gate decided on its image and the setting
+        }
+        finally
+        {
+            DeleteQuietly(root);
+        }
+    }
+
+    /// <summary>The startup gate's reason, which Program.Main writes to debug.log once the log is up (PR #511 heads-up).</summary>
+    [Fact]
+    public void The_gate_says_why_it_holds_the_startup_apply()
+    {
+        string inside = Path.Combine(InstallRoot, "current", "Ntilde.exe");
+
+        Assert.Equal(StartupApplyHold.None, MuxUpdateCompatibility.StartupApplyHoldFor(InstallRoot, () => false, () => Daemon, _ => inside, () => true));
+        Assert.Equal(StartupApplyHold.None, MuxUpdateCompatibility.StartupApplyHoldFor(InstallRoot, () => true, () => Daemon, _ => OwnCopy, KeepOnClose));
+        Assert.Equal(StartupApplyHold.InstallFolder, MuxUpdateCompatibility.StartupApplyHoldFor(InstallRoot, () => true, () => Daemon, _ => inside, NotRead));
+        Assert.Equal(StartupApplyHold.UnknownImage, MuxUpdateCompatibility.StartupApplyHoldFor(InstallRoot, () => true, () => Daemon, _ => null, NotRead));
+        Assert.Equal(StartupApplyHold.UnknownImage, MuxUpdateCompatibility.StartupApplyHoldFor(InstallRoot, () => true, () => null, _ => inside, NotRead));
+        Assert.Equal(StartupApplyHold.PersistenceOff, MuxUpdateCompatibility.StartupApplyHoldFor(InstallRoot, () => true, () => Daemon, _ => OwnCopy, () => true));
+        Assert.Equal(StartupApplyHold.PersistenceOff, MuxUpdateCompatibility.StartupApplyHoldFor(null, () => true, () => Daemon, _ => inside, () => true));
+
+        Assert.Null(MuxUpdateCompatibility.DescribeStartupApplyHold(StartupApplyHold.None));
+        Assert.Equal(
+            "[Update] a staged update, if any, was not applied at startup: the multiplexer is running from the install folder, so applying it would stop every shell; the in-app update asks first",
+            MuxUpdateCompatibility.DescribeStartupApplyHold(StartupApplyHold.InstallFolder));
+        Assert.Equal(
+            "[Update] a staged update, if any, was not applied at startup: where the multiplexer is running from could not be checked, so applying it might stop every shell; the in-app update asks first",
+            MuxUpdateCompatibility.DescribeStartupApplyHold(StartupApplyHold.UnknownImage));
+        Assert.Equal(
+            "[Update] a staged update, if any, was not applied at startup: session persistence is off and the multiplexer is running, as before Phase 5; the in-app update asks first",
+            MuxUpdateCompatibility.DescribeStartupApplyHold(StartupApplyHold.PersistenceOff));
+    }
+
     [Fact]
     public void The_gate_finds_no_daemon_without_a_descriptor_under_the_root_whatever_the_setting()
     {

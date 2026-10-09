@@ -135,6 +135,9 @@ class Program
             TerminalLogger.Log("Log file path: " + AppLogger.GetLogFilePath());
             TerminalLogger.Log("Build: " + DescribeBuild());
 
+            // Why Velopack was told not to apply a staged update at this start, decided before the log was up.
+            if (Ntilde.Update.MuxUpdateCompatibility.DescribeStartupApplyHold(s_startupApplyHold) is { } held) TerminalLogger.Log(held);
+
             // A verification run's local update feed (NTILDE_UPDATE_SOURCE_DIR), or a value of it that is ignored: said
             // at startup, before any update check, so the log never hides where updates come from. Only the verification
             // install honours it (ruling R1), so the running install's app id goes in: VelopackApp.Run() above has set
@@ -195,22 +198,38 @@ class Program
     /// and the setting read - the setting straight from settings.json under the same root the descriptor is in
     /// (<see cref="Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile"/>; AppPaths is not touched this early).
     /// </summary>
-    private static bool LiveDaemonBlocksStartupApply() =>
-        LiveDaemonBlocksStartupApplyAt(Ntilde.Mux.Contracts.MuxDiscovery.GetRootDirectory(), Ntilde.Shell.Mux.MuxDaemonImage.CurrentVelopackInstallRoot());
+    private static bool LiveDaemonBlocksStartupApply()
+    {
+        s_startupApplyHold = StartupApplyHoldAt(Ntilde.Mux.Contracts.MuxDiscovery.GetRootDirectory(), Ntilde.Shell.Mux.MuxDaemonImage.CurrentVelopackInstallRoot());
+        return s_startupApplyHold != Ntilde.Update.StartupApplyHold.None;
+    }
+
+    /// <summary>
+    /// What the startup gate decided (<see cref="LiveDaemonBlocksStartupApply"/>), kept for debug.log: the gate runs before
+    /// AppLogger is up, and Main logs why it held once it is (PR #511 heads-up). None when it did not hold or never ran.
+    /// </summary>
+    private static Ntilde.Update.StartupApplyHold s_startupApplyHold;
 
     /// <summary>
     /// <see cref="LiveDaemonBlocksStartupApply"/>'s composition for the app-data root <paramref name="appDataRoot"/>: the
     /// descriptor and settings.json are both read under it. <paramref name="installRoot"/> is this install's Velopack root
-    /// (null when there is none); <paramref name="connect"/> is the probe's connect, a seam for tests.
+    /// (null when there is none); <paramref name="connect"/> is the probe's connect, and <paramref name="daemonImagePath"/>
+    /// the descriptor's daemon's image (<see cref="Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath"/>), seams for tests.
     /// </summary>
-    internal static bool LiveDaemonBlocksStartupApplyAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null)
+    internal static bool LiveDaemonBlocksStartupApplyAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null,
+        Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?>? daemonImagePath = null) =>
+        StartupApplyHoldAt(appDataRoot, installRoot, connect, daemonImagePath) != Ntilde.Update.StartupApplyHold.None;
+
+    /// <summary><see cref="LiveDaemonBlocksStartupApplyAt"/>'s answer with its reason (<see cref="Ntilde.Update.MuxUpdateCompatibility.StartupApplyHoldFor"/>).</summary>
+    internal static Ntilde.Update.StartupApplyHold StartupApplyHoldAt(string appDataRoot, string? installRoot, Func<string, TimeSpan, System.IO.Stream>? connect = null,
+        Func<Ntilde.Mux.Contracts.MuxEndpointDescriptor, string?>? daemonImagePath = null)
     {
         string descriptorPath = Ntilde.Mux.Contracts.MuxDiscovery.GetDescriptorPath(appDataRoot);
-        return Ntilde.Update.MuxUpdateCompatibility.BlocksStartupApply(
+        return Ntilde.Update.MuxUpdateCompatibility.StartupApplyHoldFor(
             installRoot,
             () => Ntilde.Mux.Daemon.MuxStartupProbe.IsDaemonLive(descriptorPath, TimeSpan.FromMilliseconds(200), connect),
             () => Ntilde.Mux.Contracts.MuxDiscovery.TryReadDescriptor(descriptorPath, out Ntilde.Mux.Contracts.MuxEndpointDescriptor? descriptor) ? descriptor : null,
-            Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath,
+            daemonImagePath ?? Ntilde.Update.MuxUpdateCompatibility.DaemonImagePath,
             () => Ntilde.Shell.Mux.SessionPersistenceMode.IsOffInSettingsFile(System.IO.Path.Combine(appDataRoot, "settings.json")));
     }
 
