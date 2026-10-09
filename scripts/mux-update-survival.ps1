@@ -29,20 +29,31 @@
      10. Uninstalls with the daemon and the new GUI running. Reports the order of Velopack's kill pass and our uninstall
          hook, and whether the hook stopped the daemon.
 
-    A finally block always cleans up: it stops what the sandbox started, uninstalls, and puts the user PATH, the
-    Uninstall key and shortcuts back as they were. It stops processes by pid only, and only those whose image is under
-    the sandbox.
+    Once the sandbox is confirmed as this script's own, a finally block always cleans up: it stops what the sandbox
+    started, uninstalls, and puts the user PATH, the Uninstall key and shortcuts back as they were. It stops processes
+    by pid only, and only those whose image is under the sandbox. A refusal before that (a sandbox that is not the
+    script's, or one an earlier run left installed) exits without cleaning anything.
 
     SAFETY. This script never touches %LOCALAPPDATA%\NtildeApp or %LOCALAPPDATA%\ntilde, nor the user's own ntilde
-    processes, daemon or pipes, nor the Windows Credential Manager. It refuses a sandbox that overlaps either folder.
-    Every process it starts gets NTILDE_APPDATA_ROOT, and the processes Velopack starts inherit it: its install,
-    update and uninstall hooks, and the restart after an apply (measured with Velopack 1.2.0). The sandbox GUI's
-    settings turn off the two things that are global per user and not keyed by NTILDE_APPDATA_ROOT: the agent host's
-    pipe (ntilde-agent-<user>) and the quake-mode global hotkey. The multiplexer's pipe name is derived from the root.
+    processes, daemon or pipes, nor the Windows Credential Manager.
+    - The sandbox must be the script's own: a new or empty folder, which it marks with .ntilde-survival-sandbox on first
+      use, or a folder carrying that marker. It must lie under %TEMP% unless -AllowAnyLocation is given, and it may
+      never be, or contain, the user profile, %LOCALAPPDATA%, %APPDATA%, %TEMP%, Windows, Program Files or the
+      repository, nor overlap the real install or data folder. Recursive deletes happen only inside a marked sandbox.
+    - Every process it starts gets NTILDE_APPDATA_ROOT, and on Windows the processes Velopack starts inherit it: its
+      install, update and uninstall hooks, and the restart after an apply (measured with Velopack 1.2.0).
+    - The builds are packed as NtildeSurvival, the only install for which the app honours NTILDE_UPDATE_SOURCE_DIR.
+    - The sandbox GUI's settings turn off the two things that are global per user and not keyed by NTILDE_APPDATA_ROOT:
+      the agent host's pipe (ntilde-agent-<user>) and the quake-mode global hotkey. The multiplexer's pipe name is
+      derived from the root.
 
 .PARAMETER Sandbox
-    The folder everything goes into. It must not contain whitespace (the heartbeat command line), must not overlap the
-    real install or data folder, and must not hold an install from an earlier run.
+    The folder everything goes into. It must not contain whitespace (the heartbeat command line), must be new, empty or
+    already marked as this script's sandbox, and must not hold an install from an earlier run (clean that up with
+    -CleanupOnly).
+
+.PARAMETER AllowAnyLocation
+    Accept a sandbox outside %TEMP%. The other location rules still apply.
 
 .PARAMETER VersionPrefix
     The builds are <VersionPrefix>.1 and <VersionPrefix>.2 (and <VersionPrefix>.3 with -LeaveRunning).
@@ -71,7 +82,8 @@ param(
     [switch] $SkipBuild,
     [switch] $BuildOnly,
     [switch] $LeaveRunning,
-    [switch] $CleanupOnly
+    [switch] $CleanupOnly,
+    [switch] $AllowAnyLocation
 )
 
 Set-StrictMode -Version 1.0
@@ -111,19 +123,53 @@ $VelopackAppLog = Join-Path $env:LOCALAPPDATA "velopack\velopack_$PackId.log"
 $VelopackSharedLog = Join-Path $env:LOCALAPPDATA 'velopack\velopack.log'
 $VelopackTemp = Join-Path $env:TEMP "velopack_$PackId"
 
+$Marker = Join-Path $S '.ntilde-survival-sandbox'
+
+# Whether $Child is $Parent or lies under it.
 function Test-Inside([string] $Child, [string] $Parent) {
     return ($Child.TrimEnd('\') + '\').StartsWith($Parent.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)
 }
 
-# Never in or around the real install or data; and never a folder that holds the profile, the system or the programs,
-# since every process whose image is under the sandbox may be stopped.
+# ---- the sandbox must be this script's own (ruling R4) -------------------------------------------------------------
+# Everything here runs before anything is written and before the cleanup is armed: a refusal changes nothing.
+
+# Never in or around the real install or data; and never a folder that is, or holds, the profile, the system, the
+# programs or the repository, since every process whose image is under the sandbox may be stopped.
 foreach ($real in @($RealInstall, $RealData)) {
     if ((Test-Inside $S $real) -or (Test-Inside $real $S)) { throw "The sandbox $S overlaps $real, which this script must never touch." }
 }
-foreach ($wide in @($env:USERPROFILE, $env:LOCALAPPDATA, $env:APPDATA, $env:TEMP, $env:SystemRoot, $env:ProgramFiles, ${env:ProgramFiles(x86)}, $RepoRoot)) {
-    if ($wide -and (Test-Inside $wide $S)) { throw "The sandbox $S contains $wide. Choose a folder of its own (for example under %TEMP%)." }
+$tempRoots = @([IO.Path]::GetTempPath(), $env:TEMP) | Where-Object { $_ } | ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd('\') }
+foreach ($wide in @($env:USERPROFILE, $env:LOCALAPPDATA, $env:APPDATA, $env:SystemRoot, $env:ProgramFiles, ${env:ProgramFiles(x86)}, $RepoRoot) + $tempRoots) {
+    if ($wide -and (Test-Inside $wide $S)) { throw "The sandbox $S is, or contains, $wide. Choose a folder of its own (for example under %TEMP%)." }
+}
+# An allow-list of places, not only a deny-list: under %TEMP%, unless the caller says otherwise.
+if (-not $AllowAnyLocation -and -not @($tempRoots | Where-Object { (Test-Inside $S $_) -and $S -ne $_ }).Count) {
+    throw "The sandbox $S is not under %TEMP% ($($tempRoots -join ', ')). Choose a folder there, or pass -AllowAnyLocation."
 }
 if ($S -match '\s') { throw "The sandbox path must not contain whitespace (it is in the heartbeat sessions' command line): $S" }
+
+# Ours: a new or empty folder (marked now), or one carrying the marker. Anything else is someone's folder.
+if (Test-Path -LiteralPath $S -PathType Leaf) { throw "The sandbox $S is a file." }
+$sandboxIsNew = -not (Test-Path -LiteralPath $S) -or -not @(Get-ChildItem -LiteralPath $S -Force).Count
+if (-not $sandboxIsNew -and -not (Test-Path -LiteralPath $Marker -PathType Leaf)) {
+    throw "$S is not empty and does not carry $([IO.Path]::GetFileName($Marker)): it is not this script's sandbox. Choose a new or empty folder."
+}
+if ($sandboxIsNew -and $CleanupOnly) {
+    [Console]::Out.WriteLine("$S is not a sandbox of this script's yet: there is nothing to clean up.")
+    exit 0
+}
+if ($sandboxIsNew) {
+    New-Item -ItemType Directory -Force -Path $S | Out-Null
+    [IO.File]::WriteAllText($Marker, "A sandbox of scripts/mux-update-survival.ps1. Anything in this folder may be deleted by it.`r`n")
+}
+
+# Recursive deletes of the script's fixed-name folders: only inside a marked sandbox, and never the sandbox itself.
+function Remove-SandboxFolder([string] $Path) {
+    $full = [IO.Path]::GetFullPath($Path).TrimEnd('\')
+    if (-not (Test-Path -LiteralPath $Marker -PathType Leaf)) { throw "Refusing to delete $full`: $S is not a marked sandbox." }
+    if (-not (Test-Inside $full $S) -or $full -eq $S) { throw "Refusing to delete $full`: it is not inside the sandbox $S." }
+    if (Test-Path -LiteralPath $full) { Remove-Item -LiteralPath $full -Recurse -Force }
+}
 
 New-Item -ItemType Directory -Force -Path $Evidence | Out-Null
 
@@ -320,6 +366,16 @@ function Read-UserPath {
     finally { if ($key) { $key.Dispose() } }
 }
 
+# The user PATH's value kind (ExpandString as Windows writes it, or String), as a name; null when there is no value.
+function Read-UserPathKind {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $false)
+    try {
+        if (-not $key -or $null -eq $key.GetValue('Path', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)) { return $null }
+        return $key.GetValueKind('Path').ToString()
+    }
+    finally { if ($key) { $key.Dispose() } }
+}
+
 function Get-ShortcutFolders {
     return @(
         [Environment]::GetFolderPath('Desktop'),
@@ -338,6 +394,7 @@ function Get-NtildeShortcuts {
 function Get-SideEffects {
     return [ordered]@{
         UserPath = Read-UserPath
+        UserPathKind = Read-UserPathKind
         UserPathHasSandbox = Test-PathNamesSandbox (Read-UserPath)
         UninstallKey = Test-Path $UninstallKey
         Shortcuts = @(Get-NtildeShortcuts)
@@ -363,7 +420,7 @@ function Test-PathNamesSandbox([string] $Value) {
 
 function Format-SideEffects($Snapshot) {
     Say "  user PATH names the sandbox install: $($Snapshot.UserPathHasSandbox)"
-    Say "  user PATH: $($Snapshot.UserPath.Length) characters"
+    Say "  user PATH: $($Snapshot.UserPath.Length) characters, $($Snapshot.UserPathKind)"
     Say "  HKCU Uninstall\$PackId exists: $($Snapshot.UninstallKey)"
     Say "  *Ntilde* shortcuts (Desktop, Start Menu, Startup, pinned): $(if ($Snapshot.Shortcuts.Count) { $Snapshot.Shortcuts -join '; ' } else { 'none' })"
     Say "  $VelopackAppLog exists: $($Snapshot.VelopackAppLog)"
@@ -376,7 +433,7 @@ function Format-SideEffects($Snapshot) {
 
 function Invoke-Publish([string] $Version) {
     $out = Join-Path $Publish $Version
-    if (Test-Path -LiteralPath $out) { Remove-Item -LiteralPath $out -Recurse -Force }
+    Remove-SandboxFolder $out
     $log = Join-Path $Evidence "publish-$Version.log"
     Say "AOT-publishing src/Ntilde.App as $Version into $out (about 10 minutes; log $log)"
     & (Join-Path $RepoRoot 'scripts\build.ps1') publish (Join-Path $RepoRoot 'src\Ntilde.App\Ntilde.App.csproj') -c Release -r win-x64 --self-contained true "-p:PublishAot=true;SkipCliShim=true;Version=$Version;InformationalVersion=$Version" -o $out *> $log
@@ -489,7 +546,9 @@ function Show-NoOverlapSteps {
     Say 'Only the in-app apply reads the staged release notes (MuxUpdateCompatibility.KeepsDaemon), so only it takes the'
     Say 'confirm-and-shutdown path for a build whose marker shares no protocol version with the daemon. Velopack''s startup'
     Say 'auto-apply never reads the marker. The in-app apply is a click (the update toast''s Restart button, or the palette''s'
-    Say '"Restart to update"), which this script does not automate, so this path was not run. To run it by hand:'
+    Say '"Restart to update"), which this script does not automate, so this path was not run. To run it by hand, on Windows'
+    Say 'or Linux only: the in-app apply restarts the app itself, and on macOS Velopack 1.2.0 restarts it with `open -n`,'
+    Say 'which drops the sandbox''s environment, so the restarted GUI would run against the real data and daemon.'
     Say "  1. scripts/mux-update-survival.ps1 -Sandbox $S -SkipBuild -LeaveRunning"
     Say "     Runs steps 1-8, packs $V3 (the $V2 build, its marker 'ntilde-mux-protocol: 3-3') into the feed, and leaves the"
     Say "     $V2 GUI and the daemon running."
@@ -508,6 +567,11 @@ function Show-NoOverlapSteps {
 
 function Invoke-Cleanup($Before) {
     Section 'Cleanup'
+    if (-not (Test-Path -LiteralPath $Marker -PathType Leaf)) {
+        Say "$S carries no $([IO.Path]::GetFileName($Marker)): not this script's sandbox, so nothing is cleaned up"
+        return
+    }
+
     # Every process started from here on must see the sandbox root: the uninstall hook stops the daemon of whatever
     # root it is given.
     $env:NTILDE_APPDATA_ROOT = $Data
@@ -543,7 +607,7 @@ function Invoke-Cleanup($Before) {
     [void] (Wait-Until { -not (Test-Path -LiteralPath $Install) } 15)
     if (Test-Path -LiteralPath $Install) {
         Say "removing the leftover $Install"
-        Remove-Item -LiteralPath $Install -Recurse -Force -ErrorAction SilentlyContinue
+        try { Remove-SandboxFolder $Install } catch { Say "  could not remove it: $($_.Exception.Message)" }
     }
 
     if ((Test-Path $UninstallKey) -and -not ($Before -and $Before.UninstallKey)) {
@@ -552,26 +616,32 @@ function Invoke-Cleanup($Before) {
     }
 
     # The user PATH: take off the sandbox's entry; then, when what is left differs from the snapshot only in blank
-    # entries (UserPathRegistration drops them when it rewrites the PATH), put the snapshot back as it was.
+    # entries (UserPathRegistration drops them when it rewrites the PATH), put the snapshot back as it was, in its
+    # value kind (REG_EXPAND_SZ or REG_SZ) as well as its text.
     $now = Read-UserPath
     if ($null -ne $now) {
+        $nowKind = Read-UserPathKind
         $mine = ConvertTo-PathEntryKey $CurrentDir
         $kept = @($now -split ';' | Where-Object { -not ($_.Trim() -and (ConvertTo-PathEntryKey $_) -eq $mine) })
         $without = $kept -join ';'
         $target = $without
+        $targetKind = $nowKind
         if ($Before -and $null -ne $Before.UserPath) {
             $normal = { param($v) (@($v -split ';' | Where-Object { $_.Trim() }) -join ';') }
-            if ((& $normal $without) -ceq (& $normal $Before.UserPath)) { $target = $Before.UserPath }
+            if ((& $normal $without) -ceq (& $normal $Before.UserPath)) {
+                $target = $Before.UserPath
+                if ($Before.UserPathKind) { $targetKind = [string] $Before.UserPathKind }
+            }
             elseif ($without -cne $Before.UserPath) { Say 'the user PATH changed during the run in entries other than the sandbox''s: only the sandbox''s entry is removed' }
         }
-        if ($target -cne $now) {
+        if ($target -cne $now -or $targetKind -ne $nowKind) {
             $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
             try {
                 if ($Before -and $null -eq $Before.UserPath -and -not $target.Trim(';').Trim()) { $key.DeleteValue('Path') }   # there was none
-                else { $key.SetValue('Path', $target, $key.GetValueKind('Path')) }
+                else { $key.SetValue('Path', $target, [Microsoft.Win32.RegistryValueKind] $targetKind) }
             }
             finally { $key.Dispose() }
-            Say 'the user PATH was put back'
+            Say "the user PATH was put back ($targetKind)"
         }
     }
 
@@ -583,10 +653,16 @@ function Invoke-Cleanup($Before) {
         if ((Test-Path -LiteralPath $VelopackTemp) -and -not $Before.VelopackTemp) { Remove-Item -LiteralPath $VelopackTemp -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    # Velopack's per-app log: removed only when this run made it; one that was there before is copied and left.
     if (Test-Path -LiteralPath $VelopackAppLog) {
         Copy-Item -LiteralPath $VelopackAppLog -Destination (Join-Path $Evidence "velopack_$PackId.log") -Force
-        Remove-Item -LiteralPath $VelopackAppLog -Force -ErrorAction SilentlyContinue
-        Say "Velopack's log for $PackId is kept as $(Join-Path $Evidence "velopack_$PackId.log") and removed from $env:LOCALAPPDATA\velopack"
+        if ($Before -and -not $Before.VelopackAppLog) {
+            Remove-Item -LiteralPath $VelopackAppLog -Force -ErrorAction SilentlyContinue
+            Say "Velopack's log for $PackId is kept as $(Join-Path $Evidence "velopack_$PackId.log") and removed from $env:LOCALAPPDATA\velopack (this run made it)"
+        }
+        else {
+            Say "Velopack's log for $PackId is copied to $(Join-Path $Evidence "velopack_$PackId.log") and left in place (it was there before this run, or there is no snapshot)"
+        }
     }
     if ($Before) {
         $grew = (Get-FileLength $VelopackSharedLog) - $Before.VelopackSharedLogBytes
@@ -605,19 +681,29 @@ $saved = @{ Root = $env:NTILDE_APPDATA_ROOT; Source = $env:NTILDE_UPDATE_SOURCE_
 # the sandbox is deliberately left running (-LeaveRunning).
 $Run = @{ Before = $null; UserProcesses = @(); LeaveRunning = $false }
 
-function Invoke-Run {
-    Say "mux-update-survival: sandbox $S, builds $V1 and $V2, packId $PackId"
+Say "mux-update-survival: sandbox $S ($(if ($sandboxIsNew) { 'new; marked now' } else { 'marked' })), builds $V1 and $V2, packId $PackId"
 
+# Refusals that must change nothing: before the try/finally below, so no cleanup is armed for them (ruling R4).
+if (-not $CleanupOnly) {
+    $leftover = @()
+    if (Test-Path $UninstallKey) { $leftover += "HKCU Uninstall\$PackId exists" }
+    if (Test-Path -LiteralPath $Install) { $leftover += "$Install exists" }
+    if ((Get-SandboxProcesses).Count) { $leftover += 'processes are running from under the sandbox' }
+    if ($leftover.Count) {
+        Say "REFUSED: an earlier run left an install ($($leftover -join '; ')). Clean it up with -CleanupOnly first; nothing was changed."
+        exit 2
+    }
+}
+
+function Invoke-Run {
     if ($CleanupOnly) {
         if (Test-Path -LiteralPath $SnapshotFile) { $Run.Before = Get-Content -LiteralPath $SnapshotFile -Raw | ConvertFrom-Json }
         return
     }
 
     Section 'Safety audit'
-    if (Test-Path $UninstallKey) { throw "HKCU Uninstall\$PackId already exists: an earlier run left an install. Run with -CleanupOnly first." }
-    if (Test-Path -LiteralPath $Install) { throw "$Install already exists: an earlier run left an install. Run with -CleanupOnly first." }
-    if ((Get-SandboxProcesses).Count) { throw 'Processes are already running from under the sandbox. Run with -CleanupOnly first.' }
     $Run.UserProcesses = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(Ntilde|ntilde-mux)(\.exe)?$' -and -not (Test-UnderSandbox $_.ExecutablePath) })
+    Say "the sandbox carries $([IO.Path]::GetFileName($Marker)); it lies under %TEMP%: $(@($tempRoots | Where-Object { Test-Inside $S $_ }).Count -gt 0)"
     Say "real install $RealInstall exists: $(Test-Path -LiteralPath $RealInstall) (never touched)"
     Say "real data $RealData exists: $(Test-Path -LiteralPath $RealData) (never touched)"
     Say "the user's own ntilde processes (left alone; checked again at the end): $(if ($Run.UserProcesses.Count) { ($Run.UserProcesses | ForEach-Object { "$($_.ProcessId) $($_.ExecutablePath)" }) -join '; ' } else { 'none' })"
@@ -640,7 +726,7 @@ function Invoke-Run {
     $vpk = Get-Vpk
     $range = Get-ProtocolRange
     Say "protocol range from scripts/ci/mux-protocol-range.sh: $range"
-    foreach ($dir in $Feed, $SetupDir) { if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force } }
+    foreach ($dir in $Feed, $SetupDir) { Remove-SandboxFolder $dir }
     New-Item -ItemType Directory -Force -Path $Feed, $SetupDir | Out-Null
     Invoke-Pack $vpk $V1 (Join-Path $Publish $V1) (Write-Notes $V1 $range)
     $setup = Get-ChildItem -LiteralPath $Feed -Filter '*Setup.exe' | Select-Object -First 1
@@ -661,7 +747,7 @@ function Invoke-Run {
     $env:NTILDE_UPDATE_SOURCE_DIR = $Feed
     Say "NTILDE_APPDATA_ROOT=$Data"
     Say "NTILDE_UPDATE_SOURCE_DIR=$Feed"
-    foreach ($dir in $Data, $Shells) { if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force } }   # an earlier run's
+    foreach ($dir in $Data, $Shells) { Remove-SandboxFolder $dir }   # an earlier run's
     Write-Heartbeat
     Write-SandboxProfile (Join-Path $Shells 'tab-shell.exe')
     $r = Invoke-Exe (Join-Path $SetupDir $setup.Name) @('--silent', '--log', (Join-Path $Evidence 'setup.log'), '--installto', $Install) 300
@@ -684,8 +770,10 @@ function Invoke-Run {
     $copyDir = Join-Path $Data "bin\$V1"
     Say "daemon pid $($daemon.Pid): $($daemon.CommandLine)"
     Check 'the daemon runs from its own copy outside the install root' ((Split-Path $daemon.Image) -ieq $copyDir) $daemon.Image
+    $copyExisted = Test-Path -LiteralPath (Join-Path $copyDir 'Ntilde.exe')
+    # The hook is honoured only for an install packed under the verification id (ruling R1): this line proves it is active.
     $source = Wait-Until { Find-LogLine (Join-Path $Data 'logs\debug.log') 'Update source: the local directory' } 30
-    Check 'the GUI logged the local update source at startup' ([bool]$source) "$source"
+    Check "the GUI logged at startup that the update-source hook is active for the $PackId install" ([bool]$source) "$source"
 
     Section '5. Start two heartbeat sessions (ntilde mux spawn-for-test)'
     $hbExe = Join-Path $Shells 'hb-shell.exe'
@@ -719,7 +807,8 @@ function Invoke-Run {
     Say "closing the GUI (pid $($gui1.Id)); its sessions are kept (SessionPersistence=KeepOnClose, mux-close-choice=keep)"
     [void] $gui1.CloseMainWindow()
     if (-not $gui1.WaitForExit(30000)) { Stop-SandboxProcess $gui1.Id 'the GUI did not close within 30 s' }
-    Copy-Item -LiteralPath (Join-Path $Data 'logs\debug.log') -Destination (Join-Path $Evidence "debug-$V1.log") -Force
+    # Moved aside, so every line read from debug.log from now on is the second build's.
+    Move-Item -LiteralPath (Join-Path $Data 'logs\debug.log') -Destination (Join-Path $Evidence "debug-$V1.log") -Force
     Check 'the daemon outlived the GUI''s close' (Test-Alive $daemon.Pid) "pid $($daemon.Pid)"
 
     $vpOffset = Get-FileLength $VelopackAppLog
@@ -743,9 +832,17 @@ function Invoke-Run {
     Say "the apply took $([int]($t1 - $t0).TotalMilliseconds) ms, from the restart to the second build's GUI (pid $(if ($newGui) { $newGui.ProcessId } else { 'none' })); $samples samples, the daemon $(if ($daemonSeenDown) { 'WAS' } else { 'was never' }) seen down"
     Say "the first build's relaunch (pid $($gui2.Id)) $(if ($gui2.HasExited) { "exited with $($gui2.ExitCode)" } else { 'is still running' })"
     Section "Velopack's log during the apply"
-    foreach ($line in ((Read-Since $VelopackAppLog $vpOffset) -split "`r?`n" | Where-Object { $_ })) { Say "  $line" }
+    $applyLog = @((Read-Since $VelopackAppLog $vpOffset) -split "`r?`n" | Where-Object { $_ })
+    foreach ($line in $applyLog) { Say "  $line" }
 
     Section '8. Verify'
+    # The apply came from the relaunch's startup auto-apply, not from anything else: that very process decided to apply,
+    # and Update.exe waited for it.
+    $relaunchId = $gui2.Id
+    $autoApply = $applyLog | Where-Object { $_ -match "\[lib-csharp:$relaunchId\].*Auto apply is true" } | Select-Object -First 1
+    $waitedFor = $applyLog | Where-Object { $_ -match "Update\.exe apply .*--waitPid $relaunchId(\s|$)" -or $_ -match "Wait: WaitPid\($relaunchId\)" } | Select-Object -First 1
+    Check "the first build's relaunch (pid $relaunchId) decided the startup auto-apply" ([bool]$autoApply) "$autoApply"
+    Check "Update.exe's apply waited for that pid (--waitPid $relaunchId)" ([bool]$waitedFor) "$waitedFor"
     Check "current\sq.version is $V2" ((Get-SqVersion) -eq $V2) "$(Get-SqVersion)"
     Check "the second build's GUI runs" ([bool]$newGui) "$(if ($newGui) { "pid $($newGui.ProcessId), image version $(Get-ImageVersion $newGui.ProcessId)" })"
     $after = Get-ProcInfo $daemon.Pid
@@ -764,12 +861,15 @@ function Invoke-Run {
     $idsAfter = @($sessionsAfter | ForEach-Object { "$($_.sessionId)" } | Sort-Object)
     $missing = @($idsBefore | Where-Object { $idsAfter -notcontains $_ })
     $extra = @($idsAfter | Where-Object { $idsBefore -notcontains $_ })
-    Check 'after the restart, ntilde mux ls lists the same session ids' (-not $missing.Count) "before: $($idsBefore -join ', '); after: $($idsAfter -join ', ')$(if ($extra.Count) { "; new since: $($extra -join ', ')" })"
+    # Self-contained: an empty list before, or one without both heartbeats, fails rather than passing vacuously.
+    $sameIds = $idsBefore.Count -ge 2 -and @($heartbeatIds | Where-Object { $idsBefore -contains $_ }).Count -eq 2 -and -not $missing.Count
+    Check 'after the restart, ntilde mux ls lists the same session ids' $sameIds "before: $($idsBefore -join ', '); after: $($idsAfter -join ', ')$(if ($extra.Count) { "; new since: $($extra -join ', ')" })"
     $r = Invoke-Exe $CurrentExe @('mux', 'ls') 60
     foreach ($line in ($r.Out.TrimEnd() -split "`r?`n")) { Say "  $line" }
+    # debug.log is the second build's only (the first's was moved aside), and the line must name this build as $V2.
     $notice = Wait-Until { Find-LogLine (Join-Path $Data 'logs\debug.log') 'is from another build' } 60
     Say "Task 23 notice ('Multiplexer is from the previous build'): $(if ($notice) { $notice } else { 'NOT raised within 60 s' })"
-    Check 'the second build''s GUI offered to restart the previous build''s multiplexer' ([bool]$notice)
+    Check 'the second build''s GUI offered to restart the previous build''s multiplexer' ([bool]$notice -and $notice -match ([regex]::Escape("this is $V2") + '\)')) "$notice"
     Copy-Item -LiteralPath (Join-Path $Data 'logs\debug.log') -Destination (Join-Path $Evidence "debug-$V2.log") -Force
 
     if ($LeaveRunning) {
@@ -805,9 +905,10 @@ function Invoke-Run {
     Check 'the uninstall stopped the daemon, which runs outside the install root' ([bool]$stopped) "pid $($daemon.Pid)"
     $hookLine = $uninstallLog | Where-Object { $_ -match '\[Mux\] uninstall: ' } | Select-Object -Last 1
     Check 'our uninstall hook is what stopped it' ([bool]($hookLine -match '\[Mux\] uninstall: (stopped|terminated) the multiplexer daemon')) "$hookLine"
-    Check 'the heartbeat shells ended with it' (-not @($hbProcs | Where-Object { Test-Alive $_.ProcessId }).Count)
+    # Self-contained: both heartbeat shells were seen, and the copy existed, so an empty "before" cannot pass these.
+    Check 'the heartbeat shells ended with it' ($hbProcs.Count -eq 2 -and -not @($hbProcs | Where-Object { Test-Alive $_.ProcessId }).Count) "$(($hbProcs | ForEach-Object { $_.ProcessId }) -join ', ')"
     $copiesLeft = @(Get-ChildItem -LiteralPath (Join-Path $Data 'bin') -Directory -Force -ErrorAction SilentlyContinue)
-    Check 'the daemon''s copies are gone' (-not $copiesLeft.Count) "$(if ($copiesLeft.Count) { ($copiesLeft | ForEach-Object { $_.Name }) -join ', ' } else { "$Data\bin is empty or gone" })"
+    Check 'the daemon''s copies are gone' ($copyExisted -and -not (Test-Path -LiteralPath $copyDir) -and -not $copiesLeft.Count) "$(if ($copiesLeft.Count) { ($copiesLeft | ForEach-Object { $_.Name }) -join ', ' } else { "$copyDir existed during the run; $Data\bin is now empty or gone" })"
     $gone = Wait-Until { -not (Test-Path -LiteralPath $Install) } 20
     Check 'the install folder is gone' ([bool]$gone) $Install
     Check 'the Uninstall key is gone' (-not (Test-Path $UninstallKey))
@@ -834,7 +935,7 @@ finally {
         Section 'Side effects after the cleanup'
         $afterFx = Get-SideEffects
         Format-SideEffects $afterFx
-        Check 'the user PATH is exactly as before' ($afterFx.UserPath -ceq $Run.Before.UserPath)
+        Check 'the user PATH is exactly as before, text and value kind' (($afterFx.UserPath -ceq $Run.Before.UserPath) -and ("$($afterFx.UserPathKind)" -eq "$($Run.Before.UserPathKind)")) "$($afterFx.UserPathKind)"
         Check 'no HKCU Uninstall key is left' ($afterFx.UninstallKey -eq $Run.Before.UninstallKey)
         Check 'no shortcut is left' ((@($afterFx.Shortcuts) -join '|') -eq (@($Run.Before.Shortcuts) -join '|'))
         Check "Velopack's per-app log and temp folder are gone" (($afterFx.VelopackAppLog -eq $Run.Before.VelopackAppLog) -and ($afterFx.VelopackTemp -eq $Run.Before.VelopackTemp))
