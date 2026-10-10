@@ -82,8 +82,24 @@ namespace Ntilde
         /// through this window's own dispatcher - never the <c>Dispatcher.UIThread</c> static, whose read off the UI thread
         /// is what poisoned headless test runs (#81): a test window's host can connect after its test returned.
         /// </summary>
-        private void OnMuxHostConnected(MuxEndpointId id, MuxConnectionHost host, MuxClient client) =>
+        private void OnMuxHostConnected(MuxEndpointId id, MuxConnectionHost host, MuxClient client)
+        {
+            // Release hardening (optional): once per launch, when this launch had to start the local daemon from the install
+            // folder (MuxDaemonImage.Resolve could not stage its copy), so every update stops it - said here, not only logged.
+            // Taken in the post, after the teardown check: a window closing meanwhile leaves the notice for one that can show it.
+            if (id.IsLocal)
+            {
+                Dispatcher.Post(() =>
+                {
+                    if (!_teardownDone && MuxDaemonImage.TakeInstallFolderNotice()) EnqueueNotice(SessionPersistenceNoticeTitle, MuxDaemonImage.InstallFolderNotice);
+                });
+            }
+
             Dispatcher.Post(() => _ = OfferMuxRestartAsync(id, host, client));
+        }
+
+        /// <summary>The title of the install-folder notice: the setting it is about.</summary>
+        private const string SessionPersistenceNoticeTitle = "Keep shells running";
 
         /// <summary>
         /// UI thread, with persistence on (nothing new appears with "Off"); once per launch for each endpoint, offered first,

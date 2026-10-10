@@ -45,6 +45,11 @@ namespace Ntilde.Shell.Mux.Remote;
 /// The attempt's askpass session token (<see cref="RemoteMuxInteractionHandler.Attempt.AskPassSession"/>) for OpenSSH's
 /// helper, which records under it what it did; null for a new one per ssh (the install flow).
 /// </param>
+/// <param name="Listing">
+/// A listing's attempt (<see cref="RemoteMuxConnector.ForListing"/>, release hardening item 3): OpenSSH runs with
+/// <c>ForwardAgent=no</c>, whatever the user's ssh config says, so the daemon's shells never follow an agent that ends
+/// with the listing. The native transport never requests agent forwarding at all.
+/// </param>
 internal sealed record RemoteMuxTransportRequest(
     bool Interactive,
     ISshInteractionHandler Prompts,
@@ -52,7 +57,8 @@ internal sealed record RemoteMuxTransportRequest(
     bool Retargeted = false,
     Func<bool>? OfferSavedPassword = null,
     bool WithoutSavedPassword = false,
-    string? AskPassSession = null);
+    string? AskPassSession = null,
+    bool Listing = false);
 
 /// <summary>
 /// Connects to the <c>ntilde-mux</c> daemon on one SSH host (Phase 4 spec §7.1): runs
@@ -135,6 +141,14 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// <summary>Sent in every hello: the same for every attempt of this connector.</summary>
     public string ClientInstanceId { get; }
 
+    /// <summary>
+    /// A listing's connector (<see cref="RemoteMuxLister"/>, release hardening item 7): its proxy runs
+    /// <see cref="RemoteMuxCommand.ProxyWithoutSpawn"/>, so a host with no daemon running says so
+    /// (<see cref="RemoteFailureKind.NotRunning"/>) instead of having one started; and it forwards no agent
+    /// (<see cref="RemoteMuxTransportRequest.Listing"/>, item 3), which the proxy would otherwise point the daemon's shells at.
+    /// </summary>
+    internal bool ForListing { get; init; }
+
     /// <summary>How long an attempt waits for the proxy's greeting, from the moment its channel starts.</summary>
     public TimeSpan PreambleTimeout { get; init; } = MuxHostPolicy.RemoteConnectTimeout;
 
@@ -198,7 +212,7 @@ internal sealed class RemoteMuxConnector : IDisposable
         (SshProfile profile, bool pinned, bool retargeted) = ProfileForAttempt();
         string host = DisplayNameOf(profile);
         SshMuxOptions muxOptions = profile.MuxOptions ?? new SshMuxOptions();
-        string command = RemoteMuxCommand.Proxy(muxOptions);
+        string command = ForListing ? RemoteMuxCommand.ProxyWithoutSpawn(muxOptions) : RemoteMuxCommand.Proxy(muxOptions);
         if (RemoteMuxCommand.RefusedRecordedPath(muxOptions.RemoteDaemonPath))
         {
             _log?.Invoke("[RemoteMux] recorded ntilde-mux path refused (unsafe characters); using the default install path");
@@ -230,7 +244,8 @@ internal sealed class RemoteMuxConnector : IDisposable
                         retargeted,
                         prompts.MaySignInWithSavedPassword ? prompts.OfferSavedPassword : null,
                         WithoutSavedPassword: prompts.AvoidsSavedPassword,
-                        AskPassSession: prompts.AskPassSession);
+                        AskPassSession: prompts.AskPassSession,
+                        Listing: ForListing);
                     return _transportFor(profile, request).Start(command, ct);
                 },
                 ct).ConfigureAwait(false);

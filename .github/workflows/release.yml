@@ -632,8 +632,9 @@ jobs:
           path: src/Ntilde.App/native
 
       # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
-      # below so remote installs verify their download against them (Phase 5 Task 10). Counted: a download
-      # that silently found nothing would build an App with no pins.
+      # below so remote installs verify their download against them (Phase 5 Task 10). Checked, not just
+      # counted: a release build refuses a remote install for any RID it has no usable pin for (release
+      # hardening item 4), so a missing or malformed file must fail here rather than ship.
       - name: Download the ntilde-mux checksums
         uses: actions/download-artifact@v4
         with:
@@ -648,9 +649,7 @@ jobs:
         run: |
           set -euo pipefail
           ls -la "$MUX_SHA256_DIR"
-          for rid in linux-x64 linux-arm64 osx-arm64; do
-            test -s "$MUX_SHA256_DIR/ntilde-mux-$rid.sha256" || { echo "::error::no ntilde-mux-$rid.sha256 to embed" >&2; exit 1; }
-          done
+          bash scripts/ci/check-mux-sha256.sh "$MUX_SHA256_DIR"
 
       - name: Restore
         run: dotnet restore
@@ -1621,8 +1620,9 @@ jobs:
           path: src/Ntilde.App/native
 
       # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
-      # below so remote installs verify their download against them (Phase 5 Task 10). Counted: a download
-      # that silently found nothing would build an App with no pins.
+      # below so remote installs verify their download against them (Phase 5 Task 10). Checked, not just
+      # counted: a release build refuses a remote install for any RID it has no usable pin for (release
+      # hardening item 4), so a missing or malformed file must fail here rather than ship.
       - name: Download the ntilde-mux checksums
         uses: actions/download-artifact@v4
         with:
@@ -1637,9 +1637,7 @@ jobs:
         run: |
           set -euo pipefail
           ls -la "$MUX_SHA256_DIR"
-          for rid in linux-x64 linux-arm64 osx-arm64; do
-            test -s "$MUX_SHA256_DIR/ntilde-mux-$rid.sha256" || { echo "::error::no ntilde-mux-$rid.sha256 to embed" >&2; exit 1; }
-          done
+          bash scripts/ci/check-mux-sha256.sh "$MUX_SHA256_DIR"
 
       - name: Restore
         run: dotnet restore

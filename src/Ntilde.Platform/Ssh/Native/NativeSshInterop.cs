@@ -240,7 +240,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
             if (rc != ResultOk)
             {
-                throw new InvalidOperationException(BuildSftpTransferFailureMessage(rc, responseJson));
+                throw Failure(BuildSftpTransferFailureMessage(rc, responseJson), responseJson);
             }
         }
         finally
@@ -319,7 +319,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
             if (rc != ResultOk)
             {
-                throw new InvalidOperationException(BuildRemotePathListFailureMessage(rc, responseJson));
+                throw Failure(BuildRemotePathListFailureMessage(rc, responseJson), responseJson);
             }
 
             if (string.IsNullOrWhiteSpace(responseJson))
@@ -841,6 +841,38 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         return $"{message} {responseJson}";
     }
+
+    /// <summary>The native layer's status for a sign-in the server refused (rusty_ssh's <c>AuthenticationFailed</c> kind).</summary>
+    private const string AuthFailedStatus = "auth-failed";
+
+    /// <summary>
+    /// A failed transfer's or listing's exception: <see cref="NativeSshAuthenticationRefusedException"/> when the response's
+    /// status says the server refused the sign-in (release hardening item 5), else a plain <see cref="InvalidOperationException"/>.
+    /// Decided by the status alone, never by the message, which is for people.
+    /// </summary>
+    private static InvalidOperationException Failure(string message, string? responseJson) =>
+        StatusOf(responseJson) == AuthFailedStatus ? new NativeSshAuthenticationRefusedException(message) : new InvalidOperationException(message);
+
+    /// <summary>The <c>status</c> of a transfer's or listing's response (both carry one), or null when there is none to read.</summary>
+    private static string? StatusOf(string? responseJson)
+    {
+        if (string.IsNullOrWhiteSpace(responseJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(responseJson, NativeSshJsonContext.Default.NativeSftpTransferResponse)?.Status;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    internal static InvalidOperationException FailureForTests(int resultCode, string? responseJson, string what) =>
+        Failure($"{what} with result {resultCode}.", responseJson);
 
     private static string BuildRemotePathListFailureMessage(int resultCode, string? responseJson)
     {

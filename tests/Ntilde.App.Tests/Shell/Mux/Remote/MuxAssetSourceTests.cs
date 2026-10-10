@@ -253,21 +253,53 @@ public sealed class MuxAssetSourceTests : IDisposable
         Assert.Equal(binary, File.ReadAllBytes(Path.Combine(dir, "ntilde-mux")));
     }
 
+    // Release hardening item 4: a release build (it carries pins) never falls back to the release's own .sha256.
     [Fact]
-    public async Task A_pin_for_another_rid_changes_nothing()
+    public async Task A_release_build_without_a_pin_for_the_rid_refuses_the_download()
     {
         byte[] binary = Binary();
         ServeRelease(binary);
         var source = new GitHubReleaseMuxAssetSource(
             new HttpClient(_http), Version, CacheDirectory, new Dictionary<string, string> { ["osx-arm64"] = Hex(Binary(10)) });
 
-        MuxDaemonAsset asset = await source.GetAsync(Rid, null, Ct);
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => source.GetAsync(Rid, null, Ct));
 
-        Assert.Equal(binary, asset.Bytes);
+        Assert.Equal(GitHubReleaseMuxAssetSource.NoPinMessage(Rid), ex.Message);
+        Assert.Empty(_http.Requests);
+        Assert.False(File.Exists(Path.Combine(CacheDirectory, Version, Rid, "ntilde-mux")));
     }
 
     [Fact]
-    public async Task No_pins_keep_todays_behaviour()
+    public async Task A_release_build_without_a_pin_for_the_rid_refuses_a_self_consistent_cache_too()
+    {
+        byte[] binary = Binary();
+        string dir = Path.Combine(CacheDirectory, Version, Rid);
+        Directory.CreateDirectory(dir);
+        File.WriteAllBytes(Path.Combine(dir, "ntilde-mux"), binary);
+        File.WriteAllText(Path.Combine(dir, "ntilde-mux.sha256"), $"{Hex(binary)}  ntilde-mux-{Rid}\n");
+        var source = new GitHubReleaseMuxAssetSource(
+            new HttpClient(_http), Version, CacheDirectory, new Dictionary<string, string> { ["osx-arm64"] = Hex(Binary(10)) });
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => source.GetAsync(Rid, null, Ct));
+    }
+
+    [Fact]
+    public async Task An_unusable_embedded_pin_refuses_the_download()
+    {
+        // MuxAssetPins.Parse keeps a well-named resource it could not read as Unusable rather than dropping it.
+        byte[] binary = Binary();
+        ServeRelease(binary);
+        var source = new GitHubReleaseMuxAssetSource(
+            new HttpClient(_http), Version, CacheDirectory, new Dictionary<string, string> { [Rid] = MuxAssetPins.Unusable });
+
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => source.GetAsync(Rid, null, Ct));
+
+        Assert.Equal(GitHubReleaseMuxAssetSource.NoPinMessage(Rid), ex.Message);
+        Assert.Empty(_http.Requests);
+    }
+
+    [Fact]
+    public async Task No_pins_at_all_is_a_dev_build_and_keeps_the_sha256_fallback()
     {
         byte[] binary = Binary();
         ServeRelease(binary);

@@ -268,6 +268,7 @@ internal static class RemoteMuxHostFactory
         ThrowIfNativeSshDisabled(profile, nativeSshEnabled);
         if (profile.BackendKind == SshBackendKind.Native)
         {
+            // A listing (request.Listing) needs nothing here: the native transport never requests agent forwarding.
             return new NativeSshExecTransport(profile, nativeInterop(), request.Prompts, NativeSshConnectionOptionsFactory.Create, log, ChannelExitGrace);
         }
 
@@ -306,7 +307,8 @@ internal static class RemoteMuxHostFactory
             savedPasswordOnly: savedPasswordOnly,
             withoutSavedPassword: request.Interactive && (request.WithoutSavedPassword || noVaultForJumpHost),
             askPassSession: request.AskPassSession,
-            exitGrace: ChannelExitGrace);
+            exitGrace: ChannelExitGrace,
+            noAgentForwarding: request.Listing);
     }
 
     /// <summary>

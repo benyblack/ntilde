@@ -2590,7 +2590,10 @@ where
             return Ok(());
         }
 
-        anyhow::bail!("Authentication failed.");
+        return Err(anyhow::Error::new(NativeSftpTransferError::new(
+            NativeSftpTransferErrorKind::AuthenticationFailed,
+            "Authentication failed.",
+        )));
     }
 
     if auth.use_agent {
@@ -3151,6 +3154,12 @@ fn classify_sftp_transfer_error(error: &anyhow::Error) -> (c_int, &'static str, 
                 "error",
                 native_error.message.clone(),
             ),
+            // The same result code as any other failure, so a reader that knows no `auth-failed` is unchanged.
+            NativeSftpTransferErrorKind::AuthenticationFailed => (
+                NOVA_SSH_RESULT_CLOSED,
+                "auth-failed",
+                native_error.message.clone(),
+            ),
         };
     }
 
@@ -3202,6 +3211,9 @@ enum NativeSftpTransferErrorKind {
     RemotePathNotFound,
     LocalPathNotFound,
     PermissionDenied,
+    /// The server refused the password a transfer or listing offered. Its own status, `auth-failed` (release hardening
+    /// item 5): the app forgets a remembered password the server no longer takes.
+    AuthenticationFailed,
 }
 
 #[derive(Debug)]
@@ -5398,6 +5410,22 @@ mod tests {
         .expect("request should deserialize");
 
         assert!(sftp_request_has_blank_fields(&request));
+    }
+
+    // Release hardening item 5: a refused password is told apart by its status, so the app can forget a stale one.
+    #[test]
+    fn classify_sftp_transfer_error_marks_a_refused_password_auth_failed() {
+        let error = NativeSftpTransferError::new(
+            NativeSftpTransferErrorKind::AuthenticationFailed,
+            "Authentication failed.",
+        );
+        let anyhow_error = anyhow::Error::new(error).context("connecting for a transfer");
+
+        let (result, status, message) = classify_sftp_transfer_error(&anyhow_error);
+
+        assert_eq!(NOVA_SSH_RESULT_CLOSED, result);
+        assert_eq!("auth-failed", status);
+        assert_eq!("Authentication failed.", message);
     }
 
     #[test]

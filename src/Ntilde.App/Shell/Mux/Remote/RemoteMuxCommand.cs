@@ -22,6 +22,12 @@ internal static class RemoteMuxCommand
     /// <summary>Runs the stdio proxy the mux client speaks through (spec §8.1).</summary>
     public static string Proxy(SshMuxOptions options) => For(options, "proxy --stdio");
 
+    /// <summary>
+    /// The stdio proxy for a listing (release hardening item 7): it connects only to a daemon already running - none exits
+    /// <see cref="Ntilde.Mux.Cli.MuxProxyExitCodes.NotRunning"/> - and leaves the daemon's agent link alone (item 3).
+    /// </summary>
+    public static string ProxyWithoutSpawn(SshMuxOptions options) => For(options, "proxy --stdio --no-spawn");
+
     /// <summary>Asks the installed binary for its version (the install flow, spec §9).</summary>
     public static string VersionJson(SshMuxOptions options) => For(options, "--version --json");
 

@@ -33,6 +33,22 @@ public sealed class NativeSshRemotePathInteropTests
         Assert.Contains("\"knownHostsFilePath\":\"C:\\\\known-hosts.json\"", json, StringComparison.Ordinal);
     }
 
+    // Release hardening item 5: the native layer marks a sign-in refusal of a transfer or listing with its own status, so a
+    // caller that offered a remembered password can forget it. Any other failure, or no status, stays a plain failure.
+    [Theory]
+    [InlineData(-3, "{\"status\":\"auth-failed\",\"message\":\"Authentication failed.\"}", true)]
+    [InlineData(-3, "{\"entries\":[],\"status\":\"auth-failed\",\"message\":\"Authentication failed.\"}", true)]
+    [InlineData(-3, "{\"status\":\"error\",\"message\":\"Authentication failed.\"}", false)]
+    [InlineData(-3, "{\"status\":\"error\",\"message\":\"Connection reset\"}", false)]
+    [InlineData(-3, "not json", false)]
+    [InlineData(-3, null, false)]
+    public void A_native_failure_is_a_sign_in_refusal_only_by_its_status(int rc, string? responseJson, bool refused)
+    {
+        InvalidOperationException failure = NativeSshInterop.FailureForTests(rc, responseJson, "Native SFTP transfer failed");
+
+        Assert.Equal(refused, failure is NativeSshAuthenticationRefusedException);
+    }
+
     [Fact]
     public void DeserializeRemotePathListResponse_UsesGeneratedMetadata()
     {

@@ -617,6 +617,29 @@ public sealed class RemoteMuxHostFactoryTests : IDisposable
         Assert.Equal(attempt.AskPassSession, Assert.IsType<OpenSshExecTransport>(transport).AskPassSession);
     }
 
+    // Release hardening item 3: a listing's ssh never forwards an agent, whatever the user's ssh config says.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void An_OpenSSH_listing_forwards_no_agent_and_a_connect_keeps_the_users_choice(bool listing)
+    {
+        SshProfile profile = RemoteMuxConnectorTests.Profile();
+        profile.BackendKind = SshBackendKind.OpenSsh;
+        RemoteMuxInteractionHandler.Attempt attempt = new RemoteMuxInteractionHandler(user: null, _ => false).BeginAttempt(false);
+
+        ISshExecTransport transport = RemoteMuxHostFactory.CreateTransport(
+            profile,
+            new RemoteMuxTransportRequest(false, attempt, Listing: listing),
+            (_, _) => Launch,
+            () => throw new InvalidOperationException("an OpenSSH profile never needs the native layer"),
+            static () => true,
+            askPassHelperPath: "/opt/ntilde/ntilde",
+            log: null,
+            openSshVersions: RemoteMuxConnectorTests.ModernSsh);
+
+        Assert.Equal(listing, Assert.IsType<OpenSshExecTransport>(transport).NoAgentForwarding);
+    }
+
     [Fact]
     public void An_OpenSSH_profile_runs_ssh_in_batch_mode_only_for_automatic_attempts()
     {

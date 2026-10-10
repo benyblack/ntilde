@@ -379,6 +379,93 @@ public sealed class MuxProxyTests : IDisposable
         Assert.Contains("ntilde-mux proxy --stdio", stderr.ToString(), StringComparison.Ordinal);
     }
 
+    // ---- release hardening item 7: a listing's proxy (--no-spawn) has no side effects
+
+    [Theory]
+    [InlineData("--stdio", false)]
+    [InlineData("--stdio --no-spawn", true)]
+    [InlineData("--no-spawn --stdio", true)]
+    public void Proxy_parses_stdio_and_an_optional_no_spawn(string optionLine, bool noSpawn)
+    {
+        Assert.True(MuxCli.TryParseProxy(["proxy", .. optionLine.Split(' ')], out bool parsed));
+        Assert.Equal(noSpawn, parsed);
+    }
+
+    [Theory]
+    [InlineData("--no-spawn")]
+    [InlineData("--stdio --no-spawn --no-spawn")]
+    [InlineData("--stdio --stdio")]
+    public void Proxy_refuses_no_spawn_without_exactly_one_stdio(string optionLine)
+    {
+        Assert.False(MuxCli.TryParseProxy(["proxy", .. optionLine.Split(' ')], out _));
+    }
+
+    [Fact]
+    public void A_no_spawn_proxy_with_no_daemon_exits_not_running_and_starts_nothing()
+    {
+        var spawner = new InProcessSpawner(this);
+        var stdout = new MemoryStream();
+        var stderr = new StringWriter();
+
+        int code = MuxProxyCommand.Run(new MemoryStream(), stdout, stderr, MuxCli.ProxyConnector(MuxDiscovery.GetDescriptorPath(_root), spawner, noSpawn: true));
+
+        Assert.Equal(MuxProxyExitCodes.NotRunning, code);
+        Assert.Equal(0, Volatile.Read(ref spawner.Spawns));
+        Assert.False(File.Exists(MuxDiscovery.GetDescriptorPath(_root)), "no daemon was started");
+        Assert.Empty(stdout.ToArray());   // not even the preamble
+        Assert.Equal($"mux: No multiplexer is running.{Environment.NewLine}", stderr.ToString());
+    }
+
+    [Fact]
+    public async Task A_no_spawn_proxy_reaches_a_running_daemon()
+    {
+        StartDaemon();
+        ProxyRun proxy = Own(new ProxyRun(MuxCli.ProxyConnector(MuxDiscovery.GetDescriptorPath(_root), new NoSpawner(), noSpawn: true)));
+
+        StdioMuxConnection connection = await proxy.ConnectAsync();
+        MuxClient client = Own(await MuxClient.ConnectAsync(connection.Stream, null, Ct));
+
+        Assert.Empty(await client.ListSessionsAsync(Ct));
+    }
+
+    [Fact]
+    public void Without_no_spawn_the_proxy_connector_still_spawns_on_demand()
+    {
+        var spawner = new InProcessSpawner(this);
+        var stdout = new MemoryStream();
+
+        int code = MuxProxyCommand.Run(new MemoryStream(), stdout, new StringWriter(), MuxCli.ProxyConnector(MuxDiscovery.GetDescriptorPath(_root), spawner, noSpawn: false), isDaemonAlive: _ => false);
+
+        Assert.Equal(1, Volatile.Read(ref spawner.Spawns));
+        Assert.NotEqual(MuxProxyExitCodes.NotRunning, code);
+    }
+
+    /// <summary>
+    /// Release hardening item 3: a listing connects for a moment and goes; the shells' agent link must keep pointing at the
+    /// agent of the connection that stays, or every shell holds a dead SSH_AUTH_SOCK once the listing ends.
+    /// </summary>
+    [Fact]
+    public void A_listing_proxy_leaves_an_existing_agent_link_untouched()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Unix sockets and symlinks only.");
+        string dir = Path.Combine(_root, "mux");
+        Directory.CreateDirectory(dir);
+        string agentA = Path.Combine(dir, "a.sock");
+        string agentB = Path.Combine(dir, "b.sock");
+        using var a = ListenOn(agentA);
+        using var b = ListenOn(agentB);
+        string link = AgentSocketLink.PathFor(dir);
+        var descriptor = new MuxEndpointDescriptor { Endpoint = Path.Combine(dir, "mux.sock"), ProcessName = "x", Pid = 1 };
+        Task<(Stream, MuxEndpointDescriptor)> Connect(CancellationToken _) => Task.FromResult<(Stream, MuxEndpointDescriptor)>((new MemoryStream(), descriptor));
+
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false, getEnvironmentVariable: n => n == "SSH_AUTH_SOCK" ? agentA : null);
+        Assert.Equal(agentA, new FileInfo(link).LinkTarget);
+
+        MuxProxyCommand.Run(new MemoryStream(), new MemoryStream(), new StringWriter(), Connect, _ => false,
+            getEnvironmentVariable: n => n == "SSH_AUTH_SOCK" ? agentB : null, repointAgentLink: false);
+        Assert.Equal(agentA, new FileInfo(link).LinkTarget);
+    }
+
     /// <summary>The daemon must already be running: a spawn here means the launcher missed it.</summary>
     private sealed class NoSpawner : IMuxDaemonSpawner
     {

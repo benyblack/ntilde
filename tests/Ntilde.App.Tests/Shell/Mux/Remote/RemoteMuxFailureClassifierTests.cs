@@ -206,6 +206,23 @@ public sealed class RemoteMuxFailureClassifierTests
         Assert.Equal(user.Reason, automatic.Reason);
     }
 
+    // Release hardening item 7: a listing's --no-spawn proxy, and an older ntilde-mux refusing it.
+    [Fact]
+    public void A_no_spawn_proxy_with_no_daemon_is_not_running()
+    {
+        RemoteMuxFailure failure = RemoteMuxFailureClassifier.Classify(5, string.Empty, "mux: No multiplexer is running.\n", Handshake("ended"), "nova@x", automatic: true);
+
+        Assert.Equal(RemoteFailureKind.NotRunning, failure.Kind);
+    }
+
+    [Theory]
+    [InlineData("Usage:\n  ntilde-mux proxy --stdio\n", true)]
+    [InlineData("sh: 1: Syntax error: Unterminated quoted string\n", false)]   // sh's exit 2 is not ntilde-mux's
+    public void Exit_2_is_an_older_proxy_only_with_its_usage(string stderr, bool tooOld)
+    {
+        Assert.Equal(tooOld ? RemoteFailureKind.ProxyTooOld : RemoteFailureKind.ProxyFailed, RemoteMuxFailureClassifier.Classify(2, string.Empty, stderr, Handshake("ended"), "nova@x", automatic: true).Kind);
+    }
+
     [Fact]
     public void Version_mismatch_names_the_daemons_protocols_and_the_apps()
     {

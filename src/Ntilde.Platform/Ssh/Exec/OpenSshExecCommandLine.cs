@@ -26,6 +26,10 @@ public static class OpenSshExecCommandLine
     /// parsed the way ssh parses it, so a clustered <c>-tv</c> counts as much as <c>-t</c> (codex C3).</item>
     /// <item><c>ClearAllForwardings=yes</c>: the profile's forwards do not ride the mux channel
     /// (they belong to its interactive sessions), matching the native transport.</item>
+    /// <item>With <paramref name="noAgentForwarding"/> (a listing, release hardening item 3), <c>ForwardAgent=no</c> next:
+    /// <c>ClearAllForwardings</c> does not clear it, and a listing's short-lived agent must never become the one the daemon's
+    /// shells use. A <c>-A</c> in the plan is dropped too, since ssh's <c>-A</c> turns forwarding on whatever an earlier
+    /// <c>-o</c> said.</item>
     /// <item><c>BatchMode=no</c>: prompts stay possible; they reach the user through askpass. With
     /// <paramref name="batchMode"/> it is <c>BatchMode=yes</c> in the same place instead, so ssh never
     /// prompts at all: for an attempt nobody is waiting on (an automatic reconnect). Replaced, not
@@ -51,6 +55,7 @@ public static class OpenSshExecCommandLine
     /// <param name="log">Told about each piece dropped from the plan, and why.</param>
     /// <param name="batchMode">True for <c>BatchMode=yes</c>: ssh fails instead of prompting.</param>
     /// <param name="savedPasswordOnly">True for <c>BatchMode=no</c> with <c>NumberOfPasswordPrompts=1</c>; not with <paramref name="batchMode"/>.</param>
+    /// <param name="noAgentForwarding">True for <c>ForwardAgent=no</c>, and no <c>-A</c> from the plan: a listing's ssh.</param>
     /// <exception cref="ArgumentException">Both <paramref name="batchMode"/> and <paramref name="savedPasswordOnly"/>.</exception>
     public static IReadOnlyList<string> Build(
         IReadOnlyList<string> diagnosticsArguments,
@@ -58,7 +63,8 @@ public static class OpenSshExecCommandLine
         string remoteCommand,
         Action<string>? log = null,
         bool batchMode = false,
-        bool savedPasswordOnly = false)
+        bool savedPasswordOnly = false,
+        bool noAgentForwarding = false)
     {
         ArgumentNullException.ThrowIfNull(diagnosticsArguments);
         ArgumentNullException.ThrowIfNull(planArguments);
@@ -70,10 +76,12 @@ public static class OpenSshExecCommandLine
 
         var argv = new List<string>(diagnosticsArguments.Count + planArguments.Count + 11);
         argv.AddRange(diagnosticsArguments);
-        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes", "-o", batchMode ? "BatchMode=yes" : "BatchMode=no"]);
+        argv.AddRange(["-T", "-o", "ClearAllForwardings=yes"]);
+        if (noAgentForwarding) argv.AddRange(["-o", "ForwardAgent=no"]);
+        argv.AddRange(["-o", batchMode ? "BatchMode=yes" : "BatchMode=no"]);
         if (savedPasswordOnly) argv.AddRange(["-o", "NumberOfPasswordPrompts=1"]);
         argv.AddRange(["-o", "ControlMaster=no"]);
-        argv.AddRange(WithoutChannelBreakers(planArguments, log));
+        argv.AddRange(WithoutChannelBreakers(planArguments, log, noAgentForwarding));
         argv.Add("--");
         argv.Add(remoteCommand);
         return argv;
@@ -105,7 +113,8 @@ public static class OpenSshExecCommandLine
     /// which is logged: ssh reads it all as the remote command. Each dropped piece is logged by its letter (an
     /// <c>-o</c> by its keyword), never with its value.
     /// </summary>
-    internal static List<string> WithoutChannelBreakers(IReadOnlyList<string> plan, Action<string>? log)
+    /// <param name="noAgentForwarding">Also drops <c>A</c> (agent forwarding) from a cluster: a listing's ssh (<see cref="Build"/>).</param>
+    internal static List<string> WithoutChannelBreakers(IReadOnlyList<string> plan, Action<string>? log, bool noAgentForwarding = false)
     {
         var kept = new List<string>(plan.Count);
         bool afterDestination = false;
@@ -138,6 +147,7 @@ public static class OpenSshExecCommandLine
                 if (!TakesArgument(letter))
                 {
                     if (DroppedFlag(letter) is { } why) Dropped(log, $"-{letter}", why);
+                    else if (noAgentForwarding && letter == 'A') Dropped(log, "-A", "a listing forwards no agent");
                     else cluster.Append(letter);
                     continue;
                 }

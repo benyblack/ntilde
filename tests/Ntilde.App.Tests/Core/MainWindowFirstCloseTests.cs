@@ -711,6 +711,84 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         Assert.Empty(_asked);
     }
 
+    // ---- release hardening item 1: persistence turned Off while shells were open; the close ends them, as "Close them" does
+
+    /// <summary>Settings saved with SessionPersistence Off: the factory swaps, the open panes stay connected until the close.</summary>
+    private static void TurnPersistenceOff(MainWindow window)
+    {
+        var settings = (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+        settings.SessionPersistence = SessionPersistenceMode.Off;
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+    }
+
+    [AvaloniaFact]
+    public void With_persistence_turned_off_a_close_never_ends_a_shared_shell()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep));
+        Guid own = LocalSession(window)!.Id;
+        (MuxClient _, ClientPaneModel theirs) = Task.Run(async () =>
+        {
+            MuxClient c = await _mux.ConnectClientAsync();
+            Guid id = await MuxTestHost.SpawnAsync(c);
+            return (c, await MuxTestHost.AttachPaneAsync(c, id));
+        }, TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        Guid shared = theirs.Session.Id;
+        window.PickMuxSession = MuxPickerChoice.Session(shared);
+        Task attach = window.AttachToMuxSessionAsync();
+        PumpUntil(() => attach.IsCompleted, "the attach command finished");
+        TerminalPane mine = window.AllPanesForTest().Single(p => p.Session is MuxClientSession m && m.Id == shared);
+        PumpUntil(() => mine.MuxOtherClients == 1 && ((MuxClientSession)mine.Session!).InteractiveOthers == 1, "this window knows the shell is shared");
+        TurnPersistenceOff(window);
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);   // Off asks nothing
+        Assert.DoesNotContain(own, _mux.Server.GetSessionIds());
+        Assert.Contains(shared, _mux.Server.GetSessionIds());
+        PumpUntil(() => _mux.Mux(shared).AttachedClients == 1, "this window detached; the other instance still shows it");
+    }
+
+    /// <summary>
+    /// Tabs still holding placeholders keep their shells' ids pending: once the daemon has said no other client shows them,
+    /// the close ends them too and the session file names none of them. A pending share is never ended.
+    /// </summary>
+    [AvaloniaFact]
+    public void With_persistence_turned_off_a_close_ends_the_shells_of_tabs_still_holding_placeholders()
+    {
+        Guid[] ids = SpawnUnshown(4);
+        SaveTabs(LocalLeaf(ids[0]), LocalLeaf(ids[1]), LocalLeaf(ids[2]), LocalLeaf(ids[3], shared: true));
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep), keepPlaceholders: true);
+        Assert.Equal(3, PlaceholderTabs(window));
+        TurnPersistenceOff(window);
+
+        window.Close();
+        PumpUntil(() => !window.IsVisible, "the window closed");
+
+        Assert.Empty(_asked);
+        Assert.All(ids[..3], id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+        Assert.Contains(ids[3], _mux.Server.GetSessionIds());
+        string saved = File.ReadAllText(AppPaths.SessionFilePath);
+        Assert.All(ids[..3], id => Assert.DoesNotContain(id.ToString(), saved, StringComparison.Ordinal));
+    }
+
+    /// <summary>A shutdown cannot be held for the daemon's answer: the live shells end, the pending ones are left as they are.</summary>
+    [AvaloniaTheory]
+    [InlineData(WindowCloseReason.OSShutdown)]
+    [InlineData(WindowCloseReason.ApplicationShutdown)]
+    public void With_persistence_turned_off_a_shutdown_ends_the_live_shells(WindowCloseReason reason)
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep));
+        Guid id = LocalSession(window)!.Id;
+        TurnPersistenceOff(window);
+
+        Assert.False(window.HandleClosingForTest(reason));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Empty(_asked);
+        Assert.DoesNotContain(id, _mux.Server.GetSessionIds());
+    }
+
     /// <summary>A window whose only pane shows a live shell on a remote daemon (a second in-memory one).</summary>
     private MainWindow CreateRemoteOnlyWindow()
     {
@@ -798,6 +876,124 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         {
             AssertKeptRunning(id);
         }
+    }
+
+    // ---- release hardening item 2: macOS Cmd+Q is the usual quit, so the application's shutdown request asks too (R19 amended)
+
+    /// <summary>What App does with the lifetime's ShutdownRequested: true cancels it; the window quits through the callback.</summary>
+    private static bool RequestQuit(MainWindow window, Action quit, bool osShutdown = false) =>
+        window.HoldShutdownForFirstClose(osShutdown, quit);
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Cmd_Q_asks_and_Keep_quits_with_the_shells_kept(bool remember)
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Keep, remember));
+        Guid id = LocalSession(window)!.Id;
+        int quits = 0;
+
+        Assert.True(RequestQuit(window, () => quits++));
+        PumpUntil(() => quits == 1, "the settled close quit the application");
+
+        Assert.Equal([1], _asked);
+        Assert.False(window.IsVisible);
+        AssertKeptRunning(id);
+        Assert.Equal(remember, File.Exists(FlagPath));   // "Don't ask again" is reachable from Cmd+Q
+    }
+
+    [AvaloniaFact]
+    public void Cmd_Q_Close_them_ends_the_shells_and_quits()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        Guid id = LocalSession(window)!.Id;
+        int quits = 0;
+
+        Assert.True(RequestQuit(window, () => quits++));
+        PumpUntil(() => quits == 1, "the settled close quit the application");
+
+        Assert.Equal([1], _asked);
+        Assert.False(window.IsVisible);
+        Assert.DoesNotContain(id, _mux.Server.GetSessionIds());
+    }
+
+    [AvaloniaFact]
+    public void Cmd_Q_Cancel_stays_open_and_does_not_quit()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel));
+        Guid id = LocalSession(window)!.Id;
+        int quits = 0;
+
+        Assert.True(RequestQuit(window, () => quits++));
+        PumpUntil(() => _asked.Count == 1, "the question was asked");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(0, quits);
+        Assert.True(window.IsVisible);
+        Assert.Equal(1, _mux.Mux(id).AttachedClients);
+
+        // Cancel is not an answer: the next Cmd+Q asks again.
+        Assert.True(RequestQuit(window, () => quits++));
+        PumpUntil(() => _asked.Count == 2, "asked again");
+    }
+
+    /// <summary>A remembered answer needs no question, so the shutdown is not held: the close applies it, as before.</summary>
+    [AvaloniaTheory]
+    [InlineData("keep")]
+    [InlineData("close")]
+    public void Cmd_Q_with_a_remembered_answer_is_not_held_and_applies_it(string remembered)
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel));
+        Store.Remember(remembered == "close" ? MuxCloseChoice.Close : MuxCloseChoice.Keep);
+        Guid id = LocalSession(window)!.Id;
+
+        Assert.False(RequestQuit(window, () => Assert.Fail("not held: the lifetime shuts down on its own")));
+        Assert.False(window.HandleClosingForTest(WindowCloseReason.ApplicationShutdown));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Empty(_asked);
+        if (remembered == "close") Assert.DoesNotContain(id, _mux.Server.GetSessionIds());
+        else AssertKeptRunning(id);
+    }
+
+    /// <summary>A remembered "Close them" with tabs not shown yet waits for the daemon's answer: held, then quits.</summary>
+    [AvaloniaFact]
+    public void Cmd_Q_with_a_remembered_close_and_tabs_not_shown_yet_is_held_until_they_end()
+    {
+        Guid[] ids = SpawnUnshown(2);
+        SaveTabs([.. ids.Select(id => LocalLeaf(id))]);
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Cancel), keepPlaceholders: true);
+        Store.Remember(MuxCloseChoice.Close);
+        int quits = 0;
+
+        Assert.True(RequestQuit(window, () => quits++));
+        PumpUntil(() => quits == 1, "the settled close quit the application");
+
+        Assert.Empty(_asked);
+        Assert.All(ids, id => Assert.DoesNotContain(id, _mux.Server.GetSessionIds()));
+    }
+
+    [AvaloniaFact]
+    public void An_OS_shutdown_request_is_never_held()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+
+        Assert.False(RequestQuit(window, () => Assert.Fail("never held"), osShutdown: true));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(_asked);
+        Assert.True(window.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void Cmd_Q_with_nothing_to_keep_is_not_held()
+    {
+        MainWindow window = CreateWindow(Answer(FirstCloseAction.Close));
+        MuxClientSession mux = LocalSession(window)!;
+        _mux.Fake(mux.Id).Exit(3);
+        PumpUntil(() => !mux.IsProcessRunning, "the pane saw the exit");
+
+        Assert.False(RequestQuit(window, () => Assert.Fail("never held")));
+        Assert.Empty(_asked);
     }
 
     /// <summary>Fix round 1: a close that the question's post has not reached yet, overtaken by a shutdown, never shows it.</summary>

@@ -1222,7 +1222,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
                 rows.Skip(1).Select(r => (r.Endpoint, r.SessionId, r.OpenHere, r.HostDisplayName)).OrderBy(r => r.SessionId == ids[0] ? 0 : 1));
             Assert.Equal(2, rows.Count(r => r.Display.StartsWith("[nova@fake-host] ", StringComparison.Ordinal)));
             MuxSessionPickerConnectRow connect = Assert.IsType<MuxSessionPickerConnectRow>(items[3]);
-            Assert.Equal((twin.Id, "nova@twin-host", "Connect to nova@twin-host…"), (connect.ProfileId, connect.HostDisplayName, connect.Display));
+            Assert.Equal((twin.Id, "nova@twin-host", "Connect to nova@twin-host… (starts its multiplexer if none is running)"), (connect.ProfileId, connect.HostDisplayName, connect.Display));
             Assert.Equal(twinStarts, twinHost.StartCount); // nothing tried to connect it
         }
         finally

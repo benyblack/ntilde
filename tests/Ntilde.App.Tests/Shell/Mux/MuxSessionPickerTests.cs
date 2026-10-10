@@ -136,7 +136,8 @@ public sealed class MuxSessionPickerTests
     {
         var row = new MuxSessionPickerConnectRow(Guid.NewGuid(), "nova@b");
 
-        Assert.Equal("Connect to nova@b…", row.Display);
+        // Release hardening item 7: a connect, unlike ls --all, may start the host's multiplexer, and says so.
+        Assert.Equal("Connect to nova@b… (starts its multiplexer if none is running)", row.Display);
         Assert.True(row.IsSelectable);
     }
 

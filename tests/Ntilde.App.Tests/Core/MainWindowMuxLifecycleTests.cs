@@ -288,6 +288,30 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         Assert.True(((MuxClientSession)pane.Session!).IsAttached);
     }
 
+    /// <summary>
+    /// Release hardening item 1: the Settings row says "With Off, a shell ends when its window closes". The panes opened
+    /// while it was on stay connected until then (above), but the close ends them, without asking, and the session file
+    /// does not name them for a reattach that Off will never make.
+    /// </summary>
+    [AvaloniaFact]
+    public void Turning_persistence_off_then_closing_ends_the_open_shells()
+    {
+        MainWindow window = CreateWindow();
+        TerminalPane pane = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)pane.Session!).Id;
+        var settings = (TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(window)!;
+        settings.SessionPersistence = SessionPersistenceMode.Off;
+        typeof(MainWindow).GetMethod("ApplySessionPersistenceSetting", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+        Assert.True(((MuxClientSession)pane.Session!).IsAttached);   // until the close
+
+        window.Close();
+
+        PumpUntil(() => !_mux.Server.GetSessionIds().Contains(id), "the close ended the shell");
+        Assert.False(window.IsVisible);
+        Assert.Null(_host!.CurrentClient);
+        Assert.DoesNotContain(id.ToString(), File.ReadAllText(AppPaths.SessionFilePath), StringComparison.Ordinal);
+    }
+
     [AvaloniaFact]
     public void Designer_windows_never_persist()
     {
@@ -418,6 +442,60 @@ public sealed class MainWindowMuxLifecycleTests : IClassFixture<TestAppDataRoot>
         PumpUntil(() => adopted.Session is MuxClientSession { IsAttached: true } m && m.Id == orphan, "the adopted tab attached to the orphan");
         List<Guid> ids = AllPanes(window).Select(p => p.Session).OfType<MuxClientSession>().Select(m => m.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
+    }
+
+    /// <summary>
+    /// Release hardening (optional): when the local daemon had to run from the install folder because its own copy could not
+    /// be staged, every update closes the shells and every startup update is held - so the user hears of it once per launch,
+    /// when the local daemon connects, not only in debug.log.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_daemon_that_runs_from_the_install_folder_is_noticed_once_per_launch()
+    {
+        MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        MuxDaemonImage.MarkRanFromInstallFolder();
+        try
+        {
+            MainWindow window = CreateWindow();
+
+            PumpUntil(() => Toast(window).Message?.Contains(MuxDaemonImage.InstallFolderNotice, StringComparison.Ordinal) == true, "the notice was shown");
+            Assert.False(MuxDaemonImage.TakeInstallFolderNotice());   // once per launch
+        }
+        finally
+        {
+            MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        }
+    }
+
+    /// <summary>Greptile on PR 512: a window that closes before its post runs leaves the notice for one that can show it.</summary>
+    [AvaloniaFact]
+    public void A_window_closed_before_it_could_show_the_install_folder_notice_leaves_it_untaken()
+    {
+        MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        try
+        {
+            MainWindow window = CreateWindow();
+            MuxDaemonImage.MarkRanFromInstallFolder();
+            // The local host connects (its event arrives on the pool), and the window closes before the post it made runs.
+            typeof(MainWindow).GetMethod("OnMuxHostConnected", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(window, [MuxEndpointId.Local, _host!, _host!.CurrentClient!]);
+            typeof(MainWindow).GetMethod("PerformAppTeardown", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(MuxDaemonImage.TakeInstallFolderNotice());   // still there for the next window
+        }
+        finally
+        {
+            MuxDaemonImage.ResetInstallFolderNoticeForTest();
+        }
+    }
+
+    [Fact]
+    public void Only_a_Velopack_install_that_got_its_own_executable_back_ran_from_the_install_folder()
+    {
+        Assert.True(MuxDaemonImage.FellBackToInstallFolder(@"C:\i\current\Ntilde.exe", @"C:\i\current\Ntilde.exe", @"C:\i"));
+        Assert.False(MuxDaemonImage.FellBackToInstallFolder(@"C:\i\current\Ntilde.exe", @"C:\data\bin\1.0\Ntilde.exe", @"C:\i"));
+        Assert.False(MuxDaemonImage.FellBackToInstallFolder(@"C:\dev\Ntilde.exe", @"C:\dev\Ntilde.exe", installRoot: null));
     }
 
     private static (bool Visible, string? Title, string? Message) Toast(MainWindow window) =>

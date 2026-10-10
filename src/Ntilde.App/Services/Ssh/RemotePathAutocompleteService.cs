@@ -55,6 +55,7 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
                     _sshServiceFactory,
                     _passwordResolver,
                     out NativeSshConnectionOptions? connectionOptions,
+                    out NativeHopPasswords? passwords,
                     out _))
             {
                 return [];
@@ -62,9 +63,19 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
 
             RemotePathAutocompleteQuery query = RemotePathAutocompleteQuery.Parse(input);
 
-            IReadOnlyList<NativeRemotePathEntry> entries = await BackgroundWork.RunBlockingAsync(
-                token => _nativeInterop.ListRemoteDirectory(connectionOptions!, query.ParentPath, token),
-                cancellationToken);
+            IReadOnlyList<NativeRemotePathEntry> entries;
+            try
+            {
+                entries = await BackgroundWork.RunBlockingAsync(
+                    token => _nativeInterop.ListRemoteDirectory(connectionOptions!, query.ParentPath, token),
+                    cancellationToken);
+            }
+            catch (NativeSshAuthenticationRefusedException)
+            {
+                // Release hardening item 5, as the sidebar's listing does.
+                passwords!.ForgetRefusedTarget(_sessionRegistry, connectionOptions!.Host, connectionOptions.Port, connectionOptions.User);
+                return [];
+            }
 
             return RemotePathAutocompleteQuery.Rank(
                     entries.Select(entry => new RemotePathSuggestion(entry.Name, entry.FullPath, entry.IsDirectory)),

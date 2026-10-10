@@ -27,7 +27,7 @@ public sealed class MuxAssetPinsTests
     }
 
     [Fact]
-    public void Malformed_pins_and_foreign_resources_are_ignored()
+    public void Foreign_resources_are_ignored_and_a_malformed_pin_is_kept_as_unusable()
     {
         var pins = MuxAssetPins.Parse([
             new($"{Prefix}ntilde-mux-linux-arm64.sha256", "<html>not a checksum</html>"),
@@ -38,7 +38,11 @@ public sealed class MuxAssetPinsTests
             new($"{Prefix}ntilde-mux-linux-x64.sha256", $"{LinuxHash}  ntilde-mux-linux-x64\n"),
         ]);
 
-        Assert.Equal(["linux-x64"], pins.Keys);
+        // Release hardening item 4: a pin resource that is there but unreadable is not dropped, or a release build
+        // would fall back to the release's own .sha256 for that RID.
+        Assert.Equal(["linux-arm64", "linux-x64"], pins.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(MuxAssetPins.Unusable, pins["linux-arm64"]);
+        Assert.Equal(LinuxHash, pins["linux-x64"]);
     }
 
     [Fact]

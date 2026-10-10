@@ -44,7 +44,7 @@ public static class MuxCli
         (MuxCliVerbs.Kill, "kill <sessionId>"),
         (MuxCliVerbs.KillServer, "kill-server [--force]"),
         (MuxCliVerbs.Attach, "attach <sessionId|prefix> [--read-only]"),
-        (MuxCliVerbs.Proxy, "proxy --stdio"),
+        (MuxCliVerbs.Proxy, "proxy --stdio [--no-spawn]"),
         (MuxCliVerbs.Version, "--version [--json]"),
     ];
 
@@ -193,8 +193,9 @@ public static class MuxCli
     }
 
     /// <summary>
-    /// <c>proxy --stdio</c> (Phase 4 spec §8.1): sshd's exec channel to this host's daemon, spawned on
-    /// demand. Its stdout is the channel, so everything it says - the usage, the launcher's log - goes
+    /// <c>proxy --stdio [--no-spawn]</c> (Phase 4 spec §8.1): sshd's exec channel to this host's daemon, spawned on
+    /// demand - or, with <c>--no-spawn</c> (a listing, release hardening item 7), only one already running: none exits
+    /// <see cref="MuxProxyExitCodes.NotRunning"/>. Its stdout is the channel, so everything it says - the usage, the launcher's log - goes
     /// to stderr. The raw standard streams, not Console.In/Out: bytes, unbuffered and undecoded. They
     /// are not disposed here: the pump may still be blocked reading stdin, and the process exit closes
     /// both. On Unix, once the daemon side ended, the proxy ends fds 1 and 2 themselves before it waits for the
@@ -203,12 +204,54 @@ public static class MuxCli
     /// </summary>
     private static int Proxy(string[] verbArgs, TextWriter stderr, MuxCliHost host)
     {
-        if (verbArgs.Length != 2 || !string.Equals(verbArgs[1], "--stdio", StringComparison.Ordinal)) return Fail(stderr, Usage(host));
+        if (!TryParseProxy(verbArgs, out bool noSpawn)) return Fail(stderr, Usage(host));
 
         void Log(string line) => stderr.WriteLine($"[ntilde-mux] {line}");
+        MuxPaths paths = host.Paths;
+        // Built only when a spawn is possible: a --no-spawn proxy never looks for an executable to start.
+        IMuxDaemonSpawner spawner = noSpawn ? new NoSpawn() : ProcessMuxDaemonSpawner.CreateDefault(host.ServeArguments, paths, host.DaemonImageResolver);
         return MuxProxyCommand.Run(Console.OpenStandardInput(), Console.OpenStandardOutput(), stderr,
-            ct => MuxDaemonLauncher.CreateDefault(Log, host.ServeArguments, host.Paths, KillServerCommand(host), host.DaemonImageResolver).EnsureEndpointStreamAsync(ct),
-            endStdio: OperatingSystem.IsWindows() ? null : UnixChannelStdio.EndStdoutAndStderr);
+            ProxyConnector(paths.DescriptorPath, spawner, noSpawn, Log, KillServerCommand(host)),
+            endStdio: OperatingSystem.IsWindows() ? null : UnixChannelStdio.EndStdoutAndStderr,
+            repointAgentLink: !noSpawn);
+    }
+
+    /// <summary>
+    /// <c>proxy --stdio [--no-spawn]</c>, the options in either order, each once. <paramref name="noSpawn"/>: a listing's
+    /// proxy (release hardening item 7), which never starts a daemon and leaves the agent link alone (item 3).
+    /// </summary>
+    internal static bool TryParseProxy(string[] verbArgs, out bool noSpawn)
+    {
+        noSpawn = false;
+        bool stdio = false;
+        foreach (string arg in verbArgs.Skip(1))
+        {
+            switch (arg)
+            {
+                case "--stdio" when !stdio:
+                    stdio = true;
+                    break;
+                case "--no-spawn" when !noSpawn:
+                    noSpawn = true;
+                    break;
+                default:
+                    return false;
+            }
+        }
+
+        return stdio;
+    }
+
+    /// <summary>
+    /// What the proxy connects through: the daemon at <paramref name="descriptorPath"/>, started on demand by
+    /// <paramref name="spawner"/> - or, with <paramref name="noSpawn"/>, only one already running
+    /// (<see cref="MuxDaemonLauncher.ConnectExistingEndpointStreamAsync"/>).
+    /// </summary>
+    internal static Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> ProxyConnector(
+        string descriptorPath, IMuxDaemonSpawner spawner, bool noSpawn, Action<string>? log = null, string killServerCommand = MuxDaemonLauncher.DefaultKillServerCommand)
+    {
+        var launcher = new MuxDaemonLauncher(descriptorPath, spawner, log: log, killServerCommand: killServerCommand);
+        return noSpawn ? launcher.ConnectExistingEndpointStreamAsync : launcher.EnsureEndpointStreamAsync;
     }
 
     /// <summary><c>--version [--json]</c>: one line, plain or <see cref="MuxVersionInfo"/> as JSON.</summary>

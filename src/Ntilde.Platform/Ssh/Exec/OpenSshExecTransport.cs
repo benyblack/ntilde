@@ -62,6 +62,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     /// How long a channel's <see cref="ISshExecChannel">Dispose</see> lets ssh exit on stdin's EOF before it stops it
     /// (<see cref="ExitGrace"/>); null for <see cref="OpenSshExecChannel.DefaultExitGrace"/>.
     /// </param>
+    /// <param name="noAgentForwarding">True for a listing: <see cref="NoAgentForwarding"/>.</param>
     /// <exception cref="ArgumentException">
     /// More than one of <paramref name="batchMode"/>, <paramref name="savedPasswordOnly"/> and <paramref name="withoutSavedPassword"/>;
     /// or an <paramref name="askPassSession"/> that is not a session token.
@@ -78,11 +79,12 @@ public sealed class OpenSshExecTransport : ISshExecTransport
         bool savedPasswordOnly = false,
         bool withoutSavedPassword = false,
         string? askPassSession = null,
-        TimeSpan? exitGrace = null)
+        TimeSpan? exitGrace = null,
+        bool noAgentForwarding = false)
         : this(
             profile,
             sshExecutablePath,
-            ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, ModeOf(batchMode, savedPasswordOnly, withoutSavedPassword, askPassHelperPath)),
+            ArgumentsFor(planArguments, diagnosticsArguments, log ?? TerminalLogger.Log, ModeOf(batchMode, savedPasswordOnly, withoutSavedPassword, askPassHelperPath), noAgentForwarding),
             askPassHelperPath,
             log,
             batchMode,
@@ -91,6 +93,7 @@ public sealed class OpenSshExecTransport : ISshExecTransport
             askPassSession,
             exitGrace)
     {
+        NoAgentForwarding = noAgentForwarding;
     }
 
     /// <summary>
@@ -141,6 +144,13 @@ public sealed class OpenSshExecTransport : ISshExecTransport
 
     /// <summary>True when ssh runs with <c>BatchMode=yes</c> and no askpass: it never prompts.</summary>
     public bool BatchMode { get; }
+
+    /// <summary>
+    /// ssh runs with <c>ForwardAgent=no</c> and without a <c>-A</c> from the plan (<see cref="OpenSshExecCommandLine.Build"/>):
+    /// a listing's, which connects for a moment and must not leave a remote daemon pointing at its agent (release hardening
+    /// item 3).
+    /// </summary>
+    public bool NoAgentForwarding { get; }
 
     /// <summary>
     /// True when ssh runs with <c>BatchMode=no</c>, <c>NumberOfPasswordPrompts=1</c> and the helper in its vault-only
@@ -273,12 +283,12 @@ public sealed class OpenSshExecTransport : ISshExecTransport
     }
 
     private static Func<string, IReadOnlyList<string>> ArgumentsFor(
-        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, PromptMode mode)
+        IReadOnlyList<string> planArguments, IReadOnlyList<string>? diagnosticsArguments, Action<string> log, PromptMode mode, bool noAgentForwarding)
     {
         ArgumentNullException.ThrowIfNull(planArguments);
         string[] plan = [.. planArguments];
         string[] diagnostics = diagnosticsArguments is null ? [] : [.. diagnosticsArguments];
-        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, mode == PromptMode.Batch, mode == PromptMode.SavedPasswordOnly);
+        return command => OpenSshExecCommandLine.Build(diagnostics, plan, command, log, mode == PromptMode.Batch, mode == PromptMode.SavedPasswordOnly, noAgentForwarding);
     }
 }
 

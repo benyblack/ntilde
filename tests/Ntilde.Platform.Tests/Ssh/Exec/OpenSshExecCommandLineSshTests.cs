@@ -54,6 +54,38 @@ public sealed class OpenSshExecCommandLineSshTests
         { ["-qMtfNnsv", "-p", "2222", "-o", "ServerAliveInterval=5"] },
     };
 
+    /// <summary>
+    /// Release hardening item 3, against the real client: a listing's ssh resolves <c>forwardagent no</c> even when the config
+    /// says yes and the profile's extra arguments carry <c>-A</c>, which ssh applies whatever an earlier <c>-o</c> said.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("-A")]
+    [InlineData("-vA")]
+    [InlineData("-o ForwardAgent=yes")]
+    public void A_listings_ssh_forwards_no_agent_whatever_the_config_and_the_extra_arguments_say(string extraLine)
+    {
+        string[] extra = extraLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string? ssh = FindSsh();
+        Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
+        string config = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(config, "Host *\n  ForwardAgent yes\n");
+            IReadOnlyList<string> argv = OpenSshExecCommandLine.Build([], ["-F", config, "ntilde-exec-check", .. extra], "ntilde-mux proxy --stdio --no-spawn", noAgentForwarding: true);
+            Dictionary<string, string> resolved = ResolvedConfiguration(ssh!, [.. argv.Take(argv.Count - 2)]);
+            Assert.Equal("no", resolved.GetValueOrDefault("forwardagent"));
+
+            // And without it, the config's choice stands: the option is what turns it off.
+            IReadOnlyList<string> connect = OpenSshExecCommandLine.Build([], ["-F", config, "ntilde-exec-check", .. extra], "ntilde-mux proxy --stdio");
+            Assert.Equal("yes", ResolvedConfiguration(ssh!, [.. connect.Take(connect.Count - 2)]).GetValueOrDefault("forwardagent"));
+        }
+        finally
+        {
+            File.Delete(config);
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Tricky))]
     public void Ssh_reads_no_pty_no_background_no_null_stdin_and_the_channels_own_command(string[] extra)

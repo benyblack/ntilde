@@ -20,7 +20,7 @@ internal sealed record RemoteListing(Guid ProfileId, string Host, IReadOnlyList<
 /// </summary>
 internal enum MuxListingError
 {
-    /// <summary>This computer: no daemon runs (ls never starts one).</summary>
+    /// <summary>No daemon runs, on this computer or on the host: ls never starts one (release hardening item 7).</summary>
     NotRunning,
 
     /// <summary>No connection could be had, or it broke during the listing.</summary>
@@ -46,13 +46,21 @@ internal enum MuxListingError
     /// prompt on the terminal <c>ls --all</c> runs in (<see cref="RemoteMuxLister.SkipsJumpHosts"/>).
     /// </summary>
     ThroughJumpHost,
+
+    /// <summary>
+    /// The host's ntilde-mux is older than <c>proxy --no-spawn</c>, which a listing needs so as not to start a daemon: it
+    /// refused the option (<see cref="RemoteFailureKind.ProxyTooOld"/>). Updating it from a window fixes it.
+    /// </summary>
+    NeedsUpdate,
 }
 
 /// <summary>
 /// The remote half of <c>ntilde mux ls --all</c> (Phase 5 spec §5): the sessions of every SSH profile that keeps its remote
 /// sessions, listed all at once, each host within its own wait. The command cannot see what a window connected, so it
 /// connects on its own, non-interactively (<see cref="CreateConnector"/>): one connect, one listing, and the connection
-/// ends. A host that fails or does not answer in time gives its <see cref="MuxListingError"/>, and holds up no other.
+/// ends. A listing has no side effects on the host: its proxy never starts a daemon (release hardening item 7, which
+/// reverses R28(a)), and it forwards no agent, which the proxy would point the daemon's shells at (item 3). A host that
+/// fails or does not answer in time gives its <see cref="MuxListingError"/>, and holds up no other.
 /// </summary>
 internal static class RemoteMuxLister
 {
@@ -143,7 +151,10 @@ internal static class RemoteMuxLister
             transportFor,
             new RemoteMuxInteractionHandler(user: null, savedPassword: savedPassword, askPassRecords: askPassRecords, log: log),
             Guid.NewGuid().ToString("N"),
-            log);
+            log)
+        {
+            ForListing = true,
+        };
     }
 
     /// <summary>The words for <paramref name="error"/> after "unreachable: ", and in the JSON's "error".</summary>
@@ -156,6 +167,7 @@ internal static class RemoteMuxLister
         MuxListingError.NeedsSignIn => "signing in needs an answer, which ls --all never asks for",
         MuxListingError.NativeSshOff => "the native SSH backend is turned off in Settings",
         MuxListingError.ThroughJumpHost => "it goes through a jump host, which ls --all does not sign in through",
+        MuxListingError.NeedsUpdate => "its ntilde-mux is older than this app; update it to list its sessions",
         _ => "the connection failed",
     };
 
@@ -165,6 +177,8 @@ internal static class RemoteMuxLister
         RemoteMuxUnavailableException { Failure: var failure } => failure.Kind switch
         {
             RemoteFailureKind.NotInstalled => MuxListingError.NotInstalled,
+            RemoteFailureKind.NotRunning => MuxListingError.NotRunning,
+            RemoteFailureKind.ProxyTooOld => MuxListingError.NeedsUpdate,
             RemoteFailureKind.Unsupported or RemoteFailureKind.VersionMismatch => MuxListingError.NotUsable,
             RemoteFailureKind.NeedsUser when failure.Cause == RemoteNeedsUserCause.NativeSshDisabled => MuxListingError.NativeSshOff,
             RemoteFailureKind.NeedsUser => MuxListingError.NeedsSignIn,

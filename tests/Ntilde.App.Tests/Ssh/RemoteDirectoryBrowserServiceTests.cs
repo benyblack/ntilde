@@ -269,6 +269,107 @@ public sealed class RemoteDirectoryBrowserServiceTests
         Assert.Equal(new string?[] { null }, interop.LastConnectionOptions.JumpHopPasswords);
     }
 
+    // ---- release hardening item 5: a refused listing drops the stale scope password it offered
+
+    [Fact]
+    public async Task A_refused_listing_drops_the_scope_password_it_offered()
+    {
+        Guid profileId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid scope = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, scope));
+        registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "rotated-away");
+        var interop = new RefusingNativeSshInterop();
+        var service = CreateService(registry, interop, CreateSshService(profileId), _ => "vault");
+
+        RemoteSidebarListingResult result = await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("rotated-away", interop.OfferedPassword);
+        Assert.False(registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out _));
+
+        // The next listing falls back to the vault rather than offering the refused value again.
+        await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+        Assert.Equal("vault", interop.OfferedPassword);
+    }
+
+    [Fact]
+    public async Task A_late_refusal_of_the_old_password_does_not_clear_a_newly_typed_one()
+    {
+        Guid profileId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid scope = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, scope));
+        registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "old");
+        // While the listing that offered "old" is still out, the user types the new one into the host's reconnect.
+        var interop = new RefusingNativeSshInterop(beforeRefusal: () => registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "new"));
+        var service = CreateService(registry, interop, CreateSshService(profileId));
+
+        await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out string? kept));
+        Assert.Equal("new", kept);
+    }
+
+    [Fact]
+    public async Task A_listing_failure_that_is_no_refusal_keeps_the_scope_password()
+    {
+        Guid profileId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        Guid scope = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, scope));
+        registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "good");
+        var service = CreateService(registry, new ThrowingNativeSshInterop(new InvalidOperationException("Connection reset")), CreateSshService(profileId));
+
+        await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+
+        Assert.True(registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out _));
+    }
+
+    [Fact]
+    public async Task A_refused_plain_session_password_is_left_as_it_was()
+    {
+        // A plain tab's own runtime password is not a host scope: this fix leaves its rules unchanged.
+        Guid profileId = Guid.NewGuid();
+        Guid sessionId = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native));
+        registry.SetRuntimePassword(sessionId, "prod.internal", 2200, "ops", "typed");
+        var service = CreateService(registry, new RefusingNativeSshInterop(), CreateSshService(profileId));
+
+        await service.ListDirectoryAsync(profileId, sessionId, "/srv", CancellationToken.None);
+
+        Assert.True(registry.TryGetRuntimePassword(sessionId, "prod.internal", 2200, "ops", out _));
+    }
+
+    private sealed class RefusingNativeSshInterop(Action? beforeRefusal = null) : INativeSshInterop
+    {
+        public string? OfferedPassword { get; private set; }
+
+        public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) => throw new NotSupportedException();
+
+        public IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(NativeSshConnectionOptions connectionOptions, string remotePath, CancellationToken cancellationToken)
+        {
+            OfferedPassword = connectionOptions.Password;
+            beforeRefusal?.Invoke();
+            throw new NativeSshAuthenticationRefusedException("Native remote path listing failed with result -3. Authentication failed.");
+        }
+
+        public void RunSftpTransfer(NativeSshConnectionOptions connectionOptions, NativeSftpTransferOptions transferOptions, Action<NativeSftpTransferProgress>? progress, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+        public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows) => throw new NotSupportedException();
+        public int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options) => throw new NotSupportedException();
+        public void WriteChannel(NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void SendChannelEof(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void CloseChannel(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void SubmitResponse(NovaSshSafeHandle sessionHandle, NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Close(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+    }
+
     private static RemoteDirectoryBrowserService CreateService(
         ActiveSshSessionRegistry registry,
         INativeSshInterop interop,

@@ -5368,6 +5368,18 @@ namespace Ntilde
         /// </summary>
         private bool IsMuxPersistenceActive => _muxHosts is not null && _sessionFactory is Ntilde.Shell.Mux.MuxTerminalSessionFactory;
 
+        /// <summary>
+        /// Release hardening item 1: SessionPersistence was turned Off during this window's life. The factory followed
+        /// (<see cref="ApplySessionPersistenceSetting"/>), but the panes opened while it was on still show daemon shells, and
+        /// the hosts stay for them. Off means "a shell ends when its window closes", so the close ends them, as a
+        /// "Close them" does (<see cref="EndLocalSessionsOnTeardown"/>). A window whose setting was Off from the start has no
+        /// hosts (or, in tests, still the injected mux factory), so nothing changes for it.
+        /// </summary>
+        private bool IsMuxPersistenceTurnedOff =>
+            _muxHosts is not null
+            && _sessionFactory is not Ntilde.Shell.Mux.MuxTerminalSessionFactory
+            && !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence);
+
         /// <summary>UI thread: an "Attach to session…" runs - its listing, picker or connect - so another is not started (review minor 1).</summary>
         private bool _muxAttachRunning;
 
@@ -10346,6 +10358,61 @@ namespace Ntilde
         /// </summary>
         internal bool HandleClosingForTest(WindowCloseReason reason) => !ProceedWithClose(reason);
 
+        /// <summary>
+        /// Release hardening item 2 (amends R19): the application lifetime's shutdown request - macOS Cmd+Q, the usual way to
+        /// quit there - asks the first-close question as a window close does, instead of keeping the shells unasked. The
+        /// lifetime cannot wait for a modal, so App cancels the request when this returns true; the window then closes the way
+        /// its close button does (asked, or a remembered "Close them" waiting for the daemon), and once that close went
+        /// through, <paramref name="shutdown"/> quits for real. Cancel leaves the window open and the application running.
+        /// False - nothing would be held: no live shells, a remembered answer that needs no daemon, the question already
+        /// settled - lets the shutdown go on, and the window's ApplicationShutdown close applies what it always did. An OS
+        /// shutdown is never held (R19). Called on the UI thread.
+        /// </summary>
+        internal bool HoldShutdownForFirstClose(bool isOSShutdown, Action shutdown)
+        {
+            ArgumentNullException.ThrowIfNull(shutdown);
+            if (isOSShutdown || !HoldCloseForFirstCloseQuestion(WindowCloseReason.WindowClosing, dryRun: true)) return false;
+            _ = CloseThenShutdownAsync(shutdown);
+            return true;
+        }
+
+        /// <summary>
+        /// <see cref="HoldShutdownForFirstClose"/>'s close: a window close, settled - <see cref="_heldCloseSettled"/> completes
+        /// once the posted question or the remembered answer's work is done - then <paramref name="shutdown"/> when the window
+        /// did close. Never throws.
+        /// </summary>
+        private async Task CloseThenShutdownAsync(Action shutdown)
+        {
+            try
+            {
+                Close();
+                await _heldCloseSettled;
+                if (_teardownDone) shutdown();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log($"[MainWindow] settling the close before quitting failed; not quitting: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// The work a held close posted (the question, or a remembered "Close them" waiting for the daemon), completed once it
+        /// settled: closed again, or left open. Completed when nothing is held. UI thread.
+        /// </summary>
+        private Task _heldCloseSettled = Task.CompletedTask;
+
+        /// <summary>Posts <paramref name="settle"/>, the held close's work, and tracks it in <see cref="_heldCloseSettled"/>.</summary>
+        private void PostHeldClose(Func<Task> settle)
+        {
+            var settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _heldCloseSettled = settled.Task;
+            Dispatcher.Post(async () =>
+            {
+                try { await settle(); }
+                finally { settled.TrySetResult(); }
+            });
+        }
+
         /// <summary>OnClosing's body: false holds the close while the first-close question is asked; otherwise the teardown runs.</summary>
         private bool ProceedWithClose(WindowCloseReason reason)
         {
@@ -10360,10 +10427,11 @@ namespace Ntilde
         /// settled, when persistence is off (the setting, and the factory with it: with "Off" nothing new appears), or
         /// when no local shell would be left running (remote shells never ask).
         /// <para>
-        /// Only a window close asks; a shutdown is never held, since holding it would cancel the shutdown itself. The
-        /// application lifetime shutting down (<see cref="WindowCloseReason.ApplicationShutdown"/>: macOS Cmd+Q, the
-        /// usual way to quit there, and <c>TryShutdown</c>) applies a remembered answer - a remembered "close" ends the
-        /// shells - and with none keeps them. The OS ending the session (<see cref="WindowCloseReason.OSShutdown"/>)
+        /// Only a window close asks; a shutdown is never held, since holding it would cancel the shutdown itself. macOS Cmd+Q,
+        /// the usual way to quit there, is asked before it gets here (release hardening item 2): App cancels the lifetime's
+        /// shutdown request while <see cref="HoldShutdownForFirstClose"/> closes the window this way, then quits. A shutdown
+        /// that reaches this anyway (<see cref="WindowCloseReason.ApplicationShutdown"/>: one that needed no question, or
+        /// <c>TryShutdown</c>) applies a remembered answer - a remembered "close" ends the shells - and with none keeps them. The OS ending the session (<see cref="WindowCloseReason.OSShutdown"/>)
         /// never kills, whatever was remembered: it behaves like Keep, as every close did before R1.
         /// </para>
         /// <para>
@@ -10379,9 +10447,14 @@ namespace Ntilde
         /// </para>
         /// True holds this close: the question is posted, never asked inside OnClosing, and its answer closes again.
         /// </summary>
-        private bool HoldCloseForFirstCloseQuestion(WindowCloseReason reason)
+        /// <param name="dryRun">
+        /// Only whether this close would be held, with nothing done - no question posted, no shell ended: what
+        /// <see cref="HoldShutdownForFirstClose"/> asks before it cancels a shutdown request.
+        /// </param>
+        private bool HoldCloseForFirstCloseQuestion(WindowCloseReason reason, bool dryRun = false)
         {
             if (_closeConfirmed || _teardownDone || reason == WindowCloseReason.OSShutdown) return false;
+            if (IsMuxPersistenceTurnedOff) return HoldCloseToEndShellsWithPersistenceOff(reason, dryRun);
             if (!IsMuxPersistenceActive || !Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(_settings.SessionPersistence)) return false;
             bool applicationShutdown = reason == WindowCloseReason.ApplicationShutdown;
             int live = CountKeptLocalSessions();
@@ -10396,22 +10469,51 @@ namespace Ntilde
                 case Ntilde.Shell.Mux.MuxCloseChoice.Close:
                     if (pending.Count == 0 || applicationShutdown)
                     {
+                        if (dryRun) return false;
                         if (pending.Count > 0) AppLogger.Log($"[MainWindow] {pending.Count} local session(s) of tabs not shown yet left running: a shutdown cannot wait for the multiplexer to say who shows them");
                         EndLocalSessionsOnTeardown();
                         return false;
                     }
 
+                    if (dryRun) return true;
                     _firstCloseQuestionOpen = true;
                     // Posted, as the question is: it closes the window again once the daemon has answered.
-                    Dispatcher.Post(() => _ = EndLocalSessionsAndCloseAsync(pending));
+                    PostHeldClose(() => EndLocalSessionsAndCloseAsync(pending));
                     return true;
                 default:
                     if (applicationShutdown) return false; // never asked: kept
+                    if (dryRun) return true;
                     _firstCloseQuestionOpen = true;
                     // Posted: the answer closes the window again, and Close() must never re-enter this OnClosing.
-                    Dispatcher.Post(() => _ = AskFirstCloseAsync(live, pending));
+                    PostHeldClose(() => AskFirstCloseAsync(live, pending));
                     return true;
             }
+        }
+
+        /// <summary>
+        /// Release hardening item 1 (<see cref="IsMuxPersistenceTurnedOff"/>): with Off nothing is asked, and the close ends
+        /// the local shells as a remembered "Close them" would - a share, or a shell another client also shows, detaches. The
+        /// shells of tabs not shown yet end too once the daemon has said no other client shows them, so the close is held for
+        /// that answer; a shutdown cannot be held, and ends the live ones only (<see cref="PerformAppTeardown"/> does that for
+        /// every teardown, an OS shutdown's included). True holds this close.
+        /// </summary>
+        private bool HoldCloseToEndShellsWithPersistenceOff(WindowCloseReason reason, bool dryRun)
+        {
+            HashSet<Guid> pending = PendingLocalMuxSessionIds();
+            if (_firstCloseQuestionOpen && reason != WindowCloseReason.ApplicationShutdown) return CountKeptLocalSessions() + pending.Count > 0;
+            if (pending.Count == 0 || reason == WindowCloseReason.ApplicationShutdown)
+            {
+                if (dryRun) return false;
+                if (pending.Count > 0) AppLogger.Log($"[MainWindow] persistence is off: {pending.Count} local session(s) of tabs not shown yet left running: a shutdown cannot wait for the multiplexer to say who shows them");
+                EndLocalSessionsOnTeardown();
+                return false;
+            }
+
+            if (dryRun) return true;
+            _firstCloseQuestionOpen = true;
+            // Posted, as a remembered "Close them" is: it closes the window again once the daemon has answered.
+            PostHeldClose(() => EndLocalSessionsAndCloseAsync(pending));
+            return true;
         }
 
         /// <summary>
@@ -10819,6 +10921,9 @@ namespace Ntilde
             _teardownDone = true;
             TeardownFaultForTest?.Invoke();
 
+            // Release hardening item 1: every way to tear down - an OS shutdown, an update restart - ends the live local shells
+            // when persistence was turned off, before the save, so none is named for a reattach Off never makes.
+            if (IsMuxPersistenceTurnedOff) EndLocalSessionsOnTeardown();
             if (!_sessionSavedBeforeUpdate) SaveSessionWithoutEndedShells();
 
             if (_muxHosts is { } muxHosts)
@@ -11554,7 +11659,14 @@ namespace Ntilde
                     return Ntilde.Update.MuxUpdateStopReason.UnknownImage;
                 }
 
-                (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(_updateCoordinator?.StagedReleaseNotes);
+                string? notes = _updateCoordinator?.StagedReleaseNotes;
+                (int Min, int Max)? newBuild = Ntilde.Update.MuxUpdateCompatibility.ParseProtocolRange(notes);
+                // A release build embeds the ntilde-mux pins; a dev build embeds none and stages no release's notes.
+                if (Ntilde.Update.MuxUpdateCompatibility.MissingProtocolMarkerWarning(notes, Ntilde.Shell.Mux.Remote.MuxAssetPins.Load().Count > 0) is { } warning)
+                {
+                    AppLogger.Log(warning);
+                }
+
                 string? installRoot = MuxInstallRootForUpdate();
                 string? image = installRoot is null ? null : await Task.Run(() => MuxDaemonImagePathForUpdate(descriptor));
                 Ntilde.Update.MuxUpdateStopReason why = Ntilde.Update.MuxUpdateCompatibility.WhyUpdateStopsDaemon((descriptor.MinVersion, descriptor.MaxVersion), newBuild, image, installRoot);

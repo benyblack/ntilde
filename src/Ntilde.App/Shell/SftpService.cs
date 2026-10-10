@@ -683,11 +683,20 @@ namespace Ntilde.Shell
             };
             NativeSftpTransferOptions transferOptions = BuildNativeTransferOptions(job);
 
-            (interop ?? new NativeSshInterop()).RunSftpTransfer(
-                connectionOptions,
-                transferOptions,
-                progress,
-                cancellationToken);
+            try
+            {
+                (interop ?? new NativeSshInterop()).RunSftpTransfer(
+                    connectionOptions,
+                    transferOptions,
+                    progress,
+                    cancellationToken);
+            }
+            catch (NativeSshAuthenticationRefusedException)
+            {
+                // Release hardening item 5: a stale password from the host's scope is not offered on every later transfer.
+                passwords.ForgetRefusedTarget(sessionRegistry, connectionOptions.Host, connectionOptions.Port, connectionOptions.User);
+                throw;
+            }
         }
 
         internal static void ApplyNativeTransferProgress(TransferJob job, NativeSftpTransferProgress progress)

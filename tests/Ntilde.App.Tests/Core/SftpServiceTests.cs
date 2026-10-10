@@ -1003,6 +1003,76 @@ public sealed class SftpServiceTests
         public bool DeleteProfile(Guid profileId) => _profiles.Remove(profileId);
     }
 
+    // Release hardening item 5: a refused transfer drops the stale scope password it offered, and only that value.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_refused_transfer_drops_the_scope_password_it_offered_but_not_one_typed_since(bool typedMeanwhile)
+    {
+        Guid profileId = Guid.Parse("01984d8a-2ab0-72c8-b66f-965f8491a6ae");
+        Guid sessionId = Guid.NewGuid();
+        Guid scope = Guid.NewGuid();
+        var registry = new ActiveSshSessionRegistry();
+        registry.Register(new ActiveSshSessionDescriptor(sessionId, profileId, SshBackendKind.Native, scope));
+        registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "old");
+        var profile = new TerminalProfile
+        {
+            Id = profileId,
+            Type = ConnectionType.SSH,
+            SshBackendKind = SshBackendKind.Native,
+            SshHost = "prod.internal",
+            SshUser = "ops",
+            SshPort = 2200
+        };
+        var job = new TransferJob
+        {
+            SessionId = sessionId,
+            Direction = TransferDirection.Download,
+            Kind = TransferKind.File,
+            LocalPath = @"C:\tmp\download.txt",
+            RemotePath = "/tmp/download.txt"
+        };
+        var interop = new RefusingTransferNativeSshInterop(typedMeanwhile ? () => registry.SetRuntimePassword(scope, "prod.internal", 2200, "ops", "new") : null);
+
+        Assert.Throws<NativeSshAuthenticationRefusedException>(() => SftpService.ExecuteNativeSftpTransfer(
+            job,
+            profile,
+            new SshConnectionService(new InMemorySshProfileStore()),
+            interop: interop,
+            passwordResolver: static _ => "vault",
+            sessionRegistry: registry));
+
+        Assert.Equal("old", interop.OfferedPassword);
+        bool held = registry.TryGetRuntimePassword(scope, "prod.internal", 2200, "ops", out string? kept);
+        Assert.Equal(typedMeanwhile, held);
+        if (typedMeanwhile) Assert.Equal("new", kept);
+    }
+
+    private sealed class RefusingTransferNativeSshInterop(Action? beforeRefusal) : INativeSshInterop
+    {
+        public string? OfferedPassword { get; private set; }
+
+        public NovaSshSafeHandle Connect(NativeSshConnectionOptions options) => throw new NotSupportedException();
+
+        public void RunSftpTransfer(NativeSshConnectionOptions connectionOptions, NativeSftpTransferOptions transferOptions, Action<NativeSftpTransferProgress>? progress, CancellationToken cancellationToken)
+        {
+            OfferedPassword = connectionOptions.Password;
+            beforeRefusal?.Invoke();
+            throw new NativeSshAuthenticationRefusedException("Native SFTP transfer failed with result -3. Authentication failed.");
+        }
+
+        public IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(NativeSshConnectionOptions connectionOptions, string remotePath, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+        public void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows) => throw new NotSupportedException();
+        public int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options) => throw new NotSupportedException();
+        public void WriteChannel(NovaSshSafeHandle sessionHandle, int channelId, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void SendChannelEof(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void CloseChannel(NovaSshSafeHandle sessionHandle, int channelId) => throw new NotSupportedException();
+        public void SubmitResponse(NovaSshSafeHandle sessionHandle, NativeSshResponseKind responseKind, ReadOnlySpan<byte> data) => throw new NotSupportedException();
+        public void Close(NovaSshSafeHandle sessionHandle) => throw new NotSupportedException();
+    }
+
     private sealed class CapturingNativeSshInterop : INativeSshInterop
     {
         public NativeSshConnectionOptions? ConnectionOptions { get; private set; }

@@ -247,9 +247,41 @@ internal static class MuxDaemonImage
     internal static Func<string, string> ResolverFor(string appDataRoot, Action<string>? log)
     {
         Action<string> sink = log ?? (static _ => { });
-        return exePath => OperatingSystem.IsWindows()
-            ? Resolve(exePath, appDataRoot, AppVersionInfo.Version, MuxImageFileSystem.Instance, sink)
-            : exePath;
+        return exePath =>
+        {
+            if (!OperatingSystem.IsWindows()) return exePath;
+            string resolved = Resolve(exePath, appDataRoot, AppVersionInfo.Version, MuxImageFileSystem.Instance, sink);
+            if (FellBackToInstallFolder(exePath, resolved, VelopackInstallRoot(exePath, File.Exists))) MarkRanFromInstallFolder();
+            return resolved;
+        };
+    }
+
+    /// <summary>
+    /// What the user is told, once per launch, when this launch started the local daemon from the install folder because
+    /// its own copy could not be staged (<see cref="Resolve"/> logged why): every update then stops it, and the startup
+    /// update is held behind it. Fixed text, no paths: debug.log has the details.
+    /// </summary>
+    internal const string InstallFolderNotice =
+        "Shells cannot be kept through updates on this computer: the multiplexer runs from Ntilde's install folder because its own copy could not be set up (debug.log says why). Updates ask before they close them.";
+
+    private static int s_ranFromInstallFolder;
+    private static int s_installFolderNoticeTaken;
+
+    /// <summary>A Velopack install whose staging gave the executable itself back: the daemon runs from the install folder.</summary>
+    internal static bool FellBackToInstallFolder(string exePath, string resolved, string? installRoot) =>
+        installRoot is not null && string.Equals(exePath, resolved, StringComparison.Ordinal);
+
+    /// <summary>This launch started the local daemon from the install folder (<see cref="FellBackToInstallFolder"/>).</summary>
+    internal static void MarkRanFromInstallFolder() => Volatile.Write(ref s_ranFromInstallFolder, 1);
+
+    /// <summary>True once per process, after <see cref="MarkRanFromInstallFolder"/>: the caller shows <see cref="InstallFolderNotice"/>.</summary>
+    internal static bool TakeInstallFolderNotice() =>
+        Volatile.Read(ref s_ranFromInstallFolder) != 0 && Interlocked.Exchange(ref s_installFolderNoticeTaken, 1) == 0;
+
+    internal static void ResetInstallFolderNoticeForTest()
+    {
+        Volatile.Write(ref s_ranFromInstallFolder, 0);
+        Volatile.Write(ref s_installFolderNoticeTaken, 0);
     }
 
     /// <summary>
