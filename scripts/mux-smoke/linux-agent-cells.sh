@@ -25,6 +25,7 @@ SBX="$(prepare_sandbox "${3:?$usage}/agent")" || exit 2
 command -v xvfb-run >/dev/null || { echo "xvfb-run is not on PATH" >&2; exit 2; }
 
 DATA=$SBX/data
+refuse_if_running "$DATA"
 rm -rf "$DATA" "$SBX/shells"
 isolate "$DATA"
 sandbox_settings "$DATA" true
@@ -35,9 +36,9 @@ finish() {
   trap - EXIT
   say ''
   say '=== Cleanup ==='
-  for p in $(sandbox_pids "$DATA" "^$APP \$"); do kill "$p" 2>/dev/null; done
+  for p in $(app_gui_pids "$DATA"); do kill "$p" 2>/dev/null; done
   sleep 2
-  for p in $(sandbox_pids "$DATA" "^$APP \$"); do kill -9 "$p" 2>/dev/null; done
+  for p in $(app_gui_pids "$DATA"); do kill -9 "$p" 2>/dev/null; done
   stop_sandbox "$DATA"
   for p in $(sandbox_pids "$DATA" 'Xvfb|xvfb-run'); do kill "$p" 2>/dev/null; done
   left=$(sandbox_pids "$DATA" | tr '\n' ' ')
@@ -60,18 +61,17 @@ mcp() {
 
 say "=== Phase 5 checklist step 44: Linux, ntilde.list_sessions sees a windowless session ($(date -u '+%Y-%m-%d %H:%M:%S UTC')) ==="
 say "NTILDE_APPDATA_ROOT=$NTILDE_APPDATA_ROOT; app $APP; MCP server $MCP"
-[[ -n "$(sandbox_pids "$DATA")" ]] && die "processes are already running under $DATA"
 
 say ''
 say '=== K1. The GUI with Agent access (observe) on, and a second session no window shows ==='
 xvfb-run -a -s '-screen 0 1280x800x24' "$APP" >"$SBX/gui.out" 2>&1 &
 for _ in $(seq 1 150); do [[ -s "$DATA/mux/mux-endpoint.json" && -s "$DATA/agent-endpoint.json" ]] && break; sleep 0.2; done
 sleep 2
-GUI=$(sandbox_pids "$DATA" "^$APP \$" | head -1)
+GUI=$(app_gui_pids "$DATA" | head -1)
 say "GUI pid ${GUI:-NONE}; agent endpoint: $(tr -d '\n' <"$DATA/agent-endpoint.json" 2>/dev/null)"
 check 'the GUI started, its daemon and its agent endpoint are up under the sandbox root' $([[ -n "$GUI" && -s "$DATA/mux/mux-endpoint.json" && -s "$DATA/agent-endpoint.json" ]]; echo $?)
 run mux ls
-run mux spawn-for-test /bin/sh "$SBX/shells/hold.sh W"
+run mux spawn-for-test /bin/sh "\"$SBX/shells/hold.sh\" W"
 W=$OUT
 check 'a windowless session (setup: spawn-for-test)' $([[ "$W" =~ ^[0-9a-f-]{36}$ ]]; echo $?)
 sleep 1

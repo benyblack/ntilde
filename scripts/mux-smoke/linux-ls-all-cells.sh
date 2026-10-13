@@ -33,6 +33,7 @@ SBX="$(prepare_sandbox "${3:?$usage}/ls-all")" || exit 2
 DATA=$SBX/data
 DESC=$DATA/mux/mux-endpoint.json
 KEYS=$SBX/sshkey
+refuse_if_running "$DATA"
 rm -rf "$DATA" "$SBX/shells"
 isolate "$DATA"
 sandbox_settings "$DATA" false
@@ -55,7 +56,6 @@ remote_rows() { grep -cE "^nova@$SSHD_HOST +[0-9a-f]{8}-" <<<"$OUT"; }
 
 say "=== Phase 5 checklist steps 41, 42, 27, 43: Linux ls --all cells ($(. /etc/os-release && echo "$PRETTY_NAME"), $(date -u '+%Y-%m-%d %H:%M:%S UTC')) ==="
 say "NTILDE_APPDATA_ROOT=$NTILDE_APPDATA_ROOT; app $APP; ntilde-mux $MUX"
-[[ -n "$(sandbox_pids "$DATA")" ]] && die "processes are already running under $DATA"
 
 say ''
 say '=== Setup: the Docker sshd, a throwaway key, ntilde-mux on the host, three profiles ==='
@@ -71,7 +71,8 @@ P_OPENSSH=7a3c0f30-0000-4000-8000-0000000000b2
 P_JUMP=7a3c0f30-0000-4000-8000-0000000000c3
 write_profiles() { # write_profiles <true|false>: PersistRemoteSessions on every profile
   # OpenSSH reads ~/.ssh/known_hosts unless told otherwise (the checklist's setup); the extra argument keeps it in
-  # the sandbox file sshd_up's key-only check wrote.
+  # the sandbox file sshd_up's key-only check wrote. Quoted twice, for a sandbox path with spaces: the app splits
+  # ExtraSshArgs on spaces outside quotes, and ssh reads UserKnownHostsFile as a list of files (\" is JSON's quote).
   profile() { # id backend name jumphops extra-args
     printf '{"Id":"%s","BackendKind":%s,"Name":"%s","GroupPath":"General","Host":"%s","User":"nova","Port":%s,"AuthMode":2,"IdentityFilePath":"%s","RememberPasswordInVault":false,"JumpHops":%s,"MuxOptions":{"Enabled":false,"PersistRemoteSessions":%s},"ExtraSshArgs":"%s"}' \
       "$1" "$2" "$3" "$SSHD_HOST" "$SSHD_PORT" "$KEYS/id_ed25519" "$4" "$PERSIST" "$5"
@@ -79,8 +80,8 @@ write_profiles() { # write_profiles <true|false>: PersistRemoteSessions on every
   PERSIST=$1
   printf '{"SchemaVersion":1,"Profiles":[%s,%s,%s]}\n' \
     "$(profile $P_NATIVE 1 'a native key' '[]' '')" \
-    "$(profile $P_OPENSSH 0 'b openssh key' '[]' "-o UserKnownHostsFile=$KEYS/known_hosts")" \
-    "$(profile $P_JUMP 0 'c openssh via jump host' "[{\"Host\":\"$SSHD_HOST\",\"User\":\"nova\",\"Port\":$SSHD_PORT}]" "-o UserKnownHostsFile=$KEYS/known_hosts")" \
+    "$(profile $P_OPENSSH 0 'b openssh key' '[]' "-o 'UserKnownHostsFile=\\\"$KEYS/known_hosts\\\"'")" \
+    "$(profile $P_JUMP 0 'c openssh via jump host' "[{\"Host\":\"$SSHD_HOST\",\"User\":\"nova\",\"Port\":$SSHD_PORT}]" "-o 'UserKnownHostsFile=\\\"$KEYS/known_hosts\\\"'")" \
     >"$DATA/ssh/profiles.json"
 }
 write_profiles true
@@ -90,7 +91,7 @@ say "profiles: 'a native key' (native), 'b openssh key' (OpenSSH), 'c openssh vi
 say ''
 say '=== L1 (step 41.1). ls --all while the host runs no ntilde-mux ==='
 start_daemon "$DESC"
-run mux spawn-for-test /bin/sh "$SBX/shells/hold.sh L"
+run mux spawn-for-test /bin/sh "\"$SBX/shells/hold.sh\" L"
 LOCAL=$OUT
 check 'a local daemon with one session (setup)' $([[ "$LOCAL" =~ ^[0-9a-f-]{36}$ ]]; echo $?)
 check 'the host runs no ntilde-mux before the listing' $([[ -z "$(remote_daemon_pid)" ]]; echo $?)

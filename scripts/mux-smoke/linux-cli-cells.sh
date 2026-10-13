@@ -26,10 +26,13 @@ if [[ -n "${3:-}" ]]; then MUX="$(resolve_exe "$3" ntilde-mux)" || exit 2; fi
 
 DATA=$SBX/data
 DESC=$DATA/mux/mux-endpoint.json
+refuse_if_running "$DATA"
 rm -rf "$DATA" "$SBX/shells"
 isolate "$DATA"
 sandbox_settings "$DATA" false
 hold_script "$SBX/shells"
+# spawn-for-test's arguments are one string the daemon splits on spaces, honouring double quotes: the hold script's
+# path is quoted inside it, for a sandbox path with spaces.
 HOLD=$SBX/shells/hold.sh
 
 finish() {
@@ -48,7 +51,6 @@ session_shells() { ps -o args= --ppid "$1" 2>/dev/null | grep -cE 'sleep 100000|
 
 say "=== Phase 5 checklist steps 9 and 10: Linux CLI cells ($(. /etc/os-release && echo "$PRETTY_NAME"), $(date -u '+%Y-%m-%d %H:%M:%S UTC')) ==="
 say "NTILDE_APPDATA_ROOT=$NTILDE_APPDATA_ROOT; app $APP${MUX:+; ntilde-mux $MUX}"
-[[ -n "$(sandbox_pids "$DATA")" ]] && die "processes are already running under $DATA"
 
 say ''
 say '=== C1. With no multiplexer running ==='
@@ -76,9 +78,9 @@ say "endpoint $EP: $(stat -c '%a %U %F' "$EP" 2>&1); its folder $(dirname "$EP")
 check 'the endpoint is a 0600 socket in a 0700 folder' $([[ "$(stat -c '%a %F' "$EP")" == '600 socket' && "$(stat -c '%a' "$(dirname "$EP")")" == 700 ]]; echo $?)
 run mux ls
 check 'ls with an empty daemon: "No sessions.", exit 0' $([[ $CODE == 0 ]] && has 'No sessions\.'; echo $?)
-run mux spawn-for-test /bin/sh "$HOLD A"
+run mux spawn-for-test /bin/sh "\"$HOLD\" A"
 A=$OUT
-run mux spawn-for-test /bin/sh "$HOLD B"
+run mux spawn-for-test /bin/sh "\"$HOLD\" B"
 B=$OUT
 check 'spawn-for-test (setup) printed two session ids' $([[ "$A" =~ ^[0-9a-f-]{36}$ && "$B" =~ ^[0-9a-f-]{36}$ ]]; echo $?)
 sleep 1
@@ -129,7 +131,7 @@ check 'kill-server again: exit 1' $([[ $CODE == 1 ]]; echo $?)
 say ''
 say '=== C7. kill-server --force against a daemon this build talks to ==='
 start_daemon "$DESC"
-run mux spawn-for-test /bin/sh "$HOLD C"
+run mux spawn-for-test /bin/sh "\"$HOLD\" C"
 run mux kill-server --force
 check 'kill-server --force on a compatible daemon: "Multiplexer stopped.", exit 0' $([[ $CODE == 0 ]] && has 'Multiplexer stopped\.'; echo $?)
 sleep 0.5

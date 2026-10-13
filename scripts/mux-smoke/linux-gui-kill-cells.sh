@@ -23,6 +23,7 @@ SBX="$(prepare_sandbox "${2:?$usage}/gui-kill")" || exit 2
 command -v xvfb-run >/dev/null || { echo "xvfb-run is not on PATH" >&2; exit 2; }
 
 DATA=$SBX/data
+refuse_if_running "$DATA"
 rm -rf "$DATA"
 isolate "$DATA"
 sandbox_settings "$DATA" false
@@ -33,7 +34,7 @@ finish() {
   trap - EXIT
   say ''
   say '=== Cleanup ==='
-  for p in $(sandbox_pids "$DATA" "^$APP \$"); do kill -9 "$p" 2>/dev/null; done
+  for p in $(app_gui_pids "$DATA"); do kill -9 "$p" 2>/dev/null; done
   stop_sandbox "$DATA"
   for p in $(sandbox_pids "$DATA" 'Xvfb|xvfb-run'); do kill "$p" 2>/dev/null; done
   left=$(sandbox_pids "$DATA" | tr '\n' ' ')
@@ -54,7 +55,7 @@ start_gui() {
   xvfb-run -a -s '-screen 0 1280x800x24' "$APP" >>"$SBX/gui.out" 2>&1 &
   local _
   for _ in $(seq 1 150); do
-    GUI=$(sandbox_pids "$DATA" "^$APP \$" | head -1)
+    GUI=$(app_gui_pids "$DATA" | head -1)
     [[ -n "$GUI" && -s "$DATA/mux/mux-endpoint.json" ]] && grep -Eq ' running +1 ' <<<"$("$APP" mux ls 2>&1)" && break
     sleep 0.2
   done
@@ -64,7 +65,6 @@ start_gui() {
 
 say "=== Phase 5 checklist step 4: Linux, kill the GUI, the shell survives, a relaunch reattaches ($(date -u '+%Y-%m-%d %H:%M:%S UTC')) ==="
 say "NTILDE_APPDATA_ROOT=$NTILDE_APPDATA_ROOT; app $APP"
-[[ -n "$(sandbox_pids "$DATA")" ]] && die "processes are already running under $DATA"
 
 say ''
 say '=== G1. SIGKILL ==='

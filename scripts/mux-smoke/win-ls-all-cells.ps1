@@ -59,14 +59,15 @@ function Run([string] $exe, [string[]] $argv) {
     Say ("  (exit {0}, {1:N1} s)" -f $code, $sw.Elapsed.TotalSeconds)
     return [pscustomobject]@{ Out = $out; Code = $code; Seconds = $sw.Elapsed.TotalSeconds }
 }
-# docker, failing the script on a non-zero exit.
-function Docker([string[]] $argv) {
-    $o = & docker @argv 2>&1 | Out-String
+# docker, failing the script on a non-zero exit. Not named `Docker`: PowerShell resolves names without regard to case,
+# so a function of that name would shadow docker.exe for every `& docker` in this script, its own call included.
+function Invoke-Docker([string[]] $argv) {
+    $o = & docker.exe @argv 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { throw "docker $($argv -join ' ') exited $($LASTEXITCODE): $($o.Trim())" }
     return $o.Trim()
 }
 function DockerLogged([string[]] $argv) {
-    $o = & docker @argv 2>&1 | Out-String
+    $o = & docker.exe @argv 2>&1 | Out-String
     Say "> docker $($argv -join ' ') (exit $LASTEXITCODE)"
     if ($o.Trim()) { foreach ($l in ($o.TrimEnd() -split "`r?`n")) { Say "  $l" } }
 }
@@ -95,14 +96,15 @@ $Net = 't30-net'
 $RemoteMux = '/home/nova/.local/share/ntilde/bin/ntilde-mux'
 # ntilde-mux's own root beneath the app-data root (MuxPaths.Standalone), where its descriptor lives.
 $RemoteMuxRoot = '/home/nova/.local/share/ntilde/ntilde-mux'
-function RemoteDaemonPid { (& docker exec $Ssh sh -c "pgrep -u nova -f 'ntilde-mux serve' | head -1" 2>$null | Out-String).Trim() }
+function RemoteDaemonPid { (& docker.exe exec $Ssh sh -c "pgrep -u nova -f 'ntilde-mux serve' | head -1" 2>$null | Out-String).Trim() }
 function RemoteSpawn([string] $tag) {
-    $id = (& docker exec -u nova -e DOTNET_ROOT=/opt/mux-smoke/dotnet -e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 -e "NTILDE_APPDATA_ROOT=$RemoteMuxRoot" $Ssh `
+    $id = (& docker.exe exec -u nova -e DOTNET_ROOT=/opt/mux-smoke/dotnet -e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 -e "NTILDE_APPDATA_ROOT=$RemoteMuxRoot" $Ssh `
             /opt/mux-smoke/dotnet/dotnet /opt/mux-smoke/app/Ntilde.dll mux spawn-for-test /bin/sh "/home/nova/t30-hold.sh $tag" 2>&1 | Out-String).Trim()
     Say "remote setup: spawn-for-test /bin/sh t30-hold.sh $tag -> $id"
     return $id
 }
-function HostKey { (Docker @('exec', $Ssh, 'sh', '-c', 'cut -d" " -f1 /etc/ssh/ssh_host_ed25519_key.pub; ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256 | cut -d" " -f2')) -split "`r?`n" }
+# No quotes inside the shell command: PowerShell 7.2 drops a native argument's embedded double quotes.
+function HostKey { (Invoke-Docker @('exec', $Ssh, 'sh', '-c', 'set -- $(cat /etc/ssh/ssh_host_ed25519_key.pub); echo $1; set -- $(ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256); echo $2')) -split "`r?`n" }
 
 # ---- the sandbox ---------------------------------------------------------------------------------------------------
 $AppSrc = (Resolve-Path -LiteralPath $App).Path
@@ -134,10 +136,10 @@ Say "NTILDE_APPDATA_ROOT=$env:NTILDE_APPDATA_ROOT"
 if ((SandboxProcesses).Count) { throw "processes are already running from $Sp; stop them first" }
 $userBefore = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(ntilde|ntilde-mux)(\.exe|\.com)$' -and -not ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($Sp + '\', [StringComparison]::OrdinalIgnoreCase)) })
 foreach ($p in $userBefore) { Say "a process of the user's own (left alone): pid $($p.ProcessId) $($p.ExecutablePath)" }
-& docker image inspect $SshdImage *> $null
+& docker.exe image inspect $SshdImage *> $null
 if ($LASTEXITCODE -ne 0) { throw "no $SshdImage image: docker build -t $SshdImage tests/Ntilde.ExternalSuites/NativeSsh" }
-& docker container inspect $Ssh *> $null; $sshExists = $LASTEXITCODE -eq 0
-& docker network inspect $Net *> $null; $netExists = $LASTEXITCODE -eq 0
+& docker.exe container inspect $Ssh *> $null; $sshExists = $LASTEXITCODE -eq 0
+& docker.exe network inspect $Net *> $null; $netExists = $LASTEXITCODE -eq 0
 if ($sshExists -or $netExists) { throw "$Ssh or $Net exists already; remove them first (docker rm -f $Ssh; docker network rm $Net)" }
 
 foreach ($d in $AppDir, $RemoteApp, $Data, $Shells, $Keys) { if (Test-Path $d) { Remove-Item -LiteralPath $d -Recurse -Force } }
@@ -152,36 +154,44 @@ Copy-Item -LiteralPath "$env:SystemRoot\System32\cmd.exe" -Destination $Shell -F
 $settings = [ordered]@{ SessionPersistence = 'KeepOnClose'; AgentAccessObserveEnabled = $false; QuakeModeEnabled = $false; AutomaticUpdateChecks = $false }
 [IO.File]::WriteAllText((Join-Path $Data 'settings.json'), ($settings | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
 
-$sshdMade = $false
+# This run's label on the container and the network it creates: cleanup removes only what carries it, so a run that
+# lost a race to another one never removes the other's.
+$runLabel = "mux-smoke.run=$PID.$(Get-Random)"
+function OwnedByThisRun([string] $kind, [string] $name) {
+    # {{json ...}}, not {{index ... "key"}}: PowerShell 7.2 drops the embedded quotes of a native argument.
+    $format = if ($kind -eq 'container') { '{{json .Config.Labels}}' } else { '{{json .Labels}}' }
+    $json = (& docker.exe $kind inspect -f $format $name 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $json -or $json -eq 'null') { return $false }
+    return "mux-smoke.run=$(($json | ConvertFrom-Json).'mux-smoke.run')" -eq $runLabel
+}
 try {
     Say ''
     Say '=== Setup: the Docker sshd, a throwaway key, ntilde-mux on the host, one native profile ==='
-    $sshdMade = $true
-    $null = Docker @('network', 'create', '--driver', 'bridge', '--subnet', '10.230.30.0/24', $Net)
-    $null = Docker @('run', '-d', '--name', $Ssh, '--hostname', $Ssh, '--network', $Net, '-p', '127.0.0.1:2230:22', $SshdImage)
+    $null = Invoke-Docker @('network', 'create', '--label', $runLabel, '--driver', 'bridge', '--subnet', '10.230.30.0/24', $Net)
+    $null = Invoke-Docker @('run', '-d', '--label', $runLabel, '--name', $Ssh, '--hostname', $Ssh, '--network', $Net, '-p', '127.0.0.1:2230:22', $SshdImage)
     if (-not (WaitForSsh 30)) { throw 'sshd did not answer on 127.0.0.1:2230 within 30 s' }
     # The key is made in the container (no quoting of an empty passphrase through PowerShell), authorized there, and
     # its private half copied out to the sandbox.
-    $null = Docker @('exec', $Ssh, 'sh', '-c', "ssh-keygen -q -t ed25519 -N '' -C ntilde-smoke -f /tmp/smoke_key && install -o nova -g nova -m 600 /tmp/smoke_key.pub /home/nova/.ssh/authorized_keys")
+    $null = Invoke-Docker @('exec', $Ssh, 'sh', '-c', "ssh-keygen -q -t ed25519 -N '' -C ntilde-smoke -f /tmp/smoke_key && install -o nova -g nova -m 600 /tmp/smoke_key.pub /home/nova/.ssh/authorized_keys")
     $key = Join-Path $Keys 'id_ed25519'
-    $null = Docker @('cp', "${Ssh}:/tmp/smoke_key", $key)
-    $null = Docker @('exec', $Ssh, 'rm', '-f', '/tmp/smoke_key', '/tmp/smoke_key.pub')
+    $null = Invoke-Docker @('cp', "${Ssh}:/tmp/smoke_key", $key)
+    $null = Invoke-Docker @('exec', $Ssh, 'rm', '-f', '/tmp/smoke_key', '/tmp/smoke_key.pub')
     # As nova, so every folder on the way is nova's (`install -d -o nova` would leave ~/.local/share/ntilde to root).
-    $null = Docker @('exec', '-u', 'nova', $Ssh, 'mkdir', '-p', '/home/nova/.local/share/ntilde/bin')
-    $null = Docker @('cp', $MuxBin, "${Ssh}:$RemoteMux")
-    $null = Docker @('exec', $Ssh, 'sh', '-c', "chown nova:nova $RemoteMux && chmod 755 $RemoteMux")
-    $null = Docker @('exec', $Ssh, 'sh', '-c', "printf 'echo t30-session-`$1\nexec sleep 100000\n' > /home/nova/t30-hold.sh && chown nova:nova /home/nova/t30-hold.sh")
-    Say "ntilde-mux on the host: $(Docker @('exec', '-u', 'nova', $Ssh, $RemoteMux, '--version'))"
+    $null = Invoke-Docker @('exec', '-u', 'nova', $Ssh, 'mkdir', '-p', '/home/nova/.local/share/ntilde/bin')
+    $null = Invoke-Docker @('cp', $MuxBin, "${Ssh}:$RemoteMux")
+    $null = Invoke-Docker @('exec', $Ssh, 'sh', '-c', "chown nova:nova $RemoteMux && chmod 755 $RemoteMux")
+    $null = Invoke-Docker @('exec', $Ssh, 'sh', '-c', "printf 'echo t30-session-`$1\nexec sleep 100000\n' > /home/nova/t30-hold.sh && chown nova:nova /home/nova/t30-hold.sh")
+    Say "ntilde-mux on the host: $(Invoke-Docker @('exec', '-u', 'nova', $Ssh, $RemoteMux, '--version'))"
     # A .NET runtime for the remote spawn-for-test, from Microsoft's runtime image, through the sandbox.
     $rt = Join-Path $Sp 'dotnet-runtime'
     if (Test-Path $rt) { Remove-Item -LiteralPath $rt -Recurse -Force }
-    $null = Docker @('create', '--name', 'mux-smoke-dotnet', 'mcr.microsoft.com/dotnet/runtime:10.0')
-    try { $null = Docker @('cp', 'mux-smoke-dotnet:/usr/share/dotnet', $rt) } finally { & docker rm -f mux-smoke-dotnet *> $null }
-    $null = Docker @('exec', $Ssh, 'mkdir', '-p', '/opt/mux-smoke')
-    $null = Docker @('cp', $rt, "${Ssh}:/opt/mux-smoke/dotnet")
-    $null = Docker @('cp', $RemoteApp, "${Ssh}:/opt/mux-smoke/app")
+    $null = Invoke-Docker @('create', '--name', 'mux-smoke-dotnet', 'mcr.microsoft.com/dotnet/runtime:10.0')
+    try { $null = Invoke-Docker @('cp', 'mux-smoke-dotnet:/usr/share/dotnet', $rt) } finally { & docker.exe rm -f mux-smoke-dotnet *> $null }
+    $null = Invoke-Docker @('exec', $Ssh, 'mkdir', '-p', '/opt/mux-smoke')
+    $null = Invoke-Docker @('cp', $rt, "${Ssh}:/opt/mux-smoke/dotnet")
+    $null = Invoke-Docker @('cp', $RemoteApp, "${Ssh}:/opt/mux-smoke/app")
     # A copy through a Windows folder loses the execute bit.
-    $null = Docker @('exec', $Ssh, 'sh', '-c', 'chmod -R a+rX /opt/mux-smoke && chmod 755 /opt/mux-smoke/dotnet/dotnet')
+    $null = Invoke-Docker @('exec', $Ssh, 'sh', '-c', 'chmod -R a+rX /opt/mux-smoke && chmod 755 /opt/mux-smoke/dotnet/dotnet')
 
     $sshDir = Join-Path $Data 'ssh'
     New-Item -ItemType Directory -Force $sshDir | Out-Null
@@ -226,9 +236,9 @@ try {
 
     Say ''
     Say '=== J2 (step 41.2). Two sessions on the host (setup: ntilde-mux serve, then the App''s spawn-for-test in the container) ==='
-    $null = Docker @('exec', '-d', '-u', 'nova', $Ssh, $RemoteMux, 'serve')
+    $null = Invoke-Docker @('exec', '-d', '-u', 'nova', $Ssh, $RemoteMux, 'serve')
     $deadline = (Get-Date).AddSeconds(10)
-    do { Start-Sleep -Milliseconds 200; & docker exec $Ssh test -s "$RemoteMuxRoot/mux/mux-endpoint.json" } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
+    do { Start-Sleep -Milliseconds 200; & docker.exe exec $Ssh test -s "$RemoteMuxRoot/mux/mux-endpoint.json" } while ($LASTEXITCODE -ne 0 -and (Get-Date) -lt $deadline)
     $remoteDaemon = RemoteDaemonPid
     $ra = RemoteSpawn 'A'; $rb = RemoteSpawn 'B'
     $r = Run $Com @('mux', 'ls', '--all')
@@ -274,7 +284,7 @@ try {
     Say ''
     Say '=== J6 (step 43). The host''s keys change while ntilde-mux keeps running ==='
     $knownBefore = Get-Content -LiteralPath $knownPath -Raw
-    $null = Docker @('exec', $Ssh, 'sh', '-c', 'rm -f /etc/ssh/ssh_host_* && ssh-keygen -A >/dev/null && kill -HUP 1')
+    $null = Invoke-Docker @('exec', $Ssh, 'sh', '-c', 'rm -f /etc/ssh/ssh_host_* && ssh-keygen -A >/dev/null && kill -HUP 1')
     if (-not (WaitForSsh 30)) { throw 'sshd did not come back after its keys changed' }
     $newKey = HostKey
     Say "host key before: $($hostKey -join ' '); now: $($newKey -join ' ')"
@@ -299,10 +309,8 @@ finally {
     Say '=== Cleanup ==='
     if (Test-Path $Descriptor) { $null = Run $Com @('mux', 'kill-server', '--force') }
     foreach ($p in SandboxProcesses) { Say "stopping sandbox pid $($p.ProcessId) $($p.ExecutablePath)"; Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
-    if ($sshdMade) {
-        & docker rm -f $Ssh *> $null; if ($LASTEXITCODE -eq 0) { Say "removed container $Ssh" }
-        & docker network rm $Net *> $null; if ($LASTEXITCODE -eq 0) { Say "removed network $Net" }
-    }
+    if (OwnedByThisRun 'container' $Ssh) { & docker.exe rm -f $Ssh *> $null; if ($LASTEXITCODE -eq 0) { Say "removed container $Ssh" } }
+    if (OwnedByThisRun 'network' $Net) { & docker.exe network rm $Net *> $null; if ($LASTEXITCODE -eq 0) { Say "removed network $Net" } }
     Say "processes from the sandbox still running: $((SandboxProcesses).Count)"
     foreach ($p in $userBefore) {
         $now = Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ProcessId)"

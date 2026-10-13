@@ -104,6 +104,27 @@ sandbox_pids() {
   return 0
 }
 
+# app_gui_pids <data root>: the GUI (the App started with no arguments) under that root. The command line is compared
+# literally, so a build path with regex characters in it still matches.
+app_gui_pids() {
+  local pid
+  for pid in $(sandbox_pids "$1"); do
+    [[ "$(tr '\0' ' ' 2>/dev/null <"/proc/$pid/cmdline")" == "$APP " ]] && echo "$pid"
+  done
+  return 0
+}
+
+# refuse_if_running <data root>: a sandbox something still runs under is left alone. Called before the script deletes
+# anything or installs the cleanup that kills what runs under the root.
+refuse_if_running() {
+  local pids
+  pids=$(sandbox_pids "$1" | tr '\n' ' ')
+  if [[ -n "$pids" ]]; then
+    echo "processes are already running under $1 (pids $pids); stop them first, or give another sandbox" >&2
+    exit 2
+  fi
+}
+
 # hold_script <dir>: the session shell the cells start: `/bin/sh hold.sh <tag>` prints t30-session-<tag>, then waits.
 hold_script() {
   mkdir -p "$1"
@@ -161,7 +182,10 @@ REMOTE_HOME=/home/nova
 REMOTE_MUX=$REMOTE_HOME/.local/share/ntilde/bin/ntilde-mux
 # ntilde-mux's own root beneath the app-data root (MuxPaths.Standalone), where its descriptor lives.
 REMOTE_MUX_ROOT=$REMOTE_HOME/.local/share/ntilde/ntilde-mux
-SSHD_MADE=0
+# This run's label on the container and the network it creates: cleanup removes only what carries it, so a run that
+# lost a race to another one never removes the other's.
+SSHD_LABEL="mux-smoke.run"
+SSHD_RUN="$$.$RANDOM.$(date +%s)"
 
 # ssh_answers <seconds>: whether 127.0.0.1:2230 sends an SSH banner within that time.
 ssh_answers() {
@@ -185,10 +209,10 @@ sshd_up() {
   if docker container inspect "$SSHD_NAME" >/dev/null 2>&1 || docker network inspect "$SSHD_NET" >/dev/null 2>&1; then
     die "$SSHD_NAME or $SSHD_NET exists already; remove them first (docker rm -f $SSHD_NAME; docker network rm $SSHD_NET)"
   fi
-  SSHD_MADE=1
-  docker network create --driver bridge --subnet "$SSHD_SUBNET" "$SSHD_NET" >/dev/null || die "docker network create $SSHD_NET"
-  docker run -d --name "$SSHD_NAME" --hostname "$SSHD_NAME" --network "$SSHD_NET" -p "$SSHD_HOST:$SSHD_PORT:22" "$SSHD_IMAGE" >/dev/null \
-    || die "docker run $SSHD_NAME"
+  docker network create --label "$SSHD_LABEL=$SSHD_RUN" --driver bridge --subnet "$SSHD_SUBNET" "$SSHD_NET" >/dev/null \
+    || die "docker network create $SSHD_NET"
+  docker run -d --label "$SSHD_LABEL=$SSHD_RUN" --name "$SSHD_NAME" --hostname "$SSHD_NAME" --network "$SSHD_NET" \
+    -p "$SSHD_HOST:$SSHD_PORT:22" "$SSHD_IMAGE" >/dev/null || die "docker run $SSHD_NAME"
   ssh_answers 30 || die "sshd did not answer on $SSHD_HOST:$SSHD_PORT within 30 s"
 
   rm -rf "$keys" && mkdir -p "$keys" && chmod 700 "$keys"
@@ -203,7 +227,8 @@ sshd_up() {
   docker exec "$SSHD_NAME" sh -c "printf 'echo \"t30-session-\$1\"\nexec sleep 100000\n' > $REMOTE_HOME/t30-hold.sh && chown nova:nova $REMOTE_HOME/t30-hold.sh" \
     || die "write the remote hold script"
   local ok
-  ok=$(ssh -F /dev/null -i "$keys/id_ed25519" -o IdentitiesOnly=yes -o UserKnownHostsFile="$keys/known_hosts" \
+  # UserKnownHostsFile is a list of files to ssh: the path is quoted inside the option, for a sandbox with spaces.
+  ok=$(ssh -F /dev/null -i "$keys/id_ed25519" -o IdentitiesOnly=yes -o "UserKnownHostsFile=\"$keys/known_hosts\"" \
     -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o PasswordAuthentication=no -p "$SSHD_PORT" "nova@$SSHD_HOST" \
     "echo key-auth-ok; $REMOTE_MUX --version" 2>&1)
   say "key-only check: $(tr '\n' ' ' <<<"$ok")"
@@ -211,11 +236,14 @@ sshd_up() {
   grep -q '^ntilde-mux ' <<<"$ok" || die "ntilde-mux does not run on $SSHD_NAME (glibc floor? build it with scripts/docker-publish-mux-daemon.sh)"
 }
 
+# sshd_down: removes the container and the network, each only when it carries this run's label.
 sshd_down() {
-  [[ $SSHD_MADE == 1 ]] || return 0
-  docker network connect "$SSHD_NET" "$SSHD_NAME" >/dev/null 2>&1
-  docker rm -f "$SSHD_NAME" >/dev/null 2>&1 && say "removed container $SSHD_NAME"
-  docker network rm "$SSHD_NET" >/dev/null 2>&1 && say "removed network $SSHD_NET"
+  if [[ "$(docker container inspect -f "{{index .Config.Labels \"$SSHD_LABEL\"}}" "$SSHD_NAME" 2>/dev/null)" == "$SSHD_RUN" ]]; then
+    docker rm -f "$SSHD_NAME" >/dev/null 2>&1 && say "removed container $SSHD_NAME"
+  fi
+  if [[ "$(docker network inspect -f "{{index .Labels \"$SSHD_LABEL\"}}" "$SSHD_NET" 2>/dev/null)" == "$SSHD_RUN" ]]; then
+    docker network rm "$SSHD_NET" >/dev/null 2>&1 && say "removed network $SSHD_NET"
+  fi
   return 0
 }
 
