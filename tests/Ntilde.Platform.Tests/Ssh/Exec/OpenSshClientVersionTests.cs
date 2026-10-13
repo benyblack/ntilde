@@ -196,7 +196,9 @@ public sealed class OpenSshClientVersionTests
         }
 
         Assert.SkipUnless(ssh is not null, "No OpenSSH client (ssh) on this machine.");
-        OpenSshClientProbe probe = OpenSshClientVersion.Probe(ssh!);
+        // What is under test is that the real -V output parses, not how fast it comes: Git's ssh.exe on a cold Windows runner
+        // once took longer than ProbeTimeout to answer. The timeout has its own tests above.
+        OpenSshClientProbe probe = OpenSshClientVersion.Probe(ssh!, ["-V"], TimeSpan.FromSeconds(60));
         TestContext.Current.TestOutputHelper?.WriteLine($"{ssh}: {probe}");
 
         Assert.Equal(OpenSshClientProbeKind.Version, probe.Kind);

@@ -304,7 +304,9 @@ public sealed class MainWindowRealDaemonTests : IDisposable
 
         Assert.Empty(Attached(second).Select(s => s.Id).Intersect(gone));
         PumpUntil(() => Toast(second).Title == TerminalPane.MuxPreviousLostNoticeTitle, "the lost-session toast is shown");
-        Assert.Equal(TerminalPane.MuxPreviousLostBanner, Toast(second).Message);
+        // Both tabs lost theirs: the two notices merge into one line when they land before the toast shows, else each shows alone.
+        string[] lostLines = [TerminalPane.MuxPreviousLostBanner, MainWindow.BuildPersistenceNoticeMessage(TerminalPane.MuxPreviousLostNoticeTitle, TerminalPane.MuxPreviousLostBanner, 2)];
+        Assert.Contains(Toast(second).Message, lostLines);
         Assert.NotEqual(daemon, DaemonPid());
     }
 
