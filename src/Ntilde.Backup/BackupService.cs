@@ -1222,7 +1222,8 @@ public sealed class BackupService
     /// </summary>
     private bool TryDescribeProtectedDestination(string destinationPath, out string? reason)
     {
-        string comparableDestination;
+        string spelledDestination;
+        string resolvedDestination;
         try
         {
             // Fix round 2 (Codex review): Path.GetFullPath(destinationPath) - NOT
@@ -1235,7 +1236,8 @@ public sealed class BackupService
             // "<appdata>/profiles.json" (not a catalog entry - allowed) but was actually written
             // to "<appdata>/ssh/profiles.json" (the live Connections file) by BundleWriter, which
             // never heard of RootDirectory at all. No base directory means both agree.
-            comparableDestination = ResolveLinks(Path.GetFullPath(destinationPath));
+            spelledDestination = Path.GetFullPath(destinationPath);
+            resolvedDestination = ResolveLinks(spelledDestination);
         }
         catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
         {
@@ -1255,8 +1257,8 @@ public sealed class BackupService
 
         foreach (var entry in BackupCatalog.Entries)
         {
-            string source = ResolveLinks(Path.GetFullPath(BackupCatalog.ResolveSource(RootDirectory, entry)));
-            if (IsSameOrUnder(comparableDestination, source, comparison))
+            string source = Path.GetFullPath(BackupCatalog.ResolveSource(RootDirectory, entry));
+            if (IsProtected(source))
             {
                 reason = $"it is the live '{entry.SourceRelativePath}' Ntilde backs up (or a path under it); " +
                     "exporting there would overwrite it with the bundle before the export finished writing.";
@@ -1264,8 +1266,7 @@ public sealed class BackupService
             }
         }
 
-        string backupsDirectory = ResolveLinks(Path.GetFullPath(BackupsDirectory));
-        if (IsSameOrUnder(comparableDestination, backupsDirectory, comparison))
+        if (IsProtected(Path.GetFullPath(BackupsDirectory)))
         {
             reason = "it is inside the backups directory Ntilde manages for snapshots; " +
                 "exporting there could silently overwrite an existing snapshot.";
@@ -1274,6 +1275,12 @@ public sealed class BackupService
 
         reason = null;
         return false;
+
+        // Either spelling matching is enough. As written catches a link inside a protected directory that points out of
+        // it (the write would still land "in" the live directory); resolved catches one file reached by two spellings.
+        bool IsProtected(string spelledPath) =>
+            IsSameOrUnder(spelledDestination, spelledPath, comparison)
+            || IsSameOrUnder(resolvedDestination, ResolveLinks(spelledPath), comparison);
     }
 
     /// <summary>

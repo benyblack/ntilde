@@ -277,6 +277,38 @@ public sealed class BackupExportTests
     }
 
     /// <summary>
+    /// The other way round (Greptile P1 on #519): a link inside a live directory that points out of it. As spelled, the
+    /// destination is under the live themes directory, which was always refused; resolved, it is not. Either spelling
+    /// matching is enough to refuse.
+    /// </summary>
+    [Fact]
+    public void Export_ThroughALinkInsideALiveDirectory_IsStillRejected()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Creating a symlink needs Developer Mode or elevation on Windows.");
+        using var tree = BackupTestTree.CreatePopulated();
+        string outside = tree.Root + "-outside";
+        Directory.CreateDirectory(outside);
+        string link = Path.Combine(tree.Root, "themes", "elsewhere");
+        Directory.CreateSymbolicLink(link, outside);
+        try
+        {
+            var service = new BackupService(tree.Root, FixedClock());
+
+            // Settings only, so nothing reads the themes directory: only the guard can refuse this.
+            var outcome = service.Export(Path.Combine(link, "bundle.ntildebackup"), [BackupCategory.Settings]);
+
+            Assert.False(outcome.Success);
+            Assert.Equal(BackupFailureKind.WriteFailed, outcome.Failure);
+            Assert.Empty(Directory.GetFiles(outside));
+        }
+        finally
+        {
+            Directory.Delete(link);
+            Directory.Delete(outside, true);
+        }
+    }
+
+    /// <summary>
     /// Design decision (documented in the fix's own remarks on
     /// <c>BackupService.TryDescribeProtectedDestination</c>): <see cref="BackupService.BackupsDirectory"/>
     /// is rejected too, even though it is not itself a <c>BackupCatalog.Entries</c> source. It is
