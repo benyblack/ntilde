@@ -248,9 +248,14 @@ public sealed class StartupAutoApplyTests
         }
     }
 
+    /// <summary>
+    /// Short on purpose: &lt;root&gt;/mux/mux.sock has to fit a socket path (103 bytes on macOS), whose temp directory alone is
+    /// /var/folders/xx/&lt;28 chars&gt;/T/. A longer root moves the endpoint to a fallback directory this test never creates,
+    /// and the probe rightly refuses an endpoint it cannot check, without connecting.
+    /// </summary>
     private static string ScratchRoot()
     {
-        string root = Path.Combine(Path.GetTempPath(), $"ntilde_gate_{Guid.NewGuid():N}");
+        string root = Path.Combine(Path.GetTempPath(), $"ntg{Guid.NewGuid().ToString("N")[..8]}");
         Directory.CreateDirectory(root);
         return root;
     }
