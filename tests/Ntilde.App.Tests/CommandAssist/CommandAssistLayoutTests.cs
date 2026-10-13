@@ -980,10 +980,15 @@ public sealed class CommandAssistLayoutTests
     [AvaloniaFact]
     public void TerminalPane_WhenAMarkArrivesWhileACorrectionPassIsPending_TheStalePassLeavesTheMarkPlacementAlone()
     {
+        // A fake session, not the default factory: attached to the window, the pane starts its session, and the default
+        // one is a real local shell whose shell-integration prompt writes a 133;B mark of its own. That mark raced this
+        // test - landing first, it made the "markless" layout mark-anchored (every run, on a fast machine) or left no
+        // correction pass in flight (now and then on macOS CI). The test sets the only mark it means to.
         using var pane = new TerminalPane
         {
             Width = 900,
-            Height = 500
+            Height = 500,
+            SessionFactory = new Ntilde.Tests.Controls.RecordingSessionFactory(new Ntilde.Tests.Controls.FakeTerminalSession())
         };
         ConfigureCommandAssist(pane);
         pane.UpdateProfile(new TerminalProfile
