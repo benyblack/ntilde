@@ -751,7 +751,7 @@ public sealed class RemoteMuxDockerE2eTests(ITestOutputHelper output)
     /// temp directory, whose inherited ACL can grant other principals (on the machine this was written on, a
     /// sandbox group), so it is narrowed to its owner, as a key in <c>~/.ssh</c> is.
     /// </summary>
-    private static void RestrictToOwner(string path)
+    internal static void RestrictToOwner(string path)
     {
         if (OperatingSystem.IsWindows())
         {

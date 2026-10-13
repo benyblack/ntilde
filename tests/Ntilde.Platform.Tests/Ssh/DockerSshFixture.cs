@@ -213,6 +213,17 @@ internal sealed class DockerSshFixture : IAsyncDisposable
     }
 
     /// <summary>
+    /// The container's log so far (<c>docker logs</c>), both streams. sshd runs with <c>-e</c>, so every sign-in
+    /// it refuses is a line here (<c>Failed password for nova from …</c>).
+    /// </summary>
+    public async Task<string> LogsAsync()
+    {
+        (int exitCode, string stdout, string stderr) = await RunDockerAsync(["logs", _containerName]).ConfigureAwait(false);
+        if (exitCode != 0) throw new InvalidOperationException($"docker logs {_containerName} failed with exit code {exitCode}: {stderr}");
+        return stdout + stderr;
+    }
+
+    /// <summary>
     /// Takes the container off its network (<c>docker network disconnect bridge</c>). Everything in it keeps
     /// running, but no packet reaches it: an established connection goes silent rather than closing (on
     /// Docker Desktop the published port even keeps accepting connections, which then hear nothing), or is
