@@ -23,7 +23,7 @@ public sealed class MuxDaemonSmokeTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>The app exe next to the tests (apphost) or <c>dotnet Ntilde.dll</c>.</summary>
-    private static ProcessMuxDaemonSpawner Spawner()
+    internal static ProcessMuxDaemonSpawner Spawner()
     {
         string dir = AppContext.BaseDirectory;
         string apphost = Path.Combine(dir, OperatingSystem.IsWindows() ? "Ntilde.exe" : "Ntilde");
@@ -103,7 +103,7 @@ public sealed class MuxDaemonSmokeTests
         }
     }
 
-    private static bool IsAlive(int pid)
+    internal static bool IsAlive(int pid)
     {
         try
         {
