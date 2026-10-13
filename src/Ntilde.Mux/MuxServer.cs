@@ -185,9 +185,15 @@ public sealed class MuxServer : IDisposable
         return true;
     }
 
-    /// <summary>Kills and disposes every session (the <c>shutdown</c> path).</summary>
+    /// <summary>
+    /// The <c>shutdown</c> path: ends every client's connection, then kills and disposes every session. In that order, so
+    /// no client hears a shell it shows exit: a killed child reports exit 0, which a window takes for the user's own
+    /// <c>exit</c> and closes the pane (and with the last tab, itself). To a client the daemon simply goes away, as when it
+    /// is killed. The shutdown request's own reply is not lost: the request is raised only once that reply is written.
+    /// </summary>
     public void KillAllSessions()
     {
+        foreach (MuxServerConnection connection in _connections.Values) connection.Abort("server_shutdown");
         foreach (Guid id in _sessions.Keys)
         {
             if (_sessions.TryRemove(id, out HeadlessTerminalSession? s))

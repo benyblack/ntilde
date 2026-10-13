@@ -255,12 +255,17 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Actions:** run `ntilde mux kill-server`.
 - **Expected:** "Multiplexer stopped." with exit code 0. The `mux serve` process and every shell end, and the window's
   panes show `[Multiplexer disconnected] [Press Enter to reconnect]`.
+- **Automated:** `MainWindowRealDaemonTests.Kill_server_from_the_command_line_ends_the_daemon_and_its_real_shells_and_the_window_says_so`
+  (the PTY smoke lane, ubuntu-latest and windows-latest): the output and exit code, the daemon and both shell pids end,
+  both panes show the banner, and the window stays open.
 - **Result / log:**
   - Windows: OPEN — maintainer (the panes). The CLI half passed in step 9: "kill-server: "Multiplexer stopped.", exit 0",
     "the daemon (pid 67264) has exited", "its remaining shell has exited".
-  - Linux: FAIL (automated headless run against a real `mux serve`, 2026-10-13): `kill-server` printed "Multiplexer
-    stopped." and every shell ended, but the window closed instead of showing the banner. The shutdown reports each
-    shell as exit code 0, so each pane takes the exit policy's close. Not yet fixed. The CLI half passed in step 9.
+  - Linux: FAIL, then fixed (automated headless run against a real `mux serve`, 2026-10-13). The window closed instead of
+    showing the banner: the shutdown killed the shells while their clients were still connected, each pane saw its
+    shell exit with code 0 and closed under the exit policy, and the last tab took the window with it. The shutdown now
+    ends every client's connection first (`MuxServer.KillAllSessions`), so the panes see the multiplexer go away; the
+    automated test above passes. The CLI half passed in step 9.
   - macOS: OPEN — maintainer
 
 ### 8. A second instance takes nobody's shells
