@@ -2126,6 +2126,149 @@ jobs:
           docker run --rm -v "$PWD:/w:ro" -w /w debian:12-slim \
             bash scripts/mux-daemon-smoke.sh --no-openssl /w/artifacts/mux-daemon/linux-x64/ntilde-mux
 
+  # The Phase 5 manual checklist's scripted Linux cells (scripts/mux-smoke/README.md), run as the
+  # checklist runs them: the real App binary and ntilde-mux, every process under its own
+  # NTILDE_APPDATA_ROOT, PASS/FAIL lines and a summary in the log, exit 1 on any failure.
+  #   - linux-cli-cells.sh, steps 9 and 10: the `ntilde mux` verbs against a daemon started as the
+  #     product starts it, and `ntilde-mux --version`.
+  #   - linux-ls-all-cells.sh, steps 41, 42, 27 and 43: `ntilde mux ls --all` against the checklist's
+  #     sshd (novaterm-native-ssh-e2e:v5 as t30-ssh on t30-net, 127.0.0.1:2230), through a dropped
+  #     link and a changed host key, with PR #512's rulings (a listing starts no remote multiplexer).
+  # The GUI cells (steps 4 and 44, under Xvfb) stay manual scripts beside them.
+  #
+  # The App is the build job's Release output, which the test artifact carries whole (see
+  # build_and_unit_tests' "Reconstruct src bin dirs"), and ntilde-mux is mux_daemon_aot's
+  # linux-x64 binary, as native_ssh_docker_e2e takes it and for its reasons (`!cancelled()`, the
+  # download allowed to fail): without one, the CLI cells skip their ntilde-mux checks and the
+  # ls --all cells are skipped with a notice.
+  mux_smoke_linux:
+    name: Mux checklist cells (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build, mux_daemon_aot]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache .NET SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet
+          # runner.arch, not just runner.os: see the build job.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ~/.dotnet
+        with:
+          global-json-file: global.json
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-build-ubuntu-latest
+          path: tests
+
+      # zip artifacts drop Unix execute bits; the App's host executable needs them back.
+      - name: Restore execute permissions
+        run: |
+          find tests -path "*/bin/Release/net*" -type f \
+            ! -name "*.dll" ! -name "*.json" ! -name "*.pdb" ! -name "*.xml" \
+            ! -name "*.so" ! -name "*.dylib" ! -name "*.a" ! -name "*.txt" \
+            -exec chmod +x {} +
+
+      - name: Download ntilde-mux (linux-x64)
+        id: mux_binary
+        if: ${{ needs.mux_daemon_aot.result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ntilde-mux-linux-x64
+          path: artifacts/mux-daemon/linux-x64
+
+      - name: Prepare ntilde-mux
+        id: mux_prepare
+        if: ${{ steps.mux_binary.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          bin="$GITHUB_WORKSPACE/artifacts/mux-daemon/linux-x64/ntilde-mux"
+          chmod +x "$bin"
+          file "$bin"
+          echo "MUX_SMOKE_MUX=$bin" >> "$GITHUB_ENV"
+
+      - name: Explain the skipped ntilde-mux cells
+        if: ${{ steps.mux_prepare.outcome != 'success' }}
+        env:
+          MUX_DAEMON_AOT: ${{ needs.mux_daemon_aot.result }}
+        run: |
+          echo "::notice::No linux-x64 ntilde-mux (mux_daemon_aot: $MUX_DAEMON_AOT): the ntilde-mux checks of the CLI cells and the ls --all cells are skipped."
+
+      - name: CLI cells (checklist steps 9, 10)
+        run: bash scripts/mux-smoke/linux-cli-cells.sh tests/Ntilde.App.Tests/bin/Release/net10.0 "$RUNNER_TEMP/mux-smoke" ${MUX_SMOKE_MUX:+"$MUX_SMOKE_MUX"}
+
+      - name: Build the sshd image
+        id: sshd_image
+        if: ${{ !cancelled() && steps.mux_prepare.outcome == 'success' }}
+        run: docker build -q -t novaterm-native-ssh-e2e:v5 tests/Ntilde.ExternalSuites/NativeSsh
+
+      - name: ls --all cells (checklist steps 41, 42, 27, 43)
+        if: ${{ !cancelled() && steps.sshd_image.outcome == 'success' }}
+        run: bash scripts/mux-smoke/linux-ls-all-cells.sh tests/Ntilde.App.Tests/bin/Release/net10.0 "$MUX_SMOKE_MUX" "$RUNNER_TEMP/mux-smoke"
+
+  # The checklist's Windows CLI cells (scripts/mux-smoke/win-cli-cells.ps1), steps 9, 10 and 48:
+  # every `ntilde mux` verb through ntilde.com beside the App's Ntilde.exe, so the launcher's
+  # argument pass-through and exit-code forwarding are checked on the real CLI. No GUI and no
+  # credential store, so a hosted runner runs them as the maintainer's machine did. The Windows
+  # ls --all cells need Linux containers, which these runners do not have: they stay manual.
+  #
+  # ntilde.com is published here as aot_gate publishes it, because aot_gate runs only when its
+  # detector says so and this job runs on every PR.
+  mux_smoke_windows:
+    name: Mux checklist cells (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [build]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache .NET SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/.dotnet
+          # runner.arch, not just runner.os: see the build job.
+          key: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json') }}
+          restore-keys: dotnet-sdk-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ~/.dotnet
+        with:
+          global-json-file: global.json
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-build-windows-latest
+          path: tests
+
+      # CONFIGURATION is the workflow-level env, read as $env: (aot_gate's rule).
+      - name: Publish ntilde.com launcher (win-x64)
+        shell: pwsh
+        run: dotnet publish src/Ntilde.Launcher/Ntilde.Launcher.csproj -c $env:CONFIGURATION -r win-x64 -nodeReuse:false -o artifacts/launcher
+
+      - name: CLI cells (checklist steps 9, 10, 48)
+        shell: pwsh
+        run: |
+          scripts/mux-smoke/win-cli-cells.ps1 -App tests/Ntilde.App.Tests/bin/Release/net10.0 `
+            -Launcher artifacts/launcher/Ntilde.Launcher.exe -Sandbox (Join-Path $env:RUNNER_TEMP 'mux-smoke')
+
   # ===========================================================================
   # Linux packaging: dry run + smoke gate (#91 Linux leg). Two callers of the same
   # scripts release.yml uses, so packaging breaks land on a PR rather than on a tag.
