@@ -676,7 +676,8 @@ jobs:
           file "$bin"
           echo "NTILDE_MUX_E2E_BINARY=$bin" >> "$GITHUB_ENV"
 
-      # Category=DockerE2E only: in App.Tests that is RemoteMuxDockerE2eTests, which needs no
+      # Category=DockerE2E only: in App.Tests that is RemoteMuxDockerE2eTests and RemoteMuxListingDockerE2eTests
+      # (the manual checklist's ls --all, agent-link and refused-password steps), which need no
       # Avalonia platform, so neither App.Tests lane filter applies. Detailed console output,
       # because the tests' timestamped step log (install, ConnectionLost/Reconnected, pids,
       # latency) is the evidence this lane exists to produce.
@@ -1020,7 +1021,9 @@ jobs:
     name: PTY Smoke Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 10
+    # MainWindowRealDaemonTests start a real `Ntilde mux serve` and real shells per test (the manual checklist's window
+    # steps): about a minute more than the PTY tests alone took on windows-latest.
+    timeout-minutes: 15
     needs: [build]
     strategy:
       fail-fast: false

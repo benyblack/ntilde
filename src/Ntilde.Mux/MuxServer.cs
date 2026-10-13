@@ -185,6 +185,18 @@ public sealed class MuxServer : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Ends every client's connection (the <c>shutdown</c> path, before <see cref="KillAllSessions"/>). A client that is
+    /// still connected when its shell is killed hears the shell exit with code 0, which a window takes for the user's own
+    /// <c>exit</c> and closes the pane (and with the last tab, itself); with its connection gone first, the daemon simply
+    /// goes away, as when it is killed. The shutdown request's own reply is not lost: the request is raised only once that
+    /// reply is written.
+    /// </summary>
+    public void CloseAllConnections(string reason)
+    {
+        foreach (MuxServerConnection connection in _connections.Values) connection.Abort(reason);
+    }
+
     /// <summary>Kills and disposes every session (the <c>shutdown</c> path).</summary>
     public void KillAllSessions()
     {

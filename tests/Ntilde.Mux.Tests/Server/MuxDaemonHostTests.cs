@@ -87,6 +87,35 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.False(File.Exists(o.DescriptorPath));
     }
 
+    /// <summary>
+    /// Manual checklist step 7: <c>kill-server</c> while a window shows a shell. The shells end with the daemon, but a client
+    /// showing one must see its connection go, not the shell exit: an exit (code 0, as a killed child reports) reads as the
+    /// user's own <c>exit</c>, and the window closed that pane, and with its last tab, itself.
+    /// </summary>
+    [Fact]
+    public async Task A_shutdown_ends_the_clients_connections_before_their_shells_so_none_sees_an_exit()
+    {
+        var (host, server, o) = NewHost();
+        host.Start();
+        using MuxClient killer = await ConnectAsync(o.Endpoint);
+        using MuxClient watcher = await ConnectAsync(o.Endpoint);
+        Guid id = await MuxTestHost.SpawnAsync(watcher);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(watcher, id);
+        int exits = 0;
+        pane.Session.OnExit += _ => Interlocked.Increment(ref exits);
+        var disconnected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        watcher.Disconnected += _ => disconnected.TrySetResult();
+        Assert.True(server.TryGetSession(id, out HeadlessTerminalSession? session));
+
+        await killer.ShutdownServerAsync(Ct);
+
+        Assert.Equal("shutdown", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await TestWait.UntilAsync(() => session.IsDisposedForTest, "the shell was ended with the daemon");
+        await Task.Delay(200, Ct); // an exit frame queued before the disconnect would have been delivered by now
+        Assert.Equal(0, Volatile.Read(ref exits));
+    }
+
     [Fact]
     public async Task Idle_host_exits_after_the_idle_period()
     {
