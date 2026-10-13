@@ -304,9 +304,9 @@ namespace Ntilde.Controls
         // The attribution credit, when there is one: StackPanel Spacing 3 plus one 10pt line.
         private const double CommandAssistPopupAttributionHeight = 19;
 
-        // The "no matches" popup is a caption, not a list, and gets one line's worth of body rather
-        // than the tall empty box a fixed 220 produced.
-        private const int CommandAssistPopupEmptyStateRows = 1;
+        // The "no matches" popup is a caption, not a list: one default-size line box (19), with none
+        // of a row's padding or margin - PopupEmptyStateTextBlock is a bare TextBlock.
+        private const double CommandAssistPopupEmptyStateHeight = 19;
         private const double ConservativeRemotePromptBandStartRatio = 0.55;
         private const int ConservativeRemoteMinVisibleRows = 8;
         private const double ConservativeRemoteShortPaneHeightThreshold = 300;
@@ -1853,19 +1853,21 @@ namespace Ntilde.Controls
         /// </remarks>
         internal static double EstimateCommandAssistPopupHeight(CommandAssistPopupContentSize content, double paneHeight)
         {
-            int rows = content.ShowEmptyState
-                ? CommandAssistPopupEmptyStateRows
-                : Math.Max(1, content.RowCount);
-
-            double desired = CommandAssistPopupChromeHeight + (rows * CommandAssistPopupRowHeight);
+            double body = content.ShowEmptyState
+                ? CommandAssistPopupEmptyStateHeight
+                : Math.Max(1, content.RowCount) * CommandAssistPopupRowHeight;
+            double desired = CommandAssistPopupChromeHeight + body;
             if (content.HasAttribution)
             {
                 desired += CommandAssistPopupAttributionHeight;
             }
 
-            // The floor is one row's worth of popup, not the old 160: a single-row Ctrl+R answer that
-            // reserved 160 px was most of the box the owner asked us to stop drawing.
-            double floor = CommandAssistPopupChromeHeight + CommandAssistPopupRowHeight;
+            // The floor is one row's worth of popup - or the caption's one line - not the old 160: a
+            // single-row Ctrl+R answer that reserved 160 px was most of the box the owner asked us to
+            // stop drawing.
+            double floor = CommandAssistPopupChromeHeight + (content.ShowEmptyState
+                ? CommandAssistPopupEmptyStateHeight
+                : CommandAssistPopupRowHeight);
             double ceiling = Math.Max(floor, Math.Clamp(paneHeight * 0.45, floor, CommandAssistPopupHeight));
 
             return Math.Clamp(desired, floor, ceiling);
