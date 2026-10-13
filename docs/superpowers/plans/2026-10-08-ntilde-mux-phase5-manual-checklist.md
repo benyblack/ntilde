@@ -264,7 +264,7 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   - Linux: FAIL, then fixed (automated headless run against a real `mux serve`, 2026-10-13). The window closed instead of
     showing the banner: the shutdown killed the shells while their clients were still connected, each pane saw its
     shell exit with code 0 and closed under the exit policy, and the last tab took the window with it. The shutdown now
-    ends every client's connection first (`MuxServer.KillAllSessions`), so the panes see the multiplexer go away; the
+    ends every client's connection first (`MuxDaemonHost.RequestStop`), so the panes see the multiplexer go away; the
     automated test above passes. The CLI half passed in step 9.
   - macOS: OPEN — maintainer
 
