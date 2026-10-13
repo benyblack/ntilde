@@ -9,7 +9,10 @@ One checklist for the whole multiplexer, run before Phase 5 merges. It merges:
 - Phase 5's new steps: the first-close dialog, Quit and close all shells, reboot quiet restore, update survival
   (Tasks 20-24), the picker with remote hosts, `ls --all`, SFTP on a persistent native tab, and the agent host's
   `list_sessions` with a windowless session;
-- two carries from Task 24: the no-overlap update path, and the macOS update-survival run.
+- two carries from Task 24: the no-overlap update path, and the macOS update-survival run;
+- the release hardening of PR #512 ([spec §H, H1-H8](../specs/2026-10-08-ntilde-mux-phase5.md)): steps 14, 23, 41 and
+  51 are rewritten for it, and section N (steps 54-58) is new. The implementer's results below predate it: where a
+  rewritten expectation differs from what was run, the result says so.
 
 UI strings are quoted from `docs/USER_MANUAL.md` chapter 12, "Persistent sessions and the multiplexer".
 
@@ -119,6 +122,14 @@ docker cp <out>/linux-x64/ntilde-mux t30-ssh:/home/nova/.local/share/ntilde/bin/
 docker exec t30-ssh chown nova:nova /home/nova/.local/share/ntilde/bin/ntilde-mux
 # (or install it from the GUI: the profile editor's "Install ntilde-mux on this host…", then "Choose file…")
 ```
+
+Instead of building it, you can take CI's: every CI run's `ntilde-mux AOT` jobs upload `ntilde-mux-linux-x64`,
+`ntilde-mux-linux-arm64` and `ntilde-mux-osx-arm64` (kept 14 days), built the same way, and the Docker E2E job runs the
+linux-x64 one in this image. Download it from the run's *Artifacts* (or `gh run download <run id> -R benyblack/ntilde -n
+ntilde-mux-linux-x64 -D <out>/linux-x64`), `chmod +x` it (the zip drops the execute bit), and install it as above, with
+`docker exec t30-ssh chmod 755 /home/nova/.local/share/ntilde/bin/ntilde-mux` after the `chown`. Do not use the install
+dialog's download in a dev build: it fetches the published release of the build's version, which need not exist or
+match this tree.
 
 In the sandbox Ntilde, make an SSH profile for `nova@127.0.0.1`, port 2230, with the key as its identity file and
 **Keep remote sessions running (ntilde-mux)** ticked; make one native and one OpenSSH. The host key prompt appears the
@@ -347,12 +358,23 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   - macOS: OPEN — maintainer
 
 ### 14. Cmd+Q on macOS, and shutdown or sign-out
-*Phase 5 Task 16.*
+*Phase 5 Task 16; PR #512 H2 (amends R19: before it, Cmd+Q never asked).*
 - **Preconditions:** shells running; no `mux-close-choice`.
-- **Actions:** on macOS, Cmd+Q. On any OS, sign out or shut down with Ntilde open. Save your work first: signing out
-  or shutting down also ends your real Ntilde, if it is running, and whatever else you have open.
-- **Expected:** Cmd+Q never asks: it applies a remembered answer, and otherwise keeps the shells. A shutdown or
-  sign-out never makes Ntilde end a shell itself.
+- **Actions:**
+  1. On macOS, Cmd+Q. Press Escape. Cmd+Q again and answer **Keep running**; run `ntilde mux ls`.
+  2. Relaunch, Cmd+Q, and answer **Close them**; run `ntilde mux ls`.
+  3. Relaunch, Cmd+Q, tick **Don't ask again** and answer **Keep running**. Relaunch and Cmd+Q again. Delete
+     `mux-close-choice` and repeat 1-3 with *Quit Ntilde* from the menu bar and *Quit* from the Dock's menu.
+  4. On any OS, sign out or shut down with Ntilde open and no `mux-close-choice` (on macOS also restart). Save your work
+     first: signing out or shutting down also ends your real Ntilde, if it is running, and whatever else you have open.
+- **Expected:**
+  1. Cmd+Q shows the *Close Ntilde* question (step 11). Escape leaves Ntilde running with its window. **Keep running**
+     closes the window and quits; `ls` shows the shells with 0 attached.
+  2. This window's shells end, then Ntilde quits.
+  3. The next Cmd+Q quits at once, keeping the shells, without asking. The menu bar's and the Dock's quit behave as
+     Cmd+Q.
+  4. Nothing asks and nothing holds the sign-out, restart or shutdown. Ntilde never ends a shell itself for one (with
+     persistence turned Off in this window's life it does: step 54).
 - **Result / log:**
   - Windows: OPEN — maintainer (sign-out / shutdown part)
   - Linux: OPEN — maintainer (logout / shutdown part)
@@ -484,14 +506,14 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ## E. The picker with remote hosts
 
 ### 23. The picker lists this computer, then every connected host, and offers the others
-*Phase 5 Task 25.*
+*Phase 5 Task 25; PR #512 H7 (the Connect row's wording).*
 - **Preconditions:** the Docker sshd and two persistent profiles (setup 3). A local shell. One persistent tab open on
   profile 1; profile 2 not connected.
 - **Actions:** **Session: Attach to Session…**.
 - **Expected:**
   - This computer's shells come first, then lines starting `[nova@127.0.0.1]` for the connected host.
-  - For profile 2, a *Connect to nova@127.0.0.1…* row. Choosing it shows a *Connecting to nova@127.0.0.1…* notification,
-    then reopens the picker with that host's shells.
+  - For profile 2, a *Connect to nova@127.0.0.1… (starts its multiplexer if none is running)* row. Choosing it shows a
+    *Connecting to nova@127.0.0.1…* notification, then reopens the picker with that host's shells.
   - With the container stopped (`docker stop t30-ssh`), choosing it gives "Could not connect to nova@127.0.0.1.".
 - **Result / log:**
   - Windows: OPEN — maintainer
@@ -781,18 +803,21 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ## J. `ntilde mux ls --all`
 
 ### 41. `ls --all` lists this computer, then every host that keeps sessions (key authentication, scripted)
-*Phase 5 Task 27. Setup uses `spawn-for-test` in the local daemon and in the host's `ntilde-mux`.*
+*Phase 5 Task 27; PR #512 H7 (reverses R28(a): `ls --all` no longer starts a multiplexer). Setup uses `spawn-for-test`
+in the local daemon and in the host's `ntilde-mux`.*
 - **Preconditions:** the sandbox has SSH profiles with **Keep remote sessions running (ntilde-mux)**, using the throwaway
   key. Their host keys are trusted in the sandbox (native: `ssh\native_known_hosts.json`). A local daemon with one
   session.
 - **Actions:**
-  1. `ntilde mux ls --all` while the host's `ntilde-mux` is not running yet.
+  1. `ntilde mux ls --all` while the host's `ntilde-mux` is not running (`docker exec t30-ssh pkill -f 'ntilde-mux
+     serve'`, with no persistent tab on the host open). Then `docker exec t30-ssh pgrep -af 'ntilde-mux serve'`.
   2. Start two sessions on the host (setup); `ls --all`; `ls --all --json`.
   3. Stop the local multiplexer; `ls --all`; plain `ls`.
   4. Untick the profile's checkbox (here, `PersistRemoteSessions: false` in the sandbox store); `ls --all`.
 - **Expected:**
-  1. A `HOST` column in front of `ls`'s. `this computer` comes first, then `nova@<host>` with `No sessions.`. Connecting
-     starts `ntilde-mux` on the host, as opening a persistent tab does. Exit 0.
+  1. A `HOST` column in front of `ls`'s. `this computer` comes first, then `nova@<host>  unreachable: no multiplexer is
+     running` (`--json`: `"error":"no multiplexer is running"`). Exit 0: only this computer's listing sets the exit
+     code. `pgrep` prints nothing: the listing started no `ntilde-mux` on the host.
   2. Both remote sessions are listed under the host. `--json` prints
      `{"endpoints":[{"endpoint":"local","host":"this computer","sessions":[…]},{"endpoint":"ssh:<profile id>","host":"user@host","sessions":[…]}]}`.
   3. `this computer  unreachable: no multiplexer is running`, the remote host still listed, exit 1. Plain `ls` never
@@ -801,7 +826,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   - Nothing prompts. A native profile that signs in with its key never asks the credential store; an OpenSSH one does
     (step 42). `logs\mux-ls-all.log` holds the last run's lines.
 - **Result / log:**
-  - Windows: PASS (run by implementer, 2026-10-09, `<logs>\40-win-ls-all-cells.log`, 12 of 12). Native backend, key
+  - Windows: PASS before PR #512 (run by implementer, 2026-10-09, `<logs>\40-win-ls-all-cells.log`, 12 of 12); action 1
+    is OPEN — maintainer since H7 (that run expected `No sessions.` and a started `ntilde-mux`). Native backend, key
     only:
 
     ```
@@ -816,10 +842,10 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
     failed on the script's own expectation: it looked for the profile id with dashes, and the endpoint is
     `ssh:7a3c0f30000040008000000000000030`. Fixed in the script and re-run;
     `<logs>\40-win-ls-all-cells.run1-script-bug.log`.)
-  - Linux: PASS (run by implementer, 2026-10-09, `<logs>\50-linux-ls-all-agent-cells.log`). A native and an OpenSSH
-    profile, both key only, against `t30-ssh:22` over the Docker network: "ls --all: this computer's session, then both
-    key profiles' remote sessions under nova@t30-ssh, exit 0 - 4 remote rows"; the OpenSSH attempt ran "(batch mode: ssh
-    will not prompt)".
+  - Linux: PASS before PR #512 (run by implementer, 2026-10-09, `<logs>\50-linux-ls-all-agent-cells.log`); action 1 is
+    OPEN — maintainer since H7. A native and an OpenSSH profile, both key only, against `t30-ssh:22` over the Docker
+    network: "ls --all: this computer's session, then both key profiles' remote sessions under nova@t30-ssh, exit 0 - 4
+    remote rows"; the OpenSSH attempt ran "(batch mode: ssh will not prompt)".
   - macOS: OPEN — maintainer
 
 ### 42. `ls --all` and the OpenSSH backend
@@ -967,16 +993,17 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 ## M. Turning it off
 
 ### 51. With the setting Off, nothing of the multiplexer is left visible
-*Phase 5 global constraint; manual 12.11.*
+*Phase 5 global constraint; manual 12.11; PR #512 H1 (the close).*
 - **Preconditions:** a sandbox with shells running in the multiplexer.
 - **Actions:** Settings → Appearance → *Scrollback* → **Keep shells running when the window closes** → *Off*; save. Open a
   new tab, check the palette, close the window, and relaunch.
 - **Expected:**
   - New tabs run normal shells, and no multiplexer is started for them.
   - **Session: Attach to Session…**, **Pane: Detach** and **Session: Quit and Close All Shells** leave the palette.
-  - Closing the window asks nothing. SSH tabs open plain, whatever their profile says.
-  - Shells that were already running keep running, and `ntilde mux kill-server` ends them. The remembered first-close
-    answer is forgotten, so turning the setting back on asks again.
+  - Closing the window asks nothing, and ends the local shells it shows, as **Close them** would (step 54). SSH tabs open
+    plain, whatever their profile says.
+  - Shells no window here shows (detached ones, another window's) keep running, and `ntilde mux kill-server` ends them.
+    The remembered first-close answer is forgotten, so turning the setting back on asks again.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -1006,3 +1033,102 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
   - macOS: OPEN — maintainer
+
+## N. Release hardening (PR #512)
+
+Steps for the rulings H1, H3, H5 and H7 of [spec §H](../specs/2026-10-08-ntilde-mux-phase5.md), and the install-folder
+notice. Steps 14, 23, 41 and 51 above carry H2's and H7's other changes. Three rulings are covered by automated tests
+only, since a manual run needs a build or a daemon nobody has:
+
+- **H4** (a release build refuses a RID it has no pin for):
+  `MuxAssetSourceTests.A_release_build_without_a_pin_for_the_rid_refuses_the_download` and `…_refuses_a_self_consistent_cache_too`. A dev build has no pins; every RID a release ships has one. release.yml
+  checks each checksum's format with `scripts/ci/check-mux-sha256.sh`
+  (`ReleaseWorkflowTests.Every_app_build_that_embeds_the_ntilde_mux_pins_checks_their_format_first`).
+- **H6** (the update's protocol marker): `ReleaseWorkflowTests.Every_vpk_pack_ships_the_multiplexer_protocol_marker`
+  and `MuxUpdateCompatibilityTests.A_release_build_warns_when_the_marker_is_missing`.
+- **H8** (the kill path needs a matching start time):
+  `MuxDaemonStopTests.A_descriptor_without_a_start_time_is_not_terminated`.
+  `kill-server --force` reaches it only against a multiplexer of another protocol version, which no build has (step 9).
+
+### 54. Turning persistence Off, then closing the window, ends its shells
+*PR #512 H1.*
+- **Preconditions:** a sandbox with *Keep running*. This window has three local shells, one of them also open in a
+  second window (step 19), and one detached shell (step 20).
+- **Actions:** Settings → **Keep shells running when the window closes** → *Off*; save. Close this window (not the
+  second one). Run `ntilde mux ls`.
+- **Expected:** nothing asks. This window's two unshared shells end, as **Close them** ends them. The shared shell keeps
+  running in the second window, and the detached one keeps running: `ls` lists both. Remote persistent tabs' shells keep
+  running on their hosts.
+- **Result / log:**
+  - Windows: OPEN — maintainer
+  - Linux: OPEN — maintainer
+  - macOS: OPEN — maintainer
+
+### 55. `ls --all` and an `ntilde-mux` older than the app
+*PR #512 H7.*
+- **Preconditions:** step 41's profiles. An `ntilde-mux` from before PR #512 on t30-ssh: build it from a worktree of
+  `ee75a32` (`git worktree add <dir> ee75a32`, then `scripts/docker-publish-mux-daemon.sh linux-x64 <out-old>` in it)
+  and install it as in setup 3. No `ntilde-mux` running on the host.
+- **Actions:** `ntilde mux ls --all`; `ntilde mux ls --all --json`; `docker exec t30-ssh pgrep -af 'ntilde-mux serve'`.
+  Reinstall the current `ntilde-mux` afterwards.
+- **Expected:** the host's line reads `nova@127.0.0.1  unreachable: its ntilde-mux is older than this app; update it to
+  list its sessions` (`--json`: the same words in `"error"`). Nothing prompts, and `pgrep` prints nothing.
+- **Result / log:**
+  - Windows: OPEN — maintainer
+  - Linux: OPEN — maintainer
+  - macOS: OPEN — maintainer
+
+### 56. A listing forwards no agent
+*PR #512 H3.*
+- **Preconditions:** an `ssh-agent` on this computer holding the throwaway key (`ssh-add <sandbox>/sshkey/id_ed25519`). An
+  OpenSSH persistent profile on t30-ssh with `-A` in its extra SSH arguments, and a tab of it open: its shells'
+  `SSH_AUTH_SOCK` is `ntilde-mux`'s agent link (manual 12.6, *Limitations*).
+- **Actions:**
+  1. In the tab: `echo $SSH_AUTH_SOCK; ls -l $SSH_AUTH_SOCK; ssh-add -l`.
+  2. `ntilde mux ls --all` on this computer.
+  3. In the tab again: `ls -l $SSH_AUTH_SOCK; ssh-add -l`.
+- **Expected:** `ls --all` lists the host's sessions. The link points at the same socket before and after it, and
+  `ssh-add -l` still lists the key. (Before H3, the listing's connection forwarded the agent and repointed the link at
+  its own socket, which went away when it ended: `ssh-add -l` then failed to reach the agent.)
+- **Result / log:**
+  - Windows: OPEN — maintainer (the Windows OpenSSH agent service)
+  - Linux: OPEN — maintainer
+  - macOS: OPEN — maintainer
+
+### 57. A password the server refuses leaves the host's scope
+*PR #512 H5. Uses the image's `nova-pass` password: type it, never tick **Remember password**.*
+- **Preconditions:** a native persistent profile on t30-ssh with no identity file and **Remember password** unticked. A
+  tab of it, signed in by typing `nova-pass`, with *Remote Files* open and listing. No agent on this computer holds a
+  key the host accepts (`ssh-add -D` after step 56), so a listing can sign in only with a password.
+- **Actions:**
+  1. Change the password on the host: `docker exec t30-ssh sh -c 'echo nova:t30-rotated | chpasswd'`. Note
+     `docker logs t30-ssh 2>&1 | grep -c 'Failed password for nova'`.
+  2. Refresh *Remote Files* (or open a folder in it). Count again.
+  3. Refresh it twice more, and try *SFTP: Download…*. Count again.
+  4. Restore the password: `docker exec t30-ssh sh -c 'echo nova:nova-pass | chpasswd'`.
+- **Expected:**
+  1. The tab's shell keeps working: its connection signed in before the change.
+  2. The listing fails in the sidebar, and the count goes up by one.
+  3. Each fails again, and the count does not go up: the refused password is no longer offered. (Before H5 every
+     refresh and transfer offered it again, one `Failed password` line each.)
+- **Result / log:**
+  - Windows: OPEN — maintainer
+  - Linux: OPEN — maintainer
+  - macOS: OPEN — maintainer
+
+### 58. A multiplexer running from the install folder is announced once
+*PR #512 optional item.*
+- **Preconditions:** the survival harness's `NtildeSurvival` install (step 36 with `-LeaveRunning`), quit, and its
+  multiplexer stopped (`ntilde mux kill-server` under its `NTILDE_APPDATA_ROOT`).
+- **Actions:** set `NTILDE_APPDATA_ROOT` to a folder inside that install's root (the folder holding `current\` and
+  `Update.exe`), start `<root>\current\Ntilde.exe` from that shell, and open a second window. Clean up with
+  `-CleanupOnly`.
+- **Expected:** a *Keep shells running* notification reads "Shells cannot be kept through updates on this computer: the
+  multiplexer runs from Ntilde's install folder because its own copy could not be set up (debug.log says why). Updates
+  ask before they close them.", once for the launch: the second window does not show it again. `debug.log` has "[Mux] the
+  multiplexer daemon runs from the install folder, and an update will stop it: the app-data root … is inside the install
+  root …".
+- **Result / log:**
+  - Windows: OPEN — maintainer
+  - Linux: N/A (only a Windows Velopack install stages the multiplexer's own copy)
+  - macOS: N/A (the same)
