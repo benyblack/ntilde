@@ -266,6 +266,39 @@ public sealed class MuxProxyTests : IDisposable
         Assert.Equal(MuxProxyExitCodes.ConnectionClosed, code);
     }
 
+    /// <summary>
+    /// A socket stream read while another thread disposes it can throw InvalidOperationException ("The stream does not
+    /// support reading."), not ObjectDisposedException. The pumps have threads of their own: one that let it escape
+    /// crashed the process (an xUnit catastrophic failure on ubuntu-24.04-arm).
+    /// </summary>
+    [Fact]
+    public void A_daemon_read_that_races_its_close_ends_the_proxy_instead_of_crashing_it()
+    {
+        using var stdin = new BlockedStdin();
+        using var daemon = new RacedDaemon { FailReads = true };
+
+        int code = MuxProxyCommand.Run(stdin, new MemoryStream(), new StringWriter(), ConnectTo(daemon), _ => false, repointAgentLink: false);
+
+        Assert.Equal(MuxProxyExitCodes.DaemonClosed, code);
+    }
+
+    /// <summary>The same for a write: "The stream does not support writing."</summary>
+    [Fact]
+    public void A_daemon_write_that_races_its_close_ends_the_proxy_instead_of_crashing_it()
+    {
+        using var daemon = new RacedDaemon { FailWrites = true };
+
+        int code = MuxProxyCommand.Run(new MemoryStream("typed"u8.ToArray()), new MemoryStream(), new StringWriter(), ConnectTo(daemon), _ => false, repointAgentLink: false);
+
+        Assert.Equal(MuxProxyExitCodes.DaemonClosed, code);
+    }
+
+    private Func<CancellationToken, Task<(Stream Stream, MuxEndpointDescriptor Descriptor)>> ConnectTo(Stream daemon)
+    {
+        var descriptor = new MuxEndpointDescriptor { Endpoint = Path.Combine(_root, "mux.sock"), ProcessName = "x", Pid = 1 };
+        return _ => Task.FromResult<(Stream, MuxEndpointDescriptor)>((daemon, descriptor));
+    }
+
     /// <summary>Phase 5 task 8: every proxy points the daemon's stable agent link at its own connection's agent.</summary>
     [Fact]
     public void The_proxy_repoints_the_agent_link_to_its_own_SSH_AUTH_SOCK()
@@ -524,6 +557,75 @@ public sealed class MuxProxyTests : IDisposable
         protected override void Dispose(bool disposing)
         {
             if (disposing) inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>A stdin nobody types into: a read waits until the test disposes it.</summary>
+    private sealed class BlockedStdin : Stream
+    {
+        private readonly ManualResetEventSlim _disposed = new();
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            _disposed.Wait();
+            return 0;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _disposed.Set();
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
+    /// A daemon connection whose reads or writes fail as a NetworkStream's do when they race its close on another thread.
+    /// Otherwise a read waits for the close and then sees the end.
+    /// </summary>
+    private sealed class RacedDaemon : Stream
+    {
+        private readonly ManualResetEventSlim _disposed = new();
+
+        public bool FailReads { get; init; }
+        public bool FailWrites { get; init; }
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (FailReads) throw new InvalidOperationException("The stream does not support reading.");
+            _disposed.Wait();
+            return 0;
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (FailWrites) throw new InvalidOperationException("The stream does not support writing.");
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _disposed.Set();
             base.Dispose(disposing);
         }
     }

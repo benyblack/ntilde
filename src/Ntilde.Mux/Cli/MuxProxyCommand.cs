@@ -320,8 +320,11 @@ public static class MuxProxyCommand
         }
     }
 
-    /// <summary>A stream's other end went away, or the stream was closed under a pump.</summary>
-    private static bool IsClosed(Exception ex) => ex is IOException or ObjectDisposedException;
+    /// <summary>
+    /// A stream's other end went away, or the stream was closed under a pump. A socket's stream read or written while
+    /// another thread disposes it can say so as InvalidOperationException ("The stream does not support reading.").
+    /// </summary>
+    private static bool IsClosed(Exception ex) => ex is IOException or ObjectDisposedException or InvalidOperationException;
 
     private static void CloseQuietly(Stream stream)
     {

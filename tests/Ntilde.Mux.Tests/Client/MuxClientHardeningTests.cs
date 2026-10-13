@@ -186,4 +186,58 @@ public sealed class MuxClientHardeningTests
         await TestWait.UntilAsync(() => !client.IsConnected, "the client drops the connection");
         Assert.Equal(MuxErrorCodes.ProtocolError, client.DisconnectReason);
     }
+
+    /// <summary>
+    /// A socket stream written while another thread disposes it can throw InvalidOperationException ("The stream does not
+    /// support writing."), not ObjectDisposedException. On the sender's thread that escaped and crashed the process; it is
+    /// a failed write like any other.
+    /// </summary>
+    [Fact]
+    public async Task A_write_that_races_the_streams_close_disconnects_instead_of_crashing()
+    {
+        using var fake = FakeMuxServerEnd.Create();
+        var end = new RacedWrites(fake.ClientEnd);
+        Task<MuxClient> connect = MuxClient.ConnectAsync(end, new MuxClientOptions(), Ct);
+        await fake.AcceptHelloAsync();
+        using MuxClient client = await connect;
+
+        end.Fail = true;
+        Task ping = client.PingAsync(Ct);
+
+        await TestWait.UntilAsync(() => !client.IsConnected, "the client drops the connection");
+        Assert.Equal("disconnected", client.DisconnectReason);
+        Assert.NotNull(await Record.ExceptionAsync(() => ping));
+    }
+
+    /// <summary>Once <see cref="Fail"/> is set, a write fails as a NetworkStream's does when it races its close.</summary>
+    private sealed class RacedWrites(Stream inner) : Stream
+    {
+        private volatile bool _fail;
+
+        public bool Fail { get => _fail; set => _fail = value; }
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override int Read(Span<byte> buffer) => inner.Read(buffer);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            if (_fail) throw new InvalidOperationException("The stream does not support writing.");
+            inner.Write(buffer);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
 }

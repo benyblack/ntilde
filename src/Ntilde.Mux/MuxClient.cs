@@ -530,7 +530,10 @@ public sealed class MuxClient : IDisposable
                 finally { frame.Release(); }
             }
         }
-        catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException)
+        // A socket's stream written while another thread disposes it can fail with InvalidOperationException ("The stream
+        // does not support writing.") rather than ObjectDisposedException: the same closed link, and nothing may escape
+        // this thread.
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException or NotSupportedException or InvalidOperationException)
         {
             OnDisconnected(ReasonDisconnected);
         }
