@@ -186,6 +186,7 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
         Assert.False(registry.TryGetRuntimePassword(scope, profile.Host, profile.Port, profile.User, out _), "the refused password is still in the host's scope");
         await WaitUntilAsync(async () => await run.FailedPasswordsAsync() > failedBefore, "sshd logged the refused password", TimeSpan.FromSeconds(15));
         int failedAfterRefusal = await run.FailedPasswordsAsync();
+        Assert.Equal(1, failedAfterRefusal - failedBefore); // offered once per attempt, never retried
 
         for (int i = 0; i < 2; i++) Assert.False((await ListAsync(service, profile, sessionId)).IsSuccess);
         await Task.Delay(TimeSpan.FromSeconds(2), Ct); // sshd writes its line as it refuses: give a stray one time to show
@@ -269,9 +270,17 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
             }
             catch
             {
-                // No Run was returned, so no caller's `await using` tears this down: the container and folder go here.
+                // No Run owns them yet: its DisposeAsync would have.
                 if (fixture is not null) await fixture.DisposeAsync();
-                DeleteRootBestEffort(root);
+                try
+                {
+                    Directory.Delete(root, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort: the setup's own failure is the one to report.
+                }
+
                 throw;
             }
         }
@@ -488,19 +497,14 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
                 // Whatever failed above, the next test must not inherit this run's app data or its dead agent socket.
                 Environment.SetEnvironmentVariable(AgentVariable, _previousAgent);
                 Environment.SetEnvironmentVariable(AppDataRootVariable, _previousRoot);
-                DeleteRootBestEffort(Root);
-            }
-        }
-
-        private static void DeleteRootBestEffort(string root)
-        {
-            try
-            {
-                Directory.Delete(root, recursive: true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // Best effort: a file still held by an exiting ssh is left to the temp directory's own cleanup.
+                try
+                {
+                    Directory.Delete(Root, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort: a file still held by an exiting ssh is left to the temp directory's own cleanup.
+                }
             }
         }
     }

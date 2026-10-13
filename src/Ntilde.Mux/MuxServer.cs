@@ -186,20 +186,19 @@ public sealed class MuxServer : IDisposable
     }
 
     /// <summary>
-    /// The daemon's stop, before <see cref="KillAllSessions"/>: stops accepting, then closes every connection. Each client
-    /// then sees its connection lost, as when the daemon dies, and never an exit for each of its sessions - which would
-    /// read as the shell's own exit (a child the PTY layer ends is reported with code 0) and take the pane's exit policy:
-    /// an exit-0 shell closes its pane, and the last pane its window (manual checklist step 7). A <c>shutdown</c>
-    /// requester loses nothing: the host is told to stop only once its reply is on the wire (see
-    /// <c>MuxServerConnection._shutdownReply</c>).
+    /// Stops accepting and ends every client's connection (the <c>shutdown</c> path, before <see
+    /// cref="KillAllSessions"/>). A client that is still connected when its shell is killed hears the shell exit with
+    /// code 0, which a window takes for the user's own <c>exit</c> and closes the pane (and with the last tab, itself);
+    /// with its connection gone first, the daemon simply goes away, as when it is killed. The shutdown request's own
+    /// reply is not lost: the request is raised only once that reply is written.
     /// </summary>
-    public void DisconnectAllClients()
+    public void CloseAllConnections(string reason)
     {
-        // Under the gate, as TryBeginIdleShutdown: a connection either registered before (and is aborted below) or is
-        // refused after - never one that attaches while the sessions are being killed and is sent their exits.
+        // Accepting stops first, under the gate as in TryBeginIdleShutdown: a connection either registered before (and is
+        // closed below) or is refused after - never one that attaches while the sessions are killed and hears their exits.
         lock (_lifecycleGate) _acceptingStopped = true;
         _listener?.Dispose();
-        foreach (MuxServerConnection connection in _connections.Values) connection.Abort("server_shutdown");
+        foreach (MuxServerConnection connection in _connections.Values) connection.Abort(reason);
     }
 
     /// <summary>Kills and disposes every session (the <c>shutdown</c> path).</summary>

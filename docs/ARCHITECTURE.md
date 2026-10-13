@@ -262,7 +262,7 @@ holds every verb, and `Ntilde.Mux.Daemon.MuxServeHost` is the `serve` process ar
   that no client is attached to 60 s after exit, and exits 10 minutes after its last running
   session and last connection are gone (`--idle-exit-minutes`, 0 = never). The `shutdown` method
   (`ntilde mux kill-server`, the update path) kills every session and exits. It stops accepting and
-  closes every connection first (`MuxServer.DisconnectAllClients`), so a client sees the daemon go,
+  closes every connection first (`MuxServer.CloseAllConnections`), so a client sees the daemon go,
   as when it dies, and never each shell's exit: a shell the PTY layer kills reports code 0, which a
   pane would take as a typed `exit` and close (with the last pane, the window). The accept loop
   never gives up on a failing listener (capped backoff, rate-limited log); the host stops

@@ -28,7 +28,7 @@ namespace Ntilde.Tests.Core;
 /// <item>steps 1-3: Keep running leaves the shells in one daemon, their children, and the next window brings them back;</item>
 /// <item>step 5: a killed daemon shows its banner, and Enter starts a new daemon and a new shell, and says so;</item>
 /// <item>step 6: closing a pane ends its shell, and only that one;</item>
-/// <item>step 7: <c>ntilde mux kill-server</c> ends the daemon and every shell, and the panes show the disconnected banner;</item>
+/// <item>step 7: <c>ntilde mux kill-server</c> ends the daemon and every shell, and the window stays, its panes saying so;</item>
 /// <item>step 8: a second instance takes no shell another window shows, and says so;</item>
 /// <item>steps 12 and 13: Close them ends this window's shells but one another client shows; the next launch is quiet;</item>
 /// <item>step 15: Quit and close all shells ends every shell and stops the daemon;</item>
@@ -164,36 +164,30 @@ public sealed class MainWindowRealDaemonTests : IDisposable
     // ── Step 7 ──
 
     [AvaloniaFact]
-    public void Kill_server_ends_the_daemon_and_every_real_shell_and_the_panes_show_the_disconnected_banner()
+    public void Kill_server_from_the_command_line_ends_the_daemon_and_its_real_shells_and_the_window_says_so()
     {
         MainWindow window = CreateWindow();
         AddTab(window);
         PumpUntil(() => Attached(window).Count == 2, "the second tab's shell attached");
-        TerminalPane[] panes = [.. Attached(window).Select(s => PaneOf(window, s.Id))];
         int[] shells = [.. Attached(window).Select(ShellPid)];
+        TerminalPane[] panes = [.. Attached(window).Select(s => PaneOf(window, s.Id))];
         int daemon = DaemonPid();
 
-        // From another terminal: the CLI's own connection, off the UI thread, while the window keeps pumping.
         var stdout = new StringWriter();
         var stderr = new StringWriter();
-        Task<int> killServer = Task.Run(() => MuxCommand.Execute(["mux", "kill-server"], stdout, stderr, _root.RootPath), Ct);
-        PumpUntil(() => killServer.IsCompleted, "kill-server returned");
+        int code = OffTheUiThread(() => Task.FromResult(MuxCommand.Execute(["mux", "kill-server"], stdout, stderr, _root.RootPath)));
 
-        Assert.True(killServer.Result == 0, $"kill-server exited {killServer.Result}; stdout: {stdout}; stderr: {stderr}");
-        Assert.Contains("Multiplexer stopped.", stdout.ToString(), StringComparison.Ordinal);
+        Assert.True(code == 0, $"kill-server exited {code}: {stderr}");
+        Assert.Equal("Multiplexer stopped.", stdout.ToString().Trim());
         PumpUntil(() => !MuxDaemonSmokeTests.IsAlive(daemon), "the daemon stopped");
-        foreach (int pid in shells)
+        foreach (int pid in shells) PumpUntil(() => !MuxDaemonSmokeTests.IsAlive(pid), $"shell {pid} ended");
+        foreach (TerminalPane pane in panes)
         {
-            PumpUntil(() => !MuxDaemonSmokeTests.IsAlive(pid), $"shell {pid} ended");
+            PumpUntil(() => Text(pane).Contains(TerminalPane.MuxDisconnectedBanner, StringComparison.Ordinal), "each pane shows the disconnected banner");
         }
 
-        bool Banner(TerminalPane pane) => Text(pane).Contains(TerminalPane.MuxDisconnectedBanner, StringComparison.Ordinal);
-        PumpUntil(() => !window.IsVisible || panes.All(Banner), "every pane shows the disconnected banner, or the window closed");
-        PumpFor(TimeSpan.FromSeconds(1)); // an exit policy that closes the panes would have run by now
-
-        Assert.True(window.IsVisible, "the window closed: the daemon's stop reached the panes as their shells' own exit");
-        Assert.Equal(panes.Length, window.AllPanesForTest().Count(panes.Contains));
-        Assert.All(panes, pane => Assert.True(Banner(pane), $"a pane does not show the banner: {Text(pane)}"));
+        Assert.True(window.IsVisible, "the window closed with the shells");
+        Assert.Equal(2, window.AllPanesForTest().Count);
     }
 
     // ── Step 8 ──
