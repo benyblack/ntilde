@@ -277,6 +277,64 @@ public sealed class BackupExportTests
     }
 
     /// <summary>
+    /// macOS's shape on any OS: the root's link points at a path that itself runs through a link, as a target under
+    /// /var/folders runs through /var -> /private/var. Following the root's link and stopping there left the target's
+    /// own link unresolved, so the two spellings still differed and the export went through.
+    /// </summary>
+    [Fact]
+    public void Export_ToALiveFileThroughALinkWhoseTargetRunsThroughALink_IsRejected()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Creating a symlink needs Developer Mode or elevation on Windows.");
+        using var tree = BackupTestTree.CreatePopulated();
+        string parentLink = tree.Root + "-parent";
+        string rootLink = tree.Root + "-link";
+        Directory.CreateSymbolicLink(parentLink, Path.GetDirectoryName(tree.Root)!);
+        Directory.CreateSymbolicLink(rootLink, Path.Combine(parentLink, Path.GetFileName(tree.Root)));
+        try
+        {
+            var service = new BackupService(rootLink, FixedClock());
+            string destination = Path.Combine(tree.Root, "ssh", "profiles.json");
+            byte[] before = File.ReadAllBytes(destination);
+
+            var outcome = service.Export(destination);
+
+            Assert.False(outcome.Success);
+            Assert.Equal(BackupFailureKind.WriteFailed, outcome.Failure);
+            Assert.Equal(before, File.ReadAllBytes(destination));
+        }
+        finally
+        {
+            Directory.Delete(rootLink);
+            Directory.Delete(parentLink);
+        }
+    }
+
+    /// <summary>Two links pointing at each other: the guard's walk gives up after a bounded number of hops, and the export fails.</summary>
+    [Fact]
+    public void Export_ThroughALinkLoop_FailsInsteadOfHanging()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Creating a symlink needs Developer Mode or elevation on Windows.");
+        using var tree = BackupTestTree.CreatePopulated();
+        string a = tree.Root + "-loop-a";
+        string b = tree.Root + "-loop-b";
+        File.CreateSymbolicLink(a, b);
+        File.CreateSymbolicLink(b, a);
+        try
+        {
+            var service = new BackupService(tree.Root, FixedClock());
+
+            var outcome = service.Export(Path.Combine(a, "bundle.ntildebackup"));
+
+            Assert.False(outcome.Success);
+        }
+        finally
+        {
+            File.Delete(a);
+            File.Delete(b);
+        }
+    }
+
+    /// <summary>
     /// The other way round (Greptile P1 on #519): a link inside a live directory that points out of it. As spelled, the
     /// destination is under the live themes directory, which was always refused; resolved, it is not. Either spelling
     /// matching is enough to refuse.

@@ -1286,41 +1286,60 @@ public sealed class BackupService
     /// <summary>
     /// <paramref name="fullPath"/> with every symbolic link along it resolved, for as much of it as exists; the rest is
     /// appended as it is. One file has many spellings once links are involved - macOS's /var is /private/var, an app-data
-    /// root can be a link - and the text comparisons above only see one file in one spelling. A link that cannot be
-    /// followed (a loop, no permission) leaves the path as it was: the guard is then no weaker than before.
+    /// root can be a link - and the text comparisons above only see one file in one spelling. A link's target can itself
+    /// run through links (a target under /var/folders does on macOS), so after each link the walk starts again from the
+    /// top of the joined path. A link that cannot be followed (a loop, no permission) leaves the path as it was: the
+    /// guard is then no weaker than before.
     /// </summary>
     private static string ResolveLinks(string fullPath)
     {
         try
         {
-            string? root = Path.GetPathRoot(fullPath);
-            if (string.IsNullOrEmpty(root)) return fullPath;
-
-            string[] segments = fullPath[root.Length..].Split(
-                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
-            string resolved = root;
-            for (int i = 0; i < segments.Length; i++)
+            string path = fullPath;
+            for (int hops = 0; hops <= MaxLinkHops; hops++)
             {
-                string next = Path.Combine(resolved, segments[i]);
-                FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
-                if (!info.Exists && info.LinkTarget is null)
+                string? root = Path.GetPathRoot(path);
+                if (string.IsNullOrEmpty(root)) return fullPath;
+
+                string[] segments = path[root.Length..].Split(
+                    [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+                string resolved = root;
+                string? followed = null;
+                for (int i = 0; i < segments.Length; i++)
                 {
-                    // Nothing on disk from here on, so nothing more to resolve.
-                    return Path.Combine([resolved, .. segments[i..]]);
+                    string next = Path.Combine(resolved, segments[i]);
+                    FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
+                    string? target = info.LinkTarget;
+                    if (target is not null)
+                    {
+                        // Relative to the link's own directory; the rest of the path goes on after it.
+                        followed = Path.Combine([Path.GetFullPath(target, resolved), .. segments[(i + 1)..]]);
+                        break;
+                    }
+
+                    if (!info.Exists)
+                    {
+                        // Nothing on disk from here on, so nothing more to resolve.
+                        return Path.Combine([resolved, .. segments[i..]]);
+                    }
+
+                    resolved = next;
                 }
 
-                resolved = info.LinkTarget is null
-                    ? next
-                    : info.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? next;
+                if (followed is null) return resolved;
+                path = followed;
             }
 
-            return resolved;
+            return fullPath; // more links than any real chain: a loop
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             return fullPath;
         }
     }
+
+    /// <summary>Links followed before a path counts as a loop; Linux's own limit for one lookup.</summary>
+    private const int MaxLinkHops = 40;
 
     private static bool IsSameOrUnder(string candidate, string ancestor, StringComparison comparison)
     {
