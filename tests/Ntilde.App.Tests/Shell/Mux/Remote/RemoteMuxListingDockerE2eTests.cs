@@ -186,6 +186,7 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
         Assert.False(registry.TryGetRuntimePassword(scope, profile.Host, profile.Port, profile.User, out _), "the refused password is still in the host's scope");
         await WaitUntilAsync(async () => await run.FailedPasswordsAsync() > failedBefore, "sshd logged the refused password", TimeSpan.FromSeconds(15));
         int failedAfterRefusal = await run.FailedPasswordsAsync();
+        Assert.Equal(1, failedAfterRefusal - failedBefore); // offered once per attempt, never retried
 
         for (int i = 0; i < 2; i++) Assert.False((await ListAsync(service, profile, sessionId)).IsSuccess);
         await Task.Delay(TimeSpan.FromSeconds(2), Ct); // sshd writes its line as it refuses: give a stray one time to show
@@ -258,11 +259,30 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
             Assert.True(!needsBinary || File.Exists(binary), $"{BinaryVariable} names no file: {binary}");
             string root = Path.Combine(Path.GetTempPath(), $"ntilde-ls-e2e-{Guid.NewGuid():N}");
             Directory.CreateDirectory(root);
-            DockerSshFixture fixture = await DockerSshFixture.StartAsync();
-            test.Log($"[docker] container {fixture.ContainerName}: sshd on 127.0.0.1:{fixture.Port}; app data {root}");
-            string identityFile = await fixture.CopyPrivateKeyAsync(NativeSshTestKey.Plain, Path.Combine(root, "id_ed25519"));
-            RemoteMuxDockerE2eTests.RestrictToOwner(identityFile);
-            return new Run(test, fixture, root, identityFile, needsBinary ? binary : null);
+            DockerSshFixture? fixture = null;
+            try
+            {
+                fixture = await DockerSshFixture.StartAsync();
+                test.Log($"[docker] container {fixture.ContainerName}: sshd on 127.0.0.1:{fixture.Port}; app data {root}");
+                string identityFile = await fixture.CopyPrivateKeyAsync(NativeSshTestKey.Plain, Path.Combine(root, "id_ed25519"));
+                RemoteMuxDockerE2eTests.RestrictToOwner(identityFile);
+                return new Run(test, fixture, root, identityFile, needsBinary ? binary : null);
+            }
+            catch
+            {
+                // No Run owns them yet: its DisposeAsync would have.
+                if (fixture is not null) await fixture.DisposeAsync();
+                try
+                {
+                    Directory.Delete(root, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort: the setup's own failure is the one to report.
+                }
+
+                throw;
+            }
         }
 
         /// <summary>
