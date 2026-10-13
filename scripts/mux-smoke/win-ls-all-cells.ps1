@@ -71,20 +71,32 @@ function DockerLogged([string[]] $argv) {
     Say "> docker $($argv -join ' ') (exit $LASTEXITCODE)"
     if ($o.Trim()) { foreach ($l in ($o.TrimEnd() -split "`r?`n")) { Say "  $l" } }
 }
+# Whether 127.0.0.1:2230 sends an SSH banner now. A refused or dropped connection, or a read that times out, is a no.
+function TestSshBanner {
+    $client = [Net.Sockets.TcpClient]::new()
+    try {
+        if (-not $client.ConnectAsync('127.0.0.1', 2230).Wait(2000)) { return $false }
+        $stream = $client.GetStream()
+        $stream.ReadTimeout = 3000
+        $buf = [byte[]]::new(4)
+        $n = 0
+        while ($n -lt 4) {
+            $read = $stream.Read($buf, $n, 4 - $n)
+            if ($read -le 0) { return $false }
+            $n += $read
+        }
+        return [Text.Encoding]::ASCII.GetString($buf) -eq 'SSH-'
+    }
+    catch [System.IO.IOException], [System.Net.Sockets.SocketException], [System.AggregateException] {
+        Write-Verbose "no SSH banner yet: $($_.Exception.Message)"
+        return $false
+    }
+    finally { $client.Dispose() }
+}
 function WaitForSsh([int] $seconds) {
     $deadline = (Get-Date).AddSeconds($seconds)
     while ((Get-Date) -lt $deadline) {
-        try {
-            $c = [Net.Sockets.TcpClient]::new(); $t = $c.ConnectAsync('127.0.0.1', 2230)
-            if ($t.Wait(2000) -and $c.Connected) {
-                $s = $c.GetStream(); $s.ReadTimeout = 3000; $buf = [byte[]]::new(4); $n = 0
-                try { while ($n -lt 4) { $r = $s.Read($buf, $n, 4 - $n); if ($r -le 0) { break }; $n += $r } } catch { }
-                $c.Dispose()
-                if ($n -eq 4 -and [Text.Encoding]::ASCII.GetString($buf) -eq 'SSH-') { return $true }
-            }
-            else { $c.Dispose() }
-        }
-        catch { }
+        if (TestSshBanner) { return $true }
         Start-Sleep -Milliseconds 500
     }
     return $false
