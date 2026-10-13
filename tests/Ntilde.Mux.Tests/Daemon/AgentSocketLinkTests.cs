@@ -103,15 +103,21 @@ public sealed class AgentSocketLinkTests : IDisposable
         string path = Path.Combine(_dir, "hung.sock");
         var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         listener.Bind(new UnixDomainSocketEndPoint(path));
-        listener.Listen(0);
+        listener.Listen(1);
         _sockets.Add(listener);
-        // Fill the backlog with connects nobody accepts.
-        for (int i = 0; i < 4; i++)
+        // Fill the backlog with connects nobody accepts, until one is turned away. How many a backlog takes is the OS's
+        // to decide (Linux queues one more than it is given; macOS lets the queue overcommit, and four connects never
+        // filled its listen(0)), so the test counts on what it sees rather than on a number.
+        SocketError? turnedAway = null;
+        for (int i = 0; i < 64 && turnedAway is null; i++)
         {
             var filler = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified) { Blocking = false };
             _sockets.Add(filler);
-            try { filler.Connect(new UnixDomainSocketEndPoint(path)); } catch (SocketException) { }
+            try { filler.Connect(new UnixDomainSocketEndPoint(path)); }
+            catch (SocketException ex) when (ex.SocketErrorCode is SocketError.WouldBlock or SocketError.ConnectionRefused) { turnedAway = ex.SocketErrorCode; }
         }
+
+        Assert.True(turnedAway is not null, "64 connects nobody accepted all got in: the backlog never filled");
 
         Task<bool> probe = Task.Run(() => AgentSocketLink.IsLiveSocket(path), TestContext.Current.CancellationToken);
 
