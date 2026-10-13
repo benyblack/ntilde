@@ -1235,7 +1235,7 @@ public sealed class BackupService
             // "<appdata>/profiles.json" (not a catalog entry - allowed) but was actually written
             // to "<appdata>/ssh/profiles.json" (the live Connections file) by BundleWriter, which
             // never heard of RootDirectory at all. No base directory means both agree.
-            comparableDestination = Path.GetFullPath(destinationPath);
+            comparableDestination = ResolveLinks(Path.GetFullPath(destinationPath));
         }
         catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
         {
@@ -1255,7 +1255,7 @@ public sealed class BackupService
 
         foreach (var entry in BackupCatalog.Entries)
         {
-            string source = Path.GetFullPath(BackupCatalog.ResolveSource(RootDirectory, entry));
+            string source = ResolveLinks(Path.GetFullPath(BackupCatalog.ResolveSource(RootDirectory, entry)));
             if (IsSameOrUnder(comparableDestination, source, comparison))
             {
                 reason = $"it is the live '{entry.SourceRelativePath}' Ntilde backs up (or a path under it); " +
@@ -1264,7 +1264,7 @@ public sealed class BackupService
             }
         }
 
-        string backupsDirectory = Path.GetFullPath(BackupsDirectory);
+        string backupsDirectory = ResolveLinks(Path.GetFullPath(BackupsDirectory));
         if (IsSameOrUnder(comparableDestination, backupsDirectory, comparison))
         {
             reason = "it is inside the backups directory Ntilde manages for snapshots; " +
@@ -1274,6 +1274,45 @@ public sealed class BackupService
 
         reason = null;
         return false;
+    }
+
+    /// <summary>
+    /// <paramref name="fullPath"/> with every symbolic link along it resolved, for as much of it as exists; the rest is
+    /// appended as it is. One file has many spellings once links are involved - macOS's /var is /private/var, an app-data
+    /// root can be a link - and the text comparisons above only see one file in one spelling. A link that cannot be
+    /// followed (a loop, no permission) leaves the path as it was: the guard is then no weaker than before.
+    /// </summary>
+    private static string ResolveLinks(string fullPath)
+    {
+        try
+        {
+            string? root = Path.GetPathRoot(fullPath);
+            if (string.IsNullOrEmpty(root)) return fullPath;
+
+            string[] segments = fullPath[root.Length..].Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+            string resolved = root;
+            for (int i = 0; i < segments.Length; i++)
+            {
+                string next = Path.Combine(resolved, segments[i]);
+                FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
+                if (!info.Exists && info.LinkTarget is null)
+                {
+                    // Nothing on disk from here on, so nothing more to resolve.
+                    return Path.Combine([resolved, .. segments[i..]]);
+                }
+
+                resolved = info.LinkTarget is null
+                    ? next
+                    : info.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? next;
+            }
+
+            return resolved;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return fullPath;
+        }
     }
 
     private static bool IsSameOrUnder(string candidate, string ancestor, StringComparison comparison)

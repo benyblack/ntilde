@@ -245,6 +245,38 @@ public sealed class BackupExportTests
     }
 
     /// <summary>
+    /// One live file, two spellings: through a symlink to the root and through the root itself. The guard compared the
+    /// spellings as text, so either way round the export went ahead and overwrote the live file. macOS hit it without
+    /// trying: its temp directory /var/folders is /private/var/folders, and the current directory reads back resolved.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Export_ToALiveFileThroughASymlink_IsRejected(bool serviceRootIsTheLink)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Creating a symlink needs Developer Mode or elevation on Windows.");
+        using var tree = BackupTestTree.CreatePopulated();
+        string link = tree.Root + "-link";
+        Directory.CreateSymbolicLink(link, tree.Root);
+        try
+        {
+            var service = new BackupService(serviceRootIsTheLink ? link : tree.Root, FixedClock());
+            string destination = Path.Combine(serviceRootIsTheLink ? tree.Root : link, "ssh", "profiles.json");
+            byte[] before = File.ReadAllBytes(destination);
+
+            var outcome = service.Export(destination);
+
+            Assert.False(outcome.Success);
+            Assert.Equal(BackupFailureKind.WriteFailed, outcome.Failure);
+            Assert.Equal(before, File.ReadAllBytes(destination));
+        }
+        finally
+        {
+            Directory.Delete(link);
+        }
+    }
+
+    /// <summary>
     /// Design decision (documented in the fix's own remarks on
     /// <c>BackupService.TryDescribeProtectedDestination</c>): <see cref="BackupService.BackupsDirectory"/>
     /// is rejected too, even though it is not itself a <c>BackupCatalog.Entries</c> source. It is
