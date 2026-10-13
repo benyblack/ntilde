@@ -258,11 +258,22 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
             Assert.True(!needsBinary || File.Exists(binary), $"{BinaryVariable} names no file: {binary}");
             string root = Path.Combine(Path.GetTempPath(), $"ntilde-ls-e2e-{Guid.NewGuid():N}");
             Directory.CreateDirectory(root);
-            DockerSshFixture fixture = await DockerSshFixture.StartAsync();
-            test.Log($"[docker] container {fixture.ContainerName}: sshd on 127.0.0.1:{fixture.Port}; app data {root}");
-            string identityFile = await fixture.CopyPrivateKeyAsync(NativeSshTestKey.Plain, Path.Combine(root, "id_ed25519"));
-            RemoteMuxDockerE2eTests.RestrictToOwner(identityFile);
-            return new Run(test, fixture, root, identityFile, needsBinary ? binary : null);
+            DockerSshFixture? fixture = null;
+            try
+            {
+                fixture = await DockerSshFixture.StartAsync();
+                test.Log($"[docker] container {fixture.ContainerName}: sshd on 127.0.0.1:{fixture.Port}; app data {root}");
+                string identityFile = await fixture.CopyPrivateKeyAsync(NativeSshTestKey.Plain, Path.Combine(root, "id_ed25519"));
+                RemoteMuxDockerE2eTests.RestrictToOwner(identityFile);
+                return new Run(test, fixture, root, identityFile, needsBinary ? binary : null);
+            }
+            catch
+            {
+                // No Run was returned, so no caller's `await using` tears this down: the container and folder go here.
+                if (fixture is not null) await fixture.DisposeAsync();
+                DeleteRootBestEffort(root);
+                throw;
+            }
         }
 
         /// <summary>
@@ -442,38 +453,50 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
 
         public async ValueTask DisposeAsync()
         {
-            for (int i = _owned.Count - 1; i >= 0; i--)
-            {
-                try
-                {
-                    _owned[i].Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Log($"[e2e] disposing {_owned[i].GetType().Name} failed: {ex.Message}");
-                }
-            }
-
-            if (_agent is { } agent)
-            {
-                try
-                {
-                    agent.Kill();
-                }
-                catch (InvalidOperationException)
-                {
-                    // Already gone.
-                }
-
-                agent.Dispose();
-            }
-
-            await Fixture.DisposeAsync();
-            Environment.SetEnvironmentVariable(AgentVariable, _previousAgent);
-            Environment.SetEnvironmentVariable(AppDataRootVariable, _previousRoot);
             try
             {
-                Directory.Delete(Root, recursive: true);
+                for (int i = _owned.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        _owned[i].Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[e2e] disposing {_owned[i].GetType().Name} failed: {ex.Message}");
+                    }
+                }
+
+                if (_agent is { } agent)
+                {
+                    try
+                    {
+                        agent.Kill();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Already gone.
+                    }
+
+                    agent.Dispose();
+                }
+
+                await Fixture.DisposeAsync();
+            }
+            finally
+            {
+                // Whatever failed above, the next test must not inherit this run's app data or its dead agent socket.
+                Environment.SetEnvironmentVariable(AgentVariable, _previousAgent);
+                Environment.SetEnvironmentVariable(AppDataRootVariable, _previousRoot);
+                DeleteRootBestEffort(Root);
+            }
+        }
+
+        private static void DeleteRootBestEffort(string root)
+        {
+            try
+            {
+                Directory.Delete(root, recursive: true);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
