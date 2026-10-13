@@ -87,6 +87,32 @@ public sealed class MuxDaemonHostTests : IDisposable
         Assert.False(File.Exists(o.DescriptorPath));
     }
 
+    /// <summary>
+    /// Manual checklist step 7: <c>kill-server</c> with a window attached. The other clients must see their connection lost,
+    /// as when the daemon dies - never each shell's exit, which a pane takes as the shell's own (a killed child reports code
+    /// 0, and an exit-0 shell closes its pane, the last pane its window).
+    /// </summary>
+    [Fact]
+    public async Task Shutdown_request_disconnects_the_other_clients_before_their_sessions_exit()
+    {
+        var (host, _, o) = NewHost();
+        host.Start();
+        using MuxClient watcher = await ConnectAsync(o.Endpoint);
+        Guid id = await MuxTestHost.SpawnAsync(watcher);
+        ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(watcher, id);
+        int exits = 0;
+        var disconnected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        pane.Session.OnExit += _ => Interlocked.Increment(ref exits);
+        pane.Session.Disconnected += _ => disconnected.TrySetResult();
+        using MuxClient killer = await ConnectAsync(o.Endpoint);
+
+        await killer.ShutdownServerAsync(Ct);
+
+        await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        Assert.Equal("shutdown", await host.Completion.WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        Assert.Equal(0, Volatile.Read(ref exits));
+    }
+
     [Fact]
     public async Task Idle_host_exits_after_the_idle_period()
     {

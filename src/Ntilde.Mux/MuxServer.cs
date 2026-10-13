@@ -185,6 +185,23 @@ public sealed class MuxServer : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// The daemon's stop, before <see cref="KillAllSessions"/>: stops accepting, then closes every connection. Each client
+    /// then sees its connection lost, as when the daemon dies, and never an exit for each of its sessions - which would
+    /// read as the shell's own exit (a child the PTY layer ends is reported with code 0) and take the pane's exit policy:
+    /// an exit-0 shell closes its pane, and the last pane its window (manual checklist step 7). A <c>shutdown</c>
+    /// requester loses nothing: the host is told to stop only once its reply is on the wire (see
+    /// <c>MuxServerConnection._shutdownReply</c>).
+    /// </summary>
+    public void DisconnectAllClients()
+    {
+        // Under the gate, as TryBeginIdleShutdown: a connection either registered before (and is aborted below) or is
+        // refused after - never one that attaches while the sessions are being killed and is sent their exits.
+        lock (_lifecycleGate) _acceptingStopped = true;
+        _listener?.Dispose();
+        foreach (MuxServerConnection connection in _connections.Values) connection.Abort("server_shutdown");
+    }
+
     /// <summary>Kills and disposes every session (the <c>shutdown</c> path).</summary>
     public void KillAllSessions()
     {

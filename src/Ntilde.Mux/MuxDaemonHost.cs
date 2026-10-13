@@ -330,7 +330,12 @@ public sealed class MuxDaemonHost : IDisposable
         {
             _timer?.Dispose();
             _server.ShutdownRequested -= OnShutdownRequested;
-            if (reason != "idle") _server.KillAllSessions();
+            if (reason != "idle")
+            {
+                // Connections first: a client must see the daemon go, not every shell exit as if typed `exit`.
+                _server.DisconnectAllClients();
+                _server.KillAllSessions();
+            }
             _server.Dispose();
             MuxDiscovery.DeleteDescriptorIfOwned(_options.DescriptorPath, _options.Pid);
             ReleaseLock();
