@@ -14,6 +14,12 @@ One checklist for the whole multiplexer, run before Phase 5 merges. It merges:
   51 are rewritten for it, and section N (steps 54-58) is new. The implementer's results below predate it: where a
   rewritten expectation differs from what was run, the result says so.
 
+**Automated steps.** A step with an **Automated:** line has a test that runs in CI and says what it covers; the rest of
+the step stays manual. Window steps run headlessly against a real `Ntilde mux serve` with real shells
+(`tests/Ntilde.App.Tests/Core/MainWindowRealDaemonTests.cs`, Category=PtySmoke); remote steps run against the Docker
+sshd and a real `ntilde-mux` (`tests/Ntilde.App.Tests/Shell/Mux/Remote/RemoteMuxListingDockerE2eTests.cs`,
+Category=DockerE2E). The result lines below still record runs by hand, except where a FAIL names an automated run.
+
 UI strings are quoted from `docs/USER_MANUAL.md` chapter 12, "Persistent sessions and the multiplexer".
 
 **Results.** Each step has a result line per OS, and each line is one of:
@@ -156,6 +162,10 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Actions:** open two tabs. Run `Start-Sleep 1000` (Windows) or `sleep 1000` in one and `vim` in the other. Close the
   window.
 - **Expected:** the window closes; nothing ends the shells.
+- **Automated:**
+  `MainWindowRealDaemonTests.Keep_running_leaves_the_real_shells_in_the_daemon_and_the_next_window_brings_them_back`
+  (the PTY smoke lane, ubuntu-latest and windows-latest): the shells outlive the window close (pids alive). Not covered:
+  `vim`, Task Manager.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -168,6 +178,10 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   `pgrep -af 'mux serve'` and `ps -o pid,ppid,args --ppid <daemon pid>`.
 - **Expected:** 2 sessions, `running`, `0` attached. Exactly one `Ntilde mux serve` process, and both shells are its
   children.
+- **Automated:**
+  `MainWindowRealDaemonTests.Keep_running_leaves_the_real_shells_in_the_daemon_and_the_next_window_brings_them_back`
+  (the PTY smoke lane, ubuntu-latest and windows-latest): 2 sessions `running` with 0 attached, one daemon throughout,
+  and on Linux each shell's parent is that daemon.
 - **Result / log:**
   - Windows: OPEN — maintainer (the GUI-made sessions). Step 9 shows the CLI half with `spawn-for-test` sessions:
     "shell processes ...: pid 43276 parent 67264; pid 70132 parent 67264", where 67264 is `Ntilde.exe mux serve`.
@@ -180,6 +194,10 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Preconditions:** step 1.
 - **Actions:** start Ntilde again.
 - **Expected:** both tabs come back with their screen and scrollback, and vim redraws. No notification is shown.
+- **Automated:**
+  `MainWindowRealDaemonTests.Keep_running_leaves_the_real_shells_in_the_daemon_and_the_next_window_brings_them_back`
+  (the PTY smoke lane, ubuntu-latest and windows-latest): the next window reattaches the same sessions and shell pids,
+  shows the earlier output, and raises no lost toast. Not covered: `vim` redrawing.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer. (The reattach half ran headlessly in step 4: the same session id, 1 attached, after a
@@ -210,6 +228,10 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Expected:** the pane shows `[Multiplexer disconnected] [Press Enter to reconnect]`. Enter starts a new multiplexer
   and a new shell, writes `[Previous session was lost — started a new shell]`, and a *Previous session lost*
   notification says so.
+- **Automated:**
+  `MainWindowRealDaemonTests.A_killed_daemon_shows_its_banner_and_Enter_starts_a_new_daemon_and_shell_and_says_so` (the
+  PTY smoke lane, ubuntu-latest and windows-latest): the banner, a new daemon and shell on Enter, the *Previous session
+  lost* toast; on Linux the old shell ends with its daemon.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -220,6 +242,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Preconditions:** a sandbox window with two panes.
 - **Actions:** close one pane. Run `ntilde mux ls`.
 - **Expected:** its shell ends, and `ntilde mux ls` no longer lists it.
+- **Automated:** `MainWindowRealDaemonTests.Closing_a_pane_ends_its_real_shell_and_no_other` (the PTY smoke lane,
+  ubuntu-latest and windows-latest): the closed pane's shell pid ends and leaves the listing; the other stays.
 - **Result / log:**
   - Windows: OPEN — maintainer (the CLI equivalent, `ntilde mux kill <id>`, passed in step 9)
   - Linux: OPEN — maintainer (the same)
@@ -234,7 +258,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Result / log:**
   - Windows: OPEN — maintainer (the panes). The CLI half passed in step 9: "kill-server: "Multiplexer stopped.", exit 0",
     "the daemon (pid 67264) has exited", "its remaining shell has exited".
-  - Linux: OPEN — maintainer (the panes). The CLI half passed in step 9.
+  - Linux: FAIL (automated headless run against a real `mux serve`, 2026-10-13): `kill-server` printed "Multiplexer
+    stopped." and every shell ended, but the window closed instead of showing the banner. The shutdown reports each
+    shell as exit code 0, so each pane takes the exit policy's close. Not yet fixed. The CLI half passed in step 9.
   - macOS: OPEN — maintainer
 
 ### 8. A second instance takes nobody's shells
@@ -244,6 +270,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Expected:** it does not attach the first window's shells. Its restored panes start new shells, and a *Previous shell
   in use* notification reads `[Your previous shell is open in another window — started a new shell]`. No *Previous
   session lost* notification is shown.
+- **Automated:** `MainWindowRealDaemonTests.A_second_instance_takes_no_shell_another_window_shows` (the PTY smoke lane,
+  ubuntu-latest and windows-latest): the second instance takes no shell, toasts *Previous shell in use* with the banner
+  text, and no *Previous session lost*.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -341,6 +370,10 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   2. `mux-close-choice` appears in the data folder, and the next close does not ask.
   3. Saving the setting forgets the answer: the question comes back. Importing or restoring settings that change it
      does the same.
+- **Automated:**
+  `MainWindowRealDaemonTests.Close_them_ends_the_real_shell_and_the_next_launch_starts_a_fresh_one_quietly` (the PTY
+  smoke lane, ubuntu-latest and windows-latest): action 1 only: the shell pid ends, the daemon lists nothing, the next
+  window starts a fresh shell with no lost toast.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -352,6 +385,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   `--read-only`.
 - **Actions:** close this window and answer **Close them**.
 - **Expected:** this window's unshared shells end. The shared one keeps running for the other window.
+- **Automated:** `MainWindowRealDaemonTests.Close_them_keeps_the_real_shell_another_client_shows` (the PTY smoke lane,
+  ubuntu-latest and windows-latest): this window's shell ends; the shared one runs on with the other client attached.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -396,6 +431,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   2. The next launch starts fresh shells, with no "previous session lost" notice.
   3. The Settings link closes Settings without saving, then does the same. The command has no default shortcut;
      `quit_close_all_shells` can be bound under Settings → Shortcuts.
+- **Automated:** `MainWindowRealDaemonTests.Quit_and_close_all_shells_ends_every_real_shell_and_stops_the_daemon` (the
+  PTY smoke lane, ubuntu-latest and windows-latest): action 1 without the dialog: own, shared and detached shells end,
+  the daemon exits and its descriptor is gone.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -423,6 +461,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Expected:** each pane starts a fresh shell and writes `[Previous session was lost — started a new shell]`, and one
   *Previous session lost* notification covers them all. A tab opened from *Attach to session…* closes instead, with an
   *Attach to session* notification reading `[The shell you chose has ended]`.
+- **Automated:** `MainWindowRealDaemonTests.A_relaunch_after_the_daemon_died_starts_fresh_real_shells_and_says_so` (the
+  PTY smoke lane, ubuntu-latest and windows-latest): fresh shells in both restored tabs and the *Previous session lost*
+  toast. Not covered: the *Attach to session* tab case.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -456,6 +497,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   2. B gets a new tab with the same screen. Both panes show the "shared with 1" badge, and both tabs carry ⧉ in
      vertical-tab mode. Each window's typing appears in the other at once.
   3. After B's resize, A letterboxes. Clicking into A takes the size back.
+- **Automated:** `MainWindowRealDaemonTests.The_same_real_shell_in_two_windows_echoes_both_ways` (the PTY smoke lane,
+  ubuntu-latest and windows-latest): both windows know the shell is shared, and each one's typing appears in the other.
+  Not covered: the dialog text, badges, letterboxing.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -467,6 +511,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Actions:** in B, **Pane: Detach** (bind `detach_pane` first; it has no default shortcut). Run `ntilde mux ls`.
 - **Expected:** a *Shell detached* notification reads "Shell kept running — Attach to session… to get it back". A's
   badge disappears and A's shell still works. `ntilde mux ls` shows the session with 1 attached.
+- **Automated:** `MainWindowRealDaemonTests.A_detached_real_shell_keeps_running_is_not_reopened_and_is_announced_once`
+  (the PTY smoke lane, ubuntu-latest and windows-latest): the *Shell detached* toast text; the session runs on, 0
+  attached, detached by the user.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -479,6 +526,9 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
 - **Expected:** `ls` shows it `running, detached` (`--json`: `"detachedByUser": true`). The relaunch does not reopen it
   as a tab. Once, a *Detached shells* notification reads "1 detached shell is running — Attach to session… to reopen it".
   *Attach to session…* reopens it, and `ls` then shows `running`.
+- **Automated:** `MainWindowRealDaemonTests.A_detached_real_shell_keeps_running_is_not_reopened_and_is_announced_once`
+  (the PTY smoke lane, ubuntu-latest and windows-latest): the next window does not reopen it, toasts *Detached shells*
+  once, and *Attach to session…* reopens the same pid.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -825,6 +875,10 @@ in the local daemon and in the host's `ntilde-mux`.*
   4. The table ends "No remote hosts keep sessions.".
   - Nothing prompts. A native profile that signs in with its key never asks the credential store; an OpenSSH one does
     (step 42). `logs\mux-ls-all.log` holds the last run's lines.
+- **Automated:**
+  `RemoteMuxListingDockerE2eTests.Ls_all_starts_no_multiplexer_lists_a_running_one_and_never_trusts_a_key_or_starts_an_older_one`
+  (the native SSH Docker E2E job, ubuntu-latest): OpenSSH, Docker sshd, real `ntilde-mux`: action 1 (nothing started,
+  `pgrep`), action 2 (the session listed, one daemon), text and `--json`.
 - **Result / log:**
   - Windows: PASS before PR #512 (run by implementer, 2026-10-09, `<logs>\40-win-ls-all-cells.log`, 12 of 12); action 1
     is OPEN — maintainer since H7 (that run expected `No sessions.` and a started `ntilde-mux`). Native backend, key
@@ -871,6 +925,11 @@ in the local daemon and in the host's `ntilde-mux`.*
 - **Actions:** rotate the host's keys with step 29's command (`ntilde-mux` keeps running). Run `ntilde mux ls --all`.
 - **Expected:** the host's line reads `unreachable: signing in needs an answer, which ls --all never asks for`. Nothing
   prompts, no new key is trusted, and no password is offered.
+- **Automated:**
+  `RemoteMuxListingDockerE2eTests.Ls_all_starts_no_multiplexer_lists_a_running_one_and_never_trusts_a_key_or_starts_an_older_one`
+  (the native SSH Docker E2E job, ubuntu-latest): the OpenSSH variant (strict checking, empty known-hosts file):
+  `signing in needs an answer`, nothing trusted. The native backend stays manual: its automatic attempts read a
+  known-hosts store bound once per process.
 - **Result / log:**
   - Windows: PASS (run by implementer, 2026-10-09, `<logs>\41-win-ls-all-changed-hostkey.log`; the rotation itself:
     `<logs>\54-hostkey-rotation-check.log`, "ntilde-mux serve pid before: 375 ... after: 375"). "nova@127.0.0.1
@@ -1059,6 +1118,10 @@ only, since a manual run needs a build or a daemon nobody has:
 - **Expected:** nothing asks. This window's two unshared shells end, as **Close them** ends them. The shared shell keeps
   running in the second window, and the detached one keeps running: `ls` lists both. Remote persistent tabs' shells keep
   running on their hosts.
+- **Automated:**
+  `MainWindowRealDaemonTests.Turning_persistence_off_then_closing_ends_the_windows_real_shells_and_no_other` (the PTY
+  smoke lane, ubuntu-latest and windows-latest): nothing asks; the window's own shell ends; a shared and a detached
+  shell run on.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -1073,6 +1136,10 @@ only, since a manual run needs a build or a daemon nobody has:
   Reinstall the current `ntilde-mux` afterwards.
 - **Expected:** the host's line reads `nova@127.0.0.1  unreachable: its ntilde-mux is older than this app; update it to
   list its sessions` (`--json`: the same words in `"error"`). Nothing prompts, and `pgrep` prints nothing.
+- **Automated:**
+  `RemoteMuxListingDockerE2eTests.Ls_all_starts_no_multiplexer_lists_a_running_one_and_never_trusts_a_key_or_starts_an_older_one`
+  (the native SSH Docker E2E job, ubuntu-latest): with the current binary behind a wrapper that renames `--no-spawn`, so
+  it refuses it with its own usage and exit 2 (no release ships an older `ntilde-mux`).
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
@@ -1090,6 +1157,8 @@ only, since a manual run needs a build or a daemon nobody has:
 - **Expected:** `ls --all` lists the host's sessions. The link points at the same socket before and after it, and
   `ssh-add -l` still lists the key. (Before H3, the listing's connection forwarded the agent and repointed the link at
   its own socket, which went away when it ended: `ssh-add -l` then failed to reach the agent.)
+- **Automated:** `RemoteMuxListingDockerE2eTests.A_listing_leaves_the_agent_link_a_forwarding_tab_set` (the native SSH
+  Docker E2E job, ubuntu-latest): the link's target is unchanged after `ls --all` and is still a socket.
 - **Result / log:**
   - Windows: OPEN — maintainer (the Windows OpenSSH agent service)
   - Linux: OPEN — maintainer
@@ -1111,6 +1180,9 @@ only, since a manual run needs a build or a daemon nobody has:
   2. The listing fails in the sidebar, and the count goes up by one.
   3. Each fails again, and the count does not go up: the refused password is no longer offered. (Before H5 every
      refresh and transfer offered it again, one `Failed password` line each.)
+- **Automated:** `RemoteMuxListingDockerE2eTests.A_listing_refused_at_sign_in_offers_the_scope_password_no_more` (the
+  native SSH Docker E2E job, ubuntu-latest): through the sidebar listing service: one more `Failed password` for the
+  refused listing, none for the next two, and the retyped password works. Not covered: *SFTP: Download…*.
 - **Result / log:**
   - Windows: OPEN — maintainer
   - Linux: OPEN — maintainer
