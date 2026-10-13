@@ -92,6 +92,18 @@ public sealed class ShellIntegrationArgumentsTests
         Assert.Contains("-NoLogo", cleaned, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A bootstrap folder with a space in it - "Application Support" on every Mac - can only be launched quoted, and a
+    /// space-split read of the value saw `"/Users/babak/Library/Application` and kept the rest.
+    /// </summary>
+    [Fact]
+    public void StripInjected_RemovesAQuotedStaleBootstrapFileArgumentWithSpaces()
+    {
+        string stale = $"-NoLogo -NoExit -File \"{MacCurrentDir}/command-assist-bootstrap.ps1\"";
+
+        Assert.Equal("-NoLogo -NoExit", ShellIntegrationArguments.StripInjected(stale, MacDirs));
+    }
+
     [Fact]
     public void StripInjected_RemovesOurEncodedBootstrap()
     {
