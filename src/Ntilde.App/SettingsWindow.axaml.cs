@@ -162,8 +162,9 @@ namespace Ntilde
             }
 
             // After the first Load on purpose: loading sets every control, and those changes are
-            // not previews. (MainWindow subscribes after construction, so only the window's own
-            // repaint is affected; it runs once, below, as ApplyTheme already did above.)
+            // not previews. The cost is that the first Load's repaint request is dropped (the sink
+            // has no subscriber yet); the ApplyTheme() above already painted the active theme.
+            // (MainWindow subscribes after construction, so its previews are unaffected.)
             WireSessionEvents();
             BuildSidebar();
 

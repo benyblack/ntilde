@@ -27,7 +27,12 @@ public sealed class SettingsSession
         ResetFromSettings();
     }
 
-    /// <summary>The working settings. Pages change it only in <see cref="ISettingsPage.Collect"/>; Save writes it.</summary>
+    /// <summary>
+    /// The working settings; Save collects every page into it and writes it. Pages mostly change it
+    /// only in <see cref="ISettingsPage.Collect"/>, with three exceptions: the Profiles page writes
+    /// <c>DefaultProfileId</c> in Load and on "Set as default", and the Appearance page calls
+    /// <c>RefreshActiveTheme()</c> on it after a theme edit.
+    /// </summary>
     public TerminalSettings Settings { get; private set; }
 
     /// <summary>Pending keybindings, committed on Save. Case-insensitive, like <see cref="TerminalSettings.Keybindings"/>.</summary>
