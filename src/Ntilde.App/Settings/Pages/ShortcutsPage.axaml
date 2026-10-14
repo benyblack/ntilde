@@ -18,11 +18,11 @@
                            FontSize="12"
                            IsVisible="False"
                            TextWrapping="Wrap"/>
-                <TextBlock Classes="RowDesc"
-                           Text="Select a shortcut field and press the new key chord. Reset restores the default binding."/>
-                <TextBlock Classes="RowDesc"
-                           TextWrapping="Wrap"
-                           Text="Command Assist chords are matched while a suggestion surface is open, after the terminal has had its turn at the key. A chord the terminal sends to the shell first - most Ctrl+letter combinations, and anything the kitty keyboard protocol encodes for a full-screen program - will look bound here but never fire. Prefer Esc, the arrow keys, Enter, function keys, or a chord with Alt."/>
+                <settings:SettingRow RowId="keybindings" BorderThickness="0" Padding="0,4"
+                                     Title="Recording a shortcut"
+                                     Description="Select a shortcut field and press the new key chord. Reset restores the default binding."
+                                     Details="Command Assist chords are matched while a suggestion surface is open, after the terminal has had its turn at the key. A chord the terminal sends to the shell first - most Ctrl+letter combinations, and anything the kitty keyboard protocol encodes for a full-screen program - will look bound here but never fire. Prefer Esc, the arrow keys, Enter, function keys, or a chord with Alt."
+                                     Keywords="keybinding hotkey chord rebind"/>
             </StackPanel>
 
             <StackPanel Name="ShortcutBindingsPanel" Spacing="10"/>

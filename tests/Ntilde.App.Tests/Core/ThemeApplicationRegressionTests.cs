@@ -107,7 +107,7 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
     /// hardcoded hex (the regression) or a copy means light themes render dark navy cards.
     /// </summary>
     [AvaloniaFact]
-    public void SettingsWindow_CardRows_UseTheWindowPaletteBrushes()
+    public void SettingsWindow_CodeBuiltRows_UseTheWindowPaletteBrushes()
     {
         using var root = SettingsTestRoot.Empty();
         var window = new Ntilde.SettingsWindow();
@@ -127,7 +127,7 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
         Assert.NotEmpty(shortcutRows);
         foreach (var row in shortcutRows)
         {
-            Assert.Same(panelBrush, row.Background);
+            Assert.Null(row.Background);
             Assert.Same(hairlineBrush, row.BorderBrush);
         }
     }

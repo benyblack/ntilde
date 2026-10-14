@@ -47,7 +47,7 @@ public sealed class SettingsWindowTitleBarShortcutRefreshTests
         SettingsPageTests.PressChord(SettingsPageTests.BindingEditorFor(shortcuts, "Command Assist History"), Key.F8, KeyModifiers.Alt);
 
         Assert.Equal(ShortcutMatcher.Format(Key.F9, KeyModifiers.Alt), FindRowByTitle(TitleBarRowsPanel(window), "Settings").Shortcut.Text);
-        string history = window.GetPage<CommandAssistPage>().FindControl<TextBlock>("CommandAssistHistoryDesc")!.Text!;
+        string history = window.GetPage<CommandAssistPage>().FindControl<SettingRow>("CommandAssistHistoryRow")!.Description!;
         Assert.Contains(ShortcutMatcher.Format(Key.F8, KeyModifiers.Alt), history);
         Assert.DoesNotContain("Ctrl+R", history);
     }

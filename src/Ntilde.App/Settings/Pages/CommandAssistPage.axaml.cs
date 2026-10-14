@@ -91,9 +91,9 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
     private CheckBox Toggle(string name) => this.FindControl<CheckBox>(name)!;
 
     /// <summary>
-    /// The Command Assist descriptions name their chords in prose. The XAML text is written with
-    /// the Windows/Linux defaults; this swaps in the binding actually in force, which differs on
-    /// macOS (Cmd+R, Cmd+Shift+S) and after a rebind.
+    /// The descriptions name their chords in prose. The XAML text is written with the
+    /// Windows/Linux defaults; this swaps in the binding actually in force, which differs on macOS
+    /// (Cmd+R, Cmd+Shift+S) and after a rebind.
     /// </summary>
     private void UpdateCommandAssistShortcutText()
     {
@@ -101,28 +101,32 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         string history = TitleBarShortcuts.Resolve("command_assist_history", Session.ShortcutDraft);
         string pin = TitleBarShortcuts.Resolve("command_assist_pin", Session.ShortcutDraft);
 
-        Replace("CommandAssistBubbleDesc", ("Ctrl+Space", toggle), ("Ctrl+R", history));
-        Replace("CommandAssistHistoryDesc", ("Ctrl+R", history));
-        Replace("CommandAssistSnippetsDesc", ("Ctrl+Shift+S", pin));
+        Replace("CommandAssistBubbleRow", ("Ctrl+Space", toggle), ("Ctrl+R", history));
+        Replace("CommandAssistHistoryRow", ("Ctrl+R", history));
+        Replace("CommandAssistSnippetsRow", ("Ctrl+Shift+S", pin));
 
         if (_snippetsEmptyHint != null)
         {
             _snippetsEmptyHint.Text = FormatSnippetsEmptyHint();
         }
 
-        void Replace(string name, params (string Written, string Effective)[] chords)
+        void Replace(string rowName, params (string Written, string Effective)[] chords)
         {
-            if (this.FindControl<TextBlock>(name) is not TextBlock block)
+            if (this.FindControl<SettingRow>(rowName) is not { } row)
             {
                 return;
             }
 
-            // Tag keeps the XAML original so a second rebind replaces from the source text,
-            // not from the previous substitution.
-            block.Tag ??= block.Text;
-            block.Text = SubstituteChords((string)block.Tag, chords);
+            // Tag keeps the XAML original so a second rebind replaces from the source text, not
+            // from the previous substitution.
+            row.Tag ??= new RowText(row.Description, row.Details);
+            var original = (RowText)row.Tag;
+            row.Description = original.Description is null ? null : SubstituteChords(original.Description, chords);
+            row.Details = original.Details is null ? null : SubstituteChords(original.Details, chords);
         }
     }
+
+    private sealed record RowText(string? Description, string? Details);
 
     /// <summary>
     /// Replaces each written chord with its effective binding in one pass over
@@ -177,7 +181,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         var shellList = this.FindControl<ComboBox>("RemoteShellIntegrationShellList");
         var copyInstallerButton = this.FindControl<Button>("BtnCopyRemoteShellIntegration");
         var copySnippetButton = this.FindControl<Button>("BtnCopyRemoteShellIntegrationSnippet");
-        var status = this.FindControl<TextBlock>("RemoteShellIntegrationStatus");
+        var status = this.FindControl<SettingRow>("RemoteShellIntegrationRow");
         if (shellList == null || copyInstallerButton == null)
         {
             return;
@@ -219,14 +223,14 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
     /// </remarks>
     private async System.Threading.Tasks.Task CopyRemoteShellIntegrationInstallerAsync(
         RemoteShellIntegrationShell shell,
-        TextBlock? status)
+        SettingRow? status)
     {
         try
         {
             var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
             if (clipboard == null)
             {
-                ShowRemoteShellIntegrationStatus(status, "Clipboard is not available.");
+                ShowStatus(status, "Clipboard is not available.");
                 return;
             }
 
@@ -239,7 +243,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
                 : $"It writes {RemoteShellIntegrationSnippets.GetRemotePath(shell)}, which is sourced " +
                   "automatically, so there is nothing else to add.";
 
-            ShowRemoteShellIntegrationStatus(
+            ShowStatus(
                 status,
                 $"Copied the installer for {RemoteShellIntegrationSnippets.GetDisplayName(shell)}. " +
                 "Paste it at the remote prompt and press Enter - one line, one history entry. " +
@@ -249,25 +253,25 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         {
             // Reported in the row rather than swallowed: the whole point of the affordance is
             // that the user now has the installer, and silently not having it looks identical.
-            ShowRemoteShellIntegrationStatus(status, $"Could not copy the installer: {ex.Message}");
+            ShowStatus(status, $"Could not copy the installer: {ex.Message}");
         }
     }
 
     private async System.Threading.Tasks.Task CopyRemoteShellIntegrationSnippetAsync(
         RemoteShellIntegrationShell shell,
-        TextBlock? status)
+        SettingRow? status)
     {
         try
         {
             var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
             if (clipboard == null)
             {
-                ShowRemoteShellIntegrationStatus(status, "Clipboard is not available.");
+                ShowStatus(status, "Clipboard is not available.");
                 return;
             }
 
             await clipboard.SetTextAsync(RemoteShellIntegrationSnippets.Read(shell));
-            ShowRemoteShellIntegrationStatus(
+            ShowStatus(
                 status,
                 RemoteShellIntegrationSnippets.BuildInstallInstructions(shell));
         }
@@ -275,7 +279,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         {
             // Reported in the row rather than swallowed: the whole point of the affordance is
             // that the user now has the snippet, and silently not having it looks identical.
-            ShowRemoteShellIntegrationStatus(status, $"Could not copy the snippet: {ex.Message}");
+            ShowStatus(status, $"Could not copy the snippet: {ex.Message}");
         }
     }
 
@@ -303,7 +307,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
     private void WireClearCommandAssistHistoryRow()
     {
         var clearButton = this.FindControl<Button>("BtnClearCommandAssistHistory");
-        var status = this.FindControl<TextBlock>("CommandAssistHistoryStatus");
+        var status = this.FindControl<SettingRow>("CommandAssistHistoryRow");
         if (clearButton == null)
         {
             return;
@@ -313,7 +317,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         {
             if (Session.HistoryStore == null)
             {
-                ShowRemoteShellIntegrationStatus(status, "Command history is not available in this window.");
+                ShowStatus(status, "Command history is not available in this window.");
                 return;
             }
 
@@ -321,7 +325,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
             {
                 _isClearCommandAssistHistoryArmed = true;
                 clearButton.Content = "Confirm clear";
-                ShowRemoteShellIntegrationStatus(
+                ShowStatus(
                     status,
                     "This deletes every recorded command, including history carried over from an older version. Click again to confirm.");
                 return;
@@ -339,13 +343,13 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
                 // reached for from here; with no host wired the clear still reports success, which is
                 // true - only the refresh is missing.
                 Session.RaiseHistoryCleared();
-                ShowRemoteShellIntegrationStatus(status, "Command history cleared.");
+                ShowStatus(status, "Command history cleared.");
             }
             catch (Exception ex)
             {
                 // Reported rather than swallowed, for the same reason as the snippet copy: a clear
                 // that silently failed looks exactly like one that worked.
-                ShowRemoteShellIntegrationStatus(status, $"Could not clear history: {ex.Message}");
+                ShowStatus(status, $"Could not clear history: {ex.Message}");
             }
         };
     }
@@ -374,7 +378,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
     private void WireCommandAssistSnippetsRow()
     {
         var addButton = this.FindControl<Button>("BtnAddCommandAssistSnippet");
-        var status = this.FindControl<TextBlock>("CommandAssistSnippetStatus");
+        var status = this.FindControl<SettingRow>("CommandAssistSnippetsRow");
         if (addButton == null)
         {
             return;
@@ -402,18 +406,18 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
 
                 PopulateCommandAssistSnippetsPanel();
                 Session.RaiseSnippetsChanged();
-                ShowRemoteShellIntegrationStatus(status, "Snippet added. Give it a name and a command.");
+                ShowStatus(status, "Snippet added. Give it a name and a command.");
             }
             catch (Exception ex)
             {
-                ShowRemoteShellIntegrationStatus(status, $"Could not add the snippet: {ex.Message}");
+                ShowStatus(status, $"Could not add the snippet: {ex.Message}");
             }
         };
     }
 
     internal async System.Threading.Tasks.Task ReloadSnippetsAsync()
     {
-        var status = this.FindControl<TextBlock>("CommandAssistSnippetStatus");
+        var status = this.FindControl<SettingRow>("CommandAssistSnippetsRow");
         SnippetEditor? editor = TryGetSnippetEditor(status: null);
         if (editor == null)
         {
@@ -427,17 +431,17 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         }
         catch (Exception ex)
         {
-            ShowRemoteShellIntegrationStatus(status, $"Could not read your snippets: {ex.Message}");
+            ShowStatus(status, $"Could not read your snippets: {ex.Message}");
         }
 
         PopulateCommandAssistSnippetsPanel();
     }
 
-    private SnippetEditor? TryGetSnippetEditor(TextBlock? status)
+    private SnippetEditor? TryGetSnippetEditor(SettingRow? status)
     {
         if (Session.SnippetStore == null)
         {
-            ShowRemoteShellIntegrationStatus(status, "Snippets are not available in this window.");
+            ShowStatus(status, "Snippets are not available in this window.");
             return null;
         }
 
@@ -484,7 +488,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
 
     private Control CreateCommandAssistSnippetRow(CommandSnippet snippet)
     {
-        var status = this.FindControl<TextBlock>("CommandAssistSnippetStatus");
+        var status = this.FindControl<SettingRow>("CommandAssistSnippetsRow");
 
         // The row's idea of what is currently saved. Updated in place after every successful
         // commit, because the row outlives the edit: without it a second edit would compare
@@ -551,12 +555,12 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
                 {
                     PopulateCommandAssistSnippetsPanel();
                     Session.RaiseSnippetsChanged();
-                    ShowRemoteShellIntegrationStatus(status, $"Deleted \"{current.Name}\".");
+                    ShowStatus(status, $"Deleted \"{current.Name}\".");
                 }
             }
             catch (Exception ex)
             {
-                ShowRemoteShellIntegrationStatus(status, $"Could not delete the snippet: {ex.Message}");
+                ShowStatus(status, $"Could not delete the snippet: {ex.Message}");
             }
         };
 
@@ -567,21 +571,12 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         Grid.SetColumn(commandEditor, 1);
         Grid.SetColumn(deleteButton, 2);
 
-        return new Border
+        return SettingsRowChrome.CreateRow(this, new Grid
         {
-            Background = this.FindPaletteBrush("NtPanel"),
-            BorderBrush = this.FindPaletteBrush("NtHairline"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(12),
-            Margin = new Thickness(0, 0, 0, 8),
-            Child = new Grid
-            {
-                ColumnDefinitions = new ColumnDefinitions("220,*,Auto"),
-                ColumnSpacing = 10,
-                Children = { nameEditor, commandEditor, deleteButton },
-            },
-        };
+            ColumnDefinitions = new ColumnDefinitions("220,*,Auto"),
+            ColumnSpacing = 10,
+            Children = { nameEditor, commandEditor, deleteButton },
+        });
     }
 
     /// <summary>
@@ -592,7 +587,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         CommandSnippet snippet,
         TextBox nameEditor,
         TextBox commandEditor,
-        TextBlock? status)
+        SettingRow? status)
     {
         SnippetEditor? editor = _snippetEditor;
         if (editor == null)
@@ -613,7 +608,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
             // Refused rather than saved-as-empty, and the box is put back, so the user can see
             // which snippet they were about to blank. Deleting is what the Delete button is for.
             commandEditor.Text = snippet.CommandText;
-            ShowRemoteShellIntegrationStatus(status, "A snippet needs a command. Use Delete to remove it.");
+            ShowStatus(status, "A snippet needs a command. Use Delete to remove it.");
             return null;
         }
 
@@ -625,7 +620,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
             }
 
             Session.RaiseSnippetsChanged();
-            ShowRemoteShellIntegrationStatus(status, "Snippet saved.");
+            ShowStatus(status, "Snippet saved.");
 
             CommandSnippet? saved = editor.Snippets
                 .FirstOrDefault(x => string.Equals(x.Id, snippet.Id, StringComparison.Ordinal));
@@ -641,19 +636,16 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         }
         catch (Exception ex)
         {
-            ShowRemoteShellIntegrationStatus(status, $"Could not save the snippet: {ex.Message}");
+            ShowStatus(status, $"Could not save the snippet: {ex.Message}");
             return null;
         }
     }
 
-    private static void ShowRemoteShellIntegrationStatus(TextBlock? status, string message)
+    private static void ShowStatus(SettingRow? row, string message)
     {
-        if (status == null)
+        if (row != null)
         {
-            return;
+            row.Status = message;
         }
-
-        status.Text = message;
-        status.IsVisible = true;
     }
 }

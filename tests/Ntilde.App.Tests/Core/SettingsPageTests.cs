@@ -196,15 +196,57 @@ public sealed class SettingsPageTests
         var session = SessionFor(new TerminalSettings { Keybindings = new() { ["command_assist_history"] = "Alt+F8" } });
         var page = new CommandAssistPage();
         page.Load(session);
-        var history = page.FindControl<TextBlock>("CommandAssistHistoryDesc")!;
+        var history = page.FindControl<SettingRow>("CommandAssistHistoryRow")!;
 
-        Assert.Contains("Alt+F8", history.Text);
-        Assert.DoesNotContain("Ctrl+R", history.Text);
+        Assert.Contains("Alt+F8", history.Description);
+        Assert.DoesNotContain("Ctrl+R", history.Description);
 
         session.ShortcutDraft["command_assist_history"] = "Alt+F7";
         session.RaiseShortcutsChanged();
 
-        Assert.Contains("Alt+F7", history.Text);
+        Assert.Contains("Alt+F7", history.Description);
+    }
+
+    [AvaloniaFact]
+    public void AgentAccessPage_ShowsReadableLabels_AndStillStoresTheOldValues()
+    {
+        var page = new AgentAccessPage();
+        page.Load(SessionFor(new TerminalSettings { AgentIndicatorTabRollup = "All" }));
+        var combo = page.FindControl<ComboBox>("AgentIndicatorTabRollupList")!;
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        string[] labels = ["Writes only", "All activity"];
+        Assert.Equal(labels, combo.Items.OfType<ComboBoxItem>().Select(i => (string)i.Content!).ToArray());
+        Assert.Equal("All activity", ((ComboBoxItem)combo.SelectedItem!).Content);
+        Assert.Equal("All", target.AgentIndicatorTabRollup);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("writesonly")]
+    [InlineData("Sometimes")]
+    public void AgentAccessPage_AnUnknownStoredRollup_OpensOnWritesOnly(string stored)
+    {
+        var page = new AgentAccessPage();
+        page.Load(SessionFor(new TerminalSettings { AgentIndicatorTabRollup = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { AgentIndicatorTabRollup = "All" };
+
+        page.Collect(target);
+
+        Assert.Equal("WritesOnly", target.AgentIndicatorTabRollup);
+    }
+
+    [AvaloniaFact]
+    public void LongDescriptions_SitBehindMore()
+    {
+        string[] withMore = ["remember-commands", "remote-shell-integration", "native-ssh", "keybindings", "osc9-notifications", "update-checks"];
+        Control[] pages = [new CommandAssistPage(), new SshPage(), new ShortcutsPage(), new GeneralPage()];
+
+        var rows = pages.SelectMany(page => page.GetLogicalDescendants().OfType<SettingRow>()).ToDictionary(row => row.RowId!);
+
+        Assert.All(withMore, id => Assert.False(string.IsNullOrWhiteSpace(rows[id].Details), $"{id} has no Details"));
     }
 
     private const string LocalProfileId = "33333333-3333-3333-3333-333333333333";
