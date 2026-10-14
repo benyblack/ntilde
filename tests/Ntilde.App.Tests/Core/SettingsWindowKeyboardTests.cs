@@ -50,8 +50,8 @@ public sealed class SettingsWindowKeyboardTests
     public void PrimaryS_SavesAnEditStillPendingInANumberBox()
     {
         using var root = SettingsTestRoot.WithSettings("""{"FontSize":14}""");
-        // Open on Appearance, where Font size lives until Task 3.3; the window's default page (General after Task 3.2) never applies a hidden page's template.
-        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        // Open on Terminal, where Font size lives; a hidden page never applies its template, so the test must open the page that owns the box.
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Terminal));
         try
         {
             window.Show();

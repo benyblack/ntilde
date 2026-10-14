@@ -40,7 +40,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
     {
         InitializeComponent();
         WireThemeSection();
-        WireFontRows();
         WireWindowRows();
     }
 
@@ -64,7 +63,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
         }
 
         _session = session;
-        PopulateFonts();
         PopulateThemes();
         LoadControls();
         RebuildTitleBarRows();
@@ -82,17 +80,8 @@ public partial class AppearancePage : UserControl, ISettingsPage
     {
         ArgumentNullException.ThrowIfNull(target);
 
-        target.FontSize = (double)(this.FindControl<NumericUpDown>("FontSizeInput")!.Value ?? 14);
-        target.MaxHistory = (int)(this.FindControl<NumericUpDown>("ScrollbackInput")!.Value ?? 10000);
         target.WindowOpacity = this.FindControl<Slider>("WindowOpacitySlider")!.Value;
         target.UiScale = UiScale.Clamp(this.FindControl<Slider>("UiScaleSlider")!.Value);
-        target.EnableLigatures = Toggle("LigatureToggle").IsChecked == true;
-        target.EnableComplexShaping = Toggle("ComplexShapingToggle").IsChecked == true;
-
-        if (SelectedItem("FontList") is { } fontItem)
-        {
-            target.FontFamily = fontItem.Content?.ToString() ?? BundledFontCatalog.DefaultTerminalFontFamily;
-        }
 
         if (SelectedItem("ThemeList") is { } themeItem)
         {
@@ -117,16 +106,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
         }
     }
 
-    private void PopulateFonts()
-    {
-        var fontList = this.FindControl<ComboBox>("FontList")!;
-        fontList.Items.Clear();
-        foreach (string family in Session.FontChoices)
-        {
-            fontList.Items.Add(new ComboBoxItem { Content = family });
-        }
-    }
-
     private void PopulateThemes()
     {
         Session.Settings.ThemeManager.LoadThemes();
@@ -143,9 +122,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
     {
         TerminalSettings settings = Session.Settings;
 
-        this.FindControl<NumericUpDown>("FontSizeInput")!.Value = (decimal)settings.FontSize;
-        this.FindControl<NumericUpDown>("ScrollbackInput")!.Value = settings.MaxHistory;
-
         this.FindControl<Slider>("WindowOpacitySlider")!.Value = settings.WindowOpacity;
         this.FindControl<TextBlock>("OpacityValueDisplay")!.Text = $"{(int)(settings.WindowOpacity * 100)}%";
 
@@ -153,14 +129,9 @@ public partial class AppearancePage : UserControl, ISettingsPage
         uiScaleSlider.Value = UiScale.Clamp(settings.UiScale);
         this.FindControl<TextBlock>("UiScaleValueDisplay")!.Text = FormatUiScale(uiScaleSlider.Value);
 
-        Toggle("LigatureToggle").IsChecked = settings.EnableLigatures;
-        Toggle("ComplexShapingToggle").IsChecked = settings.EnableComplexShaping;
-
         this.FindControl<TextBox>("BgImagePathInput")!.Text = settings.BackgroundImagePath;
         this.FindControl<Slider>("BgImageOpacitySlider")!.Value = settings.BackgroundImageOpacity;
         this.FindControl<TextBlock>("BgImageOpacityDisplay")!.Text = $"{(int)(settings.BackgroundImageOpacity * 100)}%";
-
-        SelectByContent("FontList", settings.FontFamily, StringComparison.Ordinal, fallbackIndex: null);
 
         // Legacy settings store "Default (Dark)" while the combo lists the manager's canonical
         // "Default" (ThemeManager.GetTheme maps between them). Normalize that one alias rather than
@@ -196,8 +167,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
     }
 
     private ComboBoxItem? SelectedItem(string comboName) => this.FindControl<ComboBox>(comboName)!.SelectedItem as ComboBoxItem;
-
-    private CheckBox Toggle(string name) => this.FindControl<CheckBox>(name)!;
 
     private void WireThemeSection()
     {
@@ -408,35 +377,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
                     Session.Preview.Theme(themeName);
                     var theme = Session.Settings.ThemeManager.GetTheme(themeName);
                     Session.Preview.RepaintWindow(theme);
-                }
-            };
-        }
-    }
-
-    private void WireFontRows()
-    {
-        var fontList = this.FindControl<ComboBox>("FontList");
-        var fontSizeInput = this.FindControl<NumericUpDown>("FontSizeInput");
-
-        // Core Settings
-        if (fontList != null)
-        {
-            fontList.SelectionChanged += (s, e) =>
-            {
-                if (fontList.SelectedItem is ComboBoxItem item && item.Content != null)
-                {
-                    Session.Preview.Font(item.Content.ToString() ?? BundledFontCatalog.DefaultTerminalFontFamily);
-                }
-            };
-        }
-
-        if (fontSizeInput != null)
-        {
-            fontSizeInput.ValueChanged += (s, e) =>
-            {
-                if (fontSizeInput.Value.HasValue)
-                {
-                    Session.Preview.FontSize((double)fontSizeInput.Value.Value);
                 }
             };
         }

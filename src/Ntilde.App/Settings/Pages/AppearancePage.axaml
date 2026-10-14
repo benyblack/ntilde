@@ -245,60 +245,6 @@
                     <ComboBoxItem>UniformToFill</ComboBoxItem>
                 </ComboBox>
             </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,18,0,18"/>
-
-            <!-- ── Fonts & Text rendering ── -->
-            <TextBlock Classes="SectionHeader" Text="FONTS &amp; TEXT" Margin="0,0,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Font family"/>
-                    <TextBlock Classes="RowDesc"  Text="Monospaced font used in the terminal."/>
-                </StackPanel>
-                <ComboBox Name="FontList" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                    <ComboBoxItem>Cascadia Mono PL</ComboBoxItem>
-                    <ComboBoxItem>JetBrains Mono</ComboBoxItem>
-                </ComboBox>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Font size"/>
-                </StackPanel>
-                <NumericUpDown Name="FontSizeInput" Grid.Column="1" Minimum="6" Maximum="72" Value="14" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Programming ligatures"/>
-                    <TextBlock Classes="RowDesc" Text="Render => != >= |> as glyphs."/>
-                </StackPanel>
-                <CheckBox Name="LigatureToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Complex shaping (HarfBuzz)"/>
-                    <TextBlock Classes="RowDesc" Text="Run-level shaping for non-Latin scripts and emoji."/>
-                </StackPanel>
-                <CheckBox Name="ComplexShapingToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-
-            <!-- ── Scrollback ── -->
-            <TextBlock Classes="SectionHeader" Text="SCROLLBACK" Margin="0,0,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Scrollback limit"/>
-                    <TextBlock Classes="RowDesc" Text="Maximum number of lines retained per pane."/>
-                </StackPanel>
-                <NumericUpDown Name="ScrollbackInput" Grid.Column="1" Minimum="100" Maximum="100000" Value="10000" Increment="1000" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
-            </Grid>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

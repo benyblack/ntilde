@@ -323,22 +323,50 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
+    public void TerminalPage_LoadsAndCollectsFontsAndScrollback()
+    {
+        var page = new TerminalPage();
+        page.Load(new SettingsSession(
+            new TerminalSettings { FontFamily = "Page Mono", FontSize = 17, EnableLigatures = true, EnableComplexShaping = false, MaxHistory = 25000 },
+            () => ["Page Mono"]));
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        Assert.Equal("Page Mono", target.FontFamily);
+        Assert.Equal(17, target.FontSize);
+        Assert.True(target.EnableLigatures);
+        Assert.False(target.EnableComplexShaping);
+        Assert.Equal(25000, target.MaxHistory);
+    }
+
+    [AvaloniaFact]
+    public void TerminalPage_PreviewsFontChangesThroughTheSession()
+    {
+        var session = new SettingsSession(new TerminalSettings(), () => ["One Mono", "Two Mono"]);
+        var page = new TerminalPage();
+        page.Load(session);
+        string? previewed = null;
+        session.Preview.FontChanged += family => previewed = family;
+
+        var fonts = page.FindControl<ComboBox>("FontList")!;
+        fonts.SelectedItem = fonts.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Two Mono");
+
+        Assert.Equal("Two Mono", previewed);
+    }
+
+    [AvaloniaFact]
     public void AppearancePage_CollectsEveryFieldItLoaded()
     {
         using var root = SettingsTestRoot.Empty();
         root.CopyShippedTheme("GitHubLight.json");
         var seed = new TerminalSettings
         {
-            FontSize = 17,
-            MaxHistory = 25000,
-            FontFamily = "Page Mono",
             ThemeName = "GitHub Light",
             WindowOpacity = 0.75,
             BlurEffect = "Mica",
             UiScale = 1.25,
             TabStripOrientation = "Vertical",
-            EnableLigatures = true,
-            EnableComplexShaping = false,
             BackgroundImagePath = "/img.png",
             BackgroundImageOpacity = 0.35,
             BackgroundImageStretch = "Uniform",
@@ -349,16 +377,11 @@ public sealed class SettingsPageTests
 
         page.Collect(target);
 
-        Assert.Equal(17, target.FontSize);
-        Assert.Equal(25000, target.MaxHistory);
-        Assert.Equal("Page Mono", target.FontFamily);
         Assert.Equal("GitHub Light", target.ThemeName);
         Assert.Equal(0.75, target.WindowOpacity, precision: 9);
         Assert.Equal("Mica", target.BlurEffect);
         Assert.Equal(1.25, target.UiScale, precision: 9);
         Assert.Equal("Vertical", target.TabStripOrientation);
-        Assert.True(target.EnableLigatures);
-        Assert.False(target.EnableComplexShaping);
         Assert.Equal("/img.png", target.BackgroundImagePath);
         Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
         Assert.Equal("Uniform", target.BackgroundImageStretch);

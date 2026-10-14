@@ -27,6 +27,7 @@ public static class SettingsPageRegistry
     [
         new(SettingsPage.General, "GENERAL", "General", "◇", () => new GeneralPage()),
         new(SettingsPage.Appearance, "INTERFACE", "Appearance", "◐", () => new AppearancePage()),
+        new(SettingsPage.Terminal, "INTERFACE", "Terminal", "Aa", () => new TerminalPage()),
         new(SettingsPage.Profiles, "INTERFACE", "Shells & Profiles", ">_", () => new ProfilesPage(), MonoGlyph: true),
         new(SettingsPage.Shortcuts, "INTERFACE", "Shortcuts", "⌘", () => new ShortcutsPage()),
         new(SettingsPage.CommandAssist, "ASSISTANT", "Command Assist", "❯", () => new CommandAssistPage(), MonoGlyph: true),

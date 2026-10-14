@@ -8,6 +8,7 @@ public enum SettingsPage
 {
     General,
     Appearance,
+    Terminal,
     Profiles,
     Shortcuts,
     CommandAssist,

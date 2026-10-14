@@ -38,7 +38,7 @@ public sealed class SettingsWindowFrameTests
         string[] expected =
         [
             "GENERAL", "General",
-            "INTERFACE", "Appearance", "Shells & Profiles", "Shortcuts",
+            "INTERFACE", "Appearance", "Terminal", "Shells & Profiles", "Shortcuts",
             "ASSISTANT", "Command Assist", "Agent Access",
             "CONNECTION", "SSH",
             "DATA", "Backup & Restore",
@@ -249,6 +249,7 @@ public sealed class SettingsWindowFrameTests
         root.CopyShippedTheme("GitHubLight.json");
         var window = new Ntilde.SettingsWindow();
         var page = window.GetPage<AppearancePage>();
+        var terminal = window.GetPage<TerminalPage>();
         var log = new List<string>();
         window.OnFontChanged += v => log.Add($"font:{v}");
         window.OnFontSizeChanged += v => log.Add($"fontsize:{v}");
@@ -268,11 +269,11 @@ public sealed class SettingsWindowFrameTests
             Assert.Equal(expected, log);
         }
 
-        var fontList = page.FindControl<ComboBox>("FontList")!;
+        var fontList = terminal.FindControl<ComboBox>("FontList")!;
         ComboBoxItem otherFont = fontList.Items.OfType<ComboBoxItem>().First(i => i != fontList.SelectedItem);
         Step(() => fontList.SelectedItem = otherFont, $"font:{otherFont.Content}");
 
-        Step(() => page.FindControl<NumericUpDown>("FontSizeInput")!.Value = 18, "fontsize:18");
+        Step(() => terminal.FindControl<NumericUpDown>("FontSizeInput")!.Value = 18, "fontsize:18");
 
         var opacity = page.FindControl<Slider>("WindowOpacitySlider")!;
         Step(() => opacity.Value = 0.6, $"opacity:{0.6}");
@@ -296,9 +297,9 @@ public sealed class SettingsWindowFrameTests
         Assert.Equal(1, historyCleared);
     }
 
-    /// <summary>Where the font size lives. PR 3 moves it to the Terminal page.</summary>
+    /// <summary>Where the font size lives: the Terminal page.</summary>
     internal static NumericUpDown FontSizeInput(Ntilde.SettingsWindow window)
-        => window.GetPage<AppearancePage>().FindControl<NumericUpDown>("FontSizeInput")!;
+        => window.GetPage<TerminalPage>().FindControl<NumericUpDown>("FontSizeInput")!;
 
     internal static void ClickSave(Ntilde.SettingsWindow window)
         => window.FindControl<Button>("BtnSave")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
