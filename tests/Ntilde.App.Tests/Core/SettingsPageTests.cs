@@ -2,9 +2,11 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Ntilde.Backup;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell;
+using Ntilde.Tests.Backup;
 
 namespace Ntilde.Tests.Core;
 
@@ -64,5 +66,45 @@ public sealed class SettingsPageTests
         page.Collect(target);
 
         Assert.False(target.ExperimentalNativeSshEnabled);
+    }
+
+    [AvaloniaFact]
+    public void BackupPage_Load_ListsTheSnapshotsOnDisk()
+    {
+        using var root = SettingsTestRoot.Empty();
+        Assert.NotNull(new BackupService(root.Root).Snapshot(SnapshotReason.Auto));
+        var page = new BackupPage();
+
+        page.Load(SessionFor(new TerminalSettings()));
+
+        var rows = page.FindControl<ListBox>("SnapshotList")!.ItemsSource!.Cast<BackupPage.SnapshotRow>().ToArray();
+        Assert.Single(rows);
+        Assert.Contains("automatic", rows[0].Display);
+    }
+
+    [AvaloniaFact]
+    public void BackupPage_StatesPasswordsAreNotIncluded_AndMustBeReEntered()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new BackupPage();
+
+        Assert.Contains(
+            page.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text),
+            text => text is not null
+                && text.Contains("never included", StringComparison.OrdinalIgnoreCase)
+                && text.Contains("re-enter", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void BackupPage_RestoreConfirmationText_NamesTheSnapshotAndExplainsTheUndo()
+    {
+        var created = new DateTimeOffset(2026, 10, 13, 9, 30, 0, TimeSpan.Zero);
+        var row = new BackupPage.SnapshotRow("id", "display", SnapshotReason.Auto, created);
+
+        var (headline, body) = BackupPage.BuildRestoreConfirmationText(row);
+
+        Assert.Contains(created.LocalDateTime.ToString("yyyy-MM-dd HH:mm"), headline);
+        Assert.Contains("automatic", headline, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("taken first", body, StringComparison.OrdinalIgnoreCase);
     }
 }
