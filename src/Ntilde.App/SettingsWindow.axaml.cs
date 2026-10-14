@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -164,6 +166,11 @@ namespace Ntilde
             // repaint is affected; it runs once, below, as ApplyTheme already did above.)
             WireSessionEvents();
             BuildSidebar();
+
+            // Tunnel, so the chord works from any focused field; ShortcutsPage's editors are the
+            // one place it must not fire (the user may be recording Ctrl+S as a binding).
+            AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+            _sideNav.AddHandler(KeyDownEvent, OnSideNavKeyDown, RoutingStrategies.Tunnel);
 
             _btnSave.Click += (_, _) => SaveAndClose();
             this.FindControl<Button>("BtnCancel")!.Click += (_, _) => Close();
@@ -335,6 +342,51 @@ namespace Ntilde
             }
 
             ShowPage(_currentPage);
+        }
+
+        /// <summary>The platform's command modifier: Cmd on macOS, Ctrl elsewhere.</summary>
+        internal static KeyModifiers PrimaryModifier => OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+
+        private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyModifiers != PrimaryModifier || IsShortcutCapture(e.Source))
+            {
+                return;
+            }
+
+            if (e.Key == Key.S)
+            {
+                e.Handled = true;
+
+                // Moving focus first commits an edit still pending in a NumericUpDown or TextBox,
+                // exactly as clicking the button would.
+                _btnSave.Focus();
+                SaveAndClose();
+            }
+        }
+
+        private static bool IsShortcutCapture(object? source)
+            => source is TextBox box && box.Classes.Contains(ShortcutsPage.CaptureClass);
+
+        /// <summary>Up / Down move between pages directly, so a group header is never a stop.</summary>
+        private void OnSideNavKeyDown(object? sender, KeyEventArgs e)
+        {
+            int step = e.Key switch { Key.Down => 1, Key.Up => -1, _ => 0 };
+            if (step == 0 || e.KeyModifiers != KeyModifiers.None)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            List<SettingsPage> order = SettingsPageRegistry.Pages.Select(descriptor => descriptor.Page).ToList();
+            int next = order.IndexOf(_currentPage) + step;
+            if (next < 0 || next >= order.Count)
+            {
+                return;
+            }
+
+            ShowPage(order[next]);
+            _navItems[order[next]].Focus(NavigationMethod.Directional);
         }
 
         private void WireSessionEvents()
