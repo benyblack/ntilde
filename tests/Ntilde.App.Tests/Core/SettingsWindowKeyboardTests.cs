@@ -20,18 +20,32 @@ public sealed class SettingsWindowKeyboardTests
         var window = new Ntilde.SettingsWindow();
         bool closed = false;
         window.Closed += (_, _) => closed = true;
-        window.Show();
-        SettingsWindowFrameTests.FontSizeInput(window).Value = 19;
+        try
+        {
+            window.Show();
+            SettingsWindowFrameTests.FontSizeInput(window).Value = 19;
 
-        window.KeyPress(Key.S, Primary, PhysicalKey.S, "s");
-        Dispatcher.UIThread.RunJobs();
+            window.KeyPress(Key.S, Primary, PhysicalKey.S, "s");
+            Dispatcher.UIThread.RunJobs();
 
-        Assert.True(closed);
-        using var saved = root.ReadSettings();
-        Assert.Equal(19, saved.RootElement.GetProperty("FontSize").GetInt32());
+            Assert.True(closed);
+            using var saved = root.ReadSettings();
+            Assert.Equal(19, saved.RootElement.GetProperty("FontSize").GetInt32());
+        }
+        finally
+        {
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
+        }
     }
 
-    /// <summary>Review focus 2: a number typed but not yet committed is what gets saved.</summary>
+    /// <summary>
+    /// Review focus 2: a number typed but not yet committed is what gets saved. Note: with Avalonia
+    /// 12.1.3 a NumericUpDown commits its Value on every text change, so no pending edit exists to
+    /// lose here and removing the frame's _btnSave.Focus() does not fail this test (verified).
+    /// </summary>
     [AvaloniaFact]
     public void PrimaryS_SavesAnEditStillPendingInANumberBox()
     {
@@ -113,6 +127,40 @@ public sealed class SettingsWindowKeyboardTests
             window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(SettingsPage.Shortcuts, window.CurrentPage);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>
+    /// Avalonia's own ListBox navigation already skips disabled headers mid-list and marks those
+    /// keys handled, so only the ends tell the frame's handler apart: it handles the key and stays
+    /// put, whereas the built-in navigation leaves a boundary key unhandled.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ArrowKeysAtTheSidebarEnds_AreHandled_AndStayOnThePage(bool atTop)
+    {
+        using var root = SettingsTestRoot.Empty();
+        SettingsPage edge = atTop ? SettingsPageRegistry.Pages[0].Page : SettingsPageRegistry.Pages[^1].Page;
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(edge));
+        try
+        {
+            window.Show();
+            window.NavItem(edge).Focus();
+            var nav = window.FindControl<ListBox>("SideNav")!;
+            KeyEventArgs? seen = null;
+            nav.AddHandler(InputElement.KeyDownEvent, (_, e) => seen = e, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
+
+            window.KeyPress(atTop ? Key.Up : Key.Down, RawInputModifiers.None, atTop ? PhysicalKey.ArrowUp : PhysicalKey.ArrowDown, null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(edge, window.CurrentPage);
+            Assert.NotNull(seen);
+            Assert.True(seen!.Handled);
         }
         finally
         {

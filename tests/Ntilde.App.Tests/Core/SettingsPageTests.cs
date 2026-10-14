@@ -232,7 +232,36 @@ public sealed class SettingsPageTests
         Assert.Single(page.FindControl<ListBox>("ProfilesListBox")!.Items);
         TerminalProfile only = Assert.Single(target.Profiles);
         Assert.Equal("Local", only.Name);
-        Assert.Equal(Guid.Parse(LocalProfileId), target.DefaultProfileId);
+        page.Dispose();
+    }
+
+    /// <summary>
+    /// With two local profiles and the second the default, Collect keeps the second. (With one
+    /// profile this was vacuous: a fresh target resolves to the only profile anyway.) The page
+    /// writes the default into the session's settings and Save collects into that same object, so
+    /// the target here is that object.
+    /// </summary>
+    [AvaloniaFact]
+    public void ProfilesPage_Collect_KeepsASecondProfileAsDefault()
+    {
+        using var root = SettingsTestRoot.Empty();
+        Guid second = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        var settings = new TerminalSettings
+        {
+            Profiles =
+            [
+                new TerminalProfile { Id = Guid.Parse(LocalProfileId), Name = "Local", Command = "cmd.exe" },
+                new TerminalProfile { Id = second, Name = "Second", Command = "cmd.exe" },
+            ],
+            DefaultProfileId = second,
+        };
+        var page = new ProfilesPage();
+        page.Load(SessionFor(settings));
+
+        page.Collect(settings);
+
+        Assert.Equal(second, settings.DefaultProfileId);
+        Assert.Equal(2, settings.Profiles.Count);
         page.Dispose();
     }
 
@@ -279,12 +308,23 @@ public sealed class SettingsPageTests
         root.CopyShippedTheme("GitHubLight.json");
         var seed = new TerminalSettings
         {
-            FontSize = 17, MaxHistory = 25000, FontFamily = "Page Mono", ThemeName = "GitHub Light",
-            WindowOpacity = 0.75, BlurEffect = "Mica", UiScale = 1.25, TabStripOrientation = "Vertical",
-            EnableLigatures = true, EnableComplexShaping = false, BackgroundImagePath = "/img.png",
-            BackgroundImageOpacity = 0.35, BackgroundImageStretch = "Uniform",
-            LongCommandNotificationsEnabled = true, Osc9NotificationsEnabled = true,
-            Osc9ProgressReportingEnabled = false, AutomaticUpdateChecks = false,
+            FontSize = 17,
+            MaxHistory = 25000,
+            FontFamily = "Page Mono",
+            ThemeName = "GitHub Light",
+            WindowOpacity = 0.75,
+            BlurEffect = "Mica",
+            UiScale = 1.25,
+            TabStripOrientation = "Vertical",
+            EnableLigatures = true,
+            EnableComplexShaping = false,
+            BackgroundImagePath = "/img.png",
+            BackgroundImageOpacity = 0.35,
+            BackgroundImageStretch = "Uniform",
+            LongCommandNotificationsEnabled = true,
+            Osc9NotificationsEnabled = true,
+            Osc9ProgressReportingEnabled = false,
+            AutomaticUpdateChecks = false,
         };
         var page = new AppearancePage();
         page.Load(new SettingsSession(seed, () => ["Page Mono"]));
@@ -309,6 +349,30 @@ public sealed class SettingsPageTests
         Assert.True(target.Osc9NotificationsEnabled);
         Assert.False(target.Osc9ProgressReportingEnabled);
         Assert.False(target.AutomaticUpdateChecks);
+    }
+
+    /// <summary>
+    /// Review focus 1 for Appearance: a settings.json value outside a combo's set must open on
+    /// today's fallback item and never throw. Blur and stretch compare case-sensitively, tab
+    /// orientation case-insensitively, as the old loops did. The target starts on sentinels so a
+    /// Load that selects nothing (and a Collect that therefore skips the field) fails.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("Transparent", "sideways", "uniform", "Acrylic", "Horizontal", "UniformToFill")]
+    [InlineData("mica", "vertical", "UNIFORM", "Acrylic", "Vertical", "UniformToFill")] // orientation matches ignoring case, the others fall back
+    public void AppearancePage_UnknownComboValues_FallBackAsBefore(
+        string blur, string orientation, string stretch, string expectedBlur, string expectedOrientation, string expectedStretch)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings { BlurEffect = blur, TabStripOrientation = orientation, BackgroundImageStretch = stretch }));
+        var target = new TerminalSettings { BlurEffect = "unset", TabStripOrientation = "unset", BackgroundImageStretch = "unset" };
+
+        page.Collect(target);
+
+        Assert.Equal(expectedBlur, target.BlurEffect);
+        Assert.Equal(expectedOrientation, target.TabStripOrientation);
+        Assert.Equal(expectedStretch, target.BackgroundImageStretch);
     }
 
     [AvaloniaFact]

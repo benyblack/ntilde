@@ -6,7 +6,9 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
+using Ntilde.Shell;
 using Ntilde.Shell.Shortcuts;
+using Ntilde.VT;
 
 namespace Ntilde.Tests.Core;
 
@@ -175,6 +177,8 @@ public sealed class SettingsWindowFrameTests
         Assert.Equal(SettingsPage.Shortcuts, window.CurrentPage);
         Assert.True(window.GetPage<ShortcutsPage>().FindControl<TextBlock>("ShortcutValidationMessage")!.IsVisible);
         Assert.Equal(14, window.Session.Settings.FontSize); // nothing collected before validation
+        Assert.True(window.Session.Settings.Keybindings.Count == 0, "The refused Save committed the duplicate draft into Settings.Keybindings.");
+        Assert.True(ShortcutBindingResolver.Resolve(ShortcutCatalog.GetDefinitions(), window.Session.Settings.Keybindings).IsValid);
         using (var unchanged = root.ReadSettings())
         {
             Assert.Equal(14, unchanged.RootElement.GetProperty("FontSize").GetInt32());
@@ -185,6 +189,110 @@ public sealed class SettingsWindowFrameTests
 
         using var saved = root.ReadSettings();
         Assert.Equal(19, saved.RootElement.GetProperty("FontSize").GetInt32());
+    }
+
+    /// <summary>
+    /// "Set as default" writes <c>Session.Settings</c> (ProfilesPage), and Save's Collect reads the
+    /// same object, so the chosen profile is what lands on disk.
+    /// </summary>
+    [AvaloniaFact]
+    public void SetAsDefaultOnASecondProfile_IsWhatSaveWrites()
+    {
+        using var root = SettingsTestRoot.Empty();
+        Guid first = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        Guid second = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        new TerminalSettings
+        {
+            Profiles =
+            [
+                new TerminalProfile { Id = first, Name = "First", Command = "cmd.exe" },
+                new TerminalProfile { Id = second, Name = "Second", Command = "cmd.exe" },
+            ],
+            DefaultProfileId = first,
+        }.Save();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Profiles));
+        try
+        {
+            window.Show();
+            var list = window.GetPage<ProfilesPage>().FindControl<ListBox>("ProfilesListBox")!;
+            list.SelectedItem = list.Items.OfType<ListBoxItem>().Single(item => ((TerminalProfile)item.Tag!).Id == second);
+            Assert.Equal(second, ((TerminalProfile)((ListBoxItem)list.SelectedItem!).Tag!).Id);
+
+            window.GetPage<ProfilesPage>().FindControl<Button>("BtnSetDefault")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            ClickSave(window);
+
+            using var saved = root.ReadSettings();
+            Assert.Equal(second.ToString(), saved.RootElement.GetProperty("DefaultProfileId").GetString());
+        }
+        finally
+        {
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The frame re-raises the preview sink as the window's public events, which MainWindow uses for
+    /// live preview and the Cancel revert. Each control must reach its own event, with its own
+    /// value: the values differ in type or magnitude so two crossed wires cannot both pass.
+    /// </summary>
+    [AvaloniaFact]
+    public void PreviewControls_ReachTheirOwnPublicEvent_WithTheirValue()
+    {
+        using var root = SettingsTestRoot.WithSettings("""
+            {"FontSize":14,"WindowOpacity":1.0,"UiScale":1.0,"BlurEffect":"Acrylic","BackgroundImagePath":"",
+             "BackgroundImageOpacity":0.5,"BackgroundImageStretch":"UniformToFill","ThemeName":"Default"}
+            """);
+        root.CopyShippedTheme("GitHubLight.json");
+        var window = new Ntilde.SettingsWindow();
+        var page = window.GetPage<AppearancePage>();
+        var log = new List<string>();
+        window.OnFontChanged += v => log.Add($"font:{v}");
+        window.OnFontSizeChanged += v => log.Add($"fontsize:{v}");
+        window.OnOpacityChanged += v => log.Add($"opacity:{v}");
+        window.OnUiScaleChanged += v => log.Add($"uiscale:{v}");
+        window.OnBlurChanged += v => log.Add($"blur:{v}");
+        window.OnBgImageChanged += (p, o, s) => log.Add($"bg:{p}|{o}|{s}");
+        window.OnThemeChanged += v => log.Add($"theme:{v}");
+        int historyCleared = 0;
+        window.OnCommandAssistHistoryCleared += () => historyCleared++;
+
+        // Each step changes one control and expects exactly the event(s) listed, in order.
+        void Step(Action change, params string[] expected)
+        {
+            log.Clear();
+            change();
+            Assert.Equal(expected, log);
+        }
+
+        var fontList = page.FindControl<ComboBox>("FontList")!;
+        ComboBoxItem otherFont = fontList.Items.OfType<ComboBoxItem>().First(i => i != fontList.SelectedItem);
+        Step(() => fontList.SelectedItem = otherFont, $"font:{otherFont.Content}");
+
+        Step(() => page.FindControl<NumericUpDown>("FontSizeInput")!.Value = 18, "fontsize:18");
+
+        var opacity = page.FindControl<Slider>("WindowOpacitySlider")!;
+        Step(() => opacity.Value = 0.6, $"opacity:{0.6}");
+
+        var uiScale = page.FindControl<Slider>("UiScaleSlider")!;
+        Step(() => uiScale.Value = 1.5, $"uiscale:{UiScale.Clamp(1.5)}");
+
+        var blur = page.FindControl<ComboBox>("BlurList")!;
+        Step(() => blur.SelectedItem = blur.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Mica"), "blur:Mica");
+
+        // The three background-image controls share one event carrying all three values.
+        Step(() => page.FindControl<TextBox>("BgImagePathInput")!.Text = "/pic.png", "bg:/pic.png|0.5|UniformToFill");
+        Step(() => page.FindControl<Slider>("BgImageOpacitySlider")!.Value = 0.25, "bg:/pic.png|0.25|UniformToFill");
+        var stretch = page.FindControl<ComboBox>("BgImageStretchList")!;
+        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Fill"), "bg:/pic.png|0.25|Fill");
+
+        var themes = page.FindControl<ComboBox>("ThemeList")!;
+        Step(() => themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light"), "theme:GitHub Light");
+
+        window.Session.RaiseHistoryCleared();
+        Assert.Equal(1, historyCleared);
     }
 
     /// <summary>Where the font size lives. PR 3 moves it to the Terminal page.</summary>
