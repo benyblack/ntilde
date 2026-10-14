@@ -111,7 +111,7 @@ public sealed class SettingsPaletteTests
             var footer = cancel.GetLogicalAncestors().OfType<Border>().First(); // {StaticResource NtChromeBg}
             Assert.Same(chrome, footer.Background);
 
-            // What SettingsWindow.UpdatePaletteResources runs on a theme switch.
+            // What the window's ApplyTheme runs on a theme switch.
             ThemePaletteResources.Apply(window.Resources, LightTheme());
 
             Assert.Equal(LightPanel, panel.Color);

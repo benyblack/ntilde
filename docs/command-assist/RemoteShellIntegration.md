@@ -29,7 +29,7 @@ sidebar's problem and not this one.
 
 ## Install
 
-Settings → **Command assistant** → **Remote shell integration**: pick the remote shell, press
+Settings → **Command Assist** → **Remote shell integration**: pick the remote shell, press
 **Copy installer**, paste the one line at the prompt on that host, press Enter. It prints what it
 did:
 
@@ -225,7 +225,7 @@ crafted file, a build log, `curl | less` — is a stream that can carry a `133;C
   prompt.
 
 **The escape hatch.** Set `CommandAssistShellIntegrationEnabled` to `false` (Settings → Command
-assistant → shell integration). With it off, remote marks are parsed but not consumed: no tracker,
+Assist → Shell integration). With it off, remote marks are parsed but not consumed: no tracker,
 no integrated-session promotion, no structured capture, no adoption of the `C` payload as the
 session's last command. The cost is that local injection stops too — it is deliberately one switch,
 because "participate in the OSC 133 contract" is one decision.

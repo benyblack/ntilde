@@ -10,15 +10,12 @@ using Ntilde.VT;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Avalonia.Threading;
-using Avalonia.Media;
 using Avalonia.Styling;
 using Ntilde.CommandAssist.Application;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.CommandAssist.Models;
 using Ntilde.CommandAssist.ShellIntegration.Remote;
 using Ntilde.Backup;
-using Ntilde.Services.Ssh;
 using Ntilde.Shell.Shortcuts;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Settings;
@@ -54,7 +51,6 @@ public partial class ProfilesPage : UserControl, ISettingsPage
         var checkTheme = this.FindControl<CheckBox>("CheckOverrideTheme");
         var overrideFontList = this.FindControl<ComboBox>("OverrideFontList");
         var overrideFontSize = this.FindControl<NumericUpDown>("OverrideFontSizeInput");
-        var ligatureToggle = this.FindControl<CheckBox>("LigatureToggle");
         var checkLigatures = this.FindControl<CheckBox>("CheckOverrideLigatures");
         var overrideLigatureToggle = this.FindControl<CheckBox>("OverrideLigatureToggle");
         var importStatus = this.FindControl<TextBlock>("ImportStatusText");
@@ -350,7 +346,7 @@ public partial class ProfilesPage : UserControl, ISettingsPage
 
     /// <summary>
     /// Fix (I1 residual #2): <c>_selectedProfile</c> points at an entry of the PRE-reload
-    /// <c>_profilesList</c>. <see cref="ReloadSettingsAfterExternalChangeAsync"/> rebuilds
+    /// <c>_profilesList</c>. <see cref="SettingsSession.ReloadAfterExternalChangeAsync"/> re-Loads this page, which rebuilds
     /// <c>_profilesList</c> with fresh <see cref="TerminalProfile"/> instances (freshly
     /// deserialized from the reloaded settings.json) but, without this, never re-points
     /// <c>_selectedProfile</c> at the corresponding new instance - it is left dangling,

@@ -3952,9 +3952,7 @@ namespace Ntilde
             var menuCustomizeTitleBar = this.FindControl<MenuItem>("MenuCustomizeTitleBar");
             if (menuCustomizeTitleBar != null) menuCustomizeTitleBar.Click += async (s, e) =>
             {
-                // Codex round 6, PR #342: this entry point exists purely for discoverability - the
-                // TITLE BAR section on Appearance isn't independently findable - so it must land
-                // scrolled to that section, not just on Appearance's default (top) scroll position.
+                // Opens the Tabs & title bar page, where the title bar layout lives.
                 await OpenSettings(CustomizeTitleBarSettingsTarget());
             };
 

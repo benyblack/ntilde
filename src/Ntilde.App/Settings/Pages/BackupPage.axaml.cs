@@ -108,11 +108,12 @@ public partial class BackupPage : UserControl, ISettingsPage
                 if (outcome.Success)
                 {
                     // I1: a successful Import already changed settings.json (and possibly
-                    // profiles.json, keybindings, etc.) on disk. _settings and everything
-                    // derived from it at construction time are now a stale snapshot of the
-                    // PRE-import state - if this window's Save is clicked afterward, it would
-                    // silently overwrite the very change Import just made with that stale
-                    // snapshot. Reload before anything else can touch _settings again.
+                    // profiles.json, keybindings, etc.) on disk. The session's settings and every
+                    // page's state derived from them are now a stale snapshot of the PRE-import
+                    // state - if the window's Save is clicked afterward, it would silently
+                    // overwrite the very change Import just made with that snapshot. The session
+                    // reload (which reloads the session and re-Loads every page) runs before
+                    // anything else can touch the settings again.
                     await Session.ReloadAfterExternalChangeAsync();
                 }
 
@@ -153,7 +154,7 @@ public partial class BackupPage : UserControl, ISettingsPage
                 if (outcome.Success)
                 {
                     // I1: same reasoning as the Import handler above - Restore just changed
-                    // settings.json (and possibly more) on disk, and this window's in-memory
+                    // settings.json (and possibly more) on disk, and the session's in-memory
                     // state must not be allowed to stomp it on a later Save.
                     await Session.ReloadAfterExternalChangeAsync();
                 }
@@ -196,15 +197,15 @@ public partial class BackupPage : UserControl, ISettingsPage
         if (_status is null) return;
         _status.Text = message;
         _status.Foreground = success
-            ? (IBrush?)this.FindResource("NtGreen")
-            : (IBrush?)this.FindResource("NtRed");
+            ? this.FindPaletteBrush("NtGreen")
+            : this.FindPaletteBrush("NtRed");
     }
 
     private void RefreshSnapshots()
     {
         if (_snapshotList is null) return;
 
-        // WireBackupSection runs unconditionally from the constructor, so a locked
+        // Load runs unconditionally when the window is built, so a locked
         // backups directory, a permissions error, or a transient antivirus lock during
         // Directory.GetFiles must not propagate out of here — that would stop Settings
         // from opening at all. Fall back to an empty list and say so instead.
