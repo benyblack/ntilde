@@ -5,4 +5,5 @@ public sealed record ShortcutCatalogEntry(
     string Title,
     string Category,
     ShortcutScope Scope,
-    string DefaultBinding);
+    string DefaultBinding,
+    bool RequiresSessionPersistence = false);

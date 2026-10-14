@@ -243,7 +243,7 @@ These constraints are enforced by tests.
 
 # Phase 2 — Remote-First Differentiation
 
-> Win remote workflows without becoming a full multiplexer.
+> Win remote workflows; sessions persist locally and on SSH hosts through ntilde's own multiplexer.
 
 ---
 
@@ -408,7 +408,9 @@ Delivered by the Command Assist V2 program
 
 # Explicit Non-Goals (v1)
 
-- Full tmux clone
+- tmux compatibility: no prefix-key mode, no tmux configuration or command language, no tmux
+  protocol. Ntilde has a multiplexer of its own (a daemon, shared attach, and remote persistence),
+  not a tmux clone.
 - Mandatory accounts
 - Mandatory AI
 - IDE features

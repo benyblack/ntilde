@@ -1,0 +1,252 @@
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+
+namespace Ntilde.Mux.TextClient;
+
+/// <summary>
+/// The process's console (spec §6.1, §6.7). Opens CONIN$/CONOUT$ itself, so it works in the WinExe
+/// after AttachConsole/AllocConsole, where the std handles are not set. Windows has no SIGWINCH: a
+/// dedicated background thread polls the size every 200 ms, and puts raw mode back if anything
+/// sharing the console (a shell, a hook, another console program) changed it meanwhile.
+/// </summary>
+[SupportedOSPlatform("windows")]
+public sealed class WindowsConsoleSurface : IConsoleSurface
+{
+    private const uint GenericRead = 0x80000000, GenericWrite = 0x40000000, FileShareRead = 1, FileShareWrite = 2, OpenExisting = 3;
+    private const uint EnableProcessedInput = 0x1, EnableLineInput = 0x2, EnableEchoInput = 0x4, EnableWindowInput = 0x8, EnableMouseInput = 0x10, EnableVirtualTerminalInput = 0x200;
+    private const uint EnableProcessedOutput = 0x1, EnableVirtualTerminalProcessing = 0x4, DisableNewlineAutoReturn = 0x8;
+
+    private readonly nint _in;
+    private readonly nint _out;
+    private readonly object _modeGate = new();
+    private uint _savedIn;
+    private uint _savedOut;
+    private uint _rawIn;
+    private uint _rawOut;
+    private bool _raw;
+    private volatile bool _disposed;
+    private int _handlesClosed;
+    private int _reasserts;
+    private char? _pendingHigh;
+
+    public WindowsConsoleSurface()
+    {
+        _in = CreateFileW("CONIN$", GenericRead | GenericWrite, FileShareRead | FileShareWrite, 0, OpenExisting, 0, 0);
+        _out = CreateFileW("CONOUT$", GenericRead | GenericWrite, FileShareRead | FileShareWrite, 0, OpenExisting, 0, 0);
+        if (_in == -1 || _out == -1 || !GetConsoleMode(_in, out _) || !GetConsoleMode(_out, out _))
+        {
+            CloseHandles();
+            throw new ConsoleUnavailableException("mux attach needs an interactive console.");
+        }
+
+        // Never joined: it exits on its own once Dispose sets _disposed.
+        new Thread(PollSize) { IsBackground = true, Name = "MuxAttachSizePoll" }.Start();
+    }
+
+    public event Action? Resized;
+
+    public (int Cols, int Rows) Size =>
+        GetConsoleScreenBufferInfo(_out, out ConsoleScreenBufferInfo info)
+            ? (Math.Max(1, info.Window.Right - info.Window.Left + 1), Math.Max(1, info.Window.Bottom - info.Window.Top + 1))
+            : (80, 24);
+
+    public void EnterRawMode()
+    {
+        lock (_modeGate)
+        {
+            if (_raw) return;
+            if (!GetConsoleMode(_in, out _savedIn) || !GetConsoleMode(_out, out _savedOut)) throw new IOException("GetConsoleMode failed.");
+            uint input = (_savedIn & ~(EnableLineInput | EnableEchoInput | EnableProcessedInput | EnableWindowInput | EnableMouseInput)) | EnableVirtualTerminalInput;
+            uint output = _savedOut | EnableProcessedOutput | EnableVirtualTerminalProcessing | DisableNewlineAutoReturn;
+            if (!SetConsoleMode(_in, input) || !SetConsoleMode(_out, output))
+            {
+                _ = SetConsoleMode(_in, _savedIn);
+                _ = SetConsoleMode(_out, _savedOut);
+                throw new IOException($"SetConsoleMode failed ({Marshal.GetLastPInvokeError()}); this console may not support VT sequences.");
+            }
+
+            _rawIn = input;
+            _rawOut = output;
+            _raw = true;
+        }
+    }
+
+    /// <summary>How often raw mode had to be put back because something else changed it. For probe-console.</summary>
+    public int RawModeReasserts => Volatile.Read(ref _reasserts);
+
+    /// <summary>The console's input mode as it is now, or null when it cannot be read. For probe-console and tests.</summary>
+    public uint? InputMode => GetConsoleMode(_in, out uint mode) ? mode : null;
+
+    /// <summary>What the text client needs: no line editing, echo or Ctrl+C processing, and keys as VT sequences.</summary>
+    public static bool IsRawInputMode(uint mode) =>
+        (mode & (EnableLineInput | EnableEchoInput | EnableProcessedInput)) == 0 && (mode & EnableVirtualTerminalInput) != 0;
+
+    /// <summary>The input mode in stty's words (line input is icanon, processed input is isig), for probe-console.</summary>
+    public static string DescribeInputMode(uint mode) =>
+        $"input=0x{mode:X4} {Flag("icanon", EnableLineInput, mode)} {Flag("isig", EnableProcessedInput, mode)} {Flag("echo", EnableEchoInput, mode)} {Flag("vtinput", EnableVirtualTerminalInput, mode)}";
+
+    private static string Flag(string name, uint bit, uint mode) => (mode & bit) != 0 ? name : "-" + name;
+
+    public void RestoreMode()
+    {
+        lock (_modeGate)
+        {
+            if (!_raw) return;
+            _ = SetConsoleMode(_in, _savedIn);
+            _ = SetConsoleMode(_out, _savedOut);
+            _raw = false;
+        }
+    }
+
+    /// <summary>The cursor in the screen buffer (0-based), or null when it cannot be read. For probe-console.</summary>
+    public (int Col, int Row)? CursorPosition =>
+        GetConsoleScreenBufferInfo(_out, out ConsoleScreenBufferInfo info) ? (info.CursorPosition.X, info.CursorPosition.Y) : null;
+
+    public void Write(string text) => WriteAll(_out, text);
+
+    /// <summary>The whole text through WriteConsoleW, as UTF-16 whatever the code page. Any console output handle.</summary>
+    internal static void WriteAll(nint output, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        int offset = 0;
+        while (offset < text.Length)
+        {
+            ReadOnlySpan<char> rest = text.AsSpan(offset);
+            if (!WriteConsoleW(output, ref MemoryMarshal.GetReference(rest), (uint)rest.Length, out uint written, 0) || written == 0)
+            {
+                throw new IOException($"WriteConsoleW failed ({Marshal.GetLastPInvokeError()}).");
+            }
+
+            offset += (int)written;
+        }
+    }
+
+    /// <summary>
+    /// A trailing high surrogate is held back for the next read, so a pair split across two reads
+    /// never reaches the caller as a lone half; 0 only when the console is gone (see
+    /// <see cref="ConsoleReadAssembler.Read"/>). Input thread only.
+    /// </summary>
+    public int Read(char[] buffer) => ConsoleReadAssembler.Read(buffer, ref _pendingHigh, ReadChunk);
+
+    private bool ReadChunk(char[] buffer, int offset, int count, out int read)
+    {
+        // A read keeps the mode it starts in: begun in line mode, it holds every key (the chord too)
+        // until Enter, and no later SetConsoleMode frees it. So check right before each read; the poll
+        // only covers the time a read is already waiting.
+        ReassertRawMode();
+        bool ok = ReadConsoleW(_in, ref buffer[offset], (uint)count, out uint got, 0);
+        read = ok ? (int)got : 0;
+        return ok;
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        RestoreMode();
+        CloseHandles();
+    }
+
+    private void PollSize()
+    {
+        (int Cols, int Rows) last = Size;
+        while (!_disposed)
+        {
+            Thread.Sleep(200);
+            if (_disposed) return;
+            ReassertRawMode();
+            (int Cols, int Rows) now = Size;
+            if (now == last) continue;
+            last = now;
+            Resized?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// The console mode belongs to the console, not to us: any process attached to it can change it
+    /// while we run, and a line-mode console holds the detach chord until Enter. Under the gate, so
+    /// it never races <see cref="RestoreMode"/> into re-entering raw mode after the restore.
+    /// </summary>
+    private void ReassertRawMode()
+    {
+        lock (_modeGate)
+        {
+            if (!_raw || _disposed) return;
+            // Only what the client depends on is checked, so a flag the user toggles (QuickEdit) stays.
+            bool changed = false;
+            if (GetConsoleMode(_in, out uint input) && !IsRawInputMode(input)) changed |= SetConsoleMode(_in, _rawIn);
+            if (GetConsoleMode(_out, out uint output) && (output & EnableVirtualTerminalProcessing) == 0) changed |= SetConsoleMode(_out, _rawOut);
+            if (changed) Interlocked.Increment(ref _reasserts);
+        }
+    }
+
+    private void CloseHandles()
+    {
+        // Once only: a second Dispose must not close handle values the OS may have reused since.
+        if (Interlocked.Exchange(ref _handlesClosed, 1) != 0) return;
+        if (_in != -1 && _in != 0) _ = CloseHandle(_in);
+        if (_out != -1 && _out != 0) _ = CloseHandle(_out);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Coord
+    {
+        public short X;
+        public short Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SmallRect
+    {
+        public short Left;
+        public short Top;
+        public short Right;
+        public short Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ConsoleScreenBufferInfo
+    {
+        public Coord Size;
+        public Coord CursorPosition;
+        public ushort Attributes;
+        public SmallRect Window;
+        public Coord MaximumWindowSize;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern nint CreateFileW(string fileName, uint access, uint share, nint security, uint creation, uint flags, nint template);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetConsoleMode(nint handle, out uint mode);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetConsoleMode(nint handle, uint mode);
+
+    // CharSet.Unicode is load-bearing: under the default (Ansi) a `char` is not blittable, so `ref char`
+    // is marshalled through a ONE-BYTE temporary - Write prints neighbouring memory and Read lets the
+    // API write the whole buffer into that byte. Pinned by WindowsConsoleSurfaceTests and probe-console.
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WriteConsoleW(nint handle, ref char buffer, uint count, out uint written, nint reserved);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ReadConsoleW(nint handle, ref char buffer, uint count, out uint read, nint control);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetConsoleScreenBufferInfo(nint handle, out ConsoleScreenBufferInfo info);
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(nint handle);
+}

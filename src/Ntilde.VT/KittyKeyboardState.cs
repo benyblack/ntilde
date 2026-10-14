@@ -198,6 +198,55 @@ namespace Ntilde.VT
             return clone;
         }
 
+        /// <summary>
+        /// The main-screen flag stack, bottom first. State-transfer plumbing for
+        /// <see cref="TerminalStateSnapshot"/> - deliberately internal, because the protocol
+        /// surface is push/pop/set and nothing outside Ntilde.VT should reach past it.
+        /// </summary>
+        internal int[] ExportMainStackForState()
+        {
+            lock (_gate) { return _mainStack.AsSpan(0, _mainCount).ToArray(); }
+        }
+
+        /// <summary>The alternate-screen flag stack, bottom first. See <see cref="ExportMainStackForState"/>.</summary>
+        internal int[] ExportAltStackForState()
+        {
+            lock (_gate) { return _altStack.AsSpan(0, _altCount).ToArray(); }
+        }
+
+        /// <summary>
+        /// Replaces both stacks and the active-screen selection.
+        /// </summary>
+        /// <remarks>
+        /// Two dimensions, both clamped, per <c>StateTransferValidation</c>'s "clamp geometry and
+        /// counts" half: stack <em>length</em> to <see cref="MaxStackDepth"/>, and each entry's
+        /// flag <em>value</em> through <see cref="Mask"/>, exactly as <see cref="Push"/> and
+        /// <see cref="Set"/> do on the way in. The payload arrives from another process, so an
+        /// over-long array or an unsupported flag bit is a bug or an attack, never something to
+        /// honour - and honouring the bits while policing the length would let an import reach a
+        /// flag state no sequence could produce, which is worse than either check alone.
+        /// </remarks>
+        internal void ImportStacksForState(int[] main, int[] alt, bool altActive)
+        {
+            lock (_gate)
+            {
+                _mainCount = Math.Min(main.Length, MaxStackDepth);
+                CopyMasked(main, _mainStack, _mainCount);
+                _altCount = Math.Min(alt.Length, MaxStackDepth);
+                CopyMasked(alt, _altStack, _altCount);
+                _altActive = altActive;
+                RefreshCurrentFlagsNoLock();
+            }
+        }
+
+        private static void CopyMasked(int[] source, int[] destination, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                destination[i] = Mask(source[i]);
+            }
+        }
+
         private static int Mask(int flags) => flags <= 0 ? 0 : flags & SupportedFlags;
 
         private void RefreshCurrentFlagsNoLock()

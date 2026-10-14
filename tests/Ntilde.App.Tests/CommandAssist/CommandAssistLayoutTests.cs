@@ -980,10 +980,15 @@ public sealed class CommandAssistLayoutTests
     [AvaloniaFact]
     public void TerminalPane_WhenAMarkArrivesWhileACorrectionPassIsPending_TheStalePassLeavesTheMarkPlacementAlone()
     {
+        // A fake session, not the default factory: attached to the window, the pane starts its session, and the default
+        // one is a real local shell whose shell-integration prompt writes a 133;B mark of its own. That mark raced this
+        // test - landing first, it made the "markless" layout mark-anchored (every run, on a fast machine) or left no
+        // correction pass in flight (now and then on macOS CI). The test sets the only mark it means to.
         using var pane = new TerminalPane
         {
             Width = 900,
-            Height = 500
+            Height = 500,
+            SessionFactory = new Ntilde.Tests.Controls.RecordingSessionFactory(new Ntilde.Tests.Controls.FakeTerminalSession())
         };
         ConfigureCommandAssist(pane);
         pane.UpdateProfile(new TerminalProfile
@@ -2281,10 +2286,11 @@ public sealed class CommandAssistLayoutTests
     }
 
     /// <summary>
-    /// The empty-state popup is a caption, not a tall empty box.
+    /// The empty-state popup is a caption, not a tall empty box: one bare line of text, so shorter than even a one-row
+    /// list, whose row carries padding and margin the caption does not.
     /// </summary>
     [Fact]
-    public void PopupHeightEstimate_ForTheEmptyState_IsTheFloor()
+    public void PopupHeightEstimate_ForTheEmptyState_IsShorterThanOneRow()
     {
         double empty = TerminalPane.EstimateCommandAssistPopupHeight(
             new TerminalPane.CommandAssistPopupContentSize(0, ShowEmptyState: true, HasAttribution: false),
@@ -2292,7 +2298,7 @@ public sealed class CommandAssistLayoutTests
         double oneRow = TerminalPane.EstimateCommandAssistPopupHeight(
             new TerminalPane.CommandAssistPopupContentSize(1, false, false), paneHeight: 1000);
 
-        Assert.Equal(oneRow, empty);
+        Assert.True(empty < oneRow, $"The 'no matches' caption ({empty:F0}) must be shorter than a one-row list ({oneRow:F0}).");
         Assert.True(empty < 220, $"The 'no matches' popup must not be the old 220 px box, but was {empty:F0}.");
     }
 

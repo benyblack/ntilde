@@ -179,6 +179,28 @@
                                   Cursor="Hand"
                                   ToolTip.Tip="Render agent output as markdown"/>
 
+                    <!-- Phase 3 "shared with N" (spec §7.3). An overlay, deliberately not a StatusBar
+                         segment: the status bar sits in the Auto row, so showing it shrinks the
+                         terminal, sends a resize, and "latest resize wins" would take the shared grid
+                         from the window the user is typing in. Visibility is owned by
+                         TerminalPane.ApplyMuxSharing; the look is the agent segment's. -->
+                    <Border x:Name="MuxSharedIndicator"
+                            Grid.Row="0"
+                            ZIndex="60"
+                            IsVisible="False"
+                            IsHitTestVisible="False"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,18,8"
+                            Padding="6,2"
+                            CornerRadius="3"
+                            Background="#CC1A1A1A">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Ellipse Width="6" Height="6" Fill="#4FB0D4" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="MuxSharedText" Foreground="#AAAAAA" FontSize="10" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
                     <!--
                         The host itself has no Background, so it is transparent to hit testing and a
                         click anywhere except on a child still reaches the terminal underneath. It used

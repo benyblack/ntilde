@@ -1,0 +1,195 @@
+using System.Diagnostics;
+using Ntilde.Mux;
+using Ntilde.Mux.Contracts;
+using Ntilde.Mux.Daemon;
+using Ntilde.Mux.Tests.Support;
+using Ntilde.Pty;
+using Ntilde.Shell.Mux;
+using Ntilde.Tests.Core;
+using Ntilde.Tests.Shell.Mux;
+
+namespace Ntilde.Tests;
+
+/// <summary>
+/// The one end-to-end check of the real daemon: the launcher starts <c>Ntilde mux serve</c> as a
+/// separate process, a real shell runs under it, and the shell outlives the client that spawned it.
+/// </summary>
+[Trait("Category", "PtySmoke")]
+[Collection(PtyRealShellCollection.Name)]
+public sealed class MuxDaemonSmokeTests
+{
+    private const string Marker = "mux-smoke-marker";
+
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    /// <summary>The app exe next to the tests (apphost) or <c>dotnet Ntilde.dll</c>.</summary>
+    internal static ProcessMuxDaemonSpawner Spawner()
+    {
+        string dir = AppContext.BaseDirectory;
+        string apphost = Path.Combine(dir, OperatingSystem.IsWindows() ? "Ntilde.exe" : "Ntilde");
+        if (File.Exists(apphost)) return new ProcessMuxDaemonSpawner(apphost, [], ["mux", "serve"]);
+
+        string dll = Path.Combine(dir, "Ntilde.dll");
+        string? dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
+        if (string.IsNullOrEmpty(dotnet) || !File.Exists(dll))
+        {
+            Assert.Fail($"No way to start the daemon: no apphost at {apphost}, and DOTNET_HOST_PATH ('{dotnet}') or {dll} is missing.");
+        }
+
+        return new ProcessMuxDaemonSpawner(dotnet!, [dll], ["mux", "serve"]);
+    }
+
+    [Fact]
+    public async Task A_real_daemon_keeps_a_shell_across_a_client_death_and_kill_server_leaves_nothing_behind()
+    {
+        // parallelizeTestCollections is off for this assembly, so the process-wide root is ours
+        // until disposed; the daemon inherits it through the environment at spawn.
+        using var root = new TestAppDataRoot();
+        string descriptorPath = MuxDiscovery.GetDescriptorPath(root.RootPath);
+        var presentation = MuxTestHost.DefaultPresentation with { Cols = 100, Rows = 30 };
+        var launcher = new MuxDaemonLauncher(descriptorPath, Spawner()) { SpawnTimeout = TimeSpan.FromSeconds(30) };
+        int? daemonPid = null, shellPid = null;
+        try
+        {
+            MuxClient first = await launcher.EnsureConnectedAsync(Ct);
+            Assert.True(MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d));
+            daemonPid = d.Pid;
+            Assert.NotEqual(Environment.ProcessId, daemonPid);
+
+            string shell = ShellHelper.GetDefaultShell();
+            Guid id = await first.SpawnAsync(new SpawnParams
+            {
+                Command = shell,
+                Cols = 100,
+                Rows = 30,
+                SkipPowerShellPostLaunchInit = true,
+                Title = "daemon-smoke",
+            }, Ct);
+            var pane = new ClientPaneModel(first.OpenSession(id, shell));
+            await pane.Session.AttachAsync(1000, presentation, Ct);
+            shellPid = (await pane.Session.RefreshSessionInfoAsync(Ct)).Pid;
+
+            // Let the shell draw its prompt before typing (early input can be eaten by line editors).
+            await TestWait.UntilAsync(() => ScreenText(pane).Length > 0, "the shell drew a prompt", TimeSpan.FromSeconds(30));
+            await Task.Delay(500, Ct);
+            pane.Session.SendInput($"echo {Marker}\r");
+            // The typed command and its output: the marker appears twice.
+            await TestWait.UntilAsync(() => CountMarker(pane) >= 2, "the shell echoed the marker", TimeSpan.FromSeconds(30));
+
+            first.Dispose(); // the client side dies; the daemon keeps the session
+
+            MuxClient second = await launcher.EnsureConnectedAsync(Ct);
+            Assert.True(MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d2));
+            Assert.Equal(daemonPid, d2.Pid); // no second daemon
+            SessionSummary summary = Assert.Single(await second.ListSessionsAsync(Ct));
+            Assert.Equal(id, summary.SessionId);
+            Assert.True(summary.Running);
+
+            var again = new ClientPaneModel(second.OpenSession(id, shell));
+            await again.Session.AttachAsync(1000, presentation, Ct);
+            await TestWait.UntilAsync(() => CountMarker(again) >= 2, "the reattached snapshot shows the earlier output", TimeSpan.FromSeconds(15));
+
+            await second.ShutdownServerAsync(Ct);
+            second.Dispose();
+            using Process daemon = Process.GetProcessById(daemonPid.Value);
+            Assert.True(daemon.WaitForExit(15_000), "the daemon exited");
+            Assert.False(File.Exists(descriptorPath), "the daemon deleted its descriptor");
+            if (shellPid is int sp) await TestWait.UntilAsync(() => !IsAlive(sp), "the shell is gone", TimeSpan.FromSeconds(15));
+        }
+        finally
+        {
+            if (daemonPid is int dp && IsAlive(dp)) { try { using var p = Process.GetProcessById(dp); p.Kill(entireProcessTree: true); } catch (Exception) { } }
+            if (shellPid is int sp && IsAlive(sp)) { try { using var p = Process.GetProcessById(sp); p.Kill(); } catch (Exception) { } }
+        }
+    }
+
+    internal static bool IsAlive(int pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            return !p.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private static string ScreenText(ClientPaneModel pane) => MuxTestText.VisibleText(pane.Buffer);
+
+    private static int CountMarker(ClientPaneModel pane) => ScreenText(pane).Split(Marker).Length - 1;
+
+    private const string SharedMarker = "mux-shared-marker";
+
+    private static int CountMarker(ClientPaneModel pane, string marker) => ScreenText(pane).Split(marker).Length - 1;
+
+    [Fact]
+    public async Task Two_clients_attached_shared_to_a_real_shell_see_the_same_marker()
+    {
+        using var root = new TestAppDataRoot();
+        string descriptorPath = MuxDiscovery.GetDescriptorPath(root.RootPath);
+        var presentation = MuxTestHost.DefaultPresentation with { Cols = 100, Rows = 30 };
+        var launcher = new MuxDaemonLauncher(descriptorPath, Spawner()) { SpawnTimeout = TimeSpan.FromSeconds(30) };
+        int? daemonPid = null, shellPid = null;
+        MuxClient? first = null, second = null;
+        try
+        {
+            first = await launcher.EnsureConnectedAsync(Ct);
+            second = await launcher.EnsureConnectedAsync(Ct);
+            Assert.NotSame(first, second);
+            Assert.Equal(2, first.ProtocolVersion);
+            Assert.True(MuxDiscovery.TryReadLiveDescriptor(descriptorPath, out MuxEndpointDescriptor? d));
+            daemonPid = d.Pid;
+
+            string shell = ShellHelper.GetDefaultShell();
+            Guid id = await first.SpawnAsync(new SpawnParams
+            {
+                Command = shell,
+                Cols = 100,
+                Rows = 30,
+                SkipPowerShellPostLaunchInit = true,
+                Title = "shared-smoke",
+            }, Ct);
+            var a = new ClientPaneModel(first.OpenSession(id, shell));
+            await a.Session.AttachAsync(1000, presentation, Ct);
+            var b = new ClientPaneModel(second.OpenSession(id, shell, null, MuxAttachMode.Shared));
+            await b.Session.AttachAsync(1000, presentation, Ct);
+            shellPid = (await a.Session.RefreshSessionInfoAsync(Ct)).Pid;
+
+            await TestWait.UntilAsync(() => a.Session.AttachedClients == 2 && b.Session.AttachedClients == 2,
+                "both clients heard that they share the shell", TimeSpan.FromSeconds(15));
+            await TestWait.UntilAsync(() => ScreenText(a).Length > 0, "the shell drew a prompt", TimeSpan.FromSeconds(30));
+            await Task.Delay(500, Ct);
+            a.Session.SendInput($"echo {SharedMarker}\r");
+
+            // The typed command and its output: the marker appears twice, on both screens.
+            await TestWait.UntilAsync(() => CountMarker(a, SharedMarker) >= 2, "client A sees the marker", TimeSpan.FromSeconds(30));
+            await TestWait.UntilAsync(() => CountMarker(b, SharedMarker) >= 2, "client B sees the same marker", TimeSpan.FromSeconds(30));
+
+            // A restore-style attach is refused while both hold it: a restore would not duplicate this shell.
+            using (MuxClient third = await launcher.EnsureConnectedAsync(Ct))
+            {
+                using MuxClientSession c = third.OpenSession(id, shell, null, MuxAttachMode.IfUnattached);
+                var ex = await Assert.ThrowsAsync<MuxProtocolException>(() => c.AttachAsync(0, presentation, Ct));
+                Assert.Equal(MuxErrorCodes.SessionAttached, ex.Code);
+            }
+
+            await second.ShutdownServerAsync(Ct);
+            using Process daemon = Process.GetProcessById(daemonPid.Value);
+            Assert.True(daemon.WaitForExit(15_000), "the daemon exited");
+            if (shellPid is int sp) await TestWait.UntilAsync(() => !IsAlive(sp), "the shell is gone", TimeSpan.FromSeconds(15));
+        }
+        finally
+        {
+            first?.Dispose();
+            second?.Dispose();
+            if (daemonPid is int dp && IsAlive(dp)) { try { using var p = Process.GetProcessById(dp); p.Kill(entireProcessTree: true); } catch (Exception) { } }
+            if (shellPid is int sp && IsAlive(sp)) { try { using var p = Process.GetProcessById(sp); p.Kill(); } catch (Exception) { } }
+        }
+    }
+}

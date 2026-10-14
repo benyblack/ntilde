@@ -823,6 +823,65 @@ public sealed class SshConnectionServiceTests
         }
     }
 
+    [Fact]
+    public void RecordRemoteMuxInstall_WritesOnlyTheMuxInstallFields()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var store = new JsonSshProfileStore(Path.Combine(tempRoot, "profiles.json"));
+            var service = new SshConnectionService(store);
+            var id = Guid.Parse("0c6f3f7e-6a43-4c36-9d0e-2f5f8b1a7d11");
+            store.SaveProfile(new SshProfile
+            {
+                Id = id,
+                Name = "mux",
+                Host = "mux.internal",
+                AuthMode = SshAuthMode.Default,
+                WorkingDirectory = "/srv",
+                MuxOptions = new SshMuxOptions { Enabled = false, ControlPath = "/tmp/cm-%C", ControlPersistSeconds = 600 }
+            });
+            var installed = new Ntilde.Mux.Cli.MuxVersionInfo("0.11.0", 1, 2, "linux-arm64", "/home/a/.local/share/ntilde/bin/ntilde-mux");
+
+            SshProfile? saved = service.RecordRemoteMuxInstall(id, installed, turnOnPersistRemoteSessions: false);
+
+            SshProfile persisted = store.GetProfile(id)!;
+            Assert.NotNull(saved);
+            Assert.Equal(("0.11.0", "linux-arm64", "/home/a/.local/share/ntilde/bin/ntilde-mux", false),
+                (persisted.MuxOptions.RemoteDaemonVersion, persisted.MuxOptions.RemoteDaemonRid, persisted.MuxOptions.RemoteDaemonPath, persisted.MuxOptions.PersistRemoteSessions));
+            Assert.Equal(("/tmp/cm-%C", 600, false), (persisted.MuxOptions.ControlPath, persisted.MuxOptions.ControlPersistSeconds, persisted.MuxOptions.Enabled));
+            Assert.Equal((SshAuthMode.Default, "/srv"), (persisted.AuthMode, persisted.WorkingDirectory));
+
+            service.RecordRemoteMuxInstall(id, installed, turnOnPersistRemoteSessions: true);
+            Assert.True(store.GetProfile(id)!.MuxOptions.PersistRemoteSessions);
+            service.RecordRemoteMuxInstall(id, installed, turnOnPersistRemoteSessions: false);
+            Assert.True(store.GetProfile(id)!.MuxOptions.PersistRemoteSessions); // never turned off
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RecordRemoteMuxInstall_ForAProfileThatIsGone_SavesNothing()
+    {
+        string tempRoot = CreateTempDirectory();
+        try
+        {
+            var store = new JsonSshProfileStore(Path.Combine(tempRoot, "profiles.json"));
+            var service = new SshConnectionService(store);
+            var installed = new Ntilde.Mux.Cli.MuxVersionInfo("0.11.0", 1, 2, "linux-x64", "/x/ntilde-mux");
+
+            Assert.Null(service.RecordRemoteMuxInstall(Guid.NewGuid(), installed, turnOnPersistRemoteSessions: true));
+            Assert.Empty(store.GetProfiles());
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     private sealed class RecordingSshPasswordVault : ISshPasswordVault
     {
         public Dictionary<string, string> Secrets { get; } = new(StringComparer.Ordinal);

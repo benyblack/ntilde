@@ -26,12 +26,24 @@ namespace Ntilde.Tests
         /// make <c>CommandAssistOverlayContentRenderTests</c> pass on a blank image, certifying exactly
         /// the regression it exists to catch.
         /// </para>
+        /// <para>
+        /// The fonts are Program.BuildAvaloniaApp's: the bundled families, and the bundled default a missing family falls
+        /// back to. Without them a family the machine lacks - Consolas, everywhere but Windows - fell back to whatever the
+        /// OS had, so layout measured a font the app never draws with: CommandAssistLayoutTests measured macOS's popup row
+        /// 5 px short of the 25 px the app really draws there with JetBrains Mono NL.
+        /// </para>
         /// </remarks>
         public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
             .UseSkia()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions
             {
                 UseHeadlessDrawing = false
+            })
+            .WithInterFont()
+            .With(new Avalonia.Media.FontManagerOptions
+            {
+                FontFamilyMappings = Ntilde.Shell.BundledFontCatalog.CreateFontFamilyMappings(),
+                DefaultFamilyName = Ntilde.Shell.BundledFontCatalog.DefaultTerminalFontFamily
             });
     }
 }

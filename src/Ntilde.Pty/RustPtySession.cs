@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Ntilde.Pty
 {
-    public class RustPtySession : ITerminalSession
+    public class RustPtySession : ITerminalSession, ITerminalByteOutput
     {
         public Guid Id { get; } = Guid.NewGuid();
         private readonly PtySafeHandle _handle;
@@ -248,8 +248,24 @@ namespace Ntilde.Pty
         private readonly BlockingCollection<byte[]> _inputQueue = new BlockingCollection<byte[]>(boundedCapacity: 1024);
         private Thread? _writeLoopThread;
 
-        // UTF-8 decoder with state - handles partial multi-byte sequences across reads
-        private readonly Decoder _utf8Decoder = Encoding.UTF8.GetDecoder();
+        // UTF-8 decoder with state - handles partial multi-byte sequences across reads.
+        // Utf8ChunkDecoder rather than Encoding.UTF8.GetDecoder(): byte-identical output
+        // (Utf8ChunkDecoderTests pins that differentially), and it can report how many stream
+        // bytes are settled and what partial code point is pending - the pair a multiplexer
+        // snapshot needs to let an attaching pane resume decoding mid-sequence.
+        private readonly Utf8ChunkDecoder _utf8Decoder = new();
+
+        // Raw-byte tap for the multiplexer (ITerminalByteOutput). Published from ReadLoop in read
+        // order, right after the recorders, so its stream is exactly the bytes RecordChunk sees.
+        // When nothing taps it (every GUI pane), it costs one lock per chunk and allocates nothing:
+        // the first string subscriber below calls StopRetaining.
+        private readonly RawOutputTap _rawOutput = new();
+
+        public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
+        {
+            add => _rawOutput.Subscribe(value);
+            remove => _rawOutput.Unsubscribe(value);
+        }
 
         // Output is buffered until the first subscriber attaches, then replayed.
         // The read/process threads start in the constructor, so a shell's initial
@@ -290,6 +306,7 @@ namespace Ntilde.Pty
                         if (!_hasOutputSubscriberEver)
                         {
                             _hasOutputSubscriberEver = true;
+                            _rawOutput.StopRetaining();
                             if (_pendingOutputReplay != null)
                             {
                                 replay = _pendingOutputReplay.ToArray();
@@ -987,7 +1004,7 @@ namespace Ntilde.Pty
             // decode to 4097 chars. With a same-sized buffer GetChars threw
             // ArgumentException and the catch-all below terminated the loop — the session
             // went silently mute mid-stream (#168).
-            char[] charBuffer = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+            char[] charBuffer = new char[Utf8ChunkDecoder.GetMaxCharCount(buffer.Length)];
 
             // This runs on a dedicated thread, so an unhandled exception would crash the
             // whole process (unlike the old Task.Run, whose unobserved exceptions were
@@ -1009,10 +1026,11 @@ namespace Ntilde.Pty
                         // Record raw bytes before any processing
                         _recorder?.RecordChunk(buffer, read);
                         _flightRecorder?.RecordChunk(buffer, read);
+                        _rawOutput.Publish(buffer.AsSpan(0, read));
 
                         // Use the stateful decoder - it will hold incomplete multi-byte sequences
                         // until more bytes arrive, preventing U+FFFD replacement characters
-                        int charCount = _utf8Decoder.GetChars(buffer, 0, read, charBuffer, 0);
+                        int charCount = _utf8Decoder.Decode(buffer.AsSpan(0, read), charBuffer);
                         if (charCount > 0)
                         {
                             string text = new string(charBuffer, 0, charCount);
