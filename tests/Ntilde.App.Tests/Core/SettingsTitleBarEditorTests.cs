@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
@@ -151,6 +152,38 @@ public sealed class SettingsTitleBarEditorTests
             }
 
             Assert.DoesNotContain("overflow", MiniBarActions(page));
+        }
+    }
+
+    [AvaloniaFact]
+    public void TheMiniBar_ReordersWhenAnActionMovesUp()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            Assert.Equal(["open_tab_list", "connections", "settings", "overflow"], MiniBarActions(page));
+
+            Click(Row(page, "settings").GetLogicalDescendants().OfType<Button>().Single(b => b.Tag as string == "up"));
+
+            Assert.Equal(["open_tab_list", "settings", "connections", "overflow"], MiniBarActions(page));
+        }
+    }
+
+    [AvaloniaFact]
+    public void TheMiniBar_IsDecorative_HostKeepsTheNameAndContentIsHidden()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            var host = page.FindControl<Border>("TitleBarPreview")!;
+            Assert.Equal("Title bar preview", AutomationProperties.GetName(host));
+            Assert.NotEqual(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(host));
+
+            var grid = (Grid)host.Child!;
+            Assert.Equal(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(grid));
+            Assert.All(
+                grid.GetLogicalDescendants().OfType<Control>(),
+                control => Assert.Equal(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(control)));
         }
     }
 

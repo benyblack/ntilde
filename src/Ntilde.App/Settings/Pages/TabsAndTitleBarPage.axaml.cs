@@ -3,6 +3,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Shell;
@@ -276,7 +277,18 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         Grid.SetColumn(newTab, 1);
         Grid.SetColumn(actions, 3);
         Grid.SetColumn(captions, 4);
+        // The preview is decorative: the host keeps the single accessible name, the glyph pile stays out of UIA.
+        HideFromAutomation(grid);
         host.Child = grid;
+    }
+
+    private static void HideFromAutomation(Control control)
+    {
+        AutomationProperties.SetAccessibilityView(control, AccessibilityView.Raw);
+        foreach (Control child in control.GetLogicalChildren().OfType<Control>())
+        {
+            HideFromAutomation(child);
+        }
     }
 
     private Border SampleTab(string title, bool active) => new()
