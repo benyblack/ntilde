@@ -83,9 +83,15 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         // Nothing to collect: keybindings are committed from the session's draft (SettingsSession.CommitDrafts).
     }
 
-    internal static IReadOnlyList<ShortcutCatalogEntry> FilterShortcutCatalogEntries(string query)
+    internal static IReadOnlyList<ShortcutCatalogEntry> FilterShortcutCatalogEntries(string query, bool sessionPersistence = true)
     {
         IEnumerable<ShortcutCatalogEntry> entries = ShortcutCatalog.GetEntries();
+        if (!sessionPersistence)
+        {
+            // With persistence off nothing mux-related exists: no command, no dispatch, no row.
+            entries = entries.Where(entry => !entry.RequiresSessionPersistence);
+        }
+
         if (!string.IsNullOrWhiteSpace(query))
         {
             string trimmedQuery = query.Trim();
@@ -103,6 +109,9 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
             .ToList();
     }
 
+    internal static string DescribeDefaultBinding(string binding) =>
+        string.IsNullOrWhiteSpace(binding) ? "Default none" : $"Default {binding}";
+
     private void PopulateShortcutBindingsPanel(string query)
     {
         var panel = this.FindControl<StackPanel>("ShortcutBindingsPanel");
@@ -113,7 +122,9 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
 
         panel.Children.Clear();
         string? activeScope = null;
-        IReadOnlyList<ShortcutCatalogEntry> entries = FilterShortcutCatalogEntries(query);
+        IReadOnlyList<ShortcutCatalogEntry> entries = FilterShortcutCatalogEntries(
+            query,
+            Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(Session.Settings.SessionPersistence));
         foreach (ShortcutCatalogEntry entry in entries)
         {
             string scopeLabel = FormatScopeLabel(entry.Scope);
@@ -214,7 +225,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
                                 },
                                 new TextBlock
                                 {
-                                    Text = $"{entry.Category} · {FormatScopeLabel(entry.Scope)} · Default {entry.DefaultBinding}",
+                                    Text = $"{entry.Category} · {FormatScopeLabel(entry.Scope)} · {DescribeDefaultBinding(entry.DefaultBinding)}",
                                     Classes = { RowDescStyleClass },
                                 },
                             },

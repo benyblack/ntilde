@@ -26,12 +26,18 @@ public sealed class MainWindowQuakeHotkeyTests : IDisposable
     public void HideShowRoundTrip_ReRaisesOnOpened_ButKeepsTheOneGlobalHotkey()
     {
         // Explicit rather than leaning on the TerminalSettings default, which is what this
-        // test's meaning depends on.
+        // test's meaning depends on. Persistence too: fresh settings would otherwise take its
+        // default, and a KeepOnClose window would launch a daemon under the real app-data root.
         AppServiceBundle services = AppServices.BuildForDesigner() with
         {
-            Settings = new TerminalSettings { QuakeModeEnabled = true }
+            Settings = new TerminalSettings
+            {
+                QuakeModeEnabled = true,
+                SessionPersistence = Ntilde.Shell.Mux.SessionPersistenceMode.Off,
+            }
         };
         var window = TestMainWindowFactory.Create(services);
+        Assert.Null(window.MuxHost); // a test window never spawns a daemon (spec R3)
         int openedCount = 0;
         window.Opened += (_, _) => openedCount++;
 

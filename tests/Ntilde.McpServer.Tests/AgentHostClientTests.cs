@@ -125,6 +125,48 @@ public class AgentHostClientTests : IDisposable
     }
 
     [Fact]
+    public async Task A_windowless_session_info_round_trips_its_windowless_and_endpoint_members()
+    {
+        var endpoint = OperatingSystem.IsWindows()
+            ? "ntilde-agent-client-test-" + Guid.NewGuid().ToString("N")
+            : Path.Combine(_tempDir, "w.sock");
+
+        var muxId = Guid.NewGuid();
+        var sessions = new ListSessionsResult
+        {
+            Sessions = new[]
+            {
+                new SessionInfo
+                {
+                    PaneId = muxId,
+                    Title = "build",
+                    ProfileName = "this computer",
+                    Kind = "local",
+                    Rows = 24,
+                    Cols = 80,
+                    IsActive = false,
+                    Windowless = true,
+                    Endpoint = "local",
+                },
+            },
+        };
+
+        using var serverCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var serverTask = RunFakeEndpointOnceAsync(endpoint, sessions, serverCts.Token);
+        WriteDescriptor(endpoint);
+
+        var client = new AgentHostClient(DiscoveryPath);
+        var outcome = await client.CallAsync(AgentHostProtocol.Methods.ListSessions, null, TestContext.Current.CancellationToken);
+
+        Assert.True(outcome.Available, outcome.UnavailableReason);
+        var row = Assert.Single(outcome.Response!.Result!.Value.Deserialize(AgentHostJsonContext.Default.ListSessionsResult)!.Sessions);
+        Assert.Equal(muxId, row.PaneId);
+        Assert.True(row.Windowless);
+        Assert.Equal("local", row.Endpoint);
+        await serverTask.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task Caller_cancellation_propagates_instead_of_reporting_unavailable()
     {
         WriteDescriptor("some-endpoint-nobody-listens-on");
@@ -262,6 +304,80 @@ public class SessionToolsFormattingTests
 
         Assert.Contains(paneId.ToString(), text, StringComparison.Ordinal);
         Assert.Contains("| htop | Zsh | ssh | 120x40 | no | - |", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FormatSessionList_marks_windowless_rows_and_adds_the_footnote_only_then()
+    {
+        var paneId = Guid.NewGuid();
+        var muxId = Guid.NewGuid();
+        var sshId = Guid.NewGuid();
+        var text = SessionTools.FormatSessionList(new[]
+        {
+            new SessionInfo
+            {
+                PaneId = paneId, Title = "htop", ProfileName = "Bash", Kind = "local",
+                Rows = 24, Cols = 80, IsActive = true,
+            },
+            new SessionInfo
+            {
+                PaneId = muxId, Title = "build", ProfileName = "this computer", Kind = "local",
+                Rows = 30, Cols = 100, IsActive = false, Windowless = true, Endpoint = "local",
+            },
+            new SessionInfo
+            {
+                PaneId = sshId, Title = "deploy", ProfileName = "nova@box", Kind = "ssh",
+                Rows = 24, Cols = 80, IsActive = false, Windowless = true, Endpoint = "ssh:1",
+                Status = AgentHostProtocol.StatusKinds.Exited,
+                Confidence = AgentHostProtocol.StatusConfidences.Heuristic,
+            },
+        });
+
+        Assert.Contains("| htop | Bash | local | 80x24 | yes | - | - |", text, StringComparison.Ordinal);
+        Assert.Contains($"| {muxId} | build | this computer | local (windowless) | 100x30 | no | - | - |", text, StringComparison.Ordinal);
+        Assert.Contains($"| {sshId} | deploy | nova@box | ssh (windowless) | 80x24 | no | exited (heuristic) | - |", text, StringComparison.Ordinal);
+        Assert.Contains("windowless: running in the multiplexer with no window here", text, StringComparison.Ordinal);
+        // Final review M2: the footnote names exactly the tools that take a windowless id, and the two that do not.
+        Assert.Contains(
+            "Its id works with ntilde.read_screen, ntilde.read_scrollback, ntilde.get_session_status, ntilde.capture_screen (mode='render' only), "
+            + "ntilde.send_input and ntilde.close_session; ntilde.export_replay and ntilde.wait_for_events do not cover it.",
+            text, StringComparison.Ordinal);
+        Assert.DoesNotContain("every session tool", text, StringComparison.Ordinal);
+
+        var panesOnly = SessionTools.FormatSessionList(new[]
+        {
+            new SessionInfo
+            {
+                PaneId = paneId, Title = "htop", ProfileName = "Bash", Kind = "local",
+                Rows = 24, Cols = 80, IsActive = true,
+            },
+        });
+        Assert.DoesNotContain("windowless", panesOnly, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FormatSessionList_with_no_sessions_says_no_terminal_sessions_are_open()
+    {
+        var text = SessionTools.FormatSessionList(Array.Empty<SessionInfo>());
+
+        Assert.Contains("no terminal sessions are open", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("panes", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unsupported_error_is_reported_like_the_other_codes()
+    {
+        var outcome = new AgentHostClient.CallOutcome(
+            new AgentHostResponse
+            {
+                Version = AgentHostProtocol.Version,
+                Id = 1,
+                Error = new AgentHostError { Code = AgentHostProtocol.ErrorCodes.Unsupported, Message = "daemon too old" },
+            },
+            null);
+
+        Assert.False(SessionTools.TryUnwrap(outcome, out _, out var error));
+        Assert.Equal("Error (unsupported): daemon too old", error);
     }
 
     [Fact]

@@ -334,6 +334,20 @@
                 </StackPanel>
                 <NumericUpDown Name="ScrollbackInput" Grid.Column="1" Minimum="100" Maximum="100000" Value="10000" Increment="1000" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
             </Grid>
+            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+            <Grid ColumnDefinitions="*,360">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Classes="RowLabel" Text="Keep shells running when the window closes"/>
+                    <TextBlock Classes="RowDesc" TextWrapping="Wrap" Text="With Keep running, your shells run in a background process (the multiplexer), so closing the window or a crash does not end them, and Ntilde reattaches them when it starts. With Off, a shell ends when its window closes. SSH tabs keep running on the host only when their connection also turns on 'Keep remote sessions running (ntilde-mux)'. Applies to new tabs."/>
+                </StackPanel>
+                <ComboBox Name="SessionPersistenceList" Grid.Column="1" HorizontalAlignment="Right" MinWidth="180">
+                    <ComboBoxItem Tag="Off">Off</ComboBoxItem>
+                    <ComboBoxItem Tag="KeepOnClose">Keep running</ComboBoxItem>
+                </ComboBox>
+            </Grid>
+            <Button Name="QuitAndCloseAllShellsLink" Classes="LinkBtn" Margin="0,10,0,0" IsVisible="False"
+                    Content="Quit and close all shells…"/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

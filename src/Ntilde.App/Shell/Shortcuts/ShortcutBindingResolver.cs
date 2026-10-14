@@ -25,6 +25,11 @@ public static class ShortcutBindingResolver
                 binding = overrideBinding;
             }
 
+            if (string.IsNullOrWhiteSpace(binding))
+            {
+                continue; // unbound: no chord, nothing to normalise or collide with
+            }
+
             string normalizedBinding;
             try
             {
@@ -32,6 +37,11 @@ public static class ShortcutBindingResolver
             }
             catch (ArgumentException) when (!string.Equals(binding, definition.DefaultBinding, StringComparison.Ordinal))
             {
+                if (definition.IsUnbound)
+                {
+                    continue; // an invalid override on an unbound entry leaves it unbound, not falling back to an empty default
+                }
+
                 normalizedBinding = ShortcutNormalizer.Normalize(definition.DefaultBinding);
             }
 

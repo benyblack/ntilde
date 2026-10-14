@@ -603,9 +603,12 @@ public sealed class NativeSshDockerE2eTests
                 RemotePath = "/tmp/auth-check.txt"
             };
 
-            InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+            // Release hardening item 5: the refusal is told apart by the native status (auth-failed), so the app can forget a
+            // remembered password the server no longer takes. Still an InvalidOperationException to every other caller.
+            NativeSshAuthenticationRefusedException error = Assert.Throws<NativeSshAuthenticationRefusedException>(
                 () => interop.RunSftpTransfer(connection, transfer, progress: null, CancellationToken.None));
 
+            Assert.IsAssignableFrom<InvalidOperationException>(error);
             Assert.Contains("Authentication failed", error.Message, StringComparison.Ordinal);
         }
         finally

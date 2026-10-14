@@ -86,11 +86,11 @@ public static class ShellIntegrationArguments
 
             string value;
             int valueEnd;
-            if (isRcfile)
+            if (isRcfile || isFile)
             {
-                // The bash provider quotes a path containing spaces - "Application Support" is in
-                // every macOS one - so this value is read quote-aware; a space-split would see
-                // only `"/Users/me/Library/Application`.
+                // A path containing spaces is quoted - "Application Support" is in every macOS
+                // one - so this value is read quote-aware; a space-split would see only
+                // `"/Users/me/Library/Application`.
                 if (!TryNextQuotedToken(arguments, start + length, out value, out valueEnd))
                 {
                     continue;

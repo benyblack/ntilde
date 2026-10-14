@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
-crate-type = ["cdylib"]
+# cdylib: the App loads rusty_pty.dll / librusty_pty.so / librusty_pty.dylib beside its executable.
+# staticlib: ntilde-mux links librusty_pty.a into its single-file NativeAOT binary
+# (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md §2 decision 1, §10.1).
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 portable-pty = "0.9"

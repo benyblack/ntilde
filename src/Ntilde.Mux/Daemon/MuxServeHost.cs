@@ -1,0 +1,160 @@
+using System.Runtime.InteropServices;
+using Ntilde.Pty;
+
+namespace Ntilde.Mux.Daemon;
+
+public sealed record MuxServeOptions(TimeSpan IdleExitAfter, bool Foreground);
+
+/// <summary>
+/// The body of <c>serve</c> (<c>ntilde mux serve</c>, Phase 2 spec §5; <c>ntilde-mux serve</c>, Phase 4
+/// spec §6.2). Never initialises a UI. The executable supplies the root, the log directory and the
+/// session factory, so this needs nothing from the App.
+/// </summary>
+public static partial class MuxServeHost
+{
+    /// <summary>
+    /// <c>serve</c>'s exit code when another daemon holds this root's lock (1 is any other start
+    /// failure). The launcher reads it: with no reachable daemon advertised, that one is orphaned.
+    /// </summary>
+    public const int LockHeldExitCode = 3;
+
+    public static int Run(MuxServeOptions options, MuxPaths paths, ITerminalSessionFactory sessionFactory, TextWriter stderr, string? appVersion = null)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(paths);
+        ArgumentNullException.ThrowIfNull(sessionFactory);
+        ArgumentNullException.ThrowIfNull(stderr);
+
+        // Controller ruling (Task 5 review): the launcher spawns us with our stdio redirected to
+        // pipes whose parent ends it closes immediately, so a non-foreground `mux serve` must
+        // reassign its own stdio (Windows: detach from the console; Unix: new session + /dev/null
+        // over 0-2) as the VERY FIRST thing it does - before any logging, Console use, or anything
+        // else that could write to the inherited handles. Doing this after any other work would
+        // leave a window where those writes still target the parent's pipes.
+        string? daemonizeProblem = options.Foreground ? null : Daemonize();
+
+        // A console-attached host takes ConPTY's passthrough path (lib.rs ~727-769); the daemon must
+        // not, whatever console it inherited. Before the first spawn.
+        if (OperatingSystem.IsWindows()) Environment.SetEnvironmentVariable("NTILDE_PTY_NO_PASSTHROUGH", "1");
+
+        using var log = new MuxLogFile(Path.Combine(paths.LogDirectory, "mux.log"), 16L * 1024 * 1024, 8192);
+        void Log(string message)
+        {
+            string line = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}Z {message}";
+            log.Write(line);
+            if (options.Foreground) stderr.WriteLine(line);
+        }
+
+        // PtyLogger.Sink is Action<PtyLogLevel, string>, not Action<string> - the brief's plan
+        // assumed the latter. Folding the level into the text keeps one Log helper for both the
+        // PTY bridge and the daemon's own messages, same as Program.cs's GUI wiring
+        // (`PtyLogger.Sink = static (level, message) => TerminalLogger.Log(ToLogLevel(level), message)`)
+        // adapted to a plain string sink instead of TerminalLogger.
+        PtyLogger.Sink = (level, message) => Log($"[{level}] {message}");
+        // Reported only now: Daemonize runs before there is anywhere to write it.
+        if (daemonizeProblem is not null) Log($"[MuxDaemon] {daemonizeProblem}");
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Log($"[MuxDaemon] unhandled: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) => { Log($"[MuxDaemon] unobserved task: {e.Exception}"); e.SetObserved(); };
+
+        var server = new MuxServer(sessionFactory, new MuxServerOptions { Log = Log, AppVersion = appVersion });
+        using var host = new MuxDaemonHost(server, new MuxDaemonOptions
+        {
+            Endpoint = paths.Endpoint,
+            DescriptorPath = paths.DescriptorPath,
+            IdleExitAfter = options.IdleExitAfter,
+            Log = Log,
+        });
+
+        // No separate stderr echo: in --foreground, Log already writes every line to stderr.
+        if (!TryStart(host, foregroundStderr: null, Log, out int startExitCode)) return startExitCode;
+
+        using PosixSignalRegistration term = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx => { ctx.Cancel = true; host.RequestStop("signal"); });
+        using PosixSignalRegistration intr = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx => { ctx.Cancel = true; host.RequestStop("signal"); });
+        using PosixSignalRegistration? hup = OperatingSystem.IsWindows() ? null : PosixSignalRegistration.Create(PosixSignal.SIGHUP, ctx => ctx.Cancel = true);
+
+        string reason = host.Completion.GetAwaiter().GetResult();
+        Log($"[MuxDaemon] exiting ({reason})");
+        return 0;
+    }
+
+    /// <summary>
+    /// Starts <paramref name="host"/>; a start failure is logged (and echoed to
+    /// <paramref name="foregroundStderr"/> when watched) and returns false - the caller exits with
+    /// <paramref name="failureExitCode"/>: <see cref="LockHeldExitCode"/> when another daemon owns the
+    /// lock, else 1.
+    /// </summary>
+    internal static bool TryStart(MuxDaemonHost host, TextWriter? foregroundStderr, Action<string> log, out int failureExitCode)
+    {
+        failureExitCode = 0;
+        try
+        {
+            host.Start();
+            return true;
+        }
+        catch (Exception ex) when (IsStartFailure(ex))
+        {
+            log($"[MuxDaemon] not starting: {ex.Message}");
+            foregroundStderr?.WriteLine(ex.Message);
+            failureExitCode = ex is MuxDaemonAlreadyRunningException ? LockHeldExitCode : 1;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// "Cannot serve here" failures: exit 1, not a crash. SocketException is a backstop - the Unix
+    /// listener and the host already turn socket errors into IOException - because escaping it
+    /// reaches the executable's top-level catch (the GUI's Program.Main writes its startup-error file
+    /// and rethrows).
+    /// </summary>
+    internal static bool IsStartFailure(Exception ex) =>
+        ex is IOException or UnauthorizedAccessException or System.Net.Sockets.SocketException;
+
+    /// <returns>A problem worth logging once the log exists, or null.</returns>
+    private static string? Daemonize()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            FreeConsole();
+            return null;
+        }
+
+        // New session: no controlling terminal, not in the spawner's process group, so a terminal
+        // hang-up or the GUI's group being signalled does not reach the daemon (or its shells).
+        // A failure (EPERM: already a process-group leader) is not fatal - stdio is still
+        // detached below - but the daemon then shares the spawner's session, so say so.
+        string? problem = null;
+        if (setsid() < 0)
+        {
+            problem = $"setsid() failed (errno {Marshal.GetLastPInvokeError()}); the daemon stays in its parent's session and may receive its hang-ups";
+        }
+
+        // NUL-terminated bytes, as open(2) takes them: a byte array needs no string marshalling.
+        int devNull = open("/dev/null\0"u8.ToArray(), 2 /* O_RDWR */);
+        if (devNull >= 0)
+        {
+            _ = dup2(devNull, 0);
+            _ = dup2(devNull, 1);
+            _ = dup2(devNull, 2);
+            if (devNull > 2) _ = close(devNull);
+        }
+
+        return problem;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FreeConsole();
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int setsid();
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int open(byte[] path, int flags);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int dup2(int oldfd, int newfd);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int close(int fd);
+}

@@ -92,6 +92,122 @@ namespace Ntilde.VT.Links
         }
 
         /// <summary>
+        /// Re-seeds the interning table with link identities restored from a state snapshot, so a
+        /// parser resumed mid-stream returns the <em>buffer's</em> instance for an <c>id</c> it has
+        /// already seen instead of minting a second one.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// State-transfer plumbing, deliberately internal for the same reason as
+        /// <c>KittyKeyboardState.ImportStacksForState</c>: the protocol surface is
+        /// <see cref="Resolve"/>, and nothing outside Ntilde.VT should be able to plant an
+        /// identity.
+        /// </para>
+        /// <para>
+        /// Only links carrying an explicit <c>id</c> are seeded, because only those are interned at
+        /// all. Seeding a no-id link would make two distinct runs that happen to share a URI group
+        /// together - exactly the merge <c>id</c> exists to disambiguate, and the reason
+        /// <see cref="Resolve"/> mints a fresh instance for every id-less OSC 8.
+        /// </para>
+        /// <para>
+        /// Identity, not content: the instances handed in are the ones the buffer's cells hold, and
+        /// they are stored by reference. Constructing equivalent links here instead would give the
+        /// parser a second source of identity for the same (URI, id) pair, which is the bug this
+        /// method exists to close, inverted.
+        /// </para>
+        /// <para>
+        /// <b>Replaces the table, does not merge into it.</b> Seeding starts from empty, so
+        /// afterwards the registry holds the imported state and nothing else. Overwriting only the
+        /// incoming keys would leave every unrelated key from the parser's previous life still
+        /// occupying the cap: a reused parser near <see cref="MaxInternedLinks"/> stays full, and
+        /// the first new <c>OSC 8</c> id in the restored tail then trips
+        /// <see cref="Resolve"/>'s wholesale clear - dropping the identities just seeded, so a
+        /// later reference to a restored id mints a second instance and stops grouping with the
+        /// restored cells. The cap must count the snapshot, not the session before it.
+        /// </para>
+        /// </remarks>
+        internal void SeedInterned(IReadOnlyList<Hyperlink>? links)
+        {
+            if (links is null)
+            {
+                return;
+            }
+
+            // Before the first entry, not per entry: see the "replaces the table" note above.
+            // An empty table is also the right answer for an empty list - a snapshot that names no
+            // links describes a terminal with none, and the parser's old ones belong to a session
+            // this one has just replaced.
+            _interned.Clear();
+
+            for (int i = 0; i < links.Count; i++)
+            {
+                Hyperlink? link = links[i];
+                if (link is null || string.IsNullOrEmpty(link.Uri) || string.IsNullOrEmpty(link.Id))
+                {
+                    // No id, no interning - and an *empty* id is skipped too, not stored under "":
+                    // Resolve never produces that key (ExtractId maps an empty id to null), so an
+                    // entry under it could never be hit and would only take up room under the cap.
+                    continue;
+                }
+
+                // The same bounds Resolve applies on the way in. A payload arriving from another
+                // process is not trusted to have respected them.
+                if (link.Uri.Length > MaxUriLength || link.Id.Length > MaxIdLength)
+                {
+                    continue;
+                }
+
+                var key = (link.Uri, link.Id);
+
+                // Overwrite, never skip. The clear above means a colliding key can now only come
+                // from earlier in this same seeding - an entry from a previous attach cannot
+                // survive to be met here - so the invariant this states is no longer reachable
+                // from the stale-identity direction. It is kept explicit anyway, because it is
+                // what makes the collision rule below ("the LAST entry for a key wins") true, and
+                // because skipping would silently become wrong again if the clear were ever
+                // narrowed.
+                //
+                // The buffer's table CAN contain two entries with the same (URI, id):
+                // HyperlinkTableBuilder.IndexOf interns by *reference*, and two distinct Hyperlink
+                // instances sharing a key are reachable - Resolve clears the interning table
+                // wholesale when it passes MaxInternedLinks, after which the same `id=` mints a
+                // second instance while the first is still on screen. What the seeding guarantees
+                // is therefore narrower than "no duplicate key", and is all it needs: the LAST
+                // entry for a key wins, and every winner is an instance the restored cells
+                // actually hold. A tail that re-references that id groups with the newest cells
+                // carrying it, which is the same answer the source terminal gives.
+                //
+                // KNOWN LIMITATION (deliberately deferred, not fixed here): "the LAST entry wins"
+                // assumes list order tracks recency, which TerminalBuffer.ExportState does not
+                // guarantee once the source registry has cleared. ExportState visits the current
+                // main screen before scrollback, so links[] orders main-screen entries first. Past
+                // MaxInternedLinks distinct explicit ids in a single source session, the source
+                // registry's own cap-clear (above) can leave two live Hyperlink instances for one
+                // (URI, id) - one still referenced by scrollback cells, one newly minted and now on
+                // the main screen. Seeding then sees the scrollback (older) instance AFTER the
+                // main-screen (newer) one in links[], so it wins here, inverting which identity a
+                // re-referencing tail groups with. Reaching this needs >MaxInternedLinks distinct
+                // explicit ids inside one snapshot; the real fix is export-ordering semantics (or
+                // carrying the source registry's authoritative identity through the payload), which
+                // is design work for the phase that actually exercises id volume at this scale, not
+                // a patch here.
+                if (!_interned.ContainsKey(key) && _interned.Count >= MaxInternedLinks)
+                {
+                    // Clear wholesale, as Resolve does: past the cap, grouping is already
+                    // degraded, and a snapshot is not a reason to grow the table without bound.
+                    // Only on a genuinely new key - replacing one leaves the count unchanged.
+                    //
+                    // Reachable only from the snapshot itself now, since the table started empty:
+                    // it takes more than MaxInternedLinks distinct explicit ids in one payload,
+                    // which is the same volume that degrades grouping on a live stream.
+                    _interned.Clear();
+                }
+
+                _interned[key] = link;
+            }
+        }
+
+        /// <summary>
         /// Pulls <c>id</c> out of the OSC 8 params field, or <c>null</c> when absent, empty or unusable.
         /// </summary>
         /// <remarks>

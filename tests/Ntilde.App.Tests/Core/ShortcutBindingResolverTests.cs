@@ -106,4 +106,38 @@ public sealed class ShortcutBindingResolverTests
         ShortcutBindingRecord settings = Assert.Single(resolution.Bindings, binding => binding.CommandId == "settings");
         Assert.Equal("Ctrl+,", settings.Binding);
     }
+
+    [Fact]
+    public void Unbound_entries_never_conflict_with_each_other()
+    {
+        ShortcutDefinition[] definitions =
+        [
+            new("attach_session", ShortcutScope.App, ""),
+            new("detach_pane", ShortcutScope.Pane, ""),
+            new("settings", ShortcutScope.App, "Ctrl+,"),
+        ];
+
+        ShortcutBindingResolution resolution = ShortcutBindingResolver.Resolve(definitions, null);
+
+        Assert.True(resolution.IsValid);
+        Assert.DoesNotContain(resolution.Bindings, b => b.CommandId is "attach_session" or "detach_pane");
+    }
+
+    [Fact]
+    public void An_unbound_entry_can_be_bound_and_then_conflicts_like_any_other()
+    {
+        ShortcutDefinition[] definitions = [new("attach_session", ShortcutScope.App, ""), new("settings", ShortcutScope.App, "Ctrl+,")];
+
+        ShortcutBindingResolution bound = ShortcutBindingResolver.Resolve(definitions,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["attach_session"] = "Ctrl+Alt+A" });
+        ShortcutBindingResolution clash = ShortcutBindingResolver.Resolve(definitions,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["attach_session"] = "Ctrl+," });
+        ShortcutBindingResolution junk = ShortcutBindingResolver.Resolve(definitions,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["attach_session"] = "Ctrl+LaunchMissiles" });
+
+        Assert.Equal("Ctrl+Alt+A", Assert.Single(bound.Bindings, b => b.CommandId == "attach_session").Binding);
+        Assert.False(clash.IsValid);
+        Assert.True(junk.IsValid);                                        // an invalid override leaves it unbound
+        Assert.DoesNotContain(junk.Bindings, b => b.CommandId == "attach_session");
+    }
 }

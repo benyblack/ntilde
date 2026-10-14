@@ -32,6 +32,14 @@ namespace Ntilde.Update
 
         /// <summary>Applies the downloaded update and restarts the app.</summary>
         void ApplyAndRestart();
+
+        /// <summary>
+        /// The downloaded release's notes as packed (Markdown), or null when nothing is downloaded or the release
+        /// carries none. The release puts the new build's multiplexer protocol range in them
+        /// (<see cref="MuxUpdateCompatibility.ParseProtocolRange"/>, Phase 5 R10). A host that cannot tell answers null,
+        /// which the update path reads as "compatible".
+        /// </summary>
+        string? StagedReleaseNotes => null;
     }
 
     /// <param name="HasUpdate">True when a newer release was found and downloaded.</param>

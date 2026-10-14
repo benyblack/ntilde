@@ -172,5 +172,13 @@ namespace Ntilde.Tests
             Assert.Equal(TabDotVisual.Attention, TabStatusPresentation.ResolveTabDot(
                 TabTrackerStatus.Attention, Markers(watched: true), hasRunningCommand: false));
         }
+
+        [Fact]
+        public void ResolveTabMarkers_Shared_IsIndependentOfTheOthers()
+        {
+            Assert.Equal(new TabMarkerSet(Bell: true, Activity: false, AgentWrote: false, AgentWatched: false, Shared: true),
+                TabStatusPresentation.ResolveTabMarkers(hasBell: true, hasActivity: false, AgentAttentionTier.Idle, rollupPolicy: "WritesOnly", isShared: true));
+            Assert.False(TabStatusPresentation.ResolveTabMarkers(hasBell: false, hasActivity: false, AgentAttentionTier.Idle, rollupPolicy: null).Shared);
+        }
     }
 }

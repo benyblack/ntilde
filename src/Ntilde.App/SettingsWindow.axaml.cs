@@ -39,6 +39,25 @@ namespace Ntilde
         public TerminalSettings Settings => _session.Settings; // Expose for main window to grab without reloading disk
 
         /// <summary>
+        /// The session persistence setting as this window last loaded it - when it opened, or after an Import/Restore
+        /// reloaded settings.json (spec R1): saving a different one forgets the first-close dialog's remembered answer.
+        /// </summary>
+        private string? _sessionPersistenceLoaded;
+
+        /// <summary>
+        /// R1: when the effective persistence mode changed from <paramref name="before"/> to <paramref name="after"/>,
+        /// the first-close answer is forgotten, so turning persistence back on asks again. A spelling that does not
+        /// change the mode (a typo read as Off, saved as "Off") is not a change.
+        /// </summary>
+        private static void ForgetCloseChoiceIfPersistenceChanged(string? before, string? after)
+        {
+            if (Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(before) != Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(after))
+            {
+                Ntilde.Shell.Mux.MuxCloseChoiceStore.Default.Forget();
+            }
+        }
+
+        /// <summary>
         /// F1: set once a successful Import or Restore has replaced configuration on disk out from
         /// under this window (see <see cref="ReloadSettingsAfterExternalChangeAsync"/>). The owning
         /// <c>MainWindow.OpenSettings</c> must adopt the reloaded <see cref="Settings"/> regardless
@@ -116,6 +135,28 @@ namespace Ntilde
             set => GetPage<BackupPage>().RestoreConfirmationOverride = value;
         }
 
+        /// <summary>
+        /// Whether the owning window has session persistence on: the "Quit and close all shells…" link is shown only
+        /// then. Set by <c>MainWindow.OpenSettings</c>; false for a window opened any other way.
+        /// </summary>
+        internal bool SessionPersistenceActive
+        {
+            get => QuitAndCloseAllShellsLink?.IsVisible ?? false;
+            set
+            {
+                if (QuitAndCloseAllShellsLink is { } link) link.IsVisible = value;
+            }
+        }
+
+        /// <summary>
+        /// True once the "Quit and close all shells…" link was clicked; the window then closes without
+        /// saving, and the owner runs the quit once the dialog is gone.
+        /// </summary>
+        internal bool QuitAndCloseAllRequested { get; private set; }
+
+        /// <summary>The "Quit and close all shells…" link. It sits on the Appearance page, under the session persistence row.</summary>
+        private Button? QuitAndCloseAllShellsLink => GetPage<AppearancePage>().FindControl<Button>("QuitAndCloseAllShellsLink");
+
         public SettingsWindow() : this(new SettingsTarget(SettingsPageRegistry.DefaultPage)) { }
 
         public SettingsWindow(SettingsTarget target)
@@ -140,6 +181,7 @@ namespace Ntilde
             }
 
             _session = new SettingsSession(settings);
+            _sessionPersistenceLoaded = _session.Settings.SessionPersistence;
             _session.SetExternalReloadHandler(ReloadSettingsAfterExternalChangeAsync);
             ApplyTheme();
 
@@ -175,6 +217,14 @@ namespace Ntilde
 
             _btnSave.Click += (_, _) => SaveAndClose();
             this.FindControl<Button>("BtnCancel")!.Click += (_, _) => Close();
+            if (QuitAndCloseAllShellsLink is { } quitLink)
+            {
+                quitLink.Click += (_, _) =>
+                {
+                    QuitAndCloseAllRequested = true;
+                    Close(false); // nothing is saved
+                };
+            }
 
             // The snippet store arrives by property assignment after construction, so the list is
             // read once the window opens (the old WireCommandAssistSnippetsRow did the same).
@@ -428,6 +478,9 @@ namespace Ntilde
 
             _session.CommitDrafts(target);
             target.Save();
+            // R1: a changed persistence setting forgets the first-close answer; turned back on, the next close asks again.
+            ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, target.SessionPersistence);
+
             Close(true); // Return true to indicate saved
         }
 
@@ -460,6 +513,11 @@ namespace Ntilde
             ConfigurationReplacedExternally = true;
 
             _session.Reload(TerminalSettings.Load());
+            // R1: the main window adopts these settings whatever this dialog does next (F1), so a changed persistence
+            // mode forgets the first-close answer here, as a Save would.
+            ForgetCloseChoiceIfPersistenceChanged(_sessionPersistenceLoaded, _session.Settings.SessionPersistence);
+            _sessionPersistenceLoaded = _session.Settings.SessionPersistence;
+
             foreach (ISettingsPage page in _pages)
             {
                 page.Load(_session);

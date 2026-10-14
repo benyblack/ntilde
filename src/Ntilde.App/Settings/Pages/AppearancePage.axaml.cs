@@ -88,6 +88,11 @@ public partial class AppearancePage : UserControl, ISettingsPage
         target.UiScale = UiScale.Clamp(this.FindControl<Slider>("UiScaleSlider")!.Value);
         target.EnableLigatures = Toggle("LigatureToggle").IsChecked == true;
         target.EnableComplexShaping = Toggle("ComplexShapingToggle").IsChecked == true;
+        if (SelectedItem("SessionPersistenceList") is { } persistenceItem)
+        {
+            target.SessionPersistence = persistenceItem.Tag as string ?? Ntilde.Shell.Mux.SessionPersistenceMode.Off;
+        }
+
         target.LongCommandNotificationsEnabled = Toggle("LongCommandNotificationsToggle").IsChecked == true;
         target.Osc9NotificationsEnabled = Toggle("Osc9NotificationsToggle").IsChecked == true;
         target.Osc9ProgressReportingEnabled = Toggle("Osc9ProgressReportingToggle").IsChecked == true;
@@ -146,6 +151,13 @@ public partial class AppearancePage : UserControl, ISettingsPage
     private void LoadControls()
     {
         TerminalSettings settings = Session.Settings;
+
+        var sessionPersistenceList = this.FindControl<ComboBox>("SessionPersistenceList")!;
+        string wanted = Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(settings.SessionPersistence)
+            ? Ntilde.Shell.Mux.SessionPersistenceMode.KeepOnClose : Ntilde.Shell.Mux.SessionPersistenceMode.Off;
+        sessionPersistenceList.SelectedItem = sessionPersistenceList.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(i => string.Equals(i.Tag as string, wanted, StringComparison.Ordinal));
+        if (sessionPersistenceList.SelectedItem == null) sessionPersistenceList.SelectedIndex = 0;
 
         Toggle("LongCommandNotificationsToggle").IsChecked = settings.LongCommandNotificationsEnabled;
         Toggle("Osc9NotificationsToggle").IsChecked = settings.Osc9NotificationsEnabled;
