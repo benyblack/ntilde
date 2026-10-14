@@ -196,15 +196,57 @@ public sealed class SettingsPageTests
         var session = SessionFor(new TerminalSettings { Keybindings = new() { ["command_assist_history"] = "Alt+F8" } });
         var page = new CommandAssistPage();
         page.Load(session);
-        var history = page.FindControl<TextBlock>("CommandAssistHistoryDesc")!;
+        var history = page.FindControl<SettingRow>("CommandAssistHistoryRow")!;
 
-        Assert.Contains("Alt+F8", history.Text);
-        Assert.DoesNotContain("Ctrl+R", history.Text);
+        Assert.Contains("Alt+F8", history.Description);
+        Assert.DoesNotContain("Ctrl+R", history.Description);
 
         session.ShortcutDraft["command_assist_history"] = "Alt+F7";
         session.RaiseShortcutsChanged();
 
-        Assert.Contains("Alt+F7", history.Text);
+        Assert.Contains("Alt+F7", history.Description);
+    }
+
+    [AvaloniaFact]
+    public void AgentAccessPage_ShowsReadableLabels_AndStillStoresTheOldValues()
+    {
+        var page = new AgentAccessPage();
+        page.Load(SessionFor(new TerminalSettings { AgentIndicatorTabRollup = "All" }));
+        var combo = page.FindControl<ComboBox>("AgentIndicatorTabRollupList")!;
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        string[] labels = ["Writes only", "All activity"];
+        Assert.Equal(labels, combo.Items.OfType<ComboBoxItem>().Select(i => (string)i.Content!).ToArray());
+        Assert.Equal("All activity", ((ComboBoxItem)combo.SelectedItem!).Content);
+        Assert.Equal("All", target.AgentIndicatorTabRollup);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("writesonly")]
+    [InlineData("Sometimes")]
+    public void AgentAccessPage_AnUnknownStoredRollup_OpensOnWritesOnly(string stored)
+    {
+        var page = new AgentAccessPage();
+        page.Load(SessionFor(new TerminalSettings { AgentIndicatorTabRollup = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { AgentIndicatorTabRollup = "All" };
+
+        page.Collect(target);
+
+        Assert.Equal("WritesOnly", target.AgentIndicatorTabRollup);
+    }
+
+    [AvaloniaFact]
+    public void LongDescriptions_SitBehindMore()
+    {
+        string[] withMore = ["remember-commands", "remote-shell-integration", "native-ssh", "keybindings", "osc9-notifications", "update-checks"];
+        Control[] pages = [new CommandAssistPage(), new SshPage(), new ShortcutsPage(), new GeneralPage()];
+
+        var rows = pages.SelectMany(page => page.GetLogicalDescendants().OfType<SettingRow>()).ToDictionary(row => row.RowId!);
+
+        Assert.All(withMore, id => Assert.False(string.IsNullOrWhiteSpace(rows[id].Details), $"{id} has no Details"));
     }
 
     private const string LocalProfileId = "33333333-3333-3333-3333-333333333333";
@@ -232,7 +274,6 @@ public sealed class SettingsPageTests
         Assert.Single(page.FindControl<ListBox>("ProfilesListBox")!.Items);
         TerminalProfile only = Assert.Single(target.Profiles);
         Assert.Equal("Local", only.Name);
-        page.Dispose();
     }
 
     /// <summary>
@@ -262,7 +303,6 @@ public sealed class SettingsPageTests
 
         Assert.Equal(second, settings.DefaultProfileId);
         Assert.Equal(2, settings.Profiles.Count);
-        page.Dispose();
     }
 
     [AvaloniaFact]
@@ -282,7 +322,6 @@ public sealed class SettingsPageTests
         page.Collect(target);
 
         Assert.Equal("Renamed after reload", Assert.Single(target.Profiles).Name);
-        page.Dispose();
     }
 
     [AvaloniaFact]
@@ -298,58 +337,38 @@ public sealed class SettingsPageTests
         Assert.Contains(
             page.FindControl<ComboBox>("OverrideFontList")!.Items.OfType<ComboBoxItem>(),
             item => (string?)item.Content == "Session Mono");
-        page.Dispose();
     }
 
     [AvaloniaFact]
-    public void AppearancePage_CollectsEveryFieldItLoaded()
+    public void ProfilesPage_HasNoSshEditor()
     {
-        using var root = SettingsTestRoot.Empty();
-        root.CopyShippedTheme("GitHubLight.json");
-        var seed = new TerminalSettings
+        var page = new ProfilesPage();
+
+        Assert.Null(page.FindControl<Control>("SshSettingsPanel"));
+        Assert.Null(page.FindControl<Control>("ProfileTypeList"));
+        Assert.Null(page.FindControl<Control>("ForwardsList"));
+    }
+
+    [AvaloniaFact]
+    public void GeneralPage_LoadsAndCollectsUpdatesAndNotifications()
+    {
+        var page = new GeneralPage();
+        page.Load(SessionFor(new TerminalSettings
         {
-            FontSize = 17,
-            MaxHistory = 25000,
-            FontFamily = "Page Mono",
-            ThemeName = "GitHub Light",
-            WindowOpacity = 0.75,
-            BlurEffect = "Mica",
-            UiScale = 1.25,
-            TabStripOrientation = "Vertical",
-            EnableLigatures = true,
-            EnableComplexShaping = false,
-            BackgroundImagePath = "/img.png",
-            BackgroundImageOpacity = 0.35,
-            BackgroundImageStretch = "Uniform",
+            AutomaticUpdateChecks = false,
             LongCommandNotificationsEnabled = true,
             Osc9NotificationsEnabled = true,
             Osc9ProgressReportingEnabled = false,
-            AutomaticUpdateChecks = false,
             SessionPersistence = "Off",
-        };
-        var page = new AppearancePage();
-        page.Load(new SettingsSession(seed, () => ["Page Mono"]));
+        }));
         var target = new TerminalSettings();
 
         page.Collect(target);
 
-        Assert.Equal(17, target.FontSize);
-        Assert.Equal(25000, target.MaxHistory);
-        Assert.Equal("Page Mono", target.FontFamily);
-        Assert.Equal("GitHub Light", target.ThemeName);
-        Assert.Equal(0.75, target.WindowOpacity, precision: 9);
-        Assert.Equal("Mica", target.BlurEffect);
-        Assert.Equal(1.25, target.UiScale, precision: 9);
-        Assert.Equal("Vertical", target.TabStripOrientation);
-        Assert.True(target.EnableLigatures);
-        Assert.False(target.EnableComplexShaping);
-        Assert.Equal("/img.png", target.BackgroundImagePath);
-        Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
-        Assert.Equal("Uniform", target.BackgroundImageStretch);
+        Assert.False(target.AutomaticUpdateChecks);
         Assert.True(target.LongCommandNotificationsEnabled);
         Assert.True(target.Osc9NotificationsEnabled);
         Assert.False(target.Osc9ProgressReportingEnabled);
-        Assert.False(target.AutomaticUpdateChecks);
         Assert.Equal("Off", target.SessionPersistence); // the target's default is KeepOnClose
     }
 
@@ -360,10 +379,9 @@ public sealed class SettingsPageTests
     [AvaloniaTheory]
     [InlineData(" keeponclose ", "KeepOnClose", "Off")]
     [InlineData("bogus", "Off", "KeepOnClose")]
-    public void AppearancePage_SessionPersistence_FallsBackLikeMain(string stored, string expected, string targetStart)
+    public void GeneralPage_SessionPersistence_FallsBackLikeMain(string stored, string expected, string targetStart)
     {
-        using var root = SettingsTestRoot.Empty();
-        var page = new AppearancePage();
+        var page = new GeneralPage();
         page.Load(SessionFor(new TerminalSettings { SessionPersistence = stored }));
         var target = new TerminalSettings { SessionPersistence = targetStart };
 
@@ -373,10 +391,9 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
-    public void AppearancePage_QuitLink_FollowsQuitLinkVisible_AndClickRaisesTheEvent()
+    public void GeneralPage_QuitLink_FollowsQuitLinkVisible_AndClickRaisesTheEvent()
     {
-        using var root = SettingsTestRoot.Empty();
-        var page = new AppearancePage();
+        var page = new GeneralPage();
         page.Load(SessionFor(new TerminalSettings()));
         var link = page.FindControl<Button>("QuitAndCloseAllShellsLink")!;
         int raised = 0;
@@ -392,36 +409,126 @@ public sealed class SettingsPageTests
         Assert.Equal(1, raised);
     }
 
-    /// <summary>
-    /// Review focus 1 for Appearance: a settings.json value outside a combo's set must open on
-    /// today's fallback item and never throw. Blur and stretch compare case-sensitively, tab
-    /// orientation case-insensitively, as the old loops did. The target starts on sentinels so a
-    /// Load that selects nothing (and a Collect that therefore skips the field) fails.
-    /// </summary>
-    [AvaloniaTheory]
-    [InlineData("Transparent", "sideways", "uniform", "Acrylic", "Horizontal", "UniformToFill")]
-    [InlineData("mica", "vertical", "UNIFORM", "Acrylic", "Vertical", "UniformToFill")] // orientation matches ignoring case, the others fall back
-    public void AppearancePage_UnknownComboValues_FallBackAsBefore(
-        string blur, string orientation, string stretch, string expectedBlur, string expectedOrientation, string expectedStretch)
+    [AvaloniaFact]
+    public void TerminalPage_LoadsAndCollectsFontsAndScrollback()
     {
-        using var root = SettingsTestRoot.Empty();
-        var page = new AppearancePage();
-        page.Load(SessionFor(new TerminalSettings { BlurEffect = blur, TabStripOrientation = orientation, BackgroundImageStretch = stretch }));
-        var target = new TerminalSettings { BlurEffect = "unset", TabStripOrientation = "unset", BackgroundImageStretch = "unset" };
+        var page = new TerminalPage();
+        page.Load(new SettingsSession(
+            new TerminalSettings { FontFamily = "Page Mono", FontSize = 17, EnableLigatures = true, EnableComplexShaping = false, MaxHistory = 25000 },
+            () => ["Page Mono"]));
+        var target = new TerminalSettings();
 
         page.Collect(target);
 
-        Assert.Equal(expectedBlur, target.BlurEffect);
-        Assert.Equal(expectedOrientation, target.TabStripOrientation);
-        Assert.Equal(expectedStretch, target.BackgroundImageStretch);
+        Assert.Equal("Page Mono", target.FontFamily);
+        Assert.Equal(17, target.FontSize);
+        Assert.True(target.EnableLigatures);
+        Assert.False(target.EnableComplexShaping);
+        Assert.Equal(25000, target.MaxHistory);
     }
 
     [AvaloniaFact]
-    public void AppearancePage_RebuildsTheTitleBarRowsWhenShortcutsChange()
+    public void TerminalPage_PreviewsFontChangesThroughTheSession()
+    {
+        var session = new SettingsSession(new TerminalSettings(), () => ["One Mono", "Two Mono"]);
+        var page = new TerminalPage();
+        page.Load(session);
+        string? previewed = null;
+        session.Preview.FontChanged += family => previewed = family;
+
+        var fonts = page.FindControl<ComboBox>("FontList")!;
+        fonts.SelectedItem = fonts.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Two Mono");
+
+        Assert.Equal("Two Mono", previewed);
+    }
+
+    [AvaloniaFact]
+    public void AppearancePage_CollectsEveryFieldItLoaded()
+    {
+        using var root = SettingsTestRoot.Empty();
+        root.CopyShippedTheme("GitHubLight.json");
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings
+        {
+            ThemeName = "GitHub Light",
+            WindowOpacity = 0.75,
+            UiScale = 1.25,
+            BlurEffect = "Mica",
+            BackgroundImagePath = "/img.png",
+            BackgroundImageOpacity = 0.35,
+            BackgroundImageStretch = "Uniform",
+        }));
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        Assert.Equal("GitHub Light", target.ThemeName);
+        Assert.Equal(0.75, target.WindowOpacity, precision: 9);
+        Assert.Equal(1.25, target.UiScale, precision: 9);
+        Assert.Equal("Mica", target.BlurEffect);
+        Assert.Equal("/img.png", target.BackgroundImagePath);
+        Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
+        Assert.Equal("Uniform", target.BackgroundImageStretch);
+        Assert.Equal("Fit", ((ComboBoxItem)page.FindControl<ComboBox>("BgImageStretchList")!.SelectedItem!).Content);
+    }
+
+    /// <summary>Review focus 1: hand-edited or older values open on today's fallback and save it.</summary>
+    [AvaloniaTheory]
+    [InlineData("uniform", "UniformToFill")]       // case differs: no match, fall back to Fill (crop)
+    [InlineData("Tile", "UniformToFill")]
+    [InlineData("None", "None")]
+    public void AppearancePage_BackgroundStretch_UnknownValuesFallBackAsBefore(string stored, string saved)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings { BackgroundImageStretch = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { BackgroundImageStretch = "unset" };
+
+        page.Collect(target);
+
+        Assert.Equal(saved, target.BackgroundImageStretch);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Transparent", "Acrylic")]
+    [InlineData("mica", "Acrylic")]                 // the old loop compared ordinally
+    [InlineData("None", "None")]
+    public void AppearancePage_BlurEffect_UnknownValuesFallBackAsBefore(string stored, string saved)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings { BlurEffect = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { BlurEffect = "unset" };
+
+        page.Collect(target);
+
+        Assert.Equal(saved, target.BlurEffect);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Vertical", "Vertical")]
+    [InlineData("vertical", "Vertical")]     // the old loop compared case-insensitively too
+    [InlineData("Diagonal", "Horizontal")]   // unknown: first item, as before
+    public void TabsAndTitleBarPage_TabOrientation_RoundTrips_WithTheOldFallbacks(string stored, string expected)
+    {
+        var page = new TabsAndTitleBarPage();
+        page.Load(SessionFor(new TerminalSettings { TabStripOrientation = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { TabStripOrientation = "unset" };
+
+        page.Collect(target);
+
+        Assert.Equal(expected, target.TabStripOrientation);
+    }
+
+    [AvaloniaFact]
+    public void TabsAndTitleBarPage_RebuildsTheTitleBarRowsWhenShortcutsChange()
     {
         using var root = SettingsTestRoot.Empty();
         var session = SessionFor(new TerminalSettings());
-        var page = new AppearancePage();
+        var page = new TabsAndTitleBarPage();
         page.Load(session);
 
         session.ShortcutDraft["settings"] = "Alt+F9";
@@ -463,4 +570,30 @@ public sealed class SettingsPageTests
 
     internal static void PressChord(Control target, Key key, KeyModifiers modifiers)
         => target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers, Source = target });
+
+    /// <summary>Spec section 8: moving the long wording behind "More" must not drop any of it.</summary>
+    [AvaloniaFact]
+    public void CommandAssistPage_RememberCommands_KeepsTheCompleteHistorySecurityWording()
+    {
+        var page = new CommandAssistPage();
+        var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "remember-commands");
+        string text = row.Description + " " + row.Details;
+
+        Assert.Contains("Other secrets typed as part of a visible command are not.", text);
+        Assert.Contains("Clear history erases every recorded command", text);
+        Assert.Contains("Other secrets typed as part of a visible command are not.", row.Details);
+        Assert.Contains("Clear history erases every recorded command", row.Details);
+    }
+
+    [AvaloniaFact]
+    public void CommandAssistPage_ClearHistoryWithoutAStore_ShowsItsStatusOnTheRow()
+    {
+        var page = new CommandAssistPage();
+        page.Load(SessionFor(new TerminalSettings())); // no history store
+        var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "remember-commands");
+
+        page.FindControl<Button>("BtnClearCommandAssistHistory")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal("Command history is not available in this window.", row.Status);
+    }
 }

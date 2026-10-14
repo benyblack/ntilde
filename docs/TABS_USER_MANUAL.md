@@ -71,7 +71,7 @@ section 4.
 ## 4. Vertical Tab Sidebar
 
 `Ctrl+Shift+L` swaps the top tab strip for a left sidebar. You can also set it from
-Settings → Appearance → **Tab strip orientation**, or run
+Settings → Tabs & title bar → **Tab strip orientation**, or run
 `Tabs: Toggle Vertical Tab Sidebar` from the palette. The choice persists.
 
 Vertical mode trades horizontal space for a much richer row per tab, which is what

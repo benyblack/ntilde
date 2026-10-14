@@ -21,11 +21,14 @@ public sealed record SettingsPageDescriptor(
 public static class SettingsPageRegistry
 {
     /// <summary>Where Settings opens when nothing asks for a page and none was visited in this run.</summary>
-    public const SettingsPage DefaultPage = SettingsPage.Appearance;
+    public const SettingsPage DefaultPage = SettingsPage.General;
 
     public static IReadOnlyList<SettingsPageDescriptor> Pages { get; } =
     [
+        new(SettingsPage.General, "GENERAL", "General", "◇", () => new GeneralPage()),
         new(SettingsPage.Appearance, "INTERFACE", "Appearance", "◐", () => new AppearancePage()),
+        new(SettingsPage.Terminal, "INTERFACE", "Terminal", "Aa", () => new TerminalPage()),
+        new(SettingsPage.TabsAndTitleBar, "INTERFACE", "Tabs & title bar", "▭", () => new TabsAndTitleBarPage()),
         new(SettingsPage.Profiles, "INTERFACE", "Shells & Profiles", ">_", () => new ProfilesPage(), MonoGlyph: true),
         new(SettingsPage.Shortcuts, "INTERFACE", "Shortcuts", "⌘", () => new ShortcutsPage()),
         new(SettingsPage.CommandAssist, "ASSISTANT", "Command Assist", "❯", () => new CommandAssistPage(), MonoGlyph: true),
@@ -35,11 +38,4 @@ public static class SettingsPageRegistry
     ];
 
     public static SettingsPageDescriptor Get(SettingsPage page) => Pages.Single(descriptor => descriptor.Page == page);
-}
-
-/// <summary>Row ids that code (not just XAML) refers to.</summary>
-public static class SettingsRowIds
-{
-    /// <summary>The TITLE BAR section on Appearance; Customize Title Bar… opens here until PR 3 gives it a page.</summary>
-    public const string TitleBar = "title-bar";
 }

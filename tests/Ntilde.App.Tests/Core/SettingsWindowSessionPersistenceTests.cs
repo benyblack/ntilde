@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Ntilde.Controls;
+using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 
 namespace Ntilde.Tests.Core;
@@ -18,17 +19,19 @@ public sealed class SettingsWindowSessionPersistenceTests : IClassFixture<TestAp
     public void The_row_description_says_what_each_value_does()
     {
         var settings = new SettingsWindow();
-        ComboBox list = settings.GetPage<AppearancePage>().FindControl<ComboBox>("SessionPersistenceList")!;
-        var row = (Grid)list.Parent!;
+        ComboBox list = settings.GetPage<GeneralPage>().FindControl<ComboBox>("SessionPersistenceList")!;
+        SettingRow row = list.FindLogicalAncestorOfType<SettingRow>()!;
 
-        string desc = row.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("RowDesc")).Text!;
+        string desc = row.Description!;
 
+        Assert.Equal("Keep shells running when the window closes", row.Title);
         Assert.Equal(
             "With Keep running, your shells run in a background process (the multiplexer), so closing the window or a crash "
             + "does not end them, and Ntilde reattaches them when it starts. With Off, a shell ends when its window closes. "
             + "SSH tabs keep running on the host only when their connection also turns on "
             + "'Keep remote sessions running (ntilde-mux)'. Applies to new tabs.",
             desc);
+        Assert.True(string.IsNullOrEmpty(row.Details)); // not one of spec §8's six "More" rows: all of it stays inline
         Assert.Equal(
             ["Off", "KeepOnClose"],
             list.Items.Cast<ComboBoxItem>().Select(i => (string)i.Tag!).ToArray());

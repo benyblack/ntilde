@@ -4,6 +4,7 @@
      v2's to replace with tokens. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:settings="using:Ntilde.Settings"
         x:Class="Ntilde.Settings.NtStyles">
 
     <!-- Section header (uppercase, dim) -->
@@ -118,20 +119,6 @@
     </Style>
     <Style Selector="Button.Danger:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="#4a2024"/>
-    </Style>
-
-    <!-- Link-styled button -->
-    <Style Selector="Button.LinkBtn">
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Foreground" Value="#4C8DFF"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
-    </Style>
-    <Style Selector="Button.LinkBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#7FB0FF"/>
     </Style>
 
     <!-- Icon-only ghost button -->
@@ -263,5 +250,118 @@
         <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
         <Setter Property="Height" Value="1"/>
         <Setter Property="Margin" Value="0,4"/>
+    </Style>
+
+    <!-- ── Page layout (PR 3) ── -->
+    <Style Selector="StackPanel.Page">
+        <Setter Property="Margin" Value="32,28,32,28"/>
+    </Style>
+    <Style Selector="StackPanel.PageHeader">
+        <Setter Property="Margin" Value="0,0,0,24"/>
+    </Style>
+    <Style Selector="StackPanel.PageHeader > TextBlock.Subtitle">
+        <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- Sliders, combos and paths in a SettingRow share one width. -->
+    <Style Selector=":is(Control).Wide">
+        <Setter Property="Width" Value="320"/>
+    </Style>
+
+    <Style Selector="TextBlock.SliderValue">
+        <Setter Property="Width" Value="48"/>
+        <Setter Property="TextAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="FontFamily" Value="{DynamicResource NtMono}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+        <Setter Property="Margin" Value="10,0,0,0"/>
+    </Style>
+
+    <!-- Text-only button: "More" / "Less", "‹ Appearance". -->
+    <Style Selector="Button.Link">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="Button.Link:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtAccentHover}"/>
+    </Style>
+    <Style Selector="Button.Link:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- Theme sample cards. Their background is the theme's own, set in code. -->
+    <Style Selector="Border.ThemePreview">
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+
+    <!-- ── SettingRow ── -->
+    <Style Selector="settings|SettingRow">
+        <Setter Property="Padding" Value="0,14"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <Grid Name="PART_Layout" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="24">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Classes="RowLabel" Text="{TemplateBinding Title}" TextWrapping="Wrap"/>
+                            <TextBlock Classes="RowDesc" Text="{TemplateBinding Description}"
+                                       IsVisible="{TemplateBinding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Name="PART_Details" Classes="RowDesc" Text="{TemplateBinding Details}"
+                                       IsVisible="{TemplateBinding IsExpanded}"/>
+                            <Button Name="PART_MoreToggle" Classes="Link"
+                                    IsVisible="{TemplateBinding Details, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Name="PART_Status" Classes="RowDesc" Text="{TemplateBinding Status}"
+                                       IsVisible="{TemplateBinding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          Grid.Column="1"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="settings|SettingRow[Indent=True] /template/ Grid#PART_Layout">
+        <Setter Property="Margin" Value="24,0,0,0"/>
+    </Style>
+    <Style Selector="settings|SettingRow[Stacked=True] /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.Row" Value="1"/>
+        <Setter Property="Grid.Column" Value="0"/>
+        <Setter Property="Grid.ColumnSpan" Value="2"/>
+        <Setter Property="Margin" Value="0,10,0,0"/>
+    </Style>
+
+    <!-- ── SettingGroup ── -->
+    <Style Selector="settings|SettingGroup">
+        <Setter Property="Margin" Value="0,0,0,28"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel>
+                    <TextBlock Classes="SectionHeader" Text="{TemplateBinding Header}" Margin="0,0,0,2"
+                               IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <ItemsPresenter Name="PART_ItemsPresenter"/>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
     </Style>
 </Styles>

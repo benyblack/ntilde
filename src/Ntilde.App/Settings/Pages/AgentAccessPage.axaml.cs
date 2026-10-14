@@ -26,13 +26,8 @@ public partial class AgentAccessPage : UserControl, ISettingsPage
         Toggle("AgentAccessActToggle").IsChecked = settings.AgentAccessActEnabled;
 
         var rollup = this.FindControl<ComboBox>("AgentIndicatorTabRollupList")!;
-        rollup.SelectedItem = rollup.Items
-            .Cast<ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(item.Content?.ToString(), settings.AgentIndicatorTabRollup, StringComparison.Ordinal));
-        if (rollup.SelectedItem == null)
-        {
-            rollup.SelectedIndex = 0;
-        }
+        rollup.SelectedItem = null;
+        ComboTags.Select(rollup, settings.AgentIndicatorTabRollup, StringComparison.Ordinal, fallbackIndex: 0);
     }
 
     public SettingsValidationError? Validate() => null;
@@ -43,10 +38,7 @@ public partial class AgentAccessPage : UserControl, ISettingsPage
         target.AgentAccessObserveEnabled = Toggle("AgentAccessObserveToggle").IsChecked == true;
         target.AgentReplayExportEnabled = Toggle("AgentReplayExportToggle").IsChecked == true;
         target.AgentAccessActEnabled = Toggle("AgentAccessActToggle").IsChecked == true;
-        if (this.FindControl<ComboBox>("AgentIndicatorTabRollupList")!.SelectedItem is ComboBoxItem rollupItem)
-        {
-            target.AgentIndicatorTabRollup = rollupItem.Content?.ToString() ?? "WritesOnly";
-        }
+        if (ComboTags.SelectedValue(this.FindControl<ComboBox>("AgentIndicatorTabRollupList")!) is { } rollup) target.AgentIndicatorTabRollup = rollup;
     }
 
     private CheckBox Toggle(string name) => this.FindControl<CheckBox>(name)!;

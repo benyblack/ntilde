@@ -1118,7 +1118,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         try
         {
             var settings = new SettingsWindow();
-            ComboBox list = settings.GetPage<AppearancePage>().FindControl<ComboBox>("SessionPersistenceList")!;
+            ComboBox list = settings.GetPage<GeneralPage>().FindControl<ComboBox>("SessionPersistenceList")!;
             var loaded = (ComboBoxItem)list.SelectedItem!;
             if (change) list.SelectedItem = list.Items.Cast<ComboBoxItem>().First(i => !ReferenceEquals(i, loaded));
 

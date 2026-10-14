@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="clr-namespace:Ntilde.Settings"
+             x:Class="Ntilde.Settings.Pages.TerminalPage">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="Page">
+            <StackPanel Classes="PageHeader">
+                <TextBlock Classes="H1" Text="Terminal"/>
+                <TextBlock Classes="Subtitle" Text="Font, text rendering and scrollback."/>
+            </StackPanel>
+
+            <settings:SettingGroup Header="FONT">
+                <settings:SettingRow RowId="font-family" Title="Font family" Description="Monospaced font used in the terminal." Keywords="typeface monospace">
+                    <ComboBox Name="FontList" Classes="Wide" AutomationProperties.Name="Font family"/>
+                </settings:SettingRow>
+                <settings:SettingRow RowId="font-size" Title="Font size" Keywords="text size points zoom">
+                    <NumericUpDown Name="FontSizeInput" Classes="Wide" Minimum="6" Maximum="72" Value="14" AutomationProperties.Name="Font size"/>
+                </settings:SettingRow>
+                <settings:SettingRow RowId="ligatures" Title="Programming ligatures" Description="Render => != >= |> as glyphs." Keywords="font arrows">
+                    <CheckBox Name="LigatureToggle" Classes="Toggle" AutomationProperties.Name="Programming ligatures"/>
+                </settings:SettingRow>
+                <settings:SettingRow RowId="complex-shaping" Title="Complex shaping (HarfBuzz)" Description="Run-level shaping for non-Latin scripts and emoji." Keywords="harfbuzz emoji script rendering">
+                    <CheckBox Name="ComplexShapingToggle" Classes="Toggle" AutomationProperties.Name="Complex shaping"/>
+                </settings:SettingRow>
+            </settings:SettingGroup>
+
+            <settings:SettingGroup Header="SCROLLBACK">
+                <settings:SettingRow RowId="scrollback" Title="Scrollback limit" Description="Maximum number of lines retained per pane." Keywords="history lines buffer">
+                    <NumericUpDown Name="ScrollbackInput" Classes="Wide" Minimum="100" Maximum="100000" Value="10000" Increment="1000" AutomationProperties.Name="Scrollback limit"/>
+                </settings:SettingRow>
+            </settings:SettingGroup>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -4111,9 +4111,7 @@ namespace Ntilde
             var menuCustomizeTitleBar = this.FindControl<MenuItem>("MenuCustomizeTitleBar");
             if (menuCustomizeTitleBar != null) menuCustomizeTitleBar.Click += async (s, e) =>
             {
-                // Codex round 6, PR #342: this entry point exists purely for discoverability - the
-                // TITLE BAR section on Appearance isn't independently findable - so it must land
-                // scrolled to that section, not just on Appearance's default (top) scroll position.
+                // Opens the Tabs & title bar page, where the title bar layout lives.
                 await OpenSettings(CustomizeTitleBarSettingsTarget());
             };
 
@@ -9519,17 +9517,9 @@ namespace Ntilde
         /// <summary>The Settings page on screen when Settings last closed, this run only. Ctrl+, reopens there.</summary>
         private SettingsPage? _lastSettingsPage;
 
-        /// <summary>
-        /// The target the title bar's right-click "Customize Title Bar..." entry
-        /// point asks <see cref="OpenSettings"/> for. Pulled out of the click handler as its own
-        /// synchronous method purely so a test can assert on the target without going through
-        /// <c>OpenSettings</c> itself, which reaches a real <c>Window.ShowDialog</c> - headlessly a
-        /// hang with no owner shown and nothing to close it (see MainWindowShellExitTests' remarks
-        /// on the same hazard for a different dialog). The click handler calls this rather than
-        /// inlining the target, so this genuinely is what production runs, not a parallel duplicate.
-        /// </summary>
+        /// <summary>Customize Title Bar… opens the page the title-bar actions live on.</summary>
         internal static SettingsTarget CustomizeTitleBarSettingsTarget()
-            => new(SettingsPage.Appearance, SettingsRowIds.TitleBar);
+            => new(SettingsPage.TabsAndTitleBar);
 
         /// <summary>Where "Manage Profiles…" opens Settings.</summary>
         internal static SettingsTarget ManageProfilesSettingsTarget() => new(SettingsPage.Profiles);

@@ -141,8 +141,8 @@ namespace Ntilde
         /// </summary>
         internal bool SessionPersistenceActive
         {
-            get => GetPage<AppearancePage>().QuitLinkVisible;
-            set => GetPage<AppearancePage>().QuitLinkVisible = value;
+            get => GetPage<GeneralPage>().QuitLinkVisible;
+            set => GetPage<GeneralPage>().QuitLinkVisible = value;
         }
 
         /// <summary>
@@ -211,7 +211,7 @@ namespace Ntilde
 
             _btnSave.Click += (_, _) => SaveAndClose();
             this.FindControl<Button>("BtnCancel")!.Click += (_, _) => Close();
-            GetPage<AppearancePage>().QuitAndCloseAllRequested += () =>
+            GetPage<GeneralPage>().QuitAndCloseAllRequested += () =>
             {
                 QuitAndCloseAllRequested = true;
                 Close(false); // nothing is saved
@@ -220,6 +220,8 @@ namespace Ntilde
             // The snippet store arrives by property assignment after construction, so the list is
             // read once the window opens (the old WireCommandAssistSnippetsRow did the same).
             Opened += async (_, _) => await GetPage<CommandAssistPage>().ReloadSnippetsAsync();
+
+            // A page that owns resources (timers, subscriptions) implements IDisposable and is released with the window.
             Closed += (_, _) =>
             {
                 foreach (ISettingsPage page in _pages)
@@ -273,6 +275,20 @@ namespace Ntilde
             if (page != _currentPage)
             {
                 return false; // the user moved on before layout ran
+            }
+
+            // A row on a page whose sub-page is showing has no layout yet. Close the sub-page and
+            // reveal after the layout pass that brings the page's own content back.
+            if (GetPage(page) is IHasSubPage { IsSubPageOpen: true } host)
+            {
+                host.CloseSubPage();
+                if (host.IsSubPageOpen)
+                {
+                    return false; // the page refused to close; reposting would loop forever
+                }
+
+                Dispatcher.UIThread.Post(() => RevealRow(page, rowId), DispatcherPriority.Loaded);
+                return true;
             }
 
             Control? row = GetPage(page).View.GetLogicalDescendants()
@@ -478,17 +494,11 @@ namespace Ntilde
         /// <summary>
         /// I1: a successful Import or Restore changes settings.json (and possibly
         /// profiles/keybindings/title-bar layout) on disk out from under this already-open
-        /// window. <c>_settings</c> and everything the constructor derived from it once, up
-        /// front, are now a stale pre-change snapshot; if SaveAndClose ran against
-        /// that snapshot afterward, it would silently revert the very change the user just made
-        /// (the bug this fix closes). Reloading <c>_settings</c> alone is not enough -
-        /// SaveAndClose also rebuilds <c>_settings.Profiles</c> from
-        /// <c>_profilesList</c>, <c>_settings.Keybindings</c> from <c>_shortcutDraftBindings</c>,
-        /// and <c>_settings.TitleBarItems</c> / <c>_settings.TitleBarOrder</c> from
-        /// <c>_titleBarDraft</c> — each of those must be re-derived from the freshly reloaded
-        /// settings too, or Save would still overwrite the imported/restored values for exactly
-        /// those three areas even though every OTHER field would now be correctly preserved.
-        /// Reloads the session, then runs every page's Load in registry order.
+        /// window. The session's settings, and the state each page derived from them (the profile
+        /// list, the shortcut and title bar drafts), are now a stale pre-change snapshot; if
+        /// SaveAndClose ran against that snapshot afterward, it would silently revert the very
+        /// change the user just made. So this reloads the session, then runs every page's Load in
+        /// registry order, which re-derives each page's own state from the fresh settings.
         /// <para>
         /// Asynchronous solely because of the trailing snippet reload (see the comment at the end
         /// of the body); everything else here is synchronous and completes before the first
@@ -514,20 +524,20 @@ namespace Ntilde
                 page.Load(_session);
             }
 
-            // The one populate path that is NOT reachable by repeating the constructor's sequence,
-            // and the reason this method is async at all. PopulateCommandAssistSnippetsPanel is
-            // driven by WireCommandAssistSnippetsRow's one-shot `Opened` handler rather than by the
-            // constructor, because the snippet store arrives by property assignment after the
-            // constructor has run. This method runs on an ALREADY-OPEN window and never reopens it,
-            // so `Opened` does not fire again: without this call, an import/restore whose bundle
-            // carries a different command-assist/snippets.json (which BackupService replaces
-            // wholesale in BOTH modes) leaves the visible rows describing the pre-import file until
-            // the window is closed and reopened - and the user can edit or delete against them.
+            // The one reload a page's Load does not cover, and the reason this method is async at
+            // all. CommandAssistPage.ReloadSnippetsAsync is driven by the frame's one-shot `Opened`
+            // handler rather than by Load, because the snippet store arrives by property assignment
+            // after the constructor has run. This method runs on an ALREADY-OPEN window and never
+            // reopens it, so `Opened` does not fire again: without this call, an import/restore
+            // whose bundle carries a different command-assist/snippets.json (which BackupService
+            // replaces wholesale in BOTH modes) leaves the visible rows describing the pre-import
+            // file until the window is closed and reopened - and the user can edit or delete
+            // against them.
             //
             // Awaited last, after every synchronous repopulation above, so the parts of this method
             // that cannot fail on I/O are already done before the first suspension point. Null-safe
-            // for a window opened outside MainWindow.OpenSettings: TryGetSnippetEditor returns null
-            // when CommandAssistSnippetStore is unset and the panel simply says so.
+            // for a window opened outside MainWindow.OpenSettings: the page says the snippets are
+            // unavailable when no store is set.
             await GetPage<CommandAssistPage>().ReloadSnippetsAsync();
 
             // Codex review (PR #364, P2): refreshing this window's panel is only half of what a

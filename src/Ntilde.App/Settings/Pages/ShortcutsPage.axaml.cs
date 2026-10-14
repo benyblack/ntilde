@@ -155,16 +155,6 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
     private Control CreateShortcutBindingRow(ShortcutCatalogEntry entry)
     {
         string effectiveBinding = GetEffectiveShortcutBinding(entry);
-        var row = new Border
-        {
-            Background = this.FindPaletteBrush("NtPanel"),
-            BorderBrush = this.FindPaletteBrush("NtHairline"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(12),
-            Margin = new Thickness(0, 0, 0, 8),
-        };
-
         var errorText = new TextBlock
         {
             Foreground = Brushes.IndianRed,
@@ -202,7 +192,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
             Session.RaiseShortcutsChanged();
         };
 
-        row.Child = new StackPanel
+        var row = SettingsRowChrome.CreateRow(this, new StackPanel
         {
             Spacing = 8,
             Children =
@@ -236,7 +226,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
                 },
                 errorText,
             }
-        };
+        });
 
         Grid.SetColumn(bindingEditor, 1);
         Grid.SetColumn(resetButton, 2);

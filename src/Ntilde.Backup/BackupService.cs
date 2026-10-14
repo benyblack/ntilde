@@ -1042,8 +1042,8 @@ public sealed class BackupService
     /// <c>Ntilde.McpServer.Tools.BackupTools.BackupList</c>. Both are now fixed at their own
     /// call sites (round 3) rather than by this method growing a backstop of its own. The two that
     /// were already correct remain: <c>BackupCommand.List</c> (CLI) catches it to keep the CLI's
-    /// 0/1/2 exit-code contract, and <c>SettingsWindow.WireBackupSection</c>'s
-    /// <c>RefreshSnapshots</c> catches it to show a specific "Could not read snapshots: …" status
+    /// 0/1/2 exit-code contract, and <c>BackupPage.RefreshSnapshots</c>
+    /// (Settings > Backup) catches it to show a specific "Could not read snapshots: …" status
     /// message — pinned by
     /// <c>SettingsWindowBackupSectionTests.Constructing_WhenSnapshotEnumerationFails_StillOpens_WithAnEmptyListAndAStatusMessage</c>.
     ///

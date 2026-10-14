@@ -342,12 +342,11 @@ public sealed class SettingsWindowBackupSectionTests
     /// <summary>
     /// Finding 1 (Codex review round 2, PR #362): the exact same residual as
     /// <see cref="Import_BringingNewTheme_ThenSave_PersistsTheImportedThemeName"/> above, for
-    /// fonts. <c>PopulateFonts</c> builds its list via
-    /// <c>BuildFontFamilyChoices(..., _selectedProfile?.FontFamily ?? _settings.FontFamily)</c> —
-    /// it explicitly seeds the configured font even when it is not installed locally. Before the
-    /// fix, <c>ReloadSettingsAfterExternalChangeAsync</c> called <c>PopulateThemes</c> but not
-    /// <c>PopulateFonts</c>, so a bundle imported from another machine naming a font absent here
-    /// left <c>FontList</c> holding the pre-import choices; <c>LoadCurrentSettings</c> could not
+    /// fonts. The font list (now built by the session's font choices and the Terminal and Profiles
+    /// pages' Load) explicitly seeds the configured font even when it is not installed locally.
+    /// Before the fix, the window's reload re-populated the themes but not the fonts, so a bundle
+    /// imported from another machine naming a font absent here
+    /// left <c>FontList</c> holding the pre-import choices; Load could not
     /// select the imported font, and a later Save wrote the stale font back over it.
     ///
     /// The target tree's pre-import <c>FontFamily</c> is left unset, defaulting to
@@ -355,7 +354,7 @@ public sealed class SettingsWindowBackupSectionTests
     /// <c>FontList</c> both before and after the import (<c>PopulateFonts</c> always seeds the
     /// bundled default), exactly the "present pre-state name" precedent the theme test above
     /// documents: an absent pre-state would leave <c>SelectedItem</c> null and the `is
-    /// ComboBoxItem` guard at <c>SaveAndClose</c> would skip the write entirely, silently missing
+    /// ComboBoxItem` guard at Save (the page's Collect) would skip the write entirely, silently missing
     /// this bug.
     /// </summary>
     [AvaloniaFact]
@@ -394,12 +393,11 @@ public sealed class SettingsWindowBackupSectionTests
     /// and <see cref="Import_BringingNewTheme_ThenSave_PersistsTheImportedThemeName"/>, for the one
     /// populate path the reload did not cover: the Command Assist snippet list.
     ///
-    /// Every other <c>Populate*</c> is called straight from the constructor, so
-    /// <c>ReloadSettingsAfterExternalChangeAsync</c> could re-run it by simply repeating the constructor's
-    /// sequence. <c>PopulateCommandAssistSnippetsPanel</c> is different — it is reached through
-    /// <c>WireCommandAssistSnippetsRow</c>'s <c>Opened += async (_, _) =&gt; await
-    /// ReloadCommandAssistSnippetsAsync()</c> handler, because the store arrives by property
-    /// assignment after the constructor has run. <c>Opened</c> fires once, the first time the window
+    /// Every page's Load runs from the constructor, so the window's reload re-runs them by simply
+    /// repeating that sequence. The snippet list is different — <c>CommandAssistPage.ReloadSnippetsAsync</c>
+    /// is reached through the frame's <c>Opened += async (_, _) =&gt; await
+    /// GetPage&lt;CommandAssistPage&gt;().ReloadSnippetsAsync()</c> handler, because the store arrives by
+    /// property assignment after the constructor has run. <c>Opened</c> fires once, the first time the window
     /// is shown; the reload runs on an ALREADY-OPEN window and does not reopen it, so before this fix
     /// nothing refreshed the snippet rows. An import whose bundle carries a different
     /// <c>command-assist/snippets.json</c> (which <c>BackupService</c> replaces wholesale in BOTH
@@ -599,8 +597,8 @@ public sealed class SettingsWindowBackupSectionTests
     };
 
     /// <summary>
-    /// I1 residual, Fix 2 (scoped re-review): <c>_selectedProfile</c> points at an entry of the
-    /// PRE-reload <c>_profilesList</c>. <c>ReloadSettingsAfterExternalChangeAsync</c> rebuilds
+    /// I1 residual, Fix 2 (scoped re-review): ProfilesPage's <c>_selectedProfile</c> points at an entry of the
+    /// PRE-reload <c>_profilesList</c>. The session reload (which re-Loads the page) rebuilds
     /// <c>_profilesList</c> with fresh <c>TerminalProfile</c> instances (freshly deserialized from
     /// the reloaded settings.json) but, before this fix, never re-pointed <c>_selectedProfile</c> —
     /// it was left dangling, referencing an object no longer reachable from <c>_profilesList</c>.

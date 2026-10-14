@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Settings;
@@ -37,7 +38,8 @@ public sealed class SettingsWindowFrameTests
         var window = new Ntilde.SettingsWindow();
         string[] expected =
         [
-            "INTERFACE", "Appearance", "Shells & Profiles", "Shortcuts",
+            "GENERAL", "General",
+            "INTERFACE", "Appearance", "Terminal", "Tabs & title bar", "Shells & Profiles", "Shortcuts",
             "ASSISTANT", "Command Assist", "Agent Access",
             "CONNECTION", "SSH",
             "DATA", "Backup & Restore",
@@ -101,36 +103,34 @@ public sealed class SettingsWindowFrameTests
     {
         using var root = SettingsTestRoot.Empty();
 
+        Assert.Equal(SettingsPage.General, SettingsPageRegistry.DefaultPage);
         Assert.Equal(SettingsPageRegistry.DefaultPage, new Ntilde.SettingsWindow().CurrentPage);
     }
 
-    /// <summary>
-    /// The deep-link effect itself: with the row scrolled out of view first, revealing it brings it
-    /// back into the viewport and starts the highlight. (At the default size the title-bar row
-    /// already sits inside the first viewport, so without scrolling away this would pass even if
-    /// the scroll did nothing.)
-    /// </summary>
+    private const string BelowTheFold = "remote-shell-integration";
+
+    private static SettingRow RowOn(Ntilde.SettingsWindow window, string rowId)
+        => window.GetPage<CommandAssistPage>().GetLogicalDescendants().OfType<SettingRow>().Single(row => row.RowId == rowId);
+
     [AvaloniaFact]
     public void RevealRow_ScrollsTheRowIntoView_AndHighlightsIt()
     {
         using var root = SettingsTestRoot.Empty();
-        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.CommandAssist));
         try
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
-            var header = window.GetPage<AppearancePage>().FindControl<TextBlock>("TitleBarSectionHeader")!;
-            ScrollViewer scroller = header.GetVisualAncestors().OfType<ScrollViewer>().First();
-            double top = header.Bounds.Top, bottom = header.Bounds.Bottom;
-            scroller.Offset = new Vector(0, scroller.Extent.Height);
-            Dispatcher.UIThread.RunJobs();
-            Assert.True(scroller.Offset.Y > bottom + 100, "Setup did not scroll the row out of view.");
+            SettingRow row = RowOn(window, BelowTheFold);
+            ScrollViewer scroller = row.GetVisualAncestors().OfType<ScrollViewer>().First();
+            double rowBottom = row.TranslatePoint(new Point(0, row.Bounds.Height), (Visual)scroller.Content!)!.Value.Y;
+            Assert.True(rowBottom > scroller.Viewport.Height, "Setup: the row must start below the fold, or this proves nothing.");
 
-            Assert.True(window.RevealRow(SettingsPage.Appearance, SettingsRowIds.TitleBar));
+            Assert.True(window.RevealRow(SettingsPage.CommandAssist, BelowTheFold));
             Dispatcher.UIThread.RunJobs();
 
-            Assert.InRange(scroller.Offset.Y, top - 40, bottom + 40);
-            Assert.Same(window.FindResource("NtBlueDim"), header.Background);
+            Assert.True(scroller.Offset.Y + scroller.Viewport.Height >= rowBottom - 1, $"Row bottom {rowBottom} is still below the viewport at offset {scroller.Offset.Y}.");
+            Assert.Same(window.FindResource("NtBlueDim"), row.Background);
         }
         finally
         {
@@ -142,14 +142,13 @@ public sealed class SettingsWindowFrameTests
     public void Constructing_WithARowTarget_HighlightsTheRowOnceOpen()
     {
         using var root = SettingsTestRoot.Empty();
-        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance, SettingsRowIds.TitleBar));
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.CommandAssist, BelowTheFold));
         try
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
 
-            var header = window.GetPage<AppearancePage>().FindControl<TextBlock>("TitleBarSectionHeader")!;
-            Assert.Same(window.FindResource("NtBlueDim"), header.Background);
+            Assert.Same(window.FindResource("NtBlueDim"), RowOn(window, BelowTheFold).Background);
         }
         finally
         {
@@ -248,6 +247,7 @@ public sealed class SettingsWindowFrameTests
         root.CopyShippedTheme("GitHubLight.json");
         var window = new Ntilde.SettingsWindow();
         var page = window.GetPage<AppearancePage>();
+        var terminal = window.GetPage<TerminalPage>();
         var log = new List<string>();
         window.OnFontChanged += v => log.Add($"font:{v}");
         window.OnFontSizeChanged += v => log.Add($"fontsize:{v}");
@@ -267,11 +267,11 @@ public sealed class SettingsWindowFrameTests
             Assert.Equal(expected, log);
         }
 
-        var fontList = page.FindControl<ComboBox>("FontList")!;
+        var fontList = terminal.FindControl<ComboBox>("FontList")!;
         ComboBoxItem otherFont = fontList.Items.OfType<ComboBoxItem>().First(i => i != fontList.SelectedItem);
         Step(() => fontList.SelectedItem = otherFont, $"font:{otherFont.Content}");
 
-        Step(() => page.FindControl<NumericUpDown>("FontSizeInput")!.Value = 18, "fontsize:18");
+        Step(() => terminal.FindControl<NumericUpDown>("FontSizeInput")!.Value = 18, "fontsize:18");
 
         var opacity = page.FindControl<Slider>("WindowOpacitySlider")!;
         Step(() => opacity.Value = 0.6, $"opacity:{0.6}");
@@ -286,7 +286,7 @@ public sealed class SettingsWindowFrameTests
         Step(() => page.FindControl<TextBox>("BgImagePathInput")!.Text = "/pic.png", "bg:/pic.png|0.5|UniformToFill");
         Step(() => page.FindControl<Slider>("BgImageOpacitySlider")!.Value = 0.25, "bg:/pic.png|0.25|UniformToFill");
         var stretch = page.FindControl<ComboBox>("BgImageStretchList")!;
-        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Fill"), "bg:/pic.png|0.25|Fill");
+        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Tag == "Fill"), "bg:/pic.png|0.25|Fill");
 
         var themes = page.FindControl<ComboBox>("ThemeList")!;
         Step(() => themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light"), "theme:GitHub Light");
@@ -296,7 +296,7 @@ public sealed class SettingsWindowFrameTests
     }
 
     /// <summary>
-    /// "Quit and close all shells…" lives on the Appearance page, but MainWindow talks to the frame:
+    /// "Quit and close all shells…" lives on the General page, but MainWindow talks to the frame:
     /// it sets <c>SessionPersistenceActive</c> and reads <c>QuitAndCloseAllRequested</c> once the
     /// dialog is gone. The link must follow the frame's property, and clicking it must close the
     /// dialog unsaved: an edit pending on the page is neither collected nor written.
@@ -306,7 +306,7 @@ public sealed class SettingsWindowFrameTests
     {
         using var root = SettingsTestRoot.WithSettings("""{"FontSize":14}""");
         var window = new Ntilde.SettingsWindow();
-        var link = window.GetPage<AppearancePage>().FindControl<Button>("QuitAndCloseAllShellsLink")!;
+        var link = window.GetPage<GeneralPage>().FindControl<Button>("QuitAndCloseAllShellsLink")!;
 
         Assert.False(link.IsVisible); // hidden unless MainWindow.OpenSettings says persistence is on
         Assert.False(window.SessionPersistenceActive);
@@ -343,9 +343,9 @@ public sealed class SettingsWindowFrameTests
         }
     }
 
-    /// <summary>Where the font size lives. PR 3 moves it to the Terminal page.</summary>
+    /// <summary>Where the font size lives: the Terminal page.</summary>
     internal static NumericUpDown FontSizeInput(Ntilde.SettingsWindow window)
-        => window.GetPage<AppearancePage>().FindControl<NumericUpDown>("FontSizeInput")!;
+        => window.GetPage<TerminalPage>().FindControl<NumericUpDown>("FontSizeInput")!;
 
     internal static void ClickSave(Ntilde.SettingsWindow window)
         => window.FindControl<Button>("BtnSave")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

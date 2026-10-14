@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="clr-namespace:Ntilde.Settings"
+             x:Class="Ntilde.Settings.Pages.GeneralPage">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="Page">
+            <StackPanel Classes="PageHeader">
+                <TextBlock Classes="H1" Text="General"/>
+                <TextBlock Classes="Subtitle" Text="Updates, notifications and sessions."/>
+            </StackPanel>
+
+            <settings:SettingGroup Header="UPDATES">
+                <settings:SettingRow RowId="update-checks"
+                                     Title="Automatic update checks"
+                                     Description="Check GitHub for a newer version shortly after launch and download it in the background."
+                                     Details="Nothing restarts until you say so. Only applies to installed builds, not the portable zip."
+                                     Keywords="update upgrade version release download">
+                    <CheckBox Name="AutomaticUpdateChecksToggle" Classes="Toggle" AutomationProperties.Name="Automatic update checks"/>
+                </settings:SettingRow>
+            </settings:SettingGroup>
+
+            <settings:SettingGroup Header="NOTIFICATIONS">
+                <settings:SettingRow RowId="long-command-notifications"
+                                     Title="Long command notifications"
+                                     Description="Show a toast when a command that ran at least 30 seconds finishes in a pane you're not looking at."
+                                     Keywords="toast alert finished done">
+                    <CheckBox Name="LongCommandNotificationsToggle" Classes="Toggle" AutomationProperties.Name="Long command notifications"/>
+                </settings:SettingRow>
+                <settings:SettingRow RowId="osc9-notifications"
+                                     Title="Program notifications (OSC 9)"
+                                     Description="Show a toast when a program explicitly asks for one via OSC 9 (e.g. an AI CLI pinging that a long task finished)."
+                                     Details="Suppressed while you're looking at the pane, like long command notifications."
+                                     Keywords="toast alert osc">
+                    <CheckBox Name="Osc9NotificationsToggle" Classes="Toggle" AutomationProperties.Name="Program notifications"/>
+                </settings:SettingRow>
+                <settings:SettingRow RowId="osc9-progress"
+                                     Title="Progress reporting (OSC 9;4)"
+                                     Description="Show per-tab progress and Windows taskbar progress when a program reports it via OSC 9;4 (e.g. an AI CLI's task progress)."
+                                     Keywords="taskbar progress bar osc">
+                    <CheckBox Name="Osc9ProgressReportingToggle" Classes="Toggle" AutomationProperties.Name="Progress reporting"/>
+                </settings:SettingRow>
+            </settings:SettingGroup>
+
+            <settings:SettingGroup Header="SESSIONS">
+                <settings:SettingRow RowId="session-persistence"
+                                     Title="Keep shells running when the window closes"
+                                     Description="With Keep running, your shells run in a background process (the multiplexer), so closing the window or a crash does not end them, and Ntilde reattaches them when it starts. With Off, a shell ends when its window closes. SSH tabs keep running on the host only when their connection also turns on 'Keep remote sessions running (ntilde-mux)'. Applies to new tabs."
+                                     Keywords="persistent sessions mux multiplexer background keep running shells daemon close quit">
+                    <ComboBox Name="SessionPersistenceList" Classes="Wide" AutomationProperties.Name="Keep shells running when the window closes">
+                        <ComboBoxItem Content="Off" Tag="Off"/>
+                        <ComboBoxItem Content="Keep running" Tag="KeepOnClose"/>
+                    </ComboBox>
+                </settings:SettingRow>
+                <Button Name="QuitAndCloseAllShellsLink" Classes="Link" Margin="0,10,0,0" IsVisible="False"
+                        Content="Quit and close all shells…"/>
+            </settings:SettingGroup>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

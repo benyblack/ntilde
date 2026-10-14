@@ -146,7 +146,7 @@ with nothing to coalesce, and 75 ms of nothing after it is pure latency.
 
 #### Shipped: the settings group (V2 Phase 3b)
 
-Settings → Terminal, under "Command assistant":
+Settings → Command Assist:
 
 | Setting | Default | What it gates |
 | --- | --- | --- |
@@ -264,7 +264,7 @@ regeneration fails the suite rather than shipping.
 #### Snippets (V2 Phase 4b)
 
 Snippets are created by pinning a suggestion (`Ctrl+Shift+S`) or in **Settings → Command
-assistant → Saved snippets**, which lists every snippet with an editable name and command and a
+Assist → Saved snippets**, which lists every snippet with an editable name and command and a
 Delete button. Edits commit when the field loses focus; snippets live in their own store, not in
 `settings.json`, so they are not routed through the window's Save button. A snippet with no command
 is refused (it would insert nothing); a snippet with no name is labelled from its command's first

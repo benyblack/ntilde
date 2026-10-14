@@ -10,14 +10,14 @@ The **Command Palette** is the central hub for accessing all features and comman
 
 ### 1.2 Settings & Customization
 - **Open Settings:** `Ctrl+,` or `Settings` in the palette. Changes apply live
-  without requiring a restart. Pages: Appearance, Profiles, Shortcuts, Command
-  Assist, Agent Access, SSH, Backup.
+  without requiring a restart. Pages: General, Appearance, Terminal, Tabs & title bar,
+  Shells & Profiles, Shortcuts, Command Assist, Agent Access, SSH and Backup & Restore.
 - **Themes:** Fourteen themes ship built in — Default, Dracula, Nord, Gruvbox Dark,
   Tokyo Night, Catppuccin Mocha, Solarized Dark/Light, GitHub Dark/Light, Monokai,
   OneHalf Dark/Light and Cobalt2. Switch with `Theme: <name>` in the palette or from
   Settings → Appearance, and import your own theme JSON there too.
 - **Font & Sizing:** Increase (`Ctrl++`) or decrease (`Ctrl+-`) the terminal font
-  size. You can also customize your preferred font family in Settings.
+  size. You can also choose the font family in Settings → Terminal.
 - **Interface scale:** The terminal font size leaves the rest of the app alone. To
   make tabs, sidebars, dialogs and Settings itself larger on a dense display, use
   Settings → Appearance → Window → *Interface scale* (80%–200%). The main window
@@ -49,7 +49,7 @@ Ntilde offers advanced windowing capabilities, including tabs, workspaces, and w
 
 ### 2.3 Vertical Tab Sidebar
 Toggle with `Ctrl+Shift+L`, `Tabs: Toggle Vertical Tab Sidebar` in the palette, or
-Settings → Appearance → **Tab strip orientation**. Vertical mode trades horizontal
+Settings → Tabs & title bar → **Tab strip orientation**. Vertical mode trades horizontal
 space for a much richer row per tab, which is what you want when tabs are running
 long jobs or agents rather than sitting idle.
 
@@ -267,7 +267,7 @@ Ntilde supports rendering rich images inline natively:
 ## 8. Configuration Backup & Restore
 
 Export your Ntilde configuration to a single portable `.ntildebackup` file and
-import it on another machine. Open **Settings → Backup**, or use `Export
+import it on another machine. Open **Settings → Backup & Restore**, or use `Export
 configuration…`, `Import configuration…` or `Restore from snapshot…` in the palette
 — all three route to that page, because export and import need a file picker and a
 mode prompt, and restore needs its confirmation.
@@ -333,7 +333,7 @@ Panes carry a live indicator while an agent is observing (reading or capturing) 
 acting on them, and every acting call — allowed or denied — is recorded in the
 **agent activity journal**, as is every read of a windowless session (12.8): reads of
 a pane show on its indicator instead. Open it from the title-bar menu → **Agent Activity...**,
-or put the Agent Activity button on the title bar from Settings → Appearance.
+or put the Agent Activity button on the title bar from Settings → Tabs & title bar.
 
 For an agent's own view of a session, `export_replay` plus
 `Ntilde.Cli --replay <file>` re-renders it deterministically, frame by frame.
@@ -406,7 +406,7 @@ again. The shells run in a background process, the *multiplexer*, instead of in 
 closing the window, an Ntilde crash or an update leaves them running. SSH tabs can keep running
 too, on the remote host, through a multiplexer installed there (12.6).
 
-The setting is Settings → Appearance → *Scrollback* → **Keep shells running when the window
+The setting is Settings → General → *Sessions* → **Keep shells running when the window
 closes**: *Keep running* or *Off*. It applies to tabs and panes opened after you save it; the ones
 already open stay as they are. This chapter describes *Keep running*; 12.11 says what *Off*
 changes.
@@ -1064,7 +1064,7 @@ nothing to `PATH`.
 
 ### 12.11 Turning it off
 
-Set Settings → Appearance → *Scrollback* → **Keep shells running when the window closes** to
+Set Settings → General → *Sessions* → **Keep shells running when the window closes** to
 *Off*. It is on (*Keep running*) by default; once you save *Off*, it stays off, updates included.
 From then on:
 

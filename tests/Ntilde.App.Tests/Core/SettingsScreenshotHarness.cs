@@ -55,6 +55,39 @@ public sealed class SettingsScreenshotHarness
                 window.NavigateTo(new SettingsTarget(descriptor.Page));
                 written.AddRange(CaptureScrolled(window, output, $"settings-{slug}-{descriptor.Page}"));
             }
+
+            window.NavigateTo(new SettingsTarget(SettingsPage.Appearance));
+            window.GetPage<Ntilde.Settings.Pages.AppearancePage>().FindControl<Button>("BtnEditTheme")!
+                .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            written.AddRange(CaptureScrolled(window, output, $"settings-{slug}-ThemeEditor"));
+        }
+        finally
+        {
+            window.Close();
+        }
+
+        CaptureMinimumSize(output, slug, written);
+    }
+
+    /// <summary>
+    /// The window at its MinWidth/MinHeight (780x520): the sidebar and the theme editor must still
+    /// be reachable and fully visible there.
+    /// </summary>
+    private static void CaptureMinimumSize(string output, string slug, List<string> written)
+    {
+        var window = new Ntilde.SettingsWindow { Width = 780, Height = 520 };
+        try
+        {
+            window.Show();
+            window.NavigateTo(new SettingsTarget(SettingsPage.General));
+            Dispatcher.UIThread.RunJobs();
+            written.Add(Save(window, output, $"settings-{slug}-Min-General.png"));
+
+            window.NavigateTo(new SettingsTarget(SettingsPage.Appearance));
+            window.GetPage<Ntilde.Settings.Pages.AppearancePage>().FindControl<Button>("BtnEditTheme")!
+                .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            written.Add(Save(window, output, $"settings-{slug}-Min-ThemeEditor.png"));
         }
         finally
         {

@@ -1,159 +1,201 @@
+using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Input.Platform;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
-using Ntilde.Shell;
-using Ntilde.Platform;
-using Ntilde.Pty;
-using Ntilde.VT;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.NetworkInformation;
-using Avalonia.Threading;
 using Avalonia.Media;
-using Avalonia.Controls.Shapes;
-using Avalonia.Styling;
-using Ntilde.CommandAssist.Application;
-using Ntilde.CommandAssist.Domain;
-using Ntilde.CommandAssist.Models;
-using Ntilde.CommandAssist.ShellIntegration.Remote;
-using Ntilde.Backup;
-using Ntilde.Services.Ssh;
-using Ntilde.Shell.Shortcuts;
-using Ntilde.Shell.TitleBar;
-using Ntilde.Settings;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using Ntilde.Shell;
+using Ntilde.VT;
 
 namespace Ntilde.Settings.Pages;
 
-public partial class AppearancePage : UserControl, ISettingsPage
+/// <summary>Appearance: the theme (with its editor as a sub-page), the window, and the background image.</summary>
+public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 {
-    // Shared style-class name (see NtStyles' "TextBlock.RowDesc" selector), used by the row
-    // builders below; a const keeps the literal from drifting away from the selector.
-    private const string RowDescStyleClass = "RowDesc";
-
     private SettingsSession? _session;
     private TerminalTheme? _editingTheme;
+
+    // The draft as last opened or saved. Unsaved edits are whatever differs from it.
+    private TerminalTheme? _baselineTheme;
+    private bool _draftIsSavedTheme;
 
     public AppearancePage()
     {
         InitializeComponent();
-        WireThemeSection();
-        WireFontRows();
+        WireThemeRow();
+        WireThemeEditor();
         WireWindowRows();
-        this.FindControl<Button>("QuitAndCloseAllShellsLink")!.Click += (_, _) => QuitAndCloseAllRequested?.Invoke();
+        WireBackgroundImageRows();
     }
 
-    /// <summary>
-    /// Whether the "Quit and close all shells…" link under the session persistence row is shown. The owning window
-    /// sets it (only a window with session persistence on offers the quit).
-    /// </summary>
-    internal bool QuitLinkVisible
+    private enum PreviewSurface
     {
-        get => this.FindControl<Button>("QuitAndCloseAllShellsLink")!.IsVisible;
-        set => this.FindControl<Button>("QuitAndCloseAllShellsLink")!.IsVisible = value;
+        Page,
+        Editor,
     }
-
-    /// <summary>Raised when the "Quit and close all shells…" link is clicked; the owning window closes without saving.</summary>
-    internal event Action? QuitAndCloseAllRequested;
 
     public SettingsPage Page => SettingsPage.Appearance;
 
     public Control View => this;
+
+    /// <summary>True while the theme editor sub-page is showing.</summary>
+    internal bool IsThemeEditorOpen => this.FindControl<ScrollViewer>("ThemeEditorView")!.IsVisible;
 
     private SettingsSession Session => _session ?? throw new InvalidOperationException("AppearancePage used before Load.");
 
     public void Load(SettingsSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
-        if (!ReferenceEquals(_session, session))
-        {
-            if (_session != null)
-            {
-                _session.ShortcutsChanged -= RebuildTitleBarRows;
-            }
-
-            session.ShortcutsChanged += RebuildTitleBarRows;
-        }
-
         _session = session;
-        PopulateFonts();
+
+        // Load also runs after a backup restore. The draft was cut from the old settings; drop it.
+        ShowMainView(restoreFocus: false);
         PopulateThemes();
         LoadControls();
-        RebuildTitleBarRows();
 
-        // LoadControls' theme selection usually paints the preview via SelectionChanged, but only
-        // when an item matches ThemeName - a name the manager normalizes (legacy "Default (Dark)")
-        // or a since-deleted theme leaves the combo empty and the preview stuck on its hardcoded
-        // dark background. Paint it from the active theme directly so it is always current.
-        UpdateThemePreview(session.Settings.ActiveTheme, "Main");
+        // The theme selection usually paints the preview via SelectionChanged, but only when an
+        // item matches ThemeName - a name the manager normalizes (legacy "Default (Dark)") or a
+        // since-deleted theme leaves the combo empty. Paint it from the active theme directly.
+        UpdateThemePreview(session.Settings.ActiveTheme, PreviewSurface.Page);
     }
 
-    public SettingsValidationError? Validate() => null;
+    /// <summary>
+    /// The editor's draft lives only in this page until Save theme, so a window Save (Ctrl+S or the
+    /// footer) while it holds unsaved edits would drop them. Refuse and say why.
+    /// </summary>
+    public SettingsValidationError? Validate()
+    {
+        if (!IsThemeEditorOpen || !HasUnsavedThemeEdits())
+        {
+            return null;
+        }
+
+        const string message = "Save the theme or go back first.";
+        Text("ThemeEditorStatus").Text = message;
+        return new SettingsValidationError(SettingsPage.Appearance, null, message);
+    }
 
     public void Collect(TerminalSettings target)
     {
         ArgumentNullException.ThrowIfNull(target);
-
-        target.FontSize = (double)(this.FindControl<NumericUpDown>("FontSizeInput")!.Value ?? 14);
-        target.MaxHistory = (int)(this.FindControl<NumericUpDown>("ScrollbackInput")!.Value ?? 10000);
-        target.WindowOpacity = this.FindControl<Slider>("WindowOpacitySlider")!.Value;
-        target.UiScale = UiScale.Clamp(this.FindControl<Slider>("UiScaleSlider")!.Value);
-        target.EnableLigatures = Toggle("LigatureToggle").IsChecked == true;
-        target.EnableComplexShaping = Toggle("ComplexShapingToggle").IsChecked == true;
-        if (SelectedItem("SessionPersistenceList") is { } persistenceItem)
-        {
-            target.SessionPersistence = persistenceItem.Tag as string ?? Ntilde.Shell.Mux.SessionPersistenceMode.Off;
-        }
-
-        target.LongCommandNotificationsEnabled = Toggle("LongCommandNotificationsToggle").IsChecked == true;
-        target.Osc9NotificationsEnabled = Toggle("Osc9NotificationsToggle").IsChecked == true;
-        target.Osc9ProgressReportingEnabled = Toggle("Osc9ProgressReportingToggle").IsChecked == true;
-        target.AutomaticUpdateChecks = Toggle("AutomaticUpdateChecksToggle").IsChecked == true;
-
-        if (SelectedItem("FontList") is { } fontItem)
-        {
-            target.FontFamily = fontItem.Content?.ToString() ?? BundledFontCatalog.DefaultTerminalFontFamily;
-        }
-
-        if (SelectedItem("ThemeList") is { } themeItem)
+        target.WindowOpacity = Slider("WindowOpacitySlider").Value;
+        target.UiScale = UiScale.Clamp(Slider("UiScaleSlider").Value);
+        if (Combo("ThemeList").SelectedItem is ComboBoxItem themeItem)
         {
             target.ThemeName = themeItem.Content?.ToString() ?? "Default";
         }
 
-        if (SelectedItem("BlurList") is { } blurItem)
+        if (ComboTags.SelectedValue(Combo("BlurList")) is { } blur)
         {
-            target.BlurEffect = blurItem.Content?.ToString() ?? "Acrylic";
-        }
-
-        if (SelectedItem("TabOrientationList") is { } orientationItem)
-        {
-            target.TabStripOrientation = orientationItem.Content?.ToString() ?? "Horizontal";
+            target.BlurEffect = blur;
         }
 
         target.BackgroundImagePath = this.FindControl<TextBox>("BgImagePathInput")!.Text ?? "";
-        target.BackgroundImageOpacity = this.FindControl<Slider>("BgImageOpacitySlider")!.Value;
-        if (SelectedItem("BgImageStretchList") is { } stretchItem)
+        target.BackgroundImageOpacity = Slider("BgImageOpacitySlider").Value;
+        if (ComboTags.SelectedValue(Combo("BgImageStretchList")) is { } stretch)
         {
-            target.BackgroundImageStretch = stretchItem.Content?.ToString() ?? "UniformToFill";
+            target.BackgroundImageStretch = stretch;
         }
     }
 
-    private void PopulateFonts()
+    public bool IsSubPageOpen => IsThemeEditorOpen;
+
+    public void CloseSubPage() => ShowMainView(restoreFocus: true);
+
+    private void LoadControls()
     {
-        var fontList = this.FindControl<ComboBox>("FontList")!;
-        fontList.Items.Clear();
-        foreach (string family in Session.FontChoices)
+        TerminalSettings settings = Session.Settings;
+        Slider("WindowOpacitySlider").Value = settings.WindowOpacity;
+        Text("OpacityValueDisplay").Text = FormatPercent(settings.WindowOpacity);
+        Slider("UiScaleSlider").Value = UiScale.Clamp(settings.UiScale);
+        Text("UiScaleValueDisplay").Text = FormatUiScale(Slider("UiScaleSlider").Value);
+        this.FindControl<TextBox>("BgImagePathInput")!.Text = settings.BackgroundImagePath;
+        Slider("BgImageOpacitySlider").Value = settings.BackgroundImageOpacity;
+        Text("BgImageOpacityDisplay").Text = FormatPercent(settings.BackgroundImageOpacity);
+
+        // Legacy settings store "Default (Dark)" while the combo lists the manager's canonical
+        // "Default". Normalize that one alias rather than resolving through GetTheme: for a name
+        // GetTheme cannot find it falls back to the Default theme OBJECT, whose .Name would match
+        // the "Default" item and silently rewrite the stored name on Save. With no match the
+        // selection stays empty and Collect leaves ThemeName alone.
+        string themeName = settings.ThemeName == "Default (Dark)" ? "Default" : settings.ThemeName;
+        SelectTheme(themeName);
+
+        ComboTags.Select(Combo("BlurList"), settings.BlurEffect, StringComparison.Ordinal, fallbackIndex: 0);
+        ComboTags.Select(Combo("BgImageStretchList"), settings.BackgroundImageStretch, StringComparison.Ordinal, fallbackIndex: 3); // Fill (crop)
+    }
+
+    // ── Theme ─────────────────────────────────────────────────────────────────
+
+    private void WireThemeRow()
+    {
+        var themeList = Combo("ThemeList");
+        themeList.SelectionChanged += (_, _) =>
         {
-            fontList.Items.Add(new ComboBoxItem { Content = family });
-        }
+            if (_session is null || themeList.SelectedItem is not ComboBoxItem { Content: { } content })
+            {
+                return;
+            }
+
+            string themeName = content.ToString() ?? "Default";
+            TerminalTheme theme = Session.Settings.ThemeManager.GetTheme(themeName);
+            UpdateThemePreview(theme, PreviewSurface.Page);
+            Session.Preview.Theme(themeName);
+            Session.Preview.RepaintWindow(theme);
+        };
+
+        this.FindControl<Button>("BtnEditTheme")!.Click += (_, _) =>
+        {
+            if (Combo("ThemeList").SelectedItem is ComboBoxItem item)
+            {
+                OpenThemeEditor(Session.Settings.ThemeManager.GetTheme(item.Content?.ToString() ?? "Default").Clone(), isSavedTheme: true);
+            }
+        };
+
+        this.FindControl<Button>("BtnNewTheme")!.Click += (_, _) => OpenThemeEditor(new TerminalTheme { Name = "New Theme" }, isSavedTheme: false);
+
+        this.FindControl<Button>("BtnImportTheme")!.Click += async (_, _) =>
+        {
+            if (TopLevel.GetTopLevel(this) is not { } topLevel)
+            {
+                return;
+            }
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Import Theme",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Theme Files") { Patterns = new[] { "*.json", "*.itermcolors" } },
+                    new FilePickerFileType("Alacritty Theme") { Patterns = new[] { "*.toml" } },
+                },
+            });
+            if (files.Count == 0)
+            {
+                return;
+            }
+
+            string importedThemeName = Session.Settings.ThemeManager.ImportTheme(files[0].Path.LocalPath);
+            if (string.IsNullOrEmpty(importedThemeName))
+            {
+                return;
+            }
+
+            PopulateThemes();
+            Session.RaiseThemesChanged();
+            SelectTheme(importedThemeName);
+            Session.Preview.Theme(importedThemeName);
+        };
     }
 
     private void PopulateThemes()
     {
         Session.Settings.ThemeManager.LoadThemes();
-        var themeList = this.FindControl<ComboBox>("ThemeList")!;
+        var themeList = Combo("ThemeList");
         themeList.Items.Clear();
         foreach (string theme in Session.Settings.ThemeManager.GetAvailableThemes().OrderBy(t => t))
         {
@@ -161,692 +203,172 @@ public partial class AppearancePage : UserControl, ISettingsPage
         }
     }
 
-    /// <summary>The Appearance half of the old LoadCurrentSettings, value for value.</summary>
-    private void LoadControls()
+    private void SelectTheme(string name)
     {
-        TerminalSettings settings = Session.Settings;
-
-        var sessionPersistenceList = this.FindControl<ComboBox>("SessionPersistenceList")!;
-        string wanted = Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(settings.SessionPersistence)
-            ? Ntilde.Shell.Mux.SessionPersistenceMode.KeepOnClose : Ntilde.Shell.Mux.SessionPersistenceMode.Off;
-        sessionPersistenceList.SelectedItem = sessionPersistenceList.Items.Cast<ComboBoxItem>()
-            .FirstOrDefault(i => string.Equals(i.Tag as string, wanted, StringComparison.Ordinal));
-        if (sessionPersistenceList.SelectedItem == null) sessionPersistenceList.SelectedIndex = 0;
-
-        Toggle("LongCommandNotificationsToggle").IsChecked = settings.LongCommandNotificationsEnabled;
-        Toggle("Osc9NotificationsToggle").IsChecked = settings.Osc9NotificationsEnabled;
-        Toggle("Osc9ProgressReportingToggle").IsChecked = settings.Osc9ProgressReportingEnabled;
-        Toggle("AutomaticUpdateChecksToggle").IsChecked = settings.AutomaticUpdateChecks;
-        this.FindControl<NumericUpDown>("FontSizeInput")!.Value = (decimal)settings.FontSize;
-        this.FindControl<NumericUpDown>("ScrollbackInput")!.Value = settings.MaxHistory;
-
-        this.FindControl<Slider>("WindowOpacitySlider")!.Value = settings.WindowOpacity;
-        this.FindControl<TextBlock>("OpacityValueDisplay")!.Text = $"{(int)(settings.WindowOpacity * 100)}%";
-
-        var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider")!;
-        uiScaleSlider.Value = UiScale.Clamp(settings.UiScale);
-        this.FindControl<TextBlock>("UiScaleValueDisplay")!.Text = FormatUiScale(uiScaleSlider.Value);
-
-        Toggle("LigatureToggle").IsChecked = settings.EnableLigatures;
-        Toggle("ComplexShapingToggle").IsChecked = settings.EnableComplexShaping;
-
-        this.FindControl<TextBox>("BgImagePathInput")!.Text = settings.BackgroundImagePath;
-        this.FindControl<Slider>("BgImageOpacitySlider")!.Value = settings.BackgroundImageOpacity;
-        this.FindControl<TextBlock>("BgImageOpacityDisplay")!.Text = $"{(int)(settings.BackgroundImageOpacity * 100)}%";
-
-        SelectByContent("FontList", settings.FontFamily, StringComparison.Ordinal, fallbackIndex: null);
-
-        // Legacy settings store "Default (Dark)" while the combo lists the manager's canonical
-        // "Default" (ThemeManager.GetTheme maps between them). Normalize that one alias rather than
-        // resolving through GetTheme: for a name GetTheme cannot find it falls back to the Default
-        // theme OBJECT, whose .Name would match the "Default" item and silently rewrite the stored
-        // name on Save. When nothing matches, the selection stays empty and Collect skips the theme
-        // field, preserving the stored name.
-        string themeName = settings.ThemeName == "Default (Dark)" ? "Default" : settings.ThemeName;
-        SelectByContent("ThemeList", themeName, StringComparison.Ordinal, fallbackIndex: null);
-
-        SelectByContent("BlurList", settings.BlurEffect, StringComparison.Ordinal, fallbackIndex: 0);
-        SelectByContent("TabOrientationList", settings.TabStripOrientation, StringComparison.OrdinalIgnoreCase, fallbackIndex: 0);
-        SelectByContent("BgImageStretchList", settings.BackgroundImageStretch, StringComparison.Ordinal, fallbackIndex: 3); // UniformToFill
-    }
-
-    /// <summary>
-    /// Selects the item whose text equals <paramref name="value"/>. With no match, falls back to
-    /// <paramref name="fallbackIndex"/> only when nothing is selected yet, exactly as the old loops did.
-    /// </summary>
-    private void SelectByContent(string comboName, string? value, StringComparison comparison, int? fallbackIndex)
-    {
-        var combo = this.FindControl<ComboBox>(comboName)!;
-        ComboBoxItem? match = combo.Items.OfType<ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(item.Content?.ToString(), value, comparison));
-        if (match != null)
+        var themeList = Combo("ThemeList");
+        if (themeList.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Content?.ToString() == name) is { } match)
         {
-            combo.SelectedItem = match;
-        }
-        else if (fallbackIndex is int index && combo.SelectedItem == null && combo.ItemCount > 0)
-        {
-            combo.SelectedIndex = index;
+            themeList.SelectedItem = match;
         }
     }
 
-    private ComboBoxItem? SelectedItem(string comboName) => this.FindControl<ComboBox>(comboName)!.SelectedItem as ComboBoxItem;
+    // ── Theme editor sub-page ─────────────────────────────────────────────────
 
-    private CheckBox Toggle(string name) => this.FindControl<CheckBox>(name)!;
-
-    private void WireThemeSection()
+    private void WireThemeEditor()
     {
-        var themeList = this.FindControl<ComboBox>("ThemeList");
-        var btnEditTheme = this.FindControl<Button>("BtnEditTheme");
-        var btnNewTheme = this.FindControl<Button>("BtnNewTheme");
-        var btnCloseEditor = this.FindControl<Button>("BtnCloseEditor");
-        var btnSaveTheme = this.FindControl<Button>("BtnSaveTheme");
-        var btnDeleteTheme = this.FindControl<Button>("BtnDeleteTheme");
-        var btnImportTheme = this.FindControl<Button>("BtnImportTheme");
-        var themeEditorPanel = this.FindControl<Border>("ThemeEditorPanel");
-        var editThemeNameInput = this.FindControl<TextBox>("EditThemeNameInput");
-        var editThemeFgInput = this.FindControl<TextBox>("EditThemeFgInput");
-        var editThemeBgInput = this.FindControl<TextBox>("EditThemeBgInput");
-        var editThemeCursorInput = this.FindControl<TextBox>("EditThemeCursorInput");
-        var themeEditorStatus = this.FindControl<TextBlock>("ThemeEditorStatus");
-        if (btnImportTheme != null)
+        this.FindControl<Button>("BtnThemeEditorBack")!.Click += (_, _) => ShowMainView(restoreFocus: true);
+
+        var nameInput = this.FindControl<TextBox>("EditThemeNameInput")!;
+        var status = Text("ThemeEditorStatus");
+
+        this.FindControl<Button>("BtnSaveTheme")!.Click += (_, _) =>
         {
-            btnImportTheme.Click += async (s, e) =>
+            if (_editingTheme is null)
             {
-                var topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel != null)
-                {
-                    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                    {
-                        Title = "Import Theme",
-                        AllowMultiple = false,
-                        FileTypeFilter = new[]
-                        {
-                            new Avalonia.Platform.Storage.FilePickerFileType("Theme Files") { Patterns = new[] { "*.json", "*.itermcolors" } },
-                            new Avalonia.Platform.Storage.FilePickerFileType("Alacritty Theme") { Patterns = new[] { "*.toml" } }
-                        }
-                    });
+                return;
+            }
 
-                    if (files.Count > 0)
-                    {
-                        string path = files[0].Path.LocalPath;
-                        string importedThemeName = Session.Settings.ThemeManager.ImportTheme(path);
-                        if (!string.IsNullOrEmpty(importedThemeName))
-                        {
-                            PopulateThemes();
-                            Session.RaiseThemesChanged();
-                            // Select the imported theme
-                            if (themeList != null)
-                            {
-                                foreach (ComboBoxItem it in themeList.Items.Cast<ComboBoxItem>())
-                                {
-                                    if (it.Content?.ToString() == importedThemeName)
-                                    {
-                                        themeList.SelectedItem = it;
-                                        Session.Preview.Theme(importedThemeName);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-        }
+            if (string.IsNullOrWhiteSpace(nameInput.Text))
+            {
+                status.Text = "Name required";
+                return;
+            }
 
-        if (btnEditTheme != null)
+            _editingTheme.Name = nameInput.Text;
+
+            // SaveTheme caches the object it is given. Hand it a copy, so edits made after this
+            // Save stay in the draft and Back still discards them.
+            Session.Settings.ThemeManager.SaveTheme(_editingTheme.Clone());
+            PopulateThemes();
+            Session.RaiseThemesChanged();
+            SelectTheme(_editingTheme.Name);
+            Session.Settings.RefreshActiveTheme();
+            Session.Preview.Theme(_editingTheme.Name);
+
+            // Repaint with the theme just saved. The old editor re-applied the theme named in
+            // settings.json, so saving an edit of any other theme left Settings in the wrong
+            // colours until it was reopened.
+            Session.Preview.RepaintWindow(Session.Settings.ThemeManager.GetTheme(_editingTheme.Name));
+
+            _baselineTheme = _editingTheme.Clone();
+            _draftIsSavedTheme = true;
+            this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = _editingTheme.Name != "Default";
+            Text("ThemeEditorTitle").Text = _editingTheme.Name;
+            status.Text = "Saved!";
+            DispatcherTimer.RunOnce(() => status.Text = "", TimeSpan.FromSeconds(2));
+        };
+
+        this.FindControl<Button>("BtnDeleteTheme")!.Click += (_, _) =>
         {
-            btnEditTheme.Click += (s, e) =>
+            if (_editingTheme is null || !_draftIsSavedTheme || _editingTheme.Name == "Default")
             {
-                if (themeList?.SelectedItem is ComboBoxItem item)
-                {
-                    var themeName = item.Content?.ToString() ?? "Default";
-                    var theme = Session.Settings.ThemeManager.GetTheme(themeName);
-                    OpenThemeEditor(theme.Clone());
-                }
-            };
-        }
+                return;
+            }
 
-        if (btnNewTheme != null)
-        {
-            btnNewTheme.Click += (s, e) =>
-            {
-                OpenThemeEditor(new TerminalTheme { Name = "New Theme" });
-            };
-        }
+            Session.Settings.ThemeManager.DeleteTheme(_editingTheme.Name);
+            PopulateThemes();
+            Session.RaiseThemesChanged();
+            Combo("ThemeList").SelectedIndex = 0;
+            ShowMainView(restoreFocus: true);
+        };
 
-        if (btnCloseEditor != null)
-        {
-            btnCloseEditor.Click += (s, e) =>
-            {
-                if (themeEditorPanel != null) themeEditorPanel.IsVisible = false;
-            };
-        }
-
-        if (btnSaveTheme != null)
-        {
-            btnSaveTheme.Click += (s, e) =>
-            {
-                if (_editingTheme != null)
-                {
-                    if (string.IsNullOrWhiteSpace(editThemeNameInput?.Text))
-                    {
-                        if (themeEditorStatus != null) themeEditorStatus.Text = "Name required";
-                        return;
-                    }
-
-                    _editingTheme.Name = editThemeNameInput.Text;
-                    Session.Settings.ThemeManager.SaveTheme(_editingTheme);
-                    PopulateThemes();
-                    Session.RaiseThemesChanged();
-
-                    // Select the saved theme in the list
-                    if (themeList != null)
-                    {
-                        foreach (ComboBoxItem it in themeList.Items.Cast<ComboBoxItem>())
-                        {
-                            if (it.Content?.ToString() == _editingTheme.Name)
-                            {
-                                themeList.SelectedItem = it;
-                                Session.Settings.RefreshActiveTheme();
-                                Session.Preview.Theme(_editingTheme.Name);
-                                break;
-                            }
-                        }
-                    }
-
-                    // Session.Preview.Theme refreshes the host window, but nothing above re-applies
-                    // the palette to THIS window when the saved theme was already the selected
-                    // one (editing colors of the active theme) - the selection change is a
-                    // no-op, so SelectionChanged never fires and the editor's new background,
-                    // sidebar, and card colors only showed up after closing and reopening
-                    // Settings (or restarting). Re-apply here so the edit lands live.
-                    Session.Preview.RepaintWindow(null);
-
-                    if (themeEditorStatus != null) themeEditorStatus.Text = "Saved!";
-                    DispatcherTimer.RunOnce(() => { if (themeEditorStatus != null) themeEditorStatus.Text = ""; }, TimeSpan.FromSeconds(2));
-                }
-            };
-        }
-
-        if (btnDeleteTheme != null)
-        {
-            btnDeleteTheme.Click += (s, e) =>
-            {
-                if (_editingTheme != null && _editingTheme.Name != "Default")
-                {
-                    Session.Settings.ThemeManager.DeleteTheme(_editingTheme.Name);
-                    PopulateThemes();
-                    Session.RaiseThemesChanged();
-                    if (themeList != null) themeList.SelectedIndex = 0;
-                    if (themeEditorPanel != null) themeEditorPanel.IsVisible = false;
-                }
-            };
-        }
-
-        // Wire up ANSI swatch inputs
         for (int i = 0; i < 16; i++)
         {
             int index = i;
-            var swatchBtn = this.FindControl<Button>($"EditSwatch{index}");
-            if (swatchBtn != null)
-            {
-                swatchBtn.Click += (s, e) => OpenSwatchFlyout(swatchBtn, index);
-            }
+            var swatch = this.FindControl<Button>($"EditSwatch{index}")!;
+            swatch.Click += (_, _) => OpenSwatchFlyout(swatch, index);
         }
 
-        // Real-time updates for global color inputs
-        if (editThemeFgInput != null) editThemeFgInput.TextChanged += (s, e) =>
+        WireColourInput("EditThemeFgInput", (theme, colour) => theme.Foreground = colour);
+        WireColourInput("EditThemeBgInput", (theme, colour) => theme.Background = colour);
+        WireColourInput("EditThemeCursorInput", (theme, colour) => theme.CursorColor = colour);
+    }
+
+    /// <summary>Real-time updates for the foreground / background / cursor inputs (ORIG 418-442).</summary>
+    private void WireColourInput(string name, Action<TerminalTheme, TermColor> apply)
+    {
+        var input = this.FindControl<TextBox>(name)!;
+        input.TextChanged += (_, _) =>
         {
-            if (Color.TryParse(editThemeFgInput.Text, out var color) && _editingTheme != null)
+            if (Color.TryParse(input.Text, out var colour) && _editingTheme != null)
             {
-                _editingTheme.Foreground = TermColorHelper.FromAvaloniaColor(color);
-                UpdateThemePreview(_editingTheme, "Editor");
-            }
-        };
-        if (editThemeBgInput != null) editThemeBgInput.TextChanged += (s, e) =>
-        {
-            if (Color.TryParse(editThemeBgInput.Text, out var color) && _editingTheme != null)
-            {
-                _editingTheme.Background = TermColorHelper.FromAvaloniaColor(color);
-                UpdateThemePreview(_editingTheme, "Editor");
+                apply(_editingTheme, TermColorHelper.FromAvaloniaColor(colour));
+                UpdateThemePreview(_editingTheme, PreviewSurface.Editor);
             }
         };
-        if (editThemeCursorInput != null) editThemeCursorInput.TextChanged += (s, e) =>
-        {
-            if (Color.TryParse(editThemeCursorInput.Text, out var color) && _editingTheme != null)
-            {
-                _editingTheme.CursorColor = TermColorHelper.FromAvaloniaColor(color);
-                UpdateThemePreview(_editingTheme, "Editor");
-            }
-        };
-
-        if (themeList != null)
-        {
-            themeList.SelectionChanged += (s, e) =>
-            {
-                if (themeList.SelectedItem is ComboBoxItem item)
-                {
-                    var theme = Session.Settings.ThemeManager.GetTheme(item.Content?.ToString() ?? "Default");
-                    UpdateThemePreview(theme, "Main");
-                }
-            };
-        }
-
-        if (themeList != null)
-        {
-            themeList.SelectionChanged += (s, e) =>
-            {
-                if (themeList.SelectedItem is ComboBoxItem item && item.Content != null)
-                {
-                    var themeName = item.Content.ToString() ?? "Default";
-                    Session.Preview.Theme(themeName);
-                    var theme = Session.Settings.ThemeManager.GetTheme(themeName);
-                    Session.Preview.RepaintWindow(theme);
-                }
-            };
-        }
     }
 
-    private void WireFontRows()
+    private void OpenThemeEditor(TerminalTheme theme, bool isSavedTheme)
     {
-        var fontList = this.FindControl<ComboBox>("FontList");
-        var fontSizeInput = this.FindControl<NumericUpDown>("FontSizeInput");
+        _editingTheme = theme;
+        _baselineTheme = theme.Clone();
+        _draftIsSavedTheme = isSavedTheme;
+        this.FindControl<TextBox>("EditThemeNameInput")!.Text = theme.Name;
+        this.FindControl<TextBox>("EditThemeFgInput")!.Text = theme.Foreground.ToString();
+        this.FindControl<TextBox>("EditThemeBgInput")!.Text = theme.Background.ToString();
+        this.FindControl<TextBox>("EditThemeCursorInput")!.Text = theme.CursorColor.ToString();
+        this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = isSavedTheme && theme.Name != "Default";
+        Text("ThemeEditorTitle").Text = theme.Name;
+        Text("ThemeEditorStatus").Text = "";
 
-        // Core Settings
-        if (fontList != null)
-        {
-            fontList.SelectionChanged += (s, e) =>
-            {
-                if (fontList.SelectedItem is ComboBoxItem item && item.Content != null)
-                {
-                    Session.Preview.Font(item.Content.ToString() ?? BundledFontCatalog.DefaultTerminalFontFamily);
-                }
-            };
-        }
+        UpdateEditorSwatches();
+        UpdateThemePreview(theme, PreviewSurface.Editor);
 
-        if (fontSizeInput != null)
-        {
-            fontSizeInput.ValueChanged += (s, e) =>
-            {
-                if (fontSizeInput.Value.HasValue)
-                {
-                    Session.Preview.FontSize((double)fontSizeInput.Value.Value);
-                }
-            };
-        }
+        this.FindControl<ScrollViewer>("AppearanceMainView")!.IsVisible = false;
+        this.FindControl<ScrollViewer>("ThemeEditorView")!.IsVisible = true;
+        FocusWhenShown("BtnThemeEditorBack");
     }
 
-    private void TriggerBgUpdate()
+    /// <summary>
+    /// True when the open draft differs from what was last opened or saved. Compared on demand, so
+    /// the programmatic text the editor fills in on open (raised later) cannot read as an edit.
+    /// </summary>
+    private bool HasUnsavedThemeEdits()
     {
-        var bgPathInput = this.FindControl<TextBox>("BgImagePathInput");
-        var bgOpacitySlider = this.FindControl<Slider>("BgImageOpacitySlider");
-        var bgStretchList = this.FindControl<ComboBox>("BgImageStretchList");
-        var path = bgPathInput?.Text ?? "";
-        var opacity = bgOpacitySlider?.Value ?? 0.5;
-        var stretch = (bgStretchList?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "UniformToFill";
-        Session.Preview.BackgroundImage(path, opacity, stretch);
-    }
-
-    private void WireWindowRows()
-    {
-        var opacitySlider = this.FindControl<Slider>("WindowOpacitySlider");
-        var opacityDisplay = this.FindControl<TextBlock>("OpacityValueDisplay");
-        var blurList = this.FindControl<ComboBox>("BlurList");
-        var bgPathInput = this.FindControl<TextBox>("BgImagePathInput");
-        var bgOpacitySlider = this.FindControl<Slider>("BgImageOpacitySlider");
-        var bgStretchList = this.FindControl<ComboBox>("BgImageStretchList");
-        var bgOpacityDisplay = this.FindControl<TextBlock>("BgImageOpacityDisplay");
-
-        // Bg Image
-        if (bgPathInput != null)
+        if (_editingTheme is not { } draft || _baselineTheme is not { } baseline)
         {
-            bgPathInput.PropertyChanged += (s, e) =>
-            {
-                if (e.Property == TextBox.TextProperty) TriggerBgUpdate();
-            };
+            return false;
         }
 
-        if (bgOpacitySlider != null && bgOpacityDisplay != null)
+        if (!string.Equals(this.FindControl<TextBox>("EditThemeNameInput")!.Text ?? "", baseline.Name, StringComparison.Ordinal)
+            || !draft.Foreground.Equals(baseline.Foreground)
+            || !draft.Background.Equals(baseline.Background)
+            || !draft.CursorColor.Equals(baseline.CursorColor))
         {
-            bgOpacityDisplay.Text = $"{(int)(bgOpacitySlider.Value * 100)}%";
-            bgOpacitySlider.PropertyChanged += (s, e) =>
-            {
-                if (e.Property == Avalonia.Controls.Primitives.RangeBase.ValueProperty)
-                {
-                    bgOpacityDisplay.Text = $"{(int)(bgOpacitySlider.Value * 100)}%";
-                    TriggerBgUpdate();
-                }
-            };
-        }
-
-        if (bgStretchList != null)
-        {
-            bgStretchList.SelectionChanged += (s, e) => TriggerBgUpdate();
-        }
-
-        if (opacitySlider != null && opacityDisplay != null)
-        {
-            opacityDisplay.Text = $"{(int)(opacitySlider.Value * 100)}%";
-            opacitySlider.PropertyChanged += (s, e) =>
-            {
-                if (e.Property == Avalonia.Controls.Primitives.RangeBase.ValueProperty)
-                {
-                    opacityDisplay.Text = $"{(int)(opacitySlider.Value * 100)}%";
-                    Session.Preview.Opacity(opacitySlider.Value);
-                }
-            };
-        }
-
-        var uiScaleSlider = this.FindControl<Slider>("UiScaleSlider");
-        var uiScaleDisplay = this.FindControl<TextBlock>("UiScaleValueDisplay");
-        if (uiScaleSlider != null && uiScaleDisplay != null)
-        {
-            uiScaleDisplay.Text = FormatUiScale(uiScaleSlider.Value);
-            uiScaleSlider.PropertyChanged += (s, e) =>
-            {
-                if (e.Property == Avalonia.Controls.Primitives.RangeBase.ValueProperty)
-                {
-                    double scale = UiScale.Clamp(uiScaleSlider.Value);
-                    uiScaleDisplay.Text = FormatUiScale(scale);
-                    Session.Preview.UiScale(scale);
-                }
-            };
-        }
-
-        if (blurList != null)
-        {
-            blurList.SelectionChanged += (s, e) =>
-            {
-                if (blurList.SelectedItem is ComboBoxItem item && item.Content != null)
-                {
-                    Session.Preview.Blur(item.Content.ToString() ?? "Acrylic");
-                }
-            };
-        }
-
-        var btnBrowse = this.FindControl<Button>("BtnBrowseImage");
-        if (btnBrowse != null)
-        {
-            btnBrowse.Click += async (s, e) =>
-            {
-                var topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel != null)
-                {
-                    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                    {
-                        Title = "Select Background Image",
-                        AllowMultiple = false,
-                        FileTypeFilter = new[]
-                        {
-                            new Avalonia.Platform.Storage.FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp" } }
-                        }
-                    });
-
-                    if (files.Count > 0)
-                    {
-                        if (bgPathInput != null)
-                        {
-                            bgPathInput.Text = files[0].Path.LocalPath;
-                            TriggerBgUpdate();
-                        }
-                    }
-                }
-            };
-        }
-
-        var btnClearBg = this.FindControl<Button>("BtnClearImage");
-        if (btnClearBg != null)
-        {
-            btnClearBg.Click += (s, e) =>
-            {
-                if (bgPathInput != null)
-                {
-                    bgPathInput.Text = "";
-                    TriggerBgUpdate();
-                }
-            };
-        }
-    }
-
-    private void RebuildTitleBarRows()
-    {
-
-        var panel = this.FindControl<StackPanel>("TitleBarItemsPanel");
-        if (panel == null)
-        {
-            return;
-        }
-
-        panel.Children.Clear();
-
-        // Pinned entries first, in their configured order, so the ▲/▼ buttons act on a list
-        // that reads top-to-bottom the way the bar reads left-to-right. Then the rest in
-        // catalog order.
-        var ordered = Session.TitleBarDraft.GetDisplayOrder();
-
-        var byId = TitleBarCatalog.GetEntries()
-            .ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
-
-        for (int i = 0; i < ordered.Count; i++)
-        {
-            panel.Children.Add(CreateTitleBarRow(byId[ordered[i]], i));
-        }
-    }
-
-    private Control CreateTitleBarRow(
-        TitleBarCatalogEntry entry,
-        int index)
-    {
-        var state = Session.TitleBarDraft.GetState(entry.Id);
-        bool isPinned = state == TitleBarItemState.Pinned;
-
-        var row = new Border
-        {
-            Background = this.FindPaletteBrush("NtPanel"),
-            BorderBrush = this.FindPaletteBrush("NtHairline"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(12),
-        };
-
-        var icon = new PathIcon
-        {
-            Data = Geometry.Parse(entry.IconGeometry),
-            Width = entry.IconSize,
-            Height = entry.IconSize,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-
-        string shortcut = TitleBarShortcuts.Resolve(entry.ShortcutKey, Session.ShortcutDraft);
-
-        var labels = new StackPanel
-        {
-            Spacing = 2,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children =
-            {
-                new TextBlock { Text = entry.Title },
-                new TextBlock
-                {
-                    Text = string.IsNullOrWhiteSpace(shortcut) ? "No shortcut" : shortcut,
-                    Classes = { RowDescStyleClass },
-                },
-            },
-        };
-
-        Control placement;
-        if (entry.IsLocked)
-        {
-            // Locked: New Tab is the primary action and hosts the flyout with
-            // "New SSH Connection…" / "Manage Profiles…" / "Agent Activity…". Letting it be
-            // hidden would lose that flyout entirely.
-            placement = new TextBlock
-            {
-                Text = "Always pinned",
-                Classes = { RowDescStyleClass },
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-        }
-        else
-        {
-            var combo = new ComboBox
-            {
-                MinWidth = 140,
-                VerticalAlignment = VerticalAlignment.Center,
-                ItemsSource = new[] { "Pinned", "Overflow", "Hidden" },
-                SelectedItem = state.ToString(),
-            };
-
-            // Assigning combo.SelectedItem below (to snap a rejected pick back) re-raises
-            // SelectionChanged synchronously. Without this guard, the re-entrant call would see
-            // the reverted (old) value as "picked", write it into draft state again, and
-            // immediately clear the validation message this same handler just showed.
-            bool suppressSelectionChanged = false;
-
-            combo.SelectionChanged += (s, e) =>
-            {
-                if (suppressSelectionChanged)
-                {
-                    return;
-                }
-
-                if (combo.SelectedItem is not string picked ||
-                    !Enum.TryParse(picked, out TitleBarItemState next))
-                {
-                    return;
-                }
-
-                if (!Session.TitleBarDraft.TrySetState(entry.Id, next))
-                {
-                    // Explicit placement with no width-driven spill means nothing else stops a
-                    // pinned set from running into the tab strip.
-                    ShowTitleBarValidationMessage(
-                        $"At most {TitleBarCatalog.MaxPinned} actions can be pinned. Move one to Overflow or Hidden first.");
-
-                    suppressSelectionChanged = true;
-                    combo.SelectedItem = Session.TitleBarDraft.GetState(entry.Id).ToString();
-                    suppressSelectionChanged = false;
-                    return;
-                }
-
-                ClearTitleBarValidationMessage();
-                RebuildTitleBarRows();
-            };
-
-            placement = combo;
-        }
-
-        var up = new Button
-        {
-            Content = "▲",
-            Classes = { "Pill" },
-            IsEnabled = isPinned && !entry.IsLocked && index > 1,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        up.Click += (s, e) => MoveDraftPinned(entry.Id, -1);
-
-        var down = new Button
-        {
-            Content = "▼",
-            Classes = { "Pill" },
-            IsEnabled = isPinned && !entry.IsLocked && index < Session.TitleBarDraft.CountPinned() - 1,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        down.Click += (s, e) => MoveDraftPinned(entry.Id, +1);
-
-        row.Child = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"),
-            ColumnSpacing = 12,
-            Children = { icon, labels, placement, up, down },
-        };
-
-        Grid.SetColumn(icon, 0);
-        Grid.SetColumn(labels, 1);
-        Grid.SetColumn(placement, 2);
-        Grid.SetColumn(up, 3);
-        Grid.SetColumn(down, 4);
-
-        return row;
-    }
-
-    private void MoveDraftPinned(string id, int delta)
-    {
-        Session.TitleBarDraft.MovePinned(id, delta);
-        RebuildTitleBarRows();
-    }
-
-    private void ShowTitleBarValidationMessage(string message)
-    {
-        var label = this.FindControl<TextBlock>("TitleBarValidationMessage");
-        if (label == null) return;
-        label.Text = message;
-        label.IsVisible = true;
-    }
-
-    private void ClearTitleBarValidationMessage()
-    {
-        var label = this.FindControl<TextBlock>("TitleBarValidationMessage");
-        if (label == null) return;
-        label.IsVisible = false;
-    }
-
-    private void UpdateThemePreview(TerminalTheme theme, string context)
-    {
-        // Update the single preview area we have regardless of whether it's the global theme
-        // or a profile override being touched.
-        var sampleBorder = this.FindControl<Border>("SampleTextBorder");
-        var sampleText = this.FindControl<TextBlock>("SampleTextBlock");
-        var previewArea = this.FindControl<Border>("ThemePreviewArea");
-
-        if (sampleBorder != null) sampleBorder.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-        if (sampleText != null) sampleText.Foreground = new SolidColorBrush(theme.Foreground.ToAvaloniaColor());
-
-        // Also update the container background to match the theme (so it doesn't look like a black box in a light theme)
-        // But lets make it slightly different so we can distinguish the "terminal area"
-        if (previewArea != null)
-        {
-            previewArea.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            // Ensure the preview label is visible against this background
-            var children = (previewArea.Child as StackPanel)?.Children;
-            if (children != null && children.Count > 0 && children[0] is TextBlock label)
-            {
-                // Calculate contrast for the label
-                double lum = (0.299 * theme.Background.R + 0.587 * theme.Background.G + 0.114 * theme.Background.B) / 255.0;
-                label.Foreground = lum > 0.5 ? Brushes.Black : Brushes.White;
-            }
+            return true;
         }
 
         for (int i = 0; i < 16; i++)
         {
-            var swatch = this.FindControl<Border>($"Swatch{i}");
-            if (swatch != null)
+            if (!draft.GetAnsiColor(i % 8, i >= 8).Equals(baseline.GetAnsiColor(i % 8, i >= 8)))
             {
-                swatch.Background = new SolidColorBrush(theme.GetAnsiColor(i % 8, i >= 8).ToAvaloniaColor());
+                return true;
             }
         }
+
+        return false;
     }
 
-    private void OpenThemeEditor(TerminalTheme theme)
+    /// <summary>Moves keyboard focus to a control once layout has made it visible.</summary>
+    private void FocusWhenShown(string name)
     {
-        _editingTheme = theme;
-        var panel = this.FindControl<Border>("ThemeEditorPanel");
-        var nameInput = this.FindControl<TextBox>("EditThemeNameInput");
-        var fgInput = this.FindControl<TextBox>("EditThemeFgInput");
-        var bgInput = this.FindControl<TextBox>("EditThemeBgInput");
-        var cursorInput = this.FindControl<TextBox>("EditThemeCursorInput");
-        var btnDelete = this.FindControl<Button>("BtnDeleteTheme");
+        var control = this.FindControl<Control>(name)!;
+        Dispatcher.UIThread.Post(() => control.Focus(), DispatcherPriority.Input);
+    }
 
-        if (panel != null) panel.IsVisible = true;
-        if (nameInput != null) nameInput.Text = theme.Name;
-        if (fgInput != null) fgInput.Text = theme.Foreground.ToString();
-        if (bgInput != null) bgInput.Text = theme.Background.ToString();
-        if (cursorInput != null) cursorInput.Text = theme.CursorColor.ToString();
-
-        if (btnDelete != null) btnDelete.IsEnabled = theme.Name != "Default";
-
-        UpdateEditorSwatches();
-        UpdateThemePreview(theme, "Editor");
+    /// <summary>Leaves the editor. Unsaved edits are dropped, as the old editor's ✕ did.</summary>
+    private void ShowMainView(bool restoreFocus)
+    {
+        bool wasOpen = IsThemeEditorOpen;
+        _editingTheme = null;
+        _baselineTheme = null;
+        _draftIsSavedTheme = false;
+        this.FindControl<ScrollViewer>("ThemeEditorView")!.IsVisible = false;
+        this.FindControl<ScrollViewer>("AppearanceMainView")!.IsVisible = true;
+        if (restoreFocus && wasOpen)
+        {
+            FocusWhenShown("BtnEditTheme");
+        }
     }
 
     private void UpdateEditorSwatches()
@@ -864,9 +386,10 @@ public partial class AppearancePage : UserControl, ISettingsPage
 
     private void OpenSwatchFlyout(Button target, int index)
     {
-        if (_editingTheme == null) return;
+        // A local, not the field: Back clears _editingTheme while this flyout's handler lives on.
+        if (_editingTheme is not { } theme) return;
 
-        var current = _editingTheme.GetAnsiColor(index % 8, index >= 8);
+        var current = theme.GetAnsiColor(index % 8, index >= 8);
         var hexInput = new TextBox { Text = current.ToString(), Width = 100 };
         var preview = new Border { Width = 30, Height = 30, Background = new SolidColorBrush(current.ToAvaloniaColor()), CornerRadius = new CornerRadius(4), Margin = new Thickness(5, 0, 0, 0) };
 
@@ -875,9 +398,9 @@ public partial class AppearancePage : UserControl, ISettingsPage
             if (Color.TryParse(hexInput.Text, out var color))
             {
                 preview.Background = new SolidColorBrush(color);
-                _editingTheme.SetAnsiColor(index % 8, index >= 8, TermColorHelper.FromAvaloniaColor(color));
+                theme.SetAnsiColor(index % 8, index >= 8, TermColorHelper.FromAvaloniaColor(color));
                 target.Background = new SolidColorBrush(color);
-                UpdateThemePreview(_editingTheme, "Editor");
+                UpdateThemePreview(theme, PreviewSurface.Editor);
             }
         };
 
@@ -892,5 +415,154 @@ public partial class AppearancePage : UserControl, ISettingsPage
         flyout.ShowAt(target);
     }
 
+    /// <summary>
+    /// Paints a preview card: the compact one on the page, or the editor's. They are separate
+    /// cards now that the editor is its own sub-page.
+    /// </summary>
+    private void UpdateThemePreview(TerminalTheme theme, PreviewSurface surface)
+    {
+        bool editor = surface == PreviewSurface.Editor;
+        var background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
+        this.FindControl<Border>(editor ? "EditorPreviewArea" : "ThemePreviewArea")!.Background = background;
+        this.FindControl<Border>(editor ? "EditorSampleTextBorder" : "SampleTextBorder")!.Background = background;
+        this.FindControl<TextBlock>(editor ? "EditorSampleTextBlock" : "SampleTextBlock")!.Foreground =
+            new SolidColorBrush(theme.Foreground.ToAvaloniaColor());
+
+        if (editor)
+        {
+            // The label sits on the theme's own background; keep it readable.
+            double luminance = (0.299 * theme.Background.R + 0.587 * theme.Background.G + 0.114 * theme.Background.B) / 255.0;
+            Text("EditorPreviewLabel").Foreground = luminance > 0.5 ? Brushes.Black : Brushes.White;
+        }
+
+        string swatchPrefix = editor ? "EditorPreviewSwatch" : "Swatch";
+        for (int i = 0; i < 16; i++)
+        {
+            this.FindControl<Border>($"{swatchPrefix}{i}")!.Background =
+                new SolidColorBrush(theme.GetAnsiColor(i % 8, i >= 8).ToAvaloniaColor());
+        }
+    }
+
+    // ── Window ────────────────────────────────────────────────────────────────
+
+    private void WireWindowRows()
+    {
+        var opacity = Slider("WindowOpacitySlider");
+        var opacityDisplay = Text("OpacityValueDisplay");
+        opacity.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != RangeBase.ValueProperty || _session is null)
+            {
+                return;
+            }
+
+            opacityDisplay.Text = FormatPercent(opacity.Value);
+            Session.Preview.Opacity(opacity.Value);
+        };
+
+        var scale = Slider("UiScaleSlider");
+        var scaleDisplay = Text("UiScaleValueDisplay");
+        scale.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != RangeBase.ValueProperty || _session is null)
+            {
+                return;
+            }
+
+            double clamped = UiScale.Clamp(scale.Value);
+            scaleDisplay.Text = FormatUiScale(clamped);
+            Session.Preview.UiScale(clamped);
+        };
+
+        var blur = Combo("BlurList");
+        blur.SelectionChanged += (_, _) =>
+        {
+            if (_session != null && ComboTags.SelectedValue(blur) is { } effect)
+            {
+                Session.Preview.Blur(effect);
+            }
+        };
+    }
+
+    // ── Background image ──────────────────────────────────────────────────────
+
+    private void WireBackgroundImageRows()
+    {
+        var path = this.FindControl<TextBox>("BgImagePathInput")!;
+        var opacity = Slider("BgImageOpacitySlider");
+        var opacityDisplay = Text("BgImageOpacityDisplay");
+
+        path.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextBox.TextProperty)
+            {
+                TriggerBgUpdate();
+            }
+        };
+
+        opacity.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == RangeBase.ValueProperty)
+            {
+                opacityDisplay.Text = FormatPercent(opacity.Value);
+                TriggerBgUpdate();
+            }
+        };
+
+        Combo("BgImageStretchList").SelectionChanged += (_, _) => TriggerBgUpdate();
+
+        this.FindControl<Button>("BtnBrowseImage")!.Click += async (_, _) =>
+        {
+            if (TopLevel.GetTopLevel(this) is not { } topLevel)
+            {
+                return;
+            }
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select Background Image",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp" } },
+                },
+            });
+            if (files.Count > 0)
+            {
+                path.Text = files[0].Path.LocalPath;
+                TriggerBgUpdate();
+            }
+        };
+
+        this.FindControl<Button>("BtnClearImage")!.Click += (_, _) =>
+        {
+            path.Text = "";
+            TriggerBgUpdate();
+        };
+    }
+
+    private void TriggerBgUpdate()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        string path = this.FindControl<TextBox>("BgImagePathInput")!.Text ?? "";
+        double opacity = Slider("BgImageOpacitySlider").Value;
+        string stretch = ComboTags.SelectedValue(Combo("BgImageStretchList")) ?? "UniformToFill";
+        Session.Preview.BackgroundImage(path, opacity, stretch);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string FormatPercent(double value) => $"{(int)(value * 100)}%";
+
     private static string FormatUiScale(double scale) => $"{(int)Math.Round(scale * 100)}%";
+
+    private Slider Slider(string name) => this.FindControl<Slider>(name)!;
+
+    private ComboBox Combo(string name) => this.FindControl<ComboBox>(name)!;
+
+    private TextBlock Text(string name) => this.FindControl<TextBlock>(name)!;
 }

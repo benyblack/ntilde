@@ -10,30 +10,27 @@ using Ntilde.VT;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.NetworkInformation;
-using Avalonia.Threading;
-using Avalonia.Media;
-using Avalonia.Controls.Shapes;
 using Avalonia.Styling;
 using Ntilde.CommandAssist.Application;
 using Ntilde.CommandAssist.Domain;
 using Ntilde.CommandAssist.Models;
 using Ntilde.CommandAssist.ShellIntegration.Remote;
 using Ntilde.Backup;
-using Ntilde.Services.Ssh;
 using Ntilde.Shell.Shortcuts;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Settings;
 
 namespace Ntilde.Settings.Pages;
 
-public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
+/// <summary>
+/// The Profiles page: edits the local terminal profiles. SSH connections are edited in the connection manager; this page shows local profiles only.
+/// </summary>
+public partial class ProfilesPage : UserControl, ISettingsPage
 {
     private SettingsSession? _session;
 
     private TerminalProfile? _selectedProfile;
     private System.Collections.Generic.List<TerminalProfile> _profilesList = new();
-    private DispatcherTimer? _statusTimer;
 
     public ProfilesPage()
     {
@@ -49,27 +46,15 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
         var cwdInput = this.FindControl<TextBox>("ProfileCwdInput");
         var groupInput = this.FindControl<TextBox>("ProfileGroupInput");
         var tagsInput = this.FindControl<TextBox>("ProfileTagsInput");
-        var typeList = this.FindControl<ComboBox>("ProfileTypeList");
-        var sshPanel = this.FindControl<StackPanel>("SshSettingsPanel");
-        var sshHostInput = this.FindControl<TextBox>("SshHostInput");
-        var sshPortInput = this.FindControl<NumericUpDown>("SshPortInput");
-        var sshUserInput = this.FindControl<TextBox>("SshUserInput");
-        var sshKeyPathInput = this.FindControl<TextBox>("SshKeyPathInput");
-        var btnBrowseSshKey = this.FindControl<Button>("BtnBrowseSshKey");
-        var jumpList = this.FindControl<ComboBox>("JumpHostList");
-        var radioAgent = this.FindControl<RadioButton>("RadioAuthAgent");
-        var radioKey = this.FindControl<RadioButton>("RadioAuthKey");
         var checkFont = this.FindControl<CheckBox>("CheckOverrideFont");
         var checkSize = this.FindControl<CheckBox>("CheckOverrideSize");
         var checkTheme = this.FindControl<CheckBox>("CheckOverrideTheme");
         var overrideFontList = this.FindControl<ComboBox>("OverrideFontList");
         var overrideFontSize = this.FindControl<NumericUpDown>("OverrideFontSizeInput");
-        var ligatureToggle = this.FindControl<CheckBox>("LigatureToggle");
         var checkLigatures = this.FindControl<CheckBox>("CheckOverrideLigatures");
         var overrideLigatureToggle = this.FindControl<CheckBox>("OverrideLigatureToggle");
         var importStatus = this.FindControl<TextBlock>("ImportStatusText");
         var btnImportWT = this.FindControl<Button>("BtnImportWT");
-        var btnAddRule = this.FindControl<Button>("BtnAddRule");
         var overrideThemeList = this.FindControl<ComboBox>("OverrideThemeList");
 
         // Profile Controls
@@ -165,83 +150,6 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
         {
             if (_selectedProfile != null)
                 _selectedProfile.Tags = (tagsInput.Text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        };
-
-        // Connection Type and SSH Inputs
-        if (typeList != null)
-        {
-            typeList.SelectedIndex = 0;
-            typeList.SelectionChanged += (s, e) =>
-            {
-                if (_selectedProfile != null)
-                {
-                    _selectedProfile.Type = ConnectionType.Local;
-                    if (sshPanel != null) sshPanel.IsVisible = false;
-                }
-            };
-        }
-
-        if (sshHostInput != null) sshHostInput.KeyUp += (s, e) => { if (_selectedProfile != null) _selectedProfile.SshHost = sshHostInput.Text ?? ""; };
-        if (sshPortInput != null) sshPortInput.ValueChanged += (s, e) => { if (_selectedProfile != null && sshPortInput.Value.HasValue) _selectedProfile.SshPort = (int)sshPortInput.Value.Value; };
-        if (sshUserInput != null) sshUserInput.KeyUp += (s, e) => { if (_selectedProfile != null) _selectedProfile.SshUser = sshUserInput.Text ?? ""; };
-
-        // Advanced SSH Controls
-        if (jumpList != null)
-        {
-            jumpList.SelectionChanged += (s, e) =>
-            {
-                if (_selectedProfile != null && jumpList.SelectedItem is ComboBoxItem item)
-                {
-                    if (item.Tag is Guid gid) _selectedProfile.JumpHostProfileId = gid;
-                    else _selectedProfile.JumpHostProfileId = null;
-                }
-            };
-        }
-
-        if (radioAgent != null)
-        {
-            radioAgent.IsCheckedChanged += (s, e) =>
-            {
-                if (_selectedProfile == null) return;
-                _selectedProfile.UseSshAgent = (radioAgent.IsChecked == true);
-
-                if (sshKeyPathInput != null) sshKeyPathInput.IsEnabled = !_selectedProfile.UseSshAgent;
-                if (btnBrowseSshKey != null) btnBrowseSshKey.IsEnabled = !_selectedProfile.UseSshAgent;
-            };
-        }
-
-        if (btnBrowseSshKey != null)
-        {
-            btnBrowseSshKey.Click += async (s, e) =>
-            {
-                var storage = TopLevel.GetTopLevel(this)?.StorageProvider;
-                if (storage == null) return;
-
-                var files = await storage.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                {
-                    Title = "Select Private Key",
-                    AllowMultiple = false
-                });
-
-                if (files.Count > 0 && sshKeyPathInput != null)
-                {
-                    var path = files[0].Path.LocalPath;
-                    sshKeyPathInput.Text = path;
-                    if (_selectedProfile != null)
-                    {
-                        _selectedProfile.IdentityFilePath = path;
-                        _selectedProfile.SshKeyPath = path; // Backward compat sync
-                    }
-                }
-            };
-        }
-        if (sshKeyPathInput != null) sshKeyPathInput.KeyUp += (s, e) =>
-        {
-            if (_selectedProfile != null)
-            {
-                _selectedProfile.IdentityFilePath = sshKeyPathInput.Text ?? "";
-                _selectedProfile.SshKeyPath = sshKeyPathInput.Text ?? ""; // Sync
-            }
         };
 
         // Overrides Logic
@@ -368,15 +276,6 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
                 }
             };
         }
-
-        if (btnAddRule != null) btnAddRule.Click += BtnAddForward_Click;
-
-        _statusTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(2)
-        };
-        _statusTimer.Tick += (s, e) => RefreshForwardsList();
-        _statusTimer.Start();
     }
 
     public SettingsPage Page => SettingsPage.Profiles;
@@ -424,13 +323,6 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
         target.DefaultProfileId = ResolveDefaultLocalProfileId(target.DefaultProfileId, target.Profiles);
     }
 
-    public void Dispose()
-    {
-        _statusTimer?.Stop();
-        _statusTimer = null;
-        GC.SuppressFinalize(this);
-    }
-
     private void PopulateOverrideFonts()
     {
         var overrideFontList = this.FindControl<ComboBox>("OverrideFontList")!;
@@ -454,7 +346,7 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
 
     /// <summary>
     /// Fix (I1 residual #2): <c>_selectedProfile</c> points at an entry of the PRE-reload
-    /// <c>_profilesList</c>. <see cref="ReloadSettingsAfterExternalChangeAsync"/> rebuilds
+    /// <c>_profilesList</c>. <see cref="SettingsSession.ReloadAfterExternalChangeAsync"/> re-Loads this page, which rebuilds
     /// <c>_profilesList</c> with fresh <see cref="TerminalProfile"/> instances (freshly
     /// deserialized from the reloaded settings.json) but, without this, never re-points
     /// <c>_selectedProfile</c> at the corresponding new instance - it is left dangling,
@@ -519,17 +411,6 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
         if (groupInput != null) groupInput.Text = string.Empty;
         var tagsInput = this.FindControl<TextBox>("ProfileTagsInput");
         if (tagsInput != null) tagsInput.Text = string.Empty;
-
-        var sshHostInput = this.FindControl<TextBox>("SshHostInput");
-        if (sshHostInput != null) sshHostInput.Text = string.Empty;
-        var sshPortInput = this.FindControl<NumericUpDown>("SshPortInput");
-        if (sshPortInput != null) sshPortInput.Value = null;
-        var sshUserInput = this.FindControl<TextBox>("SshUserInput");
-        if (sshUserInput != null) sshUserInput.Text = string.Empty;
-        var sshKeyPathInput = this.FindControl<TextBox>("SshKeyPathInput");
-        if (sshKeyPathInput != null) sshKeyPathInput.Text = string.Empty;
-        var sshPasswordInput = this.FindControl<TextBox>("SshPasswordInput");
-        if (sshPasswordInput != null) sshPasswordInput.Text = string.Empty;
 
         var checkOverrideFont = this.FindControl<CheckBox>("CheckOverrideFont");
         if (checkOverrideFont != null) checkOverrideFont.IsChecked = false;
@@ -655,18 +536,6 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
         this.FindControl<TextBox>("ProfileGroupInput")!.Text = profile.Group ?? "General";
         this.FindControl<TextBox>("ProfileTagsInput")!.Text = string.Join(", ", profile.Tags ?? new System.Collections.Generic.List<string>());
 
-        var typeList = this.FindControl<ComboBox>("ProfileTypeList");
-        if (typeList != null) typeList.SelectedIndex = 0;
-
-        var sshPanel = this.FindControl<StackPanel>("SshSettingsPanel");
-        if (sshPanel != null) sshPanel.IsVisible = false;
-
-        this.FindControl<TextBox>("SshHostInput")!.Text = profile.SshHost ?? "";
-        this.FindControl<NumericUpDown>("SshPortInput")!.Value = profile.SshPort;
-        this.FindControl<TextBox>("SshUserInput")!.Text = profile.SshUser ?? "";
-        this.FindControl<TextBox>("SshKeyPathInput")!.Text = profile.SshKeyPath ?? "";
-        this.FindControl<TextBox>("SshPasswordInput")!.Text = string.Empty;
-
         this.FindControl<CheckBox>("CheckOverrideFont")!.IsChecked = profile.FontFamily != null;
         this.FindControl<CheckBox>("CheckOverrideSize")!.IsChecked = profile.FontSize.HasValue;
         this.FindControl<CheckBox>("CheckOverrideTheme")!.IsChecked = profile.ThemeName != null;
@@ -696,122 +565,5 @@ public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
             foreach (var obj in overrideThemeList.Items)
                 if (obj is ComboBoxItem item && item.Content?.ToString() == targetTheme) { overrideThemeList.SelectedItem = item; break; }
         }
-
-        // SSH profile editing moved to Connection Manager.
-    }
-
-    private void PopulateJumpHostList(TerminalProfile current)
-    {
-        var combo = this.FindControl<ComboBox>("JumpHostList");
-        if (combo == null) return;
-
-        combo.Items.Clear();
-        var noneItem = new ComboBoxItem { Content = "Direct Connection (None)" };
-        combo.Items.Add(noneItem);
-        combo.SelectedItem = noneItem;
-
-        foreach (var p in _profilesList.Where(x => x.Type == ConnectionType.SSH && x.Id != current.Id))
-        {
-            var item = new ComboBoxItem { Content = p.Name, Tag = p.Id };
-            combo.Items.Add(item);
-            if (current.JumpHostProfileId == p.Id)
-            {
-                combo.SelectedItem = item;
-            }
-        }
-    }
-
-    private void RefreshForwardsList()
-    {
-        var panel = this.FindControl<StackPanel>("ForwardsList");
-        if (panel == null || _selectedProfile == null) return;
-        panel.Children.Clear();
-        foreach (var f in _selectedProfile.Forwards)
-        {
-            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto, *, Auto"), Margin = new Thickness(0, 2) };
-
-            // Status Indicator
-            bool isListening = CheckIfPortIsListening(f);
-            var dot = new Ellipse
-            {
-                Width = 8,
-                Height = 8,
-                Fill = isListening ? Brushes.LimeGreen : Brushes.Gray,
-                Margin = new Thickness(5, 0),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            ToolTip.SetTip(dot, isListening ? "Active / Listening" : "Inactive");
-
-            var txt = new TextBlock { Text = f.ToString(), VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
-            var btn = new Button
-            {
-                Content = "×",
-                Classes = { "Danger" },
-                Width = 24,
-                Height = 24,
-                Padding = new Thickness(0),
-                Tag = f
-            };
-            btn.Click += BtnRemoveForward_Click;
-
-            Grid.SetColumn(dot, 0);
-            Grid.SetColumn(txt, 1);
-            Grid.SetColumn(btn, 2);
-
-            grid.Children.Add(dot);
-            grid.Children.Add(txt);
-            grid.Children.Add(btn);
-            panel.Children.Add(grid);
-        }
-    }
-
-    private static bool CheckIfPortIsListening(ForwardingRule rule)
-    {
-        try
-        {
-            // Dynamic (-D) or Local (-L) both listen on a local port
-            if (rule.Type == ForwardingType.Remote) return false; // Remote forwards listen on the SERVER side
-
-            string portStr = rule.LocalAddress;
-            if (portStr.Contains(':')) portStr = portStr.Split(':').Last();
-            if (!int.TryParse(portStr, out int port)) return false;
-
-            var properties = IPGlobalProperties.GetIPGlobalProperties();
-            var listeners = properties.GetActiveTcpListeners();
-            return listeners.Any(l => l.Port == port);
-        }
-        catch { return false; }
-    }
-
-    private void BtnAddForward_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (_selectedProfile == null) return;
-
-        var typeBox = this.FindControl<ComboBox>("RuleInputType");
-        var localBox = this.FindControl<TextBox>("RuleInputLocal");
-        var remoteBox = this.FindControl<TextBox>("RuleInputRemote");
-
-        if (string.IsNullOrWhiteSpace(localBox?.Text)) return;
-
-        var rule = new ForwardingRule
-        {
-            Type = (ForwardingType)(typeBox?.SelectedIndex ?? 0),
-            LocalAddress = localBox.Text.Trim(),
-            RemoteAddress = remoteBox?.Text?.Trim() ?? ""
-        };
-
-        _selectedProfile.Forwards.Add(rule);
-        RefreshForwardsList();
-
-        // Clear inputs
-        localBox.Text = "";
-        if (remoteBox != null) remoteBox.Text = "";
-    }
-
-    private void BtnRemoveForward_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (_selectedProfile == null || sender is not Button btn || btn.Tag is not ForwardingRule rule) return;
-        _selectedProfile.Forwards.Remove(rule);
-        RefreshForwardsList();
     }
 }
