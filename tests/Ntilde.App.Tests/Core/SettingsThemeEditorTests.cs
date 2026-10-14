@@ -1,11 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 
@@ -202,6 +205,164 @@ public sealed class SettingsThemeEditorTests
             {
                 window.Close();
             }
+        }
+    }
+
+    private static RawInputModifiers Primary => OperatingSystem.IsMacOS() ? RawInputModifiers.Meta : RawInputModifiers.Control;
+
+    private static string SettingsText(SettingsTestRoot root) => File.ReadAllText(Path.Combine(root.Root, "settings.json"));
+
+    [AvaloniaFact]
+    public void PrimaryS_WithUnsavedThemeEdits_DoesNotDiscardThem()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Type(page, "EditThemeBgInput", "#123456");
+                string before = SettingsText(root);
+
+                window.KeyPress(Key.S, Primary, PhysicalKey.S, "s");
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.True(window.IsVisible);
+                Assert.True(page.IsThemeEditorOpen);
+                Assert.Equal("#123456", page.FindControl<TextBox>("EditThemeBgInput")!.Text);
+                Assert.Equal("Save the theme or go back first.", page.FindControl<TextBlock>("ThemeEditorStatus")!.Text);
+                Assert.Equal(before, SettingsText(root));
+            }
+            finally
+            {
+                if (window.IsVisible)
+                {
+                    window.Close();
+                }
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void PrimaryS_WithTheEditorOpenAndUntouched_SavesAndCloses()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            bool closed = false;
+            window.Closed += (_, _) => closed = true;
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs(); // the editor's own fill-in must not read as an edit
+
+                window.KeyPress(Key.S, Primary, PhysicalKey.S, "s");
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.True(closed);
+            }
+            finally
+            {
+                if (window.IsVisible)
+                {
+                    window.Close();
+                }
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void FooterSave_WithUnsavedThemeEdits_IsRefused_AndASavedThemeSavesAgain()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            bool closed = false;
+            window.Closed += (_, _) => closed = true;
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Type(page, "EditThemeNameInput", "Renamed");
+                Click(window, "BtnSave");
+                Assert.False(closed);
+
+                Click(page, "BtnSaveTheme"); // the edit is now saved, nothing is pending
+                Click(window, "BtnSave");
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(closed);
+            }
+            finally
+            {
+                if (window.IsVisible)
+                {
+                    window.Close();
+                }
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void Edit_MovesFocusIntoTheEditor_AndBackReturnsItToEdit()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs();
+                var editor = page.FindControl<ScrollViewer>("ThemeEditorView")!;
+                var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() as Visual;
+                Assert.True(focused is not null && editor.IsVisualAncestorOf(focused), "Focus is not inside the editor.");
+
+                Click(page, "BtnThemeEditorBack");
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.Same(page.FindControl<Button>("BtnEditTheme"), TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void Delete_IsDisabledOnAnUnsavedNewThemeDraft_UntilItIsSaved()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            Click(page, "BtnNewTheme");
+            var delete = page.FindControl<Button>("BtnDeleteTheme")!;
+            Assert.False(delete.IsEnabled);
+
+            Click(page, "BtnDeleteTheme"); // a disabled button's click must not delete anything either
+            Assert.True(page.IsThemeEditorOpen);
+
+            Click(page, "BtnSaveTheme");
+            Assert.True(delete.IsEnabled);
+        }
+    }
+
+    [AvaloniaFact]
+    public void Load_ClosesTheEditorAndDropsItsDraft()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            Click(page, "BtnEditTheme");
+            Type(page, "EditThemeBgInput", "#123456");
+
+            page.Load(window.Session);
+
+            Assert.False(page.IsThemeEditorOpen);
+            Assert.True(page.FindControl<ScrollViewer>("AppearanceMainView")!.IsVisible);
+            Assert.Null(page.Validate());
         }
     }
 }

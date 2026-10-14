@@ -18,6 +18,10 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     private SettingsSession? _session;
     private TerminalTheme? _editingTheme;
 
+    // The draft as last opened or saved. Unsaved edits are whatever differs from it.
+    private TerminalTheme? _baselineTheme;
+    private bool _draftIsSavedTheme;
+
     public AppearancePage()
     {
         InitializeComponent();
@@ -46,6 +50,9 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     {
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
+
+        // Load also runs after a backup restore. The draft was cut from the old settings; drop it.
+        ShowMainView(restoreFocus: false);
         PopulateThemes();
         LoadControls();
 
@@ -55,7 +62,21 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         UpdateThemePreview(session.Settings.ActiveTheme, PreviewSurface.Page);
     }
 
-    public SettingsValidationError? Validate() => null;
+    /// <summary>
+    /// The editor's draft lives only in this page until Save theme, so a window Save (Ctrl+S or the
+    /// footer) while it holds unsaved edits would drop them. Refuse and say why.
+    /// </summary>
+    public SettingsValidationError? Validate()
+    {
+        if (!IsThemeEditorOpen || !HasUnsavedThemeEdits())
+        {
+            return null;
+        }
+
+        const string message = "Save the theme or go back first.";
+        Text("ThemeEditorStatus").Text = message;
+        return new SettingsValidationError(SettingsPage.Appearance, null, message);
+    }
 
     public void Collect(TerminalSettings target)
     {
@@ -82,7 +103,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     public bool IsSubPageOpen => IsThemeEditorOpen;
 
-    public void CloseSubPage() => ShowMainView();
+    public void CloseSubPage() => ShowMainView(restoreFocus: true);
 
     private void LoadControls()
     {
@@ -130,11 +151,11 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         {
             if (Combo("ThemeList").SelectedItem is ComboBoxItem item)
             {
-                OpenThemeEditor(Session.Settings.ThemeManager.GetTheme(item.Content?.ToString() ?? "Default").Clone());
+                OpenThemeEditor(Session.Settings.ThemeManager.GetTheme(item.Content?.ToString() ?? "Default").Clone(), isSavedTheme: true);
             }
         };
 
-        this.FindControl<Button>("BtnNewTheme")!.Click += (_, _) => OpenThemeEditor(new TerminalTheme { Name = "New Theme" });
+        this.FindControl<Button>("BtnNewTheme")!.Click += (_, _) => OpenThemeEditor(new TerminalTheme { Name = "New Theme" }, isSavedTheme: false);
 
         this.FindControl<Button>("BtnImportTheme")!.Click += async (_, _) =>
         {
@@ -195,7 +216,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     private void WireThemeEditor()
     {
-        this.FindControl<Button>("BtnThemeEditorBack")!.Click += (_, _) => ShowMainView();
+        this.FindControl<Button>("BtnThemeEditorBack")!.Click += (_, _) => ShowMainView(restoreFocus: true);
 
         var nameInput = this.FindControl<TextBox>("EditThemeNameInput")!;
         var status = Text("ThemeEditorStatus");
@@ -229,6 +250,9 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             // colours until it was reopened.
             Session.Preview.RepaintWindow(Session.Settings.ThemeManager.GetTheme(_editingTheme.Name));
 
+            _baselineTheme = _editingTheme.Clone();
+            _draftIsSavedTheme = true;
+            this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = _editingTheme.Name != "Default";
             Text("ThemeEditorTitle").Text = _editingTheme.Name;
             status.Text = "Saved!";
             DispatcherTimer.RunOnce(() => status.Text = "", TimeSpan.FromSeconds(2));
@@ -236,7 +260,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
         this.FindControl<Button>("BtnDeleteTheme")!.Click += (_, _) =>
         {
-            if (_editingTheme is null || _editingTheme.Name == "Default")
+            if (_editingTheme is null || !_draftIsSavedTheme || _editingTheme.Name == "Default")
             {
                 return;
             }
@@ -245,7 +269,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             PopulateThemes();
             Session.RaiseThemesChanged();
             Combo("ThemeList").SelectedIndex = 0;
-            ShowMainView();
+            ShowMainView(restoreFocus: true);
         };
 
         for (int i = 0; i < 16; i++)
@@ -274,14 +298,16 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         };
     }
 
-    private void OpenThemeEditor(TerminalTheme theme)
+    private void OpenThemeEditor(TerminalTheme theme, bool isSavedTheme)
     {
         _editingTheme = theme;
+        _baselineTheme = theme.Clone();
+        _draftIsSavedTheme = isSavedTheme;
         this.FindControl<TextBox>("EditThemeNameInput")!.Text = theme.Name;
         this.FindControl<TextBox>("EditThemeFgInput")!.Text = theme.Foreground.ToString();
         this.FindControl<TextBox>("EditThemeBgInput")!.Text = theme.Background.ToString();
         this.FindControl<TextBox>("EditThemeCursorInput")!.Text = theme.CursorColor.ToString();
-        this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = theme.Name != "Default";
+        this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = isSavedTheme && theme.Name != "Default";
         Text("ThemeEditorTitle").Text = theme.Name;
         Text("ThemeEditorStatus").Text = "";
 
@@ -290,14 +316,59 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
         this.FindControl<ScrollViewer>("AppearanceMainView")!.IsVisible = false;
         this.FindControl<ScrollViewer>("ThemeEditorView")!.IsVisible = true;
+        FocusWhenShown("BtnThemeEditorBack");
+    }
+
+    /// <summary>
+    /// True when the open draft differs from what was last opened or saved. Compared on demand, so
+    /// the programmatic text the editor fills in on open (raised later) cannot read as an edit.
+    /// </summary>
+    private bool HasUnsavedThemeEdits()
+    {
+        if (_editingTheme is not { } draft || _baselineTheme is not { } baseline)
+        {
+            return false;
+        }
+
+        if (!string.Equals(this.FindControl<TextBox>("EditThemeNameInput")!.Text ?? "", baseline.Name, StringComparison.Ordinal)
+            || !draft.Foreground.Equals(baseline.Foreground)
+            || !draft.Background.Equals(baseline.Background)
+            || !draft.CursorColor.Equals(baseline.CursorColor))
+        {
+            return true;
+        }
+
+        for (int i = 0; i < 16; i++)
+        {
+            if (!draft.GetAnsiColor(i % 8, i >= 8).Equals(baseline.GetAnsiColor(i % 8, i >= 8)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Moves keyboard focus to a control once layout has made it visible.</summary>
+    private void FocusWhenShown(string name)
+    {
+        var control = this.FindControl<Control>(name)!;
+        Dispatcher.UIThread.Post(() => control.Focus(), DispatcherPriority.Input);
     }
 
     /// <summary>Leaves the editor. Unsaved edits are dropped, as the old editor's ✕ did.</summary>
-    private void ShowMainView()
+    private void ShowMainView(bool restoreFocus)
     {
+        bool wasOpen = IsThemeEditorOpen;
         _editingTheme = null;
+        _baselineTheme = null;
+        _draftIsSavedTheme = false;
         this.FindControl<ScrollViewer>("ThemeEditorView")!.IsVisible = false;
         this.FindControl<ScrollViewer>("AppearanceMainView")!.IsVisible = true;
+        if (restoreFocus && wasOpen)
+        {
+            FocusWhenShown("BtnEditTheme");
+        }
     }
 
     private void UpdateEditorSwatches()
