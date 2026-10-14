@@ -85,13 +85,33 @@ public sealed class SettingsWindowRoundTripTests
     public void SaveWithoutTouchingAnything_LeavesEverySettingAsItWas()
     {
         using var root = SettingsTestRoot.WithSettings(SeedJson());
+        AssertSaveLeavesSettingsAsLoaded(root, requireEveryFieldNonDefault: true);
+    }
+
+    /// <summary>
+    /// The same round trip with every window-owned bool at the opposite polarity. SaveAndClose reads
+    /// IsChecked == true, so a checkbox a page forgot to Load also writes false, and a false seed
+    /// alone cannot tell that from a loaded one.
+    /// </summary>
+    [AvaloniaFact]
+    public void SaveWithoutTouchingAnything_LeavesEveryFlippedBoolAsItWas()
+    {
+        using var root = SettingsTestRoot.WithSettings(FlipWindowOwnedBools(SeedJson()));
+        AssertSaveLeavesSettingsAsLoaded(root, requireEveryFieldNonDefault: false);
+    }
+
+    private static void AssertSaveLeavesSettingsAsLoaded(SettingsTestRoot root, bool requireEveryFieldNonDefault)
+    {
         root.CopyShippedTheme("GitHubLight.json");
         AssertTitleBarSeedIsCanonical();
 
         // What a plain load and save writes: the file the window must reproduce.
         TerminalSettings.Load().Save();
         using JsonDocument expected = root.ReadSettings();
-        AssertEveryWindowOwnedFieldIsNonDefault(expected.RootElement);
+        if (requireEveryFieldNonDefault)
+        {
+            AssertEveryWindowOwnedFieldIsNonDefault(expected.RootElement);
+        }
 
         var window = new Ntilde.SettingsWindow();
         window.FindControl<Button>("BtnSave")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -100,6 +120,20 @@ public sealed class SettingsWindowRoundTripTests
         AssertJsonEquivalent(expected.RootElement, actual.RootElement, "$");
     }
 
+    /// <summary>Flips the top-level bool fields only; profile fields belong to the editor.</summary>
+    private static string FlipWindowOwnedBools(string json)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsObject();
+        foreach (string name in WindowOwnedFields)
+        {
+            if (node[name] is System.Text.Json.Nodes.JsonValue value && value.TryGetValue(out bool current))
+            {
+                node[name] = !current;
+            }
+        }
+
+        return node.ToJsonString();
+    }
     /// <summary>
     /// Pins today's behaviour for the profile fields the editor does not own.
     /// BuildLocalProfilesForEditor copies 13 fields, so any Settings Save resets everything else on
