@@ -81,7 +81,8 @@ public sealed partial class ReleaseWorkflowTests
     /// <summary>
     /// Release hardening item 4: a release build refuses a remote install for any RID it has no usable pin for, so every
     /// App build that embeds the ntilde-mux checksums checks their exact shape first (<c>scripts/ci/check-mux-sha256.sh</c>,
-    /// tested by <c>scripts/tests/mux_sha256_check_tests.py</c>) rather than only that the files are not empty.
+    /// tested by <c>scripts/tests/mux_sha256_check_tests.py</c>) rather than only that the files are not empty. The
+    /// script may run from the workflow ref's own checkout (publish_linux's <c>.workflow-ref/</c>).
     /// </summary>
     [Fact]
     public void Every_app_build_that_embeds_the_ntilde_mux_pins_checks_their_format_first()
@@ -95,7 +96,7 @@ public sealed partial class ReleaseWorkflowTests
             if (embed < 0) continue;
             embedding.Add(job.Name);
 
-            int check = Array.FindIndex(steps, s => s.Any(l => StripComment(l).Contains("bash scripts/ci/check-mux-sha256.sh \"$MUX_SHA256_DIR\"", StringComparison.Ordinal)));
+            int check = Array.FindIndex(steps, s => s.Any(l => StripComment(l).Contains("scripts/ci/check-mux-sha256.sh \"$MUX_SHA256_DIR\"", StringComparison.Ordinal)));
             Assert.True(check >= 0 && check < embed,
                 $"{job.Name} embeds the ntilde-mux checksums without first running scripts/ci/check-mux-sha256.sh on them: a malformed one would ship an App that refuses remote installs for that platform.");
         }
@@ -105,15 +106,39 @@ public sealed partial class ReleaseWorkflowTests
 
     private const string ReleaseNotesFile = "artifacts/velopack-release-notes.md";
 
+    /// <summary>release_metadata's output carrying the protocol range to a job that must not run the script itself.</summary>
+    private const string RangeOutput = "mux_protocol_range";
+
+    /// <summary>The commit release_metadata read the range at, which the job given the range must build.</summary>
+    private const string CommitOutput = "protocol_commit";
+
     /// <summary>
     /// Release hardening item 6 (Phase 5 R10): an installed app reads the new build's multiplexer protocol range from the
     /// staged update's release notes, and a missing marker reads as compatible. So every <c>vpk pack</c> ships the notes
-    /// file, and an earlier step of the same job writes it from <c>scripts/ci/mux-protocol-range.sh</c>.
+    /// file, and an earlier step of the same job writes it from <c>scripts/ci/mux-protocol-range.sh</c> - run there, or
+    /// run by release_metadata and handed over as its <c>mux_protocol_range</c> output.
     /// </summary>
     [Fact]
     public void Every_vpk_pack_ships_the_multiplexer_protocol_marker()
     {
         Dictionary<string, Job> jobs = ParseJobs(File.ReadAllLines(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml")));
+        Assert.Contains(jobs[GuardJob].Body, l => StripComment(l).Trim() == $"{RangeOutput}: ${{{{ steps.protocol.outputs.{RangeOutput} }}}}");
+        Assert.Contains(jobs[GuardJob].Body, l => StripComment(l).Trim() == $"{CommitOutput}: ${{{{ steps.protocol.outputs.{CommitOutput} }}}}");
+        string[] producer = Steps(jobs[GuardJob].Body).Single(s => s.Any(l => StripComment(l).Trim() == "id: protocol")).Select(l => StripComment(l).Trim()).ToArray();
+        foreach (string expected in new[]
+        {
+            "CHECKOUT_REF: ${{ steps.meta.outputs.checkout_ref }}",
+            "commit=\"$(gh api \"repos/$GH_REPO/commits/${CHECKOUT_REF#refs/tags/}\" --jq .sha)\"",
+            "\"repos/$GH_REPO/contents/src/Ntilde.Mux.Contracts/MuxProtocol.cs\" \\",
+            "-f ref=\"$commit\" > \"$file\"",
+            "range=\"$(bash scripts/ci/mux-protocol-range.sh \"$file\")\"",
+            $"echo \"{CommitOutput}=$commit\" >> \"$GITHUB_OUTPUT\"",
+            $"echo \"{RangeOutput}=$range\" >> \"$GITHUB_OUTPUT\"",
+        })
+        {
+            Assert.True(producer.Contains(expected), $"{GuardJob}'s {RangeOutput} is no longer read from checkout_ref's MuxProtocol.cs, pinned to one commit, by scripts/ci/mux-protocol-range.sh: missing `{expected}`.");
+        }
+
         int packs = 0;
         foreach (Job job in jobs.Values)
         {
@@ -131,9 +156,24 @@ public sealed partial class ReleaseWorkflowTests
                 Assert.True(lines.Skip(pack).Take(end - pack + 1).Any(l => l.Trim().TrimEnd('\\', '`').Trim() == $"--releaseNotes {ReleaseNotesFile}"),
                     $"A vpk pack in {job.Name} does not pass --releaseNotes {ReleaseNotesFile}: installed apps would read its update as protocol-compatible whatever it speaks.");
 
-                bool written = steps.Take(i).Any(s => s.Any(l => StripComment(l).Contains("bash scripts/ci/mux-protocol-range.sh", StringComparison.Ordinal))
-                    && s.Any(l => StripComment(l).Contains($"ntilde-mux-protocol: %s -->\\n' \"$range\" > {ReleaseNotesFile}", StringComparison.Ordinal)));
+                bool handedOver = false;
+                bool written = steps.Take(i).Any(s =>
+                {
+                    string[] notes = s.Select(l => StripComment(l).Trim()).ToArray();
+                    if (!notes.Any(l => l.Contains($"ntilde-mux-protocol: %s -->\\n' \"$range\" > {ReleaseNotesFile}", StringComparison.Ordinal))) return false;
+                    if (notes.Any(l => l.StartsWith("range=\"$(bash scripts/ci/mux-protocol-range.sh", StringComparison.Ordinal))) return true;
+                    handedOver = notes.Contains($"MUX_PROTOCOL_RANGE: ${{{{ needs.{GuardJob}.outputs.{RangeOutput} }}}}") && notes.Contains("range=\"$MUX_PROTOCOL_RANGE\"");
+                    return handedOver;
+                });
                 Assert.True(written, $"No step before {job.Name}'s vpk pack writes {ReleaseNotesFile} from scripts/ci/mux-protocol-range.sh.");
+
+                // A handed-over range describes the commit release_metadata read it at, so that is what this job builds.
+                if (handedOver)
+                {
+                    string[] refs = job.Body.Select(l => StripComment(l).Trim()).Where(l => l.StartsWith("ref: ", StringComparison.Ordinal)).ToArray();
+                    Assert.True(refs.SequenceEqual([$"ref: ${{{{ needs.{GuardJob}.outputs.{CommitOutput} }}}}"]),
+                        $"{job.Name} writes {GuardJob}'s protocol range into its notes but does not build exactly {CommitOutput}: {string.Join(", ", refs)}.");
+                }
             }
         }
 
