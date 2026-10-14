@@ -134,6 +134,14 @@ public sealed class SettingsWindowSearchTests
             window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
             window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
             Assert.Equal(0, Results(window).SelectedIndex);
+
+            int last = Shown(window).Count - 1;
+            for (int i = 0; i <= last + 1; i++)
+            {
+                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+            }
+
+            Assert.Equal(last, Results(window).SelectedIndex);
         }
         finally
         {
@@ -457,6 +465,59 @@ public sealed class SettingsWindowSearchTests
         {
             window.Close();
         }
+    }
+
+    /// <summary>The chord goes to the focused binding editor, which may be recording Ctrl+F as a binding.</summary>
+    [AvaloniaFact]
+    public void PrimaryF_InAShortcutEditor_IsLeftToTheEditor()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            TextBox editor = SettingsPageTests.BindingEditorFor(window.GetPage<ShortcutsPage>(), "Settings");
+            editor.Focus();
+
+            window.KeyPress(Key.F, Primary, PhysicalKey.F, "f");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.False(Box(window).IsFocused);
+            Assert.True(editor.IsFocused);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Command Assist rewrites its descriptions on a rebind, and search reads the new text.</summary>
+    [AvaloniaFact]
+    public void ARebind_IsSearchable_ByItsNewChord()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        Assert.Empty(window.SearchIndex.Search("Ctrl+Alt+H"));
+
+        window.Session.ShortcutDraft["command_assist_history"] = "Ctrl+Alt+H";
+        window.Session.RaiseShortcutsChanged();
+
+        Assert.Contains(window.SearchIndex.Search("Ctrl+Alt+H"), r => r.Entry.RowId == "remember-commands");
+    }
+
+    /// <summary>An Import or Restore reloads every page, and search reads the reloaded text.</summary>
+    [AvaloniaFact]
+    public async Task AnImportOrRestore_IsSearchable_ByTheChordItBrought()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        Assert.Empty(window.SearchIndex.Search("Ctrl+Alt+H"));
+        root.Tree.WriteFile("settings.json", """{"Keybindings":{"command_assist_history":"Ctrl+Alt+H"}}""");
+
+        await window.ReloadSettingsAfterExternalChangeAsync();
+
+        Assert.Contains(window.SearchIndex.Search("Ctrl+Alt+H"), r => r.Entry.RowId == "remember-commands");
     }
 
     private static void AssertPageShown(Ntilde.SettingsWindow window, SettingsPage page)
