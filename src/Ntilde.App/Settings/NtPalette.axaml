@@ -1,0 +1,38 @@
+<!-- The Nt* chrome palette shared by the Settings window and the connection manager.
+
+     Each surface merges its OWN instance (new NtPalette()), so recolouring one never touches the
+     other. ThemePaletteResources.Apply recolours these brushes in place on a theme switch, which is
+     why it resolves keys through merged dictionaries (TryGetResource) rather than reading the
+     owning dictionary directly.
+
+     A class rather than a ResourceInclude URI: loading by URI goes through the runtime loader and
+     trips IL2026 in the NativeAOT release build (see UI/UiScaleWindowTheme.axaml.cs).
+
+     These are the defaults both surfaces shipped with before the move; theme v2 swaps them for
+     app tokens in this one file. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:Class="Ntilde.Settings.NtPalette">
+    <SolidColorBrush x:Key="NtWindowBg"        Color="#16181d"/>
+    <SolidColorBrush x:Key="NtChromeBg"        Color="#1c1f26"/>
+    <SolidColorBrush x:Key="NtPanel"           Color="#23272f"/>
+    <SolidColorBrush x:Key="NtPanelAlt"        Color="#1a1d23"/>
+    <SolidColorBrush x:Key="NtHairline"        Color="#2a2f38"/>
+    <SolidColorBrush x:Key="NtHairlineStrong"  Color="#353b46"/>
+    <SolidColorBrush x:Key="NtFg"              Color="#e6e8ec"/>
+    <SolidColorBrush x:Key="NtFg2"             Color="#b4bac4"/>
+    <SolidColorBrush x:Key="NtFg3"             Color="#8b93a1"/>
+    <SolidColorBrush x:Key="NtFg4"             Color="#5c6370"/>
+    <SolidColorBrush x:Key="NtBlue"            Color="#61afef"/>
+    <SolidColorBrush x:Key="NtBlueDim"         Color="#2461afef"/>
+    <SolidColorBrush x:Key="NtBlueFaint"       Color="#1561afef"/>
+    <SolidColorBrush x:Key="NtBlueBorder"      Color="#4d61afef"/>
+    <SolidColorBrush x:Key="NtAccentHover"     Color="#7cc1f5"/>
+    <SolidColorBrush x:Key="NtAccentPressed"   Color="#4f9bde"/>
+    <SolidColorBrush x:Key="NtAccentFg"        Color="#0a1622"/>
+    <SolidColorBrush x:Key="NtGreen"           Color="#98c379"/>
+    <SolidColorBrush x:Key="NtYellow"          Color="#e5c07b"/>
+    <SolidColorBrush x:Key="NtRed"             Color="#e06c75"/>
+    <SolidColorBrush x:Key="NtMagenta"         Color="#c678dd"/>
+    <FontFamily x:Key="NtMono">JetBrains Mono, Cascadia Mono, Consolas, Menlo, monospace</FontFamily>
+</ResourceDictionary>

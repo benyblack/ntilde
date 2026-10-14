@@ -52,11 +52,28 @@ public sealed class TestAppDataRoot : IDisposable
         Directory.CreateDirectory(RootPath);
         Environment.SetEnvironmentVariable(EnvVar, RootPath);
 
+        Isolate(RootPath);
+    }
+
+    /// <summary>
+    /// Forces <see cref="AppPaths.EnsureInitialized"/> (once per process, it seeds whichever root is
+    /// current with the shipped themes and any legacy session / debug log), then empties what it may
+    /// have put there: themes, sessions, logs and settings.json. The root must already be the value of
+    /// <c>NTILDE_APPDATA_ROOT</c>. Shared by every test scope that owns a root, so which scope happens
+    /// to be first in the process no longer decides what the others see.
+    /// </summary>
+    internal static void Isolate(string rootPath)
+    {
         AppPaths.EnsureInitialized();
 
         // settings.json goes too, not just the session: a migrated one chooses the default profile
         // a startup tab is built from. A scope means defaults, from nothing.
-        Sweep();
+        foreach (string dir in new[] { "themes", "sessions", "logs" })
+        {
+            try { Directory.Delete(Path.Combine(rootPath, dir), recursive: true); } catch { /* best effort */ }
+        }
+
+        try { File.Delete(Path.Combine(rootPath, "settings.json")); } catch { /* best effort */ }
     }
 
     /// <summary>The scratch directory <see cref="AppPaths.RootDirectory"/> resolves to inside the scope.</summary>
@@ -70,11 +87,5 @@ public sealed class TestAppDataRoot : IDisposable
     {
         Environment.SetEnvironmentVariable(EnvVar, _previousRoot);
         try { Directory.Delete(RootPath, recursive: true); } catch { /* best effort */ }
-    }
-
-    private void Sweep()
-    {
-        try { Directory.Delete(Path.Combine(RootPath, "sessions"), recursive: true); } catch { /* best effort */ }
-        try { File.Delete(Path.Combine(RootPath, "settings.json")); } catch { /* best effort */ }
     }
 }
