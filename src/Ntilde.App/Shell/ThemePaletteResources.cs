@@ -45,7 +45,11 @@ internal static class ThemePaletteResources
 
     private static void UpdateBrush(IResourceDictionary resources, string key, Color color)
     {
-        if (resources[key] is SolidColorBrush brush)
+        // TryGetResource, not resources[key]: the indexer reads only this dictionary's own
+        // entries, so a brush in a merged dictionary (Settings/NtPalette.axaml) would be missed, a
+        // second brush added here, and every control holding the merged one would stop recolouring
+        // without any error.
+        if (resources.TryGetResource(key, null, out object? existing) && existing is SolidColorBrush brush)
         {
             brush.Color = color;
         }
