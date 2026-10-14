@@ -98,6 +98,10 @@ public sealed class SettingsScreenshotHarness
             window.GetPage<Ntilde.Settings.Pages.AppearancePage>().FindControl<Button>("BtnEditTheme")!
                 .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             written.AddRange(CaptureScrolled(window, output, $"settings-{slug}-ThemeEditor"));
+
+            window.FindControl<TextBox>("SettingsSearchBox")!.Text = "opacity";
+            written.Add(Save(window, output, $"settings-{slug}-Search.png"));
+            window.FindControl<TextBox>("SettingsSearchBox")!.Text = "";
         }
         finally
         {

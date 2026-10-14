@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -8,7 +9,9 @@ using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ntilde.CommandAssist.Domain;
+using Ntilde.Controls;
 using Ntilde.Services.Ssh;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
@@ -16,6 +19,7 @@ using Ntilde.Shell;
 using Ntilde.VT;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -35,6 +39,11 @@ namespace Ntilde
         private readonly Button _btnSave;
         private SettingsPage _currentPage;
         private bool _syncingNav;
+        private TextBox _searchBox = null!;
+        private ListBox _searchResults = null!;
+        private Control _searchView = null!;
+        private Panel _pageHost = null!;
+        private SettingsSearchIndex _searchIndex = new([]);
 
         public TerminalSettings Settings => _session.Settings; // Expose for main window to grab without reloading disk
 
@@ -73,6 +82,8 @@ namespace Ntilde
 
         /// <summary>The page on screen. MainWindow remembers it so Ctrl+, reopens where the user left off.</summary>
         internal SettingsPage CurrentPage => _currentPage;
+
+        internal SettingsSearchIndex SearchIndex => _searchIndex;
 
         public event Action<double>? OnOpacityChanged;
         public event Action<string>? OnBlurChanged;
@@ -203,6 +214,7 @@ namespace Ntilde
             // (MainWindow subscribes after construction, so its previews are unaffected.)
             WireSessionEvents();
             BuildSidebar();
+            WireSearch();
 
             // Tunnel, so the chord works from any focused field; ShortcutsPage's editors are the
             // one place it must not fire (the user may be recording Ctrl+S as a binding).
@@ -421,6 +433,12 @@ namespace Ntilde
                 _btnSave.Focus();
                 SaveAndClose();
             }
+            else if (e.Key == Key.F)
+            {
+                e.Handled = true;
+                _searchBox.Focus();
+                _searchBox.SelectAll();
+            }
         }
 
         private static bool IsShortcutCapture(object? source)
@@ -445,6 +463,157 @@ namespace Ntilde
 
             ShowPage(order[next]);
             _navItems[order[next]].Focus(NavigationMethod.Directional);
+        }
+
+        private void WireSearch()
+        {
+            _searchBox = this.FindControl<TextBox>("SettingsSearchBox")!;
+            _searchResults = this.FindControl<ListBox>("SearchResultsList")!;
+            _searchView = this.FindControl<Control>("SearchResultsView")!;
+            _pageHost = this.FindControl<Panel>("PageHost")!;
+
+            _searchResults.ItemTemplate = new FuncDataTemplate<SettingsSearchResult>(
+                (result, _) => result is null ? new TextBlock() : CreateResultView(result));
+            _searchBox.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == TextBox.TextProperty)
+                {
+                    UpdateSearch();
+                }
+            };
+            _searchBox.AddHandler(KeyDownEvent, OnSearchKeyDown, RoutingStrategies.Tunnel);
+            _searchResults.Tapped += (_, e) =>
+            {
+                // Only a tap on a result jumps: the list fills the content area, and a tap on its
+                // empty space or scroll bar would otherwise jump to whichever result is selected.
+                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null)
+                {
+                    JumpToSelectedResult();
+                }
+            };
+
+            RebuildSearchIndex();
+
+            // Command Assist rewrites its descriptions when a chord is rebound (its handler runs
+            // first, having subscribed in Load), so the index re-reads the rows after it.
+            _session.ShortcutsChanged += RebuildSearchIndex;
+        }
+
+        private void RebuildSearchIndex()
+            => _searchIndex = SettingsSearchIndex.Build(_pages.Select(page => (SettingsPageRegistry.Get(page.Page), page.View)));
+
+        private void UpdateSearch()
+        {
+            string query = (_searchBox.Text ?? string.Empty).Trim();
+            bool searching = query.Length > 0;
+            _pageHost.IsVisible = !searching;
+            _searchView.IsVisible = searching;
+            if (!searching)
+            {
+                _searchResults.ItemsSource = null;
+                return;
+            }
+
+            IReadOnlyList<SettingsSearchResult> results = _searchIndex.Search(query);
+            _searchResults.ItemsSource = results;
+            _searchResults.SelectedIndex = results.Count > 0 ? 0 : -1;
+            _searchResults.IsVisible = results.Count > 0;
+
+            var heading = this.FindControl<TextBlock>("SearchResultsHeading")!;
+            heading.IsVisible = results.Count > 0;
+            heading.Text = results.Count == 1 ? $"1 result for “{query}”" : $"{results.Count} results for “{query}”";
+
+            var none = this.FindControl<TextBlock>("SearchNoResults")!;
+            none.IsVisible = results.Count == 0;
+            none.Text = $"No settings match “{query}”.";
+        }
+
+        private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Down:
+                    MoveResultSelection(1);
+                    e.Handled = true;
+                    break;
+                case Key.Up:
+                    MoveResultSelection(-1);
+                    e.Handled = true;
+                    break;
+                case Key.Enter:
+                    JumpToSelectedResult();
+                    e.Handled = true;
+                    break;
+                case Key.Escape when !string.IsNullOrEmpty(_searchBox.Text):
+                    _searchBox.Text = string.Empty; // the page that was showing comes back
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        private void MoveResultSelection(int step)
+        {
+            if (!_searchResults.IsVisible || _searchResults.ItemCount == 0)
+            {
+                return;
+            }
+
+            _searchResults.SelectedIndex = Math.Clamp(_searchResults.SelectedIndex + step, 0, _searchResults.ItemCount - 1);
+            _searchResults.ScrollIntoView(_searchResults.SelectedIndex);
+        }
+
+        private void JumpToSelectedResult()
+        {
+            if (_searchResults.SelectedItem is not SettingsSearchResult result)
+            {
+                return;
+            }
+
+            _searchBox.Text = string.Empty; // hides the results, so the page is on screen for the jump
+            NavigateTo(new SettingsTarget(result.Entry.Page, result.Entry.RowId));
+        }
+
+        private Control CreateResultView(SettingsSearchResult result)
+        {
+            SettingsSearchEntry entry = result.Entry;
+            string where = entry.Group is null
+                ? entry.PageTitle
+                : $"{entry.PageTitle} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(entry.Group.ToLowerInvariant())}";
+
+            var panel = new StackPanel
+            {
+                Spacing = 2,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = where,
+                        Classes = { "RowDesc" },
+                    },
+                    new MatchHighlightTextBlock
+                    {
+                        SourceText = entry.Title,
+                        HighlightStart = result.TitleMatchStart,
+                        HighlightLength = result.TitleMatchLength,
+                        HighlightBrush = this.FindPaletteBrush("NtBlue"),
+                        Foreground = this.FindPaletteBrush("NtFg"),
+                        FontSize = 13,
+                    },
+                },
+            };
+
+            if (!string.IsNullOrWhiteSpace(entry.Description))
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = entry.Description,
+                    Classes = { "RowDesc" },
+                    MaxLines = 2,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                });
+            }
+
+            return panel;
         }
 
         private void WireSessionEvents()
@@ -523,6 +692,8 @@ namespace Ntilde
             {
                 page.Load(_session);
             }
+
+            RebuildSearchIndex();
 
             // The one reload a page's Load does not cover, and the reason this method is async at
             // all. CommandAssistPage.ReloadSnippetsAsync is driven by the frame's one-shot `Opened`
