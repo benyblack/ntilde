@@ -49,6 +49,10 @@ internal static class ThemePaletteResources
         // entries, so a brush in a merged dictionary (Settings/NtPalette.axaml) would be missed, a
         // second brush added here, and every control holding the merged one would stop recolouring
         // without any error.
+        // Sharp edge: this mutates brushes in place wherever they live in merged dictionaries. That
+        // is only safe because each surface merges its own fresh NtPalette; merging a shared token
+        // dictionary into a surface would make Apply recolour app-wide brushes. TryGetResource with
+        // a null theme variant also skips ThemeDictionaries, so brushes kept there are not found.
         if (resources.TryGetResource(key, null, out object? existing) && existing is SolidColorBrush brush)
         {
             brush.Color = color;

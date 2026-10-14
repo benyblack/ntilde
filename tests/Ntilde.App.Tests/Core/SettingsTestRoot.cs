@@ -6,7 +6,11 @@ namespace Ntilde.Tests.Core;
 /// <summary>
 /// A temporary app-data root for one Settings test. Points NTILDE_APPDATA_ROOT at a fresh
 /// <see cref="BackupTestTree"/> for its lifetime, so a <see cref="Ntilde.SettingsWindow"/> built
-/// inside it never reads or writes the developer's real profile.
+/// inside it never reads or writes the developer's real profile. The constructor also forces
+/// <c>AppPaths.EnsureInitialized</c> and empties the themes, sessions, logs and settings.json it
+/// seeds (see <see cref="TestAppDataRoot.Isolate"/>), so every root starts with no themes and no
+/// settings whatever the test order; <see cref="WithSettings"/> and <see cref="CopyShippedTheme"/>
+/// add back exactly what a test asks for.
 /// </summary>
 internal sealed class SettingsTestRoot : IDisposable
 {
@@ -19,6 +23,7 @@ internal sealed class SettingsTestRoot : IDisposable
         Tree = tree;
         _previousRoot = Environment.GetEnvironmentVariable(RootVariable);
         Environment.SetEnvironmentVariable(RootVariable, tree.Root);
+        TestAppDataRoot.Isolate(tree.Root);
     }
 
     public BackupTestTree Tree { get; }
