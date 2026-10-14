@@ -1,10 +1,13 @@
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Controls;
@@ -722,6 +725,38 @@ public sealed class SettingsWindowSearchTests
             Dispatcher.UIThread.RunJobs();
 
             AssertPageShown(window, SettingsPage.Terminal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>
+    /// The match is drawn by weight in the title's own colour (accent-coloured text was hard to read
+    /// on the selected result), and the selected result carries the sidebar's accent edge.
+    /// </summary>
+    [AvaloniaFact]
+    public void TheMatch_IsBold_AndTheSelectedResultHasTheSidebarsAccentEdge()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+            Dispatcher.UIThread.RunJobs();
+            var selected = (ListBoxItem)Results(window).ContainerFromIndex(0)!;
+
+            MatchHighlightTextBlock title = selected.GetVisualDescendants().OfType<MatchHighlightTextBlock>().Single();
+            var match = title.Inlines!.OfType<Run>().Single(run => run.Text == "opacity");
+            Assert.Equal(FontWeight.Bold, match.FontWeight);
+            Assert.Same(window.FindResource("NtFg"), title.Foreground);
+            Assert.Same(title.Foreground, match.Foreground); // inherited, not an accent of its own
+
+            ContentPresenter presenter = selected.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
+            Assert.Same(window.FindResource("NtBlue"), presenter.BorderBrush);
+            Assert.Equal(new Thickness(2, 0, 0, 0), presenter.BorderThickness);
         }
         finally
         {

@@ -101,6 +101,10 @@ public sealed class SettingsScreenshotHarness
 
             window.FindControl<TextBox>("SettingsSearchBox")!.Text = "opacity";
             written.Add(Save(window, output, $"settings-{slug}-Search.png"));
+
+            // A list that scrolls: emphasised title matches, then matches found elsewhere.
+            window.FindControl<TextBox>("SettingsSearchBox")!.Text = "window";
+            written.Add(Save(window, output, $"settings-{slug}-SearchLong.png"));
             window.FindControl<TextBox>("SettingsSearchBox")!.Text = "";
         }
         finally

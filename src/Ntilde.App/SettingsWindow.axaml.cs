@@ -727,12 +727,14 @@ namespace Ntilde
                         Text = ResultLocation(entry),
                         Classes = { "RowDesc" },
                     },
+                    // The match is emphasised by weight in the title's own colour: accent-coloured
+                    // text was hard to read on the selected result's accent background.
                     new MatchHighlightTextBlock
                     {
                         SourceText = entry.Title,
                         HighlightStart = result.TitleMatchStart,
                         HighlightLength = result.TitleMatchLength,
-                        HighlightBrush = this.FindPaletteBrush("NtBlue"),
+                        HighlightFontWeight = FontWeight.Bold,
                         Foreground = this.FindPaletteBrush("NtFg"),
                         FontSize = 13,
                     },

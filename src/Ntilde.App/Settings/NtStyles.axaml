@@ -429,15 +429,20 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
+    <!-- The selected result carries the sidebar's accent edge, so it reads as the one Enter opens. -->
     <Style Selector="ListBox.SearchResults ListBoxItem">
         <Setter Property="Padding" Value="10,8"/>
         <Setter Property="Margin" Value="0,1"/>
         <Setter Property="CornerRadius" Value="5"/>
+        <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
     <Style Selector="ListBox.SearchResults ListBoxItem:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
     </Style>
     <Style Selector="ListBox.SearchResults ListBoxItem:selected /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
 </Styles>
