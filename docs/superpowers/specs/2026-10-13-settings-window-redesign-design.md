@@ -314,9 +314,11 @@ local profiles keep whatever SSH field values they already have.
 **Rules that keep theme switching working:**
 
 1. **`ThemePaletteResources.Apply` resolves through merged dictionaries.** It uses
-   `TryGetResource` and mutates the brush it finds. It only adds a new brush when the key
-   truly does not exist. Without this, moving the brushes into a merged dictionary would make
-   `Apply` add new, unreferenced brushes, and Settings would silently stop recolouring.
+   `TryGetResource` and recolours the `SolidColorBrush` it finds in place. When the lookup
+   finds no `SolidColorBrush` (the key is missing, or holds some other type of value), it
+   writes a new brush into the dictionary's own entries. Without this, moving the brushes
+   into a merged dictionary would make `Apply` add new, unreferenced brushes, and Settings
+   would silently stop recolouring.
 2. **Shared styles and page XAML reference brushes with `{DynamicResource Nt…}`.** A page
    control loads its XAML in its own constructor, before it is attached to the window. At that
    point a `StaticResource` cannot see the window's brushes.
