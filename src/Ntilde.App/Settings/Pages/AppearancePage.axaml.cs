@@ -214,7 +214,10 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             }
 
             _editingTheme.Name = nameInput.Text;
-            Session.Settings.ThemeManager.SaveTheme(_editingTheme);
+
+            // SaveTheme caches the object it is given. Hand it a copy, so edits made after this
+            // Save stay in the draft and Back still discards them.
+            Session.Settings.ThemeManager.SaveTheme(_editingTheme.Clone());
             PopulateThemes();
             Session.RaiseThemesChanged();
             SelectTheme(_editingTheme.Name);
@@ -312,9 +315,10 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     private void OpenSwatchFlyout(Button target, int index)
     {
-        if (_editingTheme == null) return;
+        // A local, not the field: Back clears _editingTheme while this flyout's handler lives on.
+        if (_editingTheme is not { } theme) return;
 
-        var current = _editingTheme.GetAnsiColor(index % 8, index >= 8);
+        var current = theme.GetAnsiColor(index % 8, index >= 8);
         var hexInput = new TextBox { Text = current.ToString(), Width = 100 };
         var preview = new Border { Width = 30, Height = 30, Background = new SolidColorBrush(current.ToAvaloniaColor()), CornerRadius = new CornerRadius(4), Margin = new Thickness(5, 0, 0, 0) };
 
@@ -323,9 +327,9 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             if (Color.TryParse(hexInput.Text, out var color))
             {
                 preview.Background = new SolidColorBrush(color);
-                _editingTheme.SetAnsiColor(index % 8, index >= 8, TermColorHelper.FromAvaloniaColor(color));
+                theme.SetAnsiColor(index % 8, index >= 8, TermColorHelper.FromAvaloniaColor(color));
                 target.Background = new SolidColorBrush(color);
-                UpdateThemePreview(_editingTheme, PreviewSurface.Editor);
+                UpdateThemePreview(theme, PreviewSurface.Editor);
             }
         };
 

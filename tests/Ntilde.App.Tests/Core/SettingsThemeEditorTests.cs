@@ -17,6 +17,13 @@ public sealed class SettingsThemeEditorTests
     private static void Click(Control page, string button)
         => page.FindControl<Button>(button)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
+    /// <summary>Sets a field's text. TextBox raises TextChanged on a later dispatcher pass, so run it before going on.</summary>
+    private static void Type(Control page, string textBox, string text)
+    {
+        page.FindControl<TextBox>(textBox)!.Text = text;
+        Dispatcher.UIThread.RunJobs();
+    }
+
     private static (SettingsTestRoot Root, Ntilde.SettingsWindow Window, AppearancePage Page) Open(string themeName = "GitHub Light")
     {
         var root = SettingsTestRoot.WithSettings($$"""{"ThemeName":"{{themeName}}"}""");
@@ -50,8 +57,8 @@ public sealed class SettingsThemeEditorTests
         {
             Click(page, "BtnEditTheme");
             string originalForeground = page.FindControl<TextBox>("EditThemeFgInput")!.Text!;
-            page.FindControl<TextBox>("EditThemeNameInput")!.Text = "Renamed";
-            page.FindControl<TextBox>("EditThemeFgInput")!.Text = "#ff0000";
+            Type(page, "EditThemeNameInput", "Renamed");
+            Type(page, "EditThemeFgInput", "#ff0000");
 
             Click(page, "BtnThemeEditorBack");
             Assert.False(page.IsThemeEditorOpen);
@@ -92,8 +99,8 @@ public sealed class SettingsThemeEditorTests
     }
 
     /// <summary>
-    /// Correction 7: saving repaints Settings with the theme just saved, not the theme
-    /// settings.json named when the window opened.
+    /// Correction 7: saving repaints Settings with the theme just saved, edits included, not the
+    /// theme settings.json named when the window opened.
     /// </summary>
     [AvaloniaFact]
     public void Save_RepaintsSettingsWithTheSavedTheme()
@@ -104,14 +111,38 @@ public sealed class SettingsThemeEditorTests
             var themes = page.FindControl<ComboBox>("ThemeList")!;
             themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light");
             Click(page, "BtnEditTheme");
+            Type(page, "EditThemeBgInput", "#123456");
+            Assert.Equal(Color.Parse("#ffffff"), ((SolidColorBrush)window.FindResource("NtWindowBg")!).Color); // an edit alone repaints only the editor's preview
 
             Click(page, "BtnSaveTheme");
 
-            Assert.Equal(Color.Parse("#ffffff"), ((SolidColorBrush)window.FindResource("NtWindowBg")!).Color);
+            Assert.Equal(Color.Parse("#123456"), ((SolidColorBrush)window.FindResource("NtWindowBg")!).Color);
         }
     }
 
-    /// <summary>Review focus 5: at the minimum width both editor columns are fully on screen.</summary>
+    /// <summary>Back drops the edits made since the last Save; the saved values stay saved.</summary>
+    [AvaloniaFact]
+    public void Back_AfterASave_DropsOnlyTheEditsMadeSinceTheSave()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            Click(page, "BtnEditTheme");
+            Type(page, "EditThemeBgInput", "#123456");
+            Click(page, "BtnSaveTheme");
+            Type(page, "EditThemeBgInput", "#654321");
+
+            Click(page, "BtnThemeEditorBack");
+            Click(page, "BtnEditTheme");
+
+            Assert.Equal("#123456", page.FindControl<TextBox>("EditThemeBgInput")!.Text);
+        }
+    }
+
+    /// <summary>
+    /// Review focus 5: at the minimum size both editor columns are fully on screen, and the swatch
+    /// grid keeps its full width.
+    /// </summary>
     [AvaloniaFact]
     public void AtTheMinimumWidth_BothEditorColumnsFit()
     {
@@ -128,12 +159,19 @@ public sealed class SettingsThemeEditorTests
 
                 var preview = page.FindControl<Border>("EditorPreviewArea")!;
                 var swatches = page.FindControl<UniformGrid>("EditorSwatchGrid")!;
+                var lastSwatch = page.FindControl<Button>("EditSwatch7")!;
                 double previewLeft = preview.TranslatePoint(default, window)!.Value.X;
                 double previewRight = preview.TranslatePoint(new Point(preview.Bounds.Width, 0), window)!.Value.X;
-                double swatchesRight = swatches.TranslatePoint(new Point(swatches.Bounds.Width, 0), window)!.Value.X;
+                double lastSwatchRight = lastSwatch.TranslatePoint(new Point(lastSwatch.Bounds.Width, 0), window)!.Value.X;
 
+                // Layout ran: without it every bound is zero and the comparisons below pass vacuously.
+                Assert.Equal(220, preview.Bounds.Width, 1);
                 Assert.True(previewRight <= window.ClientSize.Width + 0.5, $"Preview ends at {previewRight}, past {window.ClientSize.Width}.");
-                Assert.True(swatchesRight <= previewLeft, "The swatch grid runs under the preview column.");
+
+                // A grid short of room squeezes its cells and overlaps its own swatches without ever
+                // reaching the preview, so measure the grid: eight 28 px swatches with 2 px margins.
+                Assert.True(swatches.Bounds.Width >= 8 * 32 - 0.5, $"The swatch grid is squeezed to {swatches.Bounds.Width}.");
+                Assert.True(lastSwatchRight <= previewLeft, $"The last swatch ends at {lastSwatchRight}, under the preview at {previewLeft}.");
             }
             finally
             {

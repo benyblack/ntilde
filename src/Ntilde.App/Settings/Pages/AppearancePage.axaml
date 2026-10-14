@@ -13,7 +13,7 @@
 
                 <settings:SettingGroup Header="THEME">
                     <settings:SettingRow RowId="theme" Title="Theme" Stacked="True"
-                                         Description="Colours for the terminal and for this window."
+                                         Description="Colors for the terminal and for this window."
                                          Keywords="color colour palette dark light scheme">
                         <StackPanel Spacing="12">
                             <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6">
