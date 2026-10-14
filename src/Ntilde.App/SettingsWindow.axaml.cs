@@ -527,11 +527,12 @@ namespace Ntilde
             _searchBox.AddHandler(KeyDownEvent, OnSearchKeyDown, RoutingStrategies.Tunnel);
             _searchResults.Tapped += (_, e) =>
             {
-                // Only a tap on a result jumps: the list fills the content area, and a tap on its
-                // empty space or scroll bar would otherwise jump to whichever result is selected.
-                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null)
+                // Only a tap on a result jumps, and to that result: the list fills the content area
+                // (a tap on its empty space or scroll bar is not a choice), and a Ctrl/Cmd+click
+                // toggles the selection off the very result it lands on.
+                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { Content: SettingsSearchResult tapped })
                 {
-                    JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Pointer);
+                    JumpTo(tapped, NavigationMethod.Pointer);
                 }
             };
             _searchResults.AddHandler(KeyDownEvent, OnResultsKeyDown, RoutingStrategies.Tunnel);
@@ -583,6 +584,11 @@ namespace Ntilde
             _searchResults.ItemsSource = results;
             _searchResults.SelectedIndex = results.Count > 0 ? 0 : -1;
             _searchResults.IsVisible = results.Count > 0;
+            if (results.Count > 0)
+            {
+                // The list keeps its scroll offset across new items; the selected first result must show.
+                _searchResults.ScrollIntoView(0);
+            }
 
             var heading = this.FindControl<TextBlock>("SearchResultsHeading")!;
             heading.IsVisible = results.Count > 0;
@@ -618,10 +624,19 @@ namespace Ntilde
 
         private void OnResultsKeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            switch (e.Key)
             {
-                JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Tab);
-                e.Handled = true;
+                case Key.Enter:
+                    JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Tab);
+                    e.Handled = true;
+                    break;
+                case Key.Escape:
+                    // As in the box: the page comes back, and focus returns to the box (the focused
+                    // result goes away with the results).
+                    _searchBox.Focus();
+                    ClearSearch();
+                    e.Handled = true;
+                    break;
             }
         }
 

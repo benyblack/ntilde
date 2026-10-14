@@ -626,6 +626,109 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>
+    /// New results start with the first one selected, so the list must be back at the top to show
+    /// it - whether the old results were scrolled by the arrows (the selection moved) or the wheel
+    /// (it did not).
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NewResults_ScrollBackToTheTop(bool byArrows)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("e");
+            Dispatcher.UIThread.RunJobs();
+            ScrollViewer scroller = Results(window).GetVisualDescendants().OfType<ScrollViewer>().First();
+            if (byArrows)
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+                }
+            }
+            else
+            {
+                scroller.Offset = new Vector(0, 1500);
+            }
+
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(scroller.Offset.Y > 0, "The list did not scroll; the test proves nothing.");
+
+            window.KeyTextInput("r");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(scroller.Extent.Height > 2 * scroller.Viewport.Height, $"{Shown(window).Count} results for “er” barely scroll; the test proves nothing.");
+            Assert.Equal(0, Results(window).SelectedIndex);
+            Control? first = Results(window).ContainerFromIndex(0);
+            Assert.NotNull(first);
+            Point top = first.TranslatePoint(default, scroller)!.Value;
+            Assert.True(top.Y >= 0 && top.Y < scroller.Viewport.Height, $"The first result is at {top.Y}, outside the {scroller.Viewport.Height} px list.");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void EscapeInTheResultsList_ClearsTheSearch_AndFocusesTheBox()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+            Dispatcher.UIThread.RunJobs();
+            Results(window).ContainerFromIndex(0)!.Focus();
+
+            window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Shortcuts);
+            Assert.True(Box(window).IsFocused);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>
+    /// A Ctrl/Cmd+click toggles the selection off the result it lands on, so the jump must follow
+    /// the clicked result, not the selection.
+    /// </summary>
+    [AvaloniaFact]
+    public void ClickingAResult_JumpsToTheResultClicked_NotTheSelection()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Text = "scrollback";
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, Results(window).SelectedIndex);
+            Point at = Results(window).ContainerFromIndex(0)!.TranslatePoint(new Point(10, 10), window)!.Value;
+
+            window.MouseDown(at, MouseButton.Left, Primary);
+            window.MouseUp(at, MouseButton.Left, Primary);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Terminal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     private static void AssertFocusIsIn(Ntilde.SettingsWindow window, Control control)
     {
         var focused = window.FocusManager!.GetFocusedElement() as Visual;
