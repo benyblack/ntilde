@@ -318,6 +318,10 @@ namespace Ntilde
 
         private void ShowPage(SettingsPage page)
         {
+            // Every page change ends a search, or the page would stay hidden behind the results: a
+            // sidebar click or arrow, a jump, a deep link, a Save stopped by a page's validation.
+            ClearSearch();
+
             foreach (ISettingsPage candidate in _pages)
             {
                 candidate.View.IsVisible = candidate.Page == page;
@@ -491,6 +495,17 @@ namespace Ntilde
                     JumpToSelectedResult();
                 }
             };
+            _searchResults.AddHandler(KeyDownEvent, OnResultsKeyDown, RoutingStrategies.Tunnel);
+
+            // A click on the page already selected changes no selection, so ShowPage never runs;
+            // the click itself ends the search.
+            _sideNav.Tapped += (_, e) =>
+            {
+                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { Tag: SettingsPage })
+                {
+                    ClearSearch();
+                }
+            };
 
             RebuildSearchIndex();
 
@@ -545,9 +560,28 @@ namespace Ntilde
                     e.Handled = true;
                     break;
                 case Key.Escape when !string.IsNullOrEmpty(_searchBox.Text):
-                    _searchBox.Text = string.Empty; // the page that was showing comes back
+                    ClearSearch(); // the page that was showing comes back
                     e.Handled = true;
                     break;
+            }
+        }
+
+        private void OnResultsKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                JumpToSelectedResult();
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>Empties the search box, which puts the current page back in place of the results.</summary>
+        private void ClearSearch()
+        {
+            // Null only while the constructor has not reached WireSearch yet.
+            if (_searchBox is { Text.Length: > 0 })
+            {
+                _searchBox.Text = string.Empty;
             }
         }
 
@@ -569,8 +603,9 @@ namespace Ntilde
                 return;
             }
 
-            _searchBox.Text = string.Empty; // hides the results, so the page is on screen for the jump
-            NavigateTo(new SettingsTarget(result.Entry.Page, result.Entry.RowId));
+            // Focus goes back to the box first: a clicked result's container goes away with the results.
+            _searchBox.Focus();
+            NavigateTo(new SettingsTarget(result.Entry.Page, result.Entry.RowId)); // ShowPage clears the search
         }
 
         private Control CreateResultView(SettingsSearchResult result)

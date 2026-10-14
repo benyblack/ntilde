@@ -7,6 +7,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
+using Ntilde.Shell.Shortcuts;
 
 namespace Ntilde.Tests.Core;
 
@@ -155,6 +156,9 @@ public sealed class SettingsWindowSearchTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal(SettingsPage.Terminal, window.CurrentPage);
+
+            // The clicked result's container went away with the results; focus must not stay on it.
+            Assert.Same(Box(window), window.FocusManager!.GetFocusedElement());
         }
         finally
         {
@@ -219,5 +223,139 @@ public sealed class SettingsWindowSearchTests
         Assert.Equal(new[] { "Shells & Profiles" }, entries.Where(e => e.Page == SettingsPage.Profiles).Select(e => e.Title));
         Assert.Equal(new[] { "Shortcuts", "Recording a shortcut" }, entries.Where(e => e.Page == SettingsPage.Shortcuts).Select(e => e.Title));
         Assert.DoesNotContain(entries, e => e.Title == "Theme name");
+    }
+
+    [AvaloniaFact]
+    public void ChoosingAPageInTheSidebar_ClearsTheSearch_AndShowsThePage()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+
+            window.FindControl<ListBox>("SideNav")!.SelectedItem = window.NavItem(SettingsPage.Terminal);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Terminal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>The page already selected in the sidebar gets no selection change, so the click itself must end the search.</summary>
+    [AvaloniaFact]
+    public void ClickingTheCurrentPageInTheSidebar_ClearsTheSearch()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Terminal));
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+            Dispatcher.UIThread.RunJobs();
+            Point at = window.NavItem(SettingsPage.Terminal).TranslatePoint(new Point(20, 10), window)!.Value;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseUp(at, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Terminal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ArrowKeysInTheSidebar_ClearTheSearch()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+            window.NavItem(SettingsPage.Shortcuts).Focus();
+
+            window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.CommandAssist);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>A Save stopped by a page's validation shows that page and its message, not the results it was typed over.</summary>
+    [AvaloniaFact]
+    public void ARejectedSave_ShowsTheProblemPage_InPlaceOfTheResults()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        var app = ShortcutCatalog.GetEntries()
+            .Where(e => e.Scope == ShortcutScope.App && !string.IsNullOrEmpty(e.DefaultBinding))
+            .ToList();
+        window.Session.ShortcutDraft[app[1].CommandId] = app[0].DefaultBinding;
+        bool closed = false;
+        window.Closed += (_, _) => closed = true;
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("opacity");
+
+            window.KeyPress(Key.S, Primary, PhysicalKey.S, "s");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.False(closed);
+            AssertPageShown(window, SettingsPage.Shortcuts);
+            Assert.True(window.GetPage<ShortcutsPage>().FindControl<TextBlock>("ShortcutValidationMessage")!.IsEffectivelyVisible);
+        }
+        finally
+        {
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void EnterInTheResultsList_JumpsToTheSelectedResult()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "scrollback";
+            Dispatcher.UIThread.RunJobs();
+            Results(window).ContainerFromIndex(0)!.Focus();
+
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Terminal);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void AssertPageShown(Ntilde.SettingsWindow window, SettingsPage page)
+    {
+        Assert.Equal(page, window.CurrentPage);
+        Assert.Equal(string.Empty, Box(window).Text);
+        Assert.True(window.FindControl<Panel>("PageHost")!.IsVisible);
+        Assert.False(window.FindControl<Control>("SearchResultsView")!.IsVisible);
+        Assert.True(window.GetPage(page).View.IsVisible);
     }
 }
