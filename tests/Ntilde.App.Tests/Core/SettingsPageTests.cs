@@ -408,7 +408,6 @@ public sealed class SettingsPageTests
             WindowOpacity = 0.75,
             BlurEffect = "Mica",
             UiScale = 1.25,
-            TabStripOrientation = "Vertical",
             BackgroundImagePath = "/img.png",
             BackgroundImageOpacity = 0.35,
             BackgroundImageStretch = "Uniform",
@@ -423,7 +422,6 @@ public sealed class SettingsPageTests
         Assert.Equal(0.75, target.WindowOpacity, precision: 9);
         Assert.Equal("Mica", target.BlurEffect);
         Assert.Equal(1.25, target.UiScale, precision: 9);
-        Assert.Equal("Vertical", target.TabStripOrientation);
         Assert.Equal("/img.png", target.BackgroundImagePath);
         Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
         Assert.Equal("Uniform", target.BackgroundImageStretch);
@@ -431,34 +429,49 @@ public sealed class SettingsPageTests
 
     /// <summary>
     /// Review focus 1 for Appearance: a settings.json value outside a combo's set must open on
-    /// today's fallback item and never throw. Blur and stretch compare case-sensitively, tab
-    /// orientation case-insensitively, as the old loops did. The target starts on sentinels so a
-    /// Load that selects nothing (and a Collect that therefore skips the field) fails.
+    /// today's fallback item and never throw. Blur and stretch compare case-sensitively, as the old
+    /// loops did. The target starts on sentinels so a Load that selects nothing (and a Collect that
+    /// therefore skips the field) fails.
     /// </summary>
     [AvaloniaTheory]
-    [InlineData("Transparent", "sideways", "uniform", "Acrylic", "Horizontal", "UniformToFill")]
-    [InlineData("mica", "vertical", "UNIFORM", "Acrylic", "Vertical", "UniformToFill")] // orientation matches ignoring case, the others fall back
+    [InlineData("Transparent", "uniform", "Acrylic", "UniformToFill")]
+    [InlineData("mica", "UNIFORM", "Acrylic", "UniformToFill")]
     public void AppearancePage_UnknownComboValues_FallBackAsBefore(
-        string blur, string orientation, string stretch, string expectedBlur, string expectedOrientation, string expectedStretch)
+        string blur, string stretch, string expectedBlur, string expectedStretch)
     {
         using var root = SettingsTestRoot.Empty();
         var page = new AppearancePage();
-        page.Load(SessionFor(new TerminalSettings { BlurEffect = blur, TabStripOrientation = orientation, BackgroundImageStretch = stretch }));
-        var target = new TerminalSettings { BlurEffect = "unset", TabStripOrientation = "unset", BackgroundImageStretch = "unset" };
+        page.Load(SessionFor(new TerminalSettings { BlurEffect = blur, BackgroundImageStretch = stretch }));
+        var target = new TerminalSettings { BlurEffect = "unset", BackgroundImageStretch = "unset" };
 
         page.Collect(target);
 
         Assert.Equal(expectedBlur, target.BlurEffect);
-        Assert.Equal(expectedOrientation, target.TabStripOrientation);
         Assert.Equal(expectedStretch, target.BackgroundImageStretch);
     }
 
+    [AvaloniaTheory]
+    [InlineData("Vertical", "Vertical")]
+    [InlineData("vertical", "Vertical")]     // the old loop compared case-insensitively too
+    [InlineData("Diagonal", "Horizontal")]   // unknown: first item, as before
+    public void TabsAndTitleBarPage_TabOrientation_RoundTrips_WithTheOldFallbacks(string stored, string expected)
+    {
+        var page = new TabsAndTitleBarPage();
+        page.Load(SessionFor(new TerminalSettings { TabStripOrientation = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { TabStripOrientation = "unset" };
+
+        page.Collect(target);
+
+        Assert.Equal(expected, target.TabStripOrientation);
+    }
+
     [AvaloniaFact]
-    public void AppearancePage_RebuildsTheTitleBarRowsWhenShortcutsChange()
+    public void TabsAndTitleBarPage_RebuildsTheTitleBarRowsWhenShortcutsChange()
     {
         using var root = SettingsTestRoot.Empty();
         var session = SessionFor(new TerminalSettings());
-        var page = new AppearancePage();
+        var page = new TabsAndTitleBarPage();
         page.Load(session);
 
         session.ShortcutDraft["settings"] = "Alt+F9";

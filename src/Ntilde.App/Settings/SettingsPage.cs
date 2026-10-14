@@ -9,6 +9,7 @@ public enum SettingsPage
     General,
     Appearance,
     Terminal,
+    TabsAndTitleBar,
     Profiles,
     Shortcuts,
     CommandAssist,

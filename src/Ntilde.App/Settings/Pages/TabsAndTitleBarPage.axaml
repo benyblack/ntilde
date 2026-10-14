@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="clr-namespace:Ntilde.Settings"
+             x:Class="Ntilde.Settings.Pages.TabsAndTitleBarPage">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="Page">
+            <StackPanel Classes="PageHeader">
+                <TextBlock Classes="H1" Text="Tabs &amp; title bar"/>
+                <TextBlock Classes="Subtitle" Text="Where tabs live, and which actions sit in the title bar."/>
+            </StackPanel>
+
+            <settings:SettingGroup Header="TABS">
+                <settings:SettingRow RowId="tab-orientation" Title="Tab strip orientation"
+                                     Description="Vertical shows tabs in a left sidebar with agent status and a last-output preview."
+                                     Keywords="vertical horizontal sidebar layout">
+                    <ComboBox Name="TabOrientationList" Classes="Wide" AutomationProperties.Name="Tab strip orientation">
+                        <ComboBoxItem Content="Horizontal" Tag="Horizontal"/>
+                        <ComboBoxItem Content="Vertical" Tag="Vertical"/>
+                    </ComboBox>
+                </settings:SettingRow>
+            </settings:SettingGroup>
+
+            <settings:SettingGroup Header="TITLE BAR ACTIONS">
+                <StackPanel Spacing="10" Margin="0,8,0,0">
+                    <TextBlock Classes="RowDesc"
+                               Text="Pinned actions get their own icon in the title bar. Overflow actions live in the … menu. Hidden actions stay reachable by shortcut and from the command palette."/>
+                    <TextBlock Name="TitleBarValidationMessage" Foreground="{DynamicResource NtRed}" FontSize="12" IsVisible="False" TextWrapping="Wrap"/>
+                    <StackPanel Name="TitleBarItemsPanel" Spacing="8"/>
+                </StackPanel>
+            </settings:SettingGroup>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

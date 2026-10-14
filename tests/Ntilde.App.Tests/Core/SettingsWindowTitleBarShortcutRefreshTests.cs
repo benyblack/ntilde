@@ -54,7 +54,7 @@ public sealed class SettingsWindowTitleBarShortcutRefreshTests
 
     /// <summary>Where the title-bar rows live. PR 3 moves them to Tabs & title bar; PR 4 rebuilds them.</summary>
     private static StackPanel TitleBarRowsPanel(Ntilde.SettingsWindow window)
-        => window.GetPage<AppearancePage>().FindControl<StackPanel>("TitleBarItemsPanel")!;
+        => window.GetPage<TabsAndTitleBarPage>().FindControl<StackPanel>("TitleBarItemsPanel")!;
 
     private static (TextBlock Title, TextBlock Shortcut) FindRowByTitle(StackPanel panel, string title)
     {

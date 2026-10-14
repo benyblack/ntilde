@@ -115,7 +115,7 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
         var panelBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtPanel"));
         var hairlineBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtHairline"));
 
-        var titleBarRows = window.GetPage<AppearancePage>().FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
+        var titleBarRows = window.GetPage<TabsAndTitleBarPage>().FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
         Assert.NotEmpty(titleBarRows);
         foreach (var row in titleBarRows)
         {

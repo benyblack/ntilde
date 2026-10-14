@@ -124,22 +124,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- ── Title bar section ── -->
-            <TextBlock Name="TitleBarSectionHeader" settings:SettingsNavigation.RowId="title-bar" Classes="SectionHeader" Text="TITLE BAR" Margin="0,24,0,14"/>
-
-            <StackPanel Spacing="10" Margin="0,0,0,16">
-                <TextBlock Classes="RowDesc"
-                           TextWrapping="Wrap"
-                           Text="Pinned actions get their own icon in the title bar. Overflow actions live in the … menu. Hidden actions stay reachable by shortcut and from the command palette."/>
-                <TextBlock Name="TitleBarValidationMessage"
-                           Foreground="{DynamicResource NtRed}"
-                           FontSize="12"
-                           IsVisible="False"
-                           TextWrapping="Wrap"/>
-            </StackPanel>
-
-            <StackPanel Name="TitleBarItemsPanel" Spacing="8"/>
-
             <!-- ── Window section ── -->
             <TextBlock Classes="SectionHeader" Text="WINDOW" Margin="0,0,0,14"/>
 
@@ -198,18 +182,6 @@
                     <ComboBoxItem>Acrylic</ComboBoxItem>
                     <ComboBoxItem>Mica</ComboBoxItem>
                     <ComboBoxItem>None</ComboBoxItem>
-                </ComboBox>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Tab strip orientation"/>
-                    <TextBlock Classes="RowDesc"  Text="Vertical shows tabs in a left sidebar with agent status and a last-output preview."/>
-                </StackPanel>
-                <ComboBox Name="TabOrientationList" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                    <ComboBoxItem>Horizontal</ComboBoxItem>
-                    <ComboBoxItem>Vertical</ComboBoxItem>
                 </ComboBox>
             </Grid>
             <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>

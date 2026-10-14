@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Settings;
@@ -38,7 +39,7 @@ public sealed class SettingsWindowFrameTests
         string[] expected =
         [
             "GENERAL", "General",
-            "INTERFACE", "Appearance", "Terminal", "Shells & Profiles", "Shortcuts",
+            "INTERFACE", "Appearance", "Terminal", "Tabs & title bar", "Shells & Profiles", "Shortcuts",
             "ASSISTANT", "Command Assist", "Agent Access",
             "CONNECTION", "SSH",
             "DATA", "Backup & Restore",
@@ -105,33 +106,30 @@ public sealed class SettingsWindowFrameTests
         Assert.Equal(SettingsPageRegistry.DefaultPage, new Ntilde.SettingsWindow().CurrentPage);
     }
 
-    /// <summary>
-    /// The deep-link effect itself: with the row scrolled out of view first, revealing it brings it
-    /// back into the viewport and starts the highlight. (At the default size the title-bar row
-    /// already sits inside the first viewport, so without scrolling away this would pass even if
-    /// the scroll did nothing.)
-    /// </summary>
+    private const string BelowTheFold = "remote-shell-integration";
+
+    private static SettingRow RowOn(Ntilde.SettingsWindow window, string rowId)
+        => window.GetPage<CommandAssistPage>().GetLogicalDescendants().OfType<SettingRow>().Single(row => row.RowId == rowId);
+
     [AvaloniaFact]
     public void RevealRow_ScrollsTheRowIntoView_AndHighlightsIt()
     {
         using var root = SettingsTestRoot.Empty();
-        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.CommandAssist));
         try
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
-            var header = window.GetPage<AppearancePage>().FindControl<TextBlock>("TitleBarSectionHeader")!;
-            ScrollViewer scroller = header.GetVisualAncestors().OfType<ScrollViewer>().First();
-            double top = header.Bounds.Top, bottom = header.Bounds.Bottom;
-            scroller.Offset = new Vector(0, scroller.Extent.Height);
-            Dispatcher.UIThread.RunJobs();
-            Assert.True(scroller.Offset.Y > bottom + 100, "Setup did not scroll the row out of view.");
+            SettingRow row = RowOn(window, BelowTheFold);
+            ScrollViewer scroller = row.GetVisualAncestors().OfType<ScrollViewer>().First();
+            double rowBottom = row.TranslatePoint(new Point(0, row.Bounds.Height), (Visual)scroller.Content!)!.Value.Y;
+            Assert.True(rowBottom > scroller.Viewport.Height, "Setup: the row must start below the fold, or this proves nothing.");
 
-            Assert.True(window.RevealRow(SettingsPage.Appearance, SettingsRowIds.TitleBar));
+            Assert.True(window.RevealRow(SettingsPage.CommandAssist, BelowTheFold));
             Dispatcher.UIThread.RunJobs();
 
-            Assert.InRange(scroller.Offset.Y, top - 40, bottom + 40);
-            Assert.Same(window.FindResource("NtBlueDim"), header.Background);
+            Assert.True(scroller.Offset.Y + scroller.Viewport.Height >= rowBottom - 1, $"Row bottom {rowBottom} is still below the viewport at offset {scroller.Offset.Y}.");
+            Assert.Same(window.FindResource("NtBlueDim"), row.Background);
         }
         finally
         {
@@ -143,14 +141,13 @@ public sealed class SettingsWindowFrameTests
     public void Constructing_WithARowTarget_HighlightsTheRowOnceOpen()
     {
         using var root = SettingsTestRoot.Empty();
-        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance, SettingsRowIds.TitleBar));
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.CommandAssist, BelowTheFold));
         try
         {
             window.Show();
             Dispatcher.UIThread.RunJobs();
 
-            var header = window.GetPage<AppearancePage>().FindControl<TextBlock>("TitleBarSectionHeader")!;
-            Assert.Same(window.FindResource("NtBlueDim"), header.Background);
+            Assert.Same(window.FindResource("NtBlueDim"), RowOn(window, BelowTheFold).Background);
         }
         finally
         {

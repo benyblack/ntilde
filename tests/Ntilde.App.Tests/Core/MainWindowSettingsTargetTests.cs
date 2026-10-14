@@ -17,7 +17,7 @@ public sealed class MainWindowSettingsTargetTests : IDisposable, IClassFixture<T
     {
         Assert.Equal(new SettingsTarget(SettingsPage.Profiles), Ntilde.MainWindow.ManageProfilesSettingsTarget());
         Assert.Equal(new SettingsTarget(SettingsPage.Backup), Ntilde.MainWindow.BackupSettingsTarget());
-        Assert.Equal(new SettingsTarget(SettingsPage.Appearance, SettingsRowIds.TitleBar), Ntilde.MainWindow.CustomizeTitleBarSettingsTarget());
+        Assert.Equal(new SettingsTarget(SettingsPage.TabsAndTitleBar), Ntilde.MainWindow.CustomizeTitleBarSettingsTarget());
     }
 
     [AvaloniaFact]
