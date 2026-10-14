@@ -704,6 +704,27 @@ public sealed class SettingsWindowSearchTests
     }
 
     /// <summary>
+    /// A row without a RowId is found but cannot be jumped to, and of two rows sharing one on a page
+    /// a jump reaches only the first. The only entries without a RowId are the pages themselves.
+    /// </summary>
+    [AvaloniaFact]
+    public void EveryIndexedRow_HasARowId_UniqueOnItsPage()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        IReadOnlyList<SettingsSearchEntry> entries = window.SearchIndex.Entries;
+
+        Assert.Equal(SettingsPageRegistry.Pages.Select(d => d.Title), entries.Where(e => e.RowId is null).Select(e => e.Title));
+        string[] duplicates = entries
+            .Where(e => e.RowId is not null)
+            .GroupBy(e => (e.Page, e.RowId))
+            .Where(g => g.Count() > 1)
+            .Select(g => $"{g.Key.Page}/{g.Key.RowId}")
+            .ToArray();
+        Assert.Empty(duplicates);
+    }
+
+    /// <summary>
     /// A Ctrl/Cmd+click toggles the selection off the result it lands on, so the jump must follow
     /// the clicked result, not the selection.
     /// </summary>
