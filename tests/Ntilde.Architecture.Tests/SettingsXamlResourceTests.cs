@@ -17,17 +17,20 @@ public class SettingsXamlResourceTests
     [Fact]
     public void SettingsXaml_ReferencesResourcesDynamically()
     {
-        string settingsDirectory = Path.Combine(RepoRoot(), "src", "Ntilde.App", "Settings");
+        string repoRoot = RepoRoot();
+        string settingsDirectory = Path.Combine(repoRoot, "src", "Ntilde.App", "Settings");
         var violations = new List<string>();
+        int scanned = 0;
 
         foreach (string file in Directory.EnumerateFiles(settingsDirectory, "*.axaml", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {
-            string relative = Path.GetRelativePath(RepoRoot(), file).Replace(Path.DirectorySeparatorChar, '/');
+            string relative = Path.GetRelativePath(repoRoot, file).Replace(Path.DirectorySeparatorChar, '/');
             if (relative.Contains("/obj/", StringComparison.Ordinal) || relative.Contains("/bin/", StringComparison.Ordinal))
             {
                 continue;
             }
 
+            scanned++;
             XDocument document = XDocument.Load(file, LoadOptions.SetLineInfo);
             foreach (XElement element in document.Descendants())
             {
@@ -46,6 +49,8 @@ public class SettingsXamlResourceTests
             }
         }
 
+        // A moved or renamed directory must not turn this guard into a vacuous pass.
+        Assert.True(scanned > 0, $"No .axaml files found under {settingsDirectory}; the guard would pass vacuously.");
         Assert.True(
             violations.Count == 0,
             "Settings XAML must use {DynamicResource …}; a page loads before it joins the window:\n" + string.Join("\n", violations));
@@ -56,6 +61,9 @@ public class SettingsXamlResourceTests
     [InlineData("{x:StaticResource NtFg}", "StaticResource")]
     [InlineData("{DynamicResource NtFg}", "DynamicResource")]
     [InlineData("{Binding Path, Converter={StaticResource Conv}}", "Binding,StaticResource")]
+    [InlineData("{ StaticResource NtFg }", "StaticResource")]
+    [InlineData("{Binding P, Converter={ StaticResource C}}", "Binding,StaticResource")]
+    [InlineData("{StaticResource ResourceKey=NtFg}", "StaticResource")]
     [InlineData("{}{StaticResource is literal}", "")]
     [InlineData("plain text", "")]
     public void MarkupExtensionNames_FindsEveryExtension_IncludingNestedOnes(string value, string expected)
@@ -85,8 +93,14 @@ public class SettingsXamlResourceTests
                 continue;
             }
 
-            int end = trimmed.IndexOfAny(NameEnd, i + 1);
-            string name = end < 0 ? trimmed[(i + 1)..] : trimmed[(i + 1)..end];
+            int start = i + 1;
+            while (start < trimmed.Length && char.IsWhiteSpace(trimmed[start]))
+            {
+                start++;
+            }
+
+            int end = trimmed.IndexOfAny(NameEnd, start);
+            string name = end < 0 ? trimmed[start..] : trimmed[start..end];
             int colon = name.IndexOf(':');
             yield return colon >= 0 ? name[(colon + 1)..] : name;
         }
