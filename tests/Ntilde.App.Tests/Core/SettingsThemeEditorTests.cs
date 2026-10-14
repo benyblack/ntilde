@@ -124,9 +124,9 @@ public sealed class SettingsThemeEditorTests
     }
 
     /// <summary>
-    /// A write that fails must not look like a save: the draft stays dirty (so the window's Save
-    /// still refuses to drop it), the status says why. A directory parked on
-    /// the theme file's path makes the write fail on every OS.
+    /// A failed write must not look like a save: the draft stays dirty, so the window's Save still
+    /// refuses to drop it, and the status says what went wrong. A directory parked on the theme
+    /// file's path makes the write fail on every OS.
     /// </summary>
     [AvaloniaFact]
     public void Save_WhenTheThemeFileCannotBeWritten_KeepsTheDraftDirty_AndSaysSo()

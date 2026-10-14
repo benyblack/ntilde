@@ -262,7 +262,16 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = _editingTheme.Name != "Default";
             Text("ThemeEditorTitle").Text = _editingTheme.Name;
             status.Text = "Saved!";
-            DispatcherTimer.RunOnce(() => status.Text = "", TimeSpan.FromSeconds(2));
+            DispatcherTimer.RunOnce(
+                () =>
+                {
+                    // Clear only our own message; a later error or refusal must stay visible.
+                    if (status.Text == "Saved!")
+                    {
+                        status.Text = "";
+                    }
+                },
+                TimeSpan.FromSeconds(2));
         };
 
         this.FindControl<Button>("BtnDeleteTheme")!.Click += (_, _) =>
