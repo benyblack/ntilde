@@ -123,6 +123,36 @@ public sealed class SettingsThemeEditorTests
         }
     }
 
+    /// <summary>
+    /// A failed write must not look like a save: the draft stays dirty, so the window's Save still
+    /// refuses to drop it, and the status says what went wrong. A directory parked on the theme
+    /// file's path makes the write fail on every OS.
+    /// </summary>
+    [AvaloniaFact]
+    public void Save_WhenTheThemeFileCannotBeWritten_KeepsTheDraftDirty_AndSaysSo()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            string themeFile = Path.Combine(root.Root, "themes", "GitHubLight.json");
+            File.Delete(themeFile);
+            Directory.CreateDirectory(themeFile);
+            Click(page, "BtnEditTheme");
+            Type(page, "EditThemeBgInput", "#123456");
+            var themeListBefore = page.FindControl<ComboBox>("ThemeList")!.Items.Count;
+
+            Click(page, "BtnSaveTheme");
+
+            Assert.Equal(
+                "Couldn't save the theme. Check that the themes folder can be written.",
+                page.FindControl<TextBlock>("ThemeEditorStatus")!.Text);
+            Assert.Equal("Save the theme or go back first.", page.Validate()?.Message);
+            Assert.Equal("#123456", page.FindControl<TextBox>("EditThemeBgInput")!.Text);
+            Assert.Equal(themeListBefore, page.FindControl<ComboBox>("ThemeList")!.Items.Count);
+            Assert.True(Directory.Exists(themeFile));
+        }
+    }
+
     /// <summary>Back drops the edits made since the last Save; the saved values stay saved.</summary>
     [AvaloniaFact]
     public void Back_AfterASave_DropsOnlyTheEditsMadeSinceTheSave()

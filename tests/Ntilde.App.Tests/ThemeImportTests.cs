@@ -47,6 +47,22 @@ namespace Ntilde.Tests
         }
 
         [Fact]
+        public void SaveTheme_ReturnsTrueWhenWritten_AndFalseWhenTheFileCannotBeWritten()
+        {
+            var manager = new ThemeManager(_themesDirectory);
+            var theme = new TerminalTheme { Name = "Writable" };
+
+            Assert.True(manager.SaveTheme(theme));
+            Assert.True(File.Exists(Path.Combine(_themesDirectory, "Writable.json")));
+
+            // A directory parked on the target path fails the write on every OS.
+            var blocked = new TerminalTheme { Name = "Blocked" };
+            Directory.CreateDirectory(Path.Combine(_themesDirectory, "Blocked.json"));
+
+            Assert.False(manager.SaveTheme(blocked));
+        }
+
+        [Fact]
         public void ImportTheme_WindowsTerminalSchemeObject_Imports()
         {
             // The shape a user gets by copying one entry out of WT's settings.json "schemes".
