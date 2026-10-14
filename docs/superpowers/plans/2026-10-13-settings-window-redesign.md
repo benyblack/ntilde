@@ -58,13 +58,13 @@ The spec was written before every line was read. These seven points are where re
   - A targeted run must also add `&Lane!=PlatformBoot`, for example `--filter "FullyQualifiedName~Settings&Lane!=PlatformBoot"`.
 - **`[AvaloniaFact]` / `[AvaloniaTheory]` for anything that constructs a control, a window, XAML or `NtPalette`.** A plain `[Fact]` is allowed only for code with no Avalonia objects (`SettingsSession`, search ranking over plain records), or a bare `ResourceDictionary` and brushes, as `ThemeApplicationRegressionTests` already does.
 - **Every `.axaml` under `src/Ntilde.App/Settings/` uses `{DynamicResource Nt…}`, never `StaticResource`.** A page loads its XAML before it joins the window, so a `StaticResource` there cannot see the palette. From PR 2, `SettingsXamlResourceTests` enforces this. The window's own XAML may keep `StaticResource`, because it loads with its resources already present.
-- **No new colour literals.** The existing ones stay for theme v2: the Danger button's `#3a1a1d` / `#5c2329` / `#4a2024`, the preview's `#111`, the toggle knob's `White`, and the window's own `#16181d` / `#e6e8ec`.
+- **No new colour literals.** Literals moved verbatim from `ORIG` are not new; they stay for theme v2 to sweep: the Danger button's `#3a1a1d` / `#5c2329` / `#4a2024`, the preview's `#111`, the toggle knob's `White`, the window's own `#16181d` / `#e6e8ec`, the theme editor's `Background="Black"` on `EditSwatch0`-`EditSwatch15`, `Brushes.IndianRed` (the shortcut conflict colour, moved in Task 2.6) and `Brushes.Black` / `Brushes.White` (the swatch flyout, moved in Task 2.9). The theme editor's new `EditorPreviewArea` background `#111` is the same allowed preview literal, not a new one.
 - **Stored values never change.** Every `TerminalSettings` field the window writes keeps the exact stored string or number. The round-trip test (Task 2.1) is the guard and must stay green through PRs 2–5 without edits.
 - **Readable combo labels go in `Content`, stored values in `Tag`.** Load and Collect go through `Settings/ComboTags.cs` (PR 3).
 - **Compiled bindings only.** No `x:CompileBindings="False"`, and no `ResourceInclude` / `StyleInclude` by URI.
 - **Copy rules:**
   - Moved text keeps its wording.
-  - A description longer than two lines moves into `Details` behind "More", split at a sentence boundary.
+  - Only the six descriptions that spec §8 lists move into `Details` behind "More" (Task 3.4 names them), split at a sentence boundary. Every other description stays inline, even when it runs to three lines.
   - New strings use sentence case and plain words.
 - **Git:**
   - Work in `D:\projects\nova2\.worktrees\settings-redesign`.
@@ -79,7 +79,7 @@ The spec was written before every line was read. These seven points are where re
 
 These are the five things a user is most likely to hit that the spec implies but no feature test would catch. Each has a test in the task named after it.
 
-1. **A `settings.json` holding a value outside a combo's set.** Examples: an older or hand-edited `BackgroundImageStretch: "uniform"`, `BlurEffect: "Transparent"`, `AgentIndicatorTabRollup: "writesonly"` or `TabStripOrientation: "vertical"`. Settings must open with today's fallback item selected, case-insensitively only where today is, and never throw (Task 3.2).
+1. **A `settings.json` holding a value outside a combo's set.** Examples: an older or hand-edited `BackgroundImageStretch: "uniform"`, `BlurEffect: "Transparent"`, `AgentIndicatorTabRollup: "writesonly"` or `TabStripOrientation: "vertical"`. Settings must open with today's fallback item selected, case-insensitively only where today is, and never throw (Tasks 2.4, 3.4, 3.5, 3.6).
 2. **Ctrl/Cmd+S while an edit is still uncommitted**, such as a number typed into Font size that has not lost focus yet. It must save the value on screen, not the previous one (Task 2.11).
 3. **Arrow keys in the sidebar across a group header**, for example ↓ from Shortcuts. They must land on the next page (Command Assist), never stick on a header and never select one (Task 2.11).
 4. **A Save rejected by a duplicate shortcut, then fixed and saved again.** Edits made on other pages before the rejected Save must still be written, and the rejected Save must have changed nothing (Task 2.10).
@@ -110,9 +110,9 @@ These are the five things a user is most likely to hit that the spec implies but
 
 **New in `src/Ntilde.App/Settings/Pages/` (namespace `Ntilde.Settings.Pages`):** `AppearancePage`, `ProfilesPage`, `ShortcutsPage`, `CommandAssistPage`, `AgentAccessPage`, `SshPage`, `BackupPage` (PR 2); `GeneralPage`, `TerminalPage`, `TabsAndTitleBarPage` (PR 3). Each is `.axaml` + `.axaml.cs`.
 
-**Modified:** `Shell/ThemePaletteResources.cs` (PR 1), `Controls/ConnectionManager.axaml` (PR 1), `SettingsWindow.axaml(.cs)` (PRs 1, 2, 5), `MainWindow.axaml.cs` (PRs 2, 3).
+**Modified:** `Shell/ThemePaletteResources.cs` (PR 1), `Controls/ConnectionManager.axaml` (PR 1), `SettingsWindow.axaml(.cs)` (PR 1 changes the `.axaml` only; PRs 2, 3 and 5 change both), `MainWindow.axaml.cs` (PRs 2, 3).
 
-**Deleted:** `SettingsSection.cs` (PR 2).
+**Deleted:** `SettingsSection.cs` (PR 2). **Created in PR 2, deleted in PR 3:** `SettingsRowIds`.
 
 **Tests (`tests/Ntilde.App.Tests/Core/`, namespace `Ntilde.Tests.Core`):**
 - New: `SettingsTestRoot`, `SettingsScreenshotHarness`, `SettingsPaletteTests` (PR 1); `SettingsWindowRoundTripTests`, `SettingsSessionTests`, `SettingsNavigationTests`, `SettingsPageTests`, `SettingsWindowFrameTests`, `SettingsWindowKeyboardTests`, `MainWindowSettingsTargetTests` (PR 2); `SettingRowTests`, `ComboTagsTests`, `SettingsThemeEditorTests` (PR 3); `SettingsTitleBarEditorTests` (PR 4); `SettingsSearchIndexTests`, `SettingsWindowSearchTests` (PR 5).
@@ -139,7 +139,7 @@ These are the five things a user is most likely to hit that the spec implies but
   Expected: `Build succeeded`, and every run reports `Passed!` with `Failed: 0`. A `[FAIL]` line means a red run; read the log before blaming flakiness.
 - **Screenshots (PowerShell)**, written to a fresh directory:
   ```powershell
-  $env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\<name>"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS
+  $env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\<name>"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" --blame-hang-timeout 5m --blame-hang-dump-type mini *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS
   ```
   Set `NTILDE_SETTINGS_SHOTS_BASELINE` as well to compare against an earlier directory pixel by pixel.
 
@@ -442,13 +442,13 @@ public sealed class SettingsScreenshotHarness
 - [ ] **Step 3: Check that the harness skips in a normal run and captures when asked.**
 
 ```powershell
-scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" *> "$env:TEMP\settings-shots.log"; Select-String -Path "$env:TEMP\settings-shots.log" -Pattern "Passed!|Failed!|Skipped|\[FAIL\]"
+scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" --blame-hang-timeout 5m --blame-hang-dump-type mini *> "$env:TEMP\settings-shots.log"; Select-String -Path "$env:TEMP\settings-shots.log" -Pattern "Passed!|Failed!|Skipped|\[FAIL\]"
 ```
 
 Expected: 2 skipped, 0 failed.
 
 ```powershell
-$env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\pr1-before"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS; Get-ChildItem "$env:TEMP\settings-shots\pr1-before" | Measure-Object
+$env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\pr1-before"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" --blame-hang-timeout 5m --blame-hang-dump-type mini *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS; Get-ChildItem "$env:TEMP\settings-shots\pr1-before" | Measure-Object
 ```
 
 Expected: the run passes. The directory holds several PNGs per tab for dark and light, plus `connections-dark.png` and `connections-light.png`. Open two of them to check they show the window, not a blank frame. **This directory is the baseline for Task 1.5. Do not regenerate it after Task 1.2.**
@@ -1126,7 +1126,7 @@ git commit -m "refactor(connections): merge the shared NtPalette instead of a co
 - [ ] **Step 1: Capture again and compare with the Task 1.1 baseline.**
 
 ```powershell
-$env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\pr1-after"; $env:NTILDE_SETTINGS_SHOTS_BASELINE = "$env:TEMP\settings-shots\pr1-before"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS, Env:NTILDE_SETTINGS_SHOTS_BASELINE; Select-String -Path "$env:TEMP\settings-shots.log" -Pattern "Passed!|Failed!|differ"
+$env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\pr1-after"; $env:NTILDE_SETTINGS_SHOTS_BASELINE = "$env:TEMP\settings-shots\pr1-before"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" --blame-hang-timeout 5m --blame-hang-dump-type mini *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS, Env:NTILDE_SETTINGS_SHOTS_BASELINE; Select-String -Path "$env:TEMP\settings-shots.log" -Pattern "Passed!|Failed!|differ"
 ```
 
 Expected: `Passed!`, with no "pixels differ" lines.
@@ -1172,7 +1172,7 @@ EOF
 
 ## Move rules (read with every page task in this part)
 
-Page tasks copy code out of `ORIG` (`git show ee60cc2:src/Ntilde.App/SettingsWindow.axaml.cs`) and apply these rules. Copy comments verbatim. **If you hand a page task to a subagent, paste this section into its brief.**
+Page tasks copy code out of `ORIG` (`git show ee60cc2:src/Ntilde.App/SettingsWindow.axaml.cs`) and apply these rules. Copy comments verbatim (Task 2.9 names the one exception, which would go stale). **If you hand a page task to a subagent, paste this section into its brief.**
 
 | In the moved code | Becomes |
 |---|---|
@@ -1714,6 +1714,7 @@ public sealed record SettingsValidationError(SettingsPage Page, string? RowId, s
 ```csharp
 using System;
 using Ntilde.Shell;
+using Ntilde.VT;
 
 namespace Ntilde.Settings;
 
@@ -1981,8 +1982,21 @@ public sealed class SettingsNavigationTests
         var image = new Image();
         var host = new Window { Content = image };
         host.Resources["NtBlueDim"] = new SolidColorBrush(Colors.Blue);
+        try
+        {
+            host.Show();
+            Assert.Null(SettingsNavigation.BackgroundPropertyOf(image));
+            Assert.Null(image.Transitions);
 
-        Assert.Null(Record.Exception(() => SettingsNavigation.Flash(image)));
+            Assert.Null(Record.Exception(() => SettingsNavigation.Flash(image)));
+
+            // Nothing was held and no fade was scheduled: the control is exactly as it was.
+            Assert.Null(image.Transitions);
+        }
+        finally
+        {
+            host.Close();
+        }
     }
 
     [AvaloniaFact]
@@ -2167,7 +2181,8 @@ public sealed class SettingsPageTests
     {
         var page = new AgentAccessPage();
         page.Load(SessionFor(new TerminalSettings { AgentIndicatorTabRollup = "Sometimes" }));
-        var target = new TerminalSettings();
+        // Seed with a value that is neither the default nor the expected fallback, so a Load that selects nothing fails.
+        var target = new TerminalSettings { AgentIndicatorTabRollup = "All" };
 
         page.Collect(target);
 
@@ -2743,7 +2758,7 @@ git commit -m "feat(settings): Command Assist page" -m "Co-Authored-By: Claude O
 - Internal statics, moved: `BuildLocalProfilesForEditor`, `NormalizeSettingsProfilesForSave` and `ResolveDefaultLocalProfileId`.
 - It listens to `session.ThemesChanged` and repopulates its override-theme combo.
 
-- [ ] **Step 1: Write the failing tests.** Append them to `SettingsPageTests`.
+- [ ] **Step 1: Write the failing tests.** Append them to `SettingsPageTests`. Each test opens with `using var root = SettingsTestRoot.Empty();`, because `Load` reaches `ThemeManager` on the real `AppPaths` and could otherwise create or extract the user's real themes folder.
 
 ```csharp
     private const string LocalProfileId = "33333333-3333-3333-3333-333333333333";
@@ -2761,6 +2776,7 @@ git commit -m "feat(settings): Command Assist page" -m "Co-Authored-By: Claude O
     [AvaloniaFact]
     public void ProfilesPage_ShowsOnlyLocalProfiles_AndCollectWritesThemBack()
     {
+        using var root = SettingsTestRoot.Empty();
         var page = new ProfilesPage();
         page.Load(SessionFor(SettingsWithOneLocalAndOneSshProfile()));
         var target = new TerminalSettings();
@@ -2777,6 +2793,7 @@ git commit -m "feat(settings): Command Assist page" -m "Co-Authored-By: Claude O
     [AvaloniaFact]
     public void ProfilesPage_AfterAReload_EditsLandOnTheFreshProfile()
     {
+        using var root = SettingsTestRoot.Empty();
         var page = new ProfilesPage();
         page.Load(SessionFor(SettingsWithOneLocalAndOneSshProfile()));
         var list = page.FindControl<ListBox>("ProfilesListBox")!;
@@ -2796,6 +2813,7 @@ git commit -m "feat(settings): Command Assist page" -m "Co-Authored-By: Claude O
     [AvaloniaFact]
     public void ProfilesPage_OverrideFontList_OffersTheSessionsFontChoices()
     {
+        using var root = SettingsTestRoot.Empty();
         var settings = SettingsWithOneLocalAndOneSshProfile();
         settings.FontFamily = "Session Mono";
         var page = new ProfilesPage();
@@ -2821,7 +2839,7 @@ git commit -m "feat(settings): Command Assist page" -m "Co-Authored-By: Claude O
     - 594-666 (connection type and the SSH inputs: these move as they are, and PR 3 deletes them);
     - 668-761 and 771-799 (overrides; skip 763-769, an empty `ligatureToggle` handler);
     - 956 (`btnAddRule`).
-    - Start each wiring method with the `this.FindControl` lookups it uses, copied from 223-259. The build names any you missed.
+    - Start each wiring method with the `this.FindControl` lookups it uses, copied from 223-259, plus `overrideThemeList` (ORIG 215), which the override block (668-761) uses. The build names any you missed.
   - **The 2-second timer:** 482-487 goes into the constructor. The `Closed` stop at 489-493 becomes `Dispose()`.
   - **Methods:**
     - 1357-1421 (`RepointSelectedProfileAfterReload`, `ClearProfileEditorFields`);
@@ -2942,7 +2960,7 @@ git commit -m "feat(settings): Shells & Profiles page" -m "Co-Authored-By: Claud
 - It raises `Session.RaiseThemesChanged()` after a theme import, save or delete, and previews through `Session.Preview`.
 - The TITLE BAR header carries `settings:SettingsNavigation.RowId="title-bar"`. `MainWindow`'s Customize Title Bar target uses that id until PR 3.
 
-- [ ] **Step 1: Write the failing tests.** Append them to `SettingsPageTests`, and add `using Ntilde.Shell.TitleBar;`.
+- [ ] **Step 1: Write the failing tests.** Append them to `SettingsPageTests`, and add `using Ntilde.Shell.TitleBar;` and `using Ntilde.VT;` (for `TerminalTheme?`; each goes in its alphabetical spot in the existing list).
 
 ```csharp
     [AvaloniaFact]
@@ -3039,8 +3057,10 @@ In the generated file, give the `TitleBarSectionHeader` TextBlock the attached i
   - Field `_editingTheme` (67).
   - **`WireThemeSection()`:**
     - lines 262-273 (lookups) and 275-454: theme import, edit, new, close, save and delete, the swatches, and the colour inputs;
+    - **the one comment that changes:** ORIG 379 starts "OnThemeChanged refreshes the host window, but nothing above re-applies the palette…". `OnThemeChanged` is a window name the Move-rules `git grep` flags, and the comment would be stale. Reword its first words to "`Session.Preview.Theme` refreshes the host window, but …" and keep the rest of the comment as is;
     - then 824-836 (the `themeList` handler, whose `ApplyTheme(theme)` becomes `Session.Preview.RepaintWindow(theme)`);
     - add `var themeList = this.FindControl<ComboBox>("ThemeList");` at the top;
+    - `WireFontRows` and `WireWindowRows` also need the lookups they use: copy ORIG 216-222 and 248-252 into them (the build names any you miss);
     - after each `PopulateThemes();` in import (299), save (362) and delete (400), add `Session.RaiseThemesChanged();`;
     - **do not move 456-466** (Correction 6).
   - **`WireFontRows()`:** 801-822.
@@ -3320,7 +3340,7 @@ public static class SettingsRowIds
 }
 ```
 
-- [ ] **Step 2: Add the sidebar styles to `NtStyles.axaml`.** Insert them right after the `ListBox.SideNav ListBoxItem:selected` style:
+- [ ] **Step 2: Add the sidebar styles to `NtStyles.axaml`.** Insert them right after the last of the two styles whose selector starts `ListBox.SideNav ListBoxItem:selected` (the one without `/template/`, which is the second of the two in the file):
 
 ```xml
     <!-- Sidebar group headers: disabled items, so they are never a selection or a focus stop. -->
@@ -4281,7 +4301,8 @@ public sealed class SettingsWindowKeyboardTests
     public void PrimaryS_SavesAnEditStillPendingInANumberBox()
     {
         using var root = SettingsTestRoot.WithSettings("""{"FontSize":14}""");
-        var window = new Ntilde.SettingsWindow();
+        // Open on Appearance, where Font size lives until Task 3.3; the window's default page (General after Task 3.2) never applies a hidden page's template.
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
         try
         {
             window.Show();
@@ -4543,6 +4564,9 @@ public class SettingsXamlResourceTests
         Assert.Equal(expected, string.Join(",", MarkupExtensionNames(value)));
     }
 
+    // Hoisted: a constant array argument trips CA1861 under TreatWarningsAsErrors.
+    private static readonly char[] NameEnd = [' ', '}', ',', '\t', '\r', '\n'];
+
     /// <summary>
     /// The markup extension names an attribute value invokes, outermost first. A value starting with
     /// "{}" is an escaped literal and invokes none.
@@ -4562,7 +4586,7 @@ public class SettingsXamlResourceTests
                 continue;
             }
 
-            int end = trimmed.IndexOfAny([' ', '}', ',', '\t', '\r', '\n'], i + 1);
+            int end = trimmed.IndexOfAny(NameEnd, i + 1);
             string name = end < 0 ? trimmed[(i + 1)..] : trimmed[(i + 1)..end];
             int colon = name.IndexOf(':');
             yield return colon >= 0 ? name[(colon + 1)..] : name;
@@ -4583,7 +4607,7 @@ public class SettingsXamlResourceTests
 }
 ```
 
-- [ ] **Step 2: Check that the guard can fail.** Temporarily change one `{DynamicResource NtFg3}` in `SshPage.axaml` to `{StaticResource NtFg3}`, then run:
+- [ ] **Step 2: Check that the guard can fail.** Temporarily change the `{DynamicResource NtHairline}` reference on the Border in `SshPage.axaml` (the page has no `NtFg3`; this is its only `Nt…` reference) to `{StaticResource NtHairline}`, then run:
 
 ```powershell
 scripts/build.ps1 test tests/Ntilde.Architecture.Tests --filter "FullyQualifiedName~SettingsXamlResourceTests" *> "$env:TEMP\settings-arch.log"; Select-String -Path "$env:TEMP\settings-arch.log" -Pattern "Passed!|Failed!|SshPage"
@@ -4617,7 +4641,7 @@ git commit -m "test(arch): Settings XAML must reference resources dynamically" -
 - [ ] **Step 2: Take the screenshots for the PR.**
 
 ```powershell
-$env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\pr2"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS
+$env:NTILDE_SETTINGS_SHOTS = "$env:TEMP\settings-shots\pr2"; scripts/build.ps1 test tests/Ntilde.App.Tests --filter "FullyQualifiedName~SettingsScreenshotHarness&Lane!=PlatformBoot" --blame-hang-timeout 5m --blame-hang-dump-type mini *> "$env:TEMP\settings-shots.log"; Remove-Item Env:NTILDE_SETTINGS_SHOTS
 ```
 
 Open them next to `pr1-after`. Expected:
@@ -4639,7 +4663,7 @@ git commit -m "test(settings): screenshot harness walks the page registry" -m "C
   3. Click each sidebar item. Every page should show what the old tab showed.
   4. Use ↑/↓ in the sidebar, crossing from Shortcuts to Command Assist and back.
   5. Change the font size, press Ctrl+S, and confirm the window closes and the terminal font changed.
-  6. Reopen with Ctrl+. It should land on the last page you visited.
+  6. Reopen with Ctrl+, It should land on the last page you visited.
   7. Right-click the title bar, choose Customize Title Bar…, and confirm Appearance opens scrolled to TITLE BAR with a brief blue highlight.
   8. From the command palette, run "Export configuration…" and confirm it opens Backup & Restore.
   9. Switch theme on Appearance and confirm the whole window recolours, including the title-bar cards and the shortcut rows.
@@ -4724,6 +4748,7 @@ git switch -c feat/settings-redesign-pages origin/main
 
 ```csharp
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
@@ -5423,7 +5448,7 @@ public partial class GeneralPage : UserControl, ISettingsPage
     `new(SettingsPage.General, "GENERAL", "General", "◇", () => new GeneralPage()),`
   - In `AppearancePage.axaml`, delete the four `Grid` blocks holding `LongCommandNotificationsToggle`, `Osc9NotificationsToggle`, `Osc9ProgressReportingToggle` and `AutomaticUpdateChecksToggle`, and the hairline `Border` after each.
   - In `AppearancePage.axaml.cs`, delete those four toggles' lines from `LoadControls` and from `Collect`.
-  - In `AppearancePage_CollectsEveryFieldItLoaded`, move the four notification and update assertions into the General test above.
+  - In `AppearancePage_CollectsEveryFieldItLoaded`, delete the four notification and update assertions from it. The General test above already holds them.
   - In `MainWindowSettingsTargetTests`, nothing changes: it reads `SettingsPageRegistry.DefaultPage`.
 
 - [ ] **Step 6: Run the Settings tests.** Use the targeted run with `Settings`. Expected: PASS, with `SettingsWindowRoundTripTests` unchanged.
@@ -5625,9 +5650,11 @@ public partial class TerminalPage : UserControl, ISettingsPage
     - the font family, font size, ligatures, complex shaping and scrollback lines in `LoadControls` and in `Collect`.
   - From `AppearancePage_CollectsEveryFieldItLoaded`, delete the matching assertions.
 
-- [ ] **Step 6: Run the Settings tests.** Expected: PASS, with the round trip unchanged.
+- [ ] **Step 6: Point the keyboard test at the Terminal page.** In `SettingsWindowKeyboardTests.PrimaryS_SavesAnEditStillPendingInANumberBox`, change `new SettingsTarget(SettingsPage.Appearance)` to `new SettingsTarget(SettingsPage.Terminal)`, and update the comment above it to say Font size now lives on Terminal. Its `SettingsWindowFrameTests.FontSizeInput(window)` lookup needs no further edit, because Step 1 already moved that helper to `GetPage<TerminalPage>()`. A hidden page never applies its template, so the test must open on the page that owns Font size or `.First()` throws.
 
-- [ ] **Step 7: Commit.**
+- [ ] **Step 7: Run the Settings tests.** Expected: PASS, with the round trip unchanged.
+
+- [ ] **Step 8: Commit.**
 
 ```bash
 git add -A src/Ntilde.App/Settings tests/Ntilde.App.Tests/Core
@@ -5691,7 +5718,8 @@ git commit -m "feat(settings): Terminal page for fonts and scrollback" -m "Co-Au
     {
         var page = new AgentAccessPage();
         page.Load(SessionFor(new TerminalSettings { AgentIndicatorTabRollup = stored }));
-        var target = new TerminalSettings();
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { AgentIndicatorTabRollup = "All" };
 
         page.Collect(target);
 
@@ -5997,7 +6025,8 @@ git commit -m "feat(settings): setting rows with More on Command Assist, Agent A
     {
         var page = new TabsAndTitleBarPage();
         page.Load(SessionFor(new TerminalSettings { TabStripOrientation = stored }));
-        var target = new TerminalSettings();
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { TabStripOrientation = "unset" };
 
         page.Collect(target);
 
@@ -6191,7 +6220,7 @@ git commit -m "feat(settings): Tabs & title bar page; Customize Title Bar opens 
 - Test: `SettingsPageTests.cs` (the Appearance tests)
 
 **Interfaces:**
-- `public interface IHasSubPage { void CloseSubPage(); }`
+- `public interface IHasSubPage { bool IsSubPageOpen { get; } void CloseSubPage(); }`
 - `AppearancePage : ISettingsPage, IHasSubPage`, with `internal bool IsThemeEditorOpen`.
 - Row ids: `theme`, `window-opacity`, `interface-scale`, `blur-effect`, `background-image`, `background-image-opacity`, `background-image-stretch`.
 - Named views: `AppearanceMainView` and `ThemeEditorView` (both ScrollViewers).
@@ -6239,7 +6268,8 @@ git commit -m "feat(settings): Tabs & title bar page; Customize Title Bar opens 
         using var root = SettingsTestRoot.Empty();
         var page = new AppearancePage();
         page.Load(SessionFor(new TerminalSettings { BackgroundImageStretch = stored }));
-        var target = new TerminalSettings();
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { BackgroundImageStretch = "unset" };
 
         page.Collect(target);
 
@@ -6255,7 +6285,8 @@ git commit -m "feat(settings): Tabs & title bar page; Customize Title Bar opens 
         using var root = SettingsTestRoot.Empty();
         var page = new AppearancePage();
         page.Load(SessionFor(new TerminalSettings { BlurEffect = stored }));
-        var target = new TerminalSettings();
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { BlurEffect = "unset" };
 
         page.Collect(target);
 
@@ -7192,7 +7223,7 @@ git commit -m "refactor(settings): remove the never-visible SSH panel from Profi
 
 **Files:** the docs below. Make each change exactly as given, then run the final check.
 
-- [ ] **Step 1: Make the changes.**
+- [ ] **Step 1: Make the changes.** The `USER_MANUAL.md` §1.2 Find string wraps across lines 13-14 of that file, and the second line carries a 2-space indent (`  Assist, Agent Access, SSH, Backup.`). The `<br>` in the table marks that line break, so match the break and the indent exactly (or edit the two lines by hand).
 
 | File | Find | Replace with |
 |---|---|---|
@@ -7384,7 +7415,7 @@ public sealed class SettingsTitleBarEditorTests
 
     private static void Click(Control control) => control.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private static string GroupOf(TabsAndTitleBarPage page, string id)
+    internal static string GroupOf(TabsAndTitleBarPage page, string id)
     {
         string? group = null;
         foreach (Control child in Rows(page).Children)
@@ -7481,11 +7512,11 @@ Then update the two older tests to the new row shape:
 
   The asserts become:
   - `Assert.Equal("Ctrl+Alt+S", ShortcutShownFor(window, "settings"));`
-  - `Assert.Equal(TitleBarItemState.Pinned, session.TitleBarDraft.GetState("find"));`, together with `Assert.Equal("IN THE BAR", …)`. Or simply check that `Row(page, "find")` exists.
+  - `Assert.Equal(TitleBarItemState.Pinned, session.TitleBarDraft.GetState("find"));`, together with `Assert.Equal("IN THE BAR", SettingsTitleBarEditorTests.GroupOf(window.GetPage<TabsAndTitleBarPage>(), "find"))` (`GroupOf` is `internal static`). Or simply check that `SettingsTitleBarEditorTests.Row(window.GetPage<TabsAndTitleBarPage>(), "find")` exists.
   - `Assert.Equal(ShortcutMatcher.Format(Key.F9, KeyModifiers.Alt), ShortcutShownFor(window, "settings"));`
 - In `ThemeApplicationRegressionTests.SettingsWindow_CodeBuiltRows_UseTheWindowPaletteBrushes`, title-bar rows are hairline rows now. Select them with `.Children.OfType<Border>()` and assert `Assert.Null(row.Background)` and `Assert.Same(hairlineBrush, row.BorderBrush)`, the same as for the shortcut rows.
 
-- [ ] **Step 2: Run them and watch them fail.** Use the targeted run with `SettingsTitleBarEditorTests`. Expected: failures, because the rows are still cards with a combo.
+- [ ] **Step 2: Run them and watch them fail.** Use the targeted run with `SettingsTitleBarEditorTests`. Expected: a compile error, because `TabsAndTitleBarPage.BarFullTooltip` does not exist yet. The rows are still cards with a combo, so the tests could not pass even once it builds.
 
 - [ ] **Step 3: Replace the TITLE BAR ACTIONS group in `TabsAndTitleBarPage.axaml`.**
 
@@ -7883,7 +7914,7 @@ git commit -m "feat(settings): live mini title bar above the title-bar actions" 
 
 ## Task 4.3: Gate, screenshots, smoke test and PR 4
 
-- [ ] **Step 1: Run the full gate** (Conventions).
+- [ ] **Step 1: Run the full gate** (Conventions). CI's `AOT Gate (windows-latest)` must also be green, because this PR changes `.axaml`. A local AOT scan stays optional.
 - [ ] **Step 2: Take screenshots** into `$env:TEMP\settings-shots\pr4`. The Tabs & title bar page is captured by the page loop. Check:
   - On dark and light, the mini bar reads as a bar.
   - The switch's checked segment is clear.
