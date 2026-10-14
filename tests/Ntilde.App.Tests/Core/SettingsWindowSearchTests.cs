@@ -1,10 +1,13 @@
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Ntilde.Controls;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell.Shortcuts;
@@ -328,6 +331,87 @@ public sealed class SettingsWindowSearchTests
     }
 
     [AvaloniaFact]
+    public void EachResult_HasAnAccessibleName()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+            Dispatcher.UIThread.RunJobs();
+
+            AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement(Results(window).ContainerFromIndex(0)!);
+
+            Assert.Equal("Window opacity — Appearance › Window", peer.GetName());
+            Assert.Equal("Applies when the window is focused.", peer.GetHelpText());
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void AResult_SaysWhereItLives_InSentenceCase()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "image opacity";
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("Appearance › Background image", LocationShown(window, 0));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ResultLocation_KeepsAcronymsUpperCase_AndNamesAPageAsAPage()
+    {
+        Assert.Equal("SSH › SSH agent", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.Ssh, "SSH", "SSH AGENT")));
+        Assert.Equal("General › Progress (OSC 9;4)", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.General, "General", "PROGRESS (OSC 9;4)")));
+        Assert.Equal("Terminal", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.Terminal, "Terminal", null)));
+        Assert.Equal("Page", Ntilde.SettingsWindow.ResultLocation(new SettingsSearchEntry(SettingsPage.Terminal, "Terminal", null, null, "Terminal", null, null)));
+
+        static SettingsSearchEntry Row(SettingsPage page, string pageTitle, string? group)
+            => new(page, pageTitle, group, "row", "Row", null, null);
+    }
+
+    /// <summary>A page entry has no row to reveal: Enter opens the page itself, and the result does not print the page name twice.</summary>
+    [AvaloniaFact]
+    public void APageResult_SaysPage_AndEnterOpensThePage()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("backup");
+            Dispatcher.UIThread.RunJobs();
+            SettingsSearchResult page = Shown(window).Single(r => r.Entry.Page == SettingsPage.Backup && r.Entry.RowId is null);
+            Results(window).SelectedItem = page;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Page", LocationShown(window, Results(window).SelectedIndex));
+
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Backup);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void EnterInTheResultsList_JumpsToTheSelectedResult()
     {
         using var root = SettingsTestRoot.Empty();
@@ -358,4 +442,8 @@ public sealed class SettingsWindowSearchTests
         Assert.False(window.FindControl<Control>("SearchResultsView")!.IsVisible);
         Assert.True(window.GetPage(page).View.IsVisible);
     }
+
+    /// <summary>The first line of a result: where the setting lives.</summary>
+    private static string? LocationShown(Ntilde.SettingsWindow window, int index)
+        => Results(window).ContainerFromIndex(index)!.GetVisualDescendants().OfType<TextBlock>().First(t => t is not MatchHighlightTextBlock).Text;
 }

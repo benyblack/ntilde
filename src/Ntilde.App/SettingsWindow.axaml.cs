@@ -19,7 +19,6 @@ using Ntilde.Shell;
 using Ntilde.VT;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -497,6 +496,17 @@ namespace Ntilde
             };
             _searchResults.AddHandler(KeyDownEvent, OnResultsKeyDown, RoutingStrategies.Tunnel);
 
+            // The container's content is the record itself, so without a name a screen reader
+            // reads the record's ToString().
+            _searchResults.ContainerPrepared += (_, e) =>
+            {
+                if (_searchResults.Items[e.Index] is SettingsSearchResult result)
+                {
+                    AutomationProperties.SetName(e.Container, $"{result.Entry.Title} — {ResultLocation(result.Entry)}");
+                    AutomationProperties.SetHelpText(e.Container, result.Entry.Description);
+                }
+            };
+
             // A click on the page already selected changes no selection, so ShowPage never runs;
             // the click itself ends the search.
             _sideNav.Tapped += (_, e) =>
@@ -608,13 +618,44 @@ namespace Ntilde
             NavigateTo(new SettingsTarget(result.Entry.Page, result.Entry.RowId)); // ShowPage clears the search
         }
 
+        /// <summary>The acronyms Settings copy uses: the words a group header keeps upper-case when a result writes it in sentence case.</summary>
+        private static readonly HashSet<string> GroupHeaderAcronyms = new(StringComparer.Ordinal) { "SSH", "OSC" };
+
+        /// <summary>
+        /// A result's first line: "Page" for a page itself (it has no row), else the page, then the
+        /// row's group in sentence case - "Appearance › Background image".
+        /// </summary>
+        internal static string ResultLocation(SettingsSearchEntry entry)
+        {
+            ArgumentNullException.ThrowIfNull(entry);
+            if (entry.RowId is null)
+            {
+                return "Page";
+            }
+
+            return entry.Group is null ? entry.PageTitle : $"{entry.PageTitle} › {SentenceCase(entry.Group)}";
+        }
+
+        /// <summary>A group header ("BACKGROUND IMAGE") in sentence case, its acronyms kept upper-case.</summary>
+        private static string SentenceCase(string header)
+        {
+            string[] words = header.Split(' ');
+            for (int i = 0; i < words.Length; i++)
+            {
+                string letters = new(words[i].Where(char.IsLetter).ToArray());
+                if (!GroupHeaderAcronyms.Contains(letters))
+                {
+                    words[i] = words[i].ToLowerInvariant();
+                }
+            }
+
+            string text = string.Join(' ', words);
+            return text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+        }
+
         private Control CreateResultView(SettingsSearchResult result)
         {
             SettingsSearchEntry entry = result.Entry;
-            string where = entry.Group is null
-                ? entry.PageTitle
-                : $"{entry.PageTitle} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(entry.Group.ToLowerInvariant())}";
-
             var panel = new StackPanel
             {
                 Spacing = 2,
@@ -622,7 +663,7 @@ namespace Ntilde
                 {
                     new TextBlock
                     {
-                        Text = where,
+                        Text = ResultLocation(entry),
                         Classes = { "RowDesc" },
                     },
                     new MatchHighlightTextBlock
