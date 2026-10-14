@@ -138,7 +138,8 @@ namespace Ntilde.Shell
             return _loadedThemes["Default"];
         }
 
-        public void SaveTheme(TerminalTheme theme)
+        /// <summary>Writes the theme file. Returns false, after logging, when the write failed.</summary>
+        public bool SaveTheme(TerminalTheme theme)
         {
             string targetPath = Path.Combine(_themesDirectory, ThemeFileName(theme.Name));
 
@@ -149,10 +150,12 @@ namespace Ntilde.Shell
 
                 // Update cache
                 _loadedThemes[theme.Name] = theme;
+                return true;
             }
             catch (Exception ex)
             {
                 TerminalLogger.Error($"[ThemeManager] Error saving theme {theme.Name}: {ex.Message}");
+                return false;
             }
         }
 

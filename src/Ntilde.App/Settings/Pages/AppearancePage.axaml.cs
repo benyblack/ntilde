@@ -238,7 +238,14 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
             // SaveTheme caches the object it is given. Hand it a copy, so edits made after this
             // Save stay in the draft and Back still discards them.
-            Session.Settings.ThemeManager.SaveTheme(_editingTheme.Clone());
+            // A failed write leaves the draft, the baseline and the saved state as they were, so
+            // the window's Save still refuses to drop the unsaved edits.
+            if (!Session.Settings.ThemeManager.SaveTheme(_editingTheme.Clone()))
+            {
+                status.Text = "Couldn't save the theme. Check that the themes folder can be written.";
+                return;
+            }
+
             PopulateThemes();
             Session.RaiseThemesChanged();
             SelectTheme(_editingTheme.Name);
