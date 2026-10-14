@@ -411,8 +411,13 @@ public sealed class SettingsPageTests
         var page = new AppearancePage();
         page.Load(SessionFor(new TerminalSettings
         {
-            ThemeName = "GitHub Light", WindowOpacity = 0.75, UiScale = 1.25, BlurEffect = "Mica",
-            BackgroundImagePath = "/img.png", BackgroundImageOpacity = 0.35, BackgroundImageStretch = "Uniform",
+            ThemeName = "GitHub Light",
+            WindowOpacity = 0.75,
+            UiScale = 1.25,
+            BlurEffect = "Mica",
+            BackgroundImagePath = "/img.png",
+            BackgroundImageOpacity = 0.35,
+            BackgroundImageStretch = "Uniform",
         }));
         var target = new TerminalSettings();
 
