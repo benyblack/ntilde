@@ -5,6 +5,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Controls;
+using Ntilde.Settings;
 using Ntilde.Shell;
 using SkiaSharp;
 
@@ -49,12 +50,10 @@ public sealed class SettingsScreenshotHarness
         try
         {
             window.Show();
-            var tabs = window.FindControl<TabControl>("MainTabs")!;
-            for (int i = 0; i < tabs.ItemCount; i++)
+            foreach (SettingsPageDescriptor descriptor in SettingsPageRegistry.Pages)
             {
-                tabs.SelectedIndex = i;
-                string header = ((TabItem)tabs.Items[i]!).Header!.ToString()!.Replace(' ', '-');
-                written.AddRange(CaptureScrolled(window, output, $"settings-{slug}-{i}-{header}"));
+                window.NavigateTo(new SettingsTarget(descriptor.Page));
+                written.AddRange(CaptureScrolled(window, output, $"settings-{slug}-{descriptor.Page}"));
             }
         }
         finally

@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="clr-namespace:Ntilde.Settings"
+             x:Class="Ntilde.Settings.Pages.BackupPage">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,28,32,28" Spacing="0">
+
+            <StackPanel Margin="0,0,0,24">
+                <TextBlock Classes="H1" Text="Backup &amp; Restore"/>
+                <TextBlock Classes="Subtitle" Margin="0,4,0,0" TextWrapping="Wrap" Text="Export your settings, themes, connections, workspaces, and snippets to a single file you can carry to another machine. Passwords are never included — they stay in your operating system's keychain, and you re-enter them once after importing."/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+                <Button Name="BtnBackupExport" Classes="Pill" Content="Export…"/>
+                <Button Name="BtnBackupImport" Classes="Pill" Content="Import…"/>
+            </StackPanel>
+
+            <TextBlock Name="BackupStatusText" Text="" Foreground="{DynamicResource NtGreen}" FontSize="11" Margin="0,0,0,10"/>
+
+            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+            <StackPanel Margin="0,0,0,10" Spacing="2">
+                <TextBlock Classes="RowLabel" Text="Snapshots"/>
+                <TextBlock Classes="RowDesc" Text="Automatic local copies, taken after your configuration changes and before every import or restore. Restoring replaces the categories a snapshot contains."/>
+            </StackPanel>
+
+            <ListBox Name="SnapshotList" Height="200" Margin="0,0,0,10"/>
+            <Button Name="BtnRestoreSnapshot" Classes="Pill" Content="Restore selected" HorizontalAlignment="Left"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

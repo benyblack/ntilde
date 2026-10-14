@@ -8,22 +8,16 @@ using Avalonia.LogicalTree;
 using Ntilde.Backup;
 using Ntilde.CommandAssist.Models;
 using Ntilde.CommandAssist.Storage;
+using Ntilde.Settings.Pages;
 using Ntilde.Tests.Backup;
 using Xunit;
 
 namespace Ntilde.Tests.Core;
 
 /// <summary>
-/// Task 8: the Settings window's "Backup &amp; Restore" page (<c>DataNav</c> / the "Backup" tab).
-///
-/// The critical regression these tests guard: the sidebar <see cref="ListBox"/>es are the real
-/// navigation, not the <see cref="TabControl"/> header strip. Each nav's <c>SelectionChanged</c>
-/// maps its index onto a tab index with a hardcoded offset (<c>InterfaceNav</c> 0-2,
-/// <c>AssistantNav</c> 3-4, <c>ConnectionNav</c> 5, <c>DataNav</c> 6), and
-/// <c>SyncSidebarFromTabs</c> maps back. A new tab without both mappings is unreachable and, worse,
-/// can silently shift an existing tab's offset onto the wrong sidebar item — exactly what happened
-/// to the SSH tab on PR #332 (it stranded "Agent Access"). <see cref="AllNavItems_SelectDistinctTabs_AndSyncRoundTripsCleanly"/>
-/// is the test that would have caught that.
+/// Task 8: the Settings window's "Backup &amp; Restore" page (<see cref="BackupPage"/>): its
+/// snapshot list, Restore's confirmation gate, and the reload after an Import or Restore that keeps
+/// a later Save from reverting what was just brought in.
 /// </summary>
 public sealed class SettingsWindowBackupSectionTests
 {
@@ -34,159 +28,11 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow();
 
-        Assert.NotNull(window.FindControl<ListBox>("DataNav"));
-        Assert.NotNull(window.FindControl<Button>("BtnBackupExport"));
-        Assert.NotNull(window.FindControl<Button>("BtnBackupImport"));
-        Assert.NotNull(window.FindControl<TextBlock>("BackupStatusText"));
-        Assert.NotNull(window.FindControl<ListBox>("SnapshotList"));
-        Assert.NotNull(window.FindControl<Button>("BtnRestoreSnapshot"));
-    }
-
-    [AvaloniaFact]
-    public void BackupTab_IsLastTab_AndDataNavHasOneItem()
-    {
-        using var tree = BackupTestTree.CreateEmpty();
-        using var _ = OverrideAppDataRoot(tree.Root);
-        var window = new Ntilde.SettingsWindow();
-
-        var tabs = window.FindControl<TabControl>("MainTabs")!;
-        var dataNav = window.FindControl<ListBox>("DataNav")!;
-
-        // 7 tabs total (Appearance, Profiles, Shortcuts, Command Assist, Agent Access, SSH,
-        // Backup) — Backup at index 6, the END of the strip, so the pre-existing offsets
-        // (InterfaceNav 0-2, AssistantNav 3-4, ConnectionNav 5) stay true.
-        Assert.Equal(7, tabs.Items.Count);
-        Assert.Equal("Backup", ((TabItem)tabs.Items[6]!).Header);
-        Assert.Single(dataNav.Items);
-    }
-
-    /// <summary>
-    /// The regression test called out in the task brief: walks every sidebar item across all four
-    /// nav groups (InterfaceNav, AssistantNav, ConnectionNav, DataNav), asserting each one selects
-    /// its own distinct tab index (no two sidebar items collide on the same tab, and none map
-    /// outside 0..6), and that after each selection, <c>SyncSidebarFromTabs</c> — invoked through
-    /// the live <c>TabControl.SelectionChanged</c> wiring, exactly as a real click would drive it —
-    /// leaves that one sidebar item selected and clears the other three. This is the exact failure
-    /// mode from PR #332 (Codex review finding): the SSH tab shipped without a sidebar item and a
-    /// mapping in both directions, which silently remapped "Agent Access" onto SSH's tab index.
-    /// </summary>
-    [AvaloniaFact]
-    public void AllNavItems_SelectDistinctTabs_AndSyncRoundTripsCleanly()
-    {
-        using var tree = BackupTestTree.CreateEmpty();
-        using var _ = OverrideAppDataRoot(tree.Root);
-        var window = new Ntilde.SettingsWindow();
-
-        var tabs = window.FindControl<TabControl>("MainTabs")!;
-        var interfaceNav = window.FindControl<ListBox>("InterfaceNav")!;
-        var assistantNav = window.FindControl<ListBox>("AssistantNav")!;
-        var connectionNav = window.FindControl<ListBox>("ConnectionNav")!;
-        var dataNav = window.FindControl<ListBox>("DataNav")!;
-
-        var allNavs = new[] { interfaceNav, assistantNav, connectionNav, dataNav };
-
-        // Sanity on per-group item counts first: a silent add/drop here would otherwise make the
-        // loop below under- or over-cover the sidebar without failing anything by itself.
-        Assert.Equal(3, interfaceNav.Items.Count);
-        Assert.Equal(2, assistantNav.Items.Count);
-        Assert.Equal(1, connectionNav.Items.Count);
-        Assert.Equal(1, dataNav.Items.Count);
-
-        var seenTabIndexes = new HashSet<int>();
-
-        foreach (var nav in allNavs)
-        {
-            for (int i = 0; i < nav.Items.Count; i++)
-            {
-                // Clear every group first so the selection below is unambiguous — otherwise a
-                // stale selection left over from a previous iteration could make a broken mapping
-                // look correct by accident.
-                foreach (var other in allNavs) other.SelectedIndex = -1;
-
-                nav.SelectedIndex = i;
-
-                int tabIndex = tabs.SelectedIndex;
-                Assert.InRange(tabIndex, 0, 6);
-                Assert.True(
-                    seenTabIndexes.Add(tabIndex),
-                    $"Tab index {tabIndex} was already claimed by a different sidebar item — the offsets collide (this is the PR #332 failure mode).");
-
-                // Round trip: SyncSidebarFromTabs (fired via TabControl.SelectionChanged, same as
-                // a real click) must map this tab index back to exactly this nav item, with the
-                // other three groups cleared.
-                foreach (var other in allNavs)
-                {
-                    if (ReferenceEquals(other, nav))
-                    {
-                        Assert.Equal(i, other.SelectedIndex);
-                    }
-                    else
-                    {
-                        Assert.Equal(-1, other.SelectedIndex);
-                    }
-                }
-            }
-        }
-
-        // Every one of the 7 tabs was reached by exactly one sidebar item.
-        Assert.Equal(7, seenTabIndexes.Count);
-    }
-
-    /// <summary>
-    /// Same regression, driven from the other direction: setting <c>TabControl.SelectedIndex</c>
-    /// directly (as the <c>initialTab</c> constructor parameter and other non-sidebar callers do)
-    /// must still sync back to exactly one sidebar item per index, with the rest cleared.
-    /// </summary>
-    [AvaloniaFact]
-    public void SyncSidebarFromTabs_EveryTabIndex_SelectsExactlyOneSidebarItem()
-    {
-        using var tree = BackupTestTree.CreateEmpty();
-        using var _ = OverrideAppDataRoot(tree.Root);
-        var window = new Ntilde.SettingsWindow();
-
-        var tabs = window.FindControl<TabControl>("MainTabs")!;
-        var interfaceNav = window.FindControl<ListBox>("InterfaceNav")!;
-        var assistantNav = window.FindControl<ListBox>("AssistantNav")!;
-        var connectionNav = window.FindControl<ListBox>("ConnectionNav")!;
-        var dataNav = window.FindControl<ListBox>("DataNav")!;
-
-        for (int idx = 0; idx < 7; idx++)
-        {
-            tabs.SelectedIndex = idx;
-
-            var (expectedNav, expectedIndex) = idx switch
-            {
-                < 3 => (interfaceNav, idx),
-                < 5 => (assistantNav, idx - 3),
-                < 6 => (connectionNav, idx - 5),
-                _ => (dataNav, idx - 6)
-            };
-
-            foreach (var nav in new[] { interfaceNav, assistantNav, connectionNav, dataNav })
-            {
-                Assert.Equal(ReferenceEquals(nav, expectedNav) ? expectedIndex : -1, nav.SelectedIndex);
-            }
-        }
-    }
-
-    [AvaloniaFact]
-    public void ClickingDataNav_SelectsTheBackupTab_AndOtherSidebarItemsStillSelectTheirOwnPage()
-    {
-        using var tree = BackupTestTree.CreateEmpty();
-        using var _ = OverrideAppDataRoot(tree.Root);
-        var window = new Ntilde.SettingsWindow();
-
-        var tabs = window.FindControl<TabControl>("MainTabs")!;
-        var dataNav = window.FindControl<ListBox>("DataNav")!;
-        var connectionNav = window.FindControl<ListBox>("ConnectionNav")!;
-
-        dataNav.SelectedIndex = 0;
-        Assert.Equal(6, tabs.SelectedIndex);
-
-        // The regression this guards directly: clicking a pre-existing item (SSH, the previous
-        // last tab) must still land on SSH's own tab, not get remapped onto Backup.
-        connectionNav.SelectedIndex = 0;
-        Assert.Equal(5, tabs.SelectedIndex);
+        Assert.NotNull(window.GetPage<BackupPage>().FindControl<Button>("BtnBackupExport"));
+        Assert.NotNull(window.GetPage<BackupPage>().FindControl<Button>("BtnBackupImport"));
+        Assert.NotNull(window.GetPage<BackupPage>().FindControl<TextBlock>("BackupStatusText"));
+        Assert.NotNull(window.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList"));
+        Assert.NotNull(window.GetPage<BackupPage>().FindControl<Button>("BtnRestoreSnapshot"));
     }
 
     [AvaloniaFact]
@@ -200,7 +46,7 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow();
 
-        var snapshotList = window.FindControl<ListBox>("SnapshotList")!;
+        var snapshotList = window.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList")!;
         var rows = snapshotList.ItemsSource!.Cast<object>().ToArray();
 
         Assert.Single(rows);
@@ -215,8 +61,8 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow();
 
-        var btnRestore = window.FindControl<Button>("BtnRestoreSnapshot")!;
-        var status = window.FindControl<TextBlock>("BackupStatusText")!;
+        var btnRestore = window.GetPage<BackupPage>().FindControl<Button>("BtnRestoreSnapshot")!;
+        var status = window.GetPage<BackupPage>().FindControl<TextBlock>("BackupStatusText")!;
 
         // Safe to click: with nothing selected the handler returns before it ever reaches the
         // confirmation dialog, so this can't hit the ShowDialog hang described below.
@@ -253,15 +99,10 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow();
 
-        var snapshotList = window.FindControl<ListBox>("SnapshotList")!;
+        var snapshotList = window.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList")!;
         object row = snapshotList.ItemsSource!.Cast<object>().Single();
 
-        var method = typeof(Ntilde.SettingsWindow).GetMethod(
-            "BuildRestoreConfirmationText", BindingFlags.Static | BindingFlags.NonPublic);
-        Assert.NotNull(method);
-
-        object result = method!.Invoke(null, new[] { row })!;
-        var (headline, body) = ((string Headline, string Body))result;
+        var (headline, body) = BackupPage.BuildRestoreConfirmationText((BackupPage.SnapshotRow)row);
 
         // Names the snapshot: its timestamp and reason.
         Assert.Contains(written!.CreatedUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm"), headline);
@@ -298,9 +139,9 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow { RestoreConfirmationOverride = _ => Task.FromResult(true) };
 
-        var snapshotList = window.FindControl<ListBox>("SnapshotList")!;
-        var btnRestore = window.FindControl<Button>("BtnRestoreSnapshot")!;
-        var status = window.FindControl<TextBlock>("BackupStatusText")!;
+        var snapshotList = window.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList")!;
+        var btnRestore = window.GetPage<BackupPage>().FindControl<Button>("BtnRestoreSnapshot")!;
+        var status = window.GetPage<BackupPage>().FindControl<TextBlock>("BackupStatusText")!;
 
         snapshotList.SelectedIndex = 0;
         btnRestore.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
@@ -341,9 +182,9 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow { RestoreConfirmationOverride = _ => Task.FromResult(false) };
 
-        var snapshotList = window.FindControl<ListBox>("SnapshotList")!;
-        var btnRestore = window.FindControl<Button>("BtnRestoreSnapshot")!;
-        var status = window.FindControl<TextBlock>("BackupStatusText")!;
+        var snapshotList = window.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList")!;
+        var btnRestore = window.GetPage<BackupPage>().FindControl<Button>("BtnRestoreSnapshot")!;
+        var status = window.GetPage<BackupPage>().FindControl<TextBlock>("BackupStatusText")!;
 
         snapshotList.SelectedIndex = 0;
         btnRestore.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
@@ -393,8 +234,8 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow { RestoreConfirmationOverride = _ => Task.FromResult(true) };
 
-        var snapshotList = window.FindControl<ListBox>("SnapshotList")!;
-        var btnRestore = window.FindControl<Button>("BtnRestoreSnapshot")!;
+        var snapshotList = window.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList")!;
+        var btnRestore = window.GetPage<BackupPage>().FindControl<Button>("BtnRestoreSnapshot")!;
         var btnSave = window.FindControl<Button>("BtnSave")!;
 
         snapshotList.SelectedIndex = 0;
@@ -676,7 +517,7 @@ public sealed class SettingsWindowBackupSectionTests
     /// </summary>
     private static string[] SnippetRowNames(Ntilde.SettingsWindow window)
     {
-        var panel = window.FindControl<StackPanel>("CommandAssistSnippetsPanel")!;
+        var panel = window.GetPage<CommandAssistPage>().FindControl<StackPanel>("CommandAssistSnippetsPanel")!;
 
         // FirstOrDefault, not First: an empty snippet list is a legitimate panel state, and
         // PopulateCommandAssistSnippetsPanel renders it as a single explanatory TextBlock with no
@@ -690,24 +531,18 @@ public sealed class SettingsWindowBackupSectionTests
 
     private static async Task InvokeReloadCommandAssistSnippetsAsync(Ntilde.SettingsWindow window)
     {
-        var method = typeof(Ntilde.SettingsWindow).GetMethod(
-            "ReloadCommandAssistSnippetsAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(method);
-        await (Task)method!.Invoke(window, null)!;
+        await window.GetPage<CommandAssistPage>().ReloadSnippetsAsync();
     }
 
     /// <summary>
-    /// Drives the private <c>ReloadSettingsAfterExternalChangeAsync</c> the Import and Restore click
-    /// handlers call on success. Reflection, and awaited: the method became a <see cref="Task"/> when
+    /// Drives the internal <c>ReloadSettingsAfterExternalChangeAsync</c> the Import and Restore click
+    /// handlers call on success. Awaited: the method became a <see cref="Task"/> when
     /// the Command Assist snippet reload (genuinely async - it re-reads the store's file) joined the
     /// synchronous repopulation, so invoking without awaiting would race the assertions that follow.
     /// </summary>
     private static async Task InvokeReloadAfterExternalChangeAsync(Ntilde.SettingsWindow window)
     {
-        var method = typeof(Ntilde.SettingsWindow).GetMethod(
-            "ReloadSettingsAfterExternalChangeAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(method);
-        await (Task)method!.Invoke(window, null)!;
+        await window.ReloadSettingsAfterExternalChangeAsync();
     }
 
 
@@ -727,10 +562,6 @@ public sealed class SettingsWindowBackupSectionTests
     [Fact]
     public void ImportModeBodyText_MentionsSnippetsReplacedWholesale_OnlyWhenBundleContainsSnippets()
     {
-        var method = typeof(Ntilde.SettingsWindow).GetMethod(
-            "BuildImportModeBodyText", BindingFlags.Static | BindingFlags.NonPublic);
-        Assert.NotNull(method);
-
         var withSnippets = new BundleInspection(
             NewManifestForBodyTextTest(),
             new Dictionary<BackupCategory, int>
@@ -747,8 +578,8 @@ public sealed class SettingsWindowBackupSectionTests
                 [BackupCategory.Snippets] = 0,
             });
 
-        string withSnippetsText = (string)method!.Invoke(null, new object[] { withSnippets })!;
-        string withoutSnippetsText = (string)method.Invoke(null, new object[] { withoutSnippets })!;
+        string withSnippetsText = BackupPage.BuildImportModeBodyText(withSnippets);
+        string withoutSnippetsText = BackupPage.BuildImportModeBodyText(withoutSnippets);
 
         Assert.Contains("replaced entirely", withSnippetsText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("replaced entirely", withoutSnippetsText, StringComparison.OrdinalIgnoreCase);
@@ -798,7 +629,7 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow();
 
-        var profilesListBox = window.FindControl<ListBox>("ProfilesListBox")!;
+        var profilesListBox = window.GetPage<ProfilesPage>().FindControl<ListBox>("ProfilesListBox")!;
         Assert.Single(profilesListBox.Items);
         profilesListBox.SelectedIndex = 0;
 
@@ -816,7 +647,7 @@ public sealed class SettingsWindowBackupSectionTests
 
         // Edit the profile's name exactly as a user typing after the reload would: set the
         // TextBox's Text, then raise the real KeyUp event ProfileNameInput's handler listens for.
-        var nameInput = window.FindControl<TextBox>("ProfileNameInput")!;
+        var nameInput = window.GetPage<ProfilesPage>().FindControl<TextBox>("ProfileNameInput")!;
         nameInput.Text = "EditedAfterReload";
         nameInput.RaiseEvent(new KeyEventArgs
         {
@@ -847,12 +678,7 @@ public sealed class SettingsWindowBackupSectionTests
         using var _ = OverrideAppDataRoot(tree.Root);
         var window = new Ntilde.SettingsWindow();
 
-        // The logical tree (not the visual tree) is used here deliberately: the Backup tab's
-        // content is a fully-built control graph the moment the AXAML loader constructs
-        // TabItem.Content, but its VISUAL tree only materializes once TabControl actually
-        // presents that tab (template-driven, lazy) - which never happens here since this window
-        // is never shown or selected onto tab 6.
-        string? passwordCopy = window.GetLogicalDescendants()
+        string? passwordCopy = window.GetPage<BackupPage>().GetLogicalDescendants()
             .OfType<TextBlock>()
             .Select(t => t.Text)
             .FirstOrDefault(text =>
@@ -902,8 +728,8 @@ public sealed class SettingsWindowBackupSectionTests
             Assert.Null(exception);
             Assert.NotNull(window);
 
-            var snapshotList = window!.FindControl<ListBox>("SnapshotList")!;
-            var status = window.FindControl<TextBlock>("BackupStatusText")!;
+            var snapshotList = window!.GetPage<BackupPage>().FindControl<ListBox>("SnapshotList")!;
+            var status = window.GetPage<BackupPage>().FindControl<TextBlock>("BackupStatusText")!;
 
             Assert.Empty(snapshotList.ItemsSource!.Cast<object>());
             Assert.Contains("snapshot", status.Text, StringComparison.OrdinalIgnoreCase);

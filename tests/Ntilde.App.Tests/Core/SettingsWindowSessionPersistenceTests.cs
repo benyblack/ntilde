@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Ntilde.Controls;
+using Ntilde.Settings.Pages;
 
 namespace Ntilde.Tests.Core;
 
@@ -17,7 +18,7 @@ public sealed class SettingsWindowSessionPersistenceTests : IClassFixture<TestAp
     public void The_row_description_says_what_each_value_does()
     {
         var settings = new SettingsWindow();
-        ComboBox list = settings.FindControl<ComboBox>("SessionPersistenceList")!;
+        ComboBox list = settings.GetPage<AppearancePage>().FindControl<ComboBox>("SessionPersistenceList")!;
         var row = (Grid)list.Parent!;
 
         string desc = row.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Classes.Contains("RowDesc")).Text!;

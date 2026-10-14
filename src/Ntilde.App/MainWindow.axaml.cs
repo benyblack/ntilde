@@ -38,6 +38,7 @@ using Ntilde.ViewModels.Ssh;
 using Ntilde.Views.Ssh;
 using Ntilde.Pty;
 using Ntilde.Shell.TitleBar;
+using Ntilde.Settings;
 
 namespace Ntilde
 {
@@ -4104,7 +4105,7 @@ namespace Ntilde
             var menuManage = this.FindControl<MenuItem>("MenuManageProfiles");
             if (menuManage != null) menuManage.Click += async (s, e) =>
             {
-                await OpenSettings(1);
+                await OpenSettings(ManageProfilesSettingsTarget());
             };
 
             var menuCustomizeTitleBar = this.FindControl<MenuItem>("MenuCustomizeTitleBar");
@@ -4113,10 +4114,7 @@ namespace Ntilde
                 // Codex round 6, PR #342: this entry point exists purely for discoverability - the
                 // TITLE BAR section on Appearance isn't independently findable - so it must land
                 // scrolled to that section, not just on Appearance's default (top) scroll position.
-                // The plain gear button / Ctrl+, path (and every other OpenSettings caller) keeps
-                // calling the two-arg overload, which defaults to SettingsSection.None.
-                var (tabIndex, section) = CustomizeTitleBarSettingsTarget();
-                await OpenSettings(tabIndex, section: section);
+                await OpenSettings(CustomizeTitleBarSettingsTarget());
             };
 
             var menuNewSsh = this.FindControl<MenuItem>("MenuNewSshConnection");
@@ -4314,7 +4312,7 @@ namespace Ntilde
                 if (IsShortcut(e, "settings", "Ctrl+,"))
                 {
                     RecordCommandUsage("settings");
-                    _ = OpenSettings(0);
+                    _ = OpenSettings(DefaultSettingsTarget());
                     e.Handled = true;
                     return;
                 }
@@ -8884,7 +8882,7 @@ namespace Ntilde
             CommandRegistry.Register("Font: Decrease", "View", () => { _settings.FontSize = Math.Max(6, _settings.FontSize - 1); ApplySettingsToAllTabs(); _settings.Save(); }, GetEffectiveShortcutBinding("font_decrease", "Ctrl+-"), "font_decrease");
             CommandRegistry.Register("Settings", "General", async () =>
             {
-                await OpenSettings(0);
+                await OpenSettings(DefaultSettingsTarget());
             }, GetEffectiveShortcutBinding("settings", "Ctrl+,"), "settings");
             CommandRegistry.Register("Connections", "General", () => ToggleConnections(), GetEffectiveShortcutBinding("connections", "Ctrl+Shift+K"), "connections");
             CommandRegistry.Register("Toggle Recording", "General", () => _currentPane?.ToggleRecording(), GetEffectiveShortcutBinding("toggle_recording", "Ctrl+Shift+R"), "toggle_recording");
@@ -9518,39 +9516,44 @@ namespace Ntilde
             _isDraggingTransferOverlay = false;
         }
 
+        /// <summary>The Settings page on screen when Settings last closed, this run only. Ctrl+, reopens there.</summary>
+        private SettingsPage? _lastSettingsPage;
+
         /// <summary>
-        /// The (tab index, section) the title bar's right-click "Customize Title Bar..." entry
+        /// The target the title bar's right-click "Customize Title Bar..." entry
         /// point asks <see cref="OpenSettings"/> for. Pulled out of the click handler as its own
         /// synchronous method purely so a test can assert on the target without going through
         /// <c>OpenSettings</c> itself, which reaches a real <c>Window.ShowDialog</c> - headlessly a
         /// hang with no owner shown and nothing to close it (see MainWindowShellExitTests' remarks
         /// on the same hazard for a different dialog). The click handler calls this rather than
-        /// inlining the tuple, so this genuinely is what production runs, not a parallel duplicate.
+        /// inlining the target, so this genuinely is what production runs, not a parallel duplicate.
         /// </summary>
-        private static (int TabIndex, SettingsSection Section) CustomizeTitleBarSettingsTarget()
-            => (0, SettingsSection.TitleBar);
+        internal static SettingsTarget CustomizeTitleBarSettingsTarget()
+            => new(SettingsPage.Appearance, SettingsRowIds.TitleBar);
+
+        /// <summary>Where "Manage Profiles…" opens Settings.</summary>
+        internal static SettingsTarget ManageProfilesSettingsTarget() => new(SettingsPage.Profiles);
+
+        /// <summary>Where the three Backup palette entries open Settings.</summary>
+        internal static SettingsTarget BackupSettingsTarget() => new(SettingsPage.Backup);
+
+        /// <summary>Where Ctrl+, the palette's "Settings" and the title-bar button open Settings: the page last shown in this run, else the default.</summary>
+        internal SettingsTarget DefaultSettingsTarget() => new(_lastSettingsPage ?? SettingsPageRegistry.DefaultPage);
 
         /// <summary>
         /// Opens Settings on the Backup &amp; Restore page. Routes through <see cref="OpenSettings"/> -
         /// this window's one construction site - rather than constructing a <see cref="SettingsWindow"/>
         /// directly, so Backup gets the same save/legacy-migration handling as every other entry
-        /// point. The tab index itself is never hardcoded here: <c>selectBackupPage</c> makes
-        /// <see cref="OpenSettings"/> call <see cref="SettingsWindow.SelectBackupPage"/> after
-        /// construction, which derives the index from the tab count, so inserting a tab before
-        /// Backup can't silently point this at the wrong page.
+        /// point. The page is named by BackupSettingsTarget, not an index.
         /// </summary>
         private void OpenSettingsToBackupPage()
         {
-            _ = OpenSettings(0, selectBackupPage: true);
+            _ = OpenSettings(BackupSettingsTarget());
         }
 
-        private async Task OpenSettings(int tabIndex, Guid? profileId = null, SettingsSection section = SettingsSection.None, bool selectBackupPage = false)
+        private async Task OpenSettings(SettingsTarget target)
         {
-            var sw = new SettingsWindow(tabIndex, profileId, section);
-            if (selectBackupPage)
-            {
-                sw.SelectBackupPage();
-            }
+            var sw = new SettingsWindow(target);
 
             // The one live history store, so Settings' "Clear history" acts on the same instance the
             // panes append to (V2 Phase 3b task 5). Reading the property constructs it lazily, which is
@@ -9646,13 +9649,16 @@ namespace Ntilde
         ///
         /// Pulled out of <see cref="OpenSettings"/> as its own method purely for testability -
         /// <c>OpenSettings</c> itself reaches a real <c>Window.ShowDialog</c>, which this repo's
-        /// headless test host cannot return from. A test can build a <see cref="SettingsWindow"/>
-        /// through the same reflection seam <c>SettingsWindowBackupSectionTests</c> uses to invoke
-        /// <c>ReloadSettingsAfterExternalChangeAsync</c>, then call this method directly with
+        /// headless test host cannot return from. A test can build a <see cref="SettingsWindow"/>,
+        /// await its internal <c>ReloadSettingsAfterExternalChangeAsync</c> (as
+        /// <c>SettingsWindowBackupSectionTests</c> does), then call this method directly with
         /// <paramref name="saved"/> = false to simulate Cancel/X after a successful import.
         /// </summary>
         internal void ApplySettingsWindowResult(SettingsWindow sw, bool saved, PreviewSnapshot previewSnapshot)
         {
+            // Ctrl+, reopens where the user left off, whichever way the dialog closed.
+            _lastSettingsPage = sw.CurrentPage;
+
             if (saved || sw.ConfigurationReplacedExternally)
             {
                 // Use the settings object directly from the dialog to avoid disk I/O race conditions
@@ -12153,7 +12159,7 @@ namespace Ntilde
                 ["new_tab"] = () => AddTab(),
                 [TitleBarCatalog.OpenTabListId] = () => PopulateTabListMenu(showFlyout: true),
                 ["connections"] = () => ToggleConnections(),
-                ["settings"] = () => _ = OpenSettings(0),
+                ["settings"] = () => _ = OpenSettings(DefaultSettingsTarget()),
                 ["toggle_recording"] = () => _currentPane?.ToggleRecording(),
                 ["command_palette"] = () => ToggleCommandPalette(),
                 ["find"] = () => _currentPane?.ToggleSearch(),

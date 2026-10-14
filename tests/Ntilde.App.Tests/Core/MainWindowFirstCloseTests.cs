@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Settings.Pages;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
@@ -1117,7 +1118,7 @@ public sealed class MainWindowFirstCloseTests : IClassFixture<TestAppDataRoot>, 
         try
         {
             var settings = new SettingsWindow();
-            ComboBox list = settings.FindControl<ComboBox>("SessionPersistenceList")!;
+            ComboBox list = settings.GetPage<AppearancePage>().FindControl<ComboBox>("SessionPersistenceList")!;
             var loaded = (ComboBoxItem)list.SelectedItem!;
             if (change) list.SelectedItem = list.Items.Cast<ComboBoxItem>().First(i => !ReferenceEquals(i, loaded));
 

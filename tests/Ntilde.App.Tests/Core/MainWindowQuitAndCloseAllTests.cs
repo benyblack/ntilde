@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Mux;
 using Ntilde.Mux.Tests.Support;
+using Ntilde.Settings.Pages;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
@@ -343,7 +344,7 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
     {
         var settings = new SettingsWindow { SessionPersistenceActive = active };
 
-        Button link = settings.FindControl<Button>("QuitAndCloseAllShellsLink")!;
+        Button link = settings.GetPage<AppearancePage>().FindControl<Button>("QuitAndCloseAllShellsLink")!;
 
         Assert.Equal(active, link.IsVisible);
         Assert.Equal("Quit and close all shells…", link.Content);
@@ -358,7 +359,7 @@ public sealed class MainWindowQuitAndCloseAllTests : IClassFixture<TestAppDataRo
         Task<bool> result = settings.ShowDialog<bool>(owner);
         Dispatcher.UIThread.RunJobs();
 
-        settings.FindControl<Button>("QuitAndCloseAllShellsLink")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        settings.GetPage<AppearancePage>().FindControl<Button>("QuitAndCloseAllShellsLink")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         PumpUntil(() => result.IsCompleted, "settings closed");
         Assert.True(settings.QuitAndCloseAllRequested);

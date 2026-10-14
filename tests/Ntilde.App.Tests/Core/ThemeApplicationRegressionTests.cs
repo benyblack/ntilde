@@ -4,6 +4,7 @@ using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
+using Ntilde.Settings.Pages;
 using Ntilde.Shell;
 using Ntilde.Shell.TitleBar;
 using Ntilde.VT;
@@ -108,12 +109,13 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
     [AvaloniaFact]
     public void SettingsWindow_CardRows_UseTheWindowPaletteBrushes()
     {
+        using var root = SettingsTestRoot.Empty();
         var window = new Ntilde.SettingsWindow();
 
         var panelBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtPanel"));
         var hairlineBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtHairline"));
 
-        var titleBarRows = window.FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
+        var titleBarRows = window.GetPage<AppearancePage>().FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
         Assert.NotEmpty(titleBarRows);
         foreach (var row in titleBarRows)
         {
@@ -121,7 +123,7 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
             Assert.Same(hairlineBrush, row.BorderBrush);
         }
 
-        var shortcutRows = window.FindControl<StackPanel>("ShortcutBindingsPanel")!.Children.OfType<Border>().ToList();
+        var shortcutRows = window.GetPage<ShortcutsPage>().FindControl<StackPanel>("ShortcutBindingsPanel")!.Children.OfType<Border>().ToList();
         Assert.NotEmpty(shortcutRows);
         foreach (var row in shortcutRows)
         {

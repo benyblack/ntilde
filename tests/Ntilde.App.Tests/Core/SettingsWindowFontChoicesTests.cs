@@ -1,3 +1,4 @@
+using Ntilde.Settings;
 using Ntilde.Shell;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -11,7 +12,7 @@ public sealed class SettingsWindowFontChoicesTests
     {
         string[] systemFonts = ["Consolas", "JetBrains Mono"];
 
-        List<string> choices = SettingsWindow.BuildFontFamilyChoices(systemFonts, BundledFontCatalog.DefaultTerminalFontFamily);
+        List<string> choices = SettingsSession.BuildFontFamilyChoices(systemFonts, BundledFontCatalog.DefaultTerminalFontFamily);
 
         Assert.Contains(BundledFontCatalog.DefaultTerminalFontFamily, choices);
     }
@@ -25,7 +26,7 @@ public sealed class SettingsWindowFontChoicesTests
         // from this list when it stopped being the default.
         string[] systemFonts = ["Consolas"];
 
-        List<string> choices = SettingsWindow.BuildFontFamilyChoices(systemFonts, BundledFontCatalog.DefaultTerminalFontFamily);
+        List<string> choices = SettingsSession.BuildFontFamilyChoices(systemFonts, BundledFontCatalog.DefaultTerminalFontFamily);
 
         foreach (string bundled in BundledFontCatalog.SelectableFamilies)
         {
@@ -38,7 +39,7 @@ public sealed class SettingsWindowFontChoicesTests
     {
         string[] systemFonts = ["Consolas"];
 
-        List<string> choices = SettingsWindow.BuildFontFamilyChoices(systemFonts, BundledFontCatalog.DefaultTerminalFontFamily);
+        List<string> choices = SettingsSession.BuildFontFamilyChoices(systemFonts, BundledFontCatalog.DefaultTerminalFontFamily);
 
         Assert.DoesNotContain(BundledFontCatalog.SymbolsFontFamily, choices);
     }
@@ -48,7 +49,7 @@ public sealed class SettingsWindowFontChoicesTests
     {
         string[] systemFonts = ["Consolas", "JetBrains Mono"];
 
-        List<string> choices = SettingsWindow.BuildFontFamilyChoices(systemFonts, "Fira Code");
+        List<string> choices = SettingsSession.BuildFontFamilyChoices(systemFonts, "Fira Code");
 
         Assert.Contains("Fira Code", choices);
     }
