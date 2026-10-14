@@ -205,6 +205,71 @@ public sealed class SettingsPageTests
         Assert.Contains("Alt+F7", history.Text);
     }
 
+    private const string LocalProfileId = "33333333-3333-3333-3333-333333333333";
+
+    private static TerminalSettings SettingsWithOneLocalAndOneSshProfile() => new()
+    {
+        Profiles =
+        [
+            new TerminalProfile { Id = Guid.Parse(LocalProfileId), Name = "Local", Command = "cmd.exe" },
+            new TerminalProfile { Name = "Box", Type = ConnectionType.SSH, SshHost = "box" },
+        ],
+        DefaultProfileId = Guid.Parse(LocalProfileId),
+    };
+
+    [AvaloniaFact]
+    public void ProfilesPage_ShowsOnlyLocalProfiles_AndCollectWritesThemBack()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new ProfilesPage();
+        page.Load(SessionFor(SettingsWithOneLocalAndOneSshProfile()));
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        Assert.Single(page.FindControl<ListBox>("ProfilesListBox")!.Items);
+        TerminalProfile only = Assert.Single(target.Profiles);
+        Assert.Equal("Local", only.Name);
+        Assert.Equal(Guid.Parse(LocalProfileId), target.DefaultProfileId);
+        page.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void ProfilesPage_AfterAReload_EditsLandOnTheFreshProfile()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new ProfilesPage();
+        page.Load(SessionFor(SettingsWithOneLocalAndOneSshProfile()));
+        var list = page.FindControl<ListBox>("ProfilesListBox")!;
+        list.SelectedIndex = 0;
+
+        page.Load(SessionFor(SettingsWithOneLocalAndOneSshProfile())); // what an import/restore reload does
+        var name = page.FindControl<TextBox>("ProfileNameInput")!;
+        name.Text = "Renamed after reload";
+        name.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.D, Source = name });
+        var target = new TerminalSettings();
+        page.Collect(target);
+
+        Assert.Equal("Renamed after reload", Assert.Single(target.Profiles).Name);
+        page.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void ProfilesPage_OverrideFontList_OffersTheSessionsFontChoices()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var settings = SettingsWithOneLocalAndOneSshProfile();
+        settings.FontFamily = "Session Mono";
+        var page = new ProfilesPage();
+
+        page.Load(SessionFor(settings));
+
+        Assert.Contains(
+            page.FindControl<ComboBox>("OverrideFontList")!.Items.OfType<ComboBoxItem>(),
+            item => (string?)item.Content == "Session Mono");
+        page.Dispose();
+    }
+
     /// <summary>The binding editor on the Shortcuts page row titled <paramref name="title"/>.</summary>
     internal static TextBox BindingEditorFor(ShortcutsPage page, string title)
     {
