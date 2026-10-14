@@ -66,6 +66,63 @@ public sealed class SettingsWindowProfileSeparationTests
     }
 
     [Fact]
+    public void BothCopies_KeepTheFieldsTheEditorDoesNotShow()
+    {
+        TerminalProfile source = LocalProfileWithEveryKindOfField();
+
+        TerminalProfile forEditor = Assert.Single(ProfilesPage.BuildLocalProfilesForEditor([source]));
+        TerminalProfile forSave = Assert.Single(ProfilesPage.NormalizeSettingsProfilesForSave([forEditor]));
+
+        foreach (TerminalProfile copy in new[] { forEditor, forSave })
+        {
+            Assert.Equal("Block", copy.CursorStyle);
+            Assert.False(copy.CursorBlink);
+            Assert.Equal(ShellOverride.Posix, copy.ShellOverride);
+            Assert.Equal("legacy.example", copy.SshHost);
+            Assert.Equal(2222, copy.SshPort);
+            Assert.Equal("/work", copy.DefaultLocalDir);
+            Assert.Equal("Server", copy.Icon);
+            Assert.Equal(new DateTime(2026, 1, 2, 3, 4, 5), copy.LastUsed);
+            Assert.Equal("8080", Assert.Single(copy.Forwards).LocalAddress);
+            Assert.Equal(["work", "prod"], copy.Tags);
+        }
+    }
+
+    [Fact]
+    public void TheEditorsCopy_IsIndependentOfTheSettingsItCameFrom()
+    {
+        TerminalProfile source = LocalProfileWithEveryKindOfField();
+
+        TerminalProfile forEditor = Assert.Single(ProfilesPage.BuildLocalProfilesForEditor([source]));
+        forEditor.Name = "Renamed";
+        forEditor.Tags.Add("new");
+        forEditor.Forwards.Clear();
+
+        Assert.NotSame(source, forEditor);
+        Assert.Equal("Legacy", source.Name);
+        Assert.Equal(["work", "prod"], source.Tags);
+        Assert.Single(source.Forwards);
+    }
+
+    private static TerminalProfile LocalProfileWithEveryKindOfField() => new()
+    {
+        Id = Guid.Parse("5b1f0a52-1d7e-4a43-9d0e-6d4b3b8f2c11"),
+        Name = "Legacy",
+        Type = ConnectionType.Local,
+        Command = "/bin/bash",
+        CursorStyle = "Block",
+        CursorBlink = false,
+        ShellOverride = ShellOverride.Posix,
+        SshHost = "legacy.example",
+        SshPort = 2222,
+        DefaultLocalDir = "/work",
+        Icon = "Server",
+        LastUsed = new DateTime(2026, 1, 2, 3, 4, 5),
+        Tags = ["work", "prod"],
+        Forwards = [new ForwardingRule { LocalAddress = "8080", RemoteAddress = "10.0.0.5:80" }],
+    };
+
+    [Fact]
     public void ResolveDefaultLocalProfileId_FallsBackToFirstLocalWhenCurrentMissing()
     {
         var firstId = Guid.Parse("3f2b1878-cb5d-48d6-bb71-100b2ef5bf2e");

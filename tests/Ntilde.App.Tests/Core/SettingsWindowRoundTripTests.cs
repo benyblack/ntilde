@@ -136,14 +136,14 @@ public sealed class SettingsWindowRoundTripTests
         return node.ToJsonString();
     }
     /// <summary>
-    /// Pins today's behaviour for the profile fields the editor does not own.
-    /// BuildLocalProfilesForEditor copies 13 fields, so any Settings Save resets everything else on
-    /// a local profile, the SSH fields included. Pinned so that removing the never-visible SSH panel
-    /// (PR 3) provably changes nothing. Keeping those fields is a separate fix that will update this
-    /// test (plan, "Corrections to the spec", item 1).
+    /// A Save keeps every field of a local profile, including the ones the Settings editor does not
+    /// show (cursor style and blink, shell override, the SSH and forwarding fields, default
+    /// directories, icon, last used). Before the fix, Save rebuilt each profile from the 13 fields the
+    /// editor owns and reset the rest to their defaults, so a hand-edited per-profile setting was
+    /// silently lost (issue #528).
     /// </summary>
     [AvaloniaFact]
-    public void SaveWithoutTouchingAnything_KeepsTheEditorsProfileFields_AndResetsTheRestAsBefore()
+    public void SaveWithoutTouchingAnything_KeepsTheProfileFieldsTheEditorDoesNotShow()
     {
         string seed = $$"""
             {
@@ -151,7 +151,10 @@ public sealed class SettingsWindowRoundTripTests
               "Profiles": [ {
                 "Id": "{{ProfileId}}", "Name": "Legacy", "Command": "{{NativeCommand}}", "Group": "Work",
                 "SshHost": "legacy.example", "SshPort": 2222, "SshUser": "ops", "UseSshAgent": false,
-                "IdentityFilePath": "/keys/id", "CursorStyle": "Block"
+                "IdentityFilePath": "/keys/id", "CursorStyle": "Block", "CursorBlink": false,
+                "ShellOverride": 3, "DefaultLocalDir": "/work", "DefaultRemoteDir": "/srv",
+                "Icon": "Server", "LastUsed": "2026-01-02T03:04:05",
+                "Forwards": [ { "LocalAddress": "8080", "RemoteAddress": "10.0.0.5:80" } ]
               } ]
             }
             """;
@@ -165,16 +168,22 @@ public sealed class SettingsWindowRoundTripTests
             .Single(p => p.GetProperty("Id").GetString() == ProfileId);
         Assert.Equal("Legacy", profile.GetProperty("Name").GetString());
         Assert.Equal("Work", profile.GetProperty("Group").GetString());
-        Assert.Equal("", profile.GetProperty("SshHost").GetString());
-        Assert.Equal(22, profile.GetProperty("SshPort").GetInt32());
-        Assert.Equal("", profile.GetProperty("SshUser").GetString());
-        Assert.True(profile.GetProperty("UseSshAgent").GetBoolean());
-        Assert.True(IsNullOrMissing(profile, "IdentityFilePath"));
-        Assert.True(IsNullOrMissing(profile, "CursorStyle"));
+        Assert.Equal("legacy.example", profile.GetProperty("SshHost").GetString());
+        Assert.Equal(2222, profile.GetProperty("SshPort").GetInt32());
+        Assert.Equal("ops", profile.GetProperty("SshUser").GetString());
+        Assert.False(profile.GetProperty("UseSshAgent").GetBoolean());
+        Assert.Equal("/keys/id", profile.GetProperty("IdentityFilePath").GetString());
+        Assert.Equal("Block", profile.GetProperty("CursorStyle").GetString());
+        Assert.False(profile.GetProperty("CursorBlink").GetBoolean());
+        Assert.Equal((int)Ntilde.Platform.ShellOverride.Posix, profile.GetProperty("ShellOverride").GetInt32());
+        Assert.Equal("/work", profile.GetProperty("DefaultLocalDir").GetString());
+        Assert.Equal("/srv", profile.GetProperty("DefaultRemoteDir").GetString());
+        Assert.Equal("Server", profile.GetProperty("Icon").GetString());
+        Assert.StartsWith("2026-01-02T03:04:05", profile.GetProperty("LastUsed").GetString());
+        JsonElement forward = Assert.Single(profile.GetProperty("Forwards").EnumerateArray());
+        Assert.Equal("8080", forward.GetProperty("LocalAddress").GetString());
+        Assert.Equal("10.0.0.5:80", forward.GetProperty("RemoteAddress").GetString());
     }
-
-    private static bool IsNullOrMissing(JsonElement element, string name)
-        => !element.TryGetProperty(name, out JsonElement value) || value.ValueKind == JsonValueKind.Null;
 
     /// <summary>
     /// The window writes back the resolver's normalized order. The seed must already be in that
