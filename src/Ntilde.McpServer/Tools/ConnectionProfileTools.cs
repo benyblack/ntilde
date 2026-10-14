@@ -74,7 +74,8 @@ public static class ConnectionProfileTools
         | `DestinationPort` | int | Required 1–65535 for Local/Remote; unused for Dynamic. |
 
         ## Multiplexing
-        `MuxOptions` is `{ "Enabled": bool, "ControlMasterAuto": bool, "ControlPath": string, "ControlPersistSeconds": int (>= 0) }`.
+        `MuxOptions` is `{ "Enabled": bool, "ControlMasterAuto": bool, "ControlPath": string, "ControlPersistSeconds": int (>= 0), "PersistRemoteSessions": bool, "RemoteDaemonPath": string, "RemoteDaemonVersion": string, "RemoteDaemonRid": string }`.
+        `PersistRemoteSessions` runs this profile's tabs inside ntilde-mux on the remote host so they survive disconnects; the three `RemoteDaemon*` fields are written by the app's install flow and are normally left empty.
 
         ## Session / shell
         | Field | Type | Notes |
@@ -116,7 +117,7 @@ public static class ConnectionProfileTools
               "Forwards": [
                 { "Kind": 0, "BindAddress": "127.0.0.1", "SourcePort": 5432, "DestinationHost": "db.internal", "DestinationPort": 5432 }
               ],
-              "MuxOptions": { "Enabled": false, "ControlMasterAuto": true, "ControlPath": "", "ControlPersistSeconds": 0 },
+              "MuxOptions": { "Enabled": false, "ControlMasterAuto": true, "ControlPath": "", "ControlPersistSeconds": 0, "PersistRemoteSessions": false, "RemoteDaemonPath": "", "RemoteDaemonVersion": "", "RemoteDaemonRid": "" },
               "ServerAliveIntervalSeconds": 30,
               "ServerAliveCountMax": 3,
               "ExtraSshArgs": "",
@@ -144,7 +145,8 @@ public static class ConnectionProfileTools
     internal static readonly string[] PortForwardFields =
         { "Kind", "BindAddress", "SourcePort", "DestinationHost", "DestinationPort" };
     internal static readonly string[] MuxFields =
-        { "Enabled", "ControlMasterAuto", "ControlPath", "ControlPersistSeconds" };
+        { "Enabled", "ControlMasterAuto", "ControlPath", "ControlPersistSeconds",
+          "PersistRemoteSessions", "RemoteDaemonPath", "RemoteDaemonVersion", "RemoteDaemonRid" };
     internal static readonly string[] DocumentFields = { "SchemaVersion", "Profiles" };
 
     // Enum names indexed by integer value (mirror the enums; guarded by drift-guard test).
@@ -386,6 +388,10 @@ public static class ConnectionProfileTools
         RequireBoolType(m, path, "ControlMasterAuto", errors);
         RequireStringType(m, path, "ControlPath", errors);
         CheckIntRange(m, path, "ControlPersistSeconds", 0, int.MaxValue, errors);
+        RequireBoolType(m, path, "PersistRemoteSessions", errors);
+        RequireStringType(m, path, "RemoteDaemonPath", errors);
+        RequireStringType(m, path, "RemoteDaemonVersion", errors);
+        RequireStringType(m, path, "RemoteDaemonRid", errors);
         CheckUnknownAndPassword(m, path, MuxFields, errors, warnings);
     }
 

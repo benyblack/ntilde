@@ -58,6 +58,12 @@ namespace Ntilde.Shell
         /// <summary>Automatic configuration snapshots written by <c>BackupService</c>.</summary>
         public static string BackupsDirectory => Path.Combine(RootDirectory, "backups");
         public static string CommandPaletteUsageFilePath => Path.Combine(RootDirectory, "command-palette-usage.json");
+
+        /// <summary>The first-close dialog's "Don't ask again" answer (spec R1, <c>MuxCloseChoiceStore</c>): <c>keep</c> or <c>close</c>.</summary>
+        public const string MuxCloseChoiceFileName = "mux-close-choice";
+
+        /// <inheritdoc cref="MuxCloseChoiceFileName"/>
+        public static string MuxCloseChoiceFilePath => Path.Combine(RootDirectory, MuxCloseChoiceFileName);
         public static string CommandAssistDirectory => Path.Combine(RootDirectory, "command-assist");
 
         /// <summary>

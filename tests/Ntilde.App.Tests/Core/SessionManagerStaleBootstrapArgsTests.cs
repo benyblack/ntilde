@@ -41,7 +41,8 @@ public sealed class SessionManagerStaleBootstrapArgsTests
         // ours - which is the point of the directory check.
         string staleBootstrap = System.IO.Path.Combine(
             AppPaths.CommandAssistDirectory, "command-assist-bootstrap.ps1");
-        var tabSession = LeafWithArguments($"-NoLogo -NoExit -File {staleBootstrap}");
+        // Quoted, as a launch needs it to be: on macOS the directory is under "Application Support".
+        var tabSession = LeafWithArguments($"-NoLogo -NoExit -File \"{staleBootstrap}\"");
 
         var pane = Assert.IsType<TerminalPane>(
             SessionManager.CreateRestoredTabContent(tabSession, settings));

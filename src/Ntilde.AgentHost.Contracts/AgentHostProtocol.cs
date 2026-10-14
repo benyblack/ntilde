@@ -227,5 +227,12 @@ public static class AgentHostProtocol
         /// points a live-mode caller back at <c>render</c>.
         /// </summary>
         public const string CaptureUnavailable = "captureUnavailable";
+
+        /// <summary>
+        /// Phase 5: the daemon that holds this session is too old for this request. A windowless session (see
+        /// <see cref="SessionInfo.Windowless"/>) on a multiplexer daemon that predates screen reads: its status is
+        /// still reported, its screen cannot be read.
+        /// </summary>
+        public const string Unsupported = "unsupported";
     }
 }

@@ -32,6 +32,13 @@ are gated by explicit, default-off user opt-ins:
   (act)" opt-in on top of observe; SSH sessions additionally require a per-profile allowlist. Every
   acting call — allowed or denied — is recorded in an in-app activity journal. See the threat model
   at [`docs/agent-host/2026-07-12-acting-threat-model.md`](../../docs/agent-host/2026-07-12-acting-threat-model.md).
+- **Windowless sessions.** `list_sessions` also lists multiplexer sessions that no pane of this
+  window shows, marked `(windowless)`; their multiplexer session id works with the session tools.
+  Only endpoints the window is already connected to are asked (the agent path never connects or
+  prompts), each operation has a 7 s budget, scrollback is the newest 2000 rows, they emit no
+  events, `capture_screen` renders with an open pane's font metrics (`live` is refused), reads are
+  journaled, and acting on a remote one needs that SSH profile's allowlist. See
+  [`docs/mcp/tools.md`](../../docs/mcp/tools.md).
 - When neither toggle is on, no live-session endpoint exists and these tools return guidance
   instead of data.
 

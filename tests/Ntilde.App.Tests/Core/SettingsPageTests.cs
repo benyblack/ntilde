@@ -359,6 +359,7 @@ public sealed class SettingsPageTests
             LongCommandNotificationsEnabled = true,
             Osc9NotificationsEnabled = true,
             Osc9ProgressReportingEnabled = false,
+            SessionPersistence = "Off",
         }));
         var target = new TerminalSettings();
 
@@ -368,6 +369,44 @@ public sealed class SettingsPageTests
         Assert.True(target.LongCommandNotificationsEnabled);
         Assert.True(target.Osc9NotificationsEnabled);
         Assert.False(target.Osc9ProgressReportingEnabled);
+        Assert.Equal("Off", target.SessionPersistence); // the target's default is KeepOnClose
+    }
+
+    /// <summary>
+    /// The session persistence combo reads the stored value the way main does (trimmed, ignoring case; anything
+    /// else is Off). The target starts on the OTHER value so a Load that selects nothing fails.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(" keeponclose ", "KeepOnClose", "Off")]
+    [InlineData("bogus", "Off", "KeepOnClose")]
+    public void GeneralPage_SessionPersistence_FallsBackLikeMain(string stored, string expected, string targetStart)
+    {
+        var page = new GeneralPage();
+        page.Load(SessionFor(new TerminalSettings { SessionPersistence = stored }));
+        var target = new TerminalSettings { SessionPersistence = targetStart };
+
+        page.Collect(target);
+
+        Assert.Equal(expected, target.SessionPersistence);
+    }
+
+    [AvaloniaFact]
+    public void GeneralPage_QuitLink_FollowsQuitLinkVisible_AndClickRaisesTheEvent()
+    {
+        var page = new GeneralPage();
+        page.Load(SessionFor(new TerminalSettings()));
+        var link = page.FindControl<Button>("QuitAndCloseAllShellsLink")!;
+        int raised = 0;
+        page.QuitAndCloseAllRequested += () => raised++;
+
+        Assert.False(page.QuitLinkVisible);
+        Assert.False(link.IsVisible);
+        page.QuitLinkVisible = true;
+        Assert.True(link.IsVisible);
+
+        link.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal(1, raised);
     }
 
     [AvaloniaFact]

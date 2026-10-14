@@ -39,6 +39,9 @@ public class WriteLockReentrancyTests
         ["WriteContent"] = b => b.WriteContent("x"),
         ["BlockCursorSuppression"] = b => b.BlockCursorSuppression(TimeSpan.FromMilliseconds(10)),
         ["UpdateThemeColors"] = b => b.UpdateThemeColors(b.Theme),
+        // A mux pane restores its attach snapshot on the client's delivery thread, not the UI thread,
+        // but the chokepoint is for every write: an import that waits must wait inside the host's scope too.
+        ["ImportState"] = b => b.ImportState(new TerminalBuffer(80, 24).ExportState(maxScrollbackRows: 0)),
     };
 
     public static TheoryData<string> WriteEntryPointNames => new(WriteEntryPoints.Keys);

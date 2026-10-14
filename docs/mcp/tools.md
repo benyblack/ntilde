@@ -66,6 +66,30 @@ targets additionally require a per-profile allowlist.
 | `ntilde.spawn_session` | `profile?` | Opens a new tab running the default local profile, a named local profile, or an *allowlisted* SSH profile; returns the new `paneId`. |
 | `ntilde.close_session` | `paneId` | Closes a live pane (no confirmation dialog — the act opt-in plus the journal entry is the consent surface). |
 
+### Windowless sessions
+
+With session persistence on, `list_sessions` also lists **windowless** sessions: sessions in the
+multiplexer that no pane of this window shows (including ones another process attaches to). They
+are marked `local (windowless)` / `ssh (windowless)`, and the profile column names the host. Every
+tool above except `spawn_session`, `export_replay` and `wait_for_events` accepts their id.
+
+- **Ids.** The id is the multiplexer session id, passed as `paneId`.
+- **Reach.** Only endpoints the window is already connected to are asked, so the agent path never
+  connects or prompts. Every windowless operation has a 7 s budget; an unreachable daemon gives
+  `sessionNotFound` ("did not answer in time").
+- **Scrollback.** `read_scrollback` sees the newest 2000 rows.
+- **Status.** `get_session_status` is `heuristic`, from the daemon's child-process probe and the
+  alternate screen; it is never stalled.
+- **Events.** Windowless sessions emit no events, so `wait_for_events` never mentions them.
+- **Capture.** `capture_screen` supports `mode=render` only: it borrows an open pane's font
+  metrics. `mode=live` is refused (`captureUnavailable`).
+- **Acting.** `send_input` and `close_session` on a windowless session on a remote endpoint need
+  that SSH profile's agent allowlist (`close_session` on a pane does not).
+- **Journal.** Windowless reads are journaled (pane reads are not), and repeated reads fold into
+  one entry with a count ("×N").
+- **Old daemons.** A daemon too old to read screens gives `unsupported` for `read_screen`,
+  `read_scrollback` and `capture_screen`.
+
 ## Notes
 
 - `get_architecture_map`, `list_docs`, `read_doc`, and `get_vt_conformance_summary` read files from
