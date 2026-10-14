@@ -179,13 +179,6 @@ namespace Ntilde
             // The snippet store arrives by property assignment after construction, so the list is
             // read once the window opens (the old WireCommandAssistSnippetsRow did the same).
             Opened += async (_, _) => await GetPage<CommandAssistPage>().ReloadSnippetsAsync();
-            Closed += (_, _) =>
-            {
-                foreach (ISettingsPage page in _pages)
-                {
-                    (page as IDisposable)?.Dispose();
-                }
-            };
 
             NavigateTo(target);
         }

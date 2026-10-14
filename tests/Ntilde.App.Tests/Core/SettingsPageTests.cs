@@ -274,7 +274,6 @@ public sealed class SettingsPageTests
         Assert.Single(page.FindControl<ListBox>("ProfilesListBox")!.Items);
         TerminalProfile only = Assert.Single(target.Profiles);
         Assert.Equal("Local", only.Name);
-        page.Dispose();
     }
 
     /// <summary>
@@ -304,7 +303,6 @@ public sealed class SettingsPageTests
 
         Assert.Equal(second, settings.DefaultProfileId);
         Assert.Equal(2, settings.Profiles.Count);
-        page.Dispose();
     }
 
     [AvaloniaFact]
@@ -324,7 +322,6 @@ public sealed class SettingsPageTests
         page.Collect(target);
 
         Assert.Equal("Renamed after reload", Assert.Single(target.Profiles).Name);
-        page.Dispose();
     }
 
     [AvaloniaFact]
@@ -340,7 +337,16 @@ public sealed class SettingsPageTests
         Assert.Contains(
             page.FindControl<ComboBox>("OverrideFontList")!.Items.OfType<ComboBoxItem>(),
             item => (string?)item.Content == "Session Mono");
-        page.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void ProfilesPage_HasNoSshEditor()
+    {
+        var page = new ProfilesPage();
+
+        Assert.Null(page.FindControl<Control>("SshSettingsPanel"));
+        Assert.Null(page.FindControl<Control>("ProfileTypeList"));
+        Assert.Null(page.FindControl<Control>("ForwardsList"));
     }
 
     [AvaloniaFact]
