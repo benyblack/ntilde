@@ -3,6 +3,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Ntilde.Controls;
 using Ntilde.Settings;
 using Ntilde.Shell;
 using Ntilde.VT;
@@ -120,5 +121,36 @@ public sealed class SettingsPaletteTests
         {
             window.Close();
         }
+    }
+
+    [AvaloniaFact]
+    public void SettingsWindowAndConnectionManager_DoNotShareBrushes()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var settings = new Ntilde.SettingsWindow();
+        var manager = new ConnectionManager();
+
+        Assert.NotSame(settings.FindResource("NtPanel"), manager.FindResource("NtPanel"));
+
+        manager.ApplyTheme(LightTheme());
+
+        Assert.Equal(LightPanel, ((SolidColorBrush)manager.FindResource("NtPanel")!).Color);
+        Assert.NotEqual(LightPanel, ((SolidColorBrush)settings.FindResource("NtPanel")!).Color);
+    }
+
+    [AvaloniaFact]
+    public void ConnectionManager_ControlsHoldItsPaletteBrushes_AndRecolourWithThem()
+    {
+        var manager = new ConnectionManager();
+
+        Assert.Empty(manager.Resources); // the palette is merged, not copied in
+        var windowBg = Assert.IsType<SolidColorBrush>(manager.FindResource("NtWindowBg"));
+        var rootGrid = Assert.IsType<Grid>(manager.Content); // Background="{StaticResource NtWindowBg}"
+        Assert.Same(windowBg, rootGrid.Background);
+
+        manager.ApplyTheme(LightTheme());
+
+        Assert.Equal(Color.FromRgb(245, 242, 233), windowBg.Color);
+        Assert.Same(windowBg, rootGrid.Background);
     }
 }
