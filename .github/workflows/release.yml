@@ -45,6 +45,9 @@ jobs:
       # Whether the code this run builds may WRITE the caches it restores. Every
       # cache step in this workflow is gated on it - see the note in `meta` below.
       cache_trusted: ${{ steps.meta.outputs.cache_trusted }}
+      # `<min>-<max>`, read from checkout_ref's MuxProtocol.cs by the workflow ref's script - see
+      # "Read the multiplexer protocol range" below.
+      mux_protocol_range: ${{ steps.protocol.outputs.mux_protocol_range }}
     steps:
       - name: Resolve tag and checkout ref
         id: meta
@@ -113,6 +116,29 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
         run: bash scripts/ci/mux-release-guard.sh preflight "$RELEASE_TAG"
+
+      # The multiplexer protocol range publish_linux's release notes carry (Phase 5 R10), read here and not
+      # in that job: run there after its checkout of checkout_ref, the script would be code a dispatch chose,
+      # running in a job that can write the default branch's cache (CodeQL
+      # actions/cache-poisoning/poisonable-step). Here the script is the workflow ref's, and checkout_ref
+      # supplies only MuxProtocol.cs, fetched as data through the API rather than checked out.
+      - name: Read the multiplexer protocol range
+        id: protocol
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CHECKOUT_REF: ${{ steps.meta.outputs.checkout_ref }}
+        run: |
+          set -euo pipefail
+          file="$RUNNER_TEMP/MuxProtocol.cs"
+          # The contents API takes a branch, tag or commit name; a tag push's checkout_ref is refs/tags/<tag>.
+          gh api -X GET -H "Accept: application/vnd.github.raw" \
+            "repos/$GH_REPO/contents/src/Ntilde.Mux.Contracts/MuxProtocol.cs" \
+            -f ref="${CHECKOUT_REF#refs/tags/}" > "$file"
+          range="$(bash scripts/ci/mux-protocol-range.sh "$file")"
+          echo "multiplexer protocol range of $CHECKOUT_REF: $range"
+          echo "mux_protocol_range=$range" >> "$GITHUB_OUTPUT"
 
   create_release:
     name: Create Release
@@ -1502,6 +1528,36 @@ jobs:
             command -v "$t" >/dev/null || { echo "missing required tool: $t" >&2; exit 1; }
           done
 
+      # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
+      # below so remote installs verify their download against them (Phase 5 Task 10). Checked, not just
+      # counted: a release build refuses a remote install for any RID it has no usable pin for (release
+      # hardening item 4), so a missing or malformed file must fail here rather than ship.
+      - name: Download the ntilde-mux checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mux-sha256-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/mux-sha256
+
+      # Checked BEFORE checkout_ref is checked out, with the workflow ref's script: after it, the script
+      # would be code a dispatch chose, running in a job that can write the default branch's cache (CodeQL
+      # actions/cache-poisoning/poisonable-step). The checkout below replaces this one.
+      - name: Checkout workflow ref (provides the checksum check)
+        uses: actions/checkout@v4
+        with:
+          path: .workflow-ref
+          sparse-checkout: scripts/ci
+          persist-credentials: false
+
+      - name: Check the ntilde-mux checksums
+        shell: bash
+        env:
+          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
+        run: |
+          set -euo pipefail
+          ls -la "$MUX_SHA256_DIR"
+          bash .workflow-ref/scripts/ci/check-mux-sha256.sh "$MUX_SHA256_DIR"
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.release_metadata.outputs.checkout_ref }}
@@ -1618,26 +1674,6 @@ jobs:
         with:
           name: native-${{ matrix.os }}
           path: src/Ntilde.App/native
-
-      # The three ntilde-mux checksums publish_mux_daemon wrote (this job `needs` it), embedded in the App
-      # below so remote installs verify their download against them (Phase 5 Task 10). Checked, not just
-      # counted: a release build refuses a remote install for any RID it has no usable pin for (release
-      # hardening item 4), so a missing or malformed file must fail here rather than ship.
-      - name: Download the ntilde-mux checksums
-        uses: actions/download-artifact@v4
-        with:
-          pattern: mux-sha256-*
-          merge-multiple: true
-          path: ${{ runner.temp }}/mux-sha256
-
-      - name: Check the ntilde-mux checksums
-        shell: bash
-        env:
-          MUX_SHA256_DIR: ${{ runner.temp }}/mux-sha256
-        run: |
-          set -euo pipefail
-          ls -la "$MUX_SHA256_DIR"
-          bash scripts/ci/check-mux-sha256.sh "$MUX_SHA256_DIR"
 
       - name: Restore
         run: dotnet restore
@@ -1799,11 +1835,16 @@ jobs:
             --outputDir artifacts/linux
 
       # The release notes the pack below ships: the multiplexer protocol marker, exactly as the
-      # win and osx lanes write it (see "Write the Velopack release notes" in publish_aot).
+      # win and osx lanes write it (see "Write the Velopack release notes" in publish_aot). The range is
+      # release_metadata's, not this checkout's script run here - see "Read the multiplexer protocol range".
       - name: Write the Velopack release notes (multiplexer protocol)
+        env:
+          MUX_PROTOCOL_RANGE: ${{ needs.release_metadata.outputs.mux_protocol_range }}
         run: |
           set -euo pipefail
-          range="$(bash scripts/ci/mux-protocol-range.sh)"
+          range="$MUX_PROTOCOL_RANGE"
+          [[ "$range" =~ ^[0-9]+-[0-9]+$ ]] \
+            || { echo "::error::release_metadata gave no multiplexer protocol range: '$range'" >&2; exit 1; }
           mkdir -p artifacts
           printf '<!-- ntilde-mux-protocol: %s -->\n' "$range" > artifacts/velopack-release-notes.md
           cat artifacts/velopack-release-notes.md
