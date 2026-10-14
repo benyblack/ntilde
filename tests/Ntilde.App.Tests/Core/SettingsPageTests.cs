@@ -1,11 +1,13 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Ntilde.Backup;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell;
+using Ntilde.Shell.Shortcuts;
 using Ntilde.Tests.Backup;
 
 namespace Ntilde.Tests.Core;
@@ -107,4 +109,73 @@ public sealed class SettingsPageTests
         Assert.Contains("automatic", headline, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("taken first", body, StringComparison.OrdinalIgnoreCase);
     }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_WithADuplicateBinding_RefusesToValidate_AndSaysWhy()
+    {
+        var session = SessionFor(new TerminalSettings());
+        var app = ShortcutCatalog.GetEntries()
+            .Where(e => e.Scope == ShortcutScope.App && !string.IsNullOrEmpty(e.DefaultBinding))
+            .ToList();
+        session.ShortcutDraft[app[1].CommandId] = app[0].DefaultBinding;
+        Assert.False(ShortcutBindingResolver.Resolve(ShortcutCatalog.GetDefinitions(), session.ShortcutDraft).IsValid);
+        var page = new ShortcutsPage();
+        page.Load(session);
+
+        SettingsValidationError? error = page.Validate();
+
+        Assert.NotNull(error);
+        Assert.Equal(SettingsPage.Shortcuts, error!.Page);
+        var message = page.FindControl<TextBlock>("ShortcutValidationMessage")!;
+        Assert.True(message.IsVisible);
+        Assert.Equal("Resolve duplicate shortcuts before saving.", message.Text);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_RecordingAChord_UpdatesTheDraft_AndTellsOtherPages()
+    {
+        var session = SessionFor(new TerminalSettings());
+        var page = new ShortcutsPage();
+        page.Load(session);
+        int changes = 0;
+        session.ShortcutsChanged += () => changes++;
+
+        TextBox editor = BindingEditorFor(page, "Settings");
+        PressChord(editor, Key.F9, KeyModifiers.Alt);
+
+        string expected = ShortcutMatcher.Format(Key.F9, KeyModifiers.Alt);
+        Assert.Equal(expected, editor.Text);
+        Assert.Equal(expected, session.ShortcutDraft["settings"]);
+        Assert.Equal(1, changes);
+        Assert.Contains(ShortcutsPage.CaptureClass, editor.Classes);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_Reset_RemovesTheOverride_AndTellsOtherPages()
+    {
+        var session = SessionFor(new TerminalSettings { Keybindings = new() { ["settings"] = "Alt+F9" } });
+        var page = new ShortcutsPage();
+        page.Load(session);
+        int changes = 0;
+        session.ShortcutsChanged += () => changes++;
+
+        Button reset = BindingEditorFor(page, "Settings").GetLogicalParent()!
+            .GetLogicalChildren().OfType<Button>().Single(b => (string?)b.Content == "Reset");
+        reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.False(session.ShortcutDraft.ContainsKey("settings"));
+        Assert.Equal(1, changes);
+    }
+
+    /// <summary>The binding editor on the Shortcuts page row titled <paramref name="title"/>.</summary>
+    internal static TextBox BindingEditorFor(ShortcutsPage page, string title)
+    {
+        var panel = page.FindControl<StackPanel>("ShortcutBindingsPanel")!;
+        Border row = panel.Children.OfType<Border>().Single(b => b.GetLogicalDescendants()
+            .OfType<TextBlock>().Any(t => t.Classes.Contains("RowLabel") && t.Text == title));
+        return row.GetLogicalDescendants().OfType<TextBox>().Single();
+    }
+
+    internal static void PressChord(Control target, Key key, KeyModifiers modifiers)
+        => target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers, Source = target });
 }
