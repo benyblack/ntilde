@@ -18,8 +18,11 @@ internal static class ComboTags
     /// </summary>
     internal static void Select(ComboBox combo, string? value, StringComparison comparison, int fallbackIndex)
     {
-        ComboBoxItem? match = combo.Items.OfType<ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(item.Tag as string, value, comparison));
+        // Only string Tags can match; a null value matches nothing (not an item whose Tag is null).
+        ComboBoxItem? match = value is null
+            ? null
+            : combo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(item => item.Tag is string tag && string.Equals(tag, value, comparison));
         if (match != null)
         {
             combo.SelectedItem = match;

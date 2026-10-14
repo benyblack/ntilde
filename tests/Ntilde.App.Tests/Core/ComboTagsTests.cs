@@ -50,4 +50,46 @@ public sealed class ComboTagsTests
 
         Assert.Equal("Vertical", ComboTags.SelectedValue(combo));
     }
+
+    [AvaloniaFact]
+    public void Select_NullValue_MatchesNothing_SoTheFallbackApplies()
+    {
+        var combo = new ComboBox();
+        combo.Items.Add(new ComboBoxItem { Content = "No tag", Tag = null });
+        combo.Items.Add(new ComboBoxItem { Content = "Number tag", Tag = 5 });
+        combo.Items.Add(new ComboBoxItem { Content = "Real", Tag = "Real" });
+
+        ComboTags.Select(combo, null, StringComparison.Ordinal, fallbackIndex: 2);
+
+        Assert.Equal("Real", ComboTags.SelectedValue(combo));
+    }
+
+    [AvaloniaFact]
+    public void Select_Ordinal_StaysCaseSensitive()
+    {
+        var combo = Combo(("Horizontal", "Horizontal"), ("Vertical", "Vertical"));
+
+        ComboTags.Select(combo, "vertical", StringComparison.Ordinal, fallbackIndex: 0);
+
+        Assert.Equal("Horizontal", ComboTags.SelectedValue(combo));
+    }
+
+    [AvaloniaFact]
+    public void Select_OnAnEmptyCombo_DoesNotThrow_AndSelectsNothing()
+    {
+        var combo = new ComboBox();
+
+        Assert.Null(Record.Exception(() => ComboTags.Select(combo, "x", StringComparison.Ordinal, fallbackIndex: 0)));
+
+        Assert.Null(combo.SelectedItem);
+        Assert.Null(ComboTags.SelectedValue(combo));
+    }
+
+    [AvaloniaFact]
+    public void Select_OutOfRangeFallbackIndex_DoesNotThrow()
+    {
+        var combo = Combo(("Horizontal", "Horizontal"));
+
+        Assert.Null(Record.Exception(() => ComboTags.Select(combo, "Diagonal", StringComparison.Ordinal, fallbackIndex: 7)));
+    }
 }

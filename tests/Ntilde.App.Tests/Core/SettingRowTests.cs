@@ -156,4 +156,24 @@ public sealed class SettingRowTests
             host.Close();
         }
     }
+
+    /// <summary>3.1: the flash reaches the screen only if the template binds Background onto its root Border.</summary>
+    [AvaloniaFact]
+    public void Flash_PaintsTheTemplatesRootBorder()
+    {
+        var row = new SettingRow { Title = "Window opacity" };
+        var host = Host(row);
+        try
+        {
+            SettingsNavigation.Flash(row);
+            Dispatcher.UIThread.RunJobs();
+
+            var root = row.GetVisualChildren().OfType<Border>().First();
+            Assert.Same(host.FindResource("NtBlueDim"), root.Background);
+        }
+        finally
+        {
+            host.Close();
+        }
+    }
 }

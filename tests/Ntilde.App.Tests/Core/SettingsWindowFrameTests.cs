@@ -103,6 +103,7 @@ public sealed class SettingsWindowFrameTests
     {
         using var root = SettingsTestRoot.Empty();
 
+        Assert.Equal(SettingsPage.General, SettingsPageRegistry.DefaultPage);
         Assert.Equal(SettingsPageRegistry.DefaultPage, new Ntilde.SettingsWindow().CurrentPage);
     }
 

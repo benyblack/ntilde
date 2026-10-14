@@ -526,4 +526,30 @@ public sealed class SettingsPageTests
 
     internal static void PressChord(Control target, Key key, KeyModifiers modifiers)
         => target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers, Source = target });
+
+    /// <summary>Spec section 8: moving the long wording behind "More" must not drop any of it.</summary>
+    [AvaloniaFact]
+    public void CommandAssistPage_RememberCommands_KeepsTheCompleteHistorySecurityWording()
+    {
+        var page = new CommandAssistPage();
+        var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "remember-commands");
+        string text = row.Description + " " + row.Details;
+
+        Assert.Contains("Other secrets typed as part of a visible command are not.", text);
+        Assert.Contains("Clear history erases every recorded command", text);
+        Assert.Contains("Other secrets typed as part of a visible command are not.", row.Details);
+        Assert.Contains("Clear history erases every recorded command", row.Details);
+    }
+
+    [AvaloniaFact]
+    public void CommandAssistPage_ClearHistoryWithoutAStore_ShowsItsStatusOnTheRow()
+    {
+        var page = new CommandAssistPage();
+        page.Load(SessionFor(new TerminalSettings())); // no history store
+        var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "remember-commands");
+
+        page.FindControl<Button>("BtnClearCommandAssistHistory")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal("Command history is not available in this window.", row.Status);
+    }
 }
