@@ -145,7 +145,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         var title = new TextBlock { Text = entry.Title, Classes = { "RowLabel" }, VerticalAlignment = VerticalAlignment.Center };
         var shortcut = new TextBlock
         {
-            Text = TitleBarShortcuts.Resolve(entry.ShortcutKey, Session.ShortcutDraft),
+            Text = ShortcutText(TitleBarShortcuts.Resolve(entry.ShortcutKey, Session.ShortcutDraft)),
             Classes = { RowDescStyleClass },
             VerticalAlignment = VerticalAlignment.Center,
             Tag = "shortcut",
@@ -185,6 +185,8 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         row.Tag = entry.Id;
         return row;
     }
+
+    private static string ShortcutText(string? resolved) => string.IsNullOrWhiteSpace(resolved) ? "No shortcut" : resolved;
 
     private StackPanel CreatePlacementSwitch(TitleBarCatalogEntry entry, TitleBarItemState current, bool barFull)
     {
@@ -238,8 +240,50 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
     private void ClearTitleBarValidationMessage() => this.FindControl<TextBlock>("TitleBarValidationMessage")!.IsVisible = false;
 
-    // RebuildMiniTitleBar is Task 4.2's; until then this placeholder keeps the build green:
+    /// <summary>
+    /// A lightweight replica of the title bar, not a real one: two sample tabs, New Tab's "+", the
+    /// pinned actions in order, "…" when the menu has anything in it, and dim caption buttons.
+    /// </summary>
     private void RebuildMiniTitleBar()
     {
+        var host = this.FindControl<Border>("TitleBarPreview")!;
+        TitleBarDraftState draft = Session.TitleBarDraft;
+        Dictionary<string, TitleBarCatalogEntry> byId = TitleBarCatalog.GetEntries().ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
+
+        var tabs = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { SampleTab("~/nova2", active: true), SampleTab("pwsh", active: false) },
+        };
+        var newTab = new TextBlock { Text = "+", Classes = { "MiniBarGlyph" }, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Tag = "actions" };
+        foreach (string id in draft.BuildSaveOrder().Where(id => !byId[id].IsLocked))
+        {
+            actions.Children.Add(new PathIcon { Data = Geometry.Parse(byId[id].IconGeometry), Width = 12, Height = 12, Tag = id, Classes = { "MiniBarIcon" } });
+        }
+
+        if (TitleBarCatalog.GetEntries().Any(entry => draft.GetState(entry.Id) == TitleBarItemState.Overflow))
+        {
+            actions.Children.Add(new TextBlock { Text = "…", Tag = "overflow", Classes = { "MiniBarGlyph" }, VerticalAlignment = VerticalAlignment.Center });
+        }
+
+        var captions = new TextBlock { Text = "—   □   ✕", Classes = { "MiniBarCaptions" }, Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto,Auto"), Children = { tabs, newTab, actions, captions } };
+        Grid.SetColumn(newTab, 1);
+        Grid.SetColumn(actions, 3);
+        Grid.SetColumn(captions, 4);
+        host.Child = grid;
     }
+
+    private Border SampleTab(string title, bool active) => new()
+    {
+        Background = this.FindPaletteBrush(active ? "NtPanel" : "NtPanelAlt"),
+        CornerRadius = new CornerRadius(4),
+        Padding = new Thickness(8, 2),
+        Child = new TextBlock { Text = title, FontSize = 11, Foreground = this.FindPaletteBrush(active ? "NtFg" : "NtFg3") },
+    };
 }

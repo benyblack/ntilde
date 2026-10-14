@@ -112,4 +112,58 @@ public sealed class SettingsTitleBarEditorTests
             Assert.Equal(settingsAt - 1, after.IndexOf("settings"));
         }
     }
+
+    private static List<string> MiniBarActions(TabsAndTitleBarPage page)
+        => ((Grid)page.FindControl<Border>("TitleBarPreview")!.Child!).Children
+            .OfType<StackPanel>().Single(panel => (string?)panel.Tag == "actions")
+            .Children.Select(child => (string)child.Tag!).ToList();
+
+    [AvaloniaFact]
+    public void TheMiniBar_ShowsThePinnedActionsInOrder_ThenTheMenuButton()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            List<string> expected = window.Session.TitleBarDraft.BuildSaveOrder()
+                .Where(id => id != TitleBarCatalog.NewTabId)
+                .Append("overflow")
+                .ToList();
+
+            Assert.Equal(expected, MiniBarActions(page));
+        }
+    }
+
+    [AvaloniaFact]
+    public void TheMiniBar_FollowsEveryDraftChange()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            Click(Segment(Row(page, "find"), TitleBarItemState.Pinned));
+            Assert.Equal("find", MiniBarActions(page)[^2]); // last pinned, before "…"
+
+            foreach (TitleBarCatalogEntry entry in TitleBarCatalog.GetEntries().Where(e => !e.IsLocked).ToList())
+            {
+                if (GroupOf(page, entry.Id) == "IN THE … MENU")
+                {
+                    Click(Segment(Row(page, entry.Id), TitleBarItemState.Hidden));
+                }
+            }
+
+            Assert.DoesNotContain("overflow", MiniBarActions(page));
+        }
+    }
+
+    [AvaloniaFact]
+    public void AnUnboundAction_SaysNoShortcut()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            TextBlock shortcut = Row(page, "agent_activity").GetLogicalDescendants().OfType<TextBlock>()
+                .Single(text => (string?)text.Tag == "shortcut");
+
+            Assert.Equal("No shortcut", shortcut.Text);
+        }
+    }
 }

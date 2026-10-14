@@ -395,4 +395,25 @@
         <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
         <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
     </Style>
+
+    <!-- ── Mini title bar (PR 4) ── -->
+    <Style Selector="Border.MiniTitleBar">
+        <Setter Property="Background" Value="{DynamicResource NtChromeBg}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="MinHeight" Value="34"/>
+    </Style>
+    <Style Selector="PathIcon.MiniBarIcon">
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+    </Style>
+    <Style Selector="TextBlock.MiniBarGlyph">
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="TextBlock.MiniBarCaptions">
+        <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
 </Styles>
