@@ -18,7 +18,7 @@ namespace Ntilde.Tests.Core;
 /// <remarks>
 /// With NTILDE_SETTINGS_SHOTS_BASELINE also set to an earlier run's directory, every image is
 /// compared pixel by pixel with the file of the same name there, and the test fails naming each
-/// image that differs. That is how a "no visible change" PR proves it.
+/// image that differs or that the baseline has for the same theme but the run did not produce. That is how a "no visible change" PR proves it.
 /// </remarks>
 public sealed class SettingsScreenshotHarness
 {
@@ -40,7 +40,7 @@ public sealed class SettingsScreenshotHarness
         var written = new List<string>();
         CaptureSettings(output!, slug, written);
         CaptureConnectionManager(output!, slug, themeName, written);
-        CompareWithBaseline(written);
+        CompareWithBaseline(written, slug);
     }
 
     private static void CaptureSettings(string output, string slug, List<string> written)
@@ -123,7 +123,7 @@ public sealed class SettingsScreenshotHarness
         return path;
     }
 
-    internal static void CompareWithBaseline(IReadOnlyList<string> written)
+    internal static void CompareWithBaseline(IReadOnlyList<string> written, string slug)
     {
         string? baseline = Environment.GetEnvironmentVariable(BaselineVariable);
         if (string.IsNullOrWhiteSpace(baseline))
@@ -132,6 +132,20 @@ public sealed class SettingsScreenshotHarness
         }
 
         var differences = new List<string>();
+
+        // A page that vanished or got shorter leaves baseline images this run never wrote;
+        // comparing only what was written would let that pass. Scope to this case's theme.
+        var produced = new HashSet<string>(written.Select(Path.GetFileName), StringComparer.OrdinalIgnoreCase);
+        var expected = Directory.EnumerateFiles(baseline, $"settings-{slug}-*.png")
+            .Concat(Directory.EnumerateFiles(baseline, $"connections-{slug}.png"));
+        foreach (string missing in expected.Select(Path.GetFileName).Order(StringComparer.Ordinal))
+        {
+            if (!produced.Contains(missing!))
+            {
+                differences.Add($"{missing}: in the baseline but not produced by this run");
+            }
+        }
+
         foreach (string path in written)
         {
             string name = Path.GetFileName(path);
