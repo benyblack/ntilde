@@ -21,11 +21,11 @@
             </settings:SettingGroup>
 
             <settings:SettingGroup Header="TITLE BAR ACTIONS">
-                <StackPanel Spacing="10" Margin="0,8,0,0">
-                    <TextBlock Classes="RowDesc"
-                               Text="Pinned actions get their own icon in the title bar. Overflow actions live in the … menu. Hidden actions stay reachable by shortcut and from the command palette."/>
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+                    <!-- A lightweight replica of the bar, rebuilt on every draft change (spec §6). -->
+                    <Border Name="TitleBarPreview" Classes="MiniTitleBar" AutomationProperties.Name="Title bar preview"/>
                     <TextBlock Name="TitleBarValidationMessage" Foreground="{DynamicResource NtRed}" FontSize="12" IsVisible="False" TextWrapping="Wrap"/>
-                    <StackPanel Name="TitleBarItemsPanel" Spacing="8"/>
+                    <StackPanel Name="TitleBarItemsPanel" Grid.IsSharedSizeScope="True"/>
                 </StackPanel>
             </settings:SettingGroup>
         </StackPanel>

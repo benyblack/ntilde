@@ -242,6 +242,76 @@ public sealed class SettingsThemeEditorTests
 
     private static string SettingsText(SettingsTestRoot root) => File.ReadAllText(Path.Combine(root.Root, "settings.json"));
 
+    /// <summary>Ctrl/Cmd+F, the query, Enter: a search jump to the first result.</summary>
+    private static void SearchAndJump(Ntilde.SettingsWindow window, string query)
+    {
+        window.KeyPress(Key.F, Primary, PhysicalKey.F, "f");
+        window.KeyTextInput(query);
+        window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>PR 5 ruling: a search jump into Appearance never drops an unsaved draft. The editor stays, and says why.</summary>
+    [AvaloniaFact]
+    public void ASearchJump_WithUnsavedThemeEdits_KeepsTheEditorAndItsDraft()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Type(page, "EditThemeBgInput", "#123456");
+
+                SearchAndJump(window, "opacity");
+
+                Assert.Equal(SettingsPage.Appearance, window.CurrentPage);
+                Assert.Equal(string.Empty, window.FindControl<TextBox>("SettingsSearchBox")!.Text);
+                Assert.True(page.IsSubPageOpen);
+                Assert.True(page.FindControl<ScrollViewer>("ThemeEditorView")!.IsEffectivelyVisible);
+                Assert.Equal("Save the theme or go back first.", page.FindControl<TextBlock>("ThemeEditorStatus")!.Text);
+
+                Click(page, "BtnSaveTheme"); // the draft survived: saving it writes the edit
+                Assert.Equal("#123456", window.Session.Settings.ThemeManager.GetTheme("GitHub Light").Background.ToString());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void ASearchJump_WithTheEditorUntouched_ClosesIt_AndLandsOnTheRow()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs(); // the editor's own fill-in must not read as an edit
+
+                SearchAndJump(window, "opacity");
+
+                Assert.False(page.IsSubPageOpen);
+                var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "window-opacity");
+                Assert.Same(window.FindResource("NtBlueDim"), row.Background);
+
+                // Leaving the editor returns focus to Edit only when the editor had it; here the setting takes it.
+                var slider = page.FindControl<Slider>("WindowOpacitySlider")!;
+                var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() as Visual;
+                Assert.True(focused is not null && (ReferenceEquals(focused, slider) || slider.IsVisualAncestorOf(focused)), $"Focus is on {focused?.GetType().Name ?? "nothing"}.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
     [AvaloniaFact]
     public void PrimaryS_WithUnsavedThemeEdits_DoesNotDiscardThem()
     {

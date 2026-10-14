@@ -140,6 +140,11 @@
         <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
     </Style>
 
+    <Style Selector="Button.IconBtn:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
+    </Style>
+
     <!-- Sidebar (ListBox + items) -->
     <Style Selector="ListBox.SideNav">
         <Setter Property="Background" Value="Transparent"/>
@@ -168,9 +173,10 @@
         <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
     </Style>
 
-    <!-- Sidebar group headers: disabled items, so they are never a selection or a focus stop. -->
+    <!-- Sidebar group headers: disabled items, so they are never a selection or a focus stop.
+         The 12 above a header keeps all ten pages under the search box at the window's default size. -->
     <Style Selector="ListBox.SideNav ListBoxItem.NavGroup">
-        <Setter Property="Padding" Value="8,18,8,8"/>
+        <Setter Property="Padding" Value="8,12,8,8"/>
         <Setter Property="Margin" Value="6,0"/>
     </Style>
     <Style Selector="ListBox.SideNav ListBoxItem.NavGroup.First">
@@ -363,5 +369,80 @@
                 </StackPanel>
             </ControlTemplate>
         </Setter>
+    </Style>
+    <!-- ── Bar / Menu / Hide segmented switch (PR 4) ── -->
+    <Style Selector="StackPanel.Segmented > ToggleButton.Segment">
+        <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="BorderThickness" Value="1,1,0,1"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Padding" Value="10,3"/>
+        <Setter Property="MinWidth" Value="52"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="StackPanel.Segmented > ToggleButton.Segment:nth-child(1)">
+        <Setter Property="CornerRadius" Value="5,0,0,5"/>
+    </Style>
+    <Style Selector="StackPanel.Segmented > ToggleButton.Segment:nth-last-child(1)">
+        <Setter Property="CornerRadius" Value="0,5,5,0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="ToggleButton.Segment:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
+    </Style>
+    <Style Selector="ToggleButton.Segment:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
+    </Style>
+    <Style Selector="ToggleButton.Segment:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
+    </Style>
+
+    <!-- ── Mini title bar (PR 4) ── -->
+    <Style Selector="Border.MiniTitleBar">
+        <Setter Property="Background" Value="{DynamicResource NtChromeBg}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="MinHeight" Value="34"/>
+    </Style>
+    <Style Selector="PathIcon.MiniBarIcon">
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+    </Style>
+    <Style Selector="TextBlock.MiniBarGlyph">
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="TextBlock.MiniBarCaptions">
+        <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
+        <Setter Property="FontSize" Value="11"/>
+    </Style>
+
+    <!-- ── Search results (PR 5) ── -->
+    <Style Selector="ListBox.SearchResults">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <!-- The selected result carries the sidebar's accent edge, so it reads as the one Enter opens. -->
+    <Style Selector="ListBox.SearchResults ListBoxItem">
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Margin" Value="0,1"/>
+        <Setter Property="CornerRadius" Value="5"/>
+        <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBox.SearchResults ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+    </Style>
+    <Style Selector="ListBox.SearchResults ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
 </Styles>

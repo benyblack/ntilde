@@ -112,14 +112,13 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
         using var root = SettingsTestRoot.Empty();
         var window = new Ntilde.SettingsWindow();
 
-        var panelBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtPanel"));
         var hairlineBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtHairline"));
 
         var titleBarRows = window.GetPage<TabsAndTitleBarPage>().FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
         Assert.NotEmpty(titleBarRows);
         foreach (var row in titleBarRows)
         {
-            Assert.Same(panelBrush, row.Background);
+            Assert.Null(row.Background);
             Assert.Same(hairlineBrush, row.BorderBrush);
         }
 

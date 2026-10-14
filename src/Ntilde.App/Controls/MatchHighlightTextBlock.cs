@@ -6,7 +6,8 @@ using Avalonia.Media;
 namespace Ntilde.Controls
 {
     /// <summary>
-    /// A single-line <see cref="TextBlock"/> that paints one run of its text in a second brush.
+    /// A single-line <see cref="TextBlock"/> that paints one run of its text in a second brush, a
+    /// second weight, or both.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -44,6 +45,10 @@ namespace Ntilde.Controls
         public static readonly StyledProperty<IBrush?> HighlightBrushProperty =
             AvaloniaProperty.Register<MatchHighlightTextBlock, IBrush?>(nameof(HighlightBrush));
 
+        /// <summary>Weight for the emphasised run. Null keeps the control's own weight.</summary>
+        public static readonly StyledProperty<FontWeight?> HighlightFontWeightProperty =
+            AvaloniaProperty.Register<MatchHighlightTextBlock, FontWeight?>(nameof(HighlightFontWeight));
+
         public MatchHighlightTextBlock()
         {
             RebuildInlines();
@@ -71,6 +76,12 @@ namespace Ntilde.Controls
         {
             get => GetValue(HighlightBrushProperty);
             set => SetValue(HighlightBrushProperty, value);
+        }
+
+        public FontWeight? HighlightFontWeight
+        {
+            get => GetValue(HighlightFontWeightProperty);
+            set => SetValue(HighlightFontWeightProperty, value);
         }
 
         /// <summary>
@@ -106,7 +117,8 @@ namespace Ntilde.Controls
             if (change.Property == SourceTextProperty ||
                 change.Property == HighlightStartProperty ||
                 change.Property == HighlightLengthProperty ||
-                change.Property == HighlightBrushProperty)
+                change.Property == HighlightBrushProperty ||
+                change.Property == HighlightFontWeightProperty)
             {
                 RebuildInlines();
             }
@@ -155,6 +167,11 @@ namespace Ntilde.Controls
             if (HighlightBrush != null)
             {
                 match.Foreground = HighlightBrush;
+            }
+
+            if (HighlightFontWeight is { } weight)
+            {
+                match.FontWeight = weight;
             }
 
             inlines.Add(match);

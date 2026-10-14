@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -8,7 +9,9 @@ using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ntilde.CommandAssist.Domain;
+using Ntilde.Controls;
 using Ntilde.Services.Ssh;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
@@ -35,6 +38,11 @@ namespace Ntilde
         private readonly Button _btnSave;
         private SettingsPage _currentPage;
         private bool _syncingNav;
+        private TextBox _searchBox = null!;
+        private ListBox _searchResults = null!;
+        private Control _searchView = null!;
+        private Panel _pageHost = null!;
+        private SettingsSearchIndex _searchIndex = new([]);
 
         public TerminalSettings Settings => _session.Settings; // Expose for main window to grab without reloading disk
 
@@ -73,6 +81,8 @@ namespace Ntilde
 
         /// <summary>The page on screen. MainWindow remembers it so Ctrl+, reopens where the user left off.</summary>
         internal SettingsPage CurrentPage => _currentPage;
+
+        internal SettingsSearchIndex SearchIndex => _searchIndex;
 
         public event Action<double>? OnOpacityChanged;
         public event Action<string>? OnBlurChanged;
@@ -203,6 +213,7 @@ namespace Ntilde
             // (MainWindow subscribes after construction, so its previews are unaffected.)
             WireSessionEvents();
             BuildSidebar();
+            WireSearch();
 
             // Tunnel, so the chord works from any focused field; ShortcutsPage's editors are the
             // one place it must not fire (the user may be recording Ctrl+S as a binding).
@@ -243,7 +254,15 @@ namespace Ntilde
         /// Shows <paramref name="target"/>'s page and, when it names a row, scrolls to the row and
         /// highlights it. Deep links, validation and search all come through here.
         /// </summary>
-        internal void NavigateTo(SettingsTarget target)
+        internal void NavigateTo(SettingsTarget target) => NavigateTo(target, focusWith: null, expandDetails: false);
+
+        /// <param name="target">The page, and the row to reveal on it.</param>
+        /// <param name="focusWith">
+        /// For a search jump, how the row's control takes focus once it is shown (Tab draws the focus
+        /// ring). Null leaves focus where it is, as a deep link does.
+        /// </param>
+        /// <param name="expandDetails">Opens the row's "More" text, where a search matched.</param>
+        private void NavigateTo(SettingsTarget target, NavigationMethod? focusWith, bool expandDetails)
         {
             ArgumentNullException.ThrowIfNull(target);
             ShowPage(target.Page);
@@ -256,21 +275,25 @@ namespace Ntilde
             // Opened; an open one only needs the pass this page switch just scheduled.
             if (IsVisible)
             {
-                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId), DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);
                 return;
             }
 
             void RevealOnceOpened(object? sender, EventArgs e)
             {
                 Opened -= RevealOnceOpened;
-                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId), DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);
             }
 
             Opened += RevealOnceOpened;
         }
 
-        /// <summary>Scrolls the row carrying <paramref name="rowId"/> into view and highlights it. False when it is not on screen.</summary>
-        internal bool RevealRow(SettingsPage page, string rowId)
+        /// <summary>
+        /// Scrolls the row carrying <paramref name="rowId"/> into view and highlights it; a search
+        /// jump also opens its details and focuses its control (see NavigateTo's parameters). False
+        /// when it is not on screen.
+        /// </summary>
+        internal bool RevealRow(SettingsPage page, string rowId, NavigationMethod? focusWith = null, bool expandDetails = false)
         {
             if (page != _currentPage)
             {
@@ -284,10 +307,10 @@ namespace Ntilde
                 host.CloseSubPage();
                 if (host.IsSubPageOpen)
                 {
-                    return false; // the page refused to close; reposting would loop forever
+                    return false; // the page refused (it says why); reposting would loop forever
                 }
 
-                Dispatcher.UIThread.Post(() => RevealRow(page, rowId), DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(() => RevealRow(page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);
                 return true;
             }
 
@@ -299,13 +322,45 @@ namespace Ntilde
                 return false;
             }
 
+            // The details make the row taller: reveal it after the layout pass that measures them.
+            if (expandDetails && row is SettingRow { IsExpanded: false } collapsed)
+            {
+                collapsed.IsExpanded = true;
+                Dispatcher.UIThread.Post(() => RevealRow(page, rowId, focusWith), DispatcherPriority.Loaded);
+                return true;
+            }
+
             row.BringIntoView();
             SettingsNavigation.Flash(row);
+            if (focusWith is { } method)
+            {
+                FirstFocusableIn(row)?.Focus(method);
+            }
+
             return true;
+        }
+
+        /// <summary>
+        /// The first control in <paramref name="row"/>'s content that Tab could reach, or null. A
+        /// SettingRow's own "More" button is not its content, so it is never the one.
+        /// </summary>
+        private static InputElement? FirstFocusableIn(Control row)
+        {
+            Control? content = row is ContentControl contentRow ? contentRow.Content as Control : row;
+            return content?.GetSelfAndVisualDescendants()
+                .OfType<InputElement>()
+                .FirstOrDefault(element => element.Focusable
+                    && element.IsEffectivelyEnabled
+                    && element.IsEffectivelyVisible
+                    && KeyboardNavigation.GetIsTabStop(element));
         }
 
         private void ShowPage(SettingsPage page)
         {
+            // Every page change ends a search, or the page would stay hidden behind the results: a
+            // sidebar click or arrow, a jump, a deep link, a Save stopped by a page's validation.
+            ClearSearch();
+
             foreach (ISettingsPage candidate in _pages)
             {
                 candidate.View.IsVisible = candidate.Page == page;
@@ -421,6 +476,12 @@ namespace Ntilde
                 _btnSave.Focus();
                 SaveAndClose();
             }
+            else if (e.Key == Key.F)
+            {
+                e.Handled = true;
+                _searchBox.Focus();
+                _searchBox.SelectAll();
+            }
         }
 
         private static bool IsShortcutCapture(object? source)
@@ -445,6 +506,253 @@ namespace Ntilde
 
             ShowPage(order[next]);
             _navItems[order[next]].Focus(NavigationMethod.Directional);
+        }
+
+        private void WireSearch()
+        {
+            _searchBox = this.FindControl<TextBox>("SettingsSearchBox")!;
+            _searchResults = this.FindControl<ListBox>("SearchResultsList")!;
+            _searchView = this.FindControl<Control>("SearchResultsView")!;
+            _pageHost = this.FindControl<Panel>("PageHost")!;
+
+            _searchResults.ItemTemplate = new FuncDataTemplate<SettingsSearchResult>(
+                (result, _) => result is null ? new TextBlock() : CreateResultView(result));
+            _searchBox.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == TextBox.TextProperty)
+                {
+                    UpdateSearch();
+                }
+            };
+            _searchBox.AddHandler(KeyDownEvent, OnSearchKeyDown, RoutingStrategies.Tunnel);
+            _searchResults.Tapped += (_, e) =>
+            {
+                // Only a tap on a result jumps, and to that result: the list fills the content area
+                // (a tap on its empty space or scroll bar is not a choice), and a Ctrl/Cmd+click
+                // toggles the selection off the very result it lands on.
+                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { Content: SettingsSearchResult tapped })
+                {
+                    JumpTo(tapped, NavigationMethod.Pointer);
+                }
+            };
+            _searchResults.AddHandler(KeyDownEvent, OnResultsKeyDown, RoutingStrategies.Tunnel);
+
+            // The container's content is the record itself, so without a name a screen reader
+            // reads the record's ToString().
+            _searchResults.ContainerPrepared += (_, e) =>
+            {
+                if (_searchResults.Items[e.Index] is SettingsSearchResult result)
+                {
+                    AutomationProperties.SetName(e.Container, $"{result.Entry.Title} — {ResultLocation(result.Entry)}");
+                    AutomationProperties.SetHelpText(e.Container, result.Entry.Description);
+                }
+            };
+
+            // A click on the page already selected changes no selection, so ShowPage never runs;
+            // the click itself ends the search.
+            _sideNav.Tapped += (_, e) =>
+            {
+                if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is { Tag: SettingsPage })
+                {
+                    ClearSearch();
+                }
+            };
+
+            RebuildSearchIndex();
+
+            // Command Assist rewrites its descriptions when a chord is rebound (its handler runs
+            // first, having subscribed in Load), so the index re-reads the rows after it.
+            _session.ShortcutsChanged += RebuildSearchIndex;
+        }
+
+        private void RebuildSearchIndex()
+            => _searchIndex = SettingsSearchIndex.Build(_pages.Select(page => (SettingsPageRegistry.Get(page.Page), page.View)));
+
+        private void UpdateSearch()
+        {
+            string query = (_searchBox.Text ?? string.Empty).Trim();
+            bool searching = query.Length > 0;
+            _pageHost.IsVisible = !searching;
+            _searchView.IsVisible = searching;
+            if (!searching)
+            {
+                _searchResults.ItemsSource = null;
+                return;
+            }
+
+            IReadOnlyList<SettingsSearchResult> results = _searchIndex.Search(query);
+            _searchResults.ItemsSource = results;
+            _searchResults.SelectedIndex = results.Count > 0 ? 0 : -1;
+            _searchResults.IsVisible = results.Count > 0;
+            if (results.Count > 0)
+            {
+                // The list keeps its scroll offset across new items; the selected first result must show.
+                _searchResults.ScrollIntoView(0);
+            }
+
+            var heading = this.FindControl<TextBlock>("SearchResultsHeading")!;
+            heading.IsVisible = results.Count > 0;
+            heading.Text = results.Count == 1 ? $"1 result for “{query}”" : $"{results.Count} results for “{query}”";
+
+            var none = this.FindControl<TextBlock>("SearchNoResults")!;
+            none.IsVisible = results.Count == 0;
+            none.Text = $"No settings match “{query}”.";
+        }
+
+        private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Down:
+                    MoveResultSelection(1);
+                    e.Handled = true;
+                    break;
+                case Key.Up:
+                    MoveResultSelection(-1);
+                    e.Handled = true;
+                    break;
+                case Key.Enter:
+                    JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Tab);
+                    e.Handled = true;
+                    break;
+                case Key.Escape when !string.IsNullOrEmpty(_searchBox.Text):
+                    ClearSearch(); // the page that was showing comes back
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        private void OnResultsKeyDown(object? sender, KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Key.Enter:
+                    JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Tab);
+                    e.Handled = true;
+                    break;
+                case Key.Escape:
+                    // As in the box: the page comes back, and focus returns to the box (the focused
+                    // result goes away with the results).
+                    _searchBox.Focus();
+                    ClearSearch();
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        /// <summary>Empties the search box, which puts the current page back in place of the results.</summary>
+        private void ClearSearch()
+        {
+            // Null only while the constructor has not reached WireSearch yet.
+            if (_searchBox is { Text.Length: > 0 })
+            {
+                _searchBox.Text = string.Empty;
+            }
+        }
+
+        private void MoveResultSelection(int step)
+        {
+            if (!_searchResults.IsVisible || _searchResults.ItemCount == 0)
+            {
+                return;
+            }
+
+            _searchResults.SelectedIndex = Math.Clamp(_searchResults.SelectedIndex + step, 0, _searchResults.ItemCount - 1);
+            _searchResults.ScrollIntoView(_searchResults.SelectedIndex);
+        }
+
+        /// <summary>
+        /// Jumps to <paramref name="result"/>: its page, its row (details opened when only they
+        /// matched), and focus on the row's control, drawn as <paramref name="focusWith"/> says.
+        /// </summary>
+        private void JumpTo(SettingsSearchResult? result, NavigationMethod focusWith)
+        {
+            if (result is null)
+            {
+                return;
+            }
+
+            // Focus parks in the box first: a clicked result's container goes away with the
+            // results, and a page result has no row to take it.
+            _searchBox.Focus();
+            var target = new SettingsTarget(result.Entry.Page, result.Entry.RowId);
+            NavigateTo(target, focusWith, result.MatchedOnlyInDetails); // ShowPage clears the search
+        }
+
+        /// <summary>The acronyms Settings copy uses: the words a group header keeps upper-case when a result writes it in sentence case.</summary>
+        private static readonly HashSet<string> GroupHeaderAcronyms = new(StringComparer.Ordinal) { "SSH", "OSC" };
+
+        /// <summary>
+        /// A result's first line: "Page" for a page itself (it has no row), else the page, then the
+        /// row's group in sentence case - "Appearance › Background image".
+        /// </summary>
+        internal static string ResultLocation(SettingsSearchEntry entry)
+        {
+            ArgumentNullException.ThrowIfNull(entry);
+            if (entry.RowId is null)
+            {
+                return "Page";
+            }
+
+            return entry.Group is null ? entry.PageTitle : $"{entry.PageTitle} › {SentenceCase(entry.Group)}";
+        }
+
+        /// <summary>A group header ("BACKGROUND IMAGE") in sentence case, its acronyms kept upper-case.</summary>
+        private static string SentenceCase(string header)
+        {
+            string[] words = header.Split(' ');
+            for (int i = 0; i < words.Length; i++)
+            {
+                string letters = new(words[i].Where(char.IsLetter).ToArray());
+                if (!GroupHeaderAcronyms.Contains(letters))
+                {
+                    words[i] = words[i].ToLowerInvariant();
+                }
+            }
+
+            string text = string.Join(' ', words);
+            return text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+        }
+
+        private Control CreateResultView(SettingsSearchResult result)
+        {
+            SettingsSearchEntry entry = result.Entry;
+            var panel = new StackPanel
+            {
+                Spacing = 2,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = ResultLocation(entry),
+                        Classes = { "RowDesc" },
+                    },
+                    // The match is emphasised by weight in the title's own colour: accent-coloured
+                    // text was hard to read on the selected result's accent background.
+                    new MatchHighlightTextBlock
+                    {
+                        SourceText = entry.Title,
+                        HighlightStart = result.TitleMatchStart,
+                        HighlightLength = result.TitleMatchLength,
+                        HighlightFontWeight = FontWeight.Bold,
+                        Foreground = this.FindPaletteBrush("NtFg"),
+                        FontSize = 13,
+                    },
+                },
+            };
+
+            if (!string.IsNullOrWhiteSpace(entry.Description))
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = entry.Description,
+                    Classes = { "RowDesc" },
+                    MaxLines = 2,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                });
+            }
+
+            return panel;
         }
 
         private void WireSessionEvents()
@@ -523,6 +831,8 @@ namespace Ntilde
             {
                 page.Load(_session);
             }
+
+            RebuildSearchIndex();
 
             // The one reload a page's Load does not cover, and the reason this method is async at
             // all. CommandAssistPage.ReloadSnippetsAsync is driven by the frame's one-shot `Opened`
