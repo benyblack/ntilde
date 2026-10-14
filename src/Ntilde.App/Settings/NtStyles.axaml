@@ -140,6 +140,11 @@
         <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
     </Style>
 
+    <Style Selector="Button.IconBtn:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
+    </Style>
+
     <!-- Sidebar (ListBox + items) -->
     <Style Selector="ListBox.SideNav">
         <Setter Property="Background" Value="Transparent"/>
@@ -393,6 +398,7 @@
     </Style>
     <Style Selector="ToggleButton.Segment:disabled /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
         <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
     </Style>
 
