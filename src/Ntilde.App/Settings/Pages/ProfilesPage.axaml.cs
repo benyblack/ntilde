@@ -422,57 +422,25 @@ public partial class ProfilesPage : UserControl, ISettingsPage
         if (checkOverrideLigatures != null) checkOverrideLigatures.IsChecked = false;
     }
 
+    /// <summary>The profiles the editor works on: a full copy of each local profile.</summary>
     internal static System.Collections.Generic.List<TerminalProfile> BuildLocalProfilesForEditor(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
-    {
-        var source = profiles ?? System.Array.Empty<TerminalProfile>();
+        => CopyLocalProfiles(profiles);
 
-        return source
-            .Where(profile => profile.Type == ConnectionType.Local)
-            .Select(profile => new TerminalProfile
-            {
-                Id = profile.Id,
-                Name = profile.Name,
-                Command = profile.Command,
-                Arguments = profile.Arguments,
-                StartingDirectory = profile.StartingDirectory,
-                Type = ConnectionType.Local,
-                FontFamily = profile.FontFamily,
-                FontSize = profile.FontSize,
-                ThemeName = profile.ThemeName,
-                EnableLigatures = profile.EnableLigatures,
-                Group = profile.Group,
-                Notes = profile.Notes,
-                AccentColor = profile.AccentColor,
-                Tags = profile.Tags?.ToList() ?? new System.Collections.Generic.List<string>()
-            })
-            .ToList();
-    }
-
+    /// <summary>The profiles Save writes back: a full copy of each local profile the editor holds.</summary>
     internal static System.Collections.Generic.List<TerminalProfile> NormalizeSettingsProfilesForSave(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
-    {
-        var source = profiles ?? System.Array.Empty<TerminalProfile>();
+        => CopyLocalProfiles(profiles);
 
-        return source
+    /// <summary>
+    /// Local profiles only (SSH connections live in the connection store), each copied whole with
+    /// <see cref="TerminalProfile.CopyForEditing"/>. The editor shows and changes only some fields;
+    /// copying every field means a Save writes the others back as they were, instead of resetting
+    /// them to their defaults.
+    /// </summary>
+    private static System.Collections.Generic.List<TerminalProfile> CopyLocalProfiles(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
+        => (profiles ?? System.Array.Empty<TerminalProfile>())
             .Where(profile => profile.Type == ConnectionType.Local)
-            .Select(profile => new TerminalProfile
-            {
-                Id = profile.Id,
-                Name = profile.Name,
-                Command = profile.Command,
-                Arguments = profile.Arguments,
-                StartingDirectory = profile.StartingDirectory,
-                Type = ConnectionType.Local,
-                FontFamily = profile.FontFamily,
-                FontSize = profile.FontSize,
-                ThemeName = profile.ThemeName,
-                EnableLigatures = profile.EnableLigatures,
-                Group = profile.Group,
-                Notes = profile.Notes,
-                AccentColor = profile.AccentColor,
-                Tags = profile.Tags?.ToList() ?? new System.Collections.Generic.List<string>()
-            })
+            .Select(profile => profile.CopyForEditing())
             .ToList();
-    }
 
     internal static Guid ResolveDefaultLocalProfileId(Guid currentDefaultId, System.Collections.Generic.IReadOnlyList<TerminalProfile> localProfiles)
     {

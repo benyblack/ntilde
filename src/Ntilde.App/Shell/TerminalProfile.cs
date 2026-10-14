@@ -116,6 +116,26 @@ namespace Ntilde.Shell
         internal TerminalProfile ShallowCopy() => (TerminalProfile)MemberwiseClone();
 
         /// <summary>
+        /// A full copy for an editor that changes a profile and saves it back: every field, so the
+        /// ones the editor does not show (cursor style, shell override, the SSH fields, ...) survive
+        /// the round trip.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="object.MemberwiseClone"/> for the same reason as <see cref="ShallowCopy"/>: a
+        /// property added later is carried over. Unlike <see cref="ShallowCopy"/>, the copy gets its
+        /// own <see cref="Tags"/> and <see cref="Forwards"/> lists, so editing them cannot change the
+        /// original. The <see cref="ForwardingRule"/> objects inside are still shared; nothing that
+        /// takes this copy edits a rule.
+        /// </remarks>
+        internal TerminalProfile CopyForEditing()
+        {
+            var copy = (TerminalProfile)MemberwiseClone();
+            copy.Tags = Tags is null ? new() : new(Tags);
+            copy.Forwards = Forwards is null ? new() : new(Forwards);
+            return copy;
+        }
+
+        /// <summary>
         /// Generates the full SSH command including ProxyJump (-J) and Identity (-i) flags.
         /// Recursively resolves jump hosts.
         /// </summary>

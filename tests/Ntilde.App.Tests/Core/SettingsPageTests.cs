@@ -325,6 +325,38 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
+    public void ProfilesPage_AnEditKeepsTheFieldsTheEditorDoesNotShow()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var settings = new TerminalSettings();
+        settings.Profiles.Clear();
+        settings.Profiles.Add(new TerminalProfile
+        {
+            Name = "Legacy",
+            Type = ConnectionType.Local,
+            Command = "/bin/bash",
+            CursorStyle = "Block",
+            ShellOverride = Ntilde.Platform.ShellOverride.Posix,
+            Icon = "Server",
+        });
+        var page = new ProfilesPage();
+        page.Load(SessionFor(settings));
+        page.FindControl<ListBox>("ProfilesListBox")!.SelectedIndex = 0;
+
+        var name = page.FindControl<TextBox>("ProfileNameInput")!;
+        name.Text = "Renamed";
+        name.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.D, Source = name });
+        var target = new TerminalSettings();
+        page.Collect(target);
+
+        TerminalProfile saved = Assert.Single(target.Profiles);
+        Assert.Equal("Renamed", saved.Name);
+        Assert.Equal("Block", saved.CursorStyle);
+        Assert.Equal(Ntilde.Platform.ShellOverride.Posix, saved.ShellOverride);
+        Assert.Equal("Server", saved.Icon);
+    }
+
+    [AvaloniaFact]
     public void ProfilesPage_OverrideFontList_OffersTheSessionsFontChoices()
     {
         using var root = SettingsTestRoot.Empty();
