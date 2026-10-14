@@ -352,6 +352,31 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>Controller ruling: at the default 880 × 620 all ten pages fit under the search box without scrolling.</summary>
+    [AvaloniaFact]
+    public void AtTheDefaultSize_EveryPageFitsInTheSidebar()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(new Size(880, 620), window.ClientSize);
+
+            ScrollViewer scroller = window.FindControl<ListBox>("SideNav")!.GetVisualDescendants().OfType<ScrollViewer>().First();
+
+            // The items presenter, the list's padding included. Its desired height is what the pages
+            // need; Extent would not do, as it never reports less than the viewport.
+            double need = ((Control)scroller.Content!).DesiredSize.Height;
+            Assert.True(need <= scroller.Viewport.Height, $"The sidebar scrolls: its pages need {need} px, it has {scroller.Viewport.Height} px.");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void AResult_SaysWhereItLives_InSentenceCase()
     {

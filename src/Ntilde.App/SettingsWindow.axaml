@@ -34,14 +34,14 @@
                 <DockPanel>
                     <TextBox Name="SettingsSearchBox"
                              DockPanel.Dock="Top"
-                             Margin="12,14,12,6"
+                             Margin="12,12,12,4"
                              PlaceholderText="Search settings"
                              AutomationProperties.Name="Search settings"/>
                     <!-- Items are built from SettingsPageRegistry in code. -->
                     <ListBox Name="SideNav"
                              Classes="SideNav"
                              SelectionMode="Single"
-                             Padding="0,6,0,16"
+                             Padding="0,4,0,8"
                              AutomationProperties.Name="Settings pages"/>
                 </DockPanel>
             </Border>
