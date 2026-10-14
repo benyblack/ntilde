@@ -21,10 +21,11 @@ public sealed record SettingsPageDescriptor(
 public static class SettingsPageRegistry
 {
     /// <summary>Where Settings opens when nothing asks for a page and none was visited in this run.</summary>
-    public const SettingsPage DefaultPage = SettingsPage.Appearance;
+    public const SettingsPage DefaultPage = SettingsPage.General;
 
     public static IReadOnlyList<SettingsPageDescriptor> Pages { get; } =
     [
+        new(SettingsPage.General, "GENERAL", "General", "◇", () => new GeneralPage()),
         new(SettingsPage.Appearance, "INTERFACE", "Appearance", "◐", () => new AppearancePage()),
         new(SettingsPage.Profiles, "INTERFACE", "Shells & Profiles", ">_", () => new ProfilesPage(), MonoGlyph: true),
         new(SettingsPage.Shortcuts, "INTERFACE", "Shortcuts", "⌘", () => new ShortcutsPage()),

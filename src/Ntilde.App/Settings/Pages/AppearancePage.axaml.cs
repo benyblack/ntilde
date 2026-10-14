@@ -88,10 +88,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
         target.UiScale = UiScale.Clamp(this.FindControl<Slider>("UiScaleSlider")!.Value);
         target.EnableLigatures = Toggle("LigatureToggle").IsChecked == true;
         target.EnableComplexShaping = Toggle("ComplexShapingToggle").IsChecked == true;
-        target.LongCommandNotificationsEnabled = Toggle("LongCommandNotificationsToggle").IsChecked == true;
-        target.Osc9NotificationsEnabled = Toggle("Osc9NotificationsToggle").IsChecked == true;
-        target.Osc9ProgressReportingEnabled = Toggle("Osc9ProgressReportingToggle").IsChecked == true;
-        target.AutomaticUpdateChecks = Toggle("AutomaticUpdateChecksToggle").IsChecked == true;
 
         if (SelectedItem("FontList") is { } fontItem)
         {
@@ -147,10 +143,6 @@ public partial class AppearancePage : UserControl, ISettingsPage
     {
         TerminalSettings settings = Session.Settings;
 
-        Toggle("LongCommandNotificationsToggle").IsChecked = settings.LongCommandNotificationsEnabled;
-        Toggle("Osc9NotificationsToggle").IsChecked = settings.Osc9NotificationsEnabled;
-        Toggle("Osc9ProgressReportingToggle").IsChecked = settings.Osc9ProgressReportingEnabled;
-        Toggle("AutomaticUpdateChecksToggle").IsChecked = settings.AutomaticUpdateChecks;
         this.FindControl<NumericUpDown>("FontSizeInput")!.Value = (decimal)settings.FontSize;
         this.FindControl<NumericUpDown>("ScrollbackInput")!.Value = settings.MaxHistory;
 

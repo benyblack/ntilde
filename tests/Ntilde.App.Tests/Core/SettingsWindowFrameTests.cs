@@ -37,6 +37,7 @@ public sealed class SettingsWindowFrameTests
         var window = new Ntilde.SettingsWindow();
         string[] expected =
         [
+            "GENERAL", "General",
             "INTERFACE", "Appearance", "Shells & Profiles", "Shortcuts",
             "ASSISTANT", "Command Assist", "Agent Access",
             "CONNECTION", "SSH",

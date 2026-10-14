@@ -6,6 +6,7 @@ namespace Ntilde.Settings;
 /// </summary>
 public enum SettingsPage
 {
+    General,
     Appearance,
     Profiles,
     Shortcuts,

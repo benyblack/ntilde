@@ -302,6 +302,27 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
+    public void GeneralPage_LoadsAndCollectsUpdatesAndNotifications()
+    {
+        var page = new GeneralPage();
+        page.Load(SessionFor(new TerminalSettings
+        {
+            AutomaticUpdateChecks = false,
+            LongCommandNotificationsEnabled = true,
+            Osc9NotificationsEnabled = true,
+            Osc9ProgressReportingEnabled = false,
+        }));
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        Assert.False(target.AutomaticUpdateChecks);
+        Assert.True(target.LongCommandNotificationsEnabled);
+        Assert.True(target.Osc9NotificationsEnabled);
+        Assert.False(target.Osc9ProgressReportingEnabled);
+    }
+
+    [AvaloniaFact]
     public void AppearancePage_CollectsEveryFieldItLoaded()
     {
         using var root = SettingsTestRoot.Empty();
@@ -321,10 +342,6 @@ public sealed class SettingsPageTests
             BackgroundImagePath = "/img.png",
             BackgroundImageOpacity = 0.35,
             BackgroundImageStretch = "Uniform",
-            LongCommandNotificationsEnabled = true,
-            Osc9NotificationsEnabled = true,
-            Osc9ProgressReportingEnabled = false,
-            AutomaticUpdateChecks = false,
         };
         var page = new AppearancePage();
         page.Load(new SettingsSession(seed, () => ["Page Mono"]));
@@ -345,10 +362,6 @@ public sealed class SettingsPageTests
         Assert.Equal("/img.png", target.BackgroundImagePath);
         Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
         Assert.Equal("Uniform", target.BackgroundImageStretch);
-        Assert.True(target.LongCommandNotificationsEnabled);
-        Assert.True(target.Osc9NotificationsEnabled);
-        Assert.False(target.Osc9ProgressReportingEnabled);
-        Assert.False(target.AutomaticUpdateChecks);
     }
 
     /// <summary>
