@@ -520,6 +520,36 @@ public sealed class SettingsWindowSearchTests
         Assert.Contains(window.SearchIndex.Search("Ctrl+Alt+H"), r => r.Entry.RowId == "remember-commands");
     }
 
+    [AvaloniaTheory]
+    [InlineData("background opacity", "background-image-opacity")]
+    [InlineData("size font", "font-size")]
+    [InlineData("font size", "font-size")]
+    [InlineData("font ligatures", "ligatures")]
+    [InlineData("tab orientation", "tab-orientation")]
+    [InlineData("window blur", "blur-effect")]
+    public void AMultiWordQuery_FindsTheRow_WhateverTheWordOrder(string query, string rowId)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+
+        Assert.Equal(rowId, window.SearchIndex.Search(query).FirstOrDefault()?.Entry.RowId);
+    }
+
+    /// <summary>A page whose settings are actions, or lists rather than rows, is found by what it does.</summary>
+    [AvaloniaTheory]
+    [InlineData("import", SettingsPage.Backup)]
+    [InlineData("export", SettingsPage.Backup)]
+    [InlineData("snapshot", SettingsPage.Backup)]
+    [InlineData("wsl", SettingsPage.Profiles)]
+    [InlineData("keybindings", SettingsPage.Shortcuts)]
+    public void APage_IsFoundByItsKeywords(string query, SettingsPage page)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+
+        Assert.Contains(window.SearchIndex.Search(query), r => r.Entry.Page == page && r.Entry.RowId is null);
+    }
+
     private static void AssertPageShown(Ntilde.SettingsWindow window, SettingsPage page)
     {
         Assert.Equal(page, window.CurrentPage);

@@ -7,6 +7,7 @@ using Avalonia.LogicalTree;
 namespace Ntilde.Settings;
 
 /// <summary>One searchable thing: a page, or a setting row on it.</summary>
+/// <param name="Details">A row's text behind "More": searched, but not shown in a result.</param>
 public sealed record SettingsSearchEntry(
     SettingsPage Page,
     string PageTitle,
@@ -14,10 +15,16 @@ public sealed record SettingsSearchEntry(
     string? RowId,
     string Title,
     string? Description,
-    string? Keywords);
+    string? Keywords,
+    string? Details = null);
 
-/// <summary>A match, with where the query sits in the title for highlighting (-1 when it matched elsewhere).</summary>
-public sealed record SettingsSearchResult(SettingsSearchEntry Entry, int TitleMatchStart, int TitleMatchLength);
+/// <summary>A match, with the part of the title to emphasise (-1 when the title holds no query word).</summary>
+/// <param name="MatchedOnlyInDetails">A query word is found only in the row's Details, so a jump opens them.</param>
+public sealed record SettingsSearchResult(
+    SettingsSearchEntry Entry,
+    int TitleMatchStart,
+    int TitleMatchLength,
+    bool MatchedOnlyInDetails = false);
 
 /// <summary>
 /// The settings search (spec §5). It is read from the pages' SettingRows, so a new row is
@@ -25,7 +32,8 @@ public sealed record SettingsSearchResult(SettingsSearchEntry Entry, int TitleMa
 /// </summary>
 /// <remarks>
 /// Shortcut bindings, profiles, snippets, title-bar actions and the theme editor are not rows, and
-/// are deliberately not indexed in v1.
+/// are deliberately not indexed in v1; their pages are found by the page keywords in
+/// <see cref="SettingsPageRegistry"/>.
 /// </remarks>
 public sealed class SettingsSearchIndex
 {
@@ -46,7 +54,7 @@ public sealed class SettingsSearchIndex
         var entries = new List<SettingsSearchEntry>();
         foreach (var (descriptor, view) in pages)
         {
-            entries.Add(new SettingsSearchEntry(descriptor.Page, descriptor.Title, null, null, descriptor.Title, null, null));
+            entries.Add(new SettingsSearchEntry(descriptor.Page, descriptor.Title, null, null, descriptor.Title, null, descriptor.Keywords));
             foreach (SettingRow row in view.GetLogicalDescendants().OfType<SettingRow>())
             {
                 if (string.IsNullOrWhiteSpace(row.Title))
@@ -55,7 +63,7 @@ public sealed class SettingsSearchIndex
                 }
 
                 string? group = row.FindLogicalAncestorOfType<SettingGroup>()?.Header;
-                entries.Add(new SettingsSearchEntry(descriptor.Page, descriptor.Title, group, row.RowId, row.Title, row.Description, row.Keywords));
+                entries.Add(new SettingsSearchEntry(descriptor.Page, descriptor.Title, group, row.RowId, row.Title, row.Description, row.Keywords, row.Details));
             }
         }
 
@@ -63,10 +71,15 @@ public sealed class SettingsSearchIndex
     }
 
     /// <summary>
-    /// Case-insensitive substring match over title, description, keywords, group and page title.
-    /// Title matches come first, then the rest, each in index order. The query is trimmed and
-    /// otherwise literal, so "9;4" matches as typed.
+    /// Case-insensitive search. The trimmed query is split into words at white space, and an entry
+    /// matches when every word is somewhere in its title, description, details, keywords, group or
+    /// page title. Entries whose title holds every word come first, then the rest, each in index
+    /// order. A word is otherwise literal, so "9;4" matches as typed.
     /// </summary>
+    /// <remarks>
+    /// The title emphasis is the whole query where the title holds it as typed, otherwise the first
+    /// query word the title holds.
+    /// </remarks>
     public IReadOnlyList<SettingsSearchResult> Search(string? query)
     {
         string trimmed = (query ?? string.Empty).Trim();
@@ -75,25 +88,38 @@ public sealed class SettingsSearchIndex
             return Array.Empty<SettingsSearchResult>();
         }
 
+        string[] words = trimmed.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         var titleMatches = new List<SettingsSearchResult>();
         var otherMatches = new List<SettingsSearchResult>();
         foreach (SettingsSearchEntry entry in _entries)
         {
-            int at = entry.Title.IndexOf(trimmed, StringComparison.OrdinalIgnoreCase);
-            if (at >= 0)
+            if (!words.All(word => ContainsOutsideDetails(entry, word) || Contains(entry.Details, word)))
             {
-                titleMatches.Add(new SettingsSearchResult(entry, at, trimmed.Length));
+                continue;
             }
-            else if (Contains(entry.Description, trimmed) || Contains(entry.Keywords, trimmed)
-                     || Contains(entry.Group, trimmed) || Contains(entry.PageTitle, trimmed))
+
+            bool matchedOnlyInDetails = words.Any(word => !ContainsOutsideDetails(entry, word));
+            int whole = entry.Title.IndexOf(trimmed, StringComparison.OrdinalIgnoreCase);
+            if (whole >= 0)
             {
-                otherMatches.Add(new SettingsSearchResult(entry, -1, 0));
+                titleMatches.Add(new SettingsSearchResult(entry, whole, trimmed.Length, matchedOnlyInDetails));
+                continue;
             }
+
+            bool everyWordInTitle = words.All(word => Contains(entry.Title, word));
+            string? shown = words.FirstOrDefault(word => Contains(entry.Title, word));
+            int start = shown is null ? -1 : entry.Title.IndexOf(shown, StringComparison.OrdinalIgnoreCase);
+            var result = new SettingsSearchResult(entry, start, shown?.Length ?? 0, matchedOnlyInDetails);
+            (everyWordInTitle ? titleMatches : otherMatches).Add(result);
         }
 
         return titleMatches.Concat(otherMatches).ToList();
     }
 
-    private static bool Contains(string? text, string query)
-        => text is not null && text.Contains(query, StringComparison.OrdinalIgnoreCase);
+    private static bool ContainsOutsideDetails(SettingsSearchEntry entry, string word)
+        => Contains(entry.Title, word) || Contains(entry.Description, word) || Contains(entry.Keywords, word)
+           || Contains(entry.Group, word) || Contains(entry.PageTitle, word);
+
+    private static bool Contains(string? text, string word)
+        => text is not null && text.Contains(word, StringComparison.OrdinalIgnoreCase);
 }
