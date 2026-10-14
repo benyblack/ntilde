@@ -364,4 +364,35 @@
             </ControlTemplate>
         </Setter>
     </Style>
+    <!-- ── Bar / Menu / Hide segmented switch (PR 4) ── -->
+    <Style Selector="StackPanel.Segmented > ToggleButton.Segment">
+        <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+        <Setter Property="BorderThickness" Value="1,1,0,1"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Padding" Value="10,3"/>
+        <Setter Property="MinWidth" Value="52"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="StackPanel.Segmented > ToggleButton.Segment:nth-child(1)">
+        <Setter Property="CornerRadius" Value="5,0,0,5"/>
+    </Style>
+    <Style Selector="StackPanel.Segmented > ToggleButton.Segment:nth-last-child(1)">
+        <Setter Property="CornerRadius" Value="0,5,5,0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="ToggleButton.Segment:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
+    </Style>
+    <Style Selector="ToggleButton.Segment:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
+    </Style>
+    <Style Selector="ToggleButton.Segment:disabled /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtFg4}"/>
+    </Style>
 </Styles>
