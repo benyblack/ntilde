@@ -121,20 +121,6 @@
         <Setter Property="Background" Value="#4a2024"/>
     </Style>
 
-    <!-- Link-styled button -->
-    <Style Selector="Button.LinkBtn">
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Foreground" Value="#4C8DFF"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
-    </Style>
-    <Style Selector="Button.LinkBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#7FB0FF"/>
-    </Style>
-
     <!-- Icon-only ghost button -->
     <Style Selector="Button.IconBtn">
         <Setter Property="Background" Value="Transparent"/>
