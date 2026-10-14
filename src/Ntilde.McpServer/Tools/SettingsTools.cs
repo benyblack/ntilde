@@ -59,6 +59,7 @@ public static class SettingsTools
         | `PaneClosePolicy` | string (enum-like) | e.g. "Confirm", "Force". Type-checked only. |
         | `ShellExitPolicy` | string (enum-like) | "Never"/"Graceful"/"Always". Default "Graceful". What happens to a pane when its shell exits: keep it with a banner, close it on a clean exit, or always close it. "Graceful" closes the pane on exit code 0 only, so closing the last pane of the last tab quits the app the way `exit` does in any terminal. SSH panes ignore this and always keep their reconnect banner. Type-checked only; unrecognised values behave as "Never" (a typo must not be more destructive than the default). |
         | `AgentIndicatorTabRollup` | string (enum-like) | "WritesOnly"/"All". Default "WritesOnly". Which agent attention tiers reach the tab strip. An agent write always shows there, so this only decides whether an agent *read* does too. Type-checked only; unrecognised values behave as "WritesOnly" (a typo must not make the chrome noisier than the default). |
+        | `SessionPersistence` | string (enum-like) | "Off"/"KeepOnClose". Default "KeepOnClose". "KeepOnClose" runs shells in a background process (the multiplexer, the `ntilde mux` daemon), so closing the window or a crash does not end them; Ntilde reattaches them on launch. "Off" ends shells when their window closes. SSH tabs keep running on the host only when their connection also turns on "Keep remote sessions running". Applies to new tabs. Type-checked only; unrecognised values behave as "Off". |
         | `QuakeModeEnabled` | bool | Default true. |
         | `GlobalHotkey` | string | Default "Alt+OemTilde". |
         | `ExperimentalNativeSshEnabled` | bool | Default true. |
@@ -127,6 +128,7 @@ public static class SettingsTools
           "PaneClosePolicy": "Confirm",
           "ShellExitPolicy": "Graceful",
           "AgentIndicatorTabRollup": "WritesOnly",
+          "SessionPersistence": "KeepOnClose",
           "Keybindings": { "Ctrl+Shift+C": "copy" },
           "TabTemplateRules": [],
           "TitleBarItems": { "open_tab_list": "Overflow" },
@@ -181,7 +183,7 @@ public static class SettingsTools
     {
         "FontFamily", "ThemeName", "BackgroundImagePath", "GlobalHotkey",
         "BlurEffect", "CursorStyle", "PaneClosePolicy", "ShellExitPolicy", "AgentIndicatorTabRollup",
-        "BackgroundImageStretch", "TabStripOrientation",
+        "SessionPersistence", "BackgroundImageStretch", "TabStripOrientation",
     };
 
     internal static readonly string[] ArrayFields = { "Profiles", "TabTemplateRules", "TitleBarOrder" };
@@ -193,7 +195,7 @@ public static class SettingsTools
         "EnableLigatures", "EnableComplexShaping", "CursorStyle", "CursorBlink", "TabStripOrientation", "VerticalTabStripWidth",
         "BellAudioEnabled", "BellVisualEnabled", "SmoothScrolling", "EnableLinkDetection",
         "EnableKittyKeyboardProtocol", "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics",
-        "WheelLinesPerNotch", "PaneClosePolicy", "ShellExitPolicy", "AgentIndicatorTabRollup",
+        "WheelLinesPerNotch", "PaneClosePolicy", "ShellExitPolicy", "AgentIndicatorTabRollup", "SessionPersistence",
         "Keybindings", "TabTemplateRules",
         "BackgroundImagePath", "BackgroundImageOpacity", "BackgroundImageStretch",
         "QuakeModeEnabled", "GlobalHotkey", "CommandAssistEnabled", "CommandAssistHistoryEnabled",

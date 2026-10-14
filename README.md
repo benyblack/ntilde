@@ -40,6 +40,8 @@ Most terminal emulators optimize for speed or features. Ntilde focuses on someth
     Designed for future workflows (cloud, automation, AI-assisted tooling).
 -   🤖 **Built for AI agents**\
     An opt-in MCP server lets Claude Code and other agents observe your live terminal sessions --- and, behind a separate opt-in, drive them.
+-   🔁 **Persistent sessions**\
+    Shells keep running when you close the window, reattach when you reopen, and SSH tabs survive network drops.
 
 > **Terminal correctness is enforced by automated tests, not guesswork.**
 
@@ -274,6 +276,26 @@ the flip.
 - Disconnect state surfaced in the terminal pane
 - Runtime password memory (opt-in, session-scoped)
 - Native SFTP transfers and a pane-local remote-files sidebar
+
+### Persistent sessions
+
+With persistent sessions on, shells run in a background process, Ntilde's own multiplexer, instead
+of in the window ([user manual, chapter 12](docs/USER_MANUAL.md#12-persistent-sessions-and-the-multiplexer)).
+
+- Closing the window, a crash or an update leaves your shells running; reopening Ntilde reattaches
+  every tab to its shell, screen and scrollback included
+- The first close asks whether the shells keep running; *Quit and close all shells* ends them all
+- After a restart of the computer, tabs start fresh shells where they were, without a warning
+- Several windows can share one shell; *Attach to session…* reopens a detached shell, local or on a
+  remote host
+- Persistent SSH tabs: the shell runs on the host in `ntilde-mux`, which Ntilde installs there for
+  you, so it survives network drops, a sleeping laptop and a closed window; the tab reconnects by
+  itself when it can sign in without you (keys, agent or a saved password), and otherwise on Enter
+  (Linux x64/arm64 hosts with glibc 2.34+, and Apple-silicon macOS)
+- `ntilde mux ls [--all]`, `attach`, `kill` and `kill-server` from any terminal
+- Agents (MCP) can also see and, with the act opt-in, drive shells no window shows
+- On by default for local shells: Settings → Appearance → *Keep shells running when the window
+  closes* turns it off; SSH tabs opt in per connection
 
 ### Cross-platform parity
 Ntilde guarantees identical terminal behavior across operating systems

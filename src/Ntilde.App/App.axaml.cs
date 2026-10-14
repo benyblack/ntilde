@@ -38,6 +38,22 @@ public partial class App : Application
             desktop.MainWindow = new MainWindow(services);
             services.Startup.Mark(StartupPhase.MainWindowConstructed);
 
+            // Release hardening item 2: macOS Cmd+Q asks the first-close question, as closing the window does. The request
+            // is cancelled while the window settles its close (asked, or a remembered answer applied); a close that went
+            // through quits for real. macOS only: Windows and X11 raise this for the OS session ending, which is never held
+            // (R19), and so is a macOS logout, restart or shutdown, told apart by its quit Apple event.
+            if (OperatingSystem.IsMacOS())
+            {
+                desktop.ShutdownRequested += (_, e) =>
+                {
+                    if (desktop.MainWindow is MainWindow main
+                        && main.HoldShutdownForFirstClose(isOSShutdown: MacQuitReason.IsSessionEnding(), () => desktop.Shutdown()))
+                    {
+                        e.Cancel = true;
+                    }
+                };
+            }
+
             // Enable DevTools for debugging - Press F12 to open
 #if DEBUG
             this.AttachDeveloperTools();

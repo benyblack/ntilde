@@ -144,7 +144,8 @@ namespace Ntilde.Shell
 
             try
             {
-                string payloadJson = JsonSerializer.Serialize(session, SessionSerializationContext.Default.NtildeSession);
+                // A bundle leaves this machine: never embed this daemon's session ids in it.
+                string payloadJson = JsonSerializer.Serialize(SessionManager.WithoutMuxIds(session), SessionSerializationContext.Default.NtildeSession);
                 string payloadHash = ComputeSha256Hex(payloadJson);
 
                 var package = new WorkspaceBundlePackage

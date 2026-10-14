@@ -28,7 +28,8 @@ namespace Ntilde.Shell
     /// <param name="Activity">Recent output activity (never true when <paramref name="Bell"/> is).</param>
     /// <param name="AgentWrote">An agent typed into a pane in this tab, unacknowledged.</param>
     /// <param name="AgentWatched">An agent read a pane in this tab; only surfaced under the "All" rollup policy.</param>
-    internal readonly record struct TabMarkerSet(bool Bell, bool Activity, bool AgentWrote, bool AgentWatched);
+    /// <param name="Shared">A pane in this tab is attached to a mux session another client also shows (Phase 3).</param>
+    internal readonly record struct TabMarkerSet(bool Bell, bool Activity, bool AgentWrote, bool AgentWatched, bool Shared = false);
 
     /// <summary>
     /// Pure decision logic for the vertical tab header's agent-aware status presentation:
@@ -56,14 +57,16 @@ namespace Ntilde.Shell
             bool hasBell,
             bool hasActivity,
             AgentHost.AgentAttentionTier agentTier,
-            string? rollupPolicy)
+            string? rollupPolicy,
+            bool isShared = false)
         {
             return new TabMarkerSet(
                 Bell: hasBell,
                 Activity: hasActivity && !hasBell,
                 AgentWrote: agentTier == AgentHost.AgentAttentionTier.Wrote,
                 AgentWatched: agentTier == AgentHost.AgentAttentionTier.Watched
-                              && string.Equals(rollupPolicy, "All", System.StringComparison.Ordinal));
+                              && string.Equals(rollupPolicy, "All", System.StringComparison.Ordinal),
+                Shared: isShared);
         }
 
         /// <summary>

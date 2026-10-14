@@ -41,6 +41,33 @@ public sealed class SshInteractionRequest
     /// </summary>
     public bool HasHostIdentity =>
         !string.IsNullOrWhiteSpace(Host) && Port > 0 && !string.IsNullOrWhiteSpace(User);
+
+    /// <summary>
+    /// A copy of this request that the window's handler must not answer from the vault
+    /// (<see cref="AllowVaultPasswordReuse"/> false): for a user's attempt after the host's saved password was refused,
+    /// so the password dialog comes at once instead of the refused password going out again.
+    /// </summary>
+    public SshInteractionRequest WithoutVaultPasswordReuse() => new()
+    {
+        Kind = Kind,
+        SessionId = SessionId,
+        ProfileId = ProfileId,
+        ProfileName = ProfileName,
+        ProfileUser = ProfileUser,
+        ProfileHost = ProfileHost,
+        AllowVaultPasswordReuse = false,
+        RememberPasswordInVault = RememberPasswordInVault,
+        Host = Host,
+        Port = Port,
+        User = User,
+        IsJumpHop = IsJumpHop,
+        Algorithm = Algorithm,
+        Fingerprint = Fingerprint,
+        Prompt = Prompt,
+        Name = Name,
+        Instructions = Instructions,
+        KeyboardPrompts = KeyboardPrompts,
+    };
 }
 
 public sealed class SshKeyboardPrompt

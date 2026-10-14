@@ -4,6 +4,32 @@ public interface INativeSshInterop
 {
     NovaSshSafeHandle Connect(NativeSshConnectionOptions options);
 
+    /// <summary>
+    /// Starts an exec session (Phase 4 spec §8.3): the connect, jump chain, host-key and auth prompts
+    /// of <see cref="Connect"/>, then <paramref name="command"/> runs on the target with no PTY. Returns
+    /// at once with the handle; everything after (prompts, stdout as <see cref="NativeSshEventKind.Data"/>,
+    /// stderr as <see cref="NativeSshEventKind.ExtendedData"/>, the exit status, a failure) arrives as
+    /// poll events ending with <see cref="NativeSshEventKind.Closed"/>. <see cref="Write"/> feeds the
+    /// command's stdin and <see cref="SendEof"/> ends it. Release the handle with <see cref="Close"/>.
+    /// </summary>
+    /// <remarks>
+    /// Default implementation throws, like <see cref="RequestRemoteForward"/>: a test double that
+    /// never expects an exec session should fail a test that starts one.
+    /// </remarks>
+    NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement exec sessions.");
+
+    /// <summary>
+    /// Sends EOF on the session's main channel: for an exec session, the end of the command's stdin.
+    /// Idempotent; writes queued before it are sent first, and writes after it are dropped. A session
+    /// that has already ended ignores it.
+    /// </summary>
+    /// <remarks>Default implementation throws; see <see cref="Exec"/>.</remarks>
+    void SendEof(NovaSshSafeHandle sessionHandle) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement exec sessions.");
+
     // Blocking FFI/network call. App/UI-facing services must offload this work before awaiting it.
     IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(
         NativeSshConnectionOptions connectionOptions,
@@ -15,6 +41,23 @@ public interface INativeSshInterop
         Action<NativeSftpTransferProgress>? progress,
         CancellationToken cancellationToken);
     NativeSshEvent? PollEvent(NovaSshSafeHandle sessionHandle);
+
+    /// <summary>
+    /// Blocks until the session has an event to poll, it closes, or <paramref name="timeout"/> passes
+    /// (the native side caps it at one second). Lets a poll thread wait instead of sleeping between
+    /// <see cref="PollEvent"/> calls. Returns false only when the wait ended with nothing to poll.
+    /// </summary>
+    /// <remarks>
+    /// Default implementation sleeps at most 10 ms and returns true: what the poll loops did before
+    /// the native wait existed, so a test double behaves as it always has. Only the real FFI can
+    /// wake early, and only it overrides.
+    /// </remarks>
+    bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+    {
+        TimeSpan sleep = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout; // Infinite must not sleep forever
+        Thread.Sleep(sleep > TimeSpan.FromMilliseconds(10) ? TimeSpan.FromMilliseconds(10) : sleep);
+        return true;
+    }
     void Write(NovaSshSafeHandle sessionHandle, ReadOnlySpan<byte> data);
     void Resize(NovaSshSafeHandle sessionHandle, int cols, int rows);
     int OpenDirectTcpIp(NovaSshSafeHandle sessionHandle, NativePortForwardOpenOptions options);

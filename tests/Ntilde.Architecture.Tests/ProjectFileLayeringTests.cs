@@ -198,6 +198,56 @@ public class ProjectFileLayeringTests
         Assert.Empty(refs);
     }
 
+    [Fact]
+    public void MuxContracts_csproj_must_have_no_project_references()
+    {
+        var refs = ProjectReferences("src/Ntilde.Mux.Contracts/Ntilde.Mux.Contracts.csproj");
+        Assert.Empty(refs);
+    }
+
+    // Same CA1861 reasoning as VtOnly. Order matches the csproj.
+    private static readonly string[] MuxDependencies =
+        ["Ntilde.Pty", "Ntilde.VT", "Ntilde.Replay", "Ntilde.Mux.Contracts"];
+
+    [Fact]
+    public void Mux_only_references_Pty_Vt_Replay_and_MuxContracts()
+    {
+        var refs = ProjectReferences("src/Ntilde.Mux/Ntilde.Mux.csproj");
+        Assert.Equal(MuxDependencies, refs);
+    }
+
+    // Same CA1861 reasoning as VtOnly.
+    private static readonly string[] MuxOnly = ["Ntilde.Mux"];
+
+    /// <summary>
+    /// Phase 4 spec §10.1, §12.4: the remote <c>ntilde-mux</c> is <c>Ntilde.Mux</c> plus a <c>Main</c>.
+    /// A second edge - Platform for an SSH helper, the App for a path - would pull the GUI's
+    /// dependencies into a binary that ships as one small file per RID, and a package would add a
+    /// reflection surface the AOT publish has to prove safe all over again. The IL sibling is
+    /// <c>LayeringTests.MuxDaemon_references_only_Mux</c>.
+    /// </summary>
+    [Fact]
+    public void MuxDaemon_only_references_Mux()
+    {
+        const string daemonCsproj = "src/Ntilde.Mux.Daemon/Ntilde.Mux.Daemon.csproj";
+        Assert.Equal(MuxOnly, ProjectReferences(daemonCsproj));
+        Assert.Empty(PackageReferences(daemonCsproj));
+    }
+
+    /// <summary>
+    /// Phase 4 spec §10.1, §12.4: <c>ntilde.com</c> is a few kernel32 calls that start <c>Ntilde.exe</c>
+    /// and wait. A project edge would compile the referenced assembly - and whatever it drags in - into a
+    /// launcher that runs before every CLI verb; a package would add a reflection surface its AOT publish
+    /// has to prove safe. The IL sibling is <c>LayeringTests.Launcher_references_no_Ntilde_assembly</c>.
+    /// </summary>
+    [Fact]
+    public void Launcher_has_no_references()
+    {
+        const string launcherCsproj = "src/Ntilde.Launcher/Ntilde.Launcher.csproj";
+        Assert.Empty(ProjectReferences(launcherCsproj));
+        Assert.Empty(PackageReferences(launcherCsproj));
+    }
+
     /// <summary>
     /// #310: panes must be hosted by the sideloaded ConPTY host, not the OS conhost.exe.
     /// portable-pty only uses it when a <c>conpty.dll</c> sits next to the executable, and that
