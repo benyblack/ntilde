@@ -295,6 +295,54 @@ public sealed class SettingsWindowFrameTests
         Assert.Equal(1, historyCleared);
     }
 
+    /// <summary>
+    /// "Quit and close all shells…" lives on the General page, but MainWindow talks to the frame:
+    /// it sets <c>SessionPersistenceActive</c> and reads <c>QuitAndCloseAllRequested</c> once the
+    /// dialog is gone. The link must follow the frame's property, and clicking it must close the
+    /// dialog unsaved: an edit pending on the page is neither collected nor written.
+    /// </summary>
+    [AvaloniaFact]
+    public void QuitAndCloseAllShellsLink_FollowsTheFrame_AndClosesWithoutSaving()
+    {
+        using var root = SettingsTestRoot.WithSettings("""{"FontSize":14}""");
+        var window = new Ntilde.SettingsWindow();
+        var link = window.GetPage<GeneralPage>().FindControl<Button>("QuitAndCloseAllShellsLink")!;
+
+        Assert.False(link.IsVisible); // hidden unless MainWindow.OpenSettings says persistence is on
+        Assert.False(window.SessionPersistenceActive);
+        window.SessionPersistenceActive = true;
+        Assert.True(link.IsVisible);
+        Assert.True(window.SessionPersistenceActive);
+        window.SessionPersistenceActive = false;
+        Assert.False(link.IsVisible);
+        Assert.False(window.SessionPersistenceActive);
+        window.SessionPersistenceActive = true;
+
+        string settingsPath = Path.Combine(root.Root, "settings.json");
+        string before = File.ReadAllText(settingsPath);
+        var owner = new Window();
+        owner.Show();
+        try
+        {
+            Task<bool> result = window.ShowDialog<bool>(owner);
+            Dispatcher.UIThread.RunJobs();
+            FontSizeInput(window).Value = 19;
+
+            link.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(result.IsCompleted, "The link did not close the dialog.");
+            Assert.False(result.Result);
+            Assert.True(window.QuitAndCloseAllRequested);
+            Assert.Equal(14, window.Session.Settings.FontSize); // nothing collected
+            Assert.Equal(before, File.ReadAllText(settingsPath)); // nothing written
+        }
+        finally
+        {
+            owner.Close();
+        }
+    }
+
     /// <summary>Where the font size lives: the Terminal page.</summary>
     internal static NumericUpDown FontSizeInput(Ntilde.SettingsWindow window)
         => window.GetPage<TerminalPage>().FindControl<NumericUpDown>("FontSizeInput")!;

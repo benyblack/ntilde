@@ -6,7 +6,7 @@
         <StackPanel Classes="Page">
             <StackPanel Classes="PageHeader">
                 <TextBlock Classes="H1" Text="General"/>
-                <TextBlock Classes="Subtitle" Text="Updates and notifications."/>
+                <TextBlock Classes="Subtitle" Text="Updates, notifications and sessions."/>
             </StackPanel>
 
             <settings:SettingGroup Header="UPDATES">
@@ -39,6 +39,20 @@
                                      Keywords="taskbar progress bar osc">
                     <CheckBox Name="Osc9ProgressReportingToggle" Classes="Toggle" AutomationProperties.Name="Progress reporting"/>
                 </settings:SettingRow>
+            </settings:SettingGroup>
+
+            <settings:SettingGroup Header="SESSIONS">
+                <settings:SettingRow RowId="session-persistence"
+                                     Title="Keep shells running when the window closes"
+                                     Description="With Keep running, your shells run in a background process (the multiplexer), so closing the window or a crash does not end them, and Ntilde reattaches them when it starts. With Off, a shell ends when its window closes. SSH tabs keep running on the host only when their connection also turns on 'Keep remote sessions running (ntilde-mux)'. Applies to new tabs."
+                                     Keywords="persistent sessions mux multiplexer background keep running shells daemon close quit">
+                    <ComboBox Name="SessionPersistenceList" Classes="Wide" AutomationProperties.Name="Keep shells running when the window closes">
+                        <ComboBoxItem Content="Off" Tag="Off"/>
+                        <ComboBoxItem Content="Keep running" Tag="KeepOnClose"/>
+                    </ComboBox>
+                </settings:SettingRow>
+                <Button Name="QuitAndCloseAllShellsLink" Classes="LinkBtn" Margin="0,10,0,0" IsVisible="False"
+                        Content="Quit and close all shells…"/>
             </settings:SettingGroup>
         </StackPanel>
     </ScrollViewer>

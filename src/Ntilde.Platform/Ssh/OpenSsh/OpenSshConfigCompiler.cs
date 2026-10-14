@@ -97,50 +97,68 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
 
     private void AppendHostBlock(StringBuilder sb, SshProfile profile)
     {
-        string alias = BuildAlias(profile.Id);
+        sb.Append("Host ").Append(BuildAlias(profile.Id)).AppendLine();
+        foreach (string option in BuildHostOptions(profile))
+        {
+            sb.Append("  ").Append(option).AppendLine();
+        }
 
-        sb.Append("Host ").Append(alias).AppendLine();
-        sb.Append("  HostName ").Append(EscapeValue(profile.Host.Trim())).AppendLine();
+        sb.AppendLine();
+    }
+
+    /// <summary>
+    /// The options of <paramref name="profile"/>'s <c>Host</c> block, one config line each, unindented and without
+    /// the <c>Host</c> line: what <see cref="Compile"/> writes under the profile's alias. Each is also a valid
+    /// <c>ssh -o</c> argument, since ssh reads an <c>-o</c> as a config line: what a plan that reads no config
+    /// file passes instead (<see cref="Ntilde.Platform.Ssh.Launch.SshLaunchPlanner.PlanFor"/>).
+    /// </summary>
+    public IReadOnlyList<string> BuildHostOptions(SshProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        var options = new List<string> { "HostName " + EscapeValue(profile.Host.Trim()) };
 
         if (!string.IsNullOrWhiteSpace(profile.User))
         {
-            sb.Append("  User ").Append(EscapeValue(profile.User.Trim())).AppendLine();
+            options.Add("User " + EscapeValue(profile.User.Trim()));
         }
 
         int port = profile.Port > 0 ? profile.Port : 22;
         int serverAliveInterval = profile.ServerAliveIntervalSeconds > 0 ? profile.ServerAliveIntervalSeconds : 30;
         int serverAliveCountMax = profile.ServerAliveCountMax > 0 ? profile.ServerAliveCountMax : 3;
-        sb.Append("  Port ").Append(port.ToString()).AppendLine();
-        sb.Append("  ServerAliveInterval ").Append(serverAliveInterval.ToString()).AppendLine();
-        sb.Append("  ServerAliveCountMax ").Append(serverAliveCountMax.ToString()).AppendLine();
+        options.Add("Port " + port.ToString());
+        options.Add("ServerAliveInterval " + serverAliveInterval.ToString());
+        options.Add("ServerAliveCountMax " + serverAliveCountMax.ToString());
 
         if (profile.AuthMode == SshAuthMode.IdentityFile && !string.IsNullOrWhiteSpace(profile.IdentityFilePath))
         {
-            sb.Append("  IdentityFile ").Append(EscapeValue(profile.IdentityFilePath.Trim())).AppendLine();
-            sb.AppendLine("  IdentitiesOnly yes");
+            options.Add("IdentityFile " + EscapeValue(profile.IdentityFilePath.Trim()));
+            options.Add("IdentitiesOnly yes");
         }
 
         string jumpChain = BuildProxyJumpValue(profile.JumpHops);
         if (!string.IsNullOrEmpty(jumpChain))
         {
-            sb.Append("  ProxyJump ").Append(jumpChain).AppendLine();
+            options.Add("ProxyJump " + jumpChain);
         }
 
         foreach (PortForward forward in profile.Forwards)
         {
-            AppendForward(sb, forward);
+            if (ForwardOption(forward) is { } line)
+            {
+                options.Add(line);
+            }
         }
 
         if (_options.IsolateKnownHosts)
         {
-            sb.Append("  UserKnownHostsFile ").Append(EscapeValue(GetKnownHostsFilePath())).AppendLine();
+            options.Add("UserKnownHostsFile " + EscapeValue(GetKnownHostsFilePath()));
         }
 
-        AppendMuxOptions(sb, profile);
-        sb.AppendLine();
+        AddMuxOptions(options, profile);
+        return options;
     }
 
-    private void AppendMuxOptions(StringBuilder sb, SshProfile profile)
+    private void AddMuxOptions(List<string> options, SshProfile profile)
     {
         if (!profile.MuxOptions.Enabled)
         {
@@ -149,18 +167,16 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
 
         if (profile.MuxOptions.ControlMasterAuto)
         {
-            sb.AppendLine("  ControlMaster auto");
+            options.Add("ControlMaster auto");
         }
 
         if (profile.MuxOptions.ControlPersistSeconds > 0)
         {
-            sb.Append("  ControlPersist ")
-                .Append(profile.MuxOptions.ControlPersistSeconds.ToString())
-                .AppendLine();
+            options.Add("ControlPersist " + profile.MuxOptions.ControlPersistSeconds.ToString());
         }
 
         string controlPath = GetResolvedControlPath(profile);
-        sb.Append("  ControlPath ").Append(EscapeValue(controlPath)).AppendLine();
+        options.Add("ControlPath " + EscapeValue(controlPath));
     }
 
     private string GetResolvedControlPath(SshProfile profile)
@@ -175,11 +191,12 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         return raw.Replace("%id%", profileIdToken, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void AppendForward(StringBuilder sb, PortForward forward)
+    /// <summary>The config line for <paramref name="forward"/>, or null for one that is incomplete.</summary>
+    private static string? ForwardOption(PortForward forward)
     {
         if (forward.SourcePort <= 0)
         {
-            return;
+            return null;
         }
 
         string bind = string.IsNullOrWhiteSpace(forward.BindAddress)
@@ -189,38 +206,20 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         switch (forward.Kind)
         {
             case PortForwardKind.Local:
-                if (string.IsNullOrWhiteSpace(forward.DestinationHost) || forward.DestinationPort <= 0)
-                {
-                    return;
-                }
-
-                sb.Append("  LocalForward ")
-                    .Append(bind)
-                    .Append(' ')
-                    .Append(forward.DestinationHost.Trim())
-                    .Append(':')
-                    .Append(forward.DestinationPort.ToString())
-                    .AppendLine();
-                break;
-
             case PortForwardKind.Remote:
                 if (string.IsNullOrWhiteSpace(forward.DestinationHost) || forward.DestinationPort <= 0)
                 {
-                    return;
+                    return null;
                 }
 
-                sb.Append("  RemoteForward ")
-                    .Append(bind)
-                    .Append(' ')
-                    .Append(forward.DestinationHost.Trim())
-                    .Append(':')
-                    .Append(forward.DestinationPort.ToString())
-                    .AppendLine();
-                break;
+                string keyword = forward.Kind == PortForwardKind.Local ? "LocalForward" : "RemoteForward";
+                return $"{keyword} {bind} {forward.DestinationHost.Trim()}:{forward.DestinationPort.ToString()}";
 
             case PortForwardKind.Dynamic:
-                sb.Append("  DynamicForward ").Append(bind).AppendLine();
-                break;
+                return "DynamicForward " + bind;
+
+            default:
+                return null;
         }
     }
 
@@ -299,7 +298,8 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
         return $"\"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
     }
 
-    private static string BuildAlias(Guid profileId)
+    /// <summary>The <c>Host</c> alias of <paramref name="profileId"/>'s block: what a plan names as ssh's destination.</summary>
+    internal static string BuildAlias(Guid profileId)
     {
         return $"ntilde_{profileId:N}";
     }
@@ -342,7 +342,11 @@ public sealed class OpenSshConfigCompiler : IOpenSshConfigCompiler
                 Enabled = profile.MuxOptions.Enabled,
                 ControlMasterAuto = profile.MuxOptions.ControlMasterAuto,
                 ControlPath = profile.MuxOptions.ControlPath,
-                ControlPersistSeconds = profile.MuxOptions.ControlPersistSeconds
+                ControlPersistSeconds = profile.MuxOptions.ControlPersistSeconds,
+                PersistRemoteSessions = profile.MuxOptions.PersistRemoteSessions,
+                RemoteDaemonPath = profile.MuxOptions.RemoteDaemonPath,
+                RemoteDaemonVersion = profile.MuxOptions.RemoteDaemonVersion,
+                RemoteDaemonRid = profile.MuxOptions.RemoteDaemonRid
             },
             ServerAliveIntervalSeconds = profile.ServerAliveIntervalSeconds,
             ServerAliveCountMax = profile.ServerAliveCountMax,

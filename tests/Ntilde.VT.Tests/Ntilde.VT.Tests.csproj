@@ -22,5 +22,25 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Ntilde.VT\Ntilde.VT.csproj" />
     <ProjectReference Include="..\..\src\Ntilde.VtContract\Ntilde.VtContract.csproj" />
+    <!-- BufferSnapshot.Capture is the comparison the parity test is specified in terms of, and
+         ReplayReader parses the .rec corpus. Replay depends only on VT, so this adds no layering
+         risk; the arch tests constrain production assemblies, not test ones. -->
+    <ProjectReference Include="..\..\src\Ntilde.Replay\Ntilde.Replay.csproj" />
+    <!-- Utf8ChunkDecoder is the production type whose (ConsumedBytes, PendingTail) semantics the
+         snapshot's stream position is defined in terms of, and ParityHarness's ParityRun mirrors
+         it. The mirror is only trustworthy if the two are differentially compared, which needs the
+         real type in scope - see ParityRunDecoderEquivalenceTests. Same reasoning as the Replay
+         reference above: the arch tests constrain production assemblies, not test ones, and
+         nothing in Ntilde.Pty is reachable from Ntilde.VT as a result. -->
+    <ProjectReference Include="..\..\src\Ntilde.Pty\Ntilde.Pty.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The same replay v2 fixtures the App.Tests ReplayRunner suites use. Linked, not copied:
+         one corpus, so a fixture fixed in one place is fixed for both. -->
+    <Content Include="..\Ntilde.App.Tests\Fixtures\Replay\*.rec">
+      <Link>Fixtures/Replay/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

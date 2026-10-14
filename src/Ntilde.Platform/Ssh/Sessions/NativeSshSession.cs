@@ -9,7 +9,7 @@ using Ntilde.Pty;
 
 namespace Ntilde.Platform.Ssh.Sessions;
 
-public sealed class NativeSshSession : ITerminalSession
+public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
 {
     private static readonly TimeSpan PollDelay = TimeSpan.FromMilliseconds(25);
 
@@ -18,14 +18,13 @@ public sealed class NativeSshSession : ITerminalSession
     private readonly NativeJumpHostConnector _jumpHostConnector = new();
     private readonly CancellationTokenSource _pollCts = new();
     private readonly Task _pollTask;
-    private readonly Decoder _utf8Decoder = Encoding.UTF8.GetDecoder();
+    // See RustPtySession's field of the same name for why this is Utf8ChunkDecoder rather than
+    // Encoding.UTF8.GetDecoder(): byte-identical output, plus a reportable stream offset and
+    // pending tail for the multiplexer snapshot.
+    private readonly Ntilde.Pty.Utf8ChunkDecoder _utf8Decoder = new();
     private readonly Action<string> _log;
     private readonly NativeSshMetrics _metrics = new();
-    private readonly Guid _profileId;
-    private readonly string _profileName;
-    private readonly string _profileUser;
-    private readonly string _profileHost;
-    private bool _allowVaultPasswordReuse;
+    private readonly NativeSshPromptResponder _promptResponder;
     private readonly object _exitHandlerGate = new();
     private readonly object _outputHandlerGate = new();
     // Serializes actual handler invocation so the first-subscriber replay
@@ -33,6 +32,18 @@ public sealed class NativeSshSession : ITerminalSession
     // subscriber (AnsiParser/TerminalBuffer) concurrently, and replayed startup
     // output always precedes live output. Outer lock; order is invocation -> gate.
     private readonly object _outputInvocationLock = new();
+
+    // Raw-byte tap for the multiplexer (ITerminalByteOutput). Published from the poll loop in wire
+    // order, right after the recorders, so its stream is exactly the bytes RecordChunk sees. When
+    // nothing taps it (every GUI pane), it costs one lock per chunk and allocates nothing: the
+    // first string subscriber below calls StopRetaining.
+    private readonly RawOutputTap _rawOutput = new();
+
+    public event Action<ReadOnlyMemory<byte>>? OnRawOutputReceived
+    {
+        add => _rawOutput.Subscribe(value);
+        remove => _rawOutput.Unsubscribe(value);
+    }
 
     private ReplayWriter? _recorder;
 
@@ -81,11 +92,7 @@ public sealed class NativeSshSession : ITerminalSession
         _log = log ?? TerminalLogger.Log;
         _interop = interop ?? new NativeSshInterop();
         _interactionHandler = interactionHandler;
-        _profileId = profile.Id;
-        _profileName = profile.Name;
-        _profileUser = profile.User;
-        _profileHost = profile.Host;
-        _allowVaultPasswordReuse = profile.Id != Guid.Empty;
+        _promptResponder = new NativeSshPromptResponder(profile, sessionId: Id);
 
         // Settings this backend cannot honor are named in the terminal, not silently dropped —
         // the no-silent-degradation contract. Both drive the OpenSSH client (a ControlMaster
@@ -94,16 +101,16 @@ public sealed class NativeSshSession : ITerminalSession
         // buffered for the first subscriber, so they are never scrolled away by the banner.
         if (profile.MuxOptions?.Enabled == true)
         {
-            EmitText("Warning: multiplexing (ControlMaster) is an OpenSSH client feature; the native backend ignores this profile's mux options.\r\n");
+            EmitSessionText("Warning: multiplexing (ControlMaster) is an OpenSSH client feature; the native backend ignores this profile's mux options.\r\n");
         }
 
         if (!string.IsNullOrWhiteSpace(profile.ExtraSshArgs))
         {
-            EmitText("Warning: extra SSH arguments drive the OpenSSH client; the native backend ignores this profile's extra arguments.\r\n");
+            EmitSessionText("Warning: extra SSH arguments drive the OpenSSH client; the native backend ignores this profile's extra arguments.\r\n");
         }
 
         JumpHostConnectPlan connectPlan = JumpHostConnectPlan.Create(profile);
-        NativeSshConnectionOptions connectionOptions = CreateConnectionOptions(connectPlan, profile, cols, rows);
+        NativeSshConnectionOptions connectionOptions = NativeSshConnectionOptionsFactory.Create(connectPlan, profile, cols, rows);
         _log($"[NativeSshSession] backend=native path={_jumpHostConnector.DescribePath(connectPlan)} target={connectionOptions.User}@{connectionOptions.Host}:{connectionOptions.Port}");
         _sessionHandle = _interop.Connect(connectionOptions);
 
@@ -118,7 +125,7 @@ public sealed class NativeSshSession : ITerminalSession
                     profile.Forwards,
                     _interop,
                     _log,
-                    warn: message => EmitText($"{message}\r\n"));
+                    warn: message => EmitSessionText($"{message}\r\n"));
                 foreach (PortForward forward in profile.Forwards)
                 {
                     _metrics.RecordForwardSetup(forward.ToString());
@@ -210,6 +217,7 @@ public sealed class NativeSshSession : ITerminalSession
                     if (!_hasOutputSubscriberEver)
                     {
                         _hasOutputSubscriberEver = true;
+                        _rawOutput.StopRetaining();
                         if (_pendingOutputReplay != null)
                         {
                             replay = _pendingOutputReplay.ToArray();
@@ -340,60 +348,6 @@ public sealed class NativeSshSession : ITerminalSession
         recorder.Dispose();
     }
 
-    private NativeSshConnectionOptions CreateConnectionOptions(
-        JumpHostConnectPlan connectPlan,
-        SshProfile profile,
-        int cols,
-        int rows)
-    {
-        NativeSshConnectionOptions baseOptions = _jumpHostConnector.CreateConnectionOptions(connectPlan, profile, cols, rows);
-        RemoteShellKind remoteShellKind = profile.RemoteShellKind;
-
-        return new NativeSshConnectionOptions
-        {
-            Host = baseOptions.Host,
-            User = baseOptions.User,
-            Port = baseOptions.Port,
-            Cols = baseOptions.Cols,
-            Rows = baseOptions.Rows,
-            Term = baseOptions.Term,
-            Password = baseOptions.Password,
-            IdentityFilePath = baseOptions.IdentityFilePath,
-            UseAgent = baseOptions.UseAgent,
-            KnownHostsFilePath = baseOptions.KnownHostsFilePath,
-            JumpHops = baseOptions.JumpHops,
-            KeepAliveIntervalSeconds = baseOptions.KeepAliveIntervalSeconds,
-            KeepAliveCountMax = baseOptions.KeepAliveCountMax,
-            RemoteShellKind = remoteShellKind,
-            ShellDetectionCommand = remoteShellKind == RemoteShellKind.Auto
-                ? "sh -lc 'printf \"%s\" \"${SHELL##*/}\"' 2>/dev/null"
-                : null,
-            BashCwdBootstrap = string.Join(
-                "\n",
-                "__ntilde_emit_cwd() {",
-                "  printf '\\033]7;%s\\007' \"$PWD\"",
-                "}",
-                "PROMPT_COMMAND=\"__ntilde_emit_cwd${PROMPT_COMMAND:+;$PROMPT_COMMAND}\""),
-            ZshCwdBootstrap = string.Join(
-                "\n",
-                "autoload -Uz add-zsh-hook",
-                "__ntilde_emit_cwd() {",
-                "  printf '\\033]7;%s\\007' \"$PWD\"",
-                "}",
-                "add-zsh-hook precmd __ntilde_emit_cwd"),
-            FishCwdBootstrap = string.Join(
-                "\n",
-                "functions -q fish_prompt; and functions -c fish_prompt __ntilde_original_fish_prompt",
-                "function fish_prompt",
-                "    printf '\\033]7;%s\\007' \"$PWD\"",
-                "    if functions -q __ntilde_original_fish_prompt",
-                "        __ntilde_original_fish_prompt",
-                "    end",
-                "end")
-        };
-    }
-
-
     public void Dispose()
     {
         StopRecording();
@@ -495,7 +449,7 @@ public sealed class NativeSshSession : ITerminalSession
                 _metrics.MarkDisconnected(failure.Kind.ToString());
                 _log($"[NativeSshSession] Poll loop failed: {ex.Message}");
                 _log($"[NativeSshSession] failure={failure.Kind}");
-                EmitText($"Native SSH session failed: {ex.Message}{Environment.NewLine}");
+                EmitSessionText($"Native SSH session failed: {ex.Message}{Environment.NewLine}");
                 TryNotifyExit(-1);
             }
         }
@@ -511,9 +465,26 @@ public sealed class NativeSshSession : ITerminalSession
         _metrics.MarkFirstOutput();
         _recorder?.RecordChunk(payload, payload.Length);
         _flightRecorder?.RecordChunk(payload, payload.Length);
+        lock (_decodeGate)
+        {
+            _rawOutput.Publish(payload);
+            EmitDecoded(payload);
+        }
+    }
 
-        char[] chars = new char[Encoding.UTF8.GetMaxCharCount(payload.Length)];
-        int charCount = _utf8Decoder.GetChars(payload, 0, payload.Length, chars, 0, flush: false);
+    // Serialises publish + decode across the threads that produce output: the poll loop (wire
+    // bytes, failure banners) and the port-forward worker that reports a refused remote listener
+    // (a thread-pool task). _utf8Decoder is stateful and not thread-safe, and holding one gate over
+    // both steps also keeps the raw and string streams in the same order.
+    private readonly object _decodeGate = new();
+
+    // The one place bytes become the string stream. Wire output and session-written text both go
+    // through it, so the string stream is always exactly what a UTF-8 decoder makes of the raw
+    // stream - which is what keeps a byte subscriber (the mux) and a string subscriber identical.
+    private void EmitDecoded(byte[] bytes)
+    {
+        char[] chars = new char[Ntilde.Pty.Utf8ChunkDecoder.GetMaxCharCount(bytes.Length)];
+        int charCount = _utf8Decoder.Decode(bytes, chars);
         if (charCount > 0)
         {
             EmitText(new string(chars, 0, charCount));
@@ -531,7 +502,7 @@ public sealed class NativeSshSession : ITerminalSession
 
         if (nextEvent.Payload.Length > 0)
         {
-            EmitText($"{message}{Environment.NewLine}");
+            EmitSessionText($"{message}{Environment.NewLine}");
         }
 
         TryNotifyExit(nextEvent.StatusCode == 0 ? -1 : nextEvent.StatusCode);
@@ -548,22 +519,7 @@ public sealed class NativeSshSession : ITerminalSession
             _metrics.MarkAuthenticationPromptStarted();
         }
 
-        SshInteractionRequest request = WithProfileContext(NativeSshInteractionJson.ParseRequest(nextEvent.Kind, nextEvent.Payload));
-        SshInteractionResponse response = _interactionHandler == null
-            ? SshInteractionResponse.Cancel()
-            : await _interactionHandler.HandleAsync(request, _pollCts.Token).ConfigureAwait(false);
-
-        NativeSshResponseKind responseKind = nextEvent.Kind switch
-        {
-            NativeSshEventKind.HostKeyPrompt => NativeSshResponseKind.HostKeyDecision,
-            NativeSshEventKind.PasswordPrompt => NativeSshResponseKind.Password,
-            NativeSshEventKind.PassphrasePrompt => NativeSshResponseKind.Passphrase,
-            NativeSshEventKind.KeyboardInteractivePrompt => NativeSshResponseKind.KeyboardInteractive,
-            _ => throw new InvalidOperationException($"Unsupported interaction event '{nextEvent.Kind}'.")
-        };
-
-        byte[] payload = NativeSshInteractionJson.BuildResponsePayload(responseKind, response);
-        _interop.SubmitResponse(_sessionHandle, responseKind, payload);
+        await _promptResponder.RespondAsync(nextEvent, _interop, _sessionHandle!, _interactionHandler, _pollCts.Token).ConfigureAwait(false);
 
         if (nextEvent.Kind == NativeSshEventKind.HostKeyPrompt)
         {
@@ -573,48 +529,6 @@ public sealed class NativeSshSession : ITerminalSession
         {
             _metrics.MarkAuthenticationPromptCompleted();
         }
-    }
-
-    private SshInteractionRequest WithProfileContext(SshInteractionRequest request)
-    {
-        if (_profileId == Guid.Empty)
-        {
-            return request;
-        }
-
-        // The profile's vault entry belongs to its final target. In a jump chain the first password
-        // prompt usually comes from a bastion, and this used to spend the one-shot vault reuse on
-        // it — sending the target's saved password to the bastion. Only the target's own prompt
-        // may reuse or be remembered as the profile's password; a hop's prompt is left alone.
-        bool isTargetPasswordPrompt = request.Kind == SshInteractionKind.Password && !request.IsJumpHop;
-        SshInteractionRequest requestWithContext = new()
-        {
-            Kind = request.Kind,
-            SessionId = Id,
-            ProfileId = _profileId,
-            ProfileName = _profileName,
-            ProfileUser = _profileUser,
-            ProfileHost = _profileHost,
-            AllowVaultPasswordReuse = isTargetPasswordPrompt && _allowVaultPasswordReuse,
-            RememberPasswordInVault = isTargetPasswordPrompt,
-            Host = request.Host,
-            Port = request.Port,
-            User = request.User,
-            IsJumpHop = request.IsJumpHop,
-            Algorithm = request.Algorithm,
-            Fingerprint = request.Fingerprint,
-            Prompt = request.Prompt,
-            Name = request.Name,
-            Instructions = request.Instructions,
-            KeyboardPrompts = request.KeyboardPrompts
-        };
-
-        if (isTargetPasswordPrompt)
-        {
-            _allowVaultPasswordReuse = false;
-        }
-
-        return requestWithContext;
     }
 
     private void TryNotifyExit(int exitCode)
@@ -657,6 +571,22 @@ public sealed class NativeSshSession : ITerminalSession
             // blocks here — e.g. synchronously awaiting a UI-thread response — would
             // stall the poll loop and any new subscriber.
             handler?.Invoke(text);
+        }
+    }
+
+    // Text this session writes itself (warnings, failure banners) rather than bytes off the wire.
+    // Published to the raw tap as UTF-8, and decoded through the same _utf8Decoder as wire bytes -
+    // not emitted as-is - so that when the wire stopped mid code point, both streams render the
+    // dangling prefix the same way (U+FFFD) before the banner, instead of the string stream
+    // silently dropping it while a raw decoder shows it. Callers include the port-forward worker's
+    // thread as well as the poll loop, hence _decodeGate.
+    private void EmitSessionText(string text)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        lock (_decodeGate)
+        {
+            _rawOutput.Publish(bytes);
+            EmitDecoded(bytes);
         }
     }
 

@@ -20,6 +20,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     [ThreadStatic]
     private static byte[]? _pollBuffer;
     private const int ResultClosed = -3;
+    private const int ResultTimeout = -10;
     private const int ResultCanceled = -6;
     private const int ResultPanic = -7;
 
@@ -39,6 +40,28 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        return StartSession(options, command: null);
+    }
+
+    public NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        // The native layer rejects these too, but only as a bare 0 handle; here they get a reason.
+        ArgumentException.ThrowIfNullOrWhiteSpace(command);
+        ValidateConnectionOptions(options);
+
+        return StartSession(options, command);
+    }
+
+    /// <summary>
+    /// Marshals <paramref name="options"/> into the connect args and starts the session: a PTY shell
+    /// (nova_ssh_connect) when <paramref name="command"/> is null, else an exec session running it
+    /// (nova_ssh_exec), which reads the same args and ignores their terminal and shell fields.
+    /// </summary>
+    private static NovaSshSafeHandle StartSession(NativeSshConnectionOptions options, string? command)
+    {
+        IntPtr commandPtr = IntPtr.Zero;
         IntPtr hostPtr = IntPtr.Zero;
         IntPtr userPtr = IntPtr.Zero;
         IntPtr termPtr = IntPtr.Zero;
@@ -50,6 +73,12 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         try
         {
+            if (command is not null)
+            {
+                // Verbatim: the native side does not trim it, and the remote login shell interprets it.
+                commandPtr = Marshal.StringToCoTaskMemUTF8(command);
+            }
+
             hostPtr = Marshal.StringToCoTaskMemUTF8(options.Host);
             userPtr = Marshal.StringToCoTaskMemUTF8(options.User);
             termPtr = Marshal.StringToCoTaskMemUTF8(options.Term);
@@ -110,7 +139,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                     UseAgent = options.UseAgent ? 1u : 0u
                 };
 
-                NovaSshSafeHandle handle = NativeMethods.nova_ssh_connect(in args);
+                NovaSshSafeHandle handle = command is null
+                    ? NativeMethods.nova_ssh_connect(in args)
+                    : NativeMethods.nova_ssh_exec(in args, commandPtr);
                 if (handle.IsInvalid)
                 {
                     handle.Dispose();
@@ -126,6 +157,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
         finally
         {
+            FreeUtf8(commandPtr);
             FreeUtf8(hostPtr);
             FreeUtf8(userPtr);
             FreeUtf8(termPtr);
@@ -208,7 +240,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
             if (rc != ResultOk)
             {
-                throw new InvalidOperationException(BuildSftpTransferFailureMessage(rc, responseJson));
+                throw Failure(BuildSftpTransferFailureMessage(rc, responseJson), responseJson);
             }
         }
         finally
@@ -287,7 +319,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
             if (rc != ResultOk)
             {
-                throw new InvalidOperationException(BuildRemotePathListFailureMessage(rc, responseJson));
+                throw Failure(BuildRemotePathListFailureMessage(rc, responseJson), responseJson);
             }
 
             if (string.IsNullOrWhiteSpace(responseJson))
@@ -577,6 +609,61 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         }
     }
 
+    public bool WaitForEvent(NovaSshSafeHandle sessionHandle, TimeSpan timeout)
+    {
+        if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed)
+        {
+            return false;
+        }
+
+        uint milliseconds = (uint)Math.Clamp(timeout.TotalMilliseconds, 0, 1000);
+        try
+        {
+            // The handle's reference is held for the whole wait, so the native side bounds it (1 s)
+            // and a close wakes it. OK: an event is ready. TIMEOUT: none came. CLOSED: the session
+            // ended with nothing queued; the poll that follows finds the handle gone or empty.
+            int rc = NativeMethods.nova_ssh_wait_event(sessionHandle, milliseconds);
+            if (rc == ResultOk)
+            {
+                return true;
+            }
+
+            if (rc is ResultTimeout or ResultClosed or ResultInvalidArgument)
+            {
+                return false;
+            }
+
+            throw new InvalidOperationException($"Native SSH wait failed with result {rc}.");
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
+    public void SendEof(NovaSshSafeHandle sessionHandle)
+    {
+        if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed)
+        {
+            return;
+        }
+
+        try
+        {
+            // CLOSED: the session already ended, so its stdin has nobody left to end.
+            int rc = NativeMethods.nova_ssh_send_eof(sessionHandle);
+            if (rc is ResultOk or ResultInvalidArgument or ResultClosed)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException($"Native SSH EOF failed with result {rc}.");
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
     public void Close(NovaSshSafeHandle sessionHandle)
     {
         // Disposing the SafeHandle runs ReleaseHandle -> nova_ssh_close exactly once,
@@ -591,10 +678,10 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             return;
         }
 
-        byte[] payload = data.ToArray();
         try
         {
-            int rc = NativeMethods.nova_ssh_submit_response(sessionHandle, (uint)responseKind, payload, (nuint)payload.Length);
+            // Passed by reference to the caller's own bytes: no second copy of a password to clear.
+            int rc = NativeMethods.nova_ssh_submit_response(sessionHandle, (uint)responseKind, ref MemoryMarshal.GetReference(data), (nuint)data.Length);
             if (rc is ResultOk or ResultInvalidArgument)
             {
                 return;
@@ -754,6 +841,38 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         return $"{message} {responseJson}";
     }
+
+    /// <summary>The native layer's status for a sign-in the server refused (rusty_ssh's <c>AuthenticationFailed</c> kind).</summary>
+    private const string AuthFailedStatus = "auth-failed";
+
+    /// <summary>
+    /// A failed transfer's or listing's exception: <see cref="NativeSshAuthenticationRefusedException"/> when the response's
+    /// status says the server refused the sign-in (release hardening item 5), else a plain <see cref="InvalidOperationException"/>.
+    /// Decided by the status alone, never by the message, which is for people.
+    /// </summary>
+    private static InvalidOperationException Failure(string message, string? responseJson) =>
+        StatusOf(responseJson) == AuthFailedStatus ? new NativeSshAuthenticationRefusedException(message) : new InvalidOperationException(message);
+
+    /// <summary>The <c>status</c> of a transfer's or listing's response (both carry one), or null when there is none to read.</summary>
+    private static string? StatusOf(string? responseJson)
+    {
+        if (string.IsNullOrWhiteSpace(responseJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(responseJson, NativeSshJsonContext.Default.NativeSftpTransferResponse)?.Status;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    internal static InvalidOperationException FailureForTests(int resultCode, string? responseJson, string what) =>
+        Failure($"{what} with result {resultCode}.", responseJson);
 
     private static string BuildRemotePathListFailureMessage(int resultCode, string? responseJson)
     {
@@ -1074,6 +1193,15 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_connect")]
         public static extern NovaSshSafeHandle nova_ssh_connect(in NativeConnectArgs args);
 
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_exec")]
+        public static extern NovaSshSafeHandle nova_ssh_exec(in NativeConnectArgs args, IntPtr command);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_wait_event")]
+        public static extern int nova_ssh_wait_event(NovaSshSafeHandle session, uint timeoutMs);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_send_eof")]
+        public static extern int nova_ssh_send_eof(NovaSshSafeHandle session);
+
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_poll_event")]
         public static extern int nova_ssh_poll_event(NovaSshSafeHandle session, out NativeEventHeader @event, byte[] payload, nuint payloadCapacity);
 
@@ -1106,7 +1234,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         public static extern int nova_ssh_close_raw(IntPtr session);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_submit_response")]
-        public static extern int nova_ssh_submit_response(NovaSshSafeHandle session, uint responseKind, byte[] data, nuint dataLength);
+        public static extern int nova_ssh_submit_response(NovaSshSafeHandle session, uint responseKind, ref byte data, nuint dataLength);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_sftp_transfer")]
         public static extern int nova_ssh_sftp_transfer(

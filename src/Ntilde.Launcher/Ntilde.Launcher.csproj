@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- ntilde.com (docs/superpowers/specs/2026-10-05-ntilde-mux-phase4.md §10.1, §11): a console-subsystem
+       launcher published beside the GUI-subsystem Ntilde.exe. A shell waits for a console program, so
+       `ntilde mux attach` typed at a prompt keeps the console until it exits, and its exit code comes back.
+       kernel32 P/Invokes only - no project or package references
+       (ProjectFileLayeringTests.Launcher_has_no_references). It builds on every OS, as the solution must;
+       off Windows it only refuses. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
+    <!-- The console control handler is an [UnmanagedCallersOnly] function pointer: no delegate marshalling. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <OptimizationPreference>Size</OptimizationPreference>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ntilde.App.Tests" />
+  </ItemGroup>
+</Project>

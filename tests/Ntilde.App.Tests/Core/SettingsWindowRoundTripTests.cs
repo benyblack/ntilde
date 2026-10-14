@@ -30,7 +30,7 @@ public sealed class SettingsWindowRoundTripTests
         "CommandAssistPassiveBubbleEnabled", "CommandAssistShellIntegrationEnabled",
         "ExperimentalNativeSshEnabled", "AgentAccessObserveEnabled", "AgentReplayExportEnabled",
         "AgentAccessActEnabled", "LongCommandNotificationsEnabled", "Osc9NotificationsEnabled",
-        "Osc9ProgressReportingEnabled", "AutomaticUpdateChecks", "Profiles", "DefaultProfileId",
+        "Osc9ProgressReportingEnabled", "AutomaticUpdateChecks", "SessionPersistence", "Profiles", "DefaultProfileId",
     ];
 
     private static readonly Dictionary<string, string> SeedTitleBarItems = new() { ["find"] = "Pinned", ["connections"] = "Hidden" };
@@ -71,6 +71,7 @@ public sealed class SettingsWindowRoundTripTests
           "Osc9NotificationsEnabled": true,
           "Osc9ProgressReportingEnabled": false,
           "AutomaticUpdateChecks": false,
+          "SessionPersistence": "Off",
           "DefaultProfileId": "{{ProfileId}}",
           "Profiles": [ {
             "Id": "{{ProfileId}}", "Name": "Round trip", "Command": "{{NativeCommand}}", "Arguments": "-l",

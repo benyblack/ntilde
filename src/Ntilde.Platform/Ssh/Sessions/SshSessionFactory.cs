@@ -9,6 +9,13 @@ namespace Ntilde.Platform.Ssh.Sessions;
 
 public sealed class SshSessionFactory : ISshSessionFactory
 {
+    /// <summary>
+    /// Why a Native profile gets no session while the global native SSH switch is off: what this factory throws, and
+    /// what the persistent remote path's transport refuses an attempt with, so both say the same thing.
+    /// </summary>
+    public const string NativeSshDisabledMessage =
+        "Native SSH is disabled globally. Switch this profile back to OpenSSH, or turn on the native SSH backend under Settings > SSH (ExperimentalNativeSshEnabled).";
+
     private readonly ISshProfileStore _profileStore;
     private readonly ISshProcessLauncher? _launcher;
     private readonly INativeSshInterop? _nativeInterop;
@@ -71,8 +78,7 @@ public sealed class SshSessionFactory : ISshSessionFactory
     {
         if (!_nativeSshEnabled)
         {
-            throw new InvalidOperationException(
-                "Native SSH is disabled globally. Switch this profile back to OpenSSH, or turn on the native SSH backend under Settings > SSH (ExperimentalNativeSshEnabled).");
+            throw new InvalidOperationException(NativeSshDisabledMessage);
         }
 
         // Two distinct refusals, deliberately distinguishable: the toggle above is a rollout decision

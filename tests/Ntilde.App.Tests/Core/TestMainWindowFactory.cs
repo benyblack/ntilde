@@ -18,9 +18,39 @@ internal static class TestMainWindowFactory
     /// down with everyone else's — a window built with a custom bundle still opens a real tab with
     /// a real shell behind it.
     /// </summary>
-    public static Ntilde.MainWindow Create(AppServiceBundle services)
+    public static Ntilde.MainWindow Create(AppServiceBundle services) => Track(new Ntilde.MainWindow(services));
+
+    /// <summary>
+    /// Startup restore builds the selected tab and leaves the others placeholders - no pane, their trees only in the tab's
+    /// <see cref="Ntilde.Pty.TabSession"/> - until a background pass builds them. Consuming that pass's plan before the
+    /// window is shown keeps them placeholders for good (the queued pass then does nothing), as a close or a quit that comes
+    /// before that pass finds them. Builds no pane and no shell.
+    /// </summary>
+    public static void KeepStartupPlaceholders(Ntilde.MainWindow window)
     {
-        var window = new Ntilde.MainWindow(services);
+        var startup = (StartupOrchestrator)typeof(Ntilde.MainWindow)
+            .GetField("_startup", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(window)!;
+        Assert.True(startup.HasPendingDeferredRestore);
+        startup.DrainDeferred(static _ => { });
+    }
+
+    /// <summary>The window's tabs whose content is still a startup placeholder: no pane and no split.</summary>
+    public static int PlaceholderTabs(Ntilde.MainWindow window) =>
+        Avalonia.Controls.ControlExtensions.FindControl<Avalonia.Controls.TabControl>(window, "Tabs")!.Items.OfType<Avalonia.Controls.TabItem>()
+            .Count(t => t.Content is not (Ntilde.Controls.TerminalPane or Avalonia.Controls.Grid));
+
+    /// <summary>
+    /// A window a test built itself (a subclass that overrides the window's dialog seams), given the same defaults and torn
+    /// down with everyone else's.
+    /// </summary>
+    public static T Track<T>(T window) where T : Ntilde.MainWindow
+    {
+        // Never the real first-close modal (spec R1): a test that closes a persistent window with live shells and
+        // sets no answer of its own gets Cancel - the window stays open - rather than a dialog nobody dismisses.
+        window.ConfirmFirstClose = static _ => Task.FromResult(new Ntilde.MainWindow.FirstCloseAnswer(Ntilde.MainWindow.FirstCloseAction.Cancel, Remember: false));
+        // Likewise never the real "Quit and close all shells" modal (Task 17): the default answer is no.
+        window.ConfirmQuitAndCloseAll = static _ => Task.FromResult(false);
 
         lock (Gate)
         {

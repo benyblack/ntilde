@@ -19,6 +19,17 @@ directory: *"any data stored within it, such as settings or logs, will be lost"*
 narrower — only the `current\` subdirectory is replaced — so **uninstall is the destructive
 path, not update.**
 
+One exception reaches into the config root, by design: on Windows the local multiplexer daemon runs
+from its own copy under `bin\` (see the inventory), outside the install root, so an update leaves
+it running. Uninstall therefore stops it in Velopack's uninstall hook (`MuxUninstall`, as
+`ntilde mux kill-server --force` would: it is asked to shut down, and terminated by pid if it cannot
+be asked or has not exited within 5 s; its shells end with it), then deletes the daemon's copies in
+`bin\` and `bin\` itself once empty. Only folders that are copies are ever deleted - one named for a
+version that holds the `.complete` list, or a staging folder named `.<version>.<32-hex guid>.tmp` -
+so anything else found in `bin\` (which could be a junction into a shared folder) is left alone, as
+is any junction or link. A copy a daemon still runs from is kept, and one whose delete fails right
+after a forced stop is tried once more. Nothing else in the config root is touched.
+
 This is why `--packId` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) is
 `NtildeApp` and not `Ntilde`. Aligning it with the app name would make the install
 root and the config root the same folder, and uninstalling would silently destroy every setting,
@@ -87,6 +98,7 @@ All paths are properties of
 |---|---|
 | `settings.json` | all app settings |
 | `command-palette-usage.json` | command-palette ranking data |
+| `mux-close-choice` | `keep` or `close`: the first-close dialog's "Don't ask again" answer (`AppPaths.MuxCloseChoiceFilePath`, written by `MuxCloseChoiceStore`). Deleted when Settings saves, imports or restores a changed session persistence; excluded from backups (`BackupCatalog.ExcludedRelativePaths`); safe to delete (the next close with live shells asks again) |
 | `themes\` | user-installed themes |
 | `sessions\last_session.json` | restored tab/pane layout |
 | `workspaces\`, `workspace_templates\` | saved and templated workspaces |
@@ -98,6 +110,17 @@ All paths are properties of
 | `backups\` | automatic configuration snapshots written by the backup subsystem |
 | `recordings\` | terminal recordings |
 | `logs\` | `debug.log`, `startup_error.txt`, `workspace_audit.log`, … |
+| `bin\<version>\` | Windows installs only: the local multiplexer daemon's own copy of `Ntilde.exe`, the DLLs beside it and `<arch>\OpenConsole.exe` (`MuxDaemonImage`, not an `AppPaths` member). A Velopack update kills every process whose image is under the install root, so the daemon runs from here instead. One folder per version (`<version>-<n>` after another build under the same version), each with a `.complete` list written last: its files' sizes and the executable's SHA-256; `.<version>.<guid>.tmp\` folders are copies being staged. About 75 MB per version (0.11.0's AOT bundle). A launch deletes other versions' folders once no daemon runs from them; uninstall stops the daemon and deletes them all. Only copy-shaped folders are ever deleted (a version's name plus `.complete`, or `.<version>.<32-hex guid>.tmp`); anything else here, and any junction or link, is left alone. Not backed up; safe to delete when no daemon runs |
+
+## Environment variables
+
+Two variables change where Ntilde reads and writes. Both are read from the process environment
+only, never from `settings.json` or any other file.
+
+| Variable | Effect |
+|---|---|
+| `NTILDE_APPDATA_ROOT` | Replaces the config root (see Constraints). Tests, portable setups and sandboxed verification runs use it to point the app, its multiplexer daemon and the MCP server at a scratch folder. Every process of such a run must see it, including the ones Velopack starts. On Windows, Velopack's install, update and uninstall hooks and the restart after an apply all inherit the environment of whatever started `Setup.exe`, `Update.exe` or the app; on Linux the restart after an apply does too (both measured with Velopack 1.2.0 in Phase 5 Task 24). **Not on macOS:** Velopack 1.2.0 restarts the app there with `/usr/bin/open -n` (`src/bins/src/shared/util_osx.rs`, `start_package`), and LaunchServices starts it without the caller's environment, so a restarted app runs against the real config root. A run on macOS must never let Velopack restart the app (`scripts/mux-update-survival.sh` applies with `UpdateMac apply --norestart` and starts the new build itself). |
+| `NTILDE_UPDATE_SOURCE_DIR` | **A verification hook.** When it names a directory and the running install was packed under the verification id `NtildeSurvival` (`UpdateSourceOverride.VerificationAppId`, compared ordinally), the updater reads that local Velopack feed (`releases.<channel>.json` and the packages `vpk pack` writes beside it) instead of this repository's GitHub releases (`UpdateSourceOverride`, `VelopackUpdateService`). Every other install ignores it - the released `NtildeApp` included, and a process that is not a Velopack install - so for users the feed's origin stays the compiled-in repository. It is an allow-list on purpose: a list of ids to refuse would fail open the next time the packId is renamed, as it was once (NovaTerminalApp to NtildeApp). For the verification install, a value that is blank or names no directory is ignored too, and updates come from GitHub. When the variable is set, the app logs which source it uses and why, at startup and again when the updater is built; unset, it logs nothing. `scripts/mux-update-survival.ps1` and `.sh` pack under that id and use it to apply a real update to a sandboxed install; a test pins that both scripts use the id. |
 
 ## Constraints
 
