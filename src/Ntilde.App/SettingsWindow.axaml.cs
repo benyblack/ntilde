@@ -254,7 +254,15 @@ namespace Ntilde
         /// Shows <paramref name="target"/>'s page and, when it names a row, scrolls to the row and
         /// highlights it. Deep links, validation and search all come through here.
         /// </summary>
-        internal void NavigateTo(SettingsTarget target)
+        internal void NavigateTo(SettingsTarget target) => NavigateTo(target, focusWith: null, expandDetails: false);
+
+        /// <param name="target">The page, and the row to reveal on it.</param>
+        /// <param name="focusWith">
+        /// For a search jump, how the row's control takes focus once it is shown (Tab draws the focus
+        /// ring). Null leaves focus where it is, as a deep link does.
+        /// </param>
+        /// <param name="expandDetails">Opens the row's "More" text, where a search matched.</param>
+        private void NavigateTo(SettingsTarget target, NavigationMethod? focusWith, bool expandDetails)
         {
             ArgumentNullException.ThrowIfNull(target);
             ShowPage(target.Page);
@@ -267,21 +275,25 @@ namespace Ntilde
             // Opened; an open one only needs the pass this page switch just scheduled.
             if (IsVisible)
             {
-                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId), DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);
                 return;
             }
 
             void RevealOnceOpened(object? sender, EventArgs e)
             {
                 Opened -= RevealOnceOpened;
-                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId), DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(() => RevealRow(target.Page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);
             }
 
             Opened += RevealOnceOpened;
         }
 
-        /// <summary>Scrolls the row carrying <paramref name="rowId"/> into view and highlights it. False when it is not on screen.</summary>
-        internal bool RevealRow(SettingsPage page, string rowId)
+        /// <summary>
+        /// Scrolls the row carrying <paramref name="rowId"/> into view and highlights it; a search
+        /// jump also opens its details and focuses its control (see NavigateTo's parameters). False
+        /// when it is not on screen.
+        /// </summary>
+        internal bool RevealRow(SettingsPage page, string rowId, NavigationMethod? focusWith = null, bool expandDetails = false)
         {
             if (page != _currentPage)
             {
@@ -295,10 +307,10 @@ namespace Ntilde
                 host.CloseSubPage();
                 if (host.IsSubPageOpen)
                 {
-                    return false; // the page refused to close; reposting would loop forever
+                    return false; // the page refused (it says why); reposting would loop forever
                 }
 
-                Dispatcher.UIThread.Post(() => RevealRow(page, rowId), DispatcherPriority.Loaded);
+                Dispatcher.UIThread.Post(() => RevealRow(page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);
                 return true;
             }
 
@@ -310,9 +322,37 @@ namespace Ntilde
                 return false;
             }
 
+            // The details make the row taller: reveal it after the layout pass that measures them.
+            if (expandDetails && row is SettingRow { IsExpanded: false } collapsed)
+            {
+                collapsed.IsExpanded = true;
+                Dispatcher.UIThread.Post(() => RevealRow(page, rowId, focusWith), DispatcherPriority.Loaded);
+                return true;
+            }
+
             row.BringIntoView();
             SettingsNavigation.Flash(row);
+            if (focusWith is { } method)
+            {
+                FirstFocusableIn(row)?.Focus(method);
+            }
+
             return true;
+        }
+
+        /// <summary>
+        /// The first control in <paramref name="row"/>'s content that Tab could reach, or null. A
+        /// SettingRow's own "More" button is not its content, so it is never the one.
+        /// </summary>
+        private static InputElement? FirstFocusableIn(Control row)
+        {
+            Control? content = row is ContentControl contentRow ? contentRow.Content as Control : row;
+            return content?.GetSelfAndVisualDescendants()
+                .OfType<InputElement>()
+                .FirstOrDefault(element => element.Focusable
+                    && element.IsEffectivelyEnabled
+                    && element.IsEffectivelyVisible
+                    && KeyboardNavigation.GetIsTabStop(element));
         }
 
         private void ShowPage(SettingsPage page)
@@ -491,7 +531,7 @@ namespace Ntilde
                 // empty space or scroll bar would otherwise jump to whichever result is selected.
                 if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null)
                 {
-                    JumpToSelectedResult();
+                    JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Pointer);
                 }
             };
             _searchResults.AddHandler(KeyDownEvent, OnResultsKeyDown, RoutingStrategies.Tunnel);
@@ -566,7 +606,7 @@ namespace Ntilde
                     e.Handled = true;
                     break;
                 case Key.Enter:
-                    JumpToSelectedResult();
+                    JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Tab);
                     e.Handled = true;
                     break;
                 case Key.Escape when !string.IsNullOrEmpty(_searchBox.Text):
@@ -580,7 +620,7 @@ namespace Ntilde
         {
             if (e.Key == Key.Enter)
             {
-                JumpToSelectedResult();
+                JumpTo(_searchResults.SelectedItem as SettingsSearchResult, NavigationMethod.Tab);
                 e.Handled = true;
             }
         }
@@ -606,16 +646,22 @@ namespace Ntilde
             _searchResults.ScrollIntoView(_searchResults.SelectedIndex);
         }
 
-        private void JumpToSelectedResult()
+        /// <summary>
+        /// Jumps to <paramref name="result"/>: its page, its row (details opened when only they
+        /// matched), and focus on the row's control, drawn as <paramref name="focusWith"/> says.
+        /// </summary>
+        private void JumpTo(SettingsSearchResult? result, NavigationMethod focusWith)
         {
-            if (_searchResults.SelectedItem is not SettingsSearchResult result)
+            if (result is null)
             {
                 return;
             }
 
-            // Focus goes back to the box first: a clicked result's container goes away with the results.
+            // Focus parks in the box first: a clicked result's container goes away with the
+            // results, and a page result has no row to take it.
             _searchBox.Focus();
-            NavigateTo(new SettingsTarget(result.Entry.Page, result.Entry.RowId)); // ShowPage clears the search
+            var target = new SettingsTarget(result.Entry.Page, result.Entry.RowId);
+            NavigateTo(target, focusWith, result.MatchedOnlyInDetails); // ShowPage clears the search
         }
 
         /// <summary>The acronyms Settings copy uses: the words a group header keeps upper-case when a result writes it in sentence case.</summary>

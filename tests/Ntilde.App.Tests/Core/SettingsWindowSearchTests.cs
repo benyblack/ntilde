@@ -168,8 +168,8 @@ public sealed class SettingsWindowSearchTests
 
             Assert.Equal(SettingsPage.Terminal, window.CurrentPage);
 
-            // The clicked result's container went away with the results; focus must not stay on it.
-            Assert.Same(Box(window), window.FocusManager!.GetFocusedElement());
+            // Not the clicked result's container, which went away with the results: the setting.
+            AssertFocusIsIn(window, window.GetPage<TerminalPage>().FindControl<NumericUpDown>("FontSizeInput")!);
         }
         finally
         {
@@ -520,6 +520,56 @@ public sealed class SettingsWindowSearchTests
         Assert.Contains(window.SearchIndex.Search("Ctrl+Alt+H"), r => r.Entry.RowId == "remember-commands");
     }
 
+    /// <summary>After a jump the setting has keyboard focus, so Tab and a screen reader carry on from it, not from the emptied box.</summary>
+    [AvaloniaFact]
+    public void Enter_MovesKeyboardFocusToTheSetting()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("scrollback");
+            Dispatcher.UIThread.RunJobs();
+
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertFocusIsIn(window, window.GetPage<TerminalPage>().FindControl<NumericUpDown>("ScrollbackInput")!);
+
+            // A keyboard jump focuses as Tab would, so the focus ring shows where the user landed.
+            var focused = (StyledElement)window.FocusManager!.GetFocusedElement()!;
+            Assert.Contains(":focus-visible", focused.Classes);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Only a search moves focus: a deep link (Settings opened at a row, a rejected Save) leaves it where it was.</summary>
+    [AvaloniaFact]
+    public void ADeepLink_LeavesFocusAlone()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+
+            window.NavigateTo(new SettingsTarget(SettingsPage.Terminal, "scrollback"));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Same(Box(window), window.FocusManager!.GetFocusedElement());
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaTheory]
     [InlineData("background opacity", "background-image-opacity")]
     [InlineData("size font", "font-size")]
@@ -548,6 +598,40 @@ public sealed class SettingsWindowSearchTests
         var window = new Ntilde.SettingsWindow();
 
         Assert.Contains(window.SearchIndex.Search(query), r => r.Entry.Page == page && r.Entry.RowId is null);
+    }
+
+    /// <summary>The text behind "More" is searched too; a jump to a row found only there opens it, so the match is on screen.</summary>
+    [AvaloniaFact]
+    public void AWordOnlyInARowsDetails_FindsTheRow_AndTheJumpOpensTheDetails()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("password");
+            Dispatcher.UIThread.RunJobs();
+            Results(window).SelectedItem = Shown(window).Single(r => r.Entry.RowId == "remember-commands");
+
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+
+            SettingRow row = window.GetPage<CommandAssistPage>().GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "remember-commands");
+            Assert.True(row.IsExpanded);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static void AssertFocusIsIn(Ntilde.SettingsWindow window, Control control)
+    {
+        var focused = window.FocusManager!.GetFocusedElement() as Visual;
+        Assert.True(
+            focused is not null && (ReferenceEquals(focused, control) || control.IsVisualAncestorOf(focused)),
+            $"Focus is on {focused?.GetType().Name ?? "nothing"}, not in {control.Name}.");
     }
 
     private static void AssertPageShown(Ntilde.SettingsWindow window, SettingsPage page)

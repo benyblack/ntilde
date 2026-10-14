@@ -253,6 +253,36 @@ public sealed class SettingsThemeEditorTests
     }
 
     [AvaloniaFact]
+    public void ASearchJump_WithTheEditorUntouched_ClosesIt_AndLandsOnTheRow()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs(); // the editor's own fill-in must not read as an edit
+
+                SearchAndJump(window, "opacity");
+
+                Assert.False(page.IsSubPageOpen);
+                var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "window-opacity");
+                Assert.Same(window.FindResource("NtBlueDim"), row.Background);
+
+                // Leaving the editor returns focus to Edit only when the editor had it; here the setting takes it.
+                var slider = page.FindControl<Slider>("WindowOpacitySlider")!;
+                var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement() as Visual;
+                Assert.True(focused is not null && (ReferenceEquals(focused, slider) || slider.IsVisualAncestorOf(focused)), $"Focus is on {focused?.GetType().Name ?? "nothing"}.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    [AvaloniaFact]
     public void PrimaryS_WithUnsavedThemeEdits_DoesNotDiscardThem()
     {
         var (root, window, page) = Open();

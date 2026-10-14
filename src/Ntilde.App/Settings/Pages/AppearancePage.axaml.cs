@@ -373,13 +373,17 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     /// <summary>Leaves the editor. Unsaved edits are dropped, as the old editor's ✕ did.</summary>
     private void ShowMainView(bool restoreFocus)
     {
-        bool wasOpen = IsThemeEditorOpen;
+        var editor = this.FindControl<ScrollViewer>("ThemeEditorView")!;
+
+        // Only focus the editor had goes back to Edit (Back, Delete). A search jump that closes the
+        // editor started in the search box, and moves focus to the row it lands on.
+        bool focusWasInEditor = editor.IsVisible && editor.IsKeyboardFocusWithin;
         _editingTheme = null;
         _baselineTheme = null;
         _draftIsSavedTheme = false;
-        this.FindControl<ScrollViewer>("ThemeEditorView")!.IsVisible = false;
+        editor.IsVisible = false;
         this.FindControl<ScrollViewer>("AppearanceMainView")!.IsVisible = true;
-        if (restoreFocus && wasOpen)
+        if (restoreFocus && focusWasInEditor)
         {
             FocusWhenShown("BtnEditTheme");
         }
