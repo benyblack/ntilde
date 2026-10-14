@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="clr-namespace:Ntilde.Settings"
+             x:Class="Ntilde.Settings.Pages.AgentAccessPage">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,28,32,28" Spacing="0">
+
+            <StackPanel Margin="0,0,0,24">
+                <TextBlock Classes="H1" Text="Agent Access"/>
+                <TextBlock Classes="Subtitle" Margin="0,4,0,0" Text="Permissions for AI agents on this machine to read, capture, or act on your terminal sessions."/>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,360">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Classes="RowLabel" Text="Agent access (observe)"/>
+                    <TextBlock Classes="RowDesc" Text="Allow AI agents on this machine to read terminal sessions (screen and scrollback). Read-only: agents cannot type or open sessions. Screen content may include sensitive output."/>
+                </StackPanel>
+                <CheckBox Name="AgentAccessObserveToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </Grid>
+            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+            <Grid ColumnDefinitions="*,360" Margin="24,0,0,0">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Classes="RowLabel" Text="Agent replay export"/>
+                    <TextBlock Classes="RowDesc" Text="Additionally allow agents to export a session's recent output as a replay file. Exports contain output and window resizes only — never anything you type. Requires Agent access (observe)."/>
+                </StackPanel>
+                <CheckBox Name="AgentReplayExportToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </Grid>
+            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+            <Grid ColumnDefinitions="*,360" Margin="24,0,0,0">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Classes="RowLabel" Text="Agent access (act)"/>
+                    <TextBlock Classes="RowDesc" Text="Additionally allow agents to type into, open, and close terminal sessions. SSH connections must also be allowlisted individually. Every action is shown in the agent activity journal. Requires Agent access (observe)."/>
+                </StackPanel>
+                <CheckBox Name="AgentAccessActToggle" Grid.Column="1" Classes="Toggle" Content="" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </Grid>
+            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
+
+            <Grid ColumnDefinitions="*,360">
+                <StackPanel Grid.Column="0" Spacing="2">
+                    <TextBlock Classes="RowLabel" Text="Tab indicator"/>
+                    <TextBlock Classes="RowDesc" Text="Which agent activity is shown on tab headers. Writes are always shown; choose All to also mark tabs whose panes are being read."/>
+                </StackPanel>
+                <ComboBox Name="AgentIndicatorTabRollupList" Grid.Column="1" HorizontalAlignment="Right" MinWidth="180">
+                    <ComboBoxItem>WritesOnly</ComboBoxItem>
+                    <ComboBoxItem>All</ComboBoxItem>
+                </ComboBox>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
