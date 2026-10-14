@@ -1,7 +1,10 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Ntilde.Settings;
@@ -75,11 +78,106 @@ public sealed class SettingsTitleBarEditorTests
 
             Assert.False(bar.IsEnabled);
             Assert.Equal(TabsAndTitleBarPage.BarFullTooltip, ToolTip.GetTip(bar));
+            Assert.Equal(TabsAndTitleBarPage.BarFullTooltip, AutomationProperties.GetHelpText(bar));
             Assert.True(ToolTip.GetShowOnDisabled(bar));
             Assert.True(Segment(Row(page, "find"), TitleBarItemState.Pinned).IsEnabled); // already pinned
             Assert.Contains(
                 Rows(page).Children.OfType<Grid>().Single(g => (string?)g.Tag == "IN THE BAR").Children.OfType<TextBlock>(),
                 text => text.Text == "8 of 8");
+        }
+    }
+
+    [AvaloniaFact]
+    public void UnpinningFromAFullBar_ReenablesBar()
+    {
+        var (root, _, page) = Open(FullBar);
+        using (root)
+        {
+            Assert.False(Segment(Row(page, "split_horizontal"), TitleBarItemState.Pinned).IsEnabled);
+
+            Click(Segment(Row(page, "find"), TitleBarItemState.Overflow));
+
+            ToggleButton bar = Segment(Row(page, "split_horizontal"), TitleBarItemState.Pinned);
+            Assert.True(bar.IsEnabled);
+            Assert.Null(ToolTip.GetTip(bar));
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(bar)));
+        }
+    }
+
+    private static object? Focused(Ntilde.SettingsWindow window) => window.FocusManager!.GetFocusedElement();
+
+    [AvaloniaFact]
+    public void PlacementByKeyboard_KeepsFocusOnTheMovedRow()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Segment(Row(page, "settings"), TitleBarItemState.Overflow).Focus(NavigationMethod.Tab);
+
+            Click(Segment(Row(page, "settings"), TitleBarItemState.Overflow));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Same(Segment(Row(page, "settings"), TitleBarItemState.Overflow), Focused(window));
+        }
+    }
+
+    [AvaloniaFact]
+    public void MoveUpByKeyboard_KeepsFocusOnTheSameAction()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            static Button Up(Border row) => row.GetLogicalDescendants().OfType<Button>().Single(b => b.Tag as string == "up");
+            // Settings is the last pinned action; press up twice and the same action must move twice.
+            List<string> order = window.Session.TitleBarDraft.BuildSaveOrder();
+            int at = order.IndexOf("settings");
+            Assert.True(at >= 3, "precondition: settings has room to move up twice");
+
+            Up(Row(page, "settings")).Focus(NavigationMethod.Tab);
+            Click(Up(Row(page, "settings")));
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(Up(Row(page, "settings")), Focused(window));
+
+            Click(Up(Row(page, "settings")));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(at - 2, window.Session.TitleBarDraft.BuildSaveOrder().IndexOf("settings"));
+        }
+    }
+
+    [AvaloniaFact]
+    public void EveryRowsShortcut_StartsAtTheSameX()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            List<double> xs = Rows(page).Children.OfType<Border>()
+                .Select(row => row.GetLogicalDescendants().OfType<TextBlock>().Single(t => (string?)t.Tag == "shortcut"))
+                .Select(shortcut => shortcut.TranslatePoint(new Point(0, 0), Rows(page))!.Value.X)
+                .ToList();
+
+            Assert.True(xs.Count > 5);
+            Assert.All(xs, x => Assert.Equal(xs[0], x, 0.5));
+        }
+    }
+
+    [AvaloniaFact]
+    public void ActionTitles_TrimAndCarryTheFullTitleAsTooltip()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            TextBlock title = Row(page, "settings").GetLogicalDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("RowLabel"));
+
+            Assert.Equal(Avalonia.Media.TextTrimming.CharacterEllipsis, title.TextTrimming);
+            Assert.Equal(title.Text, ToolTip.GetTip(title));
         }
     }
 
@@ -117,7 +215,7 @@ public sealed class SettingsTitleBarEditorTests
     private static List<string> MiniBarActions(TabsAndTitleBarPage page)
         => ((Grid)page.FindControl<Border>("TitleBarPreview")!.Child!).Children
             .OfType<StackPanel>().Single(panel => (string?)panel.Tag == "actions")
-            .Children.Select(child => (string)child.Tag!).ToList();
+            .Children.Where(child => (string?)child.Tag != "new_tab").Select(child => (string)child.Tag!).ToList();
 
     [AvaloniaFact]
     public void TheMiniBar_ShowsThePinnedActionsInOrder_ThenTheMenuButton()
@@ -177,7 +275,7 @@ public sealed class SettingsTitleBarEditorTests
         {
             var host = page.FindControl<Border>("TitleBarPreview")!;
             Assert.Equal("Title bar preview", AutomationProperties.GetName(host));
-            Assert.NotEqual(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(host));
+            Assert.Equal(AccessibilityView.Control, AutomationProperties.GetAccessibilityView(host));
 
             var grid = (Grid)host.Child!;
             Assert.Equal(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(grid));

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -81,8 +82,58 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
             return;
         }
 
+        (string RowId, object? Tag, bool Keyboard)? focus = CaptureRowFocus();
         RebuildMiniTitleBar();
         RebuildTitleBarRows();
+        RestoreRowFocus(focus);
+    }
+
+    /// <summary>
+    /// The rebuild destroys the pressed control, and Avalonia then clears focus, so Tab would restart
+    /// from the top of the window. Note which row and control had focus so it can be put back.
+    /// </summary>
+    private (string RowId, object? Tag, bool Keyboard)? CaptureRowFocus()
+    {
+        var panel = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is not Control focused || !panel.IsLogicalAncestorOf(focused))
+        {
+            return null;
+        }
+
+        for (Control? current = focused; current is not null && !ReferenceEquals(current, panel); current = current.GetLogicalParent() as Control)
+        {
+            if (current is Border { Tag: string rowId } && ReferenceEquals(current.GetLogicalParent(), panel))
+            {
+                return (rowId, focused.Tag, focused.Classes.Contains(":focus-visible"));
+            }
+        }
+
+        return null;
+    }
+
+    private void RestoreRowFocus((string RowId, object? Tag, bool Keyboard)? focus)
+    {
+        if (focus is not { } target)
+        {
+            return;
+        }
+
+        var panel = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        Border? row = panel.Children.OfType<Border>().FirstOrDefault(r => (string?)r.Tag == target.RowId);
+        if (row is null)
+        {
+            return;
+        }
+
+        List<Control> candidates = row.GetLogicalDescendants().OfType<Control>().ToList();
+        Control? Find(Func<Control, bool> match) => candidates.FirstOrDefault(c => c.Focusable && c.IsEnabled && match(c));
+
+        // The same control first (the row may have changed group, so match by Tag, not by position),
+        // then the other arrow, then whichever placement is now checked.
+        Control? next = Find(c => Equals(c.Tag, target.Tag))
+            ?? Find(c => c is Button && c.Tag is "up" or "down")
+            ?? Find(c => c is ToggleButton { IsChecked: true });
+        next?.Focus(target.Keyboard ? NavigationMethod.Tab : NavigationMethod.Unspecified);
     }
 
     private void RebuildTitleBarRows()
@@ -143,7 +194,14 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
             Height = entry.IconSize,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var title = new TextBlock { Text = entry.Title, Classes = { "RowLabel" }, VerticalAlignment = VerticalAlignment.Center };
+        var title = new TextBlock
+        {
+            Text = entry.Title,
+            Classes = { "RowLabel" },
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        ToolTip.SetTip(title, entry.Title);
         var shortcut = new TextBlock
         {
             Text = ShortcutText(TitleBarShortcuts.Resolve(entry.ShortcutKey, Session.ShortcutDraft)),
@@ -160,7 +218,16 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
         var grid = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("28,*,110,Auto,64"),
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(28, GridUnitType.Pixel),
+                new ColumnDefinition(1, GridUnitType.Star),
+                new ColumnDefinition(110, GridUnitType.Pixel),
+                // Shared across rows (IsSharedSizeScope on the panel) so "Always in the bar" on New Tab
+                // and the switch elsewhere give every shortcut the same X.
+                new ColumnDefinition(GridLength.Auto) { SharedSizeGroup = "Placement" },
+                new ColumnDefinition(64, GridUnitType.Pixel),
+            },
             ColumnSpacing = 12,
             Children = { icon, title, shortcut, placement },
         };
@@ -201,6 +268,8 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
                 button.IsEnabled = false;
                 ToolTip.SetTip(button, BarFullTooltip);
                 ToolTip.SetShowOnDisabled(button, true);
+                // The tooltip is pointer-only; this is how a screen reader learns why it is disabled.
+                AutomationProperties.SetHelpText(button, BarFullTooltip);
             }
 
             button.Click += (_, _) => ChooseTitleBarPlacement(entry.Id, state);
@@ -242,7 +311,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     private void ClearTitleBarValidationMessage() => this.FindControl<TextBlock>("TitleBarValidationMessage")!.IsVisible = false;
 
     /// <summary>
-    /// A lightweight replica of the title bar, not a real one: two sample tabs, New Tab's "+", the
+    /// A lightweight replica of the title bar, not a real one: two sample tabs, then the right-aligned group: New Tab's "+", the
     /// pinned actions in order, "…" when the menu has anything in it, and dim caption buttons.
     /// </summary>
     private void RebuildMiniTitleBar()
@@ -256,11 +325,12 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
             Orientation = Orientation.Horizontal,
             Spacing = 4,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { SampleTab("~/nova2", active: true), SampleTab("pwsh", active: false) },
+            Children = { SampleTab("~/projects", active: true), SampleTab("pwsh", active: false) },
         };
-        var newTab = new TextBlock { Text = "+", Classes = { "MiniBarGlyph" }, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
 
+        // As in the real title bar, "+" leads the right-aligned actions group.
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Tag = "actions" };
+        actions.Children.Add(new TextBlock { Text = "+", Tag = "new_tab", Classes = { "MiniBarGlyph" }, VerticalAlignment = VerticalAlignment.Center });
         foreach (string id in draft.BuildSaveOrder().Where(id => !byId[id].IsLocked))
         {
             actions.Children.Add(new PathIcon { Data = Geometry.Parse(byId[id].IconGeometry), Width = 12, Height = 12, Tag = id, Classes = { "MiniBarIcon" } });
@@ -273,11 +343,12 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
         var captions = new TextBlock { Text = "—   □   ✕", Classes = { "MiniBarCaptions" }, Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
 
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto,Auto"), Children = { tabs, newTab, actions, captions } };
-        Grid.SetColumn(newTab, 1);
-        Grid.SetColumn(actions, 3);
-        Grid.SetColumn(captions, 4);
-        // The preview is decorative: the host keeps the single accessible name, the glyph pile stays out of UIA.
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Children = { tabs, actions, captions } };
+        Grid.SetColumn(actions, 2);
+        Grid.SetColumn(captions, 3);
+        // The preview is decorative: the host is the one control element (a bare Border gets no automation
+        // peer, so its name would never be announced), and the glyph pile stays out of UIA.
+        AutomationProperties.SetAccessibilityView(host, AccessibilityView.Control);
         HideFromAutomation(grid);
         host.Child = grid;
     }

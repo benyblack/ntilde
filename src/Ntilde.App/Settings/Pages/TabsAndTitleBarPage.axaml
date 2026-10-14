@@ -25,7 +25,7 @@
                     <!-- A lightweight replica of the bar, rebuilt on every draft change (spec §6). -->
                     <Border Name="TitleBarPreview" Classes="MiniTitleBar" AutomationProperties.Name="Title bar preview"/>
                     <TextBlock Name="TitleBarValidationMessage" Foreground="{DynamicResource NtRed}" FontSize="12" IsVisible="False" TextWrapping="Wrap"/>
-                    <StackPanel Name="TitleBarItemsPanel"/>
+                    <StackPanel Name="TitleBarItemsPanel" Grid.IsSharedSizeScope="True"/>
                 </StackPanel>
             </settings:SettingGroup>
         </StackPanel>
