@@ -2,221 +2,191 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:settings="clr-namespace:Ntilde.Settings"
              x:Class="Ntilde.Settings.Pages.AppearancePage">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,28,32,28" Spacing="0">
+    <Panel>
+        <!-- ── The page ── -->
+        <ScrollViewer Name="AppearanceMainView" VerticalScrollBarVisibility="Auto">
+            <StackPanel Classes="Page">
+                <StackPanel Classes="PageHeader">
+                    <TextBlock Classes="H1" Text="Appearance"/>
+                    <TextBlock Classes="Subtitle" Text="Theme, window and background image."/>
+                </StackPanel>
 
-            <StackPanel Margin="0,0,0,24">
-                <TextBlock Classes="H1" Text="Appearance"/>
-                <TextBlock Classes="Subtitle" Margin="0,4,0,0" Text="Colors, themes, fonts, and window presentation."/>
+                <settings:SettingGroup Header="THEME">
+                    <settings:SettingRow RowId="theme" Title="Theme" Stacked="True"
+                                         Description="Colours for the terminal and for this window."
+                                         Keywords="color colour palette dark light scheme">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6">
+                                <ComboBox Name="ThemeList" Grid.Column="0" HorizontalAlignment="Stretch" AutomationProperties.Name="Theme"/>
+                                <Button Name="BtnEditTheme" Grid.Column="1" Classes="Pill" Content="Edit"/>
+                                <Button Name="BtnImportTheme" Grid.Column="2" Classes="Pill" Content="Import…"/>
+                                <Button Name="BtnNewTheme" Grid.Column="3" Classes="Pill" Content="+ New" ToolTip.Tip="New theme"/>
+                            </Grid>
+                            <Border Name="ThemePreviewArea" Classes="ThemePreview" Background="#111">
+                                <StackPanel Spacing="8">
+                                    <Border Name="SampleTextBorder" Padding="10" CornerRadius="4">
+                                        <TextBlock Name="SampleTextBlock" Text="The quick brown fox jumps over the lazy dog." FontFamily="{DynamicResource NtMono}" FontSize="12"/>
+                                    </Border>
+                                    <UniformGrid Rows="2" Columns="8" HorizontalAlignment="Left">
+                                        <Border Name="Swatch0"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Black"/>
+                                        <Border Name="Swatch1"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Red"/>
+                                        <Border Name="Swatch2"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Green"/>
+                                        <Border Name="Swatch3"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Yellow"/>
+                                        <Border Name="Swatch4"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Blue"/>
+                                        <Border Name="Swatch5"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Magenta"/>
+                                        <Border Name="Swatch6"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Cyan"/>
+                                        <Border Name="Swatch7"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="White"/>
+                                        <Border Name="Swatch8"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Black"/>
+                                        <Border Name="Swatch9"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Red"/>
+                                        <Border Name="Swatch10" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Green"/>
+                                        <Border Name="Swatch11" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Yellow"/>
+                                        <Border Name="Swatch12" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Blue"/>
+                                        <Border Name="Swatch13" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Magenta"/>
+                                        <Border Name="Swatch14" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Cyan"/>
+                                        <Border Name="Swatch15" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright White"/>
+                                    </UniformGrid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </settings:SettingRow>
+                </settings:SettingGroup>
+
+                <settings:SettingGroup Header="WINDOW">
+                    <settings:SettingRow RowId="window-opacity" Title="Window opacity" Description="Applies when the window is focused." Keywords="transparency transparent see-through">
+                        <Grid Classes="Wide" ColumnDefinitions="*,Auto">
+                            <Slider Name="WindowOpacitySlider" Minimum="0.2" Maximum="1.0" Value="1.0" TickFrequency="0.01" IsSnapToTickEnabled="True" AutomationProperties.Name="Window opacity"/>
+                            <TextBlock Name="OpacityValueDisplay" Grid.Column="1" Classes="SliderValue" Text="100%"/>
+                        </Grid>
+                    </settings:SettingRow>
+                    <settings:SettingRow RowId="interface-scale" Title="Interface scale"
+                                         Description="Zooms tabs, sidebars, dialogs and settings. The terminal grows with it, on top of its font size."
+                                         Keywords="zoom size dpi scaling bigger smaller">
+                        <Grid Classes="Wide" ColumnDefinitions="*,Auto">
+                            <Slider Name="UiScaleSlider" Minimum="0.8" Maximum="2.0" Value="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True" AutomationProperties.Name="Interface scale"/>
+                            <TextBlock Name="UiScaleValueDisplay" Grid.Column="1" Classes="SliderValue" Text="100%"/>
+                        </Grid>
+                    </settings:SettingRow>
+                    <settings:SettingRow RowId="blur-effect" Title="Blur effect" Description="Acrylic / Mica where supported by the OS." Keywords="acrylic mica transparency glass">
+                        <ComboBox Name="BlurList" Classes="Wide" AutomationProperties.Name="Blur effect">
+                            <ComboBoxItem Content="Acrylic" Tag="Acrylic"/>
+                            <ComboBoxItem Content="Mica" Tag="Mica"/>
+                            <ComboBoxItem Content="None" Tag="None"/>
+                        </ComboBox>
+                    </settings:SettingRow>
+                </settings:SettingGroup>
+
+                <settings:SettingGroup Header="BACKGROUND IMAGE">
+                    <settings:SettingRow RowId="background-image" Title="Background image" Description="PNG / JPG / BMP, per-theme." Keywords="wallpaper picture photo">
+                        <Grid Classes="Wide" ColumnDefinitions="*,Auto,Auto">
+                            <TextBox Name="BgImagePathInput" PlaceholderText="Path to image file…" AutomationProperties.Name="Background image path"/>
+                            <Button Name="BtnBrowseImage" Grid.Column="1" Classes="Pill" Content="…" Width="40" Margin="6,0,0,0" ToolTip.Tip="Browse"/>
+                            <Button Name="BtnClearImage" Grid.Column="2" Classes="IconBtn" Content="✕" Margin="4,0,0,0" ToolTip.Tip="Clear"/>
+                        </Grid>
+                    </settings:SettingRow>
+                    <settings:SettingRow RowId="background-image-opacity" Title="Image opacity" Keywords="transparency wallpaper">
+                        <Grid Classes="Wide" ColumnDefinitions="*,Auto">
+                            <Slider Name="BgImageOpacitySlider" Minimum="0" Maximum="1" AutomationProperties.Name="Image opacity"/>
+                            <TextBlock Name="BgImageOpacityDisplay" Grid.Column="1" Classes="SliderValue" Text="50%"/>
+                        </Grid>
+                    </settings:SettingRow>
+                    <settings:SettingRow RowId="background-image-stretch" Title="Stretch mode" Keywords="fit fill crop wallpaper">
+                        <ComboBox Name="BgImageStretchList" Classes="Wide" AutomationProperties.Name="Stretch mode">
+                            <ComboBoxItem Content="Don't stretch" Tag="None"/>
+                            <ComboBoxItem Content="Stretch" Tag="Fill"/>
+                            <ComboBoxItem Content="Fit" Tag="Uniform"/>
+                            <ComboBoxItem Content="Fill (crop)" Tag="UniformToFill"/>
+                        </ComboBox>
+                    </settings:SettingRow>
+                </settings:SettingGroup>
             </StackPanel>
+        </ScrollViewer>
 
-            <!-- ── Theme section ── -->
-            <TextBlock Classes="SectionHeader" Text="THEME" Margin="0,0,0,14"/>
+        <!-- ── Edit theme: a sub-page of Appearance, not in the sidebar ── -->
+        <ScrollViewer Name="ThemeEditorView" VerticalScrollBarVisibility="Auto" IsVisible="False">
+            <StackPanel Classes="Page">
+                <Button Name="BtnThemeEditorBack" Classes="Link" Content="‹ Appearance" Margin="0,0,0,12" AutomationProperties.Name="Back to Appearance"/>
+                <StackPanel Classes="PageHeader">
+                    <TextBlock Name="ThemeEditorTitle" Classes="H1" Text="Edit theme"/>
+                    <TextBlock Classes="Subtitle" Text="Saving a theme writes it to disk straight away. Cancel does not undo it."/>
+                </StackPanel>
 
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,12">
-                <ComboBox Name="ThemeList" Grid.Column="0" HorizontalAlignment="Stretch">
-                    <ComboBoxItem>Default (Dark)</ComboBoxItem>
-                </ComboBox>
-                <Button Name="BtnEditTheme"   Grid.Column="1" Classes="Pill" Content="Edit"      Margin="6,0,0,0"/>
-                <Button Name="BtnImportTheme" Grid.Column="2" Classes="Pill" Content="Import…"   Margin="6,0,0,0"/>
-                <Button Name="BtnNewTheme"    Grid.Column="3" Classes="Pill" Content="+ New"     Margin="6,0,0,0" ToolTip.Tip="New theme"/>
-            </Grid>
-
-            <!-- Theme Editor Panel (toggled by BtnEditTheme / BtnNewTheme) -->
-            <Border Name="ThemeEditorPanel"
-                    IsVisible="False"
-                    Margin="0,0,0,12"
-                    Padding="14"
-                    Background="{DynamicResource NtPanel}"
-                    BorderBrush="{DynamicResource NtHairline}"
-                    BorderThickness="1"
-                    CornerRadius="6">
-                <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="Theme editor" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource NtFg}"/>
-                        <Button Name="BtnCloseEditor" Grid.Column="1" Classes="IconBtn" Content="✕"/>
-                    </Grid>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Theme name" Classes="RowDesc"/>
-                        <TextBox Name="EditThemeNameInput"/>
-                    </StackPanel>
-
-                    <UniformGrid Columns="3">
-                        <StackPanel Margin="0,0,6,0" Spacing="4">
-                            <TextBlock Text="Foreground" Classes="RowDesc"/>
-                            <TextBox Name="EditThemeFgInput" PlaceholderText="#RRGGBB"/>
+                <!-- 508 px of content at the 780 px minimum: 264 for the fields (the swatch grid is 256), 24 gap, 220 preview. -->
+                <Grid ColumnDefinitions="*,220" ColumnSpacing="24">
+                    <StackPanel Grid.Column="0" Spacing="14">
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="RowDesc" Text="Theme name"/>
+                            <TextBox Name="EditThemeNameInput" AutomationProperties.Name="Theme name"/>
                         </StackPanel>
-                        <StackPanel Margin="3,0,3,0" Spacing="4">
-                            <TextBlock Text="Background" Classes="RowDesc"/>
-                            <TextBox Name="EditThemeBgInput" PlaceholderText="#RRGGBB"/>
-                        </StackPanel>
-                        <StackPanel Margin="6,0,0,0" Spacing="4">
-                            <TextBlock Text="Cursor" Classes="RowDesc"/>
-                            <TextBox Name="EditThemeCursorInput" PlaceholderText="#RRGGBB"/>
-                        </StackPanel>
-                    </UniformGrid>
-
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="ANSI palette" Classes="RowDesc"/>
-                        <UniformGrid Rows="2" Columns="8" Name="EditorSwatchGrid">
-                            <Button Name="EditSwatch0"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch1"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch2"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch3"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch4"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch5"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch6"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch7"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch8"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch9"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch10" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch11" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch12" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch13" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch14" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                            <Button Name="EditSwatch15" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                        <UniformGrid Columns="3">
+                            <StackPanel Margin="0,0,6,0" Spacing="4">
+                                <TextBlock Classes="RowDesc" Text="Foreground"/>
+                                <TextBox Name="EditThemeFgInput" PlaceholderText="#RRGGBB" AutomationProperties.Name="Foreground"/>
+                            </StackPanel>
+                            <StackPanel Margin="3,0,3,0" Spacing="4">
+                                <TextBlock Classes="RowDesc" Text="Background"/>
+                                <TextBox Name="EditThemeBgInput" PlaceholderText="#RRGGBB" AutomationProperties.Name="Background"/>
+                            </StackPanel>
+                            <StackPanel Margin="6,0,0,0" Spacing="4">
+                                <TextBlock Classes="RowDesc" Text="Cursor"/>
+                                <TextBox Name="EditThemeCursorInput" PlaceholderText="#RRGGBB" AutomationProperties.Name="Cursor"/>
+                            </StackPanel>
                         </UniformGrid>
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="RowDesc" Text="ANSI palette"/>
+                            <UniformGrid Name="EditorSwatchGrid" Rows="2" Columns="8" HorizontalAlignment="Left">
+                                <Button Name="EditSwatch0"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch1"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch2"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch3"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch4"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch5"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch6"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch7"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch8"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch9"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch10" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch11" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch12" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch13" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch14" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch15" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                            </UniformGrid>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Name="BtnSaveTheme" Classes="Primary" Content="Save theme"/>
+                            <Button Name="BtnDeleteTheme" Classes="Danger" Content="Delete"/>
+                            <TextBlock Name="ThemeEditorStatus" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource NtFg3}"/>
+                        </StackPanel>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Name="BtnSaveTheme" Classes="Primary" Content="Save theme"/>
-                        <Button Name="BtnDeleteTheme" Classes="Danger" Content="Delete"/>
-                        <TextBlock Name="ThemeEditorStatus" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource NtFg3}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- Theme Preview Area -->
-            <Border Name="ThemePreviewArea"
-                    Margin="0,0,0,28"
-                    Padding="12"
-                    Background="#111"
-                    BorderBrush="{DynamicResource NtHairline}"
-                    BorderThickness="1"
-                    CornerRadius="6">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Preview" Classes="RowDesc" Margin="0,0,0,2"/>
-                    <Border Name="SampleTextBorder" Padding="10" CornerRadius="4">
-                        <TextBlock Name="SampleTextBlock"
-                                   Text="The quick brown fox jumps over the lazy dog."
-                                   FontFamily="{DynamicResource NtMono}"
-                                   FontSize="12"/>
+                    <Border Name="EditorPreviewArea" Grid.Column="1" Classes="ThemePreview" Background="#111" VerticalAlignment="Top">
+                        <StackPanel Spacing="10">
+                            <TextBlock Name="EditorPreviewLabel" Classes="RowDesc" Text="Preview"/>
+                            <Border Name="EditorSampleTextBorder" Padding="10" CornerRadius="4">
+                                <TextBlock Name="EditorSampleTextBlock" Text="The quick brown fox jumps over the lazy dog." TextWrapping="Wrap" FontFamily="{DynamicResource NtMono}" FontSize="12"/>
+                            </Border>
+                            <UniformGrid Rows="2" Columns="8" HorizontalAlignment="Left">
+                                <Border Name="EditorPreviewSwatch0"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch1"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch2"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch3"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch4"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch5"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch6"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch7"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch8"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch9"  Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch10" Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch11" Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch12" Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch13" Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch14" Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                                <Border Name="EditorPreviewSwatch15" Width="20" Height="20" Margin="2" CornerRadius="3"/>
+                            </UniformGrid>
+                        </StackPanel>
                     </Border>
-                    <UniformGrid Rows="2" Columns="8" HorizontalAlignment="Left">
-                        <Border Name="Swatch0"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Black"/>
-                        <Border Name="Swatch1"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Red"/>
-                        <Border Name="Swatch2"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Green"/>
-                        <Border Name="Swatch3"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Yellow"/>
-                        <Border Name="Swatch4"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Blue"/>
-                        <Border Name="Swatch5"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Magenta"/>
-                        <Border Name="Swatch6"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Cyan"/>
-                        <Border Name="Swatch7"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="White"/>
-                        <Border Name="Swatch8"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Black"/>
-                        <Border Name="Swatch9"  Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Red"/>
-                        <Border Name="Swatch10" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Green"/>
-                        <Border Name="Swatch11" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Yellow"/>
-                        <Border Name="Swatch12" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Blue"/>
-                        <Border Name="Swatch13" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Magenta"/>
-                        <Border Name="Swatch14" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright Cyan"/>
-                        <Border Name="Swatch15" Width="20" Height="20" Margin="2" CornerRadius="3" ToolTip.Tip="Bright White"/>
-                    </UniformGrid>
-                </StackPanel>
-            </Border>
-
-            <!-- ── Window section ── -->
-            <TextBlock Classes="SectionHeader" Text="WINDOW" Margin="0,0,0,14"/>
-
-            <Grid ColumnDefinitions="*,360" Margin="0,0,0,0">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Window opacity"/>
-                    <TextBlock Classes="RowDesc"  Text="Applies when the window is focused."/>
-                </StackPanel>
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                    <Slider Name="WindowOpacitySlider"
-                            Grid.Column="0"
-                            Minimum="0.2" Maximum="1.0" Value="1.0"
-                            TickFrequency="0.01" IsSnapToTickEnabled="True"/>
-                    <TextBlock Name="OpacityValueDisplay"
-                               Grid.Column="1"
-                               Text="100%"
-                               Width="48" TextAlignment="Right"
-                               VerticalAlignment="Center"
-                               FontFamily="{DynamicResource NtMono}"
-                               FontSize="12"
-                               Foreground="{DynamicResource NtFg2}"
-                               Margin="10,0,0,0"/>
                 </Grid>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Interface scale"/>
-                    <TextBlock Classes="RowDesc"  TextWrapping="Wrap" Text="Zooms tabs, sidebars, dialogs and settings. The terminal grows with it, on top of its font size."/>
-                </StackPanel>
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                    <Slider Name="UiScaleSlider"
-                            Grid.Column="0"
-                            Minimum="0.8" Maximum="2.0" Value="1.0"
-                            TickFrequency="0.05" IsSnapToTickEnabled="True"/>
-                    <TextBlock Name="UiScaleValueDisplay"
-                               Grid.Column="1"
-                               Text="100%"
-                               Width="48" TextAlignment="Right"
-                               VerticalAlignment="Center"
-                               FontFamily="{DynamicResource NtMono}"
-                               FontSize="12"
-                               Foreground="{DynamicResource NtFg2}"
-                               Margin="10,0,0,0"/>
-                </Grid>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Blur effect"/>
-                    <TextBlock Classes="RowDesc"  Text="Acrylic / Mica where supported by the OS."/>
-                </StackPanel>
-                <ComboBox Name="BlurList" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                    <ComboBoxItem>Acrylic</ComboBoxItem>
-                    <ComboBoxItem>Mica</ComboBoxItem>
-                    <ComboBoxItem>None</ComboBoxItem>
-                </ComboBox>
-            </Grid>
-            <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
-
-            <Grid ColumnDefinitions="*,360">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Background image"/>
-                    <TextBlock Classes="RowDesc"  Text="PNG / JPG / BMP, per-theme."/>
-                </StackPanel>
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
-                    <TextBox Name="BgImagePathInput" Grid.Column="0" PlaceholderText="Path to image file…"/>
-                    <Button Name="BtnBrowseImage" Grid.Column="1" Classes="Pill" Content="…" Width="40" Margin="6,0,0,0"/>
-                    <Button Name="BtnClearImage"  Grid.Column="2" Classes="IconBtn" Content="✕" Margin="4,0,0,0"/>
-                </Grid>
-            </Grid>
-            <Grid ColumnDefinitions="*,360" Margin="0,10,0,0">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Image opacity"/>
-                </StackPanel>
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                    <Slider Name="BgImageOpacitySlider" Grid.Column="0" Minimum="0" Maximum="1"/>
-                    <TextBlock Name="BgImageOpacityDisplay" Grid.Column="1" Text="50%" Width="48" TextAlignment="Right" VerticalAlignment="Center" FontFamily="{DynamicResource NtMono}" FontSize="12" Foreground="{DynamicResource NtFg2}" Margin="10,0,0,0"/>
-                </Grid>
-            </Grid>
-            <Grid ColumnDefinitions="*,360" Margin="0,10,0,0">
-                <StackPanel Grid.Column="0" Spacing="2">
-                    <TextBlock Classes="RowLabel" Text="Stretch mode"/>
-                </StackPanel>
-                <ComboBox Name="BgImageStretchList" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                    <ComboBoxItem>None</ComboBoxItem>
-                    <ComboBoxItem>Fill</ComboBoxItem>
-                    <ComboBoxItem>Uniform</ComboBoxItem>
-                    <ComboBoxItem>UniformToFill</ComboBoxItem>
-                </ComboBox>
-            </Grid>
-        </StackPanel>
-    </ScrollViewer>
+            </StackPanel>
+        </ScrollViewer>
+    </Panel>
 </UserControl>

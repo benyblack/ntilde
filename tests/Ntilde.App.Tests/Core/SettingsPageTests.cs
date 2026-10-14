@@ -402,52 +402,59 @@ public sealed class SettingsPageTests
     {
         using var root = SettingsTestRoot.Empty();
         root.CopyShippedTheme("GitHubLight.json");
-        var seed = new TerminalSettings
-        {
-            ThemeName = "GitHub Light",
-            WindowOpacity = 0.75,
-            BlurEffect = "Mica",
-            UiScale = 1.25,
-            BackgroundImagePath = "/img.png",
-            BackgroundImageOpacity = 0.35,
-            BackgroundImageStretch = "Uniform",
-        };
         var page = new AppearancePage();
-        page.Load(new SettingsSession(seed, () => ["Page Mono"]));
+        page.Load(SessionFor(new TerminalSettings
+        {
+            ThemeName = "GitHub Light", WindowOpacity = 0.75, UiScale = 1.25, BlurEffect = "Mica",
+            BackgroundImagePath = "/img.png", BackgroundImageOpacity = 0.35, BackgroundImageStretch = "Uniform",
+        }));
         var target = new TerminalSettings();
 
         page.Collect(target);
 
         Assert.Equal("GitHub Light", target.ThemeName);
         Assert.Equal(0.75, target.WindowOpacity, precision: 9);
-        Assert.Equal("Mica", target.BlurEffect);
         Assert.Equal(1.25, target.UiScale, precision: 9);
+        Assert.Equal("Mica", target.BlurEffect);
         Assert.Equal("/img.png", target.BackgroundImagePath);
         Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
         Assert.Equal("Uniform", target.BackgroundImageStretch);
+        Assert.Equal("Fit", ((ComboBoxItem)page.FindControl<ComboBox>("BgImageStretchList")!.SelectedItem!).Content);
     }
 
-    /// <summary>
-    /// Review focus 1 for Appearance: a settings.json value outside a combo's set must open on
-    /// today's fallback item and never throw. Blur and stretch compare case-sensitively, as the old
-    /// loops did. The target starts on sentinels so a Load that selects nothing (and a Collect that
-    /// therefore skips the field) fails.
-    /// </summary>
+    /// <summary>Review focus 1: hand-edited or older values open on today's fallback and save it.</summary>
     [AvaloniaTheory]
-    [InlineData("Transparent", "uniform", "Acrylic", "UniformToFill")]
-    [InlineData("mica", "UNIFORM", "Acrylic", "UniformToFill")]
-    public void AppearancePage_UnknownComboValues_FallBackAsBefore(
-        string blur, string stretch, string expectedBlur, string expectedStretch)
+    [InlineData("uniform", "UniformToFill")]       // case differs: no match, fall back to Fill (crop)
+    [InlineData("Tile", "UniformToFill")]
+    [InlineData("None", "None")]
+    public void AppearancePage_BackgroundStretch_UnknownValuesFallBackAsBefore(string stored, string saved)
     {
         using var root = SettingsTestRoot.Empty();
         var page = new AppearancePage();
-        page.Load(SessionFor(new TerminalSettings { BlurEffect = blur, BackgroundImageStretch = stretch }));
-        var target = new TerminalSettings { BlurEffect = "unset", BackgroundImageStretch = "unset" };
+        page.Load(SessionFor(new TerminalSettings { BackgroundImageStretch = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { BackgroundImageStretch = "unset" };
 
         page.Collect(target);
 
-        Assert.Equal(expectedBlur, target.BlurEffect);
-        Assert.Equal(expectedStretch, target.BackgroundImageStretch);
+        Assert.Equal(saved, target.BackgroundImageStretch);
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Transparent", "Acrylic")]
+    [InlineData("mica", "Acrylic")]                 // the old loop compared ordinally
+    [InlineData("None", "None")]
+    public void AppearancePage_BlurEffect_UnknownValuesFallBackAsBefore(string stored, string saved)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings { BlurEffect = stored }));
+        // Seed with a value that is neither the default nor the expected result, so a Load that selects nothing fails.
+        var target = new TerminalSettings { BlurEffect = "unset" };
+
+        page.Collect(target);
+
+        Assert.Equal(saved, target.BlurEffect);
     }
 
     [AvaloniaTheory]

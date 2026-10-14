@@ -285,7 +285,7 @@ public sealed class SettingsWindowFrameTests
         Step(() => page.FindControl<TextBox>("BgImagePathInput")!.Text = "/pic.png", "bg:/pic.png|0.5|UniformToFill");
         Step(() => page.FindControl<Slider>("BgImageOpacitySlider")!.Value = 0.25, "bg:/pic.png|0.25|UniformToFill");
         var stretch = page.FindControl<ComboBox>("BgImageStretchList")!;
-        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "Fill"), "bg:/pic.png|0.25|Fill");
+        Step(() => stretch.SelectedItem = stretch.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Tag == "Fill"), "bg:/pic.png|0.25|Fill");
 
         var themes = page.FindControl<ComboBox>("ThemeList")!;
         Step(() => themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light"), "theme:GitHub Light");

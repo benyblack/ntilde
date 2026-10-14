@@ -234,6 +234,15 @@ namespace Ntilde
                 return false; // the user moved on before layout ran
             }
 
+            // A row on a page whose sub-page is showing has no layout yet. Close the sub-page and
+            // reveal after the layout pass that brings the page's own content back.
+            if (GetPage(page) is IHasSubPage { IsSubPageOpen: true } host)
+            {
+                host.CloseSubPage();
+                Dispatcher.UIThread.Post(() => RevealRow(page, rowId), DispatcherPriority.Loaded);
+                return true;
+            }
+
             Control? row = GetPage(page).View.GetLogicalDescendants()
                 .OfType<Control>()
                 .FirstOrDefault(control => string.Equals(SettingsNavigation.GetRowId(control), rowId, StringComparison.Ordinal));
