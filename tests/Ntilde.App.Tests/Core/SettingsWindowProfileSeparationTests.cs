@@ -1,3 +1,4 @@
+using Ntilde.Settings.Pages;
 using Ntilde.Shell;
 using Ntilde.Platform;
 using Ntilde.VT;
@@ -28,7 +29,7 @@ public sealed class SettingsWindowProfileSeparationTests
             }
         };
 
-        List<TerminalProfile> result = SettingsWindow.BuildLocalProfilesForEditor(source);
+        List<TerminalProfile> result = ProfilesPage.BuildLocalProfilesForEditor(source);
 
         Assert.Single(result);
         Assert.Equal(localId, result[0].Id);
@@ -57,7 +58,7 @@ public sealed class SettingsWindowProfileSeparationTests
             }
         };
 
-        List<TerminalProfile> result = SettingsWindow.NormalizeSettingsProfilesForSave(source);
+        List<TerminalProfile> result = ProfilesPage.NormalizeSettingsProfilesForSave(source);
 
         Assert.Single(result);
         Assert.Equal(ConnectionType.Local, result[0].Type);
@@ -74,7 +75,7 @@ public sealed class SettingsWindowProfileSeparationTests
             new TerminalProfile { Id = Guid.Parse("24337edd-e9a8-43f5-b8fd-8cd8ce7cd77a"), Name = "Bash", Type = ConnectionType.Local }
         };
 
-        Guid resolved = SettingsWindow.ResolveDefaultLocalProfileId(Guid.Parse("6a5d526d-6d5e-4e20-b2d9-3f1443d5a56c"), profiles);
+        Guid resolved = ProfilesPage.ResolveDefaultLocalProfileId(Guid.Parse("6a5d526d-6d5e-4e20-b2d9-3f1443d5a56c"), profiles);
 
         Assert.Equal(firstId, resolved);
     }

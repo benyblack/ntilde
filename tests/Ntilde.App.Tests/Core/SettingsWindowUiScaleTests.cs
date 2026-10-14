@@ -29,7 +29,7 @@ public sealed class SettingsWindowUiScaleTests
             Dispatcher.UIThread.RunJobs();
             settings.UpdateLayout();
 
-            Assert.Equal(1.5, MeasureScale(settings.FindControl<TabControl>("MainTabs")!, settings), precision: 2);
+            Assert.Equal(1.5, MeasureScale(settings.FindControl<Panel>("PageHost")!, settings), precision: 2);
         }
         finally
         {
@@ -61,7 +61,7 @@ public sealed class SettingsWindowUiScaleTests
             other.UpdateLayout();
 
             Assert.Equal(1.5, MeasureScale(probe, other), precision: 2);
-            Assert.Equal(1.0, MeasureScale(settings.FindControl<TabControl>("MainTabs")!, settings), precision: 2);
+            Assert.Equal(1.0, MeasureScale(settings.FindControl<Panel>("PageHost")!, settings), precision: 2);
         }
         finally
         {

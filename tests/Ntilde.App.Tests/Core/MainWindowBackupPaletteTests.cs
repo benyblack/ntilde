@@ -166,9 +166,9 @@ public sealed class MainWindowBackupPaletteTests : IDisposable, IClassFixture<Te
     /// Increase" palette command, one of roughly ten such call sites) then silently overwrote the
     /// just-imported settings.json with the stale pre-import configuration.
     ///
-    /// Drives the real seams: a real <see cref="BackupService.Import"/> (Replace mode), the private
+    /// Drives the real seams: a real <see cref="BackupService.Import"/> (Replace mode), the internal
     /// <c>SettingsWindow.ReloadSettingsAfterExternalChangeAsync</c> the Import click handler calls on
-    /// success (same reflection seam <c>SettingsWindowBackupSectionTests</c> uses -
+    /// success (same seam <c>SettingsWindowBackupSectionTests</c> uses -
     /// <c>Window.ShowDialog</c> hangs this headless host, so the dialog itself is never opened), then
     /// <c>MainWindow.ApplySettingsWindowResult</c> with <c>saved: false</c> - simulating Cancel/X -
     /// pulled out of <c>OpenSettings</c> for exactly this reason. Finally, a real command-palette
@@ -191,19 +191,16 @@ public sealed class MainWindowBackupPaletteTests : IDisposable, IClassFixture<Te
         var window = TestMainWindowFactory.Create();
         try
         {
-            // The dialog is never constructed via `new SettingsWindow(tabIndex, ...)` /
+            // The dialog is never constructed via `new SettingsWindow(target)` /
             // `OpenSettings` here (that reaches a real ShowDialog); a parameterless SettingsWindow
             // reads the same overridden root and is exactly what the existing Backup-section tests
-            // use for this same reflection seam.
+            // use for this same seam.
             var settingsWindow = new Ntilde.SettingsWindow();
 
             var importOutcome = new BackupService(target.Root).Import(bundle, ImportMode.Replace);
             Assert.True(importOutcome.Success, importOutcome.Message);
 
-            var reloadMethod = typeof(Ntilde.SettingsWindow).GetMethod(
-                "ReloadSettingsAfterExternalChangeAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.NotNull(reloadMethod);
-            await (Task)reloadMethod!.Invoke(settingsWindow, null)!;
+            await settingsWindow.ReloadSettingsAfterExternalChangeAsync();
             Assert.True(settingsWindow.ConfigurationReplacedExternally);
 
             var previewSnapshot = new Ntilde.MainWindow.PreviewSnapshot(
