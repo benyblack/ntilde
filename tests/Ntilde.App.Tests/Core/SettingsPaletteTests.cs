@@ -1,5 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Ntilde.Settings;
 using Ntilde.Shell;
 using Ntilde.VT;
 
@@ -40,5 +44,81 @@ public sealed class SettingsPaletteTests
 
         Assert.Equal(LightPanel, held.Color);
         Assert.False(resources.ContainsKey("NtPanel"), "Apply shadowed the merged brush with a new one.");
+    }
+
+    [AvaloniaFact]
+    public void NtPalette_HoldsEveryKeyApplyWrites()
+    {
+        var resources = new ResourceDictionary();
+        resources.MergedDictionaries.Add(new NtPalette());
+
+        ThemePaletteResources.Apply(resources, LightTheme());
+
+        // Any key Apply writes that the palette lacks would land here as a new own entry.
+        Assert.Empty(resources);
+    }
+
+    [AvaloniaFact]
+    public void NtPalette_EachInstanceOwnsItsBrushes()
+    {
+        var first = new NtPalette();
+        var second = new NtPalette();
+
+        foreach (object key in first.Keys)
+        {
+            if (first[key] is SolidColorBrush brush)
+            {
+                Assert.NotSame(brush, second[key]);
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void NtPalette_KeepsTheColoursBothSurfacesShippedWith()
+    {
+        var palette = new NtPalette();
+
+        Assert.Equal(Color.Parse("#16181d"), ((SolidColorBrush)palette["NtWindowBg"]!).Color);
+        Assert.Equal(Color.Parse("#353b46"), ((SolidColorBrush)palette["NtHairlineStrong"]!).Color);
+        Assert.Equal(Color.Parse("#2461afef"), ((SolidColorBrush)palette["NtBlueDim"]!).Color);
+        Assert.Equal(Color.Parse("#c678dd"), ((SolidColorBrush)palette["NtMagenta"]!).Color);
+        Assert.IsType<FontFamily>(palette["NtMono"]);
+    }
+
+    [AvaloniaFact]
+    public void SettingsWindow_ControlsHoldTheMergedPaletteBrushes_AndRecolourWithThem()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            // Nothing shadows the merged palette. (The window's own dictionary is not empty:
+            // UiScale.PinScale writes NtUiScaleTransform there to hold the window's scale.)
+            foreach (object key in new NtPalette().Keys)
+            {
+                Assert.False(window.Resources.ContainsKey(key), $"{key} is shadowed by an own entry.");
+            }
+
+            var panel = Assert.IsType<SolidColorBrush>(window.FindResource("NtPanel"));
+            var cancel = window.FindControl<Button>("BtnCancel")!; // Pill: Background = NtPanel via NtStyles
+            Assert.Same(panel, cancel.Background);
+
+            var chrome = Assert.IsType<SolidColorBrush>(window.FindResource("NtChromeBg"));
+            var footer = cancel.GetLogicalAncestors().OfType<Border>().First(); // {StaticResource NtChromeBg}
+            Assert.Same(chrome, footer.Background);
+
+            // What SettingsWindow.UpdatePaletteResources runs on a theme switch.
+            ThemePaletteResources.Apply(window.Resources, LightTheme());
+
+            Assert.Equal(LightPanel, panel.Color);
+            Assert.Same(panel, cancel.Background);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 }

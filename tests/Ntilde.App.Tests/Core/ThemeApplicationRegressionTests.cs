@@ -110,8 +110,8 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
     {
         var window = new Ntilde.SettingsWindow();
 
-        var panelBrush = Assert.IsType<SolidColorBrush>(window.Resources["NtPanel"]);
-        var hairlineBrush = Assert.IsType<SolidColorBrush>(window.Resources["NtHairline"]);
+        var panelBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtPanel"));
+        var hairlineBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtHairline"));
 
         var titleBarRows = window.FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
         Assert.NotEmpty(titleBarRows);
