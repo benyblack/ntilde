@@ -8,7 +8,9 @@ using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell;
 using Ntilde.Shell.Shortcuts;
+using Ntilde.Shell.TitleBar;
 using Ntilde.Tests.Backup;
+using Ntilde.VT;
 
 namespace Ntilde.Tests.Core;
 
@@ -268,6 +270,81 @@ public sealed class SettingsPageTests
             page.FindControl<ComboBox>("OverrideFontList")!.Items.OfType<ComboBoxItem>(),
             item => (string?)item.Content == "Session Mono");
         page.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void AppearancePage_CollectsEveryFieldItLoaded()
+    {
+        using var root = SettingsTestRoot.Empty();
+        root.CopyShippedTheme("GitHubLight.json");
+        var seed = new TerminalSettings
+        {
+            FontSize = 17, MaxHistory = 25000, FontFamily = "Page Mono", ThemeName = "GitHub Light",
+            WindowOpacity = 0.75, BlurEffect = "Mica", UiScale = 1.25, TabStripOrientation = "Vertical",
+            EnableLigatures = true, EnableComplexShaping = false, BackgroundImagePath = "/img.png",
+            BackgroundImageOpacity = 0.35, BackgroundImageStretch = "Uniform",
+            LongCommandNotificationsEnabled = true, Osc9NotificationsEnabled = true,
+            Osc9ProgressReportingEnabled = false, AutomaticUpdateChecks = false,
+        };
+        var page = new AppearancePage();
+        page.Load(new SettingsSession(seed, () => ["Page Mono"]));
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        Assert.Equal(17, target.FontSize);
+        Assert.Equal(25000, target.MaxHistory);
+        Assert.Equal("Page Mono", target.FontFamily);
+        Assert.Equal("GitHub Light", target.ThemeName);
+        Assert.Equal(0.75, target.WindowOpacity, precision: 9);
+        Assert.Equal("Mica", target.BlurEffect);
+        Assert.Equal(1.25, target.UiScale, precision: 9);
+        Assert.Equal("Vertical", target.TabStripOrientation);
+        Assert.True(target.EnableLigatures);
+        Assert.False(target.EnableComplexShaping);
+        Assert.Equal("/img.png", target.BackgroundImagePath);
+        Assert.Equal(0.35, target.BackgroundImageOpacity, precision: 9);
+        Assert.Equal("Uniform", target.BackgroundImageStretch);
+        Assert.True(target.LongCommandNotificationsEnabled);
+        Assert.True(target.Osc9NotificationsEnabled);
+        Assert.False(target.Osc9ProgressReportingEnabled);
+        Assert.False(target.AutomaticUpdateChecks);
+    }
+
+    [AvaloniaFact]
+    public void AppearancePage_RebuildsTheTitleBarRowsWhenShortcutsChange()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var session = SessionFor(new TerminalSettings());
+        var page = new AppearancePage();
+        page.Load(session);
+
+        session.ShortcutDraft["settings"] = "Alt+F9";
+        session.RaiseShortcutsChanged();
+
+        Assert.Contains(
+            page.FindControl<StackPanel>("TitleBarItemsPanel")!.GetLogicalDescendants().OfType<TextBlock>(),
+            t => t.Text == "Alt+F9");
+    }
+
+    [AvaloniaFact]
+    public void AppearancePage_SelectingATheme_PreviewsAndRepaintsThroughTheSession()
+    {
+        using var root = SettingsTestRoot.Empty();
+        root.CopyShippedTheme("GitHubLight.json");
+        var session = SessionFor(new TerminalSettings());
+        var page = new AppearancePage();
+        page.Load(session);
+        string? previewed = null;
+        TerminalTheme? repainted = null;
+        session.Preview.ThemeChanged += name => previewed = name;
+        session.Preview.RepaintRequested += theme => repainted = theme;
+
+        var themes = page.FindControl<ComboBox>("ThemeList")!;
+        themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light");
+
+        Assert.Equal("GitHub Light", previewed);
+        Assert.Equal("GitHub Light", repainted?.Name);
     }
 
     /// <summary>The binding editor on the Shortcuts page row titled <paramref name="title"/>.</summary>
