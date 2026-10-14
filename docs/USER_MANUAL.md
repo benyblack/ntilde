@@ -12,6 +12,8 @@ The **Command Palette** is the central hub for accessing all features and comman
 - **Open Settings:** `Ctrl+,` or `Settings` in the palette. Changes apply live
   without requiring a restart. Pages: General, Appearance, Terminal, Tabs & title bar,
   Shells & Profiles, Shortcuts, Command Assist, Agent Access, SSH and Backup & Restore.
+  Type in the search box at the top of the sidebar (or press `Ctrl+F`) to find
+  a setting by name or description; Enter jumps to it.
 - **Themes:** Fourteen themes ship built in — Default, Dracula, Nord, Gruvbox Dark,
   Tokyo Night, Catppuccin Mocha, Solarized Dark/Light, GitHub Dark/Light, Monokai,
   OneHalf Dark/Light and Cobalt2. Switch with `Theme: <name>` in the palette or from

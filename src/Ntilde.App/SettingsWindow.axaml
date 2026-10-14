@@ -31,18 +31,34 @@
                     Background="{StaticResource NtChromeBg}"
                     BorderBrush="{StaticResource NtHairline}"
                     BorderThickness="0,0,1,0">
-                <!-- Items are built from SettingsPageRegistry in code. -->
-                <ListBox Name="SideNav"
-                         Classes="SideNav"
-                         SelectionMode="Single"
-                         Padding="0,16"
-                         AutomationProperties.Name="Settings pages"/>
+                <DockPanel>
+                    <TextBox Name="SettingsSearchBox"
+                             DockPanel.Dock="Top"
+                             Margin="12,12,12,4"
+                             PlaceholderText="Search settings"
+                             AutomationProperties.Name="Search settings"/>
+                    <!-- Items are built from SettingsPageRegistry in code. -->
+                    <ListBox Name="SideNav"
+                             Classes="SideNav"
+                             SelectionMode="Single"
+                             Padding="0,4,0,8"
+                             AutomationProperties.Name="Settings pages"/>
+                </DockPanel>
             </Border>
 
-            <!-- Every page lives here for the window's lifetime; only the current one is visible.
-                 Keeping them all in the tree is what lets FindResource and DynamicResource work for
-                 pages that are not on screen - Save collects from all of them. -->
-            <Panel Name="PageHost" Grid.Column="1"/>
+            <Panel Grid.Column="1">
+                <!-- Every page lives here for the window's lifetime; only the current one is visible.
+                     Keeping them all in the tree is what lets FindResource and DynamicResource work for
+                     pages that are not on screen - Save collects from all of them. -->
+                <Panel Name="PageHost"/>
+
+                <!-- Shown in place of the page while the search box has text. -->
+                <Grid Name="SearchResultsView" RowDefinitions="Auto,*" Margin="32,28,32,0" IsVisible="False">
+                    <TextBlock Name="SearchResultsHeading" Classes="H1" FontSize="16" Margin="0,0,0,12"/>
+                    <ListBox Name="SearchResultsList" Grid.Row="1" Classes="SearchResults" AutomationProperties.Name="Search results"/>
+                    <TextBlock Name="SearchNoResults" Grid.Row="1" Classes="Subtitle" VerticalAlignment="Top" IsVisible="False"/>
+                </Grid>
+            </Panel>
         </Grid>
 
         <!-- ╭───────── Footer ─────────╮ -->

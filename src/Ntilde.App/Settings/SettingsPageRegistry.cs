@@ -6,13 +6,18 @@ using Ntilde.Settings.Pages;
 namespace Ntilde.Settings;
 
 /// <summary>A sidebar entry: which page, under which group, with what title and glyph, and how to build it.</summary>
+/// <param name="Keywords">
+/// Words search matches to the page itself, for a page whose settings are actions or lists rather
+/// than rows. Never shown.
+/// </param>
 public sealed record SettingsPageDescriptor(
     SettingsPage Page,
     string Group,
     string Title,
     string Glyph,
     Func<ISettingsPage> Create,
-    bool MonoGlyph = false);
+    bool MonoGlyph = false,
+    string? Keywords = null);
 
 /// <summary>
 /// The Settings pages in sidebar order. The sidebar, navigation and search are all driven from this
@@ -29,12 +34,12 @@ public static class SettingsPageRegistry
         new(SettingsPage.Appearance, "INTERFACE", "Appearance", "◐", () => new AppearancePage()),
         new(SettingsPage.Terminal, "INTERFACE", "Terminal", "Aa", () => new TerminalPage()),
         new(SettingsPage.TabsAndTitleBar, "INTERFACE", "Tabs & title bar", "▭", () => new TabsAndTitleBarPage()),
-        new(SettingsPage.Profiles, "INTERFACE", "Shells & Profiles", ">_", () => new ProfilesPage(), MonoGlyph: true),
-        new(SettingsPage.Shortcuts, "INTERFACE", "Shortcuts", "⌘", () => new ShortcutsPage()),
+        new(SettingsPage.Profiles, "INTERFACE", "Shells & Profiles", ">_", () => new ProfilesPage(), MonoGlyph: true, Keywords: "profile shell default wsl pwsh powershell bash cmd zsh"),
+        new(SettingsPage.Shortcuts, "INTERFACE", "Shortcuts", "⌘", () => new ShortcutsPage(), Keywords: "keybindings hotkeys keys chords"),
         new(SettingsPage.CommandAssist, "ASSISTANT", "Command Assist", "❯", () => new CommandAssistPage(), MonoGlyph: true),
         new(SettingsPage.AgentAccess, "ASSISTANT", "Agent Access", "◌", () => new AgentAccessPage()),
         new(SettingsPage.Ssh, "CONNECTION", "SSH", "⇄", () => new SshPage()),
-        new(SettingsPage.Backup, "DATA", "Backup & Restore", "⇩", () => new BackupPage()),
+        new(SettingsPage.Backup, "DATA", "Backup & Restore", "⇩", () => new BackupPage(), Keywords: "import export restore snapshot migrate machine backup"),
     ];
 
     public static SettingsPageDescriptor Get(SettingsPage page) => Pages.Single(descriptor => descriptor.Page == page);

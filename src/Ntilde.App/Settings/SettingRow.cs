@@ -12,8 +12,8 @@ namespace Ntilde.Settings;
 /// <see cref="Details"/>, behind a More / Less button.
 /// </summary>
 /// <remarks>
-/// Search indexes Title, Description and Keywords; deep links and search jump to RowId. The
-/// template lives in NtStyles.axaml.
+/// Search indexes Title, Description, Details and Keywords; deep links and search jump to RowId
+/// (a jump opens the Details when only they matched). The template lives in NtStyles.axaml.
 /// </remarks>
 public class SettingRow : ContentControl
 {
