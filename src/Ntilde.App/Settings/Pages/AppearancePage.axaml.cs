@@ -15,6 +15,8 @@ namespace Ntilde.Settings.Pages;
 /// <summary>Appearance: the theme (with its editor as a sub-page), the window, and the background image.</summary>
 public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 {
+    private const string UnsavedThemeEditsMessage = "Save the theme or go back first.";
+
     private SettingsSession? _session;
     private TerminalTheme? _editingTheme;
 
@@ -67,16 +69,9 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     /// footer) while it holds unsaved edits would drop them. Refuse and say why.
     /// </summary>
     public SettingsValidationError? Validate()
-    {
-        if (!IsThemeEditorOpen || !HasUnsavedThemeEdits())
-        {
-            return null;
-        }
-
-        const string message = "Save the theme or go back first.";
-        Text("ThemeEditorStatus").Text = message;
-        return new SettingsValidationError(SettingsPage.Appearance, null, message);
-    }
+        => RefuseToDropUnsavedThemeEdits()
+            ? new SettingsValidationError(SettingsPage.Appearance, null, UnsavedThemeEditsMessage)
+            : null;
 
     public void Collect(TerminalSettings target)
     {
@@ -103,7 +98,26 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     public bool IsSubPageOpen => IsThemeEditorOpen;
 
-    public void CloseSubPage() => ShowMainView(restoreFocus: true);
+    /// <summary>A search jump or deep link closes the editor only when that drops nothing, as Save does.</summary>
+    public void CloseSubPage()
+    {
+        if (!RefuseToDropUnsavedThemeEdits())
+        {
+            ShowMainView(restoreFocus: true);
+        }
+    }
+
+    /// <summary>True, with the reason shown in the editor, while the open editor holds unsaved edits.</summary>
+    private bool RefuseToDropUnsavedThemeEdits()
+    {
+        if (!IsThemeEditorOpen || !HasUnsavedThemeEdits())
+        {
+            return false;
+        }
+
+        Text("ThemeEditorStatus").Text = UnsavedThemeEditsMessage;
+        return true;
+    }
 
     private void LoadControls()
     {
