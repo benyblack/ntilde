@@ -146,7 +146,7 @@ with nothing to coalesce, and 75 ms of nothing after it is pure latency.
 
 #### Shipped: the settings group (V2 Phase 3b)
 
-Settings → Terminal, under "Command assistant":
+Settings → Command Assist:
 
 | Setting | Default | What it gates |
 | --- | --- | --- |

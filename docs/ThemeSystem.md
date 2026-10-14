@@ -82,9 +82,9 @@ settings.ActiveTheme = theme;
 
 ## Theme Editor
 The application includes a built-in **Theme Editor** in the Settings window:
--   Click the **Edit** button next to the theme dropdown.
--   Adjust individual ANSI colors using the color picker or hex input.
--   Save changes to persist them to the JSON file.
+-   On Settings → Appearance, pick a theme and click **Edit** (or **+ New**). The editor opens in place of the page; **‹ Appearance** goes back without saving.
+-   Adjust the foreground, background, cursor and the 16 ANSI colors; the preview beside the fields follows each change.
+-   **Save theme** writes the JSON file straight away; the Settings window's Cancel does not undo it.
 -   **Note**: The "Default" theme cannot be modified directly; clone it first or create a new theme.
 
 ## Dynamic Theming
