@@ -9,8 +9,8 @@ namespace Ntilde.Shell.TitleBar;
 /// Overflow / Hidden) and the pinned display order, before Save commits them to
 /// <c>TerminalSettings</c>. Deliberately free of Avalonia, like the rest of Shell/TitleBar, so the
 /// MaxPinned cap, the locked-index-0 reorder guard, and the deltas-only save computation can be
-/// unit tested without a UI thread. SettingsWindow owns everything else: controls, styling, the
-/// validation label, and the SelectionChanged re-entrancy guard.
+/// unit tested without a UI thread. The Tabs & title bar settings page owns everything else: it
+/// builds the controls and the validation label, and rebuilds its rows from this draft on every change.
 /// </summary>
 public sealed class TitleBarDraftState
 {

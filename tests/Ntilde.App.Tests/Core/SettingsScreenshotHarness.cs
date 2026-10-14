@@ -44,6 +44,44 @@ public sealed class SettingsScreenshotHarness
         CompareWithBaseline(written, slug);
     }
 
+    /// <summary>
+    /// The Tabs &amp; title bar page with all 8 bar slots pinned (the four defaults plus Command
+    /// Palette, Find, Split Vertical and Split Horizontal), so the full-bar state - the disabled
+    /// "Bar" segment, the mini bar at capacity - is on record at the default size and at the minimum.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("Default", "dark")]
+    [InlineData("GitHub Light", "light")]
+    public void CaptureFullTitleBar(string themeName, string slug)
+    {
+        string? output = Environment.GetEnvironmentVariable(OutputVariable);
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(output), $"Set {OutputVariable} to a directory to capture Settings screenshots.");
+        Directory.CreateDirectory(output!);
+
+        using var root = SettingsTestRoot.WithSettings(
+            $$"""
+            {"ThemeName":"{{themeName}}",
+             "TitleBarItems":{"command_palette":"Pinned","find":"Pinned","split_vertical":"Pinned","split_horizontal":"Pinned"},
+             "TitleBarOrder":["new_tab","open_tab_list","connections","settings","command_palette","find","split_vertical","split_horizontal"]}
+            """);
+        root.CopyShippedTheme("GitHubLight.json");
+
+        foreach ((int width, int height, string name) in new[] { (880, 620, "TitleBarFull"), (780, 520, "Min-TitleBarFull") })
+        {
+            var window = new Ntilde.SettingsWindow { Width = width, Height = height };
+            try
+            {
+                window.Show();
+                window.NavigateTo(new SettingsTarget(SettingsPage.TabsAndTitleBar));
+                CaptureScrolled(window, output!, $"settings-{slug}-{name}");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
     private static void CaptureSettings(string output, string slug, List<string> written)
     {
         var window = new Ntilde.SettingsWindow();
@@ -169,7 +207,8 @@ public sealed class SettingsScreenshotHarness
         // comparing only what was written would let that pass. Scope to this case's theme.
         var produced = new HashSet<string>(written.Select(Path.GetFileName), StringComparer.OrdinalIgnoreCase);
         var expected = Directory.EnumerateFiles(baseline, $"settings-{slug}-*.png")
-            .Concat(Directory.EnumerateFiles(baseline, $"connections-{slug}.png"));
+            .Concat(Directory.EnumerateFiles(baseline, $"connections-{slug}.png"))
+            .Where(f => !Path.GetFileName(f).Contains("TitleBarFull", StringComparison.Ordinal)); // written by CaptureFullTitleBar, not by Capture
         foreach (string missing in expected.Select(Path.GetFileName).Order(StringComparer.Ordinal))
         {
             if (!produced.Contains(missing!))
