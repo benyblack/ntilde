@@ -167,6 +167,44 @@ public sealed class SettingsPageTests
         Assert.Equal(1, changes);
     }
 
+    [AvaloniaFact]
+    public void CommandAssistPage_LoadsAndCollectsItsFourToggles()
+    {
+        var page = new CommandAssistPage();
+        page.Load(SessionFor(new TerminalSettings
+        {
+            CommandAssistEnabled = true,
+            CommandAssistPassiveBubbleEnabled = false,
+            CommandAssistHistoryEnabled = false,
+            CommandAssistShellIntegrationEnabled = false,
+        }));
+        var target = new TerminalSettings();
+
+        page.Collect(target);
+
+        Assert.True(target.CommandAssistEnabled);
+        Assert.False(target.CommandAssistPassiveBubbleEnabled);
+        Assert.False(target.CommandAssistHistoryEnabled);
+        Assert.False(target.CommandAssistShellIntegrationEnabled);
+    }
+
+    [AvaloniaFact]
+    public void CommandAssistPage_NamesTheEffectiveChords_AndFollowsLaterRebinds()
+    {
+        var session = SessionFor(new TerminalSettings { Keybindings = new() { ["command_assist_history"] = "Alt+F8" } });
+        var page = new CommandAssistPage();
+        page.Load(session);
+        var history = page.FindControl<TextBlock>("CommandAssistHistoryDesc")!;
+
+        Assert.Contains("Alt+F8", history.Text);
+        Assert.DoesNotContain("Ctrl+R", history.Text);
+
+        session.ShortcutDraft["command_assist_history"] = "Alt+F7";
+        session.RaiseShortcutsChanged();
+
+        Assert.Contains("Alt+F7", history.Text);
+    }
+
     /// <summary>The binding editor on the Shortcuts page row titled <paramref name="title"/>.</summary>
     internal static TextBox BindingEditorFor(ShortcutsPage page, string title)
     {
