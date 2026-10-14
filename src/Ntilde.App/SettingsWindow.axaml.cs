@@ -141,11 +141,8 @@ namespace Ntilde
         /// </summary>
         internal bool SessionPersistenceActive
         {
-            get => QuitAndCloseAllShellsLink?.IsVisible ?? false;
-            set
-            {
-                if (QuitAndCloseAllShellsLink is { } link) link.IsVisible = value;
-            }
+            get => GetPage<AppearancePage>().QuitLinkVisible;
+            set => GetPage<AppearancePage>().QuitLinkVisible = value;
         }
 
         /// <summary>
@@ -153,9 +150,6 @@ namespace Ntilde
         /// saving, and the owner runs the quit once the dialog is gone.
         /// </summary>
         internal bool QuitAndCloseAllRequested { get; private set; }
-
-        /// <summary>The "Quit and close all shells…" link. It sits on the Appearance page, under the session persistence row.</summary>
-        private Button? QuitAndCloseAllShellsLink => GetPage<AppearancePage>().FindControl<Button>("QuitAndCloseAllShellsLink");
 
         public SettingsWindow() : this(new SettingsTarget(SettingsPageRegistry.DefaultPage)) { }
 
@@ -217,14 +211,11 @@ namespace Ntilde
 
             _btnSave.Click += (_, _) => SaveAndClose();
             this.FindControl<Button>("BtnCancel")!.Click += (_, _) => Close();
-            if (QuitAndCloseAllShellsLink is { } quitLink)
+            GetPage<AppearancePage>().QuitAndCloseAllRequested += () =>
             {
-                quitLink.Click += (_, _) =>
-                {
-                    QuitAndCloseAllRequested = true;
-                    Close(false); // nothing is saved
-                };
-            }
+                QuitAndCloseAllRequested = true;
+                Close(false); // nothing is saved
+            };
 
             // The snippet store arrives by property assignment after construction, so the list is
             // read once the window opens (the old WireCommandAssistSnippetsRow did the same).

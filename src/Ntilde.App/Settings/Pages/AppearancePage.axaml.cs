@@ -42,7 +42,21 @@ public partial class AppearancePage : UserControl, ISettingsPage
         WireThemeSection();
         WireFontRows();
         WireWindowRows();
+        this.FindControl<Button>("QuitAndCloseAllShellsLink")!.Click += (_, _) => QuitAndCloseAllRequested?.Invoke();
     }
+
+    /// <summary>
+    /// Whether the "Quit and close all shells…" link under the session persistence row is shown. The owning window
+    /// sets it (only a window with session persistence on offers the quit).
+    /// </summary>
+    internal bool QuitLinkVisible
+    {
+        get => this.FindControl<Button>("QuitAndCloseAllShellsLink")!.IsVisible;
+        set => this.FindControl<Button>("QuitAndCloseAllShellsLink")!.IsVisible = value;
+    }
+
+    /// <summary>Raised when the "Quit and close all shells…" link is clicked; the owning window closes without saving.</summary>
+    internal event Action? QuitAndCloseAllRequested;
 
     public SettingsPage Page => SettingsPage.Appearance;
 

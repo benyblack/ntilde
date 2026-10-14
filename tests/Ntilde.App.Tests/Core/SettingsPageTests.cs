@@ -325,6 +325,7 @@ public sealed class SettingsPageTests
             Osc9NotificationsEnabled = true,
             Osc9ProgressReportingEnabled = false,
             AutomaticUpdateChecks = false,
+            SessionPersistence = "Off",
         };
         var page = new AppearancePage();
         page.Load(new SettingsSession(seed, () => ["Page Mono"]));
@@ -349,6 +350,46 @@ public sealed class SettingsPageTests
         Assert.True(target.Osc9NotificationsEnabled);
         Assert.False(target.Osc9ProgressReportingEnabled);
         Assert.False(target.AutomaticUpdateChecks);
+        Assert.Equal("Off", target.SessionPersistence); // the target's default is KeepOnClose
+    }
+
+    /// <summary>
+    /// The session persistence combo reads the stored value the way main does (trimmed, ignoring case; anything
+    /// else is Off). The target starts on the OTHER value so a Load that selects nothing fails.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(" keeponclose ", "KeepOnClose", "Off")]
+    [InlineData("bogus", "Off", "KeepOnClose")]
+    public void AppearancePage_SessionPersistence_FallsBackLikeMain(string stored, string expected, string targetStart)
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings { SessionPersistence = stored }));
+        var target = new TerminalSettings { SessionPersistence = targetStart };
+
+        page.Collect(target);
+
+        Assert.Equal(expected, target.SessionPersistence);
+    }
+
+    [AvaloniaFact]
+    public void AppearancePage_QuitLink_FollowsQuitLinkVisible_AndClickRaisesTheEvent()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var page = new AppearancePage();
+        page.Load(SessionFor(new TerminalSettings()));
+        var link = page.FindControl<Button>("QuitAndCloseAllShellsLink")!;
+        int raised = 0;
+        page.QuitAndCloseAllRequested += () => raised++;
+
+        Assert.False(page.QuitLinkVisible);
+        Assert.False(link.IsVisible);
+        page.QuitLinkVisible = true;
+        Assert.True(link.IsVisible);
+
+        link.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal(1, raised);
     }
 
     /// <summary>
