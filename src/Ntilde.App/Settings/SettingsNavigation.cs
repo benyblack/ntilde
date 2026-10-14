@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
@@ -45,16 +46,53 @@ public static class SettingsNavigation
             return;
         }
 
-        Transitions? original = target.Transitions;
-        IDisposable? held = target.SetValue(background, highlight, BindingPriority.Animation);
-        DispatcherTimer.RunOnce(
+        // A second jump inside the first one's window ends the first before starting, so the new
+        // flash captures the control's real Transitions and never the first flash's temporary fade.
+        if (InFlight.TryGetValue(target, out FlashState? previous))
+        {
+            previous.End(target);
+        }
+
+        var state = new FlashState(target.Transitions);
+        InFlight.AddOrUpdate(target, state);
+        state.Held = target.SetValue(background, highlight, BindingPriority.Animation);
+        state.Timer = DispatcherTimer.RunOnce(
             () =>
             {
                 target.Transitions = new Transitions { new BrushTransition { Property = background, Duration = FadeDuration } };
-                held?.Dispose();
-                DispatcherTimer.RunOnce(() => target.Transitions = original, FadeDuration);
+                state.Held?.Dispose();
+                state.Held = null;
+                state.Timer = DispatcherTimer.RunOnce(() => state.End(target), FadeDuration);
             },
             FlashDuration - FadeDuration);
+    }
+
+    private static readonly ConditionalWeakTable<Control, FlashState> InFlight = new();
+
+    private sealed class FlashState(Transitions? original)
+    {
+        public IDisposable? Held { get; set; }
+
+        public IDisposable? Timer { get; set; }
+
+        private bool _ended;
+
+        public void End(Control target)
+        {
+            if (_ended)
+            {
+                return;
+            }
+
+            _ended = true;
+            Timer?.Dispose();
+            Held?.Dispose();
+            target.Transitions = original;
+            if (InFlight.TryGetValue(target, out FlashState? current) && ReferenceEquals(current, this))
+            {
+                InFlight.Remove(target);
+            }
+        }
     }
 
     internal static StyledProperty<IBrush?>? BackgroundPropertyOf(Control control) => control switch
