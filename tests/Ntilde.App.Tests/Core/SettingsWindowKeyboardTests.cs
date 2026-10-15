@@ -2,10 +2,12 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
+using Ntilde.Shell.Shortcuts;
 
 namespace Ntilde.Tests.Core;
 
@@ -106,6 +108,94 @@ public sealed class SettingsWindowKeyboardTests
             {
                 window.Close();
             }
+        }
+    }
+
+    /// <summary>
+    /// Tab in a binding editor moves on, as everywhere else. It used to be recorded as the binding
+    /// and marked handled, so a keyboard user tabbing through the page bound the first command to
+    /// Tab and could not leave the field.
+    /// </summary>
+    [AvaloniaFact]
+    public void Tab_InAShortcutEditor_MovesToTheResetButton_AndRecordsNothing()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            TextBox editor = SettingsPageTests.BindingEditorFor(window.GetPage<ShortcutsPage>(), "Settings");
+            Button reset = editor.GetLogicalParent()!.GetLogicalChildren().OfType<Button>().Single(b => (string?)b.Content == "Reset");
+            string before = editor.Text!;
+            editor.Focus();
+
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, "\t");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Same(reset, window.FocusManager!.GetFocusedElement());
+            Assert.Equal(before, editor.Text);
+            Assert.False(window.Session.ShortcutDraft.ContainsKey("settings"));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ShiftTab_InAShortcutEditor_MovesBack_AndRecordsNothing()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            TextBox editor = SettingsPageTests.BindingEditorFor(window.GetPage<ShortcutsPage>(), "Settings");
+            string before = editor.Text!;
+            editor.Focus();
+
+            window.KeyPress(Key.Tab, RawInputModifiers.Shift, PhysicalKey.Tab, "\t");
+            Dispatcher.UIThread.RunJobs();
+
+            // The previous stop is the Reset button of the row above.
+            Button previous = Assert.IsType<Button>(window.FocusManager!.GetFocusedElement());
+            Assert.Equal("Reset", previous.Content);
+            Assert.NotSame(editor.GetLogicalParent(), previous.GetLogicalParent());
+            Assert.Equal(before, editor.Text);
+            Assert.False(window.Session.ShortcutDraft.ContainsKey("settings"));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Tab with a modifier is still a binding: the tab-switching defaults are Ctrl+Tab and Ctrl+Shift+Tab.</summary>
+    [AvaloniaFact]
+    public void CtrlTab_InAShortcutEditor_IsStillRecorded()
+    {
+        using var root = SettingsTestRoot.WithSettings("""{"Keybindings":{"next_tab":"Ctrl+F12"}}""");
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            TextBox editor = SettingsPageTests.BindingEditorFor(window.GetPage<ShortcutsPage>(), "Tab: Next (MRU)");
+            editor.Focus();
+
+            window.KeyPress(Key.Tab, RawInputModifiers.Control, PhysicalKey.Tab, "\t");
+            Dispatcher.UIThread.RunJobs();
+
+            // Ctrl+Tab is this row's default, so recording it removes the override.
+            Assert.Equal(ShortcutMatcher.Format(Key.Tab, KeyModifiers.Control), editor.Text);
+            Assert.False(window.Session.ShortcutDraft.ContainsKey("next_tab"));
+            Assert.Same(editor, window.FocusManager!.GetFocusedElement());
+        }
+        finally
+        {
+            window.Close();
         }
     }
 

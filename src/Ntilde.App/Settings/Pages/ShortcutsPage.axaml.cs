@@ -239,6 +239,16 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         TextBlock errorText,
         KeyEventArgs e)
     {
+        // Tab and Shift+Tab move focus, as everywhere else: left unhandled, the window's keyboard
+        // navigation takes them. Neither is a useful binding. App and pane shortcuts act before the
+        // terminal sees the key, so one would take completion (or zsh's and PowerShell's reverse
+        // completion) from the shell, and the Command Assist surface keys cannot be Tab at all.
+        // Tab with Ctrl, Alt or Cmd is still recorded.
+        if (e.Key == Key.Tab && (e.KeyModifiers is KeyModifiers.None or KeyModifiers.Shift))
+        {
+            return;
+        }
+
         // Esc on its own is recorded only for the five keys used inside the Command Assist suggestion
         // surface, which act only while it is open. Everything else, Command Assist Toggle included,
         // is matched before the terminal sees the key, so a plain-Esc binding would take Esc from
