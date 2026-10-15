@@ -170,6 +170,83 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
+    public void ShortcutsPage_EscWithAModifier_IsRecorded_OnAnAppRow()
+    {
+        var session = SessionFor(new TerminalSettings());
+        var page = new ShortcutsPage();
+        page.Load(session);
+
+        TextBox editor = BindingEditorFor(page, "Settings");
+        PressChord(editor, Key.Escape, KeyModifiers.Shift);
+
+        string expected = ShortcutMatcher.Format(Key.Escape, KeyModifiers.Shift);
+        Assert.Equal(expected, editor.Text);
+        Assert.Equal(expected, session.ShortcutDraft["settings"]);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_PlainEsc_IsRecorded_OnACommandAssistRow()
+    {
+        string shiftEsc = ShortcutMatcher.Format(Key.Escape, KeyModifiers.Shift);
+        var session = SessionFor(new TerminalSettings { Keybindings = new() { ["command_assist_dismiss"] = shiftEsc } });
+        var page = new ShortcutsPage();
+        page.Load(session);
+        int changes = 0;
+        session.ShortcutsChanged += () => changes++;
+
+        TextBox editor = BindingEditorFor(page, "Command Assist: Close");
+        PressChord(editor, Key.Escape, KeyModifiers.None);
+
+        // Escape is this row's default, so recording it removes the override.
+        Assert.Equal("Escape", editor.Text);
+        Assert.False(session.ShortcutDraft.ContainsKey("command_assist_dismiss"));
+        Assert.Equal(1, changes);
+    }
+
+    /// <summary>
+    /// These are matched by the window before the terminal sees the key, so a plain-Esc binding
+    /// would take Esc away from every program running in it. Command Assist Toggle is one of them,
+    /// although it is listed under Command Assist (PR #530 review). Command Assist: Close is moved
+    /// off Esc first, so the duplicate check cannot be what stops the press.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("Settings", "settings")]
+    [InlineData("Close Pane", "close_pane")]
+    [InlineData("Command Assist Toggle", "command_assist_toggle")]
+    public void ShortcutsPage_PlainEsc_OnARowMatchedBeforeTheTerminal_StillCancels_AndRecordsNothing(string title, string commandId)
+    {
+        string shiftEsc = ShortcutMatcher.Format(Key.Escape, KeyModifiers.Shift);
+        var session = SessionFor(new TerminalSettings { Keybindings = new() { ["command_assist_dismiss"] = shiftEsc } });
+        var page = new ShortcutsPage();
+        page.Load(session);
+        int changes = 0;
+        session.ShortcutsChanged += () => changes++;
+
+        TextBox editor = BindingEditorFor(page, title);
+        string before = editor.Text!;
+        PressChord(editor, Key.Escape, KeyModifiers.None);
+
+        Assert.Equal(before, editor.Text);
+        Assert.False(session.ShortcutDraft.ContainsKey(commandId));
+        Assert.Equal(0, changes);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_PlainEsc_OnAnotherCommandAssistRow_IsRefused_WhileCloseHasIt()
+    {
+        var session = SessionFor(new TerminalSettings());
+        var page = new ShortcutsPage();
+        page.Load(session);
+
+        TextBox editor = BindingEditorFor(page, "Command Assist: Previous Suggestion");
+        PressChord(editor, Key.Escape, KeyModifiers.None);
+
+        Assert.False(session.ShortcutDraft.ContainsKey("command_assist_selection_up"));
+        TextBlock[] rowTexts = editor.GetLogicalParent()!.GetLogicalParent()!.GetLogicalChildren().OfType<TextBlock>().ToArray();
+        Assert.Contains(rowTexts, t => t.IsVisible && t.Text == "Escape is already assigned to Command Assist: Close.");
+    }
+
+    [AvaloniaFact]
     public void CommandAssistPage_LoadsAndCollectsItsFourToggles()
     {
         var page = new CommandAssistPage();

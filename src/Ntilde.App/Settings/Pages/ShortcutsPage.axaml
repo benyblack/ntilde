@@ -21,7 +21,7 @@
                 <settings:SettingRow RowId="keybindings" BorderThickness="0" Padding="0,4"
                                      Title="Recording a shortcut"
                                      Description="Select a shortcut field and press the new key chord. Reset restores the default binding."
-                                     Details="Command Assist chords are matched while a suggestion surface is open, after the terminal has had its turn at the key. A chord the terminal sends to the shell first - most Ctrl+letter combinations, and anything the kitty keyboard protocol encodes for a full-screen program - will look bound here but never fire. Prefer Esc, the arrow keys, Enter, function keys, or a chord with Alt."
+                                     Details="Command Assist chords are matched while a suggestion surface is open, after the terminal has had its turn at the key. A chord the terminal sends to the shell first - most Ctrl+letter combinations, and anything the kitty keyboard protocol encodes for a full-screen program - will look bound here but never fire. Prefer Esc, the arrow keys, Enter, function keys, or a chord with Alt. Esc on its own is recorded only for the five keys used inside the suggestion list (Close, Previous and Next Suggestion, Accept While Browsing, Insert Selection). On every other row it cancels, because those shortcuts act before the terminal sees the key; add a modifier, such as Shift+Esc, to bind it there."
                                      Keywords="keybinding hotkey chord rebind"/>
             </StackPanel>
 
