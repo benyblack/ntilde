@@ -462,42 +462,49 @@ public sealed class RemoteMuxListingDockerE2eTests(ITestOutputHelper output)
 
         public async ValueTask DisposeAsync()
         {
-            for (int i = _owned.Count - 1; i >= 0; i--)
-            {
-                try
-                {
-                    _owned[i].Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Log($"[e2e] disposing {_owned[i].GetType().Name} failed: {ex.Message}");
-                }
-            }
-
-            if (_agent is { } agent)
-            {
-                try
-                {
-                    agent.Kill();
-                }
-                catch (InvalidOperationException)
-                {
-                    // Already gone.
-                }
-
-                agent.Dispose();
-            }
-
-            await Fixture.DisposeAsync();
-            Environment.SetEnvironmentVariable(AgentVariable, _previousAgent);
-            Environment.SetEnvironmentVariable(AppDataRootVariable, _previousRoot);
             try
             {
-                Directory.Delete(Root, recursive: true);
+                for (int i = _owned.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        _owned[i].Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[e2e] disposing {_owned[i].GetType().Name} failed: {ex.Message}");
+                    }
+                }
+
+                if (_agent is { } agent)
+                {
+                    try
+                    {
+                        agent.Kill();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Already gone.
+                    }
+
+                    agent.Dispose();
+                }
+
+                await Fixture.DisposeAsync();
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            finally
             {
-                // Best effort: a file still held by an exiting ssh is left to the temp directory's own cleanup.
+                // Whatever failed above, the next test must not inherit this run's app data or its dead agent socket.
+                Environment.SetEnvironmentVariable(AgentVariable, _previousAgent);
+                Environment.SetEnvironmentVariable(AppDataRootVariable, _previousRoot);
+                try
+                {
+                    Directory.Delete(Root, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort: a file still held by an exiting ssh is left to the temp directory's own cleanup.
+                }
             }
         }
     }
