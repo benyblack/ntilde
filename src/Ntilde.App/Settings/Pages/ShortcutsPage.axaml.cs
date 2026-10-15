@@ -62,6 +62,8 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
     {
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
+        // A reload (restore / import) brings a new draft; the message from a refused Save described the old one.
+        ClearShortcutValidationMessage();
         PopulateShortcutBindingsPanel(this.FindControl<TextBox>("ShortcutSearchInput")!.Text ?? "");
     }
 
@@ -186,7 +188,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
             Session.ShortcutDraft.Remove(entry.CommandId);
             bindingEditor.Text = entry.DefaultBinding;
             errorText.IsVisible = false;
-            ClearShortcutValidationMessage();
+            RefreshShortcutValidationMessage();
             // Pages that print shortcuts (title bar rows, Command Assist descriptions) listen for this;
             // without it they keep showing the old binding until Settings reopens.
             Session.RaiseShortcutsChanged();
@@ -259,7 +261,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         {
             bindingEditor.Text = GetEffectiveShortcutBinding(entry);
             errorText.IsVisible = false;
-            ClearShortcutValidationMessage();
+            RefreshShortcutValidationMessage();
             e.Handled = true;
             return;
         }
@@ -290,9 +292,9 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
             string conflictOwner = conflict.Bindings
                 .Select(bindingRecord => ShortcutCatalog.GetEntries().First(catalogEntry => catalogEntry.CommandId == bindingRecord.CommandId).Title)
                 .First(title => !string.Equals(title, entry.Title, StringComparison.OrdinalIgnoreCase));
+            // Only the row says so: the chord was not recorded, so the draft is unchanged and Save is not blocked.
             errorText.Text = $"{binding} is already assigned to {conflictOwner}.";
             errorText.IsVisible = true;
-            ShowShortcutValidationMessage("Resolve duplicate shortcuts before saving.");
             e.Handled = true;
             return;
         }
@@ -300,7 +302,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         Session.ReplaceShortcutDraft(candidateBindings);
         bindingEditor.Text = binding;
         errorText.IsVisible = false;
-        ClearShortcutValidationMessage();
+        RefreshShortcutValidationMessage();
         e.Handled = true;
 
         // Pages that print shortcuts (title bar rows, Command Assist descriptions) listen for this;
@@ -342,6 +344,19 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
 
         validationMessage.Text = message;
         validationMessage.IsVisible = true;
+    }
+
+    /// <summary>
+    /// The message describes the draft, not the last key press: only a refused Save shows it, and an
+    /// edit hides it only once the draft holds no duplicates (a hand-edited settings.json can hold
+    /// several, and fixing one row must not hide the warning about another).
+    /// </summary>
+    private void RefreshShortcutValidationMessage()
+    {
+        if (ShortcutBindingResolver.Resolve(ShortcutCatalog.GetDefinitions(), Session.ShortcutDraft).IsValid)
+        {
+            ClearShortcutValidationMessage();
+        }
     }
 
     private void ClearShortcutValidationMessage()
