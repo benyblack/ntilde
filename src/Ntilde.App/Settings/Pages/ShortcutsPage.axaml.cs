@@ -301,11 +301,16 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
 
         if (conflict != null)
         {
-            string conflictOwner = conflict.Bindings
-                .Select(bindingRecord => ShortcutCatalog.GetEntries().First(catalogEntry => catalogEntry.CommandId == bindingRecord.CommandId).Title)
-                .First(title => !string.Equals(title, entry.Title, StringComparison.OrdinalIgnoreCase));
+            ShortcutCatalogEntry conflictOwner = conflict.Bindings
+                .Select(bindingRecord => ShortcutCatalog.GetEntries().First(catalogEntry => catalogEntry.CommandId == bindingRecord.CommandId))
+                .First(owner => !string.Equals(owner.Title, entry.Title, StringComparison.OrdinalIgnoreCase));
+            // A mux row is not listed while Keep shells running is off, but its chord still counts (it acts again
+            // once the setting is back on), so say where that row can be found.
+            string whereListed = conflictOwner.RequiresSessionPersistence && !Session.KeepShellsRunning
+                ? ", which is listed only while General › \"Keep shells running when the window closes\" is set to Keep running"
+                : "";
             // Only the row says so: the chord was not recorded, so the draft is unchanged and Save is not blocked.
-            errorText.Text = $"{binding} is already assigned to {conflictOwner}.";
+            errorText.Text = $"{binding} is already assigned to {conflictOwner.Title}{whereListed}.";
             errorText.IsVisible = true;
             e.Handled = true;
             return;
