@@ -85,7 +85,27 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         (string RowId, object? Tag, bool Keyboard)? focus = CaptureRowFocus();
         RebuildMiniTitleBar();
         RebuildTitleBarRows();
+        UpdateOverLimitMessage();
         RestoreRowFocus(focus);
+    }
+
+    /// <summary>
+    /// A hand-edited settings.json can pin more than MaxPinned. The layout keeps them all, so no saved icon is
+    /// lost, and Save keeps them too; but the header alone just reads "10 of 8". While it lasts, say what that
+    /// means and how many to move. Recomputed on every rebuild, so a placement change, a reorder or a reload
+    /// leaves it describing the draft.
+    /// </summary>
+    private void UpdateOverLimitMessage()
+    {
+        var label = this.FindControl<TextBlock>("TitleBarValidationMessage")!;
+        int pinned = Session.TitleBarDraft.CountPinned();
+        int excess = pinned - TitleBarCatalog.MaxPinned;
+        label.IsVisible = excess > 0;
+        if (excess > 0)
+        {
+            label.Text = $"The title bar holds up to {TitleBarCatalog.MaxPinned} actions, and {pinned} are in it. " +
+                         $"Move {excess} to the menu or hide {(excess == 1 ? "it" : "them")}.";
+        }
     }
 
     /// <summary>
@@ -282,14 +302,10 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     private void ChooseTitleBarPlacement(string id, TitleBarItemState next)
     {
         // Clicking the current choice un-checks its ToggleButton; the rebuild below puts it back.
-        if (Session.TitleBarDraft.GetState(id) != next && !Session.TitleBarDraft.TrySetState(id, next))
+        // The draft refuses a pin into a full bar, but "Bar" is disabled there, and its tooltip says why.
+        if (Session.TitleBarDraft.GetState(id) != next)
         {
-            // "Bar" is disabled once the bar is full, so this is the draft's own cap firing.
-            ShowTitleBarValidationMessage($"At most {TitleBarCatalog.MaxPinned} actions fit in the title bar. Move one to the menu or hide it first.");
-        }
-        else
-        {
-            ClearTitleBarValidationMessage();
+            _ = Session.TitleBarDraft.TrySetState(id, next);
         }
 
         RebuildTitleBarEditor();
@@ -300,15 +316,6 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         Session.TitleBarDraft.MovePinned(id, delta);
         RebuildTitleBarEditor();
     }
-
-    private void ShowTitleBarValidationMessage(string message)
-    {
-        var label = this.FindControl<TextBlock>("TitleBarValidationMessage")!;
-        label.Text = message;
-        label.IsVisible = true;
-    }
-
-    private void ClearTitleBarValidationMessage() => this.FindControl<TextBlock>("TitleBarValidationMessage")!.IsVisible = false;
 
     /// <summary>
     /// A lightweight replica of the title bar, not a real one: two sample tabs, then the right-aligned group: New Tab's "+", the

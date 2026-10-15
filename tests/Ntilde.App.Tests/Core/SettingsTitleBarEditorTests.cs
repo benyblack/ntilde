@@ -54,6 +54,78 @@ public sealed class SettingsTitleBarEditorTests
     /// <summary>Eight pinned: the four defaults plus four that default to the menu.</summary>
     private const string FullBar = """{"TitleBarItems":{"toggle_recording":"Pinned","command_palette":"Pinned","find":"Pinned","split_vertical":"Pinned"}}""";
 
+    /// <summary>Ten pinned, as a hand-edited settings.json can hold. The layout keeps them all, so no saved icon is lost.</summary>
+    private const string OverFullBar = """{"TitleBarItems":{"toggle_recording":"Pinned","command_palette":"Pinned","find":"Pinned","split_vertical":"Pinned","split_horizontal":"Pinned","sftp_remote_files":"Pinned"}}""";
+
+    private static TextBlock OverLimitMessage(TabsAndTitleBarPage page) => page.FindControl<TextBlock>("TitleBarValidationMessage")!;
+
+    /// <summary>The header reads "10 of 8"; the message says what that means and what to do about it.</summary>
+    [AvaloniaFact]
+    public void ABarOverTheLimit_SaysSo_AndHowManyToMove()
+    {
+        var (root, _, page) = Open(OverFullBar);
+        using (root)
+        {
+            Assert.True(OverLimitMessage(page).IsVisible);
+            Assert.Equal("The title bar holds up to 8 actions, and 10 are in it. Move 2 to the menu or hide them.", OverLimitMessage(page).Text);
+        }
+    }
+
+    [AvaloniaFact]
+    public void MovingActionsOutOfABarOverTheLimit_UpdatesTheMessage_AndHidesItAtTheLimit()
+    {
+        var (root, _, page) = Open(OverFullBar);
+        using (root)
+        {
+            Click(Segment(Row(page, "find"), TitleBarItemState.Overflow));
+
+            Assert.True(OverLimitMessage(page).IsVisible);
+            Assert.Equal("The title bar holds up to 8 actions, and 9 are in it. Move 1 to the menu or hide it.", OverLimitMessage(page).Text);
+
+            Click(Segment(Row(page, "split_horizontal"), TitleBarItemState.Hidden));
+
+            Assert.False(OverLimitMessage(page).IsVisible);
+        }
+    }
+
+    /// <summary>Reordering leaves as many actions in the bar, so the message stays.</summary>
+    [AvaloniaFact]
+    public void ReorderingABarOverTheLimit_KeepsTheMessage()
+    {
+        var (root, _, page) = Open(OverFullBar);
+        using (root)
+        {
+            Click(Row(page, "settings").GetLogicalDescendants().OfType<Button>().Single(b => b.Tag as string == "up"));
+
+            Assert.True(OverLimitMessage(page).IsVisible);
+        }
+    }
+
+    /// <summary>Restore and import reload the page; the message follows the reloaded bar.</summary>
+    [AvaloniaFact]
+    public void AReload_ToABarWithinTheLimit_HidesTheMessage()
+    {
+        var (root, _, page) = Open(OverFullBar);
+        using (root)
+        {
+            Assert.True(OverLimitMessage(page).IsVisible);
+
+            page.Load(SettingsPageTests.SessionFor(new Ntilde.Shell.TerminalSettings()));
+
+            Assert.False(OverLimitMessage(page).IsVisible);
+        }
+    }
+
+    [AvaloniaFact]
+    public void ABarAtTheLimit_ShowsNoMessage()
+    {
+        var (root, _, page) = Open(FullBar);
+        using (root)
+        {
+            Assert.False(OverLimitMessage(page).IsVisible);
+        }
+    }
+
     [AvaloniaFact]
     public void ChoosingAPlacement_MovesTheRowToThatGroup()
     {
