@@ -239,13 +239,64 @@ public sealed class SettingsPageTests
         Assert.DoesNotContain("Settings", titles);
     }
 
+    /// <summary>
+    /// With Keep shells running off the mux rows are not listed, but a chord the user gave one still counts
+    /// as taken; the refusal says where that row can be found.
+    /// </summary>
+    [AvaloniaFact]
+    public void ShortcutsPage_ARefusedChord_OwnedByAHiddenMuxRow_SaysWhereToFindIt()
+    {
+        (_, ShortcutsPage shortcuts) = GeneralAndShortcutsPagesFor("Off", AttachSessionBoundToCtrlShiftF9);
+
+        TextBox editor = BindingEditorFor(shortcuts, "New Tab");
+        PressChord(editor, Key.F9, KeyModifiers.Control | KeyModifiers.Shift);
+
+        Assert.Contains(RowTextsFor(editor), t => t.IsVisible && t.Text == HiddenAttachSessionRefusal);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_ARefusedChord_OwnedByAListedMuxRow_SaysOnlyWhoHasIt()
+    {
+        (_, ShortcutsPage shortcuts) = GeneralAndShortcutsPagesFor("KeepOnClose", AttachSessionBoundToCtrlShiftF9);
+
+        TextBox editor = BindingEditorFor(shortcuts, "New Tab");
+        PressChord(editor, Key.F9, KeyModifiers.Control | KeyModifiers.Shift);
+
+        string chord = ShortcutMatcher.Format(Key.F9, KeyModifiers.Control | KeyModifiers.Shift);
+        Assert.Contains(RowTextsFor(editor), t => t.IsVisible && t.Text == $"{chord} is already assigned to {AttachSessionTitle}.");
+    }
+
+    /// <summary>The row is hidden as soon as General turns Keep shells running off, before Save.</summary>
+    [AvaloniaFact]
+    public void ShortcutsPage_ARefusedChord_AfterGeneralTurnsKeepShellsRunningOff_SaysWhereToFindIt()
+    {
+        (GeneralPage general, ShortcutsPage shortcuts) = GeneralAndShortcutsPagesFor("KeepOnClose", AttachSessionBoundToCtrlShiftF9);
+        SelectSessionPersistence(general, "Off");
+
+        TextBox editor = BindingEditorFor(shortcuts, "New Tab");
+        PressChord(editor, Key.F9, KeyModifiers.Control | KeyModifiers.Shift);
+
+        Assert.Contains(RowTextsFor(editor), t => t.IsVisible && t.Text == HiddenAttachSessionRefusal);
+    }
+
+    private static Dictionary<string, string> AttachSessionBoundToCtrlShiftF9 => new()
+    {
+        [ShortcutCatalog.AttachSessionId] = ShortcutMatcher.Format(Key.F9, KeyModifiers.Control | KeyModifiers.Shift),
+    };
+
+    private static string HiddenAttachSessionRefusal
+        => $"{ShortcutMatcher.Format(Key.F9, KeyModifiers.Control | KeyModifiers.Shift)} is already assigned to {AttachSessionTitle}, " +
+           "which is listed only while General › \"Keep shells running when the window closes\" is set to Keep running.";
+
     private static string AttachSessionTitle
         => ShortcutCatalog.GetEntries().Single(e => e.CommandId == ShortcutCatalog.AttachSessionId).Title;
 
     /// <summary>A General and a Shortcuts page sharing one session, as the window builds them.</summary>
-    private static (GeneralPage General, ShortcutsPage Shortcuts) GeneralAndShortcutsPagesFor(string sessionPersistence)
+    private static (GeneralPage General, ShortcutsPage Shortcuts) GeneralAndShortcutsPagesFor(
+        string sessionPersistence,
+        Dictionary<string, string>? keybindings = null)
     {
-        var session = SessionFor(new TerminalSettings { SessionPersistence = sessionPersistence });
+        var session = SessionFor(new TerminalSettings { SessionPersistence = sessionPersistence, Keybindings = keybindings ?? new() });
         var general = new GeneralPage();
         var shortcuts = new ShortcutsPage();
         general.Load(session);
