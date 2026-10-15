@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
 PackageIdentifier: benyblack.ntilde
 PackageVersion: __VERSION__
 
@@ -13,6 +13,10 @@ NestedInstallerFiles:
 
 # Portable packages install per-user and need no elevation.
 UpgradeBehavior: uninstallPrevious
+# Ntilde.exe loads sibling DLLs (Skia, HarfBuzz, conpty, the Rust SSH core) and the Assets/
+# and themes/ folders from its own directory, so winget must put the extracted folder on PATH
+# rather than symlink the exe on its own (requested by the winget-pkgs moderator on #419465).
+ArchiveBinariesDependOnPath: true
 
 Installers:
   - Architecture: x64
@@ -20,4 +24,4 @@ Installers:
     InstallerSha256: __SHA256__
 
 ManifestType: installer
-ManifestVersion: 1.6.0
+ManifestVersion: 1.10.0

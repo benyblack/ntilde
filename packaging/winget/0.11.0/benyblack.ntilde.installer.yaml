@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+PackageIdentifier: benyblack.ntilde
+PackageVersion: 0.11.0
+
+# Ntilde releases ship as self-contained AOT bundles zipped per platform
+# (see .github/workflows/release.yml). There is no signed installer, so the
+# Windows package is delivered as a portable app extracted from the release zip.
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: Ntilde.exe
+    PortableCommandAlias: ntilde
+
+# Portable packages install per-user and need no elevation.
+UpgradeBehavior: uninstallPrevious
+# Ntilde.exe loads sibling DLLs (Skia, HarfBuzz, conpty, the Rust SSH core) and the Assets/
+# and themes/ folders from its own directory, so winget must put the extracted folder on PATH
+# rather than symlink the exe on its own (requested by the winget-pkgs moderator on #419465).
+ArchiveBinariesDependOnPath: true
+
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/benyblack/ntilde/releases/download/v0.11.0/ntilde-win-x64-v0.11.0.zip
+    InstallerSha256: A11280706D4B8D248D706EE18AD30D6C2F59CA75CEEC4FDE422C23B0177D761E
+
+ManifestType: installer
+ManifestVersion: 1.10.0
