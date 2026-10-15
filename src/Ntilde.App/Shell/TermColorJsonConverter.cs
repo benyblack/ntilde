@@ -70,14 +70,7 @@ namespace Ntilde.Shell
         public override void Write(Utf8JsonWriter writer, TermColor value, JsonSerializerOptions options)
         {
             // Keep theme files human-editable and compatible with existing #RRGGBB format.
-            if (value.A == 255)
-            {
-                writer.WriteStringValue($"#{value.R:X2}{value.G:X2}{value.B:X2}");
-            }
-            else
-            {
-                writer.WriteStringValue($"#{value.A:X2}{value.R:X2}{value.G:X2}{value.B:X2}");
-            }
+            writer.WriteStringValue(value.ToHex());
         }
     }
 }

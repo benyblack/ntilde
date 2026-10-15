@@ -335,9 +335,11 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         _baselineTheme = theme.Clone();
         _draftIsSavedTheme = isSavedTheme;
         this.FindControl<TextBox>("EditThemeNameInput")!.Text = theme.Name;
-        this.FindControl<TextBox>("EditThemeFgInput")!.Text = theme.Foreground.ToString();
-        this.FindControl<TextBox>("EditThemeBgInput")!.Text = theme.Background.ToString();
-        this.FindControl<TextBox>("EditThemeCursorInput")!.Text = theme.CursorColor.ToString();
+        // With the alpha (ToHex, not ToString): the change handlers read this text back on a later pass, and
+        // an opaque copy of a translucent colour would read as an edit.
+        this.FindControl<TextBox>("EditThemeFgInput")!.Text = theme.Foreground.ToHex();
+        this.FindControl<TextBox>("EditThemeBgInput")!.Text = theme.Background.ToHex();
+        this.FindControl<TextBox>("EditThemeCursorInput")!.Text = theme.CursorColor.ToHex();
         this.FindControl<Button>("BtnDeleteTheme")!.IsEnabled = isSavedTheme && theme.Name != "Default";
         Text("ThemeEditorTitle").Text = theme.Name;
         Text("ThemeEditorStatus").Text = "";
@@ -425,7 +427,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         if (_editingTheme is not { } theme) return;
 
         var current = theme.GetAnsiColor(index % 8, index >= 8);
-        var hexInput = new TextBox { Text = current.ToString(), Width = 100 };
+        var hexInput = new TextBox { Text = current.ToHex(), Width = 100 }; // with the alpha, as OpenThemeEditor fills its fields
         var preview = new Border { Width = 30, Height = 30, Background = new SolidColorBrush(current.ToAvaloniaColor()), CornerRadius = new CornerRadius(4), Margin = new Thickness(5, 0, 0, 0) };
 
         hexInput.TextChanged += (s, e) =>
