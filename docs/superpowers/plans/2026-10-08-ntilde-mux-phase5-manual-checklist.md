@@ -25,6 +25,7 @@ UI strings are quoted from `docs/USER_MANUAL.md` chapter 12, "Persistent session
 **Results.** Each step has a result line per OS, and each line is one of:
 
 - `PASS (run by implementer, <date>, <log>)`: run by the Task 30 implementer and observed;
+- `PASS (scripted run, <date>, <script>, <where>)`: run by the committed script (see **Scripts** below), unattended;
 - `FAIL (...)`: run, and the product did not do what the step expects;
 - `OPEN — maintainer`: not run yet. These are the GUI steps (automation by SendKeys is unreliable on the maintainer's
   Windows machine), every macOS step, Linux GUI steps that could not be driven headlessly, and anything that needs a
@@ -34,6 +35,12 @@ UI strings are quoted from `docs/USER_MANUAL.md` chapter 12, "Persistent session
 **Logs.** `<logs>` is `t30-smoke\logs\` in the Task 30 session's scratchpad
 (`C:\Users\behna\AppData\Local\Temp\claude\D--projects-nova2\fac44242-4e5b-4e84-9d28-dd71bfdd700a\scratchpad\`). Task 31
 pastes them into the PR. The scripts that produced them are in `t30-smoke\scripts\`.
+
+**Scripts.** Those scripts are now committed, scrubbed and updated for PR #512, under
+[`scripts/mux-smoke/`](../../../scripts/mux-smoke/README.md): one per group of cells, each taking the build and a
+sandbox folder, printing the same PASS/FAIL lines and exiting 1 on a failure. A result line's `Scripted:` names the
+script for that step and OS, and the CI job that runs it (`mux_smoke_linux`, `mux_smoke_windows`) or "manual". A
+scripted run is recorded with its date and tree only where it was run; `Scripted:` alone claims nothing.
 
 **What the implementer ran (2026-10-09, tree `de724c3`).**
 
@@ -123,7 +130,9 @@ ssh -F /dev/null -i <sandbox>/sshkey/id_ed25519 -o IdentitiesOnly=yes -o UserKno
 # ntilde-mux for the host: the image is Debian 12 (glibc 2.36), so build it with the release recipe (glibc 2.34 floor).
 # A build from ntilde-linux-build:local (Ubuntu 24.04) needs GLIBC_2.39 and does not start there.
 scripts/docker-publish-mux-daemon.sh linux-x64 <out>
-docker exec t30-ssh install -d -o nova -g nova /home/nova/.local/share/ntilde/bin
+# As nova, so every folder on the way is nova's: `install -d -o nova` leaves ~/.local/share/ntilde to root, and
+# ntilde-mux then cannot make its root there ("Access to the path ... is denied").
+docker exec -u nova t30-ssh mkdir -p /home/nova/.local/share/ntilde/bin
 docker cp <out>/linux-x64/ntilde-mux t30-ssh:/home/nova/.local/share/ntilde/bin/ntilde-mux
 docker exec t30-ssh chown nova:nova /home/nova/.local/share/ntilde/bin/ntilde-mux
 # (or install it from the GUI: the profile editor's "Install ntilde-mux on this host…", then "Choose file…")
@@ -219,6 +228,8 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
     GUI died, `kill-server` in that container printed "Multiplexer did not stop within 5 s.". The daemon had exited, but
     as a zombie: the container's PID 1 is `sleep infinity`, which reaps nothing (`<logs>\51-linux-zombie-daemon-note.log`).
     A desktop's init reaps it.)
+    Scripted: `scripts/mux-smoke/linux-gui-kill-cells.sh` (manual: it starts the GUI). Scripted run (2026-10-13,
+    linux-arm64 in Docker, dev-mux at `b68fdf3`): 4 of 4.
   - macOS: OPEN — maintainer
 
 ### 5. Killing the multiplexer
@@ -317,11 +328,16 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
     process (pid 43276) is gone"; "kill-server --force on a compatible daemon ...: "Multiplexer stopped.", exit 0".
     (`--force` against a multiplexer of another protocol version was not run: no such build exists. The unit tests in
     `MuxCliTests` cover it.)
+    Scripted: `scripts/mux-smoke/win-cli-cells.ps1` (CI: `mux_smoke_windows`), which now also checks that the descriptor
+    records the daemon's start time (H8: the kill path needs it).
   - Linux: PASS (run by implementer, 2026-10-09, `<logs>\30-linux-cli-cells.log`, 29 of 29). "endpoint
     /w/sbx/data/mux/mux.sock: 600 root socket; its folder /w/sbx/data/mux: 700 root"; "the daemon (pid 5007) has exited,
     with its shells".
-  - macOS: OPEN — maintainer (run the same commands; the Linux script, `t30-smoke/scripts/linux-cli-cells.sh`, needs
-    only `APP=` changed)
+    Scripted: `scripts/mux-smoke/linux-cli-cells.sh` (CI: `mux_smoke_linux`). Scripted run (2026-10-13, linux-arm64 in
+    Docker, dev-mux at `b68fdf3`): 32 of 32 with step 10, now also `attach --help`, `kill-server --bogus` and the
+    descriptor's recorded start time (H8).
+  - macOS: OPEN — maintainer (run the same commands; `scripts/mux-smoke/linux-cli-cells.sh` is Linux only: it reads
+    `/proc` and uses GNU `stat` and `ps --ppid`)
 
 ### 10. Version: `ntilde-mux --version [--json]`; `ntilde mux` has no version verb
 - **Preconditions:** none.
@@ -335,11 +351,15 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   - Windows: PASS (run by implementer, 2026-10-09, `<logs>\10-win-cli-cells.log`) for `ntilde mux version` (usage, exit
     2). `ntilde-mux` does not ship for Windows (the release has linux-x64, linux-arm64 and osx-arm64), so its binary is
     checked in the Linux cell.
+    Scripted: `scripts/mux-smoke/win-cli-cells.ps1` (CI: `mux_smoke_windows`).
   - Linux: PASS (run by implementer, 2026-10-09, `<logs>\30-linux-cli-cells.log` and
     `<logs>\23-remote-ntilde-mux-version.log`). "ntilde-mux 0.12.0 (protocol 1-2, linux-x64)". The release-recipe binary
     on the Debian 12 host printed
     `{"version":"0.12.0","protocolMin":1,"protocolMax":2,"rid":"linux-x64","path":"/home/nova/.local/share/ntilde/bin/ntilde-mux"}`,
     and `ntilde-mux ls --all` there printed "--all needs the ntilde app (it connects to your SSH profiles)" (exit 2).
+    Scripted: `scripts/mux-smoke/linux-cli-cells.sh` with its `ntilde-mux` argument (CI: `mux_smoke_linux`, on
+    mux_daemon_aot's linux-x64 binary). Scripted run (2026-10-13, linux-arm64 in Docker, dev-mux at `b68fdf3`, CI's
+    linux-arm64 binary of `b368c03`): "ntilde-mux 0.12.0 (protocol 1-2, linux-arm64)".
   - macOS: OPEN — maintainer (`ntilde-mux` osx-arm64 from the release, and the signed, notarized check:
     `codesign -dv`, `spctl -a -vv -t install`)
 
@@ -631,10 +651,16 @@ t30-ssh`. If the published port does not come back, use `docker pause t30-ssh` /
   - Windows: PASS (run by implementer, 2026-10-09, `<logs>\40-win-ls-all-cells.log`). "nova@127.0.0.1  unreachable: it
     did not answer in time (exit 0, 15.5 s)"; "after the host is back: the same two remote session ids, still running";
     "the remote ntilde-mux kept its pid across the drop - before 375, after 375".
+    Scripted: `scripts/mux-smoke/win-ls-all-cells.ps1` J3 (manual: it needs Docker Desktop with Linux containers). Not
+    run since the scripts were committed.
   - Linux: PASS (run by implementer, 2026-10-09, `<logs>\53-linux-drop-cells.log`). From the t30-linux container over
     the Docker network: "nova@t30-ssh  unreachable: the connection failed" while the host was off the network (8 s; the
     host name no longer resolves), then the same two ids `374cb101-…` and `3f0ccbcc-…`, and "remote ntilde-mux serve pid
     after: 375". (Its closing `kill-server` met the container's zombie again; see step 4.)
+    Scripted: `scripts/mux-smoke/linux-ls-all-cells.sh` L3, on this computer rather than from a second container (CI:
+    `mux_smoke_linux`). Scripted run (2026-10-13, linux-arm64 in Docker, dev-mux at `b68fdf3`): "nova@127.0.0.1
+    unreachable: the connection failed" for both key profiles (0 s: the published port refused at once), then the same
+    two ids, and the remote ntilde-mux kept its pid.
   - macOS: OPEN — maintainer
 
 ### 28. The proxy killed; the remote multiplexer killed
@@ -901,10 +927,16 @@ in the local daemon and in the host's `ntilde-mux`.*
     failed on the script's own expectation: it looked for the profile id with dashes, and the endpoint is
     `ssh:7a3c0f30000040008000000000000030`. Fixed in the script and re-run;
     `<logs>\40-win-ls-all-cells.run1-script-bug.log`.)
+    Scripted: `scripts/mux-smoke/win-ls-all-cells.ps1` J1, J2, J4 and J5, updated for H7 (manual: Docker Desktop with
+    Linux containers). Not run since the scripts were committed.
   - Linux: PASS before PR #512 (run by implementer, 2026-10-09, `<logs>\50-linux-ls-all-agent-cells.log`); action 1 is
     OPEN — maintainer since H7. A native and an OpenSSH profile, both key only, against `t30-ssh:22` over the Docker
     network: "ls --all: this computer's session, then both key profiles' remote sessions under nova@t30-ssh, exit 0 - 4
     remote rows"; the OpenSSH attempt ran "(batch mode: ssh will not prompt)".
+    Scripted: `scripts/mux-smoke/linux-ls-all-cells.sh` L1, L2, L4 and L5 (CI: `mux_smoke_linux`). PASS (scripted run,
+    2026-10-13, linux-arm64 in Docker, dev-mux at `b68fdf3`), action 1 included: "nova@127.0.0.1  unreachable: no
+    multiplexer is running" for both key profiles, exit 0; `--json` "error":"no multiplexer is running"; `pgrep` printed
+    nothing.
   - macOS: OPEN — maintainer
 
 ### 42. `ls --all` and the OpenSSH backend
@@ -922,6 +954,8 @@ in the local daemon and in the host's `ntilde-mux`.*
   - Linux: PASS (run by implementer, 2026-10-09, `<logs>\50-linux-ls-all-agent-cells.log`). "nova@t30-ssh  unreachable:
     it goes through a jump host, which ls --all does not sign in through", and the log line "not connected to: OpenSSH
     through a jump host or proxy could prompt on this terminal".
+    Scripted: `scripts/mux-smoke/linux-ls-all-cells.sh` (CI: `mux_smoke_linux`). PASS (scripted run, 2026-10-13,
+    linux-arm64 in Docker, dev-mux at `b68fdf3`): the jump-host line, and the log's "(batch mode: ssh will not prompt)".
   - macOS: OPEN — maintainer
 
 ### 43. `ls --all` and a host key it cannot trust (scripted)
@@ -941,7 +975,11 @@ in the local daemon and in the host's `ntilde-mux`.*
     unreachable: signing in needs an answer, which ls --all never asks for (exit 1, 0.5 s)". Exit 1 because no local
     multiplexer was running. The log reads "NeedsUser ...: the host key of nova@127.0.0.1 is not one the user trusts
     (unknown, or changed), and an automatic reconnect accepts no new key".
-  - Linux: OPEN — maintainer
+    Scripted: `scripts/mux-smoke/win-ls-all-cells.ps1` J6 (manual). Not run since the scripts were committed.
+  - Linux: PASS (scripted run, 2026-10-13, `scripts/mux-smoke/linux-ls-all-cells.sh` L6, linux-arm64 in Docker,
+    dev-mux at `b68fdf3`; CI: `mux_smoke_linux`). The native profile and the OpenSSH one (batch mode: "Host key
+    verification failed.") both read "unreachable: signing in needs an answer, which ls --all never asks for"; the
+    sandbox's native and OpenSSH known-hosts files were unchanged, and ntilde-mux kept its pid.
   - macOS: OPEN — maintainer
 
 ## K. Agents
@@ -969,6 +1007,8 @@ in the local daemon and in the host's `ntilde-mux`.*
     ```
 
     `read_screen` on `eb783ce8-…`: "Screen 80x24, …  0| t30-session-W".
+    Scripted: `scripts/mux-smoke/linux-agent-cells.sh` (manual: it starts the GUI). Scripted run (2026-10-13,
+    linux-arm64 in Docker, dev-mux at `b68fdf3`): 6 of 6.
   - macOS: OPEN — maintainer
 
 ### 45. Status, capture, and the act tools on a windowless session
@@ -1025,6 +1065,8 @@ in the local daemon and in the host's `ntilde-mux`.*
   - Windows: PASS (run by implementer, 2026-10-09, `<logs>\10-win-cli-cells.log`). Every CLI cell there ran through
     `ntilde.com`: "attach with no daemon: exit 2"; "attach to a prefix nothing matches: exit 2"; "ntilde.com forwards exit
     2 for a usage error". `ls --json` shows the spawned session's `"arguments":"/q /k echo t30-session-B"` intact.
+    Scripted: `scripts/mux-smoke/win-cli-cells.ps1` (CI: `mux_smoke_windows`), which now reads the session's arguments
+    back from `ls --json` as one check.
   - Linux: N/A (Windows only)
   - macOS: N/A (Windows only)
 
