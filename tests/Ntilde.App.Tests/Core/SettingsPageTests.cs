@@ -204,12 +204,16 @@ public sealed class SettingsPageTests
     }
 
     /// <summary>
-    /// App and pane shortcuts are matched before the terminal sees the key, so a plain-Esc binding
-    /// would take Esc away from every program running in it. Command Assist: Close is moved off Esc
-    /// first, so the duplicate check cannot be what stops the press.
+    /// These are matched by the window before the terminal sees the key, so a plain-Esc binding
+    /// would take Esc away from every program running in it. Command Assist Toggle is one of them,
+    /// although it is listed under Command Assist (PR #530 review). Command Assist: Close is moved
+    /// off Esc first, so the duplicate check cannot be what stops the press.
     /// </summary>
-    [AvaloniaFact]
-    public void ShortcutsPage_PlainEsc_OnAnAppRow_StillCancels_AndRecordsNothing()
+    [AvaloniaTheory]
+    [InlineData("Settings", "settings")]
+    [InlineData("Close Pane", "close_pane")]
+    [InlineData("Command Assist Toggle", "command_assist_toggle")]
+    public void ShortcutsPage_PlainEsc_OnARowMatchedBeforeTheTerminal_StillCancels_AndRecordsNothing(string title, string commandId)
     {
         string shiftEsc = ShortcutMatcher.Format(Key.Escape, KeyModifiers.Shift);
         var session = SessionFor(new TerminalSettings { Keybindings = new() { ["command_assist_dismiss"] = shiftEsc } });
@@ -218,12 +222,12 @@ public sealed class SettingsPageTests
         int changes = 0;
         session.ShortcutsChanged += () => changes++;
 
-        TextBox editor = BindingEditorFor(page, "Settings");
+        TextBox editor = BindingEditorFor(page, title);
         string before = editor.Text!;
         PressChord(editor, Key.Escape, KeyModifiers.None);
 
         Assert.Equal(before, editor.Text);
-        Assert.False(session.ShortcutDraft.ContainsKey("settings"));
+        Assert.False(session.ShortcutDraft.ContainsKey(commandId));
         Assert.Equal(0, changes);
     }
 

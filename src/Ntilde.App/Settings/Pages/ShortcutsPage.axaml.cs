@@ -239,10 +239,13 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         TextBlock errorText,
         KeyEventArgs e)
     {
-        // Esc on its own cancels on app and pane rows only. Their shortcuts are matched before the
-        // terminal sees the key, so a plain-Esc binding would take Esc from every program running in
-        // it. Command Assist rows record it like any key; the page's note recommends Esc for them.
-        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && entry.Scope != ShortcutScope.CommandAssist)
+        // Esc on its own is recorded only for the five keys used inside the Command Assist suggestion
+        // surface, which act only while it is open. Everything else, Command Assist Toggle included,
+        // is matched before the terminal sees the key, so a plain-Esc binding would take Esc from
+        // every program running in it; there Esc cancels.
+        if (e.Key == Key.Escape &&
+            e.KeyModifiers == KeyModifiers.None &&
+            !Ntilde.Controls.AssistShortcutBindingResolver.IsInSurfaceCommand(entry.CommandId))
         {
             bindingEditor.Text = GetEffectiveShortcutBinding(entry);
             errorText.IsVisible = false;

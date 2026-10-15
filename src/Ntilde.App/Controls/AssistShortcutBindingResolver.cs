@@ -42,6 +42,18 @@ namespace Ntilde.Controls
         /// <summary>The pin/unpin chord, dispatched from the window rather than by the router.</summary>
         internal const string PinCommandId = "command_assist_pin";
 
+        /// <summary>
+        /// Whether a command is one of the five the router handles inside the suggestion surface.
+        /// </summary>
+        /// <remarks>
+        /// These act only while a surface is on screen, so binding one to a key the terminal also
+        /// needs (plain <c>Escape</c>) never takes that key away from it. The other Command Assist
+        /// chords - toggle, help, history, pin - are matched by the window before the terminal sees
+        /// the key, exactly like app shortcuts.
+        /// </remarks>
+        internal static bool IsInSurfaceCommand(string commandId) =>
+            commandId is DismissCommandId or SelectionUpCommandId or SelectionDownCommandId or AcceptCommandId or InsertCommandId;
+
         internal static AssistShortcutBindings Resolve(IReadOnlyDictionary<string, string>? overrides)
         {
             AssistKeyBindings defaults = AssistKeyBindings.Default;
