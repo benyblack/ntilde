@@ -172,6 +172,78 @@ public sealed class SettingsThemeEditorTests
         }
     }
 
+    private const string TranslucentForeground = "#80E6EDF3";
+    private const string TranslucentRed = "#80D73A49";
+
+    /// <summary>Settings on a theme with one translucent colour (#AARRGGBB), as a hand-edited theme file can hold.</summary>
+    private static (SettingsTestRoot Root, Ntilde.SettingsWindow Window, AppearancePage Page) OpenTranslucent(string property, string colour)
+    {
+        var root = SettingsTestRoot.WithSettings("""{"ThemeName":"Translucent"}""");
+        root.Tree.WriteFile(Path.Combine("themes", "Translucent.json"), $$"""{"Name":"Translucent","{{property}}":"{{colour}}"}""");
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        return (root, window, window.GetPage<AppearancePage>());
+    }
+
+    /// <summary>
+    /// The fields show a translucent colour with its alpha, so the text they read back on the next pass is
+    /// the colour as loaded, not an opaque copy that reads as an edit and blocks Save.
+    /// </summary>
+    [AvaloniaFact]
+    public void Edit_OnATranslucentColour_ShowsItsAlpha_AndLeavesNoUnsavedEdits()
+    {
+        var (root, _, page) = OpenTranslucent("Foreground", TranslucentForeground);
+        using (root)
+        {
+            Click(page, "BtnEditTheme");
+            Dispatcher.UIThread.RunJobs(); // the editor's own fill-in reaches the change handlers
+
+            Assert.Equal(TranslucentForeground, page.FindControl<TextBox>("EditThemeFgInput")!.Text);
+            Assert.Null(page.Validate());
+        }
+    }
+
+    [AvaloniaFact]
+    public void ASwatchFlyout_OnATranslucentColour_LeavesNoUnsavedEdits()
+    {
+        var (root, window, page) = OpenTranslucent("Red", TranslucentRed);
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs();
+                Assert.Null(page.Validate());
+
+                Click(page, "EditSwatch1"); // red
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.Null(page.Validate());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>Saving an edit to another colour writes the translucent one back as it was, not opaque.</summary>
+    [AvaloniaFact]
+    public void Save_AfterEditingAnotherColour_KeepsATranslucentColoursAlpha()
+    {
+        var (root, _, page) = OpenTranslucent("Foreground", TranslucentForeground);
+        using (root)
+        {
+            Click(page, "BtnEditTheme");
+            Type(page, "EditThemeBgInput", "#123456");
+
+            Click(page, "BtnSaveTheme");
+
+            string saved = File.ReadAllText(Path.Combine(root.Root, "themes", "Translucent.json"));
+            Assert.Contains($"\"Foreground\": \"{TranslucentForeground}\"", saved);
+        }
+    }
+
     /// <summary>
     /// Review focus 5: at the minimum size both editor columns are fully on screen, and the swatch
     /// grid keeps its full width.
