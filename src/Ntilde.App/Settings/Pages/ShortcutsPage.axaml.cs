@@ -61,10 +61,21 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
     public void Load(SettingsSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
+        if (!ReferenceEquals(_session, session))
+        {
+            if (_session != null)
+            {
+                _session.KeepShellsRunningChanged -= PopulateForCurrentSearch;
+            }
+
+            // The mux rows follow the General dropdown as it is now, not as Settings opened.
+            session.KeepShellsRunningChanged += PopulateForCurrentSearch;
+        }
+
         _session = session;
         // A reload (restore / import) brings a new draft; the message from a refused Save described the old one.
         ClearShortcutValidationMessage();
-        PopulateShortcutBindingsPanel(this.FindControl<TextBox>("ShortcutSearchInput")!.Text ?? "");
+        PopulateForCurrentSearch();
     }
 
     public SettingsValidationError? Validate()
@@ -114,6 +125,9 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
     internal static string DescribeDefaultBinding(string binding) =>
         string.IsNullOrWhiteSpace(binding) ? "Default none" : $"Default {binding}";
 
+    private void PopulateForCurrentSearch()
+        => PopulateShortcutBindingsPanel(this.FindControl<TextBox>("ShortcutSearchInput")!.Text ?? "");
+
     private void PopulateShortcutBindingsPanel(string query)
     {
         var panel = this.FindControl<StackPanel>("ShortcutBindingsPanel");
@@ -124,9 +138,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
 
         panel.Children.Clear();
         string? activeScope = null;
-        IReadOnlyList<ShortcutCatalogEntry> entries = FilterShortcutCatalogEntries(
-            query,
-            Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(Session.Settings.SessionPersistence));
+        IReadOnlyList<ShortcutCatalogEntry> entries = FilterShortcutCatalogEntries(query, Session.KeepShellsRunning);
         foreach (ShortcutCatalogEntry entry in entries)
         {
             string scopeLabel = FormatScopeLabel(entry.Scope);

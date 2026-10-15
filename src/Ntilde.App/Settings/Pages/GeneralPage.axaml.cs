@@ -8,10 +8,21 @@ namespace Ntilde.Settings.Pages;
 /// <summary>General: update checks, notifications and whether shells keep running when the window closes.</summary>
 public partial class GeneralPage : UserControl, ISettingsPage
 {
+    private SettingsSession? _session;
+
     public GeneralPage()
     {
         InitializeComponent();
         QuitLink.Click += (_, _) => QuitAndCloseAllRequested?.Invoke();
+
+        // Other pages follow the choice before Save (the Shortcuts page lists the mux commands only while it is on).
+        PersistenceCombo.SelectionChanged += (_, _) =>
+        {
+            if (_session != null && ComboTags.SelectedValue(PersistenceCombo) is { } persistence)
+            {
+                _session.SetKeepShellsRunning(SessionPersistenceMode.IsKeepOnClose(persistence));
+            }
+        };
     }
 
     /// <summary>
@@ -34,6 +45,7 @@ public partial class GeneralPage : UserControl, ISettingsPage
     public void Load(SettingsSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
+        _session = session;
         TerminalSettings settings = session.Settings;
         Toggle("AutomaticUpdateChecksToggle").IsChecked = settings.AutomaticUpdateChecks;
         Toggle("LongCommandNotificationsToggle").IsChecked = settings.LongCommandNotificationsEnabled;
