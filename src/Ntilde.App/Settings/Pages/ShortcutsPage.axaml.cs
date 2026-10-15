@@ -239,7 +239,10 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         TextBlock errorText,
         KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
+        // Esc on its own cancels on app and pane rows only. Their shortcuts are matched before the
+        // terminal sees the key, so a plain-Esc binding would take Esc from every program running in
+        // it. Command Assist rows record it like any key; the page's note recommends Esc for them.
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && entry.Scope != ShortcutScope.CommandAssist)
         {
             bindingEditor.Text = GetEffectiveShortcutBinding(entry);
             errorText.IsVisible = false;
