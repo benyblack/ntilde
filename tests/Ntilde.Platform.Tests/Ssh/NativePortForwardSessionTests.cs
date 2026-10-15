@@ -79,7 +79,7 @@ public sealed class NativePortForwardSessionTests
 
         await WaitUntilAsync(() => interop.ClosedChannelIds.Count == 1);
         Assert.Single(interop.ClosedChannelIds);
-        await Assert.ThrowsAnyAsync<SocketException>(() => ConnectLoopbackAsync(listenPort));
+        AssertListenerReleased(listenPort);
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public sealed class NativePortForwardSessionTests
 
         await WaitUntilAsync(() => interop.ClosedChannelIds.Count == 1);
         Assert.Single(interop.ClosedChannelIds);
-        await Assert.ThrowsAnyAsync<SocketException>(() => ConnectLoopbackAsync(dynamicPort));
+        AssertListenerReleased(dynamicPort);
     }
 
     [Fact]
@@ -1085,6 +1085,17 @@ public sealed class NativePortForwardSessionTests
         }
 
         return buffer;
+    }
+
+    // Proves the session no longer holds the port by binding it again. Asserting that a
+    // connect is refused instead would flake: the freed port sits in the ephemeral range,
+    // so a socket from a test running in parallel (or a Linux TCP self-connect) can take
+    // it and make the connect succeed.
+    private static void AssertListenerReleased(int port)
+    {
+        using var probe = new TcpListener(IPAddress.Loopback, port);
+        probe.Start();
+        probe.Stop();
     }
 
     private static int GetFreePort()
