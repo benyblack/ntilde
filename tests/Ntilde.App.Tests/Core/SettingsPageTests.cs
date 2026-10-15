@@ -134,6 +134,89 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
+    public void ShortcutsPage_ARefusedChord_ShowsTheRowError_ButNotTheSaveMessage()
+    {
+        var session = SessionFor(new TerminalSettings());
+        var page = new ShortcutsPage();
+        page.Load(session);
+        ShortcutCatalogEntry closeTab = ShortcutCatalog.GetEntries().Single(e => e.CommandId == "close_tab");
+        Assert.True(ShortcutMatcher.TryParse(closeTab.DefaultBinding, out Key key, out KeyModifiers modifiers));
+
+        TextBox editor = BindingEditorFor(page, "Settings");
+        PressChord(editor, key, modifiers);
+
+        // Nothing was recorded, so nothing blocks Save; the row says why the chord was refused.
+        Assert.False(session.ShortcutDraft.ContainsKey("settings"));
+        string chord = ShortcutMatcher.Format(key, modifiers);
+        Assert.Contains(RowTextsFor(editor), t => t.IsVisible && t.Text == $"{chord} is already assigned to Close Tab.");
+        Assert.False(page.FindControl<TextBlock>("ShortcutValidationMessage")!.IsVisible);
+    }
+
+    /// <summary>Restore and import reload every page; the rows are rebuilt, so the message from the old draft goes too.</summary>
+    [AvaloniaFact]
+    public void ShortcutsPage_Reload_HidesTheSaveMessage()
+    {
+        (ShortcutsPage page, _, TextBlock message) = ShortcutsPageAfterARefusedSave();
+
+        page.Load(SessionFor(new TerminalSettings()));
+
+        Assert.False(message.IsVisible);
+    }
+
+    /// <summary>The message describes the draft, so an edit to an unrelated row must not hide it while the duplicate remains.</summary>
+    [AvaloniaTheory]
+    [InlineData("record")]
+    [InlineData("reset")]
+    [InlineData("esc")]
+    public void ShortcutsPage_WhileTheDraftStillHasADuplicate_AnEditElsewhere_KeepsTheSaveMessage(string edit)
+    {
+        (ShortcutsPage page, _, TextBlock message) = ShortcutsPageAfterARefusedSave();
+        TextBox editor = BindingEditorFor(page, "New Tab");
+
+        switch (edit)
+        {
+            case "record":
+                PressChord(editor, Key.F9, KeyModifiers.Alt);
+                break;
+            case "reset":
+                ResetButtonFor(editor).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                break;
+            default:
+                PressChord(editor, Key.Escape, KeyModifiers.None);
+                break;
+        }
+
+        Assert.True(message.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_ResettingTheDuplicate_HidesTheSaveMessage()
+    {
+        (ShortcutsPage page, SettingsSession session, TextBlock message) = ShortcutsPageAfterARefusedSave();
+
+        ResetButtonFor(BindingEditorFor(page, "Settings")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.True(ShortcutBindingResolver.Resolve(ShortcutCatalog.GetDefinitions(), session.ShortcutDraft).IsValid);
+        Assert.False(message.IsVisible);
+    }
+
+    /// <summary>
+    /// A Shortcuts page whose draft binds Settings to Command Palette's chord, as a hand-edited
+    /// settings.json can, after Save was refused and showed the message.
+    /// </summary>
+    private static (ShortcutsPage Page, SettingsSession Session, TextBlock Message) ShortcutsPageAfterARefusedSave()
+    {
+        var session = SessionFor(new TerminalSettings());
+        session.ShortcutDraft["settings"] = ShortcutCatalog.GetEntries().Single(e => e.CommandId == "command_palette").DefaultBinding;
+        var page = new ShortcutsPage();
+        page.Load(session);
+        Assert.NotNull(page.Validate());
+        var message = page.FindControl<TextBlock>("ShortcutValidationMessage")!;
+        Assert.True(message.IsVisible);
+        return (page, session, message);
+    }
+
+    [AvaloniaFact]
     public void ShortcutsPage_RecordingAChord_UpdatesTheDraft_AndTellsOtherPages()
     {
         var session = SessionFor(new TerminalSettings());
@@ -161,8 +244,7 @@ public sealed class SettingsPageTests
         int changes = 0;
         session.ShortcutsChanged += () => changes++;
 
-        Button reset = BindingEditorFor(page, "Settings").GetLogicalParent()!
-            .GetLogicalChildren().OfType<Button>().Single(b => (string?)b.Content == "Reset");
+        Button reset = ResetButtonFor(BindingEditorFor(page, "Settings"));
         reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         Assert.False(session.ShortcutDraft.ContainsKey("settings"));
@@ -242,8 +324,7 @@ public sealed class SettingsPageTests
         PressChord(editor, Key.Escape, KeyModifiers.None);
 
         Assert.False(session.ShortcutDraft.ContainsKey("command_assist_selection_up"));
-        TextBlock[] rowTexts = editor.GetLogicalParent()!.GetLogicalParent()!.GetLogicalChildren().OfType<TextBlock>().ToArray();
-        Assert.Contains(rowTexts, t => t.IsVisible && t.Text == "Escape is already assigned to Command Assist: Close.");
+        Assert.Contains(RowTextsFor(editor), t => t.IsVisible && t.Text == "Escape is already assigned to Command Assist: Close.");
     }
 
     [AvaloniaFact]
@@ -676,6 +757,14 @@ public sealed class SettingsPageTests
             .OfType<TextBlock>().Any(t => t.Classes.Contains("RowLabel") && t.Text == title));
         return row.GetLogicalDescendants().OfType<TextBox>().Single();
     }
+
+    /// <summary>The Reset button on the same row as <paramref name="editor"/>.</summary>
+    internal static Button ResetButtonFor(TextBox editor)
+        => editor.GetLogicalParent()!.GetLogicalChildren().OfType<Button>().Single(b => (string?)b.Content == "Reset");
+
+    /// <summary>The row's own text lines below the editor, among them its error line.</summary>
+    internal static TextBlock[] RowTextsFor(TextBox editor)
+        => editor.GetLogicalParent()!.GetLogicalParent()!.GetLogicalChildren().OfType<TextBlock>().ToArray();
 
     internal static void PressChord(Control target, Key key, KeyModifiers modifiers)
         => target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers, Source = target });
