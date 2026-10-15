@@ -587,6 +587,25 @@ public sealed class SettingsWindowBackupSectionTests
         Assert.Contains("keeps items you have locally", withoutSnippetsText, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>An import reloads every page from disk, as a restore does, so it warns the same way.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void ImportModeBodyText_SaysUnsavedChangesAreDiscarded(int snippetCount)
+    {
+        var inspection = new BundleInspection(
+            NewManifestForBodyTextTest(),
+            new Dictionary<BackupCategory, int>
+            {
+                [BackupCategory.Settings] = 1,
+                [BackupCategory.Snippets] = snippetCount,
+            });
+
+        string text = BackupPage.BuildImportModeBodyText(inspection);
+
+        Assert.EndsWith(SettingsPageTests.UnsavedChangesDiscarded, text, StringComparison.Ordinal);
+    }
+
     private static BackupManifest NewManifestForBodyTextTest() => new()
     {
         SchemaVersion = BackupManifest.CurrentSchemaVersion,
