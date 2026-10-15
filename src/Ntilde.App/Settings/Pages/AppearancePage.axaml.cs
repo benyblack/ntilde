@@ -53,7 +53,8 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
 
-        // Load also runs after a backup restore. The draft was cut from the old settings; drop it.
+        // Load also runs after a backup restore or import. The draft was cut from the old settings; drop it
+        // (the restored ones may not hold the theme). Both confirmations warn that unsaved edits go.
         ShowMainView(restoreFocus: false);
         PopulateThemes();
         LoadControls();

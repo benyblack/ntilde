@@ -272,9 +272,17 @@ public partial class BackupPage : UserControl, ISettingsPage
         string headline = $"Restore the snapshot from {when} ({ReasonLabel(row.Reason)})?";
         string body =
             "This replaces the categories the snapshot contains with their state at that time. " +
-            "A snapshot of your current configuration is taken first, so this restore itself can be undone.";
+            "A snapshot of your current configuration is taken first, so this restore itself can be undone. " +
+            UnsavedChangesDiscarded;
         return (headline, body);
     }
+
+    /// <summary>
+    /// A successful import or restore reloads every page from disk (see the I1 comments above), which drops
+    /// what the window has not saved, the theme editor's draft included. Both confirmations say so.
+    /// </summary>
+    private const string UnsavedChangesDiscarded =
+        "Anything you have changed in this window but not saved, including unsaved theme edits, is discarded.";
 
     /// <summary>
     /// Confirms before restoring a snapshot. Restore is the more surprising destructive action
@@ -367,7 +375,8 @@ public partial class BackupPage : UserControl, ISettingsPage
         return "Merge keeps items you have locally that the bundle does not contain. " +
                "Replace makes the bundle the truth for the categories above. " +
                "A snapshot is taken first either way, so you can roll back." +
-               snippetsCaveat;
+               snippetsCaveat + " " +
+               UnsavedChangesDiscarded;
     }
 
     /// <summary>

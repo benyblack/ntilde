@@ -112,6 +112,23 @@ public sealed class SettingsPageTests
         Assert.Contains("taken first", body, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// A restore reloads every page from disk, so unsaved changes go, the theme editor's draft too
+    /// (which Save and search jumps refuse to drop). The confirmation says so.
+    /// </summary>
+    [Fact]
+    public void BackupPage_RestoreConfirmationText_SaysUnsavedChangesAreDiscarded()
+    {
+        var row = new BackupPage.SnapshotRow("id", "display", SnapshotReason.Auto, DateTimeOffset.UnixEpoch);
+
+        var (_, body) = BackupPage.BuildRestoreConfirmationText(row);
+
+        Assert.EndsWith(UnsavedChangesDiscarded, body, StringComparison.Ordinal);
+    }
+
+    internal const string UnsavedChangesDiscarded =
+        "Anything you have changed in this window but not saved, including unsaved theme edits, is discarded.";
+
     [AvaloniaFact]
     public void ShortcutsPage_WithADuplicateBinding_RefusesToValidate_AndSaysWhy()
     {
