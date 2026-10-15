@@ -53,6 +53,33 @@ public sealed class SettingsSessionTests
     }
 
     [Fact]
+    public void KeepShellsRunning_StartsFromTheSettings_AndAReloadTakesItFromTheNewOnes()
+    {
+        var session = new SettingsSession(new TerminalSettings { SessionPersistence = "KeepOnClose" }, NoSystemFonts);
+        Assert.True(session.KeepShellsRunning);
+
+        session.Reload(new TerminalSettings { SessionPersistence = "Off" });
+
+        Assert.False(session.KeepShellsRunning);
+    }
+
+    [Fact]
+    public void SetKeepShellsRunning_RaisesTheEvent_OnlyWhenTheValueChanges()
+    {
+        var session = new SettingsSession(new TerminalSettings { SessionPersistence = "Off" }, NoSystemFonts);
+        int changes = 0;
+        session.KeepShellsRunningChanged += () => changes++;
+
+        session.SetKeepShellsRunning(false);
+        Assert.Equal(0, changes);
+
+        session.SetKeepShellsRunning(true);
+        session.SetKeepShellsRunning(true);
+        Assert.Equal(1, changes);
+        Assert.True(session.KeepShellsRunning);
+    }
+
+    [Fact]
     public void FontChoices_IncludeTheGlobalFontAndEveryLocalProfileOverride_EvenWhenNotInstalled()
     {
         var settings = new TerminalSettings { FontFamily = "Global Mono" };

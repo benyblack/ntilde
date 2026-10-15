@@ -42,6 +42,13 @@ public sealed class SettingsSession
     public TitleBarDraftState TitleBarDraft { get; } = new();
 
     /// <summary>
+    /// Whether the General page's "Keep shells running" choice is on right now. The General page
+    /// still writes the setting itself on Save; this is the live value other pages follow (the
+    /// Shortcuts page lists the mux commands only while it is on).
+    /// </summary>
+    public bool KeepShellsRunning { get; private set; }
+
+    /// <summary>
     /// Font families to offer: installed, bundled, the global font and every local profile's
     /// override, even when not installed here, so a configured font is always selectable.
     /// </summary>
@@ -69,6 +76,20 @@ public sealed class SettingsSession
 
     /// <summary>Raised after a snippet was added, edited or deleted, or the snippet file was replaced.</summary>
     public event Action? SnippetsChanged;
+
+    /// <summary>Raised when <see cref="KeepShellsRunning"/> changes; not on a reload, which reloads every page anyway.</summary>
+    public event Action? KeepShellsRunningChanged;
+
+    public void SetKeepShellsRunning(bool value)
+    {
+        if (KeepShellsRunning == value)
+        {
+            return;
+        }
+
+        KeepShellsRunning = value;
+        KeepShellsRunningChanged?.Invoke();
+    }
 
     public void ReplaceShortcutDraft(Dictionary<string, string> draft)
     {
@@ -112,6 +133,7 @@ public sealed class SettingsSession
     private void ResetFromSettings()
     {
         ShortcutDraft = new Dictionary<string, string>(Settings.Keybindings, StringComparer.OrdinalIgnoreCase);
+        KeepShellsRunning = Ntilde.Shell.Mux.SessionPersistenceMode.IsKeepOnClose(Settings.SessionPersistence);
 
         // Seeded from the resolver's output: it alone normalizes hand-edited ids ("Find" vs
         // "find"), and a second reader here would drift from it.

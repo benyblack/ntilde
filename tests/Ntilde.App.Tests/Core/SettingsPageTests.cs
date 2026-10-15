@@ -201,6 +201,73 @@ public sealed class SettingsPageTests
     }
 
     /// <summary>
+    /// The mux rows follow the General dropdown as it is now, not the value Settings opened with:
+    /// the dropdown reaches the settings only on Save.
+    /// </summary>
+    [AvaloniaFact]
+    public void ShortcutsPage_TurningKeepShellsRunningOnInGeneral_ShowsTheMuxRows()
+    {
+        (GeneralPage general, ShortcutsPage shortcuts) = GeneralAndShortcutsPagesFor("Off");
+        Assert.DoesNotContain(AttachSessionTitle, ShortcutRowTitles(shortcuts));
+
+        SelectSessionPersistence(general, "KeepOnClose");
+
+        Assert.Contains(AttachSessionTitle, ShortcutRowTitles(shortcuts));
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_TurningKeepShellsRunningOffInGeneral_HidesTheMuxRows()
+    {
+        (GeneralPage general, ShortcutsPage shortcuts) = GeneralAndShortcutsPagesFor("KeepOnClose");
+        Assert.Contains(AttachSessionTitle, ShortcutRowTitles(shortcuts));
+
+        SelectSessionPersistence(general, "Off");
+
+        Assert.DoesNotContain(AttachSessionTitle, ShortcutRowTitles(shortcuts));
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsPage_RefreshingForKeepShellsRunning_KeepsTheSearchFilter()
+    {
+        (GeneralPage general, ShortcutsPage shortcuts) = GeneralAndShortcutsPagesFor("Off");
+        shortcuts.FindControl<TextBox>("ShortcutSearchInput")!.Text = "Session";
+
+        SelectSessionPersistence(general, "KeepOnClose");
+
+        string[] titles = ShortcutRowTitles(shortcuts);
+        Assert.Contains(AttachSessionTitle, titles);
+        Assert.DoesNotContain("Settings", titles);
+    }
+
+    private static string AttachSessionTitle
+        => ShortcutCatalog.GetEntries().Single(e => e.CommandId == ShortcutCatalog.AttachSessionId).Title;
+
+    /// <summary>A General and a Shortcuts page sharing one session, as the window builds them.</summary>
+    private static (GeneralPage General, ShortcutsPage Shortcuts) GeneralAndShortcutsPagesFor(string sessionPersistence)
+    {
+        var session = SessionFor(new TerminalSettings { SessionPersistence = sessionPersistence });
+        var general = new GeneralPage();
+        var shortcuts = new ShortcutsPage();
+        general.Load(session);
+        shortcuts.Load(session);
+        return (general, shortcuts);
+    }
+
+    private static void SelectSessionPersistence(GeneralPage page, string tag)
+    {
+        var combo = page.FindControl<ComboBox>("SessionPersistenceList")!;
+        combo.SelectedItem = combo.Items.OfType<ComboBoxItem>().Single(item => (string?)item.Tag == tag);
+    }
+
+    /// <summary>The titles of the binding rows the Shortcuts page lists now.</summary>
+    private static string[] ShortcutRowTitles(ShortcutsPage page)
+        => page.FindControl<StackPanel>("ShortcutBindingsPanel")!.Children.OfType<Border>()
+            .SelectMany(row => row.GetLogicalDescendants().OfType<TextBlock>())
+            .Where(text => text.Classes.Contains("RowLabel"))
+            .Select(text => text.Text ?? "")
+            .ToArray();
+
+    /// <summary>
     /// A Shortcuts page whose draft binds Settings to Command Palette's chord, as a hand-edited
     /// settings.json can, after Save was refused and showed the message.
     /// </summary>
