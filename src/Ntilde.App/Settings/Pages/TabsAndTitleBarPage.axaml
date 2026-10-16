@@ -22,8 +22,10 @@
 
             <settings:SettingGroup Header="TITLE BAR ACTIONS">
                 <StackPanel Spacing="12" Margin="0,8,0,0">
-                    <!-- A lightweight replica of the bar, rebuilt on every draft change (spec §6). -->
-                    <Border Name="TitleBarPreview" Classes="MiniTitleBar" AutomationProperties.Name="Title bar preview"/>
+                    <!-- A lightweight replica of the bar, rebuilt on every draft change (spec §6). A picture to a screen reader:
+                         a Border's own role is "none". -->
+                    <Border Name="TitleBarPreview" Classes="MiniTitleBar" AutomationProperties.Name="Title bar preview"
+                            AutomationProperties.ControlTypeOverride="Image"/>
                     <TextBlock Name="TitleBarValidationMessage" Foreground="{DynamicResource NtRed}" FontSize="12" IsVisible="False" TextWrapping="Wrap"/>
                     <StackPanel Name="TitleBarItemsPanel" Grid.IsSharedSizeScope="True"/>
                 </StackPanel>
