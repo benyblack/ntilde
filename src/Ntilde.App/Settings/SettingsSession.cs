@@ -54,6 +54,12 @@ public sealed class SettingsSession
     /// </summary>
     public IReadOnlyList<string> FontChoices { get; private set; } = Array.Empty<string>();
 
+    /// <summary>
+    /// Theme names to offer, sorted. The theme manager reads the themes folder once; a theme saved,
+    /// imported or deleted through it afterwards is already in its list.
+    /// </summary>
+    public IReadOnlyList<string> LoadThemeNames() => Settings.ThemeManager.GetAvailableThemes().OrderBy(name => name).ToList();
+
     public SettingsPreviewSink Preview { get; } = new();
 
     /// <summary>

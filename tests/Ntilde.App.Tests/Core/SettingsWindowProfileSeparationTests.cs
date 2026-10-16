@@ -8,7 +8,7 @@ namespace Ntilde.Tests.Core;
 public sealed class SettingsWindowProfileSeparationTests
 {
     [Fact]
-    public void BuildLocalProfilesForEditor_FiltersOutSshProfiles()
+    public void CopyLocalProfiles_FiltersOutSshProfiles()
     {
         var localId = Guid.Parse("a6ed5c42-0464-469d-97f2-f87d2d2875bc");
         var source = new List<TerminalProfile>
@@ -29,7 +29,7 @@ public sealed class SettingsWindowProfileSeparationTests
             }
         };
 
-        List<TerminalProfile> result = ProfilesPage.BuildLocalProfilesForEditor(source);
+        List<TerminalProfile> result = ProfilesPage.CopyLocalProfiles(source);
 
         Assert.Single(result);
         Assert.Equal(localId, result[0].Id);
@@ -38,40 +38,12 @@ public sealed class SettingsWindowProfileSeparationTests
     }
 
     [Fact]
-    public void NormalizeSettingsProfilesForSave_FiltersOutSshProfiles()
-    {
-        var source = new List<TerminalProfile>
-        {
-            new TerminalProfile
-            {
-                Id = Guid.Parse("9f64a4ec-b9f1-4ec6-a50f-5f8e3ff20d9d"),
-                Name = "Bash",
-                Type = ConnectionType.Local,
-                Command = "/bin/bash"
-            },
-            new TerminalProfile
-            {
-                Id = Guid.Parse("d3516289-4525-4e5c-a7b3-1a3af09e0f0f"),
-                Name = "Stage SSH",
-                Type = ConnectionType.SSH,
-                SshHost = "stage.internal"
-            }
-        };
-
-        List<TerminalProfile> result = ProfilesPage.NormalizeSettingsProfilesForSave(source);
-
-        Assert.Single(result);
-        Assert.Equal(ConnectionType.Local, result[0].Type);
-        Assert.Equal("Bash", result[0].Name);
-    }
-
-    [Fact]
     public void BothCopies_KeepTheFieldsTheEditorDoesNotShow()
     {
         TerminalProfile source = LocalProfileWithEveryKindOfField();
 
-        TerminalProfile forEditor = Assert.Single(ProfilesPage.BuildLocalProfilesForEditor([source]));
-        TerminalProfile forSave = Assert.Single(ProfilesPage.NormalizeSettingsProfilesForSave([forEditor]));
+        TerminalProfile forEditor = Assert.Single(ProfilesPage.CopyLocalProfiles([source]));
+        TerminalProfile forSave = Assert.Single(ProfilesPage.CopyLocalProfiles([forEditor]));
 
         foreach (TerminalProfile copy in new[] { forEditor, forSave })
         {
@@ -93,7 +65,7 @@ public sealed class SettingsWindowProfileSeparationTests
     {
         TerminalProfile source = LocalProfileWithEveryKindOfField();
 
-        TerminalProfile forEditor = Assert.Single(ProfilesPage.BuildLocalProfilesForEditor([source]));
+        TerminalProfile forEditor = Assert.Single(ProfilesPage.CopyLocalProfiles([source]));
         forEditor.Name = "Renamed";
         forEditor.Tags.Add("new");
         forEditor.Forwards.Clear();

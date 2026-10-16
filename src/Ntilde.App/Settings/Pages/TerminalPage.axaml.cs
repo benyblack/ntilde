@@ -45,11 +45,7 @@ public partial class TerminalPage : UserControl, ISettingsPage
         TerminalSettings settings = session.Settings;
 
         var fontList = this.FindControl<ComboBox>("FontList")!;
-        fontList.Items.Clear();
-        foreach (string family in session.FontChoices)
-        {
-            fontList.Items.Add(new ComboBoxItem { Content = family });
-        }
+        ComboNames.Fill(fontList, session.FontChoices);
 
         if (fontList.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Content?.ToString() == settings.FontFamily) is { } match)
         {

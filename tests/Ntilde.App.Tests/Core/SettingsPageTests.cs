@@ -714,6 +714,24 @@ public sealed class SettingsPageTests
     }
 
     [AvaloniaFact]
+    public void ProfilesPage_OverrideThemeList_OffersTheThemes_AndIsRefilledWhenTheyChange()
+    {
+        using var root = SettingsTestRoot.Empty();
+        root.CopyShippedTheme("GitHubLight.json");
+        SettingsSession session = SessionFor(SettingsWithOneLocalAndOneSshProfile());
+        var page = new ProfilesPage();
+        page.Load(session);
+        var themes = page.FindControl<ComboBox>("OverrideThemeList")!;
+        string?[] Names() => themes.Items.OfType<ComboBoxItem>().Select(item => (string?)item.Content).ToArray();
+        Assert.Equal(["Default", "GitHub Light"], Names());
+
+        session.Settings.ThemeManager.SaveTheme(new TerminalTheme { Name = "Aardvark" });
+        session.RaiseThemesChanged();
+
+        Assert.Equal(["Aardvark", "Default", "GitHub Light"], Names());
+    }
+
+    [AvaloniaFact]
     public void ProfilesPage_HasNoSshEditor()
     {
         var page = new ProfilesPage();

@@ -1,6 +1,8 @@
+using Avalonia.Headless.XUnit;
 using Ntilde.Settings;
 using Ntilde.Shell;
 using Ntilde.Shell.TitleBar;
+using Ntilde.VT;
 
 namespace Ntilde.Tests.Core;
 
@@ -152,5 +154,20 @@ public sealed class SettingsSessionTests
 
         Assert.Equal("Nord", theme);
         Assert.Equal(1.5, scale);
+    }
+
+    /// <summary>The names the Appearance and Profiles theme lists offer: every theme, a newly saved one included, sorted.</summary>
+    [AvaloniaFact]
+    public void LoadThemeNames_ListsEveryTheme_Sorted()
+    {
+        using var root = SettingsTestRoot.Empty();
+        root.CopyShippedTheme("GitHubLight.json");
+        root.CopyShippedTheme("CatppuccinMocha.json");
+        var session = new SettingsSession(new TerminalSettings(), NoSystemFonts);
+        Assert.Equal(["Catppuccin Mocha", "Default", "GitHub Light"], session.LoadThemeNames());
+
+        session.Settings.ThemeManager.SaveTheme(new TerminalTheme { Name = "Aardvark" });
+
+        Assert.Equal(["Aardvark", "Catppuccin Mocha", "Default", "GitHub Light"], session.LoadThemeNames());
     }
 }
