@@ -166,7 +166,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
         }
     }
 
-    private Control CreateShortcutBindingRow(ShortcutCatalogEntry entry)
+    private Border CreateShortcutBindingRow(ShortcutCatalogEntry entry)
     {
         string effectiveBinding = GetEffectiveShortcutBinding(entry);
         var errorText = new TextBlock

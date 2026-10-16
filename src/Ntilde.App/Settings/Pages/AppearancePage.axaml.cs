@@ -18,6 +18,19 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 {
     private const string UnsavedThemeEditsMessage = "Save the theme or go back first.";
 
+    /// <summary>The file types the Import Theme picker offers; built once, not on every pick.</summary>
+    private static readonly FilePickerFileType[] ThemeFileTypes =
+    [
+        new("Theme Files") { Patterns = ["*.json", "*.itermcolors"] },
+        new("Alacritty Theme") { Patterns = ["*.toml"] },
+    ];
+
+    /// <summary>The file types the background-image picker offers; built once, not on every pick.</summary>
+    private static readonly FilePickerFileType[] BackgroundImageFileTypes =
+    [
+        new("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] },
+    ];
+
     private SettingsSession? _session;
     private TerminalTheme? _editingTheme;
 
@@ -195,11 +208,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             {
                 Title = "Import Theme",
                 AllowMultiple = false,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("Theme Files") { Patterns = new[] { "*.json", "*.itermcolors" } },
-                    new FilePickerFileType("Alacritty Theme") { Patterns = new[] { "*.toml" } },
-                },
+                FileTypeFilter = ThemeFileTypes,
             });
             if (files.Count == 0)
             {
@@ -571,10 +580,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             {
                 Title = "Select Background Image",
                 AllowMultiple = false,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp" } },
-                },
+                FileTypeFilter = BackgroundImageFileTypes,
             });
             if (files.Count > 0)
             {
