@@ -270,8 +270,10 @@ public sealed class SettingsThemeEditorTests
                 window.Show();
                 Click(page, "BtnEditTheme");
                 Dispatcher.UIThread.RunJobs();
-                page.FindControl<Button>("BtnDeleteTheme")!.Focus(NavigationMethod.Tab); // Delete chosen from the keyboard
+                var delete = page.FindControl<Button>("BtnDeleteTheme")!;
+                delete.Focus(NavigationMethod.Tab); // Delete chosen from the keyboard
                 Dispatcher.UIThread.RunJobs();
+                Assert.Same(delete, TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement()); // setup: Delete itself has focus
 
                 Click(page, "BtnDeleteTheme");
                 Dispatcher.UIThread.RunJobs();
