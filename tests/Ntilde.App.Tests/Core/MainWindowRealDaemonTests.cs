@@ -345,8 +345,10 @@ public sealed class MainWindowRealDaemonTests : IDisposable
         Assert.True(detach.Result);
         PumpUntil(() => Toast(first).Title == "Shell detached", "the detach toast is shown");
         Assert.Equal("Shell kept running — Attach to session… to get it back", Toast(first).Message);
-        SessionSummary kept = Sessions().Single(s => s.SessionId == detaching.Id);
-        Assert.True(kept.Running && kept.DetachedByUser && kept.AttachedClients == 0, $"running {kept.Running}, detached {kept.DetachedByUser}, {kept.AttachedClients} attached");
+        // The toast is the window's. The detach reaches the daemon as a message nothing answers, so on a slow runner the
+        // daemon records it a moment after the toast: wait for it there, as Detach does.
+        PumpUntil(() => Sessions().Single(s => s.SessionId == detaching.Id) is { DetachedByUser: true, AttachedClients: 0 }, "the daemon recorded the user detach");
+        Assert.True(Sessions().Single(s => s.SessionId == detaching.Id).Running, "the detached shell stopped running");
 
         first.Close();
         PumpUntil(() => !first.IsVisible, "the window closed");
