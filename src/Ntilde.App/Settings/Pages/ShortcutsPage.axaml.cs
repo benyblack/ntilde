@@ -27,7 +27,7 @@ using Ntilde.Settings;
 
 namespace Ntilde.Settings.Pages;
 
-public partial class ShortcutsPage : UserControl, ISettingsPage
+public partial class ShortcutsPage : UserControl, ISettingsPage, IDisposable
 {
     /// <summary>
     /// Class on every binding editor. The frame's Ctrl/Cmd+S skips a focused editor so the chord
@@ -57,6 +57,16 @@ public partial class ShortcutsPage : UserControl, ISettingsPage
     public Control View => this;
 
     private SettingsSession Session => _session ?? throw new InvalidOperationException("ShortcutsPage used before Load.");
+
+    /// <summary>Takes this page's handler off the session: the window disposes its pages when it closes.</summary>
+    public void Dispose()
+    {
+        if (_session != null)
+        {
+            _session.KeepShellsRunningChanged -= PopulateForCurrentSearch;
+        }
+        GC.SuppressFinalize(this);
+    }
 
     public void Load(SettingsSession session)
     {

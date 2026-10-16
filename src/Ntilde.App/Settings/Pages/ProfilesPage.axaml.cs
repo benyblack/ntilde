@@ -25,7 +25,7 @@ namespace Ntilde.Settings.Pages;
 /// <summary>
 /// The Profiles page: edits the local terminal profiles. SSH connections are edited in the connection manager; this page shows local profiles only.
 /// </summary>
-public partial class ProfilesPage : UserControl, ISettingsPage
+public partial class ProfilesPage : UserControl, ISettingsPage, IDisposable
 {
     private SettingsSession? _session;
 
@@ -283,6 +283,16 @@ public partial class ProfilesPage : UserControl, ISettingsPage
     public Control View => this;
 
     private SettingsSession Session => _session ?? throw new InvalidOperationException("ProfilesPage used before Load.");
+
+    /// <summary>Takes this page's handler off the session: the window disposes its pages when it closes.</summary>
+    public void Dispose()
+    {
+        if (_session != null)
+        {
+            _session.ThemesChanged -= PopulateOverrideThemes;
+        }
+        GC.SuppressFinalize(this);
+    }
 
     public void Load(SettingsSession session)
     {

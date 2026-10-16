@@ -27,7 +27,7 @@ using Ntilde.Settings;
 
 namespace Ntilde.Settings.Pages;
 
-public partial class CommandAssistPage : UserControl, ISettingsPage
+public partial class CommandAssistPage : UserControl, ISettingsPage, IDisposable
 {
     private const string RowDescStyleClass = "RowDesc";
 
@@ -54,6 +54,16 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
     public Control View => this;
 
     private SettingsSession Session => _session ?? throw new InvalidOperationException("CommandAssistPage used before Load.");
+
+    /// <summary>Takes this page's handler off the session: the window disposes its pages when it closes.</summary>
+    public void Dispose()
+    {
+        if (_session != null)
+        {
+            _session.ShortcutsChanged -= UpdateCommandAssistShortcutText;
+        }
+        GC.SuppressFinalize(this);
+    }
 
     public void Load(SettingsSession session)
     {

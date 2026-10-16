@@ -17,7 +17,7 @@ using System.Linq;
 
 namespace Ntilde.Settings.Pages;
 
-public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
+public partial class TabsAndTitleBarPage : UserControl, ISettingsPage, IDisposable
 {
     private const string RowDescStyleClass = "RowDesc";
 
@@ -94,6 +94,16 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     public Control View => this;
 
     private SettingsSession Session => _session ?? throw new InvalidOperationException("TabsAndTitleBarPage used before Load.");
+
+    /// <summary>Takes this page's handler off the session: the window disposes its pages when it closes.</summary>
+    public void Dispose()
+    {
+        if (_session != null)
+        {
+            _session.ShortcutsChanged -= RebuildTitleBarEditor;
+        }
+        GC.SuppressFinalize(this);
+    }
 
     private StackPanel RowsPanel => this.FindControl<StackPanel>("TitleBarItemsPanel")!;
 
