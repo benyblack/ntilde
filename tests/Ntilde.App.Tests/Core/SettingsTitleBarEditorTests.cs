@@ -197,6 +197,45 @@ public sealed class SettingsTitleBarEditorTests
         }
     }
 
+    /// <summary>
+    /// A placement change restores focus only when it was in the rows: focus elsewhere on the page stays put (nothing
+    /// focused takes the same path - CaptureRowFocus finds no row either way).
+    /// </summary>
+    [AvaloniaFact]
+    public void APlacementChange_LeavesFocusOutsideTheRowsAlone()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var orientation = page.FindControl<ComboBox>("TabOrientationList")!;
+            orientation.Focus(NavigationMethod.Tab);
+            Dispatcher.UIThread.RunJobs();
+
+            Click(Segment(Row(page, "settings"), TitleBarItemState.Overflow));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Same(orientation, Focused(window));
+        }
+    }
+
+    /// <summary>The mini bar's fixed parts: two sample tabs, the first active, then "+" leading the actions (#528).</summary>
+    [AvaloniaFact]
+    public void TheMiniBar_ShowsTwoSampleTabs_ThenNewTabFirstInTheActions()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            var grid = (Grid)page.FindControl<Border>("TitleBarPreview")!.Child!;
+            var tabs = (StackPanel)grid.Children[0];
+            StackPanel actions = grid.Children.OfType<StackPanel>().Single(panel => (string?)panel.Tag == "actions");
+
+            Assert.Equal(new[] { "~/projects", "pwsh" }, tabs.Children.OfType<Border>().Select(tab => ((TextBlock)tab.Child!).Text));
+            Assert.Equal(TitleBarCatalog.NewTabId, actions.Children[0].Tag);
+        }
+    }
+
     private static Point CenterOf(Control control, Window window)
         => control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
 
