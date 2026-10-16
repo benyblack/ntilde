@@ -44,12 +44,24 @@ public sealed class SettingsSessionTests
     {
         var session = new SettingsSession(new TerminalSettings(), NoSystemFonts);
         session.ShortcutDraft["settings"] = "Ctrl+Alt+Shift+F11";
-        var fresh = new TerminalSettings { FontSize = 21 };
+        Assert.True(session.TitleBarDraft.TrySetState("find", TitleBarItemState.Pinned));
+        Assert.DoesNotContain("Reload Probe Mono", session.FontChoices);
+        var fresh = new TerminalSettings
+        {
+            FontSize = 21,
+            FontFamily = "Reload Probe Mono",
+            TitleBarItems = new() { ["split_vertical"] = "Pinned" },
+        };
 
         session.Reload(fresh);
 
         Assert.Same(fresh, session.Settings);
         Assert.False(session.ShortcutDraft.ContainsKey("settings"));
+        // The title-bar draft is seeded again from the new settings: the pending edit goes, the new file's pin shows.
+        Assert.Equal(TitleBarItemState.Overflow, session.TitleBarDraft.GetState("find"));
+        Assert.Equal(TitleBarItemState.Pinned, session.TitleBarDraft.GetState("split_vertical"));
+        // And the font list is collected again, so the new settings' font is offered even though it is not installed.
+        Assert.Contains("Reload Probe Mono", session.FontChoices);
     }
 
     [Fact]
