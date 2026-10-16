@@ -701,12 +701,9 @@ namespace Ntilde
             NavigateTo(target, focusWith, result.MatchedOnlyInDetails); // ShowPage clears the search
         }
 
-        /// <summary>The acronyms Settings copy uses: the words a group header keeps upper-case when a result writes it in sentence case.</summary>
-        private static readonly HashSet<string> GroupHeaderAcronyms = new(StringComparer.Ordinal) { "SSH", "OSC" };
-
         /// <summary>
         /// A result's first line: "Page" for a page itself (it has no row), else the page, then the
-        /// row's group in sentence case - "Appearance › Background image".
+        /// row's group as its header is written - "Appearance › Background image".
         /// </summary>
         internal static string ResultLocation(SettingsSearchEntry entry)
         {
@@ -716,24 +713,7 @@ namespace Ntilde
                 return "Page";
             }
 
-            return entry.Group is null ? entry.PageTitle : $"{entry.PageTitle} › {SentenceCase(entry.Group)}";
-        }
-
-        /// <summary>A group header ("BACKGROUND IMAGE") in sentence case, its acronyms kept upper-case.</summary>
-        private static string SentenceCase(string header)
-        {
-            string[] words = header.Split(' ');
-            for (int i = 0; i < words.Length; i++)
-            {
-                string letters = new(words[i].Where(char.IsLetter).ToArray());
-                if (!GroupHeaderAcronyms.Contains(letters))
-                {
-                    words[i] = words[i].ToLowerInvariant();
-                }
-            }
-
-            string text = string.Join(' ', words);
-            return text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+            return entry.Group is null ? entry.PageTitle : $"{entry.PageTitle} › {entry.Group}";
         }
 
         private Control CreateResultView(SettingsSearchResult result)

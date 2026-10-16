@@ -157,6 +157,22 @@ public sealed class SettingRowTests
         }
     }
 
+    /// <summary>A header is written as it reads, for search to show as is; the group shows it in capitals (#528).</summary>
+    [AvaloniaFact]
+    public void Group_ShowsItsHeaderInCapitals()
+    {
+        var group = new SettingGroup { Header = "Remote WSL hosts" };
+        var host = Host(group);
+        try
+        {
+            Assert.Contains(group.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "REMOTE WSL HOSTS" && t.Classes.Contains("SectionHeader"));
+        }
+        finally
+        {
+            host.Close();
+        }
+    }
+
     /// <summary>3.1: the flash reaches the screen only if the template binds Background onto its root Border.</summary>
     [AvaloniaFact]
     public void Flash_PaintsTheTemplatesRootBorder()
