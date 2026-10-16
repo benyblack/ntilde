@@ -119,8 +119,8 @@ public sealed class SettingsWindowBackupSectionTests
     /// Fix round 2 (Important finding): the confirmation gate added in round 1 for
     /// <c>BuildRestoreConfirmationText</c>'s wording left the actual wiring uncovered - does
     /// confirming really trigger the restore? Pins the "confirmed" branch through
-    /// <c>RestoreConfirmationOverride</c>, the injectable seam <c>WireBackupSection</c>'s Restore
-    /// click handler falls back from (production always uses the real, untestable
+    /// <c>RestoreConfirmationOverride</c>, the injectable seam the Backup page's Restore click
+    /// handler (<c>BackupPage</c>) falls back from (production always uses the real, untestable
     /// <c>ConfirmRestoreAsync</c>/<c>ShowDialog</c>). Verifies the tracked file actually rolls back
     /// on disk (not just that some outcome was reported) and that a PreRestore snapshot appears.
     /// </summary>
@@ -351,8 +351,8 @@ public sealed class SettingsWindowBackupSectionTests
     ///
     /// The target tree's pre-import <c>FontFamily</c> is left unset, defaulting to
     /// <c>BundledFontCatalog.DefaultTerminalFontFamily</c> — deliberately present in
-    /// <c>FontList</c> both before and after the import (<c>PopulateFonts</c> always seeds the
-    /// bundled default), exactly the "present pre-state name" precedent the theme test above
+    /// <c>FontList</c> both before and after the import (the font list,
+    /// <c>SettingsSession.FontChoices</c>, always includes the bundled default), exactly the "present pre-state name" precedent the theme test above
     /// documents: an absent pre-state would leave <c>SelectedItem</c> null and the `is
     /// ComboBoxItem` guard at Save (the page's Collect) would skip the write entirely, silently missing
     /// this bug.
@@ -707,8 +707,8 @@ public sealed class SettingsWindowBackupSectionTests
     }
 
     /// <summary>
-    /// Fix round 1 (Important finding): <c>WireBackupSection</c> runs unconditionally from the
-    /// constructor with no try/catch around <c>ListSnapshots()</c>, so a locked or inaccessible
+    /// Fix round 1 (Important finding): the Backup page's <c>Load</c> runs unconditionally when the
+    /// window is built, and had no try/catch around <c>ListSnapshots()</c>, so a locked or inaccessible
     /// backups directory used to propagate an exception straight out of the constructor - the user
     /// could not open Settings at all. Proves the window still constructs, falls back to an empty
     /// snapshot list, and surfaces the failure through the status text instead.
@@ -837,7 +837,7 @@ public sealed class SettingsWindowBackupSectionTests
     }
 
     /// <summary>
-    /// Points <c>AppPaths.RootDirectory</c> (and therefore <c>WireBackupSection</c>'s own
+    /// Points <c>AppPaths.RootDirectory</c> (and therefore the Backup page's own
     /// <see cref="BackupService"/>) at a temp tree for the lifetime of the returned scope, so
     /// constructing a <see cref="Ntilde.SettingsWindow"/> in a test never reads or writes the
     /// real user profile's backups directory.
