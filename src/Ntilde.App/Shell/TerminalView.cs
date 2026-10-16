@@ -91,12 +91,15 @@ namespace Ntilde.Shell
             // Allow receiving focus via click
             PointerPressed += (s, e) => Focus();
 
-            _renderTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, OnRenderTimerTick);
+            // Created stopped (#543). The DispatcherTimer constructor that takes a callback also starts the timer, and a
+            // running timer is rooted by the dispatcher and holds this view, its pane and its window: a view that never
+            // reached the visual tree ticked all four forever, and kept its window alive after the window closed.
+            // StartUiTimers and OnAttachedToVisualTree start them once the view can be drawn.
+            _renderTimer = CreateStoppedTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, OnRenderTimerTick);
 
-            _cursorBlinkTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(530), DispatcherPriority.Render, OnCursorBlinkTick);
-            _scrollAnimationTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, OnScrollAnimationTick);
-            _metricsTimer = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, OnMetricsTimerTick);
-            _metricsTimer.Start();
+            _cursorBlinkTimer = CreateStoppedTimer(TimeSpan.FromMilliseconds(530), DispatcherPriority.Render, OnCursorBlinkTick);
+            _scrollAnimationTimer = CreateStoppedTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, OnScrollAnimationTick);
+            _metricsTimer = CreateStoppedTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, OnMetricsTimerTick);
 
             DragDrop.SetAllowDrop(this, true);
             AddHandler(DragDrop.DragOverEvent, OnDragOver);
@@ -111,6 +114,13 @@ namespace Ntilde.Shell
                     System.Diagnostics.Debug.WriteLine($"[TerminalView] OnDropAsync Failed: {ex}");
                 }
             });
+        }
+
+        private static DispatcherTimer CreateStoppedTimer(TimeSpan interval, DispatcherPriority priority, EventHandler tick)
+        {
+            var timer = new DispatcherTimer(priority) { Interval = interval };
+            timer.Tick += tick;
+            return timer;
         }
 
         protected override void OnTextInput(TextInputEventArgs e)
@@ -1110,7 +1120,7 @@ namespace Ntilde.Shell
             base.OnAttachedToVisualTree(e);
             _isAttachedToVisualTree = true;
             RefreshUiTimerState();
-            if (!_metricsTimer.IsEnabled) _metricsTimer.Start();
+            if (!_retired && !_metricsTimer.IsEnabled) _metricsTimer.Start();
 
             _cachedTopLevel = TopLevel.GetTopLevel(this);
             if (_cachedTopLevel != null)
@@ -1863,6 +1873,22 @@ namespace Ntilde.Shell
         /// <summary>The grid a queued dispatch will send when it runs.</summary>
         internal (int Cols, int Rows) PendingGridForTest => (_pendingCols, _pendingRows);
 
+        /// <summary>The names of this view's timers that are running now.</summary>
+        internal IReadOnlyList<string> RunningTimersForTest
+        {
+            get
+            {
+                var running = new List<string>();
+                if (_renderTimer.IsEnabled) running.Add("render");
+                if (_cursorBlinkTimer.IsEnabled) running.Add("cursor blink");
+                if (_scrollAnimationTimer.IsEnabled) running.Add("scroll animation");
+                if (_metricsTimer.IsEnabled) running.Add("metrics");
+                if (_autoScrollTimer?.IsEnabled == true) running.Add("auto-scroll");
+                if (_resizeThrottleTimer?.IsEnabled == true) running.Add("resize throttle");
+                return running;
+            }
+        }
+
         private void StartAutoScroll(int direction)
         {
             _autoScrollDirection = direction;
@@ -1872,7 +1898,7 @@ namespace Ntilde.Shell
                 _autoScrollTimer.Interval = TimeSpan.FromMilliseconds(50);
                 _autoScrollTimer.Tick += OnAutoScrollTick;
             }
-            if (!_autoScrollTimer.IsEnabled)
+            if (!_retired && !_autoScrollTimer.IsEnabled)
             {
                 _autoScrollTimer.Start();
             }
@@ -2139,7 +2165,7 @@ namespace Ntilde.Shell
                 // Enough time passed and no pending timer - send immediately
                 SendThrottledResize();
             }
-            else if (!_resizeThrottleTimer.IsEnabled)
+            else if (!_retired && !_resizeThrottleTimer.IsEnabled)
             {
                 _resizeThrottleTimer.Start();
             }
@@ -2271,7 +2297,7 @@ namespace Ntilde.Shell
         /// too, and stopping *that* on focus loss would freeze output from a background
         /// shell - a correctness bug, not a saving.
         private bool ShouldRunCursorBlinkTimer() =>
-            ShouldRunCursorBlinkTimer(_cursorBlinkEnabled, IsKeyboardFocusWithin);
+            !_retired && ShouldRunCursorBlinkTimer(_cursorBlinkEnabled, IsKeyboardFocusWithin);
 
         /// The rule itself, as a pure function so it can be tested without a visual tree or
         /// a focus manager. `focused` is the caller's IsKeyboardFocusWithin - the same input
@@ -2334,9 +2360,34 @@ namespace Ntilde.Shell
             RendererStatistics.RecordTerminalViewTimersStopped();
         }
 
+        // Set by Retire: the pane that owns this view was disposed, and no timer of this view may run again.
+        private bool _retired;
+
+        /// <summary>
+        /// Stops every timer of this view for good, because its pane was disposed (#543). UI thread.
+        /// </summary>
+        /// <remarks>
+        /// The timers otherwise stop only when the view leaves the visual tree, and a disposed pane can still be in it - a
+        /// running timer would then keep the view, the pane and its window alive. Nothing starts one again afterwards:
+        /// showing, focusing, scrolling or resizing the view.
+        /// </remarks>
+        internal void Retire()
+        {
+            _retired = true;
+            _isUiRenderable = false;
+            StopUiTimers();
+            // Each of these can run without the render timer, and StopUiTimers stops nothing while that one is off.
+            _cursorBlinkTimer.Stop();
+            _scrollAnimationTimer.Stop();
+            _autoScrollTimer?.Stop();
+            _resizeThrottleTimer?.Stop();
+            _metricsTimer.Stop();
+        }
+
         private bool ShouldRunUiTimers()
         {
-            return _isAttachedToVisualTree &&
+            return !_retired &&
+                   _isAttachedToVisualTree &&
                    IsVisible &&
                    IsEffectivelyVisible &&
                    Bounds.Width > 0 &&
@@ -2573,7 +2624,7 @@ namespace Ntilde.Shell
             {
                 int maxScroll = Math.Max(0, _buffer.TotalLines - _buffer.Rows);
                 _targetScrollOffset = Math.Clamp(_targetScrollOffset + lines, 0, maxScroll);
-                if (!_scrollAnimationTimer.IsEnabled)
+                if (!_retired && !_scrollAnimationTimer.IsEnabled)
                 {
                     _scrollAnimationTimer.Start();
                 }

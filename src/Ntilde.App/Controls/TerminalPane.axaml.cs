@@ -5972,6 +5972,9 @@ namespace Ntilde.Controls
             _commandAssistController?.Dispose();
 
 
+            // Its timers too: a running one keeps the view, this pane and the window alive (#543).
+            TermView.Retire();
+
             // Detach handlers on the reused TermView so a disposed pane stops reacting.
             if (_onTermViewResize != null) TermView.OnResize -= _onTermViewResize;
             if (_onTermViewMetricsChanged != null) TermView.MetricsChanged -= _onTermViewMetricsChanged;
