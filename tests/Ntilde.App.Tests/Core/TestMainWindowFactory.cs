@@ -62,8 +62,9 @@ internal static class TestMainWindowFactory
 
     /// <summary>
     /// Disposes the panes of every window this factory has handed out since the last call, which
-    /// is what actually kills the PTY and its child shell. Call it from the test class's
-    /// <see cref="IDisposable.Dispose"/>, so it runs after each test.
+    /// is what actually kills the PTY and its child shell, then closes each window without the
+    /// app's teardown, so a window the test left open can be collected (#543). Call it from the
+    /// test class's <see cref="IDisposable.Dispose"/>, so it runs after each test.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -102,7 +103,7 @@ internal static class TestMainWindowFactory
 
             try
             {
-                window.DisposeAllPanesForTest();
+                window.TearDownForTest();
             }
             catch (Exception)
             {

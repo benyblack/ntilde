@@ -2936,15 +2936,16 @@ namespace Ntilde
 
         /// <summary>
         /// Disposes every pane this window owns, and with them the PTY and child shell behind
-        /// each one. For tests, which build a real window and then abandon it.
+        /// each one, then lets the window go: its hooks released (<see cref="ReleaseWindowHooks"/>)
+        /// and the window closed without the app's teardown. For tests, which build a real window
+        /// and then abandon it.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Nothing else reclaims them. <c>Window.Close()</c> runs <see cref="PerformAppTeardown"/>,
+        /// Nothing else reclaims the shells. <c>Window.Close()</c> runs <see cref="PerformAppTeardown"/>,
         /// which saves the session and stops timers but never walks the tabs, and a test that only
         /// drops its reference leaves the shells running - a full run finished with 53 of them
-        /// alive. Tests cannot call <c>Close()</c> instead: that path also stops the process-wide
-        /// <c>AgentHostService</c> singleton, which the next test would inherit.
+        /// alive.
         /// </para>
         /// <para>
         /// Zoom is why this cannot be a walk of <c>ti.Content</c> from outside. Zooming moves the
@@ -2953,8 +2954,26 @@ namespace Ntilde
         /// abandons its siblings. <see cref="CloseTab"/> exits zoom first for the same reason, and
         /// this mirrors it.
         /// </para>
+        /// <para>
+        /// The window is closed because nothing else lets it go (#543). Most tests leave their window open, and Avalonia's
+        /// input manager holds every open window until it closes; so did its armed update-check timer and its handlers on
+        /// the agent registry's events. Every window a run built stayed in memory, and the App.Tests host reached 11 GB.
+        /// The close runs with the teardown marked done, because <see cref="PerformAppTeardown"/> is the app's, not the
+        /// test's: it saves the session to whatever app-data root is current - the developer's own, when a test took none
+        /// - and stops the process-wide <c>AgentHostService</c> singleton, which the next test would inherit.
+        /// </para>
         /// </remarks>
-        internal void DisposeAllPanesForTest()
+        internal void TearDownForTest()
+        {
+            DisposeAllPanes();
+            // Last: disposing the panes runs this window's own handlers, and one of them could start a timer again.
+            ReleaseWindowHooks();
+            _teardownDone = true;
+            Close();
+        }
+
+        /// <summary>Disposes every pane of every tab, zoomed or not, and any pane whose tab has left the strip.</summary>
+        private void DisposeAllPanes()
         {
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
@@ -10936,18 +10955,30 @@ namespace Ntilde
                 muxHosts.Dispose();
                 if (kept > 0) AppLogger.Log($"[MainWindow] {kept} session(s) kept running; `ntilde mux ls` lists them");
             }
-            _recordingToastTimer.Stop();
-            _updateCheckTimer.Stop();
-            _tabStatusTimer?.Stop();
-            // A mid-drag close can beat the release/capture-lost cleanup, and a live
-            // DispatcherTimer would keep ticking (and rooting) the closed window.
-            _tabDragAutoScrollTimer?.Stop();
             _globalHotkey?.Dispose();
             // Dispose the snapshot scheduler before the agent-host teardown below: its Dispose
             // performs a best-effort final flush, which writes a snapshot, which logs — and the
             // agent-host stop path below is not something a snapshot write should race.
             _snapshotScheduler?.Dispose();
             _snapshotScheduler = null;
+            ReleaseWindowHooks();
+            AgentHost.AgentHostService.Instance.Stop();
+        }
+
+        /// <summary>
+        /// Lets go of what outside this window holds it: its own timers, which the dispatcher roots while they run, and its
+        /// handlers on process-wide events. Nothing more - no save, no shell ended, no service stopped - so the test teardown
+        /// can use it before a close that skips the app's teardown (#543). Idempotent. UI thread.
+        /// </summary>
+        private void ReleaseWindowHooks()
+        {
+            _recordingToastTimer.Stop();
+            // Armed by OnOpened for one tick 10 s later; a window torn down sooner would leave it armed.
+            _updateCheckTimer.Stop();
+            _tabStatusTimer?.Stop();
+            // A mid-drag close can beat the release/capture-lost cleanup, and a live
+            // DispatcherTimer would keep ticking (and rooting) the closed window.
+            _tabDragAutoScrollTimer?.Stop();
             AgentHost.AgentHostService.Instance.ObserveActivityChanged -= OnAgentObserveActivityChanged;
             AgentHost.AgentSessionRegistry.Instance.SessionRegistered -= OnAgentSessionRegisteredForAttention;
             AgentHost.AgentSessionRegistry.Instance.SessionUnregistered -= OnAgentSessionUnregisteredForAttention;
@@ -10955,7 +10986,6 @@ namespace Ntilde
             {
                 registration.AttentionMachine.Changed -= OnAgentAttentionChangedForTabs;
             }
-            AgentHost.AgentHostService.Instance.Stop();
         }
 
         private void RegisterPaneOwners(TabItem tabItem, Control control)
