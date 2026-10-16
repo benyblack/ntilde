@@ -43,7 +43,7 @@ public sealed class SettingsSearchIndexTests
     }
 
     [Fact]
-    public void Search_MatchesDescriptionKeywordsGroupAndPageTitle()
+    public void Search_MatchesDescriptionKeywordsAndGroup_AndThePageTitleOnlyAlongsideAnotherWord()
     {
         var index = new SettingsSearchIndex(
         [
@@ -56,7 +56,62 @@ public sealed class SettingsSearchIndexTests
         Assert.Equal("A", Assert.Single(index.Search("zebra")).Entry.Title);
         Assert.Equal("B", Assert.Single(index.Search("giraffe")).Entry.Title);
         Assert.Equal("C", Assert.Single(index.Search("okapi")).Entry.Title);
-        Assert.Contains(index.Search("ssh"), r => r.Entry.Title == "D");
+        Assert.Empty(index.Search("ssh")); // the page title alone: the SSH page's own entry stands for D
+        Assert.Equal("D", Assert.Single(index.Search("ssh d")).Entry.Title);
+    }
+
+    /// <summary>
+    /// A page's name finds the page, which is one click from every row on it, and not each of those rows too (#528).
+    /// </summary>
+    [Fact]
+    public void Search_APageTitleAlone_FindsThePage_NotEveryRowOnIt()
+    {
+        string appearance = SettingsPageRegistry.Get(SettingsPage.Appearance).Title;
+        var index = new SettingsSearchIndex(
+        [
+            new SettingsSearchEntry(SettingsPage.Appearance, appearance, null, null, appearance, null, null),
+            Entry("Window opacity", group: "WINDOW"),
+            Entry("Image opacity", group: "BACKGROUND IMAGE"),
+        ]);
+
+        Assert.Equal(appearance, Assert.Single(index.Search(appearance.ToLowerInvariant())).Entry.Title);
+    }
+
+    [Fact]
+    public void Search_APageTitleWord_StillNarrowsAMultiWordQuery()
+    {
+        string appearance = SettingsPageRegistry.Get(SettingsPage.Appearance).Title;
+        var index = new SettingsSearchIndex(
+        [
+            new SettingsSearchEntry(SettingsPage.Appearance, appearance, null, null, appearance, null, null),
+            Entry("Window opacity", group: "WINDOW"),
+            Entry("Image opacity", group: "BACKGROUND IMAGE"),
+            Entry("Font size", page: SettingsPage.Terminal),
+            Entry("Opacity of nothing", page: SettingsPage.Terminal),
+        ]);
+
+        string[] titles = index.Search($"{appearance} opacity").Select(r => r.Entry.Title).ToArray();
+
+        Assert.Equal(new[] { "Window opacity", "Image opacity" }, titles);
+    }
+
+    /// <summary>
+    /// A group is small and its rows are its topic, often without its name - "font" is how Programming ligatures is
+    /// found - so a group's header still finds every row in it.
+    /// </summary>
+    [Fact]
+    public void Search_AGroupName_StillFindsEveryRowInTheGroup()
+    {
+        var index = new SettingsSearchIndex(
+        [
+            Entry("Font size", group: "FONT", page: SettingsPage.Terminal),
+            Entry("Programming ligatures", group: "FONT", page: SettingsPage.Terminal),
+            Entry("Scrollback limit", group: "SCROLLBACK", page: SettingsPage.Terminal),
+        ]);
+
+        string[] titles = index.Search("font").Select(r => r.Entry.Title).ToArray();
+
+        Assert.Equal(new[] { "Font size", "Programming ligatures" }, titles);
     }
 
     [Fact]
