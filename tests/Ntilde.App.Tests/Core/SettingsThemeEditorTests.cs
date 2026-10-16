@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -346,6 +347,73 @@ public sealed class SettingsThemeEditorTests
 
                 Click(page, "BtnSaveTheme"); // the draft survived: saving it writes the edit
                 Assert.Equal("#123456", window.Session.Settings.ThemeManager.GetTheme("GitHub Light").Background.ToString());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// A refused jump moves focus out of the emptied search box into the editor, to Save theme: the reason asks
+    /// to save or go back, and Back would discard the draft.
+    /// </summary>
+    [AvaloniaFact]
+    public void ASearchJump_WithUnsavedThemeEdits_FocusesSaveTheme()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Type(page, "EditThemeBgInput", "#123456");
+
+                SearchAndJump(window, "opacity");
+
+                Assert.Same(page.FindControl<Button>("BtnSaveTheme"), window.FocusManager!.GetFocusedElement());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>The editor's status ("Saved!", a failed save, a refusal) is read out when it changes.</summary>
+    [AvaloniaFact]
+    public void TheEditorStatus_IsAPoliteLiveRegion()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(page.FindControl<TextBlock>("ThemeEditorStatus")!));
+        }
+    }
+
+    /// <summary>A live region speaks when its text changes, so a second refusal sets the same message afresh.</summary>
+    [AvaloniaFact]
+    public void ASecondRefusedJump_SetsTheMessageAgain()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Type(page, "EditThemeBgInput", "#123456");
+                SearchAndJump(window, "opacity");
+                var status = page.FindControl<TextBlock>("ThemeEditorStatus")!;
+                int changes = 0;
+                status.PropertyChanged += (_, e) => changes += e.Property == TextBlock.TextProperty ? 1 : 0;
+
+                SearchAndJump(window, "opacity");
+
+                Assert.True(changes > 0, "the second refusal left the status text untouched");
+                Assert.Equal("Save the theme or go back first.", status.Text);
             }
             finally
             {

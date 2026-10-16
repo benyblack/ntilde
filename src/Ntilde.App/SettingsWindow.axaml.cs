@@ -268,6 +268,13 @@ namespace Ntilde
             ShowPage(target.Page);
             if (target.RowId is not { } rowId)
             {
+                // A page result has no row to take focus. Its sidebar item does, as when arrowing through the
+                // pages: a screen reader says where the jump landed, and Tab goes on into the page.
+                if (focusWith is { } method)
+                {
+                    _navItems[target.Page].Focus(method);
+                }
+
                 return;
             }
 
@@ -304,10 +311,10 @@ namespace Ntilde
             // reveal after the layout pass that brings the page's own content back.
             if (GetPage(page) is IHasSubPage { IsSubPageOpen: true } host)
             {
-                host.CloseSubPage();
+                host.CloseSubPage(focusWith);
                 if (host.IsSubPageOpen)
                 {
-                    return false; // the page refused (it says why); reposting would loop forever
+                    return false; // the page refused (it says why, and takes focus); reposting would loop forever
                 }
 
                 Dispatcher.UIThread.Post(() => RevealRow(page, rowId, focusWith, expandDetails), DispatcherPriority.Loaded);

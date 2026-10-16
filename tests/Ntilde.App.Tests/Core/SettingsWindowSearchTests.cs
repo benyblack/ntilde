@@ -447,6 +447,66 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>
+    /// A page result has no row to take focus, so the page's sidebar item takes it: a screen reader says where the
+    /// jump landed, and Tab goes on into the page. It used to stay in the emptied search box.
+    /// </summary>
+    [AvaloniaFact]
+    public void EnterOnAPageResult_FocusesThePagesSidebarItem()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("backup");
+            Dispatcher.UIThread.RunJobs();
+            Results(window).SelectedItem = Shown(window).Single(r => r.Entry.Page == SettingsPage.Backup && r.Entry.RowId is null);
+            Dispatcher.UIThread.RunJobs();
+
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+
+            var focused = window.FocusManager!.GetFocusedElement() as Control;
+            Assert.Same(window.NavItem(SettingsPage.Backup), focused);
+            Assert.True(focused!.Classes.Contains(":focus-visible"), "a keyboard jump draws the focus ring");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ClickingAPageResult_FocusesThePagesSidebarItem_WithoutAFocusRing()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "backup";
+            Dispatcher.UIThread.RunJobs();
+            int index = Shown(window).FindIndex(r => r.Entry.Page == SettingsPage.Backup && r.Entry.RowId is null);
+            Results(window).ScrollIntoView(index);
+            Dispatcher.UIThread.RunJobs();
+            Point at = Results(window).ContainerFromIndex(index)!.TranslatePoint(new Point(10, 10), window)!.Value;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseUp(at, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+
+            var focused = window.FocusManager!.GetFocusedElement() as Control;
+            Assert.Same(window.NavItem(SettingsPage.Backup), focused);
+            Assert.False(focused!.Classes.Contains(":focus-visible"));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void EnterInTheResultsList_JumpsToTheSelectedResult()
     {
