@@ -365,7 +365,8 @@ extra step.
 **Matching:**
 
 - Case-insensitive substring match over title, description, keywords, group header and page
-  title.
+  title. At least one query word must match something other than the page title: the page title
+  only narrows a query, so a page's name finds the page entry, not every row on it (#528).
 - Ranking: title matches first, then the rest, then registry order.
 
 **UI:**

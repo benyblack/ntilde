@@ -73,12 +73,22 @@ public sealed class SettingsSearchIndex
     /// <summary>
     /// Case-insensitive search. The trimmed query is split into words at white space, and an entry
     /// matches when every word is somewhere in its title, description, details, keywords, group or
-    /// page title. Entries whose title holds every word come first, then the rest, each in index
-    /// order. A word is otherwise literal, so "9;4" matches as typed.
+    /// page title, and at least one is somewhere other than the page title. Entries whose title holds
+    /// every word come first, then the rest, each in index order. A word is otherwise literal, so
+    /// "9;4" matches as typed.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// The title emphasis is the whole query where the title holds it as typed, otherwise the first
     /// query word the title holds.
+    /// </para>
+    /// <para>
+    /// The page title is context: "terminal font" narrows to the Terminal page's font rows, but
+    /// "terminal" alone finds the page's own entry, which is one click from every row on it, rather
+    /// than each of those rows too (#528). A group header is not held back the same way: a group is
+    /// small and its rows are its topic, often without its name, so "font" still finds Programming
+    /// ligatures.
+    /// </para>
     /// </remarks>
     public IReadOnlyList<SettingsSearchResult> Search(string? query)
     {
@@ -93,7 +103,8 @@ public sealed class SettingsSearchIndex
         var otherMatches = new List<SettingsSearchResult>();
         foreach (SettingsSearchEntry entry in _entries)
         {
-            if (!words.All(word => ContainsOutsideDetails(entry, word) || Contains(entry.Details, word)))
+            if (!words.All(word => ContainsOutsideDetails(entry, word) || Contains(entry.Details, word))
+                || !words.Any(word => ContainsBesidesPageTitle(entry, word)))
             {
                 continue;
             }
@@ -119,6 +130,10 @@ public sealed class SettingsSearchIndex
     private static bool ContainsOutsideDetails(SettingsSearchEntry entry, string word)
         => Contains(entry.Title, word) || Contains(entry.Description, word) || Contains(entry.Keywords, word)
            || Contains(entry.Group, word) || Contains(entry.PageTitle, word);
+
+    private static bool ContainsBesidesPageTitle(SettingsSearchEntry entry, string word)
+        => Contains(entry.Title, word) || Contains(entry.Description, word) || Contains(entry.Keywords, word)
+           || Contains(entry.Group, word) || Contains(entry.Details, word);
 
     private static bool Contains(string? text, string word)
         => text is not null && text.Contains(word, StringComparison.OrdinalIgnoreCase);
