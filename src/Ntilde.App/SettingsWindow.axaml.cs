@@ -40,6 +40,7 @@ namespace Ntilde
         private bool _syncingNav;
         private TextBox _searchBox = null!;
         private ListBox _searchResults = null!;
+        private TextBlock _searchAnnouncer = null!;
         private Control _searchView = null!;
         private Panel _pageHost = null!;
         private SettingsSearchIndex _searchIndex = new([]);
@@ -519,6 +520,7 @@ namespace Ntilde
         {
             _searchBox = this.FindControl<TextBox>("SettingsSearchBox")!;
             _searchResults = this.FindControl<ListBox>("SearchResultsList")!;
+            _searchAnnouncer = this.FindControl<TextBlock>("SearchSelectionAnnouncer")!;
             _searchView = this.FindControl<Control>("SearchResultsView")!;
             _pageHost = this.FindControl<Panel>("PageHost")!;
 
@@ -550,7 +552,7 @@ namespace Ntilde
             {
                 if (_searchResults.Items[e.Index] is SettingsSearchResult result)
                 {
-                    AutomationProperties.SetName(e.Container, $"{result.Entry.Title} — {ResultLocation(result.Entry)}");
+                    AutomationProperties.SetName(e.Container, ResultName(result));
                     AutomationProperties.SetHelpText(e.Container, result.Entry.Description);
                 }
             };
@@ -579,6 +581,10 @@ namespace Ntilde
         {
             string query = (_searchBox.Text ?? string.Empty).Trim();
             bool searching = query.Length > 0;
+
+            // A live region speaks only when its text changes: start each query empty, so the next ↑/↓ is read
+            // even when it lands on the result last read.
+            _searchAnnouncer.Text = string.Empty;
             _pageHost.IsVisible = !searching;
             _searchView.IsVisible = searching;
             if (!searching)
@@ -666,7 +672,16 @@ namespace Ntilde
 
             _searchResults.SelectedIndex = Math.Clamp(_searchResults.SelectedIndex + step, 0, _searchResults.ItemCount - 1);
             _searchResults.ScrollIntoView(_searchResults.SelectedIndex);
+
+            // Focus stays in the box, so a screen reader would not hear the result: the announcer, a live region, says it.
+            if (_searchResults.SelectedItem is SettingsSearchResult selected)
+            {
+                _searchAnnouncer.Text = ResultName(selected);
+            }
         }
+
+        /// <summary>What a screen reader calls a result: its title, then where it lives.</summary>
+        private static string ResultName(SettingsSearchResult result) => $"{result.Entry.Title} — {ResultLocation(result.Entry)}";
 
         /// <summary>
         /// Jumps to <paramref name="result"/>: its page, its row (details opened when only they
