@@ -571,10 +571,6 @@ namespace Ntilde
             };
 
             RebuildSearchIndex();
-
-            // Command Assist rewrites its descriptions when a chord is rebound (its handler runs
-            // first, having subscribed in Load), so the index re-reads the rows after it.
-            _session.ShortcutsChanged += RebuildSearchIndex;
         }
 
         private void RebuildSearchIndex()
@@ -585,6 +581,13 @@ namespace Ntilde
             string query = (_searchBox.Text ?? string.Empty).Trim();
             bool searching = query.Length > 0;
             _searchClear.IsVisible = !string.IsNullOrEmpty(_searchBox.Text); // whenever Esc has something to clear
+            if (searching && !_searchView.IsVisible)
+            {
+                // A search is starting: read the rows now. Pages rewrite their rows' text (Command Assist on a
+                // rebind), and none can change while a search is showing, so the index is current until it ends -
+                // with no event to subscribe to, and no order to subscribe in.
+                RebuildSearchIndex();
+            }
 
             // A live region speaks only when its text changes: start each query empty, so the next ↑/↓ is read
             // even when it lands on the result last read.
