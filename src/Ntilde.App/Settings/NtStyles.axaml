@@ -415,6 +415,8 @@
     </Style>
     <Style Selector="PathIcon.MiniBarIcon">
         <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="Height" Value="12"/>
     </Style>
     <Style Selector="TextBlock.MiniBarGlyph">
         <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
