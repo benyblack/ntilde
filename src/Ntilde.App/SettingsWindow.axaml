@@ -54,9 +54,14 @@
 
                 <!-- Shown in place of the page while the search box has text. -->
                 <Grid Name="SearchResultsView" RowDefinitions="Auto,*" Margin="32,28,32,0" IsVisible="False">
-                    <TextBlock Name="SearchResultsHeading" Classes="H1" FontSize="16" Margin="0,0,0,12"/>
+                    <!-- Focus stays in the search box while these change, so they are polite live regions: a screen
+                         reader reads the count, or that nothing matched, between keystrokes. -->
+                    <TextBlock Name="SearchResultsHeading" Classes="H1" FontSize="16" Margin="0,0,0,12" AutomationProperties.LiveSetting="Polite"/>
+                    <!-- The result that ↑/↓ in the box selects, read out the same way. Invisible: the list already shows it. -->
+                    <TextBlock Name="SearchSelectionAnnouncer" Height="1" VerticalAlignment="Top" Opacity="0" IsHitTestVisible="False"
+                               AutomationProperties.LiveSetting="Polite"/>
                     <ListBox Name="SearchResultsList" Grid.Row="1" Classes="SearchResults" AutomationProperties.Name="Search results"/>
-                    <TextBlock Name="SearchNoResults" Grid.Row="1" Classes="Subtitle" VerticalAlignment="Top" IsVisible="False"/>
+                    <TextBlock Name="SearchNoResults" Grid.Row="1" Classes="Subtitle" VerticalAlignment="Top" IsVisible="False" AutomationProperties.LiveSetting="Polite"/>
                 </Grid>
             </Panel>
         </Grid>

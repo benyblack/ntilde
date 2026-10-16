@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
@@ -500,6 +501,77 @@ public sealed class SettingsWindowSearchTests
             var focused = window.FocusManager!.GetFocusedElement() as Control;
             Assert.Same(window.NavItem(SettingsPage.Backup), focused);
             Assert.False(focused!.Classes.Contains(":focus-visible"));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Focus stays in the box while the results change, so the count is read out by a live region, politely, between keystrokes.</summary>
+    [AvaloniaFact]
+    public void TheResultCountAndTheNoResultsText_ArePoliteLiveRegions()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+
+        Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(window.FindControl<TextBlock>("SearchResultsHeading")!));
+        Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(window.FindControl<TextBlock>("SearchNoResults")!));
+    }
+
+    /// <summary>
+    /// ↑/↓ in the box moves the selection but not focus, so a screen reader would not hear the result: the
+    /// announcer, an invisible polite live region, takes its name.
+    /// </summary>
+    [AvaloniaFact]
+    public void ArrowingThroughResults_PutsTheSelectedResultInTheAnnouncer()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("font");
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(Results(window).ItemCount > 1, "precondition: more than one result");
+
+            window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+            Dispatcher.UIThread.RunJobs();
+
+            var announcer = window.FindControl<TextBlock>("SearchSelectionAnnouncer")!;
+            var selected = (SettingsSearchResult)Results(window).SelectedItem!;
+            Assert.Equal($"{selected.Entry.Title} — {Ntilde.SettingsWindow.ResultLocation(selected.Entry)}", announcer.Text);
+            Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(announcer));
+            Assert.Equal(0, announcer.Opacity);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>A new query or the end of the search empties the announcer, so the next arrow is read even when it lands on the same name.</summary>
+    [AvaloniaFact]
+    public void EndingTheSearch_EmptiesTheAnnouncer()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("font");
+            Dispatcher.UIThread.RunJobs();
+            window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+            Dispatcher.UIThread.RunJobs();
+            var announcer = window.FindControl<TextBlock>("SearchSelectionAnnouncer")!;
+            Assert.False(string.IsNullOrEmpty(announcer.Text), "precondition: the arrow filled the announcer");
+
+            window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(string.IsNullOrEmpty(announcer.Text));
         }
         finally
         {
