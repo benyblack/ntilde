@@ -288,6 +288,41 @@ public sealed class SettingsTitleBarEditorTests
         }
     }
 
+    /// <summary>
+    /// Hide, then Bar again, on a row that never moved on screen puts the action back where it was in the bar
+    /// order, not at its end: the arrows act on that order, so they must match what is shown.
+    /// </summary>
+    [AvaloniaFact]
+    public void PinningAHeldBarRowAgain_PutsItBackInItsPlace()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                List<string> order = window.Session.TitleBarDraft.BuildSaveOrder();
+                int at = order.IndexOf("connections");
+                Assert.True(at >= 2 && at < order.Count - 1, "precondition: Connections has a row above it to swap with, and one below");
+
+                ClickWithThePointer(window, CenterOf(Segment(Row(page, "connections"), TitleBarItemState.Hidden), window));
+                ClickWithThePointer(window, CenterOf(Segment(Row(page, "connections"), TitleBarItemState.Pinned), window));
+
+                Assert.Equal(order, window.Session.TitleBarDraft.BuildSaveOrder());
+
+                // ▲ swaps it with the row shown above it.
+                Click(Row(page, "connections").GetLogicalDescendants().OfType<Button>().Single(b => b.Tag as string == "up"));
+                (order[at - 1], order[at]) = (order[at], order[at - 1]);
+                Assert.Equal(order, window.Session.TitleBarDraft.BuildSaveOrder());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
     [AvaloniaFact]
     public void MovingThePointerOffTheList_MovesTheRowToItsGroup()
     {

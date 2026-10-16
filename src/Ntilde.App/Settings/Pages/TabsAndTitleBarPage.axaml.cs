@@ -68,7 +68,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
             return;
         }
 
-        var rows = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        var rows = RowsPanel;
         _pointerOverRows = _topLevel.InputHitTest(e.GetPosition(_topLevel)) is Visual hit
             && (ReferenceEquals(hit, rows) || rows.IsVisualAncestorOf(hit));
         if (!_pointerOverRows)
@@ -94,6 +94,8 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     public Control View => this;
 
     private SettingsSession Session => _session ?? throw new InvalidOperationException("TabsAndTitleBarPage used before Load.");
+
+    private StackPanel RowsPanel => this.FindControl<StackPanel>("TitleBarItemsPanel")!;
 
     public void Load(SettingsSession session)
     {
@@ -178,7 +180,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     /// </summary>
     private (string RowId, object? Tag, bool Keyboard)? CaptureRowFocus()
     {
-        var panel = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        var panel = RowsPanel;
         if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is not Control focused || !panel.IsLogicalAncestorOf(focused))
         {
             return null;
@@ -202,7 +204,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
             return;
         }
 
-        var panel = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        var panel = RowsPanel;
         Border? row = panel.Children.OfType<Border>().FirstOrDefault(r => (string?)r.Tag == target.RowId);
         if (row is null)
         {
@@ -222,7 +224,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
     private void RebuildTitleBarRows()
     {
-        var panel = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        var panel = RowsPanel;
         panel.Children.Clear();
 
         TitleBarDraftState draft = Session.TitleBarDraft;
@@ -401,12 +403,44 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
         // Clicking the current choice un-checks its ToggleButton; the rebuild below puts it back.
         // The draft refuses a pin into a full bar, but "Bar" is disabled there, and its tooltip says why.
-        if (Session.TitleBarDraft.GetState(id) != next)
+        if (Session.TitleBarDraft.GetState(id) != next
+            && Session.TitleBarDraft.TrySetState(id, next)
+            && next == TitleBarItemState.Pinned
+            && _heldRows is { } held)
         {
-            _ = Session.TitleBarDraft.TrySetState(id, next);
+            PutBackInHeldPlace(id, held);
         }
 
         RebuildTitleBarEditor();
+    }
+
+    /// <summary>
+    /// The draft pins a row at the end of the bar. A held row in the bar group never moved on screen (Hide,
+    /// then Bar again), so move it back up to its place there: the arrows act on the draft's order, which
+    /// must match the order shown.
+    /// </summary>
+    private void PutBackInHeldPlace(string id, List<(string Id, TitleBarItemState Group)> held)
+    {
+        TitleBarDraftState draft = Session.TitleBarDraft;
+        List<string> heldBar = held.Where(row => row.Group == TitleBarItemState.Pinned).Select(row => row.Id).ToList();
+        int at = heldBar.IndexOf(id);
+        if (at < 0)
+        {
+            return; // held outside the bar group: it has no place among the bar's rows yet
+        }
+
+        // Just ahead of the next row shown below it that is still pinned; with none, the end is its place.
+        string? below = heldBar.Skip(at + 1).FirstOrDefault(other => draft.GetState(other) == TitleBarItemState.Pinned);
+        if (below is null)
+        {
+            return;
+        }
+
+        List<string> order = draft.BuildSaveOrder();
+        for (int steps = order.IndexOf(id) - order.IndexOf(below); steps > 0; steps--)
+        {
+            draft.MovePinned(id, -1);
+        }
     }
 
     private void MoveDraftPinned(string id, int delta)
