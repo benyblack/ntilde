@@ -43,7 +43,7 @@ public class TerminalViewTimerLifetimeTests
         var window = new Window { Content = view, Width = 800, Height = 400 };
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        Assert.NotEmpty(view.RunningTimersForTest); // setup: a shown view renders
+        Assert.Contains("render", view.RunningTimersForTest); // setup: a shown view renders
 
         window.Close();
         Dispatcher.UIThread.RunJobs();
@@ -64,7 +64,7 @@ public class TerminalViewTimerLifetimeTests
             window.Show();
             Dispatcher.UIThread.RunJobs();
             TerminalView view = Assert.IsType<TerminalView>(pane.FindControl<TerminalView>("TermView"));
-            Assert.NotEmpty(view.RunningTimersForTest); // setup: a shown view renders
+            Assert.Contains("render", view.RunningTimersForTest); // setup: a shown view renders
 
             pane.Dispose();
             Dispatcher.UIThread.RunJobs();
@@ -91,7 +91,8 @@ public class TerminalViewTimerLifetimeTests
             Dispatcher.UIThread.RunJobs();
             view.Focus();
             Dispatcher.UIThread.RunJobs();
-            Assert.NotEmpty(view.RunningTimersForTest); // setup: a shown view renders
+            Assert.Contains("render", view.RunningTimersForTest); // setup: a shown view renders
+            Assert.Contains("cursor blink", view.RunningTimersForTest); // and a focused one blinks
 
             view.Retire();
             Dispatcher.UIThread.RunJobs();
