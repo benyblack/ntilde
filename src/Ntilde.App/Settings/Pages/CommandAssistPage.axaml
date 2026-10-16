@@ -44,7 +44,7 @@
                 <StackPanel Name="CommandAssistSnippetsPanel" Margin="24,8,0,8" Spacing="0"/>
             </settings:SettingGroup>
 
-            <settings:SettingGroup Header="REMOTE SHELLS">
+            <settings:SettingGroup Header="Remote shells">
                 <settings:SettingRow Name="RemoteShellIntegrationRow" RowId="remote-shell-integration" Stacked="True"
                                      Title="Remote shell integration"
                                      Description="Ntilde cannot install shell integration over SSH."

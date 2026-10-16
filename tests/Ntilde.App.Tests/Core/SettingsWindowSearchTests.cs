@@ -389,6 +389,27 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>The pages write their group headers as they read; the page still shows them in capitals.</summary>
+    [AvaloniaFact]
+    public void APagesGroupHeader_IsWrittenAsItReads_AndShownInCapitals()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            SettingGroup group = Assert.Single(
+                window.GetPage<AppearancePage>().GetLogicalDescendants().OfType<SettingGroup>(), g => g.Header == "Background image");
+            Assert.Contains(group.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "BACKGROUND IMAGE" && t.Classes.Contains("SectionHeader"));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void AResult_SaysWhereItLives_InSentenceCase()
     {
@@ -408,11 +429,13 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>A group header is written as it reads, so a result shows it as is - an acronym needs no list (#528).</summary>
     [AvaloniaFact]
-    public void ResultLocation_KeepsAcronymsUpperCase_AndNamesAPageAsAPage()
+    public void ResultLocation_WritesTheGroupAsAuthored_AndNamesAPageAsAPage()
     {
-        Assert.Equal("SSH › SSH agent", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.Ssh, "SSH", "SSH AGENT")));
-        Assert.Equal("General › Progress (OSC 9;4)", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.General, "General", "PROGRESS (OSC 9;4)")));
+        Assert.Equal("SSH › SSH agent", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.Ssh, "SSH", "SSH agent")));
+        Assert.Equal("General › Progress (OSC 9;4)", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.General, "General", "Progress (OSC 9;4)")));
+        Assert.Equal("Shells & Profiles › Remote WSL hosts", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.Profiles, "Shells & Profiles", "Remote WSL hosts")));
         Assert.Equal("Terminal", Ntilde.SettingsWindow.ResultLocation(Row(SettingsPage.Terminal, "Terminal", null)));
         Assert.Equal("Page", Ntilde.SettingsWindow.ResultLocation(new SettingsSearchEntry(SettingsPage.Terminal, "Terminal", null, null, "Terminal", null, null)));
 

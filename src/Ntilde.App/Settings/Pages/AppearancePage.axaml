@@ -11,7 +11,7 @@
                     <TextBlock Classes="Subtitle" Text="Theme, window and background image."/>
                 </StackPanel>
 
-                <settings:SettingGroup Header="THEME">
+                <settings:SettingGroup Header="Theme">
                     <settings:SettingRow RowId="theme" Title="Theme" Stacked="True"
                                          Description="Colors for the terminal and for this window."
                                          Keywords="color colour palette dark light scheme">
@@ -51,7 +51,7 @@
                     </settings:SettingRow>
                 </settings:SettingGroup>
 
-                <settings:SettingGroup Header="WINDOW">
+                <settings:SettingGroup Header="Window">
                     <settings:SettingRow RowId="window-opacity" Title="Window opacity" Description="Applies when the window is focused." Keywords="transparency transparent see-through">
                         <Grid Classes="Wide" ColumnDefinitions="*,Auto">
                             <Slider Name="WindowOpacitySlider" Minimum="0.2" Maximum="1.0" Value="1.0" TickFrequency="0.01" IsSnapToTickEnabled="True" AutomationProperties.Name="Window opacity"/>
@@ -75,7 +75,7 @@
                     </settings:SettingRow>
                 </settings:SettingGroup>
 
-                <settings:SettingGroup Header="BACKGROUND IMAGE">
+                <settings:SettingGroup Header="Background image">
                     <settings:SettingRow RowId="background-image" Title="Background image" Description="PNG / JPG / BMP, per-theme." Keywords="wallpaper picture photo">
                         <Grid Classes="Wide" ColumnDefinitions="*,Auto,Auto">
                             <TextBox Name="BgImagePathInput" PlaceholderText="Path to image file…" AutomationProperties.Name="Background image path"/>

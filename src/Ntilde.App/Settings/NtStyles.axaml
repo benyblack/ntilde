@@ -363,7 +363,8 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <StackPanel>
-                    <TextBlock Classes="SectionHeader" Text="{TemplateBinding Header}" Margin="0,0,0,2"
+                    <!-- Written as it reads ("Background image"), so search shows it as is; shown in capitals here. -->
+                    <TextBlock Classes="SectionHeader" Text="{TemplateBinding Header, Converter={x:Static settings:SettingsConverters.UpperCase}}" Margin="0,0,0,2"
                                IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     <ItemsPresenter Name="PART_ItemsPresenter"/>
                 </StackPanel>

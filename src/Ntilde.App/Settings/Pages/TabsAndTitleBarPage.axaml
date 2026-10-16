@@ -9,7 +9,7 @@
                 <TextBlock Classes="Subtitle" Text="Where tabs live, and which actions sit in the title bar."/>
             </StackPanel>
 
-            <settings:SettingGroup Header="TABS">
+            <settings:SettingGroup Header="Tabs">
                 <settings:SettingRow RowId="tab-orientation" Title="Tab strip orientation"
                                      Description="Vertical shows tabs in a left sidebar with agent status and a last-output preview."
                                      Keywords="vertical horizontal sidebar layout">
@@ -20,7 +20,7 @@
                 </settings:SettingRow>
             </settings:SettingGroup>
 
-            <settings:SettingGroup Header="TITLE BAR ACTIONS">
+            <settings:SettingGroup Header="Title bar actions">
                 <StackPanel Spacing="12" Margin="0,8,0,0">
                     <!-- A lightweight replica of the bar, rebuilt on every draft change (spec §6). A picture to a screen reader:
                          a Border's own role is "none". -->

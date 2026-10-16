@@ -9,7 +9,7 @@
                 <TextBlock Classes="Subtitle" Text="Font, text rendering and scrollback."/>
             </StackPanel>
 
-            <settings:SettingGroup Header="FONT">
+            <settings:SettingGroup Header="Font">
                 <settings:SettingRow RowId="font-family" Title="Font family" Description="Monospaced font used in the terminal." Keywords="typeface monospace">
                     <ComboBox Name="FontList" Classes="Wide" AutomationProperties.Name="Font family"/>
                 </settings:SettingRow>
@@ -24,7 +24,7 @@
                 </settings:SettingRow>
             </settings:SettingGroup>
 
-            <settings:SettingGroup Header="SCROLLBACK">
+            <settings:SettingGroup Header="Scrollback">
                 <settings:SettingRow RowId="scrollback" Title="Scrollback limit" Description="Maximum number of lines retained per pane." Keywords="history lines buffer">
                     <NumericUpDown Name="ScrollbackInput" Classes="Wide" Minimum="100" Maximum="100000" Value="10000" Increment="1000" AutomationProperties.Name="Scrollback limit"/>
                 </settings:SettingRow>
