@@ -730,7 +730,7 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
-    /// <summary>Command Assist rewrites its descriptions on a rebind, and search reads the new text.</summary>
+    /// <summary>Command Assist rewrites its descriptions on a rebind, and a search finds the new text.</summary>
     [AvaloniaFact]
     public void ARebind_IsSearchable_ByItsNewChord()
     {
@@ -740,8 +740,28 @@ public sealed class SettingsWindowSearchTests
 
         window.Session.ShortcutDraft["command_assist_history"] = "Ctrl+Alt+H";
         window.Session.RaiseShortcutsChanged();
+        Box(window).Text = "Ctrl+Alt+H";
+        Dispatcher.UIThread.RunJobs();
 
-        Assert.Contains(window.SearchIndex.Search("Ctrl+Alt+H"), r => r.Entry.RowId == "remember-commands");
+        Assert.Contains(Shown(window), r => r.Entry.RowId == "remember-commands");
+    }
+
+    /// <summary>
+    /// The index is read from the rows when a search starts, so a row a page rewrote is found by its new text whether or
+    /// not anything told the window - search no longer depends on subscribing to ShortcutsChanged after the pages (#528).
+    /// </summary>
+    [AvaloniaFact]
+    public void ARowRewrittenWithNoEvent_IsFoundByItsNewText_WhenASearchStarts()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        SettingRow row = window.GetPage<TerminalPage>().GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "scrollback");
+
+        row.Description = "Lines kept for zanzibar";
+        Box(window).Text = "zanzibar";
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Contains(Shown(window), r => r.Entry.RowId == "scrollback");
     }
 
     /// <summary>An Import or Restore reloads every page, and search reads the reloaded text.</summary>
