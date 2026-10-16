@@ -3,6 +3,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -99,12 +100,20 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     public bool IsSubPageOpen => IsThemeEditorOpen;
 
-    /// <summary>A search jump or deep link closes the editor only when that drops nothing, as Save does.</summary>
-    public void CloseSubPage()
+    /// <summary>
+    /// A search jump or deep link closes the editor only when that drops nothing, as Save does. A refused
+    /// search jump moves focus from the emptied search box to Save theme, the safe way to act on the reason
+    /// (Back would discard the draft).
+    /// </summary>
+    public void CloseSubPage(NavigationMethod? focusWith)
     {
         if (!RefuseToDropUnsavedThemeEdits())
         {
             ShowMainView(restoreFocus: true);
+        }
+        else if (focusWith is { } method)
+        {
+            this.FindControl<Button>("BtnSaveTheme")!.Focus(method);
         }
     }
 
@@ -116,7 +125,10 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             return false;
         }
 
-        Text("ThemeEditorStatus").Text = UnsavedThemeEditsMessage;
+        // The status is a live region, read out when its text changes: a repeated refusal is set afresh.
+        TextBlock status = Text("ThemeEditorStatus");
+        status.Text = "";
+        status.Text = UnsavedThemeEditsMessage;
         return true;
     }
 

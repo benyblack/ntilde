@@ -155,7 +155,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Name="BtnSaveTheme" Classes="Primary" Content="Save theme"/>
                             <Button Name="BtnDeleteTheme" Classes="Danger" Content="Delete"/>
-                            <TextBlock Name="ThemeEditorStatus" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource NtFg3}"/>
+                            <TextBlock Name="ThemeEditorStatus" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource NtFg3}"/>
                         </StackPanel>
                     </StackPanel>
 
