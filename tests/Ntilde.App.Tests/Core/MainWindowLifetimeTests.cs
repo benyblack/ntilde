@@ -11,7 +11,7 @@ using Ntilde.Shell;
 namespace Ntilde.Tests.Core;
 
 /// <summary>
-/// #543: a MainWindow that has closed and been torn down can be collected.
+/// #543: a MainWindow that the tests have torn down can be collected, closed or not.
 /// </summary>
 /// <remarks>
 /// Every closed window used to stay reachable, about 55 MB each, through the dispatcher's running
@@ -35,9 +35,19 @@ public sealed class MainWindowLifetimeTests : IClassFixture<TestAppDataRoot>, ID
 
     [AvaloniaFact]
     [Trait("Category", "Regression")]
-    public async Task AClosedAndTornDownWindow_IsCollected()
+    public Task AClosedAndTornDownWindow_IsCollected() => AssertCollectedAsync(OpenAndTearDownAWindow(close: true), "closed");
+
+    /// <summary>
+    /// Most window tests never close their window; the factory tears it down after the test. It must not outlive the test
+    /// - the App.Tests host grew by gigabytes on windows held that way - and its teardown must not run the app's close,
+    /// which saves the session and stops process-wide services.
+    /// </summary>
+    [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public Task AnOpenWindowTornDownByTheFactory_IsCollected() => AssertCollectedAsync(OpenAndTearDownAWindow(close: false), "open");
+
+    private static async Task AssertCollectedAsync(TornDownWindow torn, string state)
     {
-        TornDownWindow torn = OpenCloseAndTearDownAWindow();
         WeakReference window = torn.Window;
 
         // The pane's shell is ended on the thread pool, and its exit is posted back to the dispatcher holding the pane, so the
@@ -55,7 +65,7 @@ public sealed class MainWindowLifetimeTests : IClassFixture<TestAppDataRoot>, ID
         // a pane started after it was disposed.
         Assert.False(
             window.IsAlive,
-            $"the closed window is still reachable after {waited.Elapsed.TotalSeconds:F0} s of collections; " +
+            $"the {state} window is still reachable after {waited.Elapsed.TotalSeconds:F0} s of collections; " +
             $"panes still reachable: {torn.Panes.Count(p => p.IsAlive)} of {torn.Panes.Count}; " +
             $"their sessions still reachable: {string.Join(", ", torn.Sessions.Where(s => s.IsAlive).Select(s => Describe(s.Target)))} " +
             $"({torn.Sessions.Count(s => s.IsAlive)} of {torn.Sessions.Count}); " +
@@ -98,7 +108,7 @@ public sealed class MainWindowLifetimeTests : IClassFixture<TestAppDataRoot>, ID
 
     // Not inlined, so no local of the test method's frame can keep the window alive.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static TornDownWindow OpenCloseAndTearDownAWindow()
+    private static TornDownWindow OpenAndTearDownAWindow(bool close)
     {
         // Restored tabs, as at startup: the selected one is shown, and the others are built in the background and never
         // shown. A view that was never shown is the one whose timers outlived the window, so those tabs are the point.
@@ -111,11 +121,14 @@ public sealed class MainWindowLifetimeTests : IClassFixture<TestAppDataRoot>, ID
         var panes = window.AllPanesForTest().Select(pane => new WeakReference(pane)).ToList();
         var sessions = window.AllPanesForTest().Select(pane => pane.Session).OfType<object>().Select(session => new WeakReference(session)).ToList();
 
-        bool closed = false;
-        window.Closed += (_, _) => closed = true;
-        window.Close();
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(closed, "setup: the window did not close");
+        if (close)
+        {
+            bool closed = false;
+            window.Closed += (_, _) => closed = true;
+            window.Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(closed, "setup: the window did not close");
+        }
 
         TestMainWindowFactory.DisposeCreatedWindows();
         Dispatcher.UIThread.RunJobs();
