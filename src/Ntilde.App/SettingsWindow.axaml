@@ -36,7 +36,17 @@
                              DockPanel.Dock="Top"
                              Margin="12,12,12,4"
                              PlaceholderText="Search settings"
-                             AutomationProperties.Name="Search settings"/>
+                             AutomationProperties.Name="Search settings">
+                        <!-- The mouse's way out of a search; Esc is the keyboard's. Not focusable, so a click leaves focus
+                             in the box and Tab never stops on it. Shown while the box holds text (set in code). -->
+                        <TextBox.InnerRightContent>
+                            <Button Name="SearchClearButton" Classes="IconBtn" Width="22" Height="22" Padding="0" Margin="0,0,4,0"
+                                    Focusable="False" IsVisible="False"
+                                    AutomationProperties.Name="Clear search" ToolTip.Tip="Clear search (Esc)">
+                                <TextBlock Text="✕" FontSize="12"/>
+                            </Button>
+                        </TextBox.InnerRightContent>
+                    </TextBox>
                     <!-- Items are built from SettingsPageRegistry in code. -->
                     <ListBox Name="SideNav"
                              Classes="SideNav"

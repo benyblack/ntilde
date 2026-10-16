@@ -83,6 +83,86 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    private static Button ClearButton(Ntilde.SettingsWindow window) => Assert.IsType<Button>(window.FindControl<Button>("SearchClearButton"));
+
+    /// <summary>Esc clears the search, but a mouse user needs something to see and click (#528).</summary>
+    [AvaloniaFact]
+    public void TheClearButton_ShowsOnlyWhileTheBoxHasText()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Button clear = ClearButton(window);
+            Assert.False(clear.IsVisible);
+
+            Box(window).Text = "blur";
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(clear.IsVisible);
+
+            Box(window).Text = string.Empty;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(clear.IsVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ClickingTheClearButton_ClearsTheSearch_TheSamePageIsBack_AndFocusStaysInTheBox()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("blur");
+            Dispatcher.UIThread.RunJobs();
+            Button clear = ClearButton(window);
+            Point at = clear.TranslatePoint(new Point(clear.Bounds.Width / 2, clear.Bounds.Height / 2), window)!.Value;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseUp(at, MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(string.Empty, Box(window).Text);
+            Assert.Equal(SettingsPage.Shortcuts, window.CurrentPage);
+            Assert.True(window.GetPage(SettingsPage.Shortcuts).View.IsVisible);
+            Assert.True(Box(window).IsFocused, "focus left the search box");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void TheClearButton_IsNamedForScreenReaders_AndStaysOutOfTheTabOrder()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Text = "blur";
+            Dispatcher.UIThread.RunJobs();
+            Button clear = ClearButton(window);
+
+            Assert.Equal("Clear search", ControlAutomationPeer.CreatePeerForElement(clear).GetName());
+            Assert.Equal("Clear search (Esc)", ToolTip.GetTip(clear));
+            Assert.False(clear.Focusable); // Esc is the keyboard's way out
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void Escape_ClearsTheSearch_AndTheSamePageIsBack()
     {
