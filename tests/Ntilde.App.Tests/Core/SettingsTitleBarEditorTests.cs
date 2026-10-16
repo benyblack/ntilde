@@ -508,6 +508,21 @@ public sealed class SettingsTitleBarEditorTests
         }
     }
 
+    /// <summary>
+    /// An untagged control cannot be found again by its Tag - a null Tag would match any untagged control - so focus falls
+    /// through to the other choices; a tagged one is still found first (#528).
+    /// </summary>
+    [AvaloniaFact]
+    public void FocusRestore_ByANullTag_FallsThroughToThePlacement()
+    {
+        var untagged = new Button();
+        var down = new Button { Tag = "down" };
+        var placement = new ToggleButton { Tag = TitleBarItemState.Overflow, IsChecked = true };
+
+        Assert.Same(placement, TabsAndTitleBarPage.FocusTargetIn([untagged, placement], capturedTag: null));
+        Assert.Same(down, TabsAndTitleBarPage.FocusTargetIn([untagged, down, placement], capturedTag: "down"));
+    }
+
     /// <summary>The mini bar's icons take their 12x12 size from the MiniBarIcon style, with its colour.</summary>
     [AvaloniaFact]
     public void TheMiniBarsIcons_Are12By12()

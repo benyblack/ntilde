@@ -211,15 +211,22 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
             return;
         }
 
-        List<Control> candidates = row.GetLogicalDescendants().OfType<Control>().ToList();
-        Control? Find(Func<Control, bool> match) => candidates.FirstOrDefault(c => c.Focusable && c.IsEnabled && match(c));
-
-        // The same control first (the row may have changed group, so match by Tag, not by position),
-        // then the other arrow, then whichever placement is now checked.
-        Control? next = Find(c => Equals(c.Tag, target.Tag))
-            ?? Find(c => c is Button && c.Tag is "up" or "down")
-            ?? Find(c => c is ToggleButton { IsChecked: true });
+        Control? next = FocusTargetIn(row.GetLogicalDescendants().OfType<Control>(), target.Tag);
         next?.Focus(target.Keyboard ? NavigationMethod.Tab : NavigationMethod.Unspecified);
+    }
+
+    /// <summary>
+    /// Which of a rebuilt row's controls takes focus back: the one with the captured Tag (the row may have changed group,
+    /// so it is matched by Tag, not by position), else the other arrow, else whichever placement is now checked. An
+    /// untagged control cannot be found again that way - a null Tag matches every untagged control - so it goes straight
+    /// to the other choices.
+    /// </summary>
+    internal static Control? FocusTargetIn(IEnumerable<Control> candidates, object? capturedTag)
+    {
+        List<Control> focusable = candidates.Where(c => c.Focusable && c.IsEnabled).ToList();
+        return (capturedTag is null ? null : focusable.FirstOrDefault(c => Equals(c.Tag, capturedTag)))
+            ?? focusable.FirstOrDefault(c => c is Button && c.Tag is "up" or "down")
+            ?? focusable.FirstOrDefault(c => c is ToggleButton { IsChecked: true });
     }
 
     /// <summary>The catalog by id, for the rows and the mini bar: the catalog is fixed, so it is built once.</summary>
