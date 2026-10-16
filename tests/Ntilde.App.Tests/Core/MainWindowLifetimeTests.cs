@@ -5,6 +5,8 @@ using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Ntilde.AgentHost;
+using Ntilde.AppTests.AgentHost;
 using Ntilde.Pty;
 using Ntilde.Shell;
 
@@ -45,6 +47,45 @@ public sealed class MainWindowLifetimeTests : IClassFixture<TestAppDataRoot>, ID
     [AvaloniaFact]
     [Trait("Category", "Regression")]
     public Task AnOpenWindowTornDownByTheFactory_IsCollected() => AssertCollectedAsync(OpenAndTearDownAWindow(close: false), "open");
+
+    /// <summary>
+    /// The factory closes each window with the app's teardown skipped, and that skip is what keeps a test away from the
+    /// developer's profile: the app's teardown saves the session to whatever app-data root is current - the developer's
+    /// own, when a test took none - and stops the process-wide agent host, which the next test would inherit.
+    /// </summary>
+    [AvaloniaFact]
+    [Trait("Category", "Regression")]
+    public void TheFactoryTeardown_SavesNoSession_AndLeavesTheAgentHostRunning()
+    {
+        string dir = AgentHostTestEndpoint.CreateTempDir("teardown");
+        try
+        {
+            using var service = new AgentHostService(
+                new AgentSessionRegistry(), AgentHostTestEndpoint.CreateEndpoint(dir), dir, dir, new AgentActivityJournal());
+            using (AgentHostService.OverrideInstanceForTesting(service))
+            {
+                // Observe on, so the window starts the agent host: a stopped one could not show a stop.
+                Ntilde.MainWindow window = TestMainWindowFactory.Create(AppServices.BuildForDesigner() with
+                {
+                    Settings = new TerminalSettings { AgentAccessObserveEnabled = true },
+                });
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(service.IsRunning, "setup: the window did not start the agent host");
+                Assert.False(File.Exists(AppPaths.SessionFilePath), "setup: there was a session file before the teardown");
+
+                TestMainWindowFactory.DisposeCreatedWindows();
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.False(File.Exists(AppPaths.SessionFilePath), "the teardown saved the session");
+                Assert.True(service.IsRunning, "the teardown stopped the agent host");
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { /* best effort */ }
+        }
+    }
 
     private static async Task AssertCollectedAsync(TornDownWindow torn, string state)
     {
