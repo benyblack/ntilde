@@ -228,6 +228,64 @@ public sealed class SettingsThemeEditorTests
         }
     }
 
+    /// <summary>A colour changed in a swatch's pop-up is an unsaved edit: Save is refused until it is saved or dropped (#528).</summary>
+    [AvaloniaFact]
+    public void ASwatchFlyoutEdit_IsAnUnsavedEdit()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs();
+                Assert.Null(page.Validate()); // setup: the editor opens with no edits
+
+                Click(page, "EditSwatch1");
+                Dispatcher.UIThread.RunJobs();
+                // The pop-up's colour field: the one text box on the page without a name.
+                TextBox hex = window.GetVisualDescendants().OfType<TextBox>().Single(box => string.IsNullOrEmpty(box.Name));
+                hex.Text = "#123456";
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.NotNull(page.Validate());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>Delete leaves the editor, and focus goes back to Edit as it does after Back (#528).</summary>
+    [AvaloniaFact]
+    public void Delete_ReturnsFocusToEdit()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Click(page, "BtnEditTheme");
+                Dispatcher.UIThread.RunJobs();
+                page.FindControl<Button>("BtnDeleteTheme")!.Focus(NavigationMethod.Tab); // Delete chosen from the keyboard
+                Dispatcher.UIThread.RunJobs();
+
+                Click(page, "BtnDeleteTheme");
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.False(page.IsThemeEditorOpen);
+                Assert.Same(page.FindControl<Button>("BtnEditTheme"), TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
     /// <summary>Saving an edit to another colour writes the translucent one back as it was, not opaque.</summary>
     [AvaloniaFact]
     public void Save_AfterEditingAnotherColour_KeepsATranslucentColoursAlpha()
