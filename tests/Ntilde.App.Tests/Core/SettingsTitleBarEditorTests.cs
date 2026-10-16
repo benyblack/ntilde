@@ -508,6 +508,20 @@ public sealed class SettingsTitleBarEditorTests
         }
     }
 
+    /// <summary>The mini bar's icons take their 12x12 size from the MiniBarIcon style, with its colour.</summary>
+    [AvaloniaFact]
+    public void TheMiniBarsIcons_Are12By12()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            List<PathIcon> icons = ((Grid)page.FindControl<Border>("TitleBarPreview")!.Child!).GetLogicalDescendants().OfType<PathIcon>().ToList();
+
+            Assert.NotEmpty(icons);
+            Assert.All(icons, icon => Assert.Equal((12d, 12d), (icon.Width, icon.Height)));
+        }
+    }
+
     [AvaloniaFact]
     public void TheMiniBar_FollowsEveryDraftChange()
     {

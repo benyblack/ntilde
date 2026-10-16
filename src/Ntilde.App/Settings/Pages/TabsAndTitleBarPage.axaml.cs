@@ -222,13 +222,17 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         next?.Focus(target.Keyboard ? NavigationMethod.Tab : NavigationMethod.Unspecified);
     }
 
+    /// <summary>The catalog by id, for the rows and the mini bar: the catalog is fixed, so it is built once.</summary>
+    private static readonly Dictionary<string, TitleBarCatalogEntry> CatalogById =
+        TitleBarCatalog.GetEntries().ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
+
     private void RebuildTitleBarRows()
     {
         var panel = RowsPanel;
         panel.Children.Clear();
 
         TitleBarDraftState draft = Session.TitleBarDraft;
-        Dictionary<string, TitleBarCatalogEntry> byId = TitleBarCatalog.GetEntries().ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, TitleBarCatalogEntry> byId = CatalogById;
         List<(string Id, TitleBarItemState Group)> layout = _heldRows ?? DraftRowLayout();
         List<TitleBarCatalogEntry> InGroup(TitleBarItemState group)
             => layout.Where(row => row.Group == group).Select(row => byId[row.Id]).ToList();
@@ -454,11 +458,15 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     /// A lightweight replica of the title bar, not a real one: two sample tabs, then the right-aligned group: New Tab's "+", the
     /// pinned actions in order, "…" when the menu has anything in it, and dim caption buttons.
     /// </summary>
+    /// <remarks>
+    /// It shows the saved layout, so it never shows an auto-surfaced toggle: a toggle left in the menu moves into the real
+    /// bar while it is on (Record while recording; TitleBarLayoutResolver's rule 4), and the preview keeps it in the menu.
+    /// </remarks>
     private void RebuildMiniTitleBar()
     {
         var host = this.FindControl<Border>("TitleBarPreview")!;
         TitleBarDraftState draft = Session.TitleBarDraft;
-        Dictionary<string, TitleBarCatalogEntry> byId = TitleBarCatalog.GetEntries().ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, TitleBarCatalogEntry> byId = CatalogById;
 
         var tabs = new StackPanel
         {
@@ -473,7 +481,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         actions.Children.Add(new TextBlock { Text = "+", Tag = "new_tab", Classes = { "MiniBarGlyph" }, VerticalAlignment = VerticalAlignment.Center });
         foreach (string id in draft.BuildSaveOrder().Where(id => !byId[id].IsLocked))
         {
-            actions.Children.Add(new PathIcon { Data = Geometry.Parse(byId[id].IconGeometry), Width = 12, Height = 12, Tag = id, Classes = { "MiniBarIcon" } });
+            actions.Children.Add(new PathIcon { Data = Geometry.Parse(byId[id].IconGeometry), Tag = id, Classes = { "MiniBarIcon" } });
         }
 
         if (TitleBarCatalog.GetEntries().Any(entry => draft.GetState(entry.Id) == TitleBarItemState.Overflow))
