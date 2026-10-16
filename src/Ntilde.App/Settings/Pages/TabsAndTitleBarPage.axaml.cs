@@ -486,8 +486,8 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), Children = { tabs, actions, captions } };
         Grid.SetColumn(actions, 2);
         Grid.SetColumn(captions, 3);
-        // The preview is decorative: the host is the one control element (a bare Border gets no automation
-        // peer, so its name would never be announced), and the glyph pile stays out of UIA.
+        // The preview is decorative: the host is the one control element, read as an image named in the XAML (a bare
+        // Border's peer is no control element, so its name would never be announced), and the glyph pile stays out of UIA.
         AutomationProperties.SetAccessibilityView(host, AccessibilityView.Control);
         HideFromAutomation(grid);
         host.Child = grid;

@@ -1,4 +1,5 @@
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia;
@@ -542,22 +543,35 @@ public sealed class SettingsTitleBarEditorTests
         }
     }
 
+    /// <summary>
+    /// What a screen reader is given is the preview's automation peer, not the properties set on it: a bare Border's
+    /// peer has no role of its own, so the preview was read with a role of "none".
+    /// </summary>
     [AvaloniaFact]
-    public void TheMiniBar_IsDecorative_HostKeepsTheNameAndContentIsHidden()
+    public void TheMiniBar_IsOneNamedImageToScreenReaders()
     {
         var (root, _, page) = Open();
         using (root)
         {
-            var host = page.FindControl<Border>("TitleBarPreview")!;
-            Assert.Equal("Title bar preview", AutomationProperties.GetName(host));
-            Assert.Equal(AccessibilityView.Control, AutomationProperties.GetAccessibilityView(host));
+            AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement(page.FindControl<Border>("TitleBarPreview")!);
 
-            var grid = (Grid)host.Child!;
-            Assert.Equal(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(grid));
-            Assert.All(
-                grid.GetLogicalDescendants().OfType<Control>(),
-                control => Assert.Equal(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(control)));
+            Assert.Equal("Title bar preview", peer.GetName());
+            Assert.Equal(AutomationControlType.Image, peer.GetAutomationControlType());
+            Assert.True(peer.IsControlElement(), "a screen reader would not reach the preview");
+            Assert.Empty(ControlElementsUnder(peer)); // its glyphs stay out of what a screen reader navigates
         }
+    }
+
+    private static List<string> ControlElementsUnder(AutomationPeer peer)
+    {
+        var found = new List<string>();
+        foreach (AutomationPeer child in peer.GetChildren())
+        {
+            if (child.IsControlElement()) found.Add($"{child.GetAutomationControlType()} '{child.GetName()}'");
+            found.AddRange(ControlElementsUnder(child));
+        }
+
+        return found;
     }
 
     [AvaloniaFact]
