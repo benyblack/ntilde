@@ -3,9 +3,11 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Shell;
 using System;
@@ -21,9 +23,70 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
     private SettingsSession? _session;
 
+    // The rows as they stood when a placement was chosen with the pointer over them, or null when the rows
+    // follow the draft. Regrouping at once moves the clicked row away and slides another under the pointer,
+    // so a second click lands on the wrong action. Each row's controls still follow the draft.
+    private List<(string Id, TitleBarItemState Group)>? _heldRows;
+
+    // Whether the pointer was over the rows at its last move, press or release, hit-tested at the window (see
+    // TrackPointer), and the window whose pointer events feed it.
+    private bool _pointerOverRows;
+    private TopLevel? _topLevel;
+
     public TabsAndTitleBarPage()
     {
         InitializeComponent();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _topLevel = TopLevel.GetTopLevel(this);
+        _topLevel?.AddHandler(PointerMovedEvent, TrackPointer, RoutingStrategies.Tunnel, handledEventsToo: true);
+        _topLevel?.AddHandler(PointerPressedEvent, TrackPointer, RoutingStrategies.Tunnel, handledEventsToo: true);
+        _topLevel?.AddHandler(PointerReleasedEvent, TrackPointer, RoutingStrategies.Tunnel, handledEventsToo: true);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _topLevel?.RemoveHandler(PointerMovedEvent, TrackPointer);
+        _topLevel?.RemoveHandler(PointerPressedEvent, TrackPointer);
+        _topLevel?.RemoveHandler(PointerReleasedEvent, TrackPointer);
+        _topLevel = null;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>
+    /// Notes whether the pointer is over the rows, and lets held rows regroup once it is not: then nothing can
+    /// land on the wrong one. Judged by hit-testing at the window, not by the rows' own PointerExited: every
+    /// placement change rebuilds the control under the pointer, and after that the rows can miss their exit.
+    /// </summary>
+    private void TrackPointer(object? sender, PointerEventArgs e)
+    {
+        if (_topLevel is null || !IsVisible)
+        {
+            return;
+        }
+
+        var rows = this.FindControl<StackPanel>("TitleBarItemsPanel")!;
+        _pointerOverRows = _topLevel.InputHitTest(e.GetPosition(_topLevel)) is Visual hit
+            && (ReferenceEquals(hit, rows) || rows.IsVisualAncestorOf(hit));
+        if (!_pointerOverRows)
+        {
+            ReleaseHeldRows();
+        }
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        // The window hides a page it navigates away from; it comes back with the rows in their groups.
+        if (change.Property == IsVisibleProperty && !IsVisible)
+        {
+            _pointerOverRows = false; // TrackPointer skips a hidden page, so this would go stale
+            ReleaseHeldRows();
+        }
     }
 
     public SettingsPage Page => SettingsPage.TabsAndTitleBar;
@@ -47,6 +110,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
         _session = session;
         ComboTags.Select(this.FindControl<ComboBox>("TabOrientationList")!, session.Settings.TabStripOrientation, StringComparison.OrdinalIgnoreCase, fallbackIndex: 0);
+        _heldRows = null; // a reload (restore, import) rebuilds every row from the new draft
         RebuildTitleBarEditor();
     }
 
@@ -163,32 +227,57 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
         TitleBarDraftState draft = Session.TitleBarDraft;
         Dictionary<string, TitleBarCatalogEntry> byId = TitleBarCatalog.GetEntries().ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<string> order = draft.GetDisplayOrder();
-        List<TitleBarCatalogEntry> InGroup(TitleBarItemState state)
-            => order.Where(id => draft.GetState(id) == state).Select(id => byId[id]).ToList();
+        List<(string Id, TitleBarItemState Group)> layout = _heldRows ?? DraftRowLayout();
+        List<TitleBarCatalogEntry> InGroup(TitleBarItemState group)
+            => layout.Where(row => row.Group == group).Select(row => byId[row.Id]).ToList();
 
         List<TitleBarCatalogEntry> bar = InGroup(TitleBarItemState.Pinned);
         List<TitleBarCatalogEntry> menu = InGroup(TitleBarItemState.Overflow);
         List<TitleBarCatalogEntry> hidden = InGroup(TitleBarItemState.Hidden);
-        bool barFull = bar.Count >= TitleBarCatalog.MaxPinned;
 
-        panel.Children.Add(GroupHeader("IN THE BAR", $"{bar.Count} of {TitleBarCatalog.MaxPinned}"));
-        for (int i = 0; i < bar.Count; i++)
+        // The counts, the cap and each row's controls follow the draft, also while the rows are held.
+        int CountInDraft(TitleBarItemState state) => byId.Keys.Count(id => draft.GetState(id) == state);
+        int pinned = CountInDraft(TitleBarItemState.Pinned);
+        bool barFull = pinned >= TitleBarCatalog.MaxPinned;
+
+        // Reordered among themselves: the rows in the bar group that the draft still pins.
+        List<string> reorderable = bar.Where(e => draft.GetState(e.Id) == TitleBarItemState.Pinned).Select(e => e.Id).ToList();
+
+        panel.Children.Add(GroupHeader("IN THE BAR", $"{pinned} of {TitleBarCatalog.MaxPinned}"));
+        foreach (TitleBarCatalogEntry entry in bar)
         {
-            panel.Children.Add(CreateTitleBarRow(bar[i], TitleBarItemState.Pinned, i, bar.Count, barFull));
+            panel.Children.Add(CreateTitleBarRow(entry, draft.GetState(entry.Id), reorderable.IndexOf(entry.Id), reorderable.Count, barFull));
         }
 
-        panel.Children.Add(GroupHeader("IN THE … MENU", menu.Count.ToString(CultureInfo.InvariantCulture)));
+        panel.Children.Add(GroupHeader("IN THE … MENU", CountInDraft(TitleBarItemState.Overflow).ToString(CultureInfo.InvariantCulture)));
         foreach (TitleBarCatalogEntry entry in menu)
         {
-            panel.Children.Add(CreateTitleBarRow(entry, TitleBarItemState.Overflow, -1, 0, barFull));
+            panel.Children.Add(CreateTitleBarRow(entry, draft.GetState(entry.Id), -1, 0, barFull));
         }
 
-        panel.Children.Add(GroupHeader("HIDDEN", $"{hidden.Count} · still reachable by shortcut and the command palette"));
+        panel.Children.Add(GroupHeader("HIDDEN", $"{CountInDraft(TitleBarItemState.Hidden)} · still reachable by shortcut and the command palette"));
         foreach (TitleBarCatalogEntry entry in hidden)
         {
-            panel.Children.Add(CreateTitleBarRow(entry, TitleBarItemState.Hidden, -1, 0, barFull));
+            panel.Children.Add(CreateTitleBarRow(entry, draft.GetState(entry.Id), -1, 0, barFull));
         }
+    }
+
+    /// <summary>Each row in the group the draft gives it: the bar in its order, then the rest in catalog order.</summary>
+    private List<(string Id, TitleBarItemState Group)> DraftRowLayout()
+    {
+        TitleBarDraftState draft = Session.TitleBarDraft;
+        return draft.GetDisplayOrder().Select(id => (id, draft.GetState(id))).ToList();
+    }
+
+    private void ReleaseHeldRows()
+    {
+        if (_heldRows is null)
+        {
+            return;
+        }
+
+        _heldRows = null;
+        RebuildTitleBarEditor();
     }
 
     private static Grid GroupHeader(string title, string detail)
@@ -255,7 +344,8 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         Grid.SetColumn(shortcut, 2);
         Grid.SetColumn(placement, 3);
 
-        if (state == TitleBarItemState.Pinned && !entry.IsLocked)
+        // barIndex is -1 for a row held outside the bar group: it gets its arrows once it moves there.
+        if (state == TitleBarItemState.Pinned && !entry.IsLocked && barIndex >= 0)
         {
             // Index 0 is the locked New Tab, which never moves and can never be displaced.
             var up = new Button { Content = "▲", Classes = { "IconBtn" }, IsEnabled = barIndex > 1, Tag = "up" };
@@ -301,6 +391,14 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
 
     private void ChooseTitleBarPlacement(string id, TitleBarItemState next)
     {
+        // With the pointer over the rows, hold them where they are now (see _heldRows); they regroup once it
+        // leaves. With the pointer elsewhere (a keyboard choice, usually) they regroup at once, and focus
+        // follows the row (RestoreRowFocus).
+        if (_pointerOverRows)
+        {
+            _heldRows ??= DraftRowLayout();
+        }
+
         // Clicking the current choice un-checks its ToggleButton; the rebuild below puts it back.
         // The draft refuses a pin into a full bar, but "Bar" is disabled there, and its tooltip says why.
         if (Session.TitleBarDraft.GetState(id) != next)
@@ -314,6 +412,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
     private void MoveDraftPinned(string id, int delta)
     {
         Session.TitleBarDraft.MovePinned(id, delta);
+        _heldRows = null; // the bar's new order has to show, so held rows go to their groups first
         RebuildTitleBarEditor();
     }
 
