@@ -2,6 +2,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
@@ -192,6 +193,208 @@ public sealed class SettingsTitleBarEditorTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Same(Segment(Row(page, "settings"), TitleBarItemState.Overflow), Focused(window));
+        }
+    }
+
+    private static Point CenterOf(Control control, Window window)
+        => control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
+
+    private static void ClickWithThePointer(Window window, Point at)
+    {
+        window.MouseMove(at);
+        window.MouseDown(at, MouseButton.Left);
+        window.MouseUp(at, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    private static double TopOf(Border row, Window window) => row.TranslatePoint(default, window)!.Value.Y;
+
+    private static string? HeaderDetail(TabsAndTitleBarPage page, string group)
+        => Rows(page).Children.OfType<Grid>().Single(g => (string?)g.Tag == group).Children.OfType<TextBlock>().Last().Text;
+
+    /// <summary>Scrolls the row on screen: at the default size the menu rows start below the page's viewport.</summary>
+    private static void ScrollToRow(TabsAndTitleBarPage page, string id)
+    {
+        Row(page, id).BringIntoView();
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>Pins Record Session, a menu row, by clicking its Bar segment with the pointer.</summary>
+    private static void PinRecordingWithThePointer(Ntilde.SettingsWindow window, TabsAndTitleBarPage page)
+    {
+        ScrollToRow(page, "toggle_recording");
+        ClickWithThePointer(window, CenterOf(Segment(Row(page, "toggle_recording"), TitleBarItemState.Pinned), window));
+        Assert.Equal(TitleBarItemState.Pinned, window.Session.TitleBarDraft.GetState("toggle_recording")); // the click landed
+    }
+
+    /// <summary>
+    /// A placement chosen with the pointer leaves the row where it is, so the pointer stays over the row it
+    /// clicked. The switch, the header count and the preview follow the draft at once.
+    /// </summary>
+    [AvaloniaFact]
+    public void ChoosingAPlacementWithThePointer_LeavesTheRowUnderIt()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                ScrollToRow(page, "toggle_recording");
+                double top = TopOf(Row(page, "toggle_recording"), window);
+
+                ClickWithThePointer(window, CenterOf(Segment(Row(page, "toggle_recording"), TitleBarItemState.Pinned), window));
+
+                Assert.Equal(TitleBarItemState.Pinned, window.Session.TitleBarDraft.GetState("toggle_recording"));
+                Assert.True(Segment(Row(page, "toggle_recording"), TitleBarItemState.Pinned).IsChecked);
+                Assert.Equal(top, TopOf(Row(page, "toggle_recording"), window), 1);
+                Assert.Equal("IN THE … MENU", GroupOf(page, "toggle_recording"));
+                Assert.Equal("5 of 8", HeaderDetail(page, "IN THE BAR"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The slip this guards against: Connections moved to Hidden used to drop to the bottom, Settings slid up
+    /// into its place, and a second click at the same spot hid Settings.
+    /// </summary>
+    [AvaloniaFact]
+    public void ASecondClickAtTheSameSpot_HitsTheSameRow()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                Point hide = CenterOf(Segment(Row(page, "connections"), TitleBarItemState.Hidden), window);
+
+                ClickWithThePointer(window, hide);
+                ClickWithThePointer(window, hide);
+
+                Assert.Equal(TitleBarItemState.Hidden, window.Session.TitleBarDraft.GetState("connections"));
+                Assert.Equal(TitleBarItemState.Pinned, window.Session.TitleBarDraft.GetState("settings"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hide, then Bar again, on a row that never moved on screen puts the action back where it was in the bar
+    /// order, not at its end: the arrows act on that order, so they must match what is shown.
+    /// </summary>
+    [AvaloniaFact]
+    public void PinningAHeldBarRowAgain_PutsItBackInItsPlace()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                List<string> order = window.Session.TitleBarDraft.BuildSaveOrder();
+                int at = order.IndexOf("connections");
+                Assert.True(at >= 2 && at < order.Count - 1, "precondition: Connections has a row above it to swap with, and one below");
+
+                ClickWithThePointer(window, CenterOf(Segment(Row(page, "connections"), TitleBarItemState.Hidden), window));
+                ClickWithThePointer(window, CenterOf(Segment(Row(page, "connections"), TitleBarItemState.Pinned), window));
+
+                Assert.Equal(order, window.Session.TitleBarDraft.BuildSaveOrder());
+
+                // ▲ swaps it with the row shown above it.
+                Click(Row(page, "connections").GetLogicalDescendants().OfType<Button>().Single(b => b.Tag as string == "up"));
+                (order[at - 1], order[at]) = (order[at], order[at - 1]);
+                Assert.Equal(order, window.Session.TitleBarDraft.BuildSaveOrder());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void MovingThePointerOffTheList_MovesTheRowToItsGroup()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                PinRecordingWithThePointer(window, page);
+                Assert.Equal("IN THE … MENU", GroupOf(page, "toggle_recording"));
+
+                window.MouseMove(new Point(5, 5)); // the window's top-left corner, well away from the rows
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.Equal("IN THE BAR", GroupOf(page, "toggle_recording"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>Restore and import reload the page, which rebuilds the rows from the draft.</summary>
+    [AvaloniaFact]
+    public void AReload_MovesAHeldRowToItsGroup()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                PinRecordingWithThePointer(window, page);
+                Assert.Equal("IN THE … MENU", GroupOf(page, "toggle_recording"));
+
+                page.Load(window.Session);
+
+                Assert.Equal("IN THE BAR", GroupOf(page, "toggle_recording"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
+    /// <summary>A reorder shows the bar's new order, so it lets a held row go to its group first.</summary>
+    [AvaloniaFact]
+    public void AReorder_MovesAHeldRowToItsGroup()
+    {
+        var (root, window, page) = Open();
+        using (root)
+        {
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                PinRecordingWithThePointer(window, page);
+                Assert.Equal("IN THE … MENU", GroupOf(page, "toggle_recording"));
+
+                Click(Row(page, "settings").GetLogicalDescendants().OfType<Button>().Single(b => b.Tag as string == "up"));
+
+                Assert.Equal("IN THE BAR", GroupOf(page, "toggle_recording"));
+            }
+            finally
+            {
+                window.Close();
+            }
         }
     }
 
