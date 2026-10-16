@@ -60,6 +60,28 @@ public sealed class SettingsPageTests
         Assert.Equal("WritesOnly", target.AgentIndicatorTabRollup);
     }
 
+    /// <summary>
+    /// The pages that follow session events leave them when the window closes: the frame disposes its pages, and each
+    /// takes its handlers off the session (#528).
+    /// </summary>
+    [AvaloniaFact]
+    public void ClosingTheWindow_TakesThePagesOffTheSessionsEvents()
+    {
+        using var root = SettingsTestRoot.WithSettings("{}");
+        var window = new Ntilde.SettingsWindow();
+        SettingsSession session = window.Session;
+        string[] events = ["ShortcutsChanged", "ThemesChanged", "KeepShellsRunningChanged"];
+        Delegate[] Handlers(string name)
+            => (typeof(SettingsSession).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .GetValue(session) as Delegate)?.GetInvocationList() ?? [];
+        Assert.Contains(events.SelectMany(Handlers), handler => handler.Target is ISettingsPage); // setup: pages follow them
+
+        window.Show();
+        window.Close();
+
+        Assert.DoesNotContain(events.SelectMany(Handlers), handler => handler.Target is ISettingsPage);
+    }
+
     [AvaloniaFact]
     public void SshPage_LoadsAndCollectsTheNativeBackendToggle()
     {
