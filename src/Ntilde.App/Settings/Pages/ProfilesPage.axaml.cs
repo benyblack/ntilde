@@ -303,7 +303,7 @@ public partial class ProfilesPage : UserControl, ISettingsPage
         _session = session;
 
         // Settings editor is local-profiles only; SSH connections are managed in Connection Manager.
-        _profilesList = BuildLocalProfilesForEditor(session.Settings.Profiles);
+        _profilesList = CopyLocalProfiles(session.Settings.Profiles);
         session.Settings.DefaultProfileId = ResolveDefaultLocalProfileId(session.Settings.DefaultProfileId, _profilesList);
 
         PopulateOverrideFonts();
@@ -319,30 +319,13 @@ public partial class ProfilesPage : UserControl, ISettingsPage
         ArgumentNullException.ThrowIfNull(target);
 
         // Sync local profiles list back to settings (SSH connections are store-backed separately).
-        target.Profiles = NormalizeSettingsProfilesForSave(_profilesList);
+        target.Profiles = CopyLocalProfiles(_profilesList);
         target.DefaultProfileId = ResolveDefaultLocalProfileId(target.DefaultProfileId, target.Profiles);
     }
 
-    private void PopulateOverrideFonts()
-    {
-        var overrideFontList = this.FindControl<ComboBox>("OverrideFontList")!;
-        overrideFontList.Items.Clear();
-        foreach (string family in Session.FontChoices)
-        {
-            overrideFontList.Items.Add(new ComboBoxItem { Content = family });
-        }
-    }
+    private void PopulateOverrideFonts() => ComboNames.Fill(this.FindControl<ComboBox>("OverrideFontList")!, Session.FontChoices);
 
-    private void PopulateOverrideThemes()
-    {
-        Session.Settings.ThemeManager.LoadThemes();
-        var overrideThemeList = this.FindControl<ComboBox>("OverrideThemeList")!;
-        overrideThemeList.Items.Clear();
-        foreach (string theme in Session.Settings.ThemeManager.GetAvailableThemes().OrderBy(t => t))
-        {
-            overrideThemeList.Items.Add(new ComboBoxItem { Content = theme });
-        }
-    }
+    private void PopulateOverrideThemes() => ComboNames.Fill(this.FindControl<ComboBox>("OverrideThemeList")!, Session.LoadThemeNames());
 
     /// <summary>
     /// Fix (I1 residual #2): <c>_selectedProfile</c> points at an entry of the PRE-reload
@@ -422,21 +405,14 @@ public partial class ProfilesPage : UserControl, ISettingsPage
         if (checkOverrideLigatures != null) checkOverrideLigatures.IsChecked = false;
     }
 
-    /// <summary>The profiles the editor works on: a full copy of each local profile.</summary>
-    internal static System.Collections.Generic.List<TerminalProfile> BuildLocalProfilesForEditor(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
-        => CopyLocalProfiles(profiles);
-
-    /// <summary>The profiles Save writes back: a full copy of each local profile the editor holds.</summary>
-    internal static System.Collections.Generic.List<TerminalProfile> NormalizeSettingsProfilesForSave(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
-        => CopyLocalProfiles(profiles);
-
     /// <summary>
     /// Local profiles only (SSH connections live in the connection store), each copied whole with
-    /// <see cref="TerminalProfile.CopyForEditing"/>. The editor shows and changes only some fields;
+    /// <see cref="TerminalProfile.CopyForEditing"/>. Load copies the settings' profiles into the
+    /// editor and Save copies the editor's back. The editor shows and changes only some fields;
     /// copying every field means a Save writes the others back as they were, instead of resetting
     /// them to their defaults.
     /// </summary>
-    private static System.Collections.Generic.List<TerminalProfile> CopyLocalProfiles(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
+    internal static System.Collections.Generic.List<TerminalProfile> CopyLocalProfiles(System.Collections.Generic.IEnumerable<TerminalProfile> profiles)
         => (profiles ?? System.Array.Empty<TerminalProfile>())
             .Where(profile => profile.Type == ConnectionType.Local)
             .Select(profile => profile.CopyForEditing())

@@ -219,16 +219,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         };
     }
 
-    private void PopulateThemes()
-    {
-        Session.Settings.ThemeManager.LoadThemes();
-        var themeList = Combo("ThemeList");
-        themeList.Items.Clear();
-        foreach (string theme in Session.Settings.ThemeManager.GetAvailableThemes().OrderBy(t => t))
-        {
-            themeList.Items.Add(new ComboBoxItem { Content = theme });
-        }
-    }
+    private void PopulateThemes() => ComboNames.Fill(Combo("ThemeList"), Session.LoadThemeNames());
 
     private void SelectTheme(string name)
     {
