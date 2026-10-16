@@ -82,6 +82,33 @@ public sealed class SettingsPageTests
         Assert.DoesNotContain(events.SelectMany(Handlers), handler => handler.Target is ISettingsPage);
     }
 
+    /// <summary>
+    /// The four fields that moved from Appearance to General (#524) are General's alone. If Appearance collected one again,
+    /// a Save would let whichever page collects last win (#528).
+    /// </summary>
+    [AvaloniaFact]
+    public void AppearancePage_DoesNotCollectTheFieldsThatMovedToGeneral()
+    {
+        using var root = SettingsTestRoot.WithSettings("{}");
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        TerminalSettings loaded = window.Session.Settings;
+        // Each the opposite of what the pages loaded, so writing any loaded value back shows.
+        var target = new TerminalSettings
+        {
+            AutomaticUpdateChecks = !loaded.AutomaticUpdateChecks,
+            LongCommandNotificationsEnabled = !loaded.LongCommandNotificationsEnabled,
+            Osc9NotificationsEnabled = !loaded.Osc9NotificationsEnabled,
+            Osc9ProgressReportingEnabled = !loaded.Osc9ProgressReportingEnabled,
+        };
+
+        window.GetPage<AppearancePage>().Collect(target);
+
+        Assert.Equal(!loaded.AutomaticUpdateChecks, target.AutomaticUpdateChecks);
+        Assert.Equal(!loaded.LongCommandNotificationsEnabled, target.LongCommandNotificationsEnabled);
+        Assert.Equal(!loaded.Osc9NotificationsEnabled, target.Osc9NotificationsEnabled);
+        Assert.Equal(!loaded.Osc9ProgressReportingEnabled, target.Osc9ProgressReportingEnabled);
+    }
+
     [AvaloniaFact]
     public void SshPage_LoadsAndCollectsTheNativeBackendToggle()
     {

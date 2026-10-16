@@ -163,6 +163,42 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>
+    /// The results list recycles its row containers, so a container named for one result can be reused for another: each
+    /// must be named for the result it shows now, or a screen reader reads the old one (#528).
+    /// </summary>
+    [AvaloniaFact]
+    public void RecycledResultContainers_AreNamedForTheResultTheyShowNow()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            ListBox list = Results(window);
+            Box(window).Text = "er"; // many results, so the list scrolls and realizes containers as it goes
+            Dispatcher.UIThread.RunJobs();
+            list.ScrollIntoView(Shown(window).Count - 1);
+            Dispatcher.UIThread.RunJobs();
+            List<Control> before = list.GetRealizedContainers().ToList();
+
+            Box(window).Text = "opacity"; // a new query fills the list again, reusing containers
+            Dispatcher.UIThread.RunJobs();
+
+            List<Control> after = list.GetRealizedContainers().ToList();
+            Assert.Contains(after, before.Contains); // setup: at least one container was reused
+            Assert.All(after, container =>
+            {
+                var result = (SettingsSearchResult)list.Items[list.IndexFromContainer(container)]!;
+                Assert.Equal($"{result.Entry.Title} — {Ntilde.SettingsWindow.ResultLocation(result.Entry)}", AutomationProperties.GetName(container));
+            });
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void Escape_ClearsTheSearch_AndTheSamePageIsBack()
     {
