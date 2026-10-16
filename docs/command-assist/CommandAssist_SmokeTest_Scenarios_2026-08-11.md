@@ -33,7 +33,7 @@ Record each scenario PASS / FAIL / N-A with one line of what you saw, and file t
 
 - Build via `scripts/build.ps1`. Launch with `NTILDE_APPDATA_ROOT` pointed at a scratch
   directory. **Do not run this against your real history.**
-- Settings -> Terminal -> Command assistant: master toggle ON, "Suggestion bubble while
+- Settings -> Command Assist: "Command assistant" ON, "Suggestion bubble while
   typing" ON, "Remember commands" ON, "Shell integration" ON.
 - Seed history by running, in one directory and in this order: `git status`,
   `git log --oneline`, `echo git-alpha`, `dotnet --list-sdks`, `cd ..`, `cd -`. Then run one
@@ -289,7 +289,7 @@ instrumented - the indicator reads `basic`.
 
 **Steps:**
 
-1. Settings -> Terminal -> Command assistant -> Remote shell integration. **Look at this row
+1. Settings -> Command Assist -> Remote shells -> Remote shell integration. **Look at this row
    before touching it:** confirm the shell dropdown, "Copy installer" and "Copy plain snippet"
    are all fully visible and not clipped at the right edge.
 2. Pick the remote shell and press **Copy installer**.
