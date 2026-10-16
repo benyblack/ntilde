@@ -39,6 +39,7 @@ namespace Ntilde
         private SettingsPage _currentPage;
         private bool _syncingNav;
         private TextBox _searchBox = null!;
+        private Button _searchClear = null!;
         private ListBox _searchResults = null!;
         private TextBlock _searchAnnouncer = null!;
         private Control _searchView = null!;
@@ -519,6 +520,8 @@ namespace Ntilde
         private void WireSearch()
         {
             _searchBox = this.FindControl<TextBox>("SettingsSearchBox")!;
+            _searchClear = this.FindControl<Button>("SearchClearButton")!;
+            _searchClear.Click += (_, _) => ClearSearch(); // as Esc does: the page that was showing comes back
             _searchResults = this.FindControl<ListBox>("SearchResultsList")!;
             _searchAnnouncer = this.FindControl<TextBlock>("SearchSelectionAnnouncer")!;
             _searchView = this.FindControl<Control>("SearchResultsView")!;
@@ -581,6 +584,7 @@ namespace Ntilde
         {
             string query = (_searchBox.Text ?? string.Empty).Trim();
             bool searching = query.Length > 0;
+            _searchClear.IsVisible = !string.IsNullOrEmpty(_searchBox.Text); // whenever Esc has something to clear
 
             // A live region speaks only when its text changes: start each query empty, so the next ↑/↓ is read
             // even when it lands on the result last read.
