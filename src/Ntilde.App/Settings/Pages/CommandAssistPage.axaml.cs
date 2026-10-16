@@ -486,7 +486,7 @@ public partial class CommandAssistPage : UserControl, ISettingsPage
         }
     }
 
-    private Control CreateCommandAssistSnippetRow(CommandSnippet snippet)
+    private Border CreateCommandAssistSnippetRow(CommandSnippet snippet)
     {
         var status = this.FindControl<SettingRow>("CommandAssistSnippetsRow");
 

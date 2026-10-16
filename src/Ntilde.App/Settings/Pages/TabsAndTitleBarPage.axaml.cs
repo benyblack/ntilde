@@ -307,7 +307,7 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage
         };
     }
 
-    private Control CreateTitleBarRow(TitleBarCatalogEntry entry, TitleBarItemState state, int barIndex, int barCount, bool barFull)
+    private Border CreateTitleBarRow(TitleBarCatalogEntry entry, TitleBarItemState state, int barIndex, int barCount, bool barFull)
     {
         var icon = new PathIcon
         {
