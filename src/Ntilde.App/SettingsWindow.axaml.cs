@@ -220,6 +220,9 @@ namespace Ntilde
             // Tunnel, so the chord works from any focused field; ShortcutsPage's editors are the
             // one place it must not fire (the user may be recording Ctrl+S as a binding).
             AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+            // Bubble, unlike the chords: an Esc a control below used (the search box, the results, an open
+            // dropdown) never reaches it.
+            AddHandler(KeyDownEvent, OnUnusedEscape, RoutingStrategies.Bubble);
             _sideNav.AddHandler(KeyDownEvent, OnSideNavKeyDown, RoutingStrategies.Tunnel);
 
             _btnSave.Click += (_, _) => SaveAndClose();
@@ -495,6 +498,21 @@ namespace Ntilde
 
         private static bool IsShortcutCapture(object? source)
             => source is TextBox box && box.Classes.Contains(ShortcutsPage.CaptureClass);
+
+        /// <summary>
+        /// An Esc nothing else used ends a search wherever focus is - the selected sidebar item, a footer button - as
+        /// it does in the box, and the page that was showing comes back. Focus stays where it is.
+        /// </summary>
+        private void OnUnusedEscape(object? sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None || _searchBox is not { Text.Length: > 0 })
+            {
+                return;
+            }
+
+            ClearSearch();
+            e.Handled = true;
+        }
 
         /// <summary>Up / Down move between pages directly, so a group header is never a stop.</summary>
         private void OnSideNavKeyDown(object? sender, KeyEventArgs e)
