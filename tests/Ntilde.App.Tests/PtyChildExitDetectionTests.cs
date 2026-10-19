@@ -132,15 +132,23 @@ namespace Ntilde.Tests
 
         private static RustPtySession NewSession()
         {
+            string shell = ShellHelper.GetDefaultShell();
             return new RustPtySession(
-                ShellHelper.GetDefaultShell(),
+                shell,
                 80,
                 24,
-                args: null,
+                // Without the profile of whoever runs the tests: these tests are about the session noticing an exit, and a
+                // profile can hold the exit up. Seen with one that imports Microsoft.WinGet.CommandNotFound: `exit` closes the
+                // runspace, which waits for every pipeline to stop, and the module's Find-WinGetPackage pipeline was blocked in
+                // a WinGet COM call for over 30 s - the shell stayed alive, so no exit came. CI runners have no profile.
+                args: IsPowerShell(shell) ? "-NoProfile" : null,
                 cwd: null,
                 // The injection would race our own SendInput and is irrelevant here.
                 skipPowerShellPostLaunchInit: true);
         }
+
+        private static bool IsPowerShell(string shell) =>
+            shell.Contains("pwsh", StringComparison.OrdinalIgnoreCase) || shell.Contains("powershell", StringComparison.OrdinalIgnoreCase);
 
         /// Waits until the shell has produced output, so `exit` is typed at a shell that is
         /// actually reading. Without this the test races shell startup.
