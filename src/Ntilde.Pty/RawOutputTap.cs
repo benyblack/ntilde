@@ -65,16 +65,6 @@ namespace Ntilde.Pty
             }
         }
 
-        /// <summary>Lets every subscriber go and stops retaining: for a source that will publish no more. Idempotent.</summary>
-        public void UnsubscribeAll()
-        {
-            lock (_gate)
-            {
-                _handler = null;
-                _retained = null;
-            }
-        }
-
         /// <summary>Publishes one chunk. Copies it only when someone will see it.</summary>
         public void Publish(ReadOnlySpan<byte> chunk)
         {

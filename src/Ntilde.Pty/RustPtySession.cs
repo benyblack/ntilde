@@ -1395,17 +1395,21 @@ namespace Ntilde.Pty
             // than an exit code nobody will look at.
             TryNotifyExitSafely(() => ChildExitObserved ? Volatile.Read(ref _childExitCode) : 0);
 
-            // 7. Let every subscriber go, now that the last notification is out (#548). The read thread can outlive this
-            //    method: on Unix a background job that keeps the terminal open keeps pty_read blocked, and the thread roots
-            //    the session until the job exits. Through a pane's handlers that kept the closed pane, its buffer and its
-            //    scrollback in memory with it. A disposed session reports nothing more, so it needs none of them.
+            // 7. Let the exit and output subscribers go, now that the last notification is out (#548). The read thread can
+            //    outlive this method: on Unix a background job that keeps the terminal open keeps pty_read blocked, and the
+            //    thread roots the session until the job exits. Through a pane's handlers that kept the closed pane, its
+            //    buffer and its scrollback in memory with it. A disposed session reports nothing more, so it needs none of
+            //    them. The gate is never held while a handler runs (EmitOutput reads the handler under it, then lets go).
+            //
+            //    The raw tap is left alone: it runs its subscribers under its own lock, and the mux's can block there on its
+            //    full queue until HeadlessTerminalSession cancels it - which its Kill does only once this returns. Taking
+            //    that lock here would wait forever (codex review of #575). Its one subscriber, the mux, removes itself.
             OnExit = null;
             lock (_outputHandlerGate)
             {
                 _onOutputReceived = null;
                 _pendingOutputReplay = null;
             }
-            _rawOutput.UnsubscribeAll();
         }
 
         /// Observes the injection task's outcome and removes its script if the shell

@@ -63,14 +63,67 @@ namespace Ntilde.Tests
             }
         }
 
-        // Not inlined, so no local of the test's frame keeps the handlers' state alive. The state stands for the pane.
+        /// <summary>
+        /// The raw tap runs its subscribers under its lock, and the mux's subscriber can block there on its full queue
+        /// until the mux cancels it - which <c>HeadlessTerminalSession.Kill</c> does only once this Dispose returns. So
+        /// Dispose must never wait for that lock (codex review of #575): it would wait forever.
+        /// </summary>
+        [Fact]
+        [Trait("Category", "PtySmoke")]
+        public async Task Dispose_returns_while_a_raw_output_subscriber_is_blocked_in_its_handler()
+        {
+            using var subscribed = new ManualResetEventSlim();
+            using var handlerEntered = new ManualResetEventSlim();
+            using var released = new ManualResetEventSlim();
+            int reads = 0;
+            int Read(RustPtySession.PtySafeHandle handle, byte[] buffer, int length)
+            {
+                if (Interlocked.Increment(ref reads) == 1)
+                {
+                    subscribed.Wait();
+                    buffer[0] = (byte)'x';
+                    return 1;
+                }
+
+                released.Wait();
+                return 0;
+            }
+
+            var session = new RustPtySession(
+                ShellHelper.GetDefaultShell(), 80, 24, args: null, cwd: null,
+                skipPowerShellPostLaunchInit: true, environmentOverrides: null,
+                readFromPty: Read);
+            try
+            {
+                session.OnRawOutputReceived += _ =>
+                {
+                    handlerEntered.Set();
+                    released.Wait();   // as the mux's queue add waits for room, or for its cancel
+                };
+                subscribed.Set();
+                Assert.True(handlerEntered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), "setup: the chunk never reached the subscriber");
+
+                Task disposing = Task.Run(session.Dispose, TestContext.Current.CancellationToken);
+
+                // Every join in Dispose is bounded (a quarter second, then 2 s each); 20 s is far past their sum.
+                bool returned = await Task.WhenAny(disposing, Task.Delay(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken)) == disposing;
+                Assert.True(returned, "Dispose is waiting on the raw tap's lock, which the blocked subscriber holds");
+            }
+            finally
+            {
+                released.Set();
+                session.Dispose();
+            }
+        }
+
+        // Not inlined, so no local of the test's frame keeps the handlers' state alive. The state stands for the pane,
+        // and these are the events a pane subscribes to (TerminalPane.WireSessionLifecycle and WireSessionStream).
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static WeakReference Subscribe(RustPtySession session)
         {
             var pane = new object();
             session.OnOutputReceived += _ => GC.KeepAlive(pane);
             session.OnExit += _ => GC.KeepAlive(pane);
-            session.OnRawOutputReceived += _ => GC.KeepAlive(pane);
             return new WeakReference(pane);
         }
     }
