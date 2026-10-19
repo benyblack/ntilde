@@ -164,6 +164,34 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Contains(id, (await second.ListSessionsAsync(Ct)).Select(s => s.SessionId));   // the daemon kept it
     }
 
+    /// <summary>
+    /// ConnectionLost goes out once the loop's first wait is scheduled, so whoever moves the clock on hearing of the
+    /// loss - every test here that advances past <see cref="FirstRetry"/> - finds that wait. Queued ahead of it, the event
+    /// could reach a pool thread first, and the clock moved past nothing: the attempt never came, and the test waited
+    /// out its 30 s (#528).
+    /// </summary>
+    [Fact]
+    public async Task ConnectionLost_is_raised_once_the_loops_first_wait_is_scheduled()
+    {
+        MuxConnectionHost host = Create();
+        using var lostHeard = new ManualResetEventSlim();
+        int pendingWhenLost = -1;
+        host.ConnectionLost += _ =>
+        {
+            Volatile.Write(ref pendingWhenLost, _clock.PendingCount);
+            lostHeard.Set();
+        };
+        Assert.NotNull(host.GetClient(Patient));
+        // Holds the loop's Schedule until the loss is heard, or for half a second: an event queued ahead of the wait is
+        // heard while the wait does not exist yet; one queued after it is not heard in that time.
+        _clock.BeforeSchedule = () => lostHeard.Wait(TimeSpan.FromMilliseconds(500));
+
+        _remote.CutLink();
+        await TestWait.UntilAsync(() => lostHeard.IsSet, "the host raised lost", Patient);
+
+        Assert.Equal(1, Volatile.Read(ref pendingWhenLost));
+    }
+
     [Fact]
     public async Task Ping_timeout_disconnects_a_silent_link()
     {
@@ -1446,6 +1474,42 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
 
         Assert.True(dispose.Wait(2_000, Ct), "Dispose did not return within 2 s");
         await sawCancellation.Task.WaitAsync(Patient, Ct);
+        Assert.Null(await connecting.WaitAsync(Patient, Ct));
+    }
+
+    /// <summary>
+    /// Dispose cancels the token a connect in flight holds and leaves it usable: ssh blocked on a prompt may wait on its
+    /// WaitHandle after Dispose returned, which a disposed source throws from. That threw in the test above whenever the
+    /// start thread was slow to reach its wait, and the test waited out its 30 s (#528).
+    /// </summary>
+    [Fact]
+    public async Task Dispose_leaves_the_token_of_a_connect_in_flight_cancelled_and_usable()
+    {
+        using var disposed = new ManualResetEventSlim();
+        var waited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _remote.OnStart = ct =>
+        {
+            disposed.Wait(Patient);   // ssh slow to get going: the host's Dispose returns first
+            try
+            {
+                ct.WaitHandle.WaitOne();
+                waited.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                waited.TrySetException(ex);
+            }
+
+            ct.ThrowIfCancellationRequested();
+        };
+        MuxConnectionHost host = Create();
+        Task<MuxClient?> connecting = Task.Run(() => host.GetClient(MuxHostPolicy.RemoteConnectTimeout), Ct);
+        await TestWait.UntilAsync(() => _remote.StartCount == 1, "the connect is starting ssh", Patient);
+
+        host.Dispose();
+        disposed.Set();
+
+        await waited.Task.WaitAsync(Patient, Ct);
         Assert.Null(await connecting.WaitAsync(Patient, Ct));
     }
 

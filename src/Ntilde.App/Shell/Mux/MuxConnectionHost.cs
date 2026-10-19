@@ -45,9 +45,8 @@ internal sealed class MuxConnectionHost : IDisposable
     private readonly Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> _connect;
     private readonly Action<string>? _log;
     private readonly object _gate = new();
+    // Cancelled by Dispose and never disposed, so the token a connect attempt still holds stays usable (see Dispose).
     private readonly CancellationTokenSource _disposed = new();
-    // Captured once: CancellationTokenSource.Token throws once the source is disposed, and Dispose
-    // disposes it while a connect attempt may still hold (or be about to read) the token.
     private readonly CancellationToken _disposedToken;
     // Set under _gate by Dispose, which cancels _disposed only after leaving the lock (cancelling runs the
     // token's callbacks, a connector ending its channel among them, and none may run under the host's lock).
@@ -821,11 +820,11 @@ internal sealed class MuxConnectionHost : IDisposable
             }
             else
             {
-                RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
                 if (!ReferenceEquals(client, _watched))
                 {
                     // A newer connection came up while this one was being classified (a user's request):
                     // the connection is back already, and no loop is needed.
+                    RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
                     if (_watched is { IsConnected: true } back) RaiseLocked(nameof(Reconnected), () => Invoke(nameof(Reconnected), Reconnected, back));
                     note = $"[Mux] {Policy.DisplayName}: connection lost ({reason}), and already back";
                 }
@@ -833,6 +832,10 @@ internal sealed class MuxConnectionHost : IDisposable
                 {
                     _episode = Episode.Reconnecting;
                     (_loop ??= new MuxReconnectLoop(Scheduler, ReconnectAttemptAsync, () => GiveUp($"no connection within {MuxReconnectLoop.Budget.TotalMinutes:0} min"))).Start();
+                    // Queued once the loop's first wait is scheduled: a pool thread can raise it before this lock is
+                    // released, and a handler that acts on the loss - a test moving its clock past that wait - must
+                    // find the reconnect under way, not about to start (#528).
+                    RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
                     note = $"[Mux] {Policy.DisplayName}: connection lost ({reason}); reconnecting";
                 }
             }
@@ -1206,9 +1209,9 @@ internal sealed class MuxConnectionHost : IDisposable
         loop?.Dispose();
         LogDroppedKills(dropped, "the host is closing");
 
-        // Safe to dispose now: every disposed check reads _closed, and the attempt holds the token captured
-        // in the constructor, never _disposed.Token.
-        _disposed.Dispose();
+        // _disposed is cancelled, never disposed: a connect still in flight holds its token, and ssh blocked on a
+        // prompt may wait on that token's WaitHandle, which a disposed source throws from (#528). With no timer and
+        // no link to another source, it holds nothing the collector does not reclaim.
 
         try
         {
