@@ -168,15 +168,26 @@ public sealed class NativeSshExecTransportTests
 
         var read = new byte[16];
         Task<int> pending = channel.Stdout.ReadAsync(read, TestContext.Current.CancellationToken).AsTask();
+        // Stamped on the thread that completes the read, ahead of the test's own resume: a slow run then says whether
+        // the read came back late or the test was resumed late (#528: once 1.5 s on CI, with the wake-up on time).
+        long readReturned = 0;
+        _ = pending.ContinueWith(
+            _ => Volatile.Write(ref readReturned, System.Diagnostics.Stopwatch.GetTimestamp()),
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        TimeSpan gcPausedBefore = GC.GetTotalPauseDuration();
         long enqueued = System.Diagnostics.Stopwatch.GetTimestamp();
         interop.Enqueue(ScriptedNativeSshInterop.Stdout("hello"));
         int count = await pending.WaitAsync(Bound, TestContext.Current.CancellationToken);
         TimeSpan delivery = System.Diagnostics.Stopwatch.GetElapsedTime(enqueued);
         TimeSpan dequeue = System.Diagnostics.Stopwatch.GetElapsedTime(enqueued, interop.LastDequeueTimestamp);
+        long returned = Volatile.Read(ref readReturned);
+        string returnedAt = returned == 0 ? "?" : $"{System.Diagnostics.Stopwatch.GetElapsedTime(enqueued, returned).TotalMilliseconds:0}";
+        string timeline = $"dequeued at {dequeue.TotalMilliseconds:0} ms, read returned at {returnedAt} ms, test resumed at "
+            + $"{delivery.TotalMilliseconds:0} ms; the GC paused {(GC.GetTotalPauseDuration() - gcPausedBefore).TotalMilliseconds:0} ms meanwhile";
 
         Assert.Equal("hello", Encoding.UTF8.GetString(read, 0, count));
-        Assert.True(dequeue < TimeSpan.FromSeconds(1), $"The poll thread took {dequeue.TotalMilliseconds} ms to wake.");
-        Assert.True(delivery < TimeSpan.FromSeconds(1), $"The event took {delivery.TotalMilliseconds} ms to arrive.");
+        Assert.True(dequeue < TimeSpan.FromSeconds(1), $"The poll thread took {dequeue.TotalMilliseconds} ms to wake ({timeline}).");
+        Assert.True(delivery < TimeSpan.FromSeconds(1), $"The event took {delivery.TotalMilliseconds} ms to arrive ({timeline}).");
     }
 
     // --- Events ----------------------------------------------------------------------------------
