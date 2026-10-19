@@ -424,6 +424,33 @@ public sealed class SettingsWindowSearchTests
         }
     }
 
+    /// <summary>
+    /// Esc ends a search wherever focus is, not only in the box or the results: on the selected sidebar item nothing
+    /// else wants it, and the results stayed open (Greptile on #526). Focus stays where it was.
+    /// </summary>
+    [AvaloniaFact]
+    public void Escape_OnTheSelectedSidebarItem_ClearsTheSearch()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Shortcuts));
+        try
+        {
+            window.Show();
+            Box(window).Text = "opacity";
+            window.NavItem(SettingsPage.Shortcuts).Focus();
+
+            window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+            Dispatcher.UIThread.RunJobs();
+
+            AssertPageShown(window, SettingsPage.Shortcuts);
+            Assert.Same(window.NavItem(SettingsPage.Shortcuts), window.FocusManager!.GetFocusedElement());
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     /// <summary>A Save stopped by a page's validation shows that page and its message, not the results it was typed over.</summary>
     [AvaloniaFact]
     public void ARejectedSave_ShowsTheProblemPage_InPlaceOfTheResults()
