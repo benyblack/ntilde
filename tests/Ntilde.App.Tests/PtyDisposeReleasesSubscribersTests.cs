@@ -108,6 +108,7 @@ namespace Ntilde.Tests
                 // Every join in Dispose is bounded (a quarter second, then 2 s each); 20 s is far past their sum.
                 bool returned = await Task.WhenAny(disposing, Task.Delay(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken)) == disposing;
                 Assert.True(returned, "Dispose is waiting on the raw tap's lock, which the blocked subscriber holds");
+                await disposing;   // and it returned, rather than threw
             }
             finally
             {

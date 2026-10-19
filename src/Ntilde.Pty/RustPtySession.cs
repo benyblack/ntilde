@@ -1473,11 +1473,14 @@ namespace Ntilde.Pty
 
         private void TryNotifyExit(int code)
         {
+            // Read before the claim (#548): Dispose clears OnExit once its own turn is over, and a loop that claimed the
+            // exit can be paused past Dispose's bounded join. Its claim was made for the subscribers there were then.
+            Action<int>? handler = OnExit;
             if (Interlocked.Exchange(ref _exitNotified, 1) != 0) return;
 
             _exitCode = code;
             Volatile.Write(ref _isExited, 1);
-            OnExit?.Invoke(code);
+            handler?.Invoke(code);
         }
     }
 }
