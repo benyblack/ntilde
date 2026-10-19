@@ -108,16 +108,20 @@ internal sealed class FakeRemoteHost : ISshExecTransport, IDisposable
 
     /// <summary>
     /// Runs first inside <see cref="Start"/>, with its token, after <see cref="StartCount"/> counts it: a
-    /// test can block there (an unanswered prompt, until cancelled) or throw (ssh could not start).
+    /// test can block there (an unanswered prompt, until cancelled) or throw (ssh could not start). Read as the
+    /// start begins, so a hook set once <see cref="StartCount"/> moved is the next start's.
     /// </summary>
     public Action<CancellationToken>? OnStart { get; set; }
 
     public ISshExecChannel Start(string remoteCommand, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteCommand);
+        // Read before the count: a test that sets OnStart for its next attempt once it sees StartCount move must not
+        // change the hook of the start it saw counted.
+        Action<CancellationToken>? onStart = OnStart;
         Interlocked.Increment(ref _startCount);
         lock (_gate) _commands.Add(remoteCommand);
-        OnStart?.Invoke(ct);
+        onStart?.Invoke(ct);
         ct.ThrowIfCancellationRequested();
 
         var channel = new FakeRemoteChannel(this, remoteCommand, Script, Noise, ExitStatusDelay, PipeCapacityBytes);
