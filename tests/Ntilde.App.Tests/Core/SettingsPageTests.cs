@@ -722,7 +722,7 @@ public sealed class SettingsPageTests
         var page = new ProfilesPage();
         page.Load(session);
         var themes = page.FindControl<ComboBox>("OverrideThemeList")!;
-        string?[] Names() => themes.Items.OfType<ComboBoxItem>().Select(item => (string?)item.Content).ToArray();
+        string[] Names() => themes.Items.OfType<ComboBoxItem>().Select(item => (string)item.Content!).ToArray();
         Assert.Equal(["Default", "GitHub Light"], Names());
 
         session.Settings.ThemeManager.SaveTheme(new TerminalTheme { Name = "Aardvark" });
