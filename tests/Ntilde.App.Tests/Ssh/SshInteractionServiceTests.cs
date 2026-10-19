@@ -11,6 +11,12 @@ using Ntilde.ViewModels.Ssh;
 
 namespace Ntilde.Tests.Ssh;
 
+/// <summary>
+/// Every test is an <c>[AvaloniaFact]</c>, so it runs on the session's UI thread with a dispatcher of its own, and
+/// <see cref="SshInteractionService.HandleAsync"/> runs the request inline. A plain <c>[Fact]</c> depends on whichever
+/// thread last created <c>Dispatcher.UIThread</c>: if that is not its own, the request is posted there, nothing ever
+/// runs it, and the test (and with it the whole App.Tests lane) waits forever - a CI hang on PR #573.
+/// </summary>
 public sealed class SshInteractionServiceTests
 {
     [AvaloniaFact]
@@ -65,7 +71,7 @@ public sealed class SshInteractionServiceTests
         }
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task HostKeyRequestsMapToHostKeyPromptViewModel()
     {
         string tempRoot = CreateTempDirectory();
@@ -104,7 +110,7 @@ public sealed class SshInteractionServiceTests
         }
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task TrustedHostKey_SkipsDialogAndAcceptsImmediately()
     {
         string tempRoot = CreateTempDirectory();
@@ -139,7 +145,7 @@ public sealed class SshInteractionServiceTests
         }
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task ChangedHostKey_MapsToChangedPromptViewModel()
     {
         string tempRoot = CreateTempDirectory();
@@ -176,7 +182,7 @@ public sealed class SshInteractionServiceTests
         }
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PasswordRequestsMapToSingleSecretPrompt()
     {
         AuthPromptViewModel? capturedVm = null;
@@ -201,7 +207,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("password", response.Secret);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task NativePasswordRequests_WithProfileIdentity_ExposeRememberPasswordOption()
     {
         AuthPromptViewModel? capturedVm = null;
@@ -229,7 +235,7 @@ public sealed class SshInteractionServiceTests
         Assert.True(capturedVm!.CanRememberPassword);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PasswordRequests_WithoutProfileIdentity_DoNotExposeRememberPasswordOption()
     {
         AuthPromptViewModel? capturedVm = null;
@@ -250,7 +256,7 @@ public sealed class SshInteractionServiceTests
         Assert.False(capturedVm!.CanRememberPassword);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task NativePasswordRequests_StoreSubmittedPassword_WhenRememberPasswordIsChecked()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -276,7 +282,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("manual-secret", vault.GetSshPasswordForProfile(profile));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task NativePasswordRequests_DoNotStoreSubmittedPassword_WhenRememberPasswordIsUnchecked()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -300,7 +306,7 @@ public sealed class SshInteractionServiceTests
         Assert.Null(vault.GetSshPasswordForProfile(profile));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task NativePasswordRequests_StoreSubmittedPassword_InRuntimeSessionCache()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -327,7 +333,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("manual-secret", password);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task NativePasswordRequests_LeavingRememberUnchecked_PreservesExistingVaultSecret()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -352,7 +358,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("vault-secret", vault.GetSshPasswordForProfile(profile));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PasswordRequests_AreAnsweredFromVaultWithoutShowingDialog_WhenProfileIdentityIsProvided()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -411,7 +417,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal(("typed-secret", false), (typed.Secret, typed.FilledFromStore));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PasswordRequests_UseLegacyVaultSecret_WhenFullProfileIdentityIsProvided()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -443,7 +449,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("legacy-secret", response.Secret);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PasswordRequests_FallBackToDialog_WhenVaultReuseIsNotAllowed()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -717,7 +723,7 @@ public sealed class SshInteractionServiceTests
         };
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PassphraseRequests_ShowDialogEvenWhenVaultHasPassword()
     {
         var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
@@ -755,7 +761,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("entered-passphrase", response.Secret);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task PassphraseRequestsMapToSecretPrompt()
     {
         AuthPromptViewModel? capturedVm = null;
@@ -779,7 +785,7 @@ public sealed class SshInteractionServiceTests
         Assert.Equal("hunter2", response.Secret);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public async Task KeyboardInteractiveRequestsMapAllPromptFields()
     {
         AuthPromptViewModel? capturedVm = null;
