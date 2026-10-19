@@ -324,6 +324,26 @@ Target tokens for every audited surface (phase in brackets):
 | Askpass helper [3] | OS variant | `ThemeService` |
 | Renderer selection/search/cursor text [4] | hardcoded | `TerminalRenderColors` |
 
+### After the Settings redesign (added 2026-10-19, carried over from #528)
+
+The Settings redesign (#522-#527) landed on `main` after this spec. Line references are to `main` at 616fba5.
+
+- **Where the Settings row now points.** The migration targets `Settings/NtPalette.axaml` and `Settings/NtStyles.axaml`, not `SettingsWindow.axaml`. Both are `x:Class` dictionaries that use `DynamicResource` only, guarded by `SettingsXamlResourceTests`. The §6 Advanced colors group goes in the left column of Appearance's theme editor sub-page.
+- **Connection Manager** still has its own denser styles and is not on `NtStyles`/`NtPalette`. The redesign deferred it here (its plan's correction 2), so the row above stands.
+- **Literals the redesign moved over verbatim**, for the phase-1 sweep:
+  - the danger button `#3a1a1d` / `#5c2329` / `#4a2024` (`NtStyles.axaml:112-121`);
+  - the theme preview `Background="#111"` (`AppearancePage.axaml:25` and the editor preview at `:162`);
+  - the editor preview label's `Brushes.Black` / `Brushes.White` (`AppearancePage.axaml.cs:484`);
+  - the shortcut conflict text `Brushes.IndianRed` (`ShortcutsPage.axaml.cs:184`);
+  - the theme editor's 16 `EditSwatch` buttons' initial `Background="Black"` (`AppearancePage.axaml:137-152`);
+  - the toggle knob's `Fill="White"` (`NtStyles.axaml:225`).
+- **Contrast defects seen in review.** They are pre-existing on `main`, so the contrast test and the light/dark acceptance pass should cover them:
+  - Light themes: the sidebar's group headers and unselected glyphs are very faint, and the Backup glyph is nearly invisible.
+  - Light: the Delete (danger) button renders dark maroon, which is the literals above.
+  - Dark: the Agent Access glyph is olive-tinted.
+  - Dark Default: "More" links (`Button.Link`) use the same deep blue as toggles and Save, which is low contrast on near-black.
+  - The title-bar preview's "…" glyph (`TextBlock.MiniBarGlyph`, `NtStyles.axaml:421`) is tiny and faint.
+
 ## 6. Schema propagation
 
 - **MCP (`ThemeTools`):**
