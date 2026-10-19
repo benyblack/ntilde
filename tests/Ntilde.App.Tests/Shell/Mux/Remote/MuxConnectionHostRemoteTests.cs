@@ -164,6 +164,34 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
         Assert.Contains(id, (await second.ListSessionsAsync(Ct)).Select(s => s.SessionId));   // the daemon kept it
     }
 
+    /// <summary>
+    /// ConnectionLost goes out once the loop's first wait is scheduled, so whoever moves the clock on hearing of the
+    /// loss - every test here that advances past <see cref="FirstRetry"/> - finds that wait. Queued ahead of it, the event
+    /// could reach a pool thread first, and the clock moved past nothing: the attempt never came, and the test waited
+    /// out its 30 s (#528).
+    /// </summary>
+    [Fact]
+    public async Task ConnectionLost_is_raised_once_the_loops_first_wait_is_scheduled()
+    {
+        MuxConnectionHost host = Create();
+        using var lostHeard = new ManualResetEventSlim();
+        int pendingWhenLost = -1;
+        host.ConnectionLost += _ =>
+        {
+            Volatile.Write(ref pendingWhenLost, _clock.PendingCount);
+            lostHeard.Set();
+        };
+        Assert.NotNull(host.GetClient(Patient));
+        // Holds the loop's Schedule until the loss is heard, or for half a second: an event queued ahead of the wait is
+        // heard while the wait does not exist yet; one queued after it is not heard in that time.
+        _clock.BeforeSchedule = () => lostHeard.Wait(TimeSpan.FromMilliseconds(500));
+
+        _remote.CutLink();
+        await TestWait.UntilAsync(() => lostHeard.IsSet, "the host raised lost", Patient);
+
+        Assert.Equal(1, Volatile.Read(ref pendingWhenLost));
+    }
+
     [Fact]
     public async Task Ping_timeout_disconnects_a_silent_link()
     {

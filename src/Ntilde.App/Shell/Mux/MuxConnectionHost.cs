@@ -821,11 +821,11 @@ internal sealed class MuxConnectionHost : IDisposable
             }
             else
             {
-                RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
                 if (!ReferenceEquals(client, _watched))
                 {
                     // A newer connection came up while this one was being classified (a user's request):
                     // the connection is back already, and no loop is needed.
+                    RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
                     if (_watched is { IsConnected: true } back) RaiseLocked(nameof(Reconnected), () => Invoke(nameof(Reconnected), Reconnected, back));
                     note = $"[Mux] {Policy.DisplayName}: connection lost ({reason}), and already back";
                 }
@@ -833,6 +833,10 @@ internal sealed class MuxConnectionHost : IDisposable
                 {
                     _episode = Episode.Reconnecting;
                     (_loop ??= new MuxReconnectLoop(Scheduler, ReconnectAttemptAsync, () => GiveUp($"no connection within {MuxReconnectLoop.Budget.TotalMinutes:0} min"))).Start();
+                    // Queued once the loop's first wait is scheduled: a pool thread can raise it before this lock is
+                    // released, and a handler that acts on the loss - a test moving its clock past that wait - must
+                    // find the reconnect under way, not about to start (#528).
+                    RaiseLocked(nameof(ConnectionLost), () => Invoke(nameof(ConnectionLost), ConnectionLost, reason));
                     note = $"[Mux] {Policy.DisplayName}: connection lost ({reason}); reconnecting";
                 }
             }

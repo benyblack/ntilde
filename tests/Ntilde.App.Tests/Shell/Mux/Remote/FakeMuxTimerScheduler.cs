@@ -34,9 +34,22 @@ internal sealed class FakeMuxTimerScheduler : IMuxTimerScheduler
         }
     }
 
+    /// <summary>
+    /// Runs at the start of each <see cref="Schedule"/>, on the scheduling thread, before the callback is added: a test
+    /// holds a caller there to see what other threads observe before its callback exists.
+    /// </summary>
+    public Action? BeforeSchedule
+    {
+        get => Volatile.Read(ref _beforeSchedule);
+        set => Volatile.Write(ref _beforeSchedule, value);
+    }
+
+    private Action? _beforeSchedule;
+
     public IDisposable Schedule(TimeSpan due, Action callback)
     {
         ArgumentNullException.ThrowIfNull(callback);
+        BeforeSchedule?.Invoke();
         lock (_gate)
         {
             var entry = new Entry(this, _now + Math.Max(0L, (long)due.TotalMilliseconds), _sequence++, callback);
