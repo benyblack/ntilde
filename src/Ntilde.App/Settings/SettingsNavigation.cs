@@ -33,6 +33,17 @@ public static class SettingsNavigation
     public static void SetRowId(Control control, string? value) => control.SetValue(RowIdProperty, value);
 
     /// <summary>
+    /// Marks a row's setting where an action button comes before it ("Clear history" before the "Remember commands"
+    /// toggle): a jump to the row focuses this control, not the first one Tab reaches.
+    /// </summary>
+    public static readonly AttachedProperty<bool> IsRowFocusProperty =
+        AvaloniaProperty.RegisterAttached<Control, bool>("IsRowFocus", typeof(SettingsNavigation));
+
+    public static bool GetIsRowFocus(Control control) => control.GetValue(IsRowFocusProperty);
+
+    public static void SetIsRowFocus(Control control, bool value) => control.SetValue(IsRowFocusProperty, value);
+
+    /// <summary>
     /// Highlights <paramref name="target"/> with the palette's NtBlueDim, then fades back. The
     /// highlight is held at animation priority, so it neither replaces nor loses the control's own
     /// local or styled background. No-op for a control without a background.
