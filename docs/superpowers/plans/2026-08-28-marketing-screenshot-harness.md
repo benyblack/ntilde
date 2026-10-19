@@ -18,6 +18,19 @@
 > bypasses `AppPaths`' sandbox and writes a real per-machine file; remote-files needs a live SSH
 > session). `ScenarioCatalog.cs` carries the current evidence for each - read it rather than this
 > doc for the up-to-date blocker.
+
+> **Before resuming (2026-10-19, from issue #528):** `main` has moved under this branch twice.
+> - **Rename.** The app is Ntilde now (#464): `NovaTerminal.*` projects, namespaces and
+>   `NOVATERM_APPDATA_ROOT` became `Ntilde.*` and `NTILDE_APPDATA_ROOT`.
+> - **Settings redesign** (#522-#526): the window has no tabs. `SettingsWindowScenario` calls
+>   `new SettingsWindow(initialTab: tabIndex)` and checks the `MainTabs` TabControl, and neither
+>   exists any more. Open a page with `new SettingsWindow(new SettingsTarget(SettingsPage.AgentAccess))`
+>   (or `SettingsPage.Appearance`), and drop the tab-index constants and the header check in
+>   `SettingsAgentAccessScenario` and `SettingsAppearanceScenario`.
+> - `SettingsAppearanceScenario` reads `FontList` and `FontSizeInput`, which moved to the Terminal
+>   page (`SettingsPage.Terminal`). `ThemeList`, `SampleTextBorder`, `SampleTextBlock` and
+>   `ThemePreviewArea` are still on Appearance.
+
 ## Global Constraints
 
 - **Build only through the wrappers.** `scripts/build.ps1 <args>` (Windows) or `scripts/build.sh` (bash). Raw `dotnet build` spawns MSBuild daemons that inherit stdout and hang the caller. This applies to every build step in every task.
