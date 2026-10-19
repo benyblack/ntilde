@@ -263,6 +263,47 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     }
 
     /// <summary>
+    /// #541: the cancel's abort ends the remote command's stdout, and the greeting's read can return that end before
+    /// anything has looked at the token. That is still the cancel, not a remote that printed nothing.
+    /// </summary>
+    [Fact]
+    public async Task A_cancel_whose_abort_ends_the_greeting_read_first_is_reported_as_the_cancel()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var transport = new EndsAtTheCancelExecTransport([], cts.Cancel);
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(Profile(), transport, "i", log: null));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => connector.ConnectAsync(cts.Token));
+        Assert.Equal(1, transport.Started!.AbortCount);
+    }
+
+    /// <summary>#541, one step later: the greeting arrived, and the end the cancel's abort made reaches the client's handshake first.</summary>
+    [Fact]
+    public async Task A_cancel_whose_abort_ends_the_client_handshake_first_is_reported_as_the_cancel()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var transport = new EndsAtTheCancelExecTransport(MuxProxyPreamble.Format(daemonPid: 4242), cts.Cancel);
+        RemoteMuxConnector connector = Own(new RemoteMuxConnector(Profile(), transport, "i", log: null));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => connector.ConnectAsync(cts.Token));
+        Assert.Equal(1, transport.Started!.AbortCount);
+    }
+
+    /// <summary>#541, at the start: ssh stopped by the cancel fails its start in its own way, and that is the cancel too.</summary>
+    [Fact]
+    public async Task A_start_that_the_cancel_makes_fail_is_reported_as_the_cancel()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        _remote.OnStart = _ =>
+        {
+            cts.Cancel();
+            throw new IOException("ssh was stopped");
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Connector().ConnectAsync(cts.Token));
+    }
+
+    /// <summary>
     /// Ruling 5: a client over an exec channel owns nothing that can end a read pending on the channel's
     /// stdout - on Windows, closing a pipe's read end does not; ssh's exit does - so the connector ends
     /// the channel once its client disconnects. Here the link is silent, so no EOF would ever come.

@@ -203,7 +203,7 @@ internal sealed class RemoteMuxConnector : IDisposable
     /// </summary>
     /// <param name="interactive">False for an attempt nobody is waiting on: nothing may prompt.</param>
     /// <exception cref="RemoteMuxUnavailableException">The attempt failed; its channel has been ended.</exception>
-    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled; the channel was aborted, in the cancel.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled, whatever the attempt failed with meanwhile; the channel was aborted, in the cancel.</exception>
     /// <exception cref="ObjectDisposedException">The connector was disposed, before or during the start; a channel started meanwhile was aborted.</exception>
     public async Task<MuxClient> ConnectAsync(bool interactive, CancellationToken ct)
     {
@@ -250,9 +250,12 @@ internal sealed class RemoteMuxConnector : IDisposable
                 },
                 ct).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (Exception ex) when (ct.IsCancellationRequested)
         {
-            throw;
+            // Whatever a cancelled start fails with is the cancel's doing (#541): a start the cancel interrupts can fail
+            // in its own way rather than throw the cancel.
+            if (ex is OperationCanceledException) throw;
+            throw new OperationCanceledException("The connect was cancelled.", ex, ct);
         }
         catch (Exception ex)
         {
@@ -297,13 +300,15 @@ internal sealed class RemoteMuxConnector : IDisposable
                     .ConfigureAwait(false);
                 _log?.Invoke($"[RemoteMux] {host}: connected (daemon pid {proxy.DaemonPid}, protocol {client.ProtocolVersion}, {(interactive ? "user request" : "automatic")})");
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            catch (Exception ex) when (ct.IsCancellationRequested)
             {
                 // Aborted here as well as by the cancel's callback (above): whichever runs first does it, and the
-                // other waits for it. Then released off this thread.
+                // other waits for it. Then released off this thread. Any failure is the cancel's (#541): the abort ends
+                // the remote command's stdout, and a read can return that end before anything has looked at the token.
                 channel.Abort();
                 _ = channel.EndAsync();
-                throw;
+                if (ex is OperationCanceledException) throw;
+                throw new OperationCanceledException("The connect was cancelled.", ex, ct);
             }
             catch (Exception ex)
             {
