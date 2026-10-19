@@ -1394,6 +1394,18 @@ namespace Ntilde.Pty
             // is being torn down, so the user is closing a tab and a snappy close matters more
             // than an exit code nobody will look at.
             TryNotifyExitSafely(() => ChildExitObserved ? Volatile.Read(ref _childExitCode) : 0);
+
+            // 7. Let every subscriber go, now that the last notification is out (#548). The read thread can outlive this
+            //    method: on Unix a background job that keeps the terminal open keeps pty_read blocked, and the thread roots
+            //    the session until the job exits. Through a pane's handlers that kept the closed pane, its buffer and its
+            //    scrollback in memory with it. A disposed session reports nothing more, so it needs none of them.
+            OnExit = null;
+            lock (_outputHandlerGate)
+            {
+                _onOutputReceived = null;
+                _pendingOutputReplay = null;
+            }
+            _rawOutput.UnsubscribeAll();
         }
 
         /// Observes the injection task's outcome and removes its script if the shell
