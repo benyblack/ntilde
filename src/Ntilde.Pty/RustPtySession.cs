@@ -1394,6 +1394,22 @@ namespace Ntilde.Pty
             // is being torn down, so the user is closing a tab and a snappy close matters more
             // than an exit code nobody will look at.
             TryNotifyExitSafely(() => ChildExitObserved ? Volatile.Read(ref _childExitCode) : 0);
+
+            // 7. Let the exit and output subscribers go, now that the last notification is out (#548). The read thread can
+            //    outlive this method: on Unix a background job that keeps the terminal open keeps pty_read blocked, and the
+            //    thread roots the session until the job exits. Through a pane's handlers that kept the closed pane, its
+            //    buffer and its scrollback in memory with it. A disposed session reports nothing more, so it needs none of
+            //    them. The gate is never held while a handler runs (EmitOutput reads the handler under it, then lets go).
+            //
+            //    The raw tap is left alone: it runs its subscribers under its own lock, and the mux's can block there on its
+            //    full queue until HeadlessTerminalSession cancels it - which its Kill does only once this returns. Taking
+            //    that lock here would wait forever (codex review of #575). Its one subscriber, the mux, removes itself.
+            OnExit = null;
+            lock (_outputHandlerGate)
+            {
+                _onOutputReceived = null;
+                _pendingOutputReplay = null;
+            }
         }
 
         /// Observes the injection task's outcome and removes its script if the shell
@@ -1457,11 +1473,14 @@ namespace Ntilde.Pty
 
         private void TryNotifyExit(int code)
         {
+            // Read before the claim (#548): Dispose clears OnExit once its own turn is over, and a loop that claimed the
+            // exit can be paused past Dispose's bounded join. Its claim was made for the subscribers there were then.
+            Action<int>? handler = OnExit;
             if (Interlocked.Exchange(ref _exitNotified, 1) != 0) return;
 
             _exitCode = code;
             Volatile.Write(ref _isExited, 1);
-            OnExit?.Invoke(code);
+            handler?.Invoke(code);
         }
     }
 }
