@@ -45,9 +45,8 @@ internal sealed class MuxConnectionHost : IDisposable
     private readonly Func<MuxConnectAttempt, CancellationToken, Task<MuxClient>> _connect;
     private readonly Action<string>? _log;
     private readonly object _gate = new();
+    // Cancelled by Dispose and never disposed, so the token a connect attempt still holds stays usable (see Dispose).
     private readonly CancellationTokenSource _disposed = new();
-    // Captured once: CancellationTokenSource.Token throws once the source is disposed, and Dispose
-    // disposes it while a connect attempt may still hold (or be about to read) the token.
     private readonly CancellationToken _disposedToken;
     // Set under _gate by Dispose, which cancels _disposed only after leaving the lock (cancelling runs the
     // token's callbacks, a connector ending its channel among them, and none may run under the host's lock).
@@ -1210,9 +1209,9 @@ internal sealed class MuxConnectionHost : IDisposable
         loop?.Dispose();
         LogDroppedKills(dropped, "the host is closing");
 
-        // Safe to dispose now: every disposed check reads _closed, and the attempt holds the token captured
-        // in the constructor, never _disposed.Token.
-        _disposed.Dispose();
+        // _disposed is cancelled, never disposed: a connect still in flight holds its token, and ssh blocked on a
+        // prompt may wait on that token's WaitHandle, which a disposed source throws from (#528). With no timer and
+        // no link to another source, it holds nothing the collector does not reclaim.
 
         try
         {

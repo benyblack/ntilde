@@ -1478,6 +1478,42 @@ public sealed class MuxConnectionHostRemoteTests : IDisposable
     }
 
     /// <summary>
+    /// Dispose cancels the token a connect in flight holds and leaves it usable: ssh blocked on a prompt may wait on its
+    /// WaitHandle after Dispose returned, which a disposed source throws from. That threw in the test above whenever the
+    /// start thread was slow to reach its wait, and the test waited out its 30 s (#528).
+    /// </summary>
+    [Fact]
+    public async Task Dispose_leaves_the_token_of_a_connect_in_flight_cancelled_and_usable()
+    {
+        using var disposed = new ManualResetEventSlim();
+        var waited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _remote.OnStart = ct =>
+        {
+            disposed.Wait(Patient);   // ssh slow to get going: the host's Dispose returns first
+            try
+            {
+                ct.WaitHandle.WaitOne();
+                waited.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                waited.TrySetException(ex);
+            }
+
+            ct.ThrowIfCancellationRequested();
+        };
+        MuxConnectionHost host = Create();
+        Task<MuxClient?> connecting = Task.Run(() => host.GetClient(MuxHostPolicy.RemoteConnectTimeout), Ct);
+        await TestWait.UntilAsync(() => _remote.StartCount == 1, "the connect is starting ssh", Patient);
+
+        host.Dispose();
+        disposed.Set();
+
+        await waited.Task.WaitAsync(Patient, Ct);
+        Assert.Null(await connecting.WaitAsync(Patient, Ct));
+    }
+
+    /// <summary>
     /// Final review F4: closing the app while a connect waits for the proxy's greeting (behind a password
     /// prompt, say) kills that channel before the host's Dispose returns. Ending it gracefully on the pool left
     /// ssh, blocked on its askpass dialog, running after the app had exited.
