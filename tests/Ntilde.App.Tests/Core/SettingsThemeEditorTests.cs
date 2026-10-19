@@ -154,6 +154,55 @@ public sealed class SettingsThemeEditorTests
         }
     }
 
+    /// <summary>
+    /// Waits, yielding to the headless session, until <paramref name="done"/> or the deadline. A DispatcherTimer fires only
+    /// while the session's loop runs - during an await - and not from RunJobs.
+    /// </summary>
+    private static async Task YieldUntilAsync(Func<bool> done, TimeSpan within)
+    {
+        long deadline = System.Diagnostics.Stopwatch.GetTimestamp() + (long)(within.TotalSeconds * System.Diagnostics.Stopwatch.Frequency);
+        while (!done() && System.Diagnostics.Stopwatch.GetTimestamp() < deadline)
+        {
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// "Saved!" clears itself after 2 s, and its timer clears only that message: a failed save shown meanwhile stays
+    /// (Greptile on #527). The second half proves the timer fires here, so the first cannot pass by its never firing.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task TheSavedTimer_LeavesALaterSaveFailureShowing_AndClearsItsOwnMessage()
+    {
+        var (root, _, page) = Open();
+        using (root)
+        {
+            var status = page.FindControl<TextBlock>("ThemeEditorStatus")!;
+            string themeFile = Path.Combine(root.Root, "themes", "GitHubLight.json");
+            Click(page, "BtnEditTheme");
+            Type(page, "EditThemeBgInput", "#123456");
+            Click(page, "BtnSaveTheme");
+            Assert.Equal("Saved!", status.Text);   // its timer is running now
+            long saved = System.Diagnostics.Stopwatch.GetTimestamp();
+
+            File.Delete(themeFile);
+            Directory.CreateDirectory(themeFile);   // the next write fails
+            Type(page, "EditThemeBgInput", "#654321");
+            Click(page, "BtnSaveTheme");
+            const string Failed = "Couldn't save the theme. Check that the themes folder can be written.";
+            Assert.Equal(Failed, status.Text);
+            await YieldUntilAsync(() => System.Diagnostics.Stopwatch.GetElapsedTime(saved) > TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(5));
+
+            Assert.Equal(Failed, status.Text);
+
+            Directory.Delete(themeFile);
+            Click(page, "BtnSaveTheme");
+            Assert.Equal("Saved!", status.Text);
+            await YieldUntilAsync(() => status.Text == "", TimeSpan.FromSeconds(5));
+            Assert.Equal("", status.Text);
+        }
+    }
+
     /// <summary>Back drops the edits made since the last Save; the saved values stay saved.</summary>
     [AvaloniaFact]
     public void Back_AfterASave_DropsOnlyTheEditsMadeSinceTheSave()
