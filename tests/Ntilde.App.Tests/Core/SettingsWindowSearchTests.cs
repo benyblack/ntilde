@@ -4,6 +4,7 @@ using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -913,6 +914,79 @@ public sealed class SettingsWindowSearchTests
 
             SettingRow row = window.GetPage<CommandAssistPage>().GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "remember-commands");
             Assert.True(row.IsExpanded);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>
+    /// A jump to "Remember commands" focuses its toggle, the setting, not "Clear history", the button laid out before
+    /// it (Greptile on #526).
+    /// </summary>
+    [AvaloniaFact]
+    public void AJumpToRememberCommands_FocusesItsToggle_NotClearHistory()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            Box(window).Focus();
+            window.KeyTextInput("remember commands");
+            Dispatcher.UIThread.RunJobs();
+            Results(window).SelectedItem = Shown(window).Single(r => r.Entry.RowId == "remember-commands");
+
+            window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("CommandAssistHistoryToggle", (window.FocusManager!.GetFocusedElement() as Control)?.Name);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>An action button: a Button that sets nothing (a CheckBox or ToggleSwitch is a ToggleButton, so a Button too).</summary>
+    private static bool IsActionButton(InputElement element) => element is Button and not ToggleButton;
+
+    /// <summary>
+    /// The rule behind the test above, on every page: a jump to a row lands on the setting, never on an action button
+    /// while the row has something to set. A row of buttons only (Add snippet, say) lands on its first button.
+    /// </summary>
+    [AvaloniaFact]
+    public void OnEveryPage_AJumpToARow_FocusesItsSetting_NotAnActionButton()
+    {
+        using var root = SettingsTestRoot.Empty();
+        var window = new Ntilde.SettingsWindow();
+        try
+        {
+            window.Show();
+            var landsOnAButton = new List<string>();
+            foreach (SettingsPageDescriptor descriptor in SettingsPageRegistry.Pages)
+            {
+                window.NavigateTo(new SettingsTarget(descriptor.Page));
+                Dispatcher.UIThread.RunJobs();
+                foreach (SettingRow row in window.GetPage(descriptor.Page).View.GetLogicalDescendants().OfType<SettingRow>().Where(r => r.RowId is not null))
+                {
+                    if (Ntilde.SettingsWindow.JumpFocusTargetIn(row) is not { } target || !IsActionButton(target))
+                    {
+                        continue;
+                    }
+
+                    bool hasASetting = (row.Content as Control)?.GetSelfAndVisualDescendants().OfType<InputElement>()
+                        .Any(element => element.Focusable && element.IsEffectivelyEnabled && element.IsEffectivelyVisible
+                            && KeyboardNavigation.GetIsTabStop(element) && !IsActionButton(element)) == true;
+                    if (hasASetting)
+                    {
+                        landsOnAButton.Add($"{descriptor.Page}/{row.RowId} -> {(target as Control)?.Name}");
+                    }
+                }
+            }
+
+            Assert.Empty(landsOnAButton);
         }
         finally
         {

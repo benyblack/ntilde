@@ -343,25 +343,29 @@ namespace Ntilde
             SettingsNavigation.Flash(row);
             if (focusWith is { } method)
             {
-                FirstFocusableIn(row)?.Focus(method);
+                JumpFocusTargetIn(row)?.Focus(method);
             }
 
             return true;
         }
 
         /// <summary>
-        /// The first control in <paramref name="row"/>'s content that Tab could reach, or null. A
-        /// SettingRow's own "More" button is not its content, so it is never the one.
+        /// Where a jump to <paramref name="row"/> puts focus: the control its content marks as the setting
+        /// (<see cref="SettingsNavigation.IsRowFocusProperty"/>), else the first one Tab could reach; null when none can
+        /// take focus. A SettingRow's own "More" button is not its content, so it is never the one.
         /// </summary>
-        private static InputElement? FirstFocusableIn(Control row)
+        internal static InputElement? JumpFocusTargetIn(Control row)
         {
             Control? content = row is ContentControl contentRow ? contentRow.Content as Control : row;
-            return content?.GetSelfAndVisualDescendants()
+            List<InputElement> stops = content?.GetSelfAndVisualDescendants()
                 .OfType<InputElement>()
-                .FirstOrDefault(element => element.Focusable
+                .Where(element => element.Focusable
                     && element.IsEffectivelyEnabled
                     && element.IsEffectivelyVisible
-                    && KeyboardNavigation.GetIsTabStop(element));
+                    && KeyboardNavigation.GetIsTabStop(element))
+                .ToList() ?? [];
+            return stops.FirstOrDefault(element => element is Control control && SettingsNavigation.GetIsRowFocus(control))
+                ?? stops.FirstOrDefault();
         }
 
         private void ShowPage(SettingsPage page)

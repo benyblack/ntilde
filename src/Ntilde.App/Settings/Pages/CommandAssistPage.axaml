@@ -26,7 +26,8 @@
                                      Keywords="history record privacy clear secrets">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button Name="BtnClearCommandAssistHistory" Classes="Pill" Content="Clear history"/>
-                        <CheckBox Name="CommandAssistHistoryToggle" Classes="Toggle" VerticalAlignment="Center" AutomationProperties.Name="Remember commands"/>
+                        <CheckBox Name="CommandAssistHistoryToggle" Classes="Toggle" VerticalAlignment="Center" AutomationProperties.Name="Remember commands"
+                                  settings:SettingsNavigation.IsRowFocus="True"/>
                     </StackPanel>
                 </settings:SettingRow>
                 <settings:SettingRow RowId="shell-integration" Indent="True"
