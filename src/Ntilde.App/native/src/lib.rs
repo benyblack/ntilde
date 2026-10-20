@@ -621,7 +621,10 @@ enum ReadWait {
 }
 
 /// Waits until `master` has something to read (data, EOF or an error - read() tells which) or the
-/// read was cancelled. A cancel wins over pending data: the session is being torn down.
+/// read was cancelled. What the master already holds is read before a cancel ends the read: the exit
+/// watcher cancels a moment after the shell exits, and the shell's last output may still be waiting
+/// (codex and coderabbit review of #577). A disposing session stops reading anyway - its read loop
+/// checks its own token after every read - so this never keeps a closed tab reading.
 #[cfg(all(unix, not(target_os = "macos")))]
 fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Result<ReadWait> {
     use std::os::fd::AsRawFd;
@@ -637,11 +640,11 @@ fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Re
             }
             return Err(err);
         }
-        if fds[0].revents != 0 {
-            return Ok(ReadWait::Cancelled);
-        }
         if fds[1].revents != 0 {
             return Ok(ReadWait::Ready);
+        }
+        if fds[0].revents != 0 {
+            return Ok(ReadWait::Cancelled);
         }
     }
 }
@@ -673,11 +676,11 @@ fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Re
             }
             return Err(err);
         }
-        if unsafe { libc::FD_ISSET(cancel_fd, &readable) } {
-            return Ok(ReadWait::Cancelled);
-        }
         if unsafe { libc::FD_ISSET(master, &readable) } {
             return Ok(ReadWait::Ready);
+        }
+        if unsafe { libc::FD_ISSET(cancel_fd, &readable) } {
+            return Ok(ReadWait::Cancelled);
         }
     }
 }
@@ -956,6 +959,25 @@ fn pty_spawn_impl(
         cmd_builder.env(k.as_str(), v.as_str());
     }
 
+    // Before the spawn, so a failure here cannot leave a shell running that nothing tracks (codex
+    // review of #577): dropping a portable_pty::Child does not end the process.
+    #[cfg(unix)]
+    let cancel = match CancelPipe::new() {
+        Ok(pipe) => pipe,
+        Err(e) => {
+            set_last_error(format!("failed to create the PTY read's cancel pipe: {e}"));
+            return std::ptr::null_mut();
+        }
+    };
+    #[cfg(unix)]
+    let master_fd = match pair.master.as_raw_fd() {
+        Some(fd) => fd,
+        None => {
+            set_last_error("the PTY master has no file descriptor");
+            return std::ptr::null_mut();
+        }
+    };
+
     let child = match pair.slave.spawn_command(cmd_builder) {
         Ok(c) => c,
         Err(e) => {
@@ -985,22 +1007,6 @@ fn pty_spawn_impl(
         Ok(w) => w,
         Err(e) => {
             set_last_error(format!("failed to take PTY writer: {e}"));
-            return std::ptr::null_mut();
-        }
-    };
-    #[cfg(unix)]
-    let cancel = match CancelPipe::new() {
-        Ok(pipe) => pipe,
-        Err(e) => {
-            set_last_error(format!("failed to create the PTY read's cancel pipe: {e}"));
-            return std::ptr::null_mut();
-        }
-    };
-    #[cfg(unix)]
-    let master_fd = match pair.master.as_raw_fd() {
-        Some(fd) => fd,
-        None => {
-            set_last_error("the PTY master has no file descriptor");
             return std::ptr::null_mut();
         }
     };
@@ -1985,6 +1991,37 @@ mod cancel_read_tests {
         unsafe { libc::kill(job_pid, libc::SIGKILL) };
         let rc = returned.expect("pty_read was still blocked 5 s after the cancel: the job holds the terminal");
         assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
+        pty_close(state);
+    }
+
+    /// The exit watcher cancels the read a moment after the shell exits, and the read loop may not
+    /// have caught up by then (a slow output subscriber holds it). What the shell wrote last is still
+    /// in the master: the cancel must not drop it (codex and coderabbit review of #577).
+    #[cfg(unix)]
+    #[test]
+    fn a_cancel_lets_the_read_drain_what_the_master_already_holds() {
+        let _guard = crate::handle_test_lock();
+        let c_cmd = CString::new("/bin/sh").unwrap();
+        let c_args = CString::new("-c \"i=0; while [ $i -lt 100 ]; do printf 0123456789; i=$((i+1)); done; echo END; exec sleep 60\"")
+            .unwrap();
+        let state = pty_spawn(c_cmd.as_ptr(), c_args.as_ptr(), std::ptr::null(), 80, 24);
+        assert!(!state.is_null(), "spawn failed");
+
+        // Nothing has been read: the shell's 1 KB and END are all waiting in the master.
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        pty_cancel_read(state);
+
+        let mut seen = Vec::new();
+        let mut buf = [0u8; 256];
+        loop {
+            let rc = pty_read(state, buf.as_mut_ptr(), buf.len() as c_int);
+            if rc <= 0 {
+                break;
+            }
+            seen.extend_from_slice(&buf[..rc as usize]);
+        }
+        let text = String::from_utf8_lossy(&seen);
+        assert!(text.contains("END"), "the cancel dropped what the master held: read {} bytes {text:?}", seen.len());
         pty_close(state);
     }
 }
