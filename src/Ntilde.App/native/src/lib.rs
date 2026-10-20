@@ -574,7 +574,14 @@ pub struct PtyState {
 pub struct CancelPipe {
     read_end: std::os::fd::OwnedFd,
     write_end: std::os::fd::OwnedFd,
+    // NOT_CANCELLED, or how much of what the master held when the read was first cancelled is still
+    // to be read: a cancelled read drains that and no more (codex review of #577). Draining until the
+    // master runs dry would never end while a job keeps writing to the terminal.
+    drain_left: std::sync::atomic::AtomicU64,
 }
+
+#[cfg(unix)]
+const NOT_CANCELLED: u64 = u64::MAX;
 
 #[cfg(unix)]
 impl CancelPipe {
@@ -603,14 +610,50 @@ impl CancelPipe {
         if unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) } != 0 {
             return Err(std::io::Error::last_os_error());
         }
-        Ok(Self { read_end, write_end })
+        Ok(Self { read_end, write_end, drain_left: std::sync::atomic::AtomicU64::new(NOT_CANCELLED) })
     }
 
-    fn cancel(&self) {
+    /// Cancels the read, which may still drain `waiting` bytes - what the master holds now. Only the
+    /// first cancel sets that: a later one cannot extend the drain.
+    fn cancel(&self, waiting: usize) {
         use std::os::fd::AsRawFd;
+        let _ = self.drain_left.compare_exchange(
+            NOT_CANCELLED,
+            waiting as u64,
+            std::sync::atomic::Ordering::SeqCst,
+            std::sync::atomic::Ordering::SeqCst,
+        );
         let byte = 1u8;
         // EAGAIN means the pipe is full, so it is readable already; nothing else can fail here.
         let _ = unsafe { libc::write(self.write_end.as_raw_fd(), (&byte as *const u8).cast(), 1) };
+    }
+
+    /// How much a read may take: `len` until a cancel, then what is left of its drain (0: none).
+    fn allowance(&self, len: usize) -> usize {
+        match self.drain_left.load(std::sync::atomic::Ordering::SeqCst) {
+            NOT_CANCELLED => len,
+            left => len.min(left as usize),
+        }
+    }
+
+    /// Counts `n` bytes read against the drain, once the read was cancelled.
+    fn drained(&self, n: usize) {
+        let _ = self.drain_left.fetch_update(
+            std::sync::atomic::Ordering::SeqCst,
+            std::sync::atomic::Ordering::SeqCst,
+            |left| (left != NOT_CANCELLED).then(|| left.saturating_sub(n as u64)),
+        );
+    }
+}
+
+/// How many bytes the master holds right now: what a cancel lets the read drain. 0 if unknown.
+#[cfg(unix)]
+fn bytes_waiting(master: std::os::fd::RawFd) -> usize {
+    let mut waiting: c_int = 0;
+    if unsafe { libc::ioctl(master, libc::FIONREAD, &mut waiting) } == 0 && waiting > 0 {
+        waiting as usize
+    } else {
+        0
     }
 }
 
@@ -621,10 +664,9 @@ enum ReadWait {
 }
 
 /// Waits until `master` has something to read (data, EOF or an error - read() tells which) or the
-/// read was cancelled. What the master already holds is read before a cancel ends the read: the exit
-/// watcher cancels a moment after the shell exits, and the shell's last output may still be waiting
-/// (codex and coderabbit review of #577). A disposing session stops reading anyway - its read loop
-/// checks its own token after every read - so this never keeps a closed tab reading.
+/// read was cancelled. The master comes first: what it held when the cancel came is still read (its
+/// allowance, `CancelPipe::allowance`), since the exit watcher cancels a moment after the shell exits
+/// and the shell's last output may still be waiting (codex and coderabbit review of #577).
 #[cfg(all(unix, not(target_os = "macos")))]
 fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Result<ReadWait> {
     use std::os::fd::AsRawFd;
@@ -1072,16 +1114,24 @@ pub extern "C" fn pty_read(state_ptr: *mut PtyState, buffer: *mut u8, len: c_int
             // Unix: read only once there is something to read, so a cancel can end the wait
             // (#548). A cancelled read reports EOF, as one the child's exit ends does.
             #[cfg(unix)]
-            match wait_for_read(state.master_fd, &state.cancel) {
-                Ok(ReadWait::Ready) => {}
+            let buf = match wait_for_read(state.master_fd, &state.cancel) {
+                // Once cancelled, only what is left of the drain the cancel allowed.
+                Ok(ReadWait::Ready) => match state.cancel.allowance(buf.len()) {
+                    0 => return 0,
+                    allowed => &mut buf[..allowed],
+                },
                 Ok(ReadWait::Cancelled) => return 0,
                 Err(e) => {
                     set_last_error(format!("pty read failed: waiting for the master failed: {e}"));
                     return -1;
                 }
-            }
+            };
             let result = match reader.read(buf) {
-                Ok(n) => n as c_int,
+                Ok(n) => {
+                    #[cfg(unix)]
+                    state.cancel.drained(n);
+                    n as c_int
+                }
                 Err(e) => {
                     // pty_read still collapses every failure to -1, because the managed read loop
                     // treats the code as opaque and retries a bounded number of times either way.
@@ -1374,9 +1424,10 @@ pub extern "C" fn pty_cancel_read(state_ptr: *mut PtyState) {
         // Unix: and end the read even if something else still holds the slave - a background job
         // that ignores SIGHUP does, and the master then never reports EOF (#548). The read returns,
         // its thread ends, and pty_close can close the master: the terminal goes, as in any other
-        // terminal; the job keeps running without it.
+        // terminal; the job keeps running without it. The read first drains what the master holds
+        // now - the shell's last output - and no more, however much a job goes on writing.
         #[cfg(unix)]
-        state.cancel.cancel();
+        state.cancel.cancel(bytes_waiting(state.master_fd));
     })
 }
 
@@ -2022,6 +2073,60 @@ mod cancel_read_tests {
         }
         let text = String::from_utf8_lossy(&seen);
         assert!(text.contains("END"), "the cancel dropped what the master held: read {} bytes {text:?}", seen.len());
+        pty_close(state);
+    }
+
+    /// The other side of draining (codex review of #577): a job that writes without pause keeps the
+    /// master readable, so a cancel that waits for "nothing left to read" never comes. The read may
+    /// drain what the master held when the cancel came, and no more.
+    #[cfg(unix)]
+    #[test]
+    fn a_cancel_ends_the_read_while_a_job_keeps_writing() {
+        let _guard = crate::handle_test_lock();
+        let c_cmd = CString::new("/bin/sh").unwrap();
+        let c_args = CString::new("-c \"(trap '' HUP; exec yes) & echo job:$!; exec sleep 60\"").unwrap();
+        let state = pty_spawn(c_cmd.as_ptr(), c_args.as_ptr(), std::ptr::null(), 80, 24);
+        assert!(!state.is_null(), "spawn failed");
+
+        // The job's pid, from its own line among the job's `y`s: the test ends it whatever happens.
+        let mut seen = String::new();
+        let mut buf = [0u8; 4096];
+        let job_pid: libc::pid_t = loop {
+            let rc = pty_read(state, buf.as_mut_ptr(), buf.len() as c_int);
+            assert!(rc > 0, "the shell ended before naming its job");
+            seen.push_str(&String::from_utf8_lossy(&buf[..rc as usize]));
+            if let Some(rest) = seen.split("job:").nth(1) {
+                let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+                if !digits.is_empty() && rest.len() > digits.len() {
+                    break digits.parse().expect("the job's pid");
+                }
+            }
+        };
+
+        let state_addr = state as usize;
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let ptr = state_addr as *mut PtyState;
+            let mut buf = [0u8; 4096];
+            loop {
+                let rc = pty_read(ptr, buf.as_mut_ptr(), buf.len() as c_int);
+                if rc <= 0 {
+                    let _ = done_tx.send(rc);
+                    return;
+                }
+                // A consumer slower than the job, as the app's parser and screen are: the master never
+                // runs dry, so only a bounded drain lets the cancel end the read.
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_millis(300)); // reading the job's stream now
+
+        pty_cancel_read(state);
+        let returned = done_rx.recv_timeout(std::time::Duration::from_secs(5));
+
+        unsafe { libc::kill(job_pid, libc::SIGKILL) };
+        let rc = returned.expect("pty_read kept returning the job's output 5 s after the cancel");
+        assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
         pty_close(state);
     }
 }
