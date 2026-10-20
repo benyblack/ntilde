@@ -555,6 +555,131 @@ pub struct PtyState {
     // master does NOT close the cloned reader handle on this path.
     #[cfg(windows)]
     pub read_thread_id: AtomicU32,
+    // Unix: pty_read waits on the master and on this pipe's read end before it reads, and
+    // pty_cancel_read writes a byte to it (#548). Killing the child alone cannot end the read
+    // while anything else holds the terminal open - a background job that ignores SIGHUP keeps
+    // the slave, so the master never reports EOF and the read blocks until that job exits.
+    #[cfg(unix)]
+    pub cancel: CancelPipe,
+    // The master's descriptor, for that wait: the reader is a duplicate of it, so they are ready
+    // together. Owned by `master`, which lives as long as this state - and a pty_read holds the
+    // state for as long as it waits.
+    #[cfg(unix)]
+    pub master_fd: std::os::fd::RawFd,
+}
+
+/// The pipe that ends a waiting pty_read (#548). Once written it stays readable: a cancelled session
+/// reads nothing more.
+#[cfg(unix)]
+pub struct CancelPipe {
+    read_end: std::os::fd::OwnedFd,
+    write_end: std::os::fd::OwnedFd,
+}
+
+#[cfg(unix)]
+impl CancelPipe {
+    fn new() -> std::io::Result<Self> {
+        use std::os::fd::FromRawFd;
+        let mut fds = [0 as c_int; 2];
+        // Close-on-exec, so no shell spawned later inherits it: atomically where pipe2 exists, so a
+        // spawn on another thread cannot slip in between; macOS has no pipe2, and sets it just after.
+        #[cfg(target_os = "linux")]
+        let created = unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) };
+        #[cfg(not(target_os = "linux"))]
+        let created = unsafe { libc::pipe(fds.as_mut_ptr()) };
+        if created != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        // Owned at once, so an error below still closes both.
+        let (read_end, write_end) =
+            unsafe { (std::os::fd::OwnedFd::from_raw_fd(fds[0]), std::os::fd::OwnedFd::from_raw_fd(fds[1])) };
+        #[cfg(not(target_os = "linux"))]
+        for fd in fds {
+            if unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+        // The write end never blocks: one byte is all a cancel needs, and a full pipe is cancelled already.
+        if unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) } != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        Ok(Self { read_end, write_end })
+    }
+
+    fn cancel(&self) {
+        use std::os::fd::AsRawFd;
+        let byte = 1u8;
+        // EAGAIN means the pipe is full, so it is readable already; nothing else can fail here.
+        let _ = unsafe { libc::write(self.write_end.as_raw_fd(), (&byte as *const u8).cast(), 1) };
+    }
+}
+
+#[cfg(unix)]
+enum ReadWait {
+    Ready,
+    Cancelled,
+}
+
+/// Waits until `master` has something to read (data, EOF or an error - read() tells which) or the
+/// read was cancelled. A cancel wins over pending data: the session is being torn down.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Result<ReadWait> {
+    use std::os::fd::AsRawFd;
+    let mut fds = [
+        libc::pollfd { fd: cancel.read_end.as_raw_fd(), events: libc::POLLIN, revents: 0 },
+        libc::pollfd { fd: master, events: libc::POLLIN, revents: 0 },
+    ];
+    loop {
+        if unsafe { libc::poll(fds.as_mut_ptr(), fds.len() as libc::nfds_t, -1) } < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(err);
+        }
+        if fds[0].revents != 0 {
+            return Ok(ReadWait::Cancelled);
+        }
+        if fds[1].revents != 0 {
+            return Ok(ReadWait::Ready);
+        }
+    }
+}
+
+/// macOS: poll(2) does not support devices, and a pty master is one; select(2) does. A descriptor
+/// past select's range falls back to the plain blocking read, as before #548.
+#[cfg(target_os = "macos")]
+fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Result<ReadWait> {
+    use std::os::fd::AsRawFd;
+    let cancel_fd = cancel.read_end.as_raw_fd();
+    if master >= libc::FD_SETSIZE as c_int || cancel_fd >= libc::FD_SETSIZE as c_int {
+        return Ok(ReadWait::Ready);
+    }
+    loop {
+        let mut readable: libc::fd_set = unsafe { std::mem::zeroed() };
+        unsafe {
+            libc::FD_ZERO(&mut readable);
+            libc::FD_SET(cancel_fd, &mut readable);
+            libc::FD_SET(master, &mut readable);
+        }
+        let nfds = master.max(cancel_fd) + 1;
+        let rc = unsafe {
+            libc::select(nfds, &mut readable, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut())
+        };
+        if rc < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(err);
+        }
+        if unsafe { libc::FD_ISSET(cancel_fd, &readable) } {
+            return Ok(ReadWait::Cancelled);
+        }
+        if unsafe { libc::FD_ISSET(master, &readable) } {
+            return Ok(ReadWait::Ready);
+        }
+    }
 }
 
 // Tokenize an argument string the way a POSIX-ish shell would: split on
@@ -863,6 +988,22 @@ fn pty_spawn_impl(
             return std::ptr::null_mut();
         }
     };
+    #[cfg(unix)]
+    let cancel = match CancelPipe::new() {
+        Ok(pipe) => pipe,
+        Err(e) => {
+            set_last_error(format!("failed to create the PTY read's cancel pipe: {e}"));
+            return std::ptr::null_mut();
+        }
+    };
+    #[cfg(unix)]
+    let master_fd = match pair.master.as_raw_fd() {
+        Some(fd) => fd,
+        None => {
+            set_last_error("the PTY master has no file descriptor");
+            return std::ptr::null_mut();
+        }
+    };
 
     let state = PtyState {
         reader: Mutex::new(reader),
@@ -875,6 +1016,10 @@ fn pty_spawn_impl(
         child: Mutex::new(Some(child)),
         #[cfg(windows)]
         read_thread_id: AtomicU32::new(0),
+        #[cfg(unix)]
+        cancel,
+        #[cfg(unix)]
+        master_fd,
     };
 
     Arc::into_raw(Arc::new(state)) as *mut PtyState
@@ -918,6 +1063,17 @@ pub extern "C" fn pty_read(state_ptr: *mut PtyState, buffer: *mut u8, len: c_int
                 unsafe { windows_sys::Win32::System::Threading::GetCurrentThreadId() },
                 Ordering::SeqCst,
             );
+            // Unix: read only once there is something to read, so a cancel can end the wait
+            // (#548). A cancelled read reports EOF, as one the child's exit ends does.
+            #[cfg(unix)]
+            match wait_for_read(state.master_fd, &state.cancel) {
+                Ok(ReadWait::Ready) => {}
+                Ok(ReadWait::Cancelled) => return 0,
+                Err(e) => {
+                    set_last_error(format!("pty read failed: waiting for the master failed: {e}"));
+                    return -1;
+                }
+            }
             let result = match reader.read(buf) {
                 Ok(n) => n as c_int,
                 Err(e) => {
@@ -1141,7 +1297,8 @@ pub extern "C" fn pty_try_get_exit_code(state_ptr: *mut PtyState, out_code: *mut
 ///   * Windows portable: the cloned reader handle is NOT closed by killing the
 ///     child or dropping the master, so cancel the blocking ReadFile directly via
 ///     CancelSynchronousIo against the recorded read thread.
-///   * Unix: kill the child so the slave closes and the master read returns EOF.
+///   * Unix: kill the child, and wake the read through the cancel pipe it waits on - killing
+///     the child alone leaves it blocked while a background job holds the slave (#548).
 /// Idempotent; safe to call before pty_close (it take()s the HPCON).
 #[unsafe(no_mangle)]
 pub extern "C" fn pty_cancel_read(state_ptr: *mut PtyState) {
@@ -1200,13 +1357,20 @@ pub extern "C" fn pty_cancel_read(state_ptr: *mut PtyState) {
             }
         }
 
-        // Kill the child. On Unix this closes the slave so the master read returns
+        // Kill the child. On Unix this usually closes the slave so the master read returns
         // EOF; on Windows it reaps the child after the read has been cancelled.
         if let Ok(mut child_opt) = state.child.lock() {
             if let Some(child) = child_opt.as_mut() {
                 let _ = child.kill();
             }
         }
+
+        // Unix: and end the read even if something else still holds the slave - a background job
+        // that ignores SIGHUP does, and the master then never reports EOF (#548). The read returns,
+        // its thread ends, and pty_close can close the master: the terminal goes, as in any other
+        // terminal; the job keeps running without it.
+        #[cfg(unix)]
+        state.cancel.cancel();
     })
 }
 
@@ -1768,6 +1932,59 @@ mod cancel_read_tests {
         assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
 
         // close must remain safe (idempotent vs the cancel that already ran).
+        pty_close(state);
+    }
+
+    /// #548: a background job that ignores SIGHUP keeps the terminal open after the shell is
+    /// killed, so the master never reports EOF. The cancel must end the read anyway, or the
+    /// session's read thread (and everything it roots) waits until that job exits.
+    #[cfg(unix)]
+    #[test]
+    fn cancel_read_returns_while_a_background_job_holds_the_terminal() {
+        let _guard = crate::handle_test_lock();
+        let c_cmd = CString::new("/bin/sh").unwrap();
+        // Double quotes: split_args keeps a double-quoted region as one argument.
+        let c_args =
+            CString::new("-c \"(trap '' HUP; exec sleep 60) & echo job:$!; exec sleep 60\"").unwrap();
+        let state = pty_spawn(c_cmd.as_ptr(), c_args.as_ptr(), std::ptr::null(), 80, 24);
+        assert!(!state.is_null(), "spawn failed");
+
+        // The job's pid, from its own line: the test ends it whatever happens.
+        let mut seen = String::new();
+        let mut buf = [0u8; 256];
+        let job_pid: libc::pid_t = loop {
+            let rc = pty_read(state, buf.as_mut_ptr(), buf.len() as c_int);
+            assert!(rc > 0, "the shell ended before naming its job: {seen:?}");
+            seen.push_str(&String::from_utf8_lossy(&buf[..rc as usize]));
+            if let Some(rest) = seen.split("job:").nth(1) {
+                if let Some(line) = rest.split(['\r', '\n']).next().filter(|_| rest.contains('\n')) {
+                    break line.trim().parse().expect("the job's pid");
+                }
+            }
+        };
+
+        let state_addr = state as usize;
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let ptr = state_addr as *mut PtyState;
+            let mut buf = [0u8; 256];
+            loop {
+                let rc = pty_read(ptr, buf.as_mut_ptr(), buf.len() as c_int);
+                if rc <= 0 {
+                    let _ = done_tx.send(rc);
+                    return;
+                }
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_millis(300)); // the reader is now waiting
+
+        pty_cancel_read(state);
+        let returned = done_rx.recv_timeout(std::time::Duration::from_secs(5));
+
+        // End the job before asserting, so a failure leaves nothing running and the reader returns.
+        unsafe { libc::kill(job_pid, libc::SIGKILL) };
+        let rc = returned.expect("pty_read was still blocked 5 s after the cancel: the job holds the terminal");
+        assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
         pty_close(state);
     }
 }
