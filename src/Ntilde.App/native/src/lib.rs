@@ -624,8 +624,15 @@ impl CancelPipe {
             std::sync::atomic::Ordering::SeqCst,
         );
         let byte = 1u8;
-        // EAGAIN means the pipe is full, so it is readable already; nothing else can fail here.
-        let _ = unsafe { libc::write(self.write_end.as_raw_fd(), (&byte as *const u8).cast(), 1) };
+        // EAGAIN means the pipe is full, so it is readable already. A signal that interrupts the write
+        // before the byte went through (EINTR) is retried: unwritten, the waiting read would not wake
+        // (codex review of #577).
+        loop {
+            let written = unsafe { libc::write(self.write_end.as_raw_fd(), (&byte as *const u8).cast(), 1) };
+            if written >= 0 || std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted {
+                break;
+            }
+        }
     }
 
     /// How much a read may take: `len` until a cancel, then what is left of its drain (0: none).
