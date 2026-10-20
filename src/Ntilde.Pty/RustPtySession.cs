@@ -1183,8 +1183,9 @@ namespace Ntilde.Pty
 
                         if (!_handle.IsClosed && !_handle.IsInvalid)
                         {
-                            // The pipe may never EOF on its own (the console host is still
-                            // alive), so unblock the read the same way Dispose does.
+                            // The pipe may never EOF on its own - on Windows the console host is
+                            // still alive; on Unix a background job may still hold the terminal
+                            // (#548) - so unblock the read the same way Dispose does.
                             try { Native.pty_cancel_read(_handle); }
                             catch (ObjectDisposedException) { /* raced Dispose */ }
                         }

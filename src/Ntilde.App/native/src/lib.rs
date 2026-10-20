@@ -555,6 +555,185 @@ pub struct PtyState {
     // master does NOT close the cloned reader handle on this path.
     #[cfg(windows)]
     pub read_thread_id: AtomicU32,
+    // Unix: pty_read waits on the master and on this pipe's read end before it reads, and
+    // pty_cancel_read writes a byte to it (#548). Killing the child alone cannot end the read
+    // while anything else holds the terminal open - a background job that ignores SIGHUP keeps
+    // the slave, so the master never reports EOF and the read blocks until that job exits.
+    #[cfg(unix)]
+    pub cancel: CancelPipe,
+    // The master's descriptor, for that wait: the reader is a duplicate of it, so they are ready
+    // together. Owned by `master`, which lives as long as this state - and a pty_read holds the
+    // state for as long as it waits.
+    #[cfg(unix)]
+    pub master_fd: std::os::fd::RawFd,
+}
+
+/// The pipe that ends a waiting pty_read (#548). Once written it stays readable: a cancelled session
+/// reads nothing more.
+#[cfg(unix)]
+pub struct CancelPipe {
+    read_end: std::os::fd::OwnedFd,
+    write_end: std::os::fd::OwnedFd,
+    // NOT_CANCELLED, or how much of what the master held when the read was first cancelled is still
+    // to be read: a cancelled read drains that and no more (codex review of #577). Draining until the
+    // master runs dry would never end while a job keeps writing to the terminal.
+    drain_left: std::sync::atomic::AtomicU64,
+}
+
+#[cfg(unix)]
+const NOT_CANCELLED: u64 = u64::MAX;
+
+#[cfg(unix)]
+impl CancelPipe {
+    fn new() -> std::io::Result<Self> {
+        use std::os::fd::FromRawFd;
+        let mut fds = [0 as c_int; 2];
+        // Close-on-exec, so no shell spawned later inherits it: atomically where pipe2 exists, so a
+        // spawn on another thread cannot slip in between; macOS has no pipe2, and sets it just after.
+        #[cfg(target_os = "linux")]
+        let created = unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) };
+        #[cfg(not(target_os = "linux"))]
+        let created = unsafe { libc::pipe(fds.as_mut_ptr()) };
+        if created != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        // Owned at once, so an error below still closes both.
+        let (read_end, write_end) =
+            unsafe { (std::os::fd::OwnedFd::from_raw_fd(fds[0]), std::os::fd::OwnedFd::from_raw_fd(fds[1])) };
+        #[cfg(not(target_os = "linux"))]
+        for fd in fds {
+            if unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) } != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+        // The write end never blocks: one byte is all a cancel needs, and a full pipe is cancelled already.
+        if unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) } != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        Ok(Self { read_end, write_end, drain_left: std::sync::atomic::AtomicU64::new(NOT_CANCELLED) })
+    }
+
+    /// Cancels the read, which may still drain `waiting` bytes - what the master holds now. Only the
+    /// first cancel sets that: a later one cannot extend the drain.
+    fn cancel(&self, waiting: usize) {
+        use std::os::fd::AsRawFd;
+        let _ = self.drain_left.compare_exchange(
+            NOT_CANCELLED,
+            waiting as u64,
+            std::sync::atomic::Ordering::SeqCst,
+            std::sync::atomic::Ordering::SeqCst,
+        );
+        let byte = 1u8;
+        // EAGAIN means the pipe is full, so it is readable already. A signal that interrupts the write
+        // before the byte went through (EINTR) is retried: unwritten, the waiting read would not wake
+        // (codex review of #577).
+        loop {
+            let written = unsafe { libc::write(self.write_end.as_raw_fd(), (&byte as *const u8).cast(), 1) };
+            if written >= 0 || std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted {
+                break;
+            }
+        }
+    }
+
+    /// What is left of the drain a read may take, `None` before a cancel. A read that began before the
+    /// cancel is not counted against it (`drained`): the cancel measured the master after that read
+    /// took its bytes (codex review of #577).
+    fn allowance(&self) -> Option<usize> {
+        match self.drain_left.load(std::sync::atomic::Ordering::SeqCst) {
+            NOT_CANCELLED => None,
+            left => Some(left as usize),
+        }
+    }
+
+    /// Counts `n` bytes, read by a read that began after the cancel, against the drain.
+    fn drained(&self, n: usize) {
+        let _ = self.drain_left.fetch_update(
+            std::sync::atomic::Ordering::SeqCst,
+            std::sync::atomic::Ordering::SeqCst,
+            |left| (left != NOT_CANCELLED).then(|| left.saturating_sub(n as u64)),
+        );
+    }
+}
+
+/// How many bytes the master holds right now: what a cancel lets the read drain. 0 if unknown.
+#[cfg(unix)]
+fn bytes_waiting(master: std::os::fd::RawFd) -> usize {
+    let mut waiting: c_int = 0;
+    if unsafe { libc::ioctl(master, libc::FIONREAD, &mut waiting) } == 0 && waiting > 0 {
+        waiting as usize
+    } else {
+        0
+    }
+}
+
+#[cfg(unix)]
+enum ReadWait {
+    Ready,
+    Cancelled,
+}
+
+/// Waits until `master` has something to read (data, EOF or an error - read() tells which) or the
+/// read was cancelled. The master comes first: what it held when the cancel came is still read (its
+/// allowance, `CancelPipe::allowance`), since the exit watcher cancels a moment after the shell exits
+/// and the shell's last output may still be waiting (codex and coderabbit review of #577).
+#[cfg(all(unix, not(target_os = "macos")))]
+fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Result<ReadWait> {
+    use std::os::fd::AsRawFd;
+    let mut fds = [
+        libc::pollfd { fd: cancel.read_end.as_raw_fd(), events: libc::POLLIN, revents: 0 },
+        libc::pollfd { fd: master, events: libc::POLLIN, revents: 0 },
+    ];
+    loop {
+        if unsafe { libc::poll(fds.as_mut_ptr(), fds.len() as libc::nfds_t, -1) } < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(err);
+        }
+        if fds[1].revents != 0 {
+            return Ok(ReadWait::Ready);
+        }
+        if fds[0].revents != 0 {
+            return Ok(ReadWait::Cancelled);
+        }
+    }
+}
+
+/// macOS: poll(2) does not support devices, and a pty master is one; select(2) does. A descriptor
+/// past select's range falls back to the plain blocking read, as before #548.
+#[cfg(target_os = "macos")]
+fn wait_for_read(master: std::os::fd::RawFd, cancel: &CancelPipe) -> std::io::Result<ReadWait> {
+    use std::os::fd::AsRawFd;
+    let cancel_fd = cancel.read_end.as_raw_fd();
+    if master >= libc::FD_SETSIZE as c_int || cancel_fd >= libc::FD_SETSIZE as c_int {
+        return Ok(ReadWait::Ready);
+    }
+    loop {
+        let mut readable: libc::fd_set = unsafe { std::mem::zeroed() };
+        unsafe {
+            libc::FD_ZERO(&mut readable);
+            libc::FD_SET(cancel_fd, &mut readable);
+            libc::FD_SET(master, &mut readable);
+        }
+        let nfds = master.max(cancel_fd) + 1;
+        let rc = unsafe {
+            libc::select(nfds, &mut readable, std::ptr::null_mut(), std::ptr::null_mut(), std::ptr::null_mut())
+        };
+        if rc < 0 {
+            let err = std::io::Error::last_os_error();
+            if err.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(err);
+        }
+        if unsafe { libc::FD_ISSET(master, &readable) } {
+            return Ok(ReadWait::Ready);
+        }
+        if unsafe { libc::FD_ISSET(cancel_fd, &readable) } {
+            return Ok(ReadWait::Cancelled);
+        }
+    }
 }
 
 // Tokenize an argument string the way a POSIX-ish shell would: split on
@@ -831,6 +1010,25 @@ fn pty_spawn_impl(
         cmd_builder.env(k.as_str(), v.as_str());
     }
 
+    // Before the spawn, so a failure here cannot leave a shell running that nothing tracks (codex
+    // review of #577): dropping a portable_pty::Child does not end the process.
+    #[cfg(unix)]
+    let cancel = match CancelPipe::new() {
+        Ok(pipe) => pipe,
+        Err(e) => {
+            set_last_error(format!("failed to create the PTY read's cancel pipe: {e}"));
+            return std::ptr::null_mut();
+        }
+    };
+    #[cfg(unix)]
+    let master_fd = match pair.master.as_raw_fd() {
+        Some(fd) => fd,
+        None => {
+            set_last_error("the PTY master has no file descriptor");
+            return std::ptr::null_mut();
+        }
+    };
+
     let child = match pair.slave.spawn_command(cmd_builder) {
         Ok(c) => c,
         Err(e) => {
@@ -875,6 +1073,10 @@ fn pty_spawn_impl(
         child: Mutex::new(Some(child)),
         #[cfg(windows)]
         read_thread_id: AtomicU32::new(0),
+        #[cfg(unix)]
+        cancel,
+        #[cfg(unix)]
+        master_fd,
     };
 
     Arc::into_raw(Arc::new(state)) as *mut PtyState
@@ -918,8 +1120,36 @@ pub extern "C" fn pty_read(state_ptr: *mut PtyState, buffer: *mut u8, len: c_int
                 unsafe { windows_sys::Win32::System::Threading::GetCurrentThreadId() },
                 Ordering::SeqCst,
             );
+            // Unix: read only once there is something to read, so a cancel can end the wait
+            // (#548). A cancelled read reports EOF, as one the child's exit ends does. Once cancelled,
+            // only what is left of the drain the cancel allowed, counted against it.
+            #[cfg(unix)]
+            let mut counted = false;
+            #[cfg(unix)]
+            let buf = match wait_for_read(state.master_fd, &state.cancel) {
+                Ok(ReadWait::Ready) => match state.cancel.allowance() {
+                    None => buf,
+                    Some(0) => return 0,
+                    Some(left) => {
+                        counted = true;
+                        let allowed = left.min(buf.len());
+                        &mut buf[..allowed]
+                    }
+                },
+                Ok(ReadWait::Cancelled) => return 0,
+                Err(e) => {
+                    set_last_error(format!("pty read failed: waiting for the master failed: {e}"));
+                    return -1;
+                }
+            };
             let result = match reader.read(buf) {
-                Ok(n) => n as c_int,
+                Ok(n) => {
+                    #[cfg(unix)]
+                    if counted {
+                        state.cancel.drained(n);
+                    }
+                    n as c_int
+                }
                 Err(e) => {
                     // pty_read still collapses every failure to -1, because the managed read loop
                     // treats the code as opaque and retries a bounded number of times either way.
@@ -1141,7 +1371,8 @@ pub extern "C" fn pty_try_get_exit_code(state_ptr: *mut PtyState, out_code: *mut
 ///   * Windows portable: the cloned reader handle is NOT closed by killing the
 ///     child or dropping the master, so cancel the blocking ReadFile directly via
 ///     CancelSynchronousIo against the recorded read thread.
-///   * Unix: kill the child so the slave closes and the master read returns EOF.
+///   * Unix: kill the child, and wake the read through the cancel pipe it waits on - killing
+///     the child alone leaves it blocked while a background job holds the slave (#548).
 /// Idempotent; safe to call before pty_close (it take()s the HPCON).
 #[unsafe(no_mangle)]
 pub extern "C" fn pty_cancel_read(state_ptr: *mut PtyState) {
@@ -1200,13 +1431,21 @@ pub extern "C" fn pty_cancel_read(state_ptr: *mut PtyState) {
             }
         }
 
-        // Kill the child. On Unix this closes the slave so the master read returns
+        // Kill the child. On Unix this usually closes the slave so the master read returns
         // EOF; on Windows it reaps the child after the read has been cancelled.
         if let Ok(mut child_opt) = state.child.lock() {
             if let Some(child) = child_opt.as_mut() {
                 let _ = child.kill();
             }
         }
+
+        // Unix: and end the read even if something else still holds the slave - a background job
+        // that ignores SIGHUP does, and the master then never reports EOF (#548). The read returns,
+        // its thread ends, and pty_close can close the master: the terminal goes, as in any other
+        // terminal; the job keeps running without it. The read first drains what the master holds
+        // now - the shell's last output - and no more, however much a job goes on writing.
+        #[cfg(unix)]
+        state.cancel.cancel(bytes_waiting(state.master_fd));
     })
 }
 
@@ -1770,4 +2009,143 @@ mod cancel_read_tests {
         // close must remain safe (idempotent vs the cancel that already ran).
         pty_close(state);
     }
+
+    /// #548: a background job that ignores SIGHUP keeps the terminal open after the shell is
+    /// killed, so the master never reports EOF. The cancel must end the read anyway, or the
+    /// session's read thread (and everything it roots) waits until that job exits.
+    #[cfg(unix)]
+    #[test]
+    fn cancel_read_returns_while_a_background_job_holds_the_terminal() {
+        let _guard = crate::handle_test_lock();
+        let c_cmd = CString::new("/bin/sh").unwrap();
+        // Double quotes: split_args keeps a double-quoted region as one argument.
+        let c_args =
+            CString::new("-c \"(trap '' HUP; exec sleep 60) & echo job:$!; exec sleep 60\"").unwrap();
+        let state = pty_spawn(c_cmd.as_ptr(), c_args.as_ptr(), std::ptr::null(), 80, 24);
+        assert!(!state.is_null(), "spawn failed");
+
+        // The job's pid, from its own line: the test ends it whatever happens.
+        let mut seen = String::new();
+        let mut buf = [0u8; 256];
+        let job_pid: libc::pid_t = loop {
+            let rc = pty_read(state, buf.as_mut_ptr(), buf.len() as c_int);
+            assert!(rc > 0, "the shell ended before naming its job: {seen:?}");
+            seen.push_str(&String::from_utf8_lossy(&buf[..rc as usize]));
+            if let Some(rest) = seen.split("job:").nth(1) {
+                if let Some(line) = rest.split(['\r', '\n']).next().filter(|_| rest.contains('\n')) {
+                    break line.trim().parse().expect("the job's pid");
+                }
+            }
+        };
+
+        let state_addr = state as usize;
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let ptr = state_addr as *mut PtyState;
+            let mut buf = [0u8; 256];
+            loop {
+                let rc = pty_read(ptr, buf.as_mut_ptr(), buf.len() as c_int);
+                if rc <= 0 {
+                    let _ = done_tx.send(rc);
+                    return;
+                }
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_millis(300)); // the reader is now waiting
+
+        pty_cancel_read(state);
+        let returned = done_rx.recv_timeout(std::time::Duration::from_secs(5));
+
+        // End the job before asserting, so a failure leaves nothing running and the reader returns.
+        unsafe { libc::kill(job_pid, libc::SIGKILL) };
+        let rc = returned.expect("pty_read was still blocked 5 s after the cancel: the job holds the terminal");
+        assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
+        pty_close(state);
+    }
+
+    /// The exit watcher cancels the read a moment after the shell exits, and the read loop may not
+    /// have caught up by then (a slow output subscriber holds it). What the shell wrote last is still
+    /// in the master: the cancel must not drop it (codex and coderabbit review of #577).
+    #[cfg(unix)]
+    #[test]
+    fn a_cancel_lets_the_read_drain_what_the_master_already_holds() {
+        let _guard = crate::handle_test_lock();
+        let c_cmd = CString::new("/bin/sh").unwrap();
+        let c_args = CString::new("-c \"i=0; while [ $i -lt 100 ]; do printf 0123456789; i=$((i+1)); done; echo END; exec sleep 60\"")
+            .unwrap();
+        let state = pty_spawn(c_cmd.as_ptr(), c_args.as_ptr(), std::ptr::null(), 80, 24);
+        assert!(!state.is_null(), "spawn failed");
+
+        // Nothing has been read: the shell's 1 KB and END are all waiting in the master.
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        pty_cancel_read(state);
+
+        let mut seen = Vec::new();
+        let mut buf = [0u8; 256];
+        loop {
+            let rc = pty_read(state, buf.as_mut_ptr(), buf.len() as c_int);
+            if rc <= 0 {
+                break;
+            }
+            seen.extend_from_slice(&buf[..rc as usize]);
+        }
+        let text = String::from_utf8_lossy(&seen);
+        assert!(text.contains("END"), "the cancel dropped what the master held: read {} bytes {text:?}", seen.len());
+        pty_close(state);
+    }
+
+    /// The other side of draining (codex review of #577): a job that writes without pause keeps the
+    /// master readable, so a cancel that waits for "nothing left to read" never comes. The read may
+    /// drain what the master held when the cancel came, and no more.
+    #[cfg(unix)]
+    #[test]
+    fn a_cancel_ends_the_read_while_a_job_keeps_writing() {
+        let _guard = crate::handle_test_lock();
+        let c_cmd = CString::new("/bin/sh").unwrap();
+        let c_args = CString::new("-c \"(trap '' HUP; exec yes) & echo job:$!; exec sleep 60\"").unwrap();
+        let state = pty_spawn(c_cmd.as_ptr(), c_args.as_ptr(), std::ptr::null(), 80, 24);
+        assert!(!state.is_null(), "spawn failed");
+
+        // The job's pid, from its own line among the job's `y`s: the test ends it whatever happens.
+        let mut seen = String::new();
+        let mut buf = [0u8; 4096];
+        let job_pid: libc::pid_t = loop {
+            let rc = pty_read(state, buf.as_mut_ptr(), buf.len() as c_int);
+            assert!(rc > 0, "the shell ended before naming its job");
+            seen.push_str(&String::from_utf8_lossy(&buf[..rc as usize]));
+            if let Some(rest) = seen.split("job:").nth(1) {
+                let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+                if !digits.is_empty() && rest.len() > digits.len() {
+                    break digits.parse().expect("the job's pid");
+                }
+            }
+        };
+
+        let state_addr = state as usize;
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let ptr = state_addr as *mut PtyState;
+            let mut buf = [0u8; 4096];
+            loop {
+                let rc = pty_read(ptr, buf.as_mut_ptr(), buf.len() as c_int);
+                if rc <= 0 {
+                    let _ = done_tx.send(rc);
+                    return;
+                }
+                // A consumer slower than the job, as the app's parser and screen are: the master never
+                // runs dry, so only a bounded drain lets the cancel end the read.
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_millis(300)); // reading the job's stream now
+
+        pty_cancel_read(state);
+        let returned = done_rx.recv_timeout(std::time::Duration::from_secs(5));
+
+        unsafe { libc::kill(job_pid, libc::SIGKILL) };
+        let rc = returned.expect("pty_read kept returning the job's output 5 s after the cancel");
+        assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
+        pty_close(state);
+    }
+
 }
