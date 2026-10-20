@@ -635,15 +635,17 @@ impl CancelPipe {
         }
     }
 
-    /// How much a read may take: `len` until a cancel, then what is left of its drain (0: none).
-    fn allowance(&self, len: usize) -> usize {
+    /// What is left of the drain a read may take, `None` before a cancel. A read that began before the
+    /// cancel is not counted against it (`drained`): the cancel measured the master after that read
+    /// took its bytes (codex review of #577).
+    fn allowance(&self) -> Option<usize> {
         match self.drain_left.load(std::sync::atomic::Ordering::SeqCst) {
-            NOT_CANCELLED => len,
-            left => len.min(left as usize),
+            NOT_CANCELLED => None,
+            left => Some(left as usize),
         }
     }
 
-    /// Counts `n` bytes read against the drain, once the read was cancelled.
+    /// Counts `n` bytes, read by a read that began after the cancel, against the drain.
     fn drained(&self, n: usize) {
         let _ = self.drain_left.fetch_update(
             std::sync::atomic::Ordering::SeqCst,
@@ -1119,13 +1121,20 @@ pub extern "C" fn pty_read(state_ptr: *mut PtyState, buffer: *mut u8, len: c_int
                 Ordering::SeqCst,
             );
             // Unix: read only once there is something to read, so a cancel can end the wait
-            // (#548). A cancelled read reports EOF, as one the child's exit ends does.
+            // (#548). A cancelled read reports EOF, as one the child's exit ends does. Once cancelled,
+            // only what is left of the drain the cancel allowed, counted against it.
+            #[cfg(unix)]
+            let mut counted = false;
             #[cfg(unix)]
             let buf = match wait_for_read(state.master_fd, &state.cancel) {
-                // Once cancelled, only what is left of the drain the cancel allowed.
-                Ok(ReadWait::Ready) => match state.cancel.allowance(buf.len()) {
-                    0 => return 0,
-                    allowed => &mut buf[..allowed],
+                Ok(ReadWait::Ready) => match state.cancel.allowance() {
+                    None => buf,
+                    Some(0) => return 0,
+                    Some(left) => {
+                        counted = true;
+                        let allowed = left.min(buf.len());
+                        &mut buf[..allowed]
+                    }
                 },
                 Ok(ReadWait::Cancelled) => return 0,
                 Err(e) => {
@@ -1136,7 +1145,9 @@ pub extern "C" fn pty_read(state_ptr: *mut PtyState, buffer: *mut u8, len: c_int
             let result = match reader.read(buf) {
                 Ok(n) => {
                     #[cfg(unix)]
-                    state.cancel.drained(n);
+                    if counted {
+                        state.cancel.drained(n);
+                    }
                     n as c_int
                 }
                 Err(e) => {
@@ -2136,4 +2147,5 @@ mod cancel_read_tests {
         assert!(rc <= 0, "expected EOF(0) or error(-1) after cancel, got {rc}");
         pty_close(state);
     }
+
 }
