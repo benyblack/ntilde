@@ -27,10 +27,12 @@ in the window. The window shows them; it no longer owns them. With *Keep shells 
 window closes* on:
 
 - **Closing the window, a crash or an update** leaves the shells running, and reopening Ntilde
-  reattaches each tab to its shell.
+  reattaches each tab to its shell. Closing a *tab* still ends its shell, as in any terminal, and
+  so does closing the last tab, which closes the window with it.
 - **The first time you close a window** with shells in it, Ntilde asks: *Keep running* or *Close
-  them*, with *Don't ask again*. **Quit and close all shells** (in the command palette, and under
-  the setting in Settings) ends everything at once.
+  them*, with *Don't ask again*. On macOS, Cmd+Q asks the same first-close question. **Quit and
+  close all shells** (in the command palette, and under the setting in Settings) ends everything at
+  once.
 - **After a restart of the computer** the shells are gone with it, and Ntilde quietly starts fresh
   ones in the same tabs - no warning, because nothing went wrong.
 - **Several windows can share a shell.** *Pane: Detach* puts a tab's shell aside, *Attach to
