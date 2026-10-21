@@ -10,9 +10,9 @@ namespace Ntilde.Mux.Daemon;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A copy of the App's <c>RotatingFileLogWriter</c> (with its tests, as <c>MuxLogFileTests</c>):
-/// <c>Ntilde.Mux</c> cannot reference the App, and a standalone <c>ntilde-mux</c> has no App to borrow
-/// it from. A fix to one belongs in both.
+/// The App's <c>debug.log</c> is written by this class too, through its <c>RotatingFileLogWriter</c>. Here
+/// because <c>Ntilde.Mux</c> cannot reference the App, and a standalone <c>ntilde-mux</c> has no App to borrow
+/// it from. It used to be a copy of the App's writer, until a fix to one had to be made in both (#579).
 /// </para>
 /// <para>
 /// Every property here replaces one that caused a real bug. The App's <c>AppLogger</c> used to be
@@ -57,7 +57,8 @@ internal sealed class MuxLogFile : IDisposable
     /// Depth of the hand-off queue. Deep enough that an ordinary burst is never dropped,
     /// shallow enough that a runaway producer cannot grow the heap.
     /// </param>
-    public MuxLogFile(string path, long maxBytes, int queueCapacity)
+    /// <param name="threadName">The writer thread's name, as a dump shows it.</param>
+    public MuxLogFile(string path, long maxBytes, int queueCapacity, string threadName = "Ntilde.MuxLog")
     {
         _path = path;
         _maxBytes = maxBytes;
@@ -89,7 +90,7 @@ internal sealed class MuxLogFile : IDisposable
         _pump = new Thread(WriterLoop)
         {
             IsBackground = true,
-            Name = "Ntilde.MuxLog",
+            Name = threadName,
         };
         _pump.Start();
     }

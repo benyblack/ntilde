@@ -72,6 +72,23 @@ public class LogGenerationsTests : IDisposable
     }
 
     [Fact]
+    public void A_starter_leaves_the_log_alone_while_another_one_holds_its_name()
+    {
+        // Codex on #579: on Unix .NET opens a file before it locks it, so a starter paused between the two could pass
+        // its probe on a log another starter had already moved, then move the file that one had just reopened. So a
+        // starter first locks the log's name, which no move ever changes. Here another starter holds it throughout.
+        File.WriteAllText(_path + ".1", "an older run\n");
+        File.WriteAllText(_path, "the previous run\n");
+        using (new FileStream(LogGenerations.GateOf(_path), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+        {
+            LogGenerations.KeepPreviousRun(_path, gateWait: TimeSpan.FromMilliseconds(100));
+        }
+
+        Assert.Equal("an older run\n", File.ReadAllText(_path + ".1"));
+        Assert.Equal("the previous run\n", File.ReadAllText(_path));
+    }
+
+    [Fact]
     public void No_log_yet_is_nothing_to_keep()
     {
         File.WriteAllText(_path + ".1", "an older run\n");
