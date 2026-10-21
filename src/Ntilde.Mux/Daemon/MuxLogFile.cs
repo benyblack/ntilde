@@ -81,7 +81,7 @@ internal sealed class MuxLogFile : IDisposable
         }
 
         // Start each run on a fresh file, with the previous run's kept as the previous generation.
-        KeepPreviousRun();
+        LogGenerations.KeepPreviousRun(path);
         TryOpen();
 
         _pump = new Thread(WriterLoop)
@@ -276,34 +276,6 @@ internal sealed class MuxLogFile : IDisposable
         catch
         {
             // Same degradation as every other write here.
-        }
-    }
-
-    /// <summary>
-    /// Moves the previous run's log to the previous generation before this run starts the file over. Every run
-    /// used to erase the one before it, which is the one worth reading after a failure. The file stays where it
-    /// is when it is empty (nothing to keep, and the previous generation may hold the last run that logged) and
-    /// while another process writes it - a second <c>serve</c> opens this before it finds the lock taken - since
-    /// moving it would leave that writer logging into the generation the next run deletes.
-    /// </summary>
-    private void KeepPreviousRun()
-    {
-        string previous = _path + ".1";
-        try
-        {
-            var live = new FileInfo(_path);
-            if (!live.Exists || live.Length == 0) return;
-
-            // An exclusive open fails while any other handle is open: Windows checks its sharing modes, and on
-            // Unix .NET takes an flock for every FileStream.
-            using (new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None)) { }
-
-            File.Delete(previous);
-            File.Move(_path, previous);
-        }
-        catch
-        {
-            // In use, or the move failed: TryOpen starts the file over, as every run did before.
         }
     }
 
