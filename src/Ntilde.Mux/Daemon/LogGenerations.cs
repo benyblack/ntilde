@@ -16,7 +16,7 @@ public static class LogGenerations
     /// when it is empty (nothing to keep, and the previous generation may hold the last run that logged) and while
     /// another process writes it - a second GUI instance, or a second <c>serve</c>, which opens <c>mux.log</c>
     /// before it finds the lock taken - since moving it would leave that writer logging into the generation the
-    /// next run deletes. Never throws: a log that cannot be kept is started over, as every run did before.
+    /// next run deletes. Never throws: a log that cannot be kept stays where it is, and the writer appends to it.
     /// </summary>
     public static void KeepPreviousRun(string path)
     {
@@ -26,17 +26,22 @@ public static class LogGenerations
             if (!live.Exists || live.Length == 0) return;
 
             // An exclusive open fails while any other handle is open: Windows checks its sharing modes, and on Unix
-            // .NET takes an flock for every FileStream.
-            new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None).Dispose();
+            // .NET takes an flock for every FileStream. It is held through the move (Codex on #579), so a process
+            // starting at the same moment cannot pass its own probe on this file before it has moved, and then finds
+            // the new live file empty or in use. Windows: Delete is shared so that this process can rename the file it
+            // holds. Unix: exactly None, since .NET takes the exclusive flock only for None (any other share mode is a
+            // shared lock, which another writer's would not stop), and a rename ignores the lock anyway.
+            FileShare share = OperatingSystem.IsWindows() ? FileShare.Delete : FileShare.None;
+            using var probe = new FileStream(path, FileMode.Open, FileAccess.Read, share);
 
-            // One replacing move, never a delete first (Codex and CodeRabbit on #579): with two processes starting at
-            // once, both can pass the probe, and the second would otherwise delete the generation the first just
-            // moved there, then fail its own move. A move that fails leaves the previous generation as it was.
+            // One replacing move, never a delete first (Codex and CodeRabbit on #579): a delete could remove the
+            // generation another starter had just moved there, or be followed by a move that fails. A move that fails
+            // leaves the previous generation as it was.
             File.Move(path, PreviousOf(path), overwrite: true);
         }
         catch
         {
-            // In use, or the move failed: the writer starts the file over. Anything at all is caught, as everywhere
+            // In use, or the move failed: the writer appends to the file. Anything at all is caught, as everywhere
             // in the writers: this runs inside AppLogger's static initializer, where an escaping exception becomes a
             // TypeInitializationException on every later log call.
         }

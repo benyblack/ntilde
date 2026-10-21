@@ -54,4 +54,28 @@ public class LogWritersKeepThePreviousRunTests : IDisposable
         Assert.Contains("this run", live);
         Assert.DoesNotContain("the previous run", live);
     }
+
+    [Theory]
+    [MemberData(nameof(Writers))]
+    public void A_second_writer_does_not_erase_a_log_another_writer_still_holds(string name)
+    {
+        // A second instance, or a second `serve` that has not yet found the lock taken, starts while the first still
+        // writes the file. The file stays where it is, and FileMode.Create used to truncate it under the running
+        // writer; it also let a starter that lost the probe to another truncate the old log before that one moved it
+        // (Codex on #579). A starting writer appends instead.
+        string path = Path.Combine(_directory, name);
+        using (var running = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+        {
+            running.Write("the running instance\n"u8);
+            running.Flush();
+
+            (IDisposable writer, Action<string> write) = Open(name, path);
+            using (writer)
+            {
+                write("a second instance");
+            }
+        }
+
+        Assert.Contains("the running instance", File.ReadAllText(path));
+    }
 }

@@ -80,9 +80,11 @@ internal sealed class MuxLogFile : IDisposable
             // TryOpen will fail too, and leave _writer null. That is the no-op state.
         }
 
-        // Start each run on a fresh file, with the previous run's kept as the previous generation.
+        // Keep the previous run's log as the previous generation, then append: to a new file once it has moved, and
+        // never truncating a file another process still writes (a second `serve` opens this before it finds the
+        // lock taken).
         LogGenerations.KeepPreviousRun(path);
-        TryOpen();
+        TryOpen(FileMode.Append);
 
         _pump = new Thread(WriterLoop)
         {
@@ -279,11 +281,15 @@ internal sealed class MuxLogFile : IDisposable
         }
     }
 
-    private void TryOpen()
+    /// <param name="mode">
+    /// <see cref="FileMode.Append"/> at startup; <see cref="FileMode.Create"/> after a rotation, whose failed move must
+    /// still bound the file.
+    /// </param>
+    private void TryOpen(FileMode mode = FileMode.Create)
     {
         try
         {
-            var stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+            var stream = new FileStream(_path, mode, FileAccess.Write, FileShare.ReadWrite);
             _writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 64 * 1024)
             {
                 AutoFlush = false,
