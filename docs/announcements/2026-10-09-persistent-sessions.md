@@ -2,8 +2,7 @@
 DRAFT: the release notes for 0.12.0, the release that ships the multiplexer.
 
 Before publishing, check:
-  1. The maintainer's call on the default (the PR's "keep local shells running by default" commit).
-     The section "On by default" below belongs to that call: drop it with the flip.
+  1. Done: the maintainer kept local shells running by default, so "On by default" stays.
   2. The three-OS manual checklist (Phase 5 Task 30) passed, including an update applied with shells
      running, on Windows and on macOS.
   3. The release notes Velopack ships carry the protocol marker line (release.yml writes it; an
@@ -28,10 +27,12 @@ in the window. The window shows them; it no longer owns them. With *Keep shells 
 window closes* on:
 
 - **Closing the window, a crash or an update** leaves the shells running, and reopening Ntilde
-  reattaches each tab to its shell.
+  reattaches each tab to its shell. Closing a *tab* still ends its shell, as in any terminal, and
+  so does closing the last tab, which closes the window with it.
 - **The first time you close a window** with shells in it, Ntilde asks: *Keep running* or *Close
-  them*, with *Don't ask again*. **Quit and close all shells** (in the command palette, and under
-  the setting in Settings) ends everything at once.
+  them*, with *Don't ask again*. On macOS, Cmd+Q asks the same first-close question. **Quit and
+  close all shells** (in the command palette, and under the setting in Settings) ends everything at
+  once.
 - **After a restart of the computer** the shells are gone with it, and Ntilde quietly starts fresh
   ones in the same tabs - no warning, because nothing went wrong.
 - **Several windows can share a shell.** *Pane: Detach* puts a tab's shell aside, *Attach to
@@ -48,7 +49,7 @@ you opt in.
 
 ## Turning it on or off
 
-One setting: Settings → Appearance → *Keep shells running when the window closes*, *Keep running* or
+One setting: Settings → General → *Keep shells running when the window closes*, *Keep running* or
 *Off*. With *Off*, Ntilde treats shells exactly as 0.11 did: they end with their window, no
 background process is started, and nothing new appears.
 
@@ -95,8 +96,6 @@ them. Every such read is in the activity journal, since there is no pane to ligh
   own.
 - On Linux hosts that end a user's processes at logout (`KillUserProcesses=yes`), run
   `loginctl enable-linger $USER` once.
-- On macOS, Cmd+Q never asks the first-close question: it applies a remembered answer, and otherwise
-  keeps the shells.
 - An update that changes the multiplexer protocol still has to close the shells (it asks first):
   handing running shells over to a new multiplexer is not there yet.
 

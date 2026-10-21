@@ -14,7 +14,7 @@ it all.
 
 - **Local shells can keep running** when the window closes, when Ntilde crashes and across an update.
   Reopening Ntilde reattaches every tab to its shell, screen and scrollback included. Settings →
-  Appearance → *Keep shells running when the window closes* switches it between *Keep running* and
+  General → *Keep shells running when the window closes* switches it between *Keep running* and
   *Off*.
 - **On by default** for local shells. A settings file without `SessionPersistence` - every install
   that never changed it - gets *Keep running*; one that says `"Off"` stays off. SSH tabs keep

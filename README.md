@@ -294,7 +294,7 @@ of in the window ([user manual, chapter 12](docs/USER_MANUAL.md#12-persistent-se
   (Linux x64/arm64 hosts with glibc 2.34+, and Apple-silicon macOS)
 - `ntilde mux ls [--all]`, `attach`, `kill` and `kill-server` from any terminal
 - Agents (MCP) can also see and, with the act opt-in, drive shells no window shows
-- On by default for local shells: Settings → Appearance → *Keep shells running when the window
+- On by default for local shells: Settings → General → *Keep shells running when the window
   closes* turns it off; SSH tabs opt in per connection
 
 ### Cross-platform parity
