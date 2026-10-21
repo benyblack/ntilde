@@ -235,4 +235,78 @@ public class MuxLogFileTests
         }
         finally { Cleanup(path); }
     }
+
+    [Fact]
+    public void ANewRun_KeepsThePreviousRunsLog_AsThePreviousGeneration()
+    {
+        // Each run used to open the file with FileMode.Create, erasing the run before it - the one worth reading
+        // after a failure. In the 0.12.0-rc.1 smoke test that lost the only record of why a multiplexer was gone.
+        string path = TempPath();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path + ".1", "an older run\n");
+            File.WriteAllText(path, "the previous run\n");
+
+            using (var writer = new MuxLogFile(path, maxBytes: 1 << 20, queueCapacity: 16))
+            {
+                writer.Write("this run");
+            }
+
+            Assert.Equal("the previous run\n", File.ReadAllText(path + ".1"));
+            string live = ReadAll(path);
+            Assert.Contains("this run", live);
+            Assert.DoesNotContain("the previous run", live);
+        }
+        finally { Cleanup(path); }
+    }
+
+    [Fact]
+    public void AnEmptyPreviousLog_LeavesThePreviousGenerationAlone()
+    {
+        // A run that ended before its first flush leaves an empty file. Moving it would push out the last log
+        // that says anything.
+        string path = TempPath();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path + ".1", "the last run that logged\n");
+            File.WriteAllText(path, string.Empty);
+
+            using (var writer = new MuxLogFile(path, maxBytes: 1 << 20, queueCapacity: 16))
+            {
+                writer.Write("this run");
+            }
+
+            Assert.Equal("the last run that logged\n", File.ReadAllText(path + ".1"));
+            Assert.Contains("this run", ReadAll(path));
+        }
+        finally { Cleanup(path); }
+    }
+
+    [Fact]
+    public void ALogAnotherWriterHoldsOpen_IsNotMovedOutFromUnderIt()
+    {
+        // A second `serve` opens mux.log before it finds the lock taken, while the running daemon still writes it.
+        // Moving it would leave that daemon logging into the previous generation, which the next run deletes. The
+        // stand-in allows Delete sharing, so on Windows too a move would go through: only the in-use check keeps
+        // the file where it is.
+        string path = TempPath();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path + ".1", "an older run\n");
+            using (var running = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            {
+                running.Write("the running daemon\n"u8);
+                running.Flush();
+
+                using var writer = new MuxLogFile(path, maxBytes: 1 << 20, queueCapacity: 16);
+                writer.Write("a second serve");
+            }
+
+            Assert.Equal("an older run\n", File.ReadAllText(path + ".1"));
+        }
+        finally { Cleanup(path); }
+    }
 }
