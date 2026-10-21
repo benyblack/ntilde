@@ -429,7 +429,8 @@ updates included. SSH tabs keep running on their host only for the connections y
   close its pane or tab, or when the multiplexer ends, which a restart of the computer does (12.3).
 - **Seeing it:** `ntilde mux ls` lists the shells (12.9), and **Session: Attach to Session…** in the
   command palette lists them in Ntilde (12.4). The multiplexer writes its log to `logs/mux.log` in
-  Ntilde's data folder.
+  Ntilde's data folder, and keeps the previous run's as `logs/mux.log.1` (Ntilde's own `debug.log`
+  does the same).
 - **It exits by itself** 10 minutes after its last shell has ended and its last connection has
   closed. A shell that has exited with no window attached is cleaned up after 60 seconds.
 - **Security:** the multiplexer listens only on a local endpoint that only your user account can
@@ -912,7 +913,7 @@ add that folder to your `PATH`.
 starts a multiplexer); you do not need them. `ntilde-mux` keeps its files
 in a folder of its own: `~/.local/share/ntilde/ntilde-mux` on Linux (under `$XDG_DATA_HOME` when it
 is set), `~/Library/Application Support/ntilde/ntilde-mux` on macOS. Its log is `logs/mux.log`
-there. If you also run the Ntilde app on that host, its own multiplexer uses
+there, with the previous run's in `logs/mux.log.1`. If you also run the Ntilde app on that host, its own multiplexer uses
 `~/.local/share/ntilde` (or `~/Library/Application Support/ntilde`) itself, so the two never share
 anything: `ntilde-mux ls` lists only the shells of your persistent SSH tabs, and `ntilde mux ls`
 only the app's own. As on your own machine, only your user can open `ntilde-mux`'s socket, and it

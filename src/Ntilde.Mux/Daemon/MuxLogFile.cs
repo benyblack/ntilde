@@ -10,9 +10,9 @@ namespace Ntilde.Mux.Daemon;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A copy of the App's <c>RotatingFileLogWriter</c> (with its tests, as <c>MuxLogFileTests</c>):
-/// <c>Ntilde.Mux</c> cannot reference the App, and a standalone <c>ntilde-mux</c> has no App to borrow
-/// it from. A fix to one belongs in both.
+/// The App's <c>debug.log</c> is written by this class too, through its <c>RotatingFileLogWriter</c>. Here
+/// because <c>Ntilde.Mux</c> cannot reference the App, and a standalone <c>ntilde-mux</c> has no App to borrow
+/// it from. It used to be a copy of the App's writer, until a fix to one had to be made in both (#579).
 /// </para>
 /// <para>
 /// Every property here replaces one that caused a real bug. The App's <c>AppLogger</c> used to be
@@ -48,13 +48,17 @@ internal sealed class MuxLogFile : IDisposable
     private StreamWriter? _writer;
     private long _bytesWritten;
 
-    /// <param name="path">The live log file. One previous generation is kept at <c>path + ".1"</c>.</param>
+    /// <param name="path">
+    /// The live log file. One previous generation is kept at <c>path + ".1"</c>: the previous run's log, or this
+    /// run's own first part once it has rotated.
+    /// </param>
     /// <param name="maxBytes">Rotate once the live file passes this.</param>
     /// <param name="queueCapacity">
     /// Depth of the hand-off queue. Deep enough that an ordinary burst is never dropped,
     /// shallow enough that a runaway producer cannot grow the heap.
     /// </param>
-    public MuxLogFile(string path, long maxBytes, int queueCapacity)
+    /// <param name="threadName">The writer thread's name, as a dump shows it.</param>
+    public MuxLogFile(string path, long maxBytes, int queueCapacity, string threadName = "Ntilde.MuxLog")
     {
         _path = path;
         _maxBytes = maxBytes;
@@ -77,13 +81,16 @@ internal sealed class MuxLogFile : IDisposable
             // TryOpen will fail too, and leave _writer null. That is the no-op state.
         }
 
-        // Start each run on a fresh file, as the original did.
-        TryOpen();
+        // Keep the previous run's log as the previous generation, then append: to a new file once it has moved, and
+        // never truncating a file another process still writes (a second `serve` opens this before it finds the
+        // lock taken).
+        LogGenerations.KeepPreviousRun(path);
+        TryOpen(FileMode.Append);
 
         _pump = new Thread(WriterLoop)
         {
             IsBackground = true,
-            Name = "Ntilde.MuxLog",
+            Name = threadName,
         };
         _pump.Start();
     }
@@ -275,11 +282,15 @@ internal sealed class MuxLogFile : IDisposable
         }
     }
 
-    private void TryOpen()
+    /// <param name="mode">
+    /// <see cref="FileMode.Append"/> at startup; <see cref="FileMode.Create"/> after a rotation, whose failed move must
+    /// still bound the file.
+    /// </param>
+    private void TryOpen(FileMode mode = FileMode.Create)
     {
         try
         {
-            var stream = new FileStream(_path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+            var stream = new FileStream(_path, mode, FileAccess.Write, FileShare.ReadWrite);
             _writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 64 * 1024)
             {
                 AutoFlush = false,

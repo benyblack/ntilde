@@ -15,6 +15,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Ntilde.Mux.Tests" />
     <InternalsVisibleTo Include="Ntilde.App.Tests" />
+    <!-- The App (assembly "Ntilde"): its debug log is MuxLogFile too (RotatingFileLogWriter wraps it), so a log fix is made once. -->
+    <InternalsVisibleTo Include="Ntilde" />
   </ItemGroup>
 
   <ItemGroup>
