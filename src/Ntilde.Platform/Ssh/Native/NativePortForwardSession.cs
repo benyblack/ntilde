@@ -132,7 +132,7 @@ public sealed class NativePortForwardSession : IDisposable
     /// tests bind that way rather than guess a free port, which another socket could take before the session binds
     /// it. Read it while the session is live.
     /// </summary>
-    internal IReadOnlyList<IPEndPoint> ListenerEndpoints => _listeners.Select(listener => (IPEndPoint)listener.LocalEndpoint).ToArray();
+    internal IReadOnlyList<IPEndPoint> GetListenerEndpoints() => _listeners.Select(listener => (IPEndPoint)listener.LocalEndpoint).ToArray();
 
     /// <summary>
     /// Hands a forward-channel event to the owning channel's outbound queue. Called from

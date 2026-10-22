@@ -24,7 +24,7 @@ public sealed class NativePortForwardSessionTests
             [CreateForward(0, "svc.internal", 9500), CreateDynamicForward(0)],
             interop);
 
-        IReadOnlyList<IPEndPoint> bound = session.ListenerEndpoints;
+        IReadOnlyList<IPEndPoint> bound = session.GetListenerEndpoints();
         Assert.Equal(2, bound.Count);
         Assert.All(bound, endpoint => Assert.NotEqual(0, endpoint.Port));
         Assert.NotEqual(bound[0].Port, bound[1].Port);
@@ -1133,7 +1133,7 @@ public sealed class NativePortForwardSessionTests
     }
 
     /// <summary>The port the session's <paramref name="index"/>-th local or dynamic forward listens on, for a forward given port 0.</summary>
-    private static int BoundPort(NativePortForwardSession session, int index = 0) => session.ListenerEndpoints[index].Port;
+    private static int BoundPort(NativePortForwardSession session, int index = 0) => session.GetListenerEndpoints()[index].Port;
 
     /// <summary>
     /// A port nothing listened on a moment ago. Only for a port the session never binds, or one a test must name in
