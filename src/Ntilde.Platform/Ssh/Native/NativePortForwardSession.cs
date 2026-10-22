@@ -135,6 +135,13 @@ public sealed class NativePortForwardSession : IDisposable
     internal IReadOnlyList<IPEndPoint> GetListenerEndpoints() => _listeners.Select(listener => (IPEndPoint)listener.LocalEndpoint).ToArray();
 
     /// <summary>
+    /// Whether any local or dynamic forward's listener still holds its port: true while the session is live, false
+    /// once <see cref="Dispose"/> has stopped them (a stopped listener has closed its socket). The tests ask this rather
+    /// than re-bind the freed port, which another socket may have taken by then.
+    /// </summary>
+    internal bool HasBoundListener() => _listeners.Any(listener => listener.Server.IsBound);
+
+    /// <summary>
     /// Hands a forward-channel event to the owning channel's outbound queue. Called from
     /// <c>NativeSshSession.PollLoopAsync</c>, so it must never block: this used to write straight to
     /// the local socket, which meant one slow consumer of a forwarded port froze *all* terminal output

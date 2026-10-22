@@ -28,6 +28,7 @@ public sealed class NativePortForwardSessionTests
         Assert.Equal(2, bound.Count);
         Assert.All(bound, endpoint => Assert.NotEqual(0, endpoint.Port));
         Assert.NotEqual(bound[0].Port, bound[1].Port);
+        Assert.True(session.HasBoundListener());
 
         using TcpClient client = await ConnectLoopbackAsync(bound[0].Port);
         await WaitUntilAsync(() => interop.OpenRequests.Count == 1);
@@ -102,11 +103,11 @@ public sealed class NativePortForwardSessionTests
 
         await WaitUntilAsync(() => interop.ClosedChannelIds.Count == 1);
         Assert.Single(interop.ClosedChannelIds);
-        AssertListenerReleased(listenPort);
+        Assert.False(session.HasBoundListener(), $"The listener on 127.0.0.1:{listenPort} still holds its port after Dispose.");
     }
 
     [Fact]
-    public void Constructor_WhenAnyBindFails_ThrowsDeterministicallyAndCleansUpEarlierListeners()
+    public async Task Constructor_WhenAnyBindFails_ThrowsDeterministicallyAndCleansUpEarlierListeners()
     {
         // The occupied port is the test's own listener, bound by the system, so nothing can take it first. The first
         // forward's port must be named in advance to probe it afterwards, so it is still probed free; on the rare run
@@ -135,8 +136,8 @@ public sealed class NativePortForwardSessionTests
             Assert.Contains("svc-two.internal", ex.Message, StringComparison.Ordinal);
             Assert.Contains(occupiedPort.ToString(System.Globalization.CultureInfo.InvariantCulture), ex.Message, StringComparison.Ordinal);
 
-            using var probe = new TcpListener(IPAddress.Loopback, firstPort);
-            probe.Start();
+            // The earlier listener was disposed before the constructor threw: nothing of the session serves its port.
+            await AssertNoForwardServesAsync(firstPort, interop);
             return;
         }
     }
@@ -272,7 +273,7 @@ public sealed class NativePortForwardSessionTests
 
         await WaitUntilAsync(() => interop.ClosedChannelIds.Count == 1);
         Assert.Single(interop.ClosedChannelIds);
-        AssertListenerReleased(dynamicPort);
+        Assert.False(session.HasBoundListener(), $"The listener on 127.0.0.1:{dynamicPort} still holds its port after Dispose.");
     }
 
     [Fact]
@@ -1121,15 +1122,38 @@ public sealed class NativePortForwardSessionTests
         return buffer;
     }
 
-    // Proves the session no longer holds the port by binding it again. Asserting that a
-    // connect is refused instead would flake: the freed port sits in the ephemeral range,
-    // so a socket from a test running in parallel (or a Linux TCP self-connect) can take
-    // it and make the connect succeed.
-    private static void AssertListenerReleased(int port)
+    // Proves no live forward of a session that never came to be serves the port, by asking for what one would do: a
+    // refused connect means nothing listens, and an accepted one is sent a SOCKS request, for which only a forward's
+    // accept loop would open a channel (a local forward on accept, a dynamic one on the request). Neither plain probe
+    // can say it: the freed port is an ephemeral one, so another socket (a test running in parallel, or a Linux TCP
+    // self-connect) can take it, making a connect succeed or a re-bind fail ("Address already in use", CI on
+    // 23b94c8). A live session is asked directly instead, with HasBoundListener.
+    private static async Task AssertNoForwardServesAsync(int port, FakeNativeSshInterop interop)
     {
-        using var probe = new TcpListener(IPAddress.Loopback, port);
-        probe.Start();
-        probe.Stop();
+        int channelsBefore = interop.OpenRequests.Count;
+        using var client = new TcpClient();
+        try
+        {
+            await client.ConnectAsync(IPAddress.Loopback, port);
+        }
+        catch (SocketException)
+        {
+            return;
+        }
+
+        try
+        {
+            NetworkStream stream = client.GetStream();
+            await SendSocksGreetingAsync(stream);
+            await SendSocksConnectRequestAsync(stream, "probe.internal", 1);
+        }
+        catch (IOException)
+        {
+            // Not something that speaks to us: fine, the question is only whether a channel opens.
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        Assert.Equal(channelsBefore, interop.OpenRequests.Count);
     }
 
     /// <summary>The port the session's <paramref name="index"/>-th local or dynamic forward listens on, for a forward given port 0.</summary>
