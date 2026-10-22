@@ -12,19 +12,42 @@ namespace Ntilde.Platform.Tests.Ssh;
 public sealed class NativePortForwardSessionTests
 {
     [Fact]
+    public async Task AForwardOnPortZero_ListensWhereTheSystemPutIt_AndSaysWhere()
+    {
+        // What the tests below rely on instead of guessing a free port. A port that was probed free, released and
+        // then bound by the session could be taken in between ("Failed to bind dynamic forward 127.0.0.1:38869:
+        // Address already in use", CI on 1541e39). Port 0 is bound by the system, so nothing can take it first.
+        var interop = new FakeNativeSshInterop();
+
+        using var session = new NativePortForwardSession(
+            FakeHandle(44),
+            [CreateForward(0, "svc.internal", 9500), CreateDynamicForward(0)],
+            interop);
+
+        IReadOnlyList<IPEndPoint> bound = session.ListenerEndpoints;
+        Assert.Equal(2, bound.Count);
+        Assert.All(bound, endpoint => Assert.NotEqual(0, endpoint.Port));
+        Assert.NotEqual(bound[0].Port, bound[1].Port);
+
+        using TcpClient client = await ConnectLoopbackAsync(bound[0].Port);
+        await WaitUntilAsync(() => interop.OpenRequests.Count == 1);
+        Assert.Equal("svc.internal", interop.OpenRequests[0].HostToConnect);
+    }
+
+    [Fact]
     public async Task LocalForwardListenersBindFromConfiguredForwards()
     {
         var interop = new FakeNativeSshInterop();
-        int firstPort = GetFreePort();
-        int secondPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(7),
             [
-                CreateForward(firstPort, "svc-one.internal", 8080),
-                CreateForward(secondPort, "svc-two.internal", 9090)
+                CreateForward(0, "svc-one.internal", 8080),
+                CreateForward(0, "svc-two.internal", 9090)
             ],
             interop);
+        int firstPort = BoundPort(session);
+        int secondPort = BoundPort(session, 1);
 
         using TcpClient firstClient = await ConnectLoopbackAsync(firstPort);
         using TcpClient secondClient = await ConnectLoopbackAsync(secondPort);
@@ -47,12 +70,12 @@ public sealed class NativePortForwardSessionTests
     public async Task MultipleForwardConnectionsCanCoexist()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(9),
-            [CreateForward(listenPort, "svc.internal", 7000)],
+            [CreateForward(0, "svc.internal", 7000)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient firstClient = await ConnectLoopbackAsync(listenPort);
         using TcpClient secondClient = await ConnectLoopbackAsync(listenPort);
@@ -65,12 +88,12 @@ public sealed class NativePortForwardSessionTests
     public async Task DisposeClosesForwardChannelsAndListeners()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         var session = new NativePortForwardSession(
             FakeHandle(11),
-            [CreateForward(listenPort, "svc.internal", 5432)],
+            [CreateForward(0, "svc.internal", 5432)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         await WaitUntilAsync(() => interop.OpenRequests.Count == 1);
@@ -85,38 +108,49 @@ public sealed class NativePortForwardSessionTests
     [Fact]
     public void Constructor_WhenAnyBindFails_ThrowsDeterministicallyAndCleansUpEarlierListeners()
     {
-        int firstPort = GetFreePort();
-        int occupiedPort = GetFreePort();
-        using var occupied = new TcpListener(IPAddress.Loopback, occupiedPort);
+        // The occupied port is the test's own listener, bound by the system, so nothing can take it first. The first
+        // forward's port must be named in advance to probe it afterwards, so it is still probed free; on the rare run
+        // where another socket takes it before the session binds it, the session fails on the first forward instead,
+        // which is not what this test is about, and the attempt is repeated with another port.
+        using var occupied = new TcpListener(IPAddress.Loopback, 0);
         occupied.Start();
+        int occupiedPort = ((IPEndPoint)occupied.LocalEndpoint).Port;
 
         var interop = new FakeNativeSshInterop();
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
-            new NativePortForwardSession(
-                FakeHandle(13),
-                [
-                    CreateForward(firstPort, "svc-one.internal", 80),
-                    CreateForward(occupiedPort, "svc-two.internal", 81)
-                ],
-                interop));
+        for (int attempt = 1; ; attempt++)
+        {
+            int firstPort = GetFreePort();
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+                new NativePortForwardSession(
+                    FakeHandle(13),
+                    [
+                        CreateForward(firstPort, "svc-one.internal", 80),
+                        CreateForward(occupiedPort, "svc-two.internal", 81)
+                    ],
+                    interop));
 
-        Assert.Contains(occupiedPort.ToString(), ex.Message, StringComparison.Ordinal);
+            if (ex.Message.Contains("svc-one.internal", StringComparison.Ordinal) && attempt < 5) continue;
 
-        using var probe = new TcpListener(IPAddress.Loopback, firstPort);
-        probe.Start();
+            Assert.Contains("svc-two.internal", ex.Message, StringComparison.Ordinal);
+            Assert.Contains(occupiedPort.ToString(System.Globalization.CultureInfo.InvariantCulture), ex.Message, StringComparison.Ordinal);
+
+            using var probe = new TcpListener(IPAddress.Loopback, firstPort);
+            probe.Start();
+            return;
+        }
     }
 
     [Fact]
     public async Task DynamicForward_SocksConnectOpensRequestedTargetChannel()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(15),
-            [CreateDynamicForward(listenPort)],
+            [CreateDynamicForward(0)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         NetworkStream stream = client.GetStream();
@@ -139,12 +173,12 @@ public sealed class NativePortForwardSessionTests
     public async Task DynamicForward_SocksConnectWithIpv4TargetOpensRequestedChannel()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(16),
-            [CreateDynamicForward(listenPort)],
+            [CreateDynamicForward(0)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         NetworkStream stream = client.GetStream();
@@ -166,12 +200,12 @@ public sealed class NativePortForwardSessionTests
     public async Task DynamicForward_UnsupportedCommandReturnsFailureWithoutOpeningChannel()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(18),
-            [CreateDynamicForward(listenPort)],
+            [CreateDynamicForward(0)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         NetworkStream stream = client.GetStream();
@@ -192,12 +226,12 @@ public sealed class NativePortForwardSessionTests
     public async Task DynamicForward_NonZeroReservedByteReturnsProtocolFailureWithoutOpeningChannel()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(19),
-            [CreateDynamicForward(listenPort)],
+            [CreateDynamicForward(0)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         NetworkStream stream = client.GetStream();
@@ -217,12 +251,12 @@ public sealed class NativePortForwardSessionTests
     public async Task Dispose_ClosesDynamicForwardChannelAndListener()
     {
         var interop = new FakeNativeSshInterop();
-        int dynamicPort = GetFreePort();
 
         var session = new NativePortForwardSession(
             FakeHandle(20),
-            [CreateDynamicForward(dynamicPort)],
+            [CreateDynamicForward(0)],
             interop);
+        int dynamicPort = BoundPort(session);
 
         using TcpClient dynamicClient = await ConnectLoopbackAsync(dynamicPort);
         NetworkStream stream = dynamicClient.GetStream();
@@ -245,13 +279,13 @@ public sealed class NativePortForwardSessionTests
     public async Task DynamicForward_SuccessReplyWriteFailureClosesOpenedChannel()
     {
         var interop = new FakeNativeSshInterop();
-        int dynamicPort = GetFreePort();
 
         using var session = CreateSessionWithReplyWriter(
             FakeHandle(21),
-            [CreateDynamicForward(dynamicPort)],
+            [CreateDynamicForward(0)],
             interop,
             (_, _, _) => throw new IOException("Injected reply write failure."));
+        int dynamicPort = BoundPort(session);
 
         using TcpClient dynamicClient = await ConnectLoopbackAsync(dynamicPort);
         NetworkStream stream = dynamicClient.GetStream();
@@ -271,16 +305,16 @@ public sealed class NativePortForwardSessionTests
     public async Task MalformedDynamicRequestDoesNotBreakUnrelatedLocalOrDynamicForwards()
     {
         var interop = new FakeNativeSshInterop();
-        int localPort = GetFreePort();
-        int dynamicPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(22),
             [
-                CreateForward(localPort, "svc-local.internal", 8080),
-                CreateDynamicForward(dynamicPort)
+                CreateForward(0, "svc-local.internal", 8080),
+                CreateDynamicForward(0)
             ],
             interop);
+        int localPort = BoundPort(session);
+        int dynamicPort = BoundPort(session, 1);
 
         using (TcpClient badDynamicClient = await ConnectLoopbackAsync(dynamicPort))
         {
@@ -322,16 +356,16 @@ public sealed class NativePortForwardSessionTests
     public async Task LocalAndDynamicForwardsCanStartTogether()
     {
         var interop = new FakeNativeSshInterop();
-        int localPort = GetFreePort();
-        int dynamicPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(17),
             [
-                CreateForward(localPort, "svc-one.internal", 8080),
-                CreateDynamicForward(dynamicPort)
+                CreateForward(0, "svc-one.internal", 8080),
+                CreateDynamicForward(0)
             ],
             interop);
+        int localPort = BoundPort(session);
+        int dynamicPort = BoundPort(session, 1);
 
         using TcpClient localClient = await ConnectLoopbackAsync(localPort);
         await WaitUntilAsync(() => interop.OpenRequests.Count == 1);
@@ -374,7 +408,6 @@ public sealed class NativePortForwardSessionTests
         // The fake fires OnOpenDirectTcpIp from inside the open call, which is exactly that
         // window, making the race deterministic instead of a 1-in-5 CI coin flip.
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
         byte[] payload = Encoding.ASCII.GetBytes("server-speaks-first");
 
         NativePortForwardSession? session = null;
@@ -383,8 +416,9 @@ public sealed class NativePortForwardSessionTests
 
         session = new NativePortForwardSession(
             FakeHandle(41),
-            [CreateForward(listenPort, "svc.internal", 9100)],
+            [CreateForward(0, "svc.internal", 9100)],
             interop);
+        int listenPort = BoundPort(session);
 
         using (session)
         {
@@ -406,7 +440,6 @@ public sealed class NativePortForwardSessionTests
         // connection, and a stream with a hole in it is far worse than one that fails. This mirrors
         // EnqueueOutbound, which closes on overflow for exactly that reason.
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         // 17 x 64 KB clears the 1 MB budget with the first chunk admitted into an empty buffer.
         byte[] chunk = new byte[64 * 1024];
@@ -421,8 +454,9 @@ public sealed class NativePortForwardSessionTests
 
         session = new NativePortForwardSession(
             FakeHandle(43),
-            [CreateForward(listenPort, "svc.internal", 9200)],
+            [CreateForward(0, "svc.internal", 9200)],
             interop);
+        int listenPort = BoundPort(session);
 
         using (session)
         {
@@ -447,7 +481,6 @@ public sealed class NativePortForwardSessionTests
         // terminal output for the session (#173 item 2). Sixteen megabytes at a peer that reads nothing
         // is far past anything the kernel will buffer, so the old code would block here.
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         // Collect the session's diagnostics. Without this the only failure signal is
         // "Condition was not met before timeout" from WaitUntilAsync, which cannot distinguish
@@ -457,9 +490,10 @@ public sealed class NativePortForwardSessionTests
 
         using var session = new NativePortForwardSession(
             FakeHandle(23),
-            [CreateForward(listenPort, "svc.internal", 9000)],
+            [CreateForward(0, "svc.internal", 9000)],
             interop,
             log: sessionLog.Enqueue);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         client.ReceiveBufferSize = 1024;
@@ -539,12 +573,12 @@ public sealed class NativePortForwardSessionTests
         // EOF travels through the same queue as the data. Acting on it immediately would shut the send
         // side down while bytes were still queued behind it, truncating the proxied stream.
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(24),
-            [CreateForward(listenPort, "svc.internal", 9001)],
+            [CreateForward(0, "svc.internal", 9001)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         await WaitUntilAsync(() => interop.OpenedChannelIds.Count == 1);
@@ -568,12 +602,12 @@ public sealed class NativePortForwardSessionTests
     public async Task ForwardChannelClosed_FlushesQueuedDataAndDoesNotCloseTheSshChannelAgain()
     {
         var interop = new FakeNativeSshInterop();
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(25),
-            [CreateForward(listenPort, "svc.internal", 9002)],
+            [CreateForward(0, "svc.internal", 9002)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         await WaitUntilAsync(() => interop.OpenedChannelIds.Count == 1);
@@ -599,12 +633,12 @@ public sealed class NativePortForwardSessionTests
         // "delivered": dropping the bytes would silently corrupt the proxied stream, and forcing them
         // through would restore the unbounded queue the budget exists to prevent.
         var interop = new BackpressuringNativeSshInterop(refusalsPerWrite: 3);
-        int listenPort = GetFreePort();
 
         using var session = new NativePortForwardSession(
             FakeHandle(26),
-            [CreateForward(listenPort, "svc.internal", 9003)],
+            [CreateForward(0, "svc.internal", 9003)],
             interop);
+        int listenPort = BoundPort(session);
 
         using TcpClient client = await ConnectLoopbackAsync(listenPort);
         await WaitUntilAsync(() => interop.OpenedChannelIds.Count == 1);
@@ -682,9 +716,9 @@ public sealed class NativePortForwardSessionTests
         // destination. First rule wins deterministically; the duplicate is named, not raced.
         var interop = new FakeNativeSshInterop();
         var warnings = new ConcurrentQueue<string>();
-        int firstDestinationPort = GetFreePort();
-        var firstDestination = new TcpListener(IPAddress.Loopback, firstDestinationPort);
+        var firstDestination = new TcpListener(IPAddress.Loopback, 0);
         firstDestination.Start();
+        int firstDestinationPort = ((IPEndPoint)firstDestination.LocalEndpoint).Port;
 
         try
         {
@@ -718,9 +752,9 @@ public sealed class NativePortForwardSessionTests
     public async Task IncomingForwardChannel_DialsTheDestinationAndCarriesBytesBothWays()
     {
         var interop = new FakeNativeSshInterop();
-        int destinationPort = GetFreePort();
-        var destination = new TcpListener(IPAddress.Loopback, destinationPort);
+        var destination = new TcpListener(IPAddress.Loopback, 0);
         destination.Start();
+        int destinationPort = ((IPEndPoint)destination.LocalEndpoint).Port;
 
         try
         {
@@ -795,9 +829,9 @@ public sealed class NativePortForwardSessionTests
         // port. The announcement's address is what decides where the connection is allowed to go.
         var interop = new FakeNativeSshInterop();
         int firstDestinationPort = GetFreePort();
-        int secondDestinationPort = GetFreePort();
-        var secondDestination = new TcpListener(IPAddress.Loopback, secondDestinationPort);
+        var secondDestination = new TcpListener(IPAddress.Loopback, 0);
         secondDestination.Start();
+        int secondDestinationPort = ((IPEndPoint)secondDestination.LocalEndpoint).Port;
 
         try
         {
@@ -828,9 +862,9 @@ public sealed class NativePortForwardSessionTests
         // normalizes. With exactly one rule on the port there is nothing to confuse, so the
         // port-only fallback must accept it.
         var interop = new FakeNativeSshInterop();
-        int destinationPort = GetFreePort();
-        var destination = new TcpListener(IPAddress.Loopback, destinationPort);
+        var destination = new TcpListener(IPAddress.Loopback, 0);
         destination.Start();
+        int destinationPort = ((IPEndPoint)destination.LocalEndpoint).Port;
 
         try
         {
@@ -1098,6 +1132,14 @@ public sealed class NativePortForwardSessionTests
         probe.Stop();
     }
 
+    /// <summary>The port the session's <paramref name="index"/>-th local or dynamic forward listens on, for a forward given port 0.</summary>
+    private static int BoundPort(NativePortForwardSession session, int index = 0) => session.ListenerEndpoints[index].Port;
+
+    /// <summary>
+    /// A port nothing listened on a moment ago. Only for a port the session never binds, or one a test must name in
+    /// advance: by the time anything binds it, another socket may have taken it (CI on 1541e39). A port the session
+    /// binds is given as 0 and read back with <see cref="BoundPort"/>; a listener the test owns binds 0 itself.
+    /// </summary>
     private static int GetFreePort()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
