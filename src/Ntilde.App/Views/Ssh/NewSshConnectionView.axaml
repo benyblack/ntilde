@@ -204,15 +204,15 @@
 
         <StackPanel Grid.Row="1" Margin="0,8,0,8" Spacing="4">
             <TextBlock Text="{Binding BackendWarning}"
-                       Foreground="#D7BA7D"
+                       Foreground="{DynamicResource NtWarning}"
                        TextWrapping="Wrap"
                        IsVisible="{Binding BackendWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Text="{Binding ValidationError}"
-                       Foreground="#E06C75"
+                       Foreground="{DynamicResource NtError}"
                        TextWrapping="Wrap"
                        IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Text="{Binding ValidationWarning}"
-                       Foreground="#D7BA7D"
+                       Foreground="{DynamicResource NtWarning}"
                        TextWrapping="Wrap"
                        IsVisible="{Binding ValidationWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
