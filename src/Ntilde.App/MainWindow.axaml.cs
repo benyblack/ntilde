@@ -166,10 +166,20 @@ namespace Ntilde
         private Control? _watchedCaptionButtonStrip;
 
         // The vertical header's status dot geometries, one per TabDotShape, in the dot's 8x8 box.
-        // Parsed once: UpdateVerticalTabExtras swaps which one a dot shows on every pass.
-        private static readonly Geometry TabDotCircleGeometry = new EllipseGeometry(new Rect(0, 0, 8, 8));
-        private static readonly Geometry TabDotDiamondGeometry = Geometry.Parse("M4,0 L8,4 L4,8 L0,4 Z");
-        private static readonly Geometry TabDotRingGeometry = new EllipseGeometry(new Rect(0.75, 0.75, 6.5, 6.5));
+        // Built once on first use (UpdateVerticalTabExtras swaps which one a dot shows on every
+        // pass), and lazily, never in a static initializer: creating a Geometry needs Avalonia's
+        // render platform, so an eager field would make MainWindow's type initializer throw for
+        // anything that touches a MainWindow static before the platform is up - and a type whose
+        // initializer has thrown is unusable for the rest of the process.
+        private static Geometry? s_tabDotCircleGeometry;
+        private static Geometry? s_tabDotDiamondGeometry;
+        private static Geometry? s_tabDotRingGeometry;
+
+        private static Geometry TabDotCircleGeometry => s_tabDotCircleGeometry ??= new EllipseGeometry(new Rect(0, 0, 8, 8));
+
+        private static Geometry TabDotDiamondGeometry => s_tabDotDiamondGeometry ??= Geometry.Parse("M4,0 L8,4 L4,8 L0,4 Z");
+
+        private static Geometry TabDotRingGeometry => s_tabDotRingGeometry ??= new EllipseGeometry(new Rect(0.75, 0.75, 6.5, 6.5));
         private bool _isVerticalTabStrip;
         internal bool IsVerticalTabStripActive => _isVerticalTabStrip;
 
