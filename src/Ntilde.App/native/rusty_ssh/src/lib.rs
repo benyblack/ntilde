@@ -4457,6 +4457,35 @@ async fn authenticate_keyboard_interactive(
     }
 }
 
+/// Whether a keyboard-interactive question's text asks for the account's password: the trimmed text ends with
+/// `password:`, or is exactly `Password for <account>:` (FreeBSD's pam_unix, Kerberos), whatever its case, with a
+/// non-empty account that has no blank in it. Text that merely mentions a password may ask for something else.
+///
+/// This is the text half of `SshAskPassCommand.IsTargetPasswordPrompt`, whose other half (the `(user@host) ` prefix
+/// OpenSSH puts before the server's text) is absent here: this layer reads the server's own text, and knows the
+/// server from the hop.
+fn is_password_text(text: &str) -> bool {
+    let text = text.trim().to_lowercase();
+    if text.ends_with("password:") {
+        return true;
+    }
+
+    const LEAD: &str = "password for ";
+    match text.strip_prefix(LEAD).and_then(|rest| rest.strip_suffix(':')) {
+        Some(account) => !account.is_empty() && !account.chars().any(char::is_whitespace),
+        None => false,
+    }
+}
+
+/// The question's text when the round is exactly one non-echoed password question, else `None`. A round that asks
+/// for anything more (a second factor, an expired password's change questions) is not the plain password.
+fn password_question(prompts: &[client::Prompt]) -> Option<&str> {
+    match prompts {
+        [only] if !only.echo && is_password_text(&only.prompt) => Some(only.prompt.as_str()),
+        _ => None,
+    }
+}
+
 fn prompt_text(
     shared: &Arc<SharedState>,
     event_kind: NovaSshEventKind,
@@ -4516,6 +4545,27 @@ fn create_test_session_with_event(kind: NovaSshEventKind, payload: &[u8]) -> usi
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn password_text_follows_the_askpass_rule() {
+        for text in ["Password:", "Password: ", "  password:  ", "alice@host's password:",
+                     "Enter PASSWORD:", "Password for alice@example.com:", "password for alice@EXAMPLE.COM:"] {
+            assert!(is_password_text(text), "{text:?} asks for the password");
+        }
+        for text in ["Verification code:", "Passcode or option (1-3):", "Password or code from your phone?",
+                     "Password for:", "Password for two words:", "Passwort:", "New password", ""] {
+            assert!(!is_password_text(text), "{text:?} is not a password question");
+        }
+    }
+
+    #[test]
+    fn only_a_round_of_one_hidden_password_question_is_the_password() {
+        let ask = |prompt: &str, echo: bool| client::Prompt { prompt: prompt.to_owned(), echo };
+        assert_eq!(Some("Password: "), password_question(&[ask("Password: ", false)]));
+        assert_eq!(None, password_question(&[ask("Password: ", true)]));
+        assert_eq!(None, password_question(&[ask("Password: ", false), ask("Verification code:", false)]));
+        assert_eq!(None, password_question(&[]));
+    }
 
     // #155: session establishment races against wait_closed so nova_ssh_close can
     // abort a stuck connect instead of hanging worker.join() (and the .NET
