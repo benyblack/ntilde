@@ -1,0 +1,21 @@
+# Hardcoded colors outside the theme token layer, per file (see ThemeLiteralGuardTests).
+# This file only ever shrinks: migrate a surface to ThemeKeys tokens, then lower its count.
+# Regenerate from the guard's failure message; never raise a count by hand.
+6 src/Ntilde.App/App.axaml
+9 src/Ntilde.App/CommandAssist/Views/CommandAssistBubbleView.axaml
+19 src/Ntilde.App/CommandAssist/Views/CommandAssistPopupView.axaml
+19 src/Ntilde.App/Controls/RemoteFilesSidebar.axaml
+5 src/Ntilde.App/Controls/RemotePathTextBox.axaml
+38 src/Ntilde.App/Controls/TerminalPane.axaml
+11 src/Ntilde.App/Controls/TerminalPane.axaml.cs
+11 src/Ntilde.App/Controls/TransferCenter.axaml
+8 src/Ntilde.App/Controls/TransferDialog.axaml
+44 src/Ntilde.App/MainWindow.axaml
+20 src/Ntilde.App/MainWindow.axaml.cs
+6 src/Ntilde.App/Shell/Converters.cs
+2 src/Ntilde.App/Shell/SessionManager.cs
+5 src/Ntilde.App/Shell/TerminalDrawOperation.cs
+4 src/Ntilde.App/Shell/TerminalView.cs
+2 src/Ntilde.App/UI/About/AboutWindow.axaml
+5 src/Ntilde.App/UI/Replay/ReplayWindow.axaml
+3 src/Ntilde.App/Views/Ssh/NewSshConnectionView.axaml
