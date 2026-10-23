@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Ntilde.Controls;
 using Ntilde.Shell;
-using Ntilde.VT;
 using System.Collections.Generic;
 
 namespace Ntilde
@@ -25,9 +24,6 @@ namespace Ntilde
         /// null-tolerant so MainWindow's refresh paths stay safe if the XAML name changes.
         /// </summary>
         internal ConnectionManager? Manager => this.FindControl<ConnectionManager>("ManagerControl");
-
-        /// <summary>Pass-through so refresh paths can update the window while it is open.</summary>
-        public void ApplyTheme(TerminalTheme theme) => Manager?.ApplyTheme(theme);
 
         /// <summary>Pass-through so refresh paths can update the window while it is open.</summary>
         public void LoadProfiles(IEnumerable<TerminalProfile> profiles) => Manager?.LoadProfiles(profiles);

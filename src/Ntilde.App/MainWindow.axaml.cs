@@ -534,7 +534,6 @@ namespace Ntilde
                 return;
             }
 
-            connManager.ApplyTheme(_settings.ActiveTheme);
             connManager.SavedPasswordAccess = Vault;
             connManager.OnQuickOpenRequested += (profile, target, diagnosticsLevel) =>
             {
@@ -8726,7 +8725,6 @@ namespace Ntilde
                 dragBorder.Background = headerBrush;
             }
 
-            _connectionManagerWindow?.ApplyTheme(theme);
         }
 
         /// <summary>
