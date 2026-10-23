@@ -922,6 +922,7 @@ namespace Ntilde
 
         private bool SwitchTabByMru(bool reverse)
         {
+            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return false;
 
@@ -1541,6 +1542,7 @@ namespace Ntilde
         /// freely, consistent with the drag path). Internal for headless tests.</summary>
         internal void MoveSelectedTab(int delta)
         {
+            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs?.SelectedItem is not TabItem selected) return;
 
@@ -2021,6 +2023,7 @@ namespace Ntilde
         /// </summary>
         private void ToggleTabOrientation()
         {
+            LeaveFocusModeForNavigation();
             _settings.TabStripOrientation = TabStripLayout.IsVertical(_settings.TabStripOrientation)
                 ? "Horizontal"
                 : "Vertical";
@@ -2469,6 +2472,8 @@ namespace Ntilde
 
         private void PopulateTabListMenu(bool showFlyout = false, Control? anchorOverride = null)
         {
+            // Only an explicit open is navigation; the rest are refreshes that run after every layout pass.
+            if (showFlyout) LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
 
@@ -3064,6 +3069,7 @@ namespace Ntilde
 
         private void ApplySessionSnapshot(NtildeSession session)
         {
+            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
 
@@ -5704,6 +5710,7 @@ namespace Ntilde
                 };
             }
 
+            LeaveFocusModeForNavigation();
             AddTabWithPane(pane, row.Name, select: true);
         }
 
@@ -5719,6 +5726,7 @@ namespace Ntilde
             TerminalPane? pane = AllPanes().FirstOrDefault(p => Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint) == endpoint
                 && ((p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id));
             if (pane is null) return false;
+            LeaveFocusModeForNavigation();
             if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
             UpdateActivePane(pane);
             FocusPaneTerminal(pane, defer: true);
@@ -6538,6 +6546,7 @@ namespace Ntilde
 
         private async Task CloseSelectedTabAsync()
         {
+            LeaveFocusModeForNavigation();
             if (!TryGetSelectedTab(out var selectedTab)) return;
             await CloseTabAsync(selectedTab);
         }
@@ -6660,11 +6669,21 @@ namespace Ntilde
 
                 try
                 {
-                    AddTab(profile);
-                    var pane = _currentPane;
+                    // In focus mode the new tab opens in the background: an agent never moves the user's
+                    // screen or keyboard into another shell.
+                    bool select = ShouldAgentSpawnSelect(_isFocusMode);
+                    var pane = AddTab(profile, select: select, leaveFocusMode: false);
+                    if (select) pane ??= _currentPane;
                     if (pane == null)
                     {
                         return (null, AgentHost.AgentSpawnError.SpawnFailed);
+                    }
+
+                    if (!select)
+                    {
+                        // A pane starts its shell on first layout, and a background tab is never laid out.
+                        var term = _currentPane?.TermView;
+                        pane.StartSessionInBackground(term?.Cols > 0 ? term.Cols : 80, term?.Rows > 0 ? term.Rows : 24);
                     }
 
                     Guid? tabId = _paneOwnerTab.TryGetValue(pane, out var tab)
@@ -6690,6 +6709,13 @@ namespace Ntilde
                 if (target == null)
                 {
                     return false;
+                }
+
+                if (_isFocusMode)
+                {
+                    // Resolved from the pane, so the user's tab, active pane and keyboard stay where they are.
+                    await ClosePaneAsync(target, skipConfirm: true);
+                    return !_paneOwnerTab.ContainsKey(target);
                 }
 
                 // Make the target the active pane of its (selected) tab, then reuse
@@ -6796,6 +6822,12 @@ namespace Ntilde
         private Task CloseActivePaneAsync(bool skipConfirm = false)
         {
             if (_currentPane == null) return Task.CompletedTask;
+            // Closing a tab's last pane closes the tab, which moves the user to another one.
+            if (_paneOwnerTab.TryGetValue(_currentPane, out var ownerTab)
+                && EnumeratePanes(GetLayoutRootForTab(ownerTab)).Count() == 1)
+            {
+                LeaveFocusModeForNavigation();
+            }
             return ClosePaneAsync(_currentPane, skipConfirm);
         }
 
@@ -8166,10 +8198,15 @@ namespace Ntilde
             }
         }
 
-        void AddTab(TerminalProfile? profile = null, SshDiagnosticsLevel sshDiagnostics = SshDiagnosticsLevel.None)
+        /// <summary>Opens a tab and returns its pane (null when none was created, or when a template rule rebuilt the window).
+        /// <paramref name="select"/> false opens it in the background; <paramref name="leaveFocusMode"/> false is for
+        /// callers that are not the user (the agent), which must never end focus mode.</summary>
+        TerminalPane? AddTab(TerminalProfile? profile = null, SshDiagnosticsLevel sshDiagnostics = SshDiagnosticsLevel.None,
+            bool select = true, bool leaveFocusMode = true)
         {
             var tabs = this.FindControl<TabControl>("Tabs");
-            if (tabs == null) return;
+            if (tabs == null) return null;
+            if (leaveFocusMode) LeaveFocusModeForNavigation();
 
             // Fallback to default if null
             if (profile == null)
@@ -8231,12 +8268,15 @@ namespace Ntilde
                 profile.Arguments = string.Empty;
             }
 
-            if (TryApplyTemplateRuleForProfile(profile))
+            // A template rule rebuilds and reselects every tab, so a background open never applies one.
+            if (select && TryApplyTemplateRuleForProfile(profile))
             {
-                return;
+                return null;
             }
 
-            AddTabWithPane(new TerminalPane(profile, sshDiagnostics), profile.Name);
+            var pane = new TerminalPane(profile, sshDiagnostics);
+            AddTabWithPane(pane, profile.Name, select);
+            return pane;
         }
 
         /// <summary>
@@ -8869,6 +8909,7 @@ namespace Ntilde
                     string label = GetTabSwitchCommandLabel(capturedTab);
                     CommandRegistry.Register(label, "Tabs", () =>
                     {
+                        LeaveFocusModeForNavigation();
                         tabs.SelectedItem = capturedTab;
                     }, "");
                 }

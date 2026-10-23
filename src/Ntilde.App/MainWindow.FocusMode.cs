@@ -48,6 +48,15 @@ namespace Ntilde
             ApplyFocusModeChrome();
         }
 
+        /// <summary>Every user action that goes to another tab calls this first.</summary>
+        private void LeaveFocusModeForNavigation()
+        {
+            if (_isFocusMode) LeaveFocusMode();
+        }
+
+        /// <summary>An agent's new tab takes the selection only outside focus mode.</summary>
+        internal static bool ShouldAgentSpawnSelect(bool focusMode) => !focusMode;
+
         internal void ToggleFocusMode()
         {
             if (_isFocusMode) LeaveFocusMode();

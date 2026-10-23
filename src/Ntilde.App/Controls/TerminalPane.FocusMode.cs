@@ -27,6 +27,14 @@ namespace Ntilde.Controls
             }
         }
 
+        /// <summary>
+        /// Starts the shell of a pane that has not been laid out. A pane normally spawns on first layout, and a
+        /// tab that is not selected is never laid out, so an agent-spawned background tab calls this. A no-op
+        /// once a session exists.
+        /// </summary>
+        internal void StartSessionInBackground(int cols, int rows) =>
+            InitializeSession(ShellCommand, Profile, cols, rows);
+
         internal void OnMarkdownPresenceChanged(bool present)
         {
             _markdownPresent = present;
