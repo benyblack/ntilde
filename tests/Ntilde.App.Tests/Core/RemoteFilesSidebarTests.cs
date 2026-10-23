@@ -146,8 +146,9 @@ public sealed class RemoteFilesSidebarTests
         string xaml = File.ReadAllText(sidebarPath);
 
         Assert.Contains("<Style Selector=\"^:selected\">", xaml);
-        Assert.Contains("<Setter Property=\"Background\" Value=\"#25384B\"/>", xaml);
-        Assert.Contains("<Setter Property=\"BorderBrush\" Value=\"#4E6A86\"/>", xaml);
+        // The selected row takes the theme's selection fill and accent edge, so it shows on every theme.
+        Assert.Contains("<Setter Property=\"Background\" Value=\"{DynamicResource NtSelectedFill}\"/>", xaml);
+        Assert.Contains("<Setter Property=\"BorderBrush\" Value=\"{DynamicResource NtAccentBorder}\"/>", xaml);
     }
 
     [AvaloniaFact]

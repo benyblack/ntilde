@@ -56,13 +56,19 @@ namespace Ntilde.UI.Replay
             }
         }
 
-        public ReplayWindow(string filePath) : this()
+        /// <param name="theme">The app's active theme, for the replayed buffer's default colours;
+        /// null keeps the Default theme.</param>
+        public ReplayWindow(string filePath, TerminalTheme? theme = null) : this()
         {
             _filePath = filePath;
             _viewModel = new ReplayViewModel(filePath);
             DataContext = _viewModel;
 
             _buffer = new TerminalBuffer(80, 24); // Init with default
+            if (theme != null)
+            {
+                _buffer.Theme = theme;
+            }
             _parser = new AnsiParser(_buffer);
             // Replays of sessions that drew inline images must render the same way live panes do.
             _parser.ImageDecoder = new Ntilde.Rendering.SkiaImageDecoder();

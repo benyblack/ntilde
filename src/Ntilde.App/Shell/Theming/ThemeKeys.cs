@@ -20,6 +20,12 @@ public static class ThemeKeys
     public const string Overlay = "NtOverlay";
     public const string Scrim = "NtScrim";
 
+    /// <summary>
+    /// The veil over an inactive split pane: black, lighter than <see cref="Scrim"/> on dark themes
+    /// (a dimmed pane must stay readable) and stronger on light ones, where a light veil barely shows.
+    /// </summary>
+    public const string PaneDim = "NtPaneDim";
+
     // Lines
     public const string Hairline = "NtHairline";
     public const string HairlineStrong = "NtHairlineStrong";
@@ -92,7 +98,7 @@ public static class ThemeKeys
 
     public static IReadOnlyList<string> All { get; } =
     [
-        WindowBg, ChromeBg, SidebarBg, Panel, PanelAlt, Overlay, Scrim,
+        WindowBg, ChromeBg, SidebarBg, Panel, PanelAlt, Overlay, Scrim, PaneDim,
         Hairline, HairlineStrong, SidebarDivider, GripHover,
         Fg, Fg2, Fg3, Fg4,
         HoverFill, PressedFill, SelectedFill,

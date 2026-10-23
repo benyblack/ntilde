@@ -313,16 +313,16 @@ Target tokens for every audited surface (phase in brackets):
 | Transfer overlay + TransferCenter [2, done] | `#1E1E1E`, `#2D2D2D`, greys, `StateBrushConverter` SkyBlue/LimeGreen/Red/Gray | `NtOverlay`, `NtChromeBg`, `NtFg*`; the converter resolves token brushes: Info/Success/Error/Fg4 |
 | Record button, agent observe indicator [2, done] | `#F1636B`, `#4FB0D4`/`#6B737F` | `NtRecording` (glyph) / `NtErrorDim` (recording background), `NtAgentWatched`/`NtAgentIdle` |
 | Code-built dialogs, SSH prompts, About [2, done] | themed once at open | inherit app tokens, live; About links `NtLink`/`NtLinkHover` |
-| Pane search, paste toast, MD toggle [3] | `#383838`, `#505050`, `#1a1a1a`, `#0078D7`, `#2A2D33`… | `NtOverlay`, `NtHairline`, `NtPanelAlt`, `NtAccent`, `NtAccentDim` |
-| Pane status bar + agent segment [3] | `#CC1A1A1A`, `#AAA`, LimeGreen/Yellow/Red/Gray, `#E8A33D`… | `NtChromeBg`, `NtFg3`, `NtSuccess`/`NtWarning`/`NtError`/`NtFg4`, `NtAgentWrote`/`NtAgentWatched`/`NtAgentIdle` |
-| Inactive-pane dim, bell flash [3] | black α 72/96, white flash | `NtScrim`-derived dim, `BellFlash` render color |
+| Pane search, paste toast, MD toggle [3, done] | `#383838`, `#505050`, `#1a1a1a`, `#0078D7`, `#2A2D33`… | `NtOverlay`, `NtHairline`, `NtPanelAlt`, `NtAccent`, `NtAccentDim` |
+| Pane status bar + agent segment [3, done] | `#CC1A1A1A`, `#AAA`, LimeGreen/Yellow/Red/Gray, `#E8A33D`… | `NtChromeBg`, `NtFg3`, `NtSuccess`/`NtWarning`/`NtError`/`NtFg4`, `NtAgentWrote`/`NtAgentWatched`/`NtAgentIdle` |
+| Inactive-pane dim, bell flash [3, done] | black α 72/96, white flash | `NtScrim`-derived dim, `BellFlash` render color |
 | Agent Output chrome [1, done; was 3] | `#1B1D21`, `#31353A`, `#F3F6FA`… | `NtPanel`, `NtHairline`, `NtFg*`; markdown diff via `NtDiff*` |
-| Command Assist bubble/popup [3] | `#CC202020`, `#8EC5FF`, `#332F6FEB`… | `NtOverlay`, `NtAccent`, `NtSelectedFill`/`NtAccentDim`, `NtFg*` |
-| Remote Files sidebar, RemotePathTextBox [3] | `#1B1D21`, `#25384B`, `#F16C6C`… | `NtPanel`, `NtSelectedFill`, `NtAccentBorder`, `NtError` |
-| TransferDialog [3] | unthemed `#252526`, `#007ACC`, `#F14C4C` | tokens; `NtAccent`, `NtError` |
-| New/Edit SSH connection [3] | warning `#D7BA7D`, error `#E06C75`, App TabItem hover | `NtWarning`, `NtError`, tab tokens |
-| Replay window [3] | unthemed, Default theme buffer | tokens; active theme |
-| Askpass helper [3] | OS variant | `ThemeService` |
+| Command Assist bubble/popup [3, done] | `#CC202020`, `#8EC5FF`, `#332F6FEB`… | `NtOverlay`, `NtAccent`, `NtSelectedFill`/`NtAccentDim`, `NtFg*` |
+| Remote Files sidebar, RemotePathTextBox [3, done] | `#1B1D21`, `#25384B`, `#F16C6C`… | `NtPanel`, `NtSelectedFill`, `NtAccentBorder`, `NtError` |
+| TransferDialog [3, done] | unthemed `#252526`, `#007ACC`, `#F14C4C` | tokens; `NtAccent`, `NtError` |
+| New/Edit SSH connection [3, done] | warning `#D7BA7D`, error `#E06C75`, App TabItem hover | `NtWarning`, `NtError`, tab tokens |
+| Replay window [3, done] | unthemed, Default theme buffer | tokens; active theme |
+| Askpass helper [3, done] | OS variant | `ThemeService` |
 | Renderer selection/search/cursor text [4] | hardcoded | `TerminalRenderColors` |
 
 ### After the Settings redesign (added 2026-10-19, carried over from #528)
@@ -387,6 +387,30 @@ Plan: `docs/superpowers/plans/2026-10-23-theme-system-phase2-main-window.md`.
   `TabHeaderTemplate`, the `DragBorder`/`headerBg` code and the `SettingsBtn` selectors.
 - **Baseline**: 128 literals in 12 files, all on phase 3-4 surfaces. `App.axaml`, `MainWindow`,
   the Transfer Center, `Converters.cs` and About are at zero.
+- **Fix after review:** the dot geometries are built lazily. As static readonly fields they made
+  MainWindow's type initializer need the render platform, which poisoned every later MainWindow
+  on CI when a test touched a MainWindow static first. `MainWindowStaticInitTests` pins the rule.
+
+### Phase 3 as landed (2026-10-24)
+
+Plan: `docs/superpowers/plans/2026-10-24-theme-system-phase3-panes.md`.
+
+- **Pane scope (D7):** `TerminalPane.UpdatePaneThemeScope`, run from every `ApplySettings`, adds a
+  token dictionary (`ThemeService.ApplyTo`) to the pane's resources and sets the new
+  `PaneVariantScope` (a `ThemeVariantScope` around the pane's content) when the profile names a
+  theme other than the app's, and removes both otherwise. The Fluent palette is not scoped (the
+  spec's best effort); `ApplyTo` does carry the Fluent control-key aliases into the scope.
+- **Code-built pane UI binds** its tokens through `GetResourceObservable` (`TerminalPane.BindToken`):
+  the agent segment and the port-forward states.
+- **`NtPaneDim`** is a new token for the inactive-pane veil, keeping its long-standing strengths
+  (black at alpha 72 on dark, 96 on light). `NtScrim` would have nearly doubled the dim on dark themes.
+- **Bell flash** is the pane theme's foreground at alpha 0x26; it does not wait for phase 4's
+  `TerminalRenderColors`.
+- **Replay** gives its buffer the app's active theme; **askpass** installs the saved theme's tokens.
+- **Permanent allowlist** gains the paste toast's black drop shadow (`DropShadowEffect.Color` takes a
+  `Color`, not a token brush).
+- **Baseline**: 6 literals in 2 files, all renderer colours phase 4 replaces
+  (`TerminalDrawOperation` selection and search, `TerminalView.SelectionBrush`).
 
 ## 6. Schema propagation
 

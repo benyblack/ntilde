@@ -7,15 +7,15 @@
         x:DataType="local:ReplayViewModel"
         Title="Ntilde Replay Viewer"
         Width="1000" Height="700"
-        Background="#1E1E1E">
+        Background="{DynamicResource NtWindowBg}">
     <Grid RowDefinitions="*, Auto">
         <!-- Terminal Viewport -->
-        <Border BorderBrush="#333" BorderThickness="0,0,0,1">
+        <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1">
             <core:TerminalView Name="TermView" Focusable="True" />
         </Border>
 
         <!-- Playback Controls -->
-        <Border Grid.Row="1" Background="#252526" Padding="15,10">
+        <Border Grid.Row="1" Background="{DynamicResource NtChromeBg}" Padding="15,10">
             <Grid ColumnDefinitions="Auto, *, Auto, Auto">
                 <!-- Play/Pause -->
                 <Button Name="BtnPlayPause" Content="▶" Width="40" Height="40" 
@@ -27,10 +27,10 @@
                     <Slider Name="TimelineSlider" Minimum="0" 
                             Maximum="{Binding DurationMs}" 
                             Value="{Binding CurrentTimeMs}"
-                            Foreground="#007ACC"/>
+                            Foreground="{DynamicResource NtAccent}"/>
                     <TextBlock Text="{Binding TimeDisplay}" 
                                HorizontalAlignment="Center" 
-                               FontSize="12" Foreground="#888"/>
+                               FontSize="12" Foreground="{DynamicResource NtFg3}"/>
                 </StackPanel>
 
                 <!-- Speed -->
