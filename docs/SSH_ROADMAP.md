@@ -46,10 +46,16 @@ The native SSH initiative is implemented behind conservative rollout controls.
 - Connection sharing, the native ControlMaster (`nova_ssh_connect_shared`, `nova_ssh_open_shell`):
   with the profile's multiplexing on, its tabs share one connection from `NativeSshConnectionPool`,
   keyed by the profile and every connection setting (destination, credentials, jump chain,
-  keepalive, forwards). The connection owns the prompts and the port forwards; each tab gets its own
+  keepalive, forwards). The connection owns the prompts and the port forwards; a local or dynamic
+  forward whose port cannot be bound is left out with a warning to every tab on it (OpenSSH's
+  `ExitOnForwardFailure no`), where an unshared native tab still fails; each tab gets its own
   shell channel and event queue. The connection closes with its last tab, or after the profile's
   ControlPersist seconds once it is up. When the transport goes, every shell on it gets Closed and the
-  next tab reconnects. SFTP and exec still connect on their own.
+  next tab reconnects. Exec channels (`nova_ssh_open_exec`: persistent tabs' `ntilde-mux proxy`, the
+  installer's commands) join or open the same connection, forwards included. SFTP transfers and
+  listings (`nova_ssh_sftp_transfer_shared`, `nova_ssh_sftp_list_directory_shared`) run on it when it
+  is up and logged in, and connect on their own otherwise: they cannot answer a prompt, so they never
+  open one.
 - Exec mode (`nova_ssh_exec`): a command with no PTY, with stdin EOF, stderr and the exit status
   as events — the channel persistent remote tabs and the `ntilde-mux` installer run over (see
   *Remote session persistence* below)

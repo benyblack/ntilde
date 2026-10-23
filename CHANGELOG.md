@@ -9,7 +9,9 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   multiplexing* on, a profile's tabs and splits share one connection: the second tab opens at once,
   with no second login. Its port forwards are set up once, with the connection, so a second tab of a
   profile with forwards no longer fails on a port the first one holds. *ControlPersist (sec)* keeps
-  the connection open that long after its last tab closes.
+  the connection open that long after its last tab closes. Persistent tabs, *Remote Files*, path
+  completion and SFTP transfers of the profile ride the same connection, so none of them logs in
+  again either; with it, persistent tabs on such a profile now run its port forwards.
 
 ## 0.12.0
 

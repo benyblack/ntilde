@@ -104,7 +104,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         // Multiplexing is honored natively as ControlMaster auto is: tabs share one connection
         // (NativeSshConnectionPool). Without ControlMaster auto, OpenSSH only joins a master some
         // other client made; natively nothing else makes one, so the tab connects on its own.
-        bool shareConnection = profile.MuxOptions is { Enabled: true, ControlMasterAuto: true };
+        bool shareConnection = NativeSshConnectionPool.Shares(profile);
         if (profile.MuxOptions is { Enabled: true, ControlMasterAuto: false })
         {
             EmitSessionText("Warning: multiplexing without ControlMaster auto has no native equivalent; this tab uses a connection of its own.\r\n");
@@ -623,54 +623,17 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         }
     }
 
-    /// <summary>
-    /// This tab's shell on the profile's shared connection, joining the running one or starting it. A connection
-    /// that ended between the lookup and the open is abandoned for a new one, once.
-    /// </summary>
+    /// <summary>This tab's shell on the profile's shared connection, joining the running one or starting it.</summary>
     private NovaSshSafeHandle OpenSharedShell(SshProfile profile, NativeSshConnectionOptions options, NativeSshConnectionPool pool)
     {
-        try
-        {
-            return TryOpenSharedShell(profile, options, pool, abandonOnFailure: true);
-        }
-        catch (InvalidOperationException)
-        {
-            _log("[NativeSshSession] shared connection ended before the shell opened; reconnecting");
-            return TryOpenSharedShell(profile, options, pool, abandonOnFailure: false);
-        }
-    }
-
-    private NovaSshSafeHandle TryOpenSharedShell(
-        SshProfile profile,
-        NativeSshConnectionOptions options,
-        NativeSshConnectionPool pool,
-        bool abandonOnFailure)
-    {
-        NativeSshSharedConnection.Lease lease = pool.Acquire(
+        (NativeSshSharedConnection.Lease lease, NovaSshSafeHandle handle) = pool.AcquireAndOpen(
             profile,
             options,
             new NativeSshSharedConnection.Opener(_interop, _interactionHandler, Id, _log),
             warn: message => EmitSessionText($"{message}\r\n"),
-            out bool reused);
-        try
-        {
-            NovaSshSafeHandle handle = lease.Connection.OpenShell(options);
-            _connectionLease = lease;
-            _log($"[NativeSshSession] shared-connection={(reused ? "reused" : "new")}");
-            return handle;
-        }
-        catch (InvalidOperationException) when (abandonOnFailure)
-        {
-            // The pool would hand the same dead connection out again.
-            lease.Connection.Abandon();
-            lease.Dispose();
-            throw;
-        }
-        catch
-        {
-            lease.Dispose();
-            throw;
-        }
+            open: connection => connection.OpenShell(options));
+        _connectionLease = lease;
+        return handle;
     }
 
     private void CloseNativeHandle()

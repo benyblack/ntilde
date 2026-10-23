@@ -377,6 +377,22 @@ struct QueuedResponse {
     payload: Vec<u8>,
 }
 
+/// What a shared connection's SFTP request asks for.
+enum SftpJob {
+    Transfer {
+        body: SftpTransferRequestBody,
+        progress: SftpProgressEmitter,
+    },
+    List {
+        path: String,
+    },
+}
+
+enum SftpOutcome {
+    Transferred,
+    Listed(Vec<RemotePathListEntry>),
+}
+
 enum WorkerCommand {
     Write(Vec<u8>),
     /// EOF on the main channel: for an exec session, the remote command's stdin is finished.
@@ -409,13 +425,20 @@ enum WorkerCommand {
     CloseForwardChannel {
         channel_id: u32,
     },
-    /// Shared connections only: open a shell channel for the session nova_ssh_open_shell just
-    /// registered. `shared` and `commands` are that session's, so its events and its writes never
-    /// touch the connection's own queue.
-    OpenShell {
+    /// Shared connections only: open the main channel, a shell or an exec, for the session that
+    /// nova_ssh_open_shell or nova_ssh_open_exec just registered. `shared` and `commands` are that
+    /// session's, so its events and its writes never touch the connection's own queue.
+    OpenChannel {
         config: ConnectConfig,
+        mode: SessionMode,
         shared: Arc<SharedState>,
         commands: mpsc::UnboundedReceiver<WorkerCommand>,
+    },
+    /// Shared connections only: one SFTP request on a channel of the connection. The FFI caller
+    /// blocks on `reply`.
+    Sftp {
+        job: SftpJob,
+        reply: std_mpsc::Sender<anyhow::Result<SftpOutcome>>,
     },
     Close,
 }
@@ -853,6 +876,12 @@ struct SftpProgressEmitter {
     callback: Option<NovaSftpTransferProgressCallback>,
     context: *mut c_void,
 }
+
+// A shared connection's SFTP request runs on the connection's worker thread, not the caller's, so
+// the emitter crosses threads. Sound for the contract above: the callback is a plain C function
+// pointer the managed side can enter from any thread, and the context stays valid for the whole
+// FFI call, which blocks until the request is answered.
+unsafe impl Send for SftpProgressEmitter {}
 
 impl SftpProgressEmitter {
     fn emit(&self, bytes_done: u64, bytes_total: Option<u64>, current_path: &str) {
@@ -1468,34 +1497,62 @@ pub extern "C" fn nova_ssh_connect_shared(args: *const NovaSshConnectArgs) -> us
 /// the connection.
 #[unsafe(no_mangle)]
 pub extern "C" fn nova_ssh_open_shell(connection: usize, args: *const NovaSshConnectArgs) -> usize {
-    ffi_guard(0, || {
-        let Some(config) = ConnectConfig::from_args(args) else {
-            return 0;
-        };
-        let Some(connection) = registry_get(connection) else {
-            return 0;
-        };
-
-        let shared = Arc::new(SharedState::new());
-        let (command_tx, command_rx) = mpsc::unbounded_channel();
-        let open = WorkerCommand::OpenShell {
-            config,
-            shared: shared.clone(),
-            commands: command_rx,
-        };
-        // A worker that has finished closed its receiver, so the send fails here instead of the
-        // shell waiting for a connection that is never coming.
-        if send_command(&connection, open) != NOVA_SSH_RESULT_OK {
-            return 0;
-        }
-
-        // No thread of its own: the shell runs as a task on the connection's worker.
-        registry_insert(NovaSshSession {
-            shared,
-            command_tx: Mutex::new(Some(command_tx)),
-            worker: Mutex::new(None),
-        }) as usize
+    ffi_guard(0, || match ConnectConfig::from_args(args) {
+        Some(config) => open_shared_channel(connection, config, SessionMode::Shell),
+        None => 0,
     })
+}
+
+/// Runs `command` on the shared connection `connection` with no PTY: nova_ssh_exec's channel,
+/// without its connect and login. `args` and `command` are validated as nova_ssh_exec validates
+/// them, and the session's events are nova_ssh_exec's from Connected on (Data, ExtendedData, Eof,
+/// ExitStatus, Error, Closed). Returns 0 for rejected arguments or a connection that is unknown,
+/// closed or no longer running. Release the handle with nova_ssh_close, exactly once; closing it
+/// never closes the connection.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_open_exec(
+    connection: usize,
+    args: *const NovaSshConnectArgs,
+    command: *const c_char,
+) -> usize {
+    ffi_guard(0, || {
+        let Some(command) = read_exec_command(command) else {
+            return 0;
+        };
+
+        match ConnectConfig::from_args(args) {
+            Some(config) => open_shared_channel(connection, config, SessionMode::Exec { command }),
+            None => 0,
+        }
+    })
+}
+
+/// Registers a session whose main channel the shared connection opens and runs as a task.
+fn open_shared_channel(connection: usize, config: ConnectConfig, mode: SessionMode) -> usize {
+    let Some(connection) = registry_get(connection) else {
+        return 0;
+    };
+
+    let shared = Arc::new(SharedState::new());
+    let (command_tx, command_rx) = mpsc::unbounded_channel();
+    let open = WorkerCommand::OpenChannel {
+        config,
+        mode,
+        shared: shared.clone(),
+        commands: command_rx,
+    };
+    // A worker that has finished closed its receiver, so the send fails here instead of the
+    // session waiting for a connection that is never coming.
+    if send_command(&connection, open) != NOVA_SSH_RESULT_OK {
+        return 0;
+    }
+
+    // No thread of its own: the channel runs as a task on the connection's worker.
+    registry_insert(NovaSshSession {
+        shared,
+        command_tx: Mutex::new(Some(command_tx)),
+        worker: Mutex::new(None),
+    }) as usize
 }
 
 /// Spawns a shared connection's worker and registers its handle, like spawn_session.
@@ -1517,9 +1574,9 @@ fn spawn_connection(config: ConnectConfig) -> usize {
     }) as usize
 }
 
-/// A shell on a shared connection, as the connection worker tracks it: enough to fail it when the
-/// connection goes, and to wait for it to finish first.
-struct SharedShell {
+/// A channel on a shared connection, as the connection worker tracks it: enough to fail it when
+/// the connection goes, and to wait for it to finish first.
+struct SharedChannel {
     shared: Arc<SharedState>,
     task: tokio::task::JoinHandle<()>,
 }
@@ -1574,21 +1631,31 @@ fn run_connection(
             flags: NOVA_SSH_EVENT_FLAG_JSON,
         });
 
-        let mut shells: Vec<SharedShell> = Vec::new();
+        let mut shells: Vec<SharedChannel> = Vec::new();
         let mut lost: Option<String> = None;
         loop {
             tokio::select! {
                 command = command_rx.recv() => {
                     match command {
-                        Some(WorkerCommand::OpenShell { config, shared: shell_shared, commands }) => {
+                        Some(WorkerCommand::OpenChannel { config, mode, shared: shell_shared, commands }) => {
                             shells.retain(|shell| !shell.task.is_finished());
-                            let task = tokio::spawn(run_shared_shell(
+                            let task = tokio::spawn(run_shared_channel(
                                 session.clone(),
                                 config,
+                                mode,
                                 shell_shared.clone(),
                                 commands,
                             ));
-                            shells.push(SharedShell { shared: shell_shared, task });
+                            shells.push(SharedChannel { shared: shell_shared, task });
+                        }
+                        Some(WorkerCommand::Sftp { job, reply }) => {
+                            // A task of its own: a transfer can take minutes, and the loop must keep
+                            // serving the shells and forwards meanwhile. Dropped with the runtime when
+                            // the connection ends, which the caller reads as CLOSED.
+                            let session = session.clone();
+                            tokio::spawn(async move {
+                                let _ = reply.send(run_sftp_job(&session, job).await);
+                            });
                         }
                         Some(WorkerCommand::OpenDirectTcpIp {
                             host_to_connect,
@@ -1687,22 +1754,49 @@ fn run_connection(
 fn fail_pending_shells(command_rx: &mut mpsc::UnboundedReceiver<WorkerCommand>, message: &str) {
     command_rx.close();
     while let Ok(command) = command_rx.try_recv() {
-        if let WorkerCommand::OpenShell { shared, .. } = command {
+        if let WorkerCommand::OpenChannel { shared, .. } = command {
             shared.finish(Some(message));
         }
     }
 }
 
-/// One shell on a shared connection: its channel, then run_session's terminal loop without the
-/// forward commands, which belong to the connection.
-async fn run_shared_shell(
+/// One shared connection's SFTP request, on a channel of its own.
+async fn run_sftp_job(
+    session: &client::Handle<NovaClientHandler>,
+    job: SftpJob,
+) -> anyhow::Result<SftpOutcome> {
+    match job {
+        SftpJob::Transfer { body, progress } => {
+            perform_sftp_transfer(session, &body, progress).await?;
+            Ok(SftpOutcome::Transferred)
+        }
+        SftpJob::List { path } => Ok(SftpOutcome::Listed(list_remote_directory(session, &path).await?)),
+    }
+}
+
+/// One main channel on a shared connection, a shell or an exec: the channel, then run_session's
+/// loop without the forward commands, which belong to the connection.
+async fn run_shared_channel(
     session: Arc<client::Handle<NovaClientHandler>>,
     config: ConnectConfig,
+    mode: SessionMode,
     shared: Arc<SharedState>,
     mut command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
 ) {
+    let open = async {
+        match &mode {
+            SessionMode::Shell => open_shell_channel(&config, &session).await,
+            SessionMode::Exec { command } => {
+                // As establish_session: the exec request's reply arrives in the loop, where a
+                // refusal fails the session.
+                let channel = session.channel_open_session().await?;
+                channel.exec(true, command.as_str()).await?;
+                Ok(channel)
+            }
+        }
+    };
     let opened = tokio::select! {
-        result = open_shell_channel(&config, &session) => result,
+        result = open => result,
         _ = shared.wait_closed() => return,
     };
     let mut channel = match opened {
@@ -1713,7 +1807,7 @@ async fn run_shared_shell(
         }
     };
 
-    let error = shared_shell_loop(&config, &shared, &mut channel, &mut command_rx)
+    let error = shared_channel_loop(&config, &mode, &shared, &mut channel, &mut command_rx)
         .await
         .err()
         .map(|error| error.to_string());
@@ -1721,8 +1815,9 @@ async fn run_shared_shell(
     shared.finish(error.as_deref());
 }
 
-async fn shared_shell_loop(
+async fn shared_channel_loop(
     config: &ConnectConfig,
+    mode: &SessionMode,
     shared: &Arc<SharedState>,
     channel: &mut russh::Channel<client::Msg>,
     command_rx: &mut mpsc::UnboundedReceiver<WorkerCommand>,
@@ -1739,18 +1834,32 @@ async fn shared_shell_loop(
     });
 
     let mut pending_command: Option<WorkerCommand> = None;
+    // As in run_session: nothing goes on the wire after an EOF, and an exec has no PTY to resize.
+    let mut eof_sent = false;
+    let has_pty = *mode == SessionMode::Shell;
     loop {
         tokio::select! {
             command = next_worker_command(&mut pending_command, command_rx) => {
                 match command {
-                    Some(WorkerCommand::Write(data)) => channel.data(&data[..]).await?,
+                    Some(WorkerCommand::Write(data)) => {
+                        if !eof_sent {
+                            channel.data(&data[..]).await?;
+                        }
+                    }
                     Some(WorkerCommand::Resize { cols, rows }) => {
                         let (cols, rows, pending_resize_command) =
                             coalesce_pending_resize_commands(command_rx, cols, rows);
                         pending_command = pending_resize_command;
-                        channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                        if has_pty {
+                            channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                        }
                     }
-                    Some(WorkerCommand::SendEof) => channel.eof().await?,
+                    Some(WorkerCommand::SendEof) => {
+                        if !eof_sent {
+                            eof_sent = true;
+                            channel.eof().await?;
+                        }
+                    }
                     // Forward calls on a shell's handle: the forwards are the connection's. A
                     // dropped reply reads as CLOSED to the caller.
                     Some(WorkerCommand::OpenDirectTcpIp { .. })
@@ -1758,15 +1867,18 @@ async fn shared_shell_loop(
                     | Some(WorkerCommand::WriteForwardChannel { .. })
                     | Some(WorkerCommand::ForwardChannelEof { .. })
                     | Some(WorkerCommand::CloseForwardChannel { .. })
-                    | Some(WorkerCommand::OpenShell { .. }) => {}
+                    | Some(WorkerCommand::OpenChannel { .. })
+                    | Some(WorkerCommand::Sftp { .. }) => {}
                     Some(WorkerCommand::Close) | None => {
-                        let _ = channel.eof().await;
+                        if !eof_sent {
+                            let _ = channel.eof().await;
+                        }
                         return Ok(());
                     }
                 }
             }
             message = channel.wait() => {
-                match main_channel_step(&SessionMode::Shell, message)? {
+                match main_channel_step(mode, message)? {
                     MainChannelStep::Data(event) => {
                         if !shared.queue_data_event(event).await {
                             return Ok(());
@@ -2311,6 +2423,165 @@ pub extern "C" fn nova_ssh_sftp_list_directory(
     })
 }
 
+/// nova_ssh_sftp_transfer over the shared connection `connection` (from nova_ssh_connect_shared),
+/// on a channel of its own: no connect and no login. `request_json` is only the transfer, the
+/// `transfer` object of nova_ssh_sftp_transfer's request (`direction`, `kind`, `localPath`,
+/// `remotePath`, optional `cancellationMarkerPath`); the connection already has its destination
+/// and credentials. Progress, cancellation and the response are nova_ssh_sftp_transfer's.
+///
+/// Blocks until the transfer ends; on a connection still logging in, that includes waiting for the
+/// login. Returns NOVA_SSH_RESULT_CLOSED, with status "closed", when the connection is unknown,
+/// closed, fails to come up, or ends during the transfer: the caller then transfers over a
+/// connection of its own. The shell and forward traffic on the connection keeps flowing meanwhile.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_sftp_transfer_shared(
+    connection: usize,
+    request_json: *const c_char,
+    progress_callback: Option<NovaSftpTransferProgressCallback>,
+    progress_context: *mut c_void,
+    response_json: *mut *mut c_char,
+) -> c_int {
+    ffi_guard(NOVA_SSH_RESULT_PANIC, || {
+        if request_json.is_null() || response_json.is_null() {
+            return NOVA_SSH_RESULT_INVALID_ARGUMENT;
+        }
+
+        clear_response(response_json);
+
+        let body = match read_json_request::<SftpTransferRequestBody>(request_json) {
+            Some(body) if !transfer_body_has_blank_fields(&body) => body,
+            _ => {
+                return write_sftp_response_json(
+                    response_json,
+                    NOVA_SSH_RESULT_INVALID_ARGUMENT,
+                    "invalid-argument",
+                    "Native backend rejected an invalid shared SFTP transfer request.",
+                );
+            }
+        };
+        if let Err(error) = validate_supported_sftp_mode(&body) {
+            let (result, status, message) = classify_sftp_transfer_error(&error);
+            return write_sftp_response_json(response_json, result, status, &message);
+        }
+
+        let job = SftpJob::Transfer {
+            body,
+            progress: SftpProgressEmitter {
+                callback: progress_callback,
+                context: progress_context,
+            },
+        };
+        match run_shared_sftp(connection, job) {
+            None => write_sftp_response_json(
+                response_json,
+                NOVA_SSH_RESULT_CLOSED,
+                "closed",
+                "The shared SSH connection is not running.",
+            ),
+            Some(Ok(_)) => write_sftp_response_json(
+                response_json,
+                NOVA_SSH_RESULT_OK,
+                "ok",
+                "Native SFTP transfer completed.",
+            ),
+            Some(Err(error)) => {
+                let (result, status, message) = classify_sftp_transfer_error(&error);
+                write_sftp_response_json(response_json, result, status, &message)
+            }
+        }
+    })
+}
+
+/// nova_ssh_sftp_list_directory over the shared connection `connection`. `request_json` is
+/// `{"path": "..."}`; the response is nova_ssh_sftp_list_directory's. Returns
+/// NOVA_SSH_RESULT_CLOSED, with status "closed", as nova_ssh_sftp_transfer_shared does.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_sftp_list_directory_shared(
+    connection: usize,
+    request_json: *const c_char,
+    response_json: *mut *mut c_char,
+) -> c_int {
+    ffi_guard(NOVA_SSH_RESULT_PANIC, || {
+        if request_json.is_null() || response_json.is_null() {
+            return NOVA_SSH_RESULT_INVALID_ARGUMENT;
+        }
+
+        clear_response(response_json);
+
+        let path = match read_json_request::<SharedListRequest>(request_json) {
+            Some(request) if !request.path.trim().is_empty() => request.path,
+            _ => {
+                return write_remote_path_list_response_json(
+                    response_json,
+                    NOVA_SSH_RESULT_INVALID_ARGUMENT,
+                    "invalid-argument",
+                    "Native backend rejected an invalid shared remote path list request.",
+                    Vec::new(),
+                );
+            }
+        };
+
+        match run_shared_sftp(connection, SftpJob::List { path }) {
+            None => write_remote_path_list_response_json(
+                response_json,
+                NOVA_SSH_RESULT_CLOSED,
+                "closed",
+                "The shared SSH connection is not running.",
+                Vec::new(),
+            ),
+            Some(Ok(SftpOutcome::Listed(entries))) => write_remote_path_list_response_json(
+                response_json,
+                NOVA_SSH_RESULT_OK,
+                "ok",
+                "Native remote path listing completed.",
+                entries,
+            ),
+            Some(Ok(SftpOutcome::Transferred)) => unreachable!("a listing job lists"),
+            Some(Err(error)) => {
+                let (result, status, message) = classify_sftp_transfer_error(&error);
+                write_remote_path_list_response_json(
+                    response_json,
+                    result,
+                    status,
+                    &message,
+                    Vec::new(),
+                )
+            }
+        }
+    })
+}
+
+#[derive(Deserialize)]
+struct SharedListRequest {
+    path: String,
+}
+
+/// Nulls the caller's response slot before anything can fail, so it never holds garbage. `response_json` is checked
+/// non-null by the caller.
+fn clear_response(response_json: *mut *mut c_char) {
+    unsafe {
+        *response_json = ptr::null_mut();
+    }
+}
+
+fn read_json_request<T: serde::de::DeserializeOwned>(request_json: *const c_char) -> Option<T> {
+    let text = unsafe { CStr::from_ptr(request_json) }.to_str().ok()?;
+    serde_json::from_str(text).ok()
+}
+
+/// Hands `job` to the shared connection's worker and waits for it. None: there is no running
+/// connection to do it, or it ended before answering.
+fn run_shared_sftp(connection: usize, job: SftpJob) -> Option<anyhow::Result<SftpOutcome>> {
+    let connection = registry_get(connection)?;
+    let (reply_tx, reply_rx) = std_mpsc::channel();
+    if send_command(&connection, WorkerCommand::Sftp { job, reply: reply_tx }) != NOVA_SSH_RESULT_OK {
+        return None;
+    }
+    // Not holding the registry's Arc while blocked: a concurrent nova_ssh_close must not wait on it.
+    drop(connection);
+    reply_rx.recv().ok()
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn nova_ssh_string_free(value: *mut c_char) {
     ffi_guard((), || {
@@ -2748,12 +3019,15 @@ fn sftp_request_has_blank_fields(request: &SftpTransferRequest) -> bool {
             .is_some_and(|path| path.trim().is_empty())
         || request.connection.known_hosts_file_path.trim().is_empty()
         || jump_host_is_blank
-        || request.transfer.direction.trim().is_empty()
-        || request.transfer.kind.trim().is_empty()
-        || request.transfer.local_path.trim().is_empty()
-        || request.transfer.remote_path.trim().is_empty()
-        || request
-            .transfer
+        || transfer_body_has_blank_fields(&request.transfer)
+}
+
+fn transfer_body_has_blank_fields(transfer: &SftpTransferRequestBody) -> bool {
+    transfer.direction.trim().is_empty()
+        || transfer.kind.trim().is_empty()
+        || transfer.local_path.trim().is_empty()
+        || transfer.remote_path.trim().is_empty()
+        || transfer
             .cancellation_marker_path
             .as_deref()
             .is_some_and(|path| path.trim().is_empty())
@@ -2871,10 +3145,10 @@ fn run_sftp_transfer(
         let client_config = Arc::new(client::Config::default());
         let auth = TransferAuthConfig::take_from(&mut request.connection);
 
-        let (_jump_sessions, mut session) =
+        let (_jump_sessions, session) =
             connect_transfer_session(&request.connection, &auth, &known_hosts, &client_config)
                 .await?;
-        perform_sftp_transfer(&mut session, &request.transfer, progress).await
+        perform_sftp_transfer(&session, &request.transfer, progress).await
     })
 }
 
@@ -2972,10 +3246,10 @@ fn run_remote_path_list(
         let client_config = Arc::new(client::Config::default());
         let auth = TransferAuthConfig::take_from(&mut request.connection);
 
-        let (_jump_sessions, mut session) =
+        let (_jump_sessions, session) =
             connect_transfer_session(&request.connection, &auth, &known_hosts, &client_config)
                 .await?;
-        list_remote_directory(&mut session, &request.path).await
+        list_remote_directory(&session, &request.path).await
     })
 }
 
@@ -3119,7 +3393,7 @@ where
 }
 
 async fn perform_sftp_transfer<H>(
-    session: &mut client::Handle<H>,
+    session: &client::Handle<H>,
     transfer: &SftpTransferRequestBody,
     progress: SftpProgressEmitter,
 ) -> anyhow::Result<()>
@@ -3205,7 +3479,7 @@ where
 }
 
 async fn list_remote_directory<H>(
-    session: &mut client::Handle<H>,
+    session: &client::Handle<H>,
     remote_path: &str,
 ) -> anyhow::Result<Vec<RemotePathListEntry>>
 where
@@ -4292,9 +4566,11 @@ fn run_session(
                             close_forward_channel(&forward_channels, channel_id).await;
                         }
                         // nova_ssh_open_shell was handed a session that is not a shared connection.
-                        Some(WorkerCommand::OpenShell { shared: shell_shared, .. }) => {
+                        Some(WorkerCommand::OpenChannel { shared: shell_shared, .. }) => {
                             shell_shared.finish(Some("this SSH session is not a shared connection"));
                         }
+                        // Dropping the reply reads as CLOSED: the caller connects on its own.
+                        Some(WorkerCommand::Sftp { .. }) => {}
                         Some(WorkerCommand::Close) | None => {
                             close_all_forward_channels(&forward_channels).await;
                             if !eof_sent {
@@ -9786,6 +10062,7 @@ mod shared_connection_e2e_tests {
         password_attempts: usize,
         pty_requests: usize,
         shell_requests: usize,
+        exec_requests: usize,
     }
 
     type SeenLog = Arc<Mutex<ServerSeen>>;
@@ -9835,6 +10112,23 @@ mod shared_connection_e2e_tests {
         ) -> Result<(), Self::Error> {
             lock(&self.seen).pty_requests += 1;
             session.channel_success(channel)
+        }
+
+        /// Echoes the command back on stdout and exits 3.
+        async fn exec_request(
+            &mut self,
+            channel: ChannelId,
+            data: &[u8],
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            lock(&self.seen).exec_requests += 1;
+            session.channel_success(channel)?;
+            let mut output = b"ran:".to_vec();
+            output.extend_from_slice(data);
+            session.data(channel, output)?;
+            session.eof(channel)?;
+            session.exit_status_request(channel, 3)?;
+            session.close(channel)
         }
 
         /// A shell that prints a prompt and stays open until it reads "exit".
@@ -10094,6 +10388,116 @@ mod shared_connection_e2e_tests {
             drive(shell, NovaSshEventKind::Closed, |_| {});
             assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
         }
+    }
+
+    #[test]
+    fn an_exec_rides_the_shared_connection_beside_a_shell() {
+        let (port, seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+        let command = CString::new("ntilde-mux proxy --stdio").unwrap();
+
+        let connection = nova_ssh_connect_shared(&args);
+        // Queued before the login, like a shell: it waits for the connection.
+        let exec = nova_ssh_open_exec(connection, &args, command.as_ptr());
+        assert_ne!(0, exec);
+        drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+        let shell = nova_ssh_open_shell(connection, &args);
+        drive(shell, NovaSshEventKind::Data, |_| {});
+
+        let events = drive(exec, NovaSshEventKind::Closed, |_| {});
+        assert_eq!(None, error_of(&events));
+        assert_eq!(b"ran:ntilde-mux proxy --stdio".to_vec(), data_of(&events));
+        let exit = events
+            .iter()
+            .find(|event| event.kind == NovaSshEventKind::ExitStatus as u32)
+            .expect("the exec's exit status");
+        assert_eq!(br#"{"exit_status":3}"#.to_vec(), exit.payload);
+        assert!(
+            events.iter().any(|event| event.kind == NovaSshEventKind::Eof as u32),
+            "an exec reports its EOF, as nova_ssh_exec does: {events:?}"
+        );
+
+        // The shell outlives the exec on the same connection.
+        write(shell, b"after\n");
+        assert_eq!(b"after\n".to_vec(), data_of(&drive(shell, NovaSshEventKind::Data, |_| {})));
+        {
+            let seen = lock(&seen);
+            assert_eq!(1, seen.connections);
+            assert_eq!(1, seen.password_attempts);
+            assert_eq!(1, seen.exec_requests);
+        }
+
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(exec));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+        drive(shell, NovaSshEventKind::Closed, |_| {});
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
+    }
+
+    #[test]
+    fn open_exec_rejects_a_blank_command() {
+        let (port, _seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+        let blank = CString::new("  ").unwrap();
+
+        let connection = nova_ssh_connect_shared(&args);
+        assert_eq!(0, nova_ssh_open_exec(connection, &args, blank.as_ptr()));
+        assert_eq!(0, nova_ssh_open_exec(connection, &args, ptr::null()));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+    }
+
+    fn take_response(response: *mut c_char) -> serde_json::Value {
+        assert!(!response.is_null());
+        let text = unsafe { CStr::from_ptr(response) }.to_str().unwrap().to_owned();
+        nova_ssh_string_free(response);
+        serde_json::from_str(&text).unwrap()
+    }
+
+    #[test]
+    fn shared_sftp_on_a_connection_that_is_gone_says_closed_so_the_caller_connects_itself() {
+        let (port, _seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+        let connection = nova_ssh_connect_shared(&args);
+        drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+
+        let transfer = CString::new(
+            r#"{"direction":"download","kind":"file","localPath":"/tmp/x","remotePath":"/tmp/y"}"#,
+        )
+        .unwrap();
+        let mut response = ptr::null_mut();
+        let rc = nova_ssh_sftp_transfer_shared(
+            connection,
+            transfer.as_ptr(),
+            None,
+            ptr::null_mut(),
+            &mut response,
+        );
+        assert_eq!(NOVA_SSH_RESULT_CLOSED, rc);
+        assert_eq!("closed", take_response(response)["status"]);
+
+        let list = CString::new(r#"{"path":"~"}"#).unwrap();
+        let mut response = ptr::null_mut();
+        let rc = nova_ssh_sftp_list_directory_shared(connection, list.as_ptr(), &mut response);
+        assert_eq!(NOVA_SSH_RESULT_CLOSED, rc);
+        assert_eq!("closed", take_response(response)["status"]);
+    }
+
+    #[test]
+    fn shared_sftp_rejects_an_incomplete_request_before_reaching_the_connection() {
+        let transfer = CString::new(r#"{"direction":"download","kind":"file","localPath":" ","remotePath":"/y"}"#).unwrap();
+        let mut response = ptr::null_mut();
+        let rc = nova_ssh_sftp_transfer_shared(0, transfer.as_ptr(), None, ptr::null_mut(), &mut response);
+        assert_eq!(NOVA_SSH_RESULT_INVALID_ARGUMENT, rc);
+        assert_eq!("invalid-argument", take_response(response)["status"]);
+
+        let list = CString::new(r#"{"path":""}"#).unwrap();
+        let mut response = ptr::null_mut();
+        let rc = nova_ssh_sftp_list_directory_shared(0, list.as_ptr(), &mut response);
+        assert_eq!(NOVA_SSH_RESULT_INVALID_ARGUMENT, rc);
+        assert_eq!("invalid-argument", take_response(response)["status"]);
     }
 
     #[test]

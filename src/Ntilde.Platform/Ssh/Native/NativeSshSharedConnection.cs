@@ -34,6 +34,8 @@ internal sealed class NativeSshSharedConnection
     private Timer? _persistTimer;
     private bool _connected;
     private bool _closed;
+    private string? _failure;
+    private readonly List<string> _setupWarnings = [];
 
     internal NativeSshSharedConnection(
         NativeSshConnectionPool pool,
@@ -58,8 +60,9 @@ internal sealed class NativeSshSharedConnection
         {
             if (profile.Forwards.Count != 0)
             {
-                // The forwards are the connection's, so their warnings go to every tab on it.
-                _forwards = new NativePortForwardSession(_handle, profile.Forwards, interop, log, Warn);
+                // The forwards are the connection's, so their warnings go to every tab on it. One that cannot be bound
+                // (a busy port) is left out rather than failing the connection, and every tab that joins later is told.
+                _forwards = new NativePortForwardSession(_handle, profile.Forwards, interop, log, Warn, continueOnBindFailure: true);
             }
         }
         catch
@@ -77,10 +80,11 @@ internal sealed class NativeSshSharedConnection
     /// The tab that opens a connection, as the connection needs it: the native layer it runs on, who answers its
     /// prompts and under which session id, and where it logs.
     /// </summary>
+    /// <param name="SessionId">The tab's <c>ActiveSshSessionRegistry</c> session, or null for an exec, which keeps none.</param>
     internal sealed record Opener(
         INativeSshInterop Interop,
         ISshInteractionHandler? InteractionHandler,
-        Guid SessionId,
+        Guid? SessionId,
         Action<string> Log);
 
     public string Key { get; }
@@ -88,15 +92,61 @@ internal sealed class NativeSshSharedConnection
     /// <summary>Opens a shell for one tab. Throws <see cref="InvalidOperationException"/> once the connection has ended.</summary>
     public NovaSshSafeHandle OpenShell(NativeSshConnectionOptions options)
     {
-        lock (_gate)
+        ThrowIfClosed();
+        return _interop.OpenShell(_handle, options);
+    }
+
+    /// <summary>Runs <paramref name="command"/> with no PTY. Throws <see cref="InvalidOperationException"/> once the connection has ended.</summary>
+    public NovaSshSafeHandle OpenExec(NativeSshConnectionOptions options, string command)
+    {
+        ThrowIfClosed();
+        return _interop.OpenExec(_handle, options, command);
+    }
+
+    /// <summary>An SFTP transfer on a channel of this connection; false when it has ended (see <see cref="INativeSshInterop.TryRunSftpTransferShared"/>).</summary>
+    public bool TryRunSftpTransfer(NativeSftpTransferOptions transfer, Action<NativeSftpTransferProgress>? progress, CancellationToken cancellationToken) =>
+        !IsClosed && _interop.TryRunSftpTransferShared(_handle, transfer, progress, cancellationToken);
+
+    /// <summary>A listing on a channel of this connection; null when it has ended.</summary>
+    public IReadOnlyList<NativeRemotePathEntry>? TryListRemoteDirectory(string remotePath, CancellationToken cancellationToken) =>
+        IsClosed ? null : _interop.TryListRemoteDirectoryShared(_handle, remotePath, cancellationToken);
+
+    /// <summary>Logged in, and not closed: what a caller that cannot answer a prompt (SFTP) waits for before it joins.</summary>
+    public bool IsConnected
+    {
+        get
         {
-            if (_closed)
+            lock (_gate)
             {
-                throw new InvalidOperationException("The shared native SSH connection has closed.");
+                return _connected && !_closed;
             }
         }
+    }
 
-        return _interop.OpenShell(_handle, options);
+    /// <summary>
+    /// Why the connection ended, when the managed side ended it: the prompt handler threw. The native side then reports
+    /// only that the connection closed, so a channel on it reports this instead, as an unshared exec reports its own
+    /// handler's failure. Null otherwise: the native side's own error already names the cause.
+    /// </summary>
+    public string? Failure => Volatile.Read(ref _failure);
+
+    private bool IsClosed
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _closed;
+            }
+        }
+    }
+
+    private void ThrowIfClosed()
+    {
+        if (IsClosed)
+        {
+            throw new InvalidOperationException("The shared native SSH connection has closed.");
+        }
     }
 
     /// <summary>
@@ -108,6 +158,8 @@ internal sealed class NativeSshSharedConnection
     /// <summary>A new lease, or null when the connection has already closed. Cancels a pending ControlPersist close.</summary>
     internal Lease? TryAddLease(Action<string> warn, TimeSpan persist)
     {
+        Lease lease;
+        string[] setupWarnings;
         lock (_gate)
         {
             if (_closed)
@@ -119,10 +171,18 @@ internal sealed class NativeSshSharedConnection
             _persistTimer = null;
             // The profile as the latest tab saw it decides how long the connection lingers.
             _persist = persist;
-            var lease = new Lease(this, warn);
+            lease = new Lease(this, warn);
             _leases.Add(lease);
-            return lease;
+            setupWarnings = [.. _setupWarnings];
         }
+
+        // Outside the lock: a tab's warn writes to its terminal, which takes locks of its own.
+        foreach (string message in setupWarnings)
+        {
+            lease.Warn(message);
+        }
+
+        return lease;
     }
 
     private void Release(Lease lease)
@@ -155,6 +215,12 @@ internal sealed class NativeSshSharedConnection
         Lease[] leases;
         lock (_gate)
         {
+            // Before the first lease exists, only setup warns: a forward left out for the connection's whole life.
+            if (_leases.Count == 0)
+            {
+                _setupWarnings.Add(message);
+            }
+
             leases = [.. _leases];
         }
 
@@ -275,6 +341,7 @@ internal sealed class NativeSshSharedConnection
             if (!_pollCts.IsCancellationRequested)
             {
                 _log($"[NativeSshSharedConnection] target={_target} poll loop failed: {ex.Message}");
+                Volatile.Write(ref _failure, $"the native session failed: {ex.Message}");
                 Close(fromPollLoop: true);
             }
         }

@@ -216,11 +216,15 @@ matrix.
 backends. With it on, the first tab to a profile logs in, and every later tab or
 split of that profile opens on the same connection: no new handshake and no second
 password or key prompt. The profile's port forwards belong to that connection, so
-they are set up once and stay up while any of its tabs is open. When the last tab
+they are set up once and stay up while any of its tabs is open. A forward whose local port is
+already taken is left out with a warning in each tab, as OpenSSH does, rather than stopping the
+tabs from opening. When the last tab
 closes, the connection closes too, or after **ControlPersist (sec)** when that is
 above 0, so a tab you reopen within that time connects at once. One connection
 carries all of a profile's tabs, so when it drops, they all drop together. Only
-tabs of the same profile share; SFTP transfers still log in on their own.
+tabs of the same profile share. On the native backend, the profile's persistent tabs (see
+chapter 12), its *Remote Files* listings, path completion and SFTP transfers use the same
+connection too; a transfer or listing that finds no connection up logs in on its own, as before.
 
 A profile can also keep its tabs' shells running on the host across network drops,
 with both backends: see [Remote SSH tabs that keep running](#126-remote-ssh-tabs-that-keep-running)
@@ -886,9 +890,10 @@ usual prompts. This happens for:
   the old host, and *Remote Files*, its transfers and the palette's SFTP commands are refused there
   with "Not available while this tab still runs on the host it was opened on — reopen the tab to use
   the new host" (an open *Remote Files* sidebar closes).
-- **No port forwards**: the profile's forwards are not set up on a persistent tab. Use a plain SSH
-  tab of the same host (from a profile with the checkbox off) for those. The connection editor says
-  so under the checkbox.
+- **No port forwards**, unless the profile uses the native backend with connection multiplexing on:
+  then a persistent tab rides the profile's shared connection, which carries its forwards, as a plain
+  tab's does (see [SSH backends](#ssh-backends)). Otherwise use a plain SSH tab of the same host (from
+  a profile with the checkbox off) for those. The connection editor says so under the checkbox.
 
 **Limitations:**
 
