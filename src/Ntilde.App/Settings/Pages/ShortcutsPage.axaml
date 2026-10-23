@@ -14,7 +14,7 @@
             <StackPanel Spacing="10" Margin="0,0,0,16">
                 <TextBox Name="ShortcutSearchInput" PlaceholderText="Search commands, categories, or scopes"/>
                 <TextBlock Name="ShortcutValidationMessage"
-                           Foreground="{DynamicResource NtRed}"
+                           Foreground="{DynamicResource NtError}"
                            FontSize="12"
                            IsVisible="False"
                            TextWrapping="Wrap"/>

@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Settings.Pages;
 
@@ -529,9 +530,9 @@ public partial class TabsAndTitleBarPage : UserControl, ISettingsPage, IDisposab
 
     private Border SampleTab(string title, bool active) => new()
     {
-        Background = this.FindPaletteBrush(active ? "NtPanel" : "NtPanelAlt"),
+        Background = this.FindPaletteBrush(active ? ThemeKeys.Panel : ThemeKeys.PanelAlt),
         CornerRadius = new CornerRadius(4),
         Padding = new Thickness(8, 2),
-        Child = new TextBlock { Text = title, FontSize = 11, Foreground = this.FindPaletteBrush(active ? "NtFg" : "NtFg3") },
+        Child = new TextBlock { Text = title, FontSize = 11, Foreground = this.FindPaletteBrush(active ? ThemeKeys.Fg : ThemeKeys.Fg3) },
     };
 }

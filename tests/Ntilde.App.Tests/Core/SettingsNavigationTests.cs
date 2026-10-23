@@ -6,6 +6,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Ntilde.Settings;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Tests.Core;
 
@@ -27,7 +28,7 @@ public sealed class SettingsNavigationTests
         var dim = new SolidColorBrush(Colors.Blue);
         var row = new Border { Background = Brushes.Red };
         var host = new Window { Content = row };
-        host.Resources["NtBlueDim"] = dim;
+        host.Resources[ThemeKeys.AccentDim] = dim;
         try
         {
             host.Show();
@@ -48,7 +49,7 @@ public sealed class SettingsNavigationTests
     {
         var image = new Image();
         var host = new Window { Content = image };
-        host.Resources["NtBlueDim"] = new SolidColorBrush(Colors.Blue);
+        host.Resources[ThemeKeys.AccentDim] = new SolidColorBrush(Colors.Blue);
         try
         {
             host.Show();
@@ -74,9 +75,9 @@ public sealed class SettingsNavigationTests
         var brush = new SolidColorBrush(Colors.Green);
         var child = new Border();
         var host = new Window { Content = child };
-        host.Resources["NtPanel"] = brush;
+        host.Resources[ThemeKeys.Panel] = brush;
 
-        Assert.Same(brush, child.FindPaletteBrush("NtPanel"));
+        Assert.Same(brush, child.FindPaletteBrush(ThemeKeys.Panel));
     }
 
     [AvaloniaFact]
@@ -85,7 +86,7 @@ public sealed class SettingsNavigationTests
         var dim = new SolidColorBrush(Colors.Blue);
         var row = new Border { Background = Brushes.Red };
         var host = new Window { Content = row };
-        host.Resources["NtBlueDim"] = dim;
+        host.Resources[ThemeKeys.AccentDim] = dim;
         try
         {
             host.Show();
@@ -110,7 +111,7 @@ public sealed class SettingsNavigationTests
         var dim = new SolidColorBrush(Colors.Blue);
         var row = new Border { Background = Brushes.Red };
         var host = new Window { Content = row };
-        host.Resources["NtBlueDim"] = dim;
+        host.Resources[ThemeKeys.AccentDim] = dim;
         try
         {
             host.Show();

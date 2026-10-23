@@ -22,7 +22,7 @@
                     <Separator/>
                     <TextBlock Text="Import from:" Classes="RowDesc"/>
                     <Button Name="BtnImportWT" Classes="Pill" Content="Windows Terminal" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
-                    <TextBlock Name="ImportStatusText" Text="" Foreground="{DynamicResource NtGreen}" FontSize="11" HorizontalAlignment="Center"/>
+                    <TextBlock Name="ImportStatusText" Text="" Foreground="{DynamicResource NtSuccess}" FontSize="11" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>

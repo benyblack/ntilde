@@ -16,6 +16,7 @@ using Ntilde.Services.Ssh;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.VT;
 using System;
 using System.Collections.Generic;
@@ -766,7 +767,7 @@ namespace Ntilde
                         HighlightStart = result.TitleMatchStart,
                         HighlightLength = result.TitleMatchLength,
                         HighlightFontWeight = FontWeight.Bold,
-                        Foreground = this.FindPaletteBrush("NtFg"),
+                        Foreground = this.FindPaletteBrush(ThemeKeys.Fg),
                         FontSize = 13,
                     },
                 },
@@ -898,18 +899,14 @@ namespace Ntilde
             _session.RaiseSnippetsChanged();
         }
 
+        /// <summary>
+        /// Applies <paramref name="theme"/> (default: the active theme) app-wide. The window has no
+        /// palette of its own: it follows ThemeService like every other surface, which is also what
+        /// lets it track a theme switch made elsewhere (the command palette, Cancel) while it is open.
+        /// </summary>
         private void ApplyTheme(TerminalTheme? theme = null)
         {
-            theme ??= _session.Settings.ActiveTheme;
-
-            var contrastColor = theme.GetContrastForeground();
-            ThemePaletteResources.Apply(Resources, theme);
-
-            Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            Foreground = new SolidColorBrush(contrastColor.ToAvaloniaColor());
-
-            // Set the window theme variant so standard controls (ComboBox, ScrollBar, etc.) adapt
-            RequestedThemeVariant = contrastColor == TermColor.Black ? ThemeVariant.Light : ThemeVariant.Dark;
+            ThemeService.Apply(theme ?? _session.Settings.ActiveTheme, _session.Settings.WindowOpacity);
         }
     }
 }

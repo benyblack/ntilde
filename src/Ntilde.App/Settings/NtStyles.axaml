@@ -45,13 +45,13 @@
         <Setter Property="CornerRadius" Value="5"/>
         <Setter Property="Padding" Value="10,6"/>
         <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
-        <Setter Property="CaretBrush" Value="{DynamicResource NtBlue}"/>
-        <Setter Property="SelectionBrush" Value="{DynamicResource NtBlueDim}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource NtAccent}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource NtAccentDim}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="MinHeight" Value="32"/>
     </Style>
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
     </Style>
     <Style Selector="NumericUpDown">
         <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
@@ -76,7 +76,7 @@
 
     <!-- Primary action button -->
     <Style Selector="Button.Primary">
-        <Setter Property="Background" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Background" Value="{DynamicResource NtAccent}"/>
         <Setter Property="Foreground" Value="{DynamicResource NtAccentFg}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontSize" Value="13"/>
@@ -109,16 +109,16 @@
 
     <!-- Danger button (delete) -->
     <Style Selector="Button.Danger">
-        <Setter Property="Background" Value="#3a1a1d"/>
-        <Setter Property="BorderBrush" Value="#5c2329"/>
+        <Setter Property="Background" Value="{DynamicResource NtErrorDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtErrorBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource NtRed}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtError}"/>
         <Setter Property="CornerRadius" Value="5"/>
         <Setter Property="Padding" Value="14,6"/>
         <Setter Property="FontSize" Value="13"/>
     </Style>
     <Style Selector="Button.Danger:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#4a2024"/>
+        <Setter Property="Background" Value="{DynamicResource NtErrorBorder}"/>
     </Style>
 
     <!-- Icon-only ghost button -->
@@ -165,8 +165,8 @@
         <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
     </Style>
     <Style Selector="ListBox.SideNav ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
         <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
     <Style Selector="ListBox.SideNav ListBoxItem:selected">
@@ -197,7 +197,7 @@
         <Setter Property="FontSize" Value="12"/>
     </Style>
     <Style Selector="ListBox.SideNav ListBoxItem:selected TextBlock.NavGlyph">
-        <Setter Property="Foreground" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtAccent}"/>
     </Style>
 
     <!-- Toggle-pill restyle for CheckBoxes that should look like toggles.
@@ -222,7 +222,7 @@
                             Margin="8,0,0,0">
                         <Ellipse Name="PART_Knob"
                                  Width="16" Height="16"
-                                 Fill="White"
+                                 Fill="{DynamicResource NtFg}"
                                  HorizontalAlignment="Left"
                                  Margin="2,0,0,0"/>
                     </Border>
@@ -231,16 +231,17 @@
         </Setter>
     </Style>
     <Style Selector="CheckBox.Toggle:checked /template/ Border#PART_Track">
-        <Setter Property="Background" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Background" Value="{DynamicResource NtAccent}"/>
     </Style>
     <Style Selector="CheckBox.Toggle:checked /template/ Ellipse#PART_Knob">
+        <Setter Property="Fill" Value="{DynamicResource NtAccentFg}"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
         <Setter Property="Margin" Value="0,0,2,0"/>
     </Style>
 
     <!-- Slider -->
     <Style Selector="Slider">
-        <Setter Property="Foreground" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtAccent}"/>
         <Setter Property="Background" Value="{DynamicResource NtHairlineStrong}"/>
         <Setter Property="MinHeight" Value="22"/>
     </Style>
@@ -290,7 +291,7 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="0"/>
-        <Setter Property="Foreground" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Foreground" Value="{DynamicResource NtAccent}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -394,8 +395,8 @@
         <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
     </Style>
     <Style Selector="ToggleButton.Segment:checked /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
         <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
     </Style>
     <Style Selector="ToggleButton.Segment:disabled /template/ ContentPresenter">
@@ -444,8 +445,8 @@
         <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
     </Style>
     <Style Selector="ListBox.SearchResults ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource NtBlueDim}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource NtBlue}"/>
+        <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
         <Setter Property="BorderThickness" Value="2,0,0,0"/>
     </Style>
 </Styles>

@@ -17,6 +17,9 @@
             <core:RunningConverter x:Key="RunningConverter"/>
             <core:StateBrushConverter x:Key="StateBrushConverter"/>
 
+            <!-- The UI's monospace face. A font, not a colour, so it is not one of ThemeService's tokens. -->
+            <FontFamily x:Key="NtMono">JetBrains Mono, Cascadia Mono, Consolas, Menlo, monospace</FontFamily>
+
             <x:Double x:Key="NtildeCaptionButtonWidth">45</x:Double>
             <x:Double x:Key="NtildeCaptionButtonHeight">30</x:Double>
 

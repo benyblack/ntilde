@@ -6,16 +6,16 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Settings;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Tests.Core;
 
 public sealed class SettingRowTests
 {
-    /// <summary>Hosts <paramref name="content"/> the way a Settings page is hosted: the palette and NtStyles in reach.</summary>
+    /// <summary>Hosts <paramref name="content"/> the way a Settings page is hosted: NtStyles in reach, and the app-wide tokens above it.</summary>
     private static Window Host(Control content)
     {
         var host = new Window { Width = 640, Height = 400, Content = content };
-        host.Resources.MergedDictionaries.Add(new NtPalette());
         host.Styles.Add(new NtStyles());
         host.Show();
         Dispatcher.UIThread.RunJobs();
@@ -132,7 +132,7 @@ public sealed class SettingRowTests
         var host = Host(row);
         try
         {
-            Assert.Same(host.FindResource("NtHairline"), row.BorderBrush);
+            Assert.Same(host.FindResource(ThemeKeys.Hairline), row.BorderBrush);
         }
         finally
         {
@@ -185,7 +185,7 @@ public sealed class SettingRowTests
             Dispatcher.UIThread.RunJobs();
 
             var root = row.GetVisualChildren().OfType<Border>().First();
-            Assert.Same(host.FindResource("NtBlueDim"), root.Background);
+            Assert.Same(host.FindResource(ThemeKeys.AccentDim), root.Background);
         }
         finally
         {

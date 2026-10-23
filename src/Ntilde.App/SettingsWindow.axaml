@@ -6,17 +6,9 @@
         Width="880" Height="620"
         MinWidth="780" MinHeight="520"
         WindowStartupLocation="CenterOwner"
-        Background="#16181d"
-        Foreground="#e6e8ec"
+        Background="{DynamicResource NtWindowBg}"
+        Foreground="{DynamicResource NtFg}"
         FontFamily="Inter, Segoe UI, system-ui, sans-serif">
-
-    <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <settings:NtPalette/>
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Window.Resources>
 
     <Window.Styles>
         <settings:NtStyles/>
@@ -28,8 +20,8 @@
         <Grid Grid.Row="0" ColumnDefinitions="208,*">
 
             <Border Grid.Column="0"
-                    Background="{StaticResource NtChromeBg}"
-                    BorderBrush="{StaticResource NtHairline}"
+                    Background="{DynamicResource NtChromeBg}"
+                    BorderBrush="{DynamicResource NtHairline}"
                     BorderThickness="0,0,1,0">
                 <DockPanel>
                     <TextBox Name="SettingsSearchBox"
@@ -78,14 +70,14 @@
 
         <!-- ╭───────── Footer ─────────╮ -->
         <Border Grid.Row="1"
-                Background="{StaticResource NtChromeBg}"
-                BorderBrush="{StaticResource NtHairline}"
+                Background="{DynamicResource NtChromeBg}"
+                BorderBrush="{DynamicResource NtHairline}"
                 BorderThickness="0,1,0,0"
                 Padding="16,10">
             <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Grid.Column="0"
                            Text="Changes apply live."
-                           Foreground="{StaticResource NtFg3}"
+                           Foreground="{DynamicResource NtFg3}"
                            FontSize="12"
                            VerticalAlignment="Center"/>
                 <Button Name="BtnCancel" Grid.Column="1" Classes="Pill" Content="Cancel" Width="100" Margin="0,0,8,0"
