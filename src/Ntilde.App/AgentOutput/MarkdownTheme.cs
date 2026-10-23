@@ -2,27 +2,18 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.AgentOutput;
 
 /// <summary>Resolved brush set for one render pass.</summary>
 /// <remarks>
 /// Extracted from <see cref="MarkdownRenderer"/> so fence-body handlers in sibling files can
-/// take it. Resolution is unchanged: prefer the app's <c>Nt*</c> theme brushes, fall back to the
-/// fixed palette the pane's other hand-styled surfaces hard-code.
+/// take it. Resolves the app-wide theme tokens. Before theme v2 it asked for <c>Nt*</c> keys that
+/// nothing in its tree defined, so it always fell back to a fixed dark palette.
 /// </remarks>
 internal sealed class MarkdownTheme
 {
-    private static readonly IBrush FallbackForeground = new ImmutableSolidColorBrush(Color.FromRgb(0xF3, 0xF6, 0xFA));
-    private static readonly IBrush FallbackSecondary = new ImmutableSolidColorBrush(Color.FromRgb(0x96, 0xA0, 0xAE));
-    private static readonly IBrush FallbackCodeBackground = new ImmutableSolidColorBrush(Color.FromRgb(0x16, 0x18, 0x1C));
-    private static readonly IBrush FallbackPanel = new ImmutableSolidColorBrush(Color.FromRgb(0x1B, 0x1D, 0x21));
-    private static readonly IBrush FallbackHairline = new ImmutableSolidColorBrush(Color.FromRgb(0x2A, 0x2F, 0x35));
-    private static readonly IBrush FallbackAccent = new ImmutableSolidColorBrush(Color.FromRgb(0x4C, 0x8B, 0xD8));
-    private static readonly IBrush FallbackAdded = new ImmutableSolidColorBrush(Color.FromRgb(0x6F, 0xBF, 0x73));
-    private static readonly IBrush FallbackRemoved = new ImmutableSolidColorBrush(Color.FromRgb(0xD9, 0x6C, 0x6C));
-    private static readonly IBrush FallbackHunk = new ImmutableSolidColorBrush(Color.FromRgb(0xD6, 0xB0, 0x5C));
-
     internal required IBrush Foreground { get; init; }
 
     internal required IBrush Secondary { get; init; }
@@ -48,24 +39,25 @@ internal sealed class MarkdownTheme
     {
         return new MarkdownTheme
         {
-            Foreground = Find(anchor, "NtFg", FallbackForeground),
-            Secondary = Find(anchor, "NtFg3", FallbackSecondary),
-            CodeBackground = Find(anchor, "NtPanelAlt", FallbackCodeBackground),
-            PanelBackground = Find(anchor, "NtPanel", FallbackPanel),
-            Hairline = Find(anchor, "NtHairline", FallbackHairline),
-            Accent = Find(anchor, "NtBlue", FallbackAccent),
-            Added = Find(anchor, "NtGreen", FallbackAdded),
-            Removed = Find(anchor, "NtRed", FallbackRemoved),
-            Hunk = Find(anchor, "NtYellow", FallbackHunk),
+            Foreground = Find(anchor, ThemeKeys.Fg),
+            Secondary = Find(anchor, ThemeKeys.Fg3),
+            CodeBackground = Find(anchor, ThemeKeys.PanelAlt),
+            PanelBackground = Find(anchor, ThemeKeys.Panel),
+            Hairline = Find(anchor, ThemeKeys.Hairline),
+            Accent = Find(anchor, ThemeKeys.Link),
+            Added = Find(anchor, ThemeKeys.DiffAdded),
+            Removed = Find(anchor, ThemeKeys.DiffRemoved),
+            Hunk = Find(anchor, ThemeKeys.DiffHunk),
         };
     }
 
-    private static IBrush Find(StyledElement anchor, string key, IBrush fallback)
+    private static IBrush Find(StyledElement anchor, string key)
     {
-        // Control themes put brushes in as object values; anything that is not a brush
-        // (an unexpected override) degrades to the fixed fallback rather than crashing.
+        // ThemeService installs every token at app start, so a miss means the anchor is not in a
+        // tree yet. Fall back to the current token colour rather than a hardcoded palette. An
+        // unexpected non-brush override also degrades here instead of crashing.
         return anchor.TryFindResource(key, out object? value) && value is IBrush brush
             ? brush
-            : fallback;
+            : new ImmutableSolidColorBrush(ThemeService.Current[key]);
     }
 }
