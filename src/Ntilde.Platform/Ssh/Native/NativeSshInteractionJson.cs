@@ -82,7 +82,8 @@ public static class NativeSshInteractionJson
             Host = model.Host,
             Port = model.Port,
             User = model.User,
-            IsJumpHop = model.IsJumpHop
+            IsJumpHop = model.IsJumpHop,
+            FollowsRefusal = model.FollowsRefusal
         };
     }
 
@@ -144,6 +145,9 @@ internal abstract class NativeAuthHopPayload
 internal sealed class NativeTextPromptPayload : NativeAuthHopPayload
 {
     public string Prompt { get; set; } = string.Empty;
+
+    /// <summary>The server just refused the password it was sent; absent from older payloads, so false.</summary>
+    public bool FollowsRefusal { get; set; }
 }
 
 internal sealed class NativeKeyboardInteractivePromptPayload : NativeAuthHopPayload

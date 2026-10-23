@@ -29,8 +29,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <para>
 /// A remembered secret that may have been refused is forgotten, never replayed: replaying a stale
 /// password every few seconds is a lockout waiting to happen. The native layer asks for a password once
-/// and then falls to keyboard-interactive, so a refusal shows as another auth prompt after it, or as the
-/// attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>. Once the native transport
+/// more after a refusal, with a prompt that says so (<see cref="SshInteractionRequest.FollowsRefusal"/>; only a user
+/// answers it), or falls to keyboard-interactive. Either way a refusal still shows as another auth prompt after it,
+/// or as the attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>. Once the native transport
 /// said sign-in was over (<see cref="Attempt.Authenticated"/>), a failure counts against nothing it offered.
 /// </para>
 /// <para>
@@ -617,7 +618,9 @@ internal sealed class RemoteMuxInteractionHandler
 
             if (IsSecretPrompt(kind))
             {
-                if (Recall(kind) is { } remembered)
+                // A retry prompt follows a refusal of what this attempt just sent (from memory or the saved password):
+                // neither store is read for it, so only a user can answer it.
+                if (!request.FollowsRefusal && Recall(kind) is { } remembered)
                 {
                     Track(new Answer(kind, remembered, FromMemory: true, Typed: false, request));
                     if (kind == SshInteractionKind.Password && User is null) NoteStoredPassword(remembered, fromVault: false);
@@ -627,12 +630,13 @@ internal sealed class RemoteMuxInteractionHandler
                 if (User is not { } user)
                 {
                     // The profile's saved password, once, with no UI: the user's choice for automatic reconnects.
-                    if (kind == SshInteractionKind.Password && TakeSavedPassword() is { } saved) return SshInteractionResponse.FromSecret(saved);
+                    if (kind == SshInteractionKind.Password && !request.FollowsRefusal && TakeSavedPassword() is { } saved) return SshInteractionResponse.FromSecret(saved);
 
                     // A password prompt is aborted, not cancelled: a cancel would stop sign-in, and the abort keeps an
-                    // automatic attempt from looking like the user's own cancel. A passphrase
-                    // is: it only unlocks a local key, so nothing reaches the server, and the agent or another key may
-                    // still get in. But it is recorded, so an attempt that then fails SSH reads as needing the user.
+                    // automatic attempt from looking like the user's own cancel. A passphrase is cancelled: it only
+                    // unlocks a local key, so nothing reaches the server. The native layer then ends sign-in, since a
+                    // declined passphrase fails the key's auth outright, so no other key or the agent is tried. It is
+                    // recorded, so an attempt that then fails SSH reads as needing the user.
                     if (kind == SshInteractionKind.Password) throw Abort(kind);
                     Decline(kind);
                     return SshInteractionResponse.Cancel();
@@ -664,9 +668,9 @@ internal sealed class RemoteMuxInteractionHandler
                 return SshInteractionResponse.Cancel();
             }
 
-            // A keyboard-interactive round with questions has no answer here; one with none (some servers
-            // send an empty round last) is answered with nothing, as the protocol expects. Not a cancel: a cancel
-            // now stops sign-in.
+            // A keyboard-interactive round with questions has no answer here. One with none (some servers send an
+            // empty round last) is answered with nothing, as the protocol expects: not a cancel, which now stops
+            // sign-in.
             return kind == SshInteractionKind.KeyboardInteractive && request.KeyboardPrompts.Count > 0
                 ? throw Abort(kind)
                 : SshInteractionResponse.FromKeyboardResponses();

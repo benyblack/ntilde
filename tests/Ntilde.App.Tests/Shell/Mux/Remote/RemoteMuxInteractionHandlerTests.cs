@@ -11,7 +11,8 @@ namespace Ntilde.Tests.Shell.Mux.Remote;
 /// memory for the host's lifetime. An automatic attempt never asks: it answers from that memory, accepts
 /// only a host key already trusted, and cancels everything else so it fails quietly. A remembered secret
 /// that may have been refused is forgotten, never replayed (review fix round 1): the native layer asks
-/// for a password once, then falls to keyboard-interactive, so "asked again" never happens.
+/// once more after a refusal, with a prompt that says so (<c>FollowsRefusal</c>), or falls to
+/// keyboard-interactive; either way the refusal still shows as another auth prompt after it.
 /// </summary>
 public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 {
@@ -85,6 +86,22 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         Assert.False(handler.Remembers(SshInteractionKind.Password));
         await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => handler.BeginAttempt(interactive: false).HandleAsync(Password, Ct));
+    }
+
+    /// <summary>The server just refused the password it was sent: the one the host remembers must not go out again.</summary>
+    [Fact]
+    public async Task A_retry_prompt_is_never_answered_from_memory()
+    {
+        var user = new ScriptedUser(SshInteractionResponse.FromSecret("old"), SshInteractionResponse.FromSecret("typed-again"));
+        RemoteMuxInteractionHandler handler = Handler(user);
+        await RememberAsync(handler, Password);
+        var retry = new SshInteractionRequest { Kind = SshInteractionKind.Password, Prompt = "Password:", FollowsRefusal = true };
+
+        await Assert.ThrowsAsync<RemoteMuxPromptAbortedException>(() => handler.BeginAttempt(interactive: false).HandleAsync(retry, Ct));
+        SshInteractionResponse answered = await handler.BeginAttempt(interactive: true).HandleAsync(retry, Ct);
+
+        Assert.Equal("typed-again", answered.Secret);
+        Assert.Equal(2, user.Asked.Count);
     }
 
     [Fact]

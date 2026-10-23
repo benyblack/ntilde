@@ -47,6 +47,17 @@ public sealed class NativeSshInteractionJsonTests
         Assert.Equal("target.internal", request.Host);
         Assert.Equal("nova", request.User);
         Assert.False(request.IsJumpHop);
+        Assert.False(request.FollowsRefusal);
+    }
+
+    [Fact]
+    public void ParseRequest_PasswordPrompt_CarriesFollowsRefusal()
+    {
+        SshInteractionRequest request = NativeSshInteractionJson.ParseRequest(
+            NativeSshEventKind.PasswordPrompt,
+            Encoding.UTF8.GetBytes("""{"prompt":"Password: ","host":"h","port":22,"user":"u","isJumpHop":false,"followsRefusal":true}"""));
+
+        Assert.True(request.FollowsRefusal);
     }
 
     [Fact]
