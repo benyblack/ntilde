@@ -611,6 +611,34 @@ public class AgentObserveIndicatorTests : IDisposable
             }));
     }
 
+    [Fact]
+    public void The_tooltip_names_a_pane_an_agent_closed()
+    {
+        var t1 = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 10, 23, 14, 30, 0, TimeSpan.Zero);
+        string Local(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(
+            $"An agent closed build at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", null, t1, Closed: true) }));
+
+        Assert.Equal(
+            $"An agent is reading now.\nAn agent closed build › logs at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", "logs", t1, Closed: true) }, active: true));
+
+        Assert.Equal(
+            "An agent is reading now.\n"
+            + "Agents typed into or closed:\n"
+            + $"- server › api at {Local(t2)}\n"
+            + $"- build closed at {Local(t1)}\n"
+            + "Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[]
+            {
+                new MainWindow.FocusWriteMark("server", "api", t2),
+                new MainWindow.FocusWriteMark("build", null, t1, Closed: true),
+            }, active: true));
+    }
+
     [AvaloniaFact]
     public void A_write_to_a_background_tab_is_collected_in_focus_mode()
     {

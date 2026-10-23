@@ -279,6 +279,98 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement();
         Assert.False(focused is Avalonia.Visual v && Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<TerminalPane>(v, true) == y,
             "keyboard focus moved into the sibling pane");
+        // The tab survives, so nothing forces the user out of focus mode.
+        Assert.True(window.IsFocusMode);
+    }
+
+    // Final review C1 / R13: a closed pane takes its agent registration with it, so the strip light keeps its own mark of
+    // the close; nothing else on screen in focus mode would say a background tab went.
+
+    [AvaloniaFact]
+    public async Task An_agent_close_in_focus_mode_lights_the_strip_until_focus_mode_is_left()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, b) = TwoTabs(window);
+        string titleOfB = window.GetTabHeaderText(b);
+        var paneOfB = (TerminalPane)b.Content!;
+        window.EnterFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(paneOfB.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.Same(a, TabsOf(window).SelectedItem);
+        Assert.True(window.IsFocusMode);
+        var mark = Assert.Single(window.CollectUnseenWriteMarks());
+        Assert.True(mark.Closed);
+        Assert.Equal(titleOfB, mark.TabTitle);
+        Assert.Null(mark.PaneTitle);
+        Assert.NotNull(mark.LastWriteUtc);
+
+        // Leaving focus mode brings back the tab strip, which shows the tab is gone: that is the acknowledgement.
+        window.LeaveFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+        window.EnterFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
+    [AvaloniaFact]
+    public async Task An_agent_close_in_a_background_split_names_the_tab_and_pane_on_the_strip()
+    {
+        MainWindow window = NewShownWindow();
+        var a = (TabItem)TabsOf(window).Items[0]!;
+        TabItem splitTab = AddSplitTab(window, out TerminalPane b1, out _, userTitle: "Builds");
+        Select(window, a);
+        string titleOfSplit = window.GetTabHeaderText(splitTab);
+        string titleOfB1 = b1.GetBaseTabTitle();
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(b1.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        var mark = Assert.Single(window.CollectUnseenWriteMarks());
+        Assert.True(mark.Closed);
+        Assert.Equal(titleOfSplit, mark.TabTitle);
+        Assert.Equal(titleOfB1, mark.PaneTitle);
+    }
+
+    [AvaloniaFact]
+    public async Task An_agent_closing_the_last_pane_of_the_selected_tab_leaves_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, b) = TwoTabs(window);
+        var paneOfA = (TerminalPane)a.Content!;
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(paneOfA.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        // The user's tab went and the selection had to move to another shell: the tab strip comes back to show it.
+        Assert.False(window.IsFocusMode);
+        Assert.Same(b, TabsOf(window).SelectedItem);
+    }
+
+    [AvaloniaFact]
+    public async Task An_agent_close_outside_focus_mode_is_unchanged_and_leaves_no_mark()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, b) = TwoTabs(window);
+        var paneOfB = (TerminalPane)b.Content!;
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(paneOfB.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.DoesNotContain(b, TabsOf(window).Items.Cast<TabItem>());
+        Assert.Same(a, TabsOf(window).SelectedItem);
+        Assert.False(window.IsFocusMode);
+        Assert.Empty(window.CollectUnseenWriteMarks());
+        // No close mark was kept for a later focus mode either.
+        window.EnterFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
     }
 
     [AvaloniaFact]

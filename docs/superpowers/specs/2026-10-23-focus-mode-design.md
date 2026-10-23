@@ -192,6 +192,9 @@ So in focus mode:
   agent must be able to type into the session it just spawned. The spawn result (pane id, tab
   id) is the new pane's, not whatever pane is current;
 - an agent closing a pane closes it **where it is**, without selecting its tab first;
+- if an agent closes the last pane of the selected tab, that tab goes and the selection has to move to another shell,
+  so focus mode is left after the close and the tab strip shows the change (final review R13: an unavoidable move must
+  not be silent);
 - a profile's template rule is not applied to an agent-spawned background tab (applying a template rebuilds every tab via `ApplySessionSnapshot`, which would move the user and restart their shells); the agent gets a plain tab of that profile.
 - both are agent writes (`spawnSession`, `closeSession`), so the strip light reports them
   (section 7). The user is told without being moved.
@@ -254,6 +257,11 @@ that reports reads of the visible pane. So in focus mode:
   that tab. A write to a non-current pane of a split tab keeps it until that pane is clicked.
   The owner chose this (2026-10-23): the light stays lit until they have looked. No fading, and
   no clearing from the activity journal. The attention machine is not changed.
+- an agent's `closeSession` takes the pane's registration with it, so the window keeps its own
+  mark of each close made in focus mode (tab title, pane title for a split, time). It lights the
+  light amber like an unseen write, and the tooltip says "An agent closed {tab} at {time}." A
+  closed pane can never be looked at, so these marks clear when focus mode is left, which brings
+  back the tab strip. *(Final review R13.)*
 
 The invariant to test: for every agent read or write that shows on some indicator outside focus
 mode, the strip light shows it inside focus mode. `docs/mcp/security.md` gets a sentence saying

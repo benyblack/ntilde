@@ -6717,10 +6717,7 @@ namespace Ntilde
 
                 if (_isFocusMode)
                 {
-                    // Resolved from the pane, so the user's tab stays selected. In a split, ClosePaneCoreAsync
-                    // also leaves the user's active pane and keyboard alone while focus mode is on.
-                    await ClosePaneAsync(target, skipConfirm: true);
-                    return !_paneOwnerTab.ContainsKey(target);
+                    return await CloseAgentTargetInFocusModeAsync(target);
                 }
 
                 // Make the target the active pane of its (selected) tab, then reuse

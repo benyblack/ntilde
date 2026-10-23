@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -51,6 +52,8 @@ namespace Ntilde
             RebuildTitleBar();
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = false;
             ApplyFocusModeChrome();
+            // A closed pane can never be looked at; the tab strip coming back is the acknowledgement.
+            _focusCloseMarks.Clear();
             RefreshAgentObserveIndicator();
             ReleaseHeldNotices();
         }
@@ -110,6 +113,49 @@ namespace Ntilde
         /// <summary>An agent's new tab takes the selection only outside focus mode.</summary>
         internal static bool ShouldAgentSpawnSelect(bool focusMode) => !focusMode;
 
+        /// <summary>
+        /// Closing <paramref name="pane"/> closes its tab, which moves the user to another one. Zoom-aware: a zoomed
+        /// split still has its other panes.
+        /// </summary>
+        private bool IsOnlyPaneOfItsTab(Controls.TerminalPane pane) =>
+            ResolveOwningTabForPane(pane) is { } tab && PanesInTab(tab).Count() == 1;
+
+        // Panes agents closed in focus mode, in the order they went. A closed pane's agent registration goes with it, so
+        // the write the agent host notes for the close reaches no indicator; the light keeps these instead, until focus
+        // mode is left.
+        private readonly List<FocusWriteMark> _focusCloseMarks = [];
+
+        /// <summary>The light's mark for an agent about to close <paramref name="pane"/>, read while its tab still exists.</summary>
+        private FocusWriteMark DescribeAgentClose(Controls.TerminalPane pane)
+        {
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (ResolveOwningTabForPane(pane) is not { } tab) return new FocusWriteMark("Terminal", null, now, Closed: true);
+            string? paneTitle = PanesInTab(tab).Count() > 1 ? pane.GetBaseTabTitle() : null;
+            return new FocusWriteMark(GetTabHeaderText(tab), paneTitle, now, Closed: true);
+        }
+
+        /// <summary>
+        /// An agent's closeSession in focus mode: the pane closes where it is, its tab not selected first, and the strip
+        /// light keeps a mark of it. Closing the last pane of the user's own tab cannot avoid moving them to another
+        /// shell, so focus mode is left then, and the tab strip shows the change. True when the pane went.
+        /// </summary>
+        private async Task<bool> CloseAgentTargetInFocusModeAsync(Controls.TerminalPane target)
+        {
+            FocusWriteMark mark = DescribeAgentClose(target);
+            bool emptiesSelectedTab = IsOnlyPaneOfItsTab(target)
+                && ReferenceEquals(ResolveOwningTabForPane(target), this.FindControl<TabControl>("Tabs")?.SelectedItem);
+
+            // Resolved from the pane, so the user's tab stays selected. In a split, ClosePaneCoreAsync also leaves the
+            // user's active pane and keyboard alone while focus mode is on.
+            await ClosePaneAsync(target, skipConfirm: true);
+            if (_paneOwnerTab.ContainsKey(target)) return false;
+
+            _focusCloseMarks.Add(mark);
+            if (emptiesSelectedTab && !_teardownDone) LeaveFocusMode();
+            RefreshAgentObserveIndicator();
+            return true;
+        }
+
         internal void ToggleFocusMode()
         {
             if (_isFocusMode) LeaveFocusMode();
@@ -121,8 +167,11 @@ namespace Ntilde
         private const string DefaultObserveLightTooltip = "Agent access is enabled. Click to open the agent activity journal.";
         private const string JournalHint = "Click to open the agent activity journal.";
 
-        /// <summary>A pane an agent typed into that the user has not yet looked at, as the light names it.</summary>
-        internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc);
+        /// <summary>
+        /// A pane an agent typed into that the user has not yet looked at, or (<paramref name="Closed"/>) a pane an agent
+        /// closed in focus mode, as the light names it.
+        /// </summary>
+        internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc, bool Closed = false);
 
         /// <summary>
         /// Amber fill for an unseen write, blue for a read or poll, grey when idle. A write and a read at
@@ -144,21 +193,25 @@ namespace Ntilde
             const string reading = "An agent is reading now.";
             if (marks.Count == 1)
             {
-                string one = $"An agent typed into {Target(marks[0])}{At(marks[0])}. {JournalHint}";
+                FocusWriteMark m = marks[0];
+                string one = m.Closed
+                    ? $"An agent closed {Target(m)}{At(m)}. {JournalHint}"
+                    : $"An agent typed into {Target(m)}{At(m)}. {JournalHint}";
                 return active ? reading + "\n" + one : one;
             }
 
             var lines = new List<string>();
             if (active) lines.Add(reading);
-            lines.Add("Agents typed into:");
-            lines.AddRange(marks.Select(m => $"- {Target(m)}{At(m)}"));
+            lines.Add(marks.Any(m => m.Closed) ? "Agents typed into or closed:" : "Agents typed into:");
+            lines.AddRange(marks.Select(m => m.Closed ? $"- {Target(m)} closed{At(m)}" : $"- {Target(m)}{At(m)}"));
             lines.Add(JournalHint);
             return string.Join("\n", lines);
         }
 
         /// <summary>
-        /// Panes whose attention tier is still Wrote, in tab order. Only focus mode has a use for them:
-        /// outside it the pane segment and tab badge carry the write, so this is empty.
+        /// Panes whose attention tier is still Wrote, in tab order, then the panes agents closed in focus mode, in the
+        /// order they went. Only focus mode has a use for them: outside it the pane segment and tab badge carry the
+        /// write, and the user sees a closed tab go, so this is empty.
         /// </summary>
         internal IReadOnlyList<FocusWriteMark> CollectUnseenWriteMarks()
         {
@@ -191,7 +244,7 @@ namespace Ntilde
                     new FocusWriteMark(GetTabHeaderText(tab), paneTitle, snapshot.LastWriteUtc)));
             }
 
-            return found.OrderBy(f => f.Order).Select(f => f.Mark).ToList();
+            return [.. found.OrderBy(f => f.Order).Select(f => f.Mark), .. _focusCloseMarks];
         }
 
         private void ApplyFocusModeChrome()
