@@ -113,10 +113,14 @@ light/dark variant.
   fix the derivation, never the threshold.
 
 Theme v2 is landing in phases; see `docs/superpowers/specs/2026-09-23-theme-system-design.md`.
-Phases 1 and 2 moved Settings, the Connection Manager, Agent Output and the main window's chrome
-(tab strip and sidebar, title bar, splitters, toasts, command palette, transfers, dialogs) onto
-the tokens. Pane overlays, Command Assist, Remote Files and Replay follow in phase 3, and the
-terminal renderer's selection and search colours in phase 4.
+Phases 1-3 moved every UI surface onto the tokens: Settings, the Connection Manager, Agent Output,
+the main window's chrome, and everything inside a terminal pane (overlays, status bar, Command
+Assist, Remote Files), plus the Transfer dialog, Replay and the askpass helper. The terminal
+renderer's selection and search colours follow in phase 4.
+
+**Profile-themed panes:** when a profile names its own theme, the pane carries its own token scope,
+so its overlays match its terminal rather than the app. Code built inside a pane must bind tokens
+with `GetResourceObservable(ThemeKeys.X)`, not hold a brush read once, so it follows the scope.
 
 ## Key Files
 -   `src/Ntilde.VT/TerminalTheme.cs`: Data model.
