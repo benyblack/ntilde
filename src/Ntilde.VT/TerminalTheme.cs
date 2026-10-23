@@ -118,12 +118,5 @@ namespace Ntilde.VT
                 BrightWhite = this.BrightWhite
             };
         }
-
-        public TermColor GetContrastForeground()
-        {
-            // Formula: 0.299*R + 0.587*G + 0.114*B
-            double luminance = (0.299 * Background.R + 0.587 * Background.G + 0.114 * Background.B) / 255.0;
-            return luminance > 0.5 ? TermColor.Black : TermColor.White;
-        }
     }
 }

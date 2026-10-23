@@ -148,7 +148,7 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         var tab = tabs.Items.Cast<TabItem>().First();
 
         // The status dot and preview line exist...
-        Assert.NotNull(Ntilde.MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot"));
+        Assert.NotNull(Ntilde.MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Path>(tab.Header, "TabStatusDot"));
         var preview = Ntilde.MainWindow.FindTabHeaderDescendant<TextBlock>(tab.Header, "TabPreviewLine");
         Assert.NotNull(preview);
 
@@ -198,11 +198,15 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         return chip!;
     }
 
+    /// <summary>The dot's colour: its Fill for the filled shapes, its Stroke for the hollow ring.</summary>
     private static Avalonia.Media.Color? DotColorOf(TabItem tab)
     {
-        var dot = Ntilde.MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot");
-        return (dot?.Fill as Avalonia.Media.ISolidColorBrush)?.Color;
+        var dot = Ntilde.MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Path>(tab.Header, "TabStatusDot");
+        var fill = (dot?.Fill as Avalonia.Media.ISolidColorBrush)?.Color;
+        return fill is { A: > 0 } ? fill : (dot?.Stroke as Avalonia.Media.ISolidColorBrush)?.Color ?? fill;
     }
+
+    private static Avalonia.Media.Color Token(string key) => Ntilde.Shell.Theming.ThemeService.Current[key];
 
     [AvaloniaFact]
     public void VerticalHeader_MarkerChips_ExistHiddenByDefault_DotTransparent()
@@ -302,7 +306,7 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
 
             Assert.True(ChipOf(tab, "TabBellChip").IsVisible);
             Assert.False(ChipOf(tab, "TabActivityChip").IsVisible);
-            Assert.Equal(new Avalonia.Media.Color(0xFF, 0xFF, 0xD2, 0x5A), DotColorOf(tab)); // #FFD25A
+            Assert.Equal(Token(Ntilde.Shell.Theming.ThemeKeys.TabAttention), DotColorOf(tab));
         }
         finally
         {
@@ -327,7 +331,7 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
 
             Assert.True(ChipOf(tab, "TabAgentWroteChip").IsVisible);
             Assert.False(ChipOf(tab, "TabAgentWatchedChip").IsVisible);
-            Assert.Equal(new Avalonia.Media.Color(0xFF, 0xE8, 0xA3, 0x3D), DotColorOf(tab)); // #E8A33D
+            Assert.Equal(Token(Ntilde.Shell.Theming.ThemeKeys.TabAgentWrote), DotColorOf(tab));
         }
         finally
         {
@@ -360,7 +364,7 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
             window.UpdateTabVisuals();
             Dispatcher.UIThread.RunJobs();
             Assert.True(ChipOf(tab, "TabAgentWatchedChip").IsVisible);
-            Assert.Equal(new Avalonia.Media.Color(0xFF, 0x4F, 0xB0, 0xD4), DotColorOf(tab)); // #4FB0D4
+            Assert.Equal(Token(Ntilde.Shell.Theming.ThemeKeys.TabAgentWatched), DotColorOf(tab));
         }
         finally
         {
@@ -425,7 +429,7 @@ public sealed class VerticalTabStripTests : IDisposable, IClassFixture<TestAppDa
         window.RefreshTabStatuses();
         Dispatcher.UIThread.RunJobs();
 
-        var dot = Ntilde.MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot");
+        var dot = Ntilde.MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Path>(tab.Header, "TabStatusDot");
         Assert.NotNull(dot);
         Assert.NotEqual(Avalonia.Media.Brushes.Transparent, dot!.Fill);
 

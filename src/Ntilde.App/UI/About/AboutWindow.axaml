@@ -12,13 +12,13 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="#4C8DFF" />
+            <Setter Property="Foreground" Value="{DynamicResource NtLink}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
         </Style>
         <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#7FB0FF" />
+            <Setter Property="Foreground" Value="{DynamicResource NtLinkHover}" />
         </Style>
     </Window.Styles>
     <Border Padding="20">
