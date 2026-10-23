@@ -2,6 +2,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Styling;
 
 namespace Ntilde
 {
@@ -22,10 +24,15 @@ namespace Ntilde
         /// <summary>The top band that drags the window: the strip in focus mode, the title band otherwise.</summary>
         internal static double WindowDragBandHeight(bool focusMode) => focusMode ? FocusStripHeight : 36;
 
+        /// <summary>What a double-click on the strip does: restore a maximised window, maximise anything else.</summary>
+        internal static WindowState ToggledMaximizeState(WindowState current) =>
+            current == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
         internal void EnterFocusMode()
         {
             if (_isFocusMode) return;
             _isFocusMode = true;
+            WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeFocusWindowDecorationsTheme")!;
             ApplyFocusModeChrome();
         }
 
@@ -33,6 +40,7 @@ namespace Ntilde
         {
             if (!_isFocusMode) return;
             _isFocusMode = false;
+            WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeWindowDecorationsTheme")!;
             // Regenerates every generated title bar item with its own visibility.
             RebuildTitleBar();
             ApplyFocusModeChrome();
@@ -56,6 +64,11 @@ namespace Ntilde
             var host = this.FindControl<StackPanel>("TitleBarItemsHost");
             var titleBar = this.FindControl<Grid>("TitleBar");
             if (host == null || titleBar == null) return;
+
+            if (this.FindControl<MenuItem>("MenuCustomizeTitleBar") is { } customize)
+                customize.IsVisible = !_isFocusMode;
+            if (this.FindControl<MenuItem>("MenuTitleBarExitFocusMode") is { } exit)
+                exit.IsVisible = _isFocusMode;
 
             var margin = titleBar.Margin;
             if (_isFocusMode)

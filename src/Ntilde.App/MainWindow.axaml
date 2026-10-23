@@ -220,6 +220,11 @@
              transparent so the window background shows through; the window buttons and the agent
              light stay in TitleBar above it (ZIndex 100). -->
         <Grid x:Name="FocusStrip" IsVisible="False" VerticalAlignment="Top" Height="24" ZIndex="90" Background="Transparent">
+            <Grid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Exit Focus Mode" Name="MenuExitFocusMode"/>
+                </ContextMenu>
+            </Grid.ContextMenu>
             <TextBlock Name="FocusStripTitle" VerticalAlignment="Center" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"/>
         </Grid>
 
@@ -239,6 +244,7 @@
             <Grid.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Customize Title Bar..." Name="MenuCustomizeTitleBar"/>
+                    <MenuItem Header="Exit Focus Mode" Name="MenuTitleBarExitFocusMode" IsVisible="False"/>
                 </ContextMenu>
             </Grid.ContextMenu>
             <StackPanel Name="TitleBarItemsHost" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Background="Transparent">

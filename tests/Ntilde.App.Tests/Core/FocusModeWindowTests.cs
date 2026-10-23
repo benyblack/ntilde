@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Shell;
@@ -215,6 +216,68 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
         Dispatcher.UIThread.RunJobs();
 
         AssertChromeHidden(window);
+    }
+
+    [AvaloniaFact]
+    public void Entering_swaps_in_the_slim_decorations_theme_and_leaving_swaps_it_back()
+    {
+        MainWindow window = NewShownWindow();
+
+        window.EnterFocusMode();
+        Assert.Same(window.FindResource("NtildeFocusWindowDecorationsTheme"), window.WindowDecorationsTheme);
+
+        window.LeaveFocusMode();
+        Assert.Same(window.FindResource("NtildeWindowDecorationsTheme"), window.WindowDecorationsTheme);
+    }
+
+    [AvaloniaFact]
+    public void The_strip_menu_exits_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        window.EnterFocusMode();
+
+        window.FindControl<MenuItem>("MenuExitFocusMode")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        Assert.False(window.IsFocusMode);
+    }
+
+    [AvaloniaFact]
+    public void The_title_bar_menu_swaps_customize_for_exit_in_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        var customize = window.FindControl<MenuItem>("MenuCustomizeTitleBar")!;
+        var exit = window.FindControl<MenuItem>("MenuTitleBarExitFocusMode")!;
+
+        window.EnterFocusMode();
+        Assert.False(customize.IsVisible);
+        Assert.True(exit.IsVisible);
+
+        exit.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Assert.False(window.IsFocusMode);
+        Assert.True(customize.IsVisible);
+        Assert.False(exit.IsVisible);
+    }
+
+    [Fact]
+    public void Double_click_maximize_state_toggles()
+    {
+        Assert.Equal(WindowState.Normal, MainWindow.ToggledMaximizeState(WindowState.Maximized));
+        Assert.Equal(WindowState.Maximized, MainWindow.ToggledMaximizeState(WindowState.Normal));
+        Assert.Equal(WindowState.Maximized, MainWindow.ToggledMaximizeState(WindowState.Minimized));
+    }
+
+    [AvaloniaFact]
+    public void The_strip_title_margin_follows_the_caption_button_reserve()
+    {
+        MainWindow window = NewShownWindow();
+        window.EnterFocusMode();
+        var titleBar = window.FindControl<Grid>("TitleBar")!;
+        double reserve = titleBar.Margin.Right + 17;
+
+        Invoke(window, "ApplyCaptionButtonReserve", titleBar, reserve);
+
+        Assert.Equal(reserve, titleBar.Margin.Right);
+        Assert.Equal(titleBar.Margin.Right + 40, window.FindControl<Grid>("FocusStrip")!.Margin.Right);
     }
 
     [Fact]

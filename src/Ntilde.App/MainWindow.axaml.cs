@@ -586,6 +586,13 @@ namespace Ntilde
             {
                 if (e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
                 {
+                    if (_isFocusMode && e.ClickCount == 2)
+                    {
+                        WindowState = ToggledMaximizeState(WindowState);
+                        e.Handled = true;
+                        return;
+                    }
+
                     BeginMoveDrag(e);
                 }
             }
@@ -1860,6 +1867,9 @@ namespace Ntilde
             // the value actually changes, so it is a handful of lines per session, not per layout.
             AppLogger.Log($"[TitleBar] caption reserve {current.Right:0.#} -> {reserve:0.#}");
             Dispatcher.UIThread.Post(UpdateTabHeaderViewport, DispatcherPriority.Background);
+
+            // The focus strip's title margin is derived from this right margin.
+            if (_isFocusMode) UpdateFocusStrip();
         }
 
         /// <summary>
@@ -4153,6 +4163,11 @@ namespace Ntilde
                 // Opens the Tabs & title bar page, where the title bar layout lives.
                 await OpenSettings(CustomizeTitleBarSettingsTarget());
             };
+
+            if (this.FindControl<MenuItem>("MenuExitFocusMode") is { } menuExitFocus)
+                menuExitFocus.Click += (s, e) => LeaveFocusMode();
+            if (this.FindControl<MenuItem>("MenuTitleBarExitFocusMode") is { } menuTitleBarExitFocus)
+                menuTitleBarExitFocus.Click += (s, e) => LeaveFocusMode();
 
             var menuNewSsh = this.FindControl<MenuItem>("MenuNewSshConnection");
             if (menuNewSsh != null) menuNewSsh.Click += async (s, e) =>
