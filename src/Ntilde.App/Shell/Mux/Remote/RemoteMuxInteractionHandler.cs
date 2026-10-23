@@ -364,15 +364,15 @@ internal sealed class RemoteMuxInteractionHandler
     /// <para>
     /// With nobody to ask (an automatic attempt, or no window handler) and nothing remembered, a password
     /// prompt or a keyboard-interactive prompt with questions is not answered: <see cref="HandleAsync"/>
-    /// throws <see cref="RemoteMuxPromptAbortedException"/>. A cancel would not do: the native layer
-    /// submits it as an empty password or empty answers, which the server counts as a failed login - on
-    /// every reconnect, until fail2ban or a lockout steps in. A thrown handler instead makes the native
-    /// exec channel close the session without answering (its documented contract), and closing wakes
-    /// rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A passphrase
-    /// is still cancelled: it only unlocks a local key, and nothing reaches the server. It is recorded,
-    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH before sign-in is
-    /// over, nothing else got in, and the connector reports it as needing the user, as it does an aborted
-    /// prompt.
+    /// throws <see cref="RemoteMuxPromptAbortedException"/>. A cancel would stop sign-in too, but it would
+    /// read as the user's own cancel; the abort is recorded (<see cref="AbortedPrompt"/>), so the connector
+    /// tells the attempt apart and reports it as needing the user, with the reason. A thrown handler makes
+    /// the native exec channel close the session without answering (its documented contract), and closing
+    /// wakes rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A
+    /// passphrase is cancelled: it only unlocks a local key, so nothing reaches the server, and the native
+    /// layer then ends sign-in. It is recorded, though (<see cref="DeclinedPrompt"/>; codex D3): when the
+    /// attempt then fails SSH before sign-in is over, nothing else got in, and the connector reports it as
+    /// needing the user, as it does an aborted prompt.
     /// </para>
     /// <para>
     /// An automatic attempt that <see cref="MaySignInWithSavedPassword"/> answers a password prompt it has nothing
@@ -881,8 +881,9 @@ internal sealed class RemoteMuxInteractionHandler
 
 /// <summary>
 /// An attempt with nobody to ask (an automatic reconnect) had nothing to answer a password or
-/// keyboard-interactive prompt with, so it ended the connection rather than send an empty answer, which
-/// the server would count as a failed login. The native exec channel turns it into its transport failure.
+/// keyboard-interactive prompt with, so it ended the connection without answering. Thrown rather than
+/// answered with a cancel, which would also send nothing, so the attempt is told apart from the user's own
+/// cancel and reported as needing the user. The native exec channel turns it into its transport failure.
 /// </summary>
 internal sealed class RemoteMuxPromptAbortedException(SshInteractionKind prompt)
     : Exception($"no answer for the {Describe(prompt)} prompt without a user to ask; the connection was ended without answering it")

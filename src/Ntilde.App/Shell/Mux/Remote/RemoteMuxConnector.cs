@@ -545,8 +545,9 @@ internal sealed class RemoteMuxConnector : IDisposable
         }
         else if (prompts.AbortedPrompt is { } aborted)
         {
-            // We ended it at auth, rather than send the server an empty answer: a quiet failure that says
-            // why, marked NeedsUser so the reconnect loop stops instead of knocking again, and Enter is the way in.
+            // We ended it at auth, with nothing to answer and nobody to ask - an abort, not the user's cancel: a
+            // quiet failure that says why, marked NeedsUser so the reconnect loop stops instead of knocking again,
+            // and Enter is the way in.
             string needs = aborted == SshInteractionKind.KeyboardInteractive ? "keyboard-interactive input" : "a password";
             failure = new RemoteMuxFailure(RemoteFailureKind.NeedsUser, $"signing in to {host} needs {needs}, which an automatic reconnect does not ask for");
         }

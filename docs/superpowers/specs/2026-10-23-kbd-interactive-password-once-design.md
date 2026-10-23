@@ -1,6 +1,6 @@
 # Native SSH: ask for the password once, and once more when it is refused
 
-Date: 2026-10-23. Status: draft, awaiting approval.
+Date: 2026-10-23. Status: approved 2026-10-23.
 
 ## Why
 
@@ -95,9 +95,14 @@ This happens for every server of a chain (jump hops and target), in both `authen
 1. Identity file, then agent: unchanged.
 2. **The methods include `password`:**
    1. Password window (filled from the runtime store or the vault, as today), `password` method.
-   2. Refused, and the server still offers `password`: **one more password window, marked as a retry** (below),
-      `password` method again.
-   3. Refused again: the keyboard-interactive fallback with its own window, as today.
+   2. Refused, and the server still offers `keyboard-interactive`: **one keyboard-interactive exchange whose first
+      password question is the retry window** (below: never filled in, with "remember"). Its other rounds are
+      handled as in path 3: no questions are answered in Rust, anything else is the keyboard-interactive window.
+      Refused again: sign-in ends with `SSH authentication failed`.
+      Otherwise, refused and the server still offers `password`: **one more password window, marked as a retry**
+      (below), `password` method again.
+   3. After that password-method retry, after partial success, or when the refusal lists neither method: the
+      keyboard-interactive fallback with its own window, as today.
 3. **The methods do not include `password` but include `keyboard-interactive`:** no password window up front.
    Go straight to keyboard-interactive. Within one keyboard-interactive exchange, each round from the server is
    handled as follows:
@@ -120,7 +125,9 @@ This happens for every server of a chain (jump hops and target), in both `authen
 
 **The retry window.** The `PasswordPrompt` event gains an additive field that says it follows a refusal. The app
 then never fills it, neither from the runtime store (`ActiveSshSessionRegistry`, which `SshInteractionService`
-consults first today) nor from the vault. It shows a normal password window with "remember". The typed answer
+consults first today) nor from the vault. It shows a normal password window with "remember", whose message
+starts "The server did not accept the sign-in." (not "refused that password": the retry also follows a wrong code
+alone, or a `password` method that can never succeed). The typed answer
 replaces the runtime password, and with "remember" ticked it replaces the vault entry. The mux already reads a
 second password prompt on the same hop as a refusal of the first, which this is. An automatic (no-user) mux
 reconnect cannot show the window, so it cancels, and sign-in stops.
@@ -177,6 +184,10 @@ OpenSSH backend's rule exactly is the point: both backends then agree about whic
 ## My calls (the user can overrule)
 
 - On servers offering both methods, `password` stays first, as today.
+- There, a refused password is retried through `keyboard-interactive`, not the `password` method again: with a PAM
+  second factor behind keyboard-interactive, sshd's `password` method can never succeed, so a second try there would
+  cost a second failed login on every connect (fail2ban bans sooner) and a second refusal before the code question.
+  OpenSSH, too, tries keyboard-interactive after a refused password.
 - The method list follows the server's latest answer, not just the first `none` reply.
 - Only the first password question of each keyboard-interactive exchange becomes a password window. Later ones
   (an expired password's change questions) keep the keyboard-interactive window.
@@ -205,6 +216,8 @@ OpenSSH backend's rule exactly is the point: both backends then agree about whic
   - exactly one `PasswordPrompt` and no `KeyboardInteractivePrompt` on a keyboard-interactive-only server;
   - a refused answer there gets one retry-flagged `PasswordPrompt`, then sign-in fails;
   - on a password server, a refused password gets one retry-flagged `PasswordPrompt`;
+  - on a server offering both methods, that retry-flagged `PasswordPrompt` is the keyboard-interactive exchange's
+    password question, and the `password` method is tried only once;
   - a second password question in one exchange, and a second-factor round, are raised as
     `KeyboardInteractivePrompt`;
   - a zero-question round is answered without an event;
