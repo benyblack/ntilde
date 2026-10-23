@@ -974,7 +974,7 @@ namespace Ntilde
             };
         }
 
-        private string GetTabHeaderText(TabItem tab)
+        internal string GetTabHeaderText(TabItem tab)
         {
             if (FindTabHeaderTextBlock(tab.Header) is TextBlock tb)
             {
@@ -7381,7 +7381,17 @@ namespace Ntilde
         /// </summary>
         internal static bool IsPaneReadInvisibleWithoutWindowLight(
             bool isAgentActable, Guid? paneTabId, Guid? selectedTabId, bool paneHiddenByZoom)
+            => IsPaneReadInvisibleWithoutWindowLight(
+                isAgentActable, paneTabId, selectedTabId, paneHiddenByZoom, focusMode: false);
+
+        /// <summary>
+        /// As above, with focus mode as a fifth input: focus mode hides every pane status bar, so no
+        /// pane's segment is on screen and every read is the window light's to report.
+        /// </summary>
+        internal static bool IsPaneReadInvisibleWithoutWindowLight(
+            bool isAgentActable, Guid? paneTabId, Guid? selectedTabId, bool paneHiddenByZoom, bool focusMode)
         {
+            if (focusMode) return true;
             if (!isAgentActable) return true;
             if (!paneTabId.HasValue) return true;
             if (paneTabId.Value != selectedTabId) return true;
@@ -7427,7 +7437,8 @@ namespace Ntilde
                 registration.IsAgentActable,
                 registration.TabId,
                 selectedTabId,
-                paneHiddenByZoom: selectedTabIsZoomed && registration.PaneId != zoomedPaneId);
+                paneHiddenByZoom: selectedTabIsZoomed && registration.PaneId != zoomedPaneId,
+                focusMode: _isFocusMode);
         }
 
         /// <summary>Applies <see cref="ComputeObserveIndicatorState"/> to the chrome. UI thread.</summary>
@@ -7448,9 +7459,13 @@ namespace Ntilde
             var (visible, active) = ComputeObserveIndicatorState(
                 service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched, service.WindowlessWatched);
 
+            var marks = CollectUnseenWriteMarks();
+
             indicator.IsVisible = visible;
             if (!visible) return;
-            dot.Fill = new SolidColorBrush(Color.Parse(active ? "#4FB0D4" : "#6B737F"));
+            dot.Fill = new SolidColorBrush(Color.Parse(ObserveLightColor(active, marks.Count > 0)));
+            // BuildFocusLightTooltip with no marks is the XAML default text, so this restores it outside focus mode.
+            ToolTip.SetTip(indicator, BuildFocusLightTooltip(marks));
         }
 
         // Raised on an IPC thread when the in-flight poll count leaves or

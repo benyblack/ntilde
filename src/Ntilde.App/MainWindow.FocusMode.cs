@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
@@ -35,6 +38,7 @@ namespace Ntilde
             WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeFocusWindowDecorationsTheme")!;
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = true;
             ApplyFocusModeChrome();
+            RefreshAgentObserveIndicator();
             HoldShownUpdateToast();
         }
 
@@ -47,6 +51,7 @@ namespace Ntilde
             RebuildTitleBar();
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = false;
             ApplyFocusModeChrome();
+            RefreshAgentObserveIndicator();
             ReleaseHeldNotices();
         }
 
@@ -109,6 +114,67 @@ namespace Ntilde
         {
             if (_isFocusMode) LeaveFocusMode();
             else EnterFocusMode();
+        }
+
+        // ---- the agent light (spec section 7) ----
+
+        private const string DefaultObserveLightTooltip = "Agent access is enabled. Click to open the agent activity journal.";
+        private const string JournalHint = "Click to open the agent activity journal.";
+
+        /// <summary>A pane an agent typed into that the user has not yet looked at, as the light names it.</summary>
+        internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc);
+
+        /// <summary>Amber for an unseen write, blue for a read or poll, grey when idle.</summary>
+        internal static string ObserveLightColor(bool active, bool unseenWrite)
+            => unseenWrite ? "#E8A33D" : active ? "#4FB0D4" : "#6B737F";
+
+        internal static string BuildFocusLightTooltip(IReadOnlyList<FocusWriteMark> marks)
+        {
+            static string Target(FocusWriteMark m) => m.PaneTitle is null ? m.TabTitle : $"{m.TabTitle} › {m.PaneTitle}";
+            static string At(FocusWriteMark m) => m.LastWriteUtc is { } t
+                ? " at " + t.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture)
+                : "";
+
+            if (marks.Count == 0) return DefaultObserveLightTooltip;
+            if (marks.Count == 1) return $"An agent typed into {Target(marks[0])}{At(marks[0])}. {JournalHint}";
+
+            var lines = new List<string> { "Agents typed into:" };
+            lines.AddRange(marks.Select(m => $"- {Target(m)}{At(m)}"));
+            lines.Add(JournalHint);
+            return string.Join("\n", lines);
+        }
+
+        /// <summary>
+        /// Panes whose attention tier is still Wrote, in tab order. Only focus mode has a use for them:
+        /// outside it the pane segment and tab badge carry the write, so this is empty.
+        /// </summary>
+        internal IReadOnlyList<FocusWriteMark> CollectUnseenWriteMarks()
+        {
+            if (!_isFocusMode) return Array.Empty<FocusWriteMark>();
+
+            var byPane = AgentHost.AgentSessionRegistry.Instance.GetRegistrations()
+                .GroupBy(r => r.PaneId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var marks = new List<FocusWriteMark>();
+            var tabs = this.FindControl<TabControl>("Tabs");
+            if (tabs == null) return marks;
+
+            foreach (var tab in tabs.Items.OfType<TabItem>())
+            {
+                var panes = EnumeratePanes(GetLayoutRootForTab(tab)).ToList();
+                foreach (var pane in panes)
+                {
+                    if (!byPane.TryGetValue(pane.PaneId, out var registration)) continue;
+                    var snapshot = registration.AttentionMachine.Snapshot();
+                    if (snapshot.Tier != AgentHost.AgentAttentionTier.Wrote) continue;
+                    marks.Add(new FocusWriteMark(
+                        GetTabHeaderText(tab),
+                        panes.Count > 1 ? pane.GetBaseTabTitle() : null,
+                        snapshot.LastWriteUtc));
+                }
+            }
+
+            return marks;
         }
 
         private void ApplyFocusModeChrome()

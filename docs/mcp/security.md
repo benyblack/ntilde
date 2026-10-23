@@ -52,6 +52,9 @@ macOS/Linux). They are gated by opt-ins in the app's settings:
   tab you do not have selected, because a non-selected tab's content is not rendered. Either
   way there is no segment on screen, under the default **Writes only** tab indicator no badge
   either, and the read would otherwise be visible nowhere.
+  In focus mode the pane status bars and tab badges are hidden, so the window light in the top
+  strip reports every agent read and write in any tab; a write keeps it amber until you have
+  looked at that pane, and its tooltip names the tab and pane.
   The activity journal remains the retrospective
   record; these are the live ones. There is no way to silence them — the way to have no
   indicator is to turn agent access off.

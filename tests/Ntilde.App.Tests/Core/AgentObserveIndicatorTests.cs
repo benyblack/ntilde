@@ -515,6 +515,147 @@ public class AgentObserveIndicatorTests : IDisposable
         });
     }
 
+    // ---- focus mode ----
+    //
+    // Focus mode hides the pane status bars and the tab badges, so the strip light is the only
+    // surface left that can report an agent read or write.
+
+    [Theory]
+    [InlineData(true, SelectedTabKey, SelectedTabKey, false)]
+    [InlineData(true, SelectedTabKey, SelectedTabKey, true)]
+    [InlineData(true, OtherTabKey, SelectedTabKey, false)]
+    [InlineData(false, SelectedTabKey, SelectedTabKey, false)]
+    public void In_focus_mode_every_pane_is_unmarked(
+        bool actable, string paneTab, string selectedTab, bool hiddenByZoom)
+    {
+        Guid paneId = Guid.Parse(paneTab);
+        Guid selectedId = Guid.Parse(selectedTab);
+
+        Assert.True(MainWindow.IsPaneReadInvisibleWithoutWindowLight(
+            actable, paneId, selectedId, hiddenByZoom, focusMode: true));
+        // Outside focus mode the answer is exactly what the four-argument overload says.
+        Assert.Equal(
+            MainWindow.IsPaneReadInvisibleWithoutWindowLight(actable, paneId, selectedId, hiddenByZoom),
+            MainWindow.IsPaneReadInvisibleWithoutWindowLight(actable, paneId, selectedId, hiddenByZoom, focusMode: false));
+    }
+
+    private const string SelectedTabKey = "11111111-1111-1111-1111-111111111111";
+    private const string OtherTabKey = "22222222-2222-2222-2222-222222222222";
+
+    [Theory]
+    [InlineData(false, false, "#6B737F")]
+    [InlineData(true, false, "#4FB0D4")]
+    [InlineData(true, true, "#E8A33D")]
+    [InlineData(false, true, "#E8A33D")]
+    public void Light_colour_priority(bool active, bool unseenWrite, string expected)
+        => Assert.Equal(expected, MainWindow.ObserveLightColor(active, unseenWrite));
+
+    [Fact]
+    public void Focus_light_tooltip_names_tab_and_pane()
+    {
+        var t1 = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 10, 23, 14, 30, 0, TimeSpan.Zero);
+        string Local(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(
+            "Agent access is enabled. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(Array.Empty<MainWindow.FocusWriteMark>()));
+
+        Assert.Equal(
+            $"An agent typed into build at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", null, t1) }));
+
+        Assert.Equal(
+            $"An agent typed into build › logs at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", "logs", t1) }));
+
+        Assert.Equal(
+            "An agent typed into build. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", null, null) }));
+
+        Assert.Equal(
+            "Agents typed into:\n"
+            + $"- build at {Local(t1)}\n"
+            + $"- server › api at {Local(t2)}\n"
+            + "- notes\n"
+            + "Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[]
+            {
+                new MainWindow.FocusWriteMark("build", null, t1),
+                new MainWindow.FocusWriteMark("server", "api", t2),
+                new MainWindow.FocusWriteMark("notes", null, null),
+            }));
+    }
+
+    [AvaloniaFact]
+    public void A_write_to_a_background_tab_is_collected_in_focus_mode()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            // Tab B is the window's own one-pane tab; tab A (selected) is a split tab.
+            var tabB = tabs.Items.Cast<TabItem>().First();
+            var registrationOfB = Assert.Single(
+                AgentSessionRegistry.Instance.GetRegistrations()
+                    .Where(r => r.TabId == window.GetPersistentTabId(tabB)));
+            var tabA = AddSplitTab(window, out _, out _);
+            tabs.SelectedItem = tabA;
+
+            registrationOfB.AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // Outside focus mode the tab badge and pane segment report it; the light does not.
+            Assert.Empty(window.CollectUnseenWriteMarks());
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.Equal(window.GetTabHeaderText(tabB), mark.TabTitle);
+            Assert.Null(mark.PaneTitle);
+            Assert.NotNull(mark.LastWriteUtc);
+
+            window.LeaveFocusMode();
+            Assert.Empty(window.CollectUnseenWriteMarks());
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_to_the_other_pane_of_a_split_names_the_pane()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var splitTab = AddSplitTab(window, out var first, out var second);
+            tabs.SelectedItem = splitTab;
+
+            RegistrationFor(second).AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.Equal(window.GetTabHeaderText(splitTab), mark.TabTitle);
+            Assert.Equal(second.GetBaseTabTitle(), mark.PaneTitle);
+        });
+    }
+
+    [AvaloniaFact]
+    public void Focus_mode_refreshes_the_light()
+    {
+        RunIsolated(window =>
+        {
+            var indicator = window.FindControl<Button>("AgentObserveIndicator")!;
+
+            // RefreshAgentObserveIndicator always assigns IsVisible from the (stopped) host service,
+            // so forcing it visible and watching it snap back proves the refresh ran.
+            indicator.IsVisible = true;
+            window.EnterFocusMode();
+            Assert.False(indicator.IsVisible);
+
+            indicator.IsVisible = true;
+            window.LeaveFocusMode();
+            Assert.False(indicator.IsVisible);
+        });
+    }
+
     private static void InvokeRebuildTitleBar(MainWindow window)
         => typeof(MainWindow)
             .GetMethod("RebuildTitleBar", BindingFlags.Instance | BindingFlags.NonPublic)!
