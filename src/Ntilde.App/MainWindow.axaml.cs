@@ -6198,7 +6198,6 @@ namespace Ntilde
             splitter.PointerReleased += OnSplitterPointerReleased;
             splitter.PointerCaptureLost += OnSplitterPointerCaptureLost;
             splitter.DoubleTapped += OnSplitterDoubleTapped;
-            ApplySplitterVisualState(splitter);
         }
 
         private void OnSplitterPointerEntered(object? sender, PointerEventArgs e)
@@ -6206,7 +6205,6 @@ namespace Ntilde
             if (sender is GridSplitter splitter)
             {
                 SetSplitterStateClass(splitter, SplitterHoverClass, true);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6215,7 +6213,6 @@ namespace Ntilde
             if (sender is GridSplitter splitter && !splitter.Classes.Contains(SplitterDraggingClass))
             {
                 SetSplitterStateClass(splitter, SplitterHoverClass, false);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6225,7 +6222,6 @@ namespace Ntilde
             {
                 SetSplitterStateClass(splitter, SplitterHoverClass, true);
                 SetSplitterStateClass(splitter, SplitterDraggingClass, true);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6235,7 +6231,6 @@ namespace Ntilde
             {
                 SetSplitterStateClass(splitter, SplitterDraggingClass, false);
                 SetSplitterStateClass(splitter, SplitterHoverClass, splitter.IsPointerOver);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6245,20 +6240,7 @@ namespace Ntilde
             {
                 SetSplitterStateClass(splitter, SplitterDraggingClass, false);
                 SetSplitterStateClass(splitter, SplitterHoverClass, splitter.IsPointerOver);
-                ApplySplitterVisualState(splitter);
             }
-        }
-
-        private void ApplySplitterVisualState(GridSplitter splitter)
-        {
-            var contrast = _settings.ActiveTheme.GetContrastForeground().ToAvaloniaColor();
-            var alpha = splitter.Classes.Contains(SplitterDraggingClass)
-                ? (byte)0x66
-                : splitter.Classes.Contains(SplitterHoverClass)
-                    ? (byte)0x44
-                    : (byte)0x24;
-
-            splitter.Background = new SolidColorBrush(Color.FromArgb(alpha, contrast.R, contrast.G, contrast.B));
         }
 
         private static void SetSplitterStateClass(GridSplitter splitter, string className, bool isActive)
@@ -8500,8 +8482,6 @@ namespace Ntilde
             originalPane.MinHeight = Math.Max(originalPane.MinHeight, minPaneHeight);
             var grid = new Grid { Background = Brushes.Transparent, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch };
 
-            var dividerBrush = new SolidColorBrush(Color.FromRgb(35, 35, 35)); // Even more subtle
-
             if (orientation == Avalonia.Layout.Orientation.Horizontal)
             {
                 grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star) { MinWidth = minPaneWidth });
@@ -8511,7 +8491,6 @@ namespace Ntilde
                 var splitter = new GridSplitter
                 {
                     Width = 3,
-                    Background = dividerBrush,
                     ResizeDirection = GridResizeDirection.Columns,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch,
                     Focusable = false
@@ -8532,7 +8511,6 @@ namespace Ntilde
                 var splitter = new GridSplitter
                 {
                     Height = 3,
-                    Background = dividerBrush,
                     ResizeDirection = GridResizeDirection.Rows,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
                     Focusable = false
@@ -8670,10 +8648,6 @@ namespace Ntilde
             // ThemeService sets) all follow the tokens on their own. Only the record button's
             // recording state needs re-asserting.
             SyncRecordingButtonState();
-            foreach (var splitter in this.GetVisualDescendants().OfType<GridSplitter>())
-            {
-                ApplySplitterVisualState(splitter);
-            }
 
             // Force update of tab borders (blue line) since theme color changed
             UpdateTabVisuals();

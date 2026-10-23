@@ -68,9 +68,11 @@
             <Setter Property="BorderThickness" Value="3 0 0 0"/>
         </Style>
 
-        <!-- GridSplitter Custom Template for thinner lines with larger hit area -->
+        <!-- GridSplitter Custom Template for thinner lines with larger hit area. The line's colour
+             follows the state classes MainWindow's pointer handlers set: NtHairline at rest,
+             NtHairlineStrong on hover, NtAccentBorder while dragging. -->
         <Style Selector="GridSplitter">
-            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Background="Transparent">
@@ -78,6 +80,12 @@
                     </Border>
                 </ControlTemplate>
             </Setter>
+        </Style>
+        <Style Selector="GridSplitter.splitter-hover">
+            <Setter Property="Background" Value="{DynamicResource NtHairlineStrong}"/>
+        </Style>
+        <Style Selector="GridSplitter.splitter-dragging">
+            <Setter Property="Background" Value="{DynamicResource NtAccentBorder}"/>
         </Style>
         <Style Selector="GridSplitter[ResizeDirection=Columns] /template/ Rectangle#PART_Line">
             <Setter Property="Width" Value="1"/>
