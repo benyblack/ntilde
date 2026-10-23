@@ -4366,14 +4366,33 @@ async fn authenticate(
 
     // A refused password gets exactly one more window, which says it follows a refusal so the app
     // asks instead of filling the refused value in again. Not after partial success (the password
-    // was right and the server wants more), nor once the server stops listing `password` (spec,
-    // "Terminal sessions", path 2).
-    let retry = matches!(
-        &password_auth,
-        AuthResult::Failure { remaining_methods, partial_success: false }
-            if remaining_methods.contains(&MethodKind::Password)
-    );
-    if retry {
+    // was right and the server wants more) (spec, "Terminal sessions", path 2).
+    let refusal_lists = match &password_auth {
+        AuthResult::Failure { remaining_methods, partial_success: false } => {
+            Some(remaining_methods)
+        }
+        _ => None,
+    };
+
+    // While the refusal still lists keyboard-interactive, the retry goes through it, as OpenSSH
+    // moves on to keyboard-interactive after a refused password: the exchange's first password
+    // question is the retry window, every other round its keyboard-interactive window. On a server
+    // that takes both methods with a PAM second factor behind keyboard-interactive, sshd's password
+    // method can never succeed, so retrying it would cost a second failed login on every connect
+    // (fail2ban bans sooner) and a second refusal before the code question. This exchange is the
+    // retry, so its failure ends sign-in (final review, F1).
+    if refusal_lists.is_some_and(|listed| listed.contains(&MethodKind::KeyboardInteractive)) {
+        let mut rounds = SessionRounds { shared, hop, follows_refusal: true };
+        if let KeyboardExchange::Success =
+            run_keyboard_exchange(user, session, true, &mut rounds).await?
+        {
+            return Ok(());
+        }
+        anyhow::bail!("SSH authentication failed");
+    }
+
+    // Otherwise the password method once more, while the server still lists it.
+    if refusal_lists.is_some_and(|listed| listed.contains(&MethodKind::Password)) {
         let password = prompt_text(
             shared,
             NovaSshEventKind::PasswordPrompt,
@@ -4391,6 +4410,9 @@ async fn authenticate(
         methods.note(&password_auth);
     }
 
+    // The keyboard-interactive fallback, as before: after the password-method retry, after
+    // partial success, or when the refusal lists neither method. It converts nothing, since the
+    // password has been asked for already.
     let mut rounds = SessionRounds { shared, hop, follows_refusal: false };
     if let KeyboardExchange::Success = run_keyboard_exchange(user, session, false, &mut rounds).await? {
         return Ok(());
@@ -8172,6 +8194,11 @@ mod exec_session_e2e_tests {
         /// PASSWORD through the password method, and a hidden `Password: ` keyboard-interactive
         /// question that takes PASSWORD too. A refusal keeps both listed, as sshd does.
         PasswordAndKeyboard,
+        /// sshd with both `PasswordAuthentication yes` and `KbdInteractiveAuthentication yes` and a
+        /// PAM second factor (pam_google_authenticator): the password method can never succeed, so
+        /// it refuses everything with both still listed. Keyboard-interactive asks a hidden
+        /// `Password: `, then a hidden `Verification code:`, and takes PASSWORD then `123456`.
+        PasswordAndKeyboardTwoFactor,
         /// The right password is only partly accepted (keyboard-interactive is what is left): a
         /// hidden `Verification code:` follows, which takes `123456`.
         PasswordThenCode,
@@ -8189,7 +8216,9 @@ mod exec_session_e2e_tests {
                 | ServerAuth::KeyboardRefusalListsOnlyPublicKey => {
                     &[MethodKind::KeyboardInteractive]
                 }
-                ServerAuth::PasswordAndKeyboard | ServerAuth::PasswordThenCode => {
+                ServerAuth::PasswordAndKeyboard
+                | ServerAuth::PasswordAndKeyboardTwoFactor
+                | ServerAuth::PasswordThenCode => {
                     &[MethodKind::Password, MethodKind::KeyboardInteractive]
                 }
             };
@@ -8273,6 +8302,7 @@ mod exec_session_e2e_tests {
                 | ServerAuth::KeyboardSecondFactor
                 | ServerAuth::KeyboardRefusalListsOnlyPublicKey
                 | ServerAuth::PasswordAndKeyboard
+                | ServerAuth::PasswordAndKeyboardTwoFactor
                 | ServerAuth::PasswordThenCode => Auth::reject(),
             })
         }
@@ -8291,7 +8321,9 @@ mod exec_session_e2e_tests {
                     Auth::Accept
                 }
                 ServerAuth::Password => refuse_password(false),
-                ServerAuth::PasswordAndKeyboard => refuse_password(true),
+                ServerAuth::PasswordAndKeyboard | ServerAuth::PasswordAndKeyboardTwoFactor => {
+                    refuse_password(true)
+                }
                 ServerAuth::PasswordThenCode if right => Auth::Reject {
                     proceed_with_methods: Some(MethodSet::from(
                         &[MethodKind::KeyboardInteractive][..],
@@ -8363,12 +8395,19 @@ mod exec_session_e2e_tests {
                 },
                 (ServerAuth::KeyboardRefusalListsOnlyPublicKey, _) => Auth::Accept,
 
-                // The keyboard-interactive fallback asks a hidden `Password: ` question, which
-                // the client must not convert: it already asked twice.
+                // After a refused password, the client retries through this exchange: its hidden
+                // `Password: ` question is the retry window.
                 (ServerAuth::PasswordAndKeyboard, 0) => ask(&["Password: "]),
                 (ServerAuth::PasswordAndKeyboard, 1) if right(PASSWORD) => ask(&[]),
                 (ServerAuth::PasswordAndKeyboard, 1) => refuse_answer(),
                 (ServerAuth::PasswordAndKeyboard, _) => Auth::Accept,
+
+                (ServerAuth::PasswordAndKeyboardTwoFactor, 0) => ask(&["Password: "]),
+                (ServerAuth::PasswordAndKeyboardTwoFactor, 1) if right(PASSWORD) => {
+                    ask(&["Verification code:"])
+                }
+                (ServerAuth::PasswordAndKeyboardTwoFactor, 2) if right("123456") => Auth::Accept,
+                (ServerAuth::PasswordAndKeyboardTwoFactor, _) => refuse_password(true),
 
                 (ServerAuth::PasswordThenCode, 0) => ask(&["Verification code:"]),
                 (ServerAuth::PasswordThenCode, _) if right("123456") => Auth::Accept,
@@ -9036,7 +9075,8 @@ mod exec_session_e2e_tests {
     }
 
     /// A refused password gets one more window that says so, so the app never fills it from a
-    /// store (spec, "Terminal sessions", path 2).
+    /// store. With no keyboard-interactive on offer, the retry is the password method once more
+    /// (spec, "Terminal sessions", path 2).
     #[test]
     fn a_refused_password_gets_one_retry_that_says_so() {
         let (events, seen) = sign_in(
@@ -9056,24 +9096,57 @@ mod exec_session_e2e_tests {
         );
     }
 
+    /// A refusal that still lists keyboard-interactive is retried through it, as OpenSSH moves on
+    /// after a refused password: the exchange's password question is the retry window, and the
+    /// password method is not tried twice (final review, F1).
     #[test]
-    fn after_the_retry_the_keyboard_fallback_runs_as_before() {
+    fn on_a_server_with_both_methods_the_retry_goes_through_keyboard_interactive() {
         let (events, seen) = sign_in(
             ServerAuth::PasswordAndKeyboard,
-            answering(&["wrong", "wrong", "wrong"], &format!(r#"{{"responses":["{PASSWORD}"]}}"#)),
+            answering(&["wrong", PASSWORD], CANCEL_KEYBOARD),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(2, prompts.len(), "one retry, never more: {prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        assert_eq!(serde_json::json!(true), prompts[1]["followsRefusal"]);
+        assert_eq!(
+            serde_json::json!("Password: "),
+            prompts[1]["prompt"],
+            "the server's keyboard-interactive question"
+        );
+
+        let seen = lock(&seen);
+        assert_eq!(vec!["wrong".to_owned()], seen.password_attempts);
+        assert_eq!(answers(&[&[PASSWORD], &[]]), seen.keyboard_answers);
+    }
+
+    /// On a server whose password method can never succeed (a PAM second factor behind
+    /// keyboard-interactive), the user passes one refusal to reach the code question, and the
+    /// server counts one failed login per connect, not two (final review, F1).
+    #[test]
+    fn a_server_whose_password_method_cannot_succeed_costs_one_failed_login() {
+        let (events, seen) = sign_in(
+            ServerAuth::PasswordAndKeyboardTwoFactor,
+            answering(&[PASSWORD, PASSWORD], r#"{"responses":["123456"]}"#),
         );
 
         assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
         assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
         let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
-        assert_eq!(2, prompts.len(), "one retry, never more: {prompts:?}");
+        assert_eq!(2, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        assert_eq!(serde_json::json!(true), prompts[1]["followsRefusal"]);
         let keyboard = json_payloads(&events, NovaSshEventKind::KeyboardInteractivePrompt);
-        assert_eq!(1, keyboard.len(), "the fallback does not convert: {keyboard:?}");
-        assert_eq!(serde_json::json!("Password: "), keyboard[0]["prompts"][0]["prompt"]);
+        assert_eq!(1, keyboard.len(), "{keyboard:?}");
+        assert_eq!(serde_json::json!("Verification code:"), keyboard[0]["prompts"][0]["prompt"]);
 
         let seen = lock(&seen);
-        assert_eq!(vec!["wrong".to_owned(), "wrong".to_owned()], seen.password_attempts);
-        assert_eq!(answers(&[&[PASSWORD], &[]]), seen.keyboard_answers);
+        assert_eq!(vec![PASSWORD.to_owned()], seen.password_attempts, "one failed login");
+        assert_eq!(answers(&[&[PASSWORD], &["123456"]]), seen.keyboard_answers);
     }
 
     /// The right password, partly accepted: the server wants more, and that is not a refusal.
