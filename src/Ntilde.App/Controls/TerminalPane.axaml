@@ -57,6 +57,10 @@
         </Style>
     </UserControl.Styles>
 
+    <!-- The pane's theme scope (spec D7). TerminalPane.UpdatePaneThemeScope sets its variant and
+         gives the pane its own token dictionary when the profile picks a theme other than the
+         app's, so everything inside resolves that theme; otherwise it inherits the app's. -->
+    <ThemeVariantScope x:Name="PaneVariantScope">
     <Border Padding="0">
         <Grid x:Name="RootGrid" Background="Transparent" RowDefinitions="*,Auto">
             <!-- Context Menu for SFTP Actions -->
@@ -278,4 +282,5 @@
             <Border Name="FocusBorder" BorderThickness="1" BorderBrush="Transparent" IsHitTestVisible="False" ZIndex="300" Grid.RowSpan="2" />
         </Grid>
     </Border>
+    </ThemeVariantScope>
 </UserControl>

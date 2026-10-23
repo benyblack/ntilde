@@ -1,4 +1,6 @@
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
+using Avalonia.Styling;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -5210,6 +5212,51 @@ namespace Ntilde.Controls
                 return null;
             }
         }
+        /// <summary>
+        /// The pane's own theme tokens (spec D7), present only while the profile names a theme
+        /// other than the app's. Merged into the pane's resources, so every DynamicResource and
+        /// resource observable inside the pane resolves it before the app's tokens.
+        /// </summary>
+        private ResourceDictionary? _paneThemeTokens;
+
+        /// <summary>True while this pane carries its own theme scope (tests).</summary>
+        internal bool HasPaneThemeScope => _paneThemeTokens != null;
+
+        /// <summary>
+        /// Gives the pane its own token scope when its effective theme differs from the app's, and
+        /// removes it when they match again (or the profile theme is cleared), so the pane follows
+        /// the app. Runs on every ApplySettings, which an app theme switch triggers for every pane,
+        /// so an overriding pane is recoloured from its own theme rather than clobbered. Fluent's
+        /// palette is not scoped (best effort, spec D7): stock controls follow the scope's variant.
+        /// </summary>
+        private void UpdatePaneThemeScope(TerminalSettings settings, TerminalSettings effectiveSettings)
+        {
+            bool overrides = !string.IsNullOrEmpty(Profile?.ThemeName)
+                && !string.Equals(effectiveSettings.ThemeName, settings.ThemeName, StringComparison.Ordinal);
+
+            if (!overrides)
+            {
+                if (_paneThemeTokens != null)
+                {
+                    Resources.MergedDictionaries.Remove(_paneThemeTokens);
+                    _paneThemeTokens = null;
+                }
+
+                PaneVariantScope.ClearValue(ThemeVariantScope.RequestedThemeVariantProperty);
+                return;
+            }
+
+            var tokens = ThemeTokens.Derive(effectiveSettings.ActiveTheme, settings.WindowOpacity);
+            if (_paneThemeTokens == null)
+            {
+                _paneThemeTokens = new ResourceDictionary();
+                Resources.MergedDictionaries.Add(_paneThemeTokens);
+            }
+
+            ThemeService.ApplyTo(_paneThemeTokens, tokens);
+            PaneVariantScope.RequestedThemeVariant = tokens.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
+        }
+
         internal TerminalSettings BuildEffectiveSettings(TerminalSettings settings)
         {
             // We create a "copy" for the view to use, but we only override specific visual fields
@@ -5255,6 +5302,7 @@ namespace Ntilde.Controls
             var effectiveSettings = BuildEffectiveSettings(settings);
 
             TermView.ApplySettings(effectiveSettings);
+            UpdatePaneThemeScope(settings, effectiveSettings);
             if (_commandAssistController != null || !IsCommandAssistFeatureEnabled())
             {
                 InitializeCommandAssist();
