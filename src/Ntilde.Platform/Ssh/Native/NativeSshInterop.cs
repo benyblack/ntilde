@@ -43,6 +43,35 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         return StartSession(options, command: null);
     }
 
+    public NovaSshSafeHandle ConnectShared(NativeSshConnectionOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        return StartSession(options, command: null, start: StartKind.SharedConnection);
+    }
+
+    public NovaSshSafeHandle OpenShell(NovaSshSafeHandle connection, NativeSshConnectionOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (connection.IsInvalid || connection.IsClosed)
+        {
+            throw new InvalidOperationException("The shared native SSH connection is closed.");
+        }
+
+        return StartSession(options, command: null, start: StartKind.SharedShell, connection: connection);
+    }
+
+    /// <summary>Which entry point <see cref="StartSession"/> calls with the args it marshals.</summary>
+    private enum StartKind
+    {
+        /// <summary>nova_ssh_connect, or nova_ssh_exec when there is a command.</summary>
+        Session,
+        SharedConnection,
+        SharedShell
+    }
+
     public NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -59,7 +88,11 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     /// (nova_ssh_connect) when <paramref name="command"/> is null, else an exec session running it
     /// (nova_ssh_exec), which reads the same args and ignores their terminal and shell fields.
     /// </summary>
-    private static NovaSshSafeHandle StartSession(NativeSshConnectionOptions options, string? command)
+    private static NovaSshSafeHandle StartSession(
+        NativeSshConnectionOptions options,
+        string? command,
+        StartKind start = StartKind.Session,
+        NovaSshSafeHandle? connection = null)
     {
         IntPtr commandPtr = IntPtr.Zero;
         IntPtr hostPtr = IntPtr.Zero;
@@ -139,13 +172,20 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                     UseAgent = options.UseAgent ? 1u : 0u
                 };
 
-                NovaSshSafeHandle handle = command is null
-                    ? NativeMethods.nova_ssh_connect(in args)
-                    : NativeMethods.nova_ssh_exec(in args, commandPtr);
+                NovaSshSafeHandle handle = start switch
+                {
+                    StartKind.SharedConnection => NativeMethods.nova_ssh_connect_shared(in args),
+                    // 0 here is also a connection that has already ended, not only rejected args.
+                    StartKind.SharedShell => NativeMethods.nova_ssh_open_shell(connection, in args),
+                    _ when command is null => NativeMethods.nova_ssh_connect(in args),
+                    _ => NativeMethods.nova_ssh_exec(in args, commandPtr)
+                };
                 if (handle.IsInvalid)
                 {
                     handle.Dispose();
-                    throw new InvalidOperationException("Failed to create native SSH session.");
+                    throw new InvalidOperationException(start == StartKind.SharedShell
+                        ? "Failed to open a shell on the shared native SSH connection; it is no longer running."
+                        : "Failed to create native SSH session.");
                 }
 
                 return handle;
@@ -1195,6 +1235,12 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_exec")]
         public static extern NovaSshSafeHandle nova_ssh_exec(in NativeConnectArgs args, IntPtr command);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_connect_shared")]
+        public static extern NovaSshSafeHandle nova_ssh_connect_shared(in NativeConnectArgs args);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_open_shell")]
+        public static extern NovaSshSafeHandle nova_ssh_open_shell(NovaSshSafeHandle connection, in NativeConnectArgs args);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_wait_event")]
         public static extern int nova_ssh_wait_event(NovaSshSafeHandle session, uint timeoutMs);

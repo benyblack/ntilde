@@ -227,12 +227,9 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
         get => _enableMux;
         set
         {
-            if (SetField(ref _enableMux, value))
-            {
-                // BackendWarning names mux as OpenSSH-only on native profiles; toggling it must
-                // surface (or clear) that notice immediately, not at save.
-                OnPropertyChanged(nameof(BackendWarning));
-            }
+            // No BackendWarning to refresh: the native backend shares connections too
+            // (NativeSshConnectionPool), so mux applies on either backend.
+            SetField(ref _enableMux, value);
         }
     }
 
@@ -368,7 +365,8 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
         {
             if (SetField(ref _extraSshArgs, value))
             {
-                // Same as EnableMux: the native backend cannot pass CLI arguments to anything.
+                // BackendWarning names these as OpenSSH-only on native profiles; editing them must
+                // surface (or clear) that notice immediately, not at save.
                 OnPropertyChanged(nameof(BackendWarning));
             }
         }
@@ -425,20 +423,11 @@ public sealed class NewSshConnectionViewModel : INotifyPropertyChanged
                 warnings.Add("Native SSH is disabled globally. Turn it on under Settings > SSH, or switch this profile back to OpenSSH.");
             }
 
-            // Deliberately a warning rather than a save-time refusal: these settings stay stored
-            // so switching the profile back to OpenSSH restores them intact — but connecting
-            // natively must not look like they apply when they cannot.
-            bool ignoresMux = EnableMux;
-            bool ignoresExtraArgs = !string.IsNullOrWhiteSpace(ExtraSshArgs);
-            if (ignoresMux && ignoresExtraArgs)
-            {
-                warnings.Add("Multiplexing (ControlMaster) and extra SSH arguments drive the OpenSSH client; the native backend ignores both.");
-            }
-            else if (ignoresMux)
-            {
-                warnings.Add("Multiplexing (ControlMaster) is an OpenSSH client feature; the native backend ignores it.");
-            }
-            else if (ignoresExtraArgs)
+            // Deliberately a warning rather than a save-time refusal: the arguments stay stored so
+            // switching the profile back to OpenSSH restores them intact — but connecting natively
+            // must not look like they apply when they cannot. Multiplexing is not named: the
+            // native backend shares one connection between tabs as ControlMaster does.
+            if (!string.IsNullOrWhiteSpace(ExtraSshArgs))
             {
                 warnings.Add("Extra SSH arguments drive the OpenSSH client; the native backend ignores them.");
             }

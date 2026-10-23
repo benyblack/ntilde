@@ -438,11 +438,10 @@ public sealed class NewSshConnectionViewModelTests
     }
 
     [Fact]
-    public void BackendWarning_ForNativeProfileWithMux_NamesTheIgnoredSetting()
+    public void BackendWarning_ForNativeProfileWithMux_IsEmpty()
     {
-        // Mux (ControlMaster) drives the OpenSSH client; the native backend has no equivalent.
-        // A warning, not a refusal: the setting stays stored so switching back to OpenSSH
-        // restores it — but the user must know it will not apply.
+        // The native backend shares one connection between tabs, as ControlMaster does, so mux
+        // applies there too and is nothing to warn about.
         var vm = new NewSshConnectionViewModel
         {
             HostName = "native.internal",
@@ -451,8 +450,7 @@ public sealed class NewSshConnectionViewModelTests
             EnableMux = true
         };
 
-        Assert.Contains("Multiplexing", vm.BackendWarning, StringComparison.Ordinal);
-        Assert.Contains("ignores", vm.BackendWarning, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, vm.BackendWarning);
     }
 
     [Fact]
@@ -485,7 +483,8 @@ public sealed class NewSshConnectionViewModelTests
         };
 
         Assert.Contains("disabled globally", vm.BackendWarning, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("ignores both", vm.BackendWarning, StringComparison.Ordinal);
+        Assert.Contains("Extra SSH arguments", vm.BackendWarning, StringComparison.Ordinal);
+        Assert.DoesNotContain("Multiplexing", vm.BackendWarning, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -504,7 +503,7 @@ public sealed class NewSshConnectionViewModelTests
     }
 
     [Fact]
-    public void BackendWarning_IsRaisedWhenMuxOrExtraArgsChange()
+    public void BackendWarning_IsRaisedWhenExtraArgsChange()
     {
         var vm = new NewSshConnectionViewModel
         {
@@ -516,12 +515,11 @@ public sealed class NewSshConnectionViewModelTests
         var raised = new List<string>();
         vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? string.Empty);
 
-        vm.EnableMux = true;
         vm.ExtraSshArgs = "-o Compression=yes";
 
         Assert.True(
-            raised.Count(name => name == nameof(NewSshConnectionViewModel.BackendWarning)) >= 2,
-            "Toggling mux and editing extra args must each re-evaluate the warning immediately, not at save.");
+            raised.Contains(nameof(NewSshConnectionViewModel.BackendWarning)),
+            "Editing extra args must re-evaluate the warning immediately, not at save.");
     }
 
     [Fact]

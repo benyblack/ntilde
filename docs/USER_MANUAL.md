@@ -208,9 +208,19 @@ Ntilde ships two SSH backends:
 
 Settings → SSH holds the global native toggle. With it off, new profiles default to
 OpenSSH instead, so the default can never point at a backend that will refuse to
-run. Ntilde warns you if a native profile carries mux options or extra SSH
-arguments that only the OpenSSH backend understands. See `docs/SSH_ROADMAP.md` for
-the full capability matrix.
+run. Ntilde warns you if a native profile carries extra SSH arguments, which only
+the OpenSSH backend understands. See `docs/SSH_ROADMAP.md` for the full capability
+matrix.
+
+**Connection multiplexing** (the profile's *Reliability* tab) works with both
+backends. With it on, the first tab to a profile logs in, and every later tab or
+split of that profile opens on the same connection: no new handshake and no second
+password or key prompt. The profile's port forwards belong to that connection, so
+they are set up once and stay up while any of its tabs is open. When the last tab
+closes, the connection closes too, or after **ControlPersist (sec)** when that is
+above 0, so a tab you reopen within that time connects at once. One connection
+carries all of a profile's tabs, so when it drops, they all drop together. Only
+tabs of the same profile share; SFTP transfers still log in on their own.
 
 A profile can also keep its tabs' shells running on the host across network drops,
 with both backends: see [Remote SSH tabs that keep running](#126-remote-ssh-tabs-that-keep-running)

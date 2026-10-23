@@ -286,20 +286,22 @@ public sealed class NativeSshSessionTests
     }
 
     [Fact]
-    public void Connect_WithMuxEnabled_WarnsInTheTerminalThatNativeIgnoresIt()
+    public void Connect_WithMuxEnabledButNotControlMasterAuto_WarnsInTheTerminal()
     {
-        // ControlMaster multiplexing drives the OpenSSH client; the native backend has no
-        // equivalent. The setting is ignored, but never silently — the no-silent-degradation
-        // contract — and the warning is buffered, so even a subscriber attaching later sees it.
+        // The native backend shares connections the way ControlMaster auto does. Without auto,
+        // OpenSSH only joins a master another client made, which has no native equivalent: the tab
+        // connects on its own, but never silently — the no-silent-degradation contract — and the
+        // warning is buffered, so even a subscriber attaching later sees it.
         SshProfile profile = CreateProfile();
         profile.MuxOptions.Enabled = true;
+        profile.MuxOptions.ControlMasterAuto = false;
 
         var outputs = new List<string>();
         using var session = new NativeSshSession(profile, interop: new FakeNativeSshInterop());
         session.OnOutputReceived += outputs.Add;
 
         Assert.Contains(outputs, text => text.Contains("multiplexing", StringComparison.OrdinalIgnoreCase)
-            && text.Contains("ignores", StringComparison.Ordinal));
+            && text.Contains("ControlMaster auto", StringComparison.Ordinal));
     }
 
     [Fact]

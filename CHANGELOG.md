@@ -3,6 +3,14 @@
 User-facing changes, newest release first. This file starts with 0.12.0: the notes for earlier
 releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
+## Unreleased
+
+- **Connection multiplexing works with the native SSH backend.** With *Enable connection
+  multiplexing* on, a profile's tabs and splits share one connection: the second tab opens at once,
+  with no second login. Its port forwards are set up once, with the connection, so a second tab of a
+  profile with forwards no longer fails on a port the first one holds. *ControlPersist (sec)* keeps
+  the connection open that long after its last tab closes.
+
 ## 0.12.0
 
 ### Persistent sessions and the multiplexer
