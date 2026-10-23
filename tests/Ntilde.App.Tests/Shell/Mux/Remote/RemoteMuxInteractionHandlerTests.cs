@@ -138,6 +138,7 @@ public sealed class RemoteMuxInteractionHandlerTests : IDisposable
 
         Assert.True(passphrase.IsCanceled);
         Assert.Empty(keyboard.KeyboardResponses);
+        Assert.False(keyboard.IsCanceled);
         Assert.Equal("""{"accept":false}""", System.Text.Encoding.UTF8.GetString(
             NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.HostKeyDecision, hostKey)));
         Assert.Null(automatic.AbortedPrompt);

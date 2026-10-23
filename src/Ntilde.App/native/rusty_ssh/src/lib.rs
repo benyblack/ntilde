@@ -696,11 +696,17 @@ struct HostKeyDecisionResponse {
 #[derive(serde::Deserialize)]
 struct TextResponse {
     text: String,
+    /// The user dismissed the prompt. Without this flag a cancel arrived as an empty
+    /// answer, which was sent to the server as if it were the password.
+    #[serde(default)]
+    canceled: bool,
 }
 
 #[derive(serde::Deserialize)]
 struct KeyboardInteractiveResponse {
     responses: Vec<String>,
+    #[serde(default)]
+    canceled: bool,
 }
 
 #[derive(Deserialize)]
@@ -4509,7 +4515,12 @@ fn prompt_text(
             .ok_or_else(|| anyhow::anyhow!("SSH prompt canceled"))?,
     );
     let response = serde_json::from_slice::<TextResponse>(&payload)?;
-    Ok(Zeroizing::new(response.text))
+    // Wrap before the cancel check so the text is wiped on either path.
+    let text = Zeroizing::new(response.text);
+    if response.canceled {
+        anyhow::bail!("SSH prompt canceled");
+    }
+    Ok(text)
 }
 
 fn wait_keyboard_responses(
@@ -4522,7 +4533,11 @@ fn wait_keyboard_responses(
             .ok_or_else(|| anyhow::anyhow!("Keyboard-interactive prompt canceled"))?,
     );
     let response = serde_json::from_slice::<KeyboardInteractiveResponse>(&payload)?;
-    Ok(Zeroizing::new(response.responses))
+    let responses = Zeroizing::new(response.responses);
+    if response.canceled {
+        anyhow::bail!("Keyboard-interactive prompt canceled");
+    }
+    Ok(responses)
 }
 
 #[cfg(test)]
@@ -4545,6 +4560,42 @@ fn create_test_session_with_event(kind: NovaSshEventKind, payload: &[u8]) -> usi
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_hop() -> AuthHop<'static> {
+        AuthHop { host: "target.internal", port: 22, user: "nova", is_jump_hop: false }
+    }
+
+    fn answer(shared: &Arc<SharedState>, kind: NovaSshResponseKind, json: &str) {
+        shared.queue_response(QueuedResponse { kind, payload: json.as_bytes().to_vec() });
+    }
+
+    #[test]
+    fn a_canceled_text_answer_stops_sign_in() {
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::Password, r#"{"text":"","canceled":true}"#);
+        let error = prompt_text(&shared, NovaSshEventKind::PasswordPrompt, "Password:", NovaSshResponseKind::Password, test_hop())
+            .err()
+            .expect("a cancel must not become an empty password");
+        assert_eq!("SSH prompt canceled", error.to_string());
+    }
+
+    #[test]
+    fn an_empty_password_is_still_a_password() {
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::Password, r#"{"text":""}"#);
+        let password = prompt_text(&shared, NovaSshEventKind::PasswordPrompt, "Password:", NovaSshResponseKind::Password, test_hop())
+            .ok()
+            .expect("an empty password is an answer");
+        assert_eq!("", password.as_str());
+    }
+
+    #[test]
+    fn a_canceled_keyboard_answer_stops_sign_in() {
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::KeyboardInteractive, r#"{"responses":[],"canceled":true}"#);
+        let error = wait_keyboard_responses(&shared).err().expect("a cancel must not become zero answers");
+        assert_eq!("Keyboard-interactive prompt canceled", error.to_string());
+    }
 
     #[test]
     fn password_text_follows_the_askpass_rule() {

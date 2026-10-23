@@ -629,7 +629,8 @@ internal sealed class RemoteMuxInteractionHandler
                     // The profile's saved password, once, with no UI: the user's choice for automatic reconnects.
                     if (kind == SshInteractionKind.Password && TakeSavedPassword() is { } saved) return SshInteractionResponse.FromSecret(saved);
 
-                    // A password is never cancelled: rusty_ssh would send the cancel as an empty password. A passphrase
+                    // A password prompt is aborted, not cancelled: a cancel would stop sign-in, and the abort keeps an
+                    // automatic attempt from looking like the user's own cancel. A passphrase
                     // is: it only unlocks a local key, so nothing reaches the server, and the agent or another key may
                     // still get in. But it is recorded, so an attempt that then fails SSH reads as needing the user.
                     if (kind == SshInteractionKind.Password) throw Abort(kind);
@@ -664,10 +665,11 @@ internal sealed class RemoteMuxInteractionHandler
             }
 
             // A keyboard-interactive round with questions has no answer here; one with none (some servers
-            // send an empty round last) is answered with nothing, as the protocol expects.
+            // send an empty round last) is answered with nothing, as the protocol expects. Not a cancel: a cancel
+            // now stops sign-in.
             return kind == SshInteractionKind.KeyboardInteractive && request.KeyboardPrompts.Count > 0
                 ? throw Abort(kind)
-                : SshInteractionResponse.Cancel();
+                : SshInteractionResponse.FromKeyboardResponses();
         }
 
         /// <summary>
