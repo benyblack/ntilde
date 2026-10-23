@@ -39,6 +39,10 @@ keeps running in the background. Turning it off puts everything back exactly as 
   in `docs/mcp/security.md` holds without keeping other chrome.
 - **An agent write keeps the light lit until the owner has looked** at that pane, exactly as
   write marks clear today, even though in focus mode that means leaving it to visit another tab.
+- **Agents never move the owner in focus mode.** A tab an agent opens goes in the background,
+  and a pane an agent closes is closed without switching to its tab (section 5). Decided after
+  a side review pointed out that the approved design let an agent's new tab take over the
+  screen and the keyboard, with only the strip's tab name changing.
 
 ## Current state (measured on main at 7f37dd8)
 
@@ -174,9 +178,28 @@ workspace, template or bundle. The builder should route these through one "leave
 navigation" step rather than patching each call site separately, and check that list against
 every place that changes `Tabs.SelectedItem` for a user action.
 
-If something **other than the user** changes the selected tab (for example a tab closing because
-its shell exited, or an agent spawning a session if that selects the new tab), focus mode stays
-on and the strip shows whichever tab is now selected. The user did not ask to leave.
+**Agent actions never move the user while in focus mode** (owner decision, 2026-10-23, raised
+after the first approval). Today an agent's `spawnSession` opens a tab and selects it
+(`IAgentActionExecutor.SpawnAsync` calls `AddTab` and reads `_currentPane`), and an agent's
+`closeSession` selects the target pane's tab before closing it
+(`IAgentActionExecutor.ClosePaneAsync`). In focus mode both would move the user's screen and
+keyboard into a different shell, and the only sign would be the strip's dim tab name changing.
+So in focus mode:
+
+- an agent-spawned tab opens **in the background**: the selected tab does not change, and the
+  new pane's shell is started even though its tab is not on screen. A pane normally starts its
+  session only when it is first laid out (`TermView.Ready` / `OnAttachedToVisualTree`), and the
+  agent must be able to type into the session it just spawned. The spawn result (pane id, tab
+  id) is the new pane's, not whatever pane is current;
+- an agent closing a pane closes it **where it is**, without selecting its tab first;
+- both are agent writes (`spawnSession`, `closeSession`), so the strip light reports them
+  (section 7). The user is told without being moved.
+
+Outside focus mode, agent behaviour is unchanged.
+
+If something else changes the selected tab without the user asking (for example a tab closing
+because its shell exited), focus mode stays on and the strip shows whichever tab is now
+selected.
 
 ### 6. Notices
 
@@ -268,6 +291,7 @@ field restores in normal mode.
 ## Anti-goals (would make this a failure even if it technically works)
 
 - An agent read or write that is visible nowhere while focus mode is on.
+- An agent action that silently moves the user's screen or keyboard into another shell.
 - Being stuck in focus mode with no visible way out, especially after a restart.
 - A key that silently does nothing because focus mode swallowed it.
 - Leaving focus mode with chrome in a different state than before (wrong orientation, a
