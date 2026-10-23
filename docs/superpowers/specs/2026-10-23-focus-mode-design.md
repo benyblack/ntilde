@@ -225,7 +225,11 @@ Shown immediately (prompted):
   during the conversation, but under the rule the owner agreed to it is prompted.)*
 - results of a manual update check, update apply failures after the user chose to restart,
   "Unable to open recordings folder", and the mux update confirmation failure;
-- the paste prompt, find, SSH prompts and dialogs.
+- the paste prompt, find, SSH prompts and dialogs;
+- notice-queue answers to a user command (`EnqueueNotice(..., prompted: true)`): the "Attach to
+  session" results, "Pane: Detach" and its "Shell detached", Remote Files refused on a retargeted
+  host, "Install ntilde-mux" results and the mux restart outcome. In focus mode these flush at
+  once and the unprompted queue entries stay held. *(Final review R14.)*
 
 Mechanism: `ShowRecordingToast` / `ShowUpdateToast` callers already know which notice they are
 raising, so each caller states whether it is prompted. Unprompted ones raised in focus mode are
