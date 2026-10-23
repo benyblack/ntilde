@@ -3,7 +3,7 @@ use russh::client::{self, AuthResult, KeyboardInteractiveAuthResponse};
 use russh::keys::agent::AgentIdentity;
 use russh::keys::agent::client::{AgentClient, AgentStream};
 use russh::keys::{PrivateKeyWithHashAlg, load_secret_key, ssh_key};
-use russh::{ChannelMsg, Disconnect, Signer};
+use russh::{ChannelMsg, Disconnect, MethodKind, MethodSet, Signer};
 use russh_sftp::client::SftpSession;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -2582,7 +2582,7 @@ where
         }
     }
 
-    if auth.use_agent && try_agent_auth(user, session).await {
+    if auth.use_agent && try_agent_auth(user, session, &mut ServerMethods::default()).await {
         return Ok(());
     }
 
@@ -4160,6 +4160,64 @@ async fn close_all_forward_channels(forward_channels: &ForwardChannels) {
     let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
 }
 
+/// The sign-in methods the server last said it takes, followed as OpenSSH follows them: every
+/// refusal that lists methods replaces the list. A server set to `AuthenticationMethods
+/// publickey,keyboard-interactive` lists only `publickey` until the key is partially accepted, and
+/// `keyboard-interactive` after. Unknown (`None`) until the server has listed any.
+#[derive(Default)]
+struct ServerMethods(Option<MethodSet>);
+
+impl ServerMethods {
+    fn note(&mut self, result: &AuthResult) {
+        if let AuthResult::Failure { remaining_methods, .. } = result {
+            self.note_remaining(remaining_methods);
+        }
+    }
+
+    /// `note` for a keyboard-interactive failure, which russh reports in its own type. An empty
+    /// list changes nothing: it is how russh reports a dropped connection.
+    fn note_remaining(&mut self, remaining: &MethodSet) {
+        if !remaining.is_empty() {
+            self.0 = Some(remaining.clone());
+        }
+    }
+
+    fn offers(&self, kind: MethodKind) -> bool {
+        self.0.as_ref().is_some_and(|methods| methods.contains(&kind))
+    }
+
+    /// The server takes the password only as a keyboard-interactive question (sshd with
+    /// `PasswordAuthentication no` and PAM behind keyboard-interactive), so that is where the
+    /// password has to go.
+    fn password_through_keyboard_interactive(&self) -> bool {
+        !self.offers(MethodKind::Password) && self.offers(MethodKind::KeyboardInteractive)
+    }
+}
+
+/// The server's answer to the `none` request.
+enum NoneProbe {
+    /// The server needs no credentials (Tailscale SSH under a permissive policy, say).
+    Authenticated,
+    Methods(ServerMethods),
+}
+
+/// Asks the server which methods it takes, with a `none` request before any credential, as
+/// OpenSSH does; sshd does not count that first `none` against MaxAuthTries. An error leaves the
+/// methods unknown: the connection is gone, and the next step reports that as it always has
+/// (spec, "Step 0: ask the server what it accepts").
+async fn ask_server_methods<H>(user: &str, session: &mut client::Handle<H>) -> NoneProbe
+where
+    H: client::Handler + Send + 'static,
+{
+    let mut methods = ServerMethods::default();
+    match session.authenticate_none(user).await {
+        Ok(AuthResult::Success) => return NoneProbe::Authenticated,
+        Ok(refusal) => methods.note(&refusal),
+        Err(_) => {}
+    }
+    NoneProbe::Methods(methods)
+}
+
 /// Authenticates one session of the chain. `hop` names the server being authenticated and rides
 /// on every prompt this raises, so the managed side answers with that server's credential.
 async fn authenticate(
@@ -4170,6 +4228,11 @@ async fn authenticate(
     session: &mut client::Handle<NovaClientHandler>,
 ) -> anyhow::Result<()> {
     let user = hop.user;
+    let mut methods = match ask_server_methods(user, session).await {
+        NoneProbe::Authenticated => return Ok(()),
+        NoneProbe::Methods(methods) => methods,
+    };
+
     // The configured identity file keeps first position. It predates agent support, so it must
     // stay reachable: an agent stuffed with unrelated keys could otherwise exhaust the server's
     // MaxAuthTries — closing the transport — before the file that used to connect this profile
@@ -4179,13 +4242,14 @@ async fn authenticate(
             if auth_result.success() {
                 return Ok(());
             }
+            methods.note(&auth_result);
         }
     }
 
     // Agent identities next, before anything that prompts: the agent is the one method that can
     // still succeed without asking the user anything. Every failure shape (no agent, no keys,
     // all keys refused) falls through.
-    if use_agent && try_agent_auth(user, session).await {
+    if use_agent && try_agent_auth(user, session, &mut methods).await {
         return Ok(());
     }
 
@@ -4317,13 +4381,18 @@ fn agent_identity_public_key(identity: AgentIdentity) -> Option<ssh_key::PublicK
 /// Deliberately infallible: no agent, an empty agent, a broken agent, and a server that refuses
 /// every key all end as `false`, and the caller moves on to the next method — the same behavior
 /// `ssh` has when an agent is absent or unhelpful. A transport-level failure also lands on
-/// `false`; the very next auth attempt surfaces it as the real error.
-async fn try_agent_auth<H>(user: &str, session: &mut client::Handle<H>) -> bool
+/// `false`; the very next auth attempt surfaces it as the real error. Every refusal goes into
+/// `methods`.
+async fn try_agent_auth<H>(
+    user: &str,
+    session: &mut client::Handle<H>,
+    methods: &mut ServerMethods,
+) -> bool
 where
     H: client::Handler + Send + 'static,
 {
     for agent in connect_to_agents().await {
-        if try_one_agent(user, session, agent).await {
+        if try_one_agent(user, session, agent, methods).await {
             return true;
         }
     }
@@ -4333,11 +4402,12 @@ where
 
 /// One agent's keys against the session. `false` covers "this agent could not help" in every
 /// shape — no identities, all keys refused, the agent (or session) breaking mid-attempt — so the
-/// caller can move on to the next agent or the next method.
+/// caller can move on to the next agent or the next method. Every refusal goes into `methods`.
 async fn try_one_agent<H>(
     user: &str,
     session: &mut client::Handle<H>,
     mut agent: DynAgentClient,
+    methods: &mut ServerMethods,
 ) -> bool
 where
     H: client::Handler + Send + 'static,
@@ -4376,7 +4446,7 @@ where
         {
             Ok(result) if result.success() => return true,
             // The server refused this key; the next one may be the right one.
-            Ok(_) => continue,
+            Ok(refusal) => methods.note(&refusal),
             // The agent (or the session) stopped cooperating mid-attempt. This agent's remaining
             // keys would hit the same wall, so stop offering them.
             Err(_) => return false,
@@ -4616,6 +4686,46 @@ mod tests {
         assert_eq!(None, password_question(&[ask("Password: ", true)]));
         assert_eq!(None, password_question(&[ask("Password: ", false), ask("Verification code:", false)]));
         assert_eq!(None, password_question(&[]));
+    }
+
+    fn refusal(remaining: &[MethodKind], partial_success: bool) -> AuthResult {
+        AuthResult::Failure { remaining_methods: MethodSet::from(remaining), partial_success }
+    }
+
+    #[test]
+    fn server_methods_are_unknown_until_the_server_lists_them() {
+        let methods = ServerMethods::default();
+        assert!(!methods.offers(MethodKind::Password));
+        assert!(!methods.offers(MethodKind::KeyboardInteractive));
+        assert!(!methods.password_through_keyboard_interactive());
+    }
+
+    #[test]
+    fn server_methods_follow_the_servers_latest_list() {
+        let mut methods = ServerMethods::default();
+        methods.note(&refusal(&[MethodKind::PublicKey, MethodKind::KeyboardInteractive], false));
+        assert!(methods.offers(MethodKind::KeyboardInteractive));
+        assert!(!methods.offers(MethodKind::Password));
+        assert!(methods.password_through_keyboard_interactive());
+
+        // A key accepted as the first of two factors: the server now wants the password, and only that.
+        methods.note(&refusal(&[MethodKind::Password], true));
+        assert!(methods.offers(MethodKind::Password));
+        assert!(!methods.offers(MethodKind::KeyboardInteractive));
+        assert!(!methods.password_through_keyboard_interactive());
+
+        methods.note_remaining(&MethodSet::from(&[MethodKind::KeyboardInteractive][..]));
+        assert!(methods.password_through_keyboard_interactive());
+    }
+
+    #[test]
+    fn server_methods_keep_their_list_through_an_empty_one() {
+        let mut methods = ServerMethods::default();
+        methods.note(&refusal(&[MethodKind::KeyboardInteractive], false));
+        methods.note(&refusal(&[], false));
+        methods.note_remaining(&MethodSet::empty());
+        methods.note(&AuthResult::Success);
+        assert!(methods.password_through_keyboard_interactive());
     }
 
     // #155: session establishment races against wait_closed so nova_ssh_close can
@@ -7781,6 +7891,10 @@ mod exec_session_e2e_tests {
         stdin: Vec<u8>,
         eof_count: usize,
         data_after_eof: bool,
+        /// Every password the password method was given, in order.
+        password_attempts: Vec<String>,
+        /// The answers of every keyboard-interactive round, in order.
+        keyboard_answers: Vec<Vec<String>>,
     }
 
     type SeenLog = Arc<Mutex<ServerSeen>>;
@@ -7789,8 +7903,30 @@ mod exec_session_e2e_tests {
         seen.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    /// How the test server signs a client in: the methods it advertises (`methods`) and how each
+    /// auth handler answers. The handlers match on it exhaustively, so a new mode is a match arm in
+    /// each, and the compiler names every place it has to decide.
+    enum ServerAuth {
+        /// PASSWORD through the password method, and nothing else.
+        Password,
+        /// Lets the client in on its `none` request, as a server that needs no credentials does
+        /// (Tailscale SSH under a permissive policy). Password stays on offer as PASSWORD.
+        NoneAccepted,
+    }
+
+    impl ServerAuth {
+        fn methods(&self) -> MethodSet {
+            let kinds: &[MethodKind] = match self {
+                ServerAuth::Password => &[MethodKind::Password],
+                ServerAuth::NoneAccepted => &[MethodKind::None, MethodKind::Password],
+            };
+            MethodSet::from(kinds)
+        }
+    }
+
     struct TestServer {
         seen: SeenLog,
+        auth: ServerAuth,
     }
 
     /// Ends a channel the way OpenSSH does when the command exits: EOF, then exit-status, then
@@ -7815,15 +7951,41 @@ mod exec_session_e2e_tests {
     impl russh::server::Handler for TestServer {
         type Error = russh::Error;
 
+        async fn auth_none(&mut self, _user: &str) -> Result<Auth, Self::Error> {
+            Ok(match self.auth {
+                ServerAuth::NoneAccepted => Auth::Accept,
+                ServerAuth::Password => Auth::reject(),
+            })
+        }
+
         async fn auth_password(
             &mut self,
             _user: &str,
             password: &str,
         ) -> Result<Auth, Self::Error> {
-            Ok(if password == PASSWORD {
-                Auth::Accept
-            } else {
-                Auth::reject()
+            lock(&self.seen).password_attempts.push(password.to_owned());
+            Ok(match self.auth {
+                ServerAuth::Password | ServerAuth::NoneAccepted if password == PASSWORD => {
+                    Auth::Accept
+                }
+                ServerAuth::Password | ServerAuth::NoneAccepted => Auth::reject(),
+            })
+        }
+
+        async fn auth_keyboard_interactive<'a>(
+            &'a mut self,
+            _user: &str,
+            _submethods: &str,
+            response: Option<russh::server::Response<'a>>,
+        ) -> Result<Auth, Self::Error> {
+            if let Some(response) = response {
+                let answers = response
+                    .map(|answer| String::from_utf8_lossy(&answer).into_owned())
+                    .collect();
+                lock(&self.seen).keyboard_answers.push(answers);
+            }
+            Ok(match self.auth {
+                ServerAuth::Password | ServerAuth::NoneAccepted => Auth::reject(),
             })
         }
 
@@ -7919,16 +8081,30 @@ mod exec_session_e2e_tests {
         ssh_key::PrivateKey::from(ssh_key::private::Ed25519Keypair::from_seed(&[9u8; 32]))
     }
 
+    fn start_server() -> (u16, SeenLog) {
+        start_server_with(ServerAuth::Password)
+    }
+
     /// Serves one connection on a loopback port, on its own thread and runtime: the client's
     /// worker blocks its thread on prompts, and a shared runtime would starve the server.
-    fn start_server() -> (u16, SeenLog) {
+    fn start_server_with(auth: ServerAuth) -> (u16, SeenLog) {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("loopback must bind");
         let port = listener.local_addr().expect("bound address").port();
         listener
             .set_nonblocking(true)
             .expect("tokio needs a non-blocking listener");
         let seen = SeenLog::default();
-        let handler = TestServer { seen: seen.clone() };
+        let config = Arc::new(russh::server::Config {
+            keys: vec![host_key()],
+            methods: auth.methods(),
+            // The client opens every sign-in with a `none` request, which most modes refuse, and
+            // some tests are refused on purpose. russh holds each refusal for a second by default,
+            // which would only slow these tests down.
+            auth_rejection_time: Duration::from_millis(1),
+            auth_rejection_time_initial: Some(Duration::ZERO),
+            ..Default::default()
+        });
+        let handler = TestServer { seen: seen.clone(), auth };
 
         thread::spawn(move || {
             let runtime = Builder::new_current_thread()
@@ -7940,10 +8116,6 @@ mod exec_session_e2e_tests {
                 let Ok((stream, _)) = listener.accept().await else {
                     return;
                 };
-                let config = Arc::new(russh::server::Config {
-                    keys: vec![host_key()],
-                    ..Default::default()
-                });
                 if let Ok(running) = russh::server::run_stream(config, stream, handler).await {
                     let _ = running.await;
                 }
@@ -7995,9 +8167,28 @@ mod exec_session_e2e_tests {
         );
     }
 
-    /// Polls `handle` until Closed, as the managed poll loop does: accepts the host key, answers
-    /// the password prompt, and shows every event to `on_event` before recording it.
-    fn drive(handle: usize, mut on_event: impl FnMut(&Recorded)) -> Vec<Recorded> {
+    /// `drive_with`, answering every password prompt with PASSWORD.
+    fn drive(handle: usize, on_event: impl FnMut(&Recorded)) -> Vec<Recorded> {
+        drive_with(
+            handle,
+            |event| {
+                (event.kind == NovaSshEventKind::PasswordPrompt as u32).then(|| {
+                    let answer = format!(r#"{{"text":"{PASSWORD}"}}"#);
+                    (NovaSshResponseKind::Password, answer.into_bytes())
+                })
+            },
+            on_event,
+        )
+    }
+
+    /// Polls `handle` until Closed, as the managed poll loop does: accepts the host key, submits
+    /// whatever `answer` replies to any other event, and shows every event to `on_event` before
+    /// recording it.
+    fn drive_with(
+        handle: usize,
+        mut answer: impl FnMut(&Recorded) -> Option<(NovaSshResponseKind, Vec<u8>)>,
+        mut on_event: impl FnMut(&Recorded),
+    ) -> Vec<Recorded> {
         let deadline = Instant::now() + Duration::from_secs(30);
         let mut buffer = vec![0u8; 64 * 1024];
         let mut events: Vec<Recorded> = Vec::new();
@@ -8027,9 +8218,8 @@ mod exec_session_e2e_tests {
                     NovaSshResponseKind::HostKeyDecision,
                     br#"{"accept":true}"#,
                 );
-            } else if event.kind == NovaSshEventKind::PasswordPrompt as u32 {
-                let answer = format!(r#"{{"text":"{PASSWORD}"}}"#);
-                respond(handle, NovaSshResponseKind::Password, answer.as_bytes());
+            } else if let Some((kind, payload)) = answer(&event) {
+                respond(handle, kind, &payload);
             }
 
             on_event(&event);
@@ -8182,6 +8372,32 @@ mod exec_session_e2e_tests {
             "detection must have read bash: {:?}",
             seen.exec_commands[1]
         );
+    }
+
+    /// The client asks with `none` before it offers any credential, so a server that needs none
+    /// lets the session in without a prompt (spec, "Step 0: ask the server what it accepts").
+    #[test]
+    fn a_server_that_takes_none_connects_without_any_prompt() {
+        let (port, seen) = start_server_with(ServerAuth::NoneAccepted);
+        let host = CString::new("127.0.0.1").unwrap();
+        let user = CString::new("tester").unwrap();
+        let detect = CString::new(DETECT_COMMAND).unwrap();
+        let bootstrap = CString::new("echo boot").unwrap();
+        let args = loopback_args(&host, &user, port, &detect, &bootstrap);
+
+        let handle = nova_ssh_connect(&args);
+        assert_ne!(0, handle);
+        let events = drive(handle, |_| {});
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::PasswordPrompt), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+
+        let seen = lock(&seen);
+        assert!(seen.password_attempts.is_empty(), "{:?}", seen.password_attempts);
+        assert!(seen.keyboard_answers.is_empty(), "{:?}", seen.keyboard_answers);
     }
 
     #[test]
