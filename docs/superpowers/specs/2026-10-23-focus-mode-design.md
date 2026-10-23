@@ -192,6 +192,7 @@ So in focus mode:
   agent must be able to type into the session it just spawned. The spawn result (pane id, tab
   id) is the new pane's, not whatever pane is current;
 - an agent closing a pane closes it **where it is**, without selecting its tab first;
+- a profile's template rule is not applied to an agent-spawned background tab (applying a template rebuilds every tab via `ApplySessionSnapshot`, which would move the user and restart their shells); the agent gets a plain tab of that profile.
 - both are agent writes (`spawnSession`, `closeSession`), so the strip light reports them
   (section 7). The user is told without being moved.
 
