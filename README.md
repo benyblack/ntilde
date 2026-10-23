@@ -92,7 +92,9 @@ means for an existing install:
   [latest release](https://github.com/benyblack/ntilde/releases/latest). Installs per-user
   (no admin prompt), adds Start Menu and Desktop shortcuts, and checks for updates in the
   background — a new version downloads quietly and is applied when you accept the prompt and
-  restart. Never a surprise restart. Automatic checks can be turned off in Settings.
+  restart. Never a surprise restart. Automatic checks can be turned off in Settings → General.
+  The installer also adds Ntilde's folder to your user `PATH`, so `ntilde` works in PowerShell
+  and cmd.
 - **Portable** — download `ntilde-win-x64-<tag>.zip` and extract it anywhere. No updater.
 
 There is no winget package yet; the manifests live in [packaging/winget](packaging/winget/README.md)
@@ -116,7 +118,7 @@ macOS builds installed via the `.pkg` check for updates in the background and ap
 on restart, same as Windows. If the app lives in `/Applications`, macOS will ask for your
 password once per update.
 
-Releases built while the macOS signing secrets are unset (see
+Release builds are signed and notarized. Ones built while the macOS signing secrets are unset (see
 [packaging/macos](packaging/macos/README.md), tracking
 [#91](https://github.com/benyblack/ntilde/issues/91)) are **not code-signed or
 notarized**, so Gatekeeper blocks their first launch. On macOS 13+:
@@ -218,6 +220,12 @@ For build steps, jump to [Build & test](#build--test) below.
 - Agent Output panel — renders a command's output as markdown beside the pane, streaming as it arrives
 - Command palette
 - Search overlay
+- Settings window with ten pages in a sidebar (General, Appearance, Terminal, Tabs & title bar,
+  Shells & Profiles, Shortcuts, Command Assist, Agent Access, SSH, Backup & Restore) and a search
+  box (`Ctrl+F`, `Cmd+F` on macOS) that jumps straight to the setting
+- Title-bar editor: put each action in the bar, in the … menu, or hide it, with a live preview
+- Program notifications (OSC 9) as toasts when you aren't looking at the pane (opt-in), and
+  progress (OSC 9;4) on the tab and the Windows taskbar button
 - Profiles (local & SSH)
 - Bundled themes (Dracula, Nord, Gruvbox, Tokyo Night, Catppuccin Mocha, Solarized, GitHub, Monokai, OneHalf, Cobalt2), custom themes, and font configuration
 - Bundled fonts, so a fresh install renders correctly with no system font installed: JetBrains Mono NL by default,
@@ -294,8 +302,10 @@ of in the window ([user manual, chapter 12](docs/USER_MANUAL.md#12-persistent-se
   (Linux x64/arm64 hosts with glibc 2.34+, and Apple-silicon macOS)
 - `ntilde mux ls [--all]`, `attach`, `kill` and `kill-server` from any terminal
 - Agents (MCP) can also see and, with the act opt-in, drive shells no window shows
-- On by default for local shells: Settings → Appearance → *Keep shells running when the window
+- On by default for local shells: Settings → General → *Keep shells running when the window
   closes* turns it off; SSH tabs opt in per connection
+- On Windows, `ntilde` typed in PowerShell or cmd runs the console launcher `ntilde.com`, which
+  waits for a command-line mode such as `ntilde mux ls` and returns its exit code
 
 ### Cross-platform parity
 Ntilde guarantees identical terminal behavior across operating systems
@@ -344,15 +354,16 @@ claude mcp add ntilde -- dotnet "<path-to-repo>/src/Ntilde.McpServer/bin/Release
 For **Claude Desktop / VS Code**, add the same `command`/`args` to the client's MCP config.
 
 The repo / dev-companion tools work immediately. To expose live sessions, enable
-**Settings → Agent access (observe)** in Ntilde; to let an agent type into, spawn, or
-close sessions, also enable the **Agent access (act)** sub-toggle (and allowlist any SSH
-profiles you want reachable). Both are off by default.
+**Agent access (observe)** under **Settings → Agent Access** in Ntilde; to let an agent type
+into, spawn, or close sessions, also enable the **Agent access (act)** sub-toggle (and allowlist
+any SSH profiles you want reachable). Both are off by default.
 
 ---
 
 ## User documentation
 
 - [User manual](docs/USER_MANUAL.md)
+- [Changelog](CHANGELOG.md) (from 0.12.0; earlier notes are on [GitHub Releases](https://github.com/benyblack/ntilde/releases))
 - [Tabs user manual](docs/TABS_USER_MANUAL.md)
 - [Image protocol support](docs/IMAGE_PROTOCOL_SUPPORT.md)
 - [SSH roadmap](docs/SSH_ROADMAP.md)
