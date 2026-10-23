@@ -3,6 +3,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
+using Avalonia.VisualTree;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -131,6 +134,34 @@ public class ThemeServiceTests
         finally
         {
             window.Close();
+        }
+    }
+
+    /// <summary>
+    /// Fluent paints a checked ToggleButton's text from ChromeWhite, which the palette sets to the
+    /// theme foreground, so a light theme put dark ink on the accent (the connection manager's
+    /// "All" chip). The checked state takes the accent and its own ink instead.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_checked_toggle_button_on_a_light_theme_has_the_accent_ink_on_the_accent()
+    {
+        var toggle = new ToggleButton { Content = "All", IsChecked = true };
+        var window = new Window { Content = toggle };
+        window.Show();
+        try
+        {
+            ThemeService.Apply(TestThemes.GitHubLight, 1.0);
+            Dispatcher.UIThread.RunJobs();
+
+            var expected = ThemeTokens.Derive(TestThemes.GitHubLight, 1.0);
+            var presenter = toggle.GetVisualDescendants().OfType<ContentPresenter>().First();
+            Assert.Equal(expected[ThemeKeys.Accent], ((ISolidColorBrush)presenter.Background!).Color);
+            Assert.Equal(expected[ThemeKeys.AccentFg], ((ISolidColorBrush)presenter.Foreground!).Color);
+        }
+        finally
+        {
+            window.Close();
+            ThemeService.Apply(new Ntilde.VT.TerminalTheme(), 1.0);
         }
     }
 

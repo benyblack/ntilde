@@ -133,6 +133,16 @@ internal static class FluentControlOverrides
         (FluentKey: "RepeatButtonForegroundDisabled", TokenKey: ThemeKeys.Fg4),
         (FluentKey: "RepeatButtonBorderBrush", TokenKey: ThemeKeys.Hairline),
 
+        // ToggleButton - checked state only. Fluent reads its checked text from ChromeWhite, which
+        // FluentPaletteMapping sets to the theme foreground: dark ink on the accent under a light
+        // theme (the connection manager's "All" chip). Accent fills with the accent's own ink.
+        (FluentKey: "ToggleButtonBackgroundChecked", TokenKey: ThemeKeys.Accent),
+        (FluentKey: "ToggleButtonBackgroundCheckedPointerOver", TokenKey: ThemeKeys.AccentHover),
+        (FluentKey: "ToggleButtonBackgroundCheckedPressed", TokenKey: ThemeKeys.AccentPressed),
+        (FluentKey: "ToggleButtonForegroundChecked", TokenKey: ThemeKeys.AccentFg),
+        (FluentKey: "ToggleButtonForegroundCheckedPointerOver", TokenKey: ThemeKeys.AccentFg),
+        (FluentKey: "ToggleButtonForegroundCheckedPressed", TokenKey: ThemeKeys.AccentFg),
+
         // ScrollBar thumb only - track/background/buttons stay at Fluent defaults
         (FluentKey: "ScrollBarPanningThumbBackground", TokenKey: ThemeKeys.Fg4),
         (FluentKey: "ScrollBarThumbFillPointerOver", TokenKey: ThemeKeys.Fg3),
