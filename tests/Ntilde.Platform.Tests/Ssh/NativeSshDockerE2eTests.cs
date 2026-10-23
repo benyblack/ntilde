@@ -661,6 +661,42 @@ public sealed class NativeSshDockerE2eTests
     [DockerFact]
     [Trait("Category", "DockerE2E")]
     [Trait("Target", "NativeSsh")]
+    public async Task NativeSsh_WithMultiplexing_TwoTabsShareOneConnectionAndOneLogin()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        SshProfile profile = CreateProfile(fixture);
+        profile.MuxOptions.Enabled = true;
+        var pool = new NativeSshConnectionPool();
+        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        var firstBuffer = new TerminalBuffer(120, 30);
+        var secondBuffer = new TerminalBuffer(120, 30);
+        var firstParser = new AnsiParser(firstBuffer);
+        var secondParser = new AnsiParser(secondBuffer);
+
+        using var first = new NativeSshSession(profile, cols: 120, rows: 30, interactionHandler: handler, connectionPool: pool);
+        first.OnOutputReceived += firstParser.Process;
+        await WaitUntilAsync(() => SnapshotContainsExactLine(firstBuffer, "nova$"), TimeSpan.FromSeconds(20), "first tab's prompt");
+
+        using var second = new NativeSshSession(profile, cols: 120, rows: 30, interactionHandler: handler, connectionPool: pool);
+        second.OnOutputReceived += secondParser.Process;
+        await WaitUntilAsync(() => SnapshotContainsExactLine(secondBuffer, "nova$"), TimeSpan.FromSeconds(20), "second tab's prompt");
+
+        // $SSH_CONNECTION names the client's address and port: one TCP connection means one value in both tabs.
+        first.SendInput("echo \"conn=$SSH_CONNECTION\"\n");
+        second.SendInput("echo \"conn=$SSH_CONNECTION\"\n");
+        static string? ConnectionLine(TerminalBuffer buffer) =>
+            BufferSnapshot.Capture(buffer).Lines.FirstOrDefault(line => line.StartsWith("conn=", StringComparison.Ordinal));
+        await WaitUntilAsync(() => ConnectionLine(firstBuffer) is not null && ConnectionLine(secondBuffer) is not null, TimeSpan.FromSeconds(20), "both tabs' SSH_CONNECTION");
+
+        Assert.Equal(ConnectionLine(firstBuffer), ConnectionLine(secondBuffer));
+        Assert.Single(handler.RequestSnapshot(), request => request.Kind == Ntilde.Platform.Ssh.Interactions.SshInteractionKind.Password);
+        Assert.Equal(1, pool.Count);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
     public async Task NativeSsh_CanExitAlternateScreen_AndReturnToPrompt()
     {
         await using var fixture = await DockerSshFixture.StartAsync();

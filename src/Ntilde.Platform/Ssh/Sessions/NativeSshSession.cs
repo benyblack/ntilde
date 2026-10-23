@@ -51,6 +51,7 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
     // never records input. See ITerminalFlightRecorder.
     private FlightRecordingBuffer? _flightRecorder;
     private NativePortForwardSession? _portForwardSession;
+    private NativeSshSharedConnection.Lease? _connectionLease;
     private NovaSshSafeHandle? _sessionHandle;
     private int _cols;
     private int _rows;
@@ -70,7 +71,8 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         IReadOnlyList<string>? extraArgs = null,
         Action<string>? log = null,
         INativeSshInterop? interop = null,
-        ISshInteractionHandler? interactionHandler = null)
+        ISshInteractionHandler? interactionHandler = null,
+        NativeSshConnectionPool? connectionPool = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
@@ -95,13 +97,17 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         _promptResponder = new NativeSshPromptResponder(profile, sessionId: Id);
 
         // Settings this backend cannot honor are named in the terminal, not silently dropped —
-        // the no-silent-degradation contract. Both drive the OpenSSH client (a ControlMaster
-        // socket, CLI arguments) and have no native equivalent; they stay stored so switching
-        // the profile back to OpenSSH restores them. Emitted before the first output, and
-        // buffered for the first subscriber, so they are never scrolled away by the banner.
-        if (profile.MuxOptions?.Enabled == true)
+        // the no-silent-degradation contract. They stay stored so switching the profile back to
+        // OpenSSH restores them. Emitted before the first output, and buffered for the first
+        // subscriber, so they are never scrolled away by the banner.
+        //
+        // Multiplexing is honored natively as ControlMaster auto is: tabs share one connection
+        // (NativeSshConnectionPool). Without ControlMaster auto, OpenSSH only joins a master some
+        // other client made; natively nothing else makes one, so the tab connects on its own.
+        bool shareConnection = profile.MuxOptions is { Enabled: true, ControlMasterAuto: true };
+        if (profile.MuxOptions is { Enabled: true, ControlMasterAuto: false })
         {
-            EmitSessionText("Warning: multiplexing (ControlMaster) is an OpenSSH client feature; the native backend ignores this profile's mux options.\r\n");
+            EmitSessionText("Warning: multiplexing without ControlMaster auto has no native equivalent; this tab uses a connection of its own.\r\n");
         }
 
         if (!string.IsNullOrWhiteSpace(profile.ExtraSshArgs))
@@ -112,11 +118,21 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         JumpHostConnectPlan connectPlan = JumpHostConnectPlan.Create(profile);
         NativeSshConnectionOptions connectionOptions = NativeSshConnectionOptionsFactory.Create(connectPlan, profile, cols, rows);
         _log($"[NativeSshSession] backend=native path={_jumpHostConnector.DescribePath(connectPlan)} target={connectionOptions.User}@{connectionOptions.Host}:{connectionOptions.Port}");
-        _sessionHandle = _interop.Connect(connectionOptions);
+        _sessionHandle = shareConnection
+            ? OpenSharedShell(profile, connectionOptions, connectionPool ?? NativeSshConnectionPool.Shared)
+            : _interop.Connect(connectionOptions);
 
         try
         {
-            if (profile.Forwards.Count != 0)
+            // A shared connection owns the forwards: they were set up with it, once, and outlive this tab.
+            if (_connectionLease != null)
+            {
+                foreach (PortForward forward in profile.Forwards)
+                {
+                    _metrics.RecordForwardSetup(forward.ToString());
+                }
+            }
+            else if (profile.Forwards.Count != 0)
             {
                 // warn: forwarding failures the user must see (a refused remote listener, above
                 // all) go to the terminal, ssh-style, not only to the diagnostic log.
@@ -607,6 +623,44 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         }
     }
 
+    /// <summary>
+    /// This tab's shell on the profile's shared connection, joining the running one or starting it. A connection
+    /// that ended between the lookup and the open is abandoned for a new one, once.
+    /// </summary>
+    private NovaSshSafeHandle OpenSharedShell(SshProfile profile, NativeSshConnectionOptions options, NativeSshConnectionPool pool)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            NativeSshSharedConnection.Lease lease = pool.Acquire(
+                profile,
+                options,
+                _interop,
+                _interactionHandler,
+                Id,
+                _log,
+                warn: message => EmitSessionText($"{message}\r\n"),
+                out bool reused);
+            try
+            {
+                NovaSshSafeHandle handle = lease.Connection.OpenShell(options);
+                _connectionLease = lease;
+                _log($"[NativeSshSession] shared-connection={(reused ? "reused" : "new")}");
+                return handle;
+            }
+            catch (InvalidOperationException) when (attempt == 1)
+            {
+                _log("[NativeSshSession] shared connection ended before the shell opened; reconnecting");
+                lease.Connection.Abandon();
+                lease.Dispose();
+            }
+            catch
+            {
+                lease.Dispose();
+                throw;
+            }
+        }
+    }
+
     private void CloseNativeHandle()
     {
         NovaSshSafeHandle? handle = Interlocked.Exchange(ref _sessionHandle, null);
@@ -614,6 +668,10 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
         {
             _interop.Close(handle);
         }
+
+        // After the shell: a tab whose shell ended lets go of the connection then, not when its pane closes, so the
+        // ControlPersist countdown starts when the last shell does.
+        Interlocked.Exchange(ref _connectionLease, null)?.Dispose();
     }
 
     private static bool IsCriticalException(Exception ex)

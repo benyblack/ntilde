@@ -43,6 +43,13 @@ The native SSH initiative is implemented behind conservative rollout controls.
 - Keepalive honoring user settings
 - Disconnect state surfaced in the terminal pane
 - Runtime (session-scoped) password memory, opt-in
+- Connection sharing, the native ControlMaster (`nova_ssh_connect_shared`, `nova_ssh_open_shell`):
+  with the profile's multiplexing on, its tabs share one connection from `NativeSshConnectionPool`,
+  keyed by the profile and every connection setting (destination, credentials, jump chain,
+  keepalive, forwards). The connection owns the prompts and the port forwards; each tab gets its own
+  shell channel and event queue. The connection closes with its last tab, or after the profile's
+  ControlPersist seconds once it is up. When the transport goes, every shell on it gets Closed and the
+  next tab reconnects. SFTP and exec still connect on their own.
 - Exec mode (`nova_ssh_exec`): a command with no PTY, with stdin EOF, stderr and the exit status
   as events — the channel persistent remote tabs and the `ntilde-mux` installer run over (see
   *Remote session persistence* below)
@@ -59,11 +66,13 @@ The native SSH initiative is implemented behind conservative rollout controls.
   migrate.
 - Native SSH does **not** silently fall back to OpenSSH on failure.
 - Settings the native backend cannot honor are warned about, not silently
-  dropped: a native profile with multiplexing (ControlMaster) options or extra
-  SSH arguments — both of which drive the OpenSSH client and have no native
-  equivalent — gets a notice in the profile editor and a warning line in the
-  terminal at connect time. The settings stay stored, so switching the profile
-  back to OpenSSH restores them intact.
+  dropped: a native profile with extra SSH arguments, which drive the OpenSSH
+  client and have no native equivalent, gets a notice in the profile editor and
+  a warning line in the terminal at connect time. The arguments stay stored, so
+  switching the profile back to OpenSSH restores them intact. Multiplexing is
+  honored natively (connection sharing, above); only a profile with
+  `ControlMasterAuto` off, which the editor never writes, gets a terminal warning
+  and a connection per tab.
 - Whether native *can* serve a given profile is answered in one place,
   `NativeSshCapability.Evaluate`. Its one refusal today is a remote forward with
   source port 0 (a server-allocated listen port, OpenSSH's `-R 0:`): the native
