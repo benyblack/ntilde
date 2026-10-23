@@ -27,6 +27,26 @@ public sealed class SettingsSessionTests
     }
 
     [Fact]
+    public void Constructing_FromKeybindingsDifferingOnlyByCase_KeepsTheLastOne()
+    {
+        // settings.json is read case-sensitively, so a hand-edited "settings"/"Settings" pair
+        // arrives as two keys. The SettingsWindow builds this session in its constructor, so a
+        // throw here means Settings never opens.
+        var settings = new TerminalSettings
+        {
+            Keybindings = new()
+            {
+                ["settings"] = "Ctrl+Alt+Shift+F11",
+                ["Settings"] = "Ctrl+Alt+Shift+F12",
+            },
+        };
+
+        var session = new SettingsSession(settings, NoSystemFonts);
+
+        Assert.Equal("Ctrl+Alt+Shift+F12", Assert.Single(session.ShortcutDraft).Value);
+    }
+
+    [Fact]
     public void CommitDrafts_WritesKeybindingsAndTitleBarDeltas()
     {
         var session = new SettingsSession(new TerminalSettings(), NoSystemFonts);
