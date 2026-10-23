@@ -125,6 +125,41 @@ namespace Ntilde
         // mode is left.
         private readonly List<FocusWriteMark> _focusCloseMarks = [];
 
+        private readonly HashSet<Guid> _agentClosingPaneIds = [];
+        private bool _disposingAllPanes;
+
+        /// <summary>
+        /// Called by DisposeControlTree for every pane that goes, before it is unwired (which drops its agent registration
+        /// and the Wrote mark with it). In focus mode an unseen agent write into the pane stays on the light as a
+        /// "since closed" mark until focus mode is left. Not for window teardown, and not for an agent's own close, which
+        /// leaves its close mark.
+        /// </summary>
+        private void NoteUnseenWriteOfClosingPane(Controls.TerminalPane pane)
+        {
+            if (!_isFocusMode || _teardownDone || _disposingAllPanes) return;
+            if (_agentClosingPaneIds.Contains(pane.PaneId)) return;
+
+            var registration = AgentHost.AgentSessionRegistry.Instance.GetRegistrations().FirstOrDefault(r => r.PaneId == pane.PaneId);
+            if (registration == null) return;
+            var snapshot = registration.AttentionMachine.Snapshot();
+            if (snapshot.Tier != AgentHost.AgentAttentionTier.Wrote) return;
+
+            TabItem? tab = ResolveOwningTabForPane(pane);
+            tab ??= this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>()
+                .FirstOrDefault(t => registration.TabId is { } id && GetPersistentTabId(t) == id);
+            string tabTitle = tab != null ? GetTabHeaderText(tab) : "Terminal";
+            // The close path has usually taken the pane out of its tab's layout by now, so count it back in.
+            string? paneTitle = null;
+            if (tab != null)
+            {
+                var remaining = PanesInTab(tab).ToList();
+                int before = remaining.Count + (remaining.Contains(pane) ? 0 : 1);
+                if (before > 1) paneTitle = pane.GetBaseTabTitle();
+            }
+            _focusCloseMarks.Add(new FocusWriteMark(tabTitle, paneTitle, snapshot.LastWriteUtc, SinceClosed: true));
+            RefreshAgentObserveIndicator();
+        }
+
         /// <summary>The light's mark for an agent about to close <paramref name="pane"/>, read while its tab still exists.</summary>
         private FocusWriteMark DescribeAgentClose(Controls.TerminalPane pane)
         {
@@ -147,7 +182,10 @@ namespace Ntilde
 
             // Resolved from the pane, so the user's tab stays selected. In a split, ClosePaneCoreAsync also leaves the
             // user's active pane and keyboard alone while focus mode is on.
-            await ClosePaneAsync(target, skipConfirm: true);
+            // The disposal hook would also mark an unseen write into this pane; the close mark below covers it.
+            _agentClosingPaneIds.Add(target.PaneId);
+            try { await ClosePaneAsync(target, skipConfirm: true); }
+            finally { _agentClosingPaneIds.Remove(target.PaneId); }
             if (_paneOwnerTab.ContainsKey(target)) return false;
 
             _focusCloseMarks.Add(mark);
@@ -171,7 +209,7 @@ namespace Ntilde
         /// A pane an agent typed into that the user has not yet looked at, or (<paramref name="Closed"/>) a pane an agent
         /// closed in focus mode, as the light names it.
         /// </summary>
-        internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc, bool Closed = false);
+        internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc, bool Closed = false, bool SinceClosed = false);
 
         /// <summary>
         /// Amber fill for an unseen write, blue for a read or poll, grey when idle. A write and a read at
@@ -196,14 +234,18 @@ namespace Ntilde
                 FocusWriteMark m = marks[0];
                 string one = m.Closed
                     ? $"An agent closed {Target(m)}{At(m)}. {JournalHint}"
-                    : $"An agent typed into {Target(m)}{At(m)}. {JournalHint}";
+                    : m.SinceClosed
+                        ? $"An agent typed into {Target(m)}{At(m)}; it has since closed. {JournalHint}"
+                        : $"An agent typed into {Target(m)}{At(m)}. {JournalHint}";
                 return active ? reading + "\n" + one : one;
             }
 
             var lines = new List<string>();
             if (active) lines.Add(reading);
             lines.Add(marks.Any(m => m.Closed) ? "Agents typed into or closed:" : "Agents typed into:");
-            lines.AddRange(marks.Select(m => m.Closed ? $"- {Target(m)} closed{At(m)}" : $"- {Target(m)}{At(m)}"));
+            lines.AddRange(marks.Select(m => m.Closed ? $"- {Target(m)} closed{At(m)}"
+                : m.SinceClosed ? $"- {Target(m)} typed into{At(m)}, since closed"
+                : $"- {Target(m)}{At(m)}"));
             lines.Add(JournalHint);
             return string.Join("\n", lines);
         }

@@ -3011,6 +3011,7 @@ namespace Ntilde
         {
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
+            _disposingAllPanes = true;
 
             foreach (var ti in tabs.Items.Cast<TabItem>().ToList())
             {
@@ -3034,6 +3035,7 @@ namespace Ntilde
             {
                 DisposeControlTree(orphan);
             }
+            _disposingAllPanes = false;
         }
 
         /// <summary>
@@ -7963,6 +7965,7 @@ namespace Ntilde
             if (control is TerminalPane pane)
             {
                 // Read first: the teardown below lets go of the pane's session and remote host.
+                NoteUnseenWriteOfClosingPane(pane);
                 Guid? shareOfUnknownSharing = pane.MuxShareIdWithSharingUnknown;
                 string? detachedMessage = shareOfUnknownSharing is Guid share ? ShellDetachedMessage(pane, share) : null;
                 UnwirePane(pane);

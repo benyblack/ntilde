@@ -736,6 +736,124 @@ public class AgentObserveIndicatorTests : IDisposable
         });
     }
 
+    // ---- a write into a pane that then closes on its own ----
+
+    private static async System.Threading.Tasks.Task ShellExitClose(MainWindow window, TerminalPane pane)
+    {
+        // The path a shell exit takes.
+        var closed = await (System.Threading.Tasks.Task<bool>)Invoke(window, "ClosePaneAsync", pane, true)!;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.True(closed);
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task A_write_into_a_pane_that_closes_by_itself_stays_on_the_light_until_focus_mode_ends()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"ntilde_observe_indicator_test_{Guid.NewGuid():N}");
+        string? previousRoot = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            var window = NewShownWindow();
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var tabB = AddSplitTab(window, out var paneB, out _, userTitle: "Exit Tab");
+            tabs.SelectedItem = tabs.Items.Cast<TabItem>().First();
+
+            RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+            string paneTitle = paneB.GetBaseTabTitle();
+            window.EnterFocusMode();
+
+            await ShellExitClose(window, paneB);
+
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.StartsWith("Exit Tab", mark.TabTitle);
+            Assert.Equal(paneTitle, mark.PaneTitle);
+            Assert.NotNull(mark.LastWriteUtc);
+            Assert.True(mark.SinceClosed);
+            Assert.False(mark.Closed);
+
+            window.LeaveFocusMode();
+            Assert.Empty(window.CollectUnseenWriteMarks());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", previousRoot);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [Fact]
+    public void The_tooltip_names_a_write_into_a_pane_that_has_since_closed()
+    {
+        var t1 = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 10, 23, 14, 30, 0, TimeSpan.Zero);
+        string Local(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(
+            $"An agent typed into build › logs at {Local(t1)}; it has since closed. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", "logs", t1, SinceClosed: true) }));
+
+        Assert.Equal(
+            "Agents typed into:\n"
+            + $"- server › api at {Local(t2)}\n"
+            + $"- build typed into at {Local(t1)}, since closed\n"
+            + "Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[]
+            {
+                new MainWindow.FocusWriteMark("server", "api", t2),
+                new MainWindow.FocusWriteMark("build", null, t1, SinceClosed: true),
+            }));
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task The_same_close_outside_focus_mode_records_nothing()
+    {
+        var window = NewShownWindow();
+        AddSplitTab(window, out var paneB, out _, userTitle: "Exit Tab");
+        RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+
+        await ShellExitClose(window, paneB);
+
+        window.EnterFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task An_agent_close_of_a_written_pane_in_focus_mode_leaves_exactly_one_mark()
+    {
+        var window = NewShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        AddSplitTab(window, out var paneB, out _, userTitle: "Exit Tab");
+        tabs.SelectedItem = tabs.Items.Cast<TabItem>().First();
+        RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(paneB.PaneId);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        var mark = Assert.Single(window.CollectUnseenWriteMarks());
+        Assert.True(mark.Closed);
+        Assert.False(mark.SinceClosed);
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task A_pane_with_no_unseen_write_closing_in_focus_mode_records_nothing()
+    {
+        var window = NewShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        AddSplitTab(window, out var idle, out var watched, userTitle: "Exit Tab");
+        tabs.SelectedItem = tabs.Items.Cast<TabItem>().First();
+        RegistrationFor(watched).AttentionMachine.NoteRead();
+        window.EnterFocusMode();
+
+        await ShellExitClose(window, idle);
+        await ShellExitClose(window, watched);
+
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
     [AvaloniaFact]
     public void Focus_mode_refreshes_the_light()
     {
