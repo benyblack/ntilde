@@ -20,8 +20,8 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
     </UserControl.Styles>
-    <Border Background="#CC202020"
-            BorderBrush="#404040"
+    <Border Background="{DynamicResource NtOverlay}"
+            BorderBrush="{DynamicResource NtHairline}"
             BorderThickness="1"
             CornerRadius="8"
             Padding="10,6">
@@ -50,7 +50,7 @@
 
             <TextBlock x:Name="BubbleModeLabelText"
                        Text="{Binding ModeLabel}"
-                       Foreground="#8EC5FF"
+                       Foreground="{DynamicResource NtAccent}"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center"/>
 
@@ -59,7 +59,7 @@
                        Text="{Binding QueryText}"
                        IsVisible="{Binding ShowQueryText}"
                        Margin="10,0,0,0"
-                       Foreground="White"
+                       Foreground="{DynamicResource NtFg}"
                        FontFamily="Consolas"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"/>
@@ -68,7 +68,7 @@
                        Grid.Column="2"
                        Classes.continuation="{Binding IsSummaryContinuation}"
                        Text="{Binding SummaryText}"
-                       Foreground="#D7E8FF"
+                       Foreground="{DynamicResource NtFg2}"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"/>
 
@@ -88,13 +88,13 @@
                     IsVisible="{Binding ShowIntegrationStatus}"
                     ToolTip.Tip="{Binding IntegrationStatusTooltip}"
                     Margin="10,0,0,0"
-                    Background="#22FFFFFF"
+                    Background="{DynamicResource NtHoverFill}"
                     CornerRadius="4"
                     Padding="5,1"
                     VerticalAlignment="Center">
                 <TextBlock x:Name="BubbleIntegrationStatusText"
                            Text="{Binding IntegrationStatusText}"
-                           Foreground="#8B96A5"
+                           Foreground="{DynamicResource NtFg3}"
                            FontSize="10"/>
             </Border>
 
@@ -115,7 +115,7 @@
                        IsVisible="{Binding ShowShortcutHint}"
                        Margin="10,0,0,0"
                        MaxWidth="240"
-                       Foreground="#8B96A5"
+                       Foreground="{DynamicResource NtFg3}"
                        FontSize="11"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"/>
@@ -132,7 +132,7 @@
                        IsVisible="{Binding ShowIntegrationGlyph}"
                        ToolTip.Tip="{Binding IntegrationStatusTooltip}"
                        Margin="8,0,0,0"
-                       Foreground="#8B96A5"
+                       Foreground="{DynamicResource NtFg3}"
                        FontSize="10"
                        VerticalAlignment="Center"/>
         </Grid>

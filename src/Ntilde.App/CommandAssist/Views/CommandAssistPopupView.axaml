@@ -28,10 +28,10 @@
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         <Style Selector="Border.assistRow:pointerover">
-            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
         <Style Selector="Border.assistRow.selected">
-            <Setter Property="Background" Value="#332F6FEB"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
         </Style>
 
         <!--
@@ -45,12 +45,12 @@
             beats a style and the dim would then never apply.
         -->
         <Style Selector="Border.assistRow controls|MatchHighlightTextBlock">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="HighlightBrush" Value="#8EC5FF"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
+            <Setter Property="HighlightBrush" Value="{DynamicResource NtAccent}"/>
         </Style>
         <Style Selector="Border.assistRow.failed controls|MatchHighlightTextBlock">
-            <Setter Property="Foreground" Value="#8B96A5"/>
-            <Setter Property="HighlightBrush" Value="#6E8DB5"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg3}"/>
+            <Setter Property="HighlightBrush" Value="{DynamicResource NtFg2}"/>
         </Style>
         <!--
             Selected *and* failed. Without this rung the dim would land on the one row Enter is about
@@ -59,8 +59,8 @@
             is still readable as a failure.
         -->
         <Style Selector="Border.assistRow.failed.selected controls|MatchHighlightTextBlock">
-            <Setter Property="Foreground" Value="#C3CBD6"/>
-            <Setter Property="HighlightBrush" Value="#8EC5FF"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
+            <Setter Property="HighlightBrush" Value="{DynamicResource NtAccent}"/>
         </Style>
     </UserControl.Styles>
     <!--
@@ -70,8 +70,8 @@
         middle-click was an X11-style paste into the shell underneath. Neither gesture means anything to
         the popup, so neither may mean anything to what is behind it.
     -->
-    <Border Background="#F01B1B1B"
-            BorderBrush="#404040"
+    <Border Background="{DynamicResource NtOverlay}"
+            BorderBrush="{DynamicResource NtHairline}"
             BorderThickness="1"
             CornerRadius="10"
             Padding="12"
@@ -82,12 +82,12 @@
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                 <TextBlock x:Name="PopupModeLabelText"
                            Text="{Binding ModeLabel}"
-                           Foreground="#8EC5FF"
+                           Foreground="{DynamicResource NtAccent}"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="1"
                            Text="{Binding QueryText}"
-                           Foreground="White"
+                           Foreground="{DynamicResource NtFg}"
                            FontFamily="Consolas"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"/>
@@ -107,7 +107,7 @@
             -->
             <Border Grid.Row="1"
                     x:Name="PopupResultsPanel"
-                    Background="#22101010"
+                    Background="{DynamicResource NtPanelAlt}"
                     CornerRadius="6"
                     Padding="8">
                 <Grid>
@@ -135,7 +135,7 @@
                                         -->
                                         <Grid ColumnDefinitions="Auto,Auto,*">
                                             <TextBlock Text="{Binding SelectionGlyph}"
-                                                       Foreground="#8EC5FF"
+                                                       Foreground="{DynamicResource NtAccent}"
                                                        Width="12"
                                                        VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="1"
@@ -162,7 +162,7 @@
 
                     <TextBlock x:Name="PopupEmptyStateTextBlock"
                                Text="{Binding EmptyStateText}"
-                               Foreground="#9CA3AF"
+                               Foreground="{DynamicResource NtFg3}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                IsVisible="{Binding ShowEmptyState}"
@@ -187,7 +187,7 @@
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
                     <TextBlock x:Name="PopupSelectedFooterText"
                                Text="{Binding SelectedFooterText}"
-                               Foreground="#9CA3AF"
+                               Foreground="{DynamicResource NtFg3}"
                                FontSize="11"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
@@ -195,7 +195,7 @@
                     <TextBlock Grid.Column="1"
                                x:Name="PopupShortcutHintText"
                                Text="{Binding ShortcutHintText}"
-                               Foreground="#8B96A5"
+                               Foreground="{DynamicResource NtFg3}"
                                FontSize="11"
                                VerticalAlignment="Center"/>
 
@@ -211,14 +211,14 @@
                                x:Name="PopupIntegrationGlyph"
                                Text="{Binding IntegrationGlyphText}"
                                ToolTip.Tip="{Binding IntegrationStatusTooltip}"
-                               Foreground="#8B96A5"
+                               Foreground="{DynamicResource NtFg3}"
                                FontSize="10"
                                VerticalAlignment="Center"/>
                 </Grid>
                 <TextBlock x:Name="PopupAttributionText"
                            Text="{Binding AttributionText}"
                            IsVisible="{Binding HasAttribution}"
-                           Foreground="#6C7684"
+                           Foreground="{DynamicResource NtFg4}"
                            FontSize="10"
                            TextWrapping="Wrap"/>
             </StackPanel>
