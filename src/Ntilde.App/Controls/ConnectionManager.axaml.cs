@@ -7,7 +7,6 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using Ntilde.Shell;
 using Ntilde.Platform;
-using Ntilde.VT;
 using Ntilde.Platform.Ssh.Launch;
 using Ntilde.ViewModels.Ssh;
 using System;
@@ -125,12 +124,6 @@ namespace Ntilde.Controls
         /// Left null in tests and design-time; the row then reads "—" and Forget is hidden.
         /// </summary>
         public ISavedPasswordAccess? SavedPasswordAccess { get; set; }
-
-        // Preserved for source compatibility with MainWindow's theme refresh path.
-        public void ApplyTheme(TerminalTheme theme)
-        {
-            UpdatePaletteResources(theme);
-        }
 
         // ----- Public methods preserved. -----
         public void LoadProfiles(IEnumerable<TerminalProfile> profiles)
@@ -681,11 +674,6 @@ namespace Ntilde.Controls
             int count = _visibleRows.Count;
 
             resultCountText.Text = count == 1 ? "1 connection" : $"{count} connections";
-        }
-
-        private void UpdatePaletteResources(TerminalTheme theme)
-        {
-            ThemePaletteResources.Apply(Resources, theme);
         }
 
         private sealed class ResettableObservableCollection<T> : ObservableCollection<T>

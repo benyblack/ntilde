@@ -6,6 +6,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Shell.TitleBar;
 using Ntilde.VT;
 using Xunit;
@@ -16,10 +17,11 @@ namespace Ntilde.Tests.Core;
 /// Regression tests for the theme-application fixes:
 ///
 /// - the Settings title-bar rows and shortcut rows used hardcoded dark hex backgrounds, so light
-///   themes left navy cards on an otherwise light page; they now hold the window's NtPanel /
-///   NtHairline palette brush instances, which ThemePaletteResources recolors in place.
+///   themes left navy cards on an otherwise light page; they now hold the app-wide NtHairline
+///   token brush instance, which ThemeService recolors in place.
 /// - the Default theme's ANSI blue RGB(0,0,238) was lifted straight into every UI accent brush,
-///   producing eye-searing primary buttons; the accent is now softened for chrome use.
+///   producing eye-searing primary buttons; the accent is now softened for chrome use. That
+///   softening lives in ThemeColorMath.SoftenAccent and is tested under Theming/.
 /// - MainWindow.RebuildTitleBar replaces the generated title-bar buttons with fresh instances, so
 ///   the theme foregrounds an earlier ApplyThemeToUI had applied were lost - white icons under the
 ///   app's default Dark variant, invisible on light themes. The rebuild now re-applies them.
@@ -32,87 +34,19 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
     /// </summary>
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    // The Default theme's ANSI blue - the "eye killer".
-    private static TermColor PureBlue => TermColor.FromRgb(0, 0, 238);
-
-    [Fact]
-    public void SoftenAccent_PureBlue_LandsOnACalmerAccentWithHuePreserved()
-    {
-        var softened = ThemePaletteResources.SoftenAccent(PureBlue.ToAvaloniaColor());
-
-        // RGB(0,0,238): S clamps 1.0 -> 0.68, L (0.467) is inside the band, hue 240° preserved.
-        Assert.Equal(Color.FromRgb(38, 38, 200), softened);
-        Assert.Equal(softened.R, softened.G);
-        Assert.True(softened.B > softened.R);
-    }
-
-    [Fact]
-    public void SoftenAccent_AlreadyCalmAccent_IsUnchanged()
-    {
-        // A mid-lightness, mid-saturation blue passes the caps without material change.
-        var calm = Color.FromRgb(0x62, 0x72, 0xa4);
-
-        Assert.Equal(calm, ThemePaletteResources.SoftenAccent(calm));
-    }
-
-    [Fact]
-    public void Apply_AccentBrushes_TrackTheSoftenedBlueNotTheRawAnsiBlue()
-    {
-        var resources = new ResourceDictionary();
-        var theme = new TerminalTheme { Name = "T", Background = TermColor.Black, Blue = PureBlue };
-
-        ThemePaletteResources.Apply(resources, theme);
-
-        var accent = Assert.IsType<SolidColorBrush>(resources["NtBlue"]);
-        Assert.Equal(ThemePaletteResources.SoftenAccent(PureBlue.ToAvaloniaColor()), accent.Color);
-        Assert.NotEqual(PureBlue.ToAvaloniaColor(), accent.Color);
-    }
-
-    [Fact]
-    public void Apply_AccentForeground_ContrastsTheAccent()
-    {
-        var resources = new ResourceDictionary();
-
-        // Softened Default blue is dark -> white accent foreground.
-        ThemePaletteResources.Apply(resources, new TerminalTheme { Name = "Dark", Blue = PureBlue });
-        Assert.Equal(Colors.White, Assert.IsType<SolidColorBrush>(resources["NtAccentFg"]).Color);
-
-        // A light accent keeps the dark navy foreground the XAML always used.
-        resources = new ResourceDictionary();
-        ThemePaletteResources.Apply(resources, new TerminalTheme { Name = "Light", Blue = TermColor.FromRgb(0x61, 0xaf, 0xef) });
-        Assert.Equal(Color.Parse("#0a1622"), Assert.IsType<SolidColorBrush>(resources["NtAccentFg"]).Color);
-    }
-
     /// <summary>
-    /// ThemePaletteResources recolors brushes IN PLACE so every StaticResource holder updates
-    /// live; replacing the dictionary entries with new instances instead would silently freeze
-    /// all of them on the first theme.
-    /// </summary>
-    [Fact]
-    public void Apply_AcrossThemeSwitches_KeepsBrushInstancesStable()
-    {
-        var resources = new ResourceDictionary();
-        ThemePaletteResources.Apply(resources, new TerminalTheme { Name = "A", Blue = PureBlue });
-        var accentBrush = Assert.IsType<SolidColorBrush>(resources["NtBlue"]);
-        Color colorBefore = accentBrush.Color;
-
-        ThemePaletteResources.Apply(resources, new TerminalTheme { Name = "B", Blue = TermColor.FromRgb(0x61, 0xaf, 0xef) });
-
-        Assert.Same(accentBrush, resources["NtBlue"]);
-        Assert.NotEqual(colorBefore, accentBrush.Color);
-    }
-
-    /// <summary>
-    /// Both code-built card kinds must hold the window's palette brush instances. Holding
-    /// hardcoded hex (the regression) or a copy means light themes render dark navy cards.
+    /// Both code-built card kinds must hold the app's token brush instances, which ThemeService
+    /// recolors in place. Holding hardcoded hex (the regression) or a copy means light themes render
+    /// dark navy cards.
     /// </summary>
     [AvaloniaFact]
-    public void SettingsWindow_CodeBuiltRows_UseTheWindowPaletteBrushes()
+    public void SettingsWindow_CodeBuiltRows_UseTheAppTokenBrushes()
     {
         using var root = SettingsTestRoot.Empty();
         var window = new Ntilde.SettingsWindow();
 
-        var hairlineBrush = Assert.IsType<SolidColorBrush>(window.FindResource("NtHairline"));
+        var hairlineBrush = Assert.IsType<SolidColorBrush>(window.FindResource(ThemeKeys.Hairline));
+        Assert.Same(hairlineBrush, Avalonia.Application.Current!.FindResource(ThemeKeys.Hairline));
 
         var titleBarRows = window.GetPage<TabsAndTitleBarPage>().FindControl<StackPanel>("TitleBarItemsPanel")!.Children.OfType<Border>().ToList();
         Assert.NotEmpty(titleBarRows);

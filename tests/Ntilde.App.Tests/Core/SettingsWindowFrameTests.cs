@@ -10,6 +10,7 @@ using Ntilde.Settings.Pages;
 using Ntilde.Shell;
 using Ntilde.Shell.Shortcuts;
 using Ntilde.VT;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Tests.Core;
 
@@ -130,7 +131,7 @@ public sealed class SettingsWindowFrameTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.True(scroller.Offset.Y + scroller.Viewport.Height >= rowBottom - 1, $"Row bottom {rowBottom} is still below the viewport at offset {scroller.Offset.Y}.");
-            Assert.Same(window.FindResource("NtBlueDim"), row.Background);
+            Assert.Same(window.FindResource(ThemeKeys.AccentDim), row.Background);
         }
         finally
         {
@@ -148,7 +149,7 @@ public sealed class SettingsWindowFrameTests
             window.Show();
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Same(window.FindResource("NtBlueDim"), RowOn(window, BelowTheFold).Background);
+            Assert.Same(window.FindResource(ThemeKeys.AccentDim), RowOn(window, BelowTheFold).Background);
         }
         finally
         {

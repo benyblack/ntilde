@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Ntilde.Platform;
+using Ntilde.Shell.Theming;
 using Ntilde.VT;
 
 namespace Ntilde;
@@ -19,6 +20,10 @@ public partial class App : Application
         // Before any window exists: the UI thread must never pump messages while it waits for a
         // terminal buffer's write lock, or a paint can deadlock against its own resize.
         Ntilde.Shell.Native.NonPumpingSynchronizationContext.Register();
+
+        // Tokens must exist before any window is built. The Default theme is a placeholder:
+        // MainWindow's first ApplyThemeToUI applies the saved theme before the window shows.
+        ThemeService.Install(this, new TerminalTheme(), windowOpacity: 1.0);
     }
 
     public override void OnFrameworkInitializationCompleted()

@@ -5,19 +5,19 @@
              mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="600"
              x:Class="Ntilde.AgentOutput.AgentOutputPanel"
              Width="380">
-    <!-- Chrome matches the pane's other hand-styled surfaces (RemoteFilesSidebar, the assist
-         overlay): fixed dark palette, hairline left edge. Width lives here so the presenter
-         column in TerminalPane stays Auto-sized. -->
-    <Border Background="#1B1D21" BorderBrush="#31353A" BorderThickness="1,0,0,0">
+    <!-- Chrome takes the app-wide theme tokens, as the markdown inside it does: a light theme gets a
+         light panel, not dark text on a fixed dark one. Hairline left edge. Width lives here so the
+         presenter column in TerminalPane stays Auto-sized. -->
+    <Border Background="{DynamicResource NtPanel}" BorderBrush="{DynamicResource NtHairline}" BorderThickness="1,0,0,0">
         <Grid RowDefinitions="Auto,*">
             <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="10,8,10,6">
                 <StackPanel Spacing="1">
                     <TextBlock Text="Agent Output"
-                               Foreground="#F3F6FA"
+                               Foreground="{DynamicResource NtFg}"
                                FontSize="13"
                                FontWeight="SemiBold"/>
                     <TextBlock x:Name="StatusText"
-                               Foreground="#96A0AE"
+                               Foreground="{DynamicResource NtFg3}"
                                FontSize="10.5"
                                IsVisible="False"/>
                 </StackPanel>
@@ -60,11 +60,11 @@
                         HorizontalAlignment="Center"
                         Margin="24,0">
                 <TextBlock Text="No output yet"
-                           Foreground="#96A0AE"
+                           Foreground="{DynamicResource NtFg3}"
                            FontSize="13"
                            TextAlignment="Center"/>
                 <TextBlock Text="Run a command with this panel open — its output renders here as markdown."
-                           Foreground="#6B737F"
+                           Foreground="{DynamicResource NtFg4}"
                            FontSize="11"
                            TextWrapping="Wrap"
                            TextAlignment="Center"

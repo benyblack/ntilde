@@ -22,7 +22,7 @@
                                 <Button Name="BtnImportTheme" Grid.Column="2" Classes="Pill" Content="Import…"/>
                                 <Button Name="BtnNewTheme" Grid.Column="3" Classes="Pill" Content="+ New" ToolTip.Tip="New theme"/>
                             </Grid>
-                            <Border Name="ThemePreviewArea" Classes="ThemePreview" Background="#111">
+                            <Border Name="ThemePreviewArea" Classes="ThemePreview">
                                 <StackPanel Spacing="8">
                                     <Border Name="SampleTextBorder" Padding="10" CornerRadius="4">
                                         <TextBlock Name="SampleTextBlock" Text="The quick brown fox jumps over the lazy dog." FontFamily="{DynamicResource NtMono}" FontSize="12"/>
@@ -134,22 +134,22 @@
                         <StackPanel Spacing="6">
                             <TextBlock Classes="RowDesc" Text="ANSI palette"/>
                             <UniformGrid Name="EditorSwatchGrid" Rows="2" Columns="8" HorizontalAlignment="Left">
-                                <Button Name="EditSwatch0"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch1"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch2"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch3"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch4"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch5"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch6"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch7"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch8"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch9"  Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch10" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch11" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch12" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch13" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch14" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
-                                <Button Name="EditSwatch15" Width="28" Height="28" Margin="2" Background="Black" CornerRadius="3"/>
+                                <Button Name="EditSwatch0"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch1"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch2"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch3"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch4"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch5"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch6"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch7"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch8"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch9"  Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch10" Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch11" Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch12" Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch13" Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch14" Width="28" Height="28" Margin="2" CornerRadius="3"/>
+                                <Button Name="EditSwatch15" Width="28" Height="28" Margin="2" CornerRadius="3"/>
                             </UniformGrid>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -159,7 +159,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Name="EditorPreviewArea" Grid.Column="1" Classes="ThemePreview" Background="#111" VerticalAlignment="Top">
+                    <Border Name="EditorPreviewArea" Grid.Column="1" Classes="ThemePreview" VerticalAlignment="Top">
                         <StackPanel Spacing="10">
                             <TextBlock Name="EditorPreviewLabel" Classes="RowDesc" Text="Preview"/>
                             <Border Name="EditorSampleTextBorder" Padding="10" CornerRadius="4">

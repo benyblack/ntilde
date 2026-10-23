@@ -4,57 +4,48 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:sshvm="clr-namespace:Ntilde.ViewModels.Ssh"
              xmlns:local="clr-namespace:Ntilde.Controls"
-             xmlns:settings="clr-namespace:Ntilde.Settings"
              x:Class="Ntilde.Controls.ConnectionManager"
              mc:Ignorable="d"
              d:DesignWidth="1080" d:DesignHeight="720"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
-             Background="#16181d"
-             Foreground="#e6e8ec"
+             Background="{DynamicResource NtWindowBg}"
+             Foreground="{DynamicResource NtFg}"
              FontFamily="Inter, Segoe UI, system-ui, sans-serif">
 
-    <!-- The palette is shared with Settings (Settings/NtPalette.axaml); this control merges its own
-         instance so a theme switch recolours each surface independently. Its styles below stay
-         local: they are a denser variant (12 px buttons, 30 px icon buttons), not copies. -->
-    <UserControl.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <settings:NtPalette/>
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </UserControl.Resources>
+    <!-- Colours are the app-wide theme tokens (ThemeService). The styles below stay local: they are
+         a denser variant of Settings' NtStyles (12 px buttons, 30 px icon buttons), not copies. -->
 
     <UserControl.Styles>
         <!-- Section header -->
         <Style Selector="TextBlock.SectionHeader">
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg3}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg3}"/>
             <Setter Property="LetterSpacing" Value="1.2"/>
         </Style>
 
         <!-- Search input -->
         <Style Selector="TextBox.Search">
-            <Setter Property="Background" Value="{StaticResource NtPanelAlt}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtHairline}"/>
+            <Setter Property="Background" Value="{DynamicResource NtPanelAlt}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="5"/>
             <Setter Property="Padding" Value="28,5,8,5"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource NtBlue}"/>
-            <Setter Property="SelectionBrush" Value="{StaticResource NtBlueDim}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource NtAccent}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource NtAccentDim}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="MinHeight" Value="30"/>
         </Style>
         <Style Selector="TextBox.Search:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{StaticResource NtBlue}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
         </Style>
 
         <!-- Primary action button -->
         <Style Selector="Button.Primary">
-            <Setter Property="Background" Value="{StaticResource NtBlue}"/>
-            <Setter Property="Foreground" Value="{StaticResource NtAccentFg}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtAccentFg}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="CornerRadius" Value="5"/>
@@ -64,29 +55,29 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.Primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource NtAccentHover}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentHover}"/>
         </Style>
         <Style Selector="Button.Primary:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource NtAccentPressed}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentPressed}"/>
         </Style>
 
         <!-- Secondary pill button -->
         <Style Selector="Button.Pill">
-            <Setter Property="Background" Value="{StaticResource NtPanel}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtHairline}"/>
+            <Setter Property="Background" Value="{DynamicResource NtPanel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="5"/>
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.Pill:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#2a2f38"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
         <Style Selector="Button.Pill:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#353b46"/>
+            <Setter Property="Background" Value="{DynamicResource NtPressedFill}"/>
         </Style>
 
         <!-- Icon-only ghost button -->
@@ -95,22 +86,22 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="6"/>
             <Setter Property="CornerRadius" Value="4"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg3}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg3}"/>
             <Setter Property="Width" Value="30"/>
             <Setter Property="Height" Value="30"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.IconBtn:pointerover">
-            <Setter Property="Foreground" Value="{StaticResource NtFg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
         </Style>
         <Style Selector="Button.IconBtn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#2a2f38"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
 
         <!-- Danger icon button (delete) -->
         <Style Selector="Button.Danger">
-            <Setter Property="Foreground" Value="{StaticResource NtRed}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtError}"/>
         </Style>
 
         <!-- Favourite toggle's "on" state. This replaces a separate yellow indicator star that
@@ -118,29 +109,29 @@
              have been adjacent stars meaning different things, so one control now carries both
              the action and the state. Unset, the icon inherits IconBtn's Foreground. -->
         <Style Selector="PathIcon.favOn">
-            <Setter Property="Foreground" Value="{StaticResource NtYellow}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtWarning}"/>
         </Style>
 
         <!-- Filter chip toggle -->
         <Style Selector="ToggleButton.Chip">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtHairline}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="9,3"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg3}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg3}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="MinHeight" Value="22"/>
         </Style>
         <Style Selector="ToggleButton.Chip:checked">
-            <Setter Property="Background" Value="{StaticResource NtBlueDim}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtBlue}"/>
-            <Setter Property="Foreground" Value="{StaticResource NtBlue}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtAccent}"/>
         </Style>
         <Style Selector="ToggleButton.Chip:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#1f2730"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
 
         <!-- Groups column item -->
@@ -150,18 +141,18 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg2}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
         <Style Selector="Button.GroupItem:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#1f2730"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
         <Style Selector="Button.GroupItem.active">
-            <Setter Property="Background" Value="{StaticResource NtBlueDim}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtBlue}"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
         </Style>
 
         <!-- Multi-select rail toggle -->
@@ -171,18 +162,18 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg2}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
         <Style Selector="ToggleButton.RailToggle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#1f2730"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
         <Style Selector="ToggleButton.RailToggle:checked">
-            <Setter Property="Background" Value="{StaticResource NtBlueDim}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtBlue}"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg}"/>
         </Style>
 
         <!-- List row (ListBoxItem) -->
@@ -191,25 +182,25 @@
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="BorderThickness" Value="2,0,0,1"/>
-            <Setter Property="BorderBrush" Value="#002a2f38"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
         <Style Selector="ListBoxItem.RowItem /template/ ContentPresenter">
             <Setter Property="BorderThickness" Value="2,0,0,1"/>
-            <Setter Property="BorderBrush" Value="#002a2f38"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
         <Style Selector="ListBoxItem.RowItem:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#1d2129"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
         <Style Selector="ListBoxItem.RowItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource NtBlueDim}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtBlue}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtAccent}"/>
         </Style>
         <Style Selector="ListBoxItem.RowItem:selected:focus /template/ ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource NtBlueDim}"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
         </Style>
 
         <!-- ListBox container -->
@@ -226,9 +217,9 @@
 
         <!-- ComboBox -->
         <Style Selector="ComboBox.Diag">
-            <Setter Property="Background" Value="{StaticResource NtPanel}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource NtHairline}"/>
-            <Setter Property="Foreground" Value="{StaticResource NtFg2}"/>
+            <Setter Property="Background" Value="{DynamicResource NtPanel}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource NtHairline}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtFg2}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="CornerRadius" Value="5"/>
@@ -236,12 +227,12 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="220,2*,3*" Background="{StaticResource NtWindowBg}">
+    <Grid ColumnDefinitions="220,2*,3*" Background="{DynamicResource NtWindowBg}">
 
         <!-- ╭───────────── Groups column ─────────────╮ -->
         <Border Grid.Column="0"
-                Background="{StaticResource NtChromeBg}"
-                BorderBrush="{StaticResource NtHairline}"
+                Background="{DynamicResource NtChromeBg}"
+                BorderBrush="{DynamicResource NtHairline}"
                 BorderThickness="0,0,1,0">
             <Grid RowDefinitions="Auto,Auto,*,Auto">
                 <TextBlock Grid.Row="0"
@@ -256,7 +247,7 @@
                                       Data="M12,2A10,10 0 1,0 12,22A10,10 0 1,0 12,2M12,4C13.4,5.5 14.3,7.4 14.7,9.5H9.3C9.7,7.4 10.6,5.5 12,4M5.1,10H8C7.9,10.7 7.9,11.3 7.9,12C7.9,12.7 7.9,13.3 8,14H5.1A8,8 0 0,1 5.1,10M5.1,16H8C8.3,17.4 8.7,18.7 9.3,19.8A8,8 0 0,1 5.1,16M9.8,16H14.2C13.8,17.7 13.1,19.2 12,20.4C10.9,19.2 10.2,17.7 9.8,16M9.8,14C9.7,13.3 9.7,12.7 9.7,12C9.7,11.3 9.7,10.7 9.8,10H14.2C14.3,10.7 14.3,11.3 14.3,12C14.3,12.7 14.3,13.3 14.2,14M14.7,19.8C15.3,18.7 15.7,17.4 16,16H18.9A8,8 0 0,1 14.7,19.8M16.1,14C16.2,13.3 16.2,12.7 16.2,12C16.2,11.3 16.2,10.7 16.1,10H19A8,8 0 0,1 19,14"
                                       Width="14" Height="14"/>
                             <TextBlock Grid.Column="1" Text="All connections" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                            <TextBlock Name="CountAll" Grid.Column="2" Text="0" FontFamily="{StaticResource NtMono}" FontSize="11" Foreground="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                            <TextBlock Name="CountAll" Grid.Column="2" Text="0" FontFamily="{DynamicResource NtMono}" FontSize="11" Foreground="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
 
@@ -265,9 +256,9 @@
                             <PathIcon Grid.Column="0"
                                       Data="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"
                                       Width="14" Height="14"
-                                      Foreground="{StaticResource NtYellow}"/>
+                                      Foreground="{DynamicResource NtWarning}"/>
                             <TextBlock Grid.Column="1" Text="Favorites" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                            <TextBlock Name="CountFav" Grid.Column="2" Text="0" FontFamily="{StaticResource NtMono}" FontSize="11" Foreground="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                            <TextBlock Name="CountFav" Grid.Column="2" Text="0" FontFamily="{DynamicResource NtMono}" FontSize="11" Foreground="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
                 </StackPanel>
@@ -282,7 +273,7 @@
                                         <Grid ColumnDefinitions="14,*,Auto">
                                             <Rectangle Grid.Column="0" Width="8" Height="8" RadiusX="2" RadiusY="2" Fill="{Binding Swatch}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding Count}" FontFamily="{StaticResource NtMono}" FontSize="11" Foreground="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Count}" FontFamily="{DynamicResource NtMono}" FontSize="11" Foreground="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                                         </Grid>
                                     </Button>
                                 </DataTemplate>
@@ -300,7 +291,7 @@
                                         <Grid ColumnDefinitions="14,*,Auto">
                                             <Rectangle Grid.Column="0" Width="8" Height="8" RadiusX="2" RadiusY="2" Fill="{Binding Swatch}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding Count}" FontFamily="{StaticResource NtMono}" FontSize="11" Foreground="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Count}" FontFamily="{DynamicResource NtMono}" FontSize="11" Foreground="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                                         </Grid>
                                     </ToggleButton>
                                 </DataTemplate>
@@ -310,11 +301,11 @@
                 </ScrollViewer>
 
                 <Border Grid.Row="3"
-                        BorderBrush="{StaticResource NtHairline}"
+                        BorderBrush="{DynamicResource NtHairline}"
                         BorderThickness="0,1,0,0"
                         Padding="14,10">
                     <TextBlock FontSize="11"
-                               Foreground="{StaticResource NtFg4}"
+                               Foreground="{DynamicResource NtFg4}"
                                TextWrapping="Wrap"
                                Text="Credentials stored in OS keychain. Session passwords opt-in only."/>
                 </Border>
@@ -324,7 +315,7 @@
         <!-- ╭───────────── List column ─────────────╮ -->
         <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
             <Border Grid.Row="0"
-                    BorderBrush="{StaticResource NtHairline}"
+                    BorderBrush="{DynamicResource NtHairline}"
                     BorderThickness="0,0,1,1">
                 <Grid Margin="14,12" ColumnDefinitions="*,Auto,Auto">
                     <Grid Grid.Column="0">
@@ -336,7 +327,7 @@
                                   Margin="10,0,0,0"
                                   HorizontalAlignment="Left"
                                   VerticalAlignment="Center"
-                                  Foreground="{StaticResource NtFg4}"
+                                  Foreground="{DynamicResource NtFg4}"
                                   IsHitTestVisible="False"/>
                     </Grid>
                     <Button Name="BtnNewConnection"
@@ -346,7 +337,7 @@
                             ToolTip.Tip="Create a new SSH connection"
                             Click="OnNewConnectionClick">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="12" Height="12" Foreground="{StaticResource NtAccentFg}"/>
+                            <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="12" Height="12" Foreground="{DynamicResource NtAccentFg}"/>
                             <TextBlock Text="New"/>
                         </StackPanel>
                     </Button>
@@ -363,7 +354,7 @@
 
             <!-- Filter chips + result count -->
             <Border Grid.Row="1"
-                    BorderBrush="{StaticResource NtHairline}"
+                    BorderBrush="{DynamicResource NtHairline}"
                     BorderThickness="0,0,1,1">
                 <Grid Margin="14,8" ColumnDefinitions="*,Auto">
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -374,7 +365,7 @@
                                Grid.Column="1"
                                Text="0 connections"
                                VerticalAlignment="Center"
-                               Foreground="{StaticResource NtFg3}"
+                               Foreground="{DynamicResource NtFg3}"
                                FontSize="11"/>
                 </Grid>
             </Border>
@@ -385,7 +376,7 @@
                      SelectionMode="Single"
                      SelectionChanged="OnSelectionChanged"
                      DoubleTapped="OnRowDoubleTapped"
-                     BorderBrush="{StaticResource NtHairline}"
+                     BorderBrush="{DynamicResource NtHairline}"
                      BorderThickness="0,0,1,0">
                 <ListBox.ItemContainerTheme>
                     <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
@@ -396,11 +387,11 @@
                     <DataTemplate x:DataType="sshvm:SshProfileRowViewModel">
                         <Grid Margin="12,12" RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
                             <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
-                                <Ellipse Width="8" Height="8" Fill="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
                                            Margin="8,0,0,0"
                                            Text="{Binding Name}"
-                                           Foreground="{StaticResource NtFg}"
+                                           Foreground="{DynamicResource NtFg}"
                                            FontWeight="SemiBold"
                                            FontSize="13"
                                            VerticalAlignment="Center"/>
@@ -408,20 +399,20 @@
                                           Margin="6,0,0,0"
                                           Data="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"
                                           Width="11" Height="11"
-                                          Foreground="{StaticResource NtYellow}"
+                                          Foreground="{DynamicResource NtWarning}"
                                           IsVisible="{Binding IsFavorite}"
                                           VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="4"
                                            Text="{Binding GroupPath}"
-                                           Foreground="{StaticResource NtFg4}"
+                                           Foreground="{DynamicResource NtFg4}"
                                            FontSize="11"
                                            VerticalAlignment="Center"/>
                             </Grid>
                             <TextBlock Grid.Row="1"
                                        Text="{Binding Endpoint}"
-                                       FontFamily="{StaticResource NtMono}"
+                                       FontFamily="{DynamicResource NtMono}"
                                        FontSize="12"
-                                       Foreground="{StaticResource NtFg3}"/>
+                                       Foreground="{DynamicResource NtFg3}"/>
                             <ItemsControl Grid.Row="2"
                                           ItemsSource="{Binding Tags}"
                                           IsVisible="{Binding Tags.Count}">
@@ -432,14 +423,14 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource NtBlueFaint}"
-                                                BorderBrush="{StaticResource NtBlueBorder}"
+                                        <Border Background="{DynamicResource NtAccentFaint}"
+                                                BorderBrush="{DynamicResource NtAccentBorder}"
                                                 BorderThickness="1"
                                                 CornerRadius="8"
                                                 Padding="6,1">
                                             <TextBlock Text="{Binding}"
                                                        FontSize="10"
-                                                       Foreground="{StaticResource NtBlue}"/>
+                                                       Foreground="{DynamicResource NtAccent}"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -459,14 +450,14 @@
                         Spacing="8">
                 <PathIcon Data="M4,6H20V8H4V6M4,10.5H20V12.5H4V10.5M4,15H20V17H4V15Z"
                           Width="40" Height="40"
-                          Foreground="{StaticResource NtFg4}"/>
+                          Foreground="{DynamicResource NtFg4}"/>
                 <TextBlock Text="Select a connection"
                            FontSize="14"
-                           Foreground="{StaticResource NtFg3}"
+                           Foreground="{DynamicResource NtFg3}"
                            HorizontalAlignment="Center"/>
                 <TextBlock Text="Pick from the list, or hit ⌘N to create one."
                            FontSize="12"
-                           Foreground="{StaticResource NtFg4}"
+                           Foreground="{DynamicResource NtFg4}"
                            HorizontalAlignment="Center"/>
             </StackPanel>
 
@@ -475,7 +466,7 @@
 
                 <!-- Detail header -->
                 <Border Grid.Row="0"
-                        BorderBrush="{StaticResource NtHairline}"
+                        BorderBrush="{DynamicResource NtHairline}"
                         BorderThickness="0,0,0,1"
                         Padding="24,20,24,16">
                     <StackPanel Spacing="6">
@@ -487,7 +478,7 @@
                              the void that used to sit between the title and the IDLE badge. That keeps the
                              action bar a single row and puts destructive Delete far from the primary Open. -->
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                            <Ellipse Width="10" Height="10" Fill="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                            <Ellipse Width="10" Height="10" Fill="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1"
                                        Name="DetailTitle"
                                        Margin="10,0,0,0"
@@ -495,7 +486,7 @@
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis"
-                                       Foreground="{StaticResource NtFg}"
+                                       Foreground="{DynamicResource NtFg}"
                                        VerticalAlignment="Center"/>
                             <WrapPanel Grid.Column="2"
                                        Name="DetailActionBarIcons"
@@ -525,20 +516,20 @@
                                         Spacing="6"
                                         Margin="16,0,0,0"
                                         VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="{StaticResource NtFg4}" VerticalAlignment="Center"/>
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource NtFg4}" VerticalAlignment="Center"/>
                                 <TextBlock Text="IDLE"
                                            FontSize="11"
                                            LetterSpacing="1"
-                                           Foreground="{StaticResource NtFg3}"
+                                           Foreground="{DynamicResource NtFg3}"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Grid>
 
                         <TextBlock Name="DetailEndpoint"
                                    Text="—"
-                                   FontFamily="{StaticResource NtMono}"
+                                   FontFamily="{DynamicResource NtMono}"
                                    FontSize="13"
-                                   Foreground="{StaticResource NtFg3}"/>
+                                   Foreground="{DynamicResource NtFg3}"/>
 
                         <!-- Action bar: the launch actions only. The secondary icon cluster moved up into the
                              title row, so this is a single row again.
@@ -555,7 +546,7 @@
                                     Click="OnOpenCurrentClick"
                                     ToolTip.Tip="Open in current pane">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Data="M8,5.14V19.14L19,12.14L8,5.14Z" Width="11" Height="11" Foreground="{StaticResource NtAccentFg}"/>
+                                    <PathIcon Data="M8,5.14V19.14L19,12.14L8,5.14Z" Width="11" Height="11" Foreground="{DynamicResource NtAccentFg}"/>
                                     <TextBlock Text="Open"/>
                                 </StackPanel>
                             </Button>
@@ -579,19 +570,19 @@
                         <StackPanel Spacing="10">
                             <TextBlock Classes="SectionHeader" Text="CONNECTION"/>
                             <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,0">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Host"        Foreground="{StaticResource NtFg3}" FontSize="13" Margin="0,4"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Name="KvHost"  Text="—" FontFamily="{StaticResource NtMono}" FontSize="12.5" Foreground="{StaticResource NtFg}" Margin="0,4"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Port"        Foreground="{StaticResource NtFg3}" FontSize="13" Margin="0,4"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Name="KvPort"  Text="—" FontFamily="{StaticResource NtMono}" FontSize="12.5" Foreground="{StaticResource NtFg}" Margin="0,4"/>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="User"        Foreground="{StaticResource NtFg3}" FontSize="13" Margin="0,4"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Name="KvUser"  Text="—" FontFamily="{StaticResource NtMono}" FontSize="12.5" Foreground="{StaticResource NtFg}" Margin="0,4"/>
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Group"       Foreground="{StaticResource NtFg3}" FontSize="13" Margin="0,4"/>
-                                <TextBlock Grid.Row="3" Grid.Column="1" Name="KvGroup" Text="—" FontFamily="{StaticResource NtMono}" FontSize="12.5" Foreground="{StaticResource NtFg}" Margin="0,4"/>
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Auth"        Foreground="{StaticResource NtFg3}" FontSize="13" Margin="0,4"/>
-                                <TextBlock Grid.Row="4" Grid.Column="1" Name="KvAuth"  Text="—" FontFamily="{StaticResource NtMono}" FontSize="12.5" Foreground="{StaticResource NtFg}" Margin="0,4"/>
-                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Saved password" Foreground="{StaticResource NtFg3}" FontSize="13" Margin="0,4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Host"        Foreground="{DynamicResource NtFg3}" FontSize="13" Margin="0,4"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Name="KvHost"  Text="—" FontFamily="{DynamicResource NtMono}" FontSize="12.5" Foreground="{DynamicResource NtFg}" Margin="0,4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Port"        Foreground="{DynamicResource NtFg3}" FontSize="13" Margin="0,4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Name="KvPort"  Text="—" FontFamily="{DynamicResource NtMono}" FontSize="12.5" Foreground="{DynamicResource NtFg}" Margin="0,4"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="User"        Foreground="{DynamicResource NtFg3}" FontSize="13" Margin="0,4"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Name="KvUser"  Text="—" FontFamily="{DynamicResource NtMono}" FontSize="12.5" Foreground="{DynamicResource NtFg}" Margin="0,4"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Group"       Foreground="{DynamicResource NtFg3}" FontSize="13" Margin="0,4"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Name="KvGroup" Text="—" FontFamily="{DynamicResource NtMono}" FontSize="12.5" Foreground="{DynamicResource NtFg}" Margin="0,4"/>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Auth"        Foreground="{DynamicResource NtFg3}" FontSize="13" Margin="0,4"/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Name="KvAuth"  Text="—" FontFamily="{DynamicResource NtMono}" FontSize="12.5" Foreground="{DynamicResource NtFg}" Margin="0,4"/>
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Saved password" Foreground="{DynamicResource NtFg3}" FontSize="13" Margin="0,4"/>
                                 <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="0,4" VerticalAlignment="Center">
-                                    <TextBlock Name="KvSavedPassword" Text="—" FontFamily="{StaticResource NtMono}" FontSize="12.5" Foreground="{StaticResource NtFg}" VerticalAlignment="Center"/>
+                                    <TextBlock Name="KvSavedPassword" Text="—" FontFamily="{DynamicResource NtMono}" FontSize="12.5" Foreground="{DynamicResource NtFg}" VerticalAlignment="Center"/>
                                     <Button Name="BtnForgetSavedPassword"
                                             Classes="Pill"
                                             Content="Forget saved password"
@@ -612,12 +603,12 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource NtBlueFaint}"
-                                                BorderBrush="{StaticResource NtBlueBorder}"
+                                        <Border Background="{DynamicResource NtAccentFaint}"
+                                                BorderBrush="{DynamicResource NtAccentBorder}"
                                                 BorderThickness="1"
                                                 CornerRadius="8"
                                                 Padding="7,1">
-                                            <TextBlock Text="{Binding}" FontSize="10" Foreground="{StaticResource NtBlue}"/>
+                                            <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource NtAccent}"/>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -628,7 +619,7 @@
                                            Text=""
                                            FontSize="12.5"
                                            LineHeight="19"
-                                           Foreground="{StaticResource NtFg2}"
+                                           Foreground="{DynamicResource NtFg2}"
                                            TextWrapping="Wrap"/>
                             </Border>
                         </StackPanel>
@@ -636,15 +627,15 @@
                         <!-- Launch preview -->
                         <StackPanel Spacing="10">
                             <TextBlock Classes="SectionHeader" Text="LAUNCH PREVIEW"/>
-                            <Border Background="{StaticResource NtPanel}"
-                                    BorderBrush="{StaticResource NtHairline}"
+                            <Border Background="{DynamicResource NtPanel}"
+                                    BorderBrush="{DynamicResource NtHairline}"
                                     BorderThickness="1"
                                     CornerRadius="6"
                                     Padding="12">
                                 <TextBlock Name="LaunchPreviewText"
-                                           FontFamily="{StaticResource NtMono}"
+                                           FontFamily="{DynamicResource NtMono}"
                                            FontSize="12"
-                                           Foreground="{StaticResource NtFg2}"
+                                           Foreground="{DynamicResource NtFg2}"
                                            LineHeight="18"
                                            TextWrapping="Wrap"
                                            Text="Selected level: None&#x0a;SSH flags added: none&#x0a;Open, Copy command, and Connection details use this level."/>

@@ -36,12 +36,10 @@ public sealed record MarkdownRenderResult(Control Root, bool HasTransformBlock);
 /// lines was the smaller dependency than a library's theming system.
 /// </para>
 /// <para>
-/// <b>Colors resolve per build, not per binding.</b> <see cref="Build"/> prefers the app's
-/// <c>Nt*</c> theme brushes (see <c>ThemePaletteResources</c>) and falls back to the same fixed
-/// palette the sibling surfaces (RemoteFilesSidebar, the assist overlay) hard-code, so a theme
-/// resource that is absent at runtime degrades to the known look instead of to transparent text
-/// on transparent background. The renderer re-runs on every content change, so a theme switch is
-/// picked up on the next rebuild.
+/// <b>Colors resolve per build, not per binding.</b> <see cref="Build"/> takes the app-wide
+/// <c>Nt*</c> theme tokens (see <c>ThemeService</c>). Runs hold the token brush instances, which
+/// ThemeService recolours in place, so a theme switch reaches text already rendered; a token that
+/// cannot be found falls back to the current token colour, never to transparent text.
 /// </para>
 /// <para>
 /// <b>Unknown blocks are skipped, not crashed on.</b> The walk pattern-matches the block types

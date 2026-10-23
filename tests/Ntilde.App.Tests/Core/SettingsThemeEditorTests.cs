@@ -12,6 +12,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Tests.Core;
 
@@ -116,11 +117,11 @@ public sealed class SettingsThemeEditorTests
             themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(i => (string?)i.Content == "GitHub Light");
             Click(page, "BtnEditTheme");
             Type(page, "EditThemeBgInput", "#123456");
-            Assert.Equal(Color.Parse("#ffffff"), ((SolidColorBrush)window.FindResource("NtWindowBg")!).Color); // an edit alone repaints only the editor's preview
+            Assert.Equal(Color.Parse("#ffffff"), ((SolidColorBrush)window.FindResource(ThemeKeys.WindowBg)!).Color); // an edit alone repaints only the editor's preview
 
             Click(page, "BtnSaveTheme");
 
-            Assert.Equal(Color.Parse("#123456"), ((SolidColorBrush)window.FindResource("NtWindowBg")!).Color);
+            Assert.Equal(Color.Parse("#123456"), ((SolidColorBrush)window.FindResource(ThemeKeys.WindowBg)!).Color);
         }
     }
 
@@ -411,7 +412,7 @@ public sealed class SettingsThemeEditorTests
 
                 Assert.False(page.IsThemeEditorOpen);
                 var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "window-opacity");
-                Assert.Same(window.FindResource("NtBlueDim"), row.Background);
+                Assert.Same(window.FindResource(ThemeKeys.AccentDim), row.Background);
             }
             finally
             {
@@ -547,7 +548,7 @@ public sealed class SettingsThemeEditorTests
 
                 Assert.False(page.IsSubPageOpen);
                 var row = page.GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "window-opacity");
-                Assert.Same(window.FindResource("NtBlueDim"), row.Background);
+                Assert.Same(window.FindResource(ThemeKeys.AccentDim), row.Background);
 
                 // Leaving the editor returns focus to Edit only when the editor had it; here the setting takes it.
                 var slider = page.FindControl<Slider>("WindowOpacitySlider")!;

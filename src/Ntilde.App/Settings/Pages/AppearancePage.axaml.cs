@@ -479,9 +479,8 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
         if (editor)
         {
-            // The label sits on the theme's own background; keep it readable.
-            double luminance = (0.299 * theme.Background.R + 0.587 * theme.Background.G + 0.114 * theme.Background.B) / 255.0;
-            Text("EditorPreviewLabel").Foreground = luminance > 0.5 ? Brushes.Black : Brushes.White;
+            // The label is part of the preview: the theme's own foreground on its own background.
+            Text("EditorPreviewLabel").Foreground = new SolidColorBrush(theme.Foreground.ToAvaloniaColor());
         }
 
         string swatchPrefix = editor ? "EditorPreviewSwatch" : "Swatch";
