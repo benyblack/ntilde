@@ -6713,7 +6713,8 @@ namespace Ntilde
 
                 if (_isFocusMode)
                 {
-                    // Resolved from the pane, so the user's tab, active pane and keyboard stay where they are.
+                    // Resolved from the pane, so the user's tab stays selected. In a split, ClosePaneCoreAsync
+                    // also leaves the user's active pane and keyboard alone while focus mode is on.
                     await ClosePaneAsync(target, skipConfirm: true);
                     return !_paneOwnerTab.ContainsKey(target);
                 }
@@ -6945,8 +6946,22 @@ namespace Ntilde
                         // 5. Dispose the closed pane
                         DisposeControlTree(paneToClose, disposition);
 
-                        // 6. Focus Sibling
-                        FocusFirstPane(sibling);
+                        // 6. Focus Sibling. In focus mode a pane that is not the user's current pane (an agent
+                        // closing it) must not move the user's active pane or keyboard: only repoint the tab's
+                        // remembered pane when it was the closed one.
+                        if (_isFocusMode && !ReferenceEquals(paneToClose, _currentPane))
+                        {
+                            if (_activePaneByTab.TryGetValue(paneTab, out var remembered)
+                                && ReferenceEquals(remembered, paneToClose)
+                                && FindFirstPane(sibling) is { } survivor)
+                            {
+                                _activePaneByTab[paneTab] = survivor;
+                            }
+                        }
+                        else
+                        {
+                            FocusFirstPane(sibling);
+                        }
                         UpdatePaneAutomationLabels();
                         RefreshLayoutModelForTab(paneTab);
                         PublishPaneEvent(paneTab, paneToClose, PaneAuditEventKind.Close);

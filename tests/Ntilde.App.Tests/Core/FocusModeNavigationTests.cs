@@ -236,6 +236,52 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
     }
 
     [AvaloniaFact]
+    public async Task An_agent_close_in_a_background_split_moves_nothing()
+    {
+        MainWindow window = NewShownWindow();
+        var tabs = TabsOf(window);
+        var a = (TabItem)tabs.Items[0]!;
+        TabItem splitTab = AddSplitTab(window, out TerminalPane b1, out TerminalPane b2);
+        Select(window, a);
+        var userPane = CurrentPane(window);
+        Assert.Same(a.Content, userPane);
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(b1.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.Same(a, tabs.SelectedItem);
+        Assert.Same(userPane, CurrentPane(window));
+        Assert.True(window.IsFocusMode);
+        Assert.Same(b2, splitTab.Content);
+    }
+
+    [AvaloniaFact]
+    public async Task An_agent_close_of_a_sibling_in_the_selected_split_keeps_the_users_pane()
+    {
+        MainWindow window = NewShownWindow();
+        TabItem split = AddSplitTab(window, out TerminalPane x, out TerminalPane y);
+        Select(window, split);
+        Invoke(window, "UpdateActivePane", y);
+        window.KeyPress(Key.D, CtrlShift, PhysicalKey.D, null);
+        Dispatcher.UIThread.RunJobs();
+        var z = CurrentPane(window)!;
+        Assert.NotSame(x, z);
+        Assert.NotSame(y, z);
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(x.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.Same(z, CurrentPane(window));
+        var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement();
+        Assert.False(focused is Avalonia.Visual v && Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<TerminalPane>(v, true) == y,
+            "keyboard focus moved into the sibling pane");
+    }
+
+    [AvaloniaFact]
     public async Task Agent_actions_outside_focus_mode_are_unchanged()
     {
         MainWindow window = NewShownWindow();
