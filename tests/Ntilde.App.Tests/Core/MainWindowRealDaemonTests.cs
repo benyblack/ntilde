@@ -435,7 +435,7 @@ public sealed class MainWindowRealDaemonTests : IDisposable
         window.AllPanesForTest().Single(p => p.Session is MuxClientSession m && m.Id == id);
 
     private static void AddTab(MainWindow window) =>
-        typeof(MainWindow).GetMethod("AddTab", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [null, SshDiagnosticsLevel.None]);
+        typeof(MainWindow).GetMethod("AddTab", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(window, [null, SshDiagnosticsLevel.None, true, true]);
 
     /// <summary>Selects each restored tab in turn: a background tab's pane attaches only once it is shown.</summary>
     private static void ShowEveryTab(MainWindow window, int tabs)

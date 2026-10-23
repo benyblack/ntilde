@@ -35,7 +35,7 @@ internal static class WindowTestSupport
     /// <c>InitializeRestoredTabs</c> so the panes are wired to the window and
     /// their registrations are associated with the tab.
     /// </summary>
-    public static TabItem AddSplitTab(MainWindow window, out TerminalPane first, out TerminalPane second)
+    public static TabItem AddSplitTab(MainWindow window, out TerminalPane first, out TerminalPane second, string? userTitle = null)
     {
         var settings = (TerminalSettings)typeof(MainWindow)
             .GetField("_settings", NonPublicInstance)!
@@ -44,6 +44,7 @@ internal static class WindowTestSupport
         var session = new TabSession
         {
             Title = "Split",
+            UserTitle = userTitle,
             Root = new PaneNode
             {
                 Type = NodeType.Split,

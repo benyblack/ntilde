@@ -669,7 +669,7 @@ public class AgentObserveIndicatorTests : IDisposable
         {
             var tabs = window.FindControl<TabControl>("Tabs")!;
             var tabT1 = tabs.Items.Cast<TabItem>().First();
-            var tabT2 = AddSplitTab(window, out var a, out _);
+            var tabT2 = AddSplitTab(window, out var a, out _, userTitle: "Zoomed Tab");
             tabs.SelectedItem = tabT2;
             EnterZoom(window, tabT2, a);
             tabs.SelectedItem = tabT1;
@@ -679,7 +679,8 @@ public class AgentObserveIndicatorTests : IDisposable
 
             window.EnterFocusMode();
             var mark = Assert.Single(window.CollectUnseenWriteMarks());
-            Assert.StartsWith("Command Prompt", mark.TabTitle);
+            // The header carries the keyboard badge for the write, so the title is a prefix.
+            Assert.StartsWith("Zoomed Tab", mark.TabTitle);
             Assert.Equal(a.GetBaseTabTitle(), mark.PaneTitle);
         });
     }
@@ -691,7 +692,7 @@ public class AgentObserveIndicatorTests : IDisposable
         {
             var tabs = window.FindControl<TabControl>("Tabs")!;
             var tabT1 = tabs.Items.Cast<TabItem>().First();
-            var tabT2 = AddSplitTab(window, out var a, out var b);
+            var tabT2 = AddSplitTab(window, out var a, out var b, userTitle: "Zoomed Tab");
             tabs.SelectedItem = tabT2;
             EnterZoom(window, tabT2, a);
             tabs.SelectedItem = tabT1;
@@ -701,7 +702,8 @@ public class AgentObserveIndicatorTests : IDisposable
 
             window.EnterFocusMode();
             var mark = Assert.Single(window.CollectUnseenWriteMarks());
-            Assert.StartsWith("Command Prompt", mark.TabTitle);
+            // The header carries the keyboard badge for the write, so the title is a prefix.
+            Assert.StartsWith("Zoomed Tab", mark.TabTitle);
             Assert.Equal(b.GetBaseTabTitle(), mark.PaneTitle);
         });
     }
