@@ -35,6 +35,8 @@ internal static class ThemeLiteralPolicy
             Reason: "Categorical swatches cycled through connection groups: identity colors, not theme chrome."),
         new("src/Ntilde.App/Controls/ConnectionManager.axaml.cs", Member: "Swatch", Text: null,
             Reason: "Default swatch of a group or tag node before GroupSwatches assigns one: the same identity-color family."),
+        new("src/Ntilde.App/Controls/TerminalPane.axaml", Member: null, Text: "Black",
+            Reason: "The paste toast's drop shadow: shadows are black on every theme, and DropShadowEffect.Color takes a Color, not a token brush."),
         new("src/Ntilde.App/Shell/TerminalDrawOperation.cs", Member: "DrawDebugCellGrid", Text: null,
             Reason: "Debug-only drawing (cell grid overlay)."),
     ];

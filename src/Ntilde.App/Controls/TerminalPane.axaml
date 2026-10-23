@@ -52,8 +52,8 @@
         <Style Selector="ToggleButton#AgentOutputToggle:checked">
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="IsHitTestVisible" Value="True"/>
-            <Setter Property="Background" Value="#2B4C6F"/>
-            <Setter Property="Foreground" Value="#CFE3F7"/>
+            <Setter Property="Background" Value="{DynamicResource NtAccentDim}"/>
+            <Setter Property="Foreground" Value="{DynamicResource NtAccent}"/>
         </Style>
     </UserControl.Styles>
 
@@ -90,7 +90,7 @@
                     <!-- Terminal View Layer -->
                     <core:TerminalView x:Name="TermView" Grid.Row="0" />
                     <Border Name="InactiveOverlay"
-                            Background="#66000000"
+                            Background="{DynamicResource NtPaneDim}"
                             IsVisible="False"
                             IsHitTestVisible="False"
                             ZIndex="20"
@@ -109,51 +109,47 @@
 
                     <!-- Action Toast Panel -->
                     <Border Name="ToastPanel" IsVisible="False" VerticalAlignment="Top" HorizontalAlignment="Center"
-                            Margin="0,20,0,0" Background="#383838" CornerRadius="6" Padding="12,8"
-                            BorderBrush="#505050" BorderThickness="1" ZIndex="250" Grid.Row="0">
+                            Margin="0,20,0,0" Background="{DynamicResource NtOverlay}" CornerRadius="6" Padding="12,8"
+                            BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" ZIndex="250" Grid.Row="0">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="8" Opacity="0.5" OffsetY="2" Color="Black" />
                         </Border.Effect>
                         <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
-                            <TextBlock Grid.Column="0" Text="📄" Foreground="#AAA" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Grid.Column="0" Text="📄" Foreground="{DynamicResource NtFg3}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBlock Name="ToastMessageText" Grid.Column="1" Text="Paste contents of filename.txt?" 
-                                       Foreground="White" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                       Foreground="{DynamicResource NtFg}" VerticalAlignment="Center" Margin="0,0,16,0" />
                             <Button Name="ToastPastePathBtn" Grid.Column="2" Content="Paste path" 
-                                    Background="#333" Foreground="White" BorderThickness="1" BorderBrush="#555" CornerRadius="4" Padding="8,4" Margin="0,0,8,0" Cursor="Hand" />
+                                    Background="{DynamicResource NtPanel}" Foreground="{DynamicResource NtFg}" BorderThickness="1" BorderBrush="{DynamicResource NtHairlineStrong}" CornerRadius="4" Padding="8,4" Margin="0,0,8,0" Cursor="Hand" />
                             <Button Name="ToastActionBtn" Grid.Column="3" Content="Paste contents" 
-                                    Background="#0078D7" Foreground="White" BorderThickness="0" CornerRadius="4" Padding="8,4" Margin="0,0,8,0" Cursor="Hand" />
+                                    Background="{DynamicResource NtAccent}" Foreground="{DynamicResource NtAccentFg}" BorderThickness="0" CornerRadius="4" Padding="8,4" Margin="0,0,8,0" Cursor="Hand" />
                             <Button Name="ToastCloseBtn" Grid.Column="4" Content="✕" 
-                                    Background="Transparent" Foreground="#AAA" BorderThickness="0" VerticalAlignment="Center" Padding="4" Cursor="Hand" />
+                                    Background="Transparent" Foreground="{DynamicResource NtFg3}" BorderThickness="0" VerticalAlignment="Center" Padding="4" Cursor="Hand" />
                         </Grid>
                     </Border>
 
                     <!-- Search Overlay -->
                     <Border Name="SearchPanel" IsVisible="False" VerticalAlignment="Top" HorizontalAlignment="Right" 
-                            Margin="0,10,24,0" Background="#383838" CornerRadius="4" Padding="6" Width="400"
-                            BorderBrush="#505050" BorderThickness="1" ZIndex="200"
+                            Margin="0,10,24,0" Background="{DynamicResource NtOverlay}" CornerRadius="4" Padding="6" Width="400"
+                            BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" ZIndex="200"
                             Grid.Row="0">
-                        <Border.Resources>
-                            <SolidColorBrush x:Key="TextControlBackground">#1a1a1a</SolidColorBrush>
-                            <SolidColorBrush x:Key="TextControlForeground">White</SolidColorBrush>
-                        </Border.Resources>
                         <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto, Auto">
                             <TextBox Name="SearchBox" PlaceholderText="Search..." 
-                                     BorderThickness="1" BorderBrush="#505050" 
+                                     BorderThickness="1" BorderBrush="{DynamicResource NtHairline}" 
                                      VerticalContentAlignment="Center" 
                                      Padding="8,4" Margin="2"/>
                             
                             <ToggleButton Name="SearchCaseSensitive" Grid.Column="1" Content="Aa" 
-                                          Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" 
+                                          Background="Transparent" Foreground="{DynamicResource NtFg3}" BorderThickness="0" Margin="2" Width="30" 
                                           ToolTip.Tip="Match Case"/>
                             <ToggleButton Name="SearchRegex" Grid.Column="2" Content=".*" 
-                                          Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" 
+                                          Background="Transparent" Foreground="{DynamicResource NtFg3}" BorderThickness="0" Margin="2" Width="30" 
                                           ToolTip.Tip="Use Regular Expression"/>
 
-                            <TextBlock Name="SearchCount" Grid.Column="3" Text="0/0" Foreground="#AAA" 
+                            <TextBlock Name="SearchCount" Grid.Column="3" Text="0/0" Foreground="{DynamicResource NtFg3}" 
                                        VerticalAlignment="Center" Margin="8,0" FontSize="12"/>
-                            <Button Name="SearchPrev" Grid.Column="4" Content="▲" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-                            <Button Name="SearchNext" Grid.Column="5" Content="▼" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-                            <Button Name="SearchClose" Grid.Column="6" Content="✕" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
+                            <Button Name="SearchPrev" Grid.Column="4" Content="▲" Background="Transparent" Foreground="{DynamicResource NtFg3}" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
+                            <Button Name="SearchNext" Grid.Column="5" Content="▼" Background="Transparent" Foreground="{DynamicResource NtFg3}" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
+                            <Button Name="SearchClose" Grid.Column="6" Content="✕" Background="Transparent" Foreground="{DynamicResource NtFg3}" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
                         </Grid>
                     </Border>
 
@@ -176,8 +172,8 @@
                                   FontSize="9"
                                   FontWeight="SemiBold"
                                   CornerRadius="3"
-                                  Background="#2A2D33"
-                                  Foreground="#96A0AE"
+                                  Background="{DynamicResource NtPanel}"
+                                  Foreground="{DynamicResource NtFg3}"
                                   BorderThickness="0"
                                   Focusable="False"
                                   Cursor="Hand"
@@ -198,10 +194,10 @@
                             Margin="0,0,18,8"
                             Padding="6,2"
                             CornerRadius="3"
-                            Background="#CC1A1A1A">
+                            Background="{DynamicResource NtChromeBg}">
                         <StackPanel Orientation="Horizontal" Spacing="5">
-                            <Ellipse Width="6" Height="6" Fill="#4FB0D4" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="MuxSharedText" Foreground="#AAAAAA" FontSize="10" VerticalAlignment="Center"/>
+                            <Ellipse Width="6" Height="6" Fill="{DynamicResource NtAgentWatched}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="MuxSharedText" Foreground="{DynamicResource NtFg3}" FontSize="10" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
 
@@ -243,10 +239,10 @@
             </Grid>
 
             <!-- Port Forwarding Status Bar -->
-            <Border Name="StatusBar" VerticalAlignment="Bottom" Height="22" Background="#CC1A1A1A" 
-                    BorderBrush="#333" BorderThickness="0,1,0,0" IsVisible="False" ZIndex="100" Grid.Row="1">
+            <Border Name="StatusBar" VerticalAlignment="Bottom" Height="22" Background="{DynamicResource NtChromeBg}" 
+                    BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,1,0,0" IsVisible="False" ZIndex="100" Grid.Row="1">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0" Spacing="10">
-                    <TextBlock Name="StatusBarLabel" Foreground="#AAA" FontSize="10" VerticalAlignment="Center"/>
+                    <TextBlock Name="StatusBarLabel" Foreground="{DynamicResource NtFg3}" FontSize="10" VerticalAlignment="Center"/>
                     <StackPanel Name="StatusBarRules" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"/>
                     <!-- Flat, chrome-free button so the segment is clickable (it opens the
                          Agent Activity journal, like the window-level AgentObserveIndicator)
@@ -265,14 +261,14 @@
                             Cursor="Hand"
                             VerticalAlignment="Center">
                         <StackPanel Name="AgentStatusSegment" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" IsVisible="False">
-                            <Ellipse Name="AgentStatusDot" Width="6" Height="6" Fill="#6B737F" VerticalAlignment="Center"/>
-                            <TextBlock Name="AgentStatusText" Foreground="#AAA" FontSize="10" VerticalAlignment="Center"/>
+                            <Ellipse Name="AgentStatusDot" Width="6" Height="6" Fill="{DynamicResource NtAgentIdle}" VerticalAlignment="Center"/>
+                            <TextBlock Name="AgentStatusText" Foreground="{DynamicResource NtFg3}" FontSize="10" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Separator Width="1" Height="12" Background="#444" Margin="4,0" VerticalAlignment="Center"/>
+                    <Separator Width="1" Height="12" Background="{DynamicResource NtHairlineStrong}" Margin="4,0" VerticalAlignment="Center"/>
                     <StackPanel Name="SftpStatus" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" IsVisible="False">
-                        <TextBlock Name="SftpIcon" Text="⬇" Foreground="#AAA" FontSize="10" VerticalAlignment="Center"/>
-                        <TextBlock Name="SftpText" Foreground="White" FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Name="SftpIcon" Text="⬇" Foreground="{DynamicResource NtFg3}" FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Name="SftpText" Foreground="{DynamicResource NtFg}" FontSize="10" VerticalAlignment="Center"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

@@ -43,6 +43,9 @@ public sealed class PaneThemeScopeTests
             Assert.True(pane.HasPaneThemeScope);
             Assert.Equal(paneLight[ThemeKeys.Panel], Resolved(toast, ThemeKeys.Panel));
             Assert.Equal(Avalonia.Styling.ThemeVariant.Light, toast.ActualThemeVariant);
+            Assert.Equal(paneLight[ThemeKeys.Overlay], ((ISolidColorBrush)toast.Background!).Color);
+            Assert.Equal(paneLight[ThemeKeys.ChromeBg], ((ISolidColorBrush)pane.FindControl<Border>("StatusBar")!.Background!).Color);
+            Assert.Equal(paneLight[ThemeKeys.PaneDim], ((ISolidColorBrush)pane.FindControl<Border>("InactiveOverlay")!.Background!).Color);
 
             // An app switch re-applies settings to every pane; this one keeps its own theme.
             var nord = settings.ThemeManager.GetTheme("Nord");

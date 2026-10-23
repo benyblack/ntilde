@@ -27,7 +27,7 @@ namespace Ntilde.Tests.Core;
 ///   app's default Dark variant, invisible on light themes. They now take the NtFg token through
 ///   Fluent's ButtonForeground, so a fresh instance is already right.
 /// </summary>
-public sealed class ThemeApplicationRegressionTests : IDisposable
+public sealed class ThemeApplicationRegressionTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
     /// <summary>
     /// Disposes the panes of every window this class asked for, and with them the real shells
@@ -68,11 +68,12 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
 
     /// <summary>
     /// A rebuild replaces the generated buttons with fresh instances. They must come out in the
-    /// active theme's ink with nothing re-applied: under a light theme the Tab List button and its
-    /// icon read dark (the NtFg token), never the white a dark-variant default would give.
+    /// active theme's ink with nothing re-applied: under a light theme a button and its icon read
+    /// dark (the NtFg token), never the white a dark-variant default would give. Connections rather
+    /// than Tab List: the Tab List button takes an attention tint whenever tabs are hidden.
     /// </summary>
     [AvaloniaFact]
-    public void RebuildTitleBar_LightTheme_TabListButtonAndIconTakeTheThemeForeground()
+    public void RebuildTitleBar_LightTheme_AButtonAndIconTakeTheThemeForeground()
     {
         var window = TestMainWindowFactory.Create();
         window.Show();
@@ -84,7 +85,7 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
 
             var expected = ThemeTokens.Derive(Ntilde.Tests.Theming.TestThemes.GitHubLight, 1.0)[ThemeKeys.Fg];
             var button = GetTitleBarHost(window).Children.OfType<Button>()
-                .Single(b => b.Name == TitleBarViewFactory.ButtonName("open_tab_list"));
+                .Single(b => b.Name == TitleBarViewFactory.ButtonName("connections"));
             Assert.Equal(expected, Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
 
             var icon = Assert.IsType<PathIcon>(button.Content);

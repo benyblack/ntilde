@@ -5213,6 +5213,15 @@ namespace Ntilde.Controls
             }
         }
         /// <summary>
+        /// Points <paramref name="property"/> of a code-built control at a theme token through a
+        /// resource observable, not a brush read once: the pane's own scope (spec D7) can appear or
+        /// go while the control lives, and only an observable binding follows that. A later call on
+        /// the same property replaces the binding.
+        /// </summary>
+        private static void BindToken(Control target, AvaloniaProperty property, string tokenKey)
+            => target.Bind(property, target.GetResourceObservable(tokenKey));
+
+        /// <summary>
         /// The pane's own theme tokens (spec D7), present only while the profile names a theme
         /// other than the app's. Merged into the pane's resources, so every DynamicResource and
         /// resource observable inside the pane resolves it before the app's tokens.
@@ -5600,13 +5609,6 @@ namespace Ntilde.Controls
             MinWidth = Math.Ceiling((cellWidth * 20) + 4);
             MinHeight = Math.Ceiling(cellHeight * 5);
 
-            if (_settings != null && InactiveOverlay != null)
-            {
-                var bg = _settings.ActiveTheme.Background;
-                double luminance = (0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B) / 255.0;
-                byte alpha = (byte)(luminance > 0.5 ? 96 : 72);
-                InactiveOverlay.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
-            }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -6244,19 +6246,19 @@ namespace Ntilde.Controls
             switch (snapshot.Tier)
             {
                 case Ntilde.AgentHost.AgentAttentionTier.Wrote:
-                    AgentStatusDot.Fill = new SolidColorBrush(Color.Parse("#E8A33D"));
+                    BindToken(AgentStatusDot, Avalonia.Controls.Shapes.Shape.FillProperty, ThemeKeys.AgentWrote);
                     AgentStatusText.Text = "agent typed";
-                    AgentStatusText.Foreground = new SolidColorBrush(Color.Parse("#F0C07A"));
+                    BindToken(AgentStatusText, TextBlock.ForegroundProperty, ThemeKeys.AgentWrote);
                     break;
                 case Ntilde.AgentHost.AgentAttentionTier.Watched:
-                    AgentStatusDot.Fill = new SolidColorBrush(Color.Parse("#4FB0D4"));
+                    BindToken(AgentStatusDot, Avalonia.Controls.Shapes.Shape.FillProperty, ThemeKeys.AgentWatched);
                     AgentStatusText.Text = "agent reading";
-                    AgentStatusText.Foreground = new SolidColorBrush(Color.Parse("#7FC3DC"));
+                    BindToken(AgentStatusText, TextBlock.ForegroundProperty, ThemeKeys.AgentWatched);
                     break;
                 default:
-                    AgentStatusDot.Fill = new SolidColorBrush(Color.Parse("#6B737F"));
+                    BindToken(AgentStatusDot, Avalonia.Controls.Shapes.Shape.FillProperty, ThemeKeys.AgentIdle);
                     AgentStatusText.Text = "agent access";
-                    AgentStatusText.Foreground = new SolidColorBrush(Color.Parse("#AAAAAA"));
+                    BindToken(AgentStatusText, TextBlock.ForegroundProperty, ThemeKeys.Fg3);
                     break;
             }
 
@@ -6608,15 +6610,15 @@ namespace Ntilde.Controls
                 {
                     Text = "\U0001F501",
                     FontSize = 10,
-                    Foreground = rule.Status switch
-                    {
-                        ForwardingStatus.Active => Brushes.LimeGreen,
-                        ForwardingStatus.Starting => Brushes.Yellow,
-                        ForwardingStatus.Failed => Brushes.Red,
-                        _ => Brushes.Gray
-                    },
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+                BindToken(icon, TextBlock.ForegroundProperty, rule.Status switch
+                {
+                    ForwardingStatus.Active => ThemeKeys.Success,
+                    ForwardingStatus.Starting => ThemeKeys.Warning,
+                    ForwardingStatus.Failed => ThemeKeys.Error,
+                    _ => ThemeKeys.Fg4,
+                });
 
                 var txt = new TextBlock
                 {
@@ -6628,9 +6630,9 @@ namespace Ntilde.Controls
                         _ => ""
                     },
                     FontSize = 10,
-                    Foreground = Brushes.White,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+                BindToken(txt, TextBlock.ForegroundProperty, ThemeKeys.Fg);
 
                 container.Children.Add(icon);
                 container.Children.Add(txt);

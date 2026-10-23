@@ -134,6 +134,11 @@ public class PaneAgentStatusBarTests
         // would have passed even with the segment nested back inside
         // StatusBarRules, the exact regression it exists to prevent.
         using var pane = MakeSshPaneWithForward();
+        // Hosted, because the segment's colour is a token binding, which resolves only in a tree.
+        var host = new Window { Content = pane };
+        host.Show();
+        try
+        {
         pane.ApplyAgentAttention(
             new AgentAttentionSnapshot(AgentAttentionTier.Wrote, DateTimeOffset.UtcNow, "sendInput"),
             isActable: true);
@@ -153,7 +158,12 @@ public class PaneAgentStatusBarTests
 
         Assert.True(GetAgentSegment(pane).IsVisible);
         Assert.Contains("typed", GetAgentSegmentText(pane), StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(Color.Parse("#F0C07A"), GetAgentSegmentTextColor(pane));
+        Assert.Equal(Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.AgentWrote], GetAgentSegmentTextColor(pane));
+        }
+        finally
+        {
+            host.Close();
+        }
     }
 
     [AvaloniaFact]
@@ -480,7 +490,7 @@ public class PaneAgentStatusBarTests
         => Assert.IsType<TextBlock>(pane.FindControl<TextBlock>("AgentStatusText")).Text ?? string.Empty;
 
     private static Color GetAgentSegmentTextColor(TerminalPane pane)
-        => Assert.IsType<SolidColorBrush>(
+        => Assert.IsAssignableFrom<ISolidColorBrush>(
             Assert.IsType<TextBlock>(pane.FindControl<TextBlock>("AgentStatusText")).Foreground).Color;
 
     private static Button GetAgentButton(TerminalPane pane)

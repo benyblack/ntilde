@@ -5,11 +5,9 @@
 19 src/Ntilde.App/CommandAssist/Views/CommandAssistPopupView.axaml
 19 src/Ntilde.App/Controls/RemoteFilesSidebar.axaml
 5 src/Ntilde.App/Controls/RemotePathTextBox.axaml
-38 src/Ntilde.App/Controls/TerminalPane.axaml
-11 src/Ntilde.App/Controls/TerminalPane.axaml.cs
 8 src/Ntilde.App/Controls/TransferDialog.axaml
 2 src/Ntilde.App/Shell/SessionManager.cs
 5 src/Ntilde.App/Shell/TerminalDrawOperation.cs
-4 src/Ntilde.App/Shell/TerminalView.cs
+1 src/Ntilde.App/Shell/TerminalView.cs
 5 src/Ntilde.App/UI/Replay/ReplayWindow.axaml
 3 src/Ntilde.App/Views/Ssh/NewSshConnectionView.axaml
