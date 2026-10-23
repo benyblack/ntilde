@@ -136,6 +136,14 @@ namespace Ntilde
         /// </summary>
         private void NoteUnseenWriteOfClosingPane(Controls.TerminalPane pane)
         {
+            // Disposal must never fail for a light: the pane's session is torn down right after this. No refresh here
+            // either - unregistering the pane posts RefreshTabAgentAttention, which refreshes the light after it is gone.
+            try { RecordSinceClosedMark(pane); }
+            catch (Exception ex) { Ntilde.VT.TerminalLogger.Log($"[MainWindow] focus-mode close mark failed: {ex.Message}"); }
+        }
+
+        private void RecordSinceClosedMark(Controls.TerminalPane pane)
+        {
             if (!_isFocusMode || _teardownDone || _disposingAllPanes) return;
             if (_agentClosingPaneIds.Contains(pane.PaneId)) return;
 
@@ -157,7 +165,6 @@ namespace Ntilde
                 if (before > 1) paneTitle = pane.GetBaseTabTitle();
             }
             _focusCloseMarks.Add(new FocusWriteMark(tabTitle, paneTitle, snapshot.LastWriteUtc, SinceClosed: true));
-            RefreshAgentObserveIndicator();
         }
 
         /// <summary>The light's mark for an agent about to close <paramref name="pane"/>, read while its tab still exists.</summary>

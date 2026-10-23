@@ -783,6 +783,33 @@ public class AgentObserveIndicatorTests : IDisposable
         }
     }
 
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task A_written_only_pane_of_a_background_tab_closing_with_its_tab_stays_on_the_light()
+    {
+        var window = NewShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        var tabB = tabs.Items.Cast<TabItem>().First();
+        var paneB = (TerminalPane)tabB.Content!;
+        var tabA = AddSplitTab(window, out _, out _);
+        tabs.SelectedItem = tabA;
+        RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+        window.EnterFocusMode();
+        string tabTitle = window.GetTabHeaderText(tabB);
+
+        var closed = await (System.Threading.Tasks.Task<bool>)Invoke(window, "CloseTabAsync", tabB, true)!;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.DoesNotContain(tabB, tabs.Items.Cast<TabItem>());
+        var mark = Assert.Single(window.CollectUnseenWriteMarks());
+        Assert.True(mark.SinceClosed);
+        Assert.Equal(tabTitle, mark.TabTitle);
+        Assert.Null(mark.PaneTitle);
+
+        window.LeaveFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
     [Fact]
     public void The_tooltip_names_a_write_into_a_pane_that_has_since_closed()
     {
