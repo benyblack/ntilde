@@ -51,7 +51,7 @@ A theme is defined by a JSON object with the following properties:
 
 ## Theme Manager
 
-The `ThemeManager` (`Core/ThemeManager.cs`) is responsible for:
+The `ThemeManager` (`src/Ntilde.App/Shell/ThemeManager.cs`) is responsible for:
 
 1.  **Loading Themes**: Scans the `themes/` directory for `.json` files on startup.
 2.  **Built-in Themes**: Provides default themes (Dracula, Monokai, Solarized, etc.) if no custom themes are found.
@@ -77,8 +77,8 @@ settings.ActiveTheme = theme;
 
 ### Adding a New Theme
 1.  Create a JSON file in the `themes/` directory (e.g., `MyTheme.json`).
-2.  Restart the application. A restart is required to load new files from disk.
-3.  The theme will appear in the Settings -> Appearance dropdown.
+2.  Open Settings: it reads the theme files each time it opens, so the theme appears in the
+    Settings → Appearance dropdown without a restart.
 
 ## Theme Editor
 The application includes a built-in **Theme Editor** in the Settings window:
@@ -87,17 +87,39 @@ The application includes a built-in **Theme Editor** in the Settings window:
 -   **Save theme** writes the JSON file straight away; the Settings window's Cancel does not undo it.
 -   **Note**: The "Default" theme cannot be modified directly; clone it first or create a new theme.
 
-## Dynamic Theming
-To support both Light and Dark themes, the UI uses dynamic styling:
--   **Contrast Calculation**: The application calculates the luminance of the theme's background color.
-    -   If Background is **Light**: Window foreground (text) becomes **Black**.
-    -   If Background is **Dark**: Window foreground (text) becomes **White**.
--   **Tab Titles**: Tab headers inherit this dynamic foreground color to ensure readability.
--   **Connection Manager**: The Connection Manager window also adapts its title bar and background to match the active theme.
+## UI color tokens
+
+The UI does not read theme colors directly. `ThemeTokens.Derive` (`src/Ntilde.App/Shell/Theming/`)
+turns the active `TerminalTheme` into about 60 named UI colors: surfaces, text, interaction fills,
+accent, status, tab-strip states. `ThemeService` installs them once into `Application.Resources` and
+recolors them in place on every theme change, together with Fluent's stock-control palette and the
+light/dark variant.
+
+**Adding UI that follows the theme:**
+
+- XAML: `{DynamicResource NtPanel}` (keys: `ThemeKeys.cs`). Never a hex or named color.
+- C#: `this.FindResource(ThemeKeys.Panel)`, or bind with
+  `control.Bind(Border.BackgroundProperty, control.GetResourceObservable(ThemeKeys.Panel))`.
+  Never `Brushes.White`, `Color.Parse("#…")` or a `"#…"` string.
+- No local copies: declaring `x:Key="NtPanel"` in a window shadows the app token.
+
+**Guards (Architecture.Tests, gating):**
+
+- `ThemeTokenKeyGuardTests`: every `Nt*` key used must exist in `ThemeKeys`.
+- `ThemeLiteralGuardTests`: hardcoded colors outside `Shell/Theming` may only disappear
+  (`ThemeLiteralBaseline.txt` is a shrinking ratchet). Colors fixed on purpose go in
+  `ThemeLiteralPolicy.Permanent` with a reason.
+- `ThemeContrastTests` (App.Tests): every shipped theme must yield readable chrome. When it fails,
+  fix the derivation, never the threshold.
+
+Theme v2 is landing in phases; see `docs/superpowers/specs/2026-09-23-theme-system-design.md`.
+Phase 1 moved Settings, the Connection Manager and Agent Output onto the tokens; the main window's
+tabs, title bar, overlays and dialogs still paint themselves and follow in phase 2.
 
 ## Key Files
--   `Core/TerminalTheme.cs`: Data model.
--   `Core/ThemeManager.cs`: Business logic.
--   `Core/JsonColorConverter.cs`: JSON serialization.
--   `SettingsWindow.axaml`: UI for selecting and editing themes.
--   `themes/*.json`: Theme definitions.
+-   `src/Ntilde.VT/TerminalTheme.cs`: Data model.
+-   `src/Ntilde.App/Shell/ThemeManager.cs`: Loading, saving and importing themes.
+-   `src/Ntilde.App/Shell/TermColorJsonConverter.cs`: JSON serialization.
+-   `src/Ntilde.App/Shell/Theming/*`: UI color tokens (`ThemeKeys`, `ThemeTokens`, `ThemeService`, `ThemeColorMath`).
+-   `src/Ntilde.App/Settings/Pages/AppearancePage.axaml`: UI for selecting and editing themes.
+-   `src/Ntilde.App/themes/*.json`: Built-in theme definitions.

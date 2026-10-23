@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-23
 **Status:** Design approved in brainstorming; spec awaiting review
-**Lane:** PRs target a new `dev-review` branch cut from `main` (`dev` is occupied)
+**Lane:** each phase is a PR into `main` (changed 2026-10-23; the planned `dev-review` lane was never created)
 
 ## Problem
 
@@ -105,7 +105,7 @@ on its own.
 | D5 | Sidebar dot distinguishability | Color **and** shape |
 | D6 | Sidebar surface | Chrome panel with divider and grip hover |
 | D7 | Profile-themed pane chrome | Follows the pane's own theme (local token scope) |
-| D8 | Landing | 4 PRs into `dev-review` (new lane from `main`) |
+| D8 | Landing | 4 PRs into `main` (was `dev-review`; changed 2026-10-23) |
 
 ## 1. Theme schema
 
@@ -344,6 +344,23 @@ The Settings redesign (#522-#527) landed on `main` after this spec. Line referen
   - Dark Default: "More" links (`Button.Link`) use the same deep blue as toggles and Save, which is low contrast on near-black.
   - The title-bar preview's "…" glyph (`TextBlock.MiniBarGlyph`, `NtStyles.axaml:421`) is tiny and faint.
 
+### Phase 1 as landed (2026-10-23)
+
+Where phase 1 departs from the plan, so phases 2-4 start from what is there:
+
+- **Toggle knob** is `NtFg` off and `NtAccentFg` on. `NtAccentFg` alone is the dark ink on light
+  accents, which is dark on the dark off-track.
+- **Agent Output chrome** came forward from phase 3: with only the markdown on tokens, a light theme
+  put dark text on the fixed `#1B1D21` panel. Its five literals are now `NtPanel`, `NtHairline`,
+  `NtFg`/`NtFg3`/`NtFg4`.
+- **`NtPalette.axaml` is deleted**, and `NtMono` lives in `App.axaml`. The unknown-token guard counts
+  every key `App.axaml` declares as app-wide.
+- **Theme editor preview**: the `#111` placeholders and `Black` swatch placeholders are gone (code
+  paints them before they show), and the preview label uses the edited theme's own foreground.
+- **Permanent allowlist** also covers the connection manager's default group/tag `Swatch`
+  (`Brushes.Gray`), the same identity-colour family as `GroupSwatches`.
+- **Baseline**: 217 literals in 18 files, all on surfaces phases 2-4 migrate.
+
 ## 6. Schema propagation
 
 - **MCP (`ThemeTools`):**
@@ -473,7 +490,7 @@ The Settings redesign (#522-#527) landed on `main` after this spec. Line referen
 
 ## 9. Phasing
 
-Branch `dev-review` from `main`; each phase is a PR into `dev-review`, developed in a worktree
+Each phase is a PR into `main` (originally `dev-review`, never created), developed in a worktree
 (the main checkout is shared with other sessions). Each phase lowers the guard baseline.
 
 1. **Foundation:**
