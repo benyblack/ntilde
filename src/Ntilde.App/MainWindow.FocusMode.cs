@@ -33,6 +33,7 @@ namespace Ntilde
             if (_isFocusMode) return;
             _isFocusMode = true;
             WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeFocusWindowDecorationsTheme")!;
+            foreach (var pane in AllPanes()) pane.FocusChromeHidden = true;
             ApplyFocusModeChrome();
         }
 
@@ -43,6 +44,7 @@ namespace Ntilde
             WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeWindowDecorationsTheme")!;
             // Regenerates every generated title bar item with its own visibility.
             RebuildTitleBar();
+            foreach (var pane in AllPanes()) pane.FocusChromeHidden = false;
             ApplyFocusModeChrome();
         }
 

@@ -797,7 +797,7 @@ namespace Ntilde.Controls
                 // The MD toggle only exists when the recent on-screen output actually looks like
                 // markdown - detection runs on the tracker's lazy closed-panel cadence, and this
                 // callback fires on the UI thread only when the verdict changes.
-                markdownPresenceChanged: present => AgentOutputToggle.IsVisible = present);
+                markdownPresenceChanged: OnMarkdownPresenceChanged);
             if (Buffer != null)
             {
                 Buffer.OnInvalidate += _agentOutputTracker.NotifyInvalidate;
@@ -1085,10 +1085,11 @@ namespace Ntilde.Controls
 
         private void UpdateRemoteFilesSidebarVisibility()
         {
-            bool shouldShow =
-                _remoteFilesSidebarViewModel?.IsOpen == true &&
-                !(Buffer?.IsAltScreenActive ?? false) &&
-                IsRemoteFilesSidebarSupported();
+            bool shouldShow = ShouldShowRemoteFilesSidebar(
+                _remoteFilesSidebarViewModel?.IsOpen == true,
+                Buffer?.IsAltScreenActive ?? false,
+                IsRemoteFilesSidebarSupported(),
+                _remoteFilesHiddenByFocus);
 
             if (shouldShow)
             {
@@ -1171,6 +1172,15 @@ namespace Ntilde.Controls
 
             if (_remoteFilesSidebarViewModel.IsOpen)
             {
+                (bool stillOpen, bool hiddenByFocus) = ResolveRemoteFilesToggle(true, _remoteFilesHiddenByFocus);
+                if (stillOpen)
+                {
+                    // Focus mode hid the panel; the toggle brings it back instead of closing it.
+                    _remoteFilesHiddenByFocus = hiddenByFocus;
+                    UpdateRemoteFilesSidebarVisibility();
+                    return;
+                }
+
                 CloseRemoteFilesSidebar();
                 return;
             }
@@ -1211,6 +1221,8 @@ namespace Ntilde.Controls
                 sessionId,
                 startPath,
                 CancellationToken.None);
+            // An explicit open is a request to see it, even in focus mode.
+            _remoteFilesHiddenByFocus = false;
             UpdateRemoteFilesSidebarCurrentDirectoryState();
             UpdateRemoteFilesSidebarVisibility();
             UpdateRemoteFilesSidebarEntryPointState();
@@ -2302,7 +2314,7 @@ namespace Ntilde.Controls
         {
             if (_agentOutput != null)
             {
-                AgentOutputPanelPresenter.IsVisible = _agentOutput.IsShown;
+                AgentOutputPanelPresenter.IsVisible = _agentOutput.IsShown && !FocusChromeHidden;
             }
         }
 
@@ -6174,7 +6186,7 @@ namespace Ntilde.Controls
         internal void UpdateStatusBarVisibility()
         {
             bool sshForwards = Profile != null && Profile.Forwards.Count > 0;
-            StatusBar.IsVisible = sshForwards || _agentActable;
+            StatusBar.IsVisible = (sshForwards || _agentActable) && !FocusChromeHidden;
             AgentStatusButton.IsVisible = _agentActable;
             AgentStatusSegment.IsVisible = _agentActable;
         }

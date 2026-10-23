@@ -5143,6 +5143,7 @@ namespace Ntilde
         /// </remarks>
         private void WirePane(TerminalPane pane)
         {
+            pane.FocusChromeHidden = _isFocusMode;
             pane.CommandAssistServices = _commandAssistServices;
             pane.SessionFactory = _sessionFactory;
             pane.SshInteractionHandler = _sshInteractionService;
