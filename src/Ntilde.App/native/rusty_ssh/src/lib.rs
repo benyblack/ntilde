@@ -2542,6 +2542,32 @@ fn run_remote_path_list(
     })
 }
 
+/// What a transfer says when the server's keyboard-interactive exchange asks for more than the
+/// password it holds (a verification code, a new password). Not `auth-failed`: the saved password
+/// was not refused, so the app must not forget it.
+const TRANSFER_NEEDS_MORE_THAN_A_PASSWORD: &str = "The server asks for more than a password at sign-in, which file transfers cannot answer. Use an SSH key or the SSH agent for this host's transfers.";
+
+/// A transfer's answers to a keyboard-interactive exchange: its hop's password for the first
+/// password question, and nothing for any other question, which fails the sign-in.
+struct TransferRounds<'a> {
+    password: &'a str,
+}
+
+impl KeyboardRounds for TransferRounds<'_> {
+    fn password(&mut self, _prompt: &str) -> anyhow::Result<Zeroizing<String>> {
+        Ok(Zeroizing::new(self.password.to_owned()))
+    }
+
+    fn round(
+        &mut self,
+        _name: String,
+        _instructions: String,
+        _prompts: Vec<client::Prompt>,
+    ) -> anyhow::Result<Zeroizing<Vec<String>>> {
+        anyhow::bail!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD)
+    }
+}
+
 async fn authenticate_transfer<H>(
     user: &str,
     hop: TransferHop,
@@ -2551,6 +2577,11 @@ async fn authenticate_transfer<H>(
 where
     H: client::Handler + Send + 'static,
 {
+    let mut methods = match ask_server_methods(user, session).await {
+        NoneProbe::Authenticated => return Ok(()),
+        NoneProbe::Methods(methods) => methods,
+    };
+
     // Same first-position rule as the interactive path: a configured identity file is offered
     // before the agent is consulted. But its failure is only FINAL without use_agent — the
     // terminal path falls back from a rejected or unreadable file to the agent, and a transfer
@@ -2573,6 +2604,7 @@ where
                 if !auth.use_agent {
                     anyhow::bail!("Authentication failed.");
                 }
+                methods.note(&result);
             }
             Err(_) if auth.use_agent => {
                 // Unreadable (or passphrase-protected) file: the agent may still hold a usable
@@ -2587,11 +2619,42 @@ where
         }
     }
 
-    if auth.use_agent && try_agent_auth(user, session, &mut ServerMethods::default()).await {
+    if auth.use_agent && try_agent_auth(user, session, &mut methods).await {
         return Ok(());
     }
 
     if let Some(password) = auth.password_for(hop) {
+        // A server that takes the password only as a keyboard-interactive question gets it there,
+        // answered from this hop's own password with no window and no retry (spec, "Transfers,
+        // listings and autocomplete").
+        if methods.password_through_keyboard_interactive() {
+            let mut rounds = TransferRounds { password };
+            return match run_keyboard_exchange(user, session, true, &mut rounds).await? {
+                KeyboardExchange::Success => Ok(()),
+                // The server refused the password it was given: the one case the app may treat
+                // as a stale password.
+                KeyboardExchange::Failure {
+                    password_sent: true,
+                    partial_success: false,
+                    ..
+                } => Err(anyhow::Error::new(NativeSftpTransferError::new(
+                    NativeSftpTransferErrorKind::AuthenticationFailed,
+                    "Authentication failed.",
+                ))),
+                // The password was accepted, and the server wants something else as well.
+                KeyboardExchange::Failure {
+                    password_sent: true,
+                    partial_success: true,
+                    ..
+                } => anyhow::bail!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD),
+                // No password question was ever asked, so nothing was refused.
+                KeyboardExchange::Failure {
+                    password_sent: false,
+                    ..
+                } => anyhow::bail!("Authentication failed."),
+            };
+        }
+
         // russh's API takes an owned String, so this copy is unavoidable and its
         // lifetime is russh's to manage. Our own copy is still wiped when `auth` drops.
         let result = session
@@ -9077,5 +9140,95 @@ mod exec_session_e2e_tests {
             Some(NovaSshEventKind::Closed as u32),
             events.last().map(|event| event.kind)
         );
+    }
+
+    /// Accepts any host key: these tests are about sign-in, not host verification.
+    struct AcceptAnyKey;
+
+    impl client::Handler for AcceptAnyKey {
+        type Error = anyhow::Error;
+
+        fn check_server_key(
+            &mut self,
+            _server_public_key: &ssh_key::PublicKey,
+        ) -> impl Future<Output = Result<bool, Self::Error>> + Send {
+            async { Ok(true) }
+        }
+    }
+
+    /// Signs a transfer into the test server in `mode` with `password` as the target's, and
+    /// returns what `authenticate_transfer` made of it.
+    async fn transfer_sign_in(mode: ServerAuth, password: &str) -> (anyhow::Result<()>, SeenLog) {
+        let (port, seen) = start_server_with(mode);
+        let mut session = client::connect(
+            Arc::new(client::Config::default()),
+            ("127.0.0.1", port),
+            AcceptAnyKey,
+        )
+        .await
+        .expect("connect to the test server");
+        let auth = TransferAuthConfig {
+            target_password: Some(Zeroizing::new(password.to_owned())),
+            jump_hop_passwords: vec![],
+            identity_file: None,
+            use_agent: false,
+        };
+        let result = authenticate_transfer("tester", TransferHop::Target, &auth, &mut session).await;
+        (result, seen)
+    }
+
+    fn is_transfer_auth_failure(error: &anyhow::Error) -> bool {
+        matches!(
+            error.downcast_ref::<NativeSftpTransferError>(),
+            Some(failure) if failure.kind == NativeSftpTransferErrorKind::AuthenticationFailed
+        )
+    }
+
+    /// A server that takes the password only as a keyboard-interactive question gets the hop's own
+    /// password there, with no window (spec, "Transfers, listings and autocomplete").
+    #[tokio::test]
+    async fn a_transfer_signs_in_to_a_keyboard_only_server_with_its_password() {
+        let (result, seen) = transfer_sign_in(ServerAuth::KeyboardOnly, PASSWORD).await;
+
+        result.expect("transfer signs in");
+        assert_eq!(answers(&[&[PASSWORD], &[]]), lock(&seen).keyboard_answers);
+    }
+
+    /// Only a refused password is `auth-failed`, the status that makes the app forget a stale
+    /// runtime password.
+    #[tokio::test]
+    async fn a_refused_keyboard_password_is_a_transfer_auth_failure() {
+        let (result, _seen) = transfer_sign_in(ServerAuth::KeyboardOnly, "wrong").await;
+
+        let error = result.expect_err("a wrong password is refused");
+        assert!(is_transfer_auth_failure(&error), "{error:#}");
+    }
+
+    #[tokio::test]
+    async fn a_transfer_cannot_answer_a_second_factor() {
+        let (result, _seen) = transfer_sign_in(ServerAuth::KeyboardSecondFactor, PASSWORD).await;
+
+        let error = result.expect_err("a verification code cannot be answered");
+        assert_eq!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD, error.to_string());
+        assert!(error.downcast_ref::<NativeSftpTransferError>().is_none(), "{error:#}");
+    }
+
+    /// The password answers the first question only, so an expired password's `New password:`
+    /// is never answered with it.
+    #[tokio::test]
+    async fn a_transfer_does_not_feed_its_password_to_a_password_change() {
+        let (result, seen) = transfer_sign_in(ServerAuth::KeyboardExpiredPassword, PASSWORD).await;
+
+        let error = result.expect_err("a password change cannot be answered");
+        assert_eq!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD, error.to_string());
+        assert_eq!(answers(&[&[PASSWORD]]), lock(&seen).keyboard_answers);
+    }
+
+    #[tokio::test]
+    async fn a_transfer_to_a_password_server_is_unchanged() {
+        let (result, seen) = transfer_sign_in(ServerAuth::Password, PASSWORD).await;
+
+        result.expect("transfer signs in");
+        assert_eq!(vec![PASSWORD.to_owned()], lock(&seen).password_attempts);
     }
 }
