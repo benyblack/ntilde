@@ -40,17 +40,16 @@ internal sealed class NativeSshSharedConnection
         string key,
         SshProfile profile,
         NativeSshConnectionOptions options,
-        INativeSshInterop interop,
-        ISshInteractionHandler? interactionHandler,
-        Guid sessionId,
-        Action<string> log)
+        Opener opener)
     {
         _pool = pool;
         Key = key;
+        INativeSshInterop interop = opener.Interop;
         _interop = interop;
-        _interactionHandler = interactionHandler;
+        _interactionHandler = opener.InteractionHandler;
         // One responder for the connection's lifetime: it offers the vault's password once, as for any connection.
-        _promptResponder = new NativeSshPromptResponder(profile, sessionId);
+        _promptResponder = new NativeSshPromptResponder(profile, opener.SessionId);
+        Action<string> log = opener.Log;
         _log = log;
         _target = $"{options.User}@{options.Host}:{options.Port}";
 
@@ -71,8 +70,18 @@ internal sealed class NativeSshSharedConnection
         }
 
         _log($"[NativeSshSharedConnection] connecting target={_target} forwards={profile.Forwards.Count}");
-        _pollTask = Task.Run(PollLoopAsync);
+        _pollTask = Task.Run(PollLoopAsync, _pollCts.Token);
     }
+
+    /// <summary>
+    /// The tab that opens a connection, as the connection needs it: the native layer it runs on, who answers its
+    /// prompts and under which session id, and where it logs.
+    /// </summary>
+    internal sealed record Opener(
+        INativeSshInterop Interop,
+        ISshInteractionHandler? InteractionHandler,
+        Guid SessionId,
+        Action<string> Log);
 
     public string Key { get; }
 
@@ -184,10 +193,11 @@ internal sealed class NativeSshSharedConnection
         {
             try
             {
-                _pollTask.Wait(TimeSpan.FromSeconds(2));
+                _pollTask.Wait(TimeSpan.FromSeconds(2), CancellationToken.None);
             }
             catch (AggregateException ex) when (ex.InnerExceptions.All(inner => inner is TaskCanceledException or OperationCanceledException))
             {
+                // The loop ended by being cancelled, which is what was asked of it.
             }
         }
 
@@ -258,6 +268,7 @@ internal sealed class NativeSshSharedConnection
         }
         catch (OperationCanceledException)
         {
+            // Close cancelled the loop.
         }
         catch (Exception ex) when (ex is not (OutOfMemoryException or AccessViolationException))
         {

@@ -36,9 +36,8 @@ public sealed class NativeSshConnectionPool
 
     /// <summary>
     /// A lease on the running connection for <paramref name="profile"/> and <paramref name="options"/>, or on a new
-    /// one when there is none. A new connection starts connecting at once; its prompts go to
-    /// <paramref name="interactionHandler"/> and are tagged with <paramref name="sessionId"/>, those of the tab that
-    /// opened it. <paramref name="warn"/> receives the connection's user-facing warnings (a refused forward) while the
+    /// one when there is none. A new connection starts connecting at once, on <paramref name="opener"/>'s native layer;
+    /// its prompts go to the opener's handler and are tagged with its session id. <paramref name="warn"/> receives the connection's user-facing warnings (a refused forward) while the
     /// lease is held.
     /// </summary>
     /// <param name="reused">True when the lease joined a connection that was already running.</param>
@@ -46,16 +45,13 @@ public sealed class NativeSshConnectionPool
     internal NativeSshSharedConnection.Lease Acquire(
         SshProfile profile,
         NativeSshConnectionOptions options,
-        INativeSshInterop interop,
-        ISshInteractionHandler? interactionHandler,
-        Guid sessionId,
-        Action<string> log,
+        NativeSshSharedConnection.Opener opener,
         Action<string> warn,
         out bool reused)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(interop);
+        ArgumentNullException.ThrowIfNull(opener);
 
         string key = KeyFor(profile, options);
         TimeSpan persist = TimeSpan.FromSeconds(Math.Max(0, profile.MuxOptions.ControlPersistSeconds));
@@ -69,7 +65,7 @@ public sealed class NativeSshConnectionPool
             }
 
             // Connecting is asynchronous on the native side, so this holds the gate only for the setup.
-            var connection = new NativeSshSharedConnection(this, key, profile, options, interop, interactionHandler, sessionId, log);
+            var connection = new NativeSshSharedConnection(this, key, profile, options, opener);
             _connections[key] = connection;
             reused = false;
             return connection.TryAddLease(warn, persist)

@@ -629,35 +629,47 @@ public sealed class NativeSshSession : ITerminalSession, ITerminalByteOutput
     /// </summary>
     private NovaSshSafeHandle OpenSharedShell(SshProfile profile, NativeSshConnectionOptions options, NativeSshConnectionPool pool)
     {
-        for (int attempt = 1; ; attempt++)
+        try
         {
-            NativeSshSharedConnection.Lease lease = pool.Acquire(
-                profile,
-                options,
-                _interop,
-                _interactionHandler,
-                Id,
-                _log,
-                warn: message => EmitSessionText($"{message}\r\n"),
-                out bool reused);
-            try
-            {
-                NovaSshSafeHandle handle = lease.Connection.OpenShell(options);
-                _connectionLease = lease;
-                _log($"[NativeSshSession] shared-connection={(reused ? "reused" : "new")}");
-                return handle;
-            }
-            catch (InvalidOperationException) when (attempt == 1)
-            {
-                _log("[NativeSshSession] shared connection ended before the shell opened; reconnecting");
-                lease.Connection.Abandon();
-                lease.Dispose();
-            }
-            catch
-            {
-                lease.Dispose();
-                throw;
-            }
+            return TryOpenSharedShell(profile, options, pool, abandonOnFailure: true);
+        }
+        catch (InvalidOperationException)
+        {
+            _log("[NativeSshSession] shared connection ended before the shell opened; reconnecting");
+            return TryOpenSharedShell(profile, options, pool, abandonOnFailure: false);
+        }
+    }
+
+    private NovaSshSafeHandle TryOpenSharedShell(
+        SshProfile profile,
+        NativeSshConnectionOptions options,
+        NativeSshConnectionPool pool,
+        bool abandonOnFailure)
+    {
+        NativeSshSharedConnection.Lease lease = pool.Acquire(
+            profile,
+            options,
+            new NativeSshSharedConnection.Opener(_interop, _interactionHandler, Id, _log),
+            warn: message => EmitSessionText($"{message}\r\n"),
+            out bool reused);
+        try
+        {
+            NovaSshSafeHandle handle = lease.Connection.OpenShell(options);
+            _connectionLease = lease;
+            _log($"[NativeSshSession] shared-connection={(reused ? "reused" : "new")}");
+            return handle;
+        }
+        catch (InvalidOperationException) when (abandonOnFailure)
+        {
+            // The pool would hand the same dead connection out again.
+            lease.Connection.Abandon();
+            lease.Dispose();
+            throw;
+        }
+        catch
+        {
+            lease.Dispose();
+            throw;
         }
     }
 

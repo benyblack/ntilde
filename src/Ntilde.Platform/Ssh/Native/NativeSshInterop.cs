@@ -176,7 +176,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 {
                     StartKind.SharedConnection => NativeMethods.nova_ssh_connect_shared(in args),
                     // 0 here is also a connection that has already ended, not only rejected args.
-                    StartKind.SharedShell => NativeMethods.nova_ssh_open_shell(connection!, in args),
+                    StartKind.SharedShell => NativeMethods.nova_ssh_open_shell(connection, in args),
                     _ when command is null => NativeMethods.nova_ssh_connect(in args),
                     _ => NativeMethods.nova_ssh_exec(in args, commandPtr)
                 };
