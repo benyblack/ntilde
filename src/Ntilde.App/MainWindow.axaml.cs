@@ -8615,12 +8615,13 @@ namespace Ntilde
         {
             var theme = _settings.ActiveTheme;
 
-            // App-wide tokens, the Fluent palette and the variant come first. Every DynamicResource
-            // consumer (Settings, Connection Manager, Agent Output, stock controls) updates from this
-            // one call. The imperative per-control code below moves onto tokens in phase 2.
+            // App-wide tokens, the Fluent palette and the variant. Every themed surface, this
+            // window's chrome included, updates from this one call; what follows is only the
+            // window-specific part the tokens do not cover (spec section 3, "Consumers").
             ThemeService.Apply(theme, _settings.WindowOpacity);
 
-            // Background brush for the main content area
+            // The window's own backdrop: the terminal background at the window opacity, or the
+            // background image. Not a token: it is the terminal surface, not UI chrome.
             var bgBrush = new SolidColorBrush(theme.Background.ToAvaloniaColor(), _settings.WindowOpacity);
 
             this.Background = Brushes.Transparent;
@@ -8649,7 +8650,8 @@ namespace Ntilde
             // recording state needs re-asserting.
             SyncRecordingButtonState();
 
-            // Force update of tab borders (blue line) since theme color changed
+            // The tab tokens recolour in place; this pass refreshes what depends on settings
+            // that a theme apply can travel with (labels, preview lines, the overflow state).
             UpdateTabVisuals();
 
             var titleBar = this.FindControl<Grid>("TitleBar");

@@ -113,8 +113,10 @@ light/dark variant.
   fix the derivation, never the threshold.
 
 Theme v2 is landing in phases; see `docs/superpowers/specs/2026-09-23-theme-system-design.md`.
-Phase 1 moved Settings, the Connection Manager and Agent Output onto the tokens; the main window's
-tabs, title bar, overlays and dialogs still paint themselves and follow in phase 2.
+Phases 1 and 2 moved Settings, the Connection Manager, Agent Output and the main window's chrome
+(tab strip and sidebar, title bar, splitters, toasts, command palette, transfers, dialogs) onto
+the tokens. Pane overlays, Command Assist, Remote Files and Replay follow in phase 3, and the
+terminal renderer's selection and search colours in phase 4.
 
 ## Key Files
 -   `src/Ntilde.VT/TerminalTheme.cs`: Data model.

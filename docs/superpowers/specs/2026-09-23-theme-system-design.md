@@ -305,14 +305,14 @@ Target tokens for every audited surface (phase in brackets):
 | Settings window [1] | local `Nt*` + own `Apply` + variant | app tokens; danger button `NtErrorDim`/`NtErrorBorder`/`NtError`; toggle knob `NtAccentFg`; port-forward dot `NtSuccess`/`NtFg4`; shortcut error `NtError`; Restore/Import dialogs themed |
 | Connection Manager [1] | local `Nt*`, frozen dark hovers, no variant | app tokens; hovers `NtHoverFill`/`NtPressedFill`; root `#16181d`/`#e6e8ec` removed |
 | Agent Output markdown [1, side effect] | fallback dark colors | resolves real tokens (no code change needed beyond key renames) |
-| Title bar, caption buttons, window frame [2] | contrast fg, Fluent | tokens + Fluent palette; close red stays |
-| Tab strip + sidebar [2] | see §4 | see §4 |
-| Splitters [2] | contrast-color alpha | `NtHairline` / `NtHairlineStrong` / `NtAccentBorder` (hover/drag) |
-| Recording / update toasts [2] | `#20242C`, `#3A404A`, `#C9CFD9` | `NtOverlay`, `NtHairline`, `NtFg`/`NtFg2` |
-| Command palette [2] | `#80000000`, `#252526`, `#007ACC`, `#E0E0E0` | `NtScrim`, `NtOverlay`, `NtAccentBorder`, `NtFg`/`NtFg3`; search box inherits |
-| Transfer overlay + TransferCenter [2] | `#1E1E1E`, `#2D2D2D`, greys, `StateBrushConverter` SkyBlue/LimeGreen/Red/Gray | `NtOverlay`, `NtChromeBg`, `NtFg*`; the converter resolves token brushes: Info/Success/Error/Fg4 |
-| Record button, agent observe indicator [2] | `#F1636B`, `#4FB0D4`/`#6B737F` | `NtRecording` (glyph) / `NtErrorDim` (recording background), `NtAgentWatched`/`NtAgentIdle` |
-| Code-built dialogs, SSH prompts, About [2] | themed once at open | inherit app tokens, live; About links `NtLink`/`NtLinkHover` |
+| Title bar, caption buttons, window frame [2, done] | contrast fg, Fluent | tokens + Fluent palette; close red stays |
+| Tab strip + sidebar [2, done] | see §4 | see §4 |
+| Splitters [2, done] | contrast-color alpha | `NtHairline` / `NtHairlineStrong` / `NtAccentBorder` (hover/drag) |
+| Recording / update toasts [2, done] | `#20242C`, `#3A404A`, `#C9CFD9` | `NtOverlay`, `NtHairline`, `NtFg`/`NtFg2` |
+| Command palette [2, done] | `#80000000`, `#252526`, `#007ACC`, `#E0E0E0` | `NtScrim`, `NtOverlay`, `NtAccentBorder`, `NtFg`/`NtFg3`; search box inherits |
+| Transfer overlay + TransferCenter [2, done] | `#1E1E1E`, `#2D2D2D`, greys, `StateBrushConverter` SkyBlue/LimeGreen/Red/Gray | `NtOverlay`, `NtChromeBg`, `NtFg*`; the converter resolves token brushes: Info/Success/Error/Fg4 |
+| Record button, agent observe indicator [2, done] | `#F1636B`, `#4FB0D4`/`#6B737F` | `NtRecording` (glyph) / `NtErrorDim` (recording background), `NtAgentWatched`/`NtAgentIdle` |
+| Code-built dialogs, SSH prompts, About [2, done] | themed once at open | inherit app tokens, live; About links `NtLink`/`NtLinkHover` |
 | Pane search, paste toast, MD toggle [3] | `#383838`, `#505050`, `#1a1a1a`, `#0078D7`, `#2A2D33`… | `NtOverlay`, `NtHairline`, `NtPanelAlt`, `NtAccent`, `NtAccentDim` |
 | Pane status bar + agent segment [3] | `#CC1A1A1A`, `#AAA`, LimeGreen/Yellow/Red/Gray, `#E8A33D`… | `NtChromeBg`, `NtFg3`, `NtSuccess`/`NtWarning`/`NtError`/`NtFg4`, `NtAgentWrote`/`NtAgentWatched`/`NtAgentIdle` |
 | Inactive-pane dim, bell flash [3] | black α 72/96, white flash | `NtScrim`-derived dim, `BellFlash` render color |
@@ -361,6 +361,32 @@ Where phase 1 departs from the plan, so phases 2-4 start from what is there:
 - **Permanent allowlist** also covers the connection manager's default group/tag `Swatch`
   (`Brushes.Gray`), the same identity-colour family as `GroupSwatches`.
 - **Baseline**: 217 literals in 18 files, all on surfaces phases 2-4 migrate.
+
+### Phase 2 as landed (2026-10-23)
+
+Plan: `docs/superpowers/plans/2026-10-23-theme-system-phase2-main-window.md`.
+
+- **Code-built chrome holds token brush instances** (`MainWindow.ThemeBrush`), not
+  `GetResourceObservable` bindings: the main window follows the app theme (D7), so an instance
+  ThemeService recolours in place is enough. Phase 3's pane scope needs the observable form for
+  anything inside a pane.
+- **Windows inherit the theme variant** from the application. `MainWindow` and the code-built
+  dialogs no longer set `RequestedThemeVariant`.
+- **`ThemedWindowChrome.Apply`** replaces `ApplyThemeToDialogWindow` for confirm dialogs, SSH
+  prompts, the mux install dialog and About.
+- **Title-bar buttons** carry no local Foreground: Fluent's `ButtonForeground` (aliased to
+  `NtFg` in phase 1) colours them, so a rebuilt button needs nothing re-applied.
+- **Splitters** take their line from styles keyed on the existing `splitter-hover` /
+  `splitter-dragging` classes.
+- **Sidebar surface and divider** are styles keyed on the `vertical-tabs` class, so the
+  horizontal strip in the title band stays transparent. The divider is a new
+  `PART_TabSidebarDivider` border.
+- **Shared chip** keeps the watched blue family (`NtTabChipAgentWatched`), as before.
+- **Deleted:** `GetContrastForeground` (no caller left), `ApplyThemeToDialogWindow`,
+  `ApplyTitleBarForegrounds`, `ApplySplitterVisualState`, the main window's dead search overlay,
+  `TabHeaderTemplate`, the `DragBorder`/`headerBg` code and the `SettingsBtn` selectors.
+- **Baseline**: 128 literals in 12 files, all on phase 3-4 surfaces. `App.axaml`, `MainWindow`,
+  the Transfer Center, `Converters.cs` and About are at zero.
 
 ## 6. Schema propagation
 
