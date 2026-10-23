@@ -2199,7 +2199,7 @@ namespace Ntilde
             {
                 badge.IsVisible = false;
                 ToolTip.SetTip(button, baseTooltip);
-                button.Foreground = TitleBarContrastForeground();
+                button.ClearValue(Button.ForegroundProperty);
                 return;
             }
 
@@ -2208,13 +2208,17 @@ namespace Ntilde
             badge.IsVisible = hiddenCount > 0;
             badge.Text = hiddenCount > 0 ? $"+{hiddenCount}" : string.Empty;
             ToolTip.SetTip(button, hiddenCount > 0 ? $"{baseTooltip} \u2014 {hiddenCount} hidden" : baseTooltip);
-            // This runs after every layout pass (via UpdateTabVisuals -> PopulateTabListMenu), so
-            // the resting color here must be the theme's contrast foreground, not hardcoded white:
-            // white was invisible against light themes and kept re-stomping the foreground
-            // ApplyThemeToUI had applied.
-            button.Foreground = hiddenCount > 0
-                ? new SolidColorBrush(Color.FromRgb(255, 210, 90))
-                : TitleBarContrastForeground();
+            // This runs after every layout pass (via UpdateTabVisuals -> PopulateTabListMenu). With
+            // tabs hidden the button takes the attention tint; otherwise its local value is cleared
+            // so the stock foreground (NtFg) applies.
+            if (hiddenCount > 0)
+            {
+                button.Foreground = ThemeBrush(ThemeKeys.TabChipAttention);
+            }
+            else
+            {
+                button.ClearValue(Button.ForegroundProperty);
+            }
         }
 
         internal static int CountHiddenTabs(double viewportWidth, IEnumerable<double> tabWidths, double fallbackTabWidth = 120)
@@ -2828,19 +2832,8 @@ namespace Ntilde
             };
             UiScale.FitWindow(dialog);
 
-            ApplyThemeToDialogWindow(dialog);
+            ThemedWindowChrome.Apply(dialog);
             return dialog;
-        }
-
-        private void ApplyThemeToDialogWindow(Window dialog)
-        {
-            var theme = _settings.ActiveTheme;
-            var contrast = theme.GetContrastForeground();
-            dialog.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            dialog.Foreground = new SolidColorBrush(contrast.ToAvaloniaColor());
-            // ThemeService's classification, so a dialog never picks the other Fluent palette from
-            // the app at the luminance boundary (GetContrastForeground rounds 0.5 the other way).
-            dialog.RequestedThemeVariant = ThemeService.Current.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
         }
 
         private async Task RenameSelectedTabAsync()
@@ -3937,7 +3930,7 @@ namespace Ntilde
             _commandPaletteUsageStore = new CommandPaletteUsageStore(AppPaths.CommandPaletteUsageFilePath);
             _commandPaletteUsage = new Dictionary<string, CommandPaletteUsageEntry>(_commandPaletteUsageStore.Load(), StringComparer.OrdinalIgnoreCase);
             _sshConnectionService = new SshConnectionService();
-            _sshInteractionService = new SshInteractionService(() => this, ApplyThemeToDialogWindow);
+            _sshInteractionService = new SshInteractionService(() => this, ThemedWindowChrome.Apply);
             // Read through a lambda when an endpoint is first used, so this (or a test's later
             // replacement) is in place before any pane can ask for a remote host.
             RemoteMuxHostFactory = CreateRemoteMuxHost;
@@ -4739,7 +4732,7 @@ namespace Ntilde
                 (source, report, progress) => CreateRemoteMuxInstaller(profile, source, report, progress),
                 AppVersionInfo.Version,
                 TopLevel.GetTopLevel(owner)?.Clipboard,
-                ApplyThemeToDialogWindow);
+                ThemedWindowChrome.Apply);
 
         /// <summary>
         /// One install run's installer (spec §9: every step over the profile's own exec transport). The user is
@@ -7359,7 +7352,7 @@ namespace Ntilde
 
             indicator.IsVisible = visible;
             if (!visible) return;
-            dot.Fill = new SolidColorBrush(Color.Parse(active ? "#4FB0D4" : "#6B737F"));
+            dot.Fill = ThemeBrush(active ? ThemeKeys.AgentWatched : ThemeKeys.AgentIdle);
         }
 
         // Raised on an IPC thread when the in-flight poll count leaves or
@@ -8677,18 +8670,10 @@ namespace Ntilde
                 }
             }
 
-            var contrastColor = theme.GetContrastForeground();
-            var contrastForeground = new SolidColorBrush(contrastColor.ToAvaloniaColor());
-
-            // Set the window theme variant to ensure OS caption buttons (Min/Max/Close)
-            // adapt to the background brightness (Dark background -> Light buttons, Light background -> Dark buttons).
-            // Classified by ThemeService (applied above), so the window and the app agree on the variant.
-            this.RequestedThemeVariant = ThemeService.Current.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
-
-            // Apply to Window Foreground (inherited by many controls)
-            this.Foreground = contrastForeground;
-
-            ApplyTitleBarForegrounds(contrastForeground);
+            // The window's Foreground (NtFg in XAML), the title-bar buttons (Fluent's ButtonForeground,
+            // aliased to NtFg) and the theme variant (inherited from the application, which
+            // ThemeService sets) all follow the tokens on their own. Only the record button's
+            // recording state needs re-asserting.
             SyncRecordingButtonState();
             foreach (var splitter in this.GetVisualDescendants().OfType<GridSplitter>())
             {
@@ -8704,43 +8689,11 @@ namespace Ntilde
         }
 
         /// <summary>
-        /// The theme's contrast foreground as a fresh brush - the color every title-bar button
-        /// and icon should read in the current theme (dark ink on light themes, light on dark).
+        /// One of the app-wide theme token brushes (see <see cref="ThemeKeys"/>). Code-built chrome
+        /// holds this INSTANCE, which ThemeService recolours in place, so it follows every theme
+        /// switch without being rebuilt and nothing allocates a brush per pass.
         /// </summary>
-        private SolidColorBrush TitleBarContrastForeground()
-            => new SolidColorBrush(_settings.ActiveTheme.GetContrastForeground().ToAvaloniaColor());
-
-        /// <summary>
-        /// Re-applies the active theme's contrast foreground to the title-bar buttons and icons.
-        /// Extracted from <see cref="ApplyThemeToUI"/> because ordering defeats it there in two
-        /// real paths: at startup ApplyThemeToUI runs before the first RebuildTitleBar (so every
-        /// FindTitleBarButton lookup missed), and the settings-save path runs ApplyThemeToUI and
-        /// then rebuilds the bar anyway. Populate() replaces the generated buttons with fresh
-        /// instances whose foregrounds fall back to the Fluent variant brushes - white under the
-        /// app's default Dark variant - so a rebuild must re-apply these itself, or light themes
-        /// show white-on-light icons until the next theme action.
-        /// </summary>
-        private void ApplyTitleBarForegrounds(SolidColorBrush? contrastForeground = null)
-        {
-            // Default to a fresh brush, but let ApplyThemeToUI share ITS instance so the buttons
-            // keep pointing at the same brush as the window Foreground (tests pin that invariant,
-            // and it keeps one invalidation covering the whole bar).
-            contrastForeground ??= TitleBarContrastForeground();
-
-            var btnNew = this.FindControl<Button>(TitleBarViewFactory.NewTabButtonName);
-            var btnTabList = FindTitleBarButton(TitleBarCatalog.OpenTabListId);
-            var iconTabList = btnTabList?.Content as PathIcon;
-            var btnRecord = FindTitleBarButton("toggle_recording");
-            var btnConns = FindTitleBarButton("connections");
-            var commandSearchBox = this.FindControl<TextBox>("CommandSearchBox");
-
-            if (btnNew != null) btnNew.Foreground = contrastForeground;
-            if (btnTabList != null) btnTabList.Foreground = contrastForeground;
-            if (iconTabList != null) iconTabList.Foreground = contrastForeground;
-            if (btnConns != null) btnConns.Foreground = contrastForeground;
-            if (btnRecord != null) btnRecord.Foreground = contrastForeground;
-            if (commandSearchBox != null) commandSearchBox.Foreground = contrastForeground;
-        }
+        private IBrush ThemeBrush(string key) => (IBrush)this.FindResource(key)!;
 
         private void SetupCommandPalette()
         {
@@ -9767,7 +9720,7 @@ namespace Ntilde
                 : Ntilde.Platform.Ssh.Models.SshBackendKind.OpenSsh;
             vm.ExperimentalNativeSshEnabled = _settings.ExperimentalNativeSshEnabled;
             var dialog = new NewSshConnectionView(vm);
-            ApplyThemeToDialogWindow(dialog);
+            ThemedWindowChrome.Apply(dialog);
             WireRemoteMuxInstall(vm, dialog);
             bool saved = await dialog.ShowDialog<bool>(owner ?? this);
 
@@ -12114,7 +12067,7 @@ namespace Ntilde
             about.ApplyStagedUpdate = ApplyStagedUpdate;
             about.StagedVersionProvider = () => _updateCoordinator?.StagedVersion;
 
-            ApplyThemeToDialogWindow(about);
+            ThemedWindowChrome.Apply(about);
             await about.ShowDialog(this);
         }
 
@@ -12135,12 +12088,19 @@ namespace Ntilde
                 return;
             }
 
-            var activeBrush = new SolidColorBrush(Color.Parse("#F1636B"));
-            var inactiveBrush = new SolidColorBrush(_settings.ActiveTheme.GetContrastForeground().ToAvaloniaColor());
-
-            btnRecord.Foreground = isRecording ? activeBrush : inactiveBrush;
-            iconRecord.Foreground = isRecording ? activeBrush : inactiveBrush;
-            btnRecord.Background = isRecording ? new SolidColorBrush(Color.Parse("#30F1636B")) : Brushes.Transparent;
+            if (isRecording)
+            {
+                btnRecord.Foreground = ThemeBrush(ThemeKeys.Recording);
+                iconRecord.Foreground = ThemeBrush(ThemeKeys.Recording);
+                btnRecord.Background = ThemeBrush(ThemeKeys.ErrorDim);
+            }
+            else
+            {
+                // Back to the stock foreground (NtFg) rather than a copied colour.
+                btnRecord.ClearValue(Button.ForegroundProperty);
+                iconRecord.ClearValue(PathIcon.ForegroundProperty);
+                btnRecord.Background = Brushes.Transparent;
+            }
             var recordingShortcut = GetEffectiveShortcutBinding("toggle_recording", "Ctrl+Shift+R");
             ToolTip.SetTip(btnRecord, isRecording
                 ? $"Stop Recording ({recordingShortcut})"
@@ -12218,12 +12178,8 @@ namespace Ntilde
             PlaceAgentObserveIndicator(host);
 
             // The record button is recreated by every rebuild, so its active colouring has to be
-            // reapplied against the new instance.
-            // Same for every other generated button and icon: they are new instances, so the
-            // theme foregrounds applied by the last ApplyThemeToUI are gone (and startup applies
-            // that BEFORE this rebuild ever runs). Re-apply here, before SyncRecordingButtonState
-            // so an active recording's red still wins on the record button.
-            ApplyTitleBarForegrounds();
+            // reapplied against the new instance. The other generated buttons need nothing: their
+            // foreground is Fluent's ButtonForeground, which follows the NtFg token.
             SyncRecordingButtonState();
 
             // Populate() just replaced TitleBarItemsHost's children synchronously, but that does not

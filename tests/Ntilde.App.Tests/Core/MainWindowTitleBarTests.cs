@@ -10,7 +10,9 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Shell.TitleBar;
+using Ntilde.Tests.Theming;
 using Xunit;
 
 namespace Ntilde.Tests.Core;
@@ -537,10 +539,9 @@ public sealed class MainWindowTitleBarTests : IDisposable
         // ISolidColorBrush rather than a concrete IsType check, since Brushes.Transparent (the
         // untouched initial value) is an ImmutableSolidColorBrush while the active-state brush the
         // production code assigns is a mutable SolidColorBrush - both implement ISolidColorBrush,
-        // and pinning to one concrete type would make the assertion fail for that incidental
-        // reason instead of the one this test actually cares about.
-        var activeBrush = Assert.IsAssignableFrom<ISolidColorBrush>(button.Background);
-        Assert.Equal(Color.Parse("#30F1636B"), activeBrush.Color);
+        // The recording state holds the token brush instances, so it follows a theme switch too.
+        Assert.Same(window.FindResource(ThemeKeys.ErrorDim), button.Background);
+        Assert.Same(window.FindResource(ThemeKeys.Recording), button.Foreground);
         Assert.NotEqual(initialBackground, button.Background);
     }
 
@@ -599,27 +600,32 @@ public sealed class MainWindowTitleBarTests : IDisposable
     }
 
     /// <summary>
-    /// ApplyThemeToUI only ever assigns Foreground on the generated title bar buttons (see
-    /// MainWindow.axaml.cs around line 4404) - every property it touches on them is inherited from
-    /// the window, which already carries the same contrastForeground brush by the time these lines
-    /// run. That means asserting Foreground alone would pass even with a totally dead
-    /// FindTitleBarButton lookup, the same masking documented on the other two tests in this
-    /// group. To make the assertion meaningful, this test first gives the button a local
-    /// (non-inherited) sentinel Foreground value; only a real assignment inside ApplyThemeToUI -
-    /// meaning the lookup actually found the live button - can overwrite it back to the shared
-    /// contrastForeground instance also applied to the window itself.
+    /// The generated title-bar buttons carry no local Foreground: Fluent's ButtonForeground, which
+    /// ThemeService aliases to the NtFg token, colours them. So a theme switch reaches a button that
+    /// was built before it, with no ApplyThemeToUI pass and no rebuild. A local value left on the
+    /// button (what the old per-button contrast copy was) would defeat this.
     /// </summary>
     [AvaloniaFact]
-    public void ApplyThemeToUI_Recolors_GeneratedConnectionsButtonForeground()
+    public void A_generated_title_bar_button_follows_a_theme_switch_without_a_rebuild()
     {
         var window = TestMainWindowFactory.Create();
-        var button = GetGeneratedButton(window, "connections");
-        button.Foreground = Brushes.Lime;
+        window.Show();
+        try
+        {
+            var button = GetGeneratedButton(window, "connections");
 
-        InvokeApplyThemeToUI(window);
+            ThemeService.Apply(TestThemes.GitHubLight, 1.0);
+            Dispatcher.UIThread.RunJobs();
 
-        Assert.NotEqual(Brushes.Lime, button.Foreground);
-        Assert.Same(window.Foreground, button.Foreground);
+            Assert.Equal(
+                ThemeTokens.Derive(TestThemes.GitHubLight, 1.0)[ThemeKeys.Fg],
+                Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
+        }
+        finally
+        {
+            window.Close();
+            ThemeService.Apply(new Ntilde.VT.TerminalTheme(), 1.0);
+        }
     }
 
     /// <summary>

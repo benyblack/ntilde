@@ -259,7 +259,7 @@
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
         <Style Selector="Button#BtnNewTab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#30FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
     </Application.Styles>
 </Application>

@@ -10,6 +10,7 @@
         ExtendClientAreaToDecorationsHint="True"
         WindowDecorationsTheme="{StaticResource NtildeWindowDecorationsTheme}"
         TransparencyLevelHint=""
+        Foreground="{DynamicResource NtFg}"
         Background="Transparent">
     <Window.Styles>
         <Style Selector="Button#BtnNewTab">
@@ -17,7 +18,7 @@
         </Style>
         <Style Selector="Button#BtnNewTab:pointerover">
             <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Background" Value="#40FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
 
         <!-- TabItem Styles for Transparency -->
@@ -200,7 +201,7 @@
         <Panel x:Name="TitleBarBadgeParkingSlot" IsHitTestVisible="False">
             <TextBlock Name="TabOverflowBadge"
                        IsVisible="False"
-                       Foreground="#FFD25A"
+                       Foreground="{DynamicResource NtTabChipAttention}"
                        FontSize="11"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Left"
@@ -231,7 +232,7 @@
                      rebuild instead of rebuilding it. Focusable=False keeps clicks from stealing
                      keyboard focus from the terminal. -->
                 <Button Name="BtnNewTab" Content="+"
-                        Foreground="White"
+                        Foreground="{DynamicResource NtFg}"
                         Background="Transparent"
                         BorderThickness="0" Focusable="False"
                         FontSize="18"
@@ -273,7 +274,7 @@
                         Focusable="False"
                         VerticalAlignment="Center"
                         ToolTip.Tip="Agent access is enabled. Click to open the agent activity journal.">
-                    <Ellipse Name="AgentObserveIndicatorDot" Width="7" Height="7" Fill="#6B737F"/>
+                    <Ellipse Name="AgentObserveIndicatorDot" Width="7" Height="7" Fill="{DynamicResource NtAgentIdle}"/>
                 </Button>
             </StackPanel>
         </Grid>
