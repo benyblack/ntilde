@@ -7,10 +7,7 @@
 5 src/Ntilde.App/Controls/RemotePathTextBox.axaml
 38 src/Ntilde.App/Controls/TerminalPane.axaml
 11 src/Ntilde.App/Controls/TerminalPane.axaml.cs
-11 src/Ntilde.App/Controls/TransferCenter.axaml
 8 src/Ntilde.App/Controls/TransferDialog.axaml
-19 src/Ntilde.App/MainWindow.axaml
-6 src/Ntilde.App/Shell/Converters.cs
 2 src/Ntilde.App/Shell/SessionManager.cs
 5 src/Ntilde.App/Shell/TerminalDrawOperation.cs
 4 src/Ntilde.App/Shell/TerminalView.cs

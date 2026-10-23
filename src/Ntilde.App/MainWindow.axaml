@@ -315,15 +315,15 @@
                 MinWidth="320"
                 MaxWidth="440"
                 Padding="12"
-                Background="#20242C"
-                BorderBrush="#3A404A"
+                Background="{DynamicResource NtOverlay}"
+                BorderBrush="{DynamicResource NtHairline}"
                 BorderThickness="1"
                 CornerRadius="8"
                 ZIndex="180">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                 <TextBlock Name="RecordingToastTitle"
                            Text="Recording started"
-                           Foreground="White"
+                           Foreground="{DynamicResource NtFg}"
                            FontWeight="SemiBold" />
                 <Button Name="RecordingToastClose"
                         Grid.Column="1"
@@ -332,14 +332,14 @@
                         Height="28"
                         Margin="8,0,0,0"
                         Background="Transparent"
-                        Foreground="#C9CFD9"
+                        Foreground="{DynamicResource NtFg2}"
                         BorderThickness="0"
                         Focusable="False"/>
                 <TextBlock Name="RecordingToastMessage"
                            Grid.Row="1"
                            Grid.ColumnSpan="2"
                            Margin="0,8,0,0"
-                           Foreground="#C9CFD9"
+                           Foreground="{DynamicResource NtFg2}"
                            TextWrapping="Wrap" />
                 <StackPanel Grid.Row="2"
                             Grid.ColumnSpan="2"
@@ -370,15 +370,15 @@
                 MinWidth="320"
                 MaxWidth="440"
                 Padding="12"
-                Background="#20242C"
-                BorderBrush="#3A404A"
+                Background="{DynamicResource NtOverlay}"
+                BorderBrush="{DynamicResource NtHairline}"
                 BorderThickness="1"
                 CornerRadius="8"
                 ZIndex="180">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                 <TextBlock Name="UpdateToastTitle"
                            Text="Update ready"
-                           Foreground="White"
+                           Foreground="{DynamicResource NtFg}"
                            FontWeight="SemiBold" />
                 <Button Name="UpdateToastClose"
                         Grid.Column="1"
@@ -387,14 +387,14 @@
                         Height="28"
                         Margin="8,0,0,0"
                         Background="Transparent"
-                        Foreground="#C9CFD9"
+                        Foreground="{DynamicResource NtFg2}"
                         BorderThickness="0"
                         Focusable="False"/>
                 <TextBlock Name="UpdateToastMessage"
                            Grid.Row="1"
                            Grid.ColumnSpan="2"
                            Margin="0,8,0,0"
-                           Foreground="#C9CFD9"
+                           Foreground="{DynamicResource NtFg2}"
                            TextWrapping="Wrap" />
                 <StackPanel Grid.Row="2"
                             Grid.ColumnSpan="2"
@@ -414,11 +414,11 @@
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                 Width="350" Height="400"
                 Margin="0,0,20,50"
-                Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8"
+                Background="{DynamicResource NtOverlay}" BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" CornerRadius="8"
                 ZIndex="600">
             <Grid RowDefinitions="Auto, *">
-                <Grid Name="TransferTitleBar" Background="#2D2D2D" Height="32">
-                    <TextBlock Text="Recent Transfers" VerticalAlignment="Center" Margin="10,0" FontSize="12" FontWeight="Bold"/>
+                <Grid Name="TransferTitleBar" Background="{DynamicResource NtChromeBg}" Height="32">
+                    <TextBlock Text="Recent Transfers" Foreground="{DynamicResource NtFg}" VerticalAlignment="Center" Margin="10,0" FontSize="12" FontWeight="Bold"/>
                     <Button Name="BtnCloseTransfers" Content="✕" HorizontalAlignment="Right" Width="32" Background="Transparent" BorderThickness="0"/>
                 </Grid>
                 <ContentControl Name="TransferCenterHost" Grid.Row="1"/>
@@ -426,16 +426,16 @@
         </Border>
 
         <!-- Command Palette Overlay -->
-        <Grid Name="CommandPaletteOverlay" ZIndex="999" IsVisible="False" Background="#80000000">
-            <Border Width="600" Height="400" Background="#252526" BorderBrush="#007ACC" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top" Margin="0,80,0,0">
+        <Grid Name="CommandPaletteOverlay" ZIndex="999" IsVisible="False" Background="{DynamicResource NtScrim}">
+            <Border Width="600" Height="400" Background="{DynamicResource NtOverlay}" BorderBrush="{DynamicResource NtAccentBorder}" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top" Margin="0,80,0,0">
                 <Grid RowDefinitions="Auto, *">
-                    <TextBox Name="CommandSearchBox" PlaceholderText="Type a command..." FontSize="14" Padding="10" BorderThickness="0,0,0,1" BorderBrush="#333333" Background="Transparent" />
+                    <TextBox Name="CommandSearchBox" PlaceholderText="Type a command..." FontSize="14" Padding="10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource NtHairline}" Background="Transparent" />
                     <ListBox Name="CommandList" Grid.Row="1" Background="Transparent" BorderThickness="0">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="shell:TerminalCommand">
                                 <Grid ColumnDefinitions="*, 100">
-                                    <TextBlock Text="{Binding FullTitle}" Foreground="#E0E0E0" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Shortcut}" Foreground="#888888" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Text="{Binding FullTitle}" Foreground="{DynamicResource NtFg}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Shortcut}" Foreground="{DynamicResource NtFg3}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="11"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
