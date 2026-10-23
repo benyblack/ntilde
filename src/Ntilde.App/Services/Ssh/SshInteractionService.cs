@@ -244,8 +244,11 @@ public sealed class SshInteractionService : ISshInteractionService
     /// </summary>
     private static string CreatePasswordMessage(SshInteractionRequest request)
     {
-        // After a refusal the dialog says so, so the user knows why it is asking again.
-        string refused = request.FollowsRefusal ? "The server refused that password. " : string.Empty;
+        // After a refusal the dialog says so, so the user knows why it is asking again. It names the
+        // sign-in, not the password: the retry also follows a wrong code alone, or a password
+        // method that can never succeed (a PAM second factor), where "refused that password" is
+        // untrue (final review, F2).
+        string refused = request.FollowsRefusal ? "The server did not accept the sign-in. " : string.Empty;
         if (!request.HasHostIdentity)
         {
             return $"{refused}Enter the SSH password to continue.";

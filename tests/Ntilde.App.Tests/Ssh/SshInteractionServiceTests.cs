@@ -476,7 +476,7 @@ public sealed class SshInteractionServiceTests
     }
 
     [AvaloniaFact]
-    public async Task RetryPrompt_SaysTheServerRefusedThePassword()
+    public async Task RetryPrompt_SaysTheSignInWasNotAccepted()
     {
         TerminalProfile profile = CreateProfile("2f9a6c18-d4b7-4e03-8c5a-71b0e3d9a6f2");
         AuthPromptViewModel? presented = null;
@@ -492,7 +492,7 @@ public sealed class SshInteractionServiceTests
         await service.HandleAsync(TargetPasswordRequest(profile, followsRefusal: true), CancellationToken.None);
 
         Assert.Equal(
-            "The server refused that password. Enter the SSH password for alice@example.internal to continue.",
+            "The server did not accept the sign-in. Enter the SSH password for alice@example.internal to continue.",
             presented!.Message);
     }
 
