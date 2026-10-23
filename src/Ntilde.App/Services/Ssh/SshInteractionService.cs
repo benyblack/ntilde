@@ -100,8 +100,11 @@ public sealed class SshInteractionService : ISshInteractionService
 
     private bool TryHandlePasswordFromVault(SshInteractionRequest request, out SshInteractionResponse response)
     {
+        // A retry prompt follows a refusal of the password this server was just sent: neither store is read,
+        // since either would send that password again.
         if (request.Kind != SshInteractionKind.Password ||
-            !request.ProfileId.HasValue)
+            !request.ProfileId.HasValue ||
+            request.FollowsRefusal)
         {
             response = SshInteractionResponse.Cancel();
             return false;
@@ -241,17 +244,22 @@ public sealed class SshInteractionService : ISshInteractionService
     /// </summary>
     private static string CreatePasswordMessage(SshInteractionRequest request)
     {
+        // After a refusal the dialog says so, so the user knows why it is asking again. It names the
+        // sign-in, not the password: the retry also follows a wrong code alone, or a password
+        // method that can never succeed (a PAM second factor), where "refused that password" is
+        // untrue (final review, F2).
+        string refused = request.FollowsRefusal ? "The server did not accept the sign-in. " : string.Empty;
         if (!request.HasHostIdentity)
         {
-            return "Enter the SSH password to continue.";
+            return $"{refused}Enter the SSH password to continue.";
         }
 
         string endpoint = request.Port == 22
             ? $"{request.User}@{request.Host}"
             : $"{request.User}@{request.Host}:{request.Port}";
         return request.IsJumpHop
-            ? $"Enter the SSH password for jump host {endpoint} to continue."
-            : $"Enter the SSH password for {endpoint} to continue.";
+            ? $"{refused}Enter the SSH password for jump host {endpoint} to continue."
+            : $"{refused}Enter the SSH password for {endpoint} to continue.";
     }
 
     /// <summary>

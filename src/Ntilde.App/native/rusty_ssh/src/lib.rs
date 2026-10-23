@@ -3,7 +3,7 @@ use russh::client::{self, AuthResult, KeyboardInteractiveAuthResponse};
 use russh::keys::agent::AgentIdentity;
 use russh::keys::agent::client::{AgentClient, AgentStream};
 use russh::keys::{PrivateKeyWithHashAlg, load_secret_key, ssh_key};
-use russh::{ChannelMsg, Disconnect, Signer};
+use russh::{ChannelMsg, Disconnect, MethodKind, MethodSet, Signer};
 use russh_sftp::client::SftpSession;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -649,6 +649,11 @@ struct TextPromptPayload<'a> {
     prompt: &'a str,
     #[serde(flatten)]
     hop: AuthHop<'a>,
+    /// The server refused the password this hop was just sent, so the app must ask the user
+    /// rather than fill the window from a store and send the refused value again (spec, "The
+    /// retry window").
+    #[serde(rename = "followsRefusal")]
+    follows_refusal: bool,
 }
 
 #[derive(Serialize)]
@@ -696,11 +701,17 @@ struct HostKeyDecisionResponse {
 #[derive(serde::Deserialize)]
 struct TextResponse {
     text: String,
+    /// The user dismissed the prompt. Without this flag a cancel arrived as an empty
+    /// answer, which was sent to the server as if it were the password.
+    #[serde(default)]
+    canceled: bool,
 }
 
 #[derive(serde::Deserialize)]
 struct KeyboardInteractiveResponse {
     responses: Vec<String>,
+    #[serde(default)]
+    canceled: bool,
 }
 
 #[derive(Deserialize)]
@@ -2531,6 +2542,32 @@ fn run_remote_path_list(
     })
 }
 
+/// What a transfer says when the server's keyboard-interactive exchange asks for more than the
+/// password it holds (a verification code, a new password). Not `auth-failed`: the saved password
+/// was not refused, so the app must not forget it.
+const TRANSFER_NEEDS_MORE_THAN_A_PASSWORD: &str = "The server asks for more than a password at sign-in, which file transfers cannot answer. Use an SSH key or the SSH agent for this host's transfers.";
+
+/// A transfer's answers to a keyboard-interactive exchange: its hop's password for the first
+/// password question, and nothing for any other question, which fails the sign-in.
+struct TransferRounds<'a> {
+    password: &'a str,
+}
+
+impl KeyboardRounds for TransferRounds<'_> {
+    fn password(&mut self, _prompt: &str) -> anyhow::Result<Zeroizing<String>> {
+        Ok(Zeroizing::new(self.password.to_owned()))
+    }
+
+    fn round(
+        &mut self,
+        _name: String,
+        _instructions: String,
+        _prompts: Vec<client::Prompt>,
+    ) -> anyhow::Result<Zeroizing<Vec<String>>> {
+        anyhow::bail!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD)
+    }
+}
+
 async fn authenticate_transfer<H>(
     user: &str,
     hop: TransferHop,
@@ -2540,6 +2577,11 @@ async fn authenticate_transfer<H>(
 where
     H: client::Handler + Send + 'static,
 {
+    let mut methods = match ask_server_methods(user, session).await {
+        NoneProbe::Authenticated => return Ok(()),
+        NoneProbe::Methods(methods) => methods,
+    };
+
     // Same first-position rule as the interactive path: a configured identity file is offered
     // before the agent is consulted. But its failure is only FINAL without use_agent — the
     // terminal path falls back from a rejected or unreadable file to the agent, and a transfer
@@ -2562,6 +2604,7 @@ where
                 if !auth.use_agent {
                     anyhow::bail!("Authentication failed.");
                 }
+                methods.note(&result);
             }
             Err(_) if auth.use_agent => {
                 // Unreadable (or passphrase-protected) file: the agent may still hold a usable
@@ -2576,11 +2619,42 @@ where
         }
     }
 
-    if auth.use_agent && try_agent_auth(user, session).await {
+    if auth.use_agent && try_agent_auth(user, session, &mut methods).await {
         return Ok(());
     }
 
     if let Some(password) = auth.password_for(hop) {
+        // A server that takes the password only as a keyboard-interactive question gets it there,
+        // answered from this hop's own password with no window and no retry (spec, "Transfers,
+        // listings and autocomplete").
+        if methods.password_through_keyboard_interactive() {
+            let mut rounds = TransferRounds { password };
+            return match run_keyboard_exchange(user, session, true, &mut rounds).await? {
+                KeyboardExchange::Success => Ok(()),
+                // The server refused the password it was given: the one case the app may treat
+                // as a stale password.
+                KeyboardExchange::Failure {
+                    password_sent: true,
+                    partial_success: false,
+                    ..
+                } => Err(anyhow::Error::new(NativeSftpTransferError::new(
+                    NativeSftpTransferErrorKind::AuthenticationFailed,
+                    "Authentication failed.",
+                ))),
+                // The password was accepted, and the server wants something else as well.
+                KeyboardExchange::Failure {
+                    password_sent: true,
+                    partial_success: true,
+                    ..
+                } => anyhow::bail!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD),
+                // No password question was ever asked, so nothing was refused.
+                KeyboardExchange::Failure {
+                    password_sent: false,
+                    ..
+                } => anyhow::bail!("Authentication failed."),
+            };
+        }
+
         // russh's API takes an owned String, so this copy is unavoidable and its
         // lifetime is russh's to manage. Our own copy is still wiped when `auth` drops.
         let result = session
@@ -4154,6 +4228,64 @@ async fn close_all_forward_channels(forward_channels: &ForwardChannels) {
     let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
 }
 
+/// The sign-in methods the server last said it takes, followed as OpenSSH follows them: every
+/// refusal that lists methods replaces the list. A server set to `AuthenticationMethods
+/// publickey,keyboard-interactive` lists only `publickey` until the key is partially accepted, and
+/// `keyboard-interactive` after. Unknown (`None`) until the server has listed any.
+#[derive(Default)]
+struct ServerMethods(Option<MethodSet>);
+
+impl ServerMethods {
+    fn note(&mut self, result: &AuthResult) {
+        if let AuthResult::Failure { remaining_methods, .. } = result {
+            self.note_remaining(remaining_methods);
+        }
+    }
+
+    /// `note` for a keyboard-interactive failure, which russh reports in its own type. An empty
+    /// list changes nothing: it is how russh reports a dropped connection.
+    fn note_remaining(&mut self, remaining: &MethodSet) {
+        if !remaining.is_empty() {
+            self.0 = Some(remaining.clone());
+        }
+    }
+
+    fn offers(&self, kind: MethodKind) -> bool {
+        self.0.as_ref().is_some_and(|methods| methods.contains(&kind))
+    }
+
+    /// The server takes the password only as a keyboard-interactive question (sshd with
+    /// `PasswordAuthentication no` and PAM behind keyboard-interactive), so that is where the
+    /// password has to go.
+    fn password_through_keyboard_interactive(&self) -> bool {
+        !self.offers(MethodKind::Password) && self.offers(MethodKind::KeyboardInteractive)
+    }
+}
+
+/// The server's answer to the `none` request.
+enum NoneProbe {
+    /// The server needs no credentials (Tailscale SSH under a permissive policy, say).
+    Authenticated,
+    Methods(ServerMethods),
+}
+
+/// Asks the server which methods it takes, with a `none` request before any credential, as
+/// OpenSSH does; sshd does not count that first `none` against MaxAuthTries. An error leaves the
+/// methods unknown: the connection is gone, and the next step reports that as it always has
+/// (spec, "Step 0: ask the server what it accepts").
+async fn ask_server_methods<H>(user: &str, session: &mut client::Handle<H>) -> NoneProbe
+where
+    H: client::Handler + Send + 'static,
+{
+    let mut methods = ServerMethods::default();
+    match session.authenticate_none(user).await {
+        Ok(AuthResult::Success) => return NoneProbe::Authenticated,
+        Ok(refusal) => methods.note(&refusal),
+        Err(_) => {}
+    }
+    NoneProbe::Methods(methods)
+}
+
 /// Authenticates one session of the chain. `hop` names the server being authenticated and rides
 /// on every prompt this raises, so the managed side answers with that server's credential.
 async fn authenticate(
@@ -4164,6 +4296,11 @@ async fn authenticate(
     session: &mut client::Handle<NovaClientHandler>,
 ) -> anyhow::Result<()> {
     let user = hop.user;
+    let mut methods = match ask_server_methods(user, session).await {
+        NoneProbe::Authenticated => return Ok(()),
+        NoneProbe::Methods(methods) => methods,
+    };
+
     // The configured identity file keeps first position. It predates agent support, so it must
     // stay reachable: an agent stuffed with unrelated keys could otherwise exhaust the server's
     // MaxAuthTries — closing the transport — before the file that used to connect this profile
@@ -4173,14 +4310,40 @@ async fn authenticate(
             if auth_result.success() {
                 return Ok(());
             }
+            methods.note(&auth_result);
         }
     }
 
     // Agent identities next, before anything that prompts: the agent is the one method that can
     // still succeed without asking the user anything. Every failure shape (no agent, no keys,
     // all keys refused) falls through.
-    if use_agent && try_agent_auth(user, session).await {
+    if use_agent && try_agent_auth(user, session, &mut methods).await {
         return Ok(());
+    }
+
+    // The server takes the password only as a keyboard-interactive question: no password window
+    // up front, which would only be refused, but the exchange's own question raised as that
+    // window. A refusal gets exactly one more exchange, whose window says it follows a refusal
+    // (spec, "Terminal sessions", path 3).
+    if methods.password_through_keyboard_interactive() {
+        let mut rounds = SessionRounds { shared, hop, follows_refusal: false };
+        let refused = match run_keyboard_exchange(user, session, true, &mut rounds).await? {
+            KeyboardExchange::Success => return Ok(()),
+            KeyboardExchange::Failure { remaining_methods, partial_success, password_sent } => {
+                password_sent
+                    && !partial_success
+                    && remaining_methods.contains(&MethodKind::KeyboardInteractive)
+            }
+        };
+        if refused {
+            rounds.follows_refusal = true;
+            if let KeyboardExchange::Success =
+                run_keyboard_exchange(user, session, true, &mut rounds).await?
+            {
+                return Ok(());
+            }
+        }
+        anyhow::bail!("SSH authentication failed");
     }
 
     let password = prompt_text(
@@ -4189,6 +4352,7 @@ async fn authenticate(
         "Password:",
         NovaSshResponseKind::Password,
         hop,
+        false,
     )?;
     // As in authenticate_transfer: russh needs an owned String; our copy is wiped when
     // `password` drops at the end of this function.
@@ -4198,9 +4362,59 @@ async fn authenticate(
     if password_auth.success() {
         return Ok(());
     }
+    methods.note(&password_auth);
 
-    let keyboard_auth = authenticate_keyboard_interactive(hop, shared, session).await?;
-    if keyboard_auth {
+    // A refused password gets exactly one more window, which says it follows a refusal so the app
+    // asks instead of filling the refused value in again. Not after partial success (the password
+    // was right and the server wants more) (spec, "Terminal sessions", path 2).
+    let refusal_lists = match &password_auth {
+        AuthResult::Failure { remaining_methods, partial_success: false } => {
+            Some(remaining_methods)
+        }
+        _ => None,
+    };
+
+    // While the refusal still lists keyboard-interactive, the retry goes through it, as OpenSSH
+    // moves on to keyboard-interactive after a refused password: the exchange's first password
+    // question is the retry window, every other round its keyboard-interactive window. On a server
+    // that takes both methods with a PAM second factor behind keyboard-interactive, sshd's password
+    // method can never succeed, so retrying it would cost a second failed login on every connect
+    // (fail2ban bans sooner) and a second refusal before the code question. This exchange is the
+    // retry, so its failure ends sign-in (final review, F1).
+    if refusal_lists.is_some_and(|listed| listed.contains(&MethodKind::KeyboardInteractive)) {
+        let mut rounds = SessionRounds { shared, hop, follows_refusal: true };
+        if let KeyboardExchange::Success =
+            run_keyboard_exchange(user, session, true, &mut rounds).await?
+        {
+            return Ok(());
+        }
+        anyhow::bail!("SSH authentication failed");
+    }
+
+    // Otherwise the password method once more, while the server still lists it.
+    if refusal_lists.is_some_and(|listed| listed.contains(&MethodKind::Password)) {
+        let password = prompt_text(
+            shared,
+            NovaSshEventKind::PasswordPrompt,
+            "Password:",
+            NovaSshResponseKind::Password,
+            hop,
+            true,
+        )?;
+        let password_auth = session
+            .authenticate_password(user.to_owned(), password.as_str().to_owned())
+            .await?;
+        if password_auth.success() {
+            return Ok(());
+        }
+        methods.note(&password_auth);
+    }
+
+    // The keyboard-interactive fallback, as before: after the password-method retry, after
+    // partial success, or when the refusal lists neither method. It converts nothing, since the
+    // password has been asked for already.
+    let mut rounds = SessionRounds { shared, hop, follows_refusal: false };
+    if let KeyboardExchange::Success = run_keyboard_exchange(user, session, false, &mut rounds).await? {
         return Ok(());
     }
 
@@ -4311,13 +4525,18 @@ fn agent_identity_public_key(identity: AgentIdentity) -> Option<ssh_key::PublicK
 /// Deliberately infallible: no agent, an empty agent, a broken agent, and a server that refuses
 /// every key all end as `false`, and the caller moves on to the next method — the same behavior
 /// `ssh` has when an agent is absent or unhelpful. A transport-level failure also lands on
-/// `false`; the very next auth attempt surfaces it as the real error.
-async fn try_agent_auth<H>(user: &str, session: &mut client::Handle<H>) -> bool
+/// `false`; the very next auth attempt surfaces it as the real error. Every refusal goes into
+/// `methods`.
+async fn try_agent_auth<H>(
+    user: &str,
+    session: &mut client::Handle<H>,
+    methods: &mut ServerMethods,
+) -> bool
 where
     H: client::Handler + Send + 'static,
 {
     for agent in connect_to_agents().await {
-        if try_one_agent(user, session, agent).await {
+        if try_one_agent(user, session, agent, methods).await {
             return true;
         }
     }
@@ -4327,11 +4546,12 @@ where
 
 /// One agent's keys against the session. `false` covers "this agent could not help" in every
 /// shape — no identities, all keys refused, the agent (or session) breaking mid-attempt — so the
-/// caller can move on to the next agent or the next method.
+/// caller can move on to the next agent or the next method. Every refusal goes into `methods`.
 async fn try_one_agent<H>(
     user: &str,
     session: &mut client::Handle<H>,
     mut agent: DynAgentClient,
+    methods: &mut ServerMethods,
 ) -> bool
 where
     H: client::Handler + Send + 'static,
@@ -4370,7 +4590,7 @@ where
         {
             Ok(result) if result.success() => return true,
             // The server refused this key; the next one may be the right one.
-            Ok(_) => continue,
+            Ok(refusal) => methods.note(&refusal),
             // The agent (or the session) stopped cooperating mid-attempt. This agent's remaining
             // keys would hit the same wall, so stop offering them.
             Err(_) => return false,
@@ -4395,6 +4615,7 @@ async fn try_public_key_auth(
                 "Key passphrase:",
                 NovaSshResponseKind::Passphrase,
                 hop,
+                false,
             )?;
             load_secret_key(Path::new(identity_file), Some(passphrase.as_str()))?
         }
@@ -4410,50 +4631,171 @@ async fn try_public_key_auth(
     Ok(Some(auth))
 }
 
-async fn authenticate_keyboard_interactive(
-    hop: AuthHop<'_>,
-    shared: &Arc<SharedState>,
-    session: &mut client::Handle<NovaClientHandler>,
-) -> anyhow::Result<bool> {
+/// Answers the questions of one keyboard-interactive exchange. A terminal session asks the user
+/// through the app; a transfer, which cannot ask, answers from what it was given.
+trait KeyboardRounds {
+    /// The exchange's first password question (`password_question`), when the exchange converts it.
+    fn password(&mut self, prompt: &str) -> anyhow::Result<Zeroizing<String>>;
+    /// Any other round that has questions.
+    fn round(
+        &mut self,
+        name: String,
+        instructions: String,
+        prompts: Vec<client::Prompt>,
+    ) -> anyhow::Result<Zeroizing<Vec<String>>>;
+}
+
+/// How one keyboard-interactive exchange ended.
+enum KeyboardExchange {
+    Success,
+    Failure {
+        remaining_methods: MethodSet,
+        partial_success: bool,
+        /// A converted password question was answered in this exchange, so the failure is the
+        /// server refusing that password, not a question nobody could answer.
+        password_sent: bool,
+    },
+}
+
+/// Runs one keyboard-interactive exchange to its end. A round with no questions (PAM sends one
+/// after a right password) is answered with zero answers and never reaches `rounds`. With
+/// `convert_password`, the exchange's first password question goes to `rounds.password`, its
+/// answer sent as the round's single answer; only the first, so an expired password's
+/// `New password:` that follows it is never answered with the password. Every other round with
+/// questions goes to `rounds.round` (spec, "Terminal sessions", path 3).
+async fn run_keyboard_exchange<H, R>(
+    user: &str,
+    session: &mut client::Handle<H>,
+    convert_password: bool,
+    rounds: &mut R,
+) -> anyhow::Result<KeyboardExchange>
+where
+    H: client::Handler + Send + 'static,
+    R: KeyboardRounds + Send,
+{
     let mut response = session
-        .authenticate_keyboard_interactive_start(hop.user.to_owned(), None::<String>)
+        .authenticate_keyboard_interactive_start(user.to_owned(), None::<String>)
         .await?;
+    let mut password_sent = false;
 
     loop {
-        match response {
-            KeyboardInteractiveAuthResponse::Success => return Ok(true),
-            KeyboardInteractiveAuthResponse::Failure { .. } => return Ok(false),
+        let answers = match response {
+            KeyboardInteractiveAuthResponse::Success => return Ok(KeyboardExchange::Success),
+            KeyboardInteractiveAuthResponse::Failure {
+                remaining_methods,
+                partial_success,
+            } => {
+                return Ok(KeyboardExchange::Failure {
+                    remaining_methods,
+                    partial_success,
+                    password_sent,
+                });
+            }
             KeyboardInteractiveAuthResponse::InfoRequest {
                 name,
                 instructions,
                 prompts,
             } => {
-                let payload = KeyboardInteractivePromptPayload {
-                    name,
-                    instructions,
-                    prompts: prompts
-                        .into_iter()
-                        .map(|prompt| KeyboardPromptPayload {
-                            prompt: prompt.prompt,
-                            echo: prompt.echo,
-                        })
-                        .collect(),
-                    hop,
-                };
-
-                shared.queue_event(QueuedEvent {
-                    kind: NovaSshEventKind::KeyboardInteractivePrompt,
-                    payload: serde_json::to_vec(&payload)?,
-                    status_code: 0,
-                    flags: NOVA_SSH_EVENT_FLAG_JSON,
-                });
-
-                let responses = wait_keyboard_responses(shared)?;
-                response = session
-                    .authenticate_keyboard_interactive_respond(responses.to_vec())
-                    .await?;
+                if prompts.is_empty() {
+                    Zeroizing::new(Vec::new())
+                } else if let Some(question) = password_question(&prompts)
+                    .filter(|_| convert_password && !password_sent)
+                {
+                    let mut password = rounds.password(question)?;
+                    password_sent = true;
+                    // Moved, not copied, into the answers, which wipe it in turn.
+                    Zeroizing::new(vec![std::mem::take(&mut *password)])
+                } else {
+                    rounds.round(name, instructions, prompts)?
+                }
             }
-        }
+        };
+
+        // russh takes the answers as an owned Vec; our copy is wiped when `answers` drops.
+        response = session
+            .authenticate_keyboard_interactive_respond(answers.to_vec())
+            .await?;
+    }
+}
+
+/// A terminal session's answers, asked through the app. Every window names `hop`, so the app
+/// answers with that server's own credential.
+struct SessionRounds<'a> {
+    shared: &'a Arc<SharedState>,
+    hop: AuthHop<'a>,
+    /// This exchange follows a refused password, which its password window must say so the app
+    /// asks instead of filling it in (spec, "The retry window").
+    follows_refusal: bool,
+}
+
+impl KeyboardRounds for SessionRounds<'_> {
+    fn password(&mut self, prompt: &str) -> anyhow::Result<Zeroizing<String>> {
+        prompt_text(
+            self.shared,
+            NovaSshEventKind::PasswordPrompt,
+            prompt,
+            NovaSshResponseKind::Password,
+            self.hop,
+            self.follows_refusal,
+        )
+    }
+
+    fn round(
+        &mut self,
+        name: String,
+        instructions: String,
+        prompts: Vec<client::Prompt>,
+    ) -> anyhow::Result<Zeroizing<Vec<String>>> {
+        let payload = KeyboardInteractivePromptPayload {
+            name,
+            instructions,
+            prompts: prompts
+                .into_iter()
+                .map(|prompt| KeyboardPromptPayload {
+                    prompt: prompt.prompt,
+                    echo: prompt.echo,
+                })
+                .collect(),
+            hop: self.hop,
+        };
+
+        self.shared.queue_event(QueuedEvent {
+            kind: NovaSshEventKind::KeyboardInteractivePrompt,
+            payload: serde_json::to_vec(&payload)?,
+            status_code: 0,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
+        });
+
+        wait_keyboard_responses(self.shared)
+    }
+}
+
+/// Whether a keyboard-interactive question's text asks for the account's password: the trimmed text ends with
+/// `password:`, or is exactly `Password for <account>:` (FreeBSD's pam_unix, Kerberos), whatever its case, with a
+/// non-empty account that has no blank in it. Text that merely mentions a password may ask for something else.
+///
+/// This is the text half of `SshAskPassCommand.IsTargetPasswordPrompt`, whose other half (the `(user@host) ` prefix
+/// OpenSSH puts before the server's text) is absent here: this layer reads the server's own text, and knows the
+/// server from the hop.
+fn is_password_text(text: &str) -> bool {
+    let text = text.trim().to_lowercase();
+    if text.ends_with("password:") {
+        return true;
+    }
+
+    const LEAD: &str = "password for ";
+    match text.strip_prefix(LEAD).and_then(|rest| rest.strip_suffix(':')) {
+        Some(account) => !account.is_empty() && !account.chars().any(char::is_whitespace),
+        None => false,
+    }
+}
+
+/// The question's text when the round is exactly one non-echoed password question, else `None`. A round that asks
+/// for anything more (a second factor, an expired password's change questions) is not the plain password.
+fn password_question(prompts: &[client::Prompt]) -> Option<&str> {
+    match prompts {
+        [only] if !only.echo && is_password_text(&only.prompt) => Some(only.prompt.as_str()),
+        _ => None,
     }
 }
 
@@ -4463,10 +4805,11 @@ fn prompt_text(
     prompt: &str,
     response_kind: NovaSshResponseKind,
     hop: AuthHop<'_>,
+    follows_refusal: bool,
 ) -> anyhow::Result<Zeroizing<String>> {
     shared.queue_event(QueuedEvent {
         kind: event_kind,
-        payload: serde_json::to_vec(&TextPromptPayload { prompt, hop })?,
+        payload: serde_json::to_vec(&TextPromptPayload { prompt, hop, follows_refusal })?,
         status_code: 0,
         flags: NOVA_SSH_EVENT_FLAG_JSON,
     });
@@ -4480,7 +4823,12 @@ fn prompt_text(
             .ok_or_else(|| anyhow::anyhow!("SSH prompt canceled"))?,
     );
     let response = serde_json::from_slice::<TextResponse>(&payload)?;
-    Ok(Zeroizing::new(response.text))
+    // Wrap before the cancel check so the text is wiped on either path.
+    let text = Zeroizing::new(response.text);
+    if response.canceled {
+        anyhow::bail!("SSH prompt canceled");
+    }
+    Ok(text)
 }
 
 fn wait_keyboard_responses(
@@ -4493,7 +4841,11 @@ fn wait_keyboard_responses(
             .ok_or_else(|| anyhow::anyhow!("Keyboard-interactive prompt canceled"))?,
     );
     let response = serde_json::from_slice::<KeyboardInteractiveResponse>(&payload)?;
-    Ok(Zeroizing::new(response.responses))
+    let responses = Zeroizing::new(response.responses);
+    if response.canceled {
+        anyhow::bail!("Keyboard-interactive prompt canceled");
+    }
+    Ok(responses)
 }
 
 #[cfg(test)]
@@ -4516,6 +4868,126 @@ fn create_test_session_with_event(kind: NovaSshEventKind, payload: &[u8]) -> usi
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_hop() -> AuthHop<'static> {
+        AuthHop { host: "target.internal", port: 22, user: "nova", is_jump_hop: false }
+    }
+
+    fn answer(shared: &Arc<SharedState>, kind: NovaSshResponseKind, json: &str) {
+        shared.queue_response(QueuedResponse { kind, payload: json.as_bytes().to_vec() });
+    }
+
+    #[test]
+    fn a_canceled_text_answer_stops_sign_in() {
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::Password, r#"{"text":"","canceled":true}"#);
+        let error = prompt_text(&shared, NovaSshEventKind::PasswordPrompt, "Password:", NovaSshResponseKind::Password, test_hop(), false)
+            .err()
+            .expect("a cancel must not become an empty password");
+        assert_eq!("SSH prompt canceled", error.to_string());
+    }
+
+    #[test]
+    fn an_empty_password_is_still_a_password() {
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::Password, r#"{"text":""}"#);
+        let password = prompt_text(&shared, NovaSshEventKind::PasswordPrompt, "Password:", NovaSshResponseKind::Password, test_hop(), false)
+            .ok()
+            .expect("an empty password is an answer");
+        assert_eq!("", password.as_str());
+    }
+
+    /// A converted keyboard-interactive password question is an ordinary password window, so it
+    /// must carry the hop like any other, and say when it follows a refusal.
+    #[test]
+    fn a_converted_prompt_names_its_hop() {
+        let bastion = JumpHostConfig { host: "bastion-one".to_owned(), user: "ops".to_owned(), port: 2200 };
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::Password, r#"{"text":"bastion-secret"}"#);
+        let mut rounds = SessionRounds { shared: &shared, hop: AuthHop::jump(&bastion), follows_refusal: true };
+
+        let password = rounds.password("Password: ").ok().expect("a queued answer");
+
+        assert_eq!("bastion-secret", password.as_str());
+        let EventRead::Ready(event) = shared.take_event_if_fits(usize::MAX) else {
+            panic!("the converted question must queue an event");
+        };
+        assert_eq!(NovaSshEventKind::PasswordPrompt, event.kind);
+        let payload: serde_json::Value = serde_json::from_slice(&event.payload).expect("a JSON payload");
+        assert_eq!(serde_json::json!("Password: "), payload["prompt"]);
+        assert_eq!(serde_json::json!("bastion-one"), payload["host"]);
+        assert_eq!(serde_json::json!(true), payload["isJumpHop"]);
+        assert_eq!(serde_json::json!(true), payload["followsRefusal"]);
+    }
+
+    #[test]
+    fn a_canceled_keyboard_answer_stops_sign_in() {
+        let shared = Arc::new(SharedState::new());
+        answer(&shared, NovaSshResponseKind::KeyboardInteractive, r#"{"responses":[],"canceled":true}"#);
+        let error = wait_keyboard_responses(&shared).err().expect("a cancel must not become zero answers");
+        assert_eq!("Keyboard-interactive prompt canceled", error.to_string());
+    }
+
+    #[test]
+    fn password_text_follows_the_askpass_rule() {
+        for text in ["Password:", "Password: ", "  password:  ", "alice@host's password:",
+                     "Enter PASSWORD:", "Password for alice@example.com:", "password for alice@EXAMPLE.COM:"] {
+            assert!(is_password_text(text), "{text:?} asks for the password");
+        }
+        for text in ["Verification code:", "Passcode or option (1-3):", "Password or code from your phone?",
+                     "Password for:", "Password for two words:", "Passwort:", "New password", ""] {
+            assert!(!is_password_text(text), "{text:?} is not a password question");
+        }
+    }
+
+    #[test]
+    fn only_a_round_of_one_hidden_password_question_is_the_password() {
+        let ask = |prompt: &str, echo: bool| client::Prompt { prompt: prompt.to_owned(), echo };
+        assert_eq!(Some("Password: "), password_question(&[ask("Password: ", false)]));
+        assert_eq!(None, password_question(&[ask("Password: ", true)]));
+        assert_eq!(None, password_question(&[ask("Password: ", false), ask("Verification code:", false)]));
+        assert_eq!(None, password_question(&[]));
+    }
+
+    fn refusal(remaining: &[MethodKind], partial_success: bool) -> AuthResult {
+        AuthResult::Failure { remaining_methods: MethodSet::from(remaining), partial_success }
+    }
+
+    #[test]
+    fn server_methods_are_unknown_until_the_server_lists_them() {
+        let methods = ServerMethods::default();
+        assert!(!methods.offers(MethodKind::Password));
+        assert!(!methods.offers(MethodKind::KeyboardInteractive));
+        assert!(!methods.password_through_keyboard_interactive());
+    }
+
+    #[test]
+    fn server_methods_follow_the_servers_latest_list() {
+        let mut methods = ServerMethods::default();
+        methods.note(&refusal(&[MethodKind::PublicKey, MethodKind::KeyboardInteractive], false));
+        assert!(methods.offers(MethodKind::KeyboardInteractive));
+        assert!(!methods.offers(MethodKind::Password));
+        assert!(methods.password_through_keyboard_interactive());
+
+        // A key accepted as the first of two factors: the server now wants the password, and only that.
+        methods.note(&refusal(&[MethodKind::Password], true));
+        assert!(methods.offers(MethodKind::Password));
+        assert!(!methods.offers(MethodKind::KeyboardInteractive));
+        assert!(!methods.password_through_keyboard_interactive());
+
+        methods.note_remaining(&MethodSet::from(&[MethodKind::KeyboardInteractive][..]));
+        assert!(methods.password_through_keyboard_interactive());
+    }
+
+    #[test]
+    fn server_methods_keep_their_list_through_an_empty_one() {
+        let mut methods = ServerMethods::default();
+        methods.note(&refusal(&[MethodKind::KeyboardInteractive], false));
+        methods.note(&refusal(&[], false));
+        methods.note_remaining(&MethodSet::empty());
+        methods.note(&AuthResult::Success);
+        assert!(methods.password_through_keyboard_interactive());
+    }
 
     // #155: session establishment races against wait_closed so nova_ssh_close can
     // abort a stuck connect instead of hanging worker.join() (and the .NET
@@ -6165,6 +6637,7 @@ mod connect_arg_encoding_tests {
             "Password:",
             NovaSshResponseKind::Password,
             AuthHop::jump(&config.jump_hops[0]),
+            false,
         )
         .expect("a queued response answers the prompt");
 
@@ -6181,7 +6654,8 @@ mod connect_arg_encoding_tests {
                 "host": "bastion-one",
                 "port": 2200,
                 "user": "ops",
-                "isJumpHop": true
+                "isJumpHop": true,
+                "followsRefusal": false
             }),
             payload
         );
@@ -6194,6 +6668,7 @@ mod connect_arg_encoding_tests {
         let payload = serde_json::to_value(TextPromptPayload {
             prompt: "Password:",
             hop: AuthHop::target(&config),
+            follows_refusal: false,
         })
         .expect("payload serializes");
 
@@ -6201,6 +6676,7 @@ mod connect_arg_encoding_tests {
         assert_eq!(serde_json::json!(2222), payload["port"]);
         assert_eq!(serde_json::json!("nova"), payload["user"]);
         assert_eq!(serde_json::json!(false), payload["isJumpHop"]);
+        assert_eq!(serde_json::json!(false), payload["followsRefusal"]);
     }
 
     #[test]
@@ -7680,6 +8156,10 @@ mod exec_session_e2e_tests {
         stdin: Vec<u8>,
         eof_count: usize,
         data_after_eof: bool,
+        /// Every password the password method was given, in order.
+        password_attempts: Vec<String>,
+        /// The answers of every keyboard-interactive round, in order.
+        keyboard_answers: Vec<Vec<String>>,
     }
 
     type SeenLog = Arc<Mutex<ServerSeen>>;
@@ -7688,8 +8168,106 @@ mod exec_session_e2e_tests {
         seen.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    /// How the test server signs a client in: the methods it advertises (`methods`) and how each
+    /// auth handler answers. The handlers match on it exhaustively, so a new mode is a match arm in
+    /// each, and the compiler names every place it has to decide.
+    enum ServerAuth {
+        /// PASSWORD through the password method, and nothing else.
+        Password,
+        /// Lets the client in on its `none` request, as a server that needs no credentials does
+        /// (Tailscale SSH under a permissive policy). Password stays on offer as PASSWORD.
+        NoneAccepted,
+        /// sshd with `PasswordAuthentication no` and PAM behind keyboard-interactive: one hidden
+        /// `Password: ` question; PASSWORD gets the empty round PAM sends after a right password,
+        /// then the client is in. A wrong answer is refused, keyboard-interactive still on offer.
+        KeyboardOnly,
+        /// An empty round opens the exchange, then as `KeyboardOnly`.
+        KeyboardEmptyRoundFirst,
+        /// As `KeyboardOnly`, but PASSWORD has expired: PAM then asks a hidden `New password:` in
+        /// the same exchange, and takes any answer.
+        KeyboardExpiredPassword,
+        /// A second factor, not a password: one hidden `Verification code:`, which takes `123456`.
+        KeyboardSecondFactor,
+        /// As `KeyboardOnly`, but a wrong password is refused with only `publickey` still listed,
+        /// so keyboard-interactive is no longer on offer.
+        KeyboardRefusalListsOnlyPublicKey,
+        /// PASSWORD through the password method, and a hidden `Password: ` keyboard-interactive
+        /// question that takes PASSWORD too. A refusal keeps both listed, as sshd does.
+        PasswordAndKeyboard,
+        /// sshd with both `PasswordAuthentication yes` and `KbdInteractiveAuthentication yes` and a
+        /// PAM second factor (pam_google_authenticator): the password method can never succeed, so
+        /// it refuses everything with both still listed. Keyboard-interactive asks a hidden
+        /// `Password: `, then a hidden `Verification code:`, and takes PASSWORD then `123456`.
+        PasswordAndKeyboardTwoFactor,
+        /// The right password is only partly accepted (keyboard-interactive is what is left): a
+        /// hidden `Verification code:` follows, which takes `123456`.
+        PasswordThenCode,
+    }
+
+    impl ServerAuth {
+        fn methods(&self) -> MethodSet {
+            let kinds: &[MethodKind] = match self {
+                ServerAuth::Password => &[MethodKind::Password],
+                ServerAuth::NoneAccepted => &[MethodKind::None, MethodKind::Password],
+                ServerAuth::KeyboardOnly
+                | ServerAuth::KeyboardEmptyRoundFirst
+                | ServerAuth::KeyboardExpiredPassword
+                | ServerAuth::KeyboardSecondFactor
+                | ServerAuth::KeyboardRefusalListsOnlyPublicKey => {
+                    &[MethodKind::KeyboardInteractive]
+                }
+                ServerAuth::PasswordAndKeyboard
+                | ServerAuth::PasswordAndKeyboardTwoFactor
+                | ServerAuth::PasswordThenCode => {
+                    &[MethodKind::Password, MethodKind::KeyboardInteractive]
+                }
+            };
+            MethodSet::from(kinds)
+        }
+    }
+
     struct TestServer {
         seen: SeenLog,
+        auth: ServerAuth,
+        /// The round of the current keyboard-interactive exchange: 0 for the request that opens it.
+        keyboard_round: usize,
+    }
+
+    /// One keyboard-interactive round of hidden questions (none for PAM's empty round).
+    fn ask(questions: &'static [&'static str]) -> Auth {
+        Auth::Partial {
+            name: "".into(),
+            instructions: "".into(),
+            prompts: questions
+                .iter()
+                .map(|question| (std::borrow::Cow::Borrowed(*question), false))
+                .collect::<Vec<_>>()
+                .into(),
+        }
+    }
+
+    /// A wrong answer, refused with keyboard-interactive still on offer, as sshd refuses a wrong
+    /// PAM password. Spelled out rather than left to `Auth::reject()`, whose method list russh
+    /// adjusts per method.
+    fn refuse_answer() -> Auth {
+        Auth::Reject {
+            proceed_with_methods: Some(MethodSet::from(&[MethodKind::KeyboardInteractive][..])),
+            partial_success: false,
+        }
+    }
+
+    /// A wrong password, refused with `password` still listed (and `keyboard` too when asked), as
+    /// sshd refuses it. russh's plain `Auth::reject()` drops the attempted method from the list.
+    fn refuse_password(keyboard: bool) -> Auth {
+        let listed: &[MethodKind] = if keyboard {
+            &[MethodKind::Password, MethodKind::KeyboardInteractive]
+        } else {
+            &[MethodKind::Password]
+        };
+        Auth::Reject {
+            proceed_with_methods: Some(MethodSet::from(listed)),
+            partial_success: false,
+        }
     }
 
     /// Ends a channel the way OpenSSH does when the command exits: EOF, then exit-status, then
@@ -7714,15 +8292,126 @@ mod exec_session_e2e_tests {
     impl russh::server::Handler for TestServer {
         type Error = russh::Error;
 
+        async fn auth_none(&mut self, _user: &str) -> Result<Auth, Self::Error> {
+            Ok(match self.auth {
+                ServerAuth::NoneAccepted => Auth::Accept,
+                ServerAuth::Password
+                | ServerAuth::KeyboardOnly
+                | ServerAuth::KeyboardEmptyRoundFirst
+                | ServerAuth::KeyboardExpiredPassword
+                | ServerAuth::KeyboardSecondFactor
+                | ServerAuth::KeyboardRefusalListsOnlyPublicKey
+                | ServerAuth::PasswordAndKeyboard
+                | ServerAuth::PasswordAndKeyboardTwoFactor
+                | ServerAuth::PasswordThenCode => Auth::reject(),
+            })
+        }
+
         async fn auth_password(
             &mut self,
             _user: &str,
             password: &str,
         ) -> Result<Auth, Self::Error> {
-            Ok(if password == PASSWORD {
-                Auth::Accept
-            } else {
-                Auth::reject()
+            lock(&self.seen).password_attempts.push(password.to_owned());
+            let right = password == PASSWORD;
+            Ok(match self.auth {
+                ServerAuth::Password | ServerAuth::NoneAccepted | ServerAuth::PasswordAndKeyboard
+                    if right =>
+                {
+                    Auth::Accept
+                }
+                ServerAuth::Password => refuse_password(false),
+                ServerAuth::PasswordAndKeyboard | ServerAuth::PasswordAndKeyboardTwoFactor => {
+                    refuse_password(true)
+                }
+                ServerAuth::PasswordThenCode if right => Auth::Reject {
+                    proceed_with_methods: Some(MethodSet::from(
+                        &[MethodKind::KeyboardInteractive][..],
+                    )),
+                    partial_success: true,
+                },
+                ServerAuth::PasswordThenCode => refuse_password(true),
+                ServerAuth::NoneAccepted
+                | ServerAuth::KeyboardOnly
+                | ServerAuth::KeyboardEmptyRoundFirst
+                | ServerAuth::KeyboardExpiredPassword
+                | ServerAuth::KeyboardSecondFactor
+                | ServerAuth::KeyboardRefusalListsOnlyPublicKey => Auth::reject(),
+            })
+        }
+
+        async fn auth_keyboard_interactive<'a>(
+            &'a mut self,
+            _user: &str,
+            _submethods: &str,
+            response: Option<russh::server::Response<'a>>,
+        ) -> Result<Auth, Self::Error> {
+            let answer = match response {
+                None => {
+                    self.keyboard_round = 0;
+                    None
+                }
+                Some(response) => {
+                    self.keyboard_round += 1;
+                    let answers: Vec<String> = response
+                        .map(|answer| String::from_utf8_lossy(&answer).into_owned())
+                        .collect();
+                    let first = answers.first().cloned();
+                    lock(&self.seen).keyboard_answers.push(answers);
+                    first
+                }
+            };
+            let right = |expected: &str| answer.as_deref() == Some(expected);
+            Ok(match (&self.auth, self.keyboard_round) {
+                (ServerAuth::Password | ServerAuth::NoneAccepted, _) => Auth::reject(),
+
+                (ServerAuth::KeyboardOnly, 0) => ask(&["Password: "]),
+                (ServerAuth::KeyboardOnly, 1) if right(PASSWORD) => ask(&[]),
+                (ServerAuth::KeyboardOnly, 1) => refuse_answer(),
+                (ServerAuth::KeyboardOnly, _) => Auth::Accept,
+
+                (ServerAuth::KeyboardEmptyRoundFirst, 0) => ask(&[]),
+                (ServerAuth::KeyboardEmptyRoundFirst, 1) => ask(&["Password: "]),
+                (ServerAuth::KeyboardEmptyRoundFirst, 2) if right(PASSWORD) => ask(&[]),
+                (ServerAuth::KeyboardEmptyRoundFirst, 2) => refuse_answer(),
+                (ServerAuth::KeyboardEmptyRoundFirst, _) => Auth::Accept,
+
+                (ServerAuth::KeyboardExpiredPassword, 0) => ask(&["Password: "]),
+                (ServerAuth::KeyboardExpiredPassword, 1) if right(PASSWORD) => {
+                    ask(&["New password:"])
+                }
+                (ServerAuth::KeyboardExpiredPassword, 1) => refuse_answer(),
+                (ServerAuth::KeyboardExpiredPassword, _) => Auth::Accept,
+
+                (ServerAuth::KeyboardSecondFactor, 0) => ask(&["Verification code:"]),
+                (ServerAuth::KeyboardSecondFactor, _) if right("123456") => Auth::Accept,
+                (ServerAuth::KeyboardSecondFactor, _) => refuse_answer(),
+
+                (ServerAuth::KeyboardRefusalListsOnlyPublicKey, 0) => ask(&["Password: "]),
+                (ServerAuth::KeyboardRefusalListsOnlyPublicKey, 1) if right(PASSWORD) => ask(&[]),
+                (ServerAuth::KeyboardRefusalListsOnlyPublicKey, 1) => Auth::Reject {
+                    proceed_with_methods: Some(MethodSet::from(&[MethodKind::PublicKey][..])),
+                    partial_success: false,
+                },
+                (ServerAuth::KeyboardRefusalListsOnlyPublicKey, _) => Auth::Accept,
+
+                // After a refused password, the client retries through this exchange: its hidden
+                // `Password: ` question is the retry window.
+                (ServerAuth::PasswordAndKeyboard, 0) => ask(&["Password: "]),
+                (ServerAuth::PasswordAndKeyboard, 1) if right(PASSWORD) => ask(&[]),
+                (ServerAuth::PasswordAndKeyboard, 1) => refuse_answer(),
+                (ServerAuth::PasswordAndKeyboard, _) => Auth::Accept,
+
+                (ServerAuth::PasswordAndKeyboardTwoFactor, 0) => ask(&["Password: "]),
+                (ServerAuth::PasswordAndKeyboardTwoFactor, 1) if right(PASSWORD) => {
+                    ask(&["Verification code:"])
+                }
+                (ServerAuth::PasswordAndKeyboardTwoFactor, 2) if right("123456") => Auth::Accept,
+                (ServerAuth::PasswordAndKeyboardTwoFactor, _) => refuse_password(true),
+
+                (ServerAuth::PasswordThenCode, 0) => ask(&["Verification code:"]),
+                (ServerAuth::PasswordThenCode, _) if right("123456") => Auth::Accept,
+                (ServerAuth::PasswordThenCode, _) => refuse_answer(),
             })
         }
 
@@ -7818,16 +8507,30 @@ mod exec_session_e2e_tests {
         ssh_key::PrivateKey::from(ssh_key::private::Ed25519Keypair::from_seed(&[9u8; 32]))
     }
 
+    fn start_server() -> (u16, SeenLog) {
+        start_server_with(ServerAuth::Password)
+    }
+
     /// Serves one connection on a loopback port, on its own thread and runtime: the client's
     /// worker blocks its thread on prompts, and a shared runtime would starve the server.
-    fn start_server() -> (u16, SeenLog) {
+    fn start_server_with(auth: ServerAuth) -> (u16, SeenLog) {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("loopback must bind");
         let port = listener.local_addr().expect("bound address").port();
         listener
             .set_nonblocking(true)
             .expect("tokio needs a non-blocking listener");
         let seen = SeenLog::default();
-        let handler = TestServer { seen: seen.clone() };
+        let config = Arc::new(russh::server::Config {
+            keys: vec![host_key()],
+            methods: auth.methods(),
+            // The client opens every sign-in with a `none` request, which most modes refuse, and
+            // some tests are refused on purpose. russh holds each refusal for a second by default,
+            // which would only slow these tests down.
+            auth_rejection_time: Duration::from_millis(1),
+            auth_rejection_time_initial: Some(Duration::ZERO),
+            ..Default::default()
+        });
+        let handler = TestServer { seen: seen.clone(), auth, keyboard_round: 0 };
 
         thread::spawn(move || {
             let runtime = Builder::new_current_thread()
@@ -7839,10 +8542,6 @@ mod exec_session_e2e_tests {
                 let Ok((stream, _)) = listener.accept().await else {
                     return;
                 };
-                let config = Arc::new(russh::server::Config {
-                    keys: vec![host_key()],
-                    ..Default::default()
-                });
                 if let Ok(running) = russh::server::run_stream(config, stream, handler).await {
                     let _ = running.await;
                 }
@@ -7894,9 +8593,28 @@ mod exec_session_e2e_tests {
         );
     }
 
-    /// Polls `handle` until Closed, as the managed poll loop does: accepts the host key, answers
-    /// the password prompt, and shows every event to `on_event` before recording it.
-    fn drive(handle: usize, mut on_event: impl FnMut(&Recorded)) -> Vec<Recorded> {
+    /// `drive_with`, answering every password prompt with PASSWORD.
+    fn drive(handle: usize, on_event: impl FnMut(&Recorded)) -> Vec<Recorded> {
+        drive_with(
+            handle,
+            |event| {
+                (event.kind == NovaSshEventKind::PasswordPrompt as u32).then(|| {
+                    let answer = format!(r#"{{"text":"{PASSWORD}"}}"#);
+                    (NovaSshResponseKind::Password, answer.into_bytes())
+                })
+            },
+            on_event,
+        )
+    }
+
+    /// Polls `handle` until Closed, as the managed poll loop does: accepts the host key, submits
+    /// whatever `answer` replies to any other event, and shows every event to `on_event` before
+    /// recording it.
+    fn drive_with(
+        handle: usize,
+        mut answer: impl FnMut(&Recorded) -> Option<(NovaSshResponseKind, Vec<u8>)>,
+        mut on_event: impl FnMut(&Recorded),
+    ) -> Vec<Recorded> {
         let deadline = Instant::now() + Duration::from_secs(30);
         let mut buffer = vec![0u8; 64 * 1024];
         let mut events: Vec<Recorded> = Vec::new();
@@ -7926,9 +8644,8 @@ mod exec_session_e2e_tests {
                     NovaSshResponseKind::HostKeyDecision,
                     br#"{"accept":true}"#,
                 );
-            } else if event.kind == NovaSshEventKind::PasswordPrompt as u32 {
-                let answer = format!(r#"{{"text":"{PASSWORD}"}}"#);
-                respond(handle, NovaSshResponseKind::Password, answer.as_bytes());
+            } else if let Some((kind, payload)) = answer(&event) {
+                respond(handle, kind, &payload);
             }
 
             on_event(&event);
@@ -7950,6 +8667,77 @@ mod exec_session_e2e_tests {
 
     fn has(events: &[Recorded], kind: NovaSshEventKind) -> bool {
         events.iter().any(|event| event.kind == kind as u32)
+    }
+
+    fn json_payloads(events: &[Recorded], kind: NovaSshEventKind) -> Vec<serde_json::Value> {
+        events
+            .iter()
+            .filter(|event| event.kind == kind as u32)
+            .map(|event| serde_json::from_slice(&event.payload).expect("a JSON payload"))
+            .collect()
+    }
+
+    fn position(events: &[Recorded], kind: NovaSshEventKind) -> Option<usize> {
+        events.iter().position(|event| event.kind == kind as u32)
+    }
+
+    fn error_message(events: &[Recorded]) -> String {
+        let error = events
+            .iter()
+            .find(|event| event.kind == NovaSshEventKind::Error as u32)
+            .unwrap_or_else(|| panic!("an Error event; got {events:?}"));
+        String::from_utf8_lossy(&error.payload).into_owned()
+    }
+
+    /// Cancels a keyboard-interactive window, for a test that expects none.
+    const CANCEL_KEYBOARD: &str = r#"{"responses":[],"canceled":true}"#;
+
+    /// Answers the password windows in turn with `passwords`, cancelling any beyond them, and
+    /// every keyboard-interactive window with the `keyboard` response JSON.
+    fn answering<'a>(
+        passwords: &'a [&'a str],
+        keyboard: &'a str,
+    ) -> impl FnMut(&Recorded) -> Option<(NovaSshResponseKind, Vec<u8>)> + 'a {
+        let mut passwords = passwords.iter();
+        move |event| {
+            if event.kind == NovaSshEventKind::PasswordPrompt as u32 {
+                let answer = match passwords.next() {
+                    Some(password) => serde_json::json!({ "text": password }),
+                    None => serde_json::json!({ "text": "", "canceled": true }),
+                };
+                Some((NovaSshResponseKind::Password, answer.to_string().into_bytes()))
+            } else if event.kind == NovaSshEventKind::KeyboardInteractivePrompt as u32 {
+                Some((NovaSshResponseKind::KeyboardInteractive, keyboard.as_bytes().to_vec()))
+            } else {
+                None
+            }
+        }
+    }
+
+    /// A shell session against a server that signs in as `auth`, driven to Closed with `answer`.
+    fn sign_in(
+        auth: ServerAuth,
+        answer: impl FnMut(&Recorded) -> Option<(NovaSshResponseKind, Vec<u8>)>,
+    ) -> (Vec<Recorded>, SeenLog) {
+        let (port, seen) = start_server_with(auth);
+        let host = CString::new("127.0.0.1").unwrap();
+        let user = CString::new("tester").unwrap();
+        let detect = CString::new(DETECT_COMMAND).unwrap();
+        let bootstrap = CString::new("echo boot").unwrap();
+        let args = loopback_args(&host, &user, port, &detect, &bootstrap);
+
+        let handle = nova_ssh_connect(&args);
+        assert_ne!(0, handle);
+        let events = drive_with(handle, answer, |_| {});
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+        (events, seen)
+    }
+
+    fn answers(rounds: &[&[&str]]) -> Vec<Vec<String>> {
+        rounds
+            .iter()
+            .map(|round| round.iter().map(|answer| (*answer).to_owned()).collect())
+            .collect()
     }
 
     #[test]
@@ -8083,6 +8871,324 @@ mod exec_session_e2e_tests {
         );
     }
 
+    /// The client asks with `none` before it offers any credential, so a server that needs none
+    /// lets the session in without a prompt (spec, "Step 0: ask the server what it accepts").
+    #[test]
+    fn a_server_that_takes_none_connects_without_any_prompt() {
+        let (port, seen) = start_server_with(ServerAuth::NoneAccepted);
+        let host = CString::new("127.0.0.1").unwrap();
+        let user = CString::new("tester").unwrap();
+        let detect = CString::new(DETECT_COMMAND).unwrap();
+        let bootstrap = CString::new("echo boot").unwrap();
+        let args = loopback_args(&host, &user, port, &detect, &bootstrap);
+
+        let handle = nova_ssh_connect(&args);
+        assert_ne!(0, handle);
+        let events = drive(handle, |_| {});
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::PasswordPrompt), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+
+        let seen = lock(&seen);
+        // The count, not the values: a failure message must not print what the server was sent.
+        assert_eq!(0, seen.password_attempts.len(), "password attempts the server received");
+        assert_eq!(0, seen.keyboard_answers.len(), "keyboard-interactive answers the server received");
+    }
+
+    /// The keyboard-interactive password question is the password window, asked once, with the
+    /// server's own text; PAM's empty round after it never reaches the app (spec, "Terminal
+    /// sessions", path 3).
+    #[test]
+    fn a_keyboard_only_server_asks_for_the_password_once() {
+        let (events, seen) =
+            sign_in(ServerAuth::KeyboardOnly, answering(&[PASSWORD], CANCEL_KEYBOARD));
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(1, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!("Password: "), prompts[0]["prompt"]);
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+
+        let seen = lock(&seen);
+        assert_eq!(0, seen.password_attempts.len(), "no password method");
+        assert_eq!(answers(&[&[PASSWORD], &[]]), seen.keyboard_answers);
+    }
+
+    #[test]
+    fn an_empty_round_before_the_password_does_not_stop_the_conversion() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardEmptyRoundFirst,
+            answering(&[PASSWORD], CANCEL_KEYBOARD),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(1, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!("Password: "), prompts[0]["prompt"]);
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+
+        assert_eq!(answers(&[&[], &[PASSWORD], &[]]), lock(&seen).keyboard_answers);
+    }
+
+    /// A refused password gets one more exchange, whose window says it follows a refusal so the
+    /// app asks instead of filling in the refused value again (spec, "The retry window").
+    #[test]
+    fn a_refused_keyboard_password_gets_one_retry_that_says_so() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardOnly,
+            answering(&["wrong", PASSWORD], CANCEL_KEYBOARD),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(2, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        assert_eq!(serde_json::json!(true), prompts[1]["followsRefusal"]);
+
+        assert_eq!(answers(&[&["wrong"], &[PASSWORD], &[]]), lock(&seen).keyboard_answers);
+    }
+
+    #[test]
+    fn a_keyboard_password_refused_twice_ends_sign_in() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardOnly,
+            answering(&["wrong", "wrong"], CANCEL_KEYBOARD),
+        );
+
+        assert_eq!(
+            2,
+            json_payloads(&events, NovaSshEventKind::PasswordPrompt).len(),
+            "one retry, never more: {events:?}"
+        );
+        let message = error_message(&events);
+        assert!(message.contains("SSH authentication failed"), "{message}");
+        assert!(!has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert_eq!(answers(&[&["wrong"], &["wrong"]]), lock(&seen).keyboard_answers);
+    }
+
+    /// Only the exchange's first password question is converted: an expired password's change
+    /// question that follows it is the keyboard-interactive window, never the saved password.
+    #[test]
+    fn an_expired_passwords_change_question_keeps_the_keyboard_window() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardExpiredPassword,
+            answering(&[PASSWORD], r#"{"responses":["fresh-secret"]}"#),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert_eq!(1, json_payloads(&events, NovaSshEventKind::PasswordPrompt).len(), "{events:?}");
+        let keyboard = json_payloads(&events, NovaSshEventKind::KeyboardInteractivePrompt);
+        assert_eq!(1, keyboard.len(), "{keyboard:?}");
+        assert_eq!(serde_json::json!("New password:"), keyboard[0]["prompts"][0]["prompt"]);
+        assert!(
+            position(&events, NovaSshEventKind::PasswordPrompt)
+                < position(&events, NovaSshEventKind::KeyboardInteractivePrompt),
+            "{events:?}"
+        );
+
+        assert_eq!(answers(&[&[PASSWORD], &["fresh-secret"]]), lock(&seen).keyboard_answers);
+    }
+
+    #[test]
+    fn a_second_factor_keeps_the_keyboard_window() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardSecondFactor,
+            answering(&[], r#"{"responses":["123456"]}"#),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::PasswordPrompt), "{events:?}");
+        let keyboard = json_payloads(&events, NovaSshEventKind::KeyboardInteractivePrompt);
+        assert_eq!(1, keyboard.len(), "{keyboard:?}");
+        assert_eq!(serde_json::json!("Verification code:"), keyboard[0]["prompts"][0]["prompt"]);
+
+        assert_eq!(answers(&[&["123456"]]), lock(&seen).keyboard_answers);
+    }
+
+    /// Cancelling the converted window stops sign-in; the server never gets an answer to count
+    /// as a failed login (spec, "Cancel").
+    #[test]
+    fn cancelling_the_converted_prompt_sends_nothing() {
+        let (events, seen) = sign_in(ServerAuth::KeyboardOnly, answering(&[], CANCEL_KEYBOARD));
+
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(1, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!("Password: "), prompts[0]["prompt"], "the converted question");
+        let message = error_message(&events);
+        assert!(message.contains("SSH prompt canceled"), "{message}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::Connected), "{events:?}");
+
+        let seen = lock(&seen);
+        assert_eq!(0, seen.keyboard_answers.len(), "keyboard-interactive answers the server received");
+        // The count, not the values: a failure message must not print what the server was sent.
+        assert_eq!(0, seen.password_attempts.len(), "password attempts the server received");
+    }
+
+    /// A wrong second factor is not a refused password: no password question was converted, so
+    /// nothing is asked again (`password_sent` stops the retry while keyboard-interactive is
+    /// still listed).
+    #[test]
+    fn a_wrong_second_factor_is_not_retried() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardSecondFactor,
+            answering(&[], r#"{"responses":["000000"]}"#),
+        );
+
+        assert_eq!(
+            1,
+            json_payloads(&events, NovaSshEventKind::KeyboardInteractivePrompt).len(),
+            "{events:?}"
+        );
+        assert!(!has(&events, NovaSshEventKind::PasswordPrompt), "{events:?}");
+        let message = error_message(&events);
+        assert!(message.contains("SSH authentication failed"), "{message}");
+        assert_eq!(answers(&[&["000000"]]), lock(&seen).keyboard_answers);
+    }
+
+    /// The retry needs keyboard-interactive to still be listed after the refusal; a server that
+    /// lists only `publickey` has nothing more to ask.
+    #[test]
+    fn a_keyboard_refusal_that_drops_keyboard_interactive_is_not_retried() {
+        let (events, seen) = sign_in(
+            ServerAuth::KeyboardRefusalListsOnlyPublicKey,
+            answering(&["wrong", PASSWORD], CANCEL_KEYBOARD),
+        );
+
+        assert_eq!(
+            1,
+            json_payloads(&events, NovaSshEventKind::PasswordPrompt).len(),
+            "{events:?}"
+        );
+        let message = error_message(&events);
+        assert!(message.contains("SSH authentication failed"), "{message}");
+        assert!(!has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert_eq!(answers(&[&["wrong"]]), lock(&seen).keyboard_answers);
+    }
+
+    /// A refused password gets one more window that says so, so the app never fills it from a
+    /// store. With no keyboard-interactive on offer, the retry is the password method once more
+    /// (spec, "Terminal sessions", path 2).
+    #[test]
+    fn a_refused_password_gets_one_retry_that_says_so() {
+        let (events, seen) = sign_in(
+            ServerAuth::Password,
+            answering(&["wrong", PASSWORD], CANCEL_KEYBOARD),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(2, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        assert_eq!(serde_json::json!(true), prompts[1]["followsRefusal"]);
+        assert_eq!(
+            vec!["wrong".to_owned(), PASSWORD.to_owned()],
+            lock(&seen).password_attempts
+        );
+    }
+
+    /// A refusal that still lists keyboard-interactive is retried through it, as OpenSSH moves on
+    /// after a refused password: the exchange's password question is the retry window, and the
+    /// password method is not tried twice (final review, F1).
+    #[test]
+    fn on_a_server_with_both_methods_the_retry_goes_through_keyboard_interactive() {
+        let (events, seen) = sign_in(
+            ServerAuth::PasswordAndKeyboard,
+            answering(&["wrong", PASSWORD], CANCEL_KEYBOARD),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(2, prompts.len(), "one retry, never more: {prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        assert_eq!(serde_json::json!(true), prompts[1]["followsRefusal"]);
+        assert_eq!(
+            serde_json::json!("Password: "),
+            prompts[1]["prompt"],
+            "the server's keyboard-interactive question"
+        );
+
+        let seen = lock(&seen);
+        assert_eq!(vec!["wrong".to_owned()], seen.password_attempts);
+        assert_eq!(answers(&[&[PASSWORD], &[]]), seen.keyboard_answers);
+    }
+
+    /// On a server whose password method can never succeed (a PAM second factor behind
+    /// keyboard-interactive), the user passes one refusal to reach the code question, and the
+    /// server counts one failed login per connect, not two (final review, F1).
+    #[test]
+    fn a_server_whose_password_method_cannot_succeed_costs_one_failed_login() {
+        let (events, seen) = sign_in(
+            ServerAuth::PasswordAndKeyboardTwoFactor,
+            answering(&[PASSWORD, PASSWORD], r#"{"responses":["123456"]}"#),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(2, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        assert_eq!(serde_json::json!(true), prompts[1]["followsRefusal"]);
+        let keyboard = json_payloads(&events, NovaSshEventKind::KeyboardInteractivePrompt);
+        assert_eq!(1, keyboard.len(), "{keyboard:?}");
+        assert_eq!(serde_json::json!("Verification code:"), keyboard[0]["prompts"][0]["prompt"]);
+
+        let seen = lock(&seen);
+        assert_eq!(vec![PASSWORD.to_owned()], seen.password_attempts, "one failed login");
+        assert_eq!(answers(&[&[PASSWORD], &["123456"]]), seen.keyboard_answers);
+    }
+
+    /// The right password, partly accepted: the server wants more, and that is not a refusal.
+    #[test]
+    fn a_partially_accepted_password_is_not_retried() {
+        let (events, seen) = sign_in(
+            ServerAuth::PasswordThenCode,
+            answering(&[PASSWORD], r#"{"responses":["123456"]}"#),
+        );
+
+        assert!(!has(&events, NovaSshEventKind::Error), "{events:?}");
+        assert!(has(&events, NovaSshEventKind::Connected), "{events:?}");
+        let prompts = json_payloads(&events, NovaSshEventKind::PasswordPrompt);
+        assert_eq!(1, prompts.len(), "{prompts:?}");
+        assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
+        let keyboard = json_payloads(&events, NovaSshEventKind::KeyboardInteractivePrompt);
+        assert_eq!(1, keyboard.len(), "{keyboard:?}");
+        assert_eq!(serde_json::json!("Verification code:"), keyboard[0]["prompts"][0]["prompt"]);
+
+        let seen = lock(&seen);
+        assert_eq!(vec![PASSWORD.to_owned()], seen.password_attempts);
+        assert_eq!(answers(&[&["123456"]]), seen.keyboard_answers);
+    }
+
+    #[test]
+    fn cancelling_the_retry_stops_sign_in() {
+        let (events, seen) = sign_in(ServerAuth::Password, answering(&["wrong"], CANCEL_KEYBOARD));
+
+        assert_eq!(
+            2,
+            json_payloads(&events, NovaSshEventKind::PasswordPrompt).len(),
+            "{events:?}"
+        );
+        let message = error_message(&events);
+        assert!(message.contains("SSH prompt canceled"), "{message}");
+        assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
+        assert!(!has(&events, NovaSshEventKind::Connected), "{events:?}");
+        assert_eq!(vec!["wrong".to_owned()], lock(&seen).password_attempts);
+    }
+
     #[test]
     fn a_refused_exec_fails_the_session_with_an_error_before_closed() {
         let (port, _seen) = start_server();
@@ -8109,5 +9215,95 @@ mod exec_session_e2e_tests {
             Some(NovaSshEventKind::Closed as u32),
             events.last().map(|event| event.kind)
         );
+    }
+
+    /// Accepts any host key: these tests are about sign-in, not host verification.
+    struct AcceptAnyKey;
+
+    impl client::Handler for AcceptAnyKey {
+        type Error = anyhow::Error;
+
+        fn check_server_key(
+            &mut self,
+            _server_public_key: &ssh_key::PublicKey,
+        ) -> impl Future<Output = Result<bool, Self::Error>> + Send {
+            async { Ok(true) }
+        }
+    }
+
+    /// Signs a transfer into the test server in `mode` with `password` as the target's, and
+    /// returns what `authenticate_transfer` made of it.
+    async fn transfer_sign_in(mode: ServerAuth, password: &str) -> (anyhow::Result<()>, SeenLog) {
+        let (port, seen) = start_server_with(mode);
+        let mut session = client::connect(
+            Arc::new(client::Config::default()),
+            ("127.0.0.1", port),
+            AcceptAnyKey,
+        )
+        .await
+        .expect("connect to the test server");
+        let auth = TransferAuthConfig {
+            target_password: Some(Zeroizing::new(password.to_owned())),
+            jump_hop_passwords: vec![],
+            identity_file: None,
+            use_agent: false,
+        };
+        let result = authenticate_transfer("tester", TransferHop::Target, &auth, &mut session).await;
+        (result, seen)
+    }
+
+    fn is_transfer_auth_failure(error: &anyhow::Error) -> bool {
+        matches!(
+            error.downcast_ref::<NativeSftpTransferError>(),
+            Some(failure) if failure.kind == NativeSftpTransferErrorKind::AuthenticationFailed
+        )
+    }
+
+    /// A server that takes the password only as a keyboard-interactive question gets the hop's own
+    /// password there, with no window (spec, "Transfers, listings and autocomplete").
+    #[tokio::test]
+    async fn a_transfer_signs_in_to_a_keyboard_only_server_with_its_password() {
+        let (result, seen) = transfer_sign_in(ServerAuth::KeyboardOnly, PASSWORD).await;
+
+        result.expect("transfer signs in");
+        assert_eq!(answers(&[&[PASSWORD], &[]]), lock(&seen).keyboard_answers);
+    }
+
+    /// Only a refused password is `auth-failed`, the status that makes the app forget a stale
+    /// runtime password.
+    #[tokio::test]
+    async fn a_refused_keyboard_password_is_a_transfer_auth_failure() {
+        let (result, _seen) = transfer_sign_in(ServerAuth::KeyboardOnly, "wrong").await;
+
+        let error = result.expect_err("a wrong password is refused");
+        assert!(is_transfer_auth_failure(&error), "{error:#}");
+    }
+
+    #[tokio::test]
+    async fn a_transfer_cannot_answer_a_second_factor() {
+        let (result, _seen) = transfer_sign_in(ServerAuth::KeyboardSecondFactor, PASSWORD).await;
+
+        let error = result.expect_err("a verification code cannot be answered");
+        assert_eq!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD, error.to_string());
+        assert!(error.downcast_ref::<NativeSftpTransferError>().is_none(), "{error:#}");
+    }
+
+    /// The password answers the first question only, so an expired password's `New password:`
+    /// is never answered with it.
+    #[tokio::test]
+    async fn a_transfer_does_not_feed_its_password_to_a_password_change() {
+        let (result, seen) = transfer_sign_in(ServerAuth::KeyboardExpiredPassword, PASSWORD).await;
+
+        let error = result.expect_err("a password change cannot be answered");
+        assert_eq!(TRANSFER_NEEDS_MORE_THAN_A_PASSWORD, error.to_string());
+        assert_eq!(answers(&[&[PASSWORD]]), lock(&seen).keyboard_answers);
+    }
+
+    #[tokio::test]
+    async fn a_transfer_to_a_password_server_is_unchanged() {
+        let (result, seen) = transfer_sign_in(ServerAuth::Password, PASSWORD).await;
+
+        result.expect("transfer signs in");
+        assert_eq!(vec![PASSWORD.to_owned()], lock(&seen).password_attempts);
     }
 }

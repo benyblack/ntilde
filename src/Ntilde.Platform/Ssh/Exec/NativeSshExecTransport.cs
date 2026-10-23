@@ -36,11 +36,12 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     /// Answers host-key, password, passphrase and keyboard-interactive prompts, from the known-hosts store
     /// and the vault or by asking the user. With none, every prompt is refused. A handler with no answer to
     /// give may throw instead: the prompt then gets no response at all, the session is closed, and the
-    /// channel fails as a transport failure carrying the exception's message. Refusing would not be the
-    /// same: a refused password or keyboard-interactive prompt is submitted as an empty answer, which the
-    /// server counts as a failed login. Closing wakes rusty_ssh's pending prompt with no answer
-    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there. Once sign-in is
-    /// over, the handler is told (<see cref="ISshInteractionHandler.Authenticated"/>).
+    /// channel fails as a transport failure carrying the exception's message. Neither sends the server
+    /// anything: a refused password, passphrase or keyboard-interactive prompt is submitted as a cancel,
+    /// which ends rusty_ssh's sign-in, and closing wakes its pending prompt with no answer
+    /// (<c>wait_for_response</c> returns none once the session is closed), so its auth stops there. A throw is
+    /// for a handler whose failure must not read as the user's own cancel (the mux's automatic reconnect). Once
+    /// sign-in is over, the handler is told (<see cref="ISshInteractionHandler.Authenticated"/>).
     /// </param>
     /// <param name="optionsFactory">
     /// Builds the connection options. Production passes <see cref="NativeSshConnectionOptionsFactory.Create(SshProfile)"/>,

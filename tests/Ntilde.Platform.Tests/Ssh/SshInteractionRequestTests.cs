@@ -23,6 +23,7 @@ public sealed class SshInteractionRequestTests
         Port = 2222,
         User = "ops",
         IsJumpHop = true,
+        FollowsRefusal = true,
         Algorithm = "ssh-ed25519",
         Fingerprint = "SHA256:abc",
         Prompt = "Password:",

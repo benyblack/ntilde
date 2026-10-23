@@ -28,12 +28,17 @@ public static class NativeSshInteractionJson
                 new NativeHostKeyDecisionPayload { Accept = response.IsAccepted && !response.IsCanceled },
                 NativeSshInteractionJsonContext.Default.NativeHostKeyDecisionPayload),
             NativeSshResponseKind.Password or NativeSshResponseKind.Passphrase => JsonSerializer.SerializeToUtf8Bytes(
-                new NativeTextResponsePayload { Text = response.IsCanceled ? string.Empty : response.Secret ?? string.Empty },
+                new NativeTextResponsePayload
+                {
+                    Text = response.IsCanceled ? string.Empty : response.Secret ?? string.Empty,
+                    Canceled = response.IsCanceled
+                },
                 NativeSshInteractionJsonContext.Default.NativeTextResponsePayload),
             NativeSshResponseKind.KeyboardInteractive => JsonSerializer.SerializeToUtf8Bytes(
                 new NativeKeyboardInteractiveResponsePayload
                 {
-                    Responses = response.IsCanceled ? Array.Empty<string>() : response.KeyboardResponses.ToArray()
+                    Responses = response.IsCanceled ? Array.Empty<string>() : response.KeyboardResponses.ToArray(),
+                    Canceled = response.IsCanceled
                 },
                 NativeSshInteractionJsonContext.Default.NativeKeyboardInteractiveResponsePayload),
             _ => throw new InvalidOperationException($"Unsupported native SSH response kind '{responseKind}'.")
@@ -77,7 +82,8 @@ public static class NativeSshInteractionJson
             Host = model.Host,
             Port = model.Port,
             User = model.User,
-            IsJumpHop = model.IsJumpHop
+            IsJumpHop = model.IsJumpHop,
+            FollowsRefusal = model.FollowsRefusal
         };
     }
 
@@ -139,6 +145,9 @@ internal abstract class NativeAuthHopPayload
 internal sealed class NativeTextPromptPayload : NativeAuthHopPayload
 {
     public string Prompt { get; set; } = string.Empty;
+
+    /// <summary>The server just refused the password it was sent; absent from older payloads, so false.</summary>
+    public bool FollowsRefusal { get; set; }
 }
 
 internal sealed class NativeKeyboardInteractivePromptPayload : NativeAuthHopPayload
@@ -162,9 +171,17 @@ internal sealed class NativeHostKeyDecisionPayload
 internal sealed class NativeTextResponsePayload
 {
     public string Text { get; set; } = string.Empty;
+
+    // Omitted when false so an ordinary answer stays byte-identical. rusty_ssh stops sign-in on true
+    // instead of treating the empty text as a password.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Canceled { get; set; }
 }
 
 internal sealed class NativeKeyboardInteractiveResponsePayload
 {
     public string[] Responses { get; set; } = Array.Empty<string>();
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Canceled { get; set; }
 }

@@ -116,11 +116,72 @@ public sealed class NativeSshDockerAuthE2eTests
 
         await WaitUntilAsync(() => SnapshotContains(buffer, "nova$"), PromptTimeout, "shell prompt after keyboard-interactive auth");
 
-        // The backend asks for a password unconditionally before it ever tries keyboard-interactive
-        // (see `authenticate` in rusty_ssh), so a password request here is expected and not a failure.
-        // What matters is that the password attempt was refused by the server and the challenge-response
-        // fallback carried the session.
-        Assert.Contains(handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.KeyboardInteractive);
+        // This server offers keyboard-interactive and not `password`, so the backend must ask the user
+        // for the password once — PAM's `Password: ` question, turned into a Password request — and
+        // never show the raw challenge. PAM's trailing zero-question round is answered inside Rust.
+        SshInteractionRequest passwordRequest = Assert.Single(
+            handler.RequestSnapshot().Where(request => request.Kind == SshInteractionKind.Password));
+        Assert.False(passwordRequest.FollowsRefusal);
+        Assert.DoesNotContain(handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.KeyboardInteractive);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task KeyboardInteractiveAuth_AfterAWrongPassword_AsksOnceMoreAndGetsIn()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        var buffer = new TerminalBuffer(120, 30);
+        var parser = new AnsiParser(buffer);
+        var handler = new NativeSshTestInteractionHandler(
+            fixture.KeyboardInteractivePassword,
+            firstPassword: "wrong-password");
+
+        SshProfile profile = CreateProfile(fixture);
+        profile.User = fixture.KeyboardInteractiveUserName;
+
+        using var session = new NativeSshSession(profile, cols: 120, rows: 30, interactionHandler: handler);
+        session.OnOutputReceived += parser.Process;
+
+        // PAM may delay the refusal by a couple of seconds (pam_faildelay); the prompt timeout covers it.
+        await WaitUntilAsync(() => SnapshotContains(buffer, "nova$"), PromptTimeout, "shell prompt after one retry");
+
+        AssertAskedOnceMoreAfterARefusal(handler);
+        Assert.DoesNotContain(handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.KeyboardInteractive);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task PasswordAuth_AfterAWrongPassword_AsksOnceMoreAndGetsIn()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        var buffer = new TerminalBuffer(120, 30);
+        var parser = new AnsiParser(buffer);
+        var handler = new NativeSshTestInteractionHandler(fixture.Password, firstPassword: "wrong-password");
+
+        using var session = new NativeSshSession(CreateProfile(fixture), cols: 120, rows: 30, interactionHandler: handler);
+        session.OnOutputReceived += parser.Process;
+
+        await WaitUntilAsync(() => SnapshotContains(buffer, "nova$"), PromptTimeout, "shell prompt after one retry");
+
+        AssertAskedOnceMoreAfterARefusal(handler);
+    }
+
+    /// <summary>
+    /// Exactly two password requests: the first fresh, the second marked as following a refusal.
+    /// </summary>
+    private static void AssertAskedOnceMoreAfterARefusal(NativeSshTestInteractionHandler handler)
+    {
+        SshInteractionRequest[] passwordRequests = handler.RequestSnapshot()
+            .Where(request => request.Kind == SshInteractionKind.Password)
+            .ToArray();
+
+        Assert.Equal(2, passwordRequests.Length);
+        Assert.False(passwordRequests[0].FollowsRefusal);
+        Assert.True(passwordRequests[1].FollowsRefusal);
     }
 
     [DockerFact]

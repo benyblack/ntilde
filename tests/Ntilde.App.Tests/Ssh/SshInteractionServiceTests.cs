@@ -417,6 +417,85 @@ public sealed class SshInteractionServiceTests
         Assert.Equal(("typed-secret", false), (typed.Secret, typed.FilledFromStore));
     }
 
+    /// <summary>The server just refused the password it was sent: asking the stores again would send it a second time.</summary>
+    [AvaloniaFact]
+    public async Task RetryPrompt_IsNeverFilledFromTheRuntimeStoreOrTheVault()
+    {
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var registry = new ActiveSshSessionRegistry();
+        TerminalProfile profile = CreateProfile("5d2c7a90-3b1e-4f68-9a07-c4e8d1b2f3a4");
+        vault.SetSshPasswordForProfile(profile, "vault-secret");
+        Guid sessionId = Guid.NewGuid();
+        registry.SetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, "remembered-secret");
+        int promptCount = 0;
+        var service = new SshInteractionService(
+            vaultService: vault,
+            sessionRegistry: registry,
+            authPresenter: (_, _, _) =>
+            {
+                promptCount++;
+                return Task.FromResult(SshInteractionResponse.FromSecret("typed-secret"));
+            });
+
+        SshInteractionResponse response = await service.HandleAsync(
+            TargetPasswordRequest(profile, sessionId, allowVaultPasswordReuse: true, followsRefusal: true),
+            CancellationToken.None);
+
+        Assert.Equal(1, promptCount);
+        Assert.Equal(("typed-secret", false), (response.Secret, response.FilledFromStore));
+    }
+
+    [AvaloniaFact]
+    public async Task RetryPrompt_OffersRemember_AndReplacesTheStoredPasswords()
+    {
+        var vault = new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore());
+        var registry = new ActiveSshSessionRegistry();
+        TerminalProfile profile = CreateProfile("8e4b1d63-7c2a-4a95-b0f1-26d3c9a7e8b5");
+        vault.SetSshPasswordForProfile(profile, "old-secret");
+        Guid sessionId = Guid.NewGuid();
+        registry.SetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, "old-secret");
+        AuthPromptViewModel? presented = null;
+        var service = new SshInteractionService(
+            vaultService: vault,
+            sessionRegistry: registry,
+            authPresenter: (_, viewModel, _) =>
+            {
+                presented = viewModel;
+                return Task.FromResult(SshInteractionResponse.FromSecret("new-secret", rememberPasswordInVault: true));
+            });
+
+        await service.HandleAsync(
+            TargetPasswordRequest(profile, sessionId, allowVaultPasswordReuse: true, followsRefusal: true),
+            CancellationToken.None);
+
+        Assert.NotNull(presented);
+        Assert.True(presented!.CanRememberPassword);
+        Assert.Equal("new-secret", vault.GetSshPasswordForProfile(profile));
+        Assert.True(registry.TryGetRuntimePassword(sessionId, profile.SshHost, 22, profile.SshUser, out string? runtime));
+        Assert.Equal("new-secret", runtime);
+    }
+
+    [AvaloniaFact]
+    public async Task RetryPrompt_SaysTheSignInWasNotAccepted()
+    {
+        TerminalProfile profile = CreateProfile("2f9a6c18-d4b7-4e03-8c5a-71b0e3d9a6f2");
+        AuthPromptViewModel? presented = null;
+        var service = new SshInteractionService(
+            vaultService: new VaultService(new Ntilde.Shell.Secrets.InMemorySecretStore()),
+            sessionRegistry: new ActiveSshSessionRegistry(),
+            authPresenter: (_, viewModel, _) =>
+            {
+                presented = viewModel;
+                return Task.FromResult(SshInteractionResponse.FromSecret("typed-secret"));
+            });
+
+        await service.HandleAsync(TargetPasswordRequest(profile, followsRefusal: true), CancellationToken.None);
+
+        Assert.Equal(
+            "The server did not accept the sign-in. Enter the SSH password for alice@example.internal to continue.",
+            presented!.Message);
+    }
+
     [AvaloniaFact]
     public async Task PasswordRequests_UseLegacyVaultSecret_WhenFullProfileIdentityIsProvided()
     {
@@ -681,7 +760,8 @@ public sealed class SshInteractionServiceTests
     private static SshInteractionRequest TargetPasswordRequest(
         TerminalProfile profile,
         Guid? sessionId = null,
-        bool allowVaultPasswordReuse = false)
+        bool allowVaultPasswordReuse = false,
+        bool followsRefusal = false)
     {
         return new SshInteractionRequest
         {
@@ -696,7 +776,8 @@ public sealed class SshInteractionServiceTests
             Host = profile.SshHost,
             Port = 22,
             User = profile.SshUser,
-            IsJumpHop = false
+            IsJumpHop = false,
+            FollowsRefusal = followsRefusal
         };
     }
 
