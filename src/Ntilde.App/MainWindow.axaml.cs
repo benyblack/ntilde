@@ -4904,7 +4904,17 @@ namespace Ntilde
         internal IReadOnlyList<TerminalPane> AllPanesForTest() => AllPanes();
 
         private List<TerminalPane> AllPanes() =>
-            this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>().SelectMany(t => EnumeratePanes(GetLayoutRootForTab(t))).ToList() ?? [];
+            this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>().SelectMany(PanesInTab).ToList() ?? [];
+
+        /// <summary>
+        /// Every pane of one tab. While the tab is pane-zoomed, the layout root is the stash that no longer
+        /// holds the zoomed pane (it is the tab's content), so that pane is added back.
+        /// </summary>
+        private IEnumerable<TerminalPane> PanesInTab(TabItem tab)
+        {
+            foreach (var pane in EnumeratePanes(GetLayoutRootForTab(tab))) yield return pane;
+            if (_paneZoomStateByTab.ContainsKey(tab) && tab.Content is TerminalPane zoomed) yield return zoomed;
+        }
 
         /// <summary>
         /// A mux session's HasActiveChildProcesses is a cached probe; the close confirmation asks
@@ -7463,9 +7473,13 @@ namespace Ntilde
 
             indicator.IsVisible = visible;
             if (!visible) return;
-            dot.Fill = new SolidColorBrush(Color.Parse(ObserveLightColor(active, marks.Count > 0)));
+            var (fill, ring) = ObserveLightAppearance(active, marks.Count > 0);
+            dot.Fill = new SolidColorBrush(Color.Parse(fill));
+            // A write and a read at once: amber fill with a blue ring, so neither hides the other.
+            dot.Stroke = ring is null ? null : new SolidColorBrush(Color.Parse(ring));
+            dot.StrokeThickness = ring is null ? 0 : 1.5;
             // BuildFocusLightTooltip with no marks is the XAML default text, so this restores it outside focus mode.
-            ToolTip.SetTip(indicator, BuildFocusLightTooltip(marks));
+            ToolTip.SetTip(indicator, BuildFocusLightTooltip(marks, active));
         }
 
         // Raised on an IPC thread when the in-flight poll count leaves or

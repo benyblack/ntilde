@@ -102,6 +102,24 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
     }
 
     [AvaloniaFact]
+    public void The_zoomed_pane_itself_gets_the_flag()
+    {
+        MainWindow window = NewShownWindow();
+        var tab = AddSplitTab(window, out var a, out _);
+        window.FindControl<TabControl>("Tabs")!.SelectedItem = tab;
+        var entered = (bool)typeof(MainWindow)
+            .GetMethod("EnterPaneZoom", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(window, new object[] { tab, a, true })!;
+        Assert.True(entered);
+
+        window.EnterFocusMode();
+        Assert.True(a.FocusChromeHidden);
+
+        window.LeaveFocusMode();
+        Assert.False(a.FocusChromeHidden);
+    }
+
+    [AvaloniaFact]
     public void A_pane_created_in_focus_mode_starts_hidden()
     {
         MainWindow window = NewShownWindow();

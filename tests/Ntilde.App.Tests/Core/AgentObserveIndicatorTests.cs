@@ -543,12 +543,36 @@ public class AgentObserveIndicatorTests : IDisposable
     private const string OtherTabKey = "22222222-2222-2222-2222-222222222222";
 
     [Theory]
-    [InlineData(false, false, "#6B737F")]
-    [InlineData(true, false, "#4FB0D4")]
-    [InlineData(true, true, "#E8A33D")]
-    [InlineData(false, true, "#E8A33D")]
-    public void Light_colour_priority(bool active, bool unseenWrite, string expected)
-        => Assert.Equal(expected, MainWindow.ObserveLightColor(active, unseenWrite));
+    [InlineData(false, false, "#6B737F", null)]
+    [InlineData(true, false, "#4FB0D4", null)]
+    [InlineData(true, true, "#E8A33D", "#4FB0D4")]
+    [InlineData(false, true, "#E8A33D", null)]
+    public void Light_appearance(bool active, bool unseenWrite, string fill, string? ring)
+        => Assert.Equal((fill, ring), MainWindow.ObserveLightAppearance(active, unseenWrite));
+
+    [Fact]
+    public void A_write_while_reading_looks_different_from_a_write_alone()
+        => Assert.NotEqual(
+            MainWindow.ObserveLightAppearance(active: true, unseenWrite: true),
+            MainWindow.ObserveLightAppearance(active: false, unseenWrite: true));
+
+    [Fact]
+    public void The_tooltip_says_when_an_agent_is_also_reading()
+    {
+        var t = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        string at = t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        var marks = new[] { new MainWindow.FocusWriteMark("build", null, t) };
+
+        Assert.Equal(
+            $"An agent is reading now.\nAn agent typed into build at {at}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(marks, active: true));
+        Assert.Equal(
+            $"An agent typed into build at {at}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(marks, active: false));
+        Assert.Equal(
+            "Agent access is enabled. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(Array.Empty<MainWindow.FocusWriteMark>(), active: true));
+    }
 
     [Fact]
     public void Focus_light_tooltip_names_tab_and_pane()
@@ -610,6 +634,7 @@ public class AgentObserveIndicatorTests : IDisposable
             window.EnterFocusMode();
             var mark = Assert.Single(window.CollectUnseenWriteMarks());
             Assert.Equal(window.GetTabHeaderText(tabB), mark.TabTitle);
+            Assert.False(string.IsNullOrWhiteSpace(mark.TabTitle));
             Assert.Null(mark.PaneTitle);
             Assert.NotNull(mark.LastWriteUtc);
 
@@ -634,6 +659,50 @@ public class AgentObserveIndicatorTests : IDisposable
             var mark = Assert.Single(window.CollectUnseenWriteMarks());
             Assert.Equal(window.GetTabHeaderText(splitTab), mark.TabTitle);
             Assert.Equal(second.GetBaseTabTitle(), mark.PaneTitle);
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_into_a_zoomed_background_pane_is_collected()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var tabT1 = tabs.Items.Cast<TabItem>().First();
+            var tabT2 = AddSplitTab(window, out var a, out _);
+            tabs.SelectedItem = tabT2;
+            EnterZoom(window, tabT2, a);
+            tabs.SelectedItem = tabT1;
+
+            RegistrationFor(a).AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.StartsWith("Command Prompt", mark.TabTitle);
+            Assert.Equal(a.GetBaseTabTitle(), mark.PaneTitle);
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_into_the_sibling_of_a_zoomed_split_names_the_pane()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var tabT1 = tabs.Items.Cast<TabItem>().First();
+            var tabT2 = AddSplitTab(window, out var a, out var b);
+            tabs.SelectedItem = tabT2;
+            EnterZoom(window, tabT2, a);
+            tabs.SelectedItem = tabT1;
+
+            RegistrationFor(b).AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.StartsWith("Command Prompt", mark.TabTitle);
+            Assert.Equal(b.GetBaseTabTitle(), mark.PaneTitle);
         });
     }
 

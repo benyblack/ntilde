@@ -124,11 +124,16 @@ namespace Ntilde
         /// <summary>A pane an agent typed into that the user has not yet looked at, as the light names it.</summary>
         internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc);
 
-        /// <summary>Amber for an unseen write, blue for a read or poll, grey when idle.</summary>
-        internal static string ObserveLightColor(bool active, bool unseenWrite)
-            => unseenWrite ? "#E8A33D" : active ? "#4FB0D4" : "#6B737F";
+        /// <summary>
+        /// Amber fill for an unseen write, blue for a read or poll, grey when idle. A write and a read at
+        /// once keep the amber fill and add a blue ring, so a pending write never hides a read.
+        /// </summary>
+        internal static (string Fill, string? Ring) ObserveLightAppearance(bool active, bool unseenWrite)
+            => unseenWrite
+                ? ("#E8A33D", active ? "#4FB0D4" : null)
+                : (active ? "#4FB0D4" : "#6B737F", null);
 
-        internal static string BuildFocusLightTooltip(IReadOnlyList<FocusWriteMark> marks)
+        internal static string BuildFocusLightTooltip(IReadOnlyList<FocusWriteMark> marks, bool active = false)
         {
             static string Target(FocusWriteMark m) => m.PaneTitle is null ? m.TabTitle : $"{m.TabTitle} › {m.PaneTitle}";
             static string At(FocusWriteMark m) => m.LastWriteUtc is { } t
@@ -136,9 +141,16 @@ namespace Ntilde
                 : "";
 
             if (marks.Count == 0) return DefaultObserveLightTooltip;
-            if (marks.Count == 1) return $"An agent typed into {Target(marks[0])}{At(marks[0])}. {JournalHint}";
+            const string reading = "An agent is reading now.";
+            if (marks.Count == 1)
+            {
+                string one = $"An agent typed into {Target(marks[0])}{At(marks[0])}. {JournalHint}";
+                return active ? reading + "\n" + one : one;
+            }
 
-            var lines = new List<string> { "Agents typed into:" };
+            var lines = new List<string>();
+            if (active) lines.Add(reading);
+            lines.Add("Agents typed into:");
             lines.AddRange(marks.Select(m => $"- {Target(m)}{At(m)}"));
             lines.Add(JournalHint);
             return string.Join("\n", lines);
@@ -152,29 +164,34 @@ namespace Ntilde
         {
             if (!_isFocusMode) return Array.Empty<FocusWriteMark>();
 
-            var byPane = AgentHost.AgentSessionRegistry.Instance.GetRegistrations()
-                .GroupBy(r => r.PaneId)
-                .ToDictionary(g => g.Key, g => g.First());
-            var marks = new List<FocusWriteMark>();
-            var tabs = this.FindControl<TabControl>("Tabs");
-            if (tabs == null) return marks;
+            var tabs = this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>().ToList() ?? [];
+            var found = new List<(int Order, FocusWriteMark Mark)>();
 
-            foreach (var tab in tabs.Items.OfType<TabItem>())
+            // Start from the registrations, not from a walk of the layout: a pane that cannot be found in
+            // any tab (a zoom stash, a pane mid-creation) must still be reported. A redundant mark is
+            // acceptable; a silent write is not.
+            foreach (var registration in AgentHost.AgentSessionRegistry.Instance.GetRegistrations())
             {
-                var panes = EnumeratePanes(GetLayoutRootForTab(tab)).ToList();
-                foreach (var pane in panes)
+                var snapshot = registration.AttentionMachine.Snapshot();
+                if (snapshot.Tier != AgentHost.AgentAttentionTier.Wrote) continue;
+
+                Controls.TerminalPane? pane = _paneOwnerTab.Keys.FirstOrDefault(p => p.PaneId == registration.PaneId)
+                    ?? AllPanes().FirstOrDefault(p => p.PaneId == registration.PaneId);
+                TabItem? tab = pane != null ? ResolveOwningTabForPane(pane) : null;
+                tab ??= tabs.FirstOrDefault(t => registration.TabId is { } id && GetPersistentTabId(t) == id);
+
+                if (tab == null)
                 {
-                    if (!byPane.TryGetValue(pane.PaneId, out var registration)) continue;
-                    var snapshot = registration.AttentionMachine.Snapshot();
-                    if (snapshot.Tier != AgentHost.AgentAttentionTier.Wrote) continue;
-                    marks.Add(new FocusWriteMark(
-                        GetTabHeaderText(tab),
-                        panes.Count > 1 ? pane.GetBaseTabTitle() : null,
-                        snapshot.LastWriteUtc));
+                    found.Add((int.MaxValue, new FocusWriteMark("Terminal", null, snapshot.LastWriteUtc)));
+                    continue;
                 }
+
+                string? paneTitle = pane != null && PanesInTab(tab).Count() > 1 ? pane.GetBaseTabTitle() : null;
+                found.Add((tabs.IndexOf(tab) is var i && i >= 0 ? i : int.MaxValue,
+                    new FocusWriteMark(GetTabHeaderText(tab), paneTitle, snapshot.LastWriteUtc)));
             }
 
-            return marks;
+            return found.OrderBy(f => f.Order).Select(f => f.Mark).ToList();
         }
 
         private void ApplyFocusModeChrome()
