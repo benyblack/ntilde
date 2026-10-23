@@ -4586,12 +4586,10 @@ namespace Ntilde
                 Vault = new VaultService();
                 if (!Vault.PersistenceAvailable)
                 {
-                    ShowRecordingToast(
+                    ShowUnpromptedToast(
                         "Credential storage unavailable",
                         "No system keychain was found, so SSH passwords won't be saved this session.",
-                        filePath: null,
-                        folderPath: null,
-                        autoHide: true);
+                        "focus:credential-storage");
                 }
             }
             catch (Exception ex)
@@ -5361,6 +5359,8 @@ namespace Ntilde
 
         private void FlushPersistenceNotices()
         {
+            // Focus mode holds unprompted notices; LeaveFocusMode flushes them.
+            if (_isFocusMode) return;
             if (_pendingPersistenceNotices.Count == 0) return;
             List<(string Key, string Title, string Message, int Count)> notices = [.. _pendingPersistenceNotices];
             _pendingPersistenceNotices.Clear();
@@ -5995,12 +5995,10 @@ namespace Ntilde
                 return;
             }
 
-            ShowRecordingToast(
+            ShowUnpromptedToast(
                 "Command finished",
                 LongCommandNotificationPolicy.BuildMessage(commandText, exitCode, duration, pane.GetBaseTabTitle()),
-                filePath: null,
-                folderPath: null,
-                autoHide: true);
+                $"focus:command-finished:{pane.PaneId}");
         }
 
         private void OnPaneOscNotification(TerminalPane pane, string text)
@@ -6017,12 +6015,7 @@ namespace Ntilde
                 return;
             }
 
-            ShowRecordingToast(
-                pane.GetBaseTabTitle(),
-                text,
-                filePath: null,
-                folderPath: null,
-                autoHide: true);
+            ShowUnpromptedToast(pane.GetBaseTabTitle(), text, $"focus:osc9:{pane.PaneId}");
         }
 
         private void OnPaneProgressReported(TerminalPane pane, TerminalProgressReport? report)
@@ -11442,10 +11435,12 @@ namespace Ntilde
 
             messageBlock.Text = $"Ntilde {version} is downloaded and will be applied when you restart.";
             toast.IsVisible = true;
+            _shownUpdateVersion = version;
         }
 
         private void HideUpdateToast()
         {
+            _shownUpdateVersion = null;
             var toast = this.FindControl<Border>("UpdateToast");
             if (toast != null)
             {
@@ -11481,7 +11476,7 @@ namespace Ntilde
                     () => _settings.AutomaticUpdateChecks,
                     version => Dispatcher.UIThread.Post(() =>
                     {
-                        ShowUpdateToast(version);
+                        ShowUpdateToastUnprompted(version);
                         SetupCommandPalette();
                     }),
                     message => TerminalLogger.Log(message));

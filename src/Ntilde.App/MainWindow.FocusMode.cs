@@ -35,6 +35,7 @@ namespace Ntilde
             WindowDecorationsTheme = (ControlTheme)this.FindResource("NtildeFocusWindowDecorationsTheme")!;
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = true;
             ApplyFocusModeChrome();
+            HoldShownUpdateToast();
         }
 
         internal void LeaveFocusMode()
@@ -46,6 +47,53 @@ namespace Ntilde
             RebuildTitleBar();
             foreach (var pane in AllPanes()) pane.FocusChromeHidden = false;
             ApplyFocusModeChrome();
+            ReleaseHeldNotices();
+        }
+
+        // Spec section 6: notices that arrive on their own wait for focus mode to end.
+        private string? _heldUpdateVersion;
+        private string? _shownUpdateVersion;
+
+        /// <summary>
+        /// A prompted toast shows now; an unprompted one waits in focus mode. The key makes a repeat replace the
+        /// held one, so only the latest is shown on leave.
+        /// </summary>
+        private void ShowUnpromptedToast(string title, string message, string key)
+        {
+            if (_isFocusMode)
+            {
+                DismissNotice(key);
+                EnqueueNotice(title, message, key: key);
+                return;
+            }
+
+            ShowRecordingToast(title, message, filePath: null, folderPath: null, autoHide: true);
+        }
+
+        private void ShowUpdateToastUnprompted(string version)
+        {
+            if (_isFocusMode) _heldUpdateVersion = version;
+            else ShowUpdateToast(version);
+        }
+
+        /// <summary>An update toast already on screen goes away for focus mode and comes back on leave.</summary>
+        private void HoldShownUpdateToast()
+        {
+            var toast = this.FindControl<Avalonia.Controls.Border>("UpdateToast");
+            if (toast is not { IsVisible: true }) return;
+            _heldUpdateVersion = _shownUpdateVersion;
+            toast.IsVisible = false;
+        }
+
+        private void ReleaseHeldNotices()
+        {
+            if (_heldUpdateVersion is { } version)
+            {
+                _heldUpdateVersion = null;
+                ShowUpdateToast(version);
+            }
+
+            FlushPersistenceNotices();
         }
 
         /// <summary>Every user action that goes to another tab calls this first.</summary>
