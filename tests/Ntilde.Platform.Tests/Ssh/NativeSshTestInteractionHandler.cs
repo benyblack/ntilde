@@ -9,6 +9,8 @@ internal sealed class NativeSshTestInteractionHandler : ISshInteractionHandler
     private readonly string? _keyboardSecret;
     private readonly bool _acceptHostKeys;
     private readonly IReadOnlyDictionary<string, string>? _passwordsByUser;
+    private readonly string? _firstPassword;
+    private int _passwordRequestsAnswered;
 
     /// <param name="password">Answer for a password prompt.</param>
     /// <param name="passphrase">
@@ -28,13 +30,20 @@ internal sealed class NativeSshTestInteractionHandler : ISshInteractionHandler
     /// the way a real user answers a chain whose hops have different passwords — and a prompt naming
     /// no known user is a test failure. <paramref name="password"/> is then unused for passwords.
     /// </param>
+    /// <param name="firstPassword">
+    /// When set, answers the first password prompt only — a wrong password, so a test can watch the
+    /// server refuse it and the session ask once more. Later password prompts get
+    /// <paramref name="password"/> (or <paramref name="passwordsByUser"/>) as usual.
+    /// </param>
     public NativeSshTestInteractionHandler(
         string password,
         string? passphrase = null,
         string? keyboardSecret = null,
         bool acceptHostKeys = true,
-        IReadOnlyDictionary<string, string>? passwordsByUser = null)
+        IReadOnlyDictionary<string, string>? passwordsByUser = null,
+        string? firstPassword = null)
     {
+        _firstPassword = firstPassword;
         _password = password;
         _passphrase = passphrase;
         _keyboardSecret = keyboardSecret;
@@ -79,6 +88,11 @@ internal sealed class NativeSshTestInteractionHandler : ISshInteractionHandler
 
     private string PasswordFor(SshInteractionRequest request)
     {
+        if (_firstPassword != null && Interlocked.Increment(ref _passwordRequestsAnswered) == 1)
+        {
+            return _firstPassword;
+        }
+
         if (_passwordsByUser == null)
         {
             return _password;

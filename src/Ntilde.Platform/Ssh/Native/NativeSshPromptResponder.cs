@@ -106,12 +106,15 @@ internal sealed class NativeSshPromptResponder
             ProfileName = _profileName,
             ProfileUser = _profileUser,
             ProfileHost = _profileHost,
-            AllowVaultPasswordReuse = isTargetPasswordPrompt && _allowVaultPasswordReuse,
+            // A retry prompt follows a refusal, so the vault is not offered even if it is the first password prompt
+            // this responder sees; it still spends the one-shot, as any target password prompt does.
+            AllowVaultPasswordReuse = isTargetPasswordPrompt && _allowVaultPasswordReuse && !request.FollowsRefusal,
             RememberPasswordInVault = isTargetPasswordPrompt,
             Host = request.Host,
             Port = request.Port,
             User = request.User,
             IsJumpHop = request.IsJumpHop,
+            FollowsRefusal = request.FollowsRefusal,
             Algorithm = request.Algorithm,
             Fingerprint = request.Fingerprint,
             Prompt = request.Prompt,

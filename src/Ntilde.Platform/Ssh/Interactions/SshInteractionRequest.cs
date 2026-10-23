@@ -28,6 +28,13 @@ public sealed class SshInteractionRequest
     /// never answered from, or saved into, the profile's vault entry.
     /// </summary>
     public bool IsJumpHop { get; init; }
+
+    /// <summary>
+    /// The server refused the password it was just sent, and this prompt asks again. The user answers
+    /// it, never the vault, the session's runtime store, or the mux's memory: any of them would send
+    /// the refused password a second time.
+    /// </summary>
+    public bool FollowsRefusal { get; init; }
     public string Algorithm { get; init; } = string.Empty;
     public string Fingerprint { get; init; } = string.Empty;
     public string Prompt { get; init; } = string.Empty;
@@ -61,6 +68,7 @@ public sealed class SshInteractionRequest
         Port = Port,
         User = User,
         IsJumpHop = IsJumpHop,
+        FollowsRefusal = FollowsRefusal,
         Algorithm = Algorithm,
         Fingerprint = Fingerprint,
         Prompt = Prompt,

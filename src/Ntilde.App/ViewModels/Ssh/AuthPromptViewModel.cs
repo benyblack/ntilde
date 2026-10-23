@@ -12,11 +12,18 @@ public sealed class AuthPromptViewModel
     public string Message { get; init; } = string.Empty;
     public bool CanRememberPassword { get; init; }
     public bool RememberPassword { get; set; }
+
+    /// <summary>
+    /// The fields answer a keyboard-interactive round, one answer per question even when it asks just one (PAM's
+    /// "Password: "): the server counts the answers, and sshd drops the connection over a wrong count.
+    /// </summary>
+    public bool IsKeyboardInteractive { get; init; }
+
     public ObservableCollection<AuthPromptEntryViewModel> Prompts { get; } = new();
 
     public SshInteractionResponse BuildResponse()
     {
-        if (Prompts.Count == 1)
+        if (Prompts.Count == 1 && !IsKeyboardInteractive)
         {
             return SshInteractionResponse.FromSecret(Prompts[0].Value, RememberPassword);
         }

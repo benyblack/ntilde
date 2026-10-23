@@ -47,6 +47,17 @@ public sealed class NativeSshInteractionJsonTests
         Assert.Equal("target.internal", request.Host);
         Assert.Equal("nova", request.User);
         Assert.False(request.IsJumpHop);
+        Assert.False(request.FollowsRefusal);
+    }
+
+    [Fact]
+    public void ParseRequest_PasswordPrompt_CarriesFollowsRefusal()
+    {
+        SshInteractionRequest request = NativeSshInteractionJson.ParseRequest(
+            NativeSshEventKind.PasswordPrompt,
+            Encoding.UTF8.GetBytes("""{"prompt":"Password: ","host":"h","port":22,"user":"u","isJumpHop":false,"followsRefusal":true}"""));
+
+        Assert.True(request.FollowsRefusal);
     }
 
     [Fact]
@@ -85,4 +96,19 @@ public sealed class NativeSshInteractionJsonTests
 
         Assert.Equal("""{"responses":["code","backup"]}""", Encoding.UTF8.GetString(payload));
     }
+
+    [Fact]
+    public void BuildResponsePayload_ACancelledPasswordSaysSo()
+        => Assert.Equal("""{"text":"","canceled":true}""",
+            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.Cancel())));
+
+    [Fact]
+    public void BuildResponsePayload_ATypedPasswordCarriesNoCancelField()
+        => Assert.Equal("""{"text":"hunter2"}""",
+            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.Password, SshInteractionResponse.FromSecret("hunter2"))));
+
+    [Fact]
+    public void BuildResponsePayload_ACancelledKeyboardRoundSaysSo()
+        => Assert.Equal("""{"responses":[],"canceled":true}""",
+            Encoding.UTF8.GetString(NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, SshInteractionResponse.Cancel())));
 }

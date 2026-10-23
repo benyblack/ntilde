@@ -29,8 +29,9 @@ namespace Ntilde.Shell.Mux.Remote;
 /// <para>
 /// A remembered secret that may have been refused is forgotten, never replayed: replaying a stale
 /// password every few seconds is a lockout waiting to happen. The native layer asks for a password once
-/// and then falls to keyboard-interactive, so a refusal shows as another auth prompt after it, or as the
-/// attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>. Once the native transport
+/// more after a refusal, with a prompt that says so (<see cref="SshInteractionRequest.FollowsRefusal"/>; only a user
+/// answers it), or falls to keyboard-interactive. Either way a refusal still shows as another auth prompt after it,
+/// or as the attempt failing SSH (<see cref="Attempt.Refused"/>); see <see cref="Attempt"/>. Once the native transport
 /// said sign-in was over (<see cref="Attempt.Authenticated"/>), a failure counts against nothing it offered.
 /// </para>
 /// <para>
@@ -363,15 +364,15 @@ internal sealed class RemoteMuxInteractionHandler
     /// <para>
     /// With nobody to ask (an automatic attempt, or no window handler) and nothing remembered, a password
     /// prompt or a keyboard-interactive prompt with questions is not answered: <see cref="HandleAsync"/>
-    /// throws <see cref="RemoteMuxPromptAbortedException"/>. A cancel would not do: the native layer
-    /// submits it as an empty password or empty answers, which the server counts as a failed login - on
-    /// every reconnect, until fail2ban or a lockout steps in. A thrown handler instead makes the native
-    /// exec channel close the session without answering (its documented contract), and closing wakes
-    /// rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A passphrase
-    /// is still cancelled: it only unlocks a local key, and nothing reaches the server. It is recorded,
-    /// though (<see cref="DeclinedPrompt"/>; codex D3): when the attempt then fails SSH before sign-in is
-    /// over, nothing else got in, and the connector reports it as needing the user, as it does an aborted
-    /// prompt.
+    /// throws <see cref="RemoteMuxPromptAbortedException"/>. A cancel would stop sign-in too, but it would
+    /// read as the user's own cancel; the abort is recorded (<see cref="AbortedPrompt"/>), so the connector
+    /// tells the attempt apart and reports it as needing the user, with the reason. A thrown handler makes
+    /// the native exec channel close the session without answering (its documented contract), and closing
+    /// wakes rusty_ssh's pending prompt with no answer, so its auth stops before sending anything. A
+    /// passphrase is cancelled: it only unlocks a local key, so nothing reaches the server, and the native
+    /// layer then ends sign-in. It is recorded, though (<see cref="DeclinedPrompt"/>; codex D3): when the
+    /// attempt then fails SSH before sign-in is over, nothing else got in, and the connector reports it as
+    /// needing the user, as it does an aborted prompt.
     /// </para>
     /// <para>
     /// An automatic attempt that <see cref="MaySignInWithSavedPassword"/> answers a password prompt it has nothing
@@ -617,7 +618,9 @@ internal sealed class RemoteMuxInteractionHandler
 
             if (IsSecretPrompt(kind))
             {
-                if (Recall(kind) is { } remembered)
+                // A retry prompt follows a refusal of what this attempt just sent (from memory or the saved password):
+                // neither store is read for it, so only a user can answer it.
+                if (!request.FollowsRefusal && Recall(kind) is { } remembered)
                 {
                     Track(new Answer(kind, remembered, FromMemory: true, Typed: false, request));
                     if (kind == SshInteractionKind.Password && User is null) NoteStoredPassword(remembered, fromVault: false);
@@ -627,11 +630,13 @@ internal sealed class RemoteMuxInteractionHandler
                 if (User is not { } user)
                 {
                     // The profile's saved password, once, with no UI: the user's choice for automatic reconnects.
-                    if (kind == SshInteractionKind.Password && TakeSavedPassword() is { } saved) return SshInteractionResponse.FromSecret(saved);
+                    if (kind == SshInteractionKind.Password && !request.FollowsRefusal && TakeSavedPassword() is { } saved) return SshInteractionResponse.FromSecret(saved);
 
-                    // A password is never cancelled: rusty_ssh would send the cancel as an empty password. A passphrase
-                    // is: it only unlocks a local key, so nothing reaches the server, and the agent or another key may
-                    // still get in. But it is recorded, so an attempt that then fails SSH reads as needing the user.
+                    // A password prompt is aborted, not cancelled: a cancel would stop sign-in, and the abort keeps an
+                    // automatic attempt from looking like the user's own cancel. A passphrase is cancelled: it only
+                    // unlocks a local key, so nothing reaches the server. The native layer then ends sign-in, since a
+                    // declined passphrase fails the key's auth outright, so no other key or the agent is tried. It is
+                    // recorded, so an attempt that then fails SSH reads as needing the user.
                     if (kind == SshInteractionKind.Password) throw Abort(kind);
                     Decline(kind);
                     return SshInteractionResponse.Cancel();
@@ -663,11 +668,12 @@ internal sealed class RemoteMuxInteractionHandler
                 return SshInteractionResponse.Cancel();
             }
 
-            // A keyboard-interactive round with questions has no answer here; one with none (some servers
-            // send an empty round last) is answered with nothing, as the protocol expects.
+            // A keyboard-interactive round with questions has no answer here. One with none (some servers send an
+            // empty round last) is answered with nothing, as the protocol expects: not a cancel, which now stops
+            // sign-in.
             return kind == SshInteractionKind.KeyboardInteractive && request.KeyboardPrompts.Count > 0
                 ? throw Abort(kind)
-                : SshInteractionResponse.Cancel();
+                : SshInteractionResponse.FromKeyboardResponses();
         }
 
         /// <summary>
@@ -875,8 +881,9 @@ internal sealed class RemoteMuxInteractionHandler
 
 /// <summary>
 /// An attempt with nobody to ask (an automatic reconnect) had nothing to answer a password or
-/// keyboard-interactive prompt with, so it ended the connection rather than send an empty answer, which
-/// the server would count as a failed login. The native exec channel turns it into its transport failure.
+/// keyboard-interactive prompt with, so it ended the connection without answering. Thrown rather than
+/// answered with a cancel, which would also send nothing, so the attempt is told apart from the user's own
+/// cancel and reported as needing the user. The native exec channel turns it into its transport failure.
 /// </summary>
 internal sealed class RemoteMuxPromptAbortedException(SshInteractionKind prompt)
     : Exception($"no answer for the {Describe(prompt)} prompt without a user to ask; the connection was ended without answering it")

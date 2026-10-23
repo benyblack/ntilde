@@ -640,8 +640,8 @@ public sealed class RemoteMuxConnectorTests : IDisposable
     /// <summary>
     /// Codex D3, end to end through the real native transport: an automatic attempt meets an encrypted key's passphrase
     /// prompt with nothing remembered. It cancels it - a passphrase only unlocks a local key, so nothing reaches the
-    /// server, and the agent or another key may still get in - but this time nothing else does, and SSH fails. Signing
-    /// in needs the user, so the failure is NeedsUser, the marker the reconnect loop stops on, not SshFailed.
+    /// server - and the cancel ends sign-in, so SSH fails. Signing in needs the user, so the failure is NeedsUser, the
+    /// marker the reconnect loop stops on, not SshFailed.
     /// </summary>
     [Fact]
     public async Task An_automatic_native_attempt_that_cancels_an_unremembered_passphrase_and_then_fails_needs_the_user()
@@ -657,7 +657,7 @@ public sealed class RemoteMuxConnectorTests : IDisposable
 
         (NativeSshResponseKind kind, string payload) = Assert.Single(interop.Submissions);
         Assert.Equal(NativeSshResponseKind.Passphrase, kind);
-        Assert.Equal("""{"text":""}""", payload);   // the cancel: no secret, and none sent to the server
+        Assert.Equal("""{"text":"","canceled":true}""", payload);   // a cancel: no secret, and sign-in stops
         Assert.Empty(user.Asked);
         Assert.Equal(RemoteFailureKind.NeedsUser, failed.Failure.Kind);
         Assert.Equal("signing in to nova@fake-host needs a key passphrase, which an automatic reconnect does not ask for", failed.Failure.Reason);
@@ -1533,9 +1533,9 @@ public sealed class RemoteMuxConnectorTests : IDisposable
         Assert.Equal(
             new[]
             {
-                (NativeSshResponseKind.Passphrase, """{"text":""}"""),
+                (NativeSshResponseKind.Passphrase, """{"text":"","canceled":true}"""),
                 (NativeSshResponseKind.Password, """{"text":"s3cret"}"""),
-                (NativeSshResponseKind.Passphrase, """{"text":""}"""),
+                (NativeSshResponseKind.Passphrase, """{"text":"","canceled":true}"""),
                 (NativeSshResponseKind.Password, """{"text":"s3cret"}"""),
             },
             interop.Submissions);

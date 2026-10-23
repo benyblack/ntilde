@@ -617,6 +617,108 @@ public sealed class NativeSshDockerE2eTests
         }
     }
 
+    /// <summary>
+    /// The fixture's keyboard-interactive-only user: the transfer must sign in with the configured
+    /// password even though the server never offers the `password` method.
+    /// </summary>
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task NativeSftp_KeyboardInteractiveUser_CanDownloadFile()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"ntilde-native-sftp-kbd-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            // WriteTextFileAsync leaves the file 0644, so kbdnova can read it from /tmp.
+            const string remotePath = "/tmp/native-sftp-kbd-source.txt";
+            const string expected = "native-sftp-kbd-download";
+            await fixture.WriteTextFileAsync(remotePath, expected);
+
+            SshHostKeyInfo hostKey = await fixture.GetHostKeyAsync();
+            string knownHostsPath = Path.Combine(tempRoot, "native_known_hosts.json");
+            var knownHosts = new NativeKnownHostsStore(knownHostsPath);
+            knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
+
+            string localPath = Path.Combine(tempRoot, "downloaded.txt");
+
+            var interop = new NativeSshInterop();
+            var connection = new NativeSshConnectionOptions
+            {
+                Host = fixture.Host,
+                User = fixture.KeyboardInteractiveUserName,
+                Port = fixture.Port,
+                Password = fixture.KeyboardInteractivePassword,
+                KnownHostsFilePath = knownHostsPath
+            };
+            var transfer = new NativeSftpTransferOptions
+            {
+                Direction = NativeSftpTransferDirection.Download,
+                Kind = NativeSftpTransferKind.File,
+                RemotePath = remotePath,
+                LocalPath = localPath
+            };
+
+            interop.RunSftpTransfer(connection, transfer, progress: null, CancellationToken.None);
+
+            Assert.Equal(expected, File.ReadAllText(localPath));
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task NativeSftp_KeyboardInteractiveUser_BadPassword_ReturnsAuthenticationFailed()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"ntilde-native-sftp-kbd-auth-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            await fixture.WriteTextFileAsync("/tmp/auth-check-kbd.txt", "auth");
+            SshHostKeyInfo hostKey = await fixture.GetHostKeyAsync();
+            string knownHostsPath = Path.Combine(tempRoot, "native_known_hosts.json");
+            var knownHosts = new NativeKnownHostsStore(knownHostsPath);
+            knownHosts.TrustHost(fixture.Host, fixture.Port, hostKey.Algorithm, hostKey.Fingerprint);
+
+            var interop = new NativeSshInterop();
+            var connection = new NativeSshConnectionOptions
+            {
+                Host = fixture.Host,
+                User = fixture.KeyboardInteractiveUserName,
+                Port = fixture.Port,
+                Password = "wrong-password",
+                KnownHostsFilePath = knownHostsPath
+            };
+            var transfer = new NativeSftpTransferOptions
+            {
+                Direction = NativeSftpTransferDirection.Download,
+                Kind = NativeSftpTransferKind.File,
+                LocalPath = Path.Combine(tempRoot, "auth.txt"),
+                RemotePath = "/tmp/auth-check-kbd.txt"
+            };
+
+            // A refused keyboard-interactive password is still the auth-failed status, so the app can
+            // forget the remembered password; transfers never retry.
+            NativeSshAuthenticationRefusedException error = Assert.Throws<NativeSshAuthenticationRefusedException>(
+                () => interop.RunSftpTransfer(connection, transfer, progress: null, CancellationToken.None));
+
+            Assert.IsAssignableFrom<InvalidOperationException>(error);
+            Assert.Contains("Authentication failed", error.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     [DockerFact]
     [Trait("Category", "DockerE2E")]
     [Trait("Target", "NativeSsh")]
