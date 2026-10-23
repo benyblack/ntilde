@@ -8,6 +8,12 @@ namespace Ntilde.Pty
     {
         public int ActiveTabIndex { get; set; } = 0;
         public List<TabSession> Tabs { get; set; } = new();
+
+        /// <summary>
+        /// Window state, written only by the shutdown save of the startup session file. Workspace,
+        /// template and bundle captures never set it.
+        /// </summary>
+        public bool FocusMode { get; set; }
     }
 
     public class TabSession

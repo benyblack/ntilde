@@ -4245,6 +4245,7 @@ namespace Ntilde
                 else
                 {
                     restoredSession = loadedSession;
+                    if (loadedSession!.FocusMode) EnterFocusMode();
                 }
             }
             else
@@ -11878,7 +11879,7 @@ namespace Ntilde
         /// </summary>
         private void SaveSessionWithoutEndedShells()
         {
-            if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
+            if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose, focusMode: _isFocusMode);
         }
 
         private async System.Threading.Tasks.Task<Ntilde.Mux.MuxClient?> ProbeMuxDaemonForUpdateAsync() =>
