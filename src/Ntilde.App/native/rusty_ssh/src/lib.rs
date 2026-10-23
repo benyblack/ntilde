@@ -8893,8 +8893,9 @@ mod exec_session_e2e_tests {
         assert!(!has(&events, NovaSshEventKind::KeyboardInteractivePrompt), "{events:?}");
 
         let seen = lock(&seen);
-        assert!(seen.password_attempts.is_empty(), "{:?}", seen.password_attempts);
-        assert!(seen.keyboard_answers.is_empty(), "{:?}", seen.keyboard_answers);
+        // The count, not the values: a failure message must not print what the server was sent.
+        assert_eq!(0, seen.password_attempts.len(), "password attempts the server received");
+        assert_eq!(0, seen.keyboard_answers.len(), "keyboard-interactive answers the server received");
     }
 
     /// The keyboard-interactive password question is the password window, asked once, with the
@@ -8914,7 +8915,7 @@ mod exec_session_e2e_tests {
         assert_eq!(serde_json::json!(false), prompts[0]["followsRefusal"]);
 
         let seen = lock(&seen);
-        assert!(seen.password_attempts.is_empty(), "no password method: {:?}", seen.password_attempts);
+        assert_eq!(0, seen.password_attempts.len(), "no password method");
         assert_eq!(answers(&[&[PASSWORD], &[]]), seen.keyboard_answers);
     }
 
@@ -9029,8 +9030,9 @@ mod exec_session_e2e_tests {
         assert!(!has(&events, NovaSshEventKind::Connected), "{events:?}");
 
         let seen = lock(&seen);
-        assert!(seen.keyboard_answers.is_empty(), "{:?}", seen.keyboard_answers);
-        assert!(seen.password_attempts.is_empty(), "{:?}", seen.password_attempts);
+        assert_eq!(0, seen.keyboard_answers.len(), "keyboard-interactive answers the server received");
+        // The count, not the values: a failure message must not print what the server was sent.
+        assert_eq!(0, seen.password_attempts.len(), "password attempts the server received");
     }
 
     /// A wrong second factor is not a refused password: no password question was converted, so
