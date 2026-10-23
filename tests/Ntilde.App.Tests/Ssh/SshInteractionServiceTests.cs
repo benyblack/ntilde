@@ -786,6 +786,56 @@ public sealed class SshInteractionServiceTests
     }
 
     [AvaloniaFact]
+    public async Task KeyboardInteractiveRoundWithOneQuestion_SendsOneAnswer()
+    {
+        // PAM's usual round: a single "Password: " question. The dialog answered it as a password
+        // (one field read as a secret), so the server got zero answers to one question - sshd then
+        // drops the connection ("wrong number of replies"), seen as "Unable to receive more messages
+        // from the channel".
+        var service = new SshInteractionService(
+            authPresenter: (_, vm, _) =>
+            {
+                vm.Prompts[0].Value = "typed-password";
+                return Task.FromResult(vm.BuildResponse());
+            });
+
+        var response = await service.HandleAsync(new SshInteractionRequest
+        {
+            Kind = SshInteractionKind.KeyboardInteractive,
+            KeyboardPrompts = [new SshKeyboardPrompt("Password: ", false)]
+        }, CancellationToken.None);
+
+        Assert.Equal(["typed-password"], response.KeyboardResponses);
+        byte[] payload = NativeSshInteractionJson.BuildResponsePayload(NativeSshResponseKind.KeyboardInteractive, response);
+        using var sent = System.Text.Json.JsonDocument.Parse(payload);
+        Assert.Equal(1, sent.RootElement.GetProperty("responses").GetArrayLength());
+    }
+
+    [AvaloniaFact]
+    public async Task KeyboardInteractiveRoundWithNoQuestions_IsAnsweredWithoutADialog()
+    {
+        // sshd's PAM sends an empty round after a correct password. It asks nothing, so a dialog
+        // would be a blank window the user has to dismiss.
+        int presented = 0;
+        var service = new SshInteractionService(
+            authPresenter: (_, vm, _) =>
+            {
+                presented++;
+                return Task.FromResult(vm.BuildResponse());
+            });
+
+        var response = await service.HandleAsync(new SshInteractionRequest
+        {
+            Kind = SshInteractionKind.KeyboardInteractive,
+            KeyboardPrompts = []
+        }, CancellationToken.None);
+
+        Assert.Equal(0, presented);
+        Assert.False(response.IsCanceled);
+        Assert.Empty(response.KeyboardResponses);
+    }
+
+    [AvaloniaFact]
     public async Task KeyboardInteractiveRequestsMapAllPromptFields()
     {
         AuthPromptViewModel? capturedVm = null;

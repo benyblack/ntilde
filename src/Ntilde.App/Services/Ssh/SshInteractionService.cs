@@ -73,6 +73,8 @@ public sealed class SshInteractionService : ISshInteractionService
             SshInteractionKind.UnknownHostKey or SshInteractionKind.ChangedHostKey => await HandleHostKeyAsync(owner, request, cancellationToken),
             SshInteractionKind.Password => await HandlePasswordAsync(owner, request, cancellationToken),
             SshInteractionKind.Passphrase => await _authPresenter(owner, CreatePassphraseViewModel(request), cancellationToken),
+            // A round with no questions (sshd's PAM sends one after a correct password) has nothing to ask the user.
+            SshInteractionKind.KeyboardInteractive when request.KeyboardPrompts.Count == 0 => SshInteractionResponse.FromKeyboardResponses(),
             SshInteractionKind.KeyboardInteractive => await _authPresenter(owner, CreateKeyboardViewModel(request), cancellationToken),
             _ => SshInteractionResponse.Cancel()
         };
@@ -292,7 +294,8 @@ public sealed class SshInteractionService : ISshInteractionService
         var viewModel = new AuthPromptViewModel
         {
             Title = string.IsNullOrWhiteSpace(request.Name) ? "Keyboard Interactive" : request.Name,
-            Message = request.Instructions
+            Message = request.Instructions,
+            IsKeyboardInteractive = true
         };
 
         foreach (SshKeyboardPrompt prompt in request.KeyboardPrompts)
