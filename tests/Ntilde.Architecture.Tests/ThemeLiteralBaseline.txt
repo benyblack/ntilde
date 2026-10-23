@@ -10,7 +10,7 @@
 11 src/Ntilde.App/Controls/TerminalPane.axaml.cs
 11 src/Ntilde.App/Controls/TransferCenter.axaml
 8 src/Ntilde.App/Controls/TransferDialog.axaml
-44 src/Ntilde.App/MainWindow.axaml
+28 src/Ntilde.App/MainWindow.axaml
 18 src/Ntilde.App/MainWindow.axaml.cs
 6 src/Ntilde.App/Shell/Converters.cs
 2 src/Ntilde.App/Shell/SessionManager.cs

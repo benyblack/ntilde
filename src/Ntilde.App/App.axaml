@@ -237,7 +237,7 @@
         </Style>
         
         <!-- Custom Button Template for Title Bar Buttons -->
-        <Style Selector="Button#BtnNewTab, Button#SettingsBtn">
+        <Style Selector="Button#BtnNewTab">
             <Setter Property="Opacity" Value="0.5"/>
             <Setter Property="Template">
                 <ControlTemplate>
@@ -255,10 +255,10 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button#BtnNewTab:pointerover, Button#SettingsBtn:pointerover">
+        <Style Selector="Button#BtnNewTab:pointerover">
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
-        <Style Selector="Button#BtnNewTab:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button#SettingsBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button#BtnNewTab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#30FFFFFF"/>
         </Style>
     </Application.Styles>

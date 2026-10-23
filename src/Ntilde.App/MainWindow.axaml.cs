@@ -4019,16 +4019,6 @@ namespace Ntilde
 
             var tabs = this.FindControl<TabControl>("Tabs");
             var titleBar = this.FindControl<Grid>("TitleBar");
-            var dragBorder = this.FindControl<Border>("DragBorder");
-
-            if (dragBorder != null)
-            {
-                dragBorder.PointerPressed += (s, e) =>
-                {
-                    if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-                        BeginMoveDrag(e);
-                };
-            }
 
             if (titleBar != null)
             {
@@ -8667,17 +8657,6 @@ namespace Ntilde
             // Background brush for the main content area
             var bgBrush = new SolidColorBrush(theme.Background.ToAvaloniaColor(), _settings.WindowOpacity);
 
-            // Header/TitleBar brush (slightly darker/different to provide contrast)
-            var themeBg = theme.Background.ToAvaloniaColor();
-            var headerBg = Color.FromRgb(
-                (byte)Math.Max(0, themeBg.R - 10),
-                (byte)Math.Max(0, themeBg.G - 10),
-                (byte)Math.Max(0, themeBg.B - 10));
-
-            // Use slightly higher opacity for the header to keep buttons visible
-            var titleBarOpacity = Math.Min(1.0, _settings.WindowOpacity + 0.1);
-            var headerBrush = new SolidColorBrush(headerBg, titleBarOpacity);
-
             this.Background = Brushes.Transparent;
             var bgGrid = this.FindControl<Grid>("WindowBackground");
             if (bgGrid != null)
@@ -8721,12 +8700,6 @@ namespace Ntilde
 
             var titleBar = this.FindControl<Grid>("TitleBar");
             if (titleBar != null) titleBar.Background = Brushes.Transparent;
-
-            var dragBorder = this.FindControl<Border>("DragBorder");
-            if (dragBorder != null)
-            {
-                dragBorder.Background = headerBrush;
-            }
 
         }
 

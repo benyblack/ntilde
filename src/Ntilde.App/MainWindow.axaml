@@ -11,15 +11,6 @@
         WindowDecorationsTheme="{StaticResource NtildeWindowDecorationsTheme}"
         TransparencyLevelHint=""
         Background="Transparent">
-    <Window.Resources>
-        <DataTemplate x:Key="TabHeaderTemplate">
-            <TextBlock Text="{Binding}" Foreground="White"
-                       FontSize="10" VerticalAlignment="Center"
-                       HorizontalAlignment="Center"
-                       Padding="6,1,6,1"
-                       Margin="0,0,0,0"/>
-        </DataTemplate>
-    </Window.Resources>
     <Window.Styles>
         <Style Selector="Button#BtnNewTab">
             <Setter Property="Opacity" Value="1.0"/>
@@ -386,40 +377,6 @@
                             Content="Restart now"
                             Focusable="False"/>
                 </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- Search Overlay -->
-        <Border Name="SearchPanel" IsVisible="False" VerticalAlignment="Top" HorizontalAlignment="Right" 
-                Margin="0,50,20,0" Background="#383838" CornerRadius="4" Padding="6" Width="420"
-                BorderBrush="#505050" BorderThickness="1" ZIndex="200">
-            <Border.Resources>
-                <SolidColorBrush x:Key="TextControlBackground">#1a1a1a</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlBackgroundPointerOver">#1a1a1a</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlBackgroundFocused">#1a1a1a</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlForeground">White</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlForegroundPointerOver">White</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlForegroundFocused">White</SolidColorBrush>
-            </Border.Resources>
-            <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto, Auto">
-                <TextBox Name="SearchBox" PlaceholderText="Search..." 
-                         BorderThickness="1" BorderBrush="#505050" 
-                         VerticalContentAlignment="Center" 
-                         Padding="8,4" Margin="2"/>
-                
-                <!-- Options -->
-                <ToggleButton Name="SearchCaseSensitive" Grid.Column="1" Content="Aa" 
-                              Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" 
-                              ToolTip.Tip="Match Case"/>
-                <ToggleButton Name="SearchRegex" Grid.Column="2" Content=".*" 
-                              Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" 
-                              ToolTip.Tip="Use Regular Expression"/>
-
-                <TextBlock Name="SearchCount" Grid.Column="3" Text="0/0" Foreground="#AAA" 
-                           VerticalAlignment="Center" Margin="8,0" FontSize="12"/>
-                <Button Name="SearchPrev" Grid.Column="4" Content="▲" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-                <Button Name="SearchNext" Grid.Column="5" Content="▼" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-                <Button Name="SearchClose" Grid.Column="6" Content="✕" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
             </Grid>
         </Border>
 
