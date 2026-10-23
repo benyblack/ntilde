@@ -20,8 +20,9 @@ namespace Ntilde.Tests.Theming;
 /// visual pass, with the raw ANSI blue as its selection line. Headers now inherit the NtTab*
 /// tokens, so a theme switch reaches them without a rebuild, and a pass reuses the token
 /// instances. Each test puts the Default theme back: the tokens are application-wide.
+/// TestAppDataRoot keeps the session a closing window saves out of the real data folder.
 /// </summary>
-public sealed class TabStripThemeTests : IDisposable
+public sealed class TabStripThemeTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 

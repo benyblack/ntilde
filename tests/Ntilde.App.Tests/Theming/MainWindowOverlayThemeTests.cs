@@ -18,9 +18,10 @@ namespace Ntilde.Tests.Theming;
 /// The main window's overlays were fixed dark islands: the command palette (#252526 with a black
 /// scrim), the toasts (#20242C), the transfer overlay (#1E1E1E). Under a light theme the palette's
 /// search text turned black on that dark panel. They now resolve the tokens, live. Each test puts
-/// the Default theme back: the tokens are application-wide.
+/// the Default theme back: the tokens are application-wide. TestAppDataRoot keeps the session a
+/// closing window saves out of the real data folder.
 /// </summary>
-public sealed class MainWindowOverlayThemeTests : IDisposable
+public sealed class MainWindowOverlayThemeTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
