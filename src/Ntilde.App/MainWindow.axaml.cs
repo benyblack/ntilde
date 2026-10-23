@@ -584,7 +584,7 @@ namespace Ntilde
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             {
-                if (e.GetPosition(this).Y <= 36)
+                if (e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
                 {
                     BeginMoveDrag(e);
                 }
@@ -2101,6 +2101,17 @@ namespace Ntilde
             var grip = FindTabTemplatePart<Border>("PART_TabStripResizeGrip");
             var panel = FindTabItemsPresenter()?.Panel as StackPanel;
 
+            // Focus mode hides the whole tab area. Nothing persisted (width, orientation) is
+            // touched, so leaving restores exactly what was there.
+            if (_isFocusMode)
+            {
+                if (sidebar != null) sidebar.IsVisible = false;
+                if (spacer != null) spacer.Height = FocusStripHeight;
+                return;
+            }
+
+            if (sidebar != null) sidebar.IsVisible = true;
+
             if (_isVerticalTabStrip)
             {
                 if (sidebar != null) DockPanel.SetDock(sidebar, Dock.Left);
@@ -2171,6 +2182,14 @@ namespace Ntilde
             var button = FindTitleBarButton(TitleBarCatalog.OpenTabListId);
             var scrollViewer = FindTabHeaderScrollViewer();
             if (tabs == null || badge == null || scrollViewer == null) return;
+
+            // The badge can be parented inside TitleBarItemsHost and this runs from paths other
+            // than UpdateTabHeaderViewport, so it must stay hidden while the strip replaces the bar.
+            if (_isFocusMode)
+            {
+                badge.IsVisible = false;
+                return;
+            }
 
             if (button == null)
             {
@@ -4109,6 +4128,7 @@ namespace Ntilde
                     UpdateBroadcastIndicator();
                     PopulateTabListMenu();
                     UpdateTabHeaderViewport();
+                    UpdateFocusStrip();
                     // The taskbar mirrors whichever tab is now selected (#271).
                     RefreshTaskbarProgressFromSelection();
                     Dispatcher.UIThread.Post(EnsureSelectedTabHeaderVisible, DispatcherPriority.Background);
@@ -4445,6 +4465,13 @@ namespace Ntilde
                 {
                     RecordCommandUsage("equalize_panes");
                     EqualizeCurrentSplit();
+                    e.Handled = true;
+                    return;
+                }
+                if (IsShortcut(e, "toggle_focus_mode", "Ctrl+Shift+Enter"))
+                {
+                    RecordCommandUsage("toggle_focus_mode");
+                    ToggleFocusMode();
                     e.Handled = true;
                     return;
                 }
@@ -8367,6 +8394,7 @@ namespace Ntilde
             UpdateTabAutomationLabels();
             PopulateTabListMenu();
             UpdateTabHeaderViewport();
+            UpdateFocusStrip();
             sw.Stop();
             RendererStatistics.RecordTabVisualUpdateTime(sw.ElapsedMilliseconds);
         }
@@ -8721,6 +8749,7 @@ namespace Ntilde
             }
 
             _connectionManagerWindow?.ApplyTheme(theme);
+            UpdateFocusStrip();
         }
 
         /// <summary>
@@ -8876,6 +8905,7 @@ namespace Ntilde
             // Horizontal split => horizontal divider => stacked panes.
             CommandRegistry.Register("Split Horizontal", "View", () => SplitPane(Avalonia.Layout.Orientation.Vertical), GetEffectiveShortcutBinding("split_horizontal", "Ctrl+Shift+E"), "split_horizontal");
             CommandRegistry.Register("Equalize Panes", "View", () => EqualizeCurrentSplit(), GetEffectiveShortcutBinding("equalize_panes", "Ctrl+Shift+G"), "equalize_panes");
+            CommandRegistry.Register("Toggle Focus Mode", "View", () => ToggleFocusMode(), GetEffectiveShortcutBinding("toggle_focus_mode", "Ctrl+Shift+Enter"), "toggle_focus_mode");
             CommandRegistry.Register("Pane: Toggle Zoom", "View", () => TogglePaneZoomForCurrentTab(), GetEffectiveShortcutBinding("toggle_pane_zoom", "Ctrl+Shift+Z"), "toggle_pane_zoom");
             CommandRegistry.Register("Pane: Toggle Broadcast Input (Tab)", "View", () => ToggleBroadcastForCurrentTab(), GetEffectiveShortcutBinding("toggle_broadcast_input", "Ctrl+Shift+B"), "toggle_broadcast_input");
             CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
@@ -12269,6 +12299,9 @@ namespace Ntilde
             // recomputing again from the same width is a no-op that changes nothing and triggers
             // nothing further.
             Dispatcher.UIThread.Post(UpdateTabHeaderViewport, DispatcherPriority.Background);
+
+            // Last: the generated items above are all fresh and visible.
+            ApplyFocusModeToTitleBar();
         }
 
         /// <summary>

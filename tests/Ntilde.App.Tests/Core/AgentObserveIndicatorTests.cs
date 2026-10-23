@@ -12,6 +12,7 @@ using Ntilde.Shell.TitleBar;
 // Aliased, not a plain namespace using: Avalonia.Controls.Shapes also exports a Path type that
 // would collide with System.IO.Path, which this file uses for its NTILDE_APPDATA_ROOT scratch dirs.
 using Ellipse = Avalonia.Controls.Shapes.Ellipse;
+using static Ntilde.Tests.Core.WindowTestSupport;
 
 namespace Ntilde.Tests.Core;
 
@@ -346,52 +347,6 @@ public class AgentObserveIndicatorTests : IDisposable
         });
     }
 
-    /// <summary>
-    /// Builds a tab holding a real two-pane split — the shape
-    /// <c>SessionManager.CreateRestoredTabItem</c> produces from a
-    /// <c>NodeType.Split</c> root — and runs it through the production
-    /// <c>InitializeRestoredTabs</c> so the panes are wired to the window and
-    /// their registrations are associated with the tab.
-    /// </summary>
-    private static TabItem AddSplitTab(MainWindow window, out TerminalPane first, out TerminalPane second)
-    {
-        var settings = (TerminalSettings)typeof(MainWindow)
-            .GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(window)!;
-
-        var session = new TabSession
-        {
-            Title = "Split",
-            Root = new PaneNode
-            {
-                Type = NodeType.Split,
-                SplitOrientation = 0,
-                Children =
-                {
-                    new PaneNode { Type = NodeType.Leaf, Command = "cmd.exe", Arguments = string.Empty, PaneId = Guid.NewGuid().ToString() },
-                    new PaneNode { Type = NodeType.Leaf, Command = "cmd.exe", Arguments = string.Empty, PaneId = Guid.NewGuid().ToString() }
-                },
-                Sizes = { "1*", "1*" }
-            }
-        };
-
-        var tab = SessionManager.CreateRestoredTabItem(session, settings)!;
-        var tabs = window.FindControl<TabControl>("Tabs")!;
-        tabs.Items.Add(tab);
-
-        typeof(MainWindow)
-            .GetMethod("InitializeRestoredTabs", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(window, new object[] { tabs });
-
-        // RestorePaneTree builds [child0, GridSplitter, child1]; OfType filters
-        // the splitter out and preserves order.
-        var panes = ((Grid)tab.Content!).Children.OfType<TerminalPane>().ToList();
-        Assert.Equal(2, panes.Count);
-        first = panes[0];
-        second = panes[1];
-        return tab;
-    }
-
     [AvaloniaFact]
     public void Entering_and_leaving_pane_zoom_refreshes_the_indicator()
     {
@@ -444,9 +399,6 @@ public class AgentObserveIndicatorTests : IDisposable
             .Invoke(window, new object[] { tab, pane, true })!;
         Assert.True(entered, "Test setup failed: EnterPaneZoom refused to zoom the pane.");
     }
-
-    private static AgentSessionRegistration RegistrationFor(TerminalPane pane)
-        => Assert.Single(AgentSessionRegistry.Instance.GetRegistrations().Where(r => r.PaneId == pane.PaneId));
 
     private static TabItem AddBareTab(MainWindow window, string title)
     {

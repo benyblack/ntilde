@@ -108,6 +108,7 @@ Panes allow you to split a single tab into multiple terminal windows.
 - **Zoom Pane:** `Ctrl+Shift+Z` toggles zooming of the active pane to fill the entire tab temporarily.
 - **Broadcast Input:** `Ctrl+Shift+B` toggles sending keystrokes to *all* panes in the current tab simultaneously.
 - **Find/Search:** `Ctrl+Shift+F` opens the search overlay for the active pane.
+- **Focus Mode:** `Ctrl+Shift+Enter` hides the tabs, title bar buttons, status bars and side panels, leaving only the current tab and a slim strip with the window buttons. Every tab keeps running. Press it again, or right-click the strip and choose Exit Focus Mode, to bring everything back.
 
 ### 3.3 Persistent sessions (multiplexer)
 Local shells can keep running in a background process, the multiplexer, when Ntilde's window

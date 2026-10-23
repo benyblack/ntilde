@@ -241,6 +241,7 @@ Audit includes:
 - Split horizontal: `Ctrl+Shift+E`
 - Equalize panes: `Ctrl+Shift+G`
 - Toggle pane zoom: `Ctrl+Shift+Z`
+- Toggle focus mode: `Ctrl+Shift+Enter`
 - Toggle pane broadcast input: `Ctrl+Shift+B`
 
 Every shortcut here is the default. Settings → Shortcuts lists them all and lets
