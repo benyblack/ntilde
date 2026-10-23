@@ -35,6 +35,23 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
         Assert.Equal((true, false), TerminalPane.ResolveRemoteFilesToggle(false, false));
     }
 
+    // Final review M3: while focus mode hides an open panel, a click on the entry reveals it, so the entry must not
+    // say "Hide".
+    [Theory]
+    [InlineData(false, false, "Remote Files")]
+    [InlineData(true, false, "Hide Remote Files")]
+    [InlineData(true, true, "Remote Files")]
+    public void The_remote_files_entry_says_what_a_click_does(bool isOpen, bool hiddenByFocus, string expected)
+    {
+        Assert.Equal(expected, TerminalPane.RemoteFilesMenuHeader(isOpen, hiddenByFocus));
+
+        // Opening from closed goes through OpenRemoteFilesSidebarAsync, which always shows the panel.
+        bool shownAfterClick = isOpen
+            ? TerminalPane.ResolveRemoteFilesToggle(isOpen, hiddenByFocus) is (true, false)
+            : true;
+        Assert.Equal(expected == "Remote Files", shownAfterClick);
+    }
+
     private static void MakeActable(TerminalPane pane)
     {
         RegistrationFor(pane).IsAgentActable = true;

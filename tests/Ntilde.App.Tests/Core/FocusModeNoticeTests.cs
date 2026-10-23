@@ -256,6 +256,24 @@ public sealed class FocusModeNoticeTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.Contains("1.2.3", UpdateMessage(window));
     }
 
+    // Final review M1: a held update the user then saw (a manual check) and closed must not come back on leave.
+    [AvaloniaFact]
+    public void A_held_update_dismissed_in_focus_mode_does_not_come_back_on_leave()
+    {
+        MainWindow window = WindowTestSupport.NewShownWindow();
+        window.EnterFocusMode();
+
+        WindowTestSupport.Invoke(window, "ShowUpdateToastUnprompted", "1.2.3");
+        Assert.False(UpdateVisible(window));
+        // The manual check answers the user at once.
+        WindowTestSupport.Invoke(window, "ShowUpdateToast", "1.2.3");
+        Assert.True(UpdateVisible(window));
+        WindowTestSupport.Invoke(window, "HideUpdateToast");
+
+        window.LeaveFocusMode();
+        Assert.False(UpdateVisible(window));
+    }
+
     [AvaloniaFact]
     public void A_closed_update_toast_is_not_revived_by_the_next_focus_cycle()
     {

@@ -1078,9 +1078,7 @@ namespace Ntilde.Controls
             bool canOpen = (isSidebarOpen && !isSidebarDisconnected) || Session?.IsProcessRunning == true;
             MenuToggleRemoteFilesSidebar.IsVisible = isSupported;
             MenuToggleRemoteFilesSidebar.IsEnabled = isSupported && !isBlockedByAltScreen && canOpen;
-            MenuToggleRemoteFilesSidebar.Header = isSidebarOpen
-                ? "Hide Remote Files"
-                : "Remote Files";
+            MenuToggleRemoteFilesSidebar.Header = RemoteFilesMenuHeader(isSidebarOpen, _remoteFilesHiddenByFocus);
         }
 
         private void UpdateRemoteFilesSidebarVisibility()
@@ -1178,6 +1176,7 @@ namespace Ntilde.Controls
                     // Focus mode hid the panel; the toggle brings it back instead of closing it.
                     _remoteFilesHiddenByFocus = hiddenByFocus;
                     UpdateRemoteFilesSidebarVisibility();
+                    UpdateRemoteFilesSidebarEntryPointState();
                     return;
                 }
 

@@ -138,8 +138,9 @@ public sealed class FocusModeSessionTests : IClassFixture<TestAppDataRoot>, IDis
                 Dispatcher.UIThread.RunJobs();
             }
 
+            // Both of the file's one-pane tabs, the deferred one included.
             var panes = window.AllPanesForTest();
-            Assert.NotEmpty(panes);
+            Assert.Equal(2, panes.Count);
             Assert.All(panes, p => Assert.True(p.FocusChromeHidden));
         }
         finally

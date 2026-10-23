@@ -11535,6 +11535,8 @@ namespace Ntilde
         private void HideUpdateToast()
         {
             _shownUpdateVersion = null;
+            // Dismissed is dismissed: an update held for focus mode must not come back on leave.
+            _heldUpdateVersion = null;
             var toast = this.FindControl<Border>("UpdateToast");
             if (toast != null)
             {

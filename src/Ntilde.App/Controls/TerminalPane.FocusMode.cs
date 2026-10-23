@@ -24,6 +24,7 @@ namespace Ntilde.Controls
                 AgentOutputToggle.IsVisible = _markdownPresent && !value;
                 UpdateAgentOutputPanelVisibility();
                 UpdateRemoteFilesSidebarVisibility();
+                UpdateRemoteFilesSidebarEntryPointState();
             }
         }
 
@@ -47,5 +48,12 @@ namespace Ntilde.Controls
         /// <summary>A toggle on a panel that focus mode hid reveals it; otherwise it flips the open state.</summary>
         internal static (bool IsOpen, bool HiddenByFocus) ResolveRemoteFilesToggle(bool isOpen, bool hiddenByFocus) =>
             isOpen && hiddenByFocus ? (true, false) : (!isOpen, hiddenByFocus);
+
+        /// <summary>
+        /// The pane menu's Remote Files entry. A panel focus mode hid is open but not shown, and a click reveals it
+        /// (<see cref="ResolveRemoteFilesToggle"/>), so the entry does not offer to hide it.
+        /// </summary>
+        internal static string RemoteFilesMenuHeader(bool isOpen, bool hiddenByFocus) =>
+            isOpen && !hiddenByFocus ? "Hide Remote Files" : "Remote Files";
     }
 }
