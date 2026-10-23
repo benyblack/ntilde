@@ -5790,8 +5790,11 @@ namespace Ntilde
             TerminalPane? pane = AllPanes().FirstOrDefault(p => Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint) == endpoint
                 && ((p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id));
             if (pane is null) return false;
-            LeaveFocusModeForNavigation();
-            if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
+            TabItem? tab = ResolveOwningTabForPane(pane);
+            TabControl? tabs = this.FindControl<TabControl>("Tabs");
+            // Only going to another tab leaves focus mode; a pane of the tab on screen is reached where it is.
+            if (!ReferenceEquals(tab, tabs?.SelectedItem)) LeaveFocusModeForNavigation();
+            if (tab is not null && tabs is not null) tabs.SelectedItem = tab;
             UpdateActivePane(pane);
             FocusPaneTerminal(pane, defer: true);
             return true;
@@ -6878,12 +6881,7 @@ namespace Ntilde
         private async Task CloseActivePaneAsync(bool skipConfirm = false)
         {
             if (_currentPane is not { } pane) return;
-            // Closing a tab's last pane closes the tab, which moves the user to another one.
-            if (_paneOwnerTab.TryGetValue(pane, out var ownerTab)
-                && EnumeratePanes(GetLayoutRootForTab(ownerTab)).Count() == 1)
-            {
-                LeaveFocusModeForNavigation();
-            }
+            if (IsOnlyPaneOfItsTab(pane)) LeaveFocusModeForNavigation();
 
             // A share whose sharing cannot be known detaches instead of ending, and the close says so itself: that
             // "Shell detached" answers this command.
@@ -7226,7 +7224,9 @@ namespace Ntilde
 
         private void DetachActivePane()
         {
-            if (_currentPane is { } pane) _ = DetachPaneAsync(pane);
+            if (_currentPane is not { } pane) return;
+            if (IsOnlyPaneOfItsTab(pane)) LeaveFocusModeForNavigation();
+            _ = DetachPaneAsync(pane);
         }
 
         /// <summary>"Pane: Detach" (spec §7.4): the pane closes, the shell keeps running in the daemon.</summary>

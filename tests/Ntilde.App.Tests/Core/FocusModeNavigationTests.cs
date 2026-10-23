@@ -171,6 +171,81 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
     }
 
     [AvaloniaFact]
+    public async Task Closing_the_zoomed_pane_of_a_split_stays_in_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        TwoTabs(window);
+        TabItem split = AddSplitTab(window, out TerminalPane first, out TerminalPane second);
+        Select(window, split);
+        Invoke(window, "UpdateActivePane", first);
+        Assert.True((bool)Invoke(window, "EnterPaneZoom", split, first, true)!);
+        Assert.Same(first, CurrentPane(window));
+        window.EnterFocusMode();
+
+        // The zoom stash no longer holds the zoomed pane, but the tab still has two: it survives the close.
+        await (Task)Invoke(window, "CloseActivePaneAsync", true)!;
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(window.IsFocusMode);
+        Assert.Same(split, TabsOf(window).SelectedItem);
+        Assert.Same(second, split.Content);
+    }
+
+    // Final review M2: reaching a pane of the tab on screen is not a tab change.
+
+    [AvaloniaFact]
+    public void Focusing_a_mux_session_shown_in_the_selected_tab_stays_in_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        TwoTabs(window);
+        TabItem split = AddSplitTab(window, out TerminalPane first, out TerminalPane second);
+        Select(window, split);
+        Invoke(window, "UpdateActivePane", first);
+        Guid id = Guid.NewGuid();
+        second.MuxSessionIdToRestore = id;
+        try
+        {
+            window.EnterFocusMode();
+
+            Assert.True((bool)Invoke(window, "FocusPaneShowingMuxSession", Ntilde.Shell.Mux.MuxEndpointId.Local, id)!);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(window.IsFocusMode);
+            Assert.Same(split, TabsOf(window).SelectedItem);
+            Assert.Same(second, CurrentPane(window));
+        }
+        finally
+        {
+            second.MuxSessionIdToRestore = null;
+        }
+    }
+
+    [AvaloniaFact]
+    public void Focusing_a_mux_session_shown_in_another_tab_leaves_focus_mode_and_goes_there()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, b) = TwoTabs(window);
+        var paneOfB = (TerminalPane)b.Content!;
+        Guid id = Guid.NewGuid();
+        paneOfB.MuxSessionIdToRestore = id;
+        try
+        {
+            window.EnterFocusMode();
+
+            Assert.True((bool)Invoke(window, "FocusPaneShowingMuxSession", Ntilde.Shell.Mux.MuxEndpointId.Local, id)!);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.False(window.IsFocusMode);
+            Assert.Same(b, TabsOf(window).SelectedItem);
+            Assert.Same(paneOfB, CurrentPane(window));
+        }
+        finally
+        {
+            paneOfB.MuxSessionIdToRestore = null;
+        }
+    }
+
+    [AvaloniaFact]
     public async Task A_tab_closing_on_its_own_keeps_focus_mode_and_retitles_the_strip()
     {
         MainWindow window = NewShownWindow();

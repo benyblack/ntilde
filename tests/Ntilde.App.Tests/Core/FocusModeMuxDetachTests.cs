@@ -1,5 +1,6 @@
 using System.Reflection;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Ntilde.Controls;
@@ -105,6 +106,34 @@ public sealed class FocusModeMuxDetachTests : IClassFixture<TestAppDataRoot>, ID
         // The tab survives, so focus mode stays, and the answer to the user's command is not held for later.
         Assert.True(window.IsFocusMode);
         PumpUntil(() => Toast(window) is { Visible: true, Title: "Shell detached" }, "the detach toast shows in focus mode");
+        Assert.False(_mux.Mux(id).IsExited);
+    }
+
+    /// <summary>Final review I2: detaching a tab's only pane closes the tab, which moves the user to another shell.</summary>
+    [AvaloniaFact]
+    public void Detaching_the_only_pane_of_a_tab_leaves_focus_mode_first()
+    {
+        MainWindow window = CreateWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        var a = (TabItem)tabs.SelectedItem!;
+        TerminalPane only = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)only.Session!).Id;
+
+        // A second tab, so the window stays open when the first goes.
+        window.KeyPress(Avalonia.Input.Key.T, Avalonia.Input.RawInputModifiers.Control | Avalonia.Input.RawInputModifiers.Shift, Avalonia.Input.PhysicalKey.T, null);
+        PumpUntil(() => AllPanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "the second tab attached");
+        var b = (TabItem)tabs.SelectedItem!;
+        Assert.NotSame(a, b);
+        tabs.SelectedItem = a;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Same(only, CurrentPane(window));
+        window.EnterFocusMode();
+
+        WindowTestSupport.Invoke(window, "DetachActivePane");
+        PumpUntil(() => !AllPanes(window).Contains(only), "the pane detached");
+
+        Assert.False(window.IsFocusMode);
+        Assert.Same(b, tabs.SelectedItem);
         Assert.False(_mux.Mux(id).IsExited);
     }
 }
