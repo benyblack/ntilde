@@ -28,8 +28,9 @@ namespace Ntilde.Tests.Core;
 /// </remarks>
 public sealed class MainWindowAgentWindowlessTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
-    private static readonly Color Quiet = Color.Parse("#6B737F");
-    private static readonly Color Active = Color.Parse("#4FB0D4");
+    // The observe light's two tokens, read when used: the app's tokens follow the active theme.
+    private static Color Quiet => Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.AgentIdle];
+    private static Color Active => Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.AgentWatched];
 
     private readonly MuxTestHost _mux = new();
     private readonly string _tempDir = AgentHostTestEndpoint.CreateTempDir("mwwl");

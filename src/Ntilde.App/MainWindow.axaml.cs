@@ -165,21 +165,11 @@ namespace Ntilde
         /// <summary>The caption strip <see cref="WatchCaptionButtonStrip"/> is hooked to, so it hooks once.</summary>
         private Control? _watchedCaptionButtonStrip;
 
-        // Hoisted out of UpdateVerticalTabExtras: that method runs per tab per visual-refresh
-        // pass, and allocating a new SolidColorBrush per tab per pass adds up.
-        private static readonly IBrush TabAttentionBrush = new ImmutableSolidColorBrush(Color.Parse("#FFD25A"));
-
-        // Agent-aware tab status colors (dot + marker chips). They intentionally match the
-        // in-pane agent segment (TerminalPane.ApplyAgentAttention: dot #E8A33D/#4FB0D4, text
-        // #F0C07A/#7FC3DC) and the existing tab attention constant above, so the same tier
-        // reads as one color everywhere it appears.
-        private static readonly IBrush TabAgentWroteDotBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0xE8, 0xA3, 0x3D));
-        private static readonly IBrush TabAgentWatchedDotBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x4F, 0xB0, 0xD4));
-        private static readonly IBrush TabBellChipBrush = TabAttentionBrush; // #FFD25A
-        private static readonly IBrush TabActivityChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
-        private static readonly IBrush TabAgentWroteChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0xF0, 0xC0, 0x7A));
-        private static readonly IBrush TabAgentWatchedChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x7F, 0xC3, 0xDC));
-        private static readonly IBrush TabSharedChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x4F, 0xB0, 0xD4));
+        // The vertical header's status dot geometries, one per TabDotShape, in the dot's 8x8 box.
+        // Parsed once: UpdateVerticalTabExtras swaps which one a dot shows on every pass.
+        private static readonly Geometry TabDotCircleGeometry = new EllipseGeometry(new Rect(0, 0, 8, 8));
+        private static readonly Geometry TabDotDiamondGeometry = Geometry.Parse("M4,0 L8,4 L4,8 L0,4 Z");
+        private static readonly Geometry TabDotRingGeometry = new EllipseGeometry(new Rect(0.75, 0.75, 6.5, 6.5));
         private bool _isVerticalTabStrip;
         internal bool IsVerticalTabStripActive => _isVerticalTabStrip;
 
@@ -978,10 +968,11 @@ namespace Ntilde
 
         private Border CreateTabHeaderHost(TabItem tab, string text)
         {
+            // No Foreground: the title inherits the TabItem's (NtTabFg, NtTabFgSelected when
+            // selected; see App.axaml), so selection and theme switches recolour it on their own.
             var headerText = new TextBlock
             {
                 Text = text,
-                Foreground = Brushes.White,
                 FontSize = 12,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -1002,12 +993,15 @@ namespace Ntilde
 
         private Border CreateVerticalTabHeaderHost(TabItem tab, string text)
         {
-            var statusDot = new Avalonia.Controls.Shapes.Ellipse
+            // A Path rather than an Ellipse: the dot's shape carries meaning too (TabDotShape), so
+            // UpdateVerticalTabExtras swaps its geometry as well as its token.
+            var statusDot = new Avalonia.Controls.Shapes.Path
             {
                 Name = "TabStatusDot",
                 Width = 8,
                 Height = 8,
                 Fill = Brushes.Transparent,
+                StrokeThickness = 1.5,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 0)
             };
@@ -1015,7 +1009,6 @@ namespace Ntilde
             var headerText = new TextBlock
             {
                 Text = text,
-                Foreground = Brushes.White,
                 FontSize = 12,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center
@@ -1025,7 +1018,7 @@ namespace Ntilde
             {
                 Name = "TabPreviewLine",
                 Text = string.Empty,
-                Foreground = TabActivityChipBrush,
+                Foreground = ThemeBrush(ThemeKeys.TabPreviewFg),
                 FontSize = 10,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 2, 0, 0)
@@ -1062,15 +1055,14 @@ namespace Ntilde
             // set back on; not hit-testable so pointer presses stay on the header host
             // (select + context menu + drag-reorder), which also means no per-chip
             // tooltips (a hit-test-invisible control never sees pointer-enter). Chip
-            // colors match the in-pane agent segment and the existing tab attention
-            // constant (see the Tab*ChipBrush declarations above).
-            TextBlock Chip(string name, string glyph, IBrush foreground)
+            // colours are the NtTabChip* tokens, contrast-fixed for text against the sidebar.
+            TextBlock Chip(string name, string glyph, string tokenKey)
             {
                 var chip = new TextBlock
                 {
                     Name = name,
                     Text = glyph,
-                    Foreground = foreground,
+                    Foreground = ThemeBrush(tokenKey),
                     FontSize = 10,
                     IsVisible = false,
                     IsHitTestVisible = false,
@@ -1078,11 +1070,12 @@ namespace Ntilde
                 return chip;
             }
 
-            var bellChip = Chip("TabBellChip", "\U0001F514", TabBellChipBrush);
-            var activityChip = Chip("TabActivityChip", "\u2022", TabActivityChipBrush);
-            var agentWroteChip = Chip("TabAgentWroteChip", AgentWroteGlyph, TabAgentWroteChipBrush);
-            var agentWatchedChip = Chip("TabAgentWatchedChip", AgentWatchedGlyph, TabAgentWatchedChipBrush);
-            var sharedChip = Chip("TabSharedChip", SharedGlyph, TabSharedChipBrush);
+            var bellChip = Chip("TabBellChip", "\U0001F514", ThemeKeys.TabChipAttention);
+            var activityChip = Chip("TabActivityChip", "\u2022", ThemeKeys.TabChipActivity);
+            var agentWroteChip = Chip("TabAgentWroteChip", AgentWroteGlyph, ThemeKeys.TabChipAgentWrote);
+            var agentWatchedChip = Chip("TabAgentWatchedChip", AgentWatchedGlyph, ThemeKeys.TabChipAgentWatched);
+            // Shared has always worn the watched blue; it keeps that family.
+            var sharedChip = Chip("TabSharedChip", SharedGlyph, ThemeKeys.TabChipAgentWatched);
 
             var chipsColumn = new StackPanel
             {
@@ -2301,12 +2294,7 @@ namespace Ntilde
                 return;
             }
 
-            var theme = _settings.ActiveTheme;
-            pill.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            // Same luminance-contrast pick as UpdateTabVisuals' header text, via the
-            // shared GetContrastForeground helper, so the pill reads on both light
-            // and dark theme backgrounds.
-            pillText.Foreground = new SolidColorBrush(theme.GetContrastForeground().ToAvaloniaColor());
+            // Colours are the sidebar's tokens, set in MainWindow.axaml.
             pillText.Text = $"+{hiddenCount} more";
             pill.IsVisible = true;
         }
@@ -3121,7 +3109,6 @@ namespace Ntilde
                 Header = new TextBlock
                 {
                     Text = tabSession.Title,
-                    Foreground = Brushes.White,
                     FontSize = 12,
                     VerticalAlignment = VerticalAlignment.Center,
                     Padding = new Thickness(10, 4)
@@ -8296,12 +8283,9 @@ namespace Ntilde
                 return;
             }
 
-            var theme = _settings.ActiveTheme;
-            var borderBrush = new SolidColorBrush(theme.Blue.ToAvaloniaColor());
-
-            // Calculate contrasting foreground for tabs
-            double luminance = (0.299 * theme.Background.R + 0.587 * theme.Background.G + 0.114 * theme.Background.B) / 255.0;
-            var contrastForeground = luminance > 0.5 ? Brushes.Black : Brushes.White;
+            // Token brush instances, resolved per pass but never allocated: the indicator is the
+            // softened accent (NtTabIndicator), not the raw ANSI blue.
+            var indicatorBrush = ThemeBrush(ThemeKeys.TabIndicator);
 
             var tabItems = tabs.Items.Cast<TabItem>().ToList();
             // Vertical headers show attention as trailing chips (UpdateVerticalTabExtras),
@@ -8311,7 +8295,7 @@ namespace Ntilde
 
             foreach (TabItem ti in tabItems)
             {
-                ti.BorderBrush = ti.IsSelected ? borderBrush : Brushes.Transparent;
+                ti.BorderBrush = ti.IsSelected ? indicatorBrush : Brushes.Transparent;
 
                 // Vertical: a constant 3px left thickness on EVERY tab, selected or not, so
                 // the BorderBrush line above paints the selected tab a 3px accent bar —
@@ -8334,7 +8318,6 @@ namespace Ntilde
 
                 if (FindTabHeaderTextBlock(ti.Header) is TextBlock tb)
                 {
-                    tb.Foreground = contrastForeground;
                     tb.Text = labels[ti];
                 }
 
@@ -8345,7 +8328,7 @@ namespace Ntilde
 
                 if (_isVerticalTabStrip)
                 {
-                    UpdateVerticalTabExtras(ti, GetOrCreateTabState(ti), borderBrush);
+                    UpdateVerticalTabExtras(ti, GetOrCreateTabState(ti));
                 }
             }
 
@@ -8356,7 +8339,7 @@ namespace Ntilde
             RendererStatistics.RecordTabVisualUpdateTime(sw.ElapsedMilliseconds);
         }
 
-        private void UpdateVerticalTabExtras(TabItem tab, TabRuntimeState state, IBrush workingBrush)
+        private void UpdateVerticalTabExtras(TabItem tab, TabRuntimeState state)
         {
             // One pure resolve per tab per pass drives both the dot and the marker chips —
             // the vertical replacement for the title-suffix attention markers (which the
@@ -8365,16 +8348,28 @@ namespace Ntilde
                 state.HasBell, state.HasActivity, state.AgentTier, _settings.AgentIndicatorTabRollup, state.IsShared);
             var dotVisual = TabStatusPresentation.ResolveTabDot(state.RenderedStatus, markers, state.HasRunningCommand);
 
-            if (FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot") is { } dot)
+            if (FindTabHeaderDescendant<Avalonia.Controls.Shapes.Path>(tab.Header, "TabStatusDot") is { } dot)
             {
-                dot.Fill = dotVisual switch
+                IBrush? dotBrush = dotVisual switch
                 {
-                    TabDotVisual.Working => workingBrush,
-                    TabDotVisual.Attention => TabAttentionBrush,
-                    TabDotVisual.AgentWrote => TabAgentWroteDotBrush,
-                    TabDotVisual.AgentWatched => TabAgentWatchedDotBrush,
-                    _ => Brushes.Transparent,
+                    TabDotVisual.Working => ThemeBrush(ThemeKeys.TabWorking),
+                    TabDotVisual.Attention => ThemeBrush(ThemeKeys.TabAttention),
+                    TabDotVisual.AgentWrote => ThemeBrush(ThemeKeys.TabAgentWrote),
+                    TabDotVisual.AgentWatched => ThemeBrush(ThemeKeys.TabAgentWatched),
+                    _ => null,
                 };
+
+                // Filled shapes paint Fill; the ring paints only its Stroke.
+                var shape = TabStatusPresentation.ResolveDotShape(dotVisual);
+                dot.Data = shape switch
+                {
+                    TabDotShape.Diamond => TabDotDiamondGeometry,
+                    TabDotShape.Ring => TabDotRingGeometry,
+                    TabDotShape.Circle => TabDotCircleGeometry,
+                    _ => null,
+                };
+                dot.Fill = shape is TabDotShape.Circle or TabDotShape.Diamond ? dotBrush : Brushes.Transparent;
+                dot.Stroke = shape == TabDotShape.Ring ? dotBrush : null;
             }
 
             SetChipVisibility(tab, "TabBellChip", markers.Bell);
@@ -8384,8 +8379,8 @@ namespace Ntilde
             SetChipVisibility(tab, "TabSharedChip", markers.Shared);
 
             // OSC 9;4 progress (#271): geometry from the pure resolver; brush by kind —
-            // theme blue for normal, the attention amber for error, dim white for
-            // paused (matching the dot/chip palette conventions above). Gated at render
+            // the Working token for normal, Attention for error, the dim activity chip for
+            // paused (the same tokens as the dot and chips above). Gated at render
             // time on the same setting as the taskbar, so an off switch hides existing
             // reports without discarding them.
             if (FindTabHeaderDescendant<Avalonia.Controls.ProgressBar>(tab.Header, "TabProgressBar") is { } progressBar)
@@ -8397,11 +8392,11 @@ namespace Ntilde
                 {
                     progressBar.IsIndeterminate = barIndeterminate;
                     progressBar.Value = barValue;
-                    progressBar.Foreground = report is { Kind: TerminalProgressKind.Error }
-                        ? TabAttentionBrush
+                    progressBar.Foreground = ThemeBrush(report is { Kind: TerminalProgressKind.Error }
+                        ? ThemeKeys.TabAttention
                         : report is { Kind: TerminalProgressKind.Paused }
-                            ? TabActivityChipBrush
-                            : workingBrush;
+                            ? ThemeKeys.TabChipActivity
+                            : ThemeKeys.TabWorking);
                 }
             }
 

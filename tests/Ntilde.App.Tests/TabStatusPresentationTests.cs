@@ -173,6 +173,26 @@ namespace Ntilde.Tests
                 TabTrackerStatus.Attention, Markers(watched: true), hasRunningCommand: false));
         }
 
+        // ---- ResolveDotShape: hue-adjacent states never share a shape (spec D5) ----
+
+        [Fact]
+        public void ResolveDotShape_PerState()
+        {
+            Assert.Equal(TabDotShape.None, TabStatusPresentation.ResolveDotShape(TabDotVisual.None));
+            Assert.Equal(TabDotShape.Circle, TabStatusPresentation.ResolveDotShape(TabDotVisual.Working));
+            Assert.Equal(TabDotShape.Circle, TabStatusPresentation.ResolveDotShape(TabDotVisual.Attention));
+            Assert.Equal(TabDotShape.Diamond, TabStatusPresentation.ResolveDotShape(TabDotVisual.AgentWrote));
+            Assert.Equal(TabDotShape.Ring, TabStatusPresentation.ResolveDotShape(TabDotVisual.AgentWatched));
+        }
+
+        [Fact]
+        public void ResolveDotShape_SeparatesEachHueAdjacentPair()
+        {
+            // Working and AgentWatched are both blues; Attention and AgentWrote both ambers.
+            Assert.NotEqual(TabStatusPresentation.ResolveDotShape(TabDotVisual.Working), TabStatusPresentation.ResolveDotShape(TabDotVisual.AgentWatched));
+            Assert.NotEqual(TabStatusPresentation.ResolveDotShape(TabDotVisual.Attention), TabStatusPresentation.ResolveDotShape(TabDotVisual.AgentWrote));
+        }
+
         [Fact]
         public void ResolveTabMarkers_Shared_IsIndependentOfTheOthers()
         {
