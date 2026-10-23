@@ -238,7 +238,8 @@ background/foreground/cursor.
 - An app theme switch never clobbers a pane scope.
 - Tab strip, title bar, sidebar and dialogs follow the app theme.
 - Fluent palette inside a pane scope is **best effort**. The plan runs a spike test on whether
-  a local `ColorPaletteResources` works in Avalonia 12.0.4. If it doesn't, stock controls in an
+  a local `ColorPaletteResources` works in the Avalonia version in use (12.1.3 since 2026-10;
+  this was written against 12.0.4). If it doesn't, stock controls in an
   overridden pane follow only the variant.
 
 ### Renderer
@@ -315,7 +316,7 @@ Target tokens for every audited surface (phase in brackets):
 | Pane search, paste toast, MD toggle [3] | `#383838`, `#505050`, `#1a1a1a`, `#0078D7`, `#2A2D33`… | `NtOverlay`, `NtHairline`, `NtPanelAlt`, `NtAccent`, `NtAccentDim` |
 | Pane status bar + agent segment [3] | `#CC1A1A1A`, `#AAA`, LimeGreen/Yellow/Red/Gray, `#E8A33D`… | `NtChromeBg`, `NtFg3`, `NtSuccess`/`NtWarning`/`NtError`/`NtFg4`, `NtAgentWrote`/`NtAgentWatched`/`NtAgentIdle` |
 | Inactive-pane dim, bell flash [3] | black α 72/96, white flash | `NtScrim`-derived dim, `BellFlash` render color |
-| Agent Output chrome [3] | `#1B1D21`, `#31353A`, `#F3F6FA`… | `NtPanel`, `NtHairline`, `NtFg*`; markdown diff via `NtDiff*` |
+| Agent Output chrome [1, done; was 3] | `#1B1D21`, `#31353A`, `#F3F6FA`… | `NtPanel`, `NtHairline`, `NtFg*`; markdown diff via `NtDiff*` |
 | Command Assist bubble/popup [3] | `#CC202020`, `#8EC5FF`, `#332F6FEB`… | `NtOverlay`, `NtAccent`, `NtSelectedFill`/`NtAccentDim`, `NtFg*` |
 | Remote Files sidebar, RemotePathTextBox [3] | `#1B1D21`, `#25384B`, `#F16C6C`… | `NtPanel`, `NtSelectedFill`, `NtAccentBorder`, `NtError` |
 | TransferDialog [3] | unthemed `#252526`, `#007ACC`, `#F14C4C` | tokens; `NtAccent`, `NtError` |
@@ -499,7 +500,8 @@ Each phase is a PR into `main` (originally `dev-review`, never created), develop
    - the literal guard with its ratchet baseline, the unknown-token guard and the contrast
      test;
    - Settings and Connection Manager moved to app tokens and both default blocks deleted;
-     Agent Output markdown starts resolving tokens.
+     Agent Output markdown starts resolving tokens, and its panel chrome moves to tokens too
+     (brought forward from phase 3; see "Phase 1 as landed").
    - Visible change: light-theme fixes in those two windows, and Fluent controls following the
      theme.
 2. **Main window:**

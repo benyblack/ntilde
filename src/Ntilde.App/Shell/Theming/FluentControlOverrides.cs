@@ -3,6 +3,10 @@ using System.Collections.Generic;
 namespace Ntilde.Shell.Theming;
 
 /// <summary>
+/// Avalonia moved to 12.1.3 after this was written against 12.0.4. On 12.1.3 every key is still a
+/// real Fluent resource (ThemeServiceTests.Every_fluent_override_key_is_a_real_fluent_resource), the
+/// ToggleButton keys were checked in its assembly, and the TextBox placeholder lookup in its source.
+///
 /// Fluent control-level resource keys re-pointed at theme tokens. Fluent 12.0.4 builds its stock
 /// brushes with {StaticResource SystemXColor}, so a palette change after first use never reaches
 /// them. Its control themes, though, look up these control-level keys with {DynamicResource}, and
@@ -11,7 +15,7 @@ namespace Ntilde.Shell.Theming;
 /// it. Stock brushes not listed here keep the palette of the theme active when they were first used:
 /// correct at startup, stale after a same-variant switch until restart.
 ///
-/// Every key below was verified against the Fluent 12.0.4 control-theme sources
+/// The keys below were verified against the Fluent 12.0.4 control-theme sources
 /// (github.com/AvaloniaUI/Avalonia, tag release/12.0.4, src/Avalonia.Themes.Fluent/Controls/*.xaml)
 /// as an actual {DynamicResource X} lookup in that control's ControlTheme - not a name that merely
 /// exists as a string in the assembly. Three coverage-table rows are intentionally not (fully)
@@ -72,6 +76,9 @@ internal static class FluentControlOverrides
         (FluentKey: "TextControlBorderBrushPointerOver", TokenKey: ThemeKeys.HairlineStrong),
         (FluentKey: "TextControlBorderBrushFocused", TokenKey: ThemeKeys.Accent),
         (FluentKey: "TextControlPlaceholderForeground", TokenKey: ThemeKeys.Fg3),
+        // The three placeholder variants below are declared by Fluent's palette but no control theme
+        // looks them up (12.1.3's TextBox reads only the base key above). Aliased anyway so anything
+        // that does read them gets the same colour as the base key.
         (FluentKey: "TextControlPlaceholderForegroundPointerOver", TokenKey: ThemeKeys.Fg3),
         (FluentKey: "TextControlPlaceholderForegroundFocused", TokenKey: ThemeKeys.Fg3),
         (FluentKey: "TextControlPlaceholderForegroundDisabled", TokenKey: ThemeKeys.Fg3),

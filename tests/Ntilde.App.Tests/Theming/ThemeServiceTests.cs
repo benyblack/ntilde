@@ -187,7 +187,7 @@ public class ThemeServiceTests
             .Select(m => m.FluentKey)
             .Where(key => !fluent.TryGetResource(key, ThemeVariant.Dark, out _) && !fluent.TryGetResource(key, ThemeVariant.Light, out _))
             .ToList();
-        Assert.True(missing.Count == 0, "Not defined by Fluent 12.0.4: " + string.Join(", ", missing));
+        Assert.True(missing.Count == 0, "Not defined by the Fluent theme in use: " + string.Join(", ", missing));
     }
 
     [AvaloniaFact]

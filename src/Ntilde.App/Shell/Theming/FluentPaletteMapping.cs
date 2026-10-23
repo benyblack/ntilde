@@ -54,7 +54,8 @@ internal static class FluentPaletteMapping
         palette.ListMedium = t[ThemeKeys.PressedFill];
         palette.ErrorText = t[ThemeKeys.Error];
 
-        // Accent LAST, and via default. In Avalonia 12.0.4 every property above stores its value
+        // Accent LAST, and via default. In Avalonia 12.0.4 (where this was verified; not re-verified
+        // on 12.1.3, and the reset costs nothing if it no longer matters) every property above stores its value
         // (ColorPaletteResources.SetColor) without raising ResourcesChanged. Only an Accent change
         // does. Resetting and re-setting it guarantees one notification carries everything above,
         // even when two themes share an accent.

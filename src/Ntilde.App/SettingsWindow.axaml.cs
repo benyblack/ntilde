@@ -55,6 +55,9 @@ namespace Ntilde
         /// </summary>
         private string? _sessionPersistenceLoaded;
 
+        /// <summary>The last opacity the Appearance slider previewed; null until it moves.</summary>
+        private double? _previewedOpacity;
+
         /// <summary>
         /// R1: when the effective persistence mode changed from <paramref name="before"/> to <paramref name="after"/>,
         /// the first-close answer is forgotten, so turning persistence back on asks again. A spelling that does not
@@ -790,7 +793,11 @@ namespace Ntilde
         private void WireSessionEvents()
         {
             SettingsPreviewSink preview = _session.Preview;
-            preview.OpacityChanged += value => OnOpacityChanged?.Invoke(value);
+            preview.OpacityChanged += value =>
+            {
+                _previewedOpacity = value;
+                OnOpacityChanged?.Invoke(value);
+            };
             preview.BlurChanged += value => OnBlurChanged?.Invoke(value);
             preview.BackgroundImageChanged += (path, opacity, stretch) => OnBgImageChanged?.Invoke(path, opacity, stretch);
             preview.FontChanged += family => OnFontChanged?.Invoke(family);
@@ -906,7 +913,9 @@ namespace Ntilde
         /// </summary>
         private void ApplyTheme(TerminalTheme? theme = null)
         {
-            ThemeService.Apply(theme ?? _session.Settings.ActiveTheme, _session.Settings.WindowOpacity);
+            // The opacity on screen, not the saved one: a slider preview is not written to the
+            // session until Save, and repainting with the saved value would undo it app-wide.
+            ThemeService.Apply(theme ?? _session.Settings.ActiveTheme, _previewedOpacity ?? _session.Settings.WindowOpacity);
         }
     }
 }

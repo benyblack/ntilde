@@ -89,6 +89,35 @@ public class SettingsWindowThemeTests
         }
     }
 
+    /// <summary>
+    /// A slider preview is not written to the session until Save. Picking a theme after dragging
+    /// the opacity slider used to repaint with the saved opacity, undoing the preview app-wide.
+    /// </summary>
+    [AvaloniaFact]
+    public void PickingATheme_KeepsThePreviewedOpacity()
+    {
+        using var root = SettingsTestRoot.WithSettings("""{"ThemeName":"Default","WindowOpacity":1.0}""");
+        root.CopyShippedTheme("GitHubLight.json");
+        var window = new Ntilde.SettingsWindow();
+        window.Show();
+        try
+        {
+            var page = window.GetPage<AppearancePage>();
+            page.FindControl<Slider>("WindowOpacitySlider")!.Value = 0.5;
+            var themes = page.FindControl<ComboBox>("ThemeList")!;
+            themes.SelectedItem = themes.Items.OfType<ComboBoxItem>().Single(item => (string?)item.Content == "GitHub Light");
+            Dispatcher.UIThread.RunJobs();
+
+            var expected = ThemeTokens.Derive(new Ntilde.Shell.ThemeManager().GetTheme("GitHub Light"), 0.5);
+            Assert.Equal(expected[ThemeKeys.SidebarBg], ThemeService.Current[ThemeKeys.SidebarBg]);
+        }
+        finally
+        {
+            window.Close();
+            ThemeService.Apply(new TerminalTheme(), 1.0);
+        }
+    }
+
     private static SolidColorBrush AppBrush(string key) =>
         Assert.IsType<SolidColorBrush>(Application.Current!.FindResource(key));
 }
