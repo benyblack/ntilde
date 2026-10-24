@@ -14,7 +14,7 @@ namespace Ntilde.McpServer.Tools;
 // is hand-mirrored. There is intentionally no reflection drift-guard (an App reference would
 // pull in Avalonia); keep this list in sync with TerminalSettings by hand.
 [McpServerToolType]
-public static class SettingsTools
+public sealed class SettingsTools
 {
     [McpServerTool(Name = "ntilde.get_settings_schema"),
      Description("Returns the schema for Ntilde's settings.json: top-level fields grouped by area (PascalCase keys, integer enums for embedded profiles), types, defaults, and an annotated example. Validates the top-level shape only (embedded profiles are not deep-validated). Use before authoring or editing settings.json.")]

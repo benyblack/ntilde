@@ -9,7 +9,7 @@ using ModelContextProtocol.Server;
 namespace Ntilde.McpServer.Tools;
 
 [McpServerToolType]
-public static partial class ThemeTools
+public sealed partial class ThemeTools
 {
     // The 16 ANSI colors plus the 3 UI colors. All are required in a Ntilde theme JSON.
     private static readonly string[] ColorFields =

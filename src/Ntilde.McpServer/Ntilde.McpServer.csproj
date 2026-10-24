@@ -19,6 +19,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Ntilde.McpServer</RootNamespace>
     <AssemblyName>Ntilde.McpServer</AssemblyName>
+    <!-- Released as a NativeAOT binary beside the app (ntilde-mcp, ntilde-mcp.exe on Windows;
+         see release.yml "Publish the MCP server"), so it runs with no .NET installed. The
+         trim/AOT warnings are errors, as for the launcher, so a reflection-only API fails the
+         build instead of shipping a binary that is missing a tool. A plain build still
+         produces the framework-dependent DLL the README and the E2E tests launch. -->
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>

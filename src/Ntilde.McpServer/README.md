@@ -95,6 +95,27 @@ When a client launches the server from an arbitrary working directory, set
 
 ## Client setup
 
+### Installed Ntilde
+
+Release bundles carry this server as a NativeAOT binary, `ntilde-mcp` (`ntilde-mcp.exe` on
+Windows), beside the app; no .NET or checkout is needed. With Ntilde installed:
+
+```bash
+claude mcp add ntilde -- ntilde-mcp
+```
+
+See the root [README](../../README.md#use-with-ai-agents-mcp) for where each installer puts it.
+Without a checkout the project-docs tools report that `docs/` could not be located; set
+`NTILDE_REPO_ROOT` to a clone to enable them. Everything else works as is.
+
+The release builds it with `dotnet publish -r <rid>` (`PublishAot` is set in the project) and
+gates it with [`scripts/ci/mcp-server-smoke.sh`](../../scripts/ci/mcp-server-smoke.sh), which
+drives a real MCP session against the binary. Tools are registered by explicit
+`WithTools<T>()` calls in `Program.cs`, the SDK's trim-safe form: **a new tool class must be added
+there**, or it is missing from every build.
+
+### From source
+
 Ready-to-edit example configs live in [`examples/mcp/`](../../examples/mcp/):
 
 - **Claude Code** — `claude mcp add ntilde -- dotnet "<path-to-repo>/src/Ntilde.McpServer/bin/Release/net10.0/Ntilde.McpServer.dll"`
