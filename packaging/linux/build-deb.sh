@@ -353,7 +353,7 @@ done
 # source-built Debian package. Named tags and exact paths only, deliberately no
 # wildcard override: a genuinely new embedded library pulled in by a future
 # SkiaSharp/AOT bump must still trip this gate rather than being silently waved
-# through by an override that was written to cover today's four findings.
+# through by an override that was written to cover today's five findings.
 #
 # No brackets around the path: verified empirically against real lintian
 # (2.114.0, ubuntu-22.04's apt version) - an override written as
@@ -375,6 +375,8 @@ ntilde: embedded-library libpng usr/lib/ntilde/libSkiaSharp.so
 # AOT publish has no "link against the system libz at runtime" mode to fall
 # back to - this is what --self-contained true -p:PublishAot=true produces.
 ntilde: embedded-library zlib usr/lib/ntilde/Ntilde
+# Same as above, for the NativeAOT MCP server published beside the App.
+ntilde: embedded-library zlib usr/lib/ntilde/ntilde-mcp
 EOF
 chmod 0644 "$stage/usr/share/lintian/overrides/ntilde"
 
