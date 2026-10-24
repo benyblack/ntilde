@@ -1,4 +1,7 @@
+using System.Reflection;
+using Avalonia.Headless.XUnit;
 using Ntilde.UI.Replay;
+using Ntilde.VT;
 
 namespace Ntilde.Tests.Core;
 
@@ -30,5 +33,45 @@ public sealed class ReplayWindowTests
             }));
 
         Assert.Equal("Some other failure", ex.Message);
+    }
+
+    /// <summary>
+    /// The buffer builds its rows on the Default theme before the replay's theme reaches it, so the
+    /// theme has to remap them: setting it alone would leave unstyled text on Default's colours.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_replay_theme_reaches_the_rows_the_buffer_already_built()
+    {
+        string recording = Path.GetTempFileName();
+        var theme = new TerminalTheme
+        {
+            Name = "replay light",
+            Foreground = TermColor.FromRgb(0x24, 0x29, 0x2F),
+            Background = TermColor.FromRgb(0xFF, 0xFF, 0xFF),
+        };
+        var window = new ReplayWindow(recording, theme);
+        try
+        {
+            var buffer = (TerminalBuffer)typeof(ReplayWindow)
+                .GetField("_buffer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
+            TerminalCell cell;
+            buffer.Lock.EnterReadLock();
+            try
+            {
+                cell = buffer.GetCell(0, 0);
+            }
+            finally
+            {
+                buffer.Lock.ExitReadLock();
+            }
+
+            Assert.Equal(theme.Foreground.ToUint(), cell.Fg);
+            Assert.Equal(theme.Background.ToUint(), cell.Bg);
+        }
+        finally
+        {
+            window.Close();
+            File.Delete(recording);
+        }
     }
 }

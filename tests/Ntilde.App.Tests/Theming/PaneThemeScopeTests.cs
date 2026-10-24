@@ -44,6 +44,8 @@ public sealed class PaneThemeScopeTests
             Assert.Equal(paneLight[ThemeKeys.Panel], Resolved(toast, ThemeKeys.Panel));
             Assert.Equal(Avalonia.Styling.ThemeVariant.Light, toast.ActualThemeVariant);
             Assert.Equal(paneLight[ThemeKeys.Overlay], ((ISolidColorBrush)toast.Background!).Color);
+            // The shadow spells no colour; it takes DropShadowEffect's default black on every theme.
+            Assert.Equal(Colors.Black, Assert.IsType<DropShadowEffect>(toast.Effect).Color);
             Assert.Equal(paneLight[ThemeKeys.ChromeBg], ((ISolidColorBrush)pane.FindControl<Border>("StatusBar")!.Background!).Color);
             Assert.Equal(paneLight[ThemeKeys.PaneDim], ((ISolidColorBrush)pane.FindControl<Border>("InactiveOverlay")!.Background!).Color);
 

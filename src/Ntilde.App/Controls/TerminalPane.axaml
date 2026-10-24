@@ -112,7 +112,7 @@
                             Margin="0,20,0,0" Background="{DynamicResource NtOverlay}" CornerRadius="6" Padding="12,8"
                             BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" ZIndex="250" Grid.Row="0">
                         <Border.Effect>
-                            <DropShadowEffect BlurRadius="8" Opacity="0.5" OffsetY="2" Color="Black" />
+                            <DropShadowEffect BlurRadius="8" Opacity="0.5" OffsetY="2" />
                         </Border.Effect>
                         <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
                             <TextBlock Grid.Column="0" Text="📄" Foreground="{DynamicResource NtFg3}" VerticalAlignment="Center" Margin="0,0,8,0" />

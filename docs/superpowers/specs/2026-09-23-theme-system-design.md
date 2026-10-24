@@ -315,7 +315,7 @@ Target tokens for every audited surface (phase in brackets):
 | Code-built dialogs, SSH prompts, About [2, done] | themed once at open | inherit app tokens, live; About links `NtLink`/`NtLinkHover` |
 | Pane search, paste toast, MD toggle [3, done] | `#383838`, `#505050`, `#1a1a1a`, `#0078D7`, `#2A2D33`… | `NtOverlay`, `NtHairline`, `NtPanelAlt`, `NtAccent`, `NtAccentDim` |
 | Pane status bar + agent segment [3, done] | `#CC1A1A1A`, `#AAA`, LimeGreen/Yellow/Red/Gray, `#E8A33D`… | `NtChromeBg`, `NtFg3`, `NtSuccess`/`NtWarning`/`NtError`/`NtFg4`, `NtAgentWrote`/`NtAgentWatched`/`NtAgentIdle` |
-| Inactive-pane dim, bell flash [3, done] | black α 72/96, white flash | `NtScrim`-derived dim, `BellFlash` render color |
+| Inactive-pane dim, bell flash [3, done] | black α 72/96, white flash | `NtPaneDim`, `BellFlash` render color |
 | Agent Output chrome [1, done; was 3] | `#1B1D21`, `#31353A`, `#F3F6FA`… | `NtPanel`, `NtHairline`, `NtFg*`; markdown diff via `NtDiff*` |
 | Command Assist bubble/popup [3, done] | `#CC202020`, `#8EC5FF`, `#332F6FEB`… | `NtOverlay`, `NtAccent`, `NtSelectedFill`/`NtAccentDim`, `NtFg*` |
 | Remote Files sidebar, RemotePathTextBox [3, done] | `#1B1D21`, `#25384B`, `#F16C6C`… | `NtPanel`, `NtSelectedFill`, `NtAccentBorder`, `NtError` |
@@ -407,8 +407,8 @@ Plan: `docs/superpowers/plans/2026-10-24-theme-system-phase3-panes.md`.
 - **Bell flash** is the pane theme's foreground at alpha 0x26; it does not wait for phase 4's
   `TerminalRenderColors`.
 - **Replay** gives its buffer the app's active theme; **askpass** installs the saved theme's tokens.
-- **Permanent allowlist** gains the paste toast's black drop shadow (`DropShadowEffect.Color` takes a
-  `Color`, not a token brush).
+- **Permanent allowlist** is unchanged: the paste toast's drop shadow takes `DropShadowEffect`'s default
+  black instead of spelling it.
 - **Baseline**: 6 literals in 2 files, all renderer colours phase 4 replaces
   (`TerminalDrawOperation` selection and search, `TerminalView.SelectionBrush`).
 

@@ -67,7 +67,10 @@ namespace Ntilde.UI.Replay
             _buffer = new TerminalBuffer(80, 24); // Init with default
             if (theme != null)
             {
+                // The buffer built its rows on the Default theme; remap them, as TerminalView.ApplySettings does.
+                var defaultTheme = _buffer.Theme;
                 _buffer.Theme = theme;
+                _buffer.UpdateThemeColors(defaultTheme);
             }
             _parser = new AnsiParser(_buffer);
             // Replays of sessions that drew inline images must render the same way live panes do.
