@@ -37,9 +37,17 @@ public sealed class CommandPaletteUsageStore
             Dictionary<string, CommandPaletteUsageEntry>? deserialized = JsonSerializer.Deserialize(
                 json,
                 AppJsonContext.Default.DictionaryStringCommandPaletteUsageEntry);
-            _entries = deserialized is not null
-                ? new Dictionary<string, CommandPaletteUsageEntry>(deserialized, StringComparer.OrdinalIgnoreCase)
-                : new Dictionary<string, CommandPaletteUsageEntry>(StringComparer.OrdinalIgnoreCase);
+            // Indexer, not the copy constructor: the file is read case-sensitively, so a
+            // hand-edited "find"/"Find" pair would make the copy throw, and the catch below
+            // would discard the whole history. Last one wins.
+            _entries = new Dictionary<string, CommandPaletteUsageEntry>(StringComparer.OrdinalIgnoreCase);
+            if (deserialized is not null)
+            {
+                foreach (KeyValuePair<string, CommandPaletteUsageEntry> usage in deserialized)
+                {
+                    _entries[usage.Key] = usage.Value;
+                }
+            }
         }
         catch
         {
