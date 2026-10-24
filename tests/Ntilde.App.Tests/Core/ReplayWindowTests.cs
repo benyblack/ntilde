@@ -42,7 +42,9 @@ public sealed class ReplayWindowTests
     [AvaloniaFact]
     public void A_replay_theme_reaches_the_rows_the_buffer_already_built()
     {
-        string recording = Path.GetTempFileName();
+        // A path with nothing at it: the buffer is built before the recording is read, and a
+        // real file would stay open in the view model's scan, which Windows will not delete.
+        string recording = Path.Combine(Path.GetTempPath(), $"ntilde_replay_{Guid.NewGuid():N}.rec");
         var theme = new TerminalTheme
         {
             Name = "replay light",
@@ -71,7 +73,6 @@ public sealed class ReplayWindowTests
         finally
         {
             window.Close();
-            File.Delete(recording);
         }
     }
 }
