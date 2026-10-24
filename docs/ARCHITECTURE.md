@@ -719,8 +719,11 @@ deadline; the installer uses it.
   stdin. One dedicated poll thread per channel routes the events: stdout into a bounded byte queue
   read without the thread pool, stderr into the tail, prompts to the handler. Between events it waits
   in `nova_ssh_wait_event` (up to 100 ms, woken by an event or a close) instead of sleeping, which took
-  the ~15 ms floor off every request round trip (Phase 5 Task 9). A native connection
-  lives exactly as long as its channel, so an exec never shares a pane's connection.
+  the ~15 ms floor off every request round trip (Phase 5 Task 9). Without multiplexing, a native
+  exec's connection lives exactly as long as its channel and never shares a pane's. With the
+  profile's multiplexing (and `ControlMasterAuto`) on, the exec leases the profile's shared connection
+  (`NativeSshConnectionPool`, `nova_ssh_open_exec`), which closes when its last lease is released, at
+  once or after ControlPersist.
 
 #### Install flow (`Shell/Mux/Remote/RemoteMuxInstaller.cs`, `Views/Ssh/RemoteMuxInstallDialog.cs`)
 

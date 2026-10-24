@@ -166,7 +166,7 @@ invariant changes.
   session instead, so no empty password is ever submitted to a server
 - **No thread-pool work on the native exec's stdout path:** one dedicated poll thread per channel
   feeds a bounded byte queue that a reader drains synchronously
-- A native exec connection lives exactly as long as its channel; it never shares a pane's connection
+- A native exec on a profile without multiplexing (or with `ControlMasterAuto` off) has a connection of its own, which lives exactly as long as its channel. With multiplexing on, it leases the profile's shared connection instead (`NativeSshConnectionPool`), joining or opening it; that connection closes when its last lease is released, at once or after ControlPersist
 
 **Test authority**
 - Primary: `tests/Ntilde.Platform.Tests/` (exec transports: `Ssh/Exec/`)

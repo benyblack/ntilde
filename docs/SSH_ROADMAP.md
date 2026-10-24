@@ -170,8 +170,10 @@ user-facing description is `docs/USER_MANUAL.md` chapter 12 (12.6 for SSH tabs);
   `Eof` (kind 15; `NativeSshExecTransport` ends stdout there, without waiting for the command to
   exit), the exit status as `ExitStatus` before `Closed`, and `nova_ssh_send_eof` ends stdin. (The login-shell detection of
   a shell session runs a short exec through `run_exec_collect`, of which exec mode is the streaming
-  counterpart.) An exec connection is its own connection: it lives exactly as long as its channel
-  and never shares a pane's.
+  counterpart.) Without multiplexing, an exec connection is its own connection: it lives exactly
+  as long as its channel and never shares a pane's. With the profile's multiplexing on, the exec
+  leases the profile's shared connection instead (see *Connection sharing* above), which closes with
+  its last lease, at once or after ControlPersist.
 - **Automatic reconnects never prompt**, on either backend. A native remote host remembers, in
   memory, a password or passphrase that got a user-started connect in, and replays only that (never
   a password through jump hops, since the native prompt does not say which hop asks); host keys
@@ -199,9 +201,11 @@ apart, so neither serves (or adopts, or shuts down) the other's shells.
 
 ### Deferred
 
-- Port forwards on a persistent remote tab: the exec channel carries no forwards (Phase 5 spec R8:
-  they would share the mux link's event queue, drop on every reconnect and collide with plain tabs
-  of the profile). Since Phase 5 the SFTP sidebar and transfers work there for native profiles: the
+- Port forwards on a persistent remote tab: without multiplexing the exec channel carries no
+  forwards (Phase 5 spec R8: they would share the mux link's event queue, drop on every reconnect
+  and collide with plain tabs of the profile). A native profile with multiplexing on avoids all
+  three: its exec rides the profile's shared connection, which owns the forwards, serves them on the
+  connection's own queue, and is the same connection its plain tabs use. Since Phase 5 the SFTP sidebar and transfers work there for native profiles: the
   pane registers in `ActiveSshSessionRegistry` with its remote host's password scope. OpenSSH
   persisted tabs get the palette's transfers (scp on its own connection), not the sidebar.
 - Adoption of remote orphans: a remote shell no saved tab names is listed by "Attach to session…"
