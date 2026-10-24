@@ -139,26 +139,26 @@ public class PaneAgentStatusBarTests
         host.Show();
         try
         {
-        pane.ApplyAgentAttention(
-            new AgentAttentionSnapshot(AgentAttentionTier.Wrote, DateTimeOffset.UtcNow, "sendInput"),
-            isActable: true);
-        Assert.True(GetAgentSegment(pane).IsVisible);
+            pane.ApplyAgentAttention(
+                new AgentAttentionSnapshot(AgentAttentionTier.Wrote, DateTimeOffset.UtcNow, "sendInput"),
+                isActable: true);
+            Assert.True(GetAgentSegment(pane).IsVisible);
 
-        // UpdateForwardingStatus only rebuilds the bar when a rule's status
-        // actually changed or the bar was hidden, and here the bar is already
-        // up. Degraded is a status the recompute never produces (it yields
-        // Active/Starting/Stopped only), so the change — and therefore the
-        // UpdateStatusBarUI call — is guaranteed, whatever is listening locally.
-        pane.Profile!.Forwards[0].Status = ForwardingStatus.Degraded;
-        pane.UpdateForwardingStatusForTesting();
+            // UpdateForwardingStatus only rebuilds the bar when a rule's status
+            // actually changed or the bar was hidden, and here the bar is already
+            // up. Degraded is a status the recompute never produces (it yields
+            // Active/Starting/Stopped only), so the change — and therefore the
+            // UpdateStatusBarUI call — is guaranteed, whatever is listening locally.
+            pane.Profile!.Forwards[0].Status = ForwardingStatus.Degraded;
+            pane.UpdateForwardingStatusForTesting();
 
-        // Proof the wholesale-clearing path really ran: UpdateStatusBarUI is the
-        // only thing that populates StatusBarRules.
-        Assert.Single(GetStatusBarRules(pane).Children);
+            // Proof the wholesale-clearing path really ran: UpdateStatusBarUI is the
+            // only thing that populates StatusBarRules.
+            Assert.Single(GetStatusBarRules(pane).Children);
 
-        Assert.True(GetAgentSegment(pane).IsVisible);
-        Assert.Contains("typed", GetAgentSegmentText(pane), StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.AgentWrote], GetAgentSegmentTextColor(pane));
+            Assert.True(GetAgentSegment(pane).IsVisible);
+            Assert.Contains("typed", GetAgentSegmentText(pane), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.AgentWrote], GetAgentSegmentTextColor(pane));
         }
         finally
         {
