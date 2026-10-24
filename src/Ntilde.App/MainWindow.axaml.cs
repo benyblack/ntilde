@@ -10055,7 +10055,7 @@ namespace Ntilde
             }
 
             var path = files[0].Path.LocalPath;
-            var replayWin = new Ntilde.UI.Replay.ReplayWindow(path);
+            var replayWin = new Ntilde.UI.Replay.ReplayWindow(path, _settings.ActiveTheme);
             replayWin.Show();
         }
 

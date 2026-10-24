@@ -134,26 +134,36 @@ public class PaneAgentStatusBarTests
         // would have passed even with the segment nested back inside
         // StatusBarRules, the exact regression it exists to prevent.
         using var pane = MakeSshPaneWithForward();
-        pane.ApplyAgentAttention(
-            new AgentAttentionSnapshot(AgentAttentionTier.Wrote, DateTimeOffset.UtcNow, "sendInput"),
-            isActable: true);
-        Assert.True(GetAgentSegment(pane).IsVisible);
+        // Hosted, because the segment's colour is a token binding, which resolves only in a tree.
+        var host = new Window { Content = pane };
+        host.Show();
+        try
+        {
+            pane.ApplyAgentAttention(
+                new AgentAttentionSnapshot(AgentAttentionTier.Wrote, DateTimeOffset.UtcNow, "sendInput"),
+                isActable: true);
+            Assert.True(GetAgentSegment(pane).IsVisible);
 
-        // UpdateForwardingStatus only rebuilds the bar when a rule's status
-        // actually changed or the bar was hidden, and here the bar is already
-        // up. Degraded is a status the recompute never produces (it yields
-        // Active/Starting/Stopped only), so the change — and therefore the
-        // UpdateStatusBarUI call — is guaranteed, whatever is listening locally.
-        pane.Profile!.Forwards[0].Status = ForwardingStatus.Degraded;
-        pane.UpdateForwardingStatusForTesting();
+            // UpdateForwardingStatus only rebuilds the bar when a rule's status
+            // actually changed or the bar was hidden, and here the bar is already
+            // up. Degraded is a status the recompute never produces (it yields
+            // Active/Starting/Stopped only), so the change — and therefore the
+            // UpdateStatusBarUI call — is guaranteed, whatever is listening locally.
+            pane.Profile!.Forwards[0].Status = ForwardingStatus.Degraded;
+            pane.UpdateForwardingStatusForTesting();
 
-        // Proof the wholesale-clearing path really ran: UpdateStatusBarUI is the
-        // only thing that populates StatusBarRules.
-        Assert.Single(GetStatusBarRules(pane).Children);
+            // Proof the wholesale-clearing path really ran: UpdateStatusBarUI is the
+            // only thing that populates StatusBarRules.
+            Assert.Single(GetStatusBarRules(pane).Children);
 
-        Assert.True(GetAgentSegment(pane).IsVisible);
-        Assert.Contains("typed", GetAgentSegmentText(pane), StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(Color.Parse("#F0C07A"), GetAgentSegmentTextColor(pane));
+            Assert.True(GetAgentSegment(pane).IsVisible);
+            Assert.Contains("typed", GetAgentSegmentText(pane), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.AgentWrote], GetAgentSegmentTextColor(pane));
+        }
+        finally
+        {
+            host.Close();
+        }
     }
 
     [AvaloniaFact]
@@ -480,7 +490,7 @@ public class PaneAgentStatusBarTests
         => Assert.IsType<TextBlock>(pane.FindControl<TextBlock>("AgentStatusText")).Text ?? string.Empty;
 
     private static Color GetAgentSegmentTextColor(TerminalPane pane)
-        => Assert.IsType<SolidColorBrush>(
+        => Assert.IsAssignableFrom<ISolidColorBrush>(
             Assert.IsType<TextBlock>(pane.FindControl<TextBlock>("AgentStatusText")).Foreground).Color;
 
     private static Button GetAgentButton(TerminalPane pane)
