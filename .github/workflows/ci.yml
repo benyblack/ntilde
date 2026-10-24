@@ -1840,6 +1840,18 @@ jobs:
           Write-Output "ntilde.com started the Ntilde.exe beside it and forwarded its exit code 7."
           exit 0
 
+      # ntilde-mcp, the MCP server every release bundle carries (release.yml "Publish the MCP
+      # server"), published and smoked the same way here so a trim break - a tool missing from
+      # tools/list, a parameter the AOT binder cannot read - fails the PR rather than the tag.
+      # The E2E tests run the JIT DLL and cannot see either. -p:TrimmerSingleWarn=false, as above.
+      - name: Publish and smoke the MCP server (win-x64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj -c "$CONFIGURATION" -r win-x64 -p:TrimmerSingleWarn=false -o artifacts/mcp
+          cp artifacts/mcp/Ntilde.McpServer.exe artifacts/mcp/ntilde-mcp.exe
+          bash scripts/ci/mcp-server-smoke.sh artifacts/mcp/ntilde-mcp.exe src/Ntilde.McpServer/Tools
+
       # The logs are the whole diagnostic value when this job fails, and a failed GUI
       # launch on a runner is exactly the case nobody can reproduce locally.
       - name: Upload smoke logs

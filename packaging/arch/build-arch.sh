@@ -403,14 +403,15 @@ package() {
   # braces, the same way build-deb.sh keeps its own removal.
   find "${pkgdir}/usr/lib/ntilde" \( -name '*.pdb' -o -name '*.dbg' \) -delete
 
-  # Mode normalisation, then re-assert the one file that must stay executable.
-  # ORDER MATTERS: reversing these would have the blanket pass clobber the binary's
-  # exec bit straight back off. cp -a preserved the publish tree's modes verbatim,
+  # Mode normalisation, then re-assert the files that must stay executable: the App
+  # and the MCP server an agent launches directly.
+  # ORDER MATTERS: reversing these would have the blanket pass clobber the binaries'
+  # exec bits straight back off. cp -a preserved the publish tree's modes verbatim,
   # including the 0744 SkiaSharp and HarfBuzzSharp ship with - a shared library
   # needs read, never execute.
   find "${pkgdir}/usr/lib/ntilde" -type f -exec chmod 0644 {} +
   find "${pkgdir}/usr/lib/ntilde" -type d -exec chmod 0755 {} +
-  chmod 0755 "${pkgdir}/usr/lib/ntilde/Ntilde"
+  chmod 0755 "${pkgdir}/usr/lib/ntilde/Ntilde" "${pkgdir}/usr/lib/ntilde/ntilde-mcp"
 
   # Selective strip, standing in for the makepkg pass disabled by options=(!strip).
   # Every *.so* under the bundle, versioned sonames included - not four hardcoded
@@ -425,6 +426,8 @@ package() {
   # /usr/bin/ntilde. pacman refuses to install over it, so a user with that package
   # gets a clear file-conflict error rather than a silently shadowed command.
   ln -s /usr/lib/ntilde/Ntilde "${pkgdir}/usr/bin/ntilde"
+  # On PATH, so `claude mcp add ntilde -- ntilde-mcp` works with no install path to look up.
+  ln -s /usr/lib/ntilde/ntilde-mcp "${pkgdir}/usr/bin/ntilde-mcp"
 
   install -Dm644 "${srcdir}/ntilde.desktop" "${pkgdir}/usr/share/applications/ntilde.desktop"
   # Uncompressed: makepkg's zipman option gzips man pages itself. Pre-gzipping the

@@ -340,6 +340,10 @@ Settings → **Agent Access**:
   sessions. SSH connections must *also* be allowlisted individually. Requires
   observe; every action is journaled.
 
+To connect an agent, register the `ntilde-mcp` binary that ships with Ntilde - for
+Claude Code, `claude mcp add ntilde -- ntilde-mcp`. The
+[README](../README.md#use-with-ai-agents-mcp) lists where each installer puts it.
+
 With persistent sessions on, agents also see the shells the multiplexer keeps that
 no pane of the window shows: see
 [Agents and windowless sessions](#128-agents-and-windowless-sessions).

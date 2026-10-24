@@ -137,6 +137,9 @@ repo_root="$(cd "$here/../.." && pwd)"
 
 [[ -d "$publish_dir" ]] || { echo "publish dir not found: $publish_dir" >&2; exit 1; }
 [[ -f "$publish_dir/Ntilde" ]] || { echo "no Ntilde binary in $publish_dir" >&2; exit 1; }
+# The MCP server agents register (release.yml publishes it into the bundle). Required, so a
+# release whose MCP publish went missing fails here instead of shipping without it.
+[[ -f "$publish_dir/ntilde-mcp" ]] || { echo "no ntilde-mcp binary in $publish_dir" >&2; exit 1; }
 
 # Preflight the tools dependency derivation needs. Without this, a missing 'file' or
 # 'dpkg-query' does not fail the build - find/grep just match nothing, and
@@ -281,14 +284,16 @@ done < <(find "$stage/usr/lib/ntilde" -name '*.so*' -print0)
 # library carrying an execute bit (shared-library-is-executable): the dynamic
 # loader only needs read permission to mmap a .so, never execute. Normalise every
 # regular file in the bundle to 0644 and every directory to 0755, THEN re-assert
-# 0755 on the one file that must stay executable: the entry point binary. Order
-# matters - reversing these two steps would have the blanket pass clobber the
-# binary's own exec bit right back off.
+# 0755 on the files that must stay executable: the entry point binary and the MCP
+# server an agent launches directly. Order matters - reversing these two steps would
+# have the blanket pass clobber the binaries' own exec bits right back off.
 find "$stage/usr/lib/ntilde" -type f -exec chmod 0644 {} +
 find "$stage/usr/lib/ntilde" -type d -exec chmod 0755 {} +
-chmod 0755 "$stage/usr/lib/ntilde/Ntilde"
+chmod 0755 "$stage/usr/lib/ntilde/Ntilde" "$stage/usr/lib/ntilde/ntilde-mcp"
 
 ln -s /usr/lib/ntilde/Ntilde "$stage/usr/bin/ntilde"
+# On PATH, so `claude mcp add ntilde -- ntilde-mcp` works with no install path to look up.
+ln -s /usr/lib/ntilde/ntilde-mcp "$stage/usr/bin/ntilde-mcp"
 install -m 0644 "$here/ntilde.desktop" "$stage/usr/share/applications/ntilde.desktop"
 gzip -9nc "$here/ntilde.1" > "$stage/usr/share/man/man1/ntilde.1.gz"
 chmod 0644 "$stage/usr/share/man/man1/ntilde.1.gz"
