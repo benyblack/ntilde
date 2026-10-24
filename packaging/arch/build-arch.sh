@@ -411,7 +411,12 @@ package() {
   # needs read, never execute.
   find "${pkgdir}/usr/lib/ntilde" -type f -exec chmod 0644 {} +
   find "${pkgdir}/usr/lib/ntilde" -type d -exec chmod 0755 {} +
-  chmod 0755 "${pkgdir}/usr/lib/ntilde/Ntilde" "${pkgdir}/usr/lib/ntilde/ntilde-mcp"
+  chmod 0755 "${pkgdir}/usr/lib/ntilde/Ntilde"
+  # Conditional only because tarballs before ntilde-mcp shipped lack it (the CI AUR dry run
+  # builds from the newest stable release); release.yml asserts every new tarball carries it.
+  if [[ -e "${pkgdir}/usr/lib/ntilde/ntilde-mcp" ]]; then
+    chmod 0755 "${pkgdir}/usr/lib/ntilde/ntilde-mcp"
+  fi
 
   # Selective strip, standing in for the makepkg pass disabled by options=(!strip).
   # Every *.so* under the bundle, versioned sonames included - not four hardcoded
@@ -427,7 +432,9 @@ package() {
   # gets a clear file-conflict error rather than a silently shadowed command.
   ln -s /usr/lib/ntilde/Ntilde "${pkgdir}/usr/bin/ntilde"
   # On PATH, so `claude mcp add ntilde -- ntilde-mcp` works with no install path to look up.
-  ln -s /usr/lib/ntilde/ntilde-mcp "${pkgdir}/usr/bin/ntilde-mcp"
+  if [[ -e "${pkgdir}/usr/lib/ntilde/ntilde-mcp" ]]; then
+    ln -s /usr/lib/ntilde/ntilde-mcp "${pkgdir}/usr/bin/ntilde-mcp"
+  fi
 
   install -Dm644 "${srcdir}/ntilde.desktop" "${pkgdir}/usr/share/applications/ntilde.desktop"
   # Uncompressed: makepkg's zipman option gzips man pages itself. Pre-gzipping the

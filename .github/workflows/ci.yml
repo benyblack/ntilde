@@ -1388,6 +1388,20 @@ jobs:
       - name: Publish AOT
         run: dotnet publish src/Ntilde.App/Ntilde.App.csproj -c ${{ env.CONFIGURATION }} -r ${{ matrix.rid }} --self-contained true -p:PublishAot=true -p:SkipCliShim=true -o artifacts/publish/${{ matrix.rid }}
 
+      # ntilde-mcp beside the App, as release.yml's publish_aot and publish_linux put it, so
+      # the macOS pack below (and its signing/notarisation, when enabled) covers it too.
+      - name: Publish and smoke the MCP server
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj -c "$CONFIGURATION" -r "$RID" -o artifacts/mcp
+          exe=""; [ "$RID" = "win-x64" ] && exe=".exe"
+          cp "artifacts/mcp/Ntilde.McpServer$exe" "artifacts/publish/$RID/ntilde-mcp$exe"
+          chmod 0755 "artifacts/publish/$RID/ntilde-mcp$exe"
+          bash scripts/ci/mcp-server-smoke.sh "artifacts/publish/$RID/ntilde-mcp$exe" src/Ntilde.McpServer/Tools
+
       # ---- macOS packaging dry run (osx-arm64 only): the same vpk pack invocation
       # ---- release.yml runs, minus the download/upload-release steps. None of this is
       # ---- runnable from a Windows or Linux dev box, so this dispatch lane is the only
@@ -2684,6 +2698,18 @@ jobs:
           -p:PublishAot=true -p:SkipCliShim=true
           -p:Version=0.0.1-ci -p:InformationalVersion=0.0.1-ci
           -o artifacts/publish/linux-x64
+
+      # Same step as release.yml's publish_linux: build-deb.sh requires ntilde-mcp in the bundle
+      # and links /usr/bin/ntilde-mcp to it, and the AppImage below carries it too.
+      - name: Publish and smoke the MCP server (linux-x64)
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj \
+            -c "$CONFIGURATION" -r linux-x64 \
+            -p:Version=0.0.1-ci -p:InformationalVersion=0.0.1-ci \
+            -o artifacts/mcp
+          install -m 0755 artifacts/mcp/Ntilde.McpServer artifacts/publish/linux-x64/ntilde-mcp
+          bash scripts/ci/mcp-server-smoke.sh artifacts/publish/linux-x64/ntilde-mcp src/Ntilde.McpServer/Tools
 
       - name: Build .deb
         run: |

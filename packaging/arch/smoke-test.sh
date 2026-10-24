@@ -235,8 +235,11 @@ docker run --rm -v "$work:/art:ro" \
   # so this counts the buckets rather than checking that some icon exists.
   test -x /usr/lib/ntilde/Ntilde || { echo "  FAIL: bundle binary not executable" >&2; exit 1; }
   test -L /usr/bin/ntilde                      || { echo "  FAIL: /usr/bin/ntilde is not a symlink" >&2; exit 1; }
-  test -x /usr/lib/ntilde/ntilde-mcp           || { echo "  FAIL: ntilde-mcp missing or not executable" >&2; exit 1; }
-  test -L /usr/bin/ntilde-mcp                  || { echo "  FAIL: /usr/bin/ntilde-mcp is not a symlink" >&2; exit 1; }
+  # Only when the bundle carries ntilde-mcp: releases before it shipped have none.
+  if [ -e /usr/lib/ntilde/ntilde-mcp ]; then
+    test -x /usr/lib/ntilde/ntilde-mcp         || { echo "  FAIL: ntilde-mcp not executable" >&2; exit 1; }
+    test -L /usr/bin/ntilde-mcp                || { echo "  FAIL: /usr/bin/ntilde-mcp is not a symlink" >&2; exit 1; }
+  fi
   test -f /usr/share/man/man1/ntilde.1.gz      || { echo "  FAIL: man page not installed (or not gzipped by zipman)" >&2; exit 1; }
   test -f /usr/share/licenses/ntilde-bin/LICENSE || { echo "  FAIL: licence not installed" >&2; exit 1; }
   test -f /usr/share/applications/ntilde.desktop || { echo "  FAIL: desktop entry not installed" >&2; exit 1; }
