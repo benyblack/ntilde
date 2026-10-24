@@ -21,6 +21,11 @@ namespace Ntilde.Platform.Ssh.Exec;
 /// <see cref="SshExecTransportException"/> from <see cref="ISshExecChannel.Stdout"/> once the output
 /// before it has been read. Its message is also in <see cref="ISshExecChannel.StderrTail"/>, and
 /// <see cref="ISshExecChannel.Completion"/> is null.
+/// <para>
+/// With the profile's multiplexing on, the command runs on the profile's shared connection
+/// (<see cref="NativeSshConnectionPool"/>) instead: one a tab of the profile opened, so it never prompts, or one it opens
+/// for them, which brings up the profile's port forwards with it. The channel holds the connection until it ends.
+/// </para>
 /// </remarks>
 public sealed class NativeSshExecTransport : ISshExecTransport
 {
@@ -29,6 +34,7 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     private readonly ISshInteractionHandler? _interactionHandler;
     private readonly Func<SshProfile, NativeSshConnectionOptions> _optionsFactory;
     private readonly Action<string> _log;
+    private readonly NativeSshConnectionPool _connectionPool;
 
     /// <param name="profile">The profile: its address, auth and jump chain, and the context its prompts carry.</param>
     /// <param name="interop">The native layer (<see cref="NativeSshInterop"/>).</param>
@@ -52,6 +58,11 @@ public sealed class NativeSshExecTransport : ISshExecTransport
     /// How long a channel's <see cref="ISshExecChannel">Dispose</see> lets the command end on stdin's EOF before it closes
     /// the session (<see cref="ExitGrace"/>); null for <see cref="NativeSshExecChannel.DefaultExitGrace"/>.
     /// </param>
+    /// <param name="connectionPool">
+    /// Where a profile with multiplexing on finds the shared connection its commands run on
+    /// (<see cref="NativeSshConnectionPool.Shared"/> by default): one its tabs opened, or one this transport opens for them,
+    /// forwards and all.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An <paramref name="exitGrace"/> that is not positive.</exception>
     public NativeSshExecTransport(
         SshProfile profile,
@@ -59,7 +70,8 @@ public sealed class NativeSshExecTransport : ISshExecTransport
         ISshInteractionHandler? interactionHandler,
         Func<SshProfile, NativeSshConnectionOptions> optionsFactory,
         Action<string>? log = null,
-        TimeSpan? exitGrace = null)
+        TimeSpan? exitGrace = null,
+        NativeSshConnectionPool? connectionPool = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(interop);
@@ -72,6 +84,7 @@ public sealed class NativeSshExecTransport : ISshExecTransport
         _interactionHandler = interactionHandler;
         _optionsFactory = optionsFactory;
         _log = log ?? TerminalLogger.Log;
+        _connectionPool = connectionPool ?? NativeSshConnectionPool.Shared;
         ExitGrace = grace;
     }
 
@@ -101,7 +114,24 @@ public sealed class NativeSshExecTransport : ISshExecTransport
         _log(string.Create(CultureInfo.InvariantCulture,
             $"[NativeSshExec] {DisplayName}: exec on {options.User}@{options.Host}:{options.Port} via {options.JumpHops.Count} jump hop(s)"));
 
-        NovaSshSafeHandle handle = _interop.Exec(options, remoteCommand);
+        NativeSshSharedConnection.Lease? lease = null;
+        NovaSshSafeHandle handle;
+        if (NativeSshConnectionPool.Shares(_profile))
+        {
+            // The shared connection's prompts are the opener's: if this command opens it, they go to this transport's
+            // handler, with no session id for the reason below. A command that joins one never prompts.
+            (lease, handle) = _connectionPool.AcquireAndOpen(
+                _profile,
+                options,
+                new NativeSshSharedConnection.Opener(_interop, _interactionHandler, SessionId: null, _log),
+                warn: message => _log($"[NativeSshExec] {DisplayName}: {message}"),
+                open: connection => connection.OpenExec(options, remoteCommand));
+        }
+        else
+        {
+            handle = _interop.Exec(options, remoteCommand);
+        }
+
         NativeSshExecChannel channel;
         try
         {
@@ -111,11 +141,12 @@ public sealed class NativeSshExecTransport : ISshExecTransport
             // rules (a refused password is not offered again; a profile with jump hops replays none). The
             // host's prompts hand what was typed to its SFTP connections themselves, through its password scope.
             channel = new NativeSshExecChannel(
-                handle, _interop, new NativeSshPromptResponder(_profile, sessionId: null), _interactionHandler, DisplayName, _log, ExitGrace);
+                handle, _interop, new NativeSshPromptResponder(_profile, sessionId: null), _interactionHandler, DisplayName, _log, ExitGrace, lease);
         }
         catch
         {
             _interop.Close(handle);
+            lease?.Dispose();
             throw;
         }
 
@@ -201,6 +232,7 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
     private readonly Thread _pollThread;
 
     private NovaSshSafeHandle? _handle;
+    private NativeSshSharedConnection.Lease? _connectionLease;
     private volatile string? _failure;
     private volatile bool _ended;
     private int _closing;
@@ -217,9 +249,11 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
         ISshInteractionHandler? interactionHandler,
         string displayName,
         Action<string> log,
-        TimeSpan exitGrace)
+        TimeSpan exitGrace,
+        NativeSshSharedConnection.Lease? connectionLease = null)
     {
         _handle = handle;
+        _connectionLease = connectionLease;
         _interop = interop;
         _promptResponder = promptResponder;
         _interactionHandler = interactionHandler;
@@ -431,7 +465,8 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
                         _exitCode = next.StatusCode;
                         break;
                     case NativeSshEventKind.Error:
-                        RecordFailure(ErrorMessage(next.Payload));
+                        // On a shared connection the managed side ended, the native error only says it closed.
+                        RecordFailure(_connectionLease?.Connection.Failure ?? ErrorMessage(next.Payload));
                         break;
                     case NativeSshEventKind.Closed:
                         closedByServer = true;
@@ -494,6 +529,9 @@ internal sealed class NativeSshExecChannel : ISshExecChannel
             // nova_ssh_close, exactly once: the SafeHandle defers it past a poll or write in flight.
             _interop.Close(handle);
         }
+
+        // After the channel, as a shell tab lets go: the connection may now close, or start its ControlPersist wait.
+        Interlocked.Exchange(ref _connectionLease, null)?.Dispose();
     }
 
     /// <summary>

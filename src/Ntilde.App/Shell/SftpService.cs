@@ -631,6 +631,10 @@ namespace Ntilde.Shell
         /// server of the chain is offered only its own (see <see cref="NativeHopPasswordResolver"/>); null
         /// means only the profile's saved password, and only for the target.
         /// </param>
+        /// <param name="connectionPool">
+        /// Where the profile's shared connection is found when multiplexing is on (<see cref="NativeSshConnectionPool.Shared"/>
+        /// by default): with one up, the transfer runs on it and logs in nowhere.
+        /// </param>
         internal static void ExecuteNativeSftpTransfer(
             TransferJob job,
             TerminalProfile profile,
@@ -641,11 +645,19 @@ namespace Ntilde.Shell
             ActiveSshSessionRegistry? sessionRegistry = null,
             string? knownHostsFilePath = null,
             Action<NativeSftpTransferProgress>? progress = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            NativeSshConnectionPool? connectionPool = null)
         {
             ArgumentNullException.ThrowIfNull(job);
             ArgumentNullException.ThrowIfNull(profile);
             ArgumentNullException.ThrowIfNull(sshService);
+
+            NativeSftpTransferOptions transferOptions = BuildNativeTransferOptions(job);
+            if (sshService.GetStoredProfile(profile.Id) is { } storedProfile
+                && (connectionPool ?? NativeSshConnectionPool.Shared).TryRunSftpTransfer(storedProfile, transferOptions, progress, cancellationToken))
+            {
+                return;
+            }
 
             NativeSshConnectionOptions baseOptions = BuildNativeTransferConnectionOptions(sshService, profile, allProfiles);
             NativeHopPasswords passwords = NativeHopPasswordResolver.Resolve(
@@ -681,7 +693,6 @@ namespace Ntilde.Shell
                 KeepAliveIntervalSeconds = baseOptions.KeepAliveIntervalSeconds,
                 KeepAliveCountMax = baseOptions.KeepAliveCountMax
             };
-            NativeSftpTransferOptions transferOptions = BuildNativeTransferOptions(job);
 
             try
             {

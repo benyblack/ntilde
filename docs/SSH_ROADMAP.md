@@ -46,10 +46,16 @@ The native SSH initiative is implemented behind conservative rollout controls.
 - Connection sharing, the native ControlMaster (`nova_ssh_connect_shared`, `nova_ssh_open_shell`):
   with the profile's multiplexing on, its tabs share one connection from `NativeSshConnectionPool`,
   keyed by the profile and every connection setting (destination, credentials, jump chain,
-  keepalive, forwards). The connection owns the prompts and the port forwards; each tab gets its own
+  keepalive, forwards). The connection owns the prompts and the port forwards; a local or dynamic
+  forward whose port cannot be bound is left out with a warning to every tab on it (OpenSSH's
+  `ExitOnForwardFailure no`), where an unshared native tab still fails; each tab gets its own
   shell channel and event queue. The connection closes with its last tab, or after the profile's
   ControlPersist seconds once it is up. When the transport goes, every shell on it gets Closed and the
-  next tab reconnects. SFTP and exec still connect on their own.
+  next tab reconnects. Exec channels (`nova_ssh_open_exec`: persistent tabs' `ntilde-mux proxy`, the
+  installer's commands) join or open the same connection, forwards included. SFTP transfers and
+  listings (`nova_ssh_sftp_transfer_shared`, `nova_ssh_sftp_list_directory_shared`) run on it when it
+  is up and logged in, and connect on their own otherwise: they cannot answer a prompt, so they never
+  open one.
 - Exec mode (`nova_ssh_exec`): a command with no PTY, with stdin EOF, stderr and the exit status
   as events — the channel persistent remote tabs and the `ntilde-mux` installer run over (see
   *Remote session persistence* below)
@@ -164,8 +170,10 @@ user-facing description is `docs/USER_MANUAL.md` chapter 12 (12.6 for SSH tabs);
   `Eof` (kind 15; `NativeSshExecTransport` ends stdout there, without waiting for the command to
   exit), the exit status as `ExitStatus` before `Closed`, and `nova_ssh_send_eof` ends stdin. (The login-shell detection of
   a shell session runs a short exec through `run_exec_collect`, of which exec mode is the streaming
-  counterpart.) An exec connection is its own connection: it lives exactly as long as its channel
-  and never shares a pane's.
+  counterpart.) Without multiplexing, an exec connection is its own connection: it lives exactly
+  as long as its channel and never shares a pane's. With the profile's multiplexing on, the exec
+  leases the profile's shared connection instead (see *Connection sharing* above), which closes with
+  its last lease, at once or after ControlPersist.
 - **Automatic reconnects never prompt**, on either backend. A native remote host remembers, in
   memory, a password or passphrase that got a user-started connect in, and replays only that (never
   a password through jump hops, since the native prompt does not say which hop asks); host keys
@@ -193,9 +201,11 @@ apart, so neither serves (or adopts, or shuts down) the other's shells.
 
 ### Deferred
 
-- Port forwards on a persistent remote tab: the exec channel carries no forwards (Phase 5 spec R8:
-  they would share the mux link's event queue, drop on every reconnect and collide with plain tabs
-  of the profile). Since Phase 5 the SFTP sidebar and transfers work there for native profiles: the
+- Port forwards on a persistent remote tab: without multiplexing the exec channel carries no
+  forwards (Phase 5 spec R8: they would share the mux link's event queue, drop on every reconnect
+  and collide with plain tabs of the profile). A native profile with multiplexing on avoids all
+  three: its exec rides the profile's shared connection, which owns the forwards, serves them on the
+  connection's own queue, and is the same connection its plain tabs use. Since Phase 5 the SFTP sidebar and transfers work there for native profiles: the
   pane registers in `ActiveSshSessionRegistry` with its remote host's password scope. OpenSSH
   persisted tabs get the palette's transfers (scp on its own connection), not the sidebar.
 - Adoption of remote orphans: a remote shell no saved tab names is listed by "Attach to session…"

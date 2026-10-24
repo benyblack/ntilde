@@ -50,6 +50,20 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         return StartSession(options, command: null, start: StartKind.SharedConnection);
     }
 
+    public NovaSshSafeHandle OpenExec(NovaSshSafeHandle connection, NativeSshConnectionOptions options, string command)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(command);
+
+        if (connection.IsInvalid || connection.IsClosed)
+        {
+            throw new InvalidOperationException("The shared native SSH connection is closed.");
+        }
+
+        return StartSession(options, command, start: StartKind.SharedChannel, connection: connection);
+    }
+
     public NovaSshSafeHandle OpenShell(NovaSshSafeHandle connection, NativeSshConnectionOptions options)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -60,7 +74,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             throw new InvalidOperationException("The shared native SSH connection is closed.");
         }
 
-        return StartSession(options, command: null, start: StartKind.SharedShell, connection: connection);
+        return StartSession(options, command: null, start: StartKind.SharedChannel, connection: connection);
     }
 
     /// <summary>Which entry point <see cref="StartSession"/> calls with the args it marshals.</summary>
@@ -69,7 +83,9 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         /// <summary>nova_ssh_connect, or nova_ssh_exec when there is a command.</summary>
         Session,
         SharedConnection,
-        SharedShell
+
+        /// <summary>nova_ssh_open_shell, or nova_ssh_open_exec when there is a command.</summary>
+        SharedChannel
     }
 
     public NovaSshSafeHandle Exec(NativeSshConnectionOptions options, string command)
@@ -176,15 +192,16 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 {
                     StartKind.SharedConnection => NativeMethods.nova_ssh_connect_shared(in args),
                     // 0 here is also a connection that has already ended, not only rejected args.
-                    StartKind.SharedShell => NativeMethods.nova_ssh_open_shell(connection, in args),
+                    StartKind.SharedChannel when command is null => NativeMethods.nova_ssh_open_shell(connection, in args),
+                    StartKind.SharedChannel => NativeMethods.nova_ssh_open_exec(connection, in args, commandPtr),
                     _ when command is null => NativeMethods.nova_ssh_connect(in args),
                     _ => NativeMethods.nova_ssh_exec(in args, commandPtr)
                 };
                 if (handle.IsInvalid)
                 {
                     handle.Dispose();
-                    throw new InvalidOperationException(start == StartKind.SharedShell
-                        ? "Failed to open a shell on the shared native SSH connection; it is no longer running."
+                    throw new InvalidOperationException(start == StartKind.SharedChannel
+                        ? "Failed to open a channel on the shared native SSH connection; it is no longer running."
                         : "Failed to create native SSH session.");
                 }
 
@@ -224,8 +241,63 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         cancellationToken.ThrowIfCancellationRequested();
 
         SftpTransferRequest request = SftpTransferRequest.From(connectionOptions, transferOptions);
-        string requestJson = SerializeSftpTransferRequest(request);
+        RunSftpTransferCore(
+            cancellationMarkerPath => SerializeSftpTransferRequest(request with
+            {
+                Transfer = request.Transfer with
+                {
+                    CancellationMarkerPath = cancellationMarkerPath
+                }
+            }),
+            (IntPtr requestPtr, IntPtr callback, IntPtr context, out IntPtr responsePtr) =>
+                NativeMethods.nova_ssh_sftp_transfer(requestPtr, callback, context, out responsePtr),
+            progress,
+            closedMeansRetry: false,
+            cancellationToken);
+    }
 
+    public bool TryRunSftpTransferShared(
+        NovaSshSafeHandle connection,
+        NativeSftpTransferOptions transferOptions,
+        Action<NativeSftpTransferProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(transferOptions);
+
+        transferOptions.Validate();
+        cancellationToken.ThrowIfCancellationRequested();
+        if (connection.IsInvalid || connection.IsClosed)
+        {
+            return false;
+        }
+
+        SftpTransferRequestBody body = SftpTransferRequestBody.From(transferOptions);
+        return RunSftpTransferCore(
+            cancellationMarkerPath => JsonSerializer.Serialize(
+                body with { CancellationMarkerPath = cancellationMarkerPath },
+                NativeSshJsonContext.Default.SftpTransferRequestBody),
+            (IntPtr requestPtr, IntPtr callback, IntPtr context, out IntPtr responsePtr) =>
+                NativeMethods.nova_ssh_sftp_transfer_shared(connection, requestPtr, callback, context, out responsePtr),
+            progress,
+            closedMeansRetry: true,
+            cancellationToken);
+    }
+
+    private delegate int SftpTransferCall(IntPtr requestPtr, IntPtr callback, IntPtr context, out IntPtr responsePtr);
+
+    /// <summary>
+    /// One SFTP transfer through <paramref name="call"/>, with the cancellation marker, progress callback and failure
+    /// mapping both entry points share. False only when <paramref name="closedMeansRetry"/> and the native side reports
+    /// the shared connection closed: the caller then transfers over a connection of its own.
+    /// </summary>
+    private static bool RunSftpTransferCore(
+        Func<string, string> serializeRequest,
+        SftpTransferCall call,
+        Action<NativeSftpTransferProgress>? progress,
+        bool closedMeansRetry,
+        CancellationToken cancellationToken)
+    {
         IntPtr requestPtr = IntPtr.Zero;
         IntPtr responsePtr = IntPtr.Zero;
         GCHandle progressStateHandle = default;
@@ -246,28 +318,25 @@ public sealed partial class NativeSshInterop : INativeSshInterop
                 {
                 }
             });
-            request = request with
-            {
-                Transfer = request.Transfer with
-                {
-                    CancellationMarkerPath = cancellationMarkerPath
-                }
-            };
-            requestJson = SerializeSftpTransferRequest(request);
-            requestPtr = Marshal.StringToCoTaskMemUTF8(requestJson);
+            requestPtr = Marshal.StringToCoTaskMemUTF8(serializeRequest(cancellationMarkerPath));
             if (progress is not null)
             {
                 // Native SFTP transfer callbacks are expected to stay synchronous within the
-                // nova_ssh_sftp_transfer call, so this GCHandle only needs to live for that invocation.
+                // transfer call, so this GCHandle only needs to live for that invocation.
                 progressStateHandle = GCHandle.Alloc(new NativeSftpTransferProgressCallbackState(progress));
             }
 
-            int rc = NativeMethods.nova_ssh_sftp_transfer(
+            int rc = call(
                 requestPtr,
                 progressStateHandle.IsAllocated ? SftpTransferProgressCallbackPointer : IntPtr.Zero,
                 progressStateHandle.IsAllocated ? GCHandle.ToIntPtr(progressStateHandle) : IntPtr.Zero,
                 out responsePtr);
             string? responseJson = TakeNativeUtf8AndFree(ref responsePtr);
+            if (rc == ResultClosed && closedMeansRetry)
+            {
+                return false;
+            }
+
             if (rc == ResultCanceled)
             {
                 throw new OperationCanceledException(BuildSftpTransferFailureMessage(rc, responseJson), cancellationToken);
@@ -282,6 +351,8 @@ public sealed partial class NativeSshInterop : INativeSshInterop
             {
                 throw Failure(BuildSftpTransferFailureMessage(rc, responseJson), responseJson);
             }
+
+            return true;
         }
         finally
         {
@@ -337,16 +408,59 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         cancellationToken.ThrowIfCancellationRequested();
 
         RemotePathListRequest request = RemotePathListRequest.From(connectionOptions, remotePath);
-        string requestJson = SerializeRemotePathListRequest(request);
+        return ListRemoteDirectoryCore(
+            SerializeRemotePathListRequest(request),
+            (IntPtr requestPtr, out IntPtr responsePtr) => NativeMethods.nova_ssh_sftp_list_directory(requestPtr, out responsePtr),
+            closedMeansRetry: false,
+            cancellationToken)!;
+    }
 
+    public IReadOnlyList<NativeRemotePathEntry>? TryListRemoteDirectoryShared(
+        NovaSshSafeHandle connection,
+        string remotePath,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (connection.IsInvalid || connection.IsClosed)
+        {
+            return null;
+        }
+
+        return ListRemoteDirectoryCore(
+            JsonSerializer.Serialize(new SharedRemotePathListRequest(remotePath), NativeSshJsonContext.Default.SharedRemotePathListRequest),
+            (IntPtr requestPtr, out IntPtr responsePtr) => NativeMethods.nova_ssh_sftp_list_directory_shared(connection, requestPtr, out responsePtr),
+            closedMeansRetry: true,
+            cancellationToken);
+    }
+
+    private delegate int RemotePathListCall(IntPtr requestPtr, out IntPtr responsePtr);
+
+    /// <summary>
+    /// One listing through <paramref name="call"/>. Null only when <paramref name="closedMeansRetry"/> and the shared
+    /// connection is closed, as in <see cref="RunSftpTransferCore"/>.
+    /// </summary>
+    private static IReadOnlyList<NativeRemotePathEntry>? ListRemoteDirectoryCore(
+        string requestJson,
+        RemotePathListCall call,
+        bool closedMeansRetry,
+        CancellationToken cancellationToken)
+    {
         IntPtr requestPtr = IntPtr.Zero;
         IntPtr responsePtr = IntPtr.Zero;
 
         try
         {
             requestPtr = Marshal.StringToCoTaskMemUTF8(requestJson);
-            int rc = NativeMethods.nova_ssh_sftp_list_directory(requestPtr, out responsePtr);
+            int rc = call(requestPtr, out responsePtr);
             string? responseJson = TakeNativeUtf8AndFree(ref responsePtr);
+            if (rc == ResultClosed && closedMeansRetry)
+            {
+                return null;
+            }
+
             if (rc == ResultCanceled)
             {
                 throw new OperationCanceledException(BuildRemotePathListFailureMessage(rc, responseJson), cancellationToken);
@@ -1090,11 +1204,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         {
             return new SftpTransferRequest(
                 SftpConnectionRequest.From(connectionOptions),
-                new SftpTransferRequestBody(
-                    transferOptions.Direction.ToString().ToLowerInvariant(),
-                    transferOptions.Kind.ToString().ToLowerInvariant(),
-                    transferOptions.LocalPath!,
-                    transferOptions.RemotePath!));
+                SftpTransferRequestBody.From(transferOptions));
         }
     }
 
@@ -1174,7 +1284,17 @@ public sealed partial class NativeSshInterop : INativeSshInterop
         string Kind,
         string LocalPath,
         string RemotePath,
-        string? CancellationMarkerPath = null);
+        string? CancellationMarkerPath = null)
+    {
+        public static SftpTransferRequestBody From(NativeSftpTransferOptions transferOptions) => new(
+            transferOptions.Direction.ToString().ToLowerInvariant(),
+            transferOptions.Kind.ToString().ToLowerInvariant(),
+            transferOptions.LocalPath!,
+            transferOptions.RemotePath!);
+    }
+
+    /// <summary>A shared connection's listing request: only the path, since the connection has the rest.</summary>
+    private sealed record SharedRemotePathListRequest(string Path);
 
     private sealed class NativeSftpTransferResponse
     {
@@ -1206,6 +1326,7 @@ public sealed partial class NativeSshInterop : INativeSshInterop
     [JsonSerializable(typeof(SftpJumpHopRequest))]
     [JsonSerializable(typeof(RemotePathListRequest))]
     [JsonSerializable(typeof(SftpTransferRequestBody))]
+    [JsonSerializable(typeof(SharedRemotePathListRequest))]
     [JsonSerializable(typeof(NativeSftpTransferResponse))]
     [JsonSerializable(typeof(RemotePathListResponse))]
     [JsonSerializable(typeof(RemotePathListResponseEntry))]
@@ -1241,6 +1362,20 @@ public sealed partial class NativeSshInterop : INativeSshInterop
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_open_shell")]
         public static extern NovaSshSafeHandle nova_ssh_open_shell(NovaSshSafeHandle connection, in NativeConnectArgs args);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_open_exec")]
+        public static extern NovaSshSafeHandle nova_ssh_open_exec(NovaSshSafeHandle connection, in NativeConnectArgs args, IntPtr command);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_sftp_transfer_shared")]
+        public static extern int nova_ssh_sftp_transfer_shared(
+            NovaSshSafeHandle connection,
+            IntPtr requestJson,
+            IntPtr progressCallback,
+            IntPtr progressContext,
+            out IntPtr responseJson);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_sftp_list_directory_shared")]
+        public static extern int nova_ssh_sftp_list_directory_shared(NovaSshSafeHandle connection, IntPtr requestJson, out IntPtr responseJson);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "nova_ssh_wait_event")]
         public static extern int nova_ssh_wait_event(NovaSshSafeHandle session, uint timeoutMs);

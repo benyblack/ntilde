@@ -142,7 +142,7 @@ invariant changes.
 - Process abstraction (`IProcessRunner`)
 - The entire SSH stack: native interop with `rusty_ssh.dll`, OpenSSH bridging, session factories, profile storage, transport
 - SSH exec channels (`Ssh/Exec/`, namespace `Ntilde.Platform.Ssh.Exec`, multiplexer Phase 4 spec §8.2-§8.3): a command run over SSH with no PTY, which the remote multiplexer (`ntilde-mux proxy --stdio`) and its installer use. `ISshExecTransport` / `ISshExecChannel` (stdout, stdin with EOF on dispose, an 8 KiB stderr tail, the exit code), `OpenSshExecTransport` + `OpenSshExecCommandLine` + `SshAskPassEnvironment` (the `ssh` argv and the askpass/batch-mode environment), `NativeSshExecTransport` over rusty_ssh's exec mode (`nova_ssh_exec`, `nova_ssh_send_eof`), `BoundedChunkQueue` / `BoundedTail`, and `SshExec.RunAsync` (one command with stdin bytes and a deadline)
-- Native connection sharing (`Ssh/Native/NativeSshConnectionPool`, `NativeSshSharedConnection`): the native backend's ControlMaster. Tabs of a profile with multiplexing on lease one shared connection (`nova_ssh_connect_shared`), which owns the prompts and port forwards, and each open a shell channel on it (`nova_ssh_open_shell`); the connection closes with its last lease or after ControlPersist
+- Native connection sharing (`Ssh/Native/NativeSshConnectionPool`, `NativeSshSharedConnection`): the native backend's ControlMaster. Tabs of a profile with multiplexing on lease one shared connection (`nova_ssh_connect_shared`), which owns the prompts and port forwards, and each open a shell channel on it (`nova_ssh_open_shell`); native exec (`NativeSshExecTransport`, `nova_ssh_open_exec`) joins or opens it too, and SFTP transfers and listings run on it when it is logged in (`NativeSshConnectionPool.TryRunSftpTransfer` / `TryListRemoteDirectory`); the connection closes with its last lease or after ControlPersist
 - Future home of `SessionBufferBinder` and other session-orchestration helpers
 
 **Invariants**
@@ -166,7 +166,7 @@ invariant changes.
   session instead, so no empty password is ever submitted to a server
 - **No thread-pool work on the native exec's stdout path:** one dedicated poll thread per channel
   feeds a bounded byte queue that a reader drains synchronously
-- A native exec connection lives exactly as long as its channel; it never shares a pane's connection
+- A native exec on a profile without multiplexing (or with `ControlMasterAuto` off) has a connection of its own, which lives exactly as long as its channel. With multiplexing on, it leases the profile's shared connection instead (`NativeSshConnectionPool`), joining or opening it; that connection closes when its last lease is released, at once or after ControlPersist
 
 **Test authority**
 - Primary: `tests/Ntilde.Platform.Tests/` (exec transports: `Ssh/Exec/`)

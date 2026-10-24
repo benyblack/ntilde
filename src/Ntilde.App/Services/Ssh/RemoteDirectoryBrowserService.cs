@@ -24,13 +24,20 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
     private readonly ActiveSshSessionRegistry _sessionRegistry;
     private readonly Func<SshConnectionService> _sshServiceFactory;
     private readonly Func<TerminalProfile, string?> _passwordResolver;
+    private readonly NativeSshConnectionPool _connectionPool;
 
+    /// <param name="connectionPool">
+    /// Where a listing finds the profile's shared connection when multiplexing is on (<see cref="NativeSshConnectionPool.Shared"/>
+    /// by default): it runs there, with no login, when a tab of the profile has one up.
+    /// </param>
     public RemoteDirectoryBrowserService(
         INativeSshInterop? nativeInterop = null,
         ActiveSshSessionRegistry? sessionRegistry = null,
         Func<SshConnectionService>? sshServiceFactory = null,
-        Func<TerminalProfile, string?>? passwordResolver = null)
+        Func<TerminalProfile, string?>? passwordResolver = null,
+        NativeSshConnectionPool? connectionPool = null)
     {
+        _connectionPool = connectionPool ?? NativeSshConnectionPool.Shared;
         _nativeInterop = nativeInterop ?? new NativeSshInterop();
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
         _sshServiceFactory = sshServiceFactory ?? (() => new SshConnectionService());
@@ -53,6 +60,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
                 _passwordResolver,
                 out NativeSshConnectionOptions? connectionOptions,
                 out NativeHopPasswords? passwords,
+                out SshProfile? storedProfile,
                 out string errorMessage))
         {
             return RemoteSidebarListingResult.Failure(resolvedPath, errorMessage);
@@ -63,7 +71,8 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         try
         {
             IReadOnlyList<NativeRemotePathEntry> entries = await BackgroundWork.RunBlockingAsync(
-                token => _nativeInterop.ListRemoteDirectory(connectionOptions!, resolvedPath, token),
+                token => ListOnSharedConnection(_connectionPool, storedProfile, resolvedPath, token)
+                    ?? _nativeInterop.ListRemoteDirectory(connectionOptions!, resolvedPath, token),
                 cancellationToken);
 
             RemoteSidebarEntry[] mappedEntries = entries
@@ -100,6 +109,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
         Func<TerminalProfile, string?> passwordResolver,
         out NativeSshConnectionOptions? connectionOptions,
         out NativeHopPasswords? passwords,
+        out SshProfile? storedProfile,
         out string errorMessage)
     {
         ArgumentNullException.ThrowIfNull(sessionRegistry);
@@ -108,6 +118,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
 
         connectionOptions = null;
         passwords = null;
+        storedProfile = null;
         errorMessage = InactiveSessionErrorMessage;
 
         if (profileId == Guid.Empty || sessionId == Guid.Empty ||
@@ -169,6 +180,7 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
                     .ToArray()
             };
 
+            storedProfile = sshService.GetStoredProfile(profileId);
             errorMessage = string.Empty;
             return true;
         }
@@ -178,6 +190,17 @@ public sealed class RemoteDirectoryBrowserService : IRemoteDirectoryBrowserServi
             return false;
         }
     }
+
+    /// <summary>
+    /// The listing over the profile's shared connection, when multiplexing has one up; null to list over a connection of
+    /// the listing's own, as without sharing.
+    /// </summary>
+    internal static IReadOnlyList<NativeRemotePathEntry>? ListOnSharedConnection(
+        NativeSshConnectionPool pool,
+        SshProfile? storedProfile,
+        string remotePath,
+        CancellationToken cancellationToken) =>
+        storedProfile is null ? null : pool.TryListRemoteDirectory(storedProfile, remotePath, cancellationToken);
 
     private static string NormalizeRemotePath(string remotePath)
     {

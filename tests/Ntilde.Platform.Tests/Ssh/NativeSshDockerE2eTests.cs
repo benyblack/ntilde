@@ -1,4 +1,5 @@
 using Ntilde.Replay;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
 using Ntilde.Platform.Ssh.Sessions;
@@ -792,6 +793,70 @@ public sealed class NativeSshDockerE2eTests
         await WaitUntilAsync(() => ConnectionLine(firstBuffer) is not null && ConnectionLine(secondBuffer) is not null, TimeSpan.FromSeconds(20), "both tabs' SSH_CONNECTION");
 
         Assert.Equal(ConnectionLine(firstBuffer), ConnectionLine(secondBuffer));
+        Assert.Single(handler.RequestSnapshot(), request => request.Kind == Ntilde.Platform.Ssh.Interactions.SshInteractionKind.Password);
+        Assert.Equal(1, pool.Count);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task NativeSsh_WithMultiplexing_ExecAndSftpRideTheTabsConnection()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        SshProfile profile = CreateProfile(fixture);
+        profile.MuxOptions.Enabled = true;
+        var pool = new NativeSshConnectionPool();
+        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        var buffer = new TerminalBuffer(120, 30);
+        var parser = new AnsiParser(buffer);
+
+        using var tab = new NativeSshSession(profile, cols: 120, rows: 30, interactionHandler: handler, connectionPool: pool);
+        tab.OnOutputReceived += parser.Process;
+        await WaitUntilAsync(() => SnapshotContainsExactLine(buffer, "nova$"), TimeSpan.FromSeconds(20), "the tab's prompt");
+        tab.SendInput("echo \"conn=$SSH_CONNECTION\"\n");
+        static string? ConnectionLine(TerminalBuffer b) =>
+            BufferSnapshot.Capture(b).Lines.FirstOrDefault(line => line.StartsWith("conn=", StringComparison.Ordinal));
+        await WaitUntilAsync(() => ConnectionLine(buffer) is not null, TimeSpan.FromSeconds(20), "the tab's SSH_CONNECTION");
+
+        // An exec with no handler at all: it can only succeed by joining the tab's connection.
+        var transport = new NativeSshExecTransport(profile, new NativeSshInterop(), interactionHandler: null, NativeSshConnectionOptionsFactory.Create, connectionPool: pool);
+        using (ISshExecChannel channel = transport.Start("echo \"conn=$SSH_CONNECTION\"", TestContext.Current.CancellationToken))
+        {
+            using var reader = new StreamReader(channel.Stdout);
+            string execOutput = (await reader.ReadToEndAsync(TestContext.Current.CancellationToken)).Trim();
+            Assert.Equal(0, await channel.Completion.WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken));
+            Assert.Equal(ConnectionLine(buffer), execOutput);
+        }
+
+        // SFTP with no password and no known-hosts file: again only possible on the shared connection.
+        const string remotePath = "/tmp/shared-sftp-source.txt";
+        await fixture.WriteTextFileAsync(remotePath, "shared-sftp");
+        string localPath = Path.Combine(Path.GetTempPath(), $"ntilde-shared-sftp-{Guid.NewGuid():N}.txt");
+        try
+        {
+            Assert.True(pool.TryRunSftpTransfer(
+                profile,
+                new NativeSftpTransferOptions
+                {
+                    Direction = NativeSftpTransferDirection.Download,
+                    Kind = NativeSftpTransferKind.File,
+                    RemotePath = remotePath,
+                    LocalPath = localPath
+                },
+                progress: null,
+                TestContext.Current.CancellationToken));
+            Assert.Equal("shared-sftp", File.ReadAllText(localPath));
+        }
+        finally
+        {
+            File.Delete(localPath);
+        }
+
+        IReadOnlyList<NativeRemotePathEntry>? listing = pool.TryListRemoteDirectory(profile, "/tmp", TestContext.Current.CancellationToken);
+        Assert.NotNull(listing);
+        Assert.Contains(listing, entry => entry.Name == "shared-sftp-source.txt" && !entry.IsDirectory);
+
         Assert.Single(handler.RequestSnapshot(), request => request.Kind == Ntilde.Platform.Ssh.Interactions.SshInteractionKind.Password);
         Assert.Equal(1, pool.Count);
     }
