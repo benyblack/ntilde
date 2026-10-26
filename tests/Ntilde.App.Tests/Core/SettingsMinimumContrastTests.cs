@@ -28,6 +28,30 @@ public sealed class SettingsMinimumContrastTests
     }
 
     /// <summary>
+    /// The file and the MCP settings tool accept up to 21:1, the slider stops at 7:1. A stored
+    /// ratio above the slider is shown as itself and survives a save that leaves the slider alone;
+    /// it used to be clamped to 7 and written back from any page's save.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_stored_ratio_above_the_slider_survives_a_save()
+    {
+        using var root = SettingsTestRoot.WithSettings("""{"MinimumContrast":12}""");
+        var window = new Ntilde.SettingsWindow(new SettingsTarget(SettingsPage.Appearance));
+        var page = window.GetPage<AppearancePage>();
+
+        Assert.Equal("12:1", page.FindControl<TextBlock>("MinimumContrastDisplay")!.Text);
+        var untouched = new TerminalSettings();
+        page.Collect(untouched);
+        Assert.Equal(12, untouched.MinimumContrast);
+
+        // Moving the slider is a choice: it is saved as chosen.
+        page.FindControl<Slider>("MinimumContrastSlider")!.Value = 3;
+        var moved = new TerminalSettings();
+        page.Collect(moved);
+        Assert.Equal(3, moved.MinimumContrast);
+    }
+
+    /// <summary>
     /// A pane renders from settings it copies field by field (BuildEffectiveSettings, for profile
     /// overrides). The first version of this setting was missing from that copy, so every pane kept
     /// the default and the setting did nothing.
