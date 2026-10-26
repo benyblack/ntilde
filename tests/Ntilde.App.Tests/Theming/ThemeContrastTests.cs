@@ -13,7 +13,7 @@ namespace Ntilde.Tests.Theming;
 /// <summary>
 /// Gating: every shipped theme, plus synthetic worst cases, must yield readable chrome. A failure
 /// here means the derivation (ThemeTokens.Derive) is wrong for that theme. Fix Derive; never lower
-/// a threshold to make a theme pass. Explicit theme fields (phase 4) will be checked here too.
+/// a threshold to make a theme pass. Explicit fields in shipped themes are held to the same bars.
 /// </summary>
 public class ThemeContrastTests
 {
@@ -126,6 +126,58 @@ public class ThemeContrastTests
         Assert.True(ThemeColorMath.Contrast(selected, surface) >= 1.1, $"{theme}: selected fill invisible");
         Assert.True(ThemeColorMath.Contrast(selected, hover) >= 1.1, $"{theme}: selected and hover fills look alike ({ThemeColorMath.Contrast(selected, hover):F2}:1)");
     }
+
+    /// <summary>
+    /// Selected text is drawn on top of the selection (spec §7): the theme's text color, or its
+    /// SelectionForeground, over the selection composited onto the terminal background.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Themes))]
+    public void Selected_text_reads_on_the_selection(string theme)
+    {
+        var t = Load(theme);
+        var colors = TerminalRenderColors.Derive(t);
+        var background = Opaque(t.Background);
+        var selection = ThemeColorMath.Composite(colors.Selection, background);
+        var text = colors.SelectionForeground ?? Opaque(t.Foreground);
+
+        double ratio = ThemeColorMath.Contrast(text, selection);
+        Assert.True(ratio >= ThemeTokens.TextContrast, $"{theme}: selected text {ratio:F2}:1, needs {ThemeTokens.TextContrast}:1");
+    }
+
+    /// <summary>A search match, the current match and a selection must not be mistaken for one another.</summary>
+    [Theory]
+    [MemberData(nameof(Themes))]
+    public void Search_matches_and_the_selection_are_told_apart(string theme)
+    {
+        var t = Load(theme);
+        var colors = TerminalRenderColors.Derive(t);
+        var background = Opaque(t.Background);
+        var fills = new (string Name, Avalonia.Media.Color Color)[]
+        {
+            ("selection", ThemeColorMath.Composite(colors.Selection, background)),
+            ("search match", ThemeColorMath.Composite(colors.SearchMatch, background)),
+            ("current match", ThemeColorMath.Composite(colors.SearchMatchActive, background)),
+        };
+
+        for (int i = 0; i < fills.Length; i++)
+        {
+            for (int j = i + 1; j < fills.Length; j++)
+            {
+                double distance = Distance(fills[i].Color, fills[j].Color);
+                Assert.True(distance >= MinimumFillDistance, $"{theme}: {fills[i].Name} and {fills[j].Name} are {distance:F0} apart in RGB, need {MinimumFillDistance}");
+            }
+        }
+    }
+
+    // Euclidean RGB distance: hue matters here (yellow vs orange vs blue at similar lightness), which
+    // a luminance ratio cannot see.
+    private const double MinimumFillDistance = 32;
+
+    private static double Distance(Avalonia.Media.Color a, Avalonia.Media.Color b)
+        => Math.Sqrt(Math.Pow(a.R - b.R, 2) + Math.Pow(a.G - b.G, 2) + Math.Pow(a.B - b.B, 2));
+
+    private static Avalonia.Media.Color Opaque(TermColor color) => Avalonia.Media.Color.FromRgb((byte)color.R, (byte)color.G, (byte)color.B);
 
     private static ThemeTokens Tokens(string name) => ThemeTokens.Derive(Load(name), windowOpacity: 1.0);
 

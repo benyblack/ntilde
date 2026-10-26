@@ -597,7 +597,8 @@ namespace Ntilde.VT
                 Foreground = Theme.Foreground,
                 Background = Theme.Background,
                 CursorColor = Theme.CursorColor,
-                AnsiPalette = palette
+                AnsiPalette = palette,
+                Source = Theme
             };
         }
 
