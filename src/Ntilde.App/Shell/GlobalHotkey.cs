@@ -128,16 +128,17 @@ namespace Ntilde.Shell
             return CallWindowProc(_oldWndProc, hWnd, msg, wParam, lParam);
         }
 
-        // Modified Register to call SetupHook if needed
-        public void Register(uint modifiers, uint key)
+        /// <summary>Registers the hotkey; false when Windows refused it (another program holds that key, say).</summary>
+        public bool Register(uint modifiers, uint key)
         {
-            if (_handle == IntPtr.Zero || !OperatingSystem.IsWindows()) return;
+            if (_handle == IntPtr.Zero || !OperatingSystem.IsWindows()) return false;
 
             if (_oldWndProc == IntPtr.Zero) SetupHook();
 
             if (_registered) Unregister();
 
             _registered = RegisterHotKey(_handle, HOTKEY_ID, modifiers, key);
+            return _registered;
         }
 
         public const uint ModAlt = 1, ModControl = 2, ModShift = 4, ModWin = 8;
@@ -150,7 +151,8 @@ namespace Ntilde.Shell
         /// into <c>RegisterHotKey</c>'s modifiers and virtual-key code. Names are case-insensitive and
         /// follow Avalonia's <c>Key</c> names (<c>A</c>-<c>Z</c>, <c>D0</c>-<c>D9</c>, <c>F1</c>-<c>F24</c>,
         /// <c>OemTilde</c>, ...). At least one modifier is required: a bare key registered system-wide
-        /// would stop working in every other program.
+        /// would stop working in every other program. F12 is refused: Windows reserves it for the
+        /// debugger, and <c>RegisterHotKey</c> does not take it.
         /// </summary>
         public static bool TryParse(string? text, out uint modifiers, out uint key)
         {
@@ -191,7 +193,7 @@ namespace Ntilde.Shell
 
             string n = name.ToLowerInvariant();
             if (n.Length == 2 && n[0] == 'd' && char.IsAsciiDigit(n[1])) { key = n[1]; return true; }
-            if (n[0] == 'f' && int.TryParse(n.AsSpan(1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int f) && f is >= 1 and <= 24)
+            if (n[0] == 'f' && int.TryParse(n.AsSpan(1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int f) && f is >= 1 and <= 24 and not 12)
             {
                 key = (uint)(0x70 + f - 1);
                 return true;

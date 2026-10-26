@@ -426,9 +426,9 @@ namespace Ntilde
                 ? named
                 : _muxHosts?.TryGet(endpoint)?.Policy.DisplayName ?? "its host";
             // The picker offers that host only while its profile keeps its sessions: read now, at the detach.
-            bool reopenable = endpoint.SshProfileId is Guid profileId
-                && _sshConnectionService.GetStoredProfile(profileId) is { MuxOptions.PersistRemoteSessions: true };
-            return RemoteDetachedMessage(remoteHost, sessionId, reopenable);
+            var profile = endpoint.SshProfileId is Guid profileId ? _sshConnectionService.GetStoredProfile(profileId) : null;
+            bool reopenable = profile is { MuxOptions.PersistRemoteSessions: true };
+            return RemoteDetachedMessage(remoteHost, sessionId, reopenable, profile?.MuxOptions.RemoteDaemonPath);
         }
 
         /// <summary>
@@ -436,11 +436,22 @@ namespace Ntilde
         /// shell comes back through "Attach to session…" (Phase 5 spec §5) - its host listed while connected, offered as
         /// "Connect to …" once the detach let its connection go - while its profile keeps its sessions
         /// (<paramref name="reopenable"/>). Otherwise the picker does not offer it, and it comes back through
-        /// <c>ntilde-mux attach</c> on its own host, by the full id <c>ntilde-mux ls</c> shows.
+        /// <c>ntilde-mux attach</c> on its own host, by the full id <c>ntilde-mux ls</c> shows. <c>ntilde-mux</c> is not
+        /// on that host's PATH, so the command names it by the path the install flow recorded
+        /// (<paramref name="recordedDaemonPath"/>), or the default install path when there is none.
         /// </summary>
-        internal static string RemoteDetachedMessage(string host, Guid sessionId, bool reopenable) => reopenable
-            ? $"Shell kept running on {host} \u2014 Attach to session\u2026 reopens it"
-            : $"Shell kept running on {host} \u2014 run '~/.local/share/ntilde/bin/ntilde-mux attach {sessionId}' on that host to get it back";
+        internal static string RemoteDetachedMessage(string host, Guid sessionId, bool reopenable, string? recordedDaemonPath = null)
+        {
+            if (reopenable) return $"Shell kept running on {host} \u2014 Attach to session\u2026 reopens it";
+
+            string daemon = string.IsNullOrEmpty(recordedDaemonPath) || Ntilde.Shell.Mux.Remote.RemoteMuxCommand.RefusedRecordedPath(recordedDaemonPath)
+                ? DefaultRemoteDaemonPath
+                : recordedDaemonPath;
+            return $"Shell kept running on {host} \u2014 run '{daemon} attach {sessionId}' on that host to get it back";
+        }
+
+        /// <summary>Where the install flow puts <c>ntilde-mux</c> when the host sets no <c>XDG_DATA_HOME</c> (<see cref="Ntilde.Shell.Mux.Remote.RemoteInstallDir"/>).</summary>
+        private const string DefaultRemoteDaemonPath = "~/.local/share/ntilde/bin/ntilde-mux";
 
         /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
         internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }
