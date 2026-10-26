@@ -440,7 +440,7 @@ namespace Ntilde
         /// </summary>
         internal static string RemoteDetachedMessage(string host, Guid sessionId, bool reopenable) => reopenable
             ? $"Shell kept running on {host} \u2014 Attach to session\u2026 reopens it"
-            : $"Shell kept running on {host} \u2014 run 'ntilde-mux attach {sessionId}' on that host to get it back";
+            : $"Shell kept running on {host} \u2014 run '~/.local/share/ntilde/bin/ntilde-mux attach {sessionId}' on that host to get it back";
 
         /// <summary>Test seam: the budget the last <see cref="ShouldClosePaneAsync"/> was given.</summary>
         internal TimeSpan? LastPaneCloseRefreshBudgetForTest { get; private set; }
