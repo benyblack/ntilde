@@ -562,11 +562,23 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     /// <summary>A hex field and a live swatch under <paramref name="target"/>; each valid color is applied as typed.</summary>
     private static void OpenColourFlyout(Button target, TermColor current, Action<TermColor> apply)
     {
-        var hexInput = new TextBox { Text = current.ToHex(), Width = 100 }; // with the alpha, as OpenThemeEditor fills its fields
+        string initialText = current.ToHex(); // with the alpha, as OpenThemeEditor fills its fields
+        var hexInput = new TextBox { Text = initialText, Width = 100 };
         var preview = new Border { Width = 30, Height = 30, Background = new SolidColorBrush(current.ToAvaloniaColor()), CornerRadius = new CornerRadius(4), Margin = new Thickness(5, 0, 0, 0) };
 
+        // TextChanged for the opening text arrives on a later pass. Applying it is harmless for a
+        // palette swatch (the same color again) but would pin a derived Advanced color as an
+        // override. So nothing is applied until the text first changes; from then on every valid
+        // value is, including one typed back to the original.
+        bool edited = false;
         hexInput.TextChanged += (s, e) =>
         {
+            if (!edited && string.Equals(hexInput.Text, initialText, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            edited = true;
             if (Color.TryParse(hexInput.Text, out var color))
             {
                 preview.Background = new SolidColorBrush(color);

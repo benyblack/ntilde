@@ -126,6 +126,37 @@ public sealed class SettingsAdvancedColorsTests
         }
     }
 
+    /// <summary>
+    /// Opening a derived color's pop-up and closing it without typing changes nothing. The pop-up
+    /// opens on the derived value, and its text arrives on a later dispatcher pass; applying it would
+    /// pin the derived color as an override (and, for Selected text, replace "each cell keeps its
+    /// own color" with the theme's foreground).
+    /// </summary>
+    [AvaloniaFact]
+    public void Opening_a_derived_colors_pop_up_without_typing_leaves_it_derived()
+    {
+        var (root, window, page) = OpenEditor();
+        using (root)
+        {
+            try
+            {
+                foreach (var key in new[] { "SelectionBackground", "SelectionForeground", "Accent" })
+                {
+                    Find<Button>(page, $"Advanced{key}Swatch").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Dispatcher.UIThread.RunJobs();
+
+                    Assert.Equal("Derived", Find<TextBlock>(page, $"Advanced{key}State").Text);
+                }
+
+                Assert.Null(page.Validate());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+    }
+
     [AvaloniaFact]
     public void Reset_returns_an_override_to_derived()
     {
