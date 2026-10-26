@@ -6,8 +6,9 @@
   "description": "Marketing and documentation landing page for Ntilde.",
   "scripts": {
     "sync:assets": "node scripts/sync-screenshots.mjs",
-    "predev": "node scripts/sync-screenshots.mjs",
-    "prebuild": "node scripts/sync-screenshots.mjs",
+    "sync:docs": "node scripts/sync-docs.mjs",
+    "predev": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs",
+    "prebuild": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",

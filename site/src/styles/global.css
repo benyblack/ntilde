@@ -138,6 +138,121 @@
   .lede {
     @apply text-lg leading-relaxed text-ink-300 sm:text-xl;
   }
+
+  /* -- User guide (/docs/) ------------------------------------------------ */
+
+  .docs-nav-group + .docs-nav-group {
+    @apply mt-6;
+  }
+
+  .docs-nav-heading {
+    @apply mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400;
+  }
+
+  .docs-nav-link {
+    @apply block rounded-md px-2 py-1.5 text-sm leading-snug text-ink-300
+      hover:bg-ink-900/70 hover:text-white;
+  }
+
+  .docs-nav-link.active {
+    @apply bg-ink-900 font-medium text-white;
+  }
+
+  .docs-nav-mobile {
+    @apply rounded-lg border border-ink-800 bg-ink-900/50 p-4;
+  }
+
+  .docs-nav-mobile summary {
+    @apply cursor-pointer text-sm font-medium text-ink-100;
+  }
+
+  .docs-version-note {
+    @apply mb-8 rounded-lg border border-ntilde-800/60 bg-ntilde-900/20 px-4 py-3
+      text-sm leading-relaxed text-ink-200;
+  }
+
+  .doc-prose {
+    @apply max-w-3xl leading-relaxed text-ink-200;
+  }
+
+  .doc-prose > * + * {
+    @apply mt-4;
+  }
+
+  .doc-prose h1 {
+    @apply text-3xl sm:text-4xl;
+  }
+
+  .doc-prose h2 {
+    @apply mt-12 border-t border-ink-800 pt-8 text-2xl;
+  }
+
+  .doc-prose h3 {
+    @apply mt-8 text-lg;
+  }
+
+  .doc-prose h4 {
+    @apply mt-6 text-base;
+  }
+
+  .doc-prose :where(h1, h2, h3, h4)[id] {
+    scroll-margin-top: 5rem;
+  }
+
+  .doc-prose strong {
+    @apply font-semibold text-white;
+  }
+
+  .doc-prose a {
+    @apply underline decoration-ntilde-400/40 underline-offset-2 hover:decoration-ntilde-200;
+  }
+
+  .doc-prose ul {
+    @apply list-disc space-y-1.5 pl-6;
+  }
+
+  .doc-prose ol {
+    @apply list-decimal space-y-1.5 pl-6;
+  }
+
+  .doc-prose li > ul,
+  .doc-prose li > ol {
+    @apply mt-1.5;
+  }
+
+  .doc-prose li::marker {
+    @apply text-ink-500;
+  }
+
+  .doc-prose :not(pre) > code {
+    @apply rounded bg-ink-900 px-1.5 py-0.5 font-mono text-[0.85em] text-ink-100;
+  }
+
+  .doc-prose pre {
+    @apply overflow-x-auto rounded-lg border border-ink-800 p-4 font-mono text-sm leading-relaxed;
+  }
+
+  .doc-prose blockquote {
+    @apply border-l-2 border-ntilde-500/60 pl-4 text-ink-300;
+  }
+
+  .doc-prose hr {
+    @apply my-10 border-ink-800;
+  }
+
+  /* Wide tables scroll inside the column instead of widening the page. */
+  .doc-prose table {
+    @apply block w-full overflow-x-auto text-sm;
+    border-collapse: collapse;
+  }
+
+  .doc-prose th {
+    @apply border-b border-ink-700 px-3 py-2 text-left align-bottom font-semibold text-white;
+  }
+
+  .doc-prose td {
+    @apply border-b border-ink-800 px-3 py-2 align-top;
+  }
 }
 
 /* ---------------------------------------------------------------------------

@@ -26,6 +26,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fetch release tags
+        # The docs pages name the latest release (scripts/sync-docs.mjs reads
+        # the newest vX.Y.Z tag); the shallow checkout above has no tags.
+        run: git fetch --depth=1 --no-tags origin '+refs/tags/v*:refs/tags/v*'
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -45,6 +50,11 @@ jobs:
         # `prebuild` already runs this, but invoke it explicitly so a
         # future maintainer can re-run just this step during debugging.
         run: npm run sync:assets
+
+      - name: Sync the user guide into src/content/docs/
+        working-directory: site
+        # Also run by `prebuild`; explicit for the same reason as the step above.
+        run: npm run sync:docs
 
       - name: Build
         working-directory: site

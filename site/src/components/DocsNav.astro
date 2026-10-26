@@ -1,0 +1,45 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+export interface Props {
+  /** Every guide page, in sidebar order. */
+  pages: CollectionEntry<'docs'>[];
+  /** The page being shown. */
+  current: string;
+}
+
+const { pages, current } = Astro.props;
+const basePrefix = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
+const hrefFor = (slug: string) => `${basePrefix}docs/${slug === 'index' ? '' : `${slug}/`}`;
+
+// Groups in the order README.md lists them; the overview has none.
+const groups: { title: string; pages: CollectionEntry<'docs'>[] }[] = [];
+for (const page of pages) {
+  const last = groups[groups.length - 1];
+  if (last && last.title === page.data.group) last.pages.push(page);
+  else groups.push({ title: page.data.group, pages: [page] });
+}
+---
+
+<nav aria-label="User guide">
+  {
+    groups.map((group) => (
+      <div class="docs-nav-group">
+        {group.title && <p class="docs-nav-heading">{group.title}</p>}
+        <ul>
+          {group.pages.map((page) => (
+            <li>
+              <a
+                href={hrefFor(page.slug)}
+                class:list={['docs-nav-link', { active: page.slug === current }]}
+                aria-current={page.slug === current ? 'page' : undefined}
+              >
+                {page.data.navTitle}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+</nav>

@@ -1,15 +1,17 @@
 ---
 const year = new Date().getFullYear();
 const repoUrl = 'https://github.com/benyblack/ntilde';
+// Section links point at the home page, so they also work from /docs/.
+const homeHref = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
 
 const groups = [
   {
     title: 'Product',
     links: [
-      { href: '#features', label: 'Features' },
-      { href: '#how-it-works', label: 'How it works' },
-      { href: '#agent-host', label: 'Agent access' },
-      { href: '#install', label: 'Install' },
+      { href: `${homeHref}#features`, label: 'Features' },
+      { href: `${homeHref}#how-it-works`, label: 'How it works' },
+      { href: `${homeHref}#agent-host`, label: 'Agent access' },
+      { href: `${homeHref}#install`, label: 'Install' },
     ],
   },
   {
@@ -25,8 +27,8 @@ const groups = [
     title: 'Docs',
     links: [
       {
-        href: `${repoUrl}/blob/main/docs/USER_MANUAL.md`,
-        label: 'User manual',
+        href: `${homeHref}docs/`,
+        label: 'User guide',
       },
       {
         href: `${repoUrl}/blob/main/docs/SSH_ROADMAP.md`,
