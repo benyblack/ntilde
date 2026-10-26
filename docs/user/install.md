@@ -85,7 +85,9 @@ Some things to do next:
 
 **Coming from NovaTerminal?** Ntilde is NovaTerminal renamed. On its first launch it copies your
 settings, themes, connection profiles, workspaces, snippets, backups and history into its own data
-folder, and leaves the old folder alone; delete it when you are happy. Saved passwords do not carry
+folder, and leaves the old folder alone. If a file cannot be copied, Ntilde starts anyway and tries
+again at the next launch; with `NTILDE_APPDATA_ROOT` set, it copies nothing. Keep the old folder
+until you have checked that what you need came across. Saved passwords do not carry
 over: type each one once. Re-run the remote shell-integration installer on your hosts
 ([Shell integration](shell-integration.md#on-a-remote-host)). The command is now `ntilde` (was
 `nova`), and `NOVATERM_*` environment variables are now `NTILDE_*`.

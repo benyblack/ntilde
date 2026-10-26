@@ -21,7 +21,7 @@ command to run, and options Ntilde does not know are ignored.
 installer puts it on your `PATH`; with the `.zip`, run it from the folder you extracted.
 
 **Exit codes** are the same across the commands: `0` success, `1` the operation failed, `2` the
-command line was wrong.
+command line was wrong. `ntilde mux` has two exceptions, listed [below](#ntilde-mux).
 
 ## `ntilde mux`
 
@@ -35,9 +35,11 @@ Works with the multiplexer that keeps persistent shells running
 | `ntilde mux attach <id\|prefix> [--read-only]` | Shows a shell in this terminal; detach with **Ctrl+\ then d** |
 | `ntilde mux kill <id>` | Ends one shell |
 | `ntilde mux kill-server [--force]` | Ends every shell and stops the multiplexer |
+| `ntilde mux serve [--foreground] [--idle-exit-minutes N]` | Runs the multiplexer itself. Ntilde starts it for you; run it by hand only to watch it with `--foreground`. Exits with `3` when another multiplexer already owns the data folder. |
 
-None of these starts a multiplexer: with none running they print "No multiplexer is running." and
-exit with `1` (`attach` with `2`). [The command line](persistent-sessions.md#the-command-line) in
+Apart from `serve`, none of these starts a multiplexer: with none running they print "No
+multiplexer is running." and exit with `1`, except `attach`, which exits with `2` when it cannot
+reach the multiplexer for any reason. [The command line](persistent-sessions.md#the-command-line) in
 the persistent sessions guide covers each in full.
 
 On a remote host, `ntilde-mux` has the same `ls`, `attach`, `kill` and `kill-server` commands for
