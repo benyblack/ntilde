@@ -48,8 +48,6 @@ public class ThemeToolsTests
     [InlineData("#abc")]
     [InlineData("#AABBCC")]
     [InlineData("#aabbccdd")]
-    [InlineData("sc#1,0.5,0.25")]
-    [InlineData("sc#1,0.5,0.25,1")]
     public void AcceptedColorFormats_AreValid(string color)
     {
         var theme = ValidTheme.Replace("\"Red\": \"#FF5555\"", $"\"Red\": \"{color}\"");

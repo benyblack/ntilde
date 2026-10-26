@@ -799,6 +799,7 @@ namespace Ntilde.Shell
         private bool _hasBackgroundImage = false;
         private bool _enableLigatures = false;
         private bool _enableComplexShaping = true;
+        private double _minimumContrast = 1.0;
         private bool _enableLinkDetection = true;
         private readonly GlyphCache _glyphCache = new();
         private double _lastRenderScalingForRowCache = -1.0;
@@ -894,6 +895,7 @@ namespace Ntilde.Shell
 
         /// <summary>Ligature setting currently in effect (for snapshot capture).</summary>
         internal bool EnableLigatures => _enableLigatures;
+        internal double MinimumContrast => _minimumContrast;
 
         /// <summary>Complex-shaping setting currently in effect (for snapshot capture).</summary>
         internal bool EnableComplexShaping => _enableComplexShaping;
@@ -999,6 +1001,13 @@ namespace Ntilde.Shell
                 }
                 _enableLigatures = settings.EnableLigatures;
                 _enableComplexShaping = settings.EnableComplexShaping;
+                double minimumContrast = Math.Clamp(double.IsNaN(settings.MinimumContrast) ? 1.0 : settings.MinimumContrast, 1.0, 21.0);
+                if (Math.Abs(minimumContrast - _minimumContrast) > 0.001)
+                {
+                    _minimumContrast = minimumContrast;
+                    // Cached row pictures hold their colors baked in.
+                    _rowCache?.RequestClear();
+                }
                 _windowOpacity = settings.WindowOpacity;
                 _hasBackgroundImage = !string.IsNullOrEmpty(settings.BackgroundImagePath) && System.IO.File.Exists(settings.BackgroundImagePath);
                 _cursorBlinkEnabled = settings.CursorBlink;
@@ -1301,7 +1310,6 @@ namespace Ntilde.Shell
             System.Array.Empty<Ntilde.VT.Links.LinkSpan>();
         private int[] _hoverScanMap = System.Array.Empty<int>();
         private bool _isSelecting = false;
-        private static readonly IBrush SelectionBrush = new ImmutableSolidColorBrush(Color.FromArgb(100, 51, 153, 255));
 
         // Session for sending mouse events
         private ITerminalSession? _session;
@@ -2536,7 +2544,8 @@ namespace Ntilde.Shell
                 _enableComplexShaping,
                 _glyphCache,
                 _showRenderHud,
-                isolatedSnapshot: offscreen
+                isolatedSnapshot: offscreen,
+                minimumContrast: _minimumContrast
             ));
 
             if (_hoveredLink is { } link && _metrics.CellWidth > 0 && _metrics.CellHeight > 0)

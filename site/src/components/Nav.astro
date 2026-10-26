@@ -1,16 +1,19 @@
 ---
+// Use the configured base so links land on the deployed site even when
+// served from a project Pages path (`/ntilde/`). Section links point at the
+// home page, so they also work from /docs/.
+const homeHref = (import.meta.env.BASE_URL ?? '/').replace(/\/?$/, '/');
+
 const navLinks = [
-  { href: '#features', label: 'Features' },
-  { href: '#how-it-works', label: 'How it works' },
-  { href: '#agent-host', label: 'Agent access' },
-  { href: '#install', label: 'Install' },
-  { href: '#developers', label: 'Developers' },
+  { href: `${homeHref}#features`, label: 'Features' },
+  { href: `${homeHref}#how-it-works`, label: 'How it works' },
+  { href: `${homeHref}#agent-host`, label: 'Agent access' },
+  { href: `${homeHref}docs/`, label: 'Docs' },
+  { href: `${homeHref}#install`, label: 'Install' },
+  { href: `${homeHref}#developers`, label: 'Developers' },
 ];
 
 const repoUrl = 'https://github.com/benyblack/ntilde';
-// Use the configured base so the home link lands on the deployed site
-// even when served from a project Pages path (`/Ntilde/`).
-const homeHref = import.meta.env.BASE_URL ?? '/';
 ---
 
 <header
@@ -78,7 +81,7 @@ const homeHref = import.meta.env.BASE_URL ?? '/';
         </svg>
         <span>GitHub</span>
       </a>
-      <a href="#install" class="btn-primary">Install</a>
+      <a href={`${homeHref}#install`} class="btn-primary">Install</a>
     </div>
   </div>
 </header>

@@ -1,5 +1,3 @@
 # Hardcoded colors outside the theme token layer, per file (see ThemeLiteralGuardTests).
 # This file only ever shrinks: migrate a surface to ThemeKeys tokens, then lower its count.
 # Regenerate from the guard's failure message; never raise a count by hand.
-5 src/Ntilde.App/Shell/TerminalDrawOperation.cs
-1 src/Ntilde.App/Shell/TerminalView.cs

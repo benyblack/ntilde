@@ -867,7 +867,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         Assert.True(detach.Result);
         PumpUntil(() => Toast(window).Title == "Shell detached", "the detach toast is shown");
-        Assert.Equal($"Shell kept running on nova@fake-host \u2014 run 'ntilde-mux attach {ids[0]}' on that host to get it back", Toast(window).Message);
+        Assert.Equal($"Shell kept running on nova@fake-host \u2014 run '~/.local/share/ntilde/bin/ntilde-mux attach {ids[0]}' on that host to get it back", Toast(window).Message);
         Assert.Contains(ids[0], _remote.Server.GetSessionIds());
     }
 

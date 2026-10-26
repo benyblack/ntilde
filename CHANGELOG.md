@@ -5,6 +5,30 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
 ## Unreleased
 
+- **Themes reach every part of the app.** Settings, the Connection Manager, the tab strip and
+  sidebar, dialogs, the command palette, toasts and everything inside a pane (search, the status
+  bar, Command Assist, Remote Files) now follow the theme, live, and stay readable on light themes.
+  A profile with its own theme colors its pane's overlays to match its terminal while the rest of
+  the app keeps yours. See [Themes and fonts](docs/user/themes-and-fonts.md).
+- **Minimum contrast.** Settings → Appearance → *Minimum contrast* (off by default) lightens or
+  darkens terminal text that is too close to its background, keeping its hue: for themes whose
+  colors clash with their own background, such as GitHub Light, where a prompt drawn on ANSI black
+  was unreadable. See [Themes and fonts](docs/user/themes-and-fonts.md#minimum-contrast).
+- **Selection, search and the cursor follow the theme.** The fixed blue selection and yellow search
+  highlights are gone: they come from the theme, with the text drawn on top so it stays readable. A
+  block cursor now shows the character under it.
+- **Themes can set ten more colors**: selection, selected text, cursor text, search match, current
+  match, accent and the four status colors. Leave them out and Ntilde derives them, so existing
+  theme files work unchanged. The theme editor lists them under **Advanced colors**. Dracula,
+  Catppuccin Mocha, Tokyo Night, Nord and both Solarized themes now use their upstream selection
+  colors.
+- **Theme import keeps more and works in more places.** Windows Terminal, iTerm2 and Alacritty
+  imports carry selection, cursor-text and search colors. Alacritty imports read their colors at
+  all (a quoted `#` color was cut off as a comment), and iTerm2 imports read correctly under
+  comma-decimal locales.
+- Built-in themes are refreshed on update, overwriting local edits to their files, as before. Save
+  a customized built-in theme under a new name to keep it.
+
 - **The MCP server ships with Ntilde.** Every bundle now includes `ntilde-mcp` (`ntilde-mcp.exe`
   on Windows), a native binary next to the app that needs no .NET and updates with it. Connect
   Claude Code with `claude mcp add ntilde -- ntilde-mcp`: the Windows installer, the `.deb`, the
@@ -24,7 +48,7 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
 Shells can now outlive Ntilde's window. They run in a background process, Ntilde's own
 multiplexer, and come back when Ntilde starts again. The
-[user manual's chapter 12](docs/USER_MANUAL.md#12-persistent-sessions-and-the-multiplexer) covers
+[persistent sessions guide](docs/user/persistent-sessions.md) covers
 it all.
 
 - **Local shells can keep running** when the window closes, when Ntilde crashes and across an update.

@@ -49,6 +49,14 @@
                             </Border>
                         </StackPanel>
                     </settings:SettingRow>
+                    <settings:SettingRow RowId="minimum-contrast" Title="Minimum contrast"
+                                         Description="Lightens or darkens terminal text that is too close to its background, keeping its hue. For themes whose colors clash with their own background."
+                                         Keywords="readability readable legible accessibility wcag colors colours faint invisible">
+                        <Grid Classes="Wide" ColumnDefinitions="*,Auto">
+                            <Slider Name="MinimumContrastSlider" Minimum="1" Maximum="7" Value="1" TickFrequency="0.5" IsSnapToTickEnabled="True" AutomationProperties.Name="Minimum contrast"/>
+                            <TextBlock Name="MinimumContrastDisplay" Grid.Column="1" Classes="SliderValue" Text="Off"/>
+                        </Grid>
+                    </settings:SettingRow>
                 </settings:SettingGroup>
 
                 <settings:SettingGroup Header="Window">
@@ -152,6 +160,14 @@
                                 <Button Name="EditSwatch15" Width="28" Height="28" Margin="2" CornerRadius="3"/>
                             </UniformGrid>
                         </StackPanel>
+                        <!-- The theme's optional colors (spec §1). Rows are built in code: one per field. -->
+                        <Expander Name="AdvancedColorsExpander" Header="Advanced colors" HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="RowDesc" TextWrapping="Wrap"
+                                           Text="Derived from the colors above unless you override them. Click a swatch to override; Reset goes back to derived."/>
+                                <StackPanel Name="AdvancedColorRows" Spacing="4"/>
+                            </StackPanel>
+                        </Expander>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button Name="BtnSaveTheme" Classes="Primary" Content="Save theme"/>
                             <Button Name="BtnDeleteTheme" Classes="Danger" Content="Delete"/>
@@ -183,6 +199,25 @@
                                 <Border Name="EditorPreviewSwatch14" Width="20" Height="20" Margin="2" CornerRadius="3"/>
                                 <Border Name="EditorPreviewSwatch15" Width="20" Height="20" Margin="2" CornerRadius="3"/>
                             </UniformGrid>
+                            <!-- Selection, search, cursor: runs built in code from the draft's render colors. -->
+                            <TextBlock Name="EditorTerminalSample" TextWrapping="Wrap" FontFamily="{DynamicResource NtMono}" FontSize="12"/>
+                            <!-- Chrome samples. EditorPreviewArea carries a token scope of the draft, so these
+                                 resolve the theme being edited, not the app's. -->
+                            <Button Name="EditorAccentSample" Classes="Primary" Content="Accent" HorizontalAlignment="Left"
+                                    Focusable="False" IsHitTestVisible="False"/>
+                            <WrapPanel Name="EditorStatusSample">
+                                <TextBlock Text="Success" Margin="0,0,10,0" Foreground="{DynamicResource NtSuccess}"/>
+                                <TextBlock Text="Warning" Margin="0,0,10,0" Foreground="{DynamicResource NtWarning}"/>
+                                <TextBlock Text="Error" Margin="0,0,10,0" Foreground="{DynamicResource NtError}"/>
+                                <TextBlock Text="Info" Foreground="{DynamicResource NtInfo}"/>
+                            </WrapPanel>
+                            <!-- The four tab dot shapes (spec §4): working, attention, agent wrote, agent watched. -->
+                            <StackPanel Name="EditorDotSample" Orientation="Horizontal" Spacing="10">
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource NtTabWorking}" ToolTip.Tip="Working"/>
+                                <Ellipse Width="8" Height="8" Fill="{DynamicResource NtTabAttention}" ToolTip.Tip="Needs attention"/>
+                                <Path Width="8" Height="8" Data="M4,0 L8,4 L4,8 L0,4 Z" Fill="{DynamicResource NtTabAgentWrote}" ToolTip.Tip="Agent wrote"/>
+                                <Ellipse Width="8" Height="8" StrokeThickness="1.5" Stroke="{DynamicResource NtTabAgentWatched}" ToolTip.Tip="Agent watching"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </Grid>

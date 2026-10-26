@@ -140,6 +140,80 @@ public class Osc133AcceptedPayloadTests
         Assert.Equal(expected, Assert.Single(Accept($"\x1b]133;C;{payload}\x07")));
     }
 
+    // ---- cmdline_url (fish 4) -------------------------------------------------------------------
+
+    /// <summary>
+    /// fish 4.0.1 and later send the command with their own <c>C</c> mark, percent-encoded in a
+    /// <c>cmdline_url</c> attribute (kitty's form). It is the command text, not an attribute to
+    /// discard: Ntilde's fish bootstrap leaves the lifecycle marks to fish when fish writes them, so
+    /// this is the only command text a fish 4 session sends.
+    /// </summary>
+    [Fact]
+    public void CmdlineUrlPayload_IsDecoded()
+    {
+        Assert.Equal("echo hello", Assert.Single(Accept("\x1b]133;C;cmdline_url=echo%20hello\x07")));
+    }
+
+    /// <summary>
+    /// Captured from fish 4.2.1: a <c>;</c>, a <c>%</c>, quotes and UTF-8 all arrive percent-encoded,
+    /// so unlike the plain-text reading nothing is lost to the parameter split.
+    /// </summary>
+    [Fact]
+    public void CmdlineUrlPayload_DecodesSeparatorsPercentQuotesAndUtf8()
+    {
+        Assert.Equal(
+            "echo 'a;b' 100% \"q\" été",
+            Assert.Single(Accept("\x1b]133;C;cmdline_url=echo%20%27a%3Bb%27%20100%25%20%22q%22%20%C3%A9t%C3%A9\x07")));
+    }
+
+    /// <summary>Captured from fish 4.2.1: a continued line keeps its newline.</summary>
+    [Fact]
+    public void CmdlineUrlPayload_KeepsANewline()
+    {
+        Assert.Equal(
+            "printf %s\\n multi \\\nexit 0",
+            Assert.Single(Accept("\x1b]133;C;cmdline_url=printf%20%25s%5Cn%20multi%20%5C%0Aexit%200\x07")));
+    }
+
+    /// <summary>The attribute is found wherever it sits among the mark's parameters.</summary>
+    [Fact]
+    public void CmdlineUrlAfterAnotherAttribute_IsDecoded()
+    {
+        Assert.Equal("ls -la", Assert.Single(Accept("\x1b]133;C;aid=7;cmdline_url=ls%20-la\x07")));
+    }
+
+    /// <summary>An empty command is no command; the lifecycle edge still fires.</summary>
+    [Fact]
+    public void EmptyCmdlineUrl_FiresWithNullText()
+    {
+        List<string?> accepted = Accept("\x1b]133;C;cmdline_url=\x07");
+
+        Assert.Single(accepted);
+        Assert.Null(accepted[0]);
+    }
+
+    /// <summary>
+    /// Percent-encoding can smuggle in what the wire format cannot carry raw, so the decoded text
+    /// faces the same plausibility check as every other reading: an escape sequence is not a command.
+    /// </summary>
+    [Fact]
+    public void CmdlineUrlDecodingToControlCharacters_IsNotAccepted()
+    {
+        Assert.Null(Assert.Single(Accept("\x1b]133;C;cmdline_url=%1B%5B31mred\x07")));
+    }
+
+    /// <summary>The size bound applies to the encoded text, as for base64.</summary>
+    [Fact]
+    public void OversizeCmdlineUrl_FiresWithNullText()
+    {
+        string payload = "cmdline_url=" + new string('a', AnsiParser.MaxAcceptedCommandPayloadChars);
+
+        List<string?> accepted = Accept($"\x1b]133;C;{payload}\x07");
+
+        Assert.Single(accepted);
+        Assert.Null(accepted[0]);
+    }
+
     // ---- garbage ------------------------------------------------------------------------------
 
     /// <summary>

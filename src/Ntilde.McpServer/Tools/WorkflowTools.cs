@@ -17,7 +17,7 @@ public sealed class WorkflowTools
         (new[] { "theme", "color", "palette" },
             "Theming: Ntilde.App ThemeManager + docs/ThemeSystem.md; colors via TerminalTheme (Ntilde.VT). Validate with ntilde.validate_theme_json."),
         (new[] { "parser", "escape", "ansi", "csi", "osc", "dcs", "vt", "sequence" },
-            "VT/ANSI: Ntilde.VT/AnsiParser.cs. Check ntilde.get_vt_conformance_summary first."),
+            "VT/ANSI: Ntilde.VT/AnsiParser*.cs, one partial file per sequence family (Csi, Sgr, Osc, ShellIntegration, Images, KittyGraphics). Check ntilde.get_vt_conformance_summary first."),
         (new[] { "reflow", "resize", "scrollback", "wrap" },
             "Reflow/buffers: Ntilde.VT TerminalBuffer.*; lossless reflow is a headline invariant."),
         (new[] { "render", "glyph", "atlas", "draw", "paint", "frame" },
@@ -112,6 +112,13 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/TerminalBuffer.ReflowEngine.cs" }),
         (new[] { "parser", "escape", "ansi", "csi", "osc", "dcs", "apc", "sequence" }, new[] {
             "src/Ntilde.VT/AnsiParser.cs",
+            "src/Ntilde.VT/AnsiParser.Csi.cs",
+            "src/Ntilde.VT/AnsiParser.Sgr.cs",
+            "src/Ntilde.VT/AnsiParser.Osc.cs",
+            "src/Ntilde.VT/AnsiParser.ShellIntegration.cs",
+            "src/Ntilde.VT/AnsiParser.Images.cs",
+            "src/Ntilde.VT/AnsiParser.KittyGraphics.cs",
+            "src/Ntilde.VT/AnsiParser.StateTransfer.cs",
             "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs",
             "tests/Ntilde.VT.Tests/CsiParamClampTests.cs" }),
         (new[] { "theme", "color", "palette" }, new[] {
@@ -135,7 +142,11 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/TerminalLogger.cs" }),
         (new[] { "tab", "pane", "window", "layout" }, new[] {
             "src/Ntilde.App/MainWindow.axaml.cs",
-            "src/Ntilde.App/Controls/TerminalPane.axaml.cs" }),
+            "src/Ntilde.App/MainWindow.Tabs.cs",
+            "src/Ntilde.App/MainWindow.TabStrip.cs",
+            "src/Ntilde.App/MainWindow.Panes.cs",
+            "src/Ntilde.App/Controls/TerminalPane.axaml.cs",
+            "src/Ntilde.App/Controls/TerminalPane.Session.cs" }),
         (new[] { "fuzz", "robustness" }, new[] {
             "tests/Ntilde.Benchmarks/FuzzTarget.cs",
             "tests/Ntilde.VT.Tests/FuzzSmokeTests.cs" }),

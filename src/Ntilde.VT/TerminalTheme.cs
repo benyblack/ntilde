@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Ntilde.VT
 {
@@ -27,6 +28,49 @@ namespace Ntilde.VT
         public TermColor BrightMagenta { get; set; } = TermColor.FromRgb(255, 0, 255);
         public TermColor BrightCyan { get; set; } = TermColor.FromRgb(0, 255, 255);
         public TermColor BrightWhite { get; set; } = TermColor.FromRgb(255, 255, 255);
+
+        // Optional colors (theme v2). Null means "derive from the colors above"; a null field is
+        // never written, so a theme file without them loads and re-saves unchanged.
+
+        /// <summary>Selection fill. Derived: the UI accent at alpha 0x66.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? SelectionBackground { get; set; }
+
+        /// <summary>Selected text. Null keeps each selected cell's own color, unless the theme's text would not read on the selection.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? SelectionForeground { get; set; }
+
+        /// <summary>The glyph under a block cursor. Derived: <see cref="Background"/>.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? CursorText { get; set; }
+
+        /// <summary>Search match fill. Derived: the warning color at alpha 0x64.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? SearchMatch { get; set; }
+
+        /// <summary>The current search match. Derived: between warning and error, at alpha 0x96.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? SearchMatchActive { get; set; }
+
+        /// <summary>UI accent. Derived: a softened <see cref="Blue"/>.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? Accent { get; set; }
+
+        /// <summary>UI success color. Derived: a softened <see cref="Green"/>.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? Success { get; set; }
+
+        /// <summary>UI warning color. Derived: a softened <see cref="Yellow"/>.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? Warning { get; set; }
+
+        /// <summary>UI error color. Derived: a softened <see cref="Red"/>.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? Error { get; set; }
+
+        /// <summary>UI info color. Derived: a softened <see cref="Cyan"/>.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TermColor? Info { get; set; }
 
 
         public TermColor GetAnsiColor(int index, bool bright)
@@ -115,7 +159,17 @@ namespace Ntilde.VT
                 BrightBlue = this.BrightBlue,
                 BrightMagenta = this.BrightMagenta,
                 BrightCyan = this.BrightCyan,
-                BrightWhite = this.BrightWhite
+                BrightWhite = this.BrightWhite,
+                SelectionBackground = this.SelectionBackground,
+                SelectionForeground = this.SelectionForeground,
+                CursorText = this.CursorText,
+                SearchMatch = this.SearchMatch,
+                SearchMatchActive = this.SearchMatchActive,
+                Accent = this.Accent,
+                Success = this.Success,
+                Warning = this.Warning,
+                Error = this.Error,
+                Info = this.Info
             };
         }
     }

@@ -21,7 +21,7 @@ namespace Ntilde.Shell
     [JsonSerializable(typeof(List<string>))]
     [JsonSerializable(typeof(Dictionary<string, CommandPaletteUsageEntry>))]
     [JsonSerializable(typeof(WorkspacePolicyHooks))]
-    [JsonSourceGenerationOptions(WriteIndented = true, Converters = new[] { typeof(JsonColorConverter), typeof(TermColorJsonConverter) })]
+    [JsonSourceGenerationOptions(WriteIndented = true, Converters = new[] { typeof(JsonColorConverter), typeof(TermColorJsonConverter), typeof(OptionalTermColorJsonConverter) })]
     public partial class AppJsonContext : JsonSerializerContext
     {
     }

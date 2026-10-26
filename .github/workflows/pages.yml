@@ -26,6 +26,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Find the latest release
+        # The docs pages name the latest release: the newest vX.Y.Z tag. The
+        # shallow checkout above has no tags, so fetch them first. Later steps
+        # (the sync and `prebuild`) read it from NTILDE_LATEST_RELEASE.
+        run: |
+          git fetch --depth=1 --no-tags origin '+refs/tags/v*:refs/tags/v*'
+          tag=$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
+          echo "Latest release: ${tag:-none}"
+          echo "NTILDE_LATEST_RELEASE=$tag" >> "$GITHUB_ENV"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -45,6 +55,11 @@ jobs:
         # `prebuild` already runs this, but invoke it explicitly so a
         # future maintainer can re-run just this step during debugging.
         run: npm run sync:assets
+
+      - name: Sync the user guide into src/content/docs/
+        working-directory: site
+        # Also run by `prebuild`; explicit for the same reason as the step above.
+        run: npm run sync:docs
 
       - name: Build
         working-directory: site

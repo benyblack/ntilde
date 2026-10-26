@@ -48,7 +48,8 @@ namespace Ntilde.Shell
         string FontFamily,
         float FontSize,
         bool EnableLigatures,
-        bool EnableComplexShaping)
+        bool EnableComplexShaping,
+        double MinimumContrast = 1.0)
     {
         /// <summary>
         /// False before the control has measured its font (a pane that was just
@@ -70,6 +71,9 @@ namespace Ntilde.Shell
         public bool HideCursor { get; init; }
         public bool EnableLigatures { get; init; }
         public bool EnableComplexShaping { get; init; } = true;
+
+        /// <summary>The Minimum contrast setting (1 is off), so a capture shows text as the pane does.</summary>
+        public double MinimumContrast { get; init; } = 1.0;
 
         /// <summary>
         /// DPI factor the draw operation snaps to. Defaults to 1.0 — one device
@@ -269,7 +273,8 @@ namespace Ntilde.Shell
                 // agent-host IPC thread). A live-mode snapshot here would advance the buffer's
                 // row-diff baseline under the live renderer, whose next frame would then leave
                 // out every change made before this capture.
-                isolatedSnapshot: true);
+                isolatedSnapshot: true,
+                minimumContrast: options.MinimumContrast);
 
             try
             {

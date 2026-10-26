@@ -5,10 +5,13 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Automation;
+using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.VT;
 
 namespace Ntilde.Settings.Pages;
@@ -30,6 +33,40 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     [
         new("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] },
     ];
+
+    /// <summary>
+    /// The theme's optional colors (spec §1), in the editor's Advanced colors section. Each is
+    /// <em>derived</em> (null: computed from the colors above) or an <em>override</em>.
+    /// </summary>
+    private sealed record AdvancedColor(
+        string Key,
+        string Label,
+        Func<TerminalTheme, TermColor?> Get,
+        Action<TerminalTheme, TermColor?> Set,
+        Func<TerminalTheme, Color> Derive);
+
+    private static readonly AdvancedColor[] AdvancedColors =
+    [
+        new("SelectionBackground", "Selection", t => t.SelectionBackground, (t, c) => t.SelectionBackground = c,
+            t => TerminalRenderColors.Derive(t).Selection),
+        // Derived selected text is usually "each cell's own color": shown as the theme's text color.
+        new("SelectionForeground", "Selected text", t => t.SelectionForeground, (t, c) => t.SelectionForeground = c,
+            t => TerminalRenderColors.Derive(t).SelectionForeground ?? t.Foreground.ToAvaloniaColor()),
+        new("CursorText", "Cursor text", t => t.CursorText, (t, c) => t.CursorText = c,
+            t => TerminalRenderColors.Derive(t).CursorText),
+        new("SearchMatch", "Search match", t => t.SearchMatch, (t, c) => t.SearchMatch = c,
+            t => TerminalRenderColors.Derive(t).SearchMatch),
+        new("SearchMatchActive", "Current match", t => t.SearchMatchActive, (t, c) => t.SearchMatchActive = c,
+            t => TerminalRenderColors.Derive(t).SearchMatchActive),
+        new("Accent", "Accent", t => t.Accent, (t, c) => t.Accent = c, t => ThemeTokens.Derive(t, 1.0)[ThemeKeys.Accent]),
+        new("Success", "Success", t => t.Success, (t, c) => t.Success = c, t => ThemeTokens.Derive(t, 1.0)[ThemeKeys.Success]),
+        new("Warning", "Warning", t => t.Warning, (t, c) => t.Warning = c, t => ThemeTokens.Derive(t, 1.0)[ThemeKeys.Warning]),
+        new("Error", "Error", t => t.Error, (t, c) => t.Error = c, t => ThemeTokens.Derive(t, 1.0)[ThemeKeys.Error]),
+        new("Info", "Info", t => t.Info, (t, c) => t.Info = c, t => ThemeTokens.Derive(t, 1.0)[ThemeKeys.Info]),
+    ];
+
+    // The Advanced colors rows' controls by field. Built in code, so outside the XAML name scope.
+    private readonly System.Collections.Generic.Dictionary<string, (Button Swatch, TextBlock State, Button Reset)> _advancedRows = new();
 
     private SettingsSession? _session;
     private TerminalTheme? _editingTheme;
@@ -92,6 +129,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     {
         ArgumentNullException.ThrowIfNull(target);
         target.WindowOpacity = Slider("WindowOpacitySlider").Value;
+        target.MinimumContrast = CollectMinimumContrast();
         target.UiScale = UiScale.Clamp(Slider("UiScaleSlider").Value);
         if (Combo("ThemeList").SelectedItem is ComboBoxItem themeItem)
         {
@@ -150,6 +188,11 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         TerminalSettings settings = Session.Settings;
         Slider("WindowOpacitySlider").Value = settings.WindowOpacity;
         Text("OpacityValueDisplay").Text = FormatPercent(settings.WindowOpacity);
+        // The slider tops out at 7:1, the file at 21:1. Remember what is stored, so loading a
+        // higher value and saving without touching the slider keeps it rather than writing 7.
+        _storedMinimumContrast = settings.MinimumContrast;
+        Slider("MinimumContrastSlider").Value = settings.MinimumContrast;
+        Text("MinimumContrastDisplay").Text = FormatContrast(settings.MinimumContrast);
         Slider("UiScaleSlider").Value = UiScale.Clamp(settings.UiScale);
         Text("UiScaleValueDisplay").Text = FormatUiScale(Slider("UiScaleSlider").Value);
         this.FindControl<TextBox>("BgImagePathInput")!.Text = settings.BackgroundImagePath;
@@ -325,6 +368,82 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         WireColourInput("EditThemeFgInput", (theme, colour) => theme.Foreground = colour);
         WireColourInput("EditThemeBgInput", (theme, colour) => theme.Background = colour);
         WireColourInput("EditThemeCursorInput", (theme, colour) => theme.CursorColor = colour);
+
+        BuildAdvancedColorRows();
+    }
+
+    /// <summary>One row per optional color: label, swatch (click to override), state, Reset.</summary>
+    private void BuildAdvancedColorRows()
+    {
+        var rows = this.FindControl<StackPanel>("AdvancedColorRows")!;
+        foreach (var advanced in AdvancedColors)
+        {
+            var swatch = new Button
+            {
+                Name = $"Advanced{advanced.Key}Swatch",
+                Width = 28,
+                Height = 28,
+                CornerRadius = new CornerRadius(3),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            AutomationProperties.SetName(swatch, advanced.Label);
+            var state = new TextBlock { Name = $"Advanced{advanced.Key}State", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+            state.Classes.Add("RowDesc");
+            var reset = new Button { Name = $"Advanced{advanced.Key}Reset", Content = "Reset", Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            reset.Classes.Add("Link");
+            AutomationProperties.SetName(reset, $"Reset {advanced.Label} to derived");
+
+            swatch.Click += (_, _) =>
+            {
+                if (_editingTheme is not { } theme) return;
+                var current = advanced.Get(theme) is { } given ? given : TermColorHelper.FromAvaloniaColor(advanced.Derive(theme));
+                OpenColourFlyout(swatch, current, colour =>
+                {
+                    advanced.Set(theme, colour);
+                    UpdateThemePreview(theme, PreviewSurface.Editor);
+                });
+            };
+            reset.Click += (_, _) =>
+            {
+                if (_editingTheme is not { } theme) return;
+                advanced.Set(theme, null);
+                UpdateThemePreview(theme, PreviewSurface.Editor);
+            };
+
+            var label = new TextBlock { Text = advanced.Label, VerticalAlignment = VerticalAlignment.Center };
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto") };
+            Grid.SetColumn(swatch, 1);
+            Grid.SetColumn(state, 2);
+            Grid.SetColumn(reset, 3);
+            row.Children.Add(label);
+            row.Children.Add(swatch);
+            row.Children.Add(state);
+            row.Children.Add(reset);
+            rows.Children.Add(row);
+            _advancedRows[advanced.Key] = (swatch, state, reset);
+        }
+    }
+
+    /// <summary>
+    /// Shows each optional color as derived (its computed color, dimmed, no Reset) or overridden
+    /// (its own color, Reset offered). Derived values follow every other edit in the draft.
+    /// </summary>
+    private void UpdateAdvancedColorRows(TerminalTheme theme)
+    {
+        foreach (var advanced in AdvancedColors)
+        {
+            var given = advanced.Get(theme);
+            var probe = theme.Clone();
+            advanced.Set(probe, null);
+            var shown = given?.ToAvaloniaColor() ?? advanced.Derive(probe);
+
+            var (swatch, state, reset) = _advancedRows[advanced.Key];
+            swatch.Background = new SolidColorBrush(shown);
+            swatch.Opacity = given is null ? 0.5 : 1.0;
+            ToolTip.SetTip(swatch, given is null ? $"{advanced.Label}: derived. Click to override." : $"{advanced.Label}: {given.Value.ToHex()}");
+            state.Text = given is null ? "Derived" : "Override";
+            reset.IsVisible = given is not null;
+        }
     }
 
     /// <summary>Real-time updates for the foreground / background / cursor inputs (ORIG 418-442).</summary>
@@ -391,7 +510,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
             }
         }
 
-        return false;
+        return AdvancedColors.Any(advanced => !Equals(advanced.Get(draft), advanced.Get(baseline)));
     }
 
     /// <summary>Moves keyboard focus to a control once layout has made it visible.</summary>
@@ -438,18 +557,38 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         // A local, not the field: Back clears _editingTheme while this flyout's handler lives on.
         if (_editingTheme is not { } theme) return;
 
-        var current = theme.GetAnsiColor(index % 8, index >= 8);
-        var hexInput = new TextBox { Text = current.ToHex(), Width = 100 }; // with the alpha, as OpenThemeEditor fills its fields
+        OpenColourFlyout(target, theme.GetAnsiColor(index % 8, index >= 8), colour =>
+        {
+            theme.SetAnsiColor(index % 8, index >= 8, colour);
+            target.Background = new SolidColorBrush(colour.ToAvaloniaColor());
+            UpdateThemePreview(theme, PreviewSurface.Editor);
+        });
+    }
+
+    /// <summary>A hex field and a live swatch under <paramref name="target"/>; each valid color is applied as typed.</summary>
+    private static void OpenColourFlyout(Button target, TermColor current, Action<TermColor> apply)
+    {
+        string initialText = current.ToHex(); // with the alpha, as OpenThemeEditor fills its fields
+        var hexInput = new TextBox { Text = initialText, Width = 100 };
         var preview = new Border { Width = 30, Height = 30, Background = new SolidColorBrush(current.ToAvaloniaColor()), CornerRadius = new CornerRadius(4), Margin = new Thickness(5, 0, 0, 0) };
 
+        // TextChanged for the opening text arrives on a later pass. Applying it is harmless for a
+        // palette swatch (the same color again) but would pin a derived Advanced color as an
+        // override. So nothing is applied until the text first changes; from then on every valid
+        // value is, including one typed back to the original.
+        bool edited = false;
         hexInput.TextChanged += (s, e) =>
         {
+            if (!edited && string.Equals(hexInput.Text, initialText, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            edited = true;
             if (Color.TryParse(hexInput.Text, out var color))
             {
                 preview.Background = new SolidColorBrush(color);
-                theme.SetAnsiColor(index % 8, index >= 8, TermColorHelper.FromAvaloniaColor(color));
-                target.Background = new SolidColorBrush(color);
-                UpdateThemePreview(theme, PreviewSurface.Editor);
+                apply(TermColorHelper.FromAvaloniaColor(color));
             }
         };
 
@@ -481,6 +620,8 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         {
             // The label is part of the preview: the theme's own foreground on its own background.
             Text("EditorPreviewLabel").Foreground = new SolidColorBrush(theme.Foreground.ToAvaloniaColor());
+            UpdateEditorPreviewSamples(theme);
+            UpdateAdvancedColorRows(theme);
         }
 
         string swatchPrefix = editor ? "EditorPreviewSwatch" : "Swatch";
@@ -491,10 +632,62 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         }
     }
 
+    /// <summary>
+    /// The editor preview's samples of the colors the terminal and chrome derive: selected text, a
+    /// search match and the current one, a block cursor over a glyph, and (through a token scope
+    /// local to the preview, so the rest of Settings keeps the app theme) an accent button, the
+    /// status colors and the tab dots.
+    /// </summary>
+    private void UpdateEditorPreviewSamples(TerminalTheme theme)
+    {
+        var preview = this.FindControl<Border>("EditorPreviewArea")!;
+        ThemeService.ApplyTo(preview.Resources, ThemeTokens.Derive(theme, 1.0));
+
+        var colors = TerminalRenderColors.Derive(theme);
+        var text = new SolidColorBrush(theme.Foreground.ToAvaloniaColor());
+        var sample = Text("EditorTerminalSample");
+        sample.Foreground = text;
+        sample.Inlines = new InlineCollection
+        {
+            new Run("$ grep "),
+            new Run("selected") { Background = new SolidColorBrush(colors.Selection), Foreground = colors.SelectionForeground is { } selectedText ? new SolidColorBrush(selectedText) : text },
+            new Run(" "),
+            new Run("match") { Background = new SolidColorBrush(colors.SearchMatch) },
+            new Run(" "),
+            new Run("current") { Background = new SolidColorBrush(colors.SearchMatchActive) },
+            new Run(" "),
+            new Run("x") { Background = new SolidColorBrush(theme.CursorColor.ToAvaloniaColor()), Foreground = new SolidColorBrush(colors.CursorText) },
+        };
+    }
+
     // ── Window ────────────────────────────────────────────────────────────────
+
+    private double _storedMinimumContrast = 1.0;
+
+    /// <summary>The slider's ratio, or the stored one while the slider still shows it clamped.</summary>
+    private double CollectMinimumContrast()
+    {
+        var slider = Slider("MinimumContrastSlider");
+        double shownForStored = Math.Clamp(_storedMinimumContrast, slider.Minimum, slider.Maximum);
+        return Math.Abs(slider.Value - shownForStored) < 0.001 ? _storedMinimumContrast : slider.Value;
+    }
+
+    /// <summary>"Off" at 1:1, else the ratio, as WCAG writes it ("4.5:1").</summary>
+    internal static string FormatContrast(double ratio)
+        => ratio <= 1.0 ? "Off" : ratio.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + ":1";
 
     private void WireWindowRows()
     {
+        var contrast = Slider("MinimumContrastSlider");
+        var contrastDisplay = Text("MinimumContrastDisplay");
+        contrast.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == RangeBase.ValueProperty)
+            {
+                contrastDisplay.Text = FormatContrast(CollectMinimumContrast());
+            }
+        };
+
         var opacity = Slider("WindowOpacitySlider");
         var opacityDisplay = Text("OpacityValueDisplay");
         opacity.PropertyChanged += (_, e) =>

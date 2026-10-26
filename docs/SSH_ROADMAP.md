@@ -147,7 +147,7 @@ An SSH tab whose profile opts in (`SshMuxOptions.PersistRemoteSessions`, the edi
 its shell inside `ntilde-mux`, Ntilde's multiplexer daemon, on the remote host. The GUI reaches the
 daemon through an SSH exec channel running `ntilde-mux proxy --stdio`, so the shell survives a
 network drop, a closed window and an app restart, and a reconnect reattaches with a snapshot. The
-user-facing description is `docs/USER_MANUAL.md` chapter 12 (12.6 for SSH tabs); the design is
+user-facing description is `docs/user/persistent-sessions.md` ("Remote SSH tabs that keep running"); the design is
 `docs/ARCHITECTURE.md` §8.2.
 
 ### Both backends

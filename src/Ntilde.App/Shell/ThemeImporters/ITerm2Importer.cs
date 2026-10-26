@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Xml.Linq;
 using Avalonia.Media;
@@ -59,15 +60,19 @@ namespace Ntilde.Shell.ThemeImporters
                 if (el.Name == "key") currentKey = el.Value;
                 else if (el.Name == "real" && currentKey != null)
                 {
-                    float val = float.Parse(el.Value);
+                    // Plist reals are invariant ("0.5"): a comma-decimal locale must not misread them.
+                    if (!float.TryParse(el.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float val)) continue;
                     if (currentKey.Contains("Red Component")) r = val;
                     else if (currentKey.Contains("Green Component")) g = val;
                     else if (currentKey.Contains("Blue Component")) b = val;
                 }
             }
 
-            return TermColor.FromRgb((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
+            return TermColor.FromRgb(ToByte(r), ToByte(g), ToByte(b));
         }
+
+        // Rounded, not truncated: components exported from 8-bit values come back as 254.9999.
+        private static byte ToByte(float component) => (byte)Math.Clamp((int)Math.Round(component * 255f), 0, 255);
 
         private void MapItermKeyToTheme(string key, TermColor color, TerminalTheme theme)
         {
@@ -76,6 +81,9 @@ namespace Ntilde.Shell.ThemeImporters
                 case "Foreground Color": theme.Foreground = color; break;
                 case "Background Color": theme.Background = color; break;
                 case "Cursor Color": theme.CursorColor = color; break;
+                case "Cursor Text Color": theme.CursorText = color; break;
+                case "Selection Color": theme.SelectionBackground = color; break;
+                case "Selected Text Color": theme.SelectionForeground = color; break;
                 case "Ansi 0 Color": theme.Black = color; break;
                 case "Ansi 1 Color": theme.Red = color; break;
                 case "Ansi 2 Color": theme.Green = color; break;

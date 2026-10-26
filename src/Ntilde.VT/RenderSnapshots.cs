@@ -36,6 +36,12 @@ namespace Ntilde.VT
         public TermColor Background { get; init; }
         public TermColor CursorColor { get; init; }
         public TermColor[] AnsiPalette { get; init; }
+
+        /// <summary>
+        /// The theme these colors came from, for the colors the renderer derives from a whole theme
+        /// (selection, search, cursor text). Null only in snapshots built by hand.
+        /// </summary>
+        public TerminalTheme? Source { get; init; }
     }
 
     public readonly struct DirtySpan

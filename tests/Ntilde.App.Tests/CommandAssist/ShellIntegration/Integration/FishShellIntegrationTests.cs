@@ -27,7 +27,10 @@ public sealed class FishShellIntegrationTests : IDisposable
         try { Directory.Delete(_tempRoot, recursive: true); } catch { }
     }
 
-    private HarnessResult RunFish(string stdin, string? extraInitLine = null)
+    private HarnessResult RunFish(
+        string stdin,
+        string? extraInitLine = null,
+        IReadOnlyDictionary<string, string>? extraEnv = null)
     {
         string? fish = ShellHarness.FindFish();
         if (fish is null)
@@ -47,6 +50,10 @@ public sealed class FishShellIntegrationTests : IDisposable
             ["XDG_CONFIG_HOME"] = xdgRoot!,
             ["HOME"] = _tempRoot,
         };
+        foreach (var kv in extraEnv ?? new Dictionary<string, string>())
+        {
+            env[kv.Key] = kv.Value;
+        }
 
         // The bootstrap explicitly sources "$HOME/.config/fish/config.fish" as the
         // user's config. HOME is redirected above, and XDG_CONFIG_HOME points at
@@ -108,6 +115,32 @@ public sealed class FishShellIntegrationTests : IDisposable
 
         Assert.True(marks <= prompts * 2,
             $"expected at most one B per prompt repaint, got {marks} B for {prompts} A");
+    }
+
+    [Fact]
+    public void Bootstrap_MarksEachCommandOnce()
+    {
+        // fish 4 writes its own A, C and D. A bootstrap that wrote them too marked every command
+        // twice, so it leaves them to fish whenever fish writes them.
+        HarnessResult result = RunFish("true\nfalse\nexit 0\n");
+
+        Assert.Contains(result.Events, e => e.Kind == "D");
+        ShellHarness.AssertEachCommandMarkedOnce(result.Events);
+    }
+
+    [Fact]
+    public void Bootstrap_WritesItsOwnCommandMarks_WhenFishsAreTurnedOff()
+    {
+        // fish 4.0.6+ can turn its own marks off (the mark-prompt feature). The bootstrap's are
+        // then the only ones, and they carry the duration fish's never do. On fish 3, which has
+        // no marks of its own, this is the ordinary case.
+        HarnessResult result = RunFish(
+            "echo hello\nexit 0\n",
+            extraEnv: new Dictionary<string, string> { ["fish_features"] = "no-mark-prompt" });
+
+        Assert.Contains(result.Events, e => e.Kind == "C" && e.DecodedCommand == "echo hello");
+        Assert.Contains(result.Events, e => e.Kind == "D" && e.DecodedFinish is (0, not null));
+        ShellHarness.AssertEachCommandMarkedOnce(result.Events, oneWriterOfB: true);
     }
 
     [Fact]

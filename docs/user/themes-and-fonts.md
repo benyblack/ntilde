@@ -1,0 +1,165 @@
+# Themes and fonts
+
+## Choosing a theme
+
+Fourteen themes ship with Ntilde: Default, Catppuccin Mocha, Cobalt2, Dracula, GitHub Dark, GitHub
+Light, Gruvbox Dark, Monokai, Nord, One Half Dark, One Half Light, Solarized Dark, Solarized Light
+and Tokyo Night.
+
+Pick one in Settings → Appearance → **Theme**, which previews it as you choose, or run
+*Theme: name* from the command palette, which applies it at once. A theme colors the window too:
+title bar, tabs, sidebar, Settings, dialogs and the overlays inside each pane (search, the status
+bar, Command Assist) take their colors from the theme's background, foreground, and its blue,
+green, yellow, red and cyan, adjusted so text stays readable. So do the selection, search matches
+and the character under a block cursor. A theme can also set those colors itself
+([Optional colors](#optional-colors)).
+
+A local profile can use a theme of its own: Settings → Shells & Profiles → *Visual overrides* →
+Theme ([Settings](settings.md#shells--profiles)). Its panes, overlays included, use that theme
+while the rest of the window keeps yours.
+
+## Minimum contrast
+
+Some themes have colors that clash with their own background. In GitHub Light, for example, ANSI
+black is the same color as the text, so a prompt that draws a segment on black shows text you
+cannot read. Settings → Appearance → **Minimum contrast** fixes that: text closer to its background
+than the ratio you choose is made lighter or darker, keeping its hue, until it reaches it.
+
+It is off by default. 4.5:1 is the usual guideline for readable text; 3:1 changes less, 7:1 more.
+It changes only the text, never backgrounds, and it also reveals text a program colored to match
+its background on purpose. Faint text stays fainter than the text around it.
+
+## Importing a theme
+
+Settings → Appearance → **Import…** reads:
+
+| Format | File | Notes |
+|---|---|---|
+| Ntilde | `.json` | [The format](#the-theme-file) below |
+| Windows Terminal | `.json` | A whole `settings.json` (every scheme in its `schemes` list), a list of schemes, or one scheme. Keeps `selectionBackground` |
+| iTerm2 | `.itermcolors` | Named after the file. Keeps the selection, selected-text and cursor-text colors |
+| Alacritty | `.toml` | Named after the file, with ` (Alacritty)` added; colors written `#rrggbb`, `rrggbb` or `0xrrggbb`, in sections or inline tables. Keeps the selection, cursor-text and search colors; `CellForeground`/`CellBackground` mean derived |
+
+The imported theme is selected at once. A file that cannot be read is skipped without a message;
+`logs/debug.log` says why. Importing a theme with the name of one you already have replaces it.
+
+## Making or editing a theme
+
+**+ New** starts a theme named *New Theme* from the default colors; **Edit** changes the selected
+one. The editor has
+its name, foreground, background, cursor and the 16 ANSI colors. **Advanced colors** lists the
+[optional colors](#optional-colors): each is *Derived* (worked out from the others, its swatch
+dimmed) until you click it and type a color; **Reset** makes it derived again. The preview shows
+the theme's text, selection, search matches, a block cursor, an accent button, the status colors
+and the tab dots. **Save theme** writes it to disk immediately: Settings' **Cancel** does not undo
+it. The built-in *Default* cannot be edited; save a
+copy under another name.
+
+Edit built-in themes under a new name too: Ntilde may replace its own theme files when it updates.
+
+## The theme file
+
+Themes are JSON files in the `themes` folder of Ntilde's data folder
+([File locations](troubleshooting.md#file-locations)), one per theme. For example, the built-in
+Dracula:
+
+```json
+{
+  "Name": "Dracula",
+  "Foreground": "#f8f8f2",
+  "Background": "#282a36",
+  "CursorColor": "#f8f8f2",
+  "Black": "#21222c",
+  "Red": "#ff5555",
+  "Green": "#50fa7b",
+  "Yellow": "#f1fa8c",
+  "Blue": "#bd93f9",
+  "Magenta": "#ff79c6",
+  "Cyan": "#8be9fd",
+  "White": "#f8f8f2",
+  "BrightBlack": "#6272a4",
+  "BrightRed": "#ff6e6e",
+  "BrightGreen": "#69ff94",
+  "BrightYellow": "#ffffa5",
+  "BrightBlue": "#d6acff",
+  "BrightMagenta": "#ff92df",
+  "BrightCyan": "#a4ffff",
+  "BrightWhite": "#ffffff",
+  "SelectionBackground": "#44475a"
+}
+```
+
+- **Keys** are exactly as above, capitalized. A key spelled differently (`name`, `background`) is
+  ignored.
+- **`Name`** is what Settings and the palette show, and identifies the theme: the file's own name
+  does not matter. Two files with the same `Name` are one theme.
+- **Colors** are `#RRGGBB`, `#RGB`, or `#AARRGGBB` with the alpha first. Write every one of the twenty: a color
+  you leave out gets a plain xterm default, and a value Ntilde cannot read becomes transparent,
+  without an error.
+- `Foreground`, `Background` and `CursorColor` are the default text, background and cursor; the
+  other sixteen are the ANSI palette programs use.
+
+### Optional colors
+
+Leave any of these out and Ntilde works it out from the colors above, adjusted so text stays
+readable. A color you set is used exactly as written. A value Ntilde cannot read counts as left
+out (`logs/debug.log` says so).
+
+| Key | Colors | Left out |
+|---|---|---|
+| `SelectionBackground` | The selection; selected text is drawn on top | The accent, translucent |
+| `SelectionForeground` | Selected text | Each character keeps its color, unless it would be hard to read on the selection |
+| `CursorText` | The character under a block cursor | `Background` |
+| `SearchMatch`, `SearchMatchActive` | Search matches, and the current one | Yellow, and orange |
+| `Accent` | Buttons, links, the selected tab, the *working* status dot | A softened `Blue` |
+| `Success`, `Warning`, `Error`, `Info` | Status text and dots: `Success` for finished transfers, active port forwards and added lines in diffs; `Warning` for tabs that want attention; `Error` for the recording marker and removed lines; `Info` for agent activity | Softened `Green`, `Yellow`, `Red`, `Cyan` |
+
+- Because a color you set is not adjusted, choose `Accent`, `Success`, `Warning`, `Error` and
+  `Info` with at least 4.5:1 contrast against the window's panels, or text in them will be hard to
+  read. These five are always drawn opaque: an alpha you give them is ignored.
+- The fills (`SelectionBackground`, `SearchMatch`, `SearchMatchActive`) keep their alpha: use the
+  `#AARRGGBB` form so the text under them shows through.
+
+Dracula, Catppuccin Mocha, Tokyo Night, Nord and both Solarized themes set `SelectionBackground`
+to their designers' selection colors; the other built-in themes leave all of these out.
+
+Ntilde reads the folder when it starts and each time Settings opens, so a file you copy in shows up
+in Settings → Appearance next time you open it. It does not watch the files: after editing one
+by hand, open Settings and choose the theme again.
+
+An agent connected to Ntilde can check a theme file with `ntilde_validate_theme_json`, which also
+warns when an `Accent`, `Success`, `Warning`, `Error` or `Info` you set will be hard to read
+([Agents](agents.md)).
+
+## Fonts
+
+Settings → Terminal → **Font family** lists your installed fonts and the ones Ntilde ships, so a new
+install looks right with nothing installed:
+
+- **JetBrains Mono NL**, the default;
+- **Cascadia Mono PL**;
+- **Symbols Nerd Font Mono**, which is not offered in the list but is used for any icon your font
+  lacks, so prompt themes that use Nerd Font icons (Powerlevel10k, Starship, Oh My Posh) work
+  whatever font you pick.
+
+**Font size** is 14 by default; `Ctrl+=` and `Ctrl+-` (`Cmd` on macOS) change it and save it.
+
+- **Programming ligatures** (off by default) draw `=>`, `!=`, `>=` and the like as single glyphs,
+  in fonts that have them. *JetBrains Mono NL* is the no-ligatures cut: pick a font with ligatures,
+  such as JetBrains Mono or Fira Code, to see them.
+- **Complex shaping** (on) shapes text in non-Latin scripts and emoji properly.
+- Box-drawing and block characters are drawn as lines and blocks rather than taken from the font,
+  so borders join without gaps in any font. *Debug: Box Drawing Test Screen* shows them.
+
+A local profile can use its own font, size and ligatures: Settings → Shells & Profiles → *Visual
+overrides*.
+
+## Window
+
+Settings → Appearance also has:
+
+- **Interface scale**, 80% to 200%: everything but the terminal's own font size;
+- **Window opacity** and **Blur effect** (*Acrylic* or *Mica* where the system supports them);
+- a **Background image** with its opacity and stretch mode, for every theme.
+
+See [Settings](settings.md#appearance).
