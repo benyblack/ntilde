@@ -10,6 +10,7 @@
 #   OSC 133;B        prompt end / first cell of your input
 #   OSC 133;C;<b64>  the line you submitted, base64-encoded
 #   OSC 133;D;<n>;<ms>  exit code and duration of the command that just ran
+#   (fish 4 writes A, C, D itself, and 4.3+ B; this adds only what it does not)
 #
 # INSTALL (on the REMOTE host)
 #   1. mkdir -p ~/.config/fish/conf.d
@@ -39,6 +40,13 @@ if status is-interactive; and not set -q __ntilde_shell_integration_loaded
     set -g __ntilde_shell_integration_loaded 1
     set -g __ntilde_command_start_ms ""
 
+    # Ours on top of fish 4's own marks (B too from 4.3) would mark each command
+    # twice. Status 2 = no mark-prompt feature: 4.0.x marks, 3.x does not.
+    if status test-feature mark-prompt 2>/dev/null; or test $status -eq 2; and string match -qr '^([4-9]|[1-9][0-9]+)\.' -- $version
+        set -g __ntilde_fish_writes_marks 1
+        string match -qr '^(4\.([3-9]|[1-9][0-9])|([5-9]|[1-9][0-9]+)\.)' -- $version; and set -g __ntilde_fish_writes_b 1
+    end
+
     # Portable millisecond clock. `date +%s%N` is GNU-only; macOS/BSD `date`
     # leaves a literal "%N", which would break `math`. Detect at runtime:
     # digits-only output is nanoseconds, anything else falls back to seconds.
@@ -58,12 +66,14 @@ if status is-interactive; and not set -q __ntilde_shell_integration_loaded
 
     function __ntilde_emit_prompt_ready
         printf '\033]7;file://%s%s\a' (hostname) (string escape --style=url -- $PWD)
-        printf '\033]133;A\a'
+        set -q __ntilde_fish_writes_marks; or printf '\033]133;A\a'
     end
 
     # fish has native fish_preexec / fish_postexec events, so hooks layer
     # cleanly without overwriting anything.
+    # (postexec needs no guard: no clock, no D)
     function __ntilde_preexec --on-event fish_preexec
+        set -q __ntilde_fish_writes_marks; and return
         set -l b64 (printf '%s' "$argv" | base64 | tr -d '\n')
         printf '\033]133;C;%s\a' "$b64"
         set -g __ntilde_command_start_ms (__ntilde_now_ms)
@@ -97,7 +107,7 @@ if status is-interactive; and not set -q __ntilde_shell_integration_loaded
     # re-source safe. Without it a second pass would copy the CURRENT
     # fish_prompt - already our wrapper - over __ntilde_user_fish_prompt, and the
     # redefinition below would then call itself forever.
-    if functions -q fish_prompt; and not functions -q __ntilde_user_fish_prompt
+    if functions -q fish_prompt; and not functions -q __ntilde_user_fish_prompt; and not set -q __ntilde_fish_writes_b
         functions --copy fish_prompt __ntilde_user_fish_prompt
         function fish_prompt
             __ntilde_user_fish_prompt

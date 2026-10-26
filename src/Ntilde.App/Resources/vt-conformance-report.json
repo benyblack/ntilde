@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "matrixPath": "docs/vt_coverage_matrix.md",
-  "matrixSha256": "5ea9364bae9e5ca3fd01a1c4816c5345093928832c36156acbcc1cfc2125b121",
+  "matrixSha256": "5e8e76fe780de88eb9b0d11083fee7a378de51a4ec2bee5316f79141554133fe",
   "summary": {
     "totalRows": 64,
     "supportedCount": 27,
@@ -1176,7 +1176,7 @@
       "hasAutomatedEvidenceSignal": true,
       "hasLinkedEvidence": true,
       "ownership": "Parser\u002BCommand Assist",
-      "knownDeviations": "Supports A/B/C/D markers; broader semantic prompt extensions not audited",
+      "knownDeviations": "Supports A/B/C/D markers; C\u0027s command from base64, plain text or kitty\u0027s \u0060cmdline_url\u0060 (fish 4); other semantic prompt extensions not audited",
       "sourceLine": 156
     },
     {

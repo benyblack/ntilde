@@ -2252,10 +2252,14 @@ namespace Ntilde.VT
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Three shapes are in the wild and they are not distinguishable by declaration, only by
-        /// inspection:
+        /// Four shapes are in the wild. The first declares itself; the other three are not
+        /// distinguishable by declaration, only by inspection:
         /// </para>
         /// <list type="number">
+        /// <item><description>
+        /// <c>133;C;cmdline_url=&lt;percent-encoded&gt;</c> — what fish 4.0.1 and later send with their
+        /// own marks (kitty's attribute). Looked for among all the parameters before anything else.
+        /// </description></item>
         /// <item><description>
         /// <c>133;C;&lt;base64&gt;</c> — what all four Ntilde bootstraps emit, and the only shape that
         /// survives a command containing <c>;</c> or a newline. Tried first, and accepted only if the
@@ -2274,7 +2278,7 @@ namespace Ntilde.VT
         /// </description></item>
         /// </list>
         /// <para>
-        /// FinalTerm attribute payloads (<c>133;C;aid=7</c>) are the trap in shape 3: they are
+        /// FinalTerm attribute payloads (<c>133;C;aid=7</c>) are the trap in shape 4: they are
         /// printable, so a bare "printable means command text" rule would write <c>aid=7</c> into the
         /// user's permanent history. Anything matching an identifier followed by <c>=</c> that did not
         /// already decode as base64 is treated as an attribute and yields <see langword="null"/>.
@@ -2312,6 +2316,14 @@ namespace Ntilde.VT
                 return null;
             }
 
+            for (int i = 1; i < parts.Length; i++)
+            {
+                if (parts[i].StartsWith(CmdlineUrlAttribute, StringComparison.Ordinal))
+                {
+                    return DecodeCmdlineUrl(parts[i]);
+                }
+            }
+
             string payload = parts[1];
             if (string.IsNullOrWhiteSpace(payload) || payload.Length > MaxAcceptedCommandPayloadChars)
             {
@@ -2347,6 +2359,25 @@ namespace Ntilde.VT
             }
 
             return payload;
+        }
+
+        private const string CmdlineUrlAttribute = "cmdline_url=";
+
+        /// <summary>
+        /// The command in a <c>cmdline_url=</c> attribute: percent-encoded UTF-8, which carries a
+        /// <c>;</c> or a newline intact. Bounded on the encoded attribute and held to the same
+        /// plausibility check as the other readings, since percent-encoding can carry control
+        /// characters the raw wire format cannot.
+        /// </summary>
+        private static string? DecodeCmdlineUrl(string attribute)
+        {
+            if (attribute.Length > MaxAcceptedCommandPayloadChars)
+            {
+                return null;
+            }
+
+            string decoded = Uri.UnescapeDataString(attribute.Substring(CmdlineUrlAttribute.Length));
+            return !string.IsNullOrWhiteSpace(decoded) && IsPlausibleCommandText(decoded) ? decoded : null;
         }
 
         /// <summary>

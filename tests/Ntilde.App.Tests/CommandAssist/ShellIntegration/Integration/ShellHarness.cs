@@ -83,6 +83,52 @@ internal static class ShellHarness
         return FindOnPath("bash");
     }
 
+    /// <summary>
+    /// Fails unless each prompt and command was marked once: at most one OSC 133;B after an A, and
+    /// at most one C and one D between two B marks. A shell that writes its own marks beside a
+    /// bootstrap's (fish 4 does) produces two of each, and everything downstream of D (the
+    /// long-command toast, Fix mode, the agent host's events) then counts the command twice. A
+    /// itself is left out: an extra prompt-start mark is harmless, and the bootstraps write one at
+    /// startup as well as at the first prompt.
+    /// </summary>
+    /// <param name="events">The marks a run produced.</param>
+    /// <param name="oneWriterOfB">
+    /// True where only the bootstrap writes B, which turns the B check off. A prompt repaint re-runs
+    /// fish_prompt, so the bootstrap's B repeats without a new A (its A comes from the fish_prompt
+    /// event, which a repaint does not fire); with one writer a second B is a repaint, not a second
+    /// writer. fish 4.3.0 repaints its first prompt when a terminal query's answer arrives late.
+    /// </param>
+    public static void AssertEachCommandMarkedOnce(IReadOnlyList<OscEvent> events, bool oneWriterOfB = false)
+    {
+        int b = 0, c = 0, d = 0;
+        foreach (OscEvent e in events)
+        {
+            if (e.Kind == "A")
+            {
+                b = 0;
+                continue;
+            }
+
+            bool twice = e.Kind switch
+            {
+                "B" => ++b > 1 && !oneWriterOfB,
+                "C" => ++c > 1,
+                "D" => ++d > 1,
+                _ => false,
+            };
+            if (e.Kind == "B")
+            {
+                c = d = 0;
+            }
+
+            if (twice)
+            {
+                string sequence = string.Join(" ", events.Select(x => x.Kind).Where(k => k != "7"));
+                Assert.Fail($"a prompt or command was marked more than once ({e.Kind} twice): {sequence}");
+            }
+        }
+    }
+
     public static string? FindZsh() => OperatingSystem.IsWindows() ? null : FindOnPath("zsh");
 
     public static string? FindFish() => OperatingSystem.IsWindows() ? null : FindOnPath("fish");
