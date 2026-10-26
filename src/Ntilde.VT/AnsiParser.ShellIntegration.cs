@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace Ntilde.VT
@@ -7,6 +8,91 @@ namespace Ntilde.VT
     /// </summary>
     public partial class AnsiParser
     {
+        // OSC 133: shell integration markers.
+        // Common terminals/shell integrations emit:
+        //   OSC 133;A     -> prompt start (prompt ready)
+        //   OSC 133;B     -> prompt end / start of user input; reported with the cursor
+        //                    position at parse time, which is where the command line begins
+        //   OSC 133;C[;X] -> command accepted; X, when present, is usually the base64-encoded
+        //                    command text but is not required to be (see
+        //                    DecodeAcceptedCommandPayload)
+        //   OSC 133;D;N[;M] -> command finished with exit code N and optional duration M
+        //
+        // Any parameters after the marker letter are tolerated and ignored (FinalTerm
+        // allows key=value attributes on these marks, e.g. "133;B;aid=7"), so a payload
+        // we don't understand still produces the mark rather than being dropped.
+        private void HandleShellIntegrationMark(string data)
+        {
+            if (string.IsNullOrWhiteSpace(data)) return;
+
+            string[] parts = data.Split(';', StringSplitOptions.None);
+            switch (parts[0])
+            {
+                case "A":
+                    // We're back at a shell prompt: clear any mouse/focus reporting a TUI
+                    // left enabled after an unclean exit, so pointer moves don't flood the
+                    // prompt with leaked ESC[<..M reports.
+                    _buffer.Modes.ResetTransientInputReporting();
+                    OnPromptReady?.Invoke();
+                    break;
+
+                case "B":
+                    // The command-input window and the mark are one fact in two parts, so they are
+                    // published together, here, under the buffer's tracked-mark lock and before any
+                    // subscriber runs. Splitting them is what #448 cost twice over: first the window
+                    // lagged the mark by a queue hop and a submitted command was dropped from
+                    // history; then, with the window moved here but the mark still written by a
+                    // subscriber, the window briefly pointed at the *previous* command's mark - which
+                    // fabricates a capture rather than losing one.
+                    ShellIntegrationMark mark = CaptureCursorMark();
+                    _buffer.BeginCommandInput(mark);
+                    OnCommandStarted?.Invoke(mark);
+                    break;
+
+                case "C":
+                    // The line has been submitted. The mark deliberately survives C - the input line
+                    // is still on screen at this instant - so closing the window is the only thing
+                    // that stops the cells below it being served as a command line once the output
+                    // starts arriving.
+                    _buffer.CloseCommandInputWindow();
+                    OnCommandAccepted?.Invoke(DecodeAcceptedCommandPayload(parts));
+                    break;
+
+                case "D":
+                    HandleCommandFinished(parts);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// <c>OSC 133;D;N[;M]</c>: the command finished with exit code N and, optionally, a duration of M
+        /// milliseconds.
+        /// </summary>
+        private void HandleCommandFinished(string[] parts)
+        {
+            int? exitCode = null;
+            long? durationMs = null;
+            if (parts.Length > 1 &&
+                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
+            {
+                exitCode = parsed;
+            }
+
+            if (parts.Length > 2 &&
+                long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsedDuration))
+            {
+                durationMs = parsedDuration;
+            }
+
+            // Closed at D as well as C: a shell can reach D with no intervening C, and
+            // leaving the window open for a command's whole run is the failure it exists to
+            // prevent.
+            _buffer.CloseCommandInputWindow();
+
+            OnCommandFinished?.Invoke(exitCode);
+            OnCommandFinishedDetailed?.Invoke(exitCode, durationMs);
+        }
+
         /// <summary>
         /// Snapshots the cursor as a <see cref="ShellIntegrationMark"/>. Called synchronously
         /// while the OSC is being dispatched, so the cursor is still exactly where the shell

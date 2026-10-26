@@ -1,7 +1,8 @@
 namespace Ntilde.VT
 {
     /// <summary>
-    /// Inline images from DCS (Sixel, and the DECRQSS / XTGETTCAP replies) and from the iTerm2 protocol (OSC 1337).
+    /// Inline images from DCS (Sixel, and the DECRQSS / XTGETTCAP replies), from the iTerm2 protocol (OSC 1337) and
+    /// tunneled through OSC 1339.
     /// </summary>
     public partial class AnsiParser
     {
@@ -70,6 +71,45 @@ namespace Ntilde.VT
             _swallowNextNewline = true;
         }
 
+        /// <summary>
+        /// The row an image placed at the cursor is anchored to: counted from the top of the scrollback on
+        /// the main screen, and from the top of the screen on the alternate one, which has no scrollback.
+        /// </summary>
+        private int ImageAnchorRow() =>
+            _buffer.IsAltScreenActive ? _buffer.CursorRow : _buffer.CursorRow + (_buffer.TotalLines - _buffer.Rows);
+
+        /// <summary>
+        /// Moves the cursor past an image just placed, so the text that follows flows below it: writes
+        /// hidden spaces over every row the image covers, starting each row after the first at the
+        /// image's column, then ends the placement with <see cref="FinishImagePlacement"/>.
+        /// </summary>
+        private void ReserveImageCells(TerminalImage img, int widthCells, int heightCells)
+        {
+            bool oldHidden = _buffer.IsHidden;
+            _buffer.IsHidden = true;
+            try
+            {
+                for (int y = 0; y < heightCells; y++)
+                {
+                    // 1. Advance horizontally on current row
+                    for (int x = 0; x < widthCells; x++) _buffer.WriteContent(" ", false);
+
+                    // 2. If more rows exist, move to next row and align to image start column
+                    if (y < heightCells - 1)
+                    {
+                        _buffer.WriteChar('\n');
+                        for (int x = 0; x < img.CellX; x++) _buffer.WriteContent(" ", false);
+                    }
+                }
+
+                FinishImagePlacement();
+            }
+            finally
+            {
+                _buffer.IsHidden = oldHidden;
+            }
+        }
+
         private void HandleSixel(string dcs)
         {
             try
@@ -83,8 +123,7 @@ namespace Ntilde.VT
                     int widthCells = (int)Math.Max(1, Math.Ceiling(pixelWidth / (CellWidth > 0 ? CellWidth : 10f)));
                     int heightCells = (int)Math.Max(1, Math.Ceiling(pixelHeight / (CellHeight > 0 ? CellHeight : 20f)));
 
-                    int absRow = _buffer.CursorRow + (_buffer.TotalLines - _buffer.Rows);
-                    if (_buffer.IsAltScreenActive) absRow = _buffer.CursorRow;
+                    int absRow = ImageAnchorRow();
 
                     var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, widthCells, heightCells);
                     _buffer.AddImage(img);
@@ -93,34 +132,28 @@ namespace Ntilde.VT
                     // We move the cursor relative to current position, but try to avoid redundant newlines
                     // Tools like 'viu' usually handle their own layout. 
                     // We just need to ensure the buffer knows we've "used" these cells.
-                    bool oldHidden = _buffer.IsHidden;
-                    _buffer.IsHidden = true;
-                    try
-                    {
-                        for (int y = 0; y < heightCells; y++)
-                        {
-                            // 1. Advance horizontally on current row
-                            for (int x = 0; x < widthCells; x++) _buffer.WriteContent(" ", false);
-
-                            // 2. If more rows exist, move to next row and align to image start column
-                            if (y < heightCells - 1)
-                            {
-                                _buffer.WriteChar('\n');
-                                for (int x = 0; x < img.CellX; x++) _buffer.WriteContent(" ", false);
-                            }
-                        }
-
-                        FinishImagePlacement();
-                    }
-                    finally
-                    {
-                        _buffer.IsHidden = oldHidden;
-                    }
+                    ReserveImageCells(img, widthCells, heightCells);
                 }
             }
             catch (Exception ex)
             {
                 TerminalLogger.Debug($"[ANSI_PARSER] Sixel decode failed: {ex.Message}");
+            }
+        }
+
+        // OSC 1339: an image tunneled through an OSC, which ConPTY passes on where it filters DCS and
+        // APC: kitty graphics after a "Kitty:" or "K:" prefix, Sixel otherwise.
+        private void HandleTunneledImage(string content)
+        {
+            if (content.StartsWith("Kitty:", StringComparison.Ordinal) || content.StartsWith("K:", StringComparison.Ordinal))
+            {
+                int skip = content.StartsWith("Kitty:", StringComparison.Ordinal) ? 6 : 2;
+                content = content.Substring(skip);
+                HandleKittyGraphics(content, isTunneled: true);
+            }
+            else
+            {
+                HandleSixel(content);
             }
         }
 
@@ -214,9 +247,7 @@ namespace Ntilde.VT
                 width = Math.Clamp(width, 1, Math.Min(200, _buffer.Cols));
                 height = Math.Clamp(height, 1, 200);
 
-                // Calculate absolute row
-                int absRow = _buffer.CursorRow + (_buffer.TotalLines - _buffer.Rows);
-                if (_buffer.IsAltScreenActive) absRow = _buffer.CursorRow;
+                int absRow = ImageAnchorRow();
 
                 var img = new TerminalImage(imageHandle, _buffer.CursorCol, absRow, width, height);
                 _buffer.AddImage(img);

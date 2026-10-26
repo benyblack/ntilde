@@ -129,12 +129,12 @@ public class InlineImageCursorTests
     private static (TerminalBuffer, AnsiParser) NewTerminal(bool? forceConPtyFiltering = null)
     {
         var buffer = new TerminalBuffer(Cols, Rows);
-        var parser = new AnsiParser(buffer, forceConPtyFiltering) { ImageDecoder = new StubImageDecoder() };
+        var parser = new AnsiParser(buffer, forceConPtyFiltering) { ImageDecoder = new FixedSizeImageDecoder(PixelWidth, PixelHeight) };
         return (buffer, parser);
     }
 
     /// <summary>
-    /// Any non-empty base64 body. <see cref="StubImageDecoder"/> ignores the bytes and reports a
+    /// Any non-empty base64 body. <see cref="FixedSizeImageDecoder"/> ignores the bytes and reports a
     /// fixed size, so the payload only has to survive <c>Convert.FromBase64String</c>.
     /// </summary>
     private static string FakePayload() => Convert.ToBase64String(new byte[] { 1, 2, 3, 4 });
@@ -179,29 +179,5 @@ public class InlineImageCursorTests
             $"{protocol}: expected the cursor on absolute row {image.CellY + image.CellHeight} " +
             $"(immediately below a {image.CellHeight}-row image starting at row {image.CellY}), " +
             $"but it is on row {absoluteCursorRow} at column {buffer.CursorCol}.");
-    }
-
-    private sealed class StubImageDecoder : IImageDecoder
-    {
-        public object? DecodeImageBytes(byte[] imageData, out int pixelWidth, out int pixelHeight)
-        {
-            pixelWidth = PixelWidth;
-            pixelHeight = PixelHeight;
-            return new object();
-        }
-
-        public object? DecodeSixel(string sixelData, out int pixelWidth, out int pixelHeight)
-        {
-            pixelWidth = PixelWidth;
-            pixelHeight = PixelHeight;
-            return new object();
-        }
-
-        public object? DecodeRawImage(byte[] data, int bytesPerPixel, int width, int height, out int pixelWidth, out int pixelHeight)
-        {
-            pixelWidth = PixelWidth;
-            pixelHeight = PixelHeight;
-            return new object();
-        }
     }
 }
