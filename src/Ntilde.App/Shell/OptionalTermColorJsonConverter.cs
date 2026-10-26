@@ -14,8 +14,6 @@ namespace Ntilde.Shell
     /// </summary>
     public sealed class OptionalTermColorJsonConverter : JsonConverter<TermColor?>
     {
-        private static readonly TermColorJsonConverter Required = new();
-
         public override bool HandleNull => true;
 
         public override TermColor? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -37,14 +35,16 @@ namespace Ntilde.Shell
 
                 case JsonTokenType.StartObject:
                     // The legacy {R,G,B,A} form, as the required fields accept it.
-                    var parsed = Required.Read(ref reader, typeof(TermColor), options);
-                    if (parsed.Equals(TermColor.Transparent))
+                    using (var document = JsonDocument.ParseValue(ref reader))
                     {
-                        Warn("an object with no color channels");
-                        return null;
+                        if (TermColorJsonConverter.TryReadObject(document.RootElement, out var parsed))
+                        {
+                            return parsed;
+                        }
                     }
 
-                    return parsed;
+                    Warn("an object with no color channels");
+                    return null;
 
                 default:
                     Warn($"a {reader.TokenType} value");

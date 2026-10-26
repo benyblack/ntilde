@@ -91,6 +91,17 @@ public class OptionalThemeColorTests
         Assert.Equal(TermColor.White, theme.Foreground);
     }
 
+    /// <summary>A fully transparent object is a color like any other, not a malformed value.</summary>
+    [Fact]
+    public void A_transparent_object_color_is_kept()
+    {
+        const string json = """{ "Name": "clear", "SearchMatch": { "R": 0, "G": 0, "B": 0, "A": 0 } }""";
+
+        var theme = JsonSerializer.Deserialize(json, AppJsonContext.Default.TerminalTheme)!;
+
+        Assert.Equal(TermColor.Transparent, theme.SearchMatch);
+    }
+
     [Fact]
     public void Clone_copies_the_optional_colors()
     {

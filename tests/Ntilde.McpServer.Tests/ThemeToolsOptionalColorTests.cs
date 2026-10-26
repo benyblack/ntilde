@@ -83,6 +83,25 @@ public class ThemeToolsOptionalColorTests
         Assert.DoesNotContain("Optional field 'Success' has", result);
     }
 
+    /// <summary>
+    /// The app's loader (Avalonia's Color.Parse) does not read scRGB: a required color written that
+    /// way loaded as transparent black, an optional one as derived. The validator used to pass it.
+    /// </summary>
+    [Theory]
+    [InlineData("Red")]
+    [InlineData("Accent")]
+    public void ScRgb_colors_are_rejected_because_the_app_cannot_read_them(string field)
+    {
+        var theme = field == "Red"
+            ? Dracula.Replace("\"Red\": \"#FF5555\"", "\"Red\": \"sc#1,0,0\"")
+            : With("\"Accent\": \"sc#1,0,0\"");
+
+        var result = ThemeTools.ValidateThemeJson(theme);
+
+        Assert.StartsWith("INVALID", result);
+        Assert.Contains($"'{field}' has an invalid color value 'sc#1,0,0'", result);
+    }
+
     [Fact]
     public void Schema_lists_the_optional_colors_as_derived()
     {

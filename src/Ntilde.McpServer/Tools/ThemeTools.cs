@@ -33,7 +33,8 @@ public static partial class ThemeTools
     // WCAG AA for normal text, the bar Ntilde's derived UI colors are held to.
     private const double TextContrast = 4.5;
 
-    // Accept "#RGB", "#RRGGBB", "#AARRGGBB" and the scRGB "sc#r,g,b[,a]" form used by JsonColorConverter.
+    // Accept "#RGB", "#RRGGBB" and "#AARRGGBB": what the app's theme loader (Avalonia Color.Parse) reads.
+    // Not the scRGB "sc#r,g,b" form, which it does not parse: a theme using it loaded as transparent black.
     [GeneratedRegex(@"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")]
     private static partial Regex HexColorRegex();
 
@@ -70,7 +71,7 @@ public static partial class ThemeTools
         Derived colors are adjusted until they read on the theme's panels; an explicit value is used
         as given, so pick one with at least 4.5:1 contrast against the panel (the validator warns).
 
-        **Color format:** `#RGB`, `#RRGGBB`, or `#AARRGGBB` (hex), or the scRGB `sc#r,g,b[,a]` form.
+        **Color format:** `#RGB`, `#RRGGBB`, or `#AARRGGBB` (hex).
 
         ## Example
         ```json
@@ -141,7 +142,7 @@ public static partial class ThemeTools
             var value = el.GetString() ?? string.Empty;
             if (!IsValidColor(value))
             {
-                errors.Add($"Field '{field}' has an invalid color value '{value}' (expected #RGB/#RRGGBB/#AARRGGBB or sc#r,g,b).");
+                errors.Add($"Field '{field}' has an invalid color value '{value}' (expected #RGB/#RRGGBB/#AARRGGBB).");
             }
         }
 
@@ -160,7 +161,7 @@ public static partial class ThemeTools
             var value = el.GetString() ?? string.Empty;
             if (!IsValidColor(value))
             {
-                errors.Add($"Optional field '{field}' has an invalid color value '{value}' (expected #RGB/#RRGGBB/#AARRGGBB or sc#r,g,b).");
+                errors.Add($"Optional field '{field}' has an invalid color value '{value}' (expected #RGB/#RRGGBB/#AARRGGBB).");
             }
         }
 
@@ -260,7 +261,7 @@ public static partial class ThemeTools
         return 0.2126 * Linear(c.R) + 0.7152 * Linear(c.G) + 0.0722 * Linear(c.B);
     }
 
-    /// <summary>Reads a #RGB/#RRGGBB/#AARRGGBB field's RGB; false for anything else (absent, null, sc#).</summary>
+    /// <summary>Reads a #RGB/#RRGGBB/#AARRGGBB field's RGB; false for anything else (absent, null, not hex).</summary>
     private static bool TryGetHex(JsonElement root, string field, out (byte R, byte G, byte B) color)
     {
         color = default;
@@ -292,14 +293,6 @@ public static partial class ThemeTools
     {
         if (string.IsNullOrWhiteSpace(value)) return false;
         if (HexColorRegex().IsMatch(value)) return true;
-        // scRGB form: sc#r,g,b or sc#r,g,b,a with float components.
-        if (value.StartsWith("sc#", System.StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = value[3..].Split(',');
-            return parts.Length is 3 or 4 &&
-                   parts.All(p => float.TryParse(p.Trim(), System.Globalization.NumberStyles.Float,
-                       System.Globalization.CultureInfo.InvariantCulture, out _));
-        }
         return false;
     }
 }
