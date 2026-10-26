@@ -7,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.Themes.Fluent;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Platform;
 using Ntilde.Platform.Ssh.Exec;
 using Ntilde.VT;
@@ -422,6 +423,22 @@ internal static class SshAskPassCommand
         }
     }
 
+    /// <summary>
+    /// The theme the user saved, read the same way as <see cref="ResolveSavedUiScale"/>; any
+    /// failure falls back to the Default theme, never blocking authentication.
+    /// </summary>
+    internal static TerminalTheme ResolveSavedTheme()
+    {
+        try
+        {
+            return TerminalSettings.Load().ActiveTheme;
+        }
+        catch (Exception)
+        {
+            return new TerminalTheme();
+        }
+    }
+
     internal sealed class AskPassState
     {
         public AskPassState(string prompt, TerminalProfile profile)
@@ -449,6 +466,9 @@ internal static class SshAskPassCommand
             Styles.Add(new FluentTheme());
             // Same Window theme as App.axaml, so the interface scale reaches this process too.
             UiScale.InstallWindowTheme(this);
+            // And the app's theme tokens, from the saved theme: before v2 the dialog took the OS
+            // variant, so a light-theme user got a dark prompt and the other way round.
+            ThemeService.Install(this, ResolveSavedTheme(), windowOpacity: 1.0);
         }
 
         public override void OnFrameworkInitializationCompleted()
@@ -479,6 +499,7 @@ internal static class SshAskPassCommand
             _shutdown = shutdown;
 
             Title = "Ntilde SSH Authentication";
+            ThemedWindowChrome.Apply(this);
             Width = 520;
             Height = 240;
             UiScale.FitWindow(this);

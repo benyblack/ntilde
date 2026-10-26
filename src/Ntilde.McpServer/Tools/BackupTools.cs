@@ -13,7 +13,7 @@ namespace Ntilde.McpServer.Tools;
 /// useful half and carries no risk.
 /// </summary>
 [McpServerToolType]
-public static class BackupTools
+public sealed class BackupTools
 {
     [McpServerTool(Name = "ntilde.backup_export"),
      Description("Export Ntilde's configuration (settings, themes, connections, workspaces, policy, snippets) " +

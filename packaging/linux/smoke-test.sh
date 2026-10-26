@@ -173,6 +173,8 @@ docker run --rm -v "$artifact_dir:/art:ro" \
 
   test -x /usr/lib/ntilde/Ntilde || { echo "  FAIL: bundle binary not executable" >&2; exit 1; }
   test -L /usr/bin/ntilde                      || { echo "  FAIL: /usr/bin/ntilde is not a symlink" >&2; exit 1; }
+  test -x /usr/lib/ntilde/ntilde-mcp           || { echo "  FAIL: ntilde-mcp missing or not executable" >&2; exit 1; }
+  test -L /usr/bin/ntilde-mcp                  || { echo "  FAIL: /usr/bin/ntilde-mcp is not a symlink" >&2; exit 1; }
   test -f /usr/share/man/man1/ntilde.1.gz      || { echo "  FAIL: man page not installed" >&2; exit 1; }
   echo "  ok: layout"
 

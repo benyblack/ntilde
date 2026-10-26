@@ -77,6 +77,8 @@ public sealed class ThemeTokens
         c[ThemeKeys.PanelAlt] = Shift(bg, 6 * direction);
         c[ThemeKeys.Overlay] = Shift(bg, 24 * direction);
         c[ThemeKeys.Scrim] = Color.FromArgb(dark ? (byte)0x80 : (byte)0x40, 0, 0, 0);
+        // The inactive-pane veil's long-standing strengths (alpha 72 on dark, 96 on light).
+        c[ThemeKeys.PaneDim] = Color.FromArgb(dark ? (byte)72 : (byte)96, 0, 0, 0);
         c[ThemeKeys.SidebarBg] = WithAlpha(c[ThemeKeys.ChromeBg], (byte)Math.Round(255.0 * Math.Clamp(windowOpacity, 0.0, 1.0)));
         c[ThemeKeys.Hairline] = Shift(bg, 28 * direction);
         c[ThemeKeys.HairlineStrong] = Shift(bg, 40 * direction);

@@ -29,6 +29,9 @@ cask "ntilde" do
   auto_updates true
 
   app "Ntilde.app"
+  # The MCP server shipped inside the bundle, linked onto PATH so agents can be pointed at it
+  # with `claude mcp add ntilde -- ntilde-mcp`.
+  binary "#{appdir}/Ntilde.app/Contents/MacOS/ntilde-mcp"
 
   zap trash: [
     "~/.local/share/ntilde",
