@@ -32,7 +32,7 @@ public sealed class SettingsTools
         | Field | Type | Notes |
         |-------|------|-------|
         | `FontSize` | number | > 0. Default 14. |
-        | `FontFamily` | string | Default "Cascadia Mono PL". |
+        | `FontFamily` | string | Default "JetBrains Mono NL". |
         | `ThemeName` | string | Default "Default". |
         | `WindowOpacity` | number | 0–1. Default 1.0. |
         | `UiScale` | number | 0.5–3. Default 1.0. Interface scale (zoom) for the app chrome - tabs, sidebars, dialogs, settings - independent of `FontSize`, which only sizes terminal text. The terminal pane sits inside the scaled window, so it grows with this too. The Settings UI offers 80%–200%. |
@@ -91,7 +91,7 @@ public sealed class SettingsTools
         ## Collections
         | Field | Type | Notes |
         |-------|------|-------|
-        | `Keybindings` | object | Map of string → string. |
+        | `Keybindings` | object | Command id → chord, e.g. `"new_tab": "Ctrl+Shift+N"`; only the commands the user rebound. |
         | `TabTemplateRules` | array | Tab template rule objects (not deep-validated here). |
         | `Profiles` | array | Terminal profile objects (not deep-validated here). |
         | `DefaultProfileId` | string (GUID) | Must be a valid GUID. |
@@ -106,7 +106,7 @@ public sealed class SettingsTools
         {
           "FontSize": 14,
           "MaxHistory": 10000,
-          "FontFamily": "Cascadia Mono PL",
+          "FontFamily": "JetBrains Mono NL",
           "ThemeName": "Default",
           "WindowOpacity": 1.0,
           "UiScale": 1.0,
@@ -129,7 +129,7 @@ public sealed class SettingsTools
           "ShellExitPolicy": "Graceful",
           "AgentIndicatorTabRollup": "WritesOnly",
           "SessionPersistence": "KeepOnClose",
-          "Keybindings": { "Ctrl+Shift+C": "copy" },
+          "Keybindings": { "new_tab": "Ctrl+Shift+N" },
           "TabTemplateRules": [],
           "TitleBarItems": { "open_tab_list": "Overflow" },
           "TitleBarOrder": ["new_tab"],
@@ -144,7 +144,7 @@ public sealed class SettingsTools
           "CommandAssistPassiveBubbleEnabled": true,
           "CommandAssistShellIntegrationEnabled": true,
           "CommandAssistPowerShellIntegrationEnabled": true,
-          "ExperimentalNativeSshEnabled": false,
+          "ExperimentalNativeSshEnabled": true,
           "AgentAccessObserveEnabled": false,
           "AgentReplayExportEnabled": false,
           "AgentAccessActEnabled": false,
