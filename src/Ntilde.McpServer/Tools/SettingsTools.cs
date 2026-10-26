@@ -38,6 +38,7 @@ public sealed class SettingsTools
         | `UiScale` | number | 0.5–3. Default 1.0. Interface scale (zoom) for the app chrome - tabs, sidebars, dialogs, settings - independent of `FontSize`, which only sizes terminal text. The terminal pane sits inside the scaled window, so it grows with this too. The Settings UI offers 80%–200%. |
         | `BlurEffect` | string (enum-like) | e.g. "Acrylic", "Mica", "None". Type-checked only. |
         | `EnableLigatures` | bool | Default false. |
+        | `MinimumContrast` | number | 1–21, a WCAG contrast ratio. Default 1 (off). Terminal text below it against its background is lightened or darkened, hue kept, until it reaches it. The Settings UI offers 1–7. |
         | `EnableComplexShaping` | bool | Default true. |
         | `CursorStyle` | string (enum-like) | e.g. "Underline", "Block", "Bar"/"Beam". Type-checked only. |
         | `CursorBlink` | bool | Default true. |
@@ -192,7 +193,7 @@ public sealed class SettingsTools
     internal static readonly HashSet<string> KnownFields = new(StringComparer.Ordinal)
     {
         "FontSize", "MaxHistory", "FontFamily", "ThemeName", "WindowOpacity", "UiScale", "BlurEffect",
-        "EnableLigatures", "EnableComplexShaping", "CursorStyle", "CursorBlink", "TabStripOrientation", "VerticalTabStripWidth",
+        "EnableLigatures", "EnableComplexShaping", "MinimumContrast", "CursorStyle", "CursorBlink", "TabStripOrientation", "VerticalTabStripWidth",
         "BellAudioEnabled", "BellVisualEnabled", "SmoothScrolling", "EnableLinkDetection",
         "EnableKittyKeyboardProtocol", "AllowOsc52ClipboardWrite", "AllowNativeKittyGraphics",
         "WheelLinesPerNotch", "PaneClosePolicy", "ShellExitPolicy", "AgentIndicatorTabRollup", "SessionPersistence",
@@ -253,6 +254,7 @@ public sealed class SettingsTools
         // Numbers with ranges.
         CheckNumber(root, "FontSize", v => v > 0, "must be > 0", errors);
         CheckNumber(root, "WindowOpacity", v => v >= 0 && v <= 1, "must be between 0 and 1", errors);
+        CheckNumber(root, "MinimumContrast", v => v >= 1 && v <= 21, "must be between 1 (off) and 21", errors);
         CheckNumber(root, "UiScale", v => v >= 0.5 && v <= 3, "must be between 0.5 and 3", errors);
         CheckNumber(root, "BackgroundImageOpacity", v => v >= 0 && v <= 1, "must be between 0 and 1", errors);
         CheckNumber(root, "VerticalTabStripWidth", v => v >= 140 && v <= 600, "must be between 140 and 600", errors);

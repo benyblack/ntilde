@@ -48,6 +48,11 @@ namespace Ntilde.Shell
         private readonly int _bufferCols;
         private readonly RowImageCache? _rowCache;
         private readonly bool _enableComplexShaping;
+        private readonly double _minimumContrast;
+
+        // Per frame: a run's (foreground, background) pair resolves the same way every time, and a
+        // screen has few distinct pairs, so the lightness search runs once per pair.
+        private Dictionary<(uint Fg, uint Bg), SKColor>? _contrastAdjusted;
         private readonly GlyphCache? _glyphCache;
         private readonly int _cellWidthDevicePx;
         private readonly int _cellHeightDevicePx;
@@ -215,7 +220,8 @@ namespace Ntilde.Shell
             bool enableComplexShaping = true,
             GlyphCache? glyphCache = null,
             bool showRenderHud = false,
-            bool isolatedSnapshot = false)
+            bool isolatedSnapshot = false,
+            double minimumContrast = 1.0)
         {
             _bounds = bounds;
             _buffer = buffer;
@@ -241,6 +247,7 @@ namespace Ntilde.Shell
             _bufferCols = snapshotCols;
             _rowCache = rowCache;
             _enableComplexShaping = enableComplexShaping;
+            _minimumContrast = minimumContrast;
             _glyphCache = glyphCache;
             _showRenderHud = showRenderHud;
             _isolatedSnapshot = isolatedSnapshot;
@@ -1264,8 +1271,8 @@ namespace Ntilde.Shell
                     bool runIsUnderline = cell.IsUnderline;
                     bool runIsStrikethrough = cell.IsStrikethrough;
                     bool runIsFaint = cell.IsFaint;
-                    var fg = cell.IsInverse ? cb : cf;
                     var bg = cell.IsInverse ? cf : cb;
+                    var fg = EnforceMinimumContrast(cell.IsInverse ? cb : cf, bg);
                     if (runIsFaint)
                     {
                         fg = BlendTowards(fg, bg, 0.5f);
@@ -1295,8 +1302,8 @@ namespace Ntilde.Shell
 
                         var ncb = ResolveCellBackground(next, themeBg, alpha, themeSnapshot);
                         var ncf = ResolveCellForeground(next, themeFg, alpha, themeSnapshot);
-                        var nfg = next.IsInverse ? ncb : ncf;
                         var nbg = next.IsInverse ? ncf : ncb;
+                        var nfg = EnforceMinimumContrast(next.IsInverse ? ncb : ncf, nbg);
                         if (next.IsFaint)
                         {
                             nfg = BlendTowards(nfg, nbg, 0.5f);
@@ -2929,6 +2936,36 @@ namespace Ntilde.Shell
             byte b = (byte)(source.Blue + ((target.Blue - source.Blue) * t));
             return new SKColor(r, g, b, source.Alpha);
         }
+
+        /// <summary>
+        /// The Minimum contrast setting: a foreground under the ratio against its (opaque)
+        /// background moves in lightness, hue kept, until it reaches it or runs out of room. Applied
+        /// before faint, so faint text stays dimmer than its neighbours.
+        /// </summary>
+        private SKColor EnforceMinimumContrast(SKColor fg, SKColor bg)
+        {
+            if (_minimumContrast <= 1.0)
+            {
+                return fg;
+            }
+
+            var key = ((uint)fg, (uint)bg);
+            _contrastAdjusted ??= new Dictionary<(uint Fg, uint Bg), SKColor>();
+            if (_contrastAdjusted.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+
+            var text = Color.FromArgb(0xFF, fg.Red, fg.Green, fg.Blue);
+            var surface = Color.FromArgb(0xFF, bg.Red, bg.Green, bg.Blue);
+            var adjusted = ThemeColorMath.Contrast(text, surface) >= _minimumContrast
+                ? fg
+                : WithSkAlpha(ThemeColorMath.EnsureContrast(text, [surface], _minimumContrast), fg.Alpha);
+            _contrastAdjusted[key] = adjusted;
+            return adjusted;
+        }
+
+        private static SKColor WithSkAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
 
         private static SKColor EnsureReadableForeground(SKColor fg, SKColor bg, SKColor fallback)
         {

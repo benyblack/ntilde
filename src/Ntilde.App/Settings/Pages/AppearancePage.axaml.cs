@@ -129,6 +129,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     {
         ArgumentNullException.ThrowIfNull(target);
         target.WindowOpacity = Slider("WindowOpacitySlider").Value;
+        target.MinimumContrast = Slider("MinimumContrastSlider").Value;
         target.UiScale = UiScale.Clamp(Slider("UiScaleSlider").Value);
         if (Combo("ThemeList").SelectedItem is ComboBoxItem themeItem)
         {
@@ -187,6 +188,8 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         TerminalSettings settings = Session.Settings;
         Slider("WindowOpacitySlider").Value = settings.WindowOpacity;
         Text("OpacityValueDisplay").Text = FormatPercent(settings.WindowOpacity);
+        Slider("MinimumContrastSlider").Value = settings.MinimumContrast;
+        Text("MinimumContrastDisplay").Text = FormatContrast(Slider("MinimumContrastSlider").Value);
         Slider("UiScaleSlider").Value = UiScale.Clamp(settings.UiScale);
         Text("UiScaleValueDisplay").Text = FormatUiScale(Slider("UiScaleSlider").Value);
         this.FindControl<TextBox>("BgImagePathInput")!.Text = settings.BackgroundImagePath;
@@ -656,8 +659,22 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     // ── Window ────────────────────────────────────────────────────────────────
 
+    /// <summary>"Off" at 1:1, else the ratio, as WCAG writes it ("4.5:1").</summary>
+    internal static string FormatContrast(double ratio)
+        => ratio <= 1.0 ? "Off" : ratio.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + ":1";
+
     private void WireWindowRows()
     {
+        var contrast = Slider("MinimumContrastSlider");
+        var contrastDisplay = Text("MinimumContrastDisplay");
+        contrast.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == RangeBase.ValueProperty)
+            {
+                contrastDisplay.Text = FormatContrast(contrast.Value);
+            }
+        };
+
         var opacity = Slider("WindowOpacitySlider");
         var opacityDisplay = Text("OpacityValueDisplay");
         opacity.PropertyChanged += (_, e) =>

@@ -18,6 +18,17 @@ A local profile can use a theme of its own: Settings → Shells & Profiles → *
 Theme ([Settings](settings.md#shells--profiles)). Its panes, overlays included, use that theme
 while the rest of the window keeps yours.
 
+## Minimum contrast
+
+Some themes have colors that clash with their own background. In GitHub Light, for example, ANSI
+black is the same color as the text, so a prompt that draws a segment on black shows text you
+cannot read. Settings → Appearance → **Minimum contrast** fixes that: text closer to its background
+than the ratio you choose is made lighter or darker, keeping its hue, until it reaches it.
+
+It is off by default. 4.5:1 is the usual guideline for readable text; 3:1 changes less, 7:1 more.
+It changes only the text, never backgrounds, and it also reveals text a program colored to match
+its background on purpose. Faint text stays fainter than the text around it.
+
 ## Importing a theme
 
 Settings → Appearance → **Import…** reads:
