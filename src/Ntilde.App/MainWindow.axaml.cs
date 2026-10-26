@@ -114,9 +114,14 @@ namespace Ntilde
                 {
                     _globalHotkey = new GlobalHotkey(this);
                     _globalHotkey.OnHotkeyPressed += ToggleVisibility;
-                    // Register Alt (1) + ~ (0xC0). 
-                    // MVP Hardcoded. Future: Parse _settings.GlobalHotkey
-                    _globalHotkey.Register(1, 0xC0);
+                    if (!GlobalHotkey.TryParse(_settings.GlobalHotkey, out uint modifiers, out uint key))
+                    {
+                        AppLogger.Log($"[GlobalHotkey] '{_settings.GlobalHotkey}' is not a hotkey Ntilde can register; using Alt+`.");
+                        modifiers = GlobalHotkey.DefaultModifiers;
+                        key = GlobalHotkey.DefaultKey;
+                    }
+
+                    _globalHotkey.Register(modifiers, key);
                 }
                 catch { /* Ignore P/Invoke errors on non-Windows */ }
             }

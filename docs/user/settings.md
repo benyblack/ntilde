@@ -165,7 +165,8 @@ These keys are read from `settings.json`. Some have palette commands.
 | `PaneClosePolicy` | `Confirm` | Closing a pane with a running program: `Confirm` asks, `Graceful` sends `Ctrl+C` and `exit` first, `Force` closes. |
 | `ShellExitPolicy` | `Graceful` | When a shell exits: `Graceful` closes the pane if it exited with 0 and keeps it open with the exit status otherwise; `Always` closes it; `Never` keeps it. SSH panes always stay open with their banner. |
 | `VerticalTabStripWidth` | `220` | Width of the vertical tab sidebar, 140 to 600. Set by dragging its edge. |
-| `QuakeModeEnabled` | `true` | Windows only: ``Alt+` `` shows and hides the window. Takes effect at the next launch. |
+| `QuakeModeEnabled` | `true` | Windows only: a system-wide key (`GlobalHotkey`) shows and hides the window. Takes effect at the next launch. |
+| `GlobalHotkey` | `Alt+OemTilde` | That key, ``Alt+` ``: one or more of `Ctrl`, `Alt`, `Shift`, `Win`, then a key such as `A`, `D1`, `F12`, `Space` or `OemTilde`, joined with `+`. A value Ntilde cannot read falls back to ``Alt+` ``, and `logs/debug.log` says so. Takes effect at the next launch. |
 | `CommandAssistMaxHistoryEntries` | `5000` | How many commands Command Assist remembers. |
 | `CommandAssistPowerShellIntegrationEnabled` | `true` | Shell integration for PowerShell shells. |
 | `TabTemplateRules` | `[]` | Per-profile template rules ([Templates](tabs-and-panes.md#workspace-templates)). |

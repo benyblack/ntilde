@@ -15,9 +15,6 @@ namespace Ntilde.Shell
 
         private const int HOTKEY_ID = 9000;
 
-        // Modifiers: Alt = 1, Ctrl = 2, Shift = 4, Win = 8
-        // VK_OEM_3 is Tilde (~) / Backtick (`) on US keyboards -> 0xC0 (192)
-
         private IntPtr _handle;
         private bool _registered;
         private bool _disposed;
@@ -140,8 +137,85 @@ namespace Ntilde.Shell
 
             if (_registered) Unregister();
 
-            // Alt + ~ (0xC0)
             _registered = RegisterHotKey(_handle, HOTKEY_ID, modifiers, key);
+        }
+
+        public const uint ModAlt = 1, ModControl = 2, ModShift = 4, ModWin = 8;
+
+        /// <summary>The default, <c>Alt+`</c>: what <see cref="TryParse"/> falls back to.</summary>
+        public const uint DefaultModifiers = ModAlt, DefaultKey = 0xC0;
+
+        /// <summary>
+        /// Reads a <c>GlobalHotkey</c> setting such as <c>"Alt+OemTilde"</c> or <c>"Ctrl+Shift+Space"</c>
+        /// into <c>RegisterHotKey</c>'s modifiers and virtual-key code. Names are case-insensitive and
+        /// follow Avalonia's <c>Key</c> names (<c>A</c>-<c>Z</c>, <c>D0</c>-<c>D9</c>, <c>F1</c>-<c>F24</c>,
+        /// <c>OemTilde</c>, ...). At least one modifier is required: a bare key registered system-wide
+        /// would stop working in every other program.
+        /// </summary>
+        public static bool TryParse(string? text, out uint modifiers, out uint key)
+        {
+            modifiers = 0;
+            key = 0;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
+            string[] parts = text.Split('+', StringSplitOptions.TrimEntries);
+            for (int i = 0; i < parts.Length - 1; i++)
+            {
+                uint mod = parts[i].ToLowerInvariant() switch
+                {
+                    "alt" => ModAlt,
+                    "ctrl" or "control" => ModControl,
+                    "shift" => ModShift,
+                    "win" or "meta" or "super" => ModWin,
+                    _ => 0,
+                };
+                if (mod == 0) return false;
+                modifiers |= mod;
+            }
+
+            if (modifiers == 0 || !TryParseKey(parts[^1], out key)) return false;
+            return true;
+        }
+
+        private static bool TryParseKey(string name, out uint key)
+        {
+            key = 0;
+            if (name.Length == 0) return false;
+            if (name.Length == 1)
+            {
+                char c = char.ToUpperInvariant(name[0]);
+                if (c is >= 'A' and <= 'Z' or >= '0' and <= '9') { key = c; return true; }
+                if (c is '`' or '~') { key = 0xC0; return true; }
+                return false;
+            }
+
+            string n = name.ToLowerInvariant();
+            if (n.Length == 2 && n[0] == 'd' && char.IsAsciiDigit(n[1])) { key = n[1]; return true; }
+            if (n[0] == 'f' && int.TryParse(n.AsSpan(1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int f) && f is >= 1 and <= 24)
+            {
+                key = (uint)(0x70 + f - 1);
+                return true;
+            }
+
+            key = n switch
+            {
+                "oemtilde" or "oem3" or "backtick" or "grave" => 0xC0,
+                "space" => 0x20,
+                "tab" => 0x09,
+                "enter" or "return" => 0x0D,
+                "oemminus" => 0xBD,
+                "oemplus" => 0xBB,
+                "oemcomma" => 0xBC,
+                "oemperiod" => 0xBE,
+                "oemquestion" => 0xBF,
+                "oemsemicolon" => 0xBA,
+                "oemquotes" => 0xDE,
+                "oemopenbrackets" => 0xDB,
+                "oemclosebrackets" => 0xDD,
+                "oempipe" => 0xDC,
+                _ => 0,
+            };
+            return key != 0;
         }
 
         public void Dispose()
