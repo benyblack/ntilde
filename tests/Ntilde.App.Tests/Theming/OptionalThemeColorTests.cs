@@ -37,12 +37,13 @@ public class OptionalThemeColorTests
     }
 
     /// <summary>
-    /// What a save wrote before the optional fields existed: Name and the 20 colors, in declaration
-    /// order. A save of a theme without optional colors must still be exactly that, byte for byte.
+    /// What a save wrote before the optional fields existed - Name and the 20 colors, in declaration
+    /// order - followed by exactly the optional colors the theme sets: none for most shipped themes,
+    /// so their save is byte-for-byte what it was.
     /// </summary>
     [Theory]
     [MemberData(nameof(ShippedThemes))]
-    public void A_theme_without_optional_colors_saves_exactly_as_before(string name)
+    public void A_theme_saves_as_before_plus_only_the_optional_colors_it_sets(string name)
     {
         var theme = Load(name);
 
@@ -139,7 +140,7 @@ public class OptionalThemeColorTests
     [Fact]
     public void Render_colors_derive_from_the_tokens_when_absent()
     {
-        var theme = Load("Dracula");
+        var theme = Load("Monokai");
         var tokens = ThemeTokens.Derive(theme, 1.0);
 
         var colors = TerminalRenderColors.Derive(theme);
@@ -221,6 +222,14 @@ public class OptionalThemeColorTests
             for (int i = 0; i < 8; i++)
             {
                 writer.WriteString("Bright" + names[i], theme.GetAnsiColor(i, bright: true).ToHex());
+            }
+
+            foreach (var field in OptionalFields)
+            {
+                if (typeof(TerminalTheme).GetProperty(field)!.GetValue(theme) is TermColor color)
+                {
+                    writer.WriteString(field, color.ToHex());
+                }
             }
 
             writer.WriteEndObject();

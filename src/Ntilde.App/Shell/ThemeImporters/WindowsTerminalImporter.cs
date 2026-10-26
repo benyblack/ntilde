@@ -78,12 +78,18 @@ namespace Ntilde.Shell.ThemeImporters
                     BrightBlue = ParseColor(node["brightBlue"]?.ToString(), TermColor.Blue),
                     BrightMagenta = ParseColor(node["brightPurple"]?.ToString(), TermColor.Magenta),
                     BrightCyan = ParseColor(node["brightCyan"]?.ToString(), TermColor.Cyan),
-                    BrightWhite = ParseColor(node["brightWhite"]?.ToString(), TermColor.White)
+                    BrightWhite = ParseColor(node["brightWhite"]?.ToString(), TermColor.White),
+
+                    // WT's one optional scheme color Ntilde also carries; absent stays derived.
+                    SelectionBackground = ParseOptionalColor(node["selectionBackground"]?.ToString())
                 };
                 return theme;
             }
             catch { return null; }
         }
+
+        private static TermColor? ParseOptionalColor(string? hex)
+            => !string.IsNullOrEmpty(hex) && Color.TryParse(hex, out var color) ? TermColorHelper.FromAvaloniaColor(color) : null;
 
         private TermColor ParseColor(string? hex, TermColor fallback)
         {
