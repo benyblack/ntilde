@@ -78,10 +78,14 @@ namespace Ntilde
 
             messageBlock.Text = $"Ntilde {version} is downloaded and will be applied when you restart.";
             toast.IsVisible = true;
+            _shownUpdateVersion = version;
         }
 
         private void HideUpdateToast()
         {
+            _shownUpdateVersion = null;
+            // Dismissed is dismissed: an update held for focus mode must not come back on leave.
+            _heldUpdateVersion = null;
             var toast = this.FindControl<Border>("UpdateToast");
             if (toast != null)
             {
@@ -117,7 +121,7 @@ namespace Ntilde
                     () => _settings.AutomaticUpdateChecks,
                     version => Dispatcher.UIThread.Post(() =>
                     {
-                        ShowUpdateToast(version);
+                        ShowUpdateToastUnprompted(version);
                         SetupCommandPalette();
                     }),
                     message => TerminalLogger.Log(message));
@@ -490,7 +494,7 @@ namespace Ntilde
         /// </summary>
         private void SaveSessionWithoutEndedShells()
         {
-            if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose);
+            if (this.FindControl<TabControl>("Tabs") is { } tabs) SessionManager.SaveSession(this, tabs, _localSessionsEndedOnClose, focusMode: _isFocusMode);
         }
 
         private async System.Threading.Tasks.Task<Ntilde.Mux.MuxClient?> ProbeMuxDaemonForUpdateAsync() =>

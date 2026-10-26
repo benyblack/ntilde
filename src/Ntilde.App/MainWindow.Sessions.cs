@@ -24,6 +24,7 @@ namespace Ntilde
 
         private void ApplySessionSnapshot(NtildeSession session)
         {
+            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
 

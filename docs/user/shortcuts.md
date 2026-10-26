@@ -46,6 +46,7 @@ platform.
 | Close Pane | `Ctrl+Shift+W` | `Cmd+Shift+W` |
 | Equalize Panes | `Ctrl+Shift+G` | `Cmd+Shift+G` |
 | Pane: Toggle Zoom | `Ctrl+Shift+Z` | `Cmd+Shift+Z` |
+| View: Toggle Focus Mode | `Ctrl+Shift+Enter` | `Cmd+Shift+Enter` |
 | Pane: Toggle Broadcast Input (Tab) | `Ctrl+Shift+B` | `Cmd+Shift+B` |
 | Focus pane left / right / up / down | `Alt+Arrow` | `Alt+Arrow` |
 | Find in Terminal | `Ctrl+F` or `Ctrl+Shift+F` | `Cmd+F` or `Cmd+Shift+F` |
@@ -143,7 +144,7 @@ its own is shown with its category in front, for example *View: Split Vertical*.
 | Category | Commands |
 |---|---|
 | General | New Tab, Close Tab, Close Pane, Tab: Next / Previous (MRU), Tab: Move Previous / Next, Tab: Open Tab List, Tabs: Toggle Vertical Tab Sidebar, Tab: Rename Current, Tab: Copy Current Title, Tab: Close Others (skips pinned and protected tabs), Tab: Toggle Pin, Tab: Toggle Protect, Settings, Connections, Toggle Recording, Open Recording..., Open Recordings Folder, Command Assist: Pin/Unpin Selection, Session: Attach to Session…, Session: Quit and Close All Shells |
-| View | Split Vertical, Split Horizontal, Equalize Panes, Pane: Toggle Zoom, Pane: Toggle Broadcast Input (Tab), Pane: Reconnect, Pane: Detach, Focus Pane Left / Right / Up / Down, Pane: Export Snapshot (Plain Text / ANSI / PNG), Pane: Toggle Render HUD, Font: Increase / Decrease, Cursor: Block / Beam / Underline, Cursor: Toggle Blink, Bell: Toggle Audio, Bell: Toggle Visual Flash, Scroll: Toggle Smooth |
+| View | Split Vertical, Split Horizontal, Equalize Panes, Toggle Focus Mode, Pane: Toggle Zoom, Pane: Toggle Broadcast Input (Tab), Pane: Reconnect, Pane: Detach, Focus Pane Left / Right / Up / Down, Pane: Export Snapshot (Plain Text / ANSI / PNG), Pane: Toggle Render HUD, Font: Increase / Decrease, Cursor: Block / Beam / Underline, Cursor: Toggle Blink, Bell: Toggle Audio, Bell: Toggle Visual Flash, Scroll: Toggle Smooth |
 | Edit | Find in Terminal, Paste |
 | Application | Update: Check for updates, Update: Restart to apply *version* (once an update is ready) |
 | Shell | New Tab: *profile* — one per local profile |

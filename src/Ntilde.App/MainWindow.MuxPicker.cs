@@ -95,7 +95,7 @@ namespace Ntilde
                 {
                     // Nothing to choose: the hosts that could not be listed say why, in the error rows' words.
                     string[] errors = [.. items.OfType<Ntilde.Shell.Mux.MuxSessionPickerErrorRow>().Select(r => r.Display)];
-                    EnqueueNotice("Attach to session", errors.Length > 0 ? string.Join("\n", errors) : "No sessions are running in the multiplexer.");
+                    EnqueueNotice("Attach to session", errors.Length > 0 ? string.Join("\n", errors) : "No sessions are running in the multiplexer.", prompted: true);
                     return;
                 }
 
@@ -214,7 +214,7 @@ namespace Ntilde
             Ntilde.Shell.Mux.MuxEndpointId endpoint = Ntilde.Shell.Mux.MuxEndpointId.ForSsh(row.ProfileId);
             string connecting = $"Attach to session\nconnecting\n{endpoint}"; // by endpoint: two profiles may share a user@host
             _muxPickerHeldHosts.Add(endpoint);
-            EnqueueNotice("Attach to session", $"Connecting to {row.HostDisplayName}\u2026", key: connecting, untilDismissed: true);
+            EnqueueNotice("Attach to session", $"Connecting to {row.HostDisplayName}\u2026", key: connecting, untilDismissed: true, prompted: true);
             try
             {
                 bool connected = await Task.Run(() => hosts.GetOrCreate(endpoint) is { } host && host.GetClient(host.Policy.ConnectTimeout) is not null);
@@ -222,7 +222,7 @@ namespace Ntilde
                 DismissNotice(connecting);
                 if (!connected)
                 {
-                    EnqueueNotice("Attach to session", $"Could not connect to {row.HostDisplayName}.");
+                    EnqueueNotice("Attach to session", $"Could not connect to {row.HostDisplayName}.", prompted: true);
                     return;
                 }
 
@@ -248,7 +248,7 @@ namespace Ntilde
             if (FocusPaneShowingMuxSession(row.Endpoint, row.SessionId)) return;
             if (MuxPreviousBuildLaunch.IsRestarting(row.Endpoint))
             {
-                EnqueueNotice("Attach to session", new Ntilde.Shell.Mux.MuxSessionPickerErrorRow(row.Endpoint, row.HostDisplayName, Ntilde.Shell.Mux.MuxPickerHostError.Restarting).Display);
+                EnqueueNotice("Attach to session", new Ntilde.Shell.Mux.MuxSessionPickerErrorRow(row.Endpoint, row.HostDisplayName, Ntilde.Shell.Mux.MuxPickerHostError.Restarting).Display, prompted: true);
                 return;
             }
 
@@ -269,7 +269,7 @@ namespace Ntilde
                 if (_sshConnectionService.GetStoredProfile(profileId) is not { MuxOptions.PersistRemoteSessions: true }
                     || _sshConnectionService.GetConnectionProfile(profileId) is not { } profile)
                 {
-                    EnqueueNotice("Attach to session", $"The profile for {row.HostDisplayName} no longer keeps remote sessions running.");
+                    EnqueueNotice("Attach to session", $"The profile for {row.HostDisplayName} no longer keeps remote sessions running.", prompted: true);
                     return;
                 }
 
@@ -285,6 +285,7 @@ namespace Ntilde
                 };
             }
 
+            LeaveFocusModeForNavigation();
             AddTabWithPane(pane, row.Name, select: true);
         }
 
@@ -300,7 +301,11 @@ namespace Ntilde
             TerminalPane? pane = AllPanes().FirstOrDefault(p => Ntilde.Shell.Mux.MuxEndpointId.Parse(p.MuxEndpoint) == endpoint
                 && ((p.Session is Ntilde.Mux.MuxClientSession m && m.Id == id) || p.MuxSessionIdToRestore == id));
             if (pane is null) return false;
-            if (ResolveOwningTabForPane(pane) is { } tab && this.FindControl<TabControl>("Tabs") is { } tabs) tabs.SelectedItem = tab;
+            TabItem? tab = ResolveOwningTabForPane(pane);
+            TabControl? tabs = this.FindControl<TabControl>("Tabs");
+            // Only going to another tab leaves focus mode; a pane of the tab on screen is reached where it is.
+            if (!ReferenceEquals(tab, tabs?.SelectedItem)) LeaveFocusModeForNavigation();
+            if (tab is not null && tabs is not null) tabs.SelectedItem = tab;
             UpdateActivePane(pane);
             FocusPaneTerminal(pane, defer: true);
             return true;

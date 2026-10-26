@@ -100,7 +100,7 @@ namespace Ntilde.Controls
         {
             if (_agentOutput != null)
             {
-                AgentOutputPanelPresenter.IsVisible = _agentOutput.IsShown;
+                AgentOutputPanelPresenter.IsVisible = _agentOutput.IsShown && !FocusChromeHidden;
             }
         }
 
@@ -381,7 +381,7 @@ namespace Ntilde.Controls
                 // The MD toggle only exists when the recent on-screen output actually looks like
                 // markdown - detection runs on the tracker's lazy closed-panel cadence, and this
                 // callback fires on the UI thread only when the verdict changes.
-                markdownPresenceChanged: present => AgentOutputToggle.IsVisible = present);
+                markdownPresenceChanged: OnMarkdownPresenceChanged);
             if (Buffer != null)
             {
                 Buffer.OnInvalidate += _agentOutputTracker.NotifyInvalidate;

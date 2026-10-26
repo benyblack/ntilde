@@ -246,6 +246,9 @@ namespace Ntilde
             // the value actually changes, so it is a handful of lines per session, not per layout.
             AppLogger.Log($"[TitleBar] caption reserve {current.Right:0.#} -> {reserve:0.#}");
             Dispatcher.UIThread.Post(UpdateTabHeaderViewport, DispatcherPriority.Background);
+
+            // The focus strip's title margin is derived from this right margin.
+            if (_isFocusMode) UpdateFocusStrip();
         }
 
         /// <summary>
@@ -397,6 +400,7 @@ namespace Ntilde
         /// </summary>
         private void ToggleTabOrientation()
         {
+            LeaveFocusModeForNavigation();
             _settings.TabStripOrientation = TabStripLayout.IsVertical(_settings.TabStripOrientation)
                 ? "Horizontal"
                 : "Vertical";
@@ -487,6 +491,17 @@ namespace Ntilde
             var grip = FindTabTemplatePart<Border>("PART_TabStripResizeGrip");
             var panel = FindTabItemsPresenter()?.Panel as StackPanel;
 
+            // Focus mode hides the whole tab area. Nothing persisted (width, orientation) is
+            // touched, so leaving restores exactly what was there.
+            if (_isFocusMode)
+            {
+                if (sidebar != null) sidebar.IsVisible = false;
+                if (spacer != null) spacer.Height = FocusStripHeight;
+                return;
+            }
+
+            if (sidebar != null) sidebar.IsVisible = true;
+
             if (_isVerticalTabStrip)
             {
                 if (sidebar != null) DockPanel.SetDock(sidebar, Dock.Left);
@@ -557,6 +572,14 @@ namespace Ntilde
             var button = FindTitleBarButton(TitleBarCatalog.OpenTabListId);
             var scrollViewer = FindTabHeaderScrollViewer();
             if (tabs == null || badge == null || scrollViewer == null) return;
+
+            // The badge can be parented inside TitleBarItemsHost and this runs from paths other
+            // than UpdateTabHeaderViewport, so it must stay hidden while the strip replaces the bar.
+            if (_isFocusMode)
+            {
+                badge.IsVisible = false;
+                return;
+            }
 
             if (button == null)
             {
@@ -825,6 +848,8 @@ namespace Ntilde
 
         private void PopulateTabListMenu(bool showFlyout = false, Control? anchorOverride = null)
         {
+            // Only an explicit open is navigation; the rest are refreshes that run after every layout pass.
+            if (showFlyout) LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return;
 

@@ -8,10 +8,12 @@ using Ntilde.AgentHost;
 using Ntilde.Controls;
 using Ntilde.Pty;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Shell.TitleBar;
 // Aliased, not a plain namespace using: Avalonia.Controls.Shapes also exports a Path type that
 // would collide with System.IO.Path, which this file uses for its NTILDE_APPDATA_ROOT scratch dirs.
 using Ellipse = Avalonia.Controls.Shapes.Ellipse;
+using static Ntilde.Tests.Core.WindowTestSupport;
 
 namespace Ntilde.Tests.Core;
 
@@ -346,52 +348,6 @@ public class AgentObserveIndicatorTests : IDisposable
         });
     }
 
-    /// <summary>
-    /// Builds a tab holding a real two-pane split — the shape
-    /// <c>SessionManager.CreateRestoredTabItem</c> produces from a
-    /// <c>NodeType.Split</c> root — and runs it through the production
-    /// <c>InitializeRestoredTabs</c> so the panes are wired to the window and
-    /// their registrations are associated with the tab.
-    /// </summary>
-    private static TabItem AddSplitTab(MainWindow window, out TerminalPane first, out TerminalPane second)
-    {
-        var settings = (TerminalSettings)typeof(MainWindow)
-            .GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(window)!;
-
-        var session = new TabSession
-        {
-            Title = "Split",
-            Root = new PaneNode
-            {
-                Type = NodeType.Split,
-                SplitOrientation = 0,
-                Children =
-                {
-                    new PaneNode { Type = NodeType.Leaf, Command = "cmd.exe", Arguments = string.Empty, PaneId = Guid.NewGuid().ToString() },
-                    new PaneNode { Type = NodeType.Leaf, Command = "cmd.exe", Arguments = string.Empty, PaneId = Guid.NewGuid().ToString() }
-                },
-                Sizes = { "1*", "1*" }
-            }
-        };
-
-        var tab = SessionManager.CreateRestoredTabItem(session, settings)!;
-        var tabs = window.FindControl<TabControl>("Tabs")!;
-        tabs.Items.Add(tab);
-
-        typeof(MainWindow)
-            .GetMethod("InitializeRestoredTabs", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(window, new object[] { tabs });
-
-        // RestorePaneTree builds [child0, GridSplitter, child1]; OfType filters
-        // the splitter out and preserves order.
-        var panes = ((Grid)tab.Content!).Children.OfType<TerminalPane>().ToList();
-        Assert.Equal(2, panes.Count);
-        first = panes[0];
-        second = panes[1];
-        return tab;
-    }
-
     [AvaloniaFact]
     public void Entering_and_leaving_pane_zoom_refreshes_the_indicator()
     {
@@ -444,9 +400,6 @@ public class AgentObserveIndicatorTests : IDisposable
             .Invoke(window, new object[] { tab, pane, true })!;
         Assert.True(entered, "Test setup failed: EnterPaneZoom refused to zoom the pane.");
     }
-
-    private static AgentSessionRegistration RegistrationFor(TerminalPane pane)
-        => Assert.Single(AgentSessionRegistry.Instance.GetRegistrations().Where(r => r.PaneId == pane.PaneId));
 
     private static TabItem AddBareTab(MainWindow window, string title)
     {
@@ -560,6 +513,490 @@ public class AgentObserveIndicatorTests : IDisposable
             var host = window.FindControl<StackPanel>("TitleBarItemsHost");
             Assert.NotNull(host);
             Assert.Same(indicator, host!.Children[^1]);
+        });
+    }
+
+    // ---- focus mode ----
+    //
+    // Focus mode hides the pane status bars and the tab badges, so the strip light is the only
+    // surface left that can report an agent read or write.
+
+    [Theory]
+    [InlineData(true, SelectedTabKey, SelectedTabKey, false)]
+    [InlineData(true, SelectedTabKey, SelectedTabKey, true)]
+    [InlineData(true, OtherTabKey, SelectedTabKey, false)]
+    [InlineData(false, SelectedTabKey, SelectedTabKey, false)]
+    public void In_focus_mode_every_pane_is_unmarked(
+        bool actable, string paneTab, string selectedTab, bool hiddenByZoom)
+    {
+        Guid paneId = Guid.Parse(paneTab);
+        Guid selectedId = Guid.Parse(selectedTab);
+
+        Assert.True(MainWindow.IsPaneReadInvisibleWithoutWindowLight(
+            actable, paneId, selectedId, hiddenByZoom, focusMode: true));
+        // Outside focus mode the answer is exactly what the four-argument overload says.
+        Assert.Equal(
+            MainWindow.IsPaneReadInvisibleWithoutWindowLight(actable, paneId, selectedId, hiddenByZoom),
+            MainWindow.IsPaneReadInvisibleWithoutWindowLight(actable, paneId, selectedId, hiddenByZoom, focusMode: false));
+    }
+
+    private const string SelectedTabKey = "11111111-1111-1111-1111-111111111111";
+    private const string OtherTabKey = "22222222-2222-2222-2222-222222222222";
+
+    [Theory]
+    [InlineData(false, false, ThemeKeys.AgentIdle, null)]
+    [InlineData(true, false, ThemeKeys.AgentWatched, null)]
+    [InlineData(true, true, ThemeKeys.AgentWrote, ThemeKeys.AgentWatched)]
+    [InlineData(false, true, ThemeKeys.AgentWrote, null)]
+    public void Light_appearance(bool active, bool unseenWrite, string fillKey, string? ringKey)
+        => Assert.Equal((fillKey, ringKey), MainWindow.ObserveLightAppearance(active, unseenWrite));
+
+    [Fact]
+    public void A_write_while_reading_looks_different_from_a_write_alone()
+        => Assert.NotEqual(
+            MainWindow.ObserveLightAppearance(active: true, unseenWrite: true),
+            MainWindow.ObserveLightAppearance(active: false, unseenWrite: true));
+
+    // ---- the light's controls ----
+    //
+    // RefreshAgentObserveIndicator reads AgentHostService.Instance, which a test must not start, so the
+    // half that paints the controls is ApplyObserveIndicatorVisuals and these drive it on a real window.
+    // Each brush is the token's own instance (ThemeService recolours it in place on a theme switch).
+
+    private const string DefaultObserveTip = "Agent access is enabled. Click to open the agent activity journal.";
+
+    private static MainWindow.FocusWriteMark[] OneWriteMark() =>
+        [new MainWindow.FocusWriteMark("release build", null, new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero))];
+
+    private static (Button Indicator, Ellipse Dot) LightOf(MainWindow window) =>
+        (window.FindControl<Button>("AgentObserveIndicator")!, window.FindControl<Ellipse>("AgentObserveIndicatorDot")!);
+
+    [AvaloniaFact]
+    public void An_unseen_write_paints_the_wrote_token_with_no_ring_and_names_the_tab()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: false, OneWriteMark());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWrote), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+            Assert.Contains("release build", Assert.IsType<string>(ToolTip.GetTip(indicator)));
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_during_a_read_rings_the_wrote_fill_with_the_watched_token()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWrote), dot.Fill);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWatched), dot.Stroke);
+            Assert.Equal(1.5, dot.StrokeThickness);
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_read_alone_paints_the_watched_token_with_no_ring_and_the_default_tip()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+            // From the ringed state, so the ring and the mark's tooltip are seen to go, not just never to come.
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, Array.Empty<MainWindow.FocusWriteMark>());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWatched), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+            Assert.Equal(DefaultObserveTip, ToolTip.GetTip(indicator));
+        });
+    }
+
+    [AvaloniaFact]
+    public void Nothing_happening_paints_the_idle_token_with_no_ring()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+            // The XAML default is already the idle token, so start from a painted state.
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: false, Array.Empty<MainWindow.FocusWriteMark>());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentIdle), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+        });
+    }
+
+    [AvaloniaFact]
+    public void Observe_off_hides_the_light()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, _) = LightOf(window);
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+            Assert.True(indicator.IsVisible);
+
+            window.ApplyObserveIndicatorVisuals(visible: false, active: true, OneWriteMark());
+
+            Assert.False(indicator.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_tooltip_says_when_an_agent_is_also_reading()
+    {
+        var t = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        string at = t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        var marks = new[] { new MainWindow.FocusWriteMark("build", null, t) };
+
+        Assert.Equal(
+            $"An agent is reading now.\nAn agent typed into build at {at}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(marks, active: true));
+        Assert.Equal(
+            $"An agent typed into build at {at}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(marks, active: false));
+        Assert.Equal(
+            "Agent access is enabled. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(Array.Empty<MainWindow.FocusWriteMark>(), active: true));
+    }
+
+    [Fact]
+    public void Focus_light_tooltip_names_tab_and_pane()
+    {
+        var t1 = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 10, 23, 14, 30, 0, TimeSpan.Zero);
+        string Local(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(
+            "Agent access is enabled. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(Array.Empty<MainWindow.FocusWriteMark>()));
+
+        Assert.Equal(
+            $"An agent typed into build at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", null, t1) }));
+
+        Assert.Equal(
+            $"An agent typed into build › logs at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", "logs", t1) }));
+
+        Assert.Equal(
+            "An agent typed into build. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", null, null) }));
+
+        Assert.Equal(
+            "Agents typed into:\n"
+            + $"- build at {Local(t1)}\n"
+            + $"- server › api at {Local(t2)}\n"
+            + "- notes\n"
+            + "Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[]
+            {
+                new MainWindow.FocusWriteMark("build", null, t1),
+                new MainWindow.FocusWriteMark("server", "api", t2),
+                new MainWindow.FocusWriteMark("notes", null, null),
+            }));
+    }
+
+    [Fact]
+    public void The_tooltip_names_a_pane_an_agent_closed()
+    {
+        var t1 = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 10, 23, 14, 30, 0, TimeSpan.Zero);
+        string Local(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(
+            $"An agent closed build at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", null, t1, Closed: true) }));
+
+        Assert.Equal(
+            $"An agent is reading now.\nAn agent closed build › logs at {Local(t1)}. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", "logs", t1, Closed: true) }, active: true));
+
+        Assert.Equal(
+            "An agent is reading now.\n"
+            + "Agents typed into or closed:\n"
+            + $"- server › api at {Local(t2)}\n"
+            + $"- build closed at {Local(t1)}\n"
+            + "Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[]
+            {
+                new MainWindow.FocusWriteMark("server", "api", t2),
+                new MainWindow.FocusWriteMark("build", null, t1, Closed: true),
+            }, active: true));
+    }
+
+    [AvaloniaFact]
+    public void A_write_to_a_background_tab_is_collected_in_focus_mode()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            // Tab B is the window's own one-pane tab; tab A (selected) is a split tab.
+            var tabB = tabs.Items.Cast<TabItem>().First();
+            var registrationOfB = Assert.Single(
+                AgentSessionRegistry.Instance.GetRegistrations()
+                    .Where(r => r.TabId == window.GetPersistentTabId(tabB)));
+            var tabA = AddSplitTab(window, out _, out _);
+            tabs.SelectedItem = tabA;
+
+            registrationOfB.AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // Outside focus mode the tab badge and pane segment report it; the light does not.
+            Assert.Empty(window.CollectUnseenWriteMarks());
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.Equal(window.GetTabHeaderText(tabB), mark.TabTitle);
+            Assert.False(string.IsNullOrWhiteSpace(mark.TabTitle));
+            Assert.Null(mark.PaneTitle);
+            Assert.NotNull(mark.LastWriteUtc);
+
+            window.LeaveFocusMode();
+            Assert.Empty(window.CollectUnseenWriteMarks());
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_to_the_other_pane_of_a_split_names_the_pane()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var splitTab = AddSplitTab(window, out var first, out var second);
+            tabs.SelectedItem = splitTab;
+
+            RegistrationFor(second).AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.Equal(window.GetTabHeaderText(splitTab), mark.TabTitle);
+            Assert.Equal(second.GetBaseTabTitle(), mark.PaneTitle);
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_into_a_zoomed_background_pane_is_collected()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var tabT1 = tabs.Items.Cast<TabItem>().First();
+            var tabT2 = AddSplitTab(window, out var a, out _, userTitle: "Zoomed Tab");
+            tabs.SelectedItem = tabT2;
+            EnterZoom(window, tabT2, a);
+            tabs.SelectedItem = tabT1;
+
+            RegistrationFor(a).AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            // The header carries the keyboard badge for the write, so the title is a prefix.
+            Assert.StartsWith("Zoomed Tab", mark.TabTitle);
+            Assert.Equal(a.GetBaseTabTitle(), mark.PaneTitle);
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_into_the_sibling_of_a_zoomed_split_names_the_pane()
+    {
+        RunIsolated(window =>
+        {
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var tabT1 = tabs.Items.Cast<TabItem>().First();
+            var tabT2 = AddSplitTab(window, out var a, out var b, userTitle: "Zoomed Tab");
+            tabs.SelectedItem = tabT2;
+            EnterZoom(window, tabT2, a);
+            tabs.SelectedItem = tabT1;
+
+            RegistrationFor(b).AttentionMachine.NoteWrote("sendInput");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.EnterFocusMode();
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            // The header carries the keyboard badge for the write, so the title is a prefix.
+            Assert.StartsWith("Zoomed Tab", mark.TabTitle);
+            Assert.Equal(b.GetBaseTabTitle(), mark.PaneTitle);
+        });
+    }
+
+    // ---- a write into a pane that then closes on its own ----
+
+    private static async System.Threading.Tasks.Task ShellExitClose(MainWindow window, TerminalPane pane)
+    {
+        // The path a shell exit takes.
+        var closed = await (System.Threading.Tasks.Task<bool>)Invoke(window, "ClosePaneAsync", pane, true)!;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.True(closed);
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task A_write_into_a_pane_that_closes_by_itself_stays_on_the_light_until_focus_mode_ends()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"ntilde_observe_indicator_test_{Guid.NewGuid():N}");
+        string? previousRoot = Environment.GetEnvironmentVariable("NTILDE_APPDATA_ROOT");
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", tempRoot);
+            var window = NewShownWindow();
+            var tabs = window.FindControl<TabControl>("Tabs")!;
+            var tabB = AddSplitTab(window, out var paneB, out _, userTitle: "Exit Tab");
+            tabs.SelectedItem = tabs.Items.Cast<TabItem>().First();
+
+            RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+            string paneTitle = paneB.GetBaseTabTitle();
+            window.EnterFocusMode();
+
+            await ShellExitClose(window, paneB);
+
+            var mark = Assert.Single(window.CollectUnseenWriteMarks());
+            Assert.StartsWith("Exit Tab", mark.TabTitle);
+            Assert.Equal(paneTitle, mark.PaneTitle);
+            Assert.NotNull(mark.LastWriteUtc);
+            Assert.True(mark.SinceClosed);
+            Assert.False(mark.Closed);
+
+            window.LeaveFocusMode();
+            Assert.Empty(window.CollectUnseenWriteMarks());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NTILDE_APPDATA_ROOT", previousRoot);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task A_written_only_pane_of_a_background_tab_closing_with_its_tab_stays_on_the_light()
+    {
+        var window = NewShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        var tabB = tabs.Items.Cast<TabItem>().First();
+        var paneB = (TerminalPane)tabB.Content!;
+        var tabA = AddSplitTab(window, out _, out _);
+        tabs.SelectedItem = tabA;
+        RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+        window.EnterFocusMode();
+        string tabTitle = window.GetTabHeaderText(tabB);
+
+        var closed = await (System.Threading.Tasks.Task<bool>)Invoke(window, "CloseTabAsync", tabB, true)!;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.DoesNotContain(tabB, tabs.Items.Cast<TabItem>());
+        var mark = Assert.Single(window.CollectUnseenWriteMarks());
+        Assert.True(mark.SinceClosed);
+        Assert.Equal(tabTitle, mark.TabTitle);
+        Assert.Null(mark.PaneTitle);
+
+        window.LeaveFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
+    [Fact]
+    public void The_tooltip_names_a_write_into_a_pane_that_has_since_closed()
+    {
+        var t1 = new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero);
+        var t2 = new DateTimeOffset(2026, 10, 23, 14, 30, 0, TimeSpan.Zero);
+        string Local(DateTimeOffset t) => t.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Equal(
+            $"An agent typed into build › logs at {Local(t1)}; it has since closed. Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[] { new MainWindow.FocusWriteMark("build", "logs", t1, SinceClosed: true) }));
+
+        Assert.Equal(
+            "Agents typed into:\n"
+            + $"- server › api at {Local(t2)}\n"
+            + $"- build typed into at {Local(t1)}, since closed\n"
+            + "Click to open the agent activity journal.",
+            MainWindow.BuildFocusLightTooltip(new[]
+            {
+                new MainWindow.FocusWriteMark("server", "api", t2),
+                new MainWindow.FocusWriteMark("build", null, t1, SinceClosed: true),
+            }));
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task The_same_close_outside_focus_mode_records_nothing()
+    {
+        var window = NewShownWindow();
+        AddSplitTab(window, out var paneB, out _, userTitle: "Exit Tab");
+        RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+
+        await ShellExitClose(window, paneB);
+
+        window.EnterFocusMode();
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task An_agent_close_of_a_written_pane_in_focus_mode_leaves_exactly_one_mark()
+    {
+        var window = NewShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        AddSplitTab(window, out var paneB, out _, userTitle: "Exit Tab");
+        tabs.SelectedItem = tabs.Items.Cast<TabItem>().First();
+        RegistrationFor(paneB).AttentionMachine.NoteWrote("sendInput");
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(paneB.PaneId);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        var mark = Assert.Single(window.CollectUnseenWriteMarks());
+        Assert.True(mark.Closed);
+        Assert.False(mark.SinceClosed);
+    }
+
+    [AvaloniaFact]
+    public async System.Threading.Tasks.Task A_pane_with_no_unseen_write_closing_in_focus_mode_records_nothing()
+    {
+        var window = NewShownWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        AddSplitTab(window, out var idle, out var watched, userTitle: "Exit Tab");
+        tabs.SelectedItem = tabs.Items.Cast<TabItem>().First();
+        RegistrationFor(watched).AttentionMachine.NoteRead();
+        window.EnterFocusMode();
+
+        await ShellExitClose(window, idle);
+        await ShellExitClose(window, watched);
+
+        Assert.Empty(window.CollectUnseenWriteMarks());
+    }
+
+    [AvaloniaFact]
+    public void Focus_mode_refreshes_the_light()
+    {
+        RunIsolated(window =>
+        {
+            var indicator = window.FindControl<Button>("AgentObserveIndicator")!;
+
+            // RefreshAgentObserveIndicator always assigns IsVisible from the (stopped) host service,
+            // so forcing it visible and watching it snap back proves the refresh ran.
+            indicator.IsVisible = true;
+            window.EnterFocusMode();
+            Assert.False(indicator.IsVisible);
+
+            indicator.IsVisible = true;
+            window.LeaveFocusMode();
+            Assert.False(indicator.IsVisible);
         });
     }
 

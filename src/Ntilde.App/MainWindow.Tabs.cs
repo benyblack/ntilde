@@ -336,6 +336,7 @@ namespace Ntilde
 
         private bool SwitchTabByMru(bool reverse)
         {
+            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return false;
 
@@ -617,6 +618,7 @@ namespace Ntilde
             UpdateBroadcastIndicator();
             PopulateTabListMenu();
             UpdateTabHeaderViewport();
+            UpdateFocusStrip();
             // The taskbar mirrors whichever tab is now selected (#271).
             RefreshTaskbarProgressFromSelection();
             Dispatcher.UIThread.Post(EnsureSelectedTabHeaderVisible, DispatcherPriority.Background);

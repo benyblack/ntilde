@@ -93,6 +93,7 @@ A tab can be split into panes, each with its own shell.
 | Move between panes | `Alt+Left` / `Right` / `Up` / `Down` | Focus Pane Left / Right / Up / Down |
 | Make all panes the same size | `Ctrl+Shift+G` | Equalize Panes |
 | Fill the tab with the current pane, and back | `Ctrl+Shift+Z` | Pane: Toggle Zoom |
+| Hide everything but the current tab, and back | `Ctrl+Shift+Enter` | View: Toggle Focus Mode |
 | Type into every pane of the tab at once | `Ctrl+Shift+B` | Pane: Toggle Broadcast Input (Tab) |
 | Search the pane's screen and scrollback | `Ctrl+F` or `Ctrl+Shift+F` | Find in Terminal |
 | Reconnect a pane whose session ended | `Enter` in the pane | Pane: Reconnect |
@@ -109,6 +110,12 @@ status otherwise (`ShellExitPolicy`).
 
 **Persistent sessions.** Shells normally keep running when the window closes, and come back when
 Ntilde starts again ([Persistent sessions](persistent-sessions.md)).
+
+**Focus mode** (`Ctrl+Shift+Enter`) hides the tabs, title bar buttons, status bars and side
+panels, leaving only the current tab and a slim strip with the window buttons. Every tab keeps
+running. Press it again, or right-click the strip and choose Exit Focus Mode, to bring everything
+back. Focus mode is remembered across restarts, switching or opening tabs leaves it, and notices
+that arrive on their own wait until you leave it.
 
 ## Workspaces
 

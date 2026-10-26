@@ -50,7 +50,7 @@ namespace Ntilde
             };
         }
 
-        private string GetTabHeaderText(TabItem tab)
+        internal string GetTabHeaderText(TabItem tab)
         {
             if (FindTabHeaderTextBlock(tab.Header) is TextBlock tb)
             {
@@ -419,6 +419,7 @@ namespace Ntilde
             UpdateTabAutomationLabels();
             PopulateTabListMenu();
             UpdateTabHeaderViewport();
+            UpdateFocusStrip();
             sw.Stop();
             RendererStatistics.RecordTabVisualUpdateTime(sw.ElapsedMilliseconds);
         }

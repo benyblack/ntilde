@@ -149,17 +149,16 @@ namespace Ntilde.Controls
             bool canOpen = (isSidebarOpen && !isSidebarDisconnected) || Session?.IsProcessRunning == true;
             MenuToggleRemoteFilesSidebar.IsVisible = isSupported;
             MenuToggleRemoteFilesSidebar.IsEnabled = isSupported && !isBlockedByAltScreen && canOpen;
-            MenuToggleRemoteFilesSidebar.Header = isSidebarOpen
-                ? "Hide Remote Files"
-                : "Remote Files";
+            MenuToggleRemoteFilesSidebar.Header = RemoteFilesMenuHeader(isSidebarOpen, _remoteFilesHiddenByFocus);
         }
 
         private void UpdateRemoteFilesSidebarVisibility()
         {
-            bool shouldShow =
-                _remoteFilesSidebarViewModel?.IsOpen == true &&
-                !(Buffer?.IsAltScreenActive ?? false) &&
-                IsRemoteFilesSidebarSupported();
+            bool shouldShow = ShouldShowRemoteFilesSidebar(
+                _remoteFilesSidebarViewModel?.IsOpen == true,
+                Buffer?.IsAltScreenActive ?? false,
+                IsRemoteFilesSidebarSupported(),
+                _remoteFilesHiddenByFocus);
 
             if (shouldShow)
             {
@@ -242,6 +241,16 @@ namespace Ntilde.Controls
 
             if (_remoteFilesSidebarViewModel.IsOpen)
             {
+                (bool stillOpen, bool hiddenByFocus) = ResolveRemoteFilesToggle(true, _remoteFilesHiddenByFocus);
+                if (stillOpen)
+                {
+                    // Focus mode hid the panel; the toggle brings it back instead of closing it.
+                    _remoteFilesHiddenByFocus = hiddenByFocus;
+                    UpdateRemoteFilesSidebarVisibility();
+                    UpdateRemoteFilesSidebarEntryPointState();
+                    return;
+                }
+
                 CloseRemoteFilesSidebar();
                 return;
             }
@@ -282,6 +291,8 @@ namespace Ntilde.Controls
                 sessionId,
                 startPath,
                 CancellationToken.None);
+            // An explicit open is a request to see it, even in focus mode.
+            _remoteFilesHiddenByFocus = false;
             UpdateRemoteFilesSidebarCurrentDirectoryState();
             UpdateRemoteFilesSidebarVisibility();
             UpdateRemoteFilesSidebarEntryPointState();

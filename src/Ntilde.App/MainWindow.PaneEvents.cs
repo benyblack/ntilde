@@ -71,6 +71,7 @@ namespace Ntilde
         /// </remarks>
         private void WirePane(TerminalPane pane)
         {
+            pane.FocusChromeHidden = _isFocusMode;
             pane.CommandAssistServices = _commandAssistServices;
             pane.SessionFactory = _sessionFactory;
             pane.SshInteractionHandler = _sshInteractionService;
@@ -221,7 +222,8 @@ namespace Ntilde
         private bool RefusedOnARetargetedHost(TerminalPane pane)
         {
             if (!pane.IsOnRetargetedHost) return false;
-            EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesRetargetedMessage);
+            // Every caller is a transfer the user just asked for.
+            EnqueueNotice(TerminalPane.RemoteFilesUnavailableNoticeTitle, TerminalPane.RemoteFilesRetargetedMessage, prompted: true);
             return true;
         }
 
@@ -302,12 +304,10 @@ namespace Ntilde
                 return;
             }
 
-            ShowRecordingToast(
+            ShowUnpromptedToast(
                 "Command finished",
                 LongCommandNotificationPolicy.BuildMessage(commandText, exitCode, duration, pane.GetBaseTabTitle()),
-                filePath: null,
-                folderPath: null,
-                autoHide: true);
+                $"focus:command-finished:{pane.PaneId}");
         }
 
         private void OnPaneOscNotification(TerminalPane pane, string text)
@@ -324,12 +324,7 @@ namespace Ntilde
                 return;
             }
 
-            ShowRecordingToast(
-                pane.GetBaseTabTitle(),
-                text,
-                filePath: null,
-                folderPath: null,
-                autoHide: true);
+            ShowUnpromptedToast(pane.GetBaseTabTitle(), text, $"focus:osc9:{pane.PaneId}");
         }
 
         private void OnPaneProgressReported(TerminalPane pane, TerminalProgressReport? report)

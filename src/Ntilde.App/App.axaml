@@ -176,6 +176,16 @@
                     <Setter Property="IsVisible" Value="False" />
                 </Style>
             </ControlTheme>
+
+            <!-- Focus mode: the same drawn decorations with 24px caption buttons so they fit the
+                 slim focus strip. The Style outranks NtildeDrawnCaptionButton's Height of 30. -->
+            <ControlTheme x:Key="NtildeFocusWindowDecorationsTheme" TargetType="WindowDrawnDecorations"
+                          BasedOn="{StaticResource NtildeWindowDecorationsTheme}">
+                <Setter Property="DefaultTitleBarHeight" Value="24"/>
+                <Style Selector="^ /template/ StackPanel#PART_OverlayPanel > Button">
+                    <Setter Property="Height" Value="24"/>
+                </Style>
+            </ControlTheme>
         </ResourceDictionary>
     </Application.Resources>
 

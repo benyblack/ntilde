@@ -123,7 +123,7 @@ namespace Ntilde.Controls
         internal void UpdateStatusBarVisibility()
         {
             bool sshForwards = Profile != null && Profile.Forwards.Count > 0;
-            StatusBar.IsVisible = sshForwards || _agentActable;
+            StatusBar.IsVisible = (sshForwards || _agentActable) && !FocusChromeHidden;
             AgentStatusButton.IsVisible = _agentActable;
             AgentStatusSegment.IsVisible = _agentActable;
         }

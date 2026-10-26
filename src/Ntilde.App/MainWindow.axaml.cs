@@ -179,8 +179,15 @@ namespace Ntilde
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             {
-                if (e.GetPosition(this).Y <= 36)
+                if (e.GetPosition(this).Y <= WindowDragBandHeight(_isFocusMode))
                 {
+                    if (_isFocusMode && e.ClickCount == 2)
+                    {
+                        WindowState = ToggledMaximizeState(WindowState);
+                        e.Handled = true;
+                        return;
+                    }
+
                     BeginMoveDrag(e);
                 }
             }
@@ -463,6 +470,11 @@ namespace Ntilde
                 await OpenSettings(CustomizeTitleBarSettingsTarget());
             };
 
+            if (this.FindControl<MenuItem>("MenuExitFocusMode") is { } menuExitFocus)
+                menuExitFocus.Click += (s, e) => LeaveFocusMode();
+            if (this.FindControl<MenuItem>("MenuTitleBarExitFocusMode") is { } menuTitleBarExitFocus)
+                menuTitleBarExitFocus.Click += (s, e) => LeaveFocusMode();
+
             var menuNewSsh = this.FindControl<MenuItem>("MenuNewSshConnection");
             if (menuNewSsh != null) menuNewSsh.Click += async (s, e) =>
             {
@@ -534,6 +546,7 @@ namespace Ntilde
                 else
                 {
                     restoredSession = loadedSession;
+                    if (loadedSession!.FocusMode) EnterFocusMode();
                 }
             }
             else
@@ -576,12 +589,10 @@ namespace Ntilde
                 Vault = new VaultService();
                 if (!Vault.PersistenceAvailable)
                 {
-                    ShowRecordingToast(
+                    ShowUnpromptedToast(
                         "Credential storage unavailable",
                         "No system keychain was found, so SSH passwords won't be saved this session.",
-                        filePath: null,
-                        folderPath: null,
-                        autoHide: true);
+                        "focus:credential-storage");
                 }
             }
             catch (Exception ex)

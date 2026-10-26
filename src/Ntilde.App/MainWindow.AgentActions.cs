@@ -81,11 +81,21 @@ namespace Ntilde
 
                 try
                 {
-                    AddTab(profile);
-                    var pane = _currentPane;
+                    // In focus mode the new tab opens in the background: an agent never moves the user's
+                    // screen or keyboard into another shell.
+                    bool select = ShouldAgentSpawnSelect(_isFocusMode);
+                    var pane = AddTab(profile, select: select, leaveFocusMode: false);
+                    if (select) pane ??= _currentPane;
                     if (pane == null)
                     {
                         return (null, AgentHost.AgentSpawnError.SpawnFailed);
+                    }
+
+                    if (!select)
+                    {
+                        // A pane starts its shell on first layout, and a background tab is never laid out.
+                        var term = _currentPane?.TermView;
+                        pane.StartSessionInBackground(term?.Cols > 0 ? term.Cols : 80, term?.Rows > 0 ? term.Rows : 24);
                     }
 
                     Guid? tabId = _paneOwnerTab.TryGetValue(pane, out var tab)
@@ -111,6 +121,11 @@ namespace Ntilde
                 if (target == null)
                 {
                     return false;
+                }
+
+                if (_isFocusMode)
+                {
+                    return await CloseAgentTargetInFocusModeAsync(target);
                 }
 
                 // Make the target the active pane of its (selected) tab, then reuse

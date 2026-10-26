@@ -115,7 +115,17 @@ namespace Ntilde
         /// </summary>
         internal static bool IsPaneReadInvisibleWithoutWindowLight(
             bool isAgentActable, Guid? paneTabId, Guid? selectedTabId, bool paneHiddenByZoom)
+            => IsPaneReadInvisibleWithoutWindowLight(
+                isAgentActable, paneTabId, selectedTabId, paneHiddenByZoom, focusMode: false);
+
+        /// <summary>
+        /// As above, with focus mode as a fifth input: focus mode hides every pane status bar, so no
+        /// pane's segment is on screen and every read is the window light's to report.
+        /// </summary>
+        internal static bool IsPaneReadInvisibleWithoutWindowLight(
+            bool isAgentActable, Guid? paneTabId, Guid? selectedTabId, bool paneHiddenByZoom, bool focusMode)
         {
+            if (focusMode) return true;
             if (!isAgentActable) return true;
             if (!paneTabId.HasValue) return true;
             if (paneTabId.Value != selectedTabId) return true;
@@ -161,16 +171,13 @@ namespace Ntilde
                 registration.IsAgentActable,
                 registration.TabId,
                 selectedTabId,
-                paneHiddenByZoom: selectedTabIsZoomed && registration.PaneId != zoomedPaneId);
+                paneHiddenByZoom: selectedTabIsZoomed && registration.PaneId != zoomedPaneId,
+                focusMode: _isFocusMode);
         }
 
         /// <summary>Applies <see cref="ComputeObserveIndicatorState"/> to the chrome. UI thread.</summary>
         internal void RefreshAgentObserveIndicator()
         {
-            var indicator = this.FindControl<Button>("AgentObserveIndicator");
-            var dot = this.FindControl<Avalonia.Controls.Shapes.Ellipse>("AgentObserveIndicatorDot");
-            if (indicator == null || dot == null) return;
-
             var service = AgentHost.AgentHostService.Instance;
 
             // "Unmarked" = the pane shows no agent segment the user can see
@@ -182,9 +189,29 @@ namespace Ntilde
             var (visible, active) = ComputeObserveIndicatorState(
                 service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched, service.WindowlessWatched);
 
+            ApplyObserveIndicatorVisuals(visible, active, CollectUnseenWriteMarks());
+        }
+
+        /// <summary>
+        /// Paints the light's controls from the state <see cref="RefreshAgentObserveIndicator"/> computed: visibility,
+        /// the token fill and ring of <see cref="ObserveLightAppearance"/>, and the tooltip. Separate from the refresh so
+        /// it can be tested without starting the agent host service.
+        /// </summary>
+        internal void ApplyObserveIndicatorVisuals(bool visible, bool active, IReadOnlyList<FocusWriteMark> marks)
+        {
+            var indicator = this.FindControl<Button>("AgentObserveIndicator");
+            var dot = this.FindControl<Avalonia.Controls.Shapes.Ellipse>("AgentObserveIndicatorDot");
+            if (indicator == null || dot == null) return;
+
             indicator.IsVisible = visible;
             if (!visible) return;
-            dot.Fill = ThemeBrush(active ? ThemeKeys.AgentWatched : ThemeKeys.AgentIdle);
+            var (fillKey, ringKey) = ObserveLightAppearance(active, marks.Count > 0);
+            dot.Fill = ThemeBrush(fillKey);
+            // A write and a read at once: the wrote fill with a watched ring, so neither hides the other.
+            dot.Stroke = ringKey is null ? null : ThemeBrush(ringKey);
+            dot.StrokeThickness = ringKey is null ? 0 : 1.5;
+            // BuildFocusLightTooltip with no marks is the XAML default text, so this restores it outside focus mode.
+            ToolTip.SetTip(indicator, BuildFocusLightTooltip(marks, active));
         }
 
         // Raised on an IPC thread when the in-flight poll count leaves or

@@ -416,6 +416,7 @@ namespace Ntilde
         /// freely, consistent with the drag path). Internal for headless tests.</summary>
         internal void MoveSelectedTab(int delta)
         {
+            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs?.SelectedItem is not TabItem selected) return;
 

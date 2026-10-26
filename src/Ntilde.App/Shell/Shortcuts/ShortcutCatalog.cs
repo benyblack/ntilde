@@ -31,6 +31,7 @@ public static class ShortcutCatalog
         new("split_horizontal", "Split Horizontal", "View", ShortcutScope.Pane, "Ctrl+Shift+E"),
         new("equalize_panes", "Equalize Panes", "View", ShortcutScope.Pane, "Ctrl+Shift+G"),
         new("toggle_pane_zoom", "Pane: Toggle Zoom", "View", ShortcutScope.Pane, "Ctrl+Shift+Z"),
+        new("toggle_focus_mode", "View: Toggle Focus Mode", "View", ShortcutScope.App, "Ctrl+Shift+Enter"),
         new("toggle_broadcast_input", "Pane: Toggle Broadcast Input (Tab)", "View", ShortcutScope.Pane, "Ctrl+Shift+B"),
         new("toggle_recording", "Toggle Recording", "Pane", ShortcutScope.Pane, "Ctrl+Shift+R"),
         new("find", "Find in Terminal", "Edit", ShortcutScope.Pane, "Ctrl+F"),

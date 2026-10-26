@@ -65,6 +65,7 @@ namespace Ntilde
             var titleBar = this.FindControl<Grid>("TitleBar");
             if (titleBar != null) titleBar.Background = Brushes.Transparent;
 
+            UpdateFocusStrip();
         }
 
 
@@ -179,6 +180,9 @@ namespace Ntilde
             // recomputing again from the same width is a no-op that changes nothing and triggers
             // nothing further.
             Dispatcher.UIThread.Post(UpdateTabHeaderViewport, DispatcherPriority.Background);
+
+            // Last: the generated items above are all fresh and visible.
+            ApplyFocusModeToTitleBar();
         }
 
         /// <summary>

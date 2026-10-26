@@ -190,7 +190,7 @@ namespace Ntilde
                 Ntilde.Platform.Ssh.Models.SshProfile? profile = _sshConnectionService.GetStoredProfile(profileId);
                 if (profile is null)
                 {
-                    EnqueueNotice("Install ntilde-mux", "That SSH connection no longer exists.");
+                    EnqueueNotice("Install ntilde-mux", "That SSH connection no longer exists.", prompted: true);
                     return;
                 }
 
@@ -201,7 +201,7 @@ namespace Ntilde
                 bool turnOn = !wasPersisting && profile.MuxOptions.PersistRemoteSessions;
                 if (_sshConnectionService.RecordRemoteMuxInstall(profileId, installed, turnOn) is null)
                 {
-                    EnqueueNotice("Install ntilde-mux", "ntilde-mux was installed, but its SSH connection was deleted meanwhile.");
+                    EnqueueNotice("Install ntilde-mux", "ntilde-mux was installed, but its SSH connection was deleted meanwhile.", prompted: true);
                     return;
                 }
 
@@ -211,7 +211,7 @@ namespace Ntilde
             catch (Exception ex)
             {
                 AppLogger.Log($"[MainWindow] ntilde-mux install for SSH profile {profileId:N} failed: {ex.Message}");
-                EnqueueNotice("Install ntilde-mux", $"ntilde-mux could not be installed: {ex.Message}");
+                EnqueueNotice("Install ntilde-mux", $"ntilde-mux could not be installed: {ex.Message}", prompted: true);
             }
         }
 

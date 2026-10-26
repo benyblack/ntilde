@@ -32,6 +32,7 @@ namespace Ntilde
 
         private async Task CloseSelectedTabAsync()
         {
+            LeaveFocusModeForNavigation();
             if (!TryGetSelectedTab(out var selectedTab)) return;
             await CloseTabAsync(selectedTab);
         }
@@ -135,10 +136,16 @@ namespace Ntilde
             _ = CloseActivePaneAsync();
         }
 
-        private Task CloseActivePaneAsync(bool skipConfirm = false)
+        private async Task CloseActivePaneAsync(bool skipConfirm = false)
         {
-            if (_currentPane == null) return Task.CompletedTask;
-            return ClosePaneAsync(_currentPane, skipConfirm);
+            if (_currentPane is not { } pane) return;
+            if (IsOnlyPaneOfItsTab(pane)) LeaveFocusModeForNavigation();
+
+            // A share whose sharing cannot be known detaches instead of ending, and the close says so itself: that
+            // "Shell detached" answers this command.
+            bool detachesUnasked = pane.IsMuxShareWithSharingUnknown;
+            bool closed = await ClosePaneAsync(pane, skipConfirm);
+            if (closed && detachesUnasked && !_teardownDone) PromptPendingNotice(ShellDetachedNoticeTitle);
         }
 
         /// <summary>
@@ -255,8 +262,22 @@ namespace Ntilde
                         // 5. Dispose the closed pane
                         DisposeControlTree(paneToClose, disposition);
 
-                        // 6. Focus Sibling
-                        FocusFirstPane(sibling);
+                        // 6. Focus Sibling. In focus mode a pane that is not the user's current pane (an agent
+                        // closing it) must not move the user's active pane or keyboard: only repoint the tab's
+                        // remembered pane when it was the closed one.
+                        if (_isFocusMode && !ReferenceEquals(paneToClose, _currentPane))
+                        {
+                            if (_activePaneByTab.TryGetValue(paneTab, out var remembered)
+                                && ReferenceEquals(remembered, paneToClose)
+                                && FindFirstPane(sibling) is { } survivor)
+                            {
+                                _activePaneByTab[paneTab] = survivor;
+                            }
+                        }
+                        else
+                        {
+                            FocusFirstPane(sibling);
+                        }
                         UpdatePaneAutomationLabels();
                         RefreshLayoutModelForTab(paneTab);
                         PublishPaneEvent(paneTab, paneToClose, PaneAuditEventKind.Close);
@@ -384,7 +405,9 @@ namespace Ntilde
 
         private void DetachActivePane()
         {
-            if (_currentPane is { } pane) _ = DetachPaneAsync(pane);
+            if (_currentPane is not { } pane) return;
+            if (IsOnlyPaneOfItsTab(pane)) LeaveFocusModeForNavigation();
+            _ = DetachPaneAsync(pane);
         }
 
         /// <summary>"Pane: Detach" (spec §7.4): the pane closes, the shell keeps running in the daemon.</summary>
@@ -394,7 +417,7 @@ namespace Ntilde
             {
                 EnqueueNotice("Pane: Detach", pane.Session is Ntilde.Mux.MuxClientSession
                     ? "The multiplexer connection was lost."
-                    : "Only a persistent shell can be detached.");
+                    : "Only a persistent shell can be detached.", prompted: true);
                 return false;
             }
 
@@ -407,7 +430,13 @@ namespace Ntilde
             string detached = ShellDetachedMessage(pane, mux.Id);
             bool noticedByTheClose = pane.IsMuxShareWithSharingUnknown;
             bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
-            if (closed && !_teardownDone && !noticedByTheClose) EnqueueNotice(ShellDetachedNoticeTitle, detached);
+            if (closed && !_teardownDone)
+            {
+                // Either way the notice answers this command, so focus mode does not hold it.
+                if (noticedByTheClose) PromptPendingNotice(ShellDetachedNoticeTitle);
+                else EnqueueNotice(ShellDetachedNoticeTitle, detached, prompted: true);
+            }
+
             return closed;
         }
 
@@ -594,6 +623,7 @@ namespace Ntilde
             if (control is TerminalPane pane)
             {
                 // Read first: the teardown below lets go of the pane's session and remote host.
+                NoteUnseenWriteOfClosingPane(pane);
                 Guid? shareOfUnknownSharing = pane.MuxShareIdWithSharingUnknown;
                 string? detachedMessage = shareOfUnknownSharing is Guid share ? ShellDetachedMessage(pane, share) : null;
                 UnwirePane(pane);
@@ -620,7 +650,9 @@ namespace Ntilde
                 }
 
                 // Fix round 1, I1: the pane goes and its shell does not, so the window says so, as "Pane: Detach" does - unless
-                // the window itself is going, which leaves every shell running anyway.
+                // the window itself is going, which leaves every shell running anyway. Not prompted here: an agent's close
+                // or one that ran on its own gets here too. The user's own Close and Pane: Detach mark it as their answer
+                // (PromptPendingNotice) once the close returns.
                 if (effective == Ntilde.Shell.Mux.PaneDisposition.Detach && detachedMessage is not null && !_teardownDone)
                 {
                     EnqueueNotice(ShellDetachedNoticeTitle, detachedMessage);

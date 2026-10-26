@@ -105,6 +105,7 @@ namespace Ntilde
                     string label = GetTabSwitchCommandLabel(capturedTab);
                     CommandRegistry.Register(label, "Tabs", () =>
                     {
+                        LeaveFocusModeForNavigation();
                         tabs.SelectedItem = capturedTab;
                     }, "");
                 }
@@ -157,6 +158,7 @@ namespace Ntilde
             // Horizontal split => horizontal divider => stacked panes.
             CommandRegistry.Register("Split Horizontal", "View", () => SplitPane(Avalonia.Layout.Orientation.Vertical), GetEffectiveShortcutBinding("split_horizontal", "Ctrl+Shift+E"), "split_horizontal");
             CommandRegistry.Register("Equalize Panes", "View", () => EqualizeCurrentSplit(), GetEffectiveShortcutBinding("equalize_panes", "Ctrl+Shift+G"), "equalize_panes");
+            CommandRegistry.Register("Toggle Focus Mode", "View", () => ToggleFocusMode(), GetEffectiveShortcutBinding("toggle_focus_mode", "Ctrl+Shift+Enter"), "toggle_focus_mode");
             CommandRegistry.Register("Pane: Toggle Zoom", "View", () => TogglePaneZoomForCurrentTab(), GetEffectiveShortcutBinding("toggle_pane_zoom", "Ctrl+Shift+Z"), "toggle_pane_zoom");
             CommandRegistry.Register("Pane: Toggle Broadcast Input (Tab)", "View", () => ToggleBroadcastForCurrentTab(), GetEffectiveShortcutBinding("toggle_broadcast_input", "Ctrl+Shift+B"), "toggle_broadcast_input");
             CommandRegistry.Register("Pane: Reconnect", "View", () => _currentPane?.Reconnect(), "");
@@ -677,6 +679,13 @@ namespace Ntilde
             {
                 RecordCommandUsage("equalize_panes");
                 EqualizeCurrentSplit();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "toggle_focus_mode", "Ctrl+Shift+Enter"))
+            {
+                RecordCommandUsage("toggle_focus_mode");
+                ToggleFocusMode();
                 e.Handled = true;
                 return;
             }

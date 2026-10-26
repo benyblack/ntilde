@@ -340,7 +340,7 @@ public sealed class MainWindowMuxRemoteTests : IClassFixture<TestAppDataRoot>, I
 
         typeof(MainWindow).GetMethod("AddTab", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(
             window,
-            [new TerminalProfile { Id = _sshProfile.Id, Name = _sshProfile.Name, Type = ConnectionType.SSH }, Ntilde.Platform.Ssh.Launch.SshDiagnosticsLevel.None]);
+            [new TerminalProfile { Id = _sshProfile.Id, Name = _sshProfile.Name, Type = ConnectionType.SSH }, Ntilde.Platform.Ssh.Launch.SshDiagnosticsLevel.None, true, true]);
 
         PumpUntil(() => RemotePanes(window).Any(p => Text(p).Contains(TerminalPane.RemoteUnreachableBanner("nova@fake-host"), StringComparison.Ordinal)), "the new tab gave up for now");
         TerminalPane pane = RemotePanes(window).Single();

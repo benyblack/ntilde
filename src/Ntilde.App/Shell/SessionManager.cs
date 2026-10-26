@@ -23,15 +23,16 @@ namespace Ntilde.Shell
         /// Local daemon sessions the closing window has just ended (spec R1's "Close them"): left out, so the next
         /// launch starts fresh shells quietly, as with persistence off, instead of reporting them lost.
         /// </param>
-        public static void SaveSession(Window window, TabControl tabs, IReadOnlySet<Guid>? endedLocalMuxSessions = null)
+        public static void SaveSession(Window window, TabControl tabs, IReadOnlySet<Guid>? endedLocalMuxSessions = null, bool focusMode = false)
         {
             var sw = Stopwatch.StartNew();
             int payloadBytes = 0;
             try
             {
                 // The startup session file is the one snapshot that names daemon sessions: the next
-                // launch reattaches to them (spec §9).
+                // launch reattaches to them (spec §9). It is also the only one that remembers focus mode.
                 var session = CaptureSession(window, tabs, includeMuxIds: true);
+                session.FocusMode = focusMode;
                 if (endedLocalMuxSessions is { Count: > 0 })
                 {
                     session = WithoutMuxIds(session, node =>

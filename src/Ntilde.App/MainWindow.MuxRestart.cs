@@ -257,7 +257,8 @@ namespace Ntilde
             string key = $"{MuxPreviousBuildNotice.Title}\n{message}";
             AppLogger.Log($"[MainWindow] multiplexer restart on {host ?? "this computer"}: {outcome}");
             MuxNoticeRaisedForTest?.Invoke(new MuxPreviousBuildNotice.Raised(id, outcome, key, message, null));
-            EnqueueNotice(MuxPreviousBuildNotice.Title, message, action: null, key: key);
+            // Only a restart the user chose from the notice's button gets here, so its outcome answers them.
+            EnqueueNotice(MuxPreviousBuildNotice.Title, message, action: null, key: key, prompted: true);
         }
 
         /// <summary>

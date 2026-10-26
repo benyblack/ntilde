@@ -1,3 +1,4 @@
+using Avalonia.Input;
 using Ntilde.Shell.Shortcuts;
 
 namespace Ntilde.Tests.Core;
@@ -55,5 +56,20 @@ public sealed class ShortcutCatalogTests
         Assert.Equal(("Session: Attach to Session…", "", ShortcutScope.App, true), (attach.Title, attach.DefaultBinding, attach.Scope, attach.RequiresSessionPersistence));
         Assert.Equal(("Pane: Detach", "", ShortcutScope.Pane, true), (detach.Title, detach.DefaultBinding, detach.Scope, detach.RequiresSessionPersistence));
         Assert.All(ShortcutCatalog.GetDefinitions().Where(d => d.CommandId is "attach_session" or "detach_pane"), d => Assert.True(d.IsUnbound));
+    }
+
+    [Fact]
+    public void GetEntries_IncludesToggleFocusMode()
+    {
+        var e = Assert.Single(ShortcutCatalog.GetEntries(isMacOS: false), x => x.CommandId == "toggle_focus_mode");
+        Assert.Equal(("View: Toggle Focus Mode", "View", ShortcutScope.App, "Ctrl+Shift+Enter"),
+                     (e.Title, e.Category, e.Scope, e.DefaultBinding));
+    }
+
+    [Fact]
+    public void Ctrl_Shift_Enter_matches_the_focus_mode_binding()
+    {
+        var e = new KeyEventArgs { Key = Key.Enter, KeyModifiers = KeyModifiers.Control | KeyModifiers.Shift };
+        Assert.True(ShortcutMatcher.Matches(e, "Ctrl+Shift+Enter"));
     }
 }

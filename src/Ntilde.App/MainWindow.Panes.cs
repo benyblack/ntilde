@@ -387,7 +387,17 @@ namespace Ntilde
         internal IReadOnlyList<TerminalPane> AllPanesForTest() => AllPanes();
 
         private List<TerminalPane> AllPanes() =>
-            this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>().SelectMany(t => EnumeratePanes(GetLayoutRootForTab(t))).ToList() ?? [];
+            this.FindControl<TabControl>("Tabs")?.Items.OfType<TabItem>().SelectMany(PanesInTab).ToList() ?? [];
+
+        /// <summary>
+        /// Every pane of one tab. While the tab is pane-zoomed, the layout root is the stash that no longer
+        /// holds the zoomed pane (it is the tab's content), so that pane is added back.
+        /// </summary>
+        private IEnumerable<TerminalPane> PanesInTab(TabItem tab)
+        {
+            foreach (var pane in EnumeratePanes(GetLayoutRootForTab(tab))) yield return pane;
+            if (_paneZoomStateByTab.ContainsKey(tab) && tab.Content is TerminalPane zoomed) yield return zoomed;
+        }
 
         private static bool IsSplitGrid(Grid grid)
         {
@@ -589,10 +599,15 @@ namespace Ntilde
             }
         }
 
-        void AddTab(TerminalProfile? profile = null, SshDiagnosticsLevel sshDiagnostics = SshDiagnosticsLevel.None)
+        /// <summary>Opens a tab and returns its pane (null when none was created, or when a template rule rebuilt the window).
+        /// <paramref name="select"/> false opens it in the background; <paramref name="leaveFocusMode"/> false is for
+        /// callers that are not the user (the agent), which must never end focus mode.</summary>
+        TerminalPane? AddTab(TerminalProfile? profile = null, SshDiagnosticsLevel sshDiagnostics = SshDiagnosticsLevel.None,
+            bool select = true, bool leaveFocusMode = true)
         {
             var tabs = this.FindControl<TabControl>("Tabs");
-            if (tabs == null) return;
+            if (tabs == null) return null;
+            if (leaveFocusMode) LeaveFocusModeForNavigation();
 
             // Fallback to default if null
             if (profile == null)
@@ -654,12 +669,15 @@ namespace Ntilde
                 profile.Arguments = string.Empty;
             }
 
-            if (TryApplyTemplateRuleForProfile(profile))
+            // A template rule rebuilds and reselects every tab, so a background open never applies one.
+            if (select && TryApplyTemplateRuleForProfile(profile))
             {
-                return;
+                return null;
             }
 
-            AddTabWithPane(new TerminalPane(profile, sshDiagnostics), profile.Name);
+            var pane = new TerminalPane(profile, sshDiagnostics);
+            AddTabWithPane(pane, profile.Name, select);
+            return pane;
         }
 
         private void SplitPane(Avalonia.Layout.Orientation orientation)
