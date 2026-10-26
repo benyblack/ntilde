@@ -18,5 +18,6 @@
   "BrightBlue": "#d6acff",
   "BrightMagenta": "#ff92df",
   "BrightCyan": "#a4ffff",
-  "BrightWhite": "#ffffff"
+  "BrightWhite": "#ffffff",
+  "SelectionBackground": "#44475a"
 }

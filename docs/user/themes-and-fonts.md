@@ -8,13 +8,15 @@ and Tokyo Night.
 
 Pick one in Settings → Appearance → **Theme**, which previews it as you choose, or run
 *Theme: name* from the command palette, which applies it at once. A theme colors the window too:
-title bar, tabs, sidebar, Settings and dialogs take their colors from the theme's background and
-foreground, and their accent and status colors from the theme's blue, green, yellow, red and cyan,
-adjusted so text stays readable. A theme can also set those colors itself
+title bar, tabs, sidebar, Settings, dialogs and the overlays inside each pane (search, the status
+bar, Command Assist) take their colors from the theme's background, foreground, and its blue,
+green, yellow, red and cyan, adjusted so text stays readable. So do the selection, search matches
+and the character under a block cursor. A theme can also set those colors itself
 ([Optional colors](#optional-colors)).
 
 A local profile can use a theme of its own: Settings → Shells & Profiles → *Visual overrides* →
-Theme ([Settings](settings.md#shells--profiles)).
+Theme ([Settings](settings.md#shells--profiles)). Its panes, overlays included, use that theme
+while the rest of the window keeps yours.
 
 ## Importing a theme
 
@@ -23,9 +25,9 @@ Settings → Appearance → **Import…** reads:
 | Format | File | Notes |
 |---|---|---|
 | Ntilde | `.json` | [The format](#the-theme-file) below |
-| Windows Terminal | `.json` | A whole `settings.json` (every scheme in its `schemes` list), a list of schemes, or one scheme |
-| iTerm2 | `.itermcolors` | Named after the file |
-| Alacritty | `.toml` | Named after the file, with ` (Alacritty)` added; colors written `#rrggbb` or `rrggbb`, not `0x…` |
+| Windows Terminal | `.json` | A whole `settings.json` (every scheme in its `schemes` list), a list of schemes, or one scheme. Keeps `selectionBackground` |
+| iTerm2 | `.itermcolors` | Named after the file. Keeps the selection, selected-text and cursor-text colors |
+| Alacritty | `.toml` | Named after the file, with ` (Alacritty)` added; colors written `#rrggbb`, `rrggbb` or `0xrrggbb`, in sections or inline tables. Keeps the selection, cursor-text and search colors; `CellForeground`/`CellBackground` mean derived |
 
 The imported theme is selected at once. A file that cannot be read is skipped without a message;
 `logs/debug.log` says why. Importing a theme with the name of one you already have replaces it.
@@ -34,8 +36,12 @@ The imported theme is selected at once. A file that cannot be read is skipped wi
 
 **+ New** starts a theme named *New Theme* from the default colors; **Edit** changes the selected
 one. The editor has
-its name, foreground, background, cursor and the 16 ANSI colors. **Save theme** writes it to disk
-immediately: Settings' **Cancel** does not undo it. The built-in *Default* cannot be edited; save a
+its name, foreground, background, cursor and the 16 ANSI colors. **Advanced colors** lists the
+[optional colors](#optional-colors): each is *Derived* (worked out from the others, its swatch
+dimmed) until you click it and type a color; **Reset** makes it derived again. The preview shows
+the theme's text, selection, search matches, a block cursor, an accent button, the status colors
+and the tab dots. **Save theme** writes it to disk immediately: Settings' **Cancel** does not undo
+it. The built-in *Default* cannot be edited; save a
 copy under another name.
 
 Edit built-in themes under a new name too: Ntilde may replace its own theme files when it updates.
@@ -67,51 +73,44 @@ Dracula:
   "BrightBlue": "#d6acff",
   "BrightMagenta": "#ff92df",
   "BrightCyan": "#a4ffff",
-  "BrightWhite": "#ffffff"
+  "BrightWhite": "#ffffff",
+  "SelectionBackground": "#44475a"
 }
 ```
 
 - **Keys** are exactly as above, capitalized. A key spelled differently (`name`, `background`) is
-  ignored. These twenty are required; the [optional colors](#optional-colors) below can be added.
+  ignored.
 - **`Name`** is what Settings and the palette show, and identifies the theme: the file's own name
   does not matter. Two files with the same `Name` are one theme.
-- **Colors** are `#RRGGBB`, or `#RGB`, or `#AARRGGBB` with the alpha first. Write every required
-  one: a color you leave out gets a plain xterm default, and a value Ntilde cannot read becomes
-  transparent, without an error.
+- **Colors** are `#RRGGBB`, `#RGB`, or `#AARRGGBB` with the alpha first. Write every one of the twenty: a color
+  you leave out gets a plain xterm default, and a value Ntilde cannot read becomes transparent,
+  without an error.
 - `Foreground`, `Background` and `CursorColor` are the default text, background and cursor; the
   other sixteen are the ANSI palette programs use.
 
 ### Optional colors
 
-Ten more keys set colors that Ntilde otherwise works out from the ones above. Leave a key out to
-keep the derived color.
+Leave any of these out and Ntilde works it out from the colors above, adjusted so text stays
+readable. A color you set is used exactly as written. A value Ntilde cannot read counts as left
+out (`logs/debug.log` says so).
 
-| Key | What it colors | When left out |
+| Key | Colors | Left out |
 |---|---|---|
-| `SelectionBackground` | The selection; selected text is drawn on top of it | The accent, partly transparent |
-| `SelectionForeground` | Selected text | Each cell keeps its own color, unless that would not read on the selection |
+| `SelectionBackground` | The selection; selected text is drawn on top | The accent, translucent |
+| `SelectionForeground` | Selected text | Each character keeps its color, unless it would be hard to read on the selection |
 | `CursorText` | The character under a block cursor | `Background` |
-| `SearchMatch` | Search matches | The warning color, partly transparent |
-| `SearchMatchActive` | The current search match | Between the warning and error colors, partly transparent |
-| `Accent` | Buttons, links, the selected tab's marker, the *working* status dot | A softened `Blue` |
-| `Success`, `Warning`, `Error`, `Info` | Status colors in the window: `Success` for finished transfers, active port forwards and added lines in diffs; `Warning` for tabs that want attention; `Error` for the recording marker and removed lines; `Info` for agent activity | A softened `Green`, `Yellow`, `Red`, `Cyan` |
+| `SearchMatch`, `SearchMatchActive` | Search matches, and the current one | Yellow, and orange |
+| `Accent` | Buttons, links, the selected tab, the *working* status dot | A softened `Blue` |
+| `Success`, `Warning`, `Error`, `Info` | Status text and dots: `Success` for finished transfers, active port forwards and added lines in diffs; `Warning` for tabs that want attention; `Error` for the recording marker and removed lines; `Info` for agent activity | Softened `Green`, `Yellow`, `Red`, `Cyan` |
 
-For example, to give Dracula a pink selection and a purple accent, add to its file:
+- Because a color you set is not adjusted, choose `Accent`, `Success`, `Warning`, `Error` and
+  `Info` with at least 4.5:1 contrast against the window's panels, or text in them will be hard to
+  read. These five are always drawn opaque: an alpha you give them is ignored.
+- The fills (`SelectionBackground`, `SearchMatch`, `SearchMatchActive`) keep their alpha: use the
+  `#AARRGGBB` form so the text under them shows through.
 
-```json
-  "SelectionBackground": "#66FF79C6",
-  "Accent": "#BD93F9"
-```
-
-- Derived colors are adjusted until they read on the window's panels. A color you set is used as
-  given, so choose `Accent`, `Success`, `Warning`, `Error` and `Info` with at least 4.5:1 contrast
-  against the panels, or text in those colors will be hard to read.
-- Use the `#AARRGGBB` form for the fills (`SelectionBackground`, `SearchMatch`,
-  `SearchMatchActive`) so the text under them shows through. `Accent`, `Success`, `Warning`, `Error`
-  and `Info` are always drawn opaque: an alpha you give them is ignored.
-- An optional color Ntilde cannot read is treated as left out, and `logs/debug.log` says so. It never
-  costs the rest of the theme.
-- The theme editor does not show these keys yet, but saving a theme from it keeps them.
+Dracula, Catppuccin Mocha, Tokyo Night, Nord and both Solarized themes set `SelectionBackground`
+to their designers' selection colors; the other built-in themes leave all of these out.
 
 Ntilde reads the folder when it starts and each time Settings opens, so a file you copy in shows up
 in Settings → Appearance next time you open it. It does not watch the files: after editing one

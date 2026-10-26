@@ -442,6 +442,36 @@ Plan: `docs/superpowers/plans/2026-10-26-theme-system-phase4-schema.md`. Phase 4
   `TerminalTheme`. The schema's 8-digit format now reads `#AARRGGBB`, the order Ntilde reads and
   writes; it had said `#RRGGBBAA`.
 
+### Phase 4b as landed (2026-10-26)
+
+- **Importers:**
+  - Windows Terminal: `selectionBackground`.
+  - iTerm2: `Selection Color`, `Selected Text Color` and `Cursor Text Color`. Two existing bugs are
+    fixed too: plist reals now parse with the invariant culture, and components round rather than
+    truncate.
+  - Alacritty: selection, cursor text and search, in sections or inline tables;
+    `CellForeground`/`CellBackground` map to null, and `0x…` hex parses. It also had a bug that
+    made every import fail: comments were stripped at any `#`, quotes included, so every quoted
+    colour was dropped. Comments are now stripped only outside quotes.
+  - Fixtures live under `tests/Ntilde.App.Tests/Fixtures/Themes/`.
+- **Editor:** an **Advanced colors** expander, one row per optional field, as specified. The
+  preview's chrome samples resolve the draft through `ThemeService.ApplyTo` on the preview card's
+  own resources.
+- **Shipped themes:** `SelectionBackground` is added to six themes, from these sources:
+  - Dracula, from its Windows Terminal port;
+  - Catppuccin Mocha, from its Windows Terminal port;
+  - Tokyo Night, from its Windows Terminal port;
+  - Nord nord2, from the palette documentation;
+  - Solarized base02 (Dark) and base2 (Light), from the README's highlight pair.
+
+  Gruvbox's upstream selects in inverse video, which needs a selected-text colour as well, so it
+  stays derived. GitHub has no upstream terminal port that defines a selection colour. The iTerm2
+  ports store calibrated colour-space numbers, so palette entries are cited rather than those
+  numbers.
+- **Docs:** `docs/ThemeSystem.md` is rewritten. The user guide's `docs/user/themes-and-fonts.md`
+  documents the optional colors, the importers and Advanced colors, and the CHANGELOG covers theme
+  v2 as a whole.
+
 ## 6. Schema propagation
 
 - **MCP (`ThemeTools`):**
