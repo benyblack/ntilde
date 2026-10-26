@@ -17,7 +17,7 @@ The **Command Palette** is the central hub for accessing all features and comman
 - **Themes:** Fourteen themes ship built in — Default, Dracula, Nord, Gruvbox Dark,
   Tokyo Night, Catppuccin Mocha, Solarized Dark/Light, GitHub Dark/Light, Monokai,
   OneHalf Dark/Light and Cobalt2. Switch with `Theme: <name>` in the palette or from
-  Settings → Appearance, and import your own theme JSON there too.
+  Settings → Appearance, and import your own theme there too. See [1.3 Themes](#13-themes).
 - **Font & Sizing:** Increase (`Ctrl++`) or decrease (`Ctrl+-`) the terminal font
   size. You can also choose the font family in Settings → Terminal.
 - **Interface scale:** The terminal font size leaves the rest of the app alone. To
@@ -29,6 +29,24 @@ The **Command Palette** is the central hub for accessing all features and comman
   currently stay at 100%.
 - **Shortcuts:** Every shortcut in this manual is the default. Settings → Shortcuts
   lists them all and lets you rebind them.
+
+### 1.3 Themes
+A theme colors the terminal and the whole app: Settings, tabs, dialogs and the overlays inside
+each pane all follow it, live. A profile can name its own theme (Settings → Shells & Profiles);
+its tabs then use that theme inside the pane while the rest of the app keeps yours.
+
+- **Import:** Settings → Appearance → *Import…* reads Ntilde theme JSON, Windows Terminal schemes,
+  iTerm2 `.itermcolors` and Alacritty `.toml` files, including their selection, cursor-text and
+  search colors where the format has them.
+- **Edit:** *Edit* (or *+ New*) opens the theme editor. Besides the foreground, background,
+  cursor and 16 ANSI colors, **Advanced colors** holds the optional ones: selection, selected
+  text, cursor text, search match, current match, accent, and the success, warning, error and
+  info colors. Each is *Derived* (worked out from the others, shown dimmed) until you click it to
+  override it; *Reset* makes it derived again. The preview shows them all.
+- **In a theme file**, the optional colors are fields such as `"SelectionBackground": "#44475a"`.
+  Leave one out and Ntilde derives it. The full list is in `docs/ThemeSystem.md`.
+- The built-in themes are refreshed when Ntilde updates, which overwrites changes made to their
+  files. To keep a customized built-in theme, save it under a new name.
 
 ---
 
