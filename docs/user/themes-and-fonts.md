@@ -94,7 +94,7 @@ keep the derived color.
 | `SearchMatch` | Search matches | The warning color, partly transparent |
 | `SearchMatchActive` | The current search match | Between the warning and error colors, partly transparent |
 | `Accent` | Buttons, links, the selected tab's marker, the *working* status dot | A softened `Blue` |
-| `Success`, `Warning`, `Error`, `Info` | Status colors in the window: `Warning` for tabs that want attention, `Error` for the recording marker, `Info` for agent activity | A softened `Green`, `Yellow`, `Red`, `Cyan` |
+| `Success`, `Warning`, `Error`, `Info` | Status colors in the window: `Success` for finished transfers, active port forwards and added lines in diffs; `Warning` for tabs that want attention; `Error` for the recording marker and removed lines; `Info` for agent activity | A softened `Green`, `Yellow`, `Red`, `Cyan` |
 
 For example, to give Dracula a pink selection and a purple accent, add to its file:
 
@@ -118,7 +118,8 @@ in Settings → Appearance next time you open it. It does not watch the files: a
 by hand, open Settings and choose the theme again.
 
 An agent connected to Ntilde can check a theme file with `ntilde_validate_theme_json`, which also
-warns when an optional color will be hard to read ([Agents](agents.md)).
+warns when an `Accent`, `Success`, `Warning`, `Error` or `Info` you set will be hard to read
+([Agents](agents.md)).
 
 ## Fonts
 
