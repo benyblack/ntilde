@@ -1,0 +1,71 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import DocsNav from '../../components/DocsNav.astro';
+import meta from '../../docs-meta.json';
+
+// One route per page of the user guide: docs/user/README.md at /docs/, every
+// other page at /docs/<name>/. scripts/sync-docs.mjs copies them in.
+export async function getStaticPaths() {
+  const pages = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+  return pages.map((entry) => ({
+    params: { slug: entry.slug === 'index' ? undefined : entry.slug },
+    props: { entry, pages },
+  }));
+}
+
+const { entry, pages } = Astro.props;
+const { Content } = await entry.render();
+
+const repoUrl = 'https://github.com/benyblack/ntilde';
+const release: string | null = meta.latestRelease;
+const releaseUrl = release ? `${repoUrl}/releases/tag/${release}` : `${repoUrl}/releases`;
+const editUrl = `${repoUrl}/edit/main/docs/user/${entry.data.source}`;
+---
+
+<Base title={entry.data.title} description={entry.data.description}>
+  <div class="container-prose py-10 lg:py-14">
+    <div class="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
+      <aside class="mb-8 lg:mb-0">
+        <details class="docs-nav-mobile lg:hidden">
+          <summary>User guide: {entry.data.navTitle}</summary>
+          <div class="mt-4">
+            <DocsNav pages={pages} current={entry.slug} />
+          </div>
+        </details>
+        <div class="sticky top-24 hidden max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 lg:block">
+          <p class="mb-4 text-xs font-semibold uppercase tracking-wider text-ink-400">User guide</p>
+          <DocsNav pages={pages} current={entry.slug} />
+        </div>
+      </aside>
+
+      <div class="min-w-0">
+        <p class="docs-version-note" role="note">
+          These docs follow the development version of Ntilde, so they can describe things that are
+          not in a release yet.
+          {
+            release ? (
+              <>
+                The latest release is <a href={releaseUrl}>{release}</a>; the{' '}
+                <a href={`${repoUrl}/blob/main/CHANGELOG.md`}>changelog</a> lists what each release
+                includes.
+              </>
+            ) : (
+              <>
+                See the <a href={releaseUrl}>releases</a> for what each version includes.
+              </>
+            )
+          }
+        </p>
+
+        <article class="doc-prose">
+          <Content />
+        </article>
+
+        <p class="mt-12 border-t border-ink-800 pt-6 text-sm text-ink-400">
+          <a href={editUrl}>Edit this page on GitHub</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</Base>

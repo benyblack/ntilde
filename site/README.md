@@ -8,6 +8,25 @@ hosted on GitHub Pages.
 - **Deploy:** GitHub Actions → Pages (see [`.github/workflows/pages.yml`](../.github/workflows/pages.yml))
 - **Canonical screenshots:** [`docs/assets/screenshots/`](../docs/assets/screenshots/)
   — kept in git, synced into the build by `scripts/sync-screenshots.mjs`
+- **User guide:** [`docs/user/`](../docs/user/) — published at `/docs/`, synced
+  into `src/content/docs/` by `scripts/sync-docs.mjs`
+
+## User guide
+
+The pages under `/docs/` are [`docs/user/`](../docs/user/) as it is on `main`;
+edit them there, not in `site/`. `scripts/sync-docs.mjs` copies them into the
+`docs` content collection before every dev server and build, adding the title,
+description and sidebar place (from the order and `##` sections of
+`docs/user/README.md`). The remark plugin in `astro.config.mjs` turns links
+between guide pages into `/docs/<page>/` routes and links to other repository
+files into GitHub URLs.
+
+Because the site follows `main`, every page says that it describes the
+development version and names the latest release: the newest `vX.Y.Z` tag,
+which the Pages workflow finds and passes in `NTILDE_LATEST_RELEASE`. Set it
+yourself to see the same notice locally
+(`NTILDE_LATEST_RELEASE=v0.12.0 npm run dev`); without it, the notice links to
+the releases list.
 
 ## Develop
 
@@ -15,6 +34,7 @@ hosted on GitHub Pages.
 cd site
 npm install
 npm run dev      # http://localhost:4321
+npm run check    # sync the guide, then type-check
 ```
 
 The `predev` hook runs `scripts/sync-screenshots.mjs` automatically, so any
