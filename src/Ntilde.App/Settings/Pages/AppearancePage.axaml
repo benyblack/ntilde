@@ -49,6 +49,14 @@
                             </Border>
                         </StackPanel>
                     </settings:SettingRow>
+                    <settings:SettingRow RowId="minimum-contrast" Title="Minimum contrast"
+                                         Description="Lightens or darkens terminal text that is too close to its background, keeping its hue. For themes whose colors clash with their own background."
+                                         Keywords="readability readable legible accessibility wcag colors colours faint invisible">
+                        <Grid Classes="Wide" ColumnDefinitions="*,Auto">
+                            <Slider Name="MinimumContrastSlider" Minimum="1" Maximum="7" Value="1" TickFrequency="0.5" IsSnapToTickEnabled="True" AutomationProperties.Name="Minimum contrast"/>
+                            <TextBlock Name="MinimumContrastDisplay" Grid.Column="1" Classes="SliderValue" Text="Off"/>
+                        </Grid>
+                    </settings:SettingRow>
                 </settings:SettingGroup>
 
                 <settings:SettingGroup Header="Window">

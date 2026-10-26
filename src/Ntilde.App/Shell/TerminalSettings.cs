@@ -41,6 +41,14 @@ namespace Ntilde.Shell
 
         public bool EnableLigatures { get; set; } = false;
         public bool EnableComplexShaping { get; set; } = true;
+
+        /// <summary>
+        /// The least contrast terminal text keeps against its background, as a WCAG ratio. Text
+        /// below it is lightened or darkened (hue kept) until it reaches it; 1 is off. For themes
+        /// whose palette collides with their own background, such as GitHub Light, where ANSI
+        /// black is the foreground's near twin. Clamped to 1-21 when applied.
+        /// </summary>
+        public double MinimumContrast { get; set; } = 1.0;
         public string CursorStyle { get; set; } = "Underline";
         public bool CursorBlink { get; set; } = true;
         public bool BellAudioEnabled { get; set; } = true;

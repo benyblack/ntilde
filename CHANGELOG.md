@@ -10,6 +10,10 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   bar, Command Assist, Remote Files) now follow the theme, live, and stay readable on light themes.
   A profile with its own theme colors its pane's overlays to match its terminal while the rest of
   the app keeps yours. See [Themes and fonts](docs/user/themes-and-fonts.md).
+- **Minimum contrast.** Settings → Appearance → *Minimum contrast* (off by default) lightens or
+  darkens terminal text that is too close to its background, keeping its hue: for themes whose
+  colors clash with their own background, such as GitHub Light, where a prompt drawn on ANSI black
+  was unreadable. See [Themes and fonts](docs/user/themes-and-fonts.md#minimum-contrast).
 - **Selection, search and the cursor follow the theme.** The fixed blue selection and yellow search
   highlights are gone: they come from the theme, with the text drawn on top so it stays readable. A
   block cursor now shows the character under it.

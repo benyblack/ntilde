@@ -50,7 +50,8 @@ namespace Ntilde.Controls
                 TermView.Typeface.FontFamily.Name,
                 (float)TermView.FontSize,
                 TermView.EnableLigatures,
-                TermView.EnableComplexShaping));
+                TermView.EnableComplexShaping,
+                TermView.MinimumContrast));
         }
 
         // ------------------------------------------------------------- Agent Output panel

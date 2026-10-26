@@ -40,6 +40,7 @@ quits ([Closing the window](persistent-sessions.md#closing-the-window)).
 | Setting | Key | Default | What it does |
 |---|---|---|---|
 | Theme | `ThemeName` | `Default` | Colors for the terminal and for the window. **Edit**, **Import…** and **+ New** sit beside it ([Themes and fonts](themes-and-fonts.md)). |
+| Minimum contrast | `MinimumContrast` | Off (1) | Off, or 1.5:1 to 7:1 (the file accepts up to 21). Terminal text closer to its background than this is lightened or darkened, keeping its hue ([Themes and fonts](themes-and-fonts.md#minimum-contrast)). |
 | Window opacity | `WindowOpacity` | 1.0 | 0.2 to 1.0. Applies while the window is focused. |
 | Interface scale | `UiScale` | 100% | 80% to 200%. Zooms tabs, sidebars, dialogs and Settings; the terminal grows with it, on top of its font size. The Settings window itself uses the new scale the next time it opens. |
 | Blur effect | `BlurEffect` | `Acrylic` | `Acrylic`, `Mica` or `None`, where the operating system supports them. |

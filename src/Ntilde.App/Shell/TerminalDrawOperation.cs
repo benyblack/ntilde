@@ -48,6 +48,11 @@ namespace Ntilde.Shell
         private readonly int _bufferCols;
         private readonly RowImageCache? _rowCache;
         private readonly bool _enableComplexShaping;
+        private readonly double _minimumContrast;
+
+        // Per frame: a run's (foreground, background) pair resolves the same way every time, and a
+        // screen has few distinct pairs, so the lightness search runs once per pair.
+        private Dictionary<(uint Fg, uint Bg, uint Overlay), SKColor>? _contrastAdjusted;
         private readonly GlyphCache? _glyphCache;
         private readonly int _cellWidthDevicePx;
         private readonly int _cellHeightDevicePx;
@@ -215,7 +220,8 @@ namespace Ntilde.Shell
             bool enableComplexShaping = true,
             GlyphCache? glyphCache = null,
             bool showRenderHud = false,
-            bool isolatedSnapshot = false)
+            bool isolatedSnapshot = false,
+            double minimumContrast = 1.0)
         {
             _bounds = bounds;
             _buffer = buffer;
@@ -241,6 +247,7 @@ namespace Ntilde.Shell
             _bufferCols = snapshotCols;
             _rowCache = rowCache;
             _enableComplexShaping = enableComplexShaping;
+            _minimumContrast = minimumContrast;
             _glyphCache = glyphCache;
             _showRenderHud = showRenderHud;
             _isolatedSnapshot = isolatedSnapshot;
@@ -745,7 +752,7 @@ namespace Ntilde.Shell
                 // just drawn on top of it, so a selection, search match or block cursor is a fill
                 // under the glyphs rather than a veil over them: a theme's explicit selection color
                 // is usually opaque. Backgrounds are not redrawn; the overlay is the background.
-                void RedrawTextOver(int r, int colStart, int colEndExclusive, SKColor? foregroundOverride)
+                void RedrawTextOver(int r, int colStart, int colEndExclusive, SKColor? foregroundOverride, SKColor? overlayFill = null)
                 {
                     if (renderSnapshot.RowsData.Array == null || r < 0 || r >= renderSnapshot.RowsData.Length)
                     {
@@ -774,7 +781,8 @@ namespace Ntilde.Shell
                         drawBackgrounds: false,
                         spanColStart: colStart,
                         spanColEndExclusive: colEndExclusive,
-                        foregroundOverride: foregroundOverride);
+                        foregroundOverride: foregroundOverride,
+                        overlayFill: overlayFill);
                 }
 
                 // Pass 4: Overlays (Selection / Search)
@@ -802,7 +810,7 @@ namespace Ntilde.Shell
                         float x2 = GetColEdge(colEdges, sel.ColEnd + 1, paddingLeft);
                         canvas.DrawRect(x1, y, x2 - x1, rowHeight, selectionPaint);
                         IncrementRectDrawCall();
-                        RedrawTextOver(r, sel.ColStart, sel.ColEnd + 1, selectionForeground);
+                        RedrawTextOver(r, sel.ColStart, sel.ColEnd + 1, selectionForeground, selectionPaint.Color);
                         selTemp++;
                     }
 
@@ -821,7 +829,7 @@ namespace Ntilde.Shell
                         float x2 = GetColEdge(colEdges, m.EndCol + 1, paddingLeft);
                         canvas.DrawRect(x1, y, x2 - x1, rowHeight, p);
                         IncrementRectDrawCall();
-                        RedrawTextOver(r, m.StartCol, m.EndCol + 1, foregroundOverride: null);
+                        RedrawTextOver(r, m.StartCol, m.EndCol + 1, foregroundOverride: null, overlayFill: p.Color);
                         tempIdx++;
                     }
                 }
@@ -1209,7 +1217,8 @@ namespace Ntilde.Shell
             bool drawBackgrounds,
             int spanColStart = 0,
             int spanColEndExclusive = int.MaxValue,
-            SKColor? foregroundOverride = null)
+            SKColor? foregroundOverride = null,
+            SKColor? overlayFill = null)
         {
             const float paddingLeft = 4f;
             int cellsRendered = 0;
@@ -1264,8 +1273,8 @@ namespace Ntilde.Shell
                     bool runIsUnderline = cell.IsUnderline;
                     bool runIsStrikethrough = cell.IsStrikethrough;
                     bool runIsFaint = cell.IsFaint;
-                    var fg = cell.IsInverse ? cb : cf;
                     var bg = cell.IsInverse ? cf : cb;
+                    var fg = EnforceMinimumContrast(cell.IsInverse ? cb : cf, bg, overlayFill);
                     if (runIsFaint)
                     {
                         fg = BlendTowards(fg, bg, 0.5f);
@@ -1295,8 +1304,8 @@ namespace Ntilde.Shell
 
                         var ncb = ResolveCellBackground(next, themeBg, alpha, themeSnapshot);
                         var ncf = ResolveCellForeground(next, themeFg, alpha, themeSnapshot);
-                        var nfg = next.IsInverse ? ncb : ncf;
                         var nbg = next.IsInverse ? ncf : ncb;
+                        var nfg = EnforceMinimumContrast(next.IsInverse ? ncb : ncf, nbg, overlayFill);
                         if (next.IsFaint)
                         {
                             nfg = BlendTowards(nfg, nbg, 0.5f);
@@ -2929,6 +2938,74 @@ namespace Ntilde.Shell
             byte b = (byte)(source.Blue + ((target.Blue - source.Blue) * t));
             return new SKColor(r, g, b, source.Alpha);
         }
+
+        /// <summary>
+        /// The Minimum contrast setting: a foreground under the ratio against what it is drawn on
+        /// moves in lightness, hue kept, until it reaches it. "What it is drawn on" is the cell's
+        /// background, or for text redrawn over a selection or search match, that fill composited
+        /// onto it. Applied before faint, so faint text stays dimmer than its neighbours.
+        /// </summary>
+        private SKColor EnforceMinimumContrast(SKColor fg, SKColor bg, SKColor? overlayFill = null)
+        {
+            if (_minimumContrast <= 1.0)
+            {
+                return fg;
+            }
+
+            var key = ((uint)fg, (uint)bg, overlayFill is { } o ? (uint)o : 0u);
+            _contrastAdjusted ??= new Dictionary<(uint Fg, uint Bg, uint Overlay), SKColor>();
+            if (_contrastAdjusted.TryGetValue(key, out var cached))
+            {
+                return cached;
+            }
+
+            var text = Color.FromArgb(0xFF, fg.Red, fg.Green, fg.Blue);
+            var surface = Color.FromArgb(0xFF, bg.Red, bg.Green, bg.Blue);
+            if (overlayFill is { } fill)
+            {
+                surface = ThemeColorMath.Composite(Color.FromArgb(fill.Alpha, fill.Red, fill.Green, fill.Blue), surface);
+            }
+
+            var adjusted = ThemeColorMath.Contrast(text, surface) >= _minimumContrast
+                ? fg
+                : WithSkAlpha(ReachContrast(text, surface, _minimumContrast), fg.Alpha);
+            _contrastAdjusted[key] = adjusted;
+            return adjusted;
+        }
+
+        /// <summary>
+        /// The smallest lightness move, up or down, that reaches <paramref name="target"/>; if
+        /// neither direction can, the direction that gets closest. Both are tried because a
+        /// luma rule mis-sides saturated colors: on pure red, which it calls dark, lightening tops
+        /// out at 4:1 while darkening reaches 5.25:1.
+        /// </summary>
+        private static Color ReachContrast(Color text, Color surface, double target)
+        {
+            Color best = text;
+            double bestRatio = ThemeColorMath.Contrast(text, surface);
+            for (int step = 1; step <= 100; step++)
+            {
+                double delta = step / 100.0;
+                foreach (var candidate in new[] { ThemeColorMath.ShiftLightness(text, delta), ThemeColorMath.ShiftLightness(text, -delta) })
+                {
+                    double ratio = ThemeColorMath.Contrast(candidate, surface);
+                    if (ratio >= target)
+                    {
+                        return candidate;
+                    }
+
+                    if (ratio > bestRatio)
+                    {
+                        best = candidate;
+                        bestRatio = ratio;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        private static SKColor WithSkAlpha(Color color, byte alpha) => new(color.R, color.G, color.B, alpha);
 
         private static SKColor EnsureReadableForeground(SKColor fg, SKColor bg, SKColor fallback)
         {

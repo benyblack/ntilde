@@ -24,6 +24,7 @@ namespace Ntilde.Tests.Infra
         public SelectionState? Selection { get; init; }
         public bool HideCursor { get; init; }
         public bool EnableLigatures { get; init; }
+        public double MinimumContrast { get; init; } = 1.0;
         public bool EnableComplexShaping { get; init; } = true;
         /// <summary>
         /// Tri-state primitive overrides. <c>null</c> uses the shipping default, <c>true</c> forces the
@@ -102,6 +103,7 @@ namespace Ntilde.Tests.Infra
             HideCursor = options.HideCursor,
             EnableLigatures = options.EnableLigatures,
             EnableComplexShaping = options.EnableComplexShaping,
+            MinimumContrast = options.MinimumContrast,
             RenderScaling = options.RenderScaling,
             TypefaceFamily = options.TypefaceFamily,
             FontSize = options.FontSize,

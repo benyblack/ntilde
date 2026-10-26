@@ -497,6 +497,7 @@ namespace Ntilde.AgentHost
                 FontSize = parameters.FontSize,
                 EnableLigatures = parameters.EnableLigatures,
                 EnableComplexShaping = parameters.EnableComplexShaping,
+                MinimumContrast = parameters.MinimumContrast,
 
                 // Follows the buffer's cursor mode, never the control's blink
                 // phase or focus: a blinking cursor would make consecutive

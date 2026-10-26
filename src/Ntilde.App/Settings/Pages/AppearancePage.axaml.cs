@@ -129,6 +129,7 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
     {
         ArgumentNullException.ThrowIfNull(target);
         target.WindowOpacity = Slider("WindowOpacitySlider").Value;
+        target.MinimumContrast = CollectMinimumContrast();
         target.UiScale = UiScale.Clamp(Slider("UiScaleSlider").Value);
         if (Combo("ThemeList").SelectedItem is ComboBoxItem themeItem)
         {
@@ -187,6 +188,11 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
         TerminalSettings settings = Session.Settings;
         Slider("WindowOpacitySlider").Value = settings.WindowOpacity;
         Text("OpacityValueDisplay").Text = FormatPercent(settings.WindowOpacity);
+        // The slider tops out at 7:1, the file at 21:1. Remember what is stored, so loading a
+        // higher value and saving without touching the slider keeps it rather than writing 7.
+        _storedMinimumContrast = settings.MinimumContrast;
+        Slider("MinimumContrastSlider").Value = settings.MinimumContrast;
+        Text("MinimumContrastDisplay").Text = FormatContrast(settings.MinimumContrast);
         Slider("UiScaleSlider").Value = UiScale.Clamp(settings.UiScale);
         Text("UiScaleValueDisplay").Text = FormatUiScale(Slider("UiScaleSlider").Value);
         this.FindControl<TextBox>("BgImagePathInput")!.Text = settings.BackgroundImagePath;
@@ -656,8 +662,32 @@ public partial class AppearancePage : UserControl, ISettingsPage, IHasSubPage
 
     // ── Window ────────────────────────────────────────────────────────────────
 
+    private double _storedMinimumContrast = 1.0;
+
+    /// <summary>The slider's ratio, or the stored one while the slider still shows it clamped.</summary>
+    private double CollectMinimumContrast()
+    {
+        var slider = Slider("MinimumContrastSlider");
+        double shownForStored = Math.Clamp(_storedMinimumContrast, slider.Minimum, slider.Maximum);
+        return Math.Abs(slider.Value - shownForStored) < 0.001 ? _storedMinimumContrast : slider.Value;
+    }
+
+    /// <summary>"Off" at 1:1, else the ratio, as WCAG writes it ("4.5:1").</summary>
+    internal static string FormatContrast(double ratio)
+        => ratio <= 1.0 ? "Off" : ratio.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + ":1";
+
     private void WireWindowRows()
     {
+        var contrast = Slider("MinimumContrastSlider");
+        var contrastDisplay = Text("MinimumContrastDisplay");
+        contrast.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == RangeBase.ValueProperty)
+            {
+                contrastDisplay.Text = FormatContrast(CollectMinimumContrast());
+            }
+        };
+
         var opacity = Slider("WindowOpacitySlider");
         var opacityDisplay = Text("OpacityValueDisplay");
         opacity.PropertyChanged += (_, e) =>
