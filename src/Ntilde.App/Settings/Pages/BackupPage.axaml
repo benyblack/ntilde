@@ -15,7 +15,7 @@
                 <Button Name="BtnBackupImport" Classes="Pill" Content="Import…"/>
             </StackPanel>
 
-            <TextBlock Name="BackupStatusText" Text="" Foreground="{DynamicResource NtGreen}" FontSize="11" Margin="0,0,0,10"/>
+            <TextBlock Name="BackupStatusText" Text="" Foreground="{DynamicResource NtSuccess}" FontSize="11" Margin="0,0,0,10"/>
 
             <Border BorderBrush="{DynamicResource NtHairline}" BorderThickness="0,0,0,1" Margin="0,14,0,14"/>
 

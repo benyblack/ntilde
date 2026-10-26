@@ -8,6 +8,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia.Controls.Presenters;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Platform;
 using Ntilde.VT;
 using Ntilde.Rendering;
@@ -533,7 +534,6 @@ namespace Ntilde
                 return;
             }
 
-            connManager.ApplyTheme(_settings.ActiveTheme);
             connManager.SavedPasswordAccess = Vault;
             connManager.OnQuickOpenRequested += (profile, target, diagnosticsLevel) =>
             {
@@ -2872,7 +2872,9 @@ namespace Ntilde
             var contrast = theme.GetContrastForeground();
             dialog.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
             dialog.Foreground = new SolidColorBrush(contrast.ToAvaloniaColor());
-            dialog.RequestedThemeVariant = contrast == TermColor.Black ? ThemeVariant.Light : ThemeVariant.Dark;
+            // ThemeService's classification, so a dialog never picks the other Fluent palette from
+            // the app at the luminance boundary (GetContrastForeground rounds 0.5 the other way).
+            dialog.RequestedThemeVariant = ThemeService.Current.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
         }
 
         private async Task RenameSelectedTabAsync()
@@ -8846,6 +8848,11 @@ namespace Ntilde
         {
             var theme = _settings.ActiveTheme;
 
+            // App-wide tokens, the Fluent palette and the variant come first. Every DynamicResource
+            // consumer (Settings, Connection Manager, Agent Output, stock controls) updates from this
+            // one call. The imperative per-control code below moves onto tokens in phase 2.
+            ThemeService.Apply(theme, _settings.WindowOpacity);
+
             // Background brush for the main content area
             var bgBrush = new SolidColorBrush(theme.Background.ToAvaloniaColor(), _settings.WindowOpacity);
 
@@ -8885,7 +8892,8 @@ namespace Ntilde
 
             // Set the window theme variant to ensure OS caption buttons (Min/Max/Close)
             // adapt to the background brightness (Dark background -> Light buttons, Light background -> Dark buttons).
-            this.RequestedThemeVariant = contrastColor == TermColor.Black ? ThemeVariant.Light : ThemeVariant.Dark;
+            // Classified by ThemeService (applied above), so the window and the app agree on the variant.
+            this.RequestedThemeVariant = ThemeService.Current.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
 
             // Apply to Window Foreground (inherited by many controls)
             this.Foreground = contrastForeground;
@@ -8909,7 +8917,6 @@ namespace Ntilde
                 dragBorder.Background = headerBrush;
             }
 
-            _connectionManagerWindow?.ApplyTheme(theme);
             UpdateFocusStrip();
         }
 

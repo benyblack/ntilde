@@ -16,6 +16,7 @@ using Ntilde.Controls;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell.Shortcuts;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Tests.Core;
 
@@ -76,7 +77,7 @@ public sealed class SettingsWindowSearchTests
             Assert.Equal(string.Empty, Box(window).Text);
             Assert.True(window.FindControl<Panel>("PageHost")!.IsVisible);
             SettingRow row = window.GetPage<TerminalPage>().GetLogicalDescendants().OfType<SettingRow>().Single(r => r.RowId == "scrollback");
-            Assert.Same(window.FindResource("NtBlueDim"), row.Background);
+            Assert.Same(window.FindResource(ThemeKeys.AccentDim), row.Background);
         }
         finally
         {
@@ -1164,11 +1165,11 @@ public sealed class SettingsWindowSearchTests
             MatchHighlightTextBlock title = selected.GetVisualDescendants().OfType<MatchHighlightTextBlock>().Single();
             var match = title.Inlines!.OfType<Run>().Single(run => run.Text == "opacity");
             Assert.Equal(FontWeight.Bold, match.FontWeight);
-            Assert.Same(window.FindResource("NtFg"), title.Foreground);
+            Assert.Same(window.FindResource(ThemeKeys.Fg), title.Foreground);
             Assert.Same(title.Foreground, match.Foreground); // inherited, not an accent of its own
 
             ContentPresenter presenter = selected.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
-            Assert.Same(window.FindResource("NtBlue"), presenter.BorderBrush);
+            Assert.Same(window.FindResource(ThemeKeys.Accent), presenter.BorderBrush);
             Assert.Equal(new Thickness(2, 0, 0, 0), presenter.BorderThickness);
         }
         finally

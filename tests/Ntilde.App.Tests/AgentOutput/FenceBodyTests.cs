@@ -58,16 +58,16 @@ public sealed class FenceBodyTests
     }
 
     [AvaloniaTheory]
-    [InlineData("+added line", "NtGreen")]
-    [InlineData("-removed line", "NtRed")]
-    [InlineData("@@ -1,2 +1,3 @@", "NtYellow")]
+    [InlineData("+added line", "Added")]
+    [InlineData("-removed line", "Removed")]
+    [InlineData("@@ -1,2 +1,3 @@", "Hunk")]
     [InlineData("+++ b/file.cs", "Secondary")]
     [InlineData("--- a/file.cs", "Secondary")]
     [InlineData("diff --git a/x b/x", "Secondary")]
     [InlineData("index 1234567..89abcde 100644", "Secondary")]
     [InlineData(" context line", "Foreground")]
-    [InlineData("+++counter;", "NtGreen")]
-    [InlineData("---x;", "NtRed")]
+    [InlineData("+++counter;", "Added")]
+    [InlineData("---x;", "Removed")]
     [InlineData("+++", "Secondary")]
     [InlineData("---", "Secondary")]
     public void DiffHandler_ColorsLinesByMarker(string line, string expectedRole)
@@ -108,18 +108,18 @@ internal static class MarkdownThemeProbe
     {
         ["Foreground"] = new SolidColorBrush(Color.FromRgb(1, 1, 1)),
         ["Secondary"] = new SolidColorBrush(Color.FromRgb(2, 2, 2)),
-        ["NtGreen"] = new SolidColorBrush(Color.FromRgb(3, 3, 3)),
-        ["NtRed"] = new SolidColorBrush(Color.FromRgb(4, 4, 4)),
-        ["NtYellow"] = new SolidColorBrush(Color.FromRgb(5, 5, 5)),
+        ["Added"] = new SolidColorBrush(Color.FromRgb(3, 3, 3)),
+        ["Removed"] = new SolidColorBrush(Color.FromRgb(4, 4, 4)),
+        ["Hunk"] = new SolidColorBrush(Color.FromRgb(5, 5, 5)),
     };
 
     internal static IBrush BrushFor(MarkdownTheme theme, string role) => role switch
     {
         "Foreground" => theme.Foreground,
         "Secondary" => theme.Secondary,
-        "NtGreen" => theme.Added,
-        "NtRed" => theme.Removed,
-        "NtYellow" => theme.Hunk,
+        "Added" => theme.Added,
+        "Removed" => theme.Removed,
+        "Hunk" => theme.Hunk,
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "unknown role"),
     };
 
@@ -131,8 +131,8 @@ internal static class MarkdownThemeProbe
         PanelBackground = new SolidColorBrush(Color.FromRgb(7, 7, 7)),
         Hairline = new SolidColorBrush(Color.FromRgb(8, 8, 8)),
         Accent = new SolidColorBrush(Color.FromRgb(9, 9, 9)),
-        Added = Roles["NtGreen"],
-        Removed = Roles["NtRed"],
-        Hunk = Roles["NtYellow"],
+        Added = Roles["Added"],
+        Removed = Roles["Removed"],
+        Hunk = Roles["Hunk"],
     };
 }

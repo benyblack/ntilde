@@ -8,6 +8,7 @@ using Ntilde.Controls;
 using Ntilde.Settings;
 using Ntilde.Shell;
 using SkiaSharp;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Tests.Core;
 
@@ -144,7 +145,7 @@ public sealed class SettingsScreenshotHarness
     private static void CaptureConnectionManager(string output, string slug, string themeName, List<string> written)
     {
         var manager = new ConnectionManager();
-        manager.ApplyTheme(new ThemeManager().GetTheme(themeName));
+        ThemeService.Apply(new ThemeManager().GetTheme(themeName), 1.0);
         var host = new Window { Width = 1080, Height = 720, Content = manager };
         try
         {

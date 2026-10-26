@@ -26,7 +26,7 @@
                          a Border's own role is "none". -->
                     <Border Name="TitleBarPreview" Classes="MiniTitleBar" AutomationProperties.Name="Title bar preview"
                             AutomationProperties.ControlTypeOverride="Image"/>
-                    <TextBlock Name="TitleBarValidationMessage" Foreground="{DynamicResource NtRed}" FontSize="12" IsVisible="False" TextWrapping="Wrap"/>
+                    <TextBlock Name="TitleBarValidationMessage" Foreground="{DynamicResource NtError}" FontSize="12" IsVisible="False" TextWrapping="Wrap"/>
                     <StackPanel Name="TitleBarItemsPanel" Grid.IsSharedSizeScope="True"/>
                 </StackPanel>
             </settings:SettingGroup>

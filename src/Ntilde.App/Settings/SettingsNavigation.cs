@@ -7,6 +7,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Settings;
 
@@ -52,7 +53,7 @@ public static class SettingsNavigation
     {
         ArgumentNullException.ThrowIfNull(target);
         StyledProperty<IBrush?>? background = BackgroundPropertyOf(target);
-        if (background is null || target.FindResource("NtBlueDim") is not IBrush highlight)
+        if (background is null || target.FindResource(ThemeKeys.AccentDim) is not IBrush highlight)
         {
             return;
         }

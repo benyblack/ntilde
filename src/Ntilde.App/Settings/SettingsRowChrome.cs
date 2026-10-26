@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Settings;
 
@@ -14,7 +15,7 @@ internal static class SettingsRowChrome
 
     internal static Border CreateRow(Control owner, Control content) => new()
     {
-        BorderBrush = owner.FindPaletteBrush("NtHairline"),
+        BorderBrush = owner.FindPaletteBrush(ThemeKeys.Hairline),
         BorderThickness = new Thickness(0, 0, 0, 1),
         Padding = RowPadding,
         Child = content,

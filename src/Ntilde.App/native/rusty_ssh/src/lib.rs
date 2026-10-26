@@ -310,6 +310,10 @@ struct SharedState {
     // forwarded-tcpip channels for listeners the client asked it for (RFC 4254 §7.2); until the
     // first request is made, any such open is unsolicited and is refused at the handler.
     remote_forward_requested: AtomicBool,
+    // Set by the first `finish`. A shared connection's shell can be finished from two places at once
+    // (its own task, and the connection's teardown sweeping the shells it still owns), and the
+    // managed side must see exactly one Closed.
+    finished: AtomicBool,
 }
 
 struct QueuedEvent {
@@ -404,6 +408,14 @@ enum WorkerCommand {
     },
     CloseForwardChannel {
         channel_id: u32,
+    },
+    /// Shared connections only: open a shell channel for the session nova_ssh_open_shell just
+    /// registered. `shared` and `commands` are that session's, so its events and its writes never
+    /// touch the connection's own queue.
+    OpenShell {
+        config: ConnectConfig,
+        shared: Arc<SharedState>,
+        commands: mpsc::UnboundedReceiver<WorkerCommand>,
     },
     Close,
 }
@@ -525,6 +537,30 @@ struct NovaClientHandler {
     /// session's handler. Jump hops carry None: only the target session ever requests a remote
     /// forward, so a hop server opening a forwarded channel is unsolicited and gets refused.
     forward_channels: Option<ForwardChannels>,
+    /// Signalled when the session's transport ends, present only on a shared connection's target
+    /// handler. A shared connection has no main channel whose end would say so, and its shells must
+    /// not outlive it.
+    connection_lost: Option<Arc<ConnectionLost>>,
+}
+
+/// How a shared connection's worker learns that the transport under it has gone: the handler's
+/// `disconnected` callback records why and wakes the worker.
+#[derive(Default)]
+struct ConnectionLost {
+    notify: tokio::sync::Notify,
+    reason: Mutex<Option<String>>,
+}
+
+impl ConnectionLost {
+    fn signal(&self, reason: Option<String>) {
+        *self.reason.lock().unwrap_or_else(|e| e.into_inner()) = reason;
+        // notify_one stores a permit, so a worker not yet parked in notified() still sees it.
+        self.notify.notify_one();
+    }
+
+    fn reason(&self) -> Option<String> {
+        self.reason.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
 }
 
 /// Payload of a ForwardChannelIncoming event: which remote listener the connection arrived on
@@ -855,7 +891,37 @@ impl SharedState {
             queued_data_bytes: AtomicUsize::new(0),
             event_space_notify: tokio::sync::Notify::new(),
             remote_forward_requested: AtomicBool::new(false),
+            finished: AtomicBool::new(false),
         }
+    }
+
+    /// Ends the session the way every worker does: an Error event when there is a failure to report,
+    /// then Closed, then mark_closed (in that order: queue_event drops events once closed). Only the
+    /// first call does anything.
+    fn finish(&self, error: Option<&str>) {
+        if self.finished.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        if let Some(message) = error {
+            self.queue_event(QueuedEvent {
+                kind: NovaSshEventKind::Error,
+                payload: serde_json::to_vec(&ErrorPayload { message }).unwrap_or_default(),
+                status_code: -1,
+                flags: NOVA_SSH_EVENT_FLAG_JSON,
+            });
+        }
+
+        self.queue_event(QueuedEvent {
+            kind: NovaSshEventKind::Closed,
+            payload: serde_json::to_vec(&ClosedPayload {
+                reason: "session-ended",
+            })
+            .unwrap_or_default(),
+            status_code: 0,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
+        });
+        self.mark_closed();
     }
 
     /// Marked before the tcpip-forward request is sent, not after its reply: a server that opens
@@ -1116,6 +1182,27 @@ impl SharedState {
 impl client::Handler for NovaClientHandler {
     type Error = russh::Error;
 
+    /// Russh's default, plus telling a shared connection's worker. An error is re-returned, as the
+    /// trait asks, so the session task's join still sees it.
+    fn disconnected(
+        &mut self,
+        reason: client::DisconnectReason<Self::Error>,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
+        let connection_lost = self.connection_lost.clone();
+        async move {
+            let (message, result) = match reason {
+                client::DisconnectReason::ReceivedDisconnect(_) => (None, Ok(())),
+                client::DisconnectReason::Error(error) => {
+                    (Some(format!("connection lost: {error}")), Err(error))
+                }
+            };
+            if let Some(connection_lost) = connection_lost {
+                connection_lost.signal(message);
+            }
+            result
+        }
+    }
+
     /// The server opened a channel for a connection that arrived on a remote-forward listener.
     /// Wire it into the forward machinery and announce it; the managed side matches the
     /// announcement to its forward rule and dials the local destination. Runs on the session
@@ -1342,6 +1429,356 @@ fn spawn_session(config: ConnectConfig, mode: SessionMode) -> usize {
     };
 
     registry_insert(session) as usize
+}
+
+/// Starts a shared connection: the connect, jump chain, host-key and auth prompts of
+/// nova_ssh_connect, but no channel of its own. Shells join it with nova_ssh_open_shell, each with
+/// its own handle and event queue, and none of them logs in again. Returns a non-zero handle, or 0
+/// when `args` is rejected as nova_ssh_connect rejects it; the terminal and shell fields are
+/// validated but unused.
+///
+/// The connection's own poll events are the prompts, Connected, the forward-channel events, and
+/// Error and Closed. Port forwards belong to it, not to any shell: nova_ssh_open_direct_tcpip,
+/// nova_ssh_request_remote_forward and the nova_ssh_channel_* calls take this handle, and the
+/// forwards outlive every shell that comes and goes. nova_ssh_write, nova_ssh_resize and
+/// nova_ssh_send_eof are accepted and ignored: there is no main channel.
+///
+/// The connection ends when nova_ssh_close is called or its transport goes (a keepalive timeout,
+/// the server disconnecting). Either way every shell still open on it gets Closed, after an Error
+/// naming the loss when there was one. Release the handle with nova_ssh_close, exactly once.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_connect_shared(args: *const NovaSshConnectArgs) -> usize {
+    ffi_guard(0, || match ConnectConfig::from_args(args) {
+        Some(config) => spawn_connection(config),
+        None => 0,
+    })
+}
+
+/// Opens a PTY shell on the shared connection `connection` (from nova_ssh_connect_shared). The
+/// shell's terminal and shell fields come from `args` (size, term, shell kind, detection command,
+/// cwd bootstraps); its connection fields are validated but unused, since the connection already
+/// has its destination and credentials.
+///
+/// Returns a non-zero handle at once, or 0 when `args` is rejected or `connection` is unknown,
+/// closed or no longer running. A shell opened while the connection is still connecting waits
+/// for it, so the prompts happen once, on the connection's handle. The shell's events are those
+/// of a nova_ssh_connect session from Connected on: Connected when its channel is open, Data,
+/// ExitStatus, Error and Closed. A connection that fails or is lost fails its shells with an Error
+/// and Closed. Release the handle with nova_ssh_close, exactly once; closing a shell never closes
+/// the connection.
+#[unsafe(no_mangle)]
+pub extern "C" fn nova_ssh_open_shell(connection: usize, args: *const NovaSshConnectArgs) -> usize {
+    ffi_guard(0, || {
+        let Some(config) = ConnectConfig::from_args(args) else {
+            return 0;
+        };
+        let Some(connection) = registry_get(connection) else {
+            return 0;
+        };
+
+        let shared = Arc::new(SharedState::new());
+        let (command_tx, command_rx) = mpsc::unbounded_channel();
+        let open = WorkerCommand::OpenShell {
+            config,
+            shared: shared.clone(),
+            commands: command_rx,
+        };
+        // A worker that has finished closed its receiver, so the send fails here instead of the
+        // shell waiting for a connection that is never coming.
+        if send_command(&connection, open) != NOVA_SSH_RESULT_OK {
+            return 0;
+        }
+
+        // No thread of its own: the shell runs as a task on the connection's worker.
+        registry_insert(NovaSshSession {
+            shared,
+            command_tx: Mutex::new(Some(command_tx)),
+            worker: Mutex::new(None),
+        }) as usize
+    })
+}
+
+/// Spawns a shared connection's worker and registers its handle, like spawn_session.
+fn spawn_connection(config: ConnectConfig) -> usize {
+    let shared = Arc::new(SharedState::new());
+    let (command_tx, command_rx) = mpsc::unbounded_channel();
+    let worker_shared = shared.clone();
+    let worker = thread::spawn(move || {
+        let error = run_connection(config, worker_shared.clone(), command_rx)
+            .err()
+            .map(|error| error.to_string());
+        worker_shared.finish(error.as_deref());
+    });
+
+    registry_insert(NovaSshSession {
+        shared,
+        command_tx: Mutex::new(Some(command_tx)),
+        worker: Mutex::new(Some(worker)),
+    }) as usize
+}
+
+/// A shell on a shared connection, as the connection worker tracks it: enough to fail it when the
+/// connection goes, and to wait for it to finish first.
+struct SharedShell {
+    shared: Arc<SharedState>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+/// The shared connection's worker: establish the connection, then serve shells and forwards until
+/// it is closed or lost. Shells queued before the connection was up are served once it is; a
+/// connection that never comes up fails them with its own error.
+fn run_connection(
+    config: ConnectConfig,
+    shared: Arc<SharedState>,
+    mut command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
+) -> anyhow::Result<()> {
+    let runtime = Builder::new_current_thread().enable_all().build()?;
+    runtime.block_on(async move {
+        let forward_channels = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+        let client_config = Arc::new(build_client_config(&config));
+        let connection_lost = Arc::new(ConnectionLost::default());
+
+        // Raced against nova_ssh_close, like run_session's establishment (#155).
+        let established = tokio::select! {
+            result = establish_connection(
+                &config,
+                &shared,
+                client_config,
+                forward_channels.clone(),
+                Some(connection_lost.clone()),
+            ) => result,
+            _ = shared.wait_closed() => {
+                fail_pending_shells(&mut command_rx, "the shared SSH connection was closed");
+                return Ok(());
+            }
+        };
+        let (jump_sessions, session) = match established {
+            Ok(established) => established,
+            Err(error) => {
+                fail_pending_shells(&mut command_rx, &error.to_string());
+                return Err(error);
+            }
+        };
+        // Shells open their channels from tasks of their own, so they need the handle too. Only
+        // &self methods are left to call on it now that authentication is done.
+        let session = Arc::new(session);
+
+        shared.queue_event(QueuedEvent {
+            kind: NovaSshEventKind::Connected,
+            payload: serde_json::to_vec(&ConnectedPayload {
+                host: &config.host,
+                port: config.port,
+                user: &config.user,
+            })?,
+            status_code: 0,
+            flags: NOVA_SSH_EVENT_FLAG_JSON,
+        });
+
+        let mut shells: Vec<SharedShell> = Vec::new();
+        let mut lost: Option<String> = None;
+        loop {
+            tokio::select! {
+                command = command_rx.recv() => {
+                    match command {
+                        Some(WorkerCommand::OpenShell { config, shared: shell_shared, commands }) => {
+                            shells.retain(|shell| !shell.task.is_finished());
+                            let task = tokio::spawn(run_shared_shell(
+                                session.clone(),
+                                config,
+                                shell_shared.clone(),
+                                commands,
+                            ));
+                            shells.push(SharedShell { shared: shell_shared, task });
+                        }
+                        Some(WorkerCommand::OpenDirectTcpIp {
+                            host_to_connect,
+                            port_to_connect,
+                            originator_address,
+                            originator_port,
+                            reply,
+                        }) => {
+                            let result = open_direct_tcpip_channel(
+                                &session,
+                                forward_channels.clone(),
+                                shared.clone(),
+                                host_to_connect,
+                                port_to_connect,
+                                originator_address,
+                                originator_port,
+                            )
+                            .await;
+                            let _ = reply.send(result);
+                        }
+                        Some(WorkerCommand::RequestRemoteForward { address, port, reply }) => {
+                            shared.mark_remote_forward_requested();
+                            let result = session
+                                .tcpip_forward(address, port)
+                                .await
+                                .map(|reported| resolved_remote_forward_port(port, reported))
+                                .map_err(anyhow::Error::from);
+                            let _ = reply.send(result);
+                        }
+                        Some(WorkerCommand::WriteForwardChannel { channel_id, data }) => {
+                            write_forward_channel(&forward_channels, channel_id, data).await;
+                        }
+                        Some(WorkerCommand::ForwardChannelEof { channel_id }) => {
+                            send_forward_channel_eof(&forward_channels, channel_id).await;
+                        }
+                        Some(WorkerCommand::CloseForwardChannel { channel_id }) => {
+                            close_forward_channel(&forward_channels, channel_id).await;
+                        }
+                        // No main channel to write to, resize, or end.
+                        Some(WorkerCommand::Write(_))
+                        | Some(WorkerCommand::SendEof)
+                        | Some(WorkerCommand::Resize { .. }) => {}
+                        Some(WorkerCommand::Close) | None => break,
+                    }
+                }
+                _ = connection_lost.notify.notified() => {
+                    lost = Some(
+                        connection_lost
+                            .reason()
+                            .unwrap_or_else(|| "the server closed the shared SSH connection".to_owned()),
+                    );
+                    break;
+                }
+            }
+        }
+
+        // Nothing may join a connection that is going away.
+        fail_pending_shells(&mut command_rx, "the shared SSH connection was closed");
+        close_all_forward_channels(&forward_channels).await;
+        let _ = session
+            .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
+            .await;
+        for jump in jump_sessions.into_iter().rev() {
+            let _ = jump
+                .disconnect(Disconnect::ByApplication, "Closed by Ntilde", "en")
+                .await;
+        }
+
+        // The disconnect ends every shell's channel, and their tasks finish on their own. Bounded,
+        // like the forward drain, because nova_ssh_close joins this thread (#155). A shell still
+        // running after that is dropped with the runtime, so it is finished here instead: whatever
+        // happens, every shell's handle sees Closed.
+        let message = lost
+            .clone()
+            .unwrap_or_else(|| "the shared SSH connection was closed".to_owned());
+        let drain = async {
+            for shell in &mut shells {
+                let _ = (&mut shell.task).await;
+            }
+        };
+        let _ = tokio::time::timeout(FORWARD_CHANNEL_DRAIN_TIMEOUT, drain).await;
+        for shell in shells {
+            shell.task.abort();
+            shell.shared.finish(Some(&message));
+        }
+
+        match lost {
+            Some(message) => Err(anyhow::anyhow!(message)),
+            None => Ok(()),
+        }
+    })
+}
+
+/// Fails every shell still waiting to be opened on a connection that will not serve it, and stops
+/// new ones from being queued: after `close`, nova_ssh_open_shell's send fails and it returns 0.
+fn fail_pending_shells(command_rx: &mut mpsc::UnboundedReceiver<WorkerCommand>, message: &str) {
+    command_rx.close();
+    while let Ok(command) = command_rx.try_recv() {
+        if let WorkerCommand::OpenShell { shared, .. } = command {
+            shared.finish(Some(message));
+        }
+    }
+}
+
+/// One shell on a shared connection: its channel, then run_session's terminal loop without the
+/// forward commands, which belong to the connection.
+async fn run_shared_shell(
+    session: Arc<client::Handle<NovaClientHandler>>,
+    config: ConnectConfig,
+    shared: Arc<SharedState>,
+    mut command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
+) {
+    let opened = tokio::select! {
+        result = open_shell_channel(&config, &session) => result,
+        _ = shared.wait_closed() => return,
+    };
+    let mut channel = match opened {
+        Ok(channel) => channel,
+        Err(error) => {
+            shared.finish(Some(&error.to_string()));
+            return;
+        }
+    };
+
+    let error = shared_shell_loop(&config, &shared, &mut channel, &mut command_rx)
+        .await
+        .err()
+        .map(|error| error.to_string());
+    let _ = channel.close().await;
+    shared.finish(error.as_deref());
+}
+
+async fn shared_shell_loop(
+    config: &ConnectConfig,
+    shared: &Arc<SharedState>,
+    channel: &mut russh::Channel<client::Msg>,
+    command_rx: &mut mpsc::UnboundedReceiver<WorkerCommand>,
+) -> anyhow::Result<()> {
+    shared.queue_event(QueuedEvent {
+        kind: NovaSshEventKind::Connected,
+        payload: serde_json::to_vec(&ConnectedPayload {
+            host: &config.host,
+            port: config.port,
+            user: &config.user,
+        })?,
+        status_code: 0,
+        flags: NOVA_SSH_EVENT_FLAG_JSON,
+    });
+
+    let mut pending_command: Option<WorkerCommand> = None;
+    loop {
+        tokio::select! {
+            command = next_worker_command(&mut pending_command, command_rx) => {
+                match command {
+                    Some(WorkerCommand::Write(data)) => channel.data(&data[..]).await?,
+                    Some(WorkerCommand::Resize { cols, rows }) => {
+                        let (cols, rows, pending_resize_command) =
+                            coalesce_pending_resize_commands(command_rx, cols, rows);
+                        pending_command = pending_resize_command;
+                        channel.window_change(cols as u32, rows as u32, 0, 0).await?;
+                    }
+                    Some(WorkerCommand::SendEof) => channel.eof().await?,
+                    // Forward calls on a shell's handle: the forwards are the connection's. A
+                    // dropped reply reads as CLOSED to the caller.
+                    Some(WorkerCommand::OpenDirectTcpIp { .. })
+                    | Some(WorkerCommand::RequestRemoteForward { .. })
+                    | Some(WorkerCommand::WriteForwardChannel { .. })
+                    | Some(WorkerCommand::ForwardChannelEof { .. })
+                    | Some(WorkerCommand::CloseForwardChannel { .. })
+                    | Some(WorkerCommand::OpenShell { .. }) => {}
+                    Some(WorkerCommand::Close) | None => {
+                        let _ = channel.eof().await;
+                        return Ok(());
+                    }
+                }
+            }
+            message = channel.wait() => {
+                match main_channel_step(&SessionMode::Shell, message)? {
+                    MainChannelStep::Data(event) => {
+                        if !shared.queue_data_event(event).await {
+                            return Ok(());
+                        }
+                    }
+                    MainChannelStep::Control(event) => shared.queue_event(event),
+                    MainChannelStep::Continue => {}
+                    MainChannelStep::End => return Ok(()),
+                }
+            }
+        }
+    }
 }
 
 /// Waits up to `timeout_ms` (clamped to 1000) for an event to be queued or the session to close,
@@ -2021,7 +2458,7 @@ fn build_startup_command(shell_kind: RemoteShellKind, config: &ConnectConfig) ->
 /// Runs the configured detection command over run_exec_collect and maps its stdout to a shell
 /// kind, keeping detection's 3 s and 4096-byte bounds. Any error means "unknown" to the caller.
 async fn detect_login_shell<H>(
-    session: &mut client::Handle<H>,
+    session: &client::Handle<H>,
     command: &str,
 ) -> anyhow::Result<RemoteShellKind>
 where
@@ -2068,7 +2505,7 @@ impl ChannelMessageSource for russh::Channel<client::Msg> {
 /// The channel is closed afterwards however collection ended. The exec-mode main loop
 /// (SessionMode::Exec) is the streaming counterpart for commands that outlive establishment.
 async fn run_exec_collect<H>(
-    session: &mut client::Handle<H>,
+    session: &client::Handle<H>,
     command: &str,
     limit: usize,
     timeout: Duration,
@@ -3605,6 +4042,35 @@ async fn establish_session(
     client::Handle<NovaClientHandler>,
     russh::Channel<client::Msg>,
 )> {
+    let (jump_sessions, session) =
+        establish_connection(config, shared, client_config, forward_channels, None).await?;
+
+    let channel = match mode {
+        SessionMode::Shell => open_shell_channel(config, &session).await?,
+        SessionMode::Exec { command } => {
+            // No detection and no PTY (spec §8.3). The exec request's reply arrives in the main
+            // loop, where a refusal fails the session (main_channel_step).
+            let channel = session.channel_open_session().await?;
+            channel.exec(true, command.as_str()).await?;
+            channel
+        }
+    };
+
+    Ok((jump_sessions, session, channel))
+}
+
+/// The jump chain and the authenticated target session, without any channel: what
+/// establish_session opens its main channel on, and all a shared connection is.
+async fn establish_connection(
+    config: &ConnectConfig,
+    shared: &Arc<SharedState>,
+    client_config: Arc<client::Config>,
+    forward_channels: ForwardChannels,
+    connection_lost: Option<Arc<ConnectionLost>>,
+) -> anyhow::Result<(
+    Vec<client::Handle<NovaClientHandler>>,
+    client::Handle<NovaClientHandler>,
+)> {
     let mut jump_sessions: Vec<client::Handle<NovaClientHandler>> =
         Vec::with_capacity(config.jump_hops.len());
     for hop in &config.jump_hops {
@@ -3613,6 +4079,7 @@ async fn establish_session(
             host: hop.host.clone(),
             port: hop.port,
             forward_channels: None,
+            connection_lost: None,
         };
 
         let mut hop_session = match jump_sessions.last() {
@@ -3644,6 +4111,7 @@ async fn establish_session(
         host: config.host.clone(),
         port: config.port,
         forward_channels: Some(forward_channels),
+        connection_lost,
     };
 
     let mut session = if let Some(last_jump) = jump_sessions.last() {
@@ -3665,18 +4133,7 @@ async fn establish_session(
     )
     .await?;
 
-    let channel = match mode {
-        SessionMode::Shell => open_shell_channel(config, &mut session).await?,
-        SessionMode::Exec { command } => {
-            // No detection and no PTY (spec §8.3). The exec request's reply arrives in the main
-            // loop, where a refusal fails the session (main_channel_step).
-            let channel = session.channel_open_session().await?;
-            channel.exec(true, command.as_str()).await?;
-            channel
-        }
-    };
-
-    Ok((jump_sessions, session, channel))
+    Ok((jump_sessions, session))
 }
 
 /// The interactive terminal's main channel: login-shell detection when the shell kind is Auto and
@@ -3684,7 +4141,7 @@ async fn establish_session(
 /// detected shell, or a plain login shell when there is none.
 async fn open_shell_channel(
     config: &ConnectConfig,
-    session: &mut client::Handle<NovaClientHandler>,
+    session: &client::Handle<NovaClientHandler>,
 ) -> anyhow::Result<russh::Channel<client::Msg>> {
     let effective_shell_kind = if config.remote_shell_kind != RemoteShellKind::Auto {
         config.remote_shell_kind
@@ -3737,7 +4194,7 @@ fn run_session(
         // handshake/auth legs deliberately carry no timeout of their own: they can block
         // on user interaction (host-key and password prompts), and mark_closed already
         // unblocks those via wait_for_response.
-        let (jump_sessions, mut session, mut channel) = tokio::select! {
+        let (jump_sessions, session, mut channel) = tokio::select! {
             result = establish_session(&config, &mode, &shared, client_config.clone(), forward_channels.clone()) => result?,
             _ = shared.wait_closed() => {
                 // Closed while connecting: exit cleanly; nova_ssh_close is joining us.
@@ -3833,6 +4290,10 @@ fn run_session(
                         }
                         Some(WorkerCommand::CloseForwardChannel { channel_id }) => {
                             close_forward_channel(&forward_channels, channel_id).await;
+                        }
+                        // nova_ssh_open_shell was handed a session that is not a shared connection.
+                        Some(WorkerCommand::OpenShell { shared: shell_shared, .. }) => {
+                            shell_shared.finish(Some("this SSH session is not a shared connection"));
                         }
                         Some(WorkerCommand::Close) | None => {
                             close_all_forward_channels(&forward_channels).await;
@@ -9305,5 +9766,418 @@ mod exec_session_e2e_tests {
 
         result.expect("transfer signs in");
         assert_eq!(vec![PASSWORD.to_owned()], lock(&seen).password_attempts);
+    }
+}
+
+/// Shared connections end to end through the FFI, against an in-process russh server that counts
+/// what it was asked for: one TCP connection and one login, however many shells ride on it.
+#[cfg(test)]
+mod shared_connection_e2e_tests {
+    use super::*;
+    use russh::ChannelId;
+    use russh::server::{Auth, Msg as ServerMsg, Session as ServerSession};
+    use std::time::Instant;
+
+    const PASSWORD: &str = "hunter2";
+
+    #[derive(Default)]
+    struct ServerSeen {
+        connections: usize,
+        password_attempts: usize,
+        pty_requests: usize,
+        shell_requests: usize,
+    }
+
+    type SeenLog = Arc<Mutex<ServerSeen>>;
+
+    fn lock(seen: &SeenLog) -> std::sync::MutexGuard<'_, ServerSeen> {
+        seen.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    struct TestServer {
+        seen: SeenLog,
+    }
+
+    impl russh::server::Handler for TestServer {
+        type Error = russh::Error;
+
+        async fn auth_password(
+            &mut self,
+            _user: &str,
+            password: &str,
+        ) -> Result<Auth, Self::Error> {
+            lock(&self.seen).password_attempts += 1;
+            Ok(if password == PASSWORD {
+                Auth::Accept
+            } else {
+                Auth::reject()
+            })
+        }
+
+        async fn channel_open_session(
+            &mut self,
+            _channel: russh::Channel<ServerMsg>,
+            _session: &mut ServerSession,
+        ) -> Result<bool, Self::Error> {
+            Ok(true)
+        }
+
+        async fn pty_request(
+            &mut self,
+            channel: ChannelId,
+            _term: &str,
+            _col_width: u32,
+            _row_height: u32,
+            _pix_width: u32,
+            _pix_height: u32,
+            _modes: &[(russh::Pty, u32)],
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            lock(&self.seen).pty_requests += 1;
+            session.channel_success(channel)
+        }
+
+        /// A shell that prints a prompt and stays open until it reads "exit".
+        async fn shell_request(
+            &mut self,
+            channel: ChannelId,
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            lock(&self.seen).shell_requests += 1;
+            session.channel_success(channel)?;
+            session.data(channel, b"prompt$ ".to_vec())
+        }
+
+        async fn data(
+            &mut self,
+            channel: ChannelId,
+            data: &[u8],
+            session: &mut ServerSession,
+        ) -> Result<(), Self::Error> {
+            if data == b"drop\n" {
+                // The whole connection, not this channel: what a server restart looks like.
+                return session.disconnect(Disconnect::ByApplication, "going away", "en");
+            }
+            if data == b"exit\n" {
+                session.eof(channel)?;
+                session.exit_status_request(channel, 0)?;
+                return session.close(channel);
+            }
+            session.data(channel, data.to_vec())
+        }
+    }
+
+    fn host_key() -> ssh_key::PrivateKey {
+        ssh_key::PrivateKey::from(ssh_key::private::Ed25519Keypair::from_seed(&[7u8; 32]))
+    }
+
+    /// Serves every connection to a loopback port on its own thread and runtime, counting them.
+    fn start_server() -> (u16, SeenLog) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("loopback must bind");
+        let port = listener.local_addr().expect("bound address").port();
+        listener
+            .set_nonblocking(true)
+            .expect("tokio needs a non-blocking listener");
+        let seen = SeenLog::default();
+        let server_seen = seen.clone();
+
+        thread::spawn(move || {
+            let runtime = Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("server runtime");
+            runtime.block_on(async move {
+                let listener = tokio::net::TcpListener::from_std(listener).expect("tokio listener");
+                let config = Arc::new(russh::server::Config {
+                    keys: vec![host_key()],
+                    ..Default::default()
+                });
+                while let Ok((stream, _)) = listener.accept().await {
+                    lock(&server_seen).connections += 1;
+                    let handler = TestServer {
+                        seen: server_seen.clone(),
+                    };
+                    let config = config.clone();
+                    tokio::spawn(async move {
+                        if let Ok(running) = russh::server::run_stream(config, stream, handler).await
+                        {
+                            let _ = running.await;
+                        }
+                    });
+                }
+            });
+        });
+
+        (port, seen)
+    }
+
+    struct Strings {
+        host: CString,
+        user: CString,
+    }
+
+    fn strings() -> Strings {
+        Strings {
+            host: CString::new("127.0.0.1").unwrap(),
+            user: CString::new("tester").unwrap(),
+        }
+    }
+
+    fn args(strings: &Strings, port: u16) -> NovaSshConnectArgs {
+        NovaSshConnectArgs {
+            host: strings.host.as_ptr(),
+            user: strings.user.as_ptr(),
+            port,
+            cols: 80,
+            rows: 24,
+            term: ptr::null(),
+            identity_file: ptr::null(),
+            jump_hops_json: ptr::null(),
+            keepalive_interval_seconds: 0,
+            keepalive_count_max: 0,
+            remote_shell_kind: 0,
+            shell_detection_command: ptr::null(),
+            bash_cwd_bootstrap: ptr::null(),
+            zsh_cwd_bootstrap: ptr::null(),
+            fish_cwd_bootstrap: ptr::null(),
+            use_agent: 0,
+        }
+    }
+
+    #[derive(Debug)]
+    struct Recorded {
+        kind: u32,
+        payload: Vec<u8>,
+    }
+
+    fn poll(handle: usize) -> Option<Recorded> {
+        let mut buffer = vec![0u8; 64 * 1024];
+        let mut header = NovaSshEvent::default();
+        let rc = nova_ssh_poll_event(handle, &mut header, buffer.as_mut_ptr(), buffer.len());
+        if rc == NOVA_SSH_RESULT_OK {
+            return None;
+        }
+        assert_eq!(NOVA_SSH_RESULT_EVENT_READY, rc);
+        Some(Recorded {
+            kind: header.kind,
+            payload: buffer[..header.payload_len as usize].to_vec(),
+        })
+    }
+
+    fn respond(handle: usize, kind: NovaSshResponseKind, payload: &[u8]) {
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_submit_response(handle, kind as u32, payload.as_ptr(), payload.len())
+        );
+    }
+
+    /// Polls the connection, answering its prompts with `password`, until `until` matches an event.
+    /// Returns everything polled, the matching event last.
+    fn drive_connection(
+        handle: usize,
+        password: &str,
+        until: NovaSshEventKind,
+    ) -> Vec<Recorded> {
+        drive(handle, until, |event| {
+            if event.kind == NovaSshEventKind::HostKeyPrompt as u32 {
+                respond(
+                    handle,
+                    NovaSshResponseKind::HostKeyDecision,
+                    br#"{"accept":true}"#,
+                );
+            } else if event.kind == NovaSshEventKind::PasswordPrompt as u32 {
+                let answer = format!(r#"{{"text":"{password}"}}"#);
+                respond(handle, NovaSshResponseKind::Password, answer.as_bytes());
+            }
+        })
+    }
+
+    fn drive(
+        handle: usize,
+        until: NovaSshEventKind,
+        mut on_event: impl FnMut(&Recorded),
+    ) -> Vec<Recorded> {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let mut events = Vec::new();
+        loop {
+            assert!(
+                Instant::now() < deadline,
+                "expected {until:?}; got {events:?}"
+            );
+            let Some(event) = poll(handle) else {
+                thread::sleep(Duration::from_millis(2));
+                continue;
+            };
+            on_event(&event);
+            let done = event.kind == until as u32;
+            events.push(event);
+            if done {
+                return events;
+            }
+        }
+    }
+
+    fn data_of(events: &[Recorded]) -> Vec<u8> {
+        events
+            .iter()
+            .filter(|event| event.kind == NovaSshEventKind::Data as u32)
+            .flat_map(|event| event.payload.clone())
+            .collect()
+    }
+
+    fn error_of(events: &[Recorded]) -> Option<String> {
+        events
+            .iter()
+            .find(|event| event.kind == NovaSshEventKind::Error as u32)
+            .map(|event| String::from_utf8_lossy(&event.payload).into_owned())
+    }
+
+    fn write(handle: usize, data: &[u8]) {
+        assert_eq!(
+            NOVA_SSH_RESULT_OK,
+            nova_ssh_write(handle, data.as_ptr(), data.len())
+        );
+    }
+
+    #[test]
+    fn two_shells_share_one_connection_and_one_login() {
+        let (port, seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+
+        let connection = nova_ssh_connect_shared(&args);
+        assert_ne!(0, connection);
+        // Opened before the connection is up: it must wait for it, not connect on its own.
+        let first = nova_ssh_open_shell(connection, &args);
+        assert_ne!(0, first);
+
+        drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+        let second = nova_ssh_open_shell(connection, &args);
+        assert_ne!(0, second);
+
+        for shell in [first, second] {
+            let events = drive(shell, NovaSshEventKind::Data, |_| {});
+            assert_eq!(NovaSshEventKind::Connected as u32, events[0].kind, "{events:?}");
+            assert_eq!(b"prompt$ ".to_vec(), data_of(&events));
+        }
+
+        // Each shell is its own channel: what one types comes back only to it.
+        write(first, b"one\n");
+        write(second, b"two\n");
+        assert_eq!(b"one\n".to_vec(), data_of(&drive(first, NovaSshEventKind::Data, |_| {})));
+        assert_eq!(b"two\n".to_vec(), data_of(&drive(second, NovaSshEventKind::Data, |_| {})));
+
+        // One shell exiting leaves the other, and the connection, running.
+        write(first, b"exit\n");
+        let first_events = drive(first, NovaSshEventKind::Closed, |_| {});
+        assert_eq!(None, error_of(&first_events));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(first));
+        write(second, b"still\n");
+        assert_eq!(b"still\n".to_vec(), data_of(&drive(second, NovaSshEventKind::Data, |_| {})));
+
+        // A shell opened after another closed still rides the same connection.
+        let third = nova_ssh_open_shell(connection, &args);
+        assert_ne!(0, third);
+        drive(third, NovaSshEventKind::Data, |_| {});
+
+        {
+            let seen = lock(&seen);
+            assert_eq!(1, seen.connections, "one TCP connection for every shell");
+            assert_eq!(1, seen.password_attempts, "one login for every shell");
+            assert_eq!(3, seen.pty_requests);
+            assert_eq!(3, seen.shell_requests);
+        }
+
+        // Closing the connection ends the shells still on it, each with a Closed of its own.
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+        for shell in [second, third] {
+            drive(shell, NovaSshEventKind::Closed, |_| {});
+            assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
+        }
+    }
+
+    #[test]
+    fn a_failed_login_fails_the_shells_waiting_for_it() {
+        let (port, _seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+
+        let connection = nova_ssh_connect_shared(&args);
+        let shell = nova_ssh_open_shell(connection, &args);
+        assert_ne!(0, shell);
+
+        let connection_events = drive_connection(connection, "wrong", NovaSshEventKind::Closed);
+        assert!(error_of(&connection_events).is_some(), "{connection_events:?}");
+
+        let shell_events = drive(shell, NovaSshEventKind::Closed, |_| {});
+        assert!(error_of(&shell_events).is_some(), "{shell_events:?}");
+        assert!(
+            !shell_events
+                .iter()
+                .any(|event| event.kind == NovaSshEventKind::Connected as u32)
+        );
+
+        // The connection's worker is gone, so a new shell is refused at once.
+        assert_eq!(0, nova_ssh_open_shell(connection, &args));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+    }
+
+    #[test]
+    fn a_lost_connection_ends_every_shell_on_it() {
+        let (port, _seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+
+        let connection = nova_ssh_connect_shared(&args);
+        drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+        let first = nova_ssh_open_shell(connection, &args);
+        let second = nova_ssh_open_shell(connection, &args);
+        drive(first, NovaSshEventKind::Data, |_| {});
+        drive(second, NovaSshEventKind::Data, |_| {});
+
+        write(first, b"drop\n");
+        for shell in [first, second] {
+            drive(shell, NovaSshEventKind::Closed, |_| {});
+        }
+        let connection_events = drive(connection, NovaSshEventKind::Closed, |_| {});
+        assert!(error_of(&connection_events).is_some(), "{connection_events:?}");
+        assert_eq!(0, nova_ssh_open_shell(connection, &args));
+
+        for handle in [first, second, connection] {
+            assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(handle));
+        }
+    }
+
+    #[test]
+    fn a_closed_connection_refuses_new_shells() {
+        let (port, _seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+
+        let connection = nova_ssh_connect_shared(&args);
+        drive_connection(connection, PASSWORD, NovaSshEventKind::Connected);
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(connection));
+
+        assert_eq!(0, nova_ssh_open_shell(connection, &args));
+    }
+
+    #[test]
+    fn a_shell_opened_on_an_ordinary_session_fails_instead_of_hanging() {
+        let (port, _seen) = start_server();
+        let strings = strings();
+        let args = args(&strings, port);
+
+        let session = nova_ssh_connect(&args);
+        drive_connection(session, PASSWORD, NovaSshEventKind::Connected);
+        let shell = nova_ssh_open_shell(session, &args);
+        assert_ne!(0, shell);
+
+        let events = drive(shell, NovaSshEventKind::Closed, |_| {});
+        let error = error_of(&events).expect("the shell must say why it failed");
+        assert!(error.contains("not a shared connection"), "{error}");
+
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(shell));
+        assert_eq!(NOVA_SSH_RESULT_OK, nova_ssh_close(session));
     }
 }

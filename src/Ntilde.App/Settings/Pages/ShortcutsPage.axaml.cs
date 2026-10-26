@@ -24,6 +24,7 @@ using Ntilde.Services.Ssh;
 using Ntilde.Shell.Shortcuts;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Settings;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Settings.Pages;
 
@@ -181,7 +182,7 @@ public partial class ShortcutsPage : UserControl, ISettingsPage, IDisposable
         string effectiveBinding = GetEffectiveShortcutBinding(entry);
         var errorText = new TextBlock
         {
-            Foreground = Brushes.IndianRed,
+            Foreground = this.FindPaletteBrush(ThemeKeys.Error),
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             IsVisible = false,

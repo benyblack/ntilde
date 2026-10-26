@@ -21,6 +21,31 @@ public interface INativeSshInterop
             $"{GetType().Name} does not implement exec sessions.");
 
     /// <summary>
+    /// Starts a shared connection: the connect, jump chain, host-key and auth prompts of <see cref="Connect"/>,
+    /// with no channel of its own. Shells join it with <see cref="OpenShell"/> and never log in again. Its poll
+    /// events are the prompts, <see cref="NativeSshEventKind.Connected"/>, the forward-channel events, and Error
+    /// and Closed; the port-forward calls take its handle, so the forwards outlive every shell. Release the
+    /// handle with <see cref="Close"/>.
+    /// </summary>
+    /// <remarks>Default implementation throws, like <see cref="Exec"/>.</remarks>
+    NovaSshSafeHandle ConnectShared(NativeSshConnectionOptions options) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement shared connections.");
+
+    /// <summary>
+    /// Opens a PTY shell on <paramref name="connection"/> (from <see cref="ConnectShared"/>), with the terminal
+    /// and shell settings of <paramref name="options"/>. Returns at once: a shell opened while the connection is
+    /// still connecting waits for it. Its events are a <see cref="Connect"/> session's from Connected on, and a
+    /// connection that fails or is lost ends it with Error and Closed. Closing it never closes the connection.
+    /// Release the handle with <see cref="Close"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The connection is closed or no longer running.</exception>
+    /// <remarks>Default implementation throws, like <see cref="Exec"/>.</remarks>
+    NovaSshSafeHandle OpenShell(NovaSshSafeHandle connection, NativeSshConnectionOptions options) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement shared connections.");
+
+    /// <summary>
     /// Sends EOF on the session's main channel: for an exec session, the end of the command's stdin.
     /// Idempotent; writes queued before it are sent first, and writes after it are dropped. A session
     /// that has already ended ignores it.

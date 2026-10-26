@@ -16,6 +16,7 @@ using Ntilde.Services.Ssh;
 using Ntilde.Settings;
 using Ntilde.Settings.Pages;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.VT;
 using System;
 using System.Collections.Generic;
@@ -53,6 +54,9 @@ namespace Ntilde
         /// reloaded settings.json (spec R1): saving a different one forgets the first-close dialog's remembered answer.
         /// </summary>
         private string? _sessionPersistenceLoaded;
+
+        /// <summary>The last opacity the Appearance slider previewed; null until it moves.</summary>
+        private double? _previewedOpacity;
 
         /// <summary>
         /// R1: when the effective persistence mode changed from <paramref name="before"/> to <paramref name="after"/>,
@@ -766,7 +770,7 @@ namespace Ntilde
                         HighlightStart = result.TitleMatchStart,
                         HighlightLength = result.TitleMatchLength,
                         HighlightFontWeight = FontWeight.Bold,
-                        Foreground = this.FindPaletteBrush("NtFg"),
+                        Foreground = this.FindPaletteBrush(ThemeKeys.Fg),
                         FontSize = 13,
                     },
                 },
@@ -789,7 +793,11 @@ namespace Ntilde
         private void WireSessionEvents()
         {
             SettingsPreviewSink preview = _session.Preview;
-            preview.OpacityChanged += value => OnOpacityChanged?.Invoke(value);
+            preview.OpacityChanged += value =>
+            {
+                _previewedOpacity = value;
+                OnOpacityChanged?.Invoke(value);
+            };
             preview.BlurChanged += value => OnBlurChanged?.Invoke(value);
             preview.BackgroundImageChanged += (path, opacity, stretch) => OnBgImageChanged?.Invoke(path, opacity, stretch);
             preview.FontChanged += family => OnFontChanged?.Invoke(family);
@@ -898,18 +906,16 @@ namespace Ntilde
             _session.RaiseSnippetsChanged();
         }
 
+        /// <summary>
+        /// Applies <paramref name="theme"/> (default: the active theme) app-wide. The window has no
+        /// palette of its own: it follows ThemeService like every other surface, which is also what
+        /// lets it track a theme switch made elsewhere (the command palette, Cancel) while it is open.
+        /// </summary>
         private void ApplyTheme(TerminalTheme? theme = null)
         {
-            theme ??= _session.Settings.ActiveTheme;
-
-            var contrastColor = theme.GetContrastForeground();
-            ThemePaletteResources.Apply(Resources, theme);
-
-            Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            Foreground = new SolidColorBrush(contrastColor.ToAvaloniaColor());
-
-            // Set the window theme variant so standard controls (ComboBox, ScrollBar, etc.) adapt
-            RequestedThemeVariant = contrastColor == TermColor.Black ? ThemeVariant.Light : ThemeVariant.Dark;
+            // The opacity on screen, not the saved one: a slider preview is not written to the
+            // session until Save, and repainting with the saved value would undo it app-wide.
+            ThemeService.Apply(theme ?? _session.Settings.ActiveTheme, _previewedOpacity ?? _session.Settings.WindowOpacity);
         }
     }
 }

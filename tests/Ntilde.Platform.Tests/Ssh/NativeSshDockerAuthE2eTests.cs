@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
+using Ntilde.Platform.Ssh.Native;
 using Ntilde.Platform.Ssh.Sessions;
 using Ntilde.Platform.Tests.Infra;
 using Ntilde.VT;
@@ -278,6 +279,52 @@ public sealed class NativeSshDockerAuthE2eTests
         string echoed = await EchoRoundTripAsync(client.GetStream(), payload, TimeSpan.FromSeconds(30));
 
         Assert.Equal(payload, echoed);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task LocalForward_OnASharedConnection_OutlivesTheTabThatOpenedIt()
+    {
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        int localPort = GetFreeLocalPort();
+        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        var pool = new NativeSshConnectionPool();
+
+        SshProfile profile = CreateProfile(fixture);
+        profile.MuxOptions.Enabled = true;
+        profile.Forwards.Add(new PortForward
+        {
+            Kind = PortForwardKind.Local,
+            BindAddress = "127.0.0.1",
+            SourcePort = localPort,
+            DestinationHost = "127.0.0.1",
+            DestinationPort = fixture.EchoServicePort
+        });
+
+        var firstBuffer = new TerminalBuffer(120, 30);
+        var firstParser = new AnsiParser(firstBuffer);
+        var first = new NativeSshSession(profile, cols: 120, rows: 30, interactionHandler: handler, connectionPool: pool);
+        first.OnOutputReceived += firstParser.Process;
+        await WaitUntilAsync(() => SnapshotContains(firstBuffer, "nova$"), PromptTimeout, "first tab's prompt");
+
+        // Without sharing, this second tab would fail to bind the forward's port, which the first tab holds.
+        var secondBuffer = new TerminalBuffer(120, 30);
+        var secondParser = new AnsiParser(secondBuffer);
+        using var second = new NativeSshSession(profile, cols: 120, rows: 30, interactionHandler: handler, connectionPool: pool);
+        second.OnOutputReceived += secondParser.Process;
+        await WaitUntilAsync(() => SnapshotContains(secondBuffer, "nova$"), PromptTimeout, "second tab's prompt");
+
+        first.Dispose();
+
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, localPort);
+        const string payload = "shared-forward-round-trip";
+        string echoed = await EchoRoundTripAsync(client.GetStream(), payload, TimeSpan.FromSeconds(30));
+
+        Assert.Equal(payload, echoed);
+        Assert.Single(handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.Password);
     }
 
     [DockerFact]

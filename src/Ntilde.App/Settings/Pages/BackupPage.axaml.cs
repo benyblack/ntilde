@@ -24,6 +24,7 @@ using Ntilde.Services.Ssh;
 using Ntilde.Shell.Shortcuts;
 using Ntilde.Shell.TitleBar;
 using Ntilde.Settings;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Settings.Pages;
 
@@ -197,8 +198,8 @@ public partial class BackupPage : UserControl, ISettingsPage
         if (_status is null) return;
         _status.Text = message;
         _status.Foreground = success
-            ? this.FindPaletteBrush("NtGreen")
-            : this.FindPaletteBrush("NtRed");
+            ? this.FindPaletteBrush(ThemeKeys.Success)
+            : this.FindPaletteBrush(ThemeKeys.Error);
     }
 
     private void RefreshSnapshots()
