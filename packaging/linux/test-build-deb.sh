@@ -44,6 +44,9 @@ trap 'rm -rf "$work"' EXIT
 pub="$work/publish"; out="$work/out"
 mkdir -p "$pub" "$out"
 cp /bin/true "$pub/Ntilde"          # a real ELF, so ldd has something to read
+# Staged 0644, so the 0755 assertion below proves build-deb.sh restores the bit after
+# its chmod-normalisation pass rather than inheriting it from the fixture.
+cp /bin/true "$pub/ntilde-mcp" && chmod 0644 "$pub/ntilde-mcp"
 mkdir -p "$pub/themes" && echo '{}' > "$pub/themes/default.json"
 
 # A dummy .so so this fast harness also exercises the lintian-fix-round path
@@ -151,6 +154,11 @@ else
       || fail "Ntilde is not 0755 in the package"
     grep -qE '^lrwxrwxrwx.* \./usr/bin/ntilde -> ' <<<"$contents" \
       || fail "/usr/bin/ntilde is not a symlink"
+    # Likewise the MCP server, which an agent launches directly.
+    grep -qE '^-rwxr-xr-x.* \./usr/lib/ntilde/ntilde-mcp$' <<<"$contents" \
+      || fail "ntilde-mcp is not 0755 in the package"
+    grep -qE '^lrwxrwxrwx.* \./usr/bin/ntilde-mcp -> /usr/lib/ntilde/ntilde-mcp$' <<<"$contents" \
+      || fail "/usr/bin/ntilde-mcp is not a symlink to the bundled ntilde-mcp"
 
     # Lintian-fix-round assertions. The fixture .so is staged at 0755 (matching
     # how the real SkiaSharp/HarfBuzzSharp binaries actually ship) specifically so

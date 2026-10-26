@@ -338,25 +338,37 @@ With both toggles off there is no live endpoint at all. See the
 
 ## Use with AI agents (MCP)
 
-Build the server, then register it with your MCP client, pointing at the **built DLL** (launch
-the compiled DLL — never `dotnet run`, which corrupts the stdio stream):
+Every release bundle includes the MCP server as `ntilde-mcp` (`ntilde-mcp.exe` on Windows), a
+native binary that needs no .NET installed. Register it with **Claude Code**:
 
 ```bash
-scripts/build.ps1 build -c Release src/Ntilde.McpServer   # or scripts/build.sh
+claude mcp add ntilde -- ntilde-mcp
 ```
 
-**Claude Code:**
+`ntilde-mcp` is on your `PATH` after installing with the Windows `Setup.exe` (open a new terminal
+first), the `.deb`, the AUR package or Homebrew. Otherwise give its full path:
 
-```bash
-claude mcp add ntilde -- dotnet "<path-to-repo>/src/Ntilde.McpServer/bin/Release/net10.0/Ntilde.McpServer.dll"
-```
+| Installed from | `ntilde-mcp` is at |
+| --- | --- |
+| Windows `Setup.exe` | `%LOCALAPPDATA%\NtildeApp\current\ntilde-mcp.exe` |
+| Windows `.zip`, Linux `.tar.gz` | next to `Ntilde.exe` / `Ntilde` |
+| macOS `.pkg` or `.zip` | `/Applications/Ntilde.app/Contents/MacOS/ntilde-mcp` |
 
-For **Claude Desktop / VS Code**, add the same `command`/`args` to the client's MCP config.
+The AppImage carries it too, but inside the image, where an agent cannot launch it: use the
+`.deb` or the tarball for agent access. For **Claude Desktop / VS Code**, use the same path as the
+server's `command`, with no arguments.
 
-The repo / dev-companion tools work immediately. To expose live sessions, enable
+The validators and VT tools work immediately. The project-docs tools (`list_docs`, `read_doc`,
+`get_architecture_map`, `get_vt_conformance_summary`) read a source checkout: set
+`NTILDE_REPO_ROOT` to one to use them. To expose live sessions, enable
 **Agent access (observe)** under **Settings → Agent Access** in Ntilde; to let an agent type
 into, spawn, or close sessions, also enable the **Agent access (act)** sub-toggle (and allowlist
 any SSH profiles you want reachable). Both are off by default.
+
+**From source:** build with `scripts/build.ps1 build -c Release src/Ntilde.McpServer` (or
+`scripts/build.sh`) and register the built DLL -
+`claude mcp add ntilde -- dotnet "<path-to-repo>/src/Ntilde.McpServer/bin/Release/net10.0/Ntilde.McpServer.dll"`.
+Launch the compiled DLL, never `dotnet run`, which corrupts the stdio stream.
 
 ---
 

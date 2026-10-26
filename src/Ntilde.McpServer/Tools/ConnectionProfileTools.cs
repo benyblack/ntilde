@@ -15,7 +15,7 @@ namespace Ntilde.McpServer.Tools;
 // knowledge is hand-mirrored below. A reflection drift-guard test in
 // Ntilde.McpServer.Tests fails if those types change. Keep both in sync.
 [McpServerToolType]
-public static class ConnectionProfileTools
+public sealed class ConnectionProfileTools
 {
     [McpServerTool(Name = "ntilde.get_connection_profile_schema"),
      Description("Returns the schema for a Ntilde SSH connection-profile JSON: PascalCase fields grouped by area, integer enum mappings, defaults, and a complete example. The on-disk format uses integer-valued enums; passwords are vault-managed and never stored in profile JSON. Use before authoring or editing a profile.")]

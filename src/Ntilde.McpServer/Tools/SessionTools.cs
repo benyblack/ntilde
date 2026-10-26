@@ -14,7 +14,7 @@ namespace Ntilde.McpServer.Tools;
 /// enabled "Agent access (observe)" in Ntilde's settings.
 /// </summary>
 [McpServerToolType]
-public static class SessionTools
+public sealed class SessionTools
 {
     [McpServerTool(Name = "ntilde.list_sessions"),
      Description("Lists the live terminal sessions in the running Ntilde app: pane id, title, profile, kind (local/ssh), size, and active state, plus windowless multiplexer sessions that no window shows (marked 'windowless'; their id is the multiplexer session id). Requires Ntilde to be running with 'Agent access (observe)' enabled; returns instructions if it isn't. Use the paneId with ntilde.read_screen / ntilde.read_scrollback.")]

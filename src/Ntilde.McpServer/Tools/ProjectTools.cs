@@ -5,7 +5,7 @@ using ModelContextProtocol.Server;
 namespace Ntilde.McpServer.Tools;
 
 [McpServerToolType]
-public static class ProjectTools
+public sealed class ProjectTools
 {
     [McpServerTool(Name = "ntilde.get_project_summary"),
      Description("Returns a high-level summary of the Ntilde project: what it is, its tech stack, and its assembly/module layout. Use this first to orient before working in the codebase.")]
