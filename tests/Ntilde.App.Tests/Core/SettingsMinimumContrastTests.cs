@@ -27,6 +27,22 @@ public sealed class SettingsMinimumContrastTests
         Assert.Equal("Off", page.FindControl<TextBlock>("MinimumContrastDisplay")!.Text);
     }
 
+    /// <summary>
+    /// A pane renders from settings it copies field by field (BuildEffectiveSettings, for profile
+    /// overrides). The first version of this setting was missing from that copy, so every pane kept
+    /// the default and the setting did nothing.
+    /// </summary>
+    [AvaloniaFact]
+    public void A_pane_hands_the_setting_to_its_terminal_view()
+    {
+        using var root = SettingsTestRoot.WithSettings("""{"ThemeName":"Default"}""");
+        using var pane = new Ntilde.Controls.TerminalPane();
+
+        pane.ApplySettings(new TerminalSettings { MinimumContrast = 4.5 });
+
+        Assert.Equal(4.5, pane.FindControl<Ntilde.Shell.TerminalView>("TermView")!.MinimumContrast);
+    }
+
     [Theory]
     [InlineData(1.0, "Off")]
     [InlineData(3.0, "3:1")]

@@ -993,6 +993,7 @@ namespace Ntilde.Controls
                 // Inherit everything else from global
                 MaxHistory = settings.MaxHistory,
                 WindowOpacity = settings.WindowOpacity,
+                MinimumContrast = settings.MinimumContrast,
                 UiScale = settings.UiScale,
                 BlurEffect = settings.BlurEffect,
                 BackgroundImagePath = settings.BackgroundImagePath,
