@@ -468,8 +468,9 @@ Plan: `docs/superpowers/plans/2026-10-26-theme-system-phase4-schema.md`. Phase 4
   stays derived. GitHub has no upstream terminal port that defines a selection colour. The iTerm2
   ports store calibrated colour-space numbers, so palette entries are cited rather than those
   numbers.
-- **Docs:** `docs/ThemeSystem.md` is rewritten. The user manual gains §1.3 Themes, and the CHANGELOG
-  covers theme v2 as a whole.
+- **Docs:** `docs/ThemeSystem.md` is rewritten. The user guide's `docs/user/themes-and-fonts.md`
+  documents the optional colors, the importers and Advanced colors, and the CHANGELOG covers theme
+  v2 as a whole.
 
 ## 6. Schema propagation
 

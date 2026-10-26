@@ -9,7 +9,7 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
   sidebar, dialogs, the command palette, toasts and everything inside a pane (search, the status
   bar, Command Assist, Remote Files) now follow the theme, live, and stay readable on light themes.
   A profile with its own theme colors its pane's overlays to match its terminal while the rest of
-  the app keeps yours. See [1.3 Themes](docs/USER_MANUAL.md#13-themes).
+  the app keeps yours. See [Themes and fonts](docs/user/themes-and-fonts.md).
 - **Selection, search and the cursor follow the theme.** The fixed blue selection and yellow search
   highlights are gone: they come from the theme, with the text drawn on top so it stays readable. A
   block cursor now shows the character under it.
@@ -44,7 +44,7 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
 Shells can now outlive Ntilde's window. They run in a background process, Ntilde's own
 multiplexer, and come back when Ntilde starts again. The
-[user manual's chapter 12](docs/USER_MANUAL.md#12-persistent-sessions-and-the-multiplexer) covers
+[persistent sessions guide](docs/user/persistent-sessions.md) covers
 it all.
 
 - **Local shells can keep running** when the window closes, when Ntilde crashes and across an update.

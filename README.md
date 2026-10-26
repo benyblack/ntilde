@@ -64,7 +64,8 @@ means for an existing install:
 
 - **Settings carry over.** On first launch Ntilde copies settings, themes, connection profiles,
   workspaces, snippets, backups and history from `NovaTerminal` into its own data folder
-  (`%LOCALAPPDATA%\ntilde` on Windows, `~/.local/share/ntilde` elsewhere). The old folder is
+  (`%LOCALAPPDATA%\ntilde` on Windows, `~/Library/Application Support/ntilde` on macOS,
+  `~/.local/share/ntilde` on Linux). The old folder is
   left untouched; delete it when you are happy.
 - **Saved passwords do not.** Keychain, Credential Manager and Secret Service entries are stored
   under the new name. Re-enter SSH passwords once; the profiles themselves are already there.
@@ -288,7 +289,7 @@ the flip.
 ### Persistent sessions
 
 With persistent sessions on, shells run in a background process, Ntilde's own multiplexer, instead
-of in the window ([user manual, chapter 12](docs/USER_MANUAL.md#12-persistent-sessions-and-the-multiplexer)).
+of in the window ([user guide](docs/user/persistent-sessions.md)).
 
 - Closing the window, a crash or an update leaves your shells running; reopening Ntilde reattaches
   every tab to its shell, screen and scrollback included
@@ -374,11 +375,17 @@ Launch the compiled DLL, never `dotnet run`, which corrupts the stdio stream.
 
 ## User documentation
 
-- [User manual](docs/USER_MANUAL.md)
+The [user guide](docs/user/README.md) covers everything, by topic:
+
+- [Installing and updating](docs/user/install.md)
+- [Keyboard shortcuts and the command palette](docs/user/shortcuts.md)
+- [Tabs, panes and workspaces](docs/user/tabs-and-panes.md)
+- [Persistent sessions](docs/user/persistent-sessions.md)
+- [SSH and file transfer](docs/user/ssh.md)
+- [Settings reference](docs/user/settings.md)
+- [Command line](docs/user/cli.md)
+- [Troubleshooting](docs/user/troubleshooting.md)
 - [Changelog](CHANGELOG.md) (from 0.12.0; earlier notes are on [GitHub Releases](https://github.com/benyblack/ntilde/releases))
-- [Tabs user manual](docs/TABS_USER_MANUAL.md)
-- [Image protocol support](docs/IMAGE_PROTOCOL_SUPPORT.md)
-- [SSH roadmap](docs/SSH_ROADMAP.md)
 
 ---
 
