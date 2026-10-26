@@ -167,6 +167,24 @@ public sealed class FishBootstrapBuilderTests : IDisposable
         Assert.Contains("function", script);
     }
 
+    /// <summary>
+    /// fish 4 writes OSC 133 A, C and D itself, so the script asks fish whether it does (the
+    /// mark-prompt feature, or the version for the 4.0 releases before that feature) and then writes
+    /// only B. FishShellIntegrationTests proves it on a real fish; this pins it where none is installed.
+    /// </summary>
+    [Fact]
+    public void BuildScript_LeavesTheLifecycleMarksToFish_WhenFishWritesThem()
+    {
+        string script = FishBootstrapBuilder.BuildScript();
+
+        Assert.Contains("status test-feature mark-prompt", script);
+        int gate = script.IndexOf("if not set -q __ntilde_fish_writes_marks", StringComparison.Ordinal);
+        Assert.True(gate >= 0, "the C and D handlers must only be defined when fish does not write its own marks");
+        Assert.True(gate < script.IndexOf("--on-event fish_preexec", StringComparison.Ordinal));
+        Assert.True(gate < script.IndexOf("--on-event fish_postexec", StringComparison.Ordinal));
+        Assert.Contains("set -q __ntilde_fish_writes_marks; or printf '\\033]133;A\\a'", script);
+    }
+
     [Fact]
     public void BuildScript_Base64EncodesAcceptedCommandPayload()
     {

@@ -142,7 +142,16 @@ Two things to know about the third-party ones:
   that a multi-line or edited command is recorded exactly.
 - **A plain-text `133;C;git status` is also fine**, and is read as written. `133;C;aid=7` is not
   treated as a command: FinalTerm allows `key=value` attributes on these marks, and writing `aid=7`
-  into your permanent history would be worse than recording nothing.
+  into your permanent history would be worse than recording nothing. The one attribute that *is*
+  the command is kitty's `cmdline_url=<percent-encoded>`, which Ntilde decodes.
+
+fish 4.0 and later are a third-party integration of their own: fish writes `A`, `C` and `D` itself,
+with the command as `133;C;cmdline_url=…` (from 4.0.1). Ntilde's fish snippet and local bootstrap
+detect this (`status test-feature mark-prompt`, or the version on 4.0.0–4.0.5) and then add only
+`B`, which fish does not write; otherwise every command would be marked twice, and the long-command
+notification, Fix mode and the agent host's events would each see it twice. fish's `D` carries no
+duration, so durations come from Ntilde's own clock, started at `C`. With fish's marks turned off
+(`set -Ua fish_features no-mark-prompt`), the snippet writes all four marks as on fish 3.
 
 ## What Ntilde does with the marks
 

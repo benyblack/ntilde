@@ -22,6 +22,22 @@ public static class FishBootstrapBuilder
         b.Append(nl);
         b.Append("set -g __ntilde_command_start_ms \"\"").Append(nl);
         b.Append(nl);
+        // fish 4.0 and later write OSC 133 A, C and D themselves (C carries the command as
+        // cmdline_url from 4.0.1). Writing ours as well marked every command twice, and everything
+        // downstream of D counted it twice, so when fish writes them we add only B, which it never
+        // does. From 4.0.6 the mark-prompt feature says whether fish's marks are on
+        // (no-mark-prompt turns them off). `status test-feature` answers 2 for a feature it does
+        // not know: before 4.0.6 the version decides, since 4.0.x always marked and 3.x never did.
+        b.Append("status test-feature mark-prompt 2>/dev/null").Append(nl);
+        b.Append("switch $status").Append(nl);
+        b.Append("    case 0").Append(nl);
+        b.Append("        set -g __ntilde_fish_writes_marks 1").Append(nl);
+        b.Append("    case 2").Append(nl);
+        b.Append("        if string match -qr '^([4-9]|[1-9][0-9]+)\\.' -- $version").Append(nl);
+        b.Append("            set -g __ntilde_fish_writes_marks 1").Append(nl);
+        b.Append("        end").Append(nl);
+        b.Append("end").Append(nl);
+        b.Append(nl);
         // Portable millisecond clock. `date +%s%N` is GNU-only; macOS/BSD
         // `date` leaves a literal "%N", which would break the `math` call.
         // Detect at runtime: if the output is digits-only, treat as
@@ -42,26 +58,28 @@ public static class FishBootstrapBuilder
         b.Append(nl);
         b.Append("function __ntilde_emit_prompt_ready").Append(nl);
         b.Append("    printf '\\033]7;file://%s%s\\a' (hostname) (string escape --style=url -- $PWD)").Append(nl);
-        b.Append("    printf '\\033]133;A\\a'").Append(nl);
+        b.Append("    set -q __ntilde_fish_writes_marks; or printf '\\033]133;A\\a'").Append(nl);
         b.Append("end").Append(nl);
         b.Append(nl);
         // fish has native fish_preexec / fish_postexec events. We use
         // event handlers (function ... --on-event ...) so our hooks layer
         // cleanly without overwriting fish_prompt.
-        b.Append("function __ntilde_preexec --on-event fish_preexec").Append(nl);
-        b.Append("    set -l cmd \"$argv\"").Append(nl);
-        b.Append("    set -l b64 (printf '%s' \"$cmd\" | base64 | tr -d '\\n')").Append(nl);
-        b.Append("    printf '\\033]133;C;%s\\a' \"$b64\"").Append(nl);
-        b.Append("    set -g __ntilde_command_start_ms (__ntilde_now_ms)").Append(nl);
-        b.Append("end").Append(nl);
+        b.Append("if not set -q __ntilde_fish_writes_marks").Append(nl);
+        b.Append("    function __ntilde_preexec --on-event fish_preexec").Append(nl);
+        b.Append("        set -l cmd \"$argv\"").Append(nl);
+        b.Append("        set -l b64 (printf '%s' \"$cmd\" | base64 | tr -d '\\n')").Append(nl);
+        b.Append("        printf '\\033]133;C;%s\\a' \"$b64\"").Append(nl);
+        b.Append("        set -g __ntilde_command_start_ms (__ntilde_now_ms)").Append(nl);
+        b.Append("    end").Append(nl);
         b.Append(nl);
-        b.Append("function __ntilde_postexec --on-event fish_postexec").Append(nl);
-        b.Append("    set -l exit $status").Append(nl);
-        b.Append("    if test -n \"$__ntilde_command_start_ms\"").Append(nl);
-        b.Append("        set -l now_ms (__ntilde_now_ms)").Append(nl);
-        b.Append("        set -l duration_ms (math -s0 $now_ms - $__ntilde_command_start_ms)").Append(nl);
-        b.Append("        printf '\\033]133;D;%s;%s\\a' $exit $duration_ms").Append(nl);
-        b.Append("        set -g __ntilde_command_start_ms \"\"").Append(nl);
+        b.Append("    function __ntilde_postexec --on-event fish_postexec").Append(nl);
+        b.Append("        set -l exit $status").Append(nl);
+        b.Append("        if test -n \"$__ntilde_command_start_ms\"").Append(nl);
+        b.Append("            set -l now_ms (__ntilde_now_ms)").Append(nl);
+        b.Append("            set -l duration_ms (math -s0 $now_ms - $__ntilde_command_start_ms)").Append(nl);
+        b.Append("            printf '\\033]133;D;%s;%s\\a' $exit $duration_ms").Append(nl);
+        b.Append("            set -g __ntilde_command_start_ms \"\"").Append(nl);
+        b.Append("        end").Append(nl);
         b.Append("    end").Append(nl);
         b.Append("end").Append(nl);
         b.Append(nl);

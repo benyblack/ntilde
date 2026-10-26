@@ -163,6 +163,23 @@ public sealed class RemoteShellIntegrationSnippetTests
         Assert.Contains("string match -qr '^[0-9]+$'", content, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// fish 4 writes OSC 133 A, C and D itself; the snippet then writes only B, or every command
+    /// would be marked twice. RemoteFishSnippetIntegrationTests proves it on a real fish.
+    /// </summary>
+    [Fact]
+    public void FishSnippet_LeavesTheLifecycleMarksToFish_WhenFishWritesThem()
+    {
+        string content = RemoteShellIntegrationSnippets.Read(RemoteShellIntegrationShell.Fish);
+
+        Assert.Contains("status test-feature mark-prompt", content, StringComparison.Ordinal);
+        int gate = content.IndexOf("if not set -q __ntilde_fish_writes_marks", StringComparison.Ordinal);
+        Assert.True(gate >= 0, "the C and D handlers must only be defined when fish does not write its own marks");
+        Assert.True(gate < content.IndexOf("--on-event fish_preexec", StringComparison.Ordinal));
+        Assert.True(gate < content.IndexOf("--on-event fish_postexec", StringComparison.Ordinal));
+        Assert.Contains("set -q __ntilde_fish_writes_marks; or printf '\\033]133;A\\a'", content, StringComparison.Ordinal);
+    }
+
     // ---- prompt preservation --------------------------------------------------------------------
 
     /// <summary>

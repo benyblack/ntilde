@@ -83,6 +83,30 @@ internal static class ShellHarness
         return FindOnPath("bash");
     }
 
+    /// <summary>
+    /// Fails unless each command was marked once: at most one OSC 133;C and one OSC 133;D between
+    /// two B marks. A shell that writes its own marks beside a bootstrap's (fish 4 does) produces
+    /// two of each, and everything downstream of D (the long-command toast, Fix mode, the agent
+    /// host's events) then counts the command twice. A is left out: an extra prompt mark is
+    /// harmless, and the bootstraps write one at startup as well as at the first prompt.
+    /// </summary>
+    public static void AssertEachCommandMarkedOnce(IReadOnlyList<OscEvent> events)
+    {
+        int c = 0, d = 0;
+        foreach (OscEvent e in events)
+        {
+            if (e.Kind == "B")
+            {
+                c = d = 0;
+            }
+            else if ((e.Kind == "C" && ++c > 1) || (e.Kind == "D" && ++d > 1))
+            {
+                string sequence = string.Join(" ", events.Select(x => x.Kind).Where(k => k != "7"));
+                Assert.Fail($"a command was marked more than once ({e.Kind} twice before the next B): {sequence}");
+            }
+        }
+    }
+
     public static string? FindZsh() => OperatingSystem.IsWindows() ? null : FindOnPath("zsh");
 
     public static string? FindFish() => OperatingSystem.IsWindows() ? null : FindOnPath("fish");

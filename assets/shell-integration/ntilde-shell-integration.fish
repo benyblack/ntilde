@@ -10,6 +10,7 @@
 #   OSC 133;B        prompt end / first cell of your input
 #   OSC 133;C;<b64>  the line you submitted, base64-encoded
 #   OSC 133;D;<n>;<ms>  exit code and duration of the command that just ran
+#   (fish 4 writes A, C and D itself; then this adds only B)
 #
 # INSTALL (on the REMOTE host)
 #   1. mkdir -p ~/.config/fish/conf.d
@@ -39,6 +40,18 @@ if status is-interactive; and not set -q __ntilde_shell_integration_loaded
     set -g __ntilde_shell_integration_loaded 1
     set -g __ntilde_command_start_ms ""
 
+    # Ours on top of fish 4's own marks would mark each command twice. Status 2
+    # = no mark-prompt feature (pre-4.0.6): 4.0.x marks, 3.x does not.
+    status test-feature mark-prompt 2>/dev/null
+    switch $status
+        case 0
+            set -g __ntilde_fish_writes_marks 1
+        case 2
+            if string match -qr '^([4-9]|[1-9][0-9]+)\.' -- $version
+                set -g __ntilde_fish_writes_marks 1
+            end
+    end
+
     # Portable millisecond clock. `date +%s%N` is GNU-only; macOS/BSD `date`
     # leaves a literal "%N", which would break `math`. Detect at runtime:
     # digits-only output is nanoseconds, anything else falls back to seconds.
@@ -58,23 +71,25 @@ if status is-interactive; and not set -q __ntilde_shell_integration_loaded
 
     function __ntilde_emit_prompt_ready
         printf '\033]7;file://%s%s\a' (hostname) (string escape --style=url -- $PWD)
-        printf '\033]133;A\a'
+        set -q __ntilde_fish_writes_marks; or printf '\033]133;A\a'
     end
 
     # fish has native fish_preexec / fish_postexec events, so hooks layer
     # cleanly without overwriting anything.
-    function __ntilde_preexec --on-event fish_preexec
-        set -l b64 (printf '%s' "$argv" | base64 | tr -d '\n')
-        printf '\033]133;C;%s\a' "$b64"
-        set -g __ntilde_command_start_ms (__ntilde_now_ms)
-    end
+    if not set -q __ntilde_fish_writes_marks
+        function __ntilde_preexec --on-event fish_preexec
+            set -l b64 (printf '%s' "$argv" | base64 | tr -d '\n')
+            printf '\033]133;C;%s\a' "$b64"
+            set -g __ntilde_command_start_ms (__ntilde_now_ms)
+        end
 
-    function __ntilde_postexec --on-event fish_postexec
-        set -l exit_code $status
-        if test -n "$__ntilde_command_start_ms"
-            set -l now_ms (__ntilde_now_ms)
-            printf '\033]133;D;%s;%s\a' $exit_code (math -s0 $now_ms - $__ntilde_command_start_ms)
-            set -g __ntilde_command_start_ms ""
+        function __ntilde_postexec --on-event fish_postexec
+            set -l exit_code $status
+            if test -n "$__ntilde_command_start_ms"
+                set -l now_ms (__ntilde_now_ms)
+                printf '\033]133;D;%s;%s\a' $exit_code (math -s0 $now_ms - $__ntilde_command_start_ms)
+                set -g __ntilde_command_start_ms ""
+            end
         end
     end
 
