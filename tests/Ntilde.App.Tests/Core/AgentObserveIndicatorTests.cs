@@ -8,6 +8,7 @@ using Ntilde.AgentHost;
 using Ntilde.Controls;
 using Ntilde.Pty;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Shell.TitleBar;
 // Aliased, not a plain namespace using: Avalonia.Controls.Shapes also exports a Path type that
 // would collide with System.IO.Path, which this file uses for its NTILDE_APPDATA_ROOT scratch dirs.
@@ -543,18 +544,117 @@ public class AgentObserveIndicatorTests : IDisposable
     private const string OtherTabKey = "22222222-2222-2222-2222-222222222222";
 
     [Theory]
-    [InlineData(false, false, "#6B737F", null)]
-    [InlineData(true, false, "#4FB0D4", null)]
-    [InlineData(true, true, "#E8A33D", "#4FB0D4")]
-    [InlineData(false, true, "#E8A33D", null)]
-    public void Light_appearance(bool active, bool unseenWrite, string fill, string? ring)
-        => Assert.Equal((fill, ring), MainWindow.ObserveLightAppearance(active, unseenWrite));
+    [InlineData(false, false, ThemeKeys.AgentIdle, null)]
+    [InlineData(true, false, ThemeKeys.AgentWatched, null)]
+    [InlineData(true, true, ThemeKeys.AgentWrote, ThemeKeys.AgentWatched)]
+    [InlineData(false, true, ThemeKeys.AgentWrote, null)]
+    public void Light_appearance(bool active, bool unseenWrite, string fillKey, string? ringKey)
+        => Assert.Equal((fillKey, ringKey), MainWindow.ObserveLightAppearance(active, unseenWrite));
 
     [Fact]
     public void A_write_while_reading_looks_different_from_a_write_alone()
         => Assert.NotEqual(
             MainWindow.ObserveLightAppearance(active: true, unseenWrite: true),
             MainWindow.ObserveLightAppearance(active: false, unseenWrite: true));
+
+    // ---- the light's controls ----
+    //
+    // RefreshAgentObserveIndicator reads AgentHostService.Instance, which a test must not start, so the
+    // half that paints the controls is ApplyObserveIndicatorVisuals and these drive it on a real window.
+    // Each brush is the token's own instance (ThemeService recolours it in place on a theme switch).
+
+    private const string DefaultObserveTip = "Agent access is enabled. Click to open the agent activity journal.";
+
+    private static MainWindow.FocusWriteMark[] OneWriteMark() =>
+        [new MainWindow.FocusWriteMark("release build", null, new DateTimeOffset(2026, 10, 23, 9, 5, 7, TimeSpan.Zero))];
+
+    private static (Button Indicator, Ellipse Dot) LightOf(MainWindow window) =>
+        (window.FindControl<Button>("AgentObserveIndicator")!, window.FindControl<Ellipse>("AgentObserveIndicatorDot")!);
+
+    [AvaloniaFact]
+    public void An_unseen_write_paints_the_wrote_token_with_no_ring_and_names_the_tab()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: false, OneWriteMark());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWrote), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+            Assert.Contains("release build", Assert.IsType<string>(ToolTip.GetTip(indicator)));
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_write_during_a_read_rings_the_wrote_fill_with_the_watched_token()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWrote), dot.Fill);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWatched), dot.Stroke);
+            Assert.Equal(1.5, dot.StrokeThickness);
+        });
+    }
+
+    [AvaloniaFact]
+    public void A_read_alone_paints_the_watched_token_with_no_ring_and_the_default_tip()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+            // From the ringed state, so the ring and the mark's tooltip are seen to go, not just never to come.
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, Array.Empty<MainWindow.FocusWriteMark>());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentWatched), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+            Assert.Equal(DefaultObserveTip, ToolTip.GetTip(indicator));
+        });
+    }
+
+    [AvaloniaFact]
+    public void Nothing_happening_paints_the_idle_token_with_no_ring()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, dot) = LightOf(window);
+            // The XAML default is already the idle token, so start from a painted state.
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+
+            window.ApplyObserveIndicatorVisuals(visible: true, active: false, Array.Empty<MainWindow.FocusWriteMark>());
+
+            Assert.True(indicator.IsVisible);
+            Assert.Same(window.FindResource(ThemeKeys.AgentIdle), dot.Fill);
+            Assert.Null(dot.Stroke);
+            Assert.Equal(0, dot.StrokeThickness);
+        });
+    }
+
+    [AvaloniaFact]
+    public void Observe_off_hides_the_light()
+    {
+        RunIsolated(window =>
+        {
+            var (indicator, _) = LightOf(window);
+            window.ApplyObserveIndicatorVisuals(visible: true, active: true, OneWriteMark());
+            Assert.True(indicator.IsVisible);
+
+            window.ApplyObserveIndicatorVisuals(visible: false, active: true, OneWriteMark());
+
+            Assert.False(indicator.IsVisible);
+        });
+    }
 
     [Fact]
     public void The_tooltip_says_when_an_agent_is_also_reading()

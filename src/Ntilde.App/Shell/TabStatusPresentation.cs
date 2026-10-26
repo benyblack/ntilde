@@ -20,6 +20,26 @@ namespace Ntilde.Shell
     }
 
     /// <summary>
+    /// The dot's shape. Colour alone does not separate the states: Working and AgentWatched are
+    /// both blues and Attention and AgentWrote both ambers on most themes, so each hue-adjacent
+    /// pair also differs in shape (spec D5).
+    /// </summary>
+    internal enum TabDotShape
+    {
+        /// <summary>No dot.</summary>
+        None,
+
+        /// <summary>Filled circle: Working and Attention.</summary>
+        Circle,
+
+        /// <summary>Filled diamond: AgentWrote, so it never reads as Attention's amber circle.</summary>
+        Diamond,
+
+        /// <summary>Hollow ring: AgentWatched, so it never reads as Working's blue circle.</summary>
+        Ring,
+    }
+
+    /// <summary>
     /// The discrete attention markers a vertical tab header shows as trailing chips.
     /// Unlike the dot (exactly one <see cref="TabDotVisual"/>), several markers can be
     /// visible at once; only bell and plain activity are mutually exclusive.
@@ -68,6 +88,15 @@ namespace Ntilde.Shell
                               && string.Equals(rollupPolicy, "All", System.StringComparison.Ordinal),
                 Shared: isShared);
         }
+
+        /// <summary>The shape that pairs with <paramref name="visual"/> (see <see cref="TabDotShape"/>).</summary>
+        internal static TabDotShape ResolveDotShape(TabDotVisual visual) => visual switch
+        {
+            TabDotVisual.Working or TabDotVisual.Attention => TabDotShape.Circle,
+            TabDotVisual.AgentWrote => TabDotShape.Diamond,
+            TabDotVisual.AgentWatched => TabDotShape.Ring,
+            _ => TabDotShape.None,
+        };
 
         /// <summary>
         /// Resolves the single dot visual (highest precedence first): attention (bell or

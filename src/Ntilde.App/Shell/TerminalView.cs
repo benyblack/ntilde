@@ -1601,7 +1601,8 @@ namespace Ntilde.Shell
             if (!skiaSuccess)
             {
                 // FALLBACK TO AVALONIA (Should be rare)
-                var testText = new FormattedText("M", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, _typeface, _fontSize * scaling, Brushes.White);
+                // Measured only, never drawn, so the brush is immaterial.
+                var testText = new FormattedText("M", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, _typeface, _fontSize * scaling, Brushes.Transparent);
                 _metrics.CellWidth = (float)(Math.Ceiling(testText.Width) / scaling);
                 _metrics.CellHeight = (float)(Math.Ceiling(testText.Height) / scaling);
                 _metrics.Baseline = (float)(Math.Round(testText.Baseline) / scaling);
@@ -2449,8 +2450,9 @@ namespace Ntilde.Shell
             var buffer = _buffer; // Capture local reference to prevent it becoming null mid-render (race condition)
             if (buffer == null)
             {
-                // Absolute fallback: draw dark background even without a buffer
-                context.FillRectangle(new SolidColorBrush(Color.FromRgb(20, 20, 20), _windowOpacity), new Rect(0, 0, Bounds.Width, Bounds.Height));
+                // Absolute fallback without a buffer (so without the pane's theme): the app theme's
+                // window background, so the view never flashes a fixed dark block on a light theme.
+                context.FillRectangle(new SolidColorBrush(Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.WindowBg], _windowOpacity), new Rect(0, 0, Bounds.Width, Bounds.Height));
                 return;
             }
 
@@ -2555,8 +2557,10 @@ namespace Ntilde.Shell
 
             if (_isBellFlashActive)
             {
+                // The pane theme's foreground at a low alpha: a white flash was invisible on light themes.
+                var flash = buffer.Theme.Foreground.ToAvaloniaColor();
                 context.FillRectangle(
-                    new SolidColorBrush(Color.FromArgb(38, 255, 255, 255)),
+                    new SolidColorBrush(Color.FromArgb(0x26, flash.R, flash.G, flash.B)),
                     new Rect(0, 0, Bounds.Width, Bounds.Height));
             }
         }

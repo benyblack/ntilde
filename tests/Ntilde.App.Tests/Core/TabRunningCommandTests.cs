@@ -75,7 +75,7 @@ public sealed class TabRunningCommandTests : IDisposable
 
     private static Avalonia.Media.Color? DotColorOf(TabItem tab)
     {
-        var dot = MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot");
+        var dot = MainWindow.FindTabHeaderDescendant<Avalonia.Controls.Shapes.Path>(tab.Header, "TabStatusDot");
         return (dot?.Fill as Avalonia.Media.ISolidColorBrush)?.Color;
     }
 
@@ -201,10 +201,10 @@ public sealed class TabRunningCommandTests : IDisposable
 
             Assert.True(window.IsTabRunningCommandForTest(tabA));
             Assert.Equal(TabTrackerStatus.Idle, window.GetTabRenderedStatusForTest(tabA));
-            // Working dot = the theme-blue workingBrush UpdateTabVisuals passes to
-            // UpdateVerticalTabExtras — not the amber attention or agent brushes, and
-            // not the heuristic (that rendered Idle).
-            var expectedWorking = GetSettings(window).ActiveTheme.Blue.ToAvaloniaColor();
+            // Working dot = the NtTabWorking token — not the amber attention or agent
+            // tokens, and not the heuristic (that rendered Idle).
+            // The Working token (softened accent, contrast-fixed), not the raw ANSI blue.
+            var expectedWorking = Ntilde.Shell.Theming.ThemeService.Current[Ntilde.Shell.Theming.ThemeKeys.TabWorking];
             Assert.Equal(expectedWorking, DotColorOf(tabA));
 
             // Finish: with the heuristic Idle and no markers, the dot must fall back

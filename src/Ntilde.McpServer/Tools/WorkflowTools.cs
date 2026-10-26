@@ -7,7 +7,7 @@ using ModelContextProtocol.Server;
 namespace Ntilde.McpServer.Tools;
 
 [McpServerToolType]
-public static class WorkflowTools
+public sealed class WorkflowTools
 {
     // Keyword → (relevant area, constraint) hints, used to tailor the generated prompt.
     private static readonly (string[] Keywords, string Area)[] AreaHints =

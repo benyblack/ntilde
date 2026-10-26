@@ -351,7 +351,7 @@ namespace Ntilde.Shell
 
             return new TabItem
             {
-                Header = new TextBlock { Text = tabSession.Title, Foreground = Avalonia.Media.Brushes.White, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(10, 4) },
+                Header = new TextBlock { Text = tabSession.Title, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Padding = new Thickness(10, 4) },
                 Content = content,
                 Tag = tabSession
             };
@@ -689,8 +689,6 @@ namespace Ntilde.Shell
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
 
-                var dividerBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(35, 35, 35));
-
                 bool isHorizontal = (node.SplitOrientation == 0); // 0=Horizontal (Cols)
 
                 for (int i = 0; i < node.Children.Count; i++)
@@ -700,7 +698,6 @@ namespace Ntilde.Shell
                     {
                         var splitter = new GridSplitter
                         {
-                            Background = dividerBrush,
                             Focusable = false
                         };
 

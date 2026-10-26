@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Ntilde.McpServer;
+using Ntilde.McpServer.Tools;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -19,9 +20,22 @@ builder.Services.AddSingleton(RepoContext.Discover());
 // Constructing it does not touch the endpoint; availability is checked per call.
 builder.Services.AddSingleton(new AgentHostClient());
 
+// Each tool type is named through the generic WithTools<T>() - the SDK's only trim-safe
+// registration - rather than discovered with WithToolsFromAssembly(), which scans by
+// reflection: the released ntilde-mcp is a NativeAOT binary, where that scan can come back
+// short. That is also why the tool classes are sealed rather than static (a static class
+// cannot be a type argument). A new [McpServerToolType] class must be added here;
+// McpServerStdioE2ETests' expected tool list catches one that is not.
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
-    .WithToolsFromAssembly();
+    .WithTools<BackupTools>()
+    .WithTools<ConnectionProfileTools>()
+    .WithTools<ProjectTools>()
+    .WithTools<SessionTools>()
+    .WithTools<SettingsTools>()
+    .WithTools<ThemeTools>()
+    .WithTools<VtTools>()
+    .WithTools<WorkflowTools>();
 
 await builder.Build().RunAsync();

@@ -55,6 +55,39 @@ public interface INativeSshInterop
         throw new NotSupportedException(
             $"{GetType().Name} does not implement exec sessions.");
 
+    /// <summary>
+    /// Runs <paramref name="command"/> with no PTY on <paramref name="connection"/> (from <see cref="ConnectShared"/>):
+    /// <see cref="Exec"/>'s channel and events, without its connect and login. Returns at once; on a connection still
+    /// logging in, the command waits for it. Closing the handle never closes the connection.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The connection is closed or no longer running.</exception>
+    /// <remarks>Default implementation throws, like <see cref="Exec"/>.</remarks>
+    NovaSshSafeHandle OpenExec(NovaSshSafeHandle connection, NativeSshConnectionOptions options, string command) =>
+        throw new NotSupportedException(
+            $"{GetType().Name} does not implement shared connections.");
+
+    /// <summary>
+    /// <see cref="RunSftpTransfer"/> on a channel of <paramref name="connection"/>, with no connect and no login. False
+    /// when the connection is closed or ends first: the caller then transfers over a connection of its own. Blocking, like
+    /// <see cref="RunSftpTransfer"/>.
+    /// </summary>
+    /// <remarks>Default implementation returns false, so a test double without shared connections falls back.</remarks>
+    bool TryRunSftpTransferShared(
+        NovaSshSafeHandle connection,
+        NativeSftpTransferOptions transferOptions,
+        Action<NativeSftpTransferProgress>? progress,
+        CancellationToken cancellationToken) => false;
+
+    /// <summary>
+    /// <see cref="ListRemoteDirectory"/> on a channel of <paramref name="connection"/>. Null when the connection is closed
+    /// or ends first, as for <see cref="TryRunSftpTransferShared"/>.
+    /// </summary>
+    /// <remarks>Default implementation returns null; see <see cref="TryRunSftpTransferShared"/>.</remarks>
+    IReadOnlyList<NativeRemotePathEntry>? TryListRemoteDirectoryShared(
+        NovaSshSafeHandle connection,
+        string remotePath,
+        CancellationToken cancellationToken) => null;
+
     // Blocking FFI/network call. App/UI-facing services must offload this work before awaiting it.
     IReadOnlyList<NativeRemotePathEntry> ListRemoteDirectory(
         NativeSshConnectionOptions connectionOptions,

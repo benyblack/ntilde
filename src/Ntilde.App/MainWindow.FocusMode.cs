@@ -8,6 +8,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Styling;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde
 {
@@ -219,13 +220,14 @@ namespace Ntilde
         internal sealed record FocusWriteMark(string TabTitle, string? PaneTitle, DateTimeOffset? LastWriteUtc, bool Closed = false, bool SinceClosed = false);
 
         /// <summary>
-        /// Amber fill for an unseen write, blue for a read or poll, grey when idle. A write and a read at
-        /// once keep the amber fill and add a blue ring, so a pending write never hides a read.
+        /// The theme token keys (<see cref="ThemeKeys"/>) the light paints with: the AgentWrote fill for an unseen
+        /// write, AgentWatched for a read or poll, AgentIdle otherwise. A write and a read at once keep the AgentWrote
+        /// fill and add an AgentWatched ring, so a pending write never hides a read.
         /// </summary>
-        internal static (string Fill, string? Ring) ObserveLightAppearance(bool active, bool unseenWrite)
+        internal static (string FillKey, string? RingKey) ObserveLightAppearance(bool active, bool unseenWrite)
             => unseenWrite
-                ? ("#E8A33D", active ? "#4FB0D4" : null)
-                : (active ? "#4FB0D4" : "#6B737F", null);
+                ? (ThemeKeys.AgentWrote, active ? ThemeKeys.AgentWatched : null)
+                : (active ? ThemeKeys.AgentWatched : ThemeKeys.AgentIdle, null);
 
         internal static string BuildFocusLightTooltip(IReadOnlyList<FocusWriteMark> marks, bool active = false)
         {
@@ -348,7 +350,8 @@ namespace Ntilde
 
             var tabs = this.FindControl<TabControl>("Tabs");
             title.Text = tabs?.SelectedItem is TabItem selected ? GetTabHeaderText(selected) : "";
-            title.Foreground = TitleBarContrastForeground();
+            // The title-bar ink token (the title-bar buttons' NtFg); the instance recolours on a theme switch.
+            title.Foreground = ThemeBrush(ThemeKeys.Fg);
 
             double left = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? MacOsTrafficLightReserve : 10;
             double titleBarRight = this.FindControl<Grid>("TitleBar")?.Margin.Right ?? 0;

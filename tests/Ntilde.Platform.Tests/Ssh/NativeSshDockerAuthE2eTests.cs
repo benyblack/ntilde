@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Ntilde.Platform.Ssh.Exec;
 using Ntilde.Platform.Ssh.Interactions;
 using Ntilde.Platform.Ssh.Models;
 using Ntilde.Platform.Ssh.Native;
@@ -325,6 +326,40 @@ public sealed class NativeSshDockerAuthE2eTests
 
         Assert.Equal(payload, echoed);
         Assert.Single(handler.RequestSnapshot(), request => request.Kind == SshInteractionKind.Password);
+    }
+
+    [DockerFact]
+    [Trait("Category", "DockerE2E")]
+    [Trait("Target", "NativeSsh")]
+    public async Task LocalForward_ComesUpWithASharedConnectionAnExecOpened()
+    {
+        // A persistent tab is an exec: with multiplexing on, the connection it opens carries the profile's forwards.
+        await using var fixture = await DockerSshFixture.StartAsync();
+
+        int localPort = GetFreeLocalPort();
+        var handler = new NativeSshTestInteractionHandler(fixture.Password);
+        var pool = new NativeSshConnectionPool();
+        SshProfile profile = CreateProfile(fixture);
+        profile.MuxOptions.Enabled = true;
+        profile.Forwards.Add(new PortForward
+        {
+            Kind = PortForwardKind.Local,
+            BindAddress = "127.0.0.1",
+            SourcePort = localPort,
+            DestinationHost = "127.0.0.1",
+            DestinationPort = fixture.EchoServicePort
+        });
+
+        var transport = new NativeSshExecTransport(profile, new NativeSshInterop(), handler, NativeSshConnectionOptionsFactory.Create, connectionPool: pool);
+        using ISshExecChannel channel = transport.Start("echo up; sleep 60", TestContext.Current.CancellationToken);
+        var greeting = new byte[3];
+        await channel.Stdout.ReadExactlyAsync(greeting, TestContext.Current.CancellationToken);
+        Assert.Equal("up\n", System.Text.Encoding.ASCII.GetString(greeting));
+
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, localPort, TestContext.Current.CancellationToken);
+        const string payload = "exec-opened-forward";
+        Assert.Equal(payload, await EchoRoundTripAsync(client.GetStream(), payload, TimeSpan.FromSeconds(30)));
     }
 
     [DockerFact]

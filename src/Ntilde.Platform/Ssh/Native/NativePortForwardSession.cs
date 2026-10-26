@@ -70,13 +70,31 @@ public sealed class NativePortForwardSession : IDisposable
     private int _disposed;
     private int _remoteForwardsRequested;
 
+    /// <param name="continueOnBindFailure">
+    /// False (a tab's own connection): a local or dynamic forward whose port cannot be bound fails the constructor, and the
+    /// tab with it. True (a shared connection): it is warned about and left out, as OpenSSH does by default
+    /// (<c>ExitOnForwardFailure no</c>), so one busy port cannot keep every tab of the profile from opening.
+    /// </param>
     public NativePortForwardSession(
         NovaSshSafeHandle sessionHandle,
         IReadOnlyList<PortForward> forwards,
         INativeSshInterop interop,
         Action<string>? log = null,
-        Action<string>? warn = null)
-        : this(sessionHandle, forwards, interop, log, warn, WriteSocksReplyAsync)
+        Action<string>? warn = null,
+        bool continueOnBindFailure = false)
+        : this(sessionHandle, forwards, interop, log, warn, WriteSocksReplyAsync, continueOnBindFailure)
+    {
+    }
+
+    // The tests reach this one by reflection, by this exact signature, to supply their own reply writer.
+    private NativePortForwardSession(
+        NovaSshSafeHandle sessionHandle,
+        IReadOnlyList<PortForward> forwards,
+        INativeSshInterop interop,
+        Action<string>? log,
+        Action<string>? warn,
+        Func<NetworkStream, byte[], CancellationToken, Task> socksReplyWriter)
+        : this(sessionHandle, forwards, interop, log, warn, socksReplyWriter, continueOnBindFailure: false)
     {
     }
 
@@ -86,7 +104,8 @@ public sealed class NativePortForwardSession : IDisposable
         INativeSshInterop interop,
         Action<string>? log,
         Action<string>? warn,
-        Func<NetworkStream, byte[], CancellationToken, Task> socksReplyWriter)
+        Func<NetworkStream, byte[], CancellationToken, Task> socksReplyWriter,
+        bool continueOnBindFailure)
     {
         if (sessionHandle is null || sessionHandle.IsInvalid || sessionHandle.IsClosed)
         {
@@ -112,6 +131,17 @@ public sealed class NativePortForwardSession : IDisposable
                 if (forward.Kind == PortForwardKind.Remote)
                 {
                     CollectRemoteForward(forward);
+                }
+                else if (continueOnBindFailure)
+                {
+                    try
+                    {
+                        StartListener(forward);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        _warn($"Warning: {ex.Message}; continuing without this forward.");
+                    }
                 }
                 else
                 {

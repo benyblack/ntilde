@@ -7,18 +7,18 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Title="Transfer">
-    <Border Background="#252526" BorderBrush="#333333" BorderThickness="1" Padding="16">
+    <Border Background="{DynamicResource NtOverlay}" BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" Padding="16">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto">
             <TextBlock Grid.ColumnSpan="3"
                        Text="Transfer"
-                       Foreground="White"
+                       Foreground="{DynamicResource NtFg}"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Margin="0,0,0,12"/>
 
             <TextBlock Grid.Row="1"
                        Text="Remote"
-                       Foreground="#D0D0D0"
+                       Foreground="{DynamicResource NtFg2}"
                        VerticalAlignment="Center"
                        Margin="0,0,12,0"/>
             <controls:RemotePathTextBox Name="RemotePathInput"
@@ -28,7 +28,7 @@
 
             <TextBlock Grid.Row="2"
                        Text="Local"
-                       Foreground="#D0D0D0"
+                       Foreground="{DynamicResource NtFg2}"
                        VerticalAlignment="Center"
                        Margin="0,12,12,0"/>
             <TextBox Name="LocalPathBox"
@@ -45,7 +45,7 @@
             <TextBlock Name="ValidationMessage"
                        Grid.Row="3"
                        Grid.ColumnSpan="3"
-                       Foreground="#F14C4C"
+                       Foreground="{DynamicResource NtError}"
                        Margin="0,12,0,0"
                        TextWrapping="Wrap"/>
 
@@ -61,8 +61,8 @@
                 <Button Name="BtnTransferConfirm"
                         Content="Start Transfer"
                         MinWidth="110"
-                        Background="#007ACC"
-                        Foreground="White"/>
+                        Background="{DynamicResource NtAccent}"
+                        Foreground="{DynamicResource NtAccentFg}"/>
             </StackPanel>
         </Grid>
     </Border>

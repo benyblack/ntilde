@@ -1,5 +1,6 @@
 using System;
 using Ntilde.Shell;
+using Ntilde.Shell.Theming;
 using Ntilde.Pty;
 using Avalonia.Headless.XUnit;
 using Avalonia.Controls;
@@ -630,41 +631,36 @@ public sealed class MainWindowStartupTests : IDisposable, IClassFixture<TestAppD
         Assert.Equal(Colors.Black, ((ISolidColorBrush)searchBox!.Foreground!).Color);
     }
 
+    /// <summary>
+    /// A splitter's line follows its state classes through MainWindow's styles, with nothing
+    /// repainted in code: NtHairline at rest, NtHairlineStrong on hover, NtAccentBorder while
+    /// dragging, all in the active theme's tones (a light theme gets a dark line).
+    /// </summary>
     [AvaloniaFact]
-    public void ApplySplitterVisualState_LightTheme_StrengthensLineOnHoverAndDrag()
+    public void A_splitter_takes_its_state_token_on_a_light_theme()
     {
         var window = TestMainWindowFactory.Create();
-        var settingsField = typeof(Ntilde.MainWindow).GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic);
-        var applySplitterVisualStateMethod = typeof(Ntilde.MainWindow).GetMethod("ApplySplitterVisualState", BindingFlags.Instance | BindingFlags.NonPublic);
-        var settings = (TerminalSettings)settingsField!.GetValue(window)!;
-
-        settings.ThemeName = "Test Light";
-        settings.ActiveTheme = new TerminalTheme
-        {
-            Name = "Test Light",
-            Background = TermColor.FromRgb(245, 240, 225),
-            Foreground = TermColor.Black
-        };
-
         var splitter = new GridSplitter();
+        window.FindControl<Grid>("MainRoot")!.Children.Add(splitter);
+        window.Show();
+        try
+        {
+            ThemeService.Apply(Ntilde.Tests.Theming.TestThemes.GitHubLight, 1.0);
+            Dispatcher.UIThread.RunJobs();
+            var expected = ThemeTokens.Derive(Ntilde.Tests.Theming.TestThemes.GitHubLight, 1.0);
+            Assert.Equal(expected[ThemeKeys.Hairline], ((ISolidColorBrush)splitter.Background!).Color);
 
-        applySplitterVisualStateMethod!.Invoke(window, new object[] { splitter });
-        var idleColor = ((ISolidColorBrush)splitter.Background!).Color;
+            splitter.Classes.Add("splitter-hover");
+            Assert.Equal(expected[ThemeKeys.HairlineStrong], ((ISolidColorBrush)splitter.Background!).Color);
 
-        splitter.Classes.Add("splitter-hover");
-        applySplitterVisualStateMethod.Invoke(window, new object[] { splitter });
-        var hoverColor = ((ISolidColorBrush)splitter.Background!).Color;
-
-        splitter.Classes.Remove("splitter-hover");
-        splitter.Classes.Add("splitter-dragging");
-        applySplitterVisualStateMethod.Invoke(window, new object[] { splitter });
-        var draggingColor = ((ISolidColorBrush)splitter.Background!).Color;
-
-        Assert.Equal(Colors.Black.R, idleColor.R);
-        Assert.Equal(Colors.Black.G, idleColor.G);
-        Assert.Equal(Colors.Black.B, idleColor.B);
-        Assert.True(idleColor.A < hoverColor.A);
-        Assert.True(hoverColor.A < draggingColor.A);
+            splitter.Classes.Add("splitter-dragging");
+            Assert.Equal(expected[ThemeKeys.AccentBorder], ((ISolidColorBrush)splitter.Background!).Color);
+        }
+        finally
+        {
+            window.Close();
+            ThemeService.Apply(new TerminalTheme(), 1.0);
+        }
     }
 
 

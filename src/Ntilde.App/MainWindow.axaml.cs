@@ -165,21 +165,21 @@ namespace Ntilde
         /// <summary>The caption strip <see cref="WatchCaptionButtonStrip"/> is hooked to, so it hooks once.</summary>
         private Control? _watchedCaptionButtonStrip;
 
-        // Hoisted out of UpdateVerticalTabExtras: that method runs per tab per visual-refresh
-        // pass, and allocating a new SolidColorBrush per tab per pass adds up.
-        private static readonly IBrush TabAttentionBrush = new ImmutableSolidColorBrush(Color.Parse("#FFD25A"));
+        // The vertical header's status dot geometries, one per TabDotShape, in the dot's 8x8 box.
+        // Built once on first use (UpdateVerticalTabExtras swaps which one a dot shows on every
+        // pass), and lazily, never in a static initializer: creating a Geometry needs Avalonia's
+        // render platform, so an eager field would make MainWindow's type initializer throw for
+        // anything that touches a MainWindow static before the platform is up - and a type whose
+        // initializer has thrown is unusable for the rest of the process.
+        private static Geometry? s_tabDotCircleGeometry;
+        private static Geometry? s_tabDotDiamondGeometry;
+        private static Geometry? s_tabDotRingGeometry;
 
-        // Agent-aware tab status colors (dot + marker chips). They intentionally match the
-        // in-pane agent segment (TerminalPane.ApplyAgentAttention: dot #E8A33D/#4FB0D4, text
-        // #F0C07A/#7FC3DC) and the existing tab attention constant above, so the same tier
-        // reads as one color everywhere it appears.
-        private static readonly IBrush TabAgentWroteDotBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0xE8, 0xA3, 0x3D));
-        private static readonly IBrush TabAgentWatchedDotBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x4F, 0xB0, 0xD4));
-        private static readonly IBrush TabBellChipBrush = TabAttentionBrush; // #FFD25A
-        private static readonly IBrush TabActivityChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF));
-        private static readonly IBrush TabAgentWroteChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0xF0, 0xC0, 0x7A));
-        private static readonly IBrush TabAgentWatchedChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x7F, 0xC3, 0xDC));
-        private static readonly IBrush TabSharedChipBrush = new ImmutableSolidColorBrush(Color.FromArgb(0xFF, 0x4F, 0xB0, 0xD4));
+        private static Geometry TabDotCircleGeometry => s_tabDotCircleGeometry ??= new EllipseGeometry(new Rect(0, 0, 8, 8));
+
+        private static Geometry TabDotDiamondGeometry => s_tabDotDiamondGeometry ??= Geometry.Parse("M4,0 L8,4 L4,8 L0,4 Z");
+
+        private static Geometry TabDotRingGeometry => s_tabDotRingGeometry ??= new EllipseGeometry(new Rect(0.75, 0.75, 6.5, 6.5));
         private bool _isVerticalTabStrip;
         internal bool IsVerticalTabStripActive => _isVerticalTabStrip;
 
@@ -986,10 +986,11 @@ namespace Ntilde
 
         private Border CreateTabHeaderHost(TabItem tab, string text)
         {
+            // No Foreground: the title inherits the TabItem's (NtTabFg, NtTabFgSelected when
+            // selected; see App.axaml), so selection and theme switches recolour it on their own.
             var headerText = new TextBlock
             {
                 Text = text,
-                Foreground = Brushes.White,
                 FontSize = 12,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -1010,12 +1011,15 @@ namespace Ntilde
 
         private Border CreateVerticalTabHeaderHost(TabItem tab, string text)
         {
-            var statusDot = new Avalonia.Controls.Shapes.Ellipse
+            // A Path rather than an Ellipse: the dot's shape carries meaning too (TabDotShape), so
+            // UpdateVerticalTabExtras swaps its geometry as well as its token.
+            var statusDot = new Avalonia.Controls.Shapes.Path
             {
                 Name = "TabStatusDot",
                 Width = 8,
                 Height = 8,
                 Fill = Brushes.Transparent,
+                StrokeThickness = 1.5,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 8, 0)
             };
@@ -1023,7 +1027,6 @@ namespace Ntilde
             var headerText = new TextBlock
             {
                 Text = text,
-                Foreground = Brushes.White,
                 FontSize = 12,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 VerticalAlignment = VerticalAlignment.Center
@@ -1033,7 +1036,7 @@ namespace Ntilde
             {
                 Name = "TabPreviewLine",
                 Text = string.Empty,
-                Foreground = TabActivityChipBrush,
+                Foreground = ThemeBrush(ThemeKeys.TabPreviewFg),
                 FontSize = 10,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 2, 0, 0)
@@ -1070,15 +1073,14 @@ namespace Ntilde
             // set back on; not hit-testable so pointer presses stay on the header host
             // (select + context menu + drag-reorder), which also means no per-chip
             // tooltips (a hit-test-invisible control never sees pointer-enter). Chip
-            // colors match the in-pane agent segment and the existing tab attention
-            // constant (see the Tab*ChipBrush declarations above).
-            TextBlock Chip(string name, string glyph, IBrush foreground)
+            // colours are the NtTabChip* tokens, contrast-fixed for text against the sidebar.
+            TextBlock Chip(string name, string glyph, string tokenKey)
             {
                 var chip = new TextBlock
                 {
                     Name = name,
                     Text = glyph,
-                    Foreground = foreground,
+                    Foreground = ThemeBrush(tokenKey),
                     FontSize = 10,
                     IsVisible = false,
                     IsHitTestVisible = false,
@@ -1086,11 +1088,12 @@ namespace Ntilde
                 return chip;
             }
 
-            var bellChip = Chip("TabBellChip", "\U0001F514", TabBellChipBrush);
-            var activityChip = Chip("TabActivityChip", "\u2022", TabActivityChipBrush);
-            var agentWroteChip = Chip("TabAgentWroteChip", AgentWroteGlyph, TabAgentWroteChipBrush);
-            var agentWatchedChip = Chip("TabAgentWatchedChip", AgentWatchedGlyph, TabAgentWatchedChipBrush);
-            var sharedChip = Chip("TabSharedChip", SharedGlyph, TabSharedChipBrush);
+            var bellChip = Chip("TabBellChip", "\U0001F514", ThemeKeys.TabChipAttention);
+            var activityChip = Chip("TabActivityChip", "\u2022", ThemeKeys.TabChipActivity);
+            var agentWroteChip = Chip("TabAgentWroteChip", AgentWroteGlyph, ThemeKeys.TabChipAgentWrote);
+            var agentWatchedChip = Chip("TabAgentWatchedChip", AgentWatchedGlyph, ThemeKeys.TabChipAgentWatched);
+            // Shared has always worn the watched blue; it keeps that family.
+            var sharedChip = Chip("TabSharedChip", SharedGlyph, ThemeKeys.TabChipAgentWatched);
 
             var chipsColumn = new StackPanel
             {
@@ -2231,7 +2234,7 @@ namespace Ntilde
             {
                 badge.IsVisible = false;
                 ToolTip.SetTip(button, baseTooltip);
-                button.Foreground = TitleBarContrastForeground();
+                button.ClearValue(Button.ForegroundProperty);
                 return;
             }
 
@@ -2240,13 +2243,17 @@ namespace Ntilde
             badge.IsVisible = hiddenCount > 0;
             badge.Text = hiddenCount > 0 ? $"+{hiddenCount}" : string.Empty;
             ToolTip.SetTip(button, hiddenCount > 0 ? $"{baseTooltip} \u2014 {hiddenCount} hidden" : baseTooltip);
-            // This runs after every layout pass (via UpdateTabVisuals -> PopulateTabListMenu), so
-            // the resting color here must be the theme's contrast foreground, not hardcoded white:
-            // white was invisible against light themes and kept re-stomping the foreground
-            // ApplyThemeToUI had applied.
-            button.Foreground = hiddenCount > 0
-                ? new SolidColorBrush(Color.FromRgb(255, 210, 90))
-                : TitleBarContrastForeground();
+            // This runs after every layout pass (via UpdateTabVisuals -> PopulateTabListMenu). With
+            // tabs hidden the button takes the attention tint; otherwise its local value is cleared
+            // so the stock foreground (NtFg) applies.
+            if (hiddenCount > 0)
+            {
+                button.Foreground = ThemeBrush(ThemeKeys.TabChipAttention);
+            }
+            else
+            {
+                button.ClearValue(Button.ForegroundProperty);
+            }
         }
 
         internal static int CountHiddenTabs(double viewportWidth, IEnumerable<double> tabWidths, double fallbackTabWidth = 120)
@@ -2329,12 +2336,7 @@ namespace Ntilde
                 return;
             }
 
-            var theme = _settings.ActiveTheme;
-            pill.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            // Same luminance-contrast pick as UpdateTabVisuals' header text, via the
-            // shared GetContrastForeground helper, so the pill reads on both light
-            // and dark theme backgrounds.
-            pillText.Foreground = new SolidColorBrush(theme.GetContrastForeground().ToAvaloniaColor());
+            // Colours are the sidebar's tokens, set in MainWindow.axaml.
             pillText.Text = $"+{hiddenCount} more";
             pill.IsVisible = true;
         }
@@ -2862,19 +2864,8 @@ namespace Ntilde
             };
             UiScale.FitWindow(dialog);
 
-            ApplyThemeToDialogWindow(dialog);
+            ThemedWindowChrome.Apply(dialog);
             return dialog;
-        }
-
-        private void ApplyThemeToDialogWindow(Window dialog)
-        {
-            var theme = _settings.ActiveTheme;
-            var contrast = theme.GetContrastForeground();
-            dialog.Background = new SolidColorBrush(theme.Background.ToAvaloniaColor());
-            dialog.Foreground = new SolidColorBrush(contrast.ToAvaloniaColor());
-            // ThemeService's classification, so a dialog never picks the other Fluent palette from
-            // the app at the luminance boundary (GetContrastForeground rounds 0.5 the other way).
-            dialog.RequestedThemeVariant = ThemeService.Current.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
         }
 
         private async Task RenameSelectedTabAsync()
@@ -3165,7 +3156,6 @@ namespace Ntilde
                 Header = new TextBlock
                 {
                     Text = tabSession.Title,
-                    Foreground = Brushes.White,
                     FontSize = 12,
                     VerticalAlignment = VerticalAlignment.Center,
                     Padding = new Thickness(10, 4)
@@ -3974,7 +3964,7 @@ namespace Ntilde
             _commandPaletteUsageStore = new CommandPaletteUsageStore(AppPaths.CommandPaletteUsageFilePath);
             _commandPaletteUsage = new Dictionary<string, CommandPaletteUsageEntry>(_commandPaletteUsageStore.Load(), StringComparer.OrdinalIgnoreCase);
             _sshConnectionService = new SshConnectionService();
-            _sshInteractionService = new SshInteractionService(() => this, ApplyThemeToDialogWindow);
+            _sshInteractionService = new SshInteractionService(() => this, ThemedWindowChrome.Apply);
             // Read through a lambda when an endpoint is first used, so this (or a test's later
             // replacement) is in place before any pane can ask for a remote host.
             RemoteMuxHostFactory = CreateRemoteMuxHost;
@@ -4056,16 +4046,6 @@ namespace Ntilde
 
             var tabs = this.FindControl<TabControl>("Tabs");
             var titleBar = this.FindControl<Grid>("TitleBar");
-            var dragBorder = this.FindControl<Border>("DragBorder");
-
-            if (dragBorder != null)
-            {
-                dragBorder.PointerPressed += (s, e) =>
-                {
-                    if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-                        BeginMoveDrag(e);
-                };
-            }
 
             if (titleBar != null)
             {
@@ -4798,7 +4778,7 @@ namespace Ntilde
                 (source, report, progress) => CreateRemoteMuxInstaller(profile, source, report, progress),
                 AppVersionInfo.Version,
                 TopLevel.GetTopLevel(owner)?.Clipboard,
-                ApplyThemeToDialogWindow);
+                ThemedWindowChrome.Apply);
 
         /// <summary>
         /// One install run's installer (spec §9: every step over the profile's own exec transport). The user is
@@ -6342,7 +6322,6 @@ namespace Ntilde
             splitter.PointerReleased += OnSplitterPointerReleased;
             splitter.PointerCaptureLost += OnSplitterPointerCaptureLost;
             splitter.DoubleTapped += OnSplitterDoubleTapped;
-            ApplySplitterVisualState(splitter);
         }
 
         private void OnSplitterPointerEntered(object? sender, PointerEventArgs e)
@@ -6350,7 +6329,6 @@ namespace Ntilde
             if (sender is GridSplitter splitter)
             {
                 SetSplitterStateClass(splitter, SplitterHoverClass, true);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6359,7 +6337,6 @@ namespace Ntilde
             if (sender is GridSplitter splitter && !splitter.Classes.Contains(SplitterDraggingClass))
             {
                 SetSplitterStateClass(splitter, SplitterHoverClass, false);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6369,7 +6346,6 @@ namespace Ntilde
             {
                 SetSplitterStateClass(splitter, SplitterHoverClass, true);
                 SetSplitterStateClass(splitter, SplitterDraggingClass, true);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6379,7 +6355,6 @@ namespace Ntilde
             {
                 SetSplitterStateClass(splitter, SplitterDraggingClass, false);
                 SetSplitterStateClass(splitter, SplitterHoverClass, splitter.IsPointerOver);
-                ApplySplitterVisualState(splitter);
             }
         }
 
@@ -6389,20 +6364,7 @@ namespace Ntilde
             {
                 SetSplitterStateClass(splitter, SplitterDraggingClass, false);
                 SetSplitterStateClass(splitter, SplitterHoverClass, splitter.IsPointerOver);
-                ApplySplitterVisualState(splitter);
             }
-        }
-
-        private void ApplySplitterVisualState(GridSplitter splitter)
-        {
-            var contrast = _settings.ActiveTheme.GetContrastForeground().ToAvaloniaColor();
-            var alpha = splitter.Classes.Contains(SplitterDraggingClass)
-                ? (byte)0x66
-                : splitter.Classes.Contains(SplitterHoverClass)
-                    ? (byte)0x44
-                    : (byte)0x24;
-
-            splitter.Background = new SolidColorBrush(Color.FromArgb(alpha, contrast.R, contrast.G, contrast.B));
         }
 
         private static void SetSplitterStateClass(GridSplitter splitter, string className, bool isActive)
@@ -7521,10 +7483,6 @@ namespace Ntilde
         /// <summary>Applies <see cref="ComputeObserveIndicatorState"/> to the chrome. UI thread.</summary>
         internal void RefreshAgentObserveIndicator()
         {
-            var indicator = this.FindControl<Button>("AgentObserveIndicator");
-            var dot = this.FindControl<Avalonia.Controls.Shapes.Ellipse>("AgentObserveIndicatorDot");
-            if (indicator == null || dot == null) return;
-
             var service = AgentHost.AgentHostService.Instance;
 
             // "Unmarked" = the pane shows no agent segment the user can see
@@ -7536,15 +7494,27 @@ namespace Ntilde
             var (visible, active) = ComputeObserveIndicatorState(
                 service.IsRunning, service.InFlightPollCount > 0, anyUnmarkedPaneWatched, service.WindowlessWatched);
 
-            var marks = CollectUnseenWriteMarks();
+            ApplyObserveIndicatorVisuals(visible, active, CollectUnseenWriteMarks());
+        }
+
+        /// <summary>
+        /// Paints the light's controls from the state <see cref="RefreshAgentObserveIndicator"/> computed: visibility,
+        /// the token fill and ring of <see cref="ObserveLightAppearance"/>, and the tooltip. Separate from the refresh so
+        /// it can be tested without starting the agent host service.
+        /// </summary>
+        internal void ApplyObserveIndicatorVisuals(bool visible, bool active, IReadOnlyList<FocusWriteMark> marks)
+        {
+            var indicator = this.FindControl<Button>("AgentObserveIndicator");
+            var dot = this.FindControl<Avalonia.Controls.Shapes.Ellipse>("AgentObserveIndicatorDot");
+            if (indicator == null || dot == null) return;
 
             indicator.IsVisible = visible;
             if (!visible) return;
-            var (fill, ring) = ObserveLightAppearance(active, marks.Count > 0);
-            dot.Fill = new SolidColorBrush(Color.Parse(fill));
-            // A write and a read at once: amber fill with a blue ring, so neither hides the other.
-            dot.Stroke = ring is null ? null : new SolidColorBrush(Color.Parse(ring));
-            dot.StrokeThickness = ring is null ? 0 : 1.5;
+            var (fillKey, ringKey) = ObserveLightAppearance(active, marks.Count > 0);
+            dot.Fill = ThemeBrush(fillKey);
+            // A write and a read at once: the wrote fill with a watched ring, so neither hides the other.
+            dot.Stroke = ringKey is null ? null : ThemeBrush(ringKey);
+            dot.StrokeThickness = ringKey is null ? 0 : 1.5;
             // BuildFocusLightTooltip with no marks is the XAML default text, so this restores it outside focus mode.
             ToolTip.SetTip(indicator, BuildFocusLightTooltip(marks, active));
         }
@@ -8501,12 +8471,9 @@ namespace Ntilde
                 return;
             }
 
-            var theme = _settings.ActiveTheme;
-            var borderBrush = new SolidColorBrush(theme.Blue.ToAvaloniaColor());
-
-            // Calculate contrasting foreground for tabs
-            double luminance = (0.299 * theme.Background.R + 0.587 * theme.Background.G + 0.114 * theme.Background.B) / 255.0;
-            var contrastForeground = luminance > 0.5 ? Brushes.Black : Brushes.White;
+            // Token brush instances, resolved per pass but never allocated: the indicator is the
+            // softened accent (NtTabIndicator), not the raw ANSI blue.
+            var indicatorBrush = ThemeBrush(ThemeKeys.TabIndicator);
 
             var tabItems = tabs.Items.Cast<TabItem>().ToList();
             // Vertical headers show attention as trailing chips (UpdateVerticalTabExtras),
@@ -8516,7 +8483,7 @@ namespace Ntilde
 
             foreach (TabItem ti in tabItems)
             {
-                ti.BorderBrush = ti.IsSelected ? borderBrush : Brushes.Transparent;
+                ti.BorderBrush = ti.IsSelected ? indicatorBrush : Brushes.Transparent;
 
                 // Vertical: a constant 3px left thickness on EVERY tab, selected or not, so
                 // the BorderBrush line above paints the selected tab a 3px accent bar —
@@ -8539,7 +8506,6 @@ namespace Ntilde
 
                 if (FindTabHeaderTextBlock(ti.Header) is TextBlock tb)
                 {
-                    tb.Foreground = contrastForeground;
                     tb.Text = labels[ti];
                 }
 
@@ -8550,7 +8516,7 @@ namespace Ntilde
 
                 if (_isVerticalTabStrip)
                 {
-                    UpdateVerticalTabExtras(ti, GetOrCreateTabState(ti), borderBrush);
+                    UpdateVerticalTabExtras(ti, GetOrCreateTabState(ti));
                 }
             }
 
@@ -8562,7 +8528,7 @@ namespace Ntilde
             RendererStatistics.RecordTabVisualUpdateTime(sw.ElapsedMilliseconds);
         }
 
-        private void UpdateVerticalTabExtras(TabItem tab, TabRuntimeState state, IBrush workingBrush)
+        private void UpdateVerticalTabExtras(TabItem tab, TabRuntimeState state)
         {
             // One pure resolve per tab per pass drives both the dot and the marker chips —
             // the vertical replacement for the title-suffix attention markers (which the
@@ -8571,16 +8537,28 @@ namespace Ntilde
                 state.HasBell, state.HasActivity, state.AgentTier, _settings.AgentIndicatorTabRollup, state.IsShared);
             var dotVisual = TabStatusPresentation.ResolveTabDot(state.RenderedStatus, markers, state.HasRunningCommand);
 
-            if (FindTabHeaderDescendant<Avalonia.Controls.Shapes.Ellipse>(tab.Header, "TabStatusDot") is { } dot)
+            if (FindTabHeaderDescendant<Avalonia.Controls.Shapes.Path>(tab.Header, "TabStatusDot") is { } dot)
             {
-                dot.Fill = dotVisual switch
+                IBrush? dotBrush = dotVisual switch
                 {
-                    TabDotVisual.Working => workingBrush,
-                    TabDotVisual.Attention => TabAttentionBrush,
-                    TabDotVisual.AgentWrote => TabAgentWroteDotBrush,
-                    TabDotVisual.AgentWatched => TabAgentWatchedDotBrush,
-                    _ => Brushes.Transparent,
+                    TabDotVisual.Working => ThemeBrush(ThemeKeys.TabWorking),
+                    TabDotVisual.Attention => ThemeBrush(ThemeKeys.TabAttention),
+                    TabDotVisual.AgentWrote => ThemeBrush(ThemeKeys.TabAgentWrote),
+                    TabDotVisual.AgentWatched => ThemeBrush(ThemeKeys.TabAgentWatched),
+                    _ => null,
                 };
+
+                // Filled shapes paint Fill; the ring paints only its Stroke.
+                var shape = TabStatusPresentation.ResolveDotShape(dotVisual);
+                dot.Data = shape switch
+                {
+                    TabDotShape.Diamond => TabDotDiamondGeometry,
+                    TabDotShape.Ring => TabDotRingGeometry,
+                    TabDotShape.Circle => TabDotCircleGeometry,
+                    _ => null,
+                };
+                dot.Fill = shape is TabDotShape.Circle or TabDotShape.Diamond ? dotBrush : Brushes.Transparent;
+                dot.Stroke = shape == TabDotShape.Ring ? dotBrush : null;
             }
 
             SetChipVisibility(tab, "TabBellChip", markers.Bell);
@@ -8590,8 +8568,8 @@ namespace Ntilde
             SetChipVisibility(tab, "TabSharedChip", markers.Shared);
 
             // OSC 9;4 progress (#271): geometry from the pure resolver; brush by kind —
-            // theme blue for normal, the attention amber for error, dim white for
-            // paused (matching the dot/chip palette conventions above). Gated at render
+            // the Working token for normal, Attention for error, the dim activity chip for
+            // paused (the same tokens as the dot and chips above). Gated at render
             // time on the same setting as the taskbar, so an off switch hides existing
             // reports without discarding them.
             if (FindTabHeaderDescendant<Avalonia.Controls.ProgressBar>(tab.Header, "TabProgressBar") is { } progressBar)
@@ -8603,11 +8581,11 @@ namespace Ntilde
                 {
                     progressBar.IsIndeterminate = barIndeterminate;
                     progressBar.Value = barValue;
-                    progressBar.Foreground = report is { Kind: TerminalProgressKind.Error }
-                        ? TabAttentionBrush
+                    progressBar.Foreground = ThemeBrush(report is { Kind: TerminalProgressKind.Error }
+                        ? ThemeKeys.TabAttention
                         : report is { Kind: TerminalProgressKind.Paused }
-                            ? TabActivityChipBrush
-                            : workingBrush;
+                            ? ThemeKeys.TabChipActivity
+                            : ThemeKeys.TabWorking);
                 }
             }
 
@@ -8711,8 +8689,6 @@ namespace Ntilde
             originalPane.MinHeight = Math.Max(originalPane.MinHeight, minPaneHeight);
             var grid = new Grid { Background = Brushes.Transparent, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch };
 
-            var dividerBrush = new SolidColorBrush(Color.FromRgb(35, 35, 35)); // Even more subtle
-
             if (orientation == Avalonia.Layout.Orientation.Horizontal)
             {
                 grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star) { MinWidth = minPaneWidth });
@@ -8722,7 +8698,6 @@ namespace Ntilde
                 var splitter = new GridSplitter
                 {
                     Width = 3,
-                    Background = dividerBrush,
                     ResizeDirection = GridResizeDirection.Columns,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch,
                     Focusable = false
@@ -8743,7 +8718,6 @@ namespace Ntilde
                 var splitter = new GridSplitter
                 {
                     Height = 3,
-                    Background = dividerBrush,
                     ResizeDirection = GridResizeDirection.Rows,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
                     Focusable = false
@@ -8848,24 +8822,14 @@ namespace Ntilde
         {
             var theme = _settings.ActiveTheme;
 
-            // App-wide tokens, the Fluent palette and the variant come first. Every DynamicResource
-            // consumer (Settings, Connection Manager, Agent Output, stock controls) updates from this
-            // one call. The imperative per-control code below moves onto tokens in phase 2.
+            // App-wide tokens, the Fluent palette and the variant. Every themed surface, this
+            // window's chrome included, updates from this one call; what follows is only the
+            // window-specific part the tokens do not cover (spec section 3, "Consumers").
             ThemeService.Apply(theme, _settings.WindowOpacity);
 
-            // Background brush for the main content area
+            // The window's own backdrop: the terminal background at the window opacity, or the
+            // background image. Not a token: it is the terminal surface, not UI chrome.
             var bgBrush = new SolidColorBrush(theme.Background.ToAvaloniaColor(), _settings.WindowOpacity);
-
-            // Header/TitleBar brush (slightly darker/different to provide contrast)
-            var themeBg = theme.Background.ToAvaloniaColor();
-            var headerBg = Color.FromRgb(
-                (byte)Math.Max(0, themeBg.R - 10),
-                (byte)Math.Max(0, themeBg.G - 10),
-                (byte)Math.Max(0, themeBg.B - 10));
-
-            // Use slightly higher opacity for the header to keep buttons visible
-            var titleBarOpacity = Math.Min(1.0, _settings.WindowOpacity + 0.1);
-            var headerBrush = new SolidColorBrush(headerBg, titleBarOpacity);
 
             this.Background = Brushes.Transparent;
             var bgGrid = this.FindControl<Grid>("WindowBackground");
@@ -8887,77 +8851,28 @@ namespace Ntilde
                 }
             }
 
-            var contrastColor = theme.GetContrastForeground();
-            var contrastForeground = new SolidColorBrush(contrastColor.ToAvaloniaColor());
-
-            // Set the window theme variant to ensure OS caption buttons (Min/Max/Close)
-            // adapt to the background brightness (Dark background -> Light buttons, Light background -> Dark buttons).
-            // Classified by ThemeService (applied above), so the window and the app agree on the variant.
-            this.RequestedThemeVariant = ThemeService.Current.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
-
-            // Apply to Window Foreground (inherited by many controls)
-            this.Foreground = contrastForeground;
-
-            ApplyTitleBarForegrounds(contrastForeground);
+            // The window's Foreground (NtFg in XAML), the title-bar buttons (Fluent's ButtonForeground,
+            // aliased to NtFg) and the theme variant (inherited from the application, which
+            // ThemeService sets) all follow the tokens on their own. Only the record button's
+            // recording state needs re-asserting.
             SyncRecordingButtonState();
-            foreach (var splitter in this.GetVisualDescendants().OfType<GridSplitter>())
-            {
-                ApplySplitterVisualState(splitter);
-            }
 
-            // Force update of tab borders (blue line) since theme color changed
+            // The tab tokens recolour in place; this pass refreshes what depends on settings
+            // that a theme apply can travel with (labels, preview lines, the overflow state).
             UpdateTabVisuals();
 
             var titleBar = this.FindControl<Grid>("TitleBar");
             if (titleBar != null) titleBar.Background = Brushes.Transparent;
 
-            var dragBorder = this.FindControl<Border>("DragBorder");
-            if (dragBorder != null)
-            {
-                dragBorder.Background = headerBrush;
-            }
-
             UpdateFocusStrip();
         }
 
         /// <summary>
-        /// The theme's contrast foreground as a fresh brush - the color every title-bar button
-        /// and icon should read in the current theme (dark ink on light themes, light on dark).
+        /// One of the app-wide theme token brushes (see <see cref="ThemeKeys"/>). Code-built chrome
+        /// holds this INSTANCE, which ThemeService recolours in place, so it follows every theme
+        /// switch without being rebuilt and nothing allocates a brush per pass.
         /// </summary>
-        private SolidColorBrush TitleBarContrastForeground()
-            => new SolidColorBrush(_settings.ActiveTheme.GetContrastForeground().ToAvaloniaColor());
-
-        /// <summary>
-        /// Re-applies the active theme's contrast foreground to the title-bar buttons and icons.
-        /// Extracted from <see cref="ApplyThemeToUI"/> because ordering defeats it there in two
-        /// real paths: at startup ApplyThemeToUI runs before the first RebuildTitleBar (so every
-        /// FindTitleBarButton lookup missed), and the settings-save path runs ApplyThemeToUI and
-        /// then rebuilds the bar anyway. Populate() replaces the generated buttons with fresh
-        /// instances whose foregrounds fall back to the Fluent variant brushes - white under the
-        /// app's default Dark variant - so a rebuild must re-apply these itself, or light themes
-        /// show white-on-light icons until the next theme action.
-        /// </summary>
-        private void ApplyTitleBarForegrounds(SolidColorBrush? contrastForeground = null)
-        {
-            // Default to a fresh brush, but let ApplyThemeToUI share ITS instance so the buttons
-            // keep pointing at the same brush as the window Foreground (tests pin that invariant,
-            // and it keeps one invalidation covering the whole bar).
-            contrastForeground ??= TitleBarContrastForeground();
-
-            var btnNew = this.FindControl<Button>(TitleBarViewFactory.NewTabButtonName);
-            var btnTabList = FindTitleBarButton(TitleBarCatalog.OpenTabListId);
-            var iconTabList = btnTabList?.Content as PathIcon;
-            var btnRecord = FindTitleBarButton("toggle_recording");
-            var btnConns = FindTitleBarButton("connections");
-            var commandSearchBox = this.FindControl<TextBox>("CommandSearchBox");
-
-            if (btnNew != null) btnNew.Foreground = contrastForeground;
-            if (btnTabList != null) btnTabList.Foreground = contrastForeground;
-            if (iconTabList != null) iconTabList.Foreground = contrastForeground;
-            if (btnConns != null) btnConns.Foreground = contrastForeground;
-            if (btnRecord != null) btnRecord.Foreground = contrastForeground;
-            if (commandSearchBox != null) commandSearchBox.Foreground = contrastForeground;
-        }
+        private IBrush ThemeBrush(string key) => (IBrush)this.FindResource(key)!;
 
         private void SetupCommandPalette()
         {
@@ -9986,7 +9901,7 @@ namespace Ntilde
                 : Ntilde.Platform.Ssh.Models.SshBackendKind.OpenSsh;
             vm.ExperimentalNativeSshEnabled = _settings.ExperimentalNativeSshEnabled;
             var dialog = new NewSshConnectionView(vm);
-            ApplyThemeToDialogWindow(dialog);
+            ThemedWindowChrome.Apply(dialog);
             WireRemoteMuxInstall(vm, dialog);
             bool saved = await dialog.ShowDialog<bool>(owner ?? this);
 
@@ -10340,7 +10255,7 @@ namespace Ntilde
             }
 
             var path = files[0].Path.LocalPath;
-            var replayWin = new Ntilde.UI.Replay.ReplayWindow(path);
+            var replayWin = new Ntilde.UI.Replay.ReplayWindow(path, _settings.ActiveTheme);
             replayWin.Show();
         }
 
@@ -12337,7 +12252,7 @@ namespace Ntilde
             about.ApplyStagedUpdate = ApplyStagedUpdate;
             about.StagedVersionProvider = () => _updateCoordinator?.StagedVersion;
 
-            ApplyThemeToDialogWindow(about);
+            ThemedWindowChrome.Apply(about);
             await about.ShowDialog(this);
         }
 
@@ -12358,12 +12273,19 @@ namespace Ntilde
                 return;
             }
 
-            var activeBrush = new SolidColorBrush(Color.Parse("#F1636B"));
-            var inactiveBrush = new SolidColorBrush(_settings.ActiveTheme.GetContrastForeground().ToAvaloniaColor());
-
-            btnRecord.Foreground = isRecording ? activeBrush : inactiveBrush;
-            iconRecord.Foreground = isRecording ? activeBrush : inactiveBrush;
-            btnRecord.Background = isRecording ? new SolidColorBrush(Color.Parse("#30F1636B")) : Brushes.Transparent;
+            if (isRecording)
+            {
+                btnRecord.Foreground = ThemeBrush(ThemeKeys.Recording);
+                iconRecord.Foreground = ThemeBrush(ThemeKeys.Recording);
+                btnRecord.Background = ThemeBrush(ThemeKeys.ErrorDim);
+            }
+            else
+            {
+                // Back to the stock foreground (NtFg) rather than a copied colour.
+                btnRecord.ClearValue(Button.ForegroundProperty);
+                iconRecord.ClearValue(PathIcon.ForegroundProperty);
+                btnRecord.Background = Brushes.Transparent;
+            }
             var recordingShortcut = GetEffectiveShortcutBinding("toggle_recording", "Ctrl+Shift+R");
             ToolTip.SetTip(btnRecord, isRecording
                 ? $"Stop Recording ({recordingShortcut})"
@@ -12441,12 +12363,8 @@ namespace Ntilde
             PlaceAgentObserveIndicator(host);
 
             // The record button is recreated by every rebuild, so its active colouring has to be
-            // reapplied against the new instance.
-            // Same for every other generated button and icon: they are new instances, so the
-            // theme foregrounds applied by the last ApplyThemeToUI are gone (and startup applies
-            // that BEFORE this rebuild ever runs). Re-apply here, before SyncRecordingButtonState
-            // so an active recording's red still wins on the record button.
-            ApplyTitleBarForegrounds();
+            // reapplied against the new instance. The other generated buttons need nothing: their
+            // foreground is Fluent's ButtonForeground, which follows the NtFg token.
             SyncRecordingButtonState();
 
             // Populate() just replaced TitleBarItemsHost's children synchronously, but that does not

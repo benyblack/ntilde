@@ -2213,9 +2213,14 @@ public sealed class CommandAssistLayoutTests
                 .ToList();
             Assert.Equal(3, rows.Count);
 
-            double failed = Luminance(rows[0].Foreground);
-            double failedAndSelected = Luminance(rows[1].Foreground);
-            double healthy = Luminance(rows[2].Foreground);
+            // Measured as drawn: the theme's dim text levels are the foreground at lower alpha, so
+            // each row's colour is composited over what it sits on - its row's own fill (the
+            // selection) over the panel - before it is compared.
+            Color panel = Assert.IsAssignableFrom<ISolidColorBrush>(
+                view.FindControl<Border>("PopupResultsPanel")!.Background).Color;
+            double failed = Luminance(rows[0].Foreground, RowBackground(rows[0], panel));
+            double failedAndSelected = Luminance(rows[1].Foreground, RowBackground(rows[1], panel));
+            double healthy = Luminance(rows[2].Foreground, RowBackground(rows[2], panel));
 
             Assert.True(
                 failed < healthy,
@@ -2253,10 +2258,26 @@ public sealed class CommandAssistLayoutTests
     /// setter is the immutable variant, so an exact-type assertion would fail on the styled rows this
     /// is here to measure.
     /// </remarks>
-    private static double Luminance(IBrush? brush)
+    /// <summary>The row's own fill composited over the panel: what its text is drawn on.</summary>
+    private static Color RowBackground(Control row, Color panel)
+    {
+        Border assistRow = row.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("assistRow"));
+        if (assistRow.Background is not ISolidColorBrush { Color: var fill })
+        {
+            return panel;
+        }
+
+        double a = fill.A / 255.0;
+        byte Channel(byte top, byte bottom) => (byte)Math.Round((top * a) + (bottom * (1 - a)));
+        return Color.FromRgb(Channel(fill.R, panel.R), Channel(fill.G, panel.G), Channel(fill.B, panel.B));
+    }
+
+    private static double Luminance(IBrush? brush, Color background)
     {
         Color color = Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color;
-        return (0.299 * color.R) + (0.587 * color.G) + (0.114 * color.B);
+        double a = color.A / 255.0;
+        double Channel(byte top, byte bottom) => (top * a) + (bottom * (1 - a));
+        return (0.299 * Channel(color.R, background.R)) + (0.587 * Channel(color.G, background.G)) + (0.114 * Channel(color.B, background.B));
     }
 
     // ------------------------- UX round 7: the popup is as tall as its rows

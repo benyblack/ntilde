@@ -763,6 +763,39 @@ jobs:
           Write-Output "ntilde.com is in the bundle beside Ntilde.exe."
           exit 0
 
+      # ---- ntilde-mcp, the MCP server agents register (`claude mcp add ntilde -- ntilde-mcp`).
+      # ---- Until this step no release carried it, so an installed Ntilde had no MCP server to
+      # ---- point an agent at short of cloning and building the repo.
+      #
+      # NativeAOT like the App, so it runs with no .NET installed; its project makes IL2026/IL3050
+      # errors, so a trim regression fails this publish. Published to its own directory and only
+      # the binary copied in, renamed: the publish also leaves .pdb files and, on macOS, a .dSYM
+      # that must not ride into the .app. Into artifacts/publish/<rid> BEFORE the bundle's smoke
+      # gate, Archive bundle and vpk pack, so the zip, Setup.exe and Ntilde.app all carry it and
+      # the Velopack update keeps it in step with the App. On Windows it lands in the install
+      # directory the install hook puts on the user PATH; on macOS in Ntilde.app/Contents/MacOS,
+      # which vpk's deep signing covers and the Homebrew cask links onto PATH.
+      #
+      # BLOCKING: scripts/ci/mcp-server-smoke.sh drives a real MCP session against the copy in the
+      # bundle - handshake, every declared tool listed, two tool calls - because the E2E tests run
+      # the JIT DLL and nothing else would ever run the AOT binary before users do.
+      - name: Publish the MCP server, smoke it and add it to the bundle (blocking)
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj -c "$CONFIGURATION" -r "$RID" "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" -o artifacts/mcp
+          ext=""
+          if [ "$RID" = "win-x64" ]; then ext=".exe"; fi
+          built="artifacts/mcp/Ntilde.McpServer$ext"
+          test -f "$built" || { echo "::error::The MCP server publish produced no $built." >&2; ls -la artifacts/mcp >&2; exit 1; }
+          bundled="artifacts/publish/$RID/ntilde-mcp$ext"
+          cp "$built" "$bundled"
+          ls -la "$bundled"
+          bash scripts/ci/mcp-server-smoke.sh "$bundled" src/Ntilde.McpServer/Tools
+
       # ---- BLOCKING release gate for the Windows bundle, and deliberately placed here:
       # ---- everything below (Archive bundle, Upload release asset, vpk pack, Upload
       # ---- installer) is downstream, so a bundle that cannot start never reaches the
@@ -1705,6 +1738,27 @@ jobs:
             "-p:NtildeMuxSha256Dir=$MUX_SHA256_DIR" \
             -o artifacts/publish/${{ matrix.rid }}
 
+      # ntilde-mcp beside the App, as publish_aot does for Windows and macOS - see that job's
+      # "Publish the MCP server" step for the why. Before the strip step and everything that
+      # packages this directory: the tarball, the AppImage and the .deb (build-deb.sh, and the
+      # AUR PKGBUILD from the tarball, mark it executable and link /usr/bin/ntilde-mcp to it).
+      # Smoked here, inside this glibc-floor container, on the binary the bundle will carry.
+      - name: Publish the MCP server, smoke it and add it to the bundle (blocking)
+        env:
+          RELEASE_VERSION: ${{ needs.release_metadata.outputs.release_version }}
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          dotnet publish src/Ntilde.McpServer/Ntilde.McpServer.csproj \
+            -c "$CONFIGURATION" -r "$RID" \
+            "-p:Version=$RELEASE_VERSION" "-p:InformationalVersion=$RELEASE_VERSION" \
+            -o artifacts/mcp
+          test -f artifacts/mcp/Ntilde.McpServer \
+            || { echo "::error::The MCP server publish produced no artifacts/mcp/Ntilde.McpServer." >&2; ls -la artifacts/mcp >&2; exit 1; }
+          install -m 0755 artifacts/mcp/Ntilde.McpServer "artifacts/publish/$RID/ntilde-mcp"
+          ls -la "artifacts/publish/$RID/ntilde-mcp"
+          bash scripts/ci/mcp-server-smoke.sh "artifacts/publish/$RID/ntilde-mcp" src/Ntilde.McpServer/Tools
+
       # BEFORE anything packages this directory, not after. StripSymbols=true
       # (Ntilde.App.csproj) emits a ~79 MB Ntilde.dbg beside the AOT
       # binary - larger than the binary itself - and every consumer below reads this
@@ -1807,11 +1861,16 @@ jobs:
                  # into a mangled exit code.
                  head -40 <<<"$listing" >&2
                  exit 1; }
+          # The MCP server is launched by the agent, not through Ntilde, so it needs its own bit.
+          grep -qE '^-rwx.* \./ntilde-mcp$' <<<"$listing" \
+            || { echo "tarball has no ./ntilde-mcp, or lost its executable bit" >&2
+                 head -40 <<<"$listing" >&2
+                 exit 1; }
           if grep -q '\.dbg$' <<<"$listing"; then
             echo "Ntilde.dbg leaked into the tarball - the Strip debug symbols step did not run, or ran too late" >&2
             exit 1
           fi
-          echo "ok: tarball preserved the exec bit on ./Ntilde and carries no .dbg"
+          echo "ok: tarball preserved the exec bit on ./Ntilde and ./ntilde-mcp and carries no .dbg"
 
       # Pinned to 1.2.0, in lockstep with Directory.Packages.props and the other
       # install sites in these workflows.

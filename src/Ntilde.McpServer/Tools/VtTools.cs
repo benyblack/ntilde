@@ -8,7 +8,7 @@ using Ntilde.VtContract;
 namespace Ntilde.McpServer.Tools;
 
 [McpServerToolType]
-public static class VtTools
+public sealed class VtTools
 {
     // Docs that describe VT coverage / known gaps, in preference order.
     private static readonly string[] ConformanceDocs =

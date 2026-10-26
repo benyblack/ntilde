@@ -11,6 +11,7 @@ using Avalonia.Threading;
 using Ntilde.Controls;
 using Ntilde.Shell;
 using Ntilde.Shell.Shortcuts;
+using Ntilde.Shell.Theming;
 using static Ntilde.Tests.Core.WindowTestSupport;
 
 namespace Ntilde.Tests.Core;
@@ -38,6 +39,8 @@ public sealed class FocusModeWindowTests : IClassFixture<TestAppDataRoot>, IDisp
         Assert.True(strip.IsVisible);
         var title = window.FindControl<TextBlock>("FocusStripTitle")!;
         Assert.Equal((string)Invoke(window, "GetTabHeaderText", tabs.SelectedItem!)!, title.Text);
+        // The title-bar ink token's own instance, so a theme switch recolours the title in place.
+        Assert.Same(window.FindResource(ThemeKeys.Fg), title.Foreground);
 
         var host = window.FindControl<StackPanel>("TitleBarItemsHost")!;
         foreach (Control child in host.Children.OfType<Control>().Where(c => c.Name != "AgentObserveIndicator"))

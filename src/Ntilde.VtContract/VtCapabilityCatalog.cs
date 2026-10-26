@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ntilde.VtContract;
 
@@ -33,14 +34,9 @@ public sealed class VtCapabilityManifestException : Exception
     }
 }
 
-public static class VtCapabilityCatalog
+public static partial class VtCapabilityCatalog
 {
     private const string ResourceName = "Ntilde.VtContract.vt-capabilities.json";
-
-    private static JsonSerializerOptions JsonOptions { get; } = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
 
     public static IReadOnlyList<VtCapability> All { get; } = LoadEmbeddedManifest();
 
@@ -58,7 +54,7 @@ public static class VtCapabilityCatalog
     {
         try
         {
-            return JsonSerializer.Deserialize<ManifestDocument>(json, JsonOptions)
+            return JsonSerializer.Deserialize(json, ManifestJsonContext.Default.ManifestDocument)
                 ?? throw new VtCapabilityManifestException("The VT capability manifest is empty.");
         }
         catch (JsonException exception)
@@ -196,6 +192,12 @@ public static class VtCapabilityCatalog
 
     private static string? NullIfWhiteSpace(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    // Source-generated rather than reflection-based, so the MCP server, which ships as a
+    // NativeAOT binary, can load the manifest with no IL2026/IL3050 trim hazard.
+    [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
+    [JsonSerializable(typeof(ManifestDocument))]
+    private sealed partial class ManifestJsonContext : JsonSerializerContext;
 
     private sealed record ManifestDocument(int SchemaVersion, IReadOnlyList<ManifestEntry>? Capabilities);
 

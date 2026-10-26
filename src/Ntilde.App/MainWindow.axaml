@@ -10,23 +10,15 @@
         ExtendClientAreaToDecorationsHint="True"
         WindowDecorationsTheme="{StaticResource NtildeWindowDecorationsTheme}"
         TransparencyLevelHint=""
+        Foreground="{DynamicResource NtFg}"
         Background="Transparent">
-    <Window.Resources>
-        <DataTemplate x:Key="TabHeaderTemplate">
-            <TextBlock Text="{Binding}" Foreground="White"
-                       FontSize="10" VerticalAlignment="Center"
-                       HorizontalAlignment="Center"
-                       Padding="6,1,6,1"
-                       Margin="0,0,0,0"/>
-        </DataTemplate>
-    </Window.Resources>
     <Window.Styles>
         <Style Selector="Button#BtnNewTab">
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
         <Style Selector="Button#BtnNewTab:pointerover">
             <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Background" Value="#40FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource NtHoverFill}"/>
         </Style>
 
         <!-- TabItem Styles for Transparency -->
@@ -39,10 +31,23 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="TabItem:pointerover /template/ Border#PART_Border">
-             <Setter Property="Background" Value="#1AFFFFFF"/>
+             <Setter Property="Background" Value="{DynamicResource NtTabHoverFill}"/>
         </Style>
         <Style Selector="TabItem:selected /template/ Border#PART_Border">
-             <Setter Property="Background" Value="#33FFFFFF"/>
+             <Setter Property="Background" Value="{DynamicResource NtTabSelectedFill}"/>
+        </Style>
+
+        <!-- The vertical sidebar's surface (spec D6): a chrome panel with a 1px divider toward the
+             terminal, and a resize grip that shows on hover. Keyed on the vertical-tabs class, so
+             the horizontal strip in the title band keeps its transparent background. -->
+        <Style Selector="TabControl.vertical-tabs /template/ Grid#PART_TabSidebar">
+            <Setter Property="Background" Value="{DynamicResource NtSidebarBg}"/>
+        </Style>
+        <Style Selector="TabControl.vertical-tabs /template/ Border#PART_TabSidebarDivider">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="TabControl.vertical-tabs /template/ Border#PART_TabStripResizeGrip:pointerover">
+            <Setter Property="Background" Value="{DynamicResource NtGripHover}"/>
         </Style>
 
         <Style Selector="TabControl.vertical-tabs TabItem">
@@ -63,9 +68,11 @@
             <Setter Property="BorderThickness" Value="3 0 0 0"/>
         </Style>
 
-        <!-- GridSplitter Custom Template for thinner lines with larger hit area -->
+        <!-- GridSplitter Custom Template for thinner lines with larger hit area. The line's colour
+             follows the state classes MainWindow's pointer handlers set: NtHairline at rest,
+             NtHairlineStrong on hover, NtAccentBorder while dragging. -->
         <Style Selector="GridSplitter">
-            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Background" Value="{DynamicResource NtHairline}"/>
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Background="Transparent">
@@ -73,6 +80,12 @@
                     </Border>
                 </ControlTemplate>
             </Setter>
+        </Style>
+        <Style Selector="GridSplitter.splitter-hover">
+            <Setter Property="Background" Value="{DynamicResource NtHairlineStrong}"/>
+        </Style>
+        <Style Selector="GridSplitter.splitter-dragging">
+            <Setter Property="Background" Value="{DynamicResource NtAccentBorder}"/>
         </Style>
         <Style Selector="GridSplitter[ResizeDirection=Columns] /template/ Rectangle#PART_Line">
             <Setter Property="Width" Value="1"/>
@@ -123,6 +136,12 @@
                                                       ClipToBounds="True"
                                                       ItemsPanel="{TemplateBinding ItemsPanel}" />
                                     </ScrollViewer>
+                                    <Border Name="PART_TabSidebarDivider"
+                                            Width="1"
+                                            HorizontalAlignment="Right"
+                                            Background="{DynamicResource NtSidebarDivider}"
+                                            IsVisible="False"
+                                            IsHitTestVisible="False" />
                                     <Border Name="PART_TabStripResizeGrip"
                                             Width="5"
                                             HorizontalAlignment="Right"
@@ -139,7 +158,7 @@
                                          from TabInsertIndicatorThickness in code, so no Width/Height
                                          is set here on purpose. -->
                                     <Border Name="PART_TabInsertIndicator"
-                                            Background="#4FB0D4"
+                                            Background="{DynamicResource NtTabIndicator}"
                                             HorizontalAlignment="Left"
                                             VerticalAlignment="Top"
                                             CornerRadius="1"
@@ -150,12 +169,11 @@
                                          over the scrolling headers when rows run past the sidebar
                                          viewport (horizontal mode keeps the title-bar
                                          TabOverflowBadge instead). Inert by default exactly like
-                                         PART_TabInsertIndicator above - IsVisible=False and colors
-                                         unset here; UpdateTabOverflowPill (from
-                                         UpdateTabHeaderViewport) owns visibility, text and
-                                         Background/Foreground. The code-set background is opaque so
-                                         rows scroll under it, and this fixed top hairline separates
-                                         it from the last visible row. Focusable=False keeps clicks
+                                         PART_TabInsertIndicator above - IsVisible=False here;
+                                         UpdateTabOverflowPill (from UpdateTabHeaderViewport) owns
+                                         visibility and text. It wears the sidebar's surface so rows
+                                         scroll under it, and a top hairline separates it from the
+                                         last visible row. Focusable=False keeps clicks
                                          from stealing keyboard focus from the terminal (same rule
                                          as BtnNewTab). The right margin keeps the pill clear of
                                          PART_TabStripResizeGrip (right-edge, 5px wide, full
@@ -172,9 +190,11 @@
                                             ZIndex="5"
                                             IsVisible="False"
                                             BorderThickness="0,1,0,0"
-                                            BorderBrush="#28FFFFFF">
+                                            Background="{DynamicResource NtSidebarBg}"
+                                            BorderBrush="{DynamicResource NtHairline}">
                                         <Button.Content>
                                             <TextBlock Name="PART_TabOverflowPillText"
+                                                       Foreground="{DynamicResource NtTabFg}"
                                                        FontSize="10"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"/>
@@ -209,7 +229,7 @@
         <Panel x:Name="TitleBarBadgeParkingSlot" IsHitTestVisible="False">
             <TextBlock Name="TabOverflowBadge"
                        IsVisible="False"
-                       Foreground="#FFD25A"
+                       Foreground="{DynamicResource NtTabChipAttention}"
                        FontSize="11"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Left"
@@ -253,7 +273,7 @@
                      rebuild instead of rebuilding it. Focusable=False keeps clicks from stealing
                      keyboard focus from the terminal. -->
                 <Button Name="BtnNewTab" Content="+"
-                        Foreground="White"
+                        Foreground="{DynamicResource NtFg}"
                         Background="Transparent"
                         BorderThickness="0" Focusable="False"
                         FontSize="18"
@@ -295,7 +315,7 @@
                         Focusable="False"
                         VerticalAlignment="Center"
                         ToolTip.Tip="Agent access is enabled. Click to open the agent activity journal.">
-                    <Ellipse Name="AgentObserveIndicatorDot" Width="7" Height="7" Fill="#6B737F"/>
+                    <Ellipse Name="AgentObserveIndicatorDot" Width="7" Height="7" Fill="{DynamicResource NtAgentIdle}"/>
                 </Button>
             </StackPanel>
         </Grid>
@@ -308,15 +328,15 @@
                 MinWidth="320"
                 MaxWidth="440"
                 Padding="12"
-                Background="#20242C"
-                BorderBrush="#3A404A"
+                Background="{DynamicResource NtOverlay}"
+                BorderBrush="{DynamicResource NtHairline}"
                 BorderThickness="1"
                 CornerRadius="8"
                 ZIndex="180">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                 <TextBlock Name="RecordingToastTitle"
                            Text="Recording started"
-                           Foreground="White"
+                           Foreground="{DynamicResource NtFg}"
                            FontWeight="SemiBold" />
                 <Button Name="RecordingToastClose"
                         Grid.Column="1"
@@ -325,14 +345,14 @@
                         Height="28"
                         Margin="8,0,0,0"
                         Background="Transparent"
-                        Foreground="#C9CFD9"
+                        Foreground="{DynamicResource NtFg2}"
                         BorderThickness="0"
                         Focusable="False"/>
                 <TextBlock Name="RecordingToastMessage"
                            Grid.Row="1"
                            Grid.ColumnSpan="2"
                            Margin="0,8,0,0"
-                           Foreground="#C9CFD9"
+                           Foreground="{DynamicResource NtFg2}"
                            TextWrapping="Wrap" />
                 <StackPanel Grid.Row="2"
                             Grid.ColumnSpan="2"
@@ -363,15 +383,15 @@
                 MinWidth="320"
                 MaxWidth="440"
                 Padding="12"
-                Background="#20242C"
-                BorderBrush="#3A404A"
+                Background="{DynamicResource NtOverlay}"
+                BorderBrush="{DynamicResource NtHairline}"
                 BorderThickness="1"
                 CornerRadius="8"
                 ZIndex="180">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
                 <TextBlock Name="UpdateToastTitle"
                            Text="Update ready"
-                           Foreground="White"
+                           Foreground="{DynamicResource NtFg}"
                            FontWeight="SemiBold" />
                 <Button Name="UpdateToastClose"
                         Grid.Column="1"
@@ -380,14 +400,14 @@
                         Height="28"
                         Margin="8,0,0,0"
                         Background="Transparent"
-                        Foreground="#C9CFD9"
+                        Foreground="{DynamicResource NtFg2}"
                         BorderThickness="0"
                         Focusable="False"/>
                 <TextBlock Name="UpdateToastMessage"
                            Grid.Row="1"
                            Grid.ColumnSpan="2"
                            Margin="0,8,0,0"
-                           Foreground="#C9CFD9"
+                           Foreground="{DynamicResource NtFg2}"
                            TextWrapping="Wrap" />
                 <StackPanel Grid.Row="2"
                             Grid.ColumnSpan="2"
@@ -402,50 +422,16 @@
             </Grid>
         </Border>
 
-        <!-- Search Overlay -->
-        <Border Name="SearchPanel" IsVisible="False" VerticalAlignment="Top" HorizontalAlignment="Right" 
-                Margin="0,50,20,0" Background="#383838" CornerRadius="4" Padding="6" Width="420"
-                BorderBrush="#505050" BorderThickness="1" ZIndex="200">
-            <Border.Resources>
-                <SolidColorBrush x:Key="TextControlBackground">#1a1a1a</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlBackgroundPointerOver">#1a1a1a</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlBackgroundFocused">#1a1a1a</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlForeground">White</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlForegroundPointerOver">White</SolidColorBrush>
-                <SolidColorBrush x:Key="TextControlForegroundFocused">White</SolidColorBrush>
-            </Border.Resources>
-            <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto, Auto">
-                <TextBox Name="SearchBox" PlaceholderText="Search..." 
-                         BorderThickness="1" BorderBrush="#505050" 
-                         VerticalContentAlignment="Center" 
-                         Padding="8,4" Margin="2"/>
-                
-                <!-- Options -->
-                <ToggleButton Name="SearchCaseSensitive" Grid.Column="1" Content="Aa" 
-                              Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" 
-                              ToolTip.Tip="Match Case"/>
-                <ToggleButton Name="SearchRegex" Grid.Column="2" Content=".*" 
-                              Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" 
-                              ToolTip.Tip="Use Regular Expression"/>
-
-                <TextBlock Name="SearchCount" Grid.Column="3" Text="0/0" Foreground="#AAA" 
-                           VerticalAlignment="Center" Margin="8,0" FontSize="12"/>
-                <Button Name="SearchPrev" Grid.Column="4" Content="▲" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-                <Button Name="SearchNext" Grid.Column="5" Content="▼" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-                <Button Name="SearchClose" Grid.Column="6" Content="✕" Background="Transparent" Foreground="#AAA" BorderThickness="0" Margin="2" Width="30" Focusable="False"/>
-            </Grid>
-        </Border>
-
         <!-- Transfer Center Overlay -->
         <Border Name="TransferOverlay" IsVisible="False" 
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                 Width="350" Height="400"
                 Margin="0,0,20,50"
-                Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8"
+                Background="{DynamicResource NtOverlay}" BorderBrush="{DynamicResource NtHairline}" BorderThickness="1" CornerRadius="8"
                 ZIndex="600">
             <Grid RowDefinitions="Auto, *">
-                <Grid Name="TransferTitleBar" Background="#2D2D2D" Height="32">
-                    <TextBlock Text="Recent Transfers" VerticalAlignment="Center" Margin="10,0" FontSize="12" FontWeight="Bold"/>
+                <Grid Name="TransferTitleBar" Background="{DynamicResource NtChromeBg}" Height="32">
+                    <TextBlock Text="Recent Transfers" Foreground="{DynamicResource NtFg}" VerticalAlignment="Center" Margin="10,0" FontSize="12" FontWeight="Bold"/>
                     <Button Name="BtnCloseTransfers" Content="✕" HorizontalAlignment="Right" Width="32" Background="Transparent" BorderThickness="0"/>
                 </Grid>
                 <ContentControl Name="TransferCenterHost" Grid.Row="1"/>
@@ -453,16 +439,16 @@
         </Border>
 
         <!-- Command Palette Overlay -->
-        <Grid Name="CommandPaletteOverlay" ZIndex="999" IsVisible="False" Background="#80000000">
-            <Border Width="600" Height="400" Background="#252526" BorderBrush="#007ACC" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top" Margin="0,80,0,0">
+        <Grid Name="CommandPaletteOverlay" ZIndex="999" IsVisible="False" Background="{DynamicResource NtScrim}">
+            <Border Width="600" Height="400" Background="{DynamicResource NtOverlay}" BorderBrush="{DynamicResource NtAccentBorder}" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top" Margin="0,80,0,0">
                 <Grid RowDefinitions="Auto, *">
-                    <TextBox Name="CommandSearchBox" PlaceholderText="Type a command..." FontSize="14" Padding="10" BorderThickness="0,0,0,1" BorderBrush="#333333" Background="Transparent" />
+                    <TextBox Name="CommandSearchBox" PlaceholderText="Type a command..." FontSize="14" Padding="10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource NtHairline}" Background="Transparent" />
                     <ListBox Name="CommandList" Grid.Row="1" Background="Transparent" BorderThickness="0">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="shell:TerminalCommand">
                                 <Grid ColumnDefinitions="*, 100">
-                                    <TextBlock Text="{Binding FullTitle}" Foreground="#E0E0E0" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Shortcut}" Foreground="#888888" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Text="{Binding FullTitle}" Foreground="{DynamicResource NtFg}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Shortcut}" Foreground="{DynamicResource NtFg3}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="11"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

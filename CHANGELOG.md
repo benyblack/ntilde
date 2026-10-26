@@ -5,11 +5,18 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
 ## Unreleased
 
+- **The MCP server ships with Ntilde.** Every bundle now includes `ntilde-mcp` (`ntilde-mcp.exe`
+  on Windows), a native binary next to the app that needs no .NET and updates with it. Connect
+  Claude Code with `claude mcp add ntilde -- ntilde-mcp`: the Windows installer, the `.deb`, the
+  AUR package and Homebrew put it on `PATH`. Before this, agent access meant cloning and building
+  the repository. See [Use with AI agents](README.md#use-with-ai-agents-mcp).
 - **Connection multiplexing works with the native SSH backend.** With *Enable connection
   multiplexing* on, a profile's tabs and splits share one connection: the second tab opens at once,
   with no second login. Its port forwards are set up once, with the connection, so a second tab of a
   profile with forwards no longer fails on a port the first one holds. *ControlPersist (sec)* keeps
-  the connection open that long after its last tab closes.
+  the connection open that long after its last tab closes. Persistent tabs, *Remote Files*, path
+  completion and SFTP transfers of the profile ride the same connection, so none of them logs in
+  again either; with it, persistent tabs on such a profile now run its port forwards.
 
 ## 0.12.0
 

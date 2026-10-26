@@ -20,13 +20,17 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
     private readonly ActiveSshSessionRegistry _sessionRegistry;
     private readonly Func<SshConnectionService> _sshServiceFactory;
     private readonly Func<TerminalProfile, string?> _passwordResolver;
+    private readonly NativeSshConnectionPool _connectionPool;
 
+    /// <param name="connectionPool">As for <see cref="RemoteDirectoryBrowserService"/>: where a shared connection is found.</param>
     public RemotePathAutocompleteService(
         INativeSshInterop? nativeInterop = null,
         ActiveSshSessionRegistry? sessionRegistry = null,
         Func<SshConnectionService>? sshServiceFactory = null,
-        Func<TerminalProfile, string?>? passwordResolver = null)
+        Func<TerminalProfile, string?>? passwordResolver = null,
+        NativeSshConnectionPool? connectionPool = null)
     {
+        _connectionPool = connectionPool ?? NativeSshConnectionPool.Shared;
         _nativeInterop = nativeInterop ?? new NativeSshInterop();
         _sessionRegistry = sessionRegistry ?? ActiveSshSessionRegistry.Instance;
         _sshServiceFactory = sshServiceFactory ?? (() => new SshConnectionService());
@@ -56,6 +60,7 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
                     _passwordResolver,
                     out NativeSshConnectionOptions? connectionOptions,
                     out NativeHopPasswords? passwords,
+                    out SshProfile? storedProfile,
                     out _))
             {
                 return [];
@@ -67,7 +72,8 @@ public sealed class RemotePathAutocompleteService : IRemotePathAutocompleteServi
             try
             {
                 entries = await BackgroundWork.RunBlockingAsync(
-                    token => _nativeInterop.ListRemoteDirectory(connectionOptions!, query.ParentPath, token),
+                    token => RemoteDirectoryBrowserService.ListOnSharedConnection(_connectionPool, storedProfile, query.ParentPath, token)
+                        ?? _nativeInterop.ListRemoteDirectory(connectionOptions!, query.ParentPath, token),
                     cancellationToken);
             }
             catch (NativeSshAuthenticationRefusedException)

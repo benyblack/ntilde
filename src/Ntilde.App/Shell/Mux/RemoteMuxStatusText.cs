@@ -11,7 +11,7 @@ public static class RemoteMuxStatusText
     /// editor (written out in its XAML, which a layout test holds to this) and in the install dialog.
     /// </summary>
     public const string PersistentTabLimits =
-        "Persistent tabs do not run this connection's port forwards. With the OpenSSH backend they also have no Remote Files sidebar (transfers from the command palette work).";
+        "Persistent tabs run this connection's port forwards only with the native backend and connection multiplexing on. With the OpenSSH backend they also have no Remote Files sidebar (transfers from the command palette work).";
 
     public static string Describe(string? installedVersion, string? appVersion)
     {

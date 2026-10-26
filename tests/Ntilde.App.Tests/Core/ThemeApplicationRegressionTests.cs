@@ -24,9 +24,10 @@ namespace Ntilde.Tests.Core;
 ///   softening lives in ThemeColorMath.SoftenAccent and is tested under Theming/.
 /// - MainWindow.RebuildTitleBar replaces the generated title-bar buttons with fresh instances, so
 ///   the theme foregrounds an earlier ApplyThemeToUI had applied were lost - white icons under the
-///   app's default Dark variant, invisible on light themes. The rebuild now re-applies them.
+///   app's default Dark variant, invisible on light themes. They now take the NtFg token through
+///   Fluent's ButtonForeground, so a fresh instance is already right.
 /// </summary>
-public sealed class ThemeApplicationRegressionTests : IDisposable
+public sealed class ThemeApplicationRegressionTests : IClassFixture<TestAppDataRoot>, IDisposable
 {
     /// <summary>
     /// Disposes the panes of every window this class asked for, and with them the real shells
@@ -66,28 +67,35 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
     }
 
     /// <summary>
-    /// A rebuild replaces the generated buttons, so it must itself re-apply the theme foregrounds:
-    /// with a light active theme the Tab List button and its icon must come out dark (contrast),
-    /// not the Fluent Dark-variant white the fresh instances would otherwise inherit.
+    /// A rebuild replaces the generated buttons with fresh instances. They must come out in the
+    /// active theme's ink with nothing re-applied: under a light theme a button and its icon read
+    /// dark (the NtFg token), never the white a dark-variant default would give. Connections rather
+    /// than Tab List: the Tab List button takes an attention tint whenever tabs are hidden.
     /// </summary>
     [AvaloniaFact]
-    public void RebuildTitleBar_LightTheme_TabListButtonAndIconGetContrastForeground()
+    public void RebuildTitleBar_LightTheme_AButtonAndIconTakeTheThemeForeground()
     {
         var window = TestMainWindowFactory.Create();
-        var settings = GetSettings(window);
+        window.Show();
+        try
+        {
+            ThemeService.Apply(Ntilde.Tests.Theming.TestThemes.GitHubLight, 1.0);
+            InvokeRebuildTitleBar(window);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-        // Light background -> GetContrastForeground returns black. Mutating the cached ActiveTheme
-        // keeps this independent of which theme files exist in the test's theme directory.
-        settings.ActiveTheme.Background = TermColor.FromRgb(245, 242, 233);
+            var expected = ThemeTokens.Derive(Ntilde.Tests.Theming.TestThemes.GitHubLight, 1.0)[ThemeKeys.Fg];
+            var button = GetTitleBarHost(window).Children.OfType<Button>()
+                .Single(b => b.Name == TitleBarViewFactory.ButtonName("connections"));
+            Assert.Equal(expected, Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
 
-        InvokeRebuildTitleBar(window);
-
-        var button = GetTitleBarHost(window).Children.OfType<Button>()
-            .Single(b => b.Name == TitleBarViewFactory.ButtonName("open_tab_list"));
-        Assert.Equal(Colors.Black, Assert.IsType<SolidColorBrush>(button.Foreground).Color);
-
-        var icon = Assert.IsType<PathIcon>(button.Content);
-        Assert.Equal(Colors.Black, Assert.IsType<SolidColorBrush>(icon.Foreground).Color);
+            var icon = Assert.IsType<PathIcon>(button.Content);
+            Assert.Equal(expected, Assert.IsAssignableFrom<ISolidColorBrush>(icon.Foreground).Color);
+        }
+        finally
+        {
+            window.Close();
+            ThemeService.Apply(new TerminalTheme(), 1.0);
+        }
     }
 
     private static StackPanel GetTitleBarHost(Ntilde.MainWindow window)
@@ -95,13 +103,6 @@ public sealed class ThemeApplicationRegressionTests : IDisposable
         var host = window.FindControl<StackPanel>("TitleBarItemsHost");
         Assert.NotNull(host);
         return host!;
-    }
-
-    private static TerminalSettings GetSettings(Ntilde.MainWindow window)
-    {
-        var field = typeof(Ntilde.MainWindow).GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(field);
-        return (TerminalSettings)field!.GetValue(window)!;
     }
 
     private static void InvokeRebuildTitleBar(Ntilde.MainWindow window)
