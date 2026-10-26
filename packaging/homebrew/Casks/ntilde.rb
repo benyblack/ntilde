@@ -34,7 +34,7 @@ cask "ntilde" do
   binary "#{appdir}/Ntilde.app/Contents/MacOS/ntilde-mcp"
 
   zap trash: [
-    "~/.local/share/ntilde",
+    "~/Library/Application Support/ntilde",
     "~/Library/Caches/velopack/NtildeApp",
   ]
 end

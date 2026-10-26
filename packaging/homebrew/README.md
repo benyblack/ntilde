@@ -75,7 +75,7 @@ cask current on every stable tag. It is secret-gated exactly like the signing la
   checks in Settings, then run `brew upgrade --cask --greedy ntilde`).
 - **Pre-existing installs.** A `/Applications/Ntilde.app` already installed via
   the `.pkg` or the portable zip is *not* the cask's; Homebrew will prompt to move it
-  aside on install. User data (`~/.local/share/Ntilde`) is untouched either way
+  aside on install. User data (`~/Library/Application Support/ntilde`) is untouched either way
   and is only removed by `zap`, never by `uninstall`.
 - **Unsigned builds and Gatekeeper.** The cask does not change Gatekeeper: releases
   cut before the `MAC_*` signing secrets are set still need the first-launch
