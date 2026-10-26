@@ -82,7 +82,7 @@ Dracula:
   ignored.
 - **`Name`** is what Settings and the palette show, and identifies the theme: the file's own name
   does not matter. Two files with the same `Name` are one theme.
-- **Colors** are `#RRGGBB` (or `#AARRGGBB`, alpha first). Write every one of the twenty: a color
+- **Colors** are `#RRGGBB`, `#RGB`, or `#AARRGGBB` with the alpha first. Write every one of the twenty: a color
   you leave out gets a plain xterm default, and a value Ntilde cannot read becomes transparent,
   without an error.
 - `Foreground`, `Background` and `CursorColor` are the default text, background and cursor; the
@@ -100,8 +100,14 @@ out (`logs/debug.log` says so).
 | `SelectionForeground` | Selected text | Each character keeps its color, unless it would be hard to read on the selection |
 | `CursorText` | The character under a block cursor | `Background` |
 | `SearchMatch`, `SearchMatchActive` | Search matches, and the current one | Yellow, and orange |
-| `Accent` | Buttons, links, the selected tab | A softened `Blue` |
-| `Success`, `Warning`, `Error`, `Info` | Status text and dots | Softened `Green`, `Yellow`, `Red`, `Cyan` |
+| `Accent` | Buttons, links, the selected tab, the *working* status dot | A softened `Blue` |
+| `Success`, `Warning`, `Error`, `Info` | Status text and dots: `Success` for finished transfers, active port forwards and added lines in diffs; `Warning` for tabs that want attention; `Error` for the recording marker and removed lines; `Info` for agent activity | Softened `Green`, `Yellow`, `Red`, `Cyan` |
+
+- Because a color you set is not adjusted, choose `Accent`, `Success`, `Warning`, `Error` and
+  `Info` with at least 4.5:1 contrast against the window's panels, or text in them will be hard to
+  read. These five are always drawn opaque: an alpha you give them is ignored.
+- The fills (`SelectionBackground`, `SearchMatch`, `SearchMatchActive`) keep their alpha: use the
+  `#AARRGGBB` form so the text under them shows through.
 
 Dracula, Catppuccin Mocha, Tokyo Night, Nord and both Solarized themes set `SelectionBackground`
 to their designers' selection colors; the other built-in themes leave all of these out.
@@ -110,7 +116,8 @@ Ntilde reads the folder when it starts and each time Settings opens, so a file y
 in Settings → Appearance next time you open it. It does not watch the files: after editing one
 by hand, open Settings and choose the theme again.
 
-An agent connected to Ntilde can check a theme file with `ntilde_validate_theme_json`
+An agent connected to Ntilde can check a theme file with `ntilde_validate_theme_json`, which also
+warns when an `Accent`, `Success`, `Warning`, `Error` or `Info` you set will be hard to read
 ([Agents](agents.md)).
 
 ## Fonts
