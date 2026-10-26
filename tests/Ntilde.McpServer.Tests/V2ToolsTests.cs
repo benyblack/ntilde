@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Ntilde.McpServer.Tools;
 using Ntilde.VtContract;
 
@@ -301,5 +302,36 @@ public class SuggestRelevantFilesTests
     {
         // No keyword match → fallback guidance; must not throw.
         Assert.Contains("architecture", WorkflowTools.SuggestRelevantFiles(null!), System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ParserTopic_ListsEveryFileOfTheParser()
+    {
+        // AnsiParser is split into partial files by sequence family, so a DCS or APC topic has to reach
+        // AnsiParser.Images.cs or AnsiParser.KittyGraphics.cs, not just AnsiParser.cs.
+        string root = RepoRoot();
+        var parts = Directory.GetFiles(Path.Combine(root, "src", "Ntilde.VT"), "*.cs", SearchOption.AllDirectories)
+            .Where(f => Regex.IsMatch(File.ReadAllText(f), @"\bpartial\s+class\s+AnsiParser\b"))
+            .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
+            .ToList();
+        Assert.True(parts.Count > 1, "Expected AnsiParser to span several partial files.");
+
+        string hints = WorkflowTools.SuggestRelevantFiles("parser");
+        foreach (var part in parts)
+        {
+            Assert.Contains(part, hints, System.StringComparison.Ordinal);
+        }
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Ntilde.sln")))
+        {
+            dir = dir.Parent;
+        }
+
+        return dir?.FullName
+            ?? throw new InvalidOperationException("Could not locate 'Ntilde.sln' above the test output directory.");
     }
 }
