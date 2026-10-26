@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Ntilde.Rendering;
 using Avalonia.Threading;
 using Ntilde.Shell;
 using Avalonia.Input.Platform;
@@ -557,6 +558,70 @@ namespace Ntilde
             // Add footer back
             foreach (var footer in footerItems)
                 flyout.Items.Add(footer);
+        }
+
+        /// <summary>
+        /// A tab switch: MRU, attention, the active pane and focus, and everything that follows the selected tab.
+        /// </summary>
+        private void OnTabsSelectionChanged(TabControl tabs, SelectionChangedEventArgs e)
+        {
+            // A reorder commit removes the selected (dragged) tab from Items and
+            // reinserts it at the drop index; TabControl's AlwaysSelected mode
+            // promotes index 0 to SelectedItem for the duration of that window (see
+            // CommitTabReorder). That promotion is an implementation artifact, not a
+            // user selection: skip it entirely (MRU touch, attention clear, focus
+            // handoff) - the restore of the dragged tab right after re-enters here
+            // with the true final selection and runs the full path.
+            if (_isTabReorderCommitting) return;
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            bool updatedSpecific = false;
+            foreach (var removed in e.RemovedItems.OfType<TabItem>())
+            {
+                UpdateTabVisuals(removed);
+                updatedSpecific = true;
+            }
+
+            if (tabs.SelectedItem is TabItem ti)
+            {
+                GetTabId(ti);
+                if (_suppressMruTouchOnSelection)
+                {
+                    _suppressMruTouchOnSelection = false;
+                }
+                else
+                {
+                    TouchTabMru(ti);
+                }
+                GetOrCreateTabState(ti);
+                ClearTabAttention(ti);
+                GetOrCreateTabState(ti).Status.NoteSelected();
+                var pane = ResolvePaneForTab(ti);
+                if (pane != null)
+                {
+                    UpdateActivePane(pane);
+                    FocusPaneTerminal(pane, defer: true);
+                }
+                UpdateTabVisuals(ti);
+                updatedSpecific = true;
+            }
+            if (!updatedSpecific) UpdateTabVisuals();
+            // The window light's "no visible bar" term is relative to
+            // the selected tab, so a tab switch changes its answer with
+            // no attention event behind it: the pane whose segment just
+            // came on screen must stop double-reporting, and a pane
+            // still being read in the tab just left must start.
+            RefreshAgentObserveIndicator();
+            UpdatePaneAutomationLabels();
+            UpdateTabAutomationLabels();
+            UpdateBroadcastIndicator();
+            PopulateTabListMenu();
+            UpdateTabHeaderViewport();
+            // The taskbar mirrors whichever tab is now selected (#271).
+            RefreshTaskbarProgressFromSelection();
+            Dispatcher.UIThread.Post(EnsureSelectedTabHeaderVisible, DispatcherPriority.Background);
+            sw.Stop();
+            RendererStatistics.RecordTabSwitchTime(sw.ElapsedMilliseconds);
         }
     }
 }

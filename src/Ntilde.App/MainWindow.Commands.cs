@@ -467,5 +467,294 @@ namespace Ntilde
                 // Keep command execution resilient if usage persistence is unavailable.
             }
         }
+
+        /// <summary>
+        /// The window's keyboard shortcuts, ahead of the focused pane (registered to tunnel). A key no shortcut takes
+        /// is broadcast to the tab's other panes when broadcast input is on.
+        /// </summary>
+        private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+        {
+            // An in-flight tab reorder drag owns the pointer; Escape aborts it before
+            // anything else - in particular before the broadcast-to-panes fallback at
+            // the bottom of this handler, which would otherwise also feed the raw ESC
+            // byte to the terminals while the user is only canceling a drag. That
+            // priority holds only because this handler is registered with
+            // RoutingStrategies.Tunnel (its AddHandler call in the constructor): the
+            // tunneling window handler runs before the focused TerminalView's
+            // bubble-phase Escape handling (which sends "\x1b" to the
+            // PTY), so the drag is canceled and the event marked handled before the
+            // key could reach the pane.
+            if (_isTabReorderDragging && e.Key == Key.Escape)
+            {
+                CancelTabReorderDrag();
+                e.Handled = true;
+                return;
+            }
+
+            var modifiers = e.KeyModifiers;
+            bool isCtrl = (modifiers & KeyModifiers.Control) != 0;
+            bool isShift = (modifiers & KeyModifiers.Shift) != 0;
+
+            // The command palette owns Ctrl+Shift+P outright since V2 Phase 3b. It used to try the
+            // Command Assist pin first and fall through when the pin declined, which meant whether
+            // this chord opened the palette depended on whether an assist row happened to be
+            // selected - a shortcut that works most of the time is worse than one that does not.
+            // Pin has its own catalogued binding below.
+            if (IsShortcut(e, "command_palette", "Ctrl+Shift+P"))
+            {
+                ToggleCommandPalette();
+                e.Handled = true;
+                return;
+            }
+
+            var overlay = this.FindControl<Grid>("CommandPaletteOverlay");
+            if (overlay != null && overlay.IsVisible)
+            {
+                // Trap keys when palette is open
+                if (e.Key == Key.Escape) ToggleCommandPalette();
+                // Let TextBox handle the rest, but prevent bubbling to terminal
+                // Actually, if we are focused on the TextBox, we don't need to do much.
+                // But if focus somehow escaped, we want to ensure we don't type in terminal.
+                return;
+            }
+
+            if (IsShortcut(e, "command_assist_toggle", "Ctrl+Space"))
+            {
+                RecordCommandUsage("command_assist_toggle");
+                _currentPane?.ToggleCommandAssist();
+                e.Handled = true;
+                return;
+            }
+
+            if (IsShortcut(e, "command_assist_help", "Ctrl+Shift+H"))
+            {
+                if (TryOpenCommandAssistHelp(_currentPane))
+                {
+                    RecordCommandUsage("command_assist_help");
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            if (IsShortcut(e, "command_assist_history", "Ctrl+R"))
+            {
+                if (_currentPane?.OpenCommandAssistHistorySearch() == true)
+                {
+                    RecordCommandUsage("command_assist_history");
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            // V2 Phase 3b: pin/unpin on its own chord. Falls through when there is no row to pin,
+            // so the key is not dead - it reaches the terminal like any unbound chord would.
+            if (IsShortcut(e, "command_assist_pin", "Ctrl+Shift+S"))
+            {
+                if (_currentPane?.TryToggleCommandAssistPinShortcut() == true)
+                {
+                    RecordCommandUsage("command_assist_pin");
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            if (IsShortcut(e, "settings", "Ctrl+,"))
+            {
+                RecordCommandUsage("settings");
+                _ = OpenSettings(DefaultSettingsTarget());
+                e.Handled = true;
+                return;
+            }
+
+            if (IsShortcut(e, "connections", "Ctrl+Shift+K"))
+            {
+                RecordCommandUsage("connections");
+                ToggleConnections();
+                e.Handled = true;
+                return;
+            }
+
+            if (IsShortcut(e, "toggle_recording", "Ctrl+Shift+R"))
+            {
+                RecordCommandUsage("toggle_recording");
+                _currentPane?.ToggleRecording();
+                e.Handled = true;
+                return;
+            }
+
+            if (IsShortcut(e, "font_increase", "Ctrl+OemPlus") || IsShortcut(e, "font_increase_alt", "Ctrl+Add"))
+            {
+                RecordCommandUsage("font_increase");
+                _settings.FontSize++;
+                ApplySettingsToAllTabs();
+                _settings.Save();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "font_decrease", "Ctrl+OemMinus") || IsShortcut(e, "font_decrease_alt", "Ctrl+Subtract"))
+            {
+                RecordCommandUsage("font_decrease");
+                _settings.FontSize = Math.Max(6, _settings.FontSize - 1);
+                ApplySettingsToAllTabs();
+                _settings.Save();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "new_tab", "Ctrl+Shift+T"))
+            {
+                RecordCommandUsage("new_tab");
+                AddTab();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "toggle_tab_orientation", "Ctrl+Shift+L"))
+            {
+                RecordCommandUsage("toggle_tab_orientation");
+                ToggleTabOrientation();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "close_tab", "Ctrl+W"))
+            {
+                RecordCommandUsage("close_tab");
+                _ = CloseSelectedTabAsync();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "close_pane", "Ctrl+Shift+W"))
+            {
+                RecordCommandUsage("close_pane");
+                CloseActivePane();
+                e.Handled = true;
+                return;
+            }
+            // Unbound by default: inert until the user assigns a chord.
+            if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.AttachSessionId, ""))
+            {
+                RecordCommandUsage(ShortcutCatalog.AttachSessionId);
+                _ = AttachToMuxSessionAsync();
+                e.Handled = true;
+                return;
+            }
+            if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.DetachPaneId, ""))
+            {
+                RecordCommandUsage(ShortcutCatalog.DetachPaneId);
+                DetachActivePane();
+                e.Handled = true;
+                return;
+            }
+            if (IsMuxPersistenceActive && IsShortcut(e, ShortcutCatalog.QuitAndCloseAllShellsId, ""))
+            {
+                RecordCommandUsage(ShortcutCatalog.QuitAndCloseAllShellsId);
+                _ = QuitAndCloseAllShellsAsync();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "find", "Ctrl+F") || IsShortcut(e, "find_alt", "Ctrl+Shift+F"))
+            {
+                RecordCommandUsage("find");
+                _currentPane?.ToggleSearch();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "split_vertical", "Ctrl+Shift+D"))
+            {
+                RecordCommandUsage("split_vertical");
+                // "Split Vertical" means a vertical divider (side-by-side panes).
+                SplitPane(Avalonia.Layout.Orientation.Horizontal);
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "split_horizontal", "Ctrl+Shift+E"))
+            {
+                RecordCommandUsage("split_horizontal");
+                // "Split Horizontal" means a horizontal divider (stacked panes).
+                SplitPane(Avalonia.Layout.Orientation.Vertical);
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "equalize_panes", "Ctrl+Shift+G"))
+            {
+                RecordCommandUsage("equalize_panes");
+                EqualizeCurrentSplit();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "toggle_pane_zoom", "Ctrl+Shift+Z"))
+            {
+                RecordCommandUsage("toggle_pane_zoom");
+                TogglePaneZoomForCurrentTab();
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "toggle_broadcast_input", "Ctrl+Shift+B"))
+            {
+                RecordCommandUsage("toggle_broadcast_input");
+                ToggleBroadcastForCurrentTab();
+                e.Handled = true;
+                return;
+            }
+            bool nextTabShortcut = IsShortcut(e, "next_tab", "Ctrl+Tab");
+            bool prevTabShortcut = IsShortcut(e, "prev_tab", "Ctrl+Shift+Tab");
+            if (nextTabShortcut || prevTabShortcut)
+            {
+                RecordCommandUsage(prevTabShortcut ? "prev_tab" : "next_tab");
+                bool switched = SwitchTabByMru(reverse: prevTabShortcut);
+                if (switched)
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+            bool moveTabPrevShortcut = IsShortcut(e, MoveTabPrevCommandId, "Ctrl+Shift+PageUp");
+            bool moveTabNextShortcut = IsShortcut(e, MoveTabNextCommandId, "Ctrl+Shift+PageDown");
+            if (moveTabPrevShortcut || moveTabNextShortcut)
+            {
+                // Keyboard move is meaningless mid-drag; swallowing the shortcut keeps
+                // reorder mutations single-threaded through the drag path (cf. the
+                // Escape guard above).
+                if (_isTabReorderDragging)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                RecordCommandUsage(moveTabPrevShortcut ? MoveTabPrevCommandId : MoveTabNextCommandId);
+                MoveSelectedTab(moveTabPrevShortcut ? -1 : 1);
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, TitleBarCatalog.OpenTabListId, "Ctrl+Shift+O"))
+            {
+                RecordCommandUsage(TitleBarCatalog.OpenTabListId);
+                PopulateTabListMenu(showFlyout: true);
+                e.Handled = true;
+                return;
+            }
+            if (IsShortcut(e, "paste", "Ctrl+V"))
+            {
+                RecordCommandUsage("paste");
+                _ = PasteFromClipboardAsync();
+                e.Handled = true;
+                return;
+            }
+            if ((modifiers & KeyModifiers.Alt) != 0)
+            {
+                MoveDirection? dir = e.Key switch
+                {
+                    Key.Left => MoveDirection.Left,
+                    Key.Right => MoveDirection.Right,
+                    Key.Up => MoveDirection.Up,
+                    Key.Down => MoveDirection.Down,
+                    _ => null
+                };
+                if (dir.HasValue && NavigatePane(dir.Value))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            BroadcastKeyToSiblingPanes(e);
+        }
     }
 }
