@@ -164,8 +164,9 @@ public sealed class RemoteShellIntegrationSnippetTests
     }
 
     /// <summary>
-    /// fish 4 writes OSC 133 A, C and D itself; the snippet then writes only B, or every command
-    /// would be marked twice. RemoteFishSnippetIntegrationTests proves it on a real fish.
+    /// fish 4 writes OSC 133 A, C and D itself, and from 4.3 B as well; the snippet then writes only
+    /// what fish does not, or every command would be marked twice. RemoteFishSnippetIntegrationTests
+    /// proves it on a real fish.
     /// </summary>
     [Fact]
     public void FishSnippet_LeavesTheLifecycleMarksToFish_WhenFishWritesThem()
@@ -173,11 +174,10 @@ public sealed class RemoteShellIntegrationSnippetTests
         string content = RemoteShellIntegrationSnippets.Read(RemoteShellIntegrationShell.Fish);
 
         Assert.Contains("status test-feature mark-prompt", content, StringComparison.Ordinal);
-        int gate = content.IndexOf("if not set -q __ntilde_fish_writes_marks", StringComparison.Ordinal);
-        Assert.True(gate >= 0, "the C and D handlers must only be defined when fish does not write its own marks");
-        Assert.True(gate < content.IndexOf("--on-event fish_preexec", StringComparison.Ordinal));
-        Assert.True(gate < content.IndexOf("--on-event fish_postexec", StringComparison.Ordinal));
         Assert.Contains("set -q __ntilde_fish_writes_marks; or printf '\\033]133;A\\a'", content, StringComparison.Ordinal);
+        // Only preexec returns early: postexec writes D only once preexec has started the clock.
+        Assert.Matches(@"--on-event fish_preexec\s+set -q __ntilde_fish_writes_marks; and return", content);
+        Assert.Contains("and not set -q __ntilde_fish_writes_b", content, StringComparison.Ordinal);
     }
 
     // ---- prompt preservation --------------------------------------------------------------------

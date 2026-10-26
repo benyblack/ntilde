@@ -140,7 +140,7 @@ public sealed class FishShellIntegrationTests : IDisposable
 
         Assert.Contains(result.Events, e => e.Kind == "C" && e.DecodedCommand == "echo hello");
         Assert.Contains(result.Events, e => e.Kind == "D" && e.DecodedFinish is (0, not null));
-        ShellHarness.AssertEachCommandMarkedOnce(result.Events);
+        ShellHarness.AssertEachCommandMarkedOnce(result.Events, oneWriterOfB: true);
     }
 
     [Fact]

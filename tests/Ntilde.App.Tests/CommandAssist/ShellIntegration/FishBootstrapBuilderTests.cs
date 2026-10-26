@@ -168,9 +168,10 @@ public sealed class FishBootstrapBuilderTests : IDisposable
     }
 
     /// <summary>
-    /// fish 4 writes OSC 133 A, C and D itself, so the script asks fish whether it does (the
-    /// mark-prompt feature, or the version for the 4.0 releases before that feature) and then writes
-    /// only B. FishShellIntegrationTests proves it on a real fish; this pins it where none is installed.
+    /// fish 4 writes OSC 133 A, C and D itself, and from 4.3 B as well, so the script asks fish
+    /// whether it does (the mark-prompt feature, or the version for the 4.0 releases before that
+    /// feature) and then writes only what fish does not. FishShellIntegrationTests proves it on a
+    /// real fish; this pins it where none is installed.
     /// </summary>
     [Fact]
     public void BuildScript_LeavesTheLifecycleMarksToFish_WhenFishWritesThem()
@@ -178,11 +179,11 @@ public sealed class FishBootstrapBuilderTests : IDisposable
         string script = FishBootstrapBuilder.BuildScript();
 
         Assert.Contains("status test-feature mark-prompt", script);
-        int gate = script.IndexOf("if not set -q __ntilde_fish_writes_marks", StringComparison.Ordinal);
-        Assert.True(gate >= 0, "the C and D handlers must only be defined when fish does not write its own marks");
-        Assert.True(gate < script.IndexOf("--on-event fish_preexec", StringComparison.Ordinal));
-        Assert.True(gate < script.IndexOf("--on-event fish_postexec", StringComparison.Ordinal));
         Assert.Contains("set -q __ntilde_fish_writes_marks; or printf '\\033]133;A\\a'", script);
+        // Only preexec returns early: postexec writes D only once preexec has started the clock,
+        // and a guard at its top would overwrite the $status it reads.
+        Assert.Matches(@"--on-event fish_preexec\s+set -q __ntilde_fish_writes_marks; and return", script);
+        Assert.Contains("and not set -q __ntilde_fish_writes_b", script);
     }
 
     [Fact]

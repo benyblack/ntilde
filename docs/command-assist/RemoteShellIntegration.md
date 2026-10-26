@@ -147,9 +147,10 @@ Two things to know about the third-party ones:
 
 fish 4.0 and later are a third-party integration of their own: fish writes `A`, `C` and `D` itself,
 with the command as `133;C;cmdline_url=…` (from 4.0.1). Ntilde's fish snippet and local bootstrap
-detect this (`status test-feature mark-prompt`, or the version on 4.0.0–4.0.5) and then add only
-`B`, which fish does not write; otherwise every command would be marked twice, and the long-command
-notification, Fix mode and the agent host's events would each see it twice. fish's `D` carries no
+detect this (`status test-feature mark-prompt`, or the version on 4.0.0–4.0.5) and then add only what
+fish does not write: `B` before 4.3, and nothing from 4.3, which writes `B` too. Otherwise every
+command would be marked twice, and the long-command notification, Fix mode and the agent host's
+events would each see it twice. fish's `D` carries no
 duration, so durations come from Ntilde's own clock, started at `C`. With fish's marks turned off
 (`set -Ua fish_features no-mark-prompt`), the snippet writes all four marks as on fish 3.
 
