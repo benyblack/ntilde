@@ -1,7 +1,8 @@
 namespace Ntilde.VT
 {
     /// <summary>
-    /// Inline images from DCS (Sixel, and the DECRQSS / XTGETTCAP replies) and from the iTerm2 protocol (OSC 1337).
+    /// Inline images from DCS (Sixel, and the DECRQSS / XTGETTCAP replies), from the iTerm2 protocol (OSC 1337) and
+    /// tunneled through OSC 1339.
     /// </summary>
     public partial class AnsiParser
     {
@@ -121,6 +122,22 @@ namespace Ntilde.VT
             catch (Exception ex)
             {
                 TerminalLogger.Debug($"[ANSI_PARSER] Sixel decode failed: {ex.Message}");
+            }
+        }
+
+        // OSC 1339: an image tunneled through an OSC, which ConPTY passes on where it filters DCS and
+        // APC: kitty graphics after a "Kitty:" or "K:" prefix, Sixel otherwise.
+        private void HandleTunneledImage(string content)
+        {
+            if (content.StartsWith("Kitty:", StringComparison.Ordinal) || content.StartsWith("K:", StringComparison.Ordinal))
+            {
+                int skip = content.StartsWith("Kitty:", StringComparison.Ordinal) ? 6 : 2;
+                content = content.Substring(skip);
+                HandleKittyGraphics(content, isTunneled: true);
+            }
+            else
+            {
+                HandleSixel(content);
             }
         }
 

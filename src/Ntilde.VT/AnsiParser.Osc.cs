@@ -53,17 +53,7 @@ namespace Ntilde.VT
 
             if (osc.StartsWith("1339;", StringComparison.Ordinal))
             {
-                string content = osc.Substring(5);
-                if (content.StartsWith("Kitty:", StringComparison.Ordinal) || content.StartsWith("K:", StringComparison.Ordinal))
-                {
-                    int skip = content.StartsWith("Kitty:", StringComparison.Ordinal) ? 6 : 2;
-                    content = content.Substring(skip);
-                    HandleKittyGraphics(content, isTunneled: true);
-                }
-                else
-                {
-                    HandleSixel(content);
-                }
+                HandleTunneledImage(osc.Substring(5));
                 return;
             }
 
@@ -73,215 +63,149 @@ namespace Ntilde.VT
             string code = osc.Substring(0, split);
             string data = osc.Substring(split + 1);
 
-            // OSC 0/2: Window title
-            if (code == "0" || code == "2")
+            switch (code)
             {
-                if (!string.IsNullOrWhiteSpace(data))
-                {
-                    OnTitleChanged?.Invoke(data.Trim());
-                }
-                return;
-            }
-
-            // OSC 7: current working directory URI
-            if (code == "7")
-            {
-                if (TryExtractPathFromOsc7(data, out var cwd))
-                {
-                    OnWorkingDirectoryChanged?.Invoke(cwd);
-                }
-                return;
-            }
-
-            // OSC 9: desktop notification / progress reporting (issue #271, ConEmu-style;
-            // Claude Code emits both). Two shapes share the code:
-            //   OSC 9 ; <text>                -> desktop notification with that text
-            //   OSC 9 ; 4 ; <state> [; <pct>] -> progress: 0 removes, 1 normal, 2 error,
-            //      3 indeterminate, 4 paused; pct is 0-100 and may be omitted (null).
-            // The "4;" prefix is what distinguishes them: a bare "4" with no semicolon
-            // after it is notification text, not a progress payload (ConEmu requires the
-            // state parameter). The text is flattened to one line and capped so a
-            // misbehaving program cannot push a wall of text at the toast; everything
-            // else about showing either shape (settings, focus policy) is the App's
-            // call, same split as OSC 52.
-            if (code == "9")
-            {
-                if (data.StartsWith("4;", StringComparison.Ordinal))
-                {
-                    // state is mandatory; a payload without one (e.g. "4;") is dropped
-                    // rather than guessed at.
-                    string[] progressParts = data.Split(';');
-                    if (progressParts.Length >= 2 &&
-                        int.TryParse(progressParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int progressState))
+                // OSC 0/2: Window title
+                case "0":
+                case "2":
+                    if (!string.IsNullOrWhiteSpace(data))
                     {
-                        int? percent = null;
-                        if (progressParts.Length >= 3 &&
-                            int.TryParse(progressParts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int rawPercent))
-                        {
-                            percent = Math.Clamp(rawPercent, 0, 100);
-                        }
-
-                        OnProgressReported?.Invoke(progressState, percent);
+                        OnTitleChanged?.Invoke(data.Trim());
                     }
-                }
-                else if (!string.IsNullOrWhiteSpace(data))
-                {
-                    // One line, no stray controls. BEL/0x9C/ESC terminate the sequence,
-                    // but anything else — TAB, NEL, other C0/C1 — reaches here and would
-                    // land in the host's toast verbatim. Every surviving control becomes
-                    // a space; CRLF collapses to one (the \r is dropped ahead of its \n).
-                    var textBuilder = new StringBuilder(data.Length);
-                    for (int i = 0; i < data.Length; i++)
+                    break;
+
+                // OSC 7: current working directory URI
+                case "7":
+                    if (TryExtractPathFromOsc7(data, out var cwd))
                     {
-                        char ch = data[i];
-                        if (ch == '\r' && i + 1 < data.Length && data[i + 1] == '\n')
-                        {
-                            continue;
-                        }
-
-                        textBuilder.Append(char.IsControl(ch) ? ' ' : ch);
+                        OnWorkingDirectoryChanged?.Invoke(cwd);
                     }
+                    break;
 
-                    string text = textBuilder.ToString().Trim();
-                    if (text.Length == 0)
-                    {
-                        // Controls-only payload: sanitization left nothing to say.
-                        return;
-                    }
+                case "8":
+                    SetHyperlink(data);
+                    break;
 
-                    if (text.Length > Osc9MaxNotificationChars)
-                    {
-                        text = text[..(Osc9MaxNotificationChars - 1)] + "…";
-                    }
+                case "9":
+                    HandleOscNotificationOrProgress(data);
+                    break;
 
-                    OnDesktopNotification?.Invoke(text);
-                }
+                case "10":
+                    HandleOscColorQuery(10, data);
+                    break;
 
-                return;
-            }
+                case "11":
+                    HandleOscColorQuery(11, data);
+                    break;
 
-            // OSC 10/11: dynamic foreground/background color queries.
-            // Query form is "10;?" / "11;?" (BEL and ST termination are both already
-            // normalized away by the caller before HandleOsc ever sees this string).
-            // xterm answers with "OSC 1x ; rgb:RRRR/GGGG/BBBB ST", 16 bits per channel
-            // (8-bit channel replicated: value * 0x101). OpenCode and vim/nvim send this
-            // at startup with a ~1s timeout to detect a dark/light theme; never responding
-            // was the bug (#265), so an unset provider still answers with a sane default
-            // instead of staying silent.
-            if (code == "10" || code == "11")
-            {
-                HandleOscColorQuery(int.Parse(code, System.Globalization.CultureInfo.InvariantCulture), data);
-                return;
-            }
+                // OSC 52: clipboard write (issue #268). See HandleOscClipboard for the format
+                // and the security posture (write-only, size-capped, read-denial-only).
+                case "52":
+                    HandleOscClipboard(data);
+                    break;
 
-            // OSC 52: clipboard write (issue #268). See HandleOscClipboard for the format
-            // and the security posture (write-only, size-capped, read-denial-only).
-            if (code == "52")
-            {
-                HandleOscClipboard(data);
-                return;
-            }
-
-            // OSC 133: shell integration markers.
-            // Common terminals/shell integrations emit:
-            //   OSC 133;A     -> prompt start (prompt ready)
-            //   OSC 133;B     -> prompt end / start of user input; reported with the cursor
-            //                    position at parse time, which is where the command line begins
-            //   OSC 133;C[;X] -> command accepted; X, when present, is usually the base64-encoded
-            //                    command text but is not required to be (see
-            //                    DecodeAcceptedCommandPayload)
-            //   OSC 133;D;N[;M] -> command finished with exit code N and optional duration M
-            //
-            // Any parameters after the marker letter are tolerated and ignored (FinalTerm
-            // allows key=value attributes on these marks, e.g. "133;B;aid=7"), so a payload
-            // we don't understand still produces the mark rather than being dropped.
-            if (code == "133")
-            {
-                if (string.IsNullOrWhiteSpace(data)) return;
-
-                string[] parts = data.Split(';', StringSplitOptions.None);
-                string marker = parts[0];
-                if (string.Equals(marker, "A", StringComparison.Ordinal))
-                {
-                    // We're back at a shell prompt: clear any mouse/focus reporting a TUI
-                    // left enabled after an unclean exit, so pointer moves don't flood the
-                    // prompt with leaked ESC[<..M reports.
-                    _buffer.Modes.ResetTransientInputReporting();
-                    OnPromptReady?.Invoke();
-                }
-                else if (string.Equals(marker, "B", StringComparison.Ordinal))
-                {
-                    // The command-input window and the mark are one fact in two parts, so they are
-                    // published together, here, under the buffer's tracked-mark lock and before any
-                    // subscriber runs. Splitting them is what #448 cost twice over: first the window
-                    // lagged the mark by a queue hop and a submitted command was dropped from
-                    // history; then, with the window moved here but the mark still written by a
-                    // subscriber, the window briefly pointed at the *previous* command's mark - which
-                    // fabricates a capture rather than losing one.
-                    ShellIntegrationMark mark = CaptureCursorMark();
-                    _buffer.BeginCommandInput(mark);
-                    OnCommandStarted?.Invoke(mark);
-                }
-                else if (string.Equals(marker, "C", StringComparison.Ordinal))
-                {
-                    // The line has been submitted. The mark deliberately survives C - the input line
-                    // is still on screen at this instant - so closing the window is the only thing
-                    // that stops the cells below it being served as a command line once the output
-                    // starts arriving.
-                    _buffer.CloseCommandInputWindow();
-                    OnCommandAccepted?.Invoke(DecodeAcceptedCommandPayload(parts));
-                }
-                else if (string.Equals(marker, "D", StringComparison.Ordinal))
-                {
-                    int? exitCode = null;
-                    long? durationMs = null;
-                    if (parts.Length > 1 &&
-                        int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
-                    {
-                        exitCode = parsed;
-                    }
-
-                    if (parts.Length > 2 &&
-                        long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsedDuration))
-                    {
-                        durationMs = parsedDuration;
-                    }
-
-                    // Closed at D as well as C: a shell can reach D with no intervening C, and
-                    // leaving the window open for a command's whole run is the failure it exists to
-                    // prevent.
-                    _buffer.CloseCommandInputWindow();
-
-                    OnCommandFinished?.Invoke(exitCode);
-                    OnCommandFinishedDetailed?.Invoke(exitCode, durationMs);
-                }
-
-                return;
-            }
-
-            // OSC 8: hyperlinks (open/close)
-            // Format: OSC 8 ; params ; URI ST/BEL
-            //
-            // #95 gap 2: the params field used to be discarded — only everything after the second ';' was
-            // read. That field carries `id=`, which is what states that two runs of cells are one anchor,
-            // so hyperlink identity was being thrown away before it reached the buffer. It is parsed here
-            // and resolved into an interned identity; see Links/HyperlinkRegistry.cs.
-            //
-            // A close (`OSC 8 ; ; ST`) has an empty URI and resolves to null, which clears the open link.
-            // Switching straight from one link to another without closing is legal per the spec and needs
-            // no special handling: it is just another assignment.
-            if (code == "8")
-            {
-                int secondSep = data.IndexOf(';');
-                if (secondSep >= 0)
-                {
-                    string parameters = data.Substring(0, secondSep);
-                    string uri = data.Substring(secondSep + 1);
-                    _buffer.CurrentHyperlink = _hyperlinks.Resolve(parameters, uri);
-                }
+                case "133":
+                    HandleShellIntegrationMark(data);
+                    break;
             }
         }
 
+        // OSC 8: hyperlinks (open/close)
+        // Format: OSC 8 ; params ; URI ST/BEL
+        //
+        // #95 gap 2: the params field used to be discarded — only everything after the second ';' was
+        // read. That field carries `id=`, which is what states that two runs of cells are one anchor,
+        // so hyperlink identity was being thrown away before it reached the buffer. It is parsed here
+        // and resolved into an interned identity; see Links/HyperlinkRegistry.cs.
+        //
+        // A close (`OSC 8 ; ; ST`) has an empty URI and resolves to null, which clears the open link.
+        // Switching straight from one link to another without closing is legal per the spec and needs
+        // no special handling: it is just another assignment.
+        private void SetHyperlink(string data)
+        {
+            int secondSep = data.IndexOf(';');
+            if (secondSep >= 0)
+            {
+                string parameters = data.Substring(0, secondSep);
+                string uri = data.Substring(secondSep + 1);
+                _buffer.CurrentHyperlink = _hyperlinks.Resolve(parameters, uri);
+            }
+        }
+
+        // OSC 9: desktop notification / progress reporting (issue #271, ConEmu-style;
+        // Claude Code emits both). Two shapes share the code:
+        //   OSC 9 ; <text>                -> desktop notification with that text
+        //   OSC 9 ; 4 ; <state> [; <pct>] -> progress: 0 removes, 1 normal, 2 error,
+        //      3 indeterminate, 4 paused; pct is 0-100 and may be omitted (null).
+        // The "4;" prefix is what distinguishes them: a bare "4" with no semicolon
+        // after it is notification text, not a progress payload (ConEmu requires the
+        // state parameter). The text is flattened to one line and capped so a
+        // misbehaving program cannot push a wall of text at the toast; everything
+        // else about showing either shape (settings, focus policy) is the App's
+        // call, same split as OSC 52.
+        private void HandleOscNotificationOrProgress(string data)
+        {
+            if (data.StartsWith("4;", StringComparison.Ordinal))
+            {
+                // state is mandatory; a payload without one (e.g. "4;") is dropped
+                // rather than guessed at.
+                string[] progressParts = data.Split(';');
+                if (progressParts.Length >= 2 &&
+                    int.TryParse(progressParts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int progressState))
+                {
+                    int? percent = null;
+                    if (progressParts.Length >= 3 &&
+                        int.TryParse(progressParts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int rawPercent))
+                    {
+                        percent = Math.Clamp(rawPercent, 0, 100);
+                    }
+
+                    OnProgressReported?.Invoke(progressState, percent);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(data))
+            {
+                // One line, no stray controls. BEL/0x9C/ESC terminate the sequence,
+                // but anything else — TAB, NEL, other C0/C1 — reaches here and would
+                // land in the host's toast verbatim. Every surviving control becomes
+                // a space; CRLF collapses to one (the \r is dropped ahead of its \n).
+                var textBuilder = new StringBuilder(data.Length);
+                for (int i = 0; i < data.Length; i++)
+                {
+                    char ch = data[i];
+                    if (ch == '\r' && i + 1 < data.Length && data[i + 1] == '\n')
+                    {
+                        continue;
+                    }
+
+                    textBuilder.Append(char.IsControl(ch) ? ' ' : ch);
+                }
+
+                string text = textBuilder.ToString().Trim();
+                if (text.Length == 0)
+                {
+                    // Controls-only payload: sanitization left nothing to say.
+                    return;
+                }
+
+                if (text.Length > Osc9MaxNotificationChars)
+                {
+                    text = text[..(Osc9MaxNotificationChars - 1)] + "…";
+                }
+
+                OnDesktopNotification?.Invoke(text);
+            }
+        }
+
+        // OSC 10/11: dynamic foreground/background color queries.
+        // Query form is "10;?" / "11;?" (BEL and ST termination are both already
+        // normalized away by the caller before HandleOsc ever sees this string).
+        // xterm answers with "OSC 1x ; rgb:RRRR/GGGG/BBBB ST", 16 bits per channel
+        // (8-bit channel replicated: value * 0x101). OpenCode and vim/nvim send this
+        // at startup with a ~1s timeout to detect a dark/light theme; never responding
+        // was the bug (#265), so an unset provider still answers with a sane default
+        // instead of staying silent.
+        //
         // xterm's "rgb:RRRR/GGGG/BBBB" dynamic-color-response format: each 8-bit channel is
         // widened to 16 bits by replicating the byte (0xRR -> 0xRRRR, i.e. value * 0x101).
         // xterm's dynamic-color OSC accepts multiple values chained in one sequence, each
