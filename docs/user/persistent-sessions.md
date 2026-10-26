@@ -173,9 +173,9 @@ Shortcuts) closes the pane and leaves its shell running. A *Shell detached* noti
 get it back: "Shell kept running — Attach to session… to get it back", or for a shell on a remote
 host "Shell kept running on user@host — Attach to session… reopens it". When that host's profile no
 longer keeps its remote sessions, the picker does not offer the host, and the notification gives
-the command to run there instead: "Shell kept running on user@host — run 'ntilde-mux attach <id>'
-on that host to get it back". `ntilde-mux` is not on the host's `PATH`, so run it by its path
-([On the host](#remote-ssh-tabs-that-keep-running)).
+the command to run there instead: "Shell kept running on user@host — run
+'~/.local/share/ntilde/bin/ntilde-mux attach <id>' on that host to get it back" (under
+`$XDG_DATA_HOME` instead, on a host that sets it: [On the host](#remote-ssh-tabs-that-keep-running)).
 
 **Detached shells stay detached.** A shell you detach on purpose - **Pane: Detach**, Detach in the
 close question, or **Ctrl+\ then d** in `ntilde mux attach` - is *not* reopened the next time Ntilde

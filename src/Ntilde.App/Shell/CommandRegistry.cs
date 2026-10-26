@@ -12,7 +12,9 @@ namespace Ntilde.Shell
         public Action Action { get; set; } = () => { };
         public string Shortcut { get; set; } = "";
 
-        public string FullTitle => $"{Category}: {Title}";
+        // Titles that already carry a prefix ("Theme: Dracula", "Tab: Next (MRU)") are shown as
+        // they are; prefixing the category too gave "Theme: Theme: Dracula".
+        public string FullTitle => Title.Contains(": ", StringComparison.Ordinal) ? Title : $"{Category}: {Title}";
     }
 
     public static class CommandRegistry

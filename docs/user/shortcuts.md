@@ -96,7 +96,7 @@ Bind them under Settings → Shortcuts if you use them often.
 | Settings window | `Ctrl+S` / `Cmd+S` | Save and close |
 | Settings window | `Ctrl+F` / `Cmd+F` | Search settings; `Up` / `Down` and `Enter` pick a result, `Escape` clears |
 | A pane whose session ended or disconnected | `Enter` | Reconnect or start a new shell |
-| Windows | ``Alt+` `` | Show or hide the window (quake mode) |
+| Windows | ``Alt+` `` | Show or hide the window (quake mode); change it with `GlobalHotkey` ([Settings with no page](settings.md#settings-with-no-page)) |
 
 Keys that are not Ntilde shortcuts go to the shell: `Ctrl+letter` sends the control character,
 `Alt+key` sends `Esc` followed by the key, and `Ctrl+Alt` is left alone so AltGr text works.
@@ -137,8 +137,8 @@ before saving.").
 
 Open it with `Ctrl+Shift+P` (`Cmd+Shift+P`) and type part of a command's name or category. The
 commands you use most, and then most recently, come first; using a command's shortcut counts too.
-The right-hand column shows each command's current shortcut. Each entry is shown with its category
-in front, for example *View: Cursor: Block*.
+The right-hand column shows each command's current shortcut. An entry whose name has no prefix of
+its own is shown with its category in front, for example *View: Split Vertical*.
 
 | Category | Commands |
 |---|---|
