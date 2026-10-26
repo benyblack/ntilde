@@ -135,7 +135,11 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/TerminalLogger.cs" }),
         (new[] { "tab", "pane", "window", "layout" }, new[] {
             "src/Ntilde.App/MainWindow.axaml.cs",
-            "src/Ntilde.App/Controls/TerminalPane.axaml.cs" }),
+            "src/Ntilde.App/MainWindow.Tabs.cs",
+            "src/Ntilde.App/MainWindow.TabStrip.cs",
+            "src/Ntilde.App/MainWindow.Panes.cs",
+            "src/Ntilde.App/Controls/TerminalPane.axaml.cs",
+            "src/Ntilde.App/Controls/TerminalPane.Session.cs" }),
         (new[] { "fuzz", "robustness" }, new[] {
             "tests/Ntilde.Benchmarks/FuzzTarget.cs",
             "tests/Ntilde.VT.Tests/FuzzSmokeTests.cs" }),
