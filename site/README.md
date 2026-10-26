@@ -23,7 +23,10 @@ files into GitHub URLs.
 
 Because the site follows `main`, every page says that it describes the
 development version and names the latest release: the newest `vX.Y.Z` tag,
-which the Pages workflow fetches before building.
+which the Pages workflow finds and passes in `NTILDE_LATEST_RELEASE`. Set it
+yourself to see the same notice locally
+(`NTILDE_LATEST_RELEASE=v0.12.0 npm run dev`); without it, the notice links to
+the releases list.
 
 ## Develop
 
@@ -31,6 +34,7 @@ which the Pages workflow fetches before building.
 cd site
 npm install
 npm run dev      # http://localhost:4321
+npm run check    # sync the guide, then type-check
 ```
 
 The `predev` hook runs `scripts/sync-screenshots.mjs` automatically, so any

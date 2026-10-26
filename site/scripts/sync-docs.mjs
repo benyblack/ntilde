@@ -14,8 +14,10 @@
  * which knows the deploy base path.
  *
  * The site publishes the guide as it is on `main`, which can run ahead of the
- * newest release. docs-meta.json records that release (the newest vX.Y.Z tag)
- * so every page can say which version the reader can download.
+ * newest release. docs-meta.json records that release so every page can say
+ * which version the reader can download. The Pages workflow finds it (the
+ * newest vX.Y.Z tag) and passes it in NTILDE_LATEST_RELEASE; without it the
+ * pages link to the releases list instead.
  *
  * Runs before `astro dev` and `astro build` (see `predev`/`prebuild` in
  * site/package.json); `npm run sync:docs` runs it by hand.
@@ -23,7 +25,6 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -82,18 +83,10 @@ function readIndex(readme) {
   return order;
 }
 
-/** The newest release tag (vX.Y.Z, no pre-release suffix), or null when the checkout has no tags. */
+/** The release named in NTILDE_LATEST_RELEASE (vX.Y.Z, no pre-release suffix), or null. */
 function latestRelease() {
-  try {
-    const out = execFileSync('git', ['tag', '--list', 'v*', '--sort=-v:refname'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    return out.split('\n').find((t) => /^v\d+\.\d+\.\d+$/.test(t.trim()))?.trim() ?? null;
-  } catch {
-    return null;
-  }
+  const tag = process.env.NTILDE_LATEST_RELEASE?.trim();
+  return tag && /^v\d+\.\d+\.\d+$/.test(tag) ? tag : null;
 }
 
 const yaml = (s) => JSON.stringify(s);

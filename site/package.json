@@ -7,6 +7,7 @@
   "scripts": {
     "sync:assets": "node scripts/sync-screenshots.mjs",
     "sync:docs": "node scripts/sync-docs.mjs",
+    "check": "node scripts/sync-docs.mjs && astro check",
     "predev": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs",
     "prebuild": "node scripts/sync-screenshots.mjs && node scripts/sync-docs.mjs",
     "dev": "astro dev",
