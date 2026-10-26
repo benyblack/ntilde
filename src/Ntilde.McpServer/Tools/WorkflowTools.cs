@@ -112,6 +112,8 @@ public sealed class WorkflowTools
             "src/Ntilde.VT/TerminalBuffer.ReflowEngine.cs" }),
         (new[] { "parser", "escape", "ansi", "csi", "osc", "dcs", "apc", "sequence" }, new[] {
             "src/Ntilde.VT/AnsiParser.cs",
+            "src/Ntilde.VT/AnsiParser.Csi.cs",
+            "src/Ntilde.VT/AnsiParser.Osc.cs",
             "tests/Ntilde.App.Tests/AnsiParserHardeningTests.cs",
             "tests/Ntilde.VT.Tests/CsiParamClampTests.cs" }),
         (new[] { "theme", "color", "palette" }, new[] {
