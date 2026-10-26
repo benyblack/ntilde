@@ -15,6 +15,7 @@ using System.Text;
 using System.Threading;
 using Ntilde.VT;
 using Ntilde.Rendering;
+using Ntilde.Shell.Theming;
 
 namespace Ntilde.Shell
 {
@@ -139,6 +140,7 @@ namespace Ntilde.Shell
             public SKColor ThemeFg;
             public SKColor CursorColor;
             public CursorStyle CursorStyle;
+            public TerminalRenderColors RenderColors;
             public List<RowRenderItem> RowItems = new();
             public List<RenderImageSnapshot> Images = new();
         }
@@ -397,6 +399,7 @@ namespace Ntilde.Shell
                 frame.ThemeFg = new SKColor(renderSnapshot.Theme.Foreground.R, renderSnapshot.Theme.Foreground.G, renderSnapshot.Theme.Foreground.B, 255);
                 frame.CursorColor = new SKColor(renderSnapshot.Theme.CursorColor.R, renderSnapshot.Theme.CursorColor.G, renderSnapshot.Theme.CursorColor.B, 255);
                 frame.CursorStyle = renderSnapshot.CursorStyle;
+                frame.RenderColors = TerminalRenderColors.For(renderSnapshot.Theme.Source ?? UnthemedSnapshotTheme);
 
                 if (renderSnapshot.Images.Length > 0 && renderSnapshot.Images.Array != null)
                 {
@@ -473,9 +476,10 @@ namespace Ntilde.Shell
                 // --------------------
                 using var bgPaint = new SKPaint { Style = SKPaintStyle.Fill };
                 using var fgPaint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
-                using var selectionPaint = new SKPaint { Color = new SKColor(51, 153, 255, 100) };
-                using var matchPaint = new SKPaint { Color = new SKColor(255, 255, 0, 100) };
-                using var activeMatchPaint = new SKPaint { Color = new SKColor(255, 128, 0, 150) };
+                using var selectionPaint = new SKPaint { Color = ToSkColor(frame.RenderColors.Selection) };
+                using var matchPaint = new SKPaint { Color = ToSkColor(frame.RenderColors.SearchMatch) };
+                using var activeMatchPaint = new SKPaint { Color = ToSkColor(frame.RenderColors.SearchMatchActive) };
+                SKColor? selectionForeground = frame.RenderColors.SelectionForeground is { } selectionFg ? ToSkColor(selectionFg) : null;
 
                 // 1. Force Avalonia composition to completely wipe the reused SwapChain frame (destroys old ghost pixels)
                 canvas.Clear(SKColors.Empty);
@@ -737,6 +741,42 @@ namespace Ntilde.Shell
                     }
                 }
 
+                // Redraws the text of [colStart, colEndExclusive) on visual row r over an overlay
+                // just drawn on top of it, so a selection, search match or block cursor is a fill
+                // under the glyphs rather than a veil over them: a theme's explicit selection color
+                // is usually opaque. Backgrounds are not redrawn; the overlay is the background.
+                void RedrawTextOver(int r, int colStart, int colEndExclusive, SKColor? foregroundOverride)
+                {
+                    if (renderSnapshot.RowsData.Array == null || r < 0 || r >= renderSnapshot.RowsData.Length)
+                    {
+                        return;
+                    }
+
+                    var row = renderSnapshot.RowsData.Array[r];
+                    if (row.Cols <= 0 || row.Cells.Length < row.Cols)
+                    {
+                        return;
+                    }
+
+                    DrawRowTextFromSnapshot(
+                        canvas,
+                        row,
+                        rowTopY: FromDevicePx(_pixelGrid.YForRowTop(r)),
+                        baselineY: FromDevicePx(_pixelGrid.YForBaseline(r)),
+                        colEdges: colEdges,
+                        font,
+                        fgPaint,
+                        frame.ThemeFg,
+                        frame.ThemeBg,
+                        renderSnapshot.Theme,
+                        alpha,
+                        tf,
+                        drawBackgrounds: false,
+                        spanColStart: colStart,
+                        spanColEndExclusive: colEndExclusive,
+                        foregroundOverride: foregroundOverride);
+                }
+
                 // Pass 4: Overlays (Selection / Search)
                 int selectionIndex = 0;
                 int matchIndex = 0;
@@ -762,6 +802,7 @@ namespace Ntilde.Shell
                         float x2 = GetColEdge(colEdges, sel.ColEnd + 1, paddingLeft);
                         canvas.DrawRect(x1, y, x2 - x1, rowHeight, selectionPaint);
                         IncrementRectDrawCall();
+                        RedrawTextOver(r, sel.ColStart, sel.ColEnd + 1, selectionForeground);
                         selTemp++;
                     }
 
@@ -780,6 +821,7 @@ namespace Ntilde.Shell
                         float x2 = GetColEdge(colEdges, m.EndCol + 1, paddingLeft);
                         canvas.DrawRect(x1, y, x2 - x1, rowHeight, p);
                         IncrementRectDrawCall();
+                        RedrawTextOver(r, m.StartCol, m.EndCol + 1, foregroundOverride: null);
                         tempIdx++;
                     }
                 }
@@ -804,9 +846,28 @@ namespace Ntilde.Shell
                         switch (frame.CursorStyle)
                         {
                             case CursorStyle.Block:
-                                canvas.DrawRect(x1, rowTop, x2 - x1, rowHeight, cursorPaint);
-                                IncrementRectDrawCall();
-                                break;
+                                {
+                                    canvas.DrawRect(x1, rowTop, x2 - x1, rowHeight, cursorPaint);
+                                    IncrementRectDrawCall();
+                                    // The glyph under the block, in the theme's cursor text color
+                                    // (it used to be hidden by the opaque rect).
+                                    int cursorCol = renderSnapshot.CursorCol;
+                                    int cursorEnd = cursorCol + 1;
+                                    if (renderSnapshot.RowsData.Array != null && visualRow < renderSnapshot.RowsData.Length)
+                                    {
+                                        var cursorRow = renderSnapshot.RowsData.Array[visualRow];
+                                        if (cursorCol >= 0 && cursorCol < cursorRow.Cells.Length && cursorRow.Cells[cursorCol].IsWide)
+                                        {
+                                            cursorEnd = cursorCol + 2;
+                                        }
+                                    }
+
+                                    canvas.Save();
+                                    canvas.ClipRect(new SKRect(x1, rowTop, x2, rowBottom));
+                                    RedrawTextOver(visualRow, cursorCol, cursorEnd, ToSkColor(frame.RenderColors.CursorText));
+                                    canvas.Restore();
+                                    break;
+                                }
                             case CursorStyle.Beam:
                                 {
                                     int beamWPx = Math.Max(1, (int)Math.Floor(_pixelGrid.CellWidthPx * 0.14));
@@ -1147,7 +1208,8 @@ namespace Ntilde.Shell
             SKTypeface primaryTf,
             bool drawBackgrounds,
             int spanColStart = 0,
-            int spanColEndExclusive = int.MaxValue)
+            int spanColEndExclusive = int.MaxValue,
+            SKColor? foregroundOverride = null)
         {
             const float paddingLeft = 4f;
             int cellsRendered = 0;
@@ -1209,6 +1271,11 @@ namespace Ntilde.Shell
                         fg = BlendTowards(fg, bg, 0.5f);
                     }
 
+                    if (foregroundOverride is { } overrideFg)
+                    {
+                        fg = overrideFg;
+                    }
+
                     runBuilder.Clear();
                     runCellTexts.Clear();
                     int totalRunWidth = 0;
@@ -1233,6 +1300,11 @@ namespace Ntilde.Shell
                         if (next.IsFaint)
                         {
                             nfg = BlendTowards(nfg, nbg, 0.5f);
+                        }
+
+                        if (foregroundOverride is { } nextOverrideFg)
+                        {
+                            nfg = nextOverrideFg;
                         }
 
                         if (nfg != fg || nbg != bg)
@@ -2918,6 +2990,11 @@ namespace Ntilde.Shell
             return resolved;
         }
 
+        /// <summary>The theme the render colors derive from when a snapshot carries none (hand-built snapshots).</summary>
+        private static readonly TerminalTheme UnthemedSnapshotTheme = new();
+
+        private static SKColor ToSkColor(Avalonia.Media.Color color) => new(color.R, color.G, color.B, color.A);
+
         private static TermColor ResolvePaletteIndex(int index, RenderThemeSnapshot themeSnapshot)
         {
             // 0-15 come from the active theme palette.
@@ -2928,7 +3005,7 @@ namespace Ntilde.Shell
                     return themeSnapshot.AnsiPalette[index];
                 }
 
-                return TermColor.White;
+                return themeSnapshot.Foreground;
             }
 
             // 16-231: xterm 6x6x6 cube.
@@ -2951,7 +3028,7 @@ namespace Ntilde.Shell
                 return TermColor.FromRgb(v, v, v);
             }
 
-            return TermColor.White;
+            return themeSnapshot.Foreground;
         }
     }
 }
