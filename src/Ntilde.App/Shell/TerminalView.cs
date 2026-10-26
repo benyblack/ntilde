@@ -1301,7 +1301,6 @@ namespace Ntilde.Shell
             System.Array.Empty<Ntilde.VT.Links.LinkSpan>();
         private int[] _hoverScanMap = System.Array.Empty<int>();
         private bool _isSelecting = false;
-        private static readonly IBrush SelectionBrush = new ImmutableSolidColorBrush(Color.FromArgb(100, 51, 153, 255));
 
         // Session for sending mouse events
         private ITerminalSession? _session;

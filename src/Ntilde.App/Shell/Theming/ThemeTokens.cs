@@ -106,10 +106,15 @@ public sealed class ThemeTokens
         c[ThemeKeys.PressedFill] = WithAlpha(fillFg, 0x30);
 
         // Accent: soften the ANSI blue for chrome use, pick the better-contrasting ink, and if even
-        // that ink misses 4.5:1, move the accent away from it.
-        var accent = SoftenAccent(Opaque(theme.Blue));
+        // that ink misses 4.5:1, move the accent away from it. A theme's explicit Accent is used
+        // verbatim (spec §2: contrast fixing applies to derived colors only); it still gets the
+        // better ink.
+        var accent = theme.Accent is { } explicitAccent ? Opaque(explicitAccent) : SoftenAccent(Opaque(theme.Blue));
         var accentFg = Contrast(LightInk, accent) >= Contrast(DarkInk, accent) ? LightInk : DarkInk;
-        accent = EnsureContrast(accent, [accentFg], TextContrast);
+        if (theme.Accent is null)
+        {
+            accent = EnsureContrast(accent, [accentFg], TextContrast);
+        }
         c[ThemeKeys.Accent] = accent;
         c[ThemeKeys.AccentFg] = accentFg;
         c[ThemeKeys.AccentHover] = ShiftLightness(accent, 0.08);
@@ -118,13 +123,15 @@ public sealed class ThemeTokens
         c[ThemeKeys.AccentFaint] = WithAlpha(accent, 0x15);
         c[ThemeKeys.AccentBorder] = WithAlpha(accent, 0x4D);
 
-        // Status: softened ANSI, readable as text on every panel-like surface.
+        // Status: softened ANSI, readable as text on every panel-like surface; an explicit theme
+        // value is used verbatim.
         Color[] statusSurfaces = [c[ThemeKeys.Panel], c[ThemeKeys.WindowBg], c[ThemeKeys.Overlay]];
-        Color Status(TermColor ansi) => EnsureContrast(SoftenAccent(Opaque(ansi)), statusSurfaces, TextContrast);
-        var success = Status(theme.Green);
-        var warning = Status(theme.Yellow);
-        var error = Status(theme.Red);
-        var info = Status(theme.Cyan);
+        Color Status(TermColor? explicitColor, TermColor ansi)
+            => explicitColor is { } given ? Opaque(given) : EnsureContrast(SoftenAccent(Opaque(ansi)), statusSurfaces, TextContrast);
+        var success = Status(theme.Success, theme.Green);
+        var warning = Status(theme.Warning, theme.Yellow);
+        var error = Status(theme.Error, theme.Red);
+        var info = Status(theme.Info, theme.Cyan);
         SetStatus(c, ThemeKeys.Success, ThemeKeys.SuccessDim, ThemeKeys.SuccessBorder, success);
         SetStatus(c, ThemeKeys.Warning, ThemeKeys.WarningDim, ThemeKeys.WarningBorder, warning);
         SetStatus(c, ThemeKeys.Error, ThemeKeys.ErrorDim, ThemeKeys.ErrorBorder, error);

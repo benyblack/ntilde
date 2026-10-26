@@ -155,7 +155,14 @@ internal static class ShellHarness
             // Re-encode to base64 so OscEvent.DecodedCommand round-trips
             // back to the same text -- matches the on-the-wire format the
             // bootstrap emits and keeps the OscEvent contract uniform.
-            string b64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
+            //
+            // text is null for a C mark that carries no command we trust, and
+            // fish 4 sends one before every command: its own built-in
+            // `133;C;cmdline_url=...`, which the parser reads as an attribute.
+            // Encoding that null threw inside the parse callback, which ended
+            // the session's output loop, so the run lost everything after the
+            // first command and looked like an exit.
+            string? b64 = text is null ? null : Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
             lock (sync) events.Add(new OscEvent("C", b64));
         };
         parser.OnCommandFinishedDetailed = (exit, dur) =>

@@ -323,7 +323,7 @@ Target tokens for every audited surface (phase in brackets):
 | New/Edit SSH connection [3, done] | warning `#D7BA7D`, error `#E06C75`, App TabItem hover | `NtWarning`, `NtError`, tab tokens |
 | Replay window [3, done] | unthemed, Default theme buffer | tokens; active theme |
 | Askpass helper [3, done] | OS variant | `ThemeService` |
-| Renderer selection/search/cursor text [4] | hardcoded | `TerminalRenderColors` |
+| Renderer selection/search/cursor text [4, done in 4a] | hardcoded | `TerminalRenderColors` |
 
 ### After the Settings redesign (added 2026-10-19, carried over from #528)
 
@@ -411,6 +411,36 @@ Plan: `docs/superpowers/plans/2026-10-24-theme-system-phase3-panes.md`.
   black instead of spelling it.
 - **Baseline**: 6 literals in 2 files, all renderer colours phase 4 replaces
   (`TerminalDrawOperation` selection and search, `TerminalView.SelectionBrush`).
+
+### Phase 4a as landed (2026-10-26)
+
+Plan: `docs/superpowers/plans/2026-10-26-theme-system-phase4-schema.md`. Phase 4 lands in two PRs:
+4a (schema, renderer, MCP, contrast) and 4b (importers, editor, shipped values, docs).
+
+- **Schema:** the ten optional `TermColor?` fields, each `WhenWritingNull`, so a theme without them
+  saves byte-for-byte as before (pinned per shipped theme). Malformed values read as null with a
+  logged warning through `OptionalTermColorJsonConverter`.
+- **Derivation:** explicit `Accent` and status colours are used verbatim; absent ones derive as
+  before. `TerminalRenderColors` (in `Shell/Theming/`) derives the renderer's colours from
+  `ThemeTokens`, as §2 lists.
+- **Selected text on low-contrast themes:** Solarized's own text clears 4.5:1 on its background
+  by a hair, or not at all, so any visible selection tint drops it under. Rather than fade the
+  selection out, a theme without `SelectionForeground` gets a derived one: its foreground moved
+  until it reads on the selection, and only when it would not otherwise. Every shipped and stress
+  theme passes the §7 selection and search assertions.
+- **Renderer:**
+  - the render snapshot carries its source theme, and the draw operation reads
+    `TerminalRenderColors.For(theme)` (cached per theme, keyed by a fingerprint of its colours);
+  - the text under a selection, a search match or a block cursor is redrawn on top of the
+    overlay, so an opaque theme colour cannot hide it;
+  - the palette fallbacks are the theme foreground, not white;
+  - `SelectionBrush` is gone.
+- **Baseline:** empty. Only the permanent allowlist remains.
+- **MCP:** `OptionalColorFields`, the schema's "derived when omitted" table, validation of present
+  values, and the contrast warning, which mirrors the derived `Panel`. A test pins the mirror to
+  `ThemeTokens` for every shipped theme. A drift test checks the field lists against
+  `TerminalTheme`. The schema's 8-digit format now reads `#AARRGGBB`, the order Ntilde reads and
+  writes; it had said `#RRGGBBAA`.
 
 ## 6. Schema propagation
 

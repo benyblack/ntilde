@@ -24,7 +24,7 @@ releases are on [GitHub Releases](https://github.com/benyblack/ntilde/releases).
 
 Shells can now outlive Ntilde's window. They run in a background process, Ntilde's own
 multiplexer, and come back when Ntilde starts again. The
-[user manual's chapter 12](docs/USER_MANUAL.md#12-persistent-sessions-and-the-multiplexer) covers
+[persistent sessions guide](docs/user/persistent-sessions.md) covers
 it all.
 
 - **Local shells can keep running** when the window closes, when Ntilde crashes and across an update.
