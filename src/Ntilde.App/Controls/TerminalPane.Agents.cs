@@ -1,13 +1,14 @@
 using Ntilde.Shell;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia;
 using Avalonia.Platform.Storage;
 
 namespace Ntilde.Controls
 {
     /// <summary>
-    /// What the agent host sees of a pane: its session snapshot and render parameters, live capture and
-    /// snapshot export, and the agent output panel.
+    /// What the agent host sees of a pane: its registration, session snapshot and render parameters, live
+    /// capture and snapshot export, and the agent output panel.
     /// </summary>
     public partial class TerminalPane
     {
@@ -285,6 +286,150 @@ namespace Ntilde.Controls
             {
                 System.Diagnostics.Debug.WriteLine($"[TerminalPane] Failed to export snapshot: {ex}");
             }
+        }
+
+        /// <summary>
+        /// Registers the pane with the agent host's session registry, and feeds its attention and status machines.
+        /// </summary>
+        private void RegisterWithAgentHost()
+        {
+            // Agent-host observe surface (docs/agent-host/DIRECTION.md, A1):
+            // inert bookkeeping until the IPC endpoint queries it. The
+            // registration holds a lock-protected metadata snapshot (never a
+            // live delegate into this control), pushed from the UI thread on
+            // every relevant change; the entry is removed in DetachFromUiThread.
+            _agentRegistration = new Ntilde.AgentHost.AgentSessionRegistration(
+                PaneId,
+                Buffer!,
+                GetBaseTabTitle(),
+                Profile?.Name ?? "Terminal",
+                Profile?.Type == ConnectionType.SSH ? "ssh" : "local",
+                IsActivePane,
+                profileId: Profile?.Id);
+            // A3 act: an agent typing into this pane is text the keyboard path never saw.
+            _agentRegistration.InputInjected = NotifyExternalInputSent;
+            _agentRegistry = Ntilde.AgentHost.AgentSessionRegistry.Instance;
+            _agentRegistry.Register(_agentRegistration);
+            // Seed act-reachability from the registration instead of waiting for
+            // the first ActabilityChanged. AgentHostService.OnSessionRegistered
+            // publishes it synchronously inside Register above — i.e. one line
+            // before the subscription below exists, so the event is already gone
+            // by the time we would hear it. Subscribing first would not fix it
+            // either: OnAgentActabilityChanged only *posts* to the dispatcher, so
+            // the bar would still appear a frame after the pane's first layout
+            // and resize the PTY, which is the reflow this is here to remove.
+            // Reading the value is synchronous, so the pane is laid out with its
+            // bar already in place and the terminal row is never re-measured.
+            //
+            // Routed through ApplyAgentAttention rather than assigning
+            // _agentActable directly so the segment is rendered by its one
+            // renderer: a seeded-actable pane shows the idle "agent access"
+            // label immediately instead of a bare dot with empty text until the
+            // first attention event.
+            //
+            // Guarded rather than unconditional: _agentActable already defaults
+            // to false, so a non-actable pane has nothing to seed, and calling
+            // UpdateStatusBarVisibility() for it would only re-assert the SSH
+            // half of the bar's visibility OR earlier than anything expects.
+            if (_agentRegistration.IsAgentActable)
+            {
+                ApplyAgentAttention(_agentRegistration.AttentionMachine.Snapshot(), isActable: true);
+            }
+            _agentRegistration.AttentionMachine.Changed += OnAgentAttentionChanged;
+            _agentRegistration.ActabilityChanged += OnAgentActabilityChanged;
+            TitleChanged += (_, _) => UpdateAgentSessionSnapshot();
+            WorkingDirectoryChanged += (_, _) => UpdateAgentSessionSnapshot();
+
+            // A2 status signals (docs/plans/2026-07-07-agent-host-a2-status-design.md):
+            // PTY lifecycle events feed the per-session status machine. Command
+            // lifecycle (started/finished) and prompt/accepted signals are wired
+            // synchronously at the parser hooks in InitializeSession so their
+            // relative order is preserved; alt-screen in HandleAltScreenChanged.
+            OutputReceived += _ => _agentRegistration?.StatusMachine.NotifyOutput();
+            BellReceived += _ => _agentRegistration?.StatusMachine.NotifyBell();
+            ProcessExited += (_, exitCode) => _agentRegistration?.StatusMachine.NotifyExited(exitCode);
+        }
+
+        /// <summary>
+        /// The Agent Output side panel: its view model, the region tracker that feeds it, and the toggle that opens it.
+        /// </summary>
+        private void SetUpAgentOutput()
+        {
+            // Agent Output (markdown side panel). The tracker hangs off the same buffer-lifetime
+            // subscription point as OnScreenSwitched above; OnInvalidate fires on the parse thread
+            // and the tracker only re-arms a debounce timer there. Notification wiring into the
+            // parser lives in CaptureCommandOutputRegionStart (C) and the OnCommandFinished
+            // handler (D) - both already parse-thread, both already at the right instant.
+            _agentOutput = new AgentOutput.AgentOutputViewModel();
+            _agentOutputTracker = new AgentOutput.AgentOutputRegionTracker(
+                () => Buffer,
+                () => Buffer?.CommandOutputStartMark,
+                dispatch: action =>
+                {
+                    if (this.Dispatcher.CheckAccess())
+                    {
+                        action();
+                    }
+                    else
+                    {
+                        this.Dispatcher.Post(action);
+                    }
+                },
+                onUpdate: (text, streaming) => _agentOutput.SetUpdate(text, streaming),
+
+                // The MD toggle only exists when the recent on-screen output actually looks like
+                // markdown - detection runs on the tracker's lazy closed-panel cadence, and this
+                // callback fires on the UI thread only when the verdict changes.
+                markdownPresenceChanged: present => AgentOutputToggle.IsVisible = present);
+            if (Buffer != null)
+            {
+                Buffer.OnInvalidate += _agentOutputTracker.NotifyInvalidate;
+            }
+            // Property hook rather than Click: the panel's ✕ unchecks the toggle programmatically
+            // (host.CloseRequested), and that path must close the panel exactly like a user click.
+            AgentOutputToggle.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == ToggleButton.IsCheckedProperty)
+                {
+                    SetAgentOutputPanelOpen(AgentOutputToggle.IsChecked ?? false);
+                }
+            };
+            TermView.EnterObserving += OnAgentOutputEnterObserved;
+        }
+
+        /// <summary>The status bar's agent segment opens the Agent Activity journal.</summary>
+        private void WireAgentStatusButton()
+        {
+            // The pane segment is the agent surface the user actually looks at,
+            // so it opens the Agent Activity journal exactly the way the
+            // window-level AgentObserveIndicator does (MainWindow.axaml.cs's
+            // agentObserveIndicator.Click). Null-safe on VisualRoot: the pane is
+            // constructed before it is attached, and unit tests never attach it
+            // to a window at all.
+            //
+            // async void by necessity (Click is an EventHandler), so the await
+            // must not be left bare: an exception out of an async void handler
+            // is re-raised on the UI thread's synchronization context as an
+            // unhandled exception rather than contained, and a click that
+            // should quietly do nothing would terminate the app instead - the
+            // journal dialog failing to construct while the owning window is
+            // closing is enough. Contained the same way the rest of this file
+            // contains failures on the attention path.
+            AgentStatusButton.Click += async (_, _) =>
+            {
+                try
+                {
+                    if (VisualRoot is MainWindow mainWindow)
+                    {
+                        await mainWindow.ShowAgentActivityJournalAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[TerminalPane] Opening the agent activity journal failed: {ex.Message}");
+                }
+            };
         }
     }
 }

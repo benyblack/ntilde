@@ -2,7 +2,6 @@ using Ntilde.Shell;
 using Ntilde.Shell.Theming;
 using Avalonia.Styling;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia;
@@ -486,62 +485,53 @@ namespace Ntilde.Controls
 
         private void SetupCommon(TerminalSettings? initialSettings)
         {
-            // Agent-host observe surface (docs/agent-host/DIRECTION.md, A1):
-            // inert bookkeeping until the IPC endpoint queries it. The
-            // registration holds a lock-protected metadata snapshot (never a
-            // live delegate into this control), pushed from the UI thread on
-            // every relevant change; the entry is removed in DetachFromUiThread.
-            _agentRegistration = new Ntilde.AgentHost.AgentSessionRegistration(
-                PaneId,
-                Buffer!,
-                GetBaseTabTitle(),
-                Profile?.Name ?? "Terminal",
-                Profile?.Type == ConnectionType.SSH ? "ssh" : "local",
-                IsActivePane,
-                profileId: Profile?.Id);
-            // A3 act: an agent typing into this pane is text the keyboard path never saw.
-            _agentRegistration.InputInjected = NotifyExternalInputSent;
-            _agentRegistry = Ntilde.AgentHost.AgentSessionRegistry.Instance;
-            _agentRegistry.Register(_agentRegistration);
-            // Seed act-reachability from the registration instead of waiting for
-            // the first ActabilityChanged. AgentHostService.OnSessionRegistered
-            // publishes it synchronously inside Register above — i.e. one line
-            // before the subscription below exists, so the event is already gone
-            // by the time we would hear it. Subscribing first would not fix it
-            // either: OnAgentActabilityChanged only *posts* to the dispatcher, so
-            // the bar would still appear a frame after the pane's first layout
-            // and resize the PTY, which is the reflow this is here to remove.
-            // Reading the value is synchronous, so the pane is laid out with its
-            // bar already in place and the terminal row is never re-measured.
-            //
-            // Routed through ApplyAgentAttention rather than assigning
-            // _agentActable directly so the segment is rendered by its one
-            // renderer: a seeded-actable pane shows the idle "agent access"
-            // label immediately instead of a bare dot with empty text until the
-            // first attention event.
-            //
-            // Guarded rather than unconditional: _agentActable already defaults
-            // to false, so a non-actable pane has nothing to seed, and calling
-            // UpdateStatusBarVisibility() for it would only re-assert the SSH
-            // half of the bar's visibility OR earlier than anything expects.
-            if (_agentRegistration.IsAgentActable)
-            {
-                ApplyAgentAttention(_agentRegistration.AttentionMachine.Snapshot(), isActable: true);
-            }
-            _agentRegistration.AttentionMachine.Changed += OnAgentAttentionChanged;
-            _agentRegistration.ActabilityChanged += OnAgentActabilityChanged;
-            TitleChanged += (_, _) => UpdateAgentSessionSnapshot();
-            WorkingDirectoryChanged += (_, _) => UpdateAgentSessionSnapshot();
+            RegisterWithAgentHost();
 
-            // A2 status signals (docs/plans/2026-07-07-agent-host-a2-status-design.md):
-            // PTY lifecycle events feed the per-session status machine. Command
-            // lifecycle (started/finished) and prompt/accepted signals are wired
-            // synchronously at the parser hooks in InitializeSession so their
-            // relative order is preserved; alt-screen in HandleAltScreenChanged.
-            OutputReceived += _ => _agentRegistration?.StatusMachine.NotifyOutput();
-            BellReceived += _ => _agentRegistration?.StatusMachine.NotifyBell();
-            ProcessExited += (_, exitCode) => _agentRegistration?.StatusMachine.NotifyExited(exitCode);
 
+            WireKeyboardInput();
+
+
+            WireScrollBar();
+
+            // Search UI
+            SetupSearch();
+
+            // Port Forwarding Status Timer
+            _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _statusTimer.Tick += (s, e) => UpdateForwardingStatus();
+            _statusTimer.Start();
+
+            // SFTP Status
+            SftpService.Instance.JobUpdated += Sftp_JobUpdated;
+
+            WireTermViewEvents();
+
+
+            SetUpAgentOutput();
+
+            // Load Settings
+            ApplySettings(initialSettings ?? TerminalSettings.Load());
+            UpdateMinimumSizeConstraints();
+            AutomationProperties.SetName(TermView, "Terminal Pane");
+            AutomationProperties.SetName(this, "Terminal Pane");
+
+            WireAgentStatusButton();
+
+
+            WireFileDropToast();
+
+            WireContextMenu();
+
+
+            InitializeRemoteFilesSidebar();
+        }
+
+        /// <summary>
+        /// Keys and text typed into the terminal: Command Assist's key interception and popup rows, and noting that the
+        /// user has interacted.
+        /// </summary>
+        private void WireKeyboardInput()
+        {
             TermView.KeyDownInterceptor = TryHandleCommandAssistKey;
 
             // Mouse support for the popup rows (V2 Phase 3a). Wired here rather than in
@@ -573,7 +563,11 @@ namespace Ntilde.Controls
                     _hasUserInteraction = true;
                 }
             };
+        }
 
+        /// <summary>Keeps the scroll bar and the terminal's scrollback position in step, both ways.</summary>
+        private void WireScrollBar()
+        {
             // Wire up ScrollBar
             TermScrollBar.ValueChanged += ScrollBar_ValueChanged;
 
@@ -594,18 +588,14 @@ namespace Ntilde.Controls
                     }
                 }, DispatcherPriority.Render);
             };
+        }
 
-            // Search UI
-            SetupSearch();
-
-            // Port Forwarding Status Timer
-            _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            _statusTimer.Tick += (s, e) => UpdateForwardingStatus();
-            _statusTimer.Start();
-
-            // SFTP Status
-            SftpService.Instance.JobUpdated += Sftp_JobUpdated;
-
+        /// <summary>
+        /// The terminal view's focus, metrics and input observers: focus visuals, the pane's minimum size, Command
+        /// Assist placement and submission tracking, and the alternate screen switch.
+        /// </summary>
+        private void WireTermViewEvents()
+        {
             // Wire up focus syncing
             TermView.GotFocus += (s, e) => HandleTermViewGotFocus();
             TermView.LostFocus += (s, e) => UpdateFocusVisuals(false);
@@ -640,85 +630,14 @@ namespace Ntilde.Controls
             {
                 Buffer.OnScreenSwitched += OnBufferScreenSwitched;
             }
+        }
 
-            // Agent Output (markdown side panel). The tracker hangs off the same buffer-lifetime
-            // subscription point as OnScreenSwitched above; OnInvalidate fires on the parse thread
-            // and the tracker only re-arms a debounce timer there. Notification wiring into the
-            // parser lives in CaptureCommandOutputRegionStart (C) and the OnCommandFinished
-            // handler (D) - both already parse-thread, both already at the right instant.
-            _agentOutput = new AgentOutput.AgentOutputViewModel();
-            _agentOutputTracker = new AgentOutput.AgentOutputRegionTracker(
-                () => Buffer,
-                () => Buffer?.CommandOutputStartMark,
-                dispatch: action =>
-                {
-                    if (this.Dispatcher.CheckAccess())
-                    {
-                        action();
-                    }
-                    else
-                    {
-                        this.Dispatcher.Post(action);
-                    }
-                },
-                onUpdate: (text, streaming) => _agentOutput.SetUpdate(text, streaming),
-
-                // The MD toggle only exists when the recent on-screen output actually looks like
-                // markdown - detection runs on the tracker's lazy closed-panel cadence, and this
-                // callback fires on the UI thread only when the verdict changes.
-                markdownPresenceChanged: present => AgentOutputToggle.IsVisible = present);
-            if (Buffer != null)
-            {
-                Buffer.OnInvalidate += _agentOutputTracker.NotifyInvalidate;
-            }
-            // Property hook rather than Click: the panel's ✕ unchecks the toggle programmatically
-            // (host.CloseRequested), and that path must close the panel exactly like a user click.
-            AgentOutputToggle.PropertyChanged += (_, e) =>
-            {
-                if (e.Property == ToggleButton.IsCheckedProperty)
-                {
-                    SetAgentOutputPanelOpen(AgentOutputToggle.IsChecked ?? false);
-                }
-            };
-            TermView.EnterObserving += OnAgentOutputEnterObserved;
-
-            // Load Settings
-            ApplySettings(initialSettings ?? TerminalSettings.Load());
-            UpdateMinimumSizeConstraints();
-            AutomationProperties.SetName(TermView, "Terminal Pane");
-            AutomationProperties.SetName(this, "Terminal Pane");
-
-            // The pane segment is the agent surface the user actually looks at,
-            // so it opens the Agent Activity journal exactly the way the
-            // window-level AgentObserveIndicator does (MainWindow.axaml.cs's
-            // agentObserveIndicator.Click). Null-safe on VisualRoot: the pane is
-            // constructed before it is attached, and unit tests never attach it
-            // to a window at all.
-            //
-            // async void by necessity (Click is an EventHandler), so the await
-            // must not be left bare: an exception out of an async void handler
-            // is re-raised on the UI thread's synchronization context as an
-            // unhandled exception rather than contained, and a click that
-            // should quietly do nothing would terminate the app instead - the
-            // journal dialog failing to construct while the owning window is
-            // closing is enough. Contained the same way the rest of this file
-            // contains failures on the attention path.
-            AgentStatusButton.Click += async (_, _) =>
-            {
-                try
-                {
-                    if (VisualRoot is MainWindow mainWindow)
-                    {
-                        await mainWindow.ShowAgentActivityJournalAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[TerminalPane] Opening the agent activity journal failed: {ex.Message}");
-                }
-            };
-
+        /// <summary>
+        /// The banner for a file dropped on the terminal (paste its path or its contents), and for a drop refused or
+        /// sent with a caveat.
+        /// </summary>
+        private void WireFileDropToast()
+        {
             // Smart Paste Action setup
             TermView.TextFileDropped += (s, args) =>
             {
@@ -792,7 +711,11 @@ namespace Ntilde.Controls
                     _pendingEscapedPath = null;
                 }
             };
+        }
 
+        /// <summary>The pane's context menu: its Pane submenu's actions and Explain selection.</summary>
+        private void WireContextMenu()
+        {
             // SFTP Context Menu
             var contextMenu = RootGrid.ContextMenu;
             if (contextMenu != null)
@@ -819,8 +742,6 @@ namespace Ntilde.Controls
                     explainSelectionItem.Click += async (_, _) => await ExplainSelectionAsync();
                 }
             }
-
-            InitializeRemoteFilesSidebar();
         }
 
         private void OnBufferScreenSwitched(bool isAltScreen)
