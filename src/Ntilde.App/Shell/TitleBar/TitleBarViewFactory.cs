@@ -19,7 +19,7 @@ public static class TitleBarViewFactory
     /// <summary>
     /// The XAML-declared name of the "+" New Tab button. It lives here, not in MainWindow, because
     /// this factory already owns the title bar's button-naming contract (<see cref="ButtonName"/>,
-    /// <see cref="OverflowButtonName"/>) and MainWindow.axaml.cs looks the button up by this same
+    /// <see cref="OverflowButtonName"/>) and MainWindow's code looks the button up by this same
     /// name in several places. Must keep matching the `Name="BtnNewTab"` in MainWindow.axaml.
     /// </summary>
     public const string NewTabButtonName = "BtnNewTab";
