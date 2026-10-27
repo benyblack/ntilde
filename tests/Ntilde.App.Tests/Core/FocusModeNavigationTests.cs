@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using Ntilde.AgentHost;
 using Ntilde.Controls;
 using Ntilde.Shell;
+using Ntilde.Tests.Infra;
 using static Ntilde.Tests.Core.WindowTestSupport;
 
 namespace Ntilde.Tests.Core;
@@ -22,7 +23,6 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
 {
     public void Dispose() => TestMainWindowFactory.DisposeCreatedWindows();
 
-    private static readonly RawInputModifiers CtrlShift = RawInputModifiers.Control | RawInputModifiers.Shift;
 
     private static TabControl TabsOf(MainWindow window) => window.FindControl<TabControl>("Tabs")!;
 
@@ -40,7 +40,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
     {
         var tabs = TabsOf(window);
         var a = (TabItem)tabs.Items[0]!;
-        window.KeyPress(Key.T, CtrlShift, PhysicalKey.T, null);
+        window.PressShortcut("new_tab", "Ctrl+Shift+T");
         Dispatcher.UIThread.RunJobs();
         var b = (TabItem)tabs.SelectedItem!;
         Assert.NotSame(a, b);
@@ -58,7 +58,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         Select(window, a);
         window.EnterFocusMode();
 
-        window.KeyPress(Key.Tab, RawInputModifiers.Control, PhysicalKey.Tab, null);
+        window.PressShortcut("next_tab", "Ctrl+Tab");
         Dispatcher.UIThread.RunJobs();
 
         Assert.False(window.IsFocusMode);
@@ -73,7 +73,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         int before = tabs.Items.Count;
         window.EnterFocusMode();
 
-        window.KeyPress(Key.T, CtrlShift, PhysicalKey.T, null);
+        window.PressShortcut("new_tab", "Ctrl+Shift+T");
         Dispatcher.UIThread.RunJobs();
 
         Assert.False(window.IsFocusMode);
@@ -89,7 +89,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
             ((TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!).TabStripOrientation);
         window.EnterFocusMode();
 
-        window.KeyPress(Key.L, CtrlShift, PhysicalKey.L, null);
+        window.PressShortcut("toggle_tab_orientation", "Ctrl+Shift+L");
         Dispatcher.UIThread.RunJobs();
 
         Assert.False(window.IsFocusMode);
@@ -104,7 +104,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         MainWindow window = NewShownWindow();
         window.EnterFocusMode();
 
-        window.KeyPress(Key.O, CtrlShift, PhysicalKey.O, null);
+        window.PressShortcut("open_tab_list", "Ctrl+Shift+O");
         Dispatcher.UIThread.RunJobs();
 
         Assert.False(window.IsFocusMode);
@@ -136,9 +136,9 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         var selected = TabsOf(window).SelectedItem;
         window.EnterFocusMode();
 
-        window.KeyPress(Key.D, CtrlShift, PhysicalKey.D, null);
+        window.PressShortcut("split_vertical", "Ctrl+Shift+D");
         Dispatcher.UIThread.RunJobs();
-        window.KeyPress(Key.G, CtrlShift, PhysicalKey.G, null);
+        window.PressShortcut("equalize_panes", "Ctrl+Shift+G");
         Dispatcher.UIThread.RunJobs();
 
         Assert.True(window.IsFocusMode);
@@ -339,7 +339,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         TabItem split = AddSplitTab(window, out TerminalPane x, out TerminalPane y);
         Select(window, split);
         Invoke(window, "UpdateActivePane", y);
-        window.KeyPress(Key.D, CtrlShift, PhysicalKey.D, null);
+        window.PressShortcut("split_vertical", "Ctrl+Shift+D");
         Dispatcher.UIThread.RunJobs();
         var z = CurrentPane(window)!;
         Assert.NotSame(x, z);
@@ -478,7 +478,7 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         Assert.Single(TabsOf(window).Items);
         window.EnterFocusMode();
 
-        window.KeyPress(Key.Tab, RawInputModifiers.Control, PhysicalKey.Tab, null);
+        window.PressShortcut("next_tab", "Ctrl+Tab");
         Dispatcher.UIThread.RunJobs();
 
         Assert.True(window.IsFocusMode);

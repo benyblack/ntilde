@@ -8,6 +8,7 @@ using Ntilde.Mux;
 using Ntilde.Mux.Tests.Support;
 using Ntilde.Shell;
 using Ntilde.Shell.Mux;
+using Ntilde.Tests.Infra;
 using Ntilde.Tests.Controls; // FakeTerminalSession, RecordingSessionFactory
 
 namespace Ntilde.Tests.Core;
@@ -120,7 +121,7 @@ public sealed class FocusModeMuxDetachTests : IClassFixture<TestAppDataRoot>, ID
         Guid id = ((MuxClientSession)only.Session!).Id;
 
         // A second tab, so the window stays open when the first goes.
-        window.KeyPress(Avalonia.Input.Key.T, Avalonia.Input.RawInputModifiers.Control | Avalonia.Input.RawInputModifiers.Shift, Avalonia.Input.PhysicalKey.T, null);
+        window.PressShortcut("new_tab", "Ctrl+Shift+T");
         PumpUntil(() => AllPanes(window).Count(p => p.Session is MuxClientSession { IsAttached: true }) == 2, "the second tab attached");
         var b = (TabItem)tabs.SelectedItem!;
         Assert.NotSame(a, b);
