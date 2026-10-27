@@ -181,6 +181,32 @@ public sealed class TitleBandDoubleClickTests : IClassFixture<TestAppDataRoot>, 
         AssertState(WindowState.Maximized, window, at, presses);
     }
 
+    // PR #608 review: a finger's double-tap box is far larger than a mouse's, so the check on the screen must use the
+    // press's own pointer type, or a double-tap whose taps land a few pixels apart drags instead of maximizing.
+    [AvaloniaFact]
+    public void A_touch_double_tap_whose_taps_land_apart_maximizes()
+    {
+        MainWindow window = WindowTestSupport.NewShownWindow();
+        Point at = EmptyBand(window);
+        var secondTap = at + new Point(10, 0); // outside a mouse's 4px box, inside a finger's
+        AssertEmptyBand(window, at);
+        AssertEmptyBand(window, secondTap);
+        var presses = RecordPresses(window);
+
+        Tap(window, at);
+        Tap(window, secondTap);
+
+        Assert.Contains(presses, p => p.StartsWith("press 2", StringComparison.Ordinal)); // Avalonia did count a double-tap
+        AssertState(WindowState.Maximized, window, secondTap, presses);
+    }
+
+    private static void Tap(MainWindow window, Point at)
+    {
+        using var touch = window.TouchBegin(at);
+        window.TouchEnd(touch, at);
+        Dispatcher.UIThread.RunJobs();
+    }
+
     // PR #605 review: the title bar's own handler and the window's both see a press on the title bar's empty space; the
     // double-click there must toggle once, not maximize and restore again.
     [AvaloniaFact]

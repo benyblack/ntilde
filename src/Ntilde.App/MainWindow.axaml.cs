@@ -205,7 +205,7 @@ namespace Ntilde
             // The title bar's own handler and MainRoot's both see a press on the title bar: act on it once.
             if (ReferenceEquals(e, _lastTitleBandPress)) return;
             PixelPoint onScreen = this.PointToScreen(e.GetPosition(this));
-            bool sameSpotOnScreen = WithinDoubleClickBox(_screenPointOfLastTitleBandPress, onScreen);
+            bool sameSpotOnScreen = WithinDoubleClickBox(_screenPointOfLastTitleBandPress, onScreen, e.Pointer.Type);
             _lastTitleBandPress = e;
             _screenPointOfLastTitleBandPress = onScreen;
 
@@ -222,11 +222,13 @@ namespace Ntilde
 
         /// <summary>
         /// Whether two screen points are within the platform's double-click box of each other: the box Avalonia measures a
-        /// double-click by inside the window, in physical pixels.
+        /// double-click by inside the window, in physical pixels. It depends on the pointer: a finger's or a pen's box is far
+        /// larger than a mouse's.
         /// </summary>
-        private bool WithinDoubleClickBox(PixelPoint first, PixelPoint second)
+        private bool WithinDoubleClickBox(PixelPoint first, PixelPoint second, PointerType pointerType)
         {
-            Size box = Application.Current?.PlatformSettings?.GetDoubleTapSize(PointerType.Mouse) ?? new Size(4, 4);
+            // The settings Avalonia's own pointer devices count clicks with.
+            Size box = this.GetPlatformSettings()?.GetDoubleTapSize(pointerType) ?? new Size(4, 4);
             return Math.Abs(second.X - first.X) <= box.Width * RenderScaling / 2
                 && Math.Abs(second.Y - first.Y) <= box.Height * RenderScaling / 2;
         }
