@@ -9,6 +9,13 @@ public sealed class ProtocolFallbackTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
     private static MuxServerOptions V1Server => new() { MaxProtocolVersion = 1, ForceConPtyFiltering = false };
 
+    /// <summary>
+    /// The daemon hands over the snapshot, which ends <c>AttachAsync</c>, before it counts the client, so the count can
+    /// still read 0 here. Only once it has read 1 does a later wait for 0 mean the detach landed.
+    /// </summary>
+    private static Task AttachLandedAsync(MuxTestHost host, Guid id) =>
+        TestWait.UntilAsync(() => host.Mux(id).AttachedClients == 1, "the attach landed");
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -108,6 +115,7 @@ public sealed class ProtocolFallbackTests
         MuxClient c = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(c);
         ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+        await AttachLandedAsync(host, id);
 
         pane.Session.Detach(userDetached: true);
 
@@ -125,6 +133,7 @@ public sealed class ProtocolFallbackTests
         MuxClient c = await host.ConnectClientAsync();
         Guid id = await MuxTestHost.SpawnAsync(c);
         ClientPaneModel pane = await MuxTestHost.AttachPaneAsync(c, id);
+        await AttachLandedAsync(host, id);
 
         pane.Session.Detach(userDetached: true);
 
