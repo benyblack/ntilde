@@ -336,7 +336,6 @@ namespace Ntilde
 
         private bool SwitchTabByMru(bool reverse)
         {
-            LeaveFocusModeForNavigation();
             var tabs = this.FindControl<TabControl>("Tabs");
             if (tabs == null) return false;
 
@@ -358,6 +357,8 @@ namespace Ntilde
             var target = _tabMru[targetIndex];
             if (tabs.SelectedItem == target) return false;
 
+            // Only now that it goes somewhere: with no other tab the shortcut does nothing, focus mode included.
+            LeaveFocusModeForNavigation();
             _suppressMruTouchOnSelection = true;
             tabs.SelectedItem = target;
             return true;

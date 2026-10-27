@@ -191,7 +191,11 @@ namespace Ntilde
         /// headless lane that something is another test calling <c>RunJobs()</c>, which is how a
         /// teardown here reddens a rendering test in a later class.
         /// </param>
-        private bool ExitPaneZoom(TabItem tabItem, bool publishEvent, bool forTeardown = false)
+        /// <param name="activate">
+        /// False leaves the user's active pane and keyboard where they are: the zoomed pane becomes only the tab's
+        /// remembered pane. For a focus-mode close in a tab the user is not on.
+        /// </param>
+        private bool ExitPaneZoom(TabItem tabItem, bool publishEvent, bool forTeardown = false, bool activate = true)
         {
             if (!_paneZoomStateByTab.TryGetValue(tabItem, out var state)) return false;
             if (tabItem.Content is not TerminalPane zoomedPane) return false;
@@ -233,8 +237,16 @@ namespace Ntilde
                 return true;
             }
 
-            UpdateActivePane(zoomedPane);
-            FocusPaneTerminal(zoomedPane, defer: true);
+            if (activate)
+            {
+                UpdateActivePane(zoomedPane);
+                FocusPaneTerminal(zoomedPane, defer: true);
+            }
+            else
+            {
+                _activePaneByTab[tabItem] = zoomedPane;
+            }
+
             UpdatePaneAutomationLabels();
             RefreshLayoutModelForTab(tabItem);
             // The other direction, and it matters just as much: the siblings

@@ -462,4 +462,115 @@ public sealed class FocusModeNavigationTests : IClassFixture<TestAppDataRoot>, I
         Assert.Same(spawnedTab, tabs.SelectedItem);
         Assert.Same(spawnedTab.Content, CurrentPane(window));
     }
+
+    // PR #595 review: a command leaves focus mode only when it does go to another tab.
+
+    private static void Protect(MainWindow window, TabItem tab)
+    {
+        object state = Invoke(window, "GetOrCreateTabState", tab)!;
+        state.GetType().GetProperty("IsProtected")!.SetValue(state, true);
+    }
+
+    [AvaloniaFact]
+    public void Next_tab_with_no_other_tab_stays_in_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        Assert.Single(TabsOf(window).Items);
+        window.EnterFocusMode();
+
+        window.KeyPress(Key.Tab, RawInputModifiers.Control, PhysicalKey.Tab, null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(window.IsFocusMode);
+    }
+
+    [AvaloniaFact]
+    public async Task Closing_the_selected_tab_leaves_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, b) = TwoTabs(window);
+        ((TerminalSettings)typeof(MainWindow).GetField("_settings", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!).PaneClosePolicy = "Force";
+        window.EnterFocusMode();
+
+        await (Task)Invoke(window, "CloseSelectedTabAsync")!;
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.False(window.IsFocusMode);
+        Assert.DoesNotContain(a, TabsOf(window).Items.Cast<TabItem>());
+        Assert.Same(b, TabsOf(window).SelectedItem);
+    }
+
+    [AvaloniaFact]
+    public async Task Closing_a_protected_tab_stays_in_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, _) = TwoTabs(window);
+        Protect(window, a);
+        window.EnterFocusMode();
+
+        await (Task)Invoke(window, "CloseSelectedTabAsync")!;
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(window.IsFocusMode);
+        Assert.Same(a, TabsOf(window).SelectedItem);
+    }
+
+    [AvaloniaFact]
+    public async Task Closing_the_only_pane_of_a_protected_tab_stays_in_focus_mode()
+    {
+        MainWindow window = NewShownWindow();
+        var (a, _) = TwoTabs(window);
+        Protect(window, a);
+        window.EnterFocusMode();
+
+        await (Task)Invoke(window, "CloseActivePaneAsync", true)!;
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(window.IsFocusMode);
+        Assert.Same(a, TabsOf(window).SelectedItem);
+        Assert.NotNull(a.Content);
+    }
+
+    [AvaloniaFact]
+    public void Detaching_a_pane_that_cannot_be_detached_stays_in_focus_mode()
+    {
+        // These panes are plain shells, not persistent ones: the detach is refused with a notice.
+        MainWindow window = NewShownWindow();
+        var tab = (TabItem)TabsOf(window).SelectedItem!;
+        window.EnterFocusMode();
+
+        Invoke(window, "DetachActivePane");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(window.IsFocusMode);
+        Assert.IsType<TerminalPane>(tab.Content);
+    }
+
+    // An agent can only close the zoomed pane of a zoomed split: one the zoom hides has no tab ancestor, and the close
+    // refuses it (#311 finding C), so it moves nothing.
+    [AvaloniaFact]
+    public async Task An_agent_close_of_the_zoomed_pane_in_a_background_split_keeps_the_users_pane()
+    {
+        MainWindow window = NewShownWindow();
+        var userTab = (TabItem)TabsOf(window).Items[0]!;
+        TabItem split = AddSplitTab(window, out TerminalPane zoomed, out TerminalPane other);
+        Select(window, split);
+        Assert.True((bool)Invoke(window, "EnterPaneZoom", split, zoomed, true)!);
+        Select(window, userTab);
+        var userPane = CurrentPane(window)!;
+        Assert.Same(userTab.Content, userPane);
+        window.EnterFocusMode();
+
+        bool closed = await ((IAgentActionExecutor)window).ClosePaneAsync(zoomed.PaneId);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(closed);
+        Assert.Same(userTab, TabsOf(window).SelectedItem);
+        Assert.Same(userPane, CurrentPane(window));
+        var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement();
+        Assert.False(focused is Avalonia.Visual v && Avalonia.VisualTree.VisualExtensions.FindAncestorOfType<TerminalPane>(v, true) == other,
+            "keyboard focus moved into the background split");
+        Assert.Same(other, split.Content);
+        Assert.True(window.IsFocusMode);
+    }
 }

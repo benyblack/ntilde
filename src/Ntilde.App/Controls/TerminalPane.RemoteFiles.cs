@@ -286,13 +286,15 @@ namespace Ntilde.Controls
             string startPath = RemoteSidebarStartPathResolver.Resolve(
                 CurrentWorkingDirectory,
                 Profile?.DefaultRemoteDir);
+            // An explicit open is a request to see it, even in focus mode. Cleared before the open, which marks the panel
+            // open at once: what happens while it connects - focus mode entered, the panel revealed again - is later and
+            // wins.
+            _remoteFilesHiddenByFocus = false;
             await _remoteFilesSidebarViewModel.OpenAsync(
                 profileId,
                 sessionId,
                 startPath,
                 CancellationToken.None);
-            // An explicit open is a request to see it, even in focus mode.
-            _remoteFilesHiddenByFocus = false;
             UpdateRemoteFilesSidebarCurrentDirectoryState();
             UpdateRemoteFilesSidebarVisibility();
             UpdateRemoteFilesSidebarEntryPointState();

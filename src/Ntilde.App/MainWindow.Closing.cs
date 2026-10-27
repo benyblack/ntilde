@@ -32,15 +32,18 @@ namespace Ntilde
 
         private async Task CloseSelectedTabAsync()
         {
-            LeaveFocusModeForNavigation();
             if (!TryGetSelectedTab(out var selectedTab)) return;
-            await CloseTabAsync(selectedTab);
+            await CloseTabCoreAsync(selectedTab, skipProcessChecks: false, Ntilde.Shell.Mux.PaneDisposition.EndSession, leaveFocusMode: true);
         }
 
         private Task<bool> CloseTabAsync(TabItem tab, bool skipProcessChecks = false) =>
             CloseTabCoreAsync(tab, skipProcessChecks, Ntilde.Shell.Mux.PaneDisposition.EndSession);
 
-        private async Task<bool> CloseTabCoreAsync(TabItem tab, bool skipProcessChecks, Ntilde.Shell.Mux.PaneDisposition requested)
+        /// <param name="leaveFocusMode">
+        /// A user command closing the tab they are on: closing it moves them to another tab, so focus mode is left, but
+        /// only once the close is going ahead. A protected tab or a cancelled prompt keeps the tab, and focus mode with it.
+        /// </param>
+        private async Task<bool> CloseTabCoreAsync(TabItem tab, bool skipProcessChecks, Ntilde.Shell.Mux.PaneDisposition requested, bool leaveFocusMode = false)
         {
             if (_closeTabInProgress) return false;
             _closeTabInProgress = true;
@@ -76,6 +79,7 @@ namespace Ntilde
                     }
                 }
 
+                if (leaveFocusMode) LeaveFocusModeForNavigation();
                 PublishPaneEvent(tab, ResolvePaneForTab(tab), PaneAuditEventKind.Close, "tab");
                 CloseTabCore(tab, requested, detach);
                 return true;
@@ -139,12 +143,11 @@ namespace Ntilde
         private async Task CloseActivePaneAsync(bool skipConfirm = false)
         {
             if (_currentPane is not { } pane) return;
-            if (IsOnlyPaneOfItsTab(pane)) LeaveFocusModeForNavigation();
 
             // A share whose sharing cannot be known detaches instead of ending, and the close says so itself: that
             // "Shell detached" answers this command.
             bool detachesUnasked = pane.IsMuxShareWithSharingUnknown;
-            bool closed = await ClosePaneAsync(pane, skipConfirm);
+            bool closed = await ClosePaneCoreAsync(pane, skipConfirm, Ntilde.Shell.Mux.PaneDisposition.EndSession, leaveFocusModeIfTabCloses: true);
             if (closed && detachesUnasked && !_teardownDone) PromptPendingNotice(ShellDetachedNoticeTitle);
         }
 
@@ -158,7 +161,8 @@ namespace Ntilde
         private Task<bool> ClosePaneAsync(TerminalPane pane, bool skipConfirm = false) =>
             ClosePaneCoreAsync(pane, skipConfirm, Ntilde.Shell.Mux.PaneDisposition.EndSession);
 
-        private async Task<bool> ClosePaneCoreAsync(TerminalPane pane, bool skipConfirm, Ntilde.Shell.Mux.PaneDisposition requested)
+        /// <param name="leaveFocusModeIfTabCloses">A user command: if this was the tab's last pane, the tab closes and focus mode is left (see <see cref="CloseTabCoreAsync"/>).</param>
+        private async Task<bool> ClosePaneCoreAsync(TerminalPane pane, bool skipConfirm, Ntilde.Shell.Mux.PaneDisposition requested, bool leaveFocusModeIfTabCloses = false)
         {
             if (_closePaneInProgress || pane == null) return false;
             _closePaneInProgress = true;
@@ -188,7 +192,10 @@ namespace Ntilde
 
                 if (_paneZoomStateByTab.ContainsKey(paneTab))
                 {
-                    ExitPaneZoom(paneTab, publishEvent: true);
+                    // In focus mode a close in a tab the user is not on (an agent's) must not make its zoomed pane theirs:
+                    // the tab only remembers it, which the focus-mode branch below repoints if that pane is the one closing.
+                    bool usersTab = !_isFocusMode || _currentPane is not { } current || ReferenceEquals(ResolveOwningTabForPane(current), paneTab);
+                    ExitPaneZoom(paneTab, publishEvent: true, activate: usersTab);
                 }
 
                 // Agent-initiated and exit-driven closes bypass the confirmation dialog: an agent
@@ -287,7 +294,7 @@ namespace Ntilde
 
                 // Fallback: If not in a split, close the pane's own tab. paneTab is non-null from
                 // the early return above, so there is no null branch left to guard here.
-                return await CloseTabCoreAsync(paneTab, skipProcessChecks: true, disposition);
+                return await CloseTabCoreAsync(paneTab, skipProcessChecks: true, disposition, leaveFocusModeIfTabCloses);
             }
             finally
             {
@@ -406,12 +413,12 @@ namespace Ntilde
         private void DetachActivePane()
         {
             if (_currentPane is not { } pane) return;
-            if (IsOnlyPaneOfItsTab(pane)) LeaveFocusModeForNavigation();
-            _ = DetachPaneAsync(pane);
+            _ = DetachPaneAsync(pane, leaveFocusModeIfTabCloses: true);
         }
 
         /// <summary>"Pane: Detach" (spec §7.4): the pane closes, the shell keeps running in the daemon.</summary>
-        internal async Task<bool> DetachPaneAsync(TerminalPane pane)
+        /// <param name="leaveFocusModeIfTabCloses">As for <see cref="ClosePaneCoreAsync"/>: a refused detach keeps focus mode.</param>
+        internal async Task<bool> DetachPaneAsync(TerminalPane pane, bool leaveFocusModeIfTabCloses = false)
         {
             if (pane.Session is not Ntilde.Mux.MuxClientSession { IsConnected: true } mux)
             {
@@ -423,13 +430,13 @@ namespace Ntilde
 
             // Its shell already exited: nothing would keep running, so this is a plain close (which
             // sends no kill for an exited shell) and no "kept running" toast.
-            if (!mux.IsProcessRunning) return await ClosePaneAsync(pane, skipConfirm: true);
+            if (!mux.IsProcessRunning) return await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.EndSession, leaveFocusModeIfTabCloses);
 
             // Read before the close: the pane is gone after it. A share whose sharing is unknown gets the notice from the
             // close itself (DisposeControlTree), so it is not said twice.
             string detached = ShellDetachedMessage(pane, mux.Id);
             bool noticedByTheClose = pane.IsMuxShareWithSharingUnknown;
-            bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach);
+            bool closed = await ClosePaneCoreAsync(pane, skipConfirm: true, Ntilde.Shell.Mux.PaneDisposition.Detach, leaveFocusModeIfTabCloses);
             if (closed && !_teardownDone)
             {
                 // Either way the notice answers this command, so focus mode does not hold it.
