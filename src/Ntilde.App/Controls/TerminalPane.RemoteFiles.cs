@@ -286,13 +286,13 @@ namespace Ntilde.Controls
             string startPath = RemoteSidebarStartPathResolver.Resolve(
                 CurrentWorkingDirectory,
                 Profile?.DefaultRemoteDir);
+            bool focusAtRequest = _focusChromeHidden;
             await _remoteFilesSidebarViewModel.OpenAsync(
                 profileId,
                 sessionId,
                 startPath,
                 CancellationToken.None);
-            // An explicit open is a request to see it, even in focus mode.
-            _remoteFilesHiddenByFocus = false;
+            _remoteFilesHiddenByFocus = RemoteFilesHiddenAfterOpen(focusAtRequest, _focusChromeHidden);
             UpdateRemoteFilesSidebarCurrentDirectoryState();
             UpdateRemoteFilesSidebarVisibility();
             UpdateRemoteFilesSidebarEntryPointState();

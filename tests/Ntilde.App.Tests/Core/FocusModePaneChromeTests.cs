@@ -45,11 +45,24 @@ public sealed class FocusModePaneChromeTests : IClassFixture<TestAppDataRoot>, I
     {
         Assert.Equal(expected, TerminalPane.RemoteFilesMenuHeader(isOpen, hiddenByFocus));
 
-        // Opening from closed goes through OpenRemoteFilesSidebarAsync, which always shows the panel.
+        // Opening from closed goes through OpenRemoteFilesSidebarAsync, which shows the panel (unless focus mode began
+        // while it was connecting, below).
         bool shownAfterClick = isOpen
             ? TerminalPane.ResolveRemoteFilesToggle(isOpen, hiddenByFocus) is (true, false)
             : true;
         Assert.Equal(expected == "Remote Files", shownAfterClick);
+    }
+
+    // PR #595 review: an open is a request to see the panel in the mode it was asked in. Focus mode entered while the
+    // open was still connecting hides it, as it hides a panel that was already open.
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    public void A_remote_files_open_is_hidden_only_by_focus_mode_entered_while_it_ran(bool focusAtRequest, bool focusNow, bool hidden)
+    {
+        Assert.Equal(hidden, TerminalPane.RemoteFilesHiddenAfterOpen(focusAtRequest, focusNow));
     }
 
     private static void MakeActable(TerminalPane pane)

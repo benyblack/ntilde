@@ -136,4 +136,39 @@ public sealed class FocusModeMuxDetachTests : IClassFixture<TestAppDataRoot>, ID
         Assert.Same(b, tabs.SelectedItem);
         Assert.False(_mux.Mux(id).IsExited);
     }
+
+    /// <summary>PR #595 review: a close the user cancels keeps the tab, so focus mode stays too.</summary>
+    [AvaloniaFact]
+    public void Cancelling_the_shared_close_prompt_stays_in_focus_mode()
+    {
+        MainWindow window = CreateWindow();
+        var tabs = window.FindControl<TabControl>("Tabs")!;
+        var tab = (TabItem)tabs.SelectedItem!;
+        TerminalPane only = AllPanes(window).Single();
+        Guid id = ((MuxClientSession)only.Session!).Id;
+
+        // Another client shows the same shell, so a close asks Close / Detach / Cancel.
+        Task.Run(async () => await MuxTestHost.AttachPaneAsync(await _mux.ConnectClientAsync(), id),
+            TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+        PumpUntil(() => _mux.Mux(id).AttachedClients == 2, "the other client attached");
+        int asked = 0;
+        window.ConfirmSharedClose = _ =>
+        {
+            asked++;
+            return Task.FromResult(SharedCloseChoice.Cancel);
+        };
+        window.EnterFocusMode();
+
+        var closeTab = (Task)WindowTestSupport.Invoke(window, "CloseSelectedTabAsync")!;
+        PumpUntil(() => closeTab.IsCompleted, "the tab close finished");
+        Assert.True(window.IsFocusMode, "a cancelled tab close left focus mode");
+
+        var closePane = (Task)WindowTestSupport.Invoke(window, "CloseActivePaneAsync", false)!;
+        PumpUntil(() => closePane.IsCompleted, "the pane close finished");
+        Assert.True(window.IsFocusMode, "a cancelled pane close left focus mode");
+
+        Assert.Equal(2, asked);
+        Assert.Same(tab, tabs.SelectedItem);
+        Assert.Contains(only, AllPanes(window));
+    }
 }
