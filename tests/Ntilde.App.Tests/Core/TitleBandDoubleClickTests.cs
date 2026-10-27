@@ -164,6 +164,23 @@ public sealed class TitleBandDoubleClickTests : IClassFixture<TestAppDataRoot>, 
         AssertState(WindowState.Normal, window, at, presses);
     }
 
+    // The first press of every double-click starts a drag, which may nudge the window a pixel: the check on the screen
+    // allows the same few pixels as Avalonia's own in the window, so that double-click still counts.
+    [AvaloniaFact]
+    public void A_double_click_whose_first_press_nudged_the_window_still_maximizes()
+    {
+        MainWindow window = WindowTestSupport.NewShownWindow();
+        Point at = EmptyBand(window);
+        AssertEmptyBand(window, at);
+        var presses = RecordPresses(window);
+
+        Press(window, at);
+        window.Position = new PixelPoint(window.Position.X + 1, window.Position.Y + 1);
+        Press(window, at);
+
+        AssertState(WindowState.Maximized, window, at, presses);
+    }
+
     // PR #605 review: the title bar's own handler and the window's both see a press on the title bar's empty space; the
     // double-click there must toggle once, not maximize and restore again.
     [AvaloniaFact]
